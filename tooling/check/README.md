@@ -2,8 +2,9 @@
 
 Our own repo checks: package manifests, layers, dependencies, names, the
 Studio's feature list, file size, the lockfile, absolute local paths,
-licences and the personal-terms guard, plus the slots for the Phase 1
-traceability, requirement-guard and DCO checks. Imports are read with the
+licences, the personal-terms guard and the traceability check between
+requirements and tests, plus the slots for the Phase 1 requirement-guard
+and DCO checks. Imports are read with the
 TypeScript parser, not regular expressions.
 
 - **Layer:** tooling

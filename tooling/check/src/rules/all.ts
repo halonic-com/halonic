@@ -9,6 +9,7 @@ import { checkLockfile } from "./lockfile.ts";
 import { checkNames } from "./names.ts";
 import { checkPackages } from "./packages.ts";
 import { phaseOneSlots, slotRule } from "./phase-one-slots.ts";
+import { checkTrace } from "./trace.ts";
 
 /** Every rule `pnpm check` runs, by name. */
 export const rules: Readonly<Record<string, (context: CheckContext) => Report>> = {
@@ -20,5 +21,6 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "file-size": checkFileSize,
   lockfile: checkLockfile,
   "absolute-paths": checkAbsolutePaths,
+  trace: checkTrace,
   ...Object.fromEntries(Object.keys(phaseOneSlots).map((name) => [name, slotRule(name)])),
 };

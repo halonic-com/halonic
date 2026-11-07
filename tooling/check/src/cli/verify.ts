@@ -1,13 +1,15 @@
 import { spawnSync } from "node:child_process";
 import { findRepoRoot } from "../lib/workspace.ts";
+import { rules } from "../rules/all.ts";
 
 /**
  * pnpm verify
  *
  * The agent's local check before asking for review (plan 6.4): our own
  * checks, formatting, the feature list, then typecheck, lint and test for
- * the packages the change affects. CI runs every task through the cache.
- * Pass --full to run every package, as CI does.
+ * the packages the change affects, and last the trace check, which reads
+ * the test result files. CI runs every task through the cache. Pass --full
+ * to run every package, as CI does.
  */
 interface Step {
   readonly label: string;
@@ -18,8 +20,13 @@ interface Step {
 function main(argv: readonly string[]): number {
   const full = argv.includes("--full");
   const turboScope = full ? [] : ["--affected"];
+  const rulesBeforeTests = Object.keys(rules).filter((name) => name !== "trace");
   const steps: Step[] = [
-    { label: "repo checks", command: "pnpm", args: ["run", "--silent", "check"] },
+    {
+      label: "repo checks",
+      command: "pnpm",
+      args: ["run", "--silent", "check", ...rulesBeforeTests],
+    },
     { label: "personal-terms guard", command: "pnpm", args: ["run", "--silent", "check:terms"] },
     { label: "licences", command: "pnpm", args: ["run", "--silent", "check:licences"] },
     {
@@ -48,6 +55,20 @@ function main(argv: readonly string[]): number {
       ],
     },
   ];
+  if (!full) {
+    // The trace check needs every package's result file. Unaffected
+    // packages come from Turbo's cache, so this is quick after the first run.
+    steps.push({
+      label: "test results of the other packages",
+      command: "pnpm",
+      args: ["exec", "turbo", "run", "test", "--output-logs=errors-only"],
+    });
+  }
+  steps.push({
+    label: "requirements and their tests (trace)",
+    command: "pnpm",
+    args: ["run", "--silent", "check", "trace"],
+  });
   const root = findRepoRoot();
   const started = performance.now();
   for (const step of steps) {
