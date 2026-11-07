@@ -40,7 +40,9 @@
         "//#codegen",
         "transit"
       ],
-      "outputs": []
+      "outputs": [
+        "test-results/**"
+      ]
     },
     "build": {
       "dependsOn": [
