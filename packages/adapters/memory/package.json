@@ -1,0 +1,24 @@
+{
+  "name": "@halonicjs/adapter-memory",
+  "private": true,
+  "type": "module",
+  "description": "In-memory implementations of the ports, for tests, the browser demo and the parity harness.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "julian"
+  }
+}
