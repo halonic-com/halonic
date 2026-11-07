@@ -19,6 +19,7 @@
     "verify": "node tooling/check/src/cli/verify.ts",
     "check": "node tooling/check/src/cli/check.ts",
     "check:terms": "node tooling/check/src/cli/terms.ts",
+    "check:pr-title": "node tooling/check/src/cli/pr-title.ts",
     "discover": "node tooling/discover/src/cli/discover.ts",
     "new": "node tooling/discover/src/cli/new.ts",
     "format": "biome format --write .",

@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
+      - uses: $/.github/actions/setup
       - name: Pull request title
         if: github.event_name == 'pull_request'
         env:
@@ -83,8 +83,6 @@ jobs:
         run: pnpm check:pr-title
       - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths)
         run: pnpm check
-      - name: Licences
-        run: pnpm check:licences
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
@@ -97,7 +95,7 @@ jobs:
   terms:
     # Runs no third-party code: only the repo's own script on Node, so the
     # secret is never near a dependency. Prints locations, never a term.
-    # Until the DENY_TERMS secret exists it passes with a warning.
+    # Until the HALONIC_DENY_TERMS secret exists it passes with a warning.
     name: Personal-terms guard
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -114,7 +112,7 @@ jobs:
           package-manager-cache: false
       - name: Scan the change
         env:
-          DENY_TERMS: ${{ secrets.DENY_TERMS }}
+          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
@@ -190,7 +188,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
+      - uses: $/.github/actions/setup
       # Every task runs; unchanged packages are cache hits (plan 6.4). The
       # cache is GitHub's own, scoped per branch, so a pull request can read
       # main's cache but never write to it.
@@ -223,7 +221,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
+      - uses: $/.github/actions/setup
       - name: Create an empty package and an empty feature
         run: |
           git config user.name "CI"

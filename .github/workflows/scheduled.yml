@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup
+      - uses: $/.github/actions/setup
       - name: Lockfile check
         run: pnpm check lockfile
       - name: Licences
@@ -59,7 +59,7 @@ jobs:
           package-manager-cache: false
       - name: Personal-terms guard over every file and commit
         env:
-          DENY_TERMS: ${{ secrets.DENY_TERMS }}
+          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
         run: node tooling/check/src/cli/terms.ts --all
       - name: gitleaks over the whole history
         run: |
