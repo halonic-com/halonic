@@ -2,5 +2,8 @@
 export { AssertionError, assert, assertDefined, assertNever } from "./assert.ts";
 export { type Clock, fixedClock, fixedClockStart, systemClock } from "./clock.ts";
 export { bytesToHex } from "./hex.ts";
+export { hmacSha256 } from "./hmac.ts";
 export { fixedIds, type IdGenerator, type RandomBytes, randomIds } from "./ids.ts";
 export { type Err, err, mapResult, type Ok, ok, type Result, unwrap } from "./result.ts";
+export { sha256, sha256Hex } from "./sha256.ts";
+export { decodeUtf8, encodeUtf8 } from "./utf8.ts";

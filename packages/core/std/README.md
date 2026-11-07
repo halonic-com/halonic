@@ -11,6 +11,12 @@ world comes in as a parameter: the time through a `Clock`, randomness through
 a `RandomBytes` function. Tests pass `fixedClock()` and `fixedIds()` and get
 the same output on every run.
 
+Hashing is written here too, because the core can't reach `crypto.subtle`:
+`sha256` and `sha256Hex` follow FIPS 180-4 and `hmacSha256` follows RFC 2104.
+They are synchronous and are tested against the NIST and RFC 4231 vectors and
+against `node:crypto`. `encodeUtf8` and `decodeUtf8` replace `TextEncoder` and
+`TextDecoder`, which the core can't see either.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
