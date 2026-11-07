@@ -1935,8 +1935,6 @@ packages:
         optional: true
       jsdom:
         optional: true
-      vite:
-        optional: true
 
   weapon-regex@2.0.6:
     resolution: {integrity: sha512-iJC2vqYp+bh3r4X6zjuP0h65XqXjgUX3nJgmhj0PQMrdhAbUwCfN76CSTEEQqV3G7468kjOJ69PmytTG8l/8Gg==}
