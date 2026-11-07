@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "For the host (ADR 5.1, C14): the core's Web types plus their values (fetch, new Request(), crypto.subtle, streams, timers), so the host runs unchanged on Node, Workers and in the browser. No Node types (Buffer, process, fs) and no DOM (document, window).",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": [
+      "es2024"
+    ],
+    "types": [
+      "@halonicjs/tooling-config/types/web-types.d.ts",
+      "@halonicjs/tooling-config/types/web-globals.d.ts"
+    ]
+  }
+}
