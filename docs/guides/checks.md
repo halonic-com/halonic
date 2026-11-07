@@ -1,6 +1,6 @@
 # Checks
 
-Every pull request runs the same checks as `pnpm verify --all`. Run
+Every pull request runs the same checks as `pnpm verify --full`. Run
 `pnpm verify` before you ask for review: it runs the fast checks and then
 typecheck, lint and test for the packages your change affects.
 
@@ -83,7 +83,7 @@ produces packages that pass) are then skipped without blocking the merge.
 | Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                    |
 | Workflow lint                | `zizmor` over `.github/`                                                                                         |
 | Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                      |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --all`                                |
+| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                               |
 
 `.github/workflows/scheduled.yml` runs the advisories and the lockfile
 check daily, and the full terms and secret scan over the whole history
