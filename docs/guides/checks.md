@@ -28,8 +28,31 @@ typecheck, lint and test for the packages your change affects.
 | `lockfile`       | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                              |
 | `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                  |
 
-`trace`, `requirement-guard` and `dco` are wired in already and report
-"not active yet". They become real in Phase 1 (plan 9.2, 9.3).
+`requirement-guard` and `dco` are wired in already and report "not active
+yet". They become real in Phase 1 (plan 9.3, 12).
+
+## `trace`: requirements and their tests
+
+`pnpm check trace` (plan 9.1, 9.2) reads every `requirements/*.md` file,
+every `verifies(…)` call in test files and every package's
+`test-results/vitest.json`, which the shared Vitest preset writes on each
+test run. It reads the tests that actually ran, so run the tests first;
+`pnpm verify` runs this check last, after them. It fails when:
+
+- a requirement file is malformed: the heading isn't the ID its path gives,
+  `Status`, `Since` or `Source` is missing or wrong, the sentence isn't in
+  EARS form, or an example doesn't read "Given …, (when …,) then …"
+- the same requirement ID is in two places
+- a test names a requirement that doesn't exist or is retired, or names it
+  with something other than a plain string
+- a `verifies(…)` never ran, because the package's Vitest config doesn't
+  collect its file, or a package with tests has no result file
+- an active requirement has no test that ran and passed
+
+The ID of `packages/core/workflow/requirements/timer-fires.md` is
+`workflow.timer-fires`; in a Studio feature,
+`packages/studio/features/agents/src/explorer/requirements/filter-by-hub.md`
+is `agents.explorer.filter-by-hub`.
 
 ## Licences
 
