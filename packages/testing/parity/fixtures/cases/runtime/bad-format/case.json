@@ -1,0 +1,10 @@
+{
+  "about": "an id with a space",
+  "kind": "runtime",
+  "fault": "bad-format",
+  "expect": {
+    "file": "runtimes/inprocess.yaml",
+    "path": "id",
+    "line": 1
+  }
+}
