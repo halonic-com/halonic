@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "@typescript/typescript6": "catalog:",
