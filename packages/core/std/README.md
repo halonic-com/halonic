@@ -1,6 +1,6 @@
 # @halonicjs/std
 
-In-house utilities that replace generic libraries: result type, ids, clock, SHA-256, scrypt, text helpers, deep equality, glob matching, posix paths and a typed event emitter (plan 7.3).
+In-house utilities that replace generic libraries: result type, ids, clock, SHA-256, scrypt, text helpers, deep equality, posix paths and a typed event emitter (plan 7.3).
 
 - **Layer:** core
 - **Owner:** maya
@@ -25,7 +25,9 @@ Compare hashes with `constantTimeEqual`, never with `===`.
 
 For plain data there are `deepEqual` (key order doesn't matter) and
 `deepClone` (the core has no `structuredClone`). `slugify` and `uniqueName`
-turn display names into file-safe ids, as the old Studio did.
+turn display names into file-safe ids, as the old Studio did. `posixPath`
+joins and cleans forward-slash paths like `node:path.posix`, and `Emitter` is a
+small typed event emitter.
 
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
