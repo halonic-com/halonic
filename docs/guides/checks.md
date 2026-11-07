@@ -49,6 +49,11 @@ test run. It reads the tests that actually ran, so run the tests first;
   collect its file, or a package with tests has no result file
 - an active requirement has no test that ran and passed
 
+`pnpm check trace --report` also writes each package's requirement report
+to `test-results/requirements.md`: every requirement, its status, its
+tests and whether they passed. `pnpm verify` writes it too. The docs site
+will publish it later.
+
 The ID of `packages/core/workflow/requirements/timer-fires.md` is
 `workflow.timer-fires`; in a Studio feature,
 `packages/studio/features/agents/src/explorer/requirements/filter-by-hub.md`
