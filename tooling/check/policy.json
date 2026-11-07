@@ -1,0 +1,15 @@
+{
+  "//": "Settings for tooling/check. See docs/guides/checks.md.",
+  "coreOrder": [],
+  "published": [
+    "halonic"
+  ],
+  "adapterGateways": [
+    "@halonicjs/studio-services"
+  ],
+  "fileSize": {
+    "warnLines": 300,
+    "maxLines": 500,
+    "warnFunctionLines": 60
+  }
+}
