@@ -1,0 +1,24 @@
+{
+  "name": "@halonicjs/routines",
+  "private": true,
+  "type": "module",
+  "description": "Routine schedules: cron, intervals and triggers, and the tick that decides which routines are due, with catch-up for missed ticks.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "mateo"
+  }
+}
