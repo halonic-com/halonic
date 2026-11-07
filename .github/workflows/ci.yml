@@ -97,7 +97,7 @@ jobs:
   terms:
     # Runs no third-party code: only the repo's own script on Node, so the
     # secret is never near a dependency. Prints locations, never a term.
-    # Until the DENY_TERMS secret exists it passes with a warning.
+    # Until the HALONIC_DENY_TERMS secret exists it passes with a warning.
     name: Personal-terms guard
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -114,7 +114,7 @@ jobs:
           package-manager-cache: false
       - name: Scan the change
         env:
-          DENY_TERMS: ${{ secrets.DENY_TERMS }}
+          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}

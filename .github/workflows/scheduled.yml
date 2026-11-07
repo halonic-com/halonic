@@ -59,7 +59,7 @@ jobs:
           package-manager-cache: false
       - name: Personal-terms guard over every file and commit
         env:
-          DENY_TERMS: ${{ secrets.DENY_TERMS }}
+          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
         run: node tooling/check/src/cli/terms.ts --all
       - name: gitleaks over the whole history
         run: |

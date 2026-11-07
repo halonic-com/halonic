@@ -2,6 +2,7 @@ import { loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem, type Problem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules } from "../rules/all.ts";
+import { phaseOneSlots } from "../rules/phase-one-slots.ts";
 
 /**
  * pnpm check [rule ...]
@@ -28,6 +29,11 @@ function main(argv: readonly string[]): number {
   const annotate = process.env["GITHUB_ACTIONS"] === "true";
   for (const problem of problems) {
     console.log(annotate ? formatAnnotation(problem) : formatProblem(problem));
+  }
+  for (const [name, purpose] of Object.entries(phaseOneSlots)) {
+    if (selected.length === 0 || selected.includes(name)) {
+      console.log(`${name}: not active yet, becomes real in Phase 1: ${purpose}.`);
+    }
   }
   const errors = problems.filter((problem) => problem.severity === "error").length;
   const warnings = problems.length - errors;

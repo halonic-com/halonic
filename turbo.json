@@ -8,7 +8,7 @@
     "biome.json"
   ],
   "tasks": {
-    "//#discover": {
+    "//#codegen": {
       "inputs": [
         "apps/*/package.json",
         "packages/studio/features/*/package.json",
@@ -27,7 +27,7 @@
     },
     "typecheck": {
       "dependsOn": [
-        "//#discover",
+        "//#codegen",
         "transit"
       ],
       "outputs": []
@@ -37,14 +37,14 @@
     },
     "test": {
       "dependsOn": [
-        "//#discover",
+        "//#codegen",
         "transit"
       ],
       "outputs": []
     },
     "build": {
       "dependsOn": [
-        "//#discover",
+        "//#codegen",
         "^build"
       ],
       "outputs": [

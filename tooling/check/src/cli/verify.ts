@@ -7,7 +7,7 @@ import { findRepoRoot } from "../lib/workspace.ts";
  * The agent's local check before asking for review (plan 6.4): our own
  * checks, formatting, the feature list, then typecheck, lint and test for
  * the packages the change affects. CI runs every task through the cache.
- * Pass --all to run every package, as CI does.
+ * Pass --full to run every package, as CI does.
  */
 interface Step {
   readonly label: string;
@@ -16,11 +16,12 @@ interface Step {
 }
 
 function main(argv: readonly string[]): number {
-  const all = argv.includes("--all");
-  const turboScope = all ? [] : ["--affected"];
+  const full = argv.includes("--full");
+  const turboScope = full ? [] : ["--affected"];
   const steps: Step[] = [
     { label: "repo checks", command: "pnpm", args: ["run", "--silent", "check"] },
     { label: "personal-terms guard", command: "pnpm", args: ["run", "--silent", "check:terms"] },
+    { label: "licences", command: "pnpm", args: ["run", "--silent", "check:licences"] },
     {
       label: "formatting",
       command: "pnpm",
