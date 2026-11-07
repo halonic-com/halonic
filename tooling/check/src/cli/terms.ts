@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatAnnotation, type Problem } from "../lib/problems.ts";
+import { readPullRequestText } from "../lib/pull-request.ts";
 import {
   loadAllowedPhrases,
   loadTerms,
@@ -16,7 +17,8 @@ import { findRepoRoot, listRepoFiles } from "../lib/workspace.ts";
  *   pnpm check:terms                    scan the working tree
  *   pnpm check:terms --range A..B       scan what a pull request adds: changed
  *                                       files, commit messages and authors in A..B,
- *                                       plus BRANCH_NAME, PR_TITLE and PR_BODY
+ *                                       plus the branch, title and body of the
+ *                                       pull request in $GITHUB_EVENT_PATH
  *   pnpm check:terms --all              scan the whole tree and the whole history
  *
  * It prints where a protected term is, never the term.
@@ -26,7 +28,12 @@ const notice =
   "matches a protected term. Remove or reword it; the term itself is never shown (plan 11.1).";
 
 function git(root: string, args: readonly string[]): string {
-  return execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  return execFileSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 }
 
 function isProbablyBinary(path: string): boolean {
@@ -95,11 +102,16 @@ function scanCommits(
   }
 }
 
+/**
+ * The pull request text comes from the event file, not from `env:`, because
+ * GitHub prints a step's `env:` block in the public job log.
+ */
 function scanPullRequest(matcher: TermMatcher, problems: Problem[]): void {
+  const pullRequest = readPullRequestText();
   const fields: [string, string | undefined][] = [
-    ["branch name", process.env["BRANCH_NAME"]],
-    ["pull request title", process.env["PR_TITLE"]],
-    ["pull request body", process.env["PR_BODY"]],
+    ["branch name", pullRequest?.branch],
+    ["pull request title", pullRequest?.title],
+    ["pull request body", pullRequest?.body],
   ];
   for (const [label, value] of fields) {
     if (value !== undefined && matcher.matches(value)) {
@@ -165,4 +177,12 @@ function main(argv: readonly string[]): number {
   return problems.length === 0 ? 0 : 1;
 }
 
-process.exitCode = main(process.argv.slice(2));
+try {
+  process.exitCode = main(process.argv.slice(2));
+} catch {
+  // An error can carry git output (commit messages) or the terms, so none of it is printed.
+  console.error(
+    "terms: the guard failed before it finished. Run it locally to see why; no details are printed here (plan 11.1).",
+  );
+  process.exitCode = 2;
+}
