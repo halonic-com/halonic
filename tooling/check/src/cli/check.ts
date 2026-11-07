@@ -2,6 +2,7 @@ import { loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem, type Problem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules } from "../rules/all.ts";
+import { dcoRange } from "../rules/dco.ts";
 import { phaseOneSlots } from "../rules/phase-one-slots.ts";
 
 /**
@@ -34,6 +35,9 @@ function main(argv: readonly string[]): number {
     if (selected.length === 0 || selected.includes(name)) {
       console.log(`${name}: not active yet, becomes real in Phase 1: ${purpose}.`);
     }
+  }
+  if ((selected.length === 0 || selected.includes("dco")) && dcoRange() === undefined) {
+    console.log("dco: no commits to check; CI sets DCO_RANGE=BASE..HEAD for each pull request.");
   }
   const errors = problems.filter((problem) => problem.severity === "error").length;
   const warnings = problems.length - errors;
