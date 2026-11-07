@@ -1,7 +1,7 @@
 # @halonicjs/tooling-check
 
-Our own repo checks. So far: package manifests, dependencies and names;
-the layer, feature list, file size and lockfile rules and the
+Our own repo checks. So far: package manifests, layers, dependencies and
+names; the feature list, file size and lockfile rules and the
 personal-terms guard follow in the next pull requests.
 
 - **Layer:** tooling
