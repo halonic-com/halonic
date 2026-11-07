@@ -197,6 +197,21 @@ importers:
         specifier: 'catalog:'
         version: 2.11.10
 
+  apps/studio:
+    devDependencies:
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6))
+
   tooling/check:
     devDependencies:
       '@halonicjs/tooling-config':
@@ -217,6 +232,24 @@ importers:
 
   tooling/config:
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6))
+
+  tooling/discover:
+    devDependencies:
+      '@halonicjs/tooling-check':
+        specifier: workspace:*
+        version: link:../check
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../config
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
