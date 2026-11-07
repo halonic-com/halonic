@@ -16,6 +16,7 @@
     }
   },
   "scripts": {
+    "check": "node tooling/check/src/cli/check.ts",
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
