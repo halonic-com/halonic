@@ -3,6 +3,11 @@ import { SeededRandom } from "./test/seeded-random.ts";
 import { decodeUtf8, encodeUtf8 } from "./utf8.ts";
 
 const bytes = (...values: number[]) => Uint8Array.from(values);
+// Built from code points, so the file holds no invisible characters or escapes.
+const replacement = String.fromCodePoint(0xfffd);
+const byteOrderMark = String.fromCodePoint(0xfeff);
+const loneHighSurrogate = String.fromCharCode(0xd800);
+const loneLowSurrogate = String.fromCharCode(0xdfff);
 
 describe("std.utf8", () => {
   it("encodes one to four byte characters", () => {
@@ -14,8 +19,8 @@ describe("std.utf8", () => {
   });
 
   it("encodes a lone surrogate as U+FFFD", () => {
-    expect(encodeUtf8("a\ud800b")).toEqual(bytes(0x61, 0xef, 0xbf, 0xbd, 0x62));
-    expect(encodeUtf8("\udfff")).toEqual(bytes(0xef, 0xbf, 0xbd));
+    expect(encodeUtf8(`a${loneHighSurrogate}b`)).toEqual(bytes(0x61, 0xef, 0xbf, 0xbd, 0x62));
+    expect(encodeUtf8(loneLowSurrogate)).toEqual(bytes(0xef, 0xbf, 0xbd));
   });
 
   it("decodes what it encodes", () => {
@@ -25,16 +30,16 @@ describe("std.utf8", () => {
 
   it("drops a byte order mark at the start only", () => {
     expect(decodeUtf8(bytes(0xef, 0xbb, 0xbf, 0x61))).toBe("a");
-    expect(decodeUtf8(bytes(0x61, 0xef, 0xbb, 0xbf))).toBe("a﻿");
+    expect(decodeUtf8(bytes(0x61, 0xef, 0xbb, 0xbf))).toBe(`a${byteOrderMark}`);
   });
 
   it("writes one U+FFFD per invalid sequence", () => {
-    expect(decodeUtf8(bytes(0xff))).toBe("�");
-    expect(decodeUtf8(bytes(0xc3))).toBe("�");
-    expect(decodeUtf8(bytes(0xe2, 0x82, 0x41))).toBe("�A");
-    expect(decodeUtf8(bytes(0xc0, 0xaf))).toBe("��");
-    expect(decodeUtf8(bytes(0xed, 0xa0, 0x80))).toBe("���");
-    expect(decodeUtf8(bytes(0xf4, 0x90, 0x80, 0x80))).toBe("����");
+    expect(decodeUtf8(bytes(0xff))).toBe(replacement);
+    expect(decodeUtf8(bytes(0xc3))).toBe(replacement);
+    expect(decodeUtf8(bytes(0xe2, 0x82, 0x41))).toBe(`${replacement}A`);
+    expect(decodeUtf8(bytes(0xc0, 0xaf))).toBe(replacement.repeat(2));
+    expect(decodeUtf8(bytes(0xed, 0xa0, 0x80))).toBe(replacement.repeat(3));
+    expect(decodeUtf8(bytes(0xf4, 0x90, 0x80, 0x80))).toBe(replacement.repeat(4));
   });
 
   it("decodes long input", () => {
