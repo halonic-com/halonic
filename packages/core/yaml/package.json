@@ -1,0 +1,24 @@
+{
+  "name": "@halonicjs/yaml",
+  "private": true,
+  "type": "module",
+  "description": "Reads and writes the YAML our workspace files use, with a line and column for every node; replaces the yaml package (plan 7.3).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "maya"
+  }
+}

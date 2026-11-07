@@ -1,6 +1,16 @@
 {
   "//": "Settings for tooling/check. See docs/guides/checks.md.",
-  "coreOrder": [],
+  "coreOrder": [
+    "@halonicjs/std",
+    "@halonicjs/schema-kit",
+    "@halonicjs/yaml",
+    "@halonicjs/events",
+    "@halonicjs/ports",
+    "@halonicjs/format",
+    "@halonicjs/workflow",
+    "@halonicjs/routines",
+    "@halonicjs/app"
+  ],
   "published": [
     "halonic"
   ],
