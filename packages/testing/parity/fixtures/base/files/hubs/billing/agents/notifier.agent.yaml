@@ -1,0 +1,5 @@
+id: notifier
+name: Notifier
+model: default
+instructions: Write a one-line note for the team.
+connectors: [tracker, files, mailbox]
