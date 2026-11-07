@@ -1,0 +1,18 @@
+/** Version of the {@link HttpClient} port. A breaking change bumps it and comes with an ADR. */
+export const httpClientVersion = 1;
+
+/**
+ * Outbound HTTP for adapters and the host: model APIs, HTTP connectors,
+ * Google, webhooks. Replaces the old `FetchLike`. The same signature as the
+ * Web `fetch`, so most adapters wrap it directly. Some refuse addresses:
+ * the container target refuses loopback, link-local and private addresses
+ * unless a connector is explicitly allowed (multi-cloud ADR 5.5).
+ */
+export interface HttpClient {
+  /**
+   * Sends one request. An HTTP error status still resolves; check `ok`.
+   *
+   * @throws when the network fails, the request is aborted or the address is refused
+   */
+  fetch(url: string, init?: RequestInit): Promise<Response>;
+}

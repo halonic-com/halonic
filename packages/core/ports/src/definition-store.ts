@@ -1,0 +1,32 @@
+/** Version of the {@link DefinitionStore} and {@link DefinitionSource} ports. A breaking change bumps it and comes with an ADR. */
+export const definitionStoreVersion = 1;
+
+/**
+ * Read access to the workspace files (agents, workflows, hubs …), wherever
+ * they live: a folder, git, memory or a deployed snapshot. Paths are
+ * relative and "/" separated.
+ *
+ * A cloud deployment hands out only this read side, so a stolen session can't
+ * change what runs (multi-cloud ADR 5.5).
+ */
+export interface DefinitionSource {
+  /** Human-readable location, such as "~/workspaces/acme" or "memory:demo". */
+  readonly location: string;
+  /** Lists file paths under a directory (the whole store when omitted), recursively and sorted. */
+  list(dir?: string): Promise<string[]>;
+  /** The file's text, or `null` when there is no such file. */
+  read(path: string): Promise<string | null>;
+  /**
+   * Identifier of the current version of the definitions (git commit, content
+   * hash). Runs record it so they can be explained and replayed later.
+   */
+  version(): Promise<string>;
+}
+
+/** A {@link DefinitionSource} that can also change the files: the Studio's editors and `halonic serve` use it. */
+export interface DefinitionStore extends DefinitionSource {
+  /** Creates or replaces a file, creating folders as needed. */
+  write(path: string, content: string): Promise<void>;
+  /** Deletes a file. Deleting a file that isn't there is not an error. */
+  remove(path: string): Promise<void>;
+}
