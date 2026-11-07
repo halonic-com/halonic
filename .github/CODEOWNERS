@@ -1,0 +1,10 @@
+# Code owners for Halonic.
+#
+# Informational only. GitHub doesn't let an account approve its own pull
+# request, so code-owner review is not a required check. Each package names
+# its owner in its own package.json ("halonic": { "owner" }) and AGENTS.md;
+# this file only routes review requests.
+#
+# The maintainers team is created when the repository goes public.
+
+* @halonic-com/maintainers
