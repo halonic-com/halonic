@@ -23,6 +23,10 @@ HMAC and PBKDF2, refuses settings that need more than 32 MiB unless you raise
 `maxMemoryBytes`, and is tested against the RFC vectors and `node:crypto`.
 Compare hashes with `constantTimeEqual`, never with `===`.
 
+For plain data there are `deepEqual` (key order doesn't matter) and
+`deepClone` (the core has no `structuredClone`). `slugify` and `uniqueName`
+turn display names into file-safe ids, as the old Studio did.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
