@@ -28,8 +28,23 @@ typecheck, lint and test for the packages your change affects.
 | `lockfile`       | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                              |
 | `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                  |
 
-`trace`, `requirement-guard` and `dco` are wired in already and report
-"not active yet". They become real in Phase 1 (plan 9.2, 9.3).
+`trace` and `requirement-guard` are wired in already and report "not
+active yet". They become real in Phase 1 (plan 9.2, 9.3).
+
+### The DCO sign-off
+
+`dco` fails when a commit in a pull request has no `Signed-off-by: Name
+<email>` trailer for its author's email address (plan 12; how to sign off
+is in `CONTRIBUTING.md`). The address is compared without regard to case,
+the name may differ, and merge commits are skipped. The same rule holds
+for the `halonic-dev` account: its commits pass when they are signed off
+with its own noreply address. CI checks the pull request's commits by
+setting `DCO_RANGE=BASE..HEAD`; a local `pnpm check` has no range and
+skips it. To check your branch yourself:
+
+```sh
+DCO_RANGE=origin/main..HEAD pnpm check dco
+```
 
 ## Licences
 
@@ -92,15 +107,15 @@ for every other job and fails if any failed. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
-| Job                          | What                                                                                                             |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Fast gates                   | pull request title, `pnpm check`, licences, formatting, the feature list, `pnpm audit` for shipped dependencies  |
-| Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
-| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                    |
-| Workflow lint                | `zizmor` over `.github/`                                                                                         |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                      |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                               |
-| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist       |
+| Job                          | What                                                                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
+| Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                        |
+| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                           |
+| Workflow lint                | `zizmor` over `.github/`                                                                                                                |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                                             |
+| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                      |
+| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                              |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full terms and secret scan over the whole history
