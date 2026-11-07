@@ -1,0 +1,13 @@
+/**
+ * Public entry point of tooling/check: the rules, so tooling/discover and
+ * tests can run them. The command lines live in `cli/`.
+ */
+export {
+  featureNamePrefix,
+  featuresDirectory,
+  folderNamePattern,
+  placeOf,
+  studioAppDirectory,
+} from "./lib/layout.ts";
+export { formatProblem, type Problem, Report } from "./lib/problems.ts";
+export { findRepoRoot, listWorkspacePackages, readJson } from "./lib/workspace.ts";
