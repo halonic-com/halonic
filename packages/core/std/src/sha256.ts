@@ -2,6 +2,7 @@
 // crypto.subtle, and it would make hashing async, so it is written here.
 import { bytesToHex } from "./hex.ts";
 import { encodeUtf8 } from "./utf8.ts";
+import { wordAt } from "./words.ts";
 
 /** The block size of SHA-256 in bytes. HMAC needs it too. */
 export const sha256BlockBytes = 64;
@@ -136,15 +137,6 @@ function compressBlock(
   state[5] = wordAt(state, 5) + f;
   state[6] = wordAt(state, 6) + g;
   state[7] = wordAt(state, 7) + h;
-}
-
-/**
- * Reads one word. Every index here is in range; the fallback only tells the
- * type checker so, since `noUncheckedIndexedAccess` types each read as maybe
- * missing.
- */
-function wordAt(words: Uint32Array, index: number): number {
-  return words[index] ?? 0;
 }
 
 function rotateRight(word: number, bits: number): number {

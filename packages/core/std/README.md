@@ -17,6 +17,12 @@ They are synchronous and are tested against the NIST and RFC 4231 vectors and
 against `node:crypto`. `encodeUtf8` and `decodeUtf8` replace `TextEncoder` and
 `TextDecoder`, which the core can't see either.
 
+`scrypt` (RFC 7914) is the password hash for every target, Workers too
+(multi-cloud ADR section 8). It is built on the in-house SHA-256 through
+HMAC and PBKDF2, refuses settings that need more than 32 MiB unless you raise
+`maxMemoryBytes`, and is tested against the RFC vectors and `node:crypto`.
+Compare hashes with `constantTimeEqual`, never with `===`.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
