@@ -21,6 +21,7 @@ function main(argv: readonly string[]): number {
   const steps: Step[] = [
     { label: "repo checks", command: "pnpm", args: ["run", "--silent", "check"] },
     { label: "personal-terms guard", command: "pnpm", args: ["run", "--silent", "check:terms"] },
+    { label: "licences", command: "pnpm", args: ["run", "--silent", "check:licences"] },
     {
       label: "formatting",
       command: "pnpm",
