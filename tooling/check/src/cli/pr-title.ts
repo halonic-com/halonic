@@ -1,6 +1,9 @@
+import { readPullRequestText } from "../lib/pull-request.ts";
+
 /**
- * Checks the pull request title (in PR_TITLE) against Conventional Commits,
- * because squash merges use it as the commit message (plan 10.2).
+ * Checks the pull request title against Conventional Commits, because
+ * squash merges use it as the commit message (plan 10.2). In CI the title
+ * comes from the event file; locally, set PR_TITLE.
  */
 
 const types = ["feat", "fix", "docs", "refactor", "perf", "test", "build", "ci", "chore", "revert"];
@@ -12,7 +15,7 @@ export function isConventionalTitle(title: string): boolean {
 }
 
 if (import.meta.main) {
-  const title = process.env["PR_TITLE"] ?? "";
+  const title = readPullRequestText()?.title ?? process.env["PR_TITLE"] ?? "";
   if (isConventionalTitle(title)) {
     console.log("pr-title: ok.");
   } else {
