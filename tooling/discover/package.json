@@ -1,0 +1,25 @@
+{
+  "name": "@halonicjs/tooling-discover",
+  "private": true,
+  "type": "module",
+  "description": "Generates the registration files and keeps the Studio's feature list correct. Also scaffolds new packages and features.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-check": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "mateo"
+  }
+}
