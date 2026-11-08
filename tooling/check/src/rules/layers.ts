@@ -2,6 +2,7 @@ import { builtinModules } from "node:module";
 import { posix } from "node:path";
 import {
   type ApprovedDependency,
+  approvedDependency,
   type CheckContext,
   declaredDependencies,
   isAllowedIn,
@@ -9,7 +10,12 @@ import {
 } from "../lib/context.ts";
 import type { Layer } from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
-import { isSourceFile, isTestFile, splitBareSpecifier } from "../lib/source-files.ts";
+import {
+  isSourceFile,
+  isTestFile,
+  namesTestFile,
+  splitBareSpecifier,
+} from "../lib/source-files.ts";
 import { owningPackage, type WorkspacePackage } from "../lib/workspace.ts";
 import { type EdgeKind, layerOf, layerProblem } from "./layer-table.ts";
 import { exportKeys } from "./packages.ts";
@@ -19,8 +25,10 @@ const guide = "See docs/guides/dependencies.md.";
 /**
  * Checks the layer table for every internal `package.json`
  * dependency and every import in source files. Also catches relative
- * imports that leave their package, Node built-ins outside Node layers,
- * imports of undeclared packages and deep imports past `exports`.
+ * imports that leave their package or reach a test file, Node built-ins
+ * outside Node layers, imports of undeclared packages, deep imports past
+ * `exports`, and code loading in core, host and Studio that the check
+ * can't follow.
  */
 export function checkLayers(context: CheckContext): Report {
   const report = new Report("layers");
@@ -41,17 +49,28 @@ export function checkLayers(context: CheckContext): Report {
     }
   }
   for (const file of context.files) {
-    if (isSourceFile(file) && !file.includes("/generated/")) {
+    if (isSourceFile(file)) {
       checkImports(context, file, report);
     }
   }
   return report;
 }
 
-/** True for test files and tool config files, which may use dev tooling. */
-export function isDevFile(file: string): boolean {
-  return isTestFile(file) || /(?:^|\/)[^/]+\.config\.[cm]?[jt]s$/.test(file);
+/**
+ * True for code that may use dev tooling: test files, tool config files
+ * in the package's own folder (such as `vitest.config.ts`), and every file
+ * of a testing package.
+ */
+export function isDevFile(file: string, pkg: WorkspacePackage, layer: Layer | undefined): boolean {
+  if (isTestFile(file) || layer === "testing") {
+    return true;
+  }
+  const inPackage = pkg.directory === "." ? file : file.slice(pkg.directory.length + 1);
+  return /^[^/]+\.config\.[cm]?[jt]s$/.test(inPackage);
 }
+
+/** The layers whose code must stay free of loads the check can't follow. */
+const followedLayers: readonly (Layer | undefined)[] = ["core", "host", "studio"];
 
 function checkImports(context: CheckContext, file: string, report: Report): void {
   const pkg = owningPackage(file, context.packages);
@@ -59,12 +78,23 @@ function checkImports(context: CheckContext, file: string, report: Report): void
     return;
   }
   const layer = layerOf(context, pkg);
-  const dev = isDevFile(file);
-  for (const reference of context.sourceFacts(file).imports) {
+  const dev = isDevFile(file, pkg, layer);
+  const facts = context.sourceFacts(file);
+  for (const reference of facts.imports) {
     const problem = importProblem(context, { file, pkg, layer, dev }, reference.specifier);
     if (problem !== undefined) {
       report.error(file, problem, reference.line);
     }
+  }
+  if (dev || !followedLayers.includes(layer)) {
+    return;
+  }
+  for (const load of facts.hiddenLoads) {
+    report.error(
+      file,
+      `${load.what} hides what this ${layer} code loads, so the layer check can't follow it. Use a static import of a declared package (plan 4.1).`,
+      load.line,
+    );
   }
 }
 
@@ -116,6 +146,9 @@ function relativeImportProblem(site: ImportSite, specifier: string): string | un
   const inside = site.pkg.directory === "." || resolved.startsWith(`${site.pkg.directory}/`);
   if (!inside) {
     return `"${specifier}" reaches outside ${site.pkg.manifest.name}. Import the other package by name through its public entry point.`;
+  }
+  if (!site.dev && namesTestFile(resolved)) {
+    return `"${specifier}" is a test file, and only tests may import tests. Move shared helpers into a non-test file or a testing package.`;
   }
   return undefined;
 }
@@ -181,7 +214,7 @@ function externalImportProblem(
   site: ImportSite,
   name: string,
 ): string | undefined {
-  const approved = context.dependencyList.dependencies[name];
+  const approved = approvedDependency(context, name);
   if (site.layer === "core" && !site.dev) {
     return coreExternalProblem(site.pkg.manifest.name ?? site.pkg.directory, name, approved);
   }
