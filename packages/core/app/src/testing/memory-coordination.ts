@@ -2,9 +2,9 @@ import type { Coordination, CounterResult, Lease, WindowCount } from "@halonicjs
 
 /**
  * The value part of `Coordination` in memory, for the kernel's own tests.
- * The kernel uses only `read` and `compareAndSet`; the rest refuses. It is
- * replaced by the memory adapter from `@halonicjs/adapter-memory` once that
- * is on this package's base.
+ * The kernel uses only `read` and `compareAndSet`; the rest refuses. A
+ * deliberate fake: core may not use adapters, not even in tests. Running
+ * the kernel against real adapters is the targets' job.
  */
 export class TestCoordination implements Coordination {
   readonly values = new Map<string, string>();

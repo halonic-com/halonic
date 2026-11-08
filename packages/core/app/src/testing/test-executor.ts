@@ -3,8 +3,9 @@ import type { RunExecutor, StartAgentRequest, StartRunRequest } from "@halonicjs
 
 /**
  * A `RunExecutor` that records starts and keeps the port's promise that a
- * repeated `runId` starts nothing. For the kernel's own tests; the memory
- * adapters take over once they are on this package's base.
+ * repeated `runId` starts nothing, with hooks to fail or hold a start. For
+ * the kernel's own tests. A deliberate fake: core may not use adapters, not
+ * even in tests. Running the kernel against real adapters is the targets' job.
  */
 export class TestExecutor implements RunExecutor {
   readonly id = "test";
