@@ -11,6 +11,9 @@ import { join } from "node:path";
 /** The rule name, as used in reports. It can't be allow-listed. */
 export const personalTermRule = "personal-term";
 
+/** Set to `true` in CI once the secret must exist: a missing list then fails instead of skipping. */
+export const termsRequiredVariable = "HALONIC_TERMS_REQUIRED";
+
 /** The environment variable CI fills from the encrypted Actions secret. */
 export const termsEnvironmentVariable = "HALONIC_DENY_TERMS";
 
@@ -23,9 +26,30 @@ export const defaultTermsFile = join(homedir(), ".config", "halonic", "deny-term
 /** Anything that isn't a letter or a digit: spaces, dots, dashes, underscores. */
 const separator = String.raw`[^\p{L}\p{N}]`;
 
+/**
+ * Makes look-alike spellings equal before matching: percent escapes are
+ * decoded (`blue%20whale`), compatibility forms are folded (full-width
+ * letters, ligatures), invisible format characters are dropped (zero-width
+ * spaces) and accents are removed.
+ */
+export function normalise(text: string): string {
+  const decoded = text.replace(/(?:%[0-9a-f]{2})+/gi, (escapes) => {
+    try {
+      return decodeURIComponent(escapes);
+    } catch {
+      return " ";
+    }
+  });
+  return decoded
+    .normalize("NFKC")
+    .replace(/\p{Cf}/gu, "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+}
+
 /** Letters and digits only, lowercase: `Jane.Doe` → `janedoe`. */
 function squash(text: string): string {
-  return text.toLowerCase().replace(new RegExp(separator, "gu"), "");
+  return normalise(text).toLowerCase().replace(new RegExp(separator, "gu"), "");
 }
 
 /**
@@ -35,7 +59,9 @@ function squash(text: string): string {
  * `JANE_DOE` and `janedoe`.
  */
 function termPattern(term: string): RegExp | undefined {
-  const words = term.split(new RegExp(`${separator}+`, "u")).filter((word) => word !== "");
+  const words = normalise(term)
+    .split(new RegExp(`${separator}+`, "u"))
+    .filter((word) => word !== "");
   if (words.length === 0) {
     return undefined;
   }
@@ -71,7 +97,7 @@ export class TermMatcher {
 
   /** True when the text contains any protected term. */
   matches(text: string): boolean {
-    let rest = text;
+    let rest = normalise(text);
     for (const phrase of this.allowedPhrases) {
       rest = rest.replace(phrase, " ");
     }
@@ -120,8 +146,10 @@ export function loadTerms(environment: NodeJS.ProcessEnv = process.env): {
   return { terms: [], source: "none" };
 }
 
-/** Reads the in-repo list of harmless technical phrases (never terms). */
-export function loadAllowedPhrases(root: string): string[] {
-  const path = join(root, "tooling", "check", "terms-allowed-phrases.txt");
+/** The in-repo list of harmless technical phrases, relative to the repo root. */
+export const allowedPhrasesFile = "tooling/check/terms-allowed-phrases.txt";
+
+/** Reads a list of harmless technical phrases (never terms); a missing file is an empty list. */
+export function loadAllowedPhrases(path: string): string[] {
   return existsSync(path) ? parseTermList(readFileSync(path, "utf8")) : [];
 }

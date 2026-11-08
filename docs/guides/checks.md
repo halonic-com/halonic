@@ -8,7 +8,7 @@ typecheck, lint and test for the packages your change affects.
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `pnpm verify`                               | everything below, for the affected packages (`--full` for every package, as CI does)                                                             |
 | `pnpm check [rule …]`                       | our own repo checks (table below); with rule names, only those                                                                                   |
-| `pnpm check:terms`                          | the personal-terms guard; skipped locally unless you have the list                                                                               |
+| `pnpm check:leaks`                          | the leak guard: secrets, keys, key files, local paths and personal terms                                                                         |
 | `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                          |
 | `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
 | `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                      |

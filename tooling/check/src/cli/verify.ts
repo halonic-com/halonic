@@ -20,7 +20,7 @@ function main(argv: readonly string[]): number {
   const turboScope = full ? [] : ["--affected"];
   const steps: Step[] = [
     { label: "repo checks", command: "pnpm", args: ["run", "--silent", "check"] },
-    { label: "personal-terms guard", command: "pnpm", args: ["run", "--silent", "check:terms"] },
+    { label: "leak guard", command: "pnpm", args: ["run", "--silent", "check:leaks"] },
     { label: "licences", command: "pnpm", args: ["run", "--silent", "check:licences"] },
     {
       label: "formatting",

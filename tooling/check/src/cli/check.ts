@@ -10,7 +10,7 @@ import { inactiveChecks } from "../rules/inactive-checks.ts";
  *
  * Runs our own repo checks. With rule names it
  * runs only those. The personal-terms guard has its own command,
- * `pnpm check:terms`, because CI runs it with a secret.
+ * `pnpm check:leaks`, because CI runs it with a secret.
  */
 function main(argv: readonly string[]): number {
   const selected = argv.filter((argument) => !argument.startsWith("-"));

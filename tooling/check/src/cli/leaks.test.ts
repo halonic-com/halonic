@@ -1,16 +1,16 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { absolute } from "../leaks/test-values.ts";
 
-const script = join(import.meta.dirname, "terms.ts");
+const script = join(import.meta.dirname, "leaks.ts");
 
 let repo: string;
 
 beforeEach(() => {
-  repo = mkdtempSync(join(tmpdir(), "terms-cli-"));
-  writeFileSync(join(repo, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n");
+  repo = mkdtempSync(join(tmpdir(), "leaks-cli-"));
   writeFileSync(join(repo, "notes.md"), "A harmless note.\n");
   execFileSync("git", ["init", "--quiet"], { cwd: repo });
   execFileSync("git", ["add", "."], { cwd: repo });
@@ -30,6 +30,7 @@ function run(environment: Record<string, string>, ...args: string[]) {
       ...process.env,
       HOME: repo,
       HALONIC_DENY_TERMS: "",
+      HALONIC_DENY_TERMS_FILE: "",
       HALONIC_TERMS_REQUIRED: "",
       GITHUB_ACTIONS: "",
       ...environment,
@@ -38,11 +39,16 @@ function run(environment: Record<string, string>, ...args: string[]) {
   return { code: result.status, output: result.stdout + result.stderr };
 }
 
-describe("terms guard command", () => {
-  it("skips with a warning when nothing is configured", () => {
+function writeAndStage(name: string, text: string): void {
+  writeFileSync(join(repo, name), text);
+  execFileSync("git", ["add", "."], { cwd: repo });
+}
+
+describe("leak guard command", () => {
+  it("skips the personal terms with a notice when nothing is configured", () => {
     const result = run({});
     expect(result.code).toBe(0);
-    expect(result.output).toContain("SKIPPED");
+    expect(result.output).toContain("personal terms were not checked");
   });
 
   it("fails instead of skipping when the list is required", () => {
@@ -58,12 +64,11 @@ describe("terms guard command", () => {
   it("fails when the secret is set but holds no term", () => {
     const result = run({ HALONIC_DENY_TERMS: "# only a comment\n, ,\n" });
     expect(result.code).toBe(1);
-    expect(result.output).toContain("holds no usable term");
+    expect(result.output).toContain("hold no usable term");
   });
 
-  it("finds a term and never prints it", () => {
-    writeFileSync(join(repo, "notes.md"), "see the Blue%20Whale\n");
-    execFileSync("git", ["add", "."], { cwd: repo });
+  it("finds a term, also written with look-alike characters, and never prints it", () => {
+    writeAndStage("notes.md", "see the Blue%20Whale\n");
     const result = run({ HALONIC_DENY_TERMS: "blue whale" });
     expect(result.code).toBe(1);
     expect(result.output).toContain("notes.md:1");
@@ -78,23 +83,36 @@ describe("terms guard command", () => {
   });
 
   it("reads the allowed phrases from the file it is given, not the repo's copy", () => {
-    mkdirSync(join(repo, "tooling", "check"), { recursive: true });
-    writeFileSync(join(repo, "tooling", "check", "terms-allowed-phrases.txt"), "zebra-crossing\n");
-    writeFileSync(join(repo, "notes.md"), "a zebra-crossing\n");
-    execFileSync("git", ["add", "."], { cwd: repo });
+    writeAndStage("notes.md", "a zebra-crossing sign\n");
     const environment = { HALONIC_DENY_TERMS: "zebra" };
-    expect(run(environment).code).toBe(0);
+    const lenient = join(repo, "lenient.txt");
+    writeFileSync(lenient, "zebra-crossing\n");
+    expect(run(environment, "--allowed-phrases", lenient).code).toBe(0);
 
     const trusted = join(repo, "trusted.txt");
     writeFileSync(trusted, "# nothing is allowed\n");
     expect(run(environment, "--allowed-phrases", trusted).code).toBe(1);
   });
 
-  it("fails when an allowed phrase is a term itself", () => {
+  it("ignores an allowed phrase that is a term itself, so it can't silence the term", () => {
+    writeAndStage("notes.md", "see the crossing-sign\n");
     const phrases = join(repo, "phrases.txt");
-    writeFileSync(phrases, "Crossing\n");
-    const result = run({ HALONIC_DENY_TERMS: "crossing" }, "--allowed-phrases", phrases);
-    expect(result.code).not.toBe(0);
-    expect(result.output).toContain("Allowed phrase number 1 is a protected term itself");
+    writeFileSync(phrases, "Crossing-sign\n");
+    const result = run({ HALONIC_DENY_TERMS: "crossing-sign" }, "--allowed-phrases", phrases);
+    expect(result.code).toBe(1);
+    expect(result.output.toLowerCase()).not.toContain("crossing-sign");
+  });
+
+  it("reads the allow list from the file it is given, not the repo's copy", () => {
+    writeAndStage("setup.md", `run it from ${absolute("Users", "someone", "code")}\n`);
+    expect(run({}).code).toBe(1);
+
+    const lenient = join(repo, "lenient.txt");
+    writeFileSync(lenient, "absolute-path setup.md example path in a how-to\n");
+    expect(run({}, "--allow-file", lenient).code).toBe(0);
+
+    const trusted = join(repo, "trusted.txt");
+    writeFileSync(trusted, "# nothing is allowed\n");
+    expect(run({}, "--allow-file", trusted).code).toBe(1);
   });
 });

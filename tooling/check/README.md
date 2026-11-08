@@ -8,7 +8,7 @@ TypeScript parser, not regular expressions.
 
 - **Layer:** tooling
 - **Owner:** mateo
-- **Commands:** `pnpm verify [--full]`, `pnpm check [rule …]`, `pnpm check:terms`,
+- **Commands:** `pnpm verify [--full]`, `pnpm check [rule …]`, `pnpm check:leaks`,
   `pnpm check:licences`, `pnpm check:pr-title`
 - **Settings:** `policy.json` (core order, published packages, file size),
   `dependencies.json` (approved external dependencies),

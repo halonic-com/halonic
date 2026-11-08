@@ -112,18 +112,12 @@ jobs:
       - name: Dependency audit (shipped code)
         run: pnpm audit --prod --audit-level high
 
-  terms:
-    # Runs no third-party code: only the repo's own script on Node, so the
-    # secret is never near a dependency. Prints locations, never a term.
-    # The branch, title and body are read from $GITHUB_EVENT_PATH, never
-    # passed in `env:`, which GitHub prints in the public job log.
-    # On a pull request the script and its list of allowed phrases come from
-    # the base commit, so the change under test can't weaken its own check.
-    # Until the HALONIC_DENY_TERMS secret exists it passes with a warning,
-    # unless the repository variable HALONIC_TERMS_ENFORCED is "true"; then a
-    # missing secret fails. Pull requests from forks and from Dependabot
-    # never get the secret, so they are always allowed to skip.
-    name: Personal-terms guard
+  leaks:
+    # The leak guard: the same rules as the local git hooks (secrets, keys,
+    # .env and key files, absolute local paths, personal terms). Runs no
+    # third-party code: only the repo's own script on Node, so the secret is
+    # never near a dependency. Prints locations, never a term or a secret.
+    name: Leak guard
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -146,11 +140,22 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           if [ "$EVENT" = "push" ]; then
-            node tooling/check/src/cli/terms.ts
+            node tooling/check/src/cli/leaks.ts
           else
             git worktree add --detach "$RUNNER_TEMP/base" "$BASE"
-            node "$RUNNER_TEMP/base/tooling/check/src/cli/terms.ts" \
-              --allowed-phrases "$RUNNER_TEMP/base/tooling/check/terms-allowed-phrases.txt" \
+            BASE_DIR="$RUNNER_TEMP/base"
+            # The script and its list of allowed phrases come from the base
+            # commit, so the change under test can't weaken its own check. The
+            # one pull request that adds the script has no base copy, so it
+            # uses its own; CODEOWNERS makes a person approve that.
+            if [ -f "$BASE_DIR/tooling/check/src/cli/leaks.ts" ]; then
+              guard="$BASE_DIR"
+            else
+              guard="$PWD"
+            fi
+            node "$guard/tooling/check/src/cli/leaks.ts" \
+              --allowed-phrases "$guard/tooling/check/terms-allowed-phrases.txt" \
+              --allow-file "$guard/tooling/check/leak-allow.txt" \
               --range "$BASE..$HEAD"
           fi
 
@@ -203,7 +208,7 @@ jobs:
       # Pull requests and merge queue scan their own commits; pushes to main
       # scan the whole history.
       - name: Scan commits
-        uses: $/.github/actions/gitleaks
+        uses: ./.github/actions/gitleaks
         with:
           log-opts: ${{ github.event_name != 'push' && format('{0}..{1}', github.event.pull_request.base.sha || github.event.merge_group.base_sha, github.event.pull_request.head.sha || github.event.merge_group.head_sha) || '' }}
 
@@ -236,7 +241,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       # Every task runs; unchanged packages are cache hits. The
       # cache is GitHub's own, scoped per branch, so a pull request can read
       # main's cache but never write to it.
@@ -269,7 +274,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       - name: Create an empty package and an empty feature
         run: |
           git config user.name "CI"
@@ -316,7 +321,7 @@ jobs:
     name: ci-ok
     if: always()
     needs:
-      [changes, fast, terms, coverage-floors, gitleaks, zizmor, build, scaffold, tauri, e2e, docs]
+      [changes, fast, leaks, coverage-floors, gitleaks, zizmor, build, scaffold, tauri, e2e, docs]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions: {}

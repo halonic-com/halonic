@@ -18,7 +18,7 @@
   "scripts": {
     "verify": "node tooling/check/src/cli/verify.ts",
     "check": "node tooling/check/src/cli/check.ts",
-    "check:terms": "node tooling/check/src/cli/terms.ts",
+    "check:leaks": "node tooling/check/src/cli/leaks.ts",
     "check:licences": "node tooling/check/src/cli/licences.ts",
     "check:bundle": "node tooling/check/src/cli/bundle.ts",
     "check:pr-title": "node tooling/check/src/cli/pr-title.ts",

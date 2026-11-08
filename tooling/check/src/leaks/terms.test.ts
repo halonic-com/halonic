@@ -18,6 +18,18 @@ describe("TermMatcher", () => {
     expect(matcher.matches(`pre_${single.toLowerCase()}_post`)).toBe(true);
   });
 
+  it("sees through look-alike spellings", () => {
+    const [first = "", second = ""] = multiWord.split(" ");
+    const withEscape = `${first}%20${second}`;
+    const fullWidth = single.replace(/[a-z]/gi, (letter) =>
+      String.fromCodePoint(letter.toLowerCase().charCodeAt(0) + 0xfee0),
+    );
+    const withInvisibleCharacter = `${single.slice(0, 2)}\u200b${single.slice(2)}`;
+    for (const disguised of [withEscape, fullWidth, withInvisibleCharacter]) {
+      expect(matcher.matches(disguised)).toBe(true);
+    }
+  });
+
   it("matches a multi-word term with any separator or none", () => {
     const [first = "", second = ""] = multiWord.split(" ");
     for (const joined of [`${first}.${second}`, `${first}_${second}`, `${first}${second}`]) {

@@ -18,10 +18,11 @@
 # text from the guard.
 /tooling/check/terms-allowed-phrases.txt @halonic-com/maintainers
 
-# The terms guard and the files that decide how it runs. CI runs the guard from
+# The leak guard and the files that decide how it runs. CI runs the guard from
 # the base commit, so a change here only takes effect once an owner has agreed.
 /.github/CODEOWNERS @halonic-com/maintainers
 /.github/workflows/ @halonic-com/maintainers
 /.github/actions/ @halonic-com/maintainers
-/tooling/check/src/lib/terms.ts @halonic-com/maintainers
-/tooling/check/src/cli/terms.ts @halonic-com/maintainers
+/tooling/check/src/leaks/ @halonic-com/maintainers
+/tooling/check/src/cli/leaks.ts @halonic-com/maintainers
+/tooling/check/leak-allow.txt @halonic-com/maintainers
