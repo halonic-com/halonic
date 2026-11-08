@@ -22,7 +22,12 @@ export interface ConnectorTool {
   parameters: Record<string, unknown>;
   /** What calling it can do. Absent means unknown: treat it as `write`. */
   risk?: ToolRisk;
-  /** Whether its result carries outside content (mail, web pages), which the engine fences off. */
+  /**
+   * Whether its result carries outside content (mail, web pages), which the
+   * engine fences off. It covers the result only. The description and schema
+   * of a tool an integration lists but doesn't declare are fenced off anyway
+   * (`IntegrationConnection.listTools`).
+   */
   untrusted?: boolean;
 }
 
