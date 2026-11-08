@@ -194,6 +194,7 @@ describe("tooling/check: contract suite", () => {
         "src/clock.ts": node,
         "src/node/fs-harness.ts": node,
         "src/clock.test.ts": node,
+        "vitest.config.ts": 'import "node:url";\nexport default definePackageTestConfig();\n',
       }),
     ]);
     expect(found).toHaveLength(1);

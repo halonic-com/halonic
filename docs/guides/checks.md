@@ -153,7 +153,7 @@ Who may use what:
 may not be named `root` or `host`, or start with another layer's prefix
 (`app-`, `adapter-`, `host-`, `target-`, `studio-`, `testing-`, `tooling-`).
 
-Contract-suite files (`packages/testing/contracts`, except tests) run on every
+Contract-suite `src/` files (`packages/testing/contracts`, except tests) run on every
 target, so they may not use `node:*` outside `src/node/`.
 
 Tests (`*.test.ts`, `*.spec.ts`), tool config files in a package's own

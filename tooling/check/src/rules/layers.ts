@@ -191,12 +191,14 @@ function builtinProblem(
 const contractSuiteDirectory = "packages/testing/contracts";
 
 /**
- * True for a contract-suite file outside `src/node/`. Test files stay
+ * True for a contract-suite `src/` file outside `src/node/`. Tool config files
+ * in the package root never run on a target, so they stay allowed. Test files stay
  * exempt: they run in Node only, and the suite files they exercise do not.
  */
 function contractSuiteProblem(site: ImportSite): boolean {
   return (
     site.pkg.directory === contractSuiteDirectory &&
+    site.file.startsWith(`${contractSuiteDirectory}/src/`) &&
     !isTestFile(site.file) &&
     !site.file.startsWith(`${contractSuiteDirectory}/src/node/`)
   );
