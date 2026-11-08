@@ -97,7 +97,8 @@ type FailedExchange = Exclude<TokenAnswerMeaning, { kind: "tokens" }> & {
 /**
  * How a sign-in ended. No kind holds a secret: not the code, the verifier,
  * the client secret or any token, and an error carries Google's error code at
- * most. So every result is safe to show, return from a route and log.
+ * most. So every result is safe to show and return from a route. `signedIn`
+ * holds the e-mail, which is personal data: log only `kind` and `accountRef`.
  */
 export type GoogleSignInResult =
   | {

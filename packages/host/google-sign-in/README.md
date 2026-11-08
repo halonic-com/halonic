@@ -27,9 +27,10 @@ sent only to Google's token endpoint; it is never logged, stored or returned
 to a caller. The challenge and the `state` go in the auth URL.
 
 No result holds the client secret, the code, the verifier or a token, so
-every result is safe to return from a route and to log. Keep the callback
-route out of request logging, or log its path without the query string: its
-URL carries `code` and `state`.
+every result is safe to return from a route. A `signedIn` result holds the
+e-mail, which is personal data, so log only `kind` and `accountRef`. Keep the
+callback route out of request logging, or log its path without the query
+string: its URL carries `code` and `state`.
 
 Revoke ends every token of the account under that client ID. If two
 integrations ever share a client ID for one account, disconnecting one also
