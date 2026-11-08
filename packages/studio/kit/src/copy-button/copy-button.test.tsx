@@ -3,8 +3,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SecretText } from "../secret-text/secret-text.ts";
-import { fakeClipboard } from "../test/clipboard.ts";
-import { click, render } from "../test/render.tsx";
+import { fakeClipboard, restoreClipboard } from "../test/clipboard.ts";
+import { click, render, unmountAll } from "../test/render.tsx";
 import { COPIED_FOR_MS, CopyButton } from "./copy-button.tsx";
 
 function renderButton() {
@@ -21,6 +21,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  unmountAll();
+  restoreClipboard();
   vi.useRealTimers();
 });
 

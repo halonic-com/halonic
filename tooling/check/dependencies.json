@@ -64,12 +64,18 @@
       "allowedIn": [
         "@halonicjs/studio-kit"
       ],
+      "layers": [
+        "studio"
+      ],
       "reason": "Type definitions for React (docs/adr/2026-11-08-one-interface-codebase.md)."
     },
     "@types/react-dom": {
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/studio-kit"
+      ],
+      "layers": [
+        "studio"
       ],
       "reason": "Type definitions for react-dom, which the kit's tests render with."
     },
@@ -111,12 +117,18 @@
       "allowedIn": [
         "@halonicjs/studio-kit"
       ],
+      "layers": [
+        "studio"
+      ],
       "reason": "A DOM for Vitest, so the kit's component tests check rendered markup, ARIA and clicks without a browser (HAL-175 section 13). Tests only."
     },
     "react": {
       "category": "studio-framework",
       "allowedIn": [
         "@halonicjs/studio-kit"
+      ],
+      "layers": [
+        "studio"
       ],
       "reason": "The Studio is one React codebase (docs/adr/2026-11-08-one-interface-codebase.md). No dependencies. Starts in the kit; the shell, features and apps/studio join when they render."
     },
@@ -135,6 +147,9 @@
       "category": "studio-framework",
       "allowedIn": [
         "@halonicjs/studio-kit"
+      ],
+      "layers": [
+        "studio"
       ],
       "reason": "Renders React in the webview and in the kit's tests. Its one dependency is React's own scheduler."
     },

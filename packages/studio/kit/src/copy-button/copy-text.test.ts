@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
-import { fakeClipboard } from "../test/clipboard.ts";
+import { afterEach, expect, it } from "vitest";
+import { fakeClipboard, restoreClipboard } from "../test/clipboard.ts";
 import { copyText } from "./copy-text.ts";
+
+afterEach(restoreClipboard);
 
 verifies("kit.copy-button", () => {
   it("uses the clipboard API when it's there", async () => {

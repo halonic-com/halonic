@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
-import { click, render } from "./render.tsx";
+import { afterEach, describe, expect, it } from "vitest";
+import { click, render, unmountAll } from "./render.tsx";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -11,6 +11,8 @@ function Counter() {
     </button>
   );
 }
+
+afterEach(unmountAll);
 
 describe("render", () => {
   it("puts the component in the document", () => {

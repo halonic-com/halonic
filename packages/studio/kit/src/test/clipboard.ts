@@ -2,8 +2,6 @@
  * A fake clipboard for component tests. jsdom has neither `navigator.clipboard` nor
  * `document.execCommand`, so a test says how each one behaves and reads back what was copied.
  */
-import { afterEach } from "vitest";
-
 /** How one way of copying behaves: it works, it refuses, or the browser doesn't have it. */
 export type CopyWay = "works" | "refuses" | "missing";
 
@@ -12,10 +10,11 @@ export interface FakeClipboard {
   readonly copied: string[];
 }
 
-afterEach(() => {
+/** Takes the fake away. A test calls it from `afterEach`. */
+export function restoreClipboard(): void {
   Reflect.deleteProperty(navigator, "clipboard");
   Reflect.deleteProperty(document, "execCommand");
-});
+}
 
 /**
  * Installs the fake for the rest of the test.

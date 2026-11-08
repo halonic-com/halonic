@@ -8,7 +8,6 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach } from "vitest";
 
 // Tells React this is a test, so it checks that updates happen inside act().
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -21,12 +20,13 @@ export interface Rendered {
 
 const mounted: { root: Root; container: HTMLElement }[] = [];
 
-afterEach(() => {
+/** Removes everything the test rendered. A test calls it from `afterEach`. */
+export function unmountAll(): void {
   for (const { root, container } of mounted.splice(0)) {
     act(() => root.unmount());
     container.remove();
   }
-});
+}
 
 /** Renders `element` into a fresh container in the document. It's removed after the test. */
 export function render(element: ReactNode): Rendered {
