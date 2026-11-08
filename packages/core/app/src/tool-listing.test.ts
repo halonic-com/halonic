@@ -1,4 +1,4 @@
-import type { ConnectorTool, IntegrationTool } from "@halonicjs/ports";
+import type { ConnectorTool, IntegrationTool, TrustGrant } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { UntrustedText } from "./listed-tool-rules.ts";
@@ -8,12 +8,15 @@ function tool(name: string, overrides: Partial<ConnectorTool> = {}): ConnectorTo
   return { name, description: `Runs ${name}.`, parameters: { type: "object" }, ...overrides };
 }
 
+const grant: TrustGrant = { location: "/work/notes", fingerprint: "hfp1:0000" };
+
 function read(listed: ConnectorTool[], overrides: Partial<ToolListingInput> = {}) {
   return readToolListing({
     source: "notes",
     listed,
     declared: [],
     otherNames: new Set(),
+    trust: null,
     ...overrides,
   });
 }
@@ -74,8 +77,11 @@ verifies("ports.untrusted-tool-listings", () => {
     expect(offered(tools, "lookup")).toMatchObject({ risk: "write", untrusted: true });
   });
 
-  it("uses the risk the workspace sets, and still marks the description as untrusted", () => {
-    const { tools } = read([tool("lookup")], { workspaceRisks: new Map([["lookup", "read"]]) });
+  it("uses the risk a trusted workspace sets, and still marks the description as untrusted", () => {
+    const { tools } = read([tool("lookup")], {
+      trust: grant,
+      workspaceRisks: new Map([["lookup", "read"]]),
+    });
     expect(offered(tools, "lookup")).toMatchObject({
       risk: "read",
       description: new UntrustedText("Runs lookup."),
@@ -251,5 +257,30 @@ verifies("ports.untrusted-tool-listings", () => {
       "(a name that isn't text)",
       "(a name that isn't text)",
     ]);
+  });
+
+  it("refuses a listing that isn't a list, without throwing", () => {
+    for (const listed of [null, "lookup", { name: "lookup" }]) {
+      const { tools, refusals } = read(listed as unknown as ConnectorTool[]);
+      expect(tools).toEqual([]);
+      expect(refusals).toEqual([
+        {
+          source: "notes",
+          name: "(a name that isn't text)",
+          refused: "tool",
+          reason: "the listing isn't a list of tools",
+        },
+      ]);
+    }
+  });
+});
+
+verifies("ports.connector-trust-enforcement", () => {
+  it("ignores the risk an untrusted workspace sets, so a listed tool stays write", () => {
+    const { tools } = read([tool("lookup")], {
+      trust: null,
+      workspaceRisks: new Map([["lookup", "read"]]),
+    });
+    expect(offered(tools, "lookup")).toMatchObject({ risk: "write", untrusted: true });
   });
 });

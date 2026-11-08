@@ -2,7 +2,7 @@
 // model and the refusals shown in the workspace's integration status, as
 // `ports.untrusted-tool-listings` asks.
 
-import type { ConnectorTool, IntegrationTool, ToolRisk } from "@halonicjs/ports";
+import type { ConnectorTool, IntegrationTool, ToolRisk, TrustGrant } from "@halonicjs/ports";
 import { readListedTool } from "./listed-tool.ts";
 import { cutName, isJsonObject, type UntrustedText } from "./listed-tool-rules.ts";
 import { maxUnfencedLength, unfencedLength } from "./listed-tool-unfenced.ts";
@@ -11,7 +11,10 @@ import { maxUnfencedLength, unfencedLength } from "./listed-tool-unfenced.ts";
 export interface ToolListingInput {
   /** The integration's or connector's id in the workspace. */
   readonly source: string;
-  /** What the source's `listTools` returned, unchecked. */
+  /**
+   * What the source's `listTools` returned, unchecked. A source that
+   * returns something other than a list gets one refusal and no tools.
+   */
   readonly listed: readonly ConnectorTool[];
   /**
    * The tools the source declares, which Halonic reviewed: an integration's
@@ -23,7 +26,14 @@ export interface ToolListingInput {
    * the host's own tools and the tools of every other source.
    */
   readonly otherNames: ReadonlySet<string>;
-  /** The risk the workspace sets for a listed tool, by the tool's name. */
+  /**
+   * The trust grant for the source's workspace, or `null` when it isn't
+   * trusted. Required, so a caller can't forget it. Without a grant,
+   * `workspaceRisks` is ignored and every listed tool is `write`
+   * (requirement `ports.connector-trust-enforcement`).
+   */
+  readonly trust: TrustGrant | null;
+  /** The risk the workspace sets for a listed tool, by the tool's name. Used only with a grant. */
   readonly workspaceRisks?: ReadonlyMap<string, ToolRisk>;
 }
 
@@ -52,7 +62,7 @@ export interface OfferedListedTool {
   readonly description: UntrustedText;
   /** Rebuilt from the allow-list. */
   readonly parameters: Record<string, unknown>;
-  /** `write`, unless the workspace sets another risk for it. */
+  /** `write`, unless a trusted workspace sets another risk for it. */
   readonly risk: ToolRisk;
   readonly untrusted: true;
 }
@@ -94,16 +104,23 @@ export interface ToolListing {
  *   listed: await connection.listTools(),
  *   declared: integration.tools,
  *   otherNames: new Set(["ask_user"]),
+ *   trust: grant,
  * });
  */
 export function readToolListing(input: ToolListingInput): ToolListing {
-  const declared = new Map(input.declared.map((tool) => [tool.name, tool]));
-  const timesListed = countNames(input.listed);
   const tools: OfferedTool[] = [];
   const refusals: ToolRefusal[] = [];
   const refuse: Refuse = (name, refused, reason) => {
     refusals.push({ source: input.source, name: nameForRefusal(name), refused, reason });
   };
+  // The type says list, but a hostile source decides what `listTools` returns.
+  const listed: unknown = input.listed;
+  if (!Array.isArray(listed)) {
+    refuse(undefined, "tool", "the listing isn't a list of tools");
+    return { tools, refusals };
+  }
+  const declared = new Map(input.declared.map((tool) => [tool.name, tool]));
+  const timesListed = countNames(input.listed);
 
   for (const entry of input.listed) {
     if (!isJsonObject(entry)) {
@@ -160,9 +177,17 @@ function offerListed(
     name: reading.name,
     description: reading.description,
     parameters: reading.parameters,
-    risk: input.workspaceRisks?.get(reading.name) ?? "write",
+    risk: listedRisk(reading.name, input),
     untrusted: true,
   };
+}
+
+/** A listed tool is `write`, unless a trusted workspace sets another risk for it. */
+function listedRisk(name: string, input: ToolListingInput): ToolRisk {
+  if (input.trust === null) {
+    return "write";
+  }
+  return input.workspaceRisks?.get(name) ?? "write";
 }
 
 function offerDeclared(tool: IntegrationTool): OfferedDeclaredTool {

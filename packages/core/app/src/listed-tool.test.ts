@@ -193,14 +193,16 @@ verifies("ports.untrusted-tool-listings", () => {
     expect(kept(listed(underCap)).name).toBe("lookup");
   });
 
-  it("refuses a tool whose parameters nest more than 64 levels deep", () => {
-    let deep: unknown = "end";
-    for (let level = 0; level < 64; level++) {
-      deep = [deep];
-    }
-    expect(refusalOf(listed({ type: "object", $comment: deep }))).toBe(
-      "its parameters nest more than 64 levels deep",
-    );
+  it("refuses a tool whose parameters nest more than 64 levels deep, counting parameters as level 1", () => {
+    const nested = (arrays: number) => {
+      let deep: unknown = "end";
+      for (let level = 0; level < arrays; level++) {
+        deep = [deep];
+      }
+      return listed({ type: "object", $comment: deep });
+    };
+    expect(kept(nested(63)).name).toBe("lookup");
+    expect(refusalOf(nested(64))).toBe("its parameters nest more than 64 levels deep");
   });
 
   it("refuses a tool whose $ref points to nothing kept under $defs, or has another form", () => {

@@ -11,9 +11,10 @@ export const maxParametersBytes = 64 * 1024;
 export const maxTextLength = 10_000;
 
 /**
- * How many levels of objects and arrays `parameters` may nest. Real schemas
- * nest a handful of levels; the cap keeps a hostile `[[[[…` from running
- * the walks below out of stack.
+ * How many levels of objects and arrays `parameters` may nest, counting
+ * the `parameters` object itself as level 1. Real schemas nest a handful of
+ * levels; the cap keeps a hostile `[[[[…` from running the walks below out
+ * of stack.
  */
 export const maxParametersDepth = 64;
 
@@ -44,7 +45,9 @@ export function cutName(text: string): string {
  * model only inside the untrusted fence, which the caller adds.
  *
  * It refuses to turn into JSON, so a tool that still holds one can't be sent
- * to a model by accident before its texts are fenced.
+ * to a model by accident before its texts are fenced. That protection is
+ * lost when the tool is copied with `structuredClone` or sent over IPC,
+ * which turn the text into a plain object: fence the texts before either.
  */
 export class UntrustedText {
   /** The text as the server wrote it. */

@@ -2,13 +2,13 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-559, from the review of the MCP tools integration (HAL-504, HAL-517): a server the workspace chose writes the descriptions of the tools `listTools` returns, and `untrusted` fenced off only results
+- Source: HAL-559, from the review of the MCP tools integration (HAL-504, HAL-517): a server the workspace chose writes the descriptions of the tools `listTools` returns, and `untrusted` fenced off only results. It becomes active when the engine proves the call-time and fence examples (HAL-803).
 
 The host shall treat every tool that a server lists, and that nothing Halonic reviewed declares, as written by an outsider. Such a tool is a _listed tool_. It is a tool that `IntegrationConnection.listTools` returns and the integration's declared `tools` don't name, or any tool that `ConnectorClient.listTools` returns for an `http` or `stdio` connector. Built-in `google` connectors are Halonic's own code and are not covered. The integration or connector shall not fence a listed tool's texts and has no way to mark them trusted, so every source gets the same fence and a hostile one can't opt out. The ports stay at version 1, because this adds no input or duty for integrations or connectors.
 
 For a listed tool, the host shall:
 
-- **Cap its size.** The host refuses a listed tool whose `parameters`, as the source sent them, are more than 64 KiB as JSON or nest objects and arrays more than 64 levels deep, or whose description, or any `description` or `title` in `parameters`, is more than 10,000 characters. An `http` or `stdio` connector goes through no integration, so these caps are the only ones it meets.
+- **Cap its size.** The host refuses a listed tool whose `parameters`, as the source sent them, are more than 64 KiB as JSON or nest objects and arrays more than 64 levels deep (the `parameters` object itself is level 1), or whose description, or any `description` or `title` in `parameters`, is more than 10,000 characters. An `http` or `stdio` connector goes through no integration, so these caps are the only ones it meets.
 
 - **Rebuild its parameters from an allow-list.** The host builds a new `parameters` object from the listed one and keeps only these keywords, at every depth:
   - structure: `type` (one of the seven JSON types, or an array of them), `properties`, `required`, `items`, `prefixItems`, `additionalProperties` (a boolean or a schema), `anyOf`, `oneOf`, `allOf`, `$defs` at the root, and a `$ref` of the form `#/$defs/<name>` whose `<name>` is a kept entry under `$defs`;
