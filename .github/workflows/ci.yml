@@ -92,9 +92,11 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           if [ "$EVENT" = "pull_request" ]; then
             export DCO_RANGE="$BASE..$HEAD"
+            export DCO_PR_AUTHOR="$PR_AUTHOR"
           fi
           pnpm check
       - name: Licences

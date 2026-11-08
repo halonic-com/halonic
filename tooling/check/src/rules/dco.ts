@@ -15,11 +15,25 @@ export function dcoRange(): string | undefined {
 }
 
 /**
- * Every commit in a pull request carries the sign-off the contribution
- * policy asks for (plan 12). Without a range there is nothing to check,
- * so a local `pnpm check` passes; CI always sets one for pull requests.
+ * The GitHub login that opened the pull request: `DCO_PR_AUTHOR`, which CI
+ * sets. Undefined when it isn't set, so no commit counts as covered.
  */
-export function checkDco(context: CheckContext, range = dcoRange()): Report {
+export function dcoPullRequestAuthor(): string | undefined {
+  const login = process.env["DCO_PR_AUTHOR"]?.trim() ?? "";
+  return login === "" ? undefined : login;
+}
+
+/**
+ * Every commit in a pull request carries the sign-off the contribution
+ * policy asks for (plan 12), or is covered by the standing statement.
+ * Without a range there is nothing to check, so a local `pnpm check`
+ * passes; CI always sets one for pull requests.
+ */
+export function checkDco(
+  context: CheckContext,
+  range = dcoRange(),
+  pullRequestAuthor = dcoPullRequestAuthor(),
+): Report {
   const report = new Report("dco");
   if (range === undefined) {
     return report;
@@ -29,7 +43,7 @@ export function checkDco(context: CheckContext, range = dcoRange()): Report {
     return report;
   }
   for (const commit of readCommits(context.root, range)) {
-    const problem = dcoProblem(commit);
+    const problem = dcoProblem(commit, pullRequestAuthor);
     if (problem !== undefined) {
       report.error(`commit ${commit.hash.slice(0, 10)}`, problem);
     }

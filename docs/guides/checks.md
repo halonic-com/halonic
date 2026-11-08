@@ -36,11 +36,20 @@ active yet". They become real in Phase 1 (plan 9.2, 9.3).
 `dco` fails when a commit in a pull request has no `Signed-off-by: Name
 <email>` trailer for its author's email address (plan 12; how to sign off
 is in `CONTRIBUTING.md`). The address is compared without regard to case,
-the name may differ, and merge commits are skipped. The same rule holds
-for the `halonic-dev` account: its commits pass when they are signed off
-with its own noreply address. CI checks the pull request's commits by
-setting `DCO_RANGE=BASE..HEAD`; a local `pnpm check` has no range and
-skips it. To check your branch yourself:
+the name may differ, and merge commits are skipped.
+
+Commits by the agents' `halonic-dev` account need no sign-off:
+Halonic certifies the DCO for them in
+[`docs/legal/dco-standing-statement.md`](../legal/dco-standing-statement.md).
+The rule skips a commit only when both its author address and the account
+that opened the pull request are on that statement's list, so borrowing
+the address in another account's pull request doesn't help. The list
+lives in `coveredAccounts` in `tooling/check/src/lib/dco.ts`, and a test
+keeps it the same as the statement.
+
+CI checks the pull request's commits by setting `DCO_RANGE=BASE..HEAD`
+and `DCO_PR_AUTHOR` to the login that opened it; a local `pnpm check` has
+no range and skips it. To check your branch yourself:
 
 ```sh
 DCO_RANGE=origin/main..HEAD pnpm check dco

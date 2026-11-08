@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { checkDco } from "../rules/dco.ts";
 import type { CheckContext } from "./context.ts";
-import { type CommitFacts, dcoProblem, readCommits, signOffEmail } from "./dco.ts";
+import { type CommitFacts, coveredAccounts, dcoProblem, readCommits, signOffEmail } from "./dco.ts";
+import { findRepoRoot } from "./workspace.ts";
 
 const halonicDev = "353861737+halonic-dev@users.noreply.github.com";
 
@@ -64,6 +65,22 @@ describe("check.dco-sign-off: one commit", () => {
     expect(dcoProblem(commit({ signOffs: ["Ada"] }))).toContain("not as its author");
   });
 
+  test("passes an unsigned halonic-dev commit in a pull request halonic-dev opened", () => {
+    const unsigned = commit({ authorName: "halonic-dev", authorEmail: halonicDev });
+    expect(dcoProblem(unsigned, "halonic-dev")).toBeUndefined();
+    expect(dcoProblem(unsigned, "Halonic-Dev")).toBeUndefined();
+  });
+
+  test("fails an unsigned halonic-dev commit in someone else's pull request, or with no opener", () => {
+    const unsigned = commit({ authorName: "halonic-dev", authorEmail: halonicDev });
+    expect(dcoProblem(unsigned, "someone")).toContain('has no "Signed-off-by:" line');
+    expect(dcoProblem(unsigned)).toContain('has no "Signed-off-by:" line');
+  });
+
+  test("fails anyone else's unsigned commit in a pull request halonic-dev opened", () => {
+    expect(dcoProblem(commit({}), "halonic-dev")).toContain('has no "Signed-off-by:" line');
+  });
+
   test("skips merge commits", () => {
     expect(dcoProblem(commit({ parentCount: 2 }))).toBeUndefined();
   });
@@ -74,6 +91,19 @@ describe("check.dco-sign-off: one commit", () => {
     expect(signOffEmail("<ada@example.com>")).toBeUndefined();
     expect(signOffEmail("Ada ada@example.com")).toBeUndefined();
     expect(signOffEmail("Ada <not an address>")).toBeUndefined();
+  });
+});
+
+describe("check.dco-sign-off: the standing statement", () => {
+  test("lists exactly the accounts the check skips", () => {
+    const statement = readFileSync(
+      join(findRepoRoot(), "docs/legal/dco-standing-statement.md"),
+      "utf8",
+    );
+    const listed = [...statement.matchAll(/^\| `([^`]+)` +\| `([^`]+)` +\|$/gm)].map(
+      ([, login, email]) => ({ login, email }),
+    );
+    expect(listed).toEqual(coveredAccounts.map(({ login, email }) => ({ login, email })));
   });
 });
 
@@ -164,5 +194,14 @@ describe("check.dco-sign-off: the commits of a real git range", () => {
     expect(checkDco(context, "--output=x..y").problems[0]?.message).toContain("BASE..HEAD");
     // topic~3 is the halonic-dev commit, signed off.
     expect(checkDco(context, "topic~4..topic~3").problems).toEqual([]);
+  });
+
+  test("passes the unsigned commits only for the account the statement covers", () => {
+    git(["checkout", "-q", "-b", "agent", base]);
+    commitFile("f.txt", "feat: agent work", `halonic-dev <${halonicDev}>`);
+    const context = { root } as CheckContext;
+    expect(checkDco(context, "main..agent", "halonic-dev").problems).toEqual([]);
+    expect(checkDco(context, "main..agent", "someone").problems).toHaveLength(1);
+    expect(checkDco(context, "main..agent", undefined).problems).toHaveLength(1);
   });
 });

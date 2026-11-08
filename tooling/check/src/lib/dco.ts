@@ -18,6 +18,37 @@ export interface CommitFacts {
   readonly signOffs: readonly string[];
 }
 
+/** A GitHub account whose commits a standing statement signs off. */
+export interface CoveredAccount {
+  readonly login: string;
+  readonly email: string;
+}
+
+/**
+ * The accounts in `docs/legal/dco-standing-statement.md`: Halonic
+ * certifies the DCO for every commit they author, so those commits need
+ * no `Signed-off-by` line. Change this list only together with that file.
+ */
+export const coveredAccounts: readonly CoveredAccount[] = [
+  { login: "halonic-dev", email: "353861737+halonic-dev@users.noreply.github.com" },
+];
+
+/**
+ * Whether the standing statement covers a commit: its author is a covered
+ * account, and so is the GitHub account that opened the pull request. An
+ * author address is easy to borrow; who opened the pull request isn't.
+ */
+export function coveredByStatement(
+  commit: CommitFacts,
+  pullRequestAuthor: string | undefined,
+): boolean {
+  const login = pullRequestAuthor?.toLowerCase();
+  const author = commit.authorEmail.toLowerCase();
+  return coveredAccounts.some(
+    (account) => account.login.toLowerCase() === login && account.email.toLowerCase() === author,
+  );
+}
+
 const signOffPattern = /^(?<name>[^<>]*\S)\s*<(?<email>[^<>\s]+@[^<>\s]+)>$/;
 
 /** The email address of a sign-off value, or undefined when it isn't `Name <email>`. */
@@ -30,13 +61,13 @@ export function signOffEmail(value: string): string | undefined {
  *
  * It passes when one of its sign-offs names the author's email address
  * (compared without regard to case; the name may be written differently).
- * That holds for every author alike, including the `halonic-dev` account
- * our agents push through, whose address is a GitHub noreply address.
- * Merge commits are skipped: they bring no change of their own, and
- * GitHub's "Update branch" button writes them without a sign-off.
+ * Commits the standing statement covers pass without one (see
+ * `coveredByStatement`). Merge commits are skipped: they bring no change
+ * of their own, and GitHub's "Update branch" button writes them without a
+ * sign-off.
  */
-export function dcoProblem(commit: CommitFacts): string | undefined {
-  if (commit.parentCount > 1) {
+export function dcoProblem(commit: CommitFacts, pullRequestAuthor?: string): string | undefined {
+  if (commit.parentCount > 1 || coveredByStatement(commit, pullRequestAuthor)) {
     return undefined;
   }
   const author = commit.authorEmail.toLowerCase();
