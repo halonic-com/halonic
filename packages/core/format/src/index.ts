@@ -12,6 +12,13 @@ export type { Deployment, Deployments } from "./kinds/deployments/schema.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
 export { checkIntegrationSheet } from "./kinds/integration/kind.ts";
 export {
+  type IntegrationLimits,
+  type IntegrationPolicy,
+  integrationPolicy,
+  type PolicyProblem,
+  type ResolvedIntegration,
+} from "./kinds/integration/policy.ts";
+export {
   CONTENT_PATH_PATTERN,
   HOST_PATTERN,
   INTEGRATION_NAME_PATTERN,
