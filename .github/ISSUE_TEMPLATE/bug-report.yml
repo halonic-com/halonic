@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in Halonic doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        - Security problem? Don't use this form. Follow [SECURITY.md](https://github.com/halonic-com/halonic/blob/main/SECURITY.md).
+        - A question rather than a bug? Ask in [Discussions](https://github.com/halonic-com/halonic/discussions).
+        - Never paste API keys, passwords or personal data, including in logs and screenshots.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest steps that show the problem. A small workspace with made-up content helps most.
+      placeholder: |
+        1. Open a workspace with ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part of Halonic?
+      options:
+        - Studio (desktop app)
+        - Studio (Android)
+        - Studio (browser, served mode)
+        - halonic command-line tool
+        - Engine (runs, workflows, routines)
+        - Docs
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Halonic version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. Windows 11, Android 15
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      description: Paste the relevant output. Remove keys, tokens and personal data first.
+      render: text
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance used
+      description: If an AI tool helped you find or write up this bug, name it (tool / model) and confirm you checked the result yourself. Otherwise write "None".
+    validations:
+      required: true

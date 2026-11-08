@@ -101,7 +101,12 @@ jobs:
     # secret is never near a dependency. Prints locations, never a term.
     # The branch, title and body are read from $GITHUB_EVENT_PATH, never
     # passed in `env:`, which GitHub prints in the public job log.
-    # Until the HALONIC_DENY_TERMS secret exists it passes with a warning.
+    # On a pull request the script and its list of allowed phrases come from
+    # the base commit, so the change under test can't weaken its own check.
+    # Until the HALONIC_DENY_TERMS secret exists it passes with a warning,
+    # unless the repository variable HALONIC_TERMS_ENFORCED is "true"; then a
+    # missing secret fails. Pull requests from forks and from Dependabot
+    # never get the secret, so they are always allowed to skip.
     name: Personal-terms guard
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -119,6 +124,7 @@ jobs:
       - name: Scan the change
         env:
           HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
+          HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && github.event.pull_request.head.repo.fork != true && github.event.pull_request.user.login != 'dependabot[bot]' && 'true' || 'false' }}
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
@@ -126,7 +132,10 @@ jobs:
           if [ "$EVENT" = "push" ]; then
             node tooling/check/src/cli/terms.ts
           else
-            node tooling/check/src/cli/terms.ts --range "$BASE..$HEAD"
+            git worktree add --detach "$RUNNER_TEMP/base" "$BASE"
+            node "$RUNNER_TEMP/base/tooling/check/src/cli/terms.ts" \
+              --allowed-phrases "$RUNNER_TEMP/base/tooling/check/terms-allowed-phrases.txt" \
+              --range "$BASE..$HEAD"
           fi
 
   gitleaks:

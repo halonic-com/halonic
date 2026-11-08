@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { formatAnnotation, type Problem } from "../lib/problems.ts";
 import { readPullRequestText } from "../lib/pull-request.ts";
 import {
+  allowedPhrasesFile,
   loadAllowedPhrases,
   loadTerms,
   TermMatcher,
   termsEnvironmentVariable,
+  termsRequiredVariable,
 } from "../lib/terms.ts";
 import { findRepoRoot, listRepoFiles } from "../lib/workspace.ts";
 
@@ -20,6 +22,10 @@ import { findRepoRoot, listRepoFiles } from "../lib/workspace.ts";
  *                                       plus the branch, title and body of the
  *                                       pull request in $GITHUB_EVENT_PATH
  *   pnpm check:terms --all              scan the whole tree and the whole history
+ *
+ * --allowed-phrases FILE reads the harmless-phrase list from FILE instead of
+ * the repo's copy. CI points it at the base commit's copy, so a pull request
+ * can't weaken the guard it is checked by.
  *
  * It prints where a protected term is, never the term.
  */
@@ -125,10 +131,48 @@ function scanPullRequest(matcher: TermMatcher, problems: Problem[]): void {
   }
 }
 
+/**
+ * Asks GitHub to hide every term in the job log. The secret is masked as a
+ * whole, but not the single entries of a multi-line list.
+ */
+function maskTerms(terms: readonly string[]): void {
+  for (const term of terms) {
+    console.log(`::add-mask::${term.replace(/%/g, "%25")}`);
+  }
+}
+
 function main(argv: readonly string[]): number {
   const root = findRepoRoot();
   const { terms, source } = loadTerms();
-  const matcher = new TermMatcher(terms, loadAllowedPhrases(root));
+  if (process.env["GITHUB_ACTIONS"]) {
+    maskTerms(terms);
+  }
+  const phrasesIndex = argv.indexOf("--allowed-phrases");
+  const phrasesFile =
+    phrasesIndex === -1 ? join(root, allowedPhrasesFile) : (argv[phrasesIndex + 1] ?? "");
+  let matcher: TermMatcher;
+  try {
+    matcher = new TermMatcher(terms, loadAllowedPhrases(phrasesFile));
+  } catch (error) {
+    // Only the phrase list can fail here, and the message names an entry by
+    // number, never by text, so it is safe to print.
+    console.error(`terms: FAILED. ${error instanceof Error ? error.message : "Bad phrase list."}`);
+    return 1;
+  }
+  if (matcher.isEmpty && source !== "nowhere") {
+    // A list that is set but holds nothing usable is a broken secret, not a
+    // missing one: failing is the only way anyone notices.
+    console.error(
+      `terms: FAILED. ${source} is set but holds no usable term, so nothing was scanned.`,
+    );
+    return 1;
+  }
+  if (matcher.isEmpty && process.env[termsRequiredVariable] === "true") {
+    console.error(
+      `terms: FAILED. ${termsRequiredVariable} is true but the ${termsEnvironmentVariable} secret is not available, so nothing was scanned.`,
+    );
+    return 1;
+  }
   if (matcher.isEmpty) {
     // Until the secret exists the guard skips loudly instead of failing, so
     // work can start; the notice shows on every run (plan 11.1, 16.4).
