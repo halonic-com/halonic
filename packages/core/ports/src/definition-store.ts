@@ -14,14 +14,23 @@ export const definitionStoreVersion = 1;
  *
  * **Every method also refuses a private entry** with a `RangeError`, and
  * `list()` leaves such entries out instead of throwing. A private entry is
- * a path with a segment named `.git`, `.studio` or `.env`, or starting with
- * `.env.` (such as `.env.local`). Segments are matched the way Windows and
- * macOS would open them: in any case, with trailing dots or spaces
- * removed, and as their 8.3 short names (`GIT~1`, `STUDIO~1`, `ENV~1`).
+ * a path with a segment that, after the clean-up below, is `.git`,
+ * `.studio`, `.env` or `.envrc`, or starts with `.env.` (such as
+ * `.env.local`). The clean-up matches segments the way Windows and macOS
+ * would open them: it removes the code points HFS+ ignores (as git's
+ * `is_hfs_dotgit` does, so `.g\u200Cit` is `.git`), ignores case and
+ * removes trailing dots and spaces. Two more kinds of segment are private
+ * whatever their name: one that holds a `:`, because NTFS opens
+ * `.env::$DATA` as `.env`, and one that holds `~` followed by a digit,
+ * because that is how 8.3 short names look (`GIT~1`, `ENV~1.LOC`,
+ * `GI3F2A~1`), as git refuses for its own paths.
+ *
  * **Any symbolic link** counts as private too, wherever it points, inside
- * the root or not: a store that has links refuses to read, write or remove
- * through one and doesn't list it. This keeps the served Studio and agents
- * away from git internals, Halonic's own data and secrets files.
+ * the root or not, and so do Windows junctions and other reparse points. A
+ * link in any segment counts, not only the last: a store that has links
+ * refuses to read, write or remove through one and doesn't list it or
+ * anything under it. This keeps the served Studio and agents away from git
+ * internals, Halonic's own data and secrets files.
  *
  * A cloud deployment hands out only this read side, so a stolen session can't
  * change what runs.
