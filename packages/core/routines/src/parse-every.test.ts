@@ -25,7 +25,9 @@ verifies("routines.parse-every-rejects-bad-intervals", () => {
   // Ported from "parses intervals and computes the next run" at 784f78d.
   it("rejects a zero interval", () => {
     expect(() => parseEvery("0m")).toThrow(CronError);
-    expect(() => parseEvery("0m")).toThrow('"0m" is not an interval; use e.g. "15m", "1h", "1d"');
+    expect(() => parseEvery("0m")).toThrow(
+      '"0m" is not an interval. Use for example "15m", "1h" or "1d".',
+    );
   });
 
   it("rejects a leading zero", () => {

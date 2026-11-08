@@ -8,7 +8,7 @@ verifies("routines.check-time-zone", () => {
   // 784f78d, which checked them through triggerError (that stays in schedule.ts).
   it("rejects an unknown zone with a readable error and accepts a known one", () => {
     expect(() => checkTimeZone("Mars/Olympus")).toThrow(CronError);
-    expect(() => checkTimeZone("Mars/Olympus")).toThrow('Unknown time zone "Mars/Olympus"');
+    expect(() => checkTimeZone("Mars/Olympus")).toThrow('Unknown time zone "Mars/Olympus".');
     expect(() => checkTimeZone("Europe/Amsterdam")).not.toThrow();
     expect(() => checkTimeZone("UTC")).not.toThrow();
   });

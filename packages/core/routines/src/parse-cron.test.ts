@@ -80,15 +80,15 @@ verifies("routines.cron-rejects-bad-expressions", () => {
   // Ported from the parseCron lines of "rejects bad expressions with readable errors" at 784f78d.
   it("rejects bad expressions with readable errors", () => {
     expect(() => parseCron("* * * *")).toThrow(/5 fields/);
-    expect(() => parseCron("60 * * * *")).toThrow(/outside 0-59/);
+    expect(() => parseCron("60 * * * *")).toThrow('Minute: "60" is outside 0-59.');
     expect(() => parseCron("*/0 * * * *")).toThrow(/step/);
-    expect(() => parseCron("x * * * *")).toThrow(/not a number/);
+    expect(() => parseCron("x * * * *")).toThrow('Minute: "x" is not a number.');
   });
 
   it("throws a CronError that counts the fields", () => {
     expect(() => parseCron("* * * *")).toThrow(CronError);
     expect(() => parseCron("* * * *")).toThrow(
-      "Cron needs 5 fields (minute hour day month weekday), got 4",
+      "Cron needs 5 fields (minute hour day month weekday), got 4.",
     );
     expect(() => parseCron("")).toThrow(/5 fields/);
   });
@@ -98,23 +98,23 @@ verifies("routines.cron-rejects-bad-expressions", () => {
   });
 
   it("rejects a range that runs backwards", () => {
-    expect(() => parseCron("0 0 * * 5-1")).toThrow('"5-1" is outside 0-7');
+    expect(() => parseCron("0 0 * * 5-1")).toThrow('Weekday: "5-1" is outside 0-7.');
   });
 
   it("rejects an empty or doubled step part", () => {
-    expect(() => parseCron("/5 * * * *")).toThrow('Bad part "/5"');
-    expect(() => parseCron("1/2/3 * * * *")).toThrow('Bad part "1/2/3"');
+    expect(() => parseCron("/5 * * * *")).toThrow('Minute: "/5" is not a valid part.');
+    expect(() => parseCron("1/2/3 * * * *")).toThrow('Minute: "1/2/3" is not a valid part.');
   });
 
   it("rejects a range with an empty end, naming the part", () => {
-    expect(() => parseCron("1-/5 * * * *")).toThrow('Bad range "1-" in "1-/5"');
-    expect(() => parseCron("-5 * * * *")).toThrow('Bad range "-5"');
+    expect(() => parseCron("1-/5 * * * *")).toThrow('Minute: "1-" in "1-/5" is not a valid range.');
+    expect(() => parseCron("-5 * * * *")).toThrow('Minute: "-5" is not a valid range.');
   });
 
   it("names an unknown macro instead of counting its fields", () => {
     expect(() => parseCron("@reboot")).toThrow(CronError);
     expect(() => parseCron("@reboot")).toThrow(
-      'Unknown macro "@reboot"; use one of @hourly, @daily, @midnight, @weekly, @monthly, @yearly, @annually',
+      'Unknown macro "@reboot". Use one of @hourly, @daily, @midnight, @weekly, @monthly, @yearly, @annually.',
     );
   });
 
@@ -127,11 +127,13 @@ verifies("routines.cron-rejects-bad-expressions", () => {
   });
 
   it("rejects a range with more than two ends", () => {
-    expect(() => parseCron("1-2-3 * * * *")).toThrow('Bad range "1-2-3"');
+    expect(() => parseCron("1-2-3 * * * *")).toThrow('Minute: "1-2-3" is not a valid range.');
   });
 
   it("rejects a step that is not a plain whole number", () => {
-    expect(() => parseCron("*/1e1 * * * *")).toThrow('Bad step in "*/1e1"');
+    expect(() => parseCron("*/1e1 * * * *")).toThrow(
+      'Minute: The step in "*/1e1" must be a whole number of 1 or more.',
+    );
     expect(() => parseCron("*/ * * * *")).toThrow(/step/);
   });
 

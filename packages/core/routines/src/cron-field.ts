@@ -46,13 +46,13 @@ export function parseCronField(text: string, range: FieldRange): ParsedField {
 function partValues(part: string, range: FieldRange): number[] {
   const pieces = part.split("/");
   const span = pieces[0];
-  if (pieces.length > 2 || !span) throw new CronError(`Bad part "${part}"`);
+  if (pieces.length > 2 || !span) throw new CronError(`"${part}" is not a valid part.`);
   const stepText = pieces[1];
   const step = stepText === undefined ? 1 : parseStep(stepText, part);
 
   const { low, high } = spanBounds(span, part, stepText !== undefined, range);
   if (low < range.min || high > range.max || low > high) {
-    throw new CronError(`"${part}" is outside ${range.min}-${range.max}`);
+    throw new CronError(`"${part}" is outside ${range.min}-${range.max}.`);
   }
   const values: number[] = [];
   for (let value = low; value <= high; value += step) values.push(value);
@@ -61,7 +61,7 @@ function partValues(part: string, range: FieldRange): number[] {
 
 function parseStep(stepText: string, part: string): number {
   if (!WHOLE_NUMBER.test(stepText) || Number(stepText) < 1) {
-    throw new CronError(`Bad step in "${part}"`);
+    throw new CronError(`The step in "${part}" must be a whole number of 1 or more.`);
   }
   return Number(stepText);
 }
@@ -83,7 +83,7 @@ function spanBounds(
   if (ends.length !== 2 || ends.includes("")) {
     // Name the whole part too when a step hides behind the range ("1-/5").
     const where = span === part ? "" : ` in "${part}"`;
-    throw new CronError(`Bad range "${span}"${where}`);
+    throw new CronError(`"${span}"${where} is not a valid range.`);
   }
   return { low: fieldValue(ends[0] ?? "", range), high: fieldValue(ends[1] ?? "", range) };
 }
@@ -91,6 +91,6 @@ function spanBounds(
 function fieldValue(text: string, range: FieldRange): number {
   const nameIndex = range.names?.indexOf(text.toLowerCase()) ?? -1;
   if (nameIndex >= 0) return nameIndex + (range.firstNameValue ?? 0);
-  if (!WHOLE_NUMBER.test(text)) throw new CronError(`"${text}" is not a number`);
+  if (!WHOLE_NUMBER.test(text)) throw new CronError(`"${text}" is not a number.`);
   return Number(text);
 }

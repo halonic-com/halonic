@@ -1,5 +1,5 @@
 import { CronError } from "./cron-error.ts";
-import { parseCronField } from "./cron-field.ts";
+import { type FieldRange, type ParsedField, parseCronField } from "./cron-field.ts";
 
 /**
  * A parsed five-field cron expression (minute hour day-of-month month
@@ -71,23 +71,28 @@ export function parseCron(expression: string): Cron {
   const text = expandMacro(trimmed);
   if (text.startsWith("@")) {
     // Without this, "@reboot" would be reported as "got 1 field".
-    throw new CronError(`Unknown macro "${text}"; use one of ${Object.keys(MACROS).join(", ")}`);
+    throw new CronError(`Unknown macro "${text}". Use one of ${Object.keys(MACROS).join(", ")}.`);
   }
   const fields = text.split(/\s+/);
   if (fields.length !== 5) {
     throw new CronError(
-      `Cron needs 5 fields (minute hour day month weekday), got ${fields.length}`,
+      `Cron needs 5 fields (minute hour day month weekday), got ${fields.length}.`,
     );
   }
   // The length check above guarantees all five are strings.
   const [minute, hour, day, month, weekday] = fields as [string, string, string, string, string];
 
   // Parsed left to right, so the first bad field is the one reported.
-  const minutes = parseCronField(minute, { min: 0, max: 59 });
-  const hours = parseCronField(hour, { min: 0, max: 23 });
-  const days = parseCronField(day, { min: 1, max: 31 });
-  const months = parseCronField(month, { min: 1, max: 12, names: MONTH_NAMES, firstNameValue: 1 });
-  const weekdays = parseCronField(weekday, { min: 0, max: 7, names: WEEKDAY_NAMES });
+  const minutes = parseLabelled("Minute", minute, { min: 0, max: 59 });
+  const hours = parseLabelled("Hour", hour, { min: 0, max: 23 });
+  const days = parseLabelled("Day", day, { min: 1, max: 31 });
+  const months = parseLabelled("Month", month, {
+    min: 1,
+    max: 12,
+    names: MONTH_NAMES,
+    firstNameValue: 1,
+  });
+  const weekdays = parseLabelled("Weekday", weekday, { min: 0, max: 7, names: WEEKDAY_NAMES });
   if (weekdays.values.has(7)) weekdays.values.add(0);
   return {
     minutes: minutes.values,
@@ -100,6 +105,16 @@ export function parseCron(expression: string): Cron {
     weekdaysAny: weekdays.any,
     hoursWildcard: hours.wildcard,
   };
+}
+
+// Names the field, so a bad minute reads `Minute: "60" is outside 0-59.`
+function parseLabelled(label: string, text: string, range: FieldRange): ParsedField {
+  try {
+    return parseCronField(text, range);
+  } catch (error) {
+    if (error instanceof CronError) throw new CronError(`${label}: ${error.message}`);
+    throw error;
+  }
 }
 
 /** Returns the five fields a macro stands for, or the text itself when it is no macro. */

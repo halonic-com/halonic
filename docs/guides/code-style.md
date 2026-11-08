@@ -68,6 +68,10 @@ function findDueTimer(timers: readonly Timer[], now: number): Timer | undefined 
 - Never swallow an error. Return a typed result, or throw an error with a message
   that says what went wrong and, where you can, how to fix it. An empty `catch`
   is a bug.
+- A message a person may see, such as a core error shown under a field in Studio, is
+  a full sentence in sentence case that ends with a full stop and holds no internal
+  codes. Say which field it is about when it is not obvious, for example
+  `Minute: "60" is outside 0-59.` Write the check and its message together.
 - The TypeScript settings are strict, and they are shared in `tooling/config`.
   They include `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`
   and `verbatimModuleSyntax`. Don't loosen them in a package.

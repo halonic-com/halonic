@@ -25,7 +25,7 @@ export function checkTimeZone(timeZone: string): void {
     new Intl.DateTimeFormat("en-US", { timeZone });
   } catch {
     // Intl only says "Invalid time zone specified"; name the zone instead.
-    throw new CronError(`Unknown time zone "${timeZone}"`);
+    throw new CronError(`Unknown time zone "${timeZone}".`);
   }
 }
 

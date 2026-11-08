@@ -8,5 +8,5 @@ If a routine names a time zone that the runtime's `Intl` data doesn't know, then
 
 ## Examples
 
-- Given "Mars/Olympus", when it is checked, then a `CronError` says `Unknown time zone "Mars/Olympus"`.
+- Given "Mars/Olympus", when it is checked, then a `CronError` says `Unknown time zone "Mars/Olympus".`.
 - Given "Europe/Amsterdam" or "UTC", when it is checked, then nothing is thrown.

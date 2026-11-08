@@ -28,7 +28,7 @@ const INTERVAL = /^([1-9]\d*)(m|h|d)$/;
 export function parseEvery(text: string): number {
   const match = INTERVAL.exec(text.trim());
   if (!match) {
-    throw new CronError(`"${text}" is not an interval; use e.g. "15m", "1h", "1d"`);
+    throw new CronError(`"${text}" is not an interval. Use for example "15m", "1h" or "1d".`);
   }
   const [, count, unit] = match;
   return Number(count) * UNIT_MS[unit as IntervalUnit];
