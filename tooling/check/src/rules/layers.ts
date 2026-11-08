@@ -238,7 +238,9 @@ function externalImportProblem(
     return `core packages may not use third-party code ("${name}"). Write it in-house (core/std) or move this code into an adapter.`;
   }
   const approved = context.dependencyList.dependencies[name];
-  if (approved?.category === "dev-tooling" && !site.dev && site.layer !== "tooling") {
+  // Testing packages are test code themselves, such as testing/spec wrapping Vitest.
+  const devLayer = site.layer === "tooling" || site.layer === "testing";
+  if (approved?.category === "dev-tooling" && !site.dev && !devLayer) {
     return `"${name}" is dev tooling and may only be imported from tests and config files.`;
   }
   return undefined;

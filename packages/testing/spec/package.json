@@ -11,6 +11,9 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "peerDependencies": {
+    "vitest": "catalog:"
+  },
   "devDependencies": {
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

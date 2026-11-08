@@ -8,7 +8,9 @@ Adding a dependency is a decision, not a side effect.
 3. **React, Tauri, Vite and the approved UI libraries** live only in
    `packages/studio/*`, `apps/studio` and `apps/docs`.
 4. **Dev tooling** (compiler, test runner, linter, build cache) goes in
-   `devDependencies` and never ships.
+   `devDependencies` and never ships. A testing package that wraps it, such
+   as `testing/spec` wrapping Vitest, also lists it in `peerDependencies`:
+   the package using it brings its own copy.
 
 ## Adding one
 

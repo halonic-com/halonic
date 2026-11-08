@@ -13,7 +13,8 @@ interface ExternalDependency {
 
 /**
  * Checks every external dependency against `dependencies.json`: it must be listed, used only in its allowed packages,
- * take its version from the catalog, and dev tooling stays in devDependencies.
+ * take its version from the catalog, and dev tooling stays in devDependencies. Testing packages may also list dev
+ * tooling they wrap as a peerDependency, because the package using them brings it.
  */
 export function checkDependencies(context: CheckContext): Report {
   const report = new Report("dependencies");
@@ -59,12 +60,20 @@ function checkOne(
       `"${dependency.name}": "${dependency.version}" must be "catalog:". Put the version once in the catalog in pnpm-workspace.yaml.`,
     );
   }
-  if (approved.category === "dev-tooling" && dependency.field !== "devDependencies") {
+  if (approved.category === "dev-tooling" && !isDevField(context, pkg, dependency.field)) {
     report.error(
       pkg.manifestPath,
       `"${dependency.name}" is dev tooling and belongs in devDependencies; it must never ship.`,
     );
   }
+}
+
+/** Where dev tooling may be listed: devDependencies, or peerDependencies in a testing package. */
+function isDevField(context: CheckContext, pkg: WorkspacePackage, field: DependencyField): boolean {
+  if (field === "devDependencies") {
+    return true;
+  }
+  return field === "peerDependencies" && context.placeOf(pkg)?.layer === "testing";
 }
 
 function checkList(context: CheckContext, used: ReadonlySet<string>, report: Report): void {
