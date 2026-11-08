@@ -13,6 +13,8 @@ export interface FixturePackage {
   readonly directory: string;
   readonly manifest?: Record<string, unknown>;
   readonly files?: Readonly<Record<string, string>>;
+  /** Leave out the AGENTS.md the fixture otherwise writes. */
+  readonly withoutAgentsMd?: boolean;
 }
 
 /** A valid package.json for a folder, which tests then break on purpose. */
@@ -29,6 +31,12 @@ export function manifestFor(
     halonic: { layer, owner: "mateo" },
     ...extra,
   };
+}
+
+/** A valid AGENTS.md for a fixture package, so only the AGENTS.md tests have to think about it. */
+function agentsMdFor(pkg: FixturePackage): string {
+  const { owner, layer } = (pkg.manifest?.["halonic"] ?? {}) as { owner?: string; layer?: string };
+  return `# ${pkg.directory}\n\nOwner: ${owner} · Layer: ${layer} · Read the root \`AGENTS.md\` first.\n\n## Scope\n\nA fixture.\n`;
 }
 
 /**
@@ -65,9 +73,11 @@ export function runChecks(
     );
     for (const pkg of packages) {
       write(`${pkg.directory}/package.json`, JSON.stringify(pkg.manifest ?? {}));
-      for (const [file, text] of Object.entries(
-        pkg.files ?? { "src/index.ts": "export const x = 1;\n" },
-      )) {
+      const files = pkg.files ?? { "src/index.ts": "export const x = 1;\n" };
+      for (const [file, text] of Object.entries({
+        ...(pkg.withoutAgentsMd ? {} : { "AGENTS.md": agentsMdFor(pkg) }),
+        ...files,
+      })) {
         write(`${pkg.directory}/${file}`, text);
       }
     }

@@ -12,5 +12,6 @@ export {
 } from "./lib/layout.ts";
 export { formatProblem, type Problem, Report } from "./lib/problems.ts";
 export { findRepoRoot, listWorkspacePackages, readJson } from "./lib/workspace.ts";
+export { purposePlaceholder } from "./rules/agents-md.ts";
 export { rules } from "./rules/all.ts";
 export { readFeatureList } from "./rules/features.ts";

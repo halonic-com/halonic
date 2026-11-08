@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { findRepoRoot, folderNamePattern, loadContext, placeOf } from "@halonicjs/tooling-check";
@@ -6,18 +5,20 @@ import { fixFeatureList, writeFeaturesFile } from "../features.ts";
 import { type PackageSpec, packageFiles } from "../templates.ts";
 
 /**
- * pnpm new package <layer>/<name> [--owner <agent>]
- * pnpm new feature <name> [--owner <agent>]
+ * pnpm new package <layer>/<name> --owner <agent> [--purpose "<one line>"]
+ * pnpm new feature <name> --owner <agent> [--purpose "<one line>"]
  *
  * Creates an empty package or Studio feature that passes every check, so
- * nobody has to copy and edit another package (plan 6.4).
+ * nobody has to copy and edit another package (plan 6.4). Its AGENTS.md
+ * passes once the purpose line is filled in (plan 13).
  * Layers: core, adapters, studio, testing, tooling, apps.
  */
 
 const usage = [
   "Usage:",
-  "  pnpm new package <layer>/<name> [--owner <agent>]   layers: core, adapters, studio, testing, tooling, apps",
-  "  pnpm new feature <name> [--owner <agent>]",
+  '  pnpm new package <layer>/<name> --owner <agent> [--purpose "<one line>"]',
+  "      layers: core, adapters, studio, testing, tooling, apps",
+  '  pnpm new feature <name> --owner <agent> [--purpose "<one line>"]',
 ].join("\n");
 
 const layerFolders: Readonly<Record<string, string>> = {
@@ -29,14 +30,10 @@ const layerFolders: Readonly<Record<string, string>> = {
   apps: "apps",
 };
 
-function defaultOwner(root: string): string {
-  try {
-    return execFileSync("git", ["config", "user.name"], { cwd: root, encoding: "utf8" })
-      .trim()
-      .toLowerCase();
-  } catch {
-    return "";
-  }
+/** The value of `--flag <value>`, or "" when the flag or its value is missing. */
+function flagValue(argv: readonly string[], flag: string): string {
+  const index = argv.indexOf(flag);
+  return index === -1 ? "" : (argv[index + 1] ?? "").trim();
 }
 
 function resolveDirectory(kind: string, target: string): string {
@@ -60,7 +57,6 @@ function addToCoreOrder(root: string, name: string): void {
 
 function main(argv: readonly string[]): number {
   const [kind = "", target = ""] = argv;
-  const ownerIndex = argv.indexOf("--owner");
   if ((kind !== "package" && kind !== "feature") || target === "") {
     console.error(usage);
     return 2;
@@ -77,9 +73,16 @@ function main(argv: readonly string[]): number {
     console.error(`${directory} already exists.`);
     return 1;
   }
-  const owner = ownerIndex === -1 ? defaultOwner(root) : (argv[ownerIndex + 1] ?? "");
-  if (owner === "") {
-    console.error("Name the owner with --owner <agent>.");
+  const owner = flagValue(argv, "--owner");
+  if (!/^[a-z][a-z0-9-]*$/.test(owner)) {
+    console.error(
+      `Name the owner with --owner <agent>, the agent's lowercase name such as "elena".\n${usage}`,
+    );
+    return 2;
+  }
+  const purpose = flagValue(argv, "--purpose");
+  if ((argv.includes("--purpose") && purpose === "") || purpose.includes("\n")) {
+    console.error('--purpose needs one line of text, such as --purpose "Reads YAML files".');
     return 2;
   }
   const spec: PackageSpec = {
@@ -89,6 +92,7 @@ function main(argv: readonly string[]): number {
     owner,
     isFeature: place.isFeature,
     folder,
+    ...(purpose === "" ? {} : { purpose }),
   };
   for (const [file, text] of Object.entries(packageFiles(spec))) {
     const path = join(root, directory, file);
@@ -103,7 +107,9 @@ function main(argv: readonly string[]): number {
     writeFeaturesFile(loadContext(root));
   }
   console.log(`Created ${spec.name} in ${directory} (layer ${place.layer}, owner ${owner}).`);
-  console.log("Next: pnpm install, then fill in README.md and run pnpm verify.");
+  console.log(
+    "Next: pnpm install, then fill in README.md and the purpose line of AGENTS.md (if you left it out), then run pnpm verify.",
+  );
   return 0;
 }
 

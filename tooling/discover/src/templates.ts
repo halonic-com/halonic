@@ -1,3 +1,4 @@
+import { renderAgentsMd } from "./agents-md.ts";
 import { featureExportName } from "./features.ts";
 
 /** What `pnpm new` needs to know to write a package. */
@@ -8,6 +9,8 @@ export interface PackageSpec {
   readonly owner: string;
   readonly isFeature: boolean;
   readonly folder: string;
+  /** One sentence for AGENTS.md; a to-do line is written when missing. */
+  readonly purpose?: string;
 }
 
 /** The TypeScript preset each layer uses (tooling/config/tsconfig). */
@@ -53,6 +56,7 @@ export function packageFiles(spec: PackageSpec): Record<string, string> {
       "",
     ].join("\n"),
     "README.md": readme(spec),
+    "AGENTS.md": renderAgentsMd(spec),
   };
   return spec.isFeature
     ? { ...files, ...featureSources(spec) }

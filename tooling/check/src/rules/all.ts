@@ -1,6 +1,7 @@
 import type { CheckContext } from "../lib/context.ts";
 import type { Report } from "../lib/problems.ts";
 import { checkAbsolutePaths } from "./absolute-paths.ts";
+import { checkAgentsMd } from "./agents-md.ts";
 import { checkDependencies } from "./dependencies.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
@@ -13,6 +14,7 @@ import { phaseOneSlots, slotRule } from "./phase-one-slots.ts";
 /** Every rule `pnpm check` runs, by name. */
 export const rules: Readonly<Record<string, (context: CheckContext) => Report>> = {
   packages: checkPackages,
+  "agents-md": checkAgentsMd,
   layers: checkLayers,
   dependencies: checkDependencies,
   names: checkNames,
