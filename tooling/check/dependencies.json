@@ -8,6 +8,14 @@
       ],
       "reason": "Formatter and linter in one fast tool."
     },
+    "@noble/hashes": {
+      "category": "outside-world",
+      "allowedIn": [
+        "@halonicjs/adapter-password-scrypt"
+      ],
+      "reason": "scrypt password hashing: independently audited, no dependencies, runs on every runtime. Approved by the user on 8 Nov 2026. Only the package that implements the PasswordHasher port uses it.",
+      "useInstead": "the PasswordHasher port; for SHA-256 use the hashing port (WebCrypto)"
+    },
     "@types/node": {
       "category": "dev-tooling",
       "allowedIn": [
@@ -29,6 +37,30 @@
       ],
       "reason": "Measures test coverage for the shared Vitest preset, which fails a package below the floor in its package.json. Vitest finds it as its own optional peer, so packages don't list it."
     },
+    "react-data-grid": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "The table editor: cell editing, keyboard navigation and screen-reader support. Approved by the user on 8 Nov 2026.",
+      "useInstead": "the data grid from @halonicjs/studio-kit"
+    },
+    "remark": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "Parses Markdown, including model output, into a tree; our own view renders it without raw HTML. Approved by the user on 8 Nov 2026.",
+      "useInstead": "the Markdown view from @halonicjs/studio-kit"
+    },
+    "remark-gfm": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "Tables, task lists, strikethrough and autolinks for remark. Approved by the user on 8 Nov 2026.",
+      "useInstead": "the Markdown view from @halonicjs/studio-kit"
+    },
     "turbo": {
       "category": "dev-tooling",
       "allowedIn": [
@@ -49,6 +81,23 @@
         "*"
       ],
       "reason": "Test runner (D9)."
+    },
+    "yaml": {
+      "category": "core-exception",
+      "allowedIn": [
+        "@halonicjs/yaml"
+      ],
+      "reason": "Reads and writes YAML; the same library as the old app, so saved files come out the same. Approved by the user on 8 Nov 2026. No dependencies.",
+      "useInstead": "@halonicjs/yaml to read or write YAML"
+    },
+    "zod": {
+      "category": "core-exception",
+      "allowedIn": [
+        "@halonicjs/schema-kit",
+        "@halonicjs/format"
+      ],
+      "reason": "Validation and JSON Schema output. Approved by the user on 8 Nov 2026. No dependencies. Wrapped by schema-kit, so the rest of the code never sees Zod.",
+      "useInstead": "@halonicjs/schema-kit for validation"
     }
   }
 }
