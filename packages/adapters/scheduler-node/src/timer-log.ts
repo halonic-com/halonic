@@ -1,4 +1,4 @@
-import type { Clock, RecordChange, RecordStore } from "@halonicjs/ports";
+import { type Clock, foldRecords, type RecordChange, type RecordStore } from "@halonicjs/ports";
 import { fromRecordValues, type StoredTimer, timerSlot, toRecordValues } from "./stored-timer.ts";
 
 /**
@@ -23,12 +23,9 @@ export class TimerLog {
    * @throws Error naming the record when a record isn't a timer this scheduler wrote
    */
   async load(): Promise<Map<string, StoredTimer>> {
-    const records = new Map<string, Record<string, unknown>>();
-    for (const change of await this.#store.changes(this.#collection)) {
-      applyChange(records, change);
-    }
+    const records = foldRecords(await this.#store.changes(this.#collection));
     const timers = new Map<string, StoredTimer>();
-    for (const [recordId, values] of records) {
+    for (const [recordId, { values }] of records) {
       const stored = fromRecordValues(recordId, values);
       timers.set(timerSlot(stored.timer.key, stored.timer.timerId), stored);
     }
@@ -57,18 +54,4 @@ export class TimerLog {
     const at = this.#clock.now().toISOString();
     await this.#store.append([{ at, collection: this.#collection, id, op, values }]);
   }
-}
-
-/** Folds one change into the current records, as the {@link RecordChange} rules say. */
-function applyChange(records: Map<string, Record<string, unknown>>, change: RecordChange): void {
-  if (change.op === "remove") {
-    records.delete(change.id);
-    return;
-  }
-  const values = change.values ?? {};
-  if (change.op === "update") {
-    records.set(change.id, { ...records.get(change.id), ...values });
-    return;
-  }
-  records.set(change.id, { ...values });
 }
