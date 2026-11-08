@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parseAllowedDifferences, readAllowedDifferences } from "./allowed-differences.ts";
 
 const file = fileURLToPath(new URL("../allowed-differences.json", import.meta.url));
@@ -40,7 +41,7 @@ const difference = {
   status: "proposed",
 };
 
-describe("parity.allowed-differences-checked", () => {
+verifies("parity.allowed-differences-checked", () => {
   it("reads a well-formed difference as it is", () => {
     expect(parseAllowedDifferences([difference])).toEqual([difference]);
   });
