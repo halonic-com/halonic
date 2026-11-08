@@ -45,9 +45,14 @@ export function readWorkspaceVersions(yaml: string): WorkspaceVersions {
       return;
     }
     if (/^\S/.test(line)) {
-      const setting = /^["']?([\w-]+)["']?:/.exec(line)?.[1];
+      const setting = /^["']?([\w-]+)["']?:(?:\s|$)/.exec(line)?.[1];
+      if (setting === undefined) {
+        inCatalog = false;
+        unreadableLines.push(lineNumber);
+        return;
+      }
       inCatalog = setting === "catalog";
-      if (setting !== undefined && treeRewriteSettings.includes(setting)) {
+      if (treeRewriteSettings.includes(setting)) {
         treeRewrites.push({ setting, line: lineNumber });
       }
       if (inCatalog && !/^catalog:\s*(?:#.*)?$/.test(line)) {

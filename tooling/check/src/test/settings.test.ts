@@ -110,6 +110,14 @@ describe("tooling/check: catalog and overrides", () => {
     );
   });
 
+  it("reports a top-level line it can't read, such as a space before the colon", () => {
+    const unreadable = (found: string[]) => found.filter((m) => m.startsWith("The check can't read"));
+    const overrides = (yaml: string) => `${yaml}\noverrides :\n  vitest: npm:other@1\n`;
+    expect(unreadable(messages([], { workspaceYaml: overrides }))).toHaveLength(1);
+    const catalog = (yaml: string) => yaml.replace("catalog:\n", "catalog :\n");
+    expect(unreadable(messages([], { workspaceYaml: catalog })).length).toBeGreaterThan(0);
+  });
+
   it("refuses named catalogs", () => {
     const found = messages([coreWith({ vitest: "catalog:other" })]);
     expect(found.some((m) => m.includes('"vitest": "catalog:other" must be "catalog:"'))).toBe(

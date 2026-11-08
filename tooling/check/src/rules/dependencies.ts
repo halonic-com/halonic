@@ -178,7 +178,7 @@ function checkWorkspaceVersions(context: CheckContext, report: Report): void {
   for (const line of unreadableLines) {
     report.error(
       workspaceFile,
-      `The check can't read this line of "catalog:". Write one "name: version" per line, indented by two spaces.`,
+      `The check can't read this line. Write top-level settings as "name:" with no space before the colon, and one "name: version" per catalog line, indented by two spaces.`,
       line,
     );
   }
