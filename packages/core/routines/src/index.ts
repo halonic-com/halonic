@@ -5,4 +5,5 @@ export { CronError } from "./cron-error.ts";
 export { describeCron } from "./describe-cron.ts";
 export { nextCronTime } from "./next-cron-time.ts";
 export { type Cron, parseCron } from "./parse-cron.ts";
+export { parseEvery } from "./parse-every.ts";
 export { checkTimeZone, type WallTime, wallTime } from "./time-zone.ts";
