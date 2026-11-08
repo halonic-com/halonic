@@ -10,6 +10,9 @@ describe("std.slugify", () => {
     ["a -- b", "a-b"],
     ["Q3 2026 / Plan", "q3-2026-plan"],
     ["Ünïcödé", "unicode"],
+    ["_a_", "a"],
+    ["-draft-", "draft"],
+    ["--rf", "rf"],
   ])("turns %j into %j", (name, slug) => {
     expect(slugify(name)).toBe(slug);
   });
@@ -18,6 +21,8 @@ describe("std.slugify", () => {
     expect(slugify("")).toBe("item");
     expect(slugify("!!!")).toBe("item");
     expect(slugify("日本語")).toBe("item");
+    expect(slugify("___")).toBe("item");
+    expect(slugify("!!! - !!!")).toBe("item");
   });
 });
 

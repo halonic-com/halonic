@@ -6,9 +6,12 @@
 
 The deep-equality function shall compare arrays item by item in order, plain objects key by key in any order, dates by time and primitives by value with `NaN` equal to `NaN`, and shall treat any other object as equal only to itself.
 
+The deep-equality function does not support circular data and throws a `RangeError` for it. Plain data comes from JSON and YAML and can't have cycles. The deep-clone function keeps cycles because it mirrors `structuredClone`, and copying a cycle is cheap to do safely, while comparing one would need extra bookkeeping on every call.
+
 ## Examples
 
 - Given `{ a: 1, b: [1, 2] }` and `{ b: [1, 2], a: 1 }`, when they are compared, then they are equal.
 - Given `[1, 2]` and `[2, 1]`, when they are compared, then they are not equal.
 - Given `{ a: undefined }` and `{}`, when they are compared, then they are not equal.
 - Given two different `Map` objects with the same entries, when they are compared, then they are not equal.
+- Given an object that contains itself, when it is compared, then a `RangeError` is thrown.

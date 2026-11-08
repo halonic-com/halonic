@@ -54,4 +54,12 @@ describe("std.deep-equal", () => {
     expect(deepEqual(map, new Map([["a", 1]]))).toBe(false);
     expect(deepEqual(new Date(1), { time: 1 })).toBe(false);
   });
+
+  it("throws on cyclic data", () => {
+    const first: { self?: unknown } = {};
+    first.self = first;
+    const second: { self?: unknown } = {};
+    second.self = second;
+    expect(() => deepEqual(first, second)).toThrow(RangeError);
+  });
 });

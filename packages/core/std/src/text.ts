@@ -5,7 +5,9 @@ const fallbackSlug = "item";
  * Turns a display name into a file-safe id: lowercase ASCII letters and digits
  * joined by single hyphens. Spaces and underscores both become hyphens
  * ("snake_case" becomes "snake-case"), and accents are dropped ("Café" becomes
- * "cafe"), as in the old Studio. A name with nothing usable left becomes "item".
+ * "cafe"), as in the old Studio. Hyphens at either end are dropped, so the id
+ * can't be read as a command-line flag ("_a_" becomes "a"). A name with nothing
+ * usable left ("___", "!!! - !!!") becomes "item".
  *
  * @param name - the name a person typed
  * @returns the id
@@ -22,7 +24,8 @@ export function slugify(name: string): string {
     .replace(/[^\w\s-]/g, "")
     .trim()
     .replace(/[\s_]+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
   if (slug === "") {
     return fallbackSlug;
   }
