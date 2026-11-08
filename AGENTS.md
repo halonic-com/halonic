@@ -103,6 +103,14 @@ you spot become a new task.
 - Docs change in the same pull request as the behaviour.
 - Fix your own CI failures. Never push to `main`.
 
+Stacks stay short, so a closed pull request never strands work above it:
+
+- A stack is at most 3 pull requests deep, counting from `main`.
+- Never open a pull request on top of one that isn't approved yet. Start a different, independent
+  task instead.
+- When a pull request below yours is closed or replaced, rebase or close everything you have above
+  it the same day.
+
 ## Review
 
 - A second agent reviews every pull request, ideally on a different model, and never the author:
