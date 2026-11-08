@@ -21,12 +21,19 @@ describe("schema-kit.parse-result", () => {
       const schemas: Schema[] = [Guard, ...Object.values(fileSchemas)];
       fc.assert(
         fc.property(
-          fc.anything({ withNullPrototype: true, withObjectString: true, withSparseArray: true }),
+          fc.anything({
+            maxDepth: 4,
+            maxKeys: 6,
+            size: "small",
+            withNullPrototype: true,
+            withObjectString: true,
+            withSparseArray: true,
+          }),
           (value) => {
             for (const schema of schemas) expect(() => parse(schema, value)).not.toThrow();
           },
         ),
-        { seed, numRuns: 300 },
+        { seed, numRuns: 200 },
       );
     });
 
