@@ -1,0 +1,10 @@
+{
+  "about": "a collection without fields",
+  "kind": "collection",
+  "fault": "rule",
+  "expect": {
+    "file": "library/collections/suppliers.collection.yaml",
+    "path": "fields",
+    "line": 3
+  }
+}

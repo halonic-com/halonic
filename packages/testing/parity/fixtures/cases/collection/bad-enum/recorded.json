@@ -1,0 +1,51 @@
+{
+  "reference": "784f78d",
+  "case": "collection/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/collections/invoices.collection.yaml",
+      "flatPath": "collections/invoices.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [
+        {
+          "path": [
+            "fields",
+            "due",
+            "type"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"text\"|\"number\"|\"money\"|\"date\"|\"month\"|\"choice\"|\"boolean\"|\"ref\"",
+          "line": 10,
+          "col": 16
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "collections/invoices.collection.yaml",
+      "message": "fields.due.type: Invalid option: expected one of \"text\"|\"number\"|\"money\"|\"date\"|\"month\"|\"choice\"|\"boolean\"|\"ref\"",
+      "line": 10,
+      "col": 16
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error collections/invoices.collection.yaml: fields.due.type: Invalid option: expected one of \"text\"|\"number\"|\"money\"|\"date\"|\"month\"|\"choice\"|\"boolean\"|\"ref\"\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown collection \"invoices\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 10,
+    "recorded": 10,
+    "verdict": "same"
+  }
+}
