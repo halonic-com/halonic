@@ -16,6 +16,18 @@ describe("words", () => {
       "server",
     ]);
   });
+
+  it("splits letters from digits", () => {
+    expect(words("zebra2 v2Zebra 3zebras")).toEqual([
+      "zebra",
+      "2",
+      "v",
+      "2",
+      "zebra",
+      "3",
+      "zebras",
+    ]);
+  });
 });
 
 describe("TermMatcher", () => {
@@ -31,6 +43,11 @@ describe("TermMatcher", () => {
   it("matches multi-word terms only when the words are in a row", () => {
     expect(matcher.matches("theBlueWhaleSong")).toBe(true);
     expect(matcher.matches("blue sky, whale song")).toBe(false);
+  });
+
+  it("matches a term next to digits", () => {
+    expect(matcher.matches("zebra2")).toBe(true);
+    expect(matcher.matches("load2ZebraFiles")).toBe(true);
   });
 
   it("does not match a term that is only part of a longer word", () => {

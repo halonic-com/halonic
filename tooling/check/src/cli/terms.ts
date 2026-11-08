@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { blobIdsOf, readCommits, readHistory } from "../lib/git-history.ts";
 import { formatAnnotation, type Problem } from "../lib/problems.ts";
 import { readPullRequestText } from "../lib/pull-request.ts";
 import {
@@ -19,7 +20,9 @@ import { findRepoRoot, listRepoFiles } from "../lib/workspace.ts";
  *                                       files, commit messages and authors in A..B,
  *                                       plus the branch, title and body of the
  *                                       pull request in $GITHUB_EVENT_PATH
- *   pnpm check:terms --all              scan the whole tree and the whole history
+ *   pnpm check:terms --all              scan the whole tree and the whole history:
+ *                                       every commit, and every file and file
+ *                                       name any commit ever had
  *
  * It prints where a protected term is, never the term.
  */
@@ -75,15 +78,9 @@ function scanCommits(
   matcher: TermMatcher,
   problems: Problem[],
 ): void {
-  const separator = "\u001e";
-  const log = git(root, ["log", `--format=%H%n%an <%ae>%n%cn <%ce>%n%B${separator}`, ...revisions]);
-  for (const entry of log.split(separator)) {
-    const [hash = "", author = "", committer = "", ...message] = entry.trim().split("\n");
-    if (hash === "") {
-      continue;
-    }
-    const short = hash.slice(0, 10);
-    if (matcher.matches(author) || matcher.matches(committer)) {
+  for (const commit of readCommits(root, revisions)) {
+    const short = commit.hash.slice(0, 10);
+    if (matcher.matches(commit.author) || matcher.matches(commit.committer)) {
       problems.push({
         rule: "terms",
         severity: "error",
@@ -91,12 +88,57 @@ function scanCommits(
         message: `The author or committer ${notice}`,
       });
     }
-    if (matcher.matches(message.join("\n"))) {
+    if (matcher.matches(commit.message)) {
       problems.push({
         rule: "terms",
         severity: "error",
         file: `commit ${short}`,
         message: `The commit message ${notice}`,
+      });
+    }
+  }
+}
+
+/**
+ * Scans old file versions and old file names (plan 11.1): a term removed
+ * from the tree is still public in history. The working-tree files were
+ * scanned already, so their exact versions are skipped here.
+ */
+function scanHistory(
+  root: string,
+  current: readonly string[],
+  matcher: TermMatcher,
+  problems: Problem[],
+): void {
+  const history = readHistory(root, blobIdsOf(root, current));
+  // Names in today's tree, folders included, were reported by scanFiles already.
+  const currentPaths = new Set(
+    current.flatMap((file) =>
+      file.split("/").map((_, index, parts) => parts.slice(0, index + 1).join("/")),
+    ),
+  );
+  for (const path of history.paths) {
+    const shown = matcher.redactPath(path);
+    if (shown !== path && !currentPaths.has(path)) {
+      problems.push({
+        rule: "terms",
+        severity: "error",
+        file: `history: ${shown}`,
+        message: `A file or folder name in history ${notice}`,
+      });
+    }
+  }
+  for (const { blob, path, content } of history.blobs) {
+    if (content.subarray(0, 8000).includes(0)) {
+      continue;
+    }
+    for (const line of matcher.matchingLines(content.toString("utf8"))) {
+      problems.push({
+        rule: "terms",
+        severity: "error",
+        file: `history: ${matcher.redactPath(path)} (blob ${blob.slice(0, 10)})`,
+        line,
+        message: `This line of an old version ${notice} Find its commits with git log --all --find-object=${blob.slice(0, 10)}.`,
       });
     }
   }
@@ -125,6 +167,16 @@ function scanPullRequest(matcher: TermMatcher, problems: Problem[]): void {
   }
 }
 
+/** Why nothing was scanned: the list is missing, and why it is missing. */
+function skipMessage(): string {
+  const without = readPullRequestText()?.withoutSecrets;
+  if (without !== undefined) {
+    const who = without === "fork" ? "pull requests from forks" : "Dependabot's pull requests";
+    return `terms: SKIPPED. GitHub doesn't give Actions secrets to ${who}, so the ${termsEnvironmentVariable} list isn't available here and nothing was scanned. The merge queue scans the change with the secret before it can reach main (plan 11.1).`;
+  }
+  return `terms: SKIPPED. The ${termsEnvironmentVariable} Actions secret is not set yet, so nothing was scanned. Set it on the halonic-com organisation to turn the guard on (plan 11.1).`;
+}
+
 function main(argv: readonly string[]): number {
   const root = findRepoRoot();
   const { terms, source } = loadTerms();
@@ -132,15 +184,17 @@ function main(argv: readonly string[]): number {
   if (matcher.isEmpty) {
     // Until the secret exists the guard skips loudly instead of failing, so
     // work can start; the notice shows on every run (plan 11.1, 16.4).
-    const message = `terms: SKIPPED. The ${termsEnvironmentVariable} Actions secret is not set yet, so nothing was scanned. Set it on the halonic-com organisation to turn the guard on (plan 11.1).`;
+    const message = skipMessage();
     console.log(process.env["GITHUB_ACTIONS"] ? `::warning title=terms::${message}` : message);
     return 0;
   }
   const problems: Problem[] = [];
   const rangeIndex = argv.indexOf("--range");
   if (argv.includes("--all")) {
-    scanFiles(root, listRepoFiles(root), matcher, problems);
+    const files = listRepoFiles(root);
+    scanFiles(root, files, matcher, problems);
     scanCommits(root, ["--all"], matcher, problems);
+    scanHistory(root, files, matcher, problems);
   } else if (rangeIndex !== -1) {
     const range = argv[rangeIndex + 1] ?? "";
     if (!/^[\w./-]+\.\.[\w./-]+$/.test(range)) {

@@ -14,11 +14,16 @@ export const termsEnvironmentVariable = "HALONIC_DENY_TERMS";
 /** The optional local copy of the list, outside the repo. */
 export const localTermsFile = join(homedir(), ".config", "halonic", "deny-terms");
 
-/** Splits text into lowercase words, also inside identifiers: `someNameHelper` → some, name, helper. */
+/**
+ * Splits text into lowercase words, also inside identifiers and where
+ * letters meet digits: `someNameHelper` → some, name, helper; `name2` → name, 2.
+ */
 export function words(text: string): string[] {
   const spaced = text
     .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, "$1 $2")
-    .replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, "$1 $2");
+    .replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, "$1 $2")
+    .replace(/(\p{L})(\p{N})/gu, "$1 $2")
+    .replace(/(\p{N})(\p{L})/gu, "$1 $2");
   return spaced
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)

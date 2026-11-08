@@ -5,6 +5,12 @@ export interface PullRequestText {
   readonly branch: string;
   readonly title: string;
   readonly body: string;
+  /**
+   * Why this run has no Actions secrets, if it has none: GitHub gives them
+   * neither to pull requests from forks nor to Dependabot's (Dependabot
+   * gets only the separate Dependabot secrets).
+   */
+  readonly withoutSecrets?: "fork" | "dependabot";
 }
 
 /**
@@ -21,15 +27,28 @@ export function readPullRequestText(
     return undefined;
   }
   const event = JSON.parse(readFileSync(eventPath, "utf8")) as {
-    pull_request?: { title?: string; body?: string | null; head?: { ref?: string } };
+    pull_request?: {
+      title?: string;
+      body?: string | null;
+      user?: { login?: string };
+      head?: { ref?: string; repo?: { full_name?: string } | null };
+      base?: { repo?: { full_name?: string } };
+    };
   };
   const pullRequest = event.pull_request;
   if (pullRequest === undefined) {
     return undefined;
   }
-  return {
+  const text = {
     branch: pullRequest.head?.ref ?? "",
     title: pullRequest.title ?? "",
     body: pullRequest.body ?? "",
   };
+  if (pullRequest.user?.login === "dependabot[bot]") {
+    return { ...text, withoutSecrets: "dependabot" };
+  }
+  if (pullRequest.head?.repo?.full_name !== pullRequest.base?.repo?.full_name) {
+    return { ...text, withoutSecrets: "fork" };
+  }
+  return text;
 }
