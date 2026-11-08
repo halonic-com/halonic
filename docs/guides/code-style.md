@@ -132,8 +132,8 @@ for (const transition of state.transitions) { … }
 ## Formatting
 
 Biome formats TypeScript, CSS and JSON, and CI checks it, so a diff never holds
-whitespace changes. You don't need to remember the rules. Run `pnpm exec biome
-format --write .` and commit the result.
+whitespace changes. You don't need to remember the rules. Run `pnpm format`
+and commit the result.
 
 The settings, for reference: 2 spaces, lines up to 100 characters, double quotes,
 semicolons and trailing commas. Don't change formatting by hand to match your
