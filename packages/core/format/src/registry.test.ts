@@ -10,6 +10,10 @@ describe("format.kind-registry", () => {
       "provider",
       "runtime",
       "knowledge",
+      "collection",
+      "connector",
+      "skill",
+      "hub",
     ]);
   });
 
@@ -35,6 +39,10 @@ describe("format.kind-registry", () => {
       "provider: workspace providers/<id>.yaml",
       "runtime: workspace runtimes/<id>.yaml",
       "knowledge: workspace-and-hub library/knowledge/<id>.yaml",
+      "collection: workspace library/collections/<id>.collection.yaml",
+      "connector: workspace-and-hub library/connectors/<id>.connector.yaml",
+      "skill: workspace-and-hub library/skills/<id>/SKILL.md",
+      "hub: hub /hub.yaml",
     ]);
   });
 

@@ -1,0 +1,73 @@
+import { type Infer, s } from "@halonicjs/schema-kit";
+import { id, version } from "../../shared/fields.ts";
+
+/** A remote MCP server over HTTP. */
+const HttpTransport = s
+  .object({
+    http: s
+      .object({ url: s.string().url(), headers: s.record(s.string(), s.string()).optional() })
+      .strict(),
+  })
+  .strict();
+
+/** A local MCP program over standard input and output. */
+const StdioTransport = s
+  .object({
+    stdio: s
+      .object({
+        command: s.string().min(1),
+        args: s.array(s.string()).default([]),
+        /** Plain environment variables; secrets go in `secretEnv`. */
+        env: s.record(s.string(), s.string()).optional(),
+        /** Environment variable → secret name. */
+        secretEnv: s.record(s.string(), s.string()).optional(),
+        /** Working directory, relative to the workspace root. */
+        cwd: s.string().optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+/** Built-in Gmail and Google Drive for one Google account. */
+const GoogleTransport = s
+  .object({
+    google: s
+      .object({
+        /** The Google account the connector acts as. */
+        account: s.string().email(),
+        /** OAuth client: secrets `<client>-client-id` and `<client>-client-secret`. */
+        client: s.string().default("google"),
+      })
+      .strict(),
+  })
+  .strict();
+
+/**
+ * `library/connectors/<id>.connector.yaml`: tools for agents from an MCP
+ * server or a built-in service. Secrets are referenced by name only.
+ */
+export const Connector = s
+  .object({
+    version,
+    id,
+    name: s.string().optional(),
+    description: s.string().optional(),
+    transport: s.union([HttpTransport, StdioTransport, GoogleTransport]),
+    /** HTTP: the secret sent as a bearer token. Google: the secret with the refresh token. */
+    secret: s.string().optional(),
+    tools: s
+      .object({
+        /** Only these tools are offered to agents. Leave out to offer every tool. */
+        allow: s.array(s.string()).optional(),
+        /** Every call to these tools waits for a person to approve or reject it. */
+        approve: s.array(s.string()).default([]),
+      })
+      .strict()
+      .default({ approve: [] }),
+    /** Runs on this machine or your own network. Default: true for stdio and localhost URLs. */
+    local: s.boolean().optional(),
+  })
+  .strict();
+
+/** A connector, with defaults filled in. */
+export type Connector = Infer<typeof Connector>;
