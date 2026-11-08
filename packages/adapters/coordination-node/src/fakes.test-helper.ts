@@ -1,4 +1,9 @@
-import type { Clock, RecordChange, RecordStore } from "@halonicjs/ports";
+import {
+  type Clock,
+  compactedChanges,
+  type RecordChange,
+  type RecordStore,
+} from "@halonicjs/ports";
 import { NodeCoordination } from "./coordination.ts";
 
 /** The start of every fake clock: 2026-01-01T00:00:00Z. */
@@ -38,6 +43,15 @@ export class MemoryRecordStore implements RecordStore {
     return this.#changes
       .filter((change) => change.collection === collection)
       .map((change) => structuredClone(change));
+  }
+
+  async compact(collection: string): Promise<void> {
+    const kept = this.#changes.filter((change) => change.collection !== collection);
+    const compacted = compactedChanges(
+      collection,
+      this.#changes.filter((change) => change.collection === collection),
+    );
+    this.#changes.splice(0, this.#changes.length, ...kept, ...compacted);
   }
 }
 
