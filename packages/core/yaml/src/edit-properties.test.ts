@@ -124,6 +124,20 @@ verifies("yaml.edit", () => {
   });
 });
 
+/** A comment line above every line. */
+function commentAboveEveryLine(text: string): string {
+  return text
+    .split("\n")
+    .map((line, index) => (line === "" ? line : `# above ${index}\n${line}`))
+    .join("\n");
+}
+
+function countLines(text: string, comments: boolean): number {
+  return text
+    .split("\n")
+    .filter((line) => line.trim() !== "" && line.trim().startsWith("#") === comments).length;
+}
+
 verifies("yaml.edit-preserve", () => {
   const leafSet = scalarData
     .filter((data) => typeof data === "object" && data !== null)
@@ -191,6 +205,37 @@ verifies("yaml.edit-preserve", () => {
         const all = unwrap(editYaml(file, edits));
         expect(all.layout).toBe("kept");
         expect(unwrap(readYaml(all.text)).data).toEqual(expected);
+      }),
+      { numRuns: 300 },
+    );
+  });
+});
+
+verifies("yaml.edit-preserve-entries", () => {
+  const deleteInside = scalarData
+    .filter((data) => typeof data === "object" && data !== null)
+    .chain((data) => {
+      const inside = valuesOf(data).filter((at) => at.path.length > 0);
+      return fc.tuple(fc.constant(data), fc.constantFrom(...inside));
+    });
+
+  it("deletes only the comments between the deleted entry's own lines", () => {
+    fc.assert(
+      fc.property(deleteInside, ([data, at]) => {
+        const text = commentAboveEveryLine(writeYamlFile(data));
+        const edit: YamlEdit = { kind: "delete", path: at.path };
+        const expected = unwrap(applyEditToData(data, edit));
+        const spliced = spliceEdit(text, edit);
+        // Falling back is allowed here; losing a comment while splicing isn't.
+        if (spliced === undefined) {
+          return;
+        }
+        expect(unwrap(readYaml(spliced)).data).toEqual(expected);
+        // The entry's own lines, rendered alone: only the comments between them go.
+        const key = at.path[at.path.length - 1] as string | number;
+        const entry = typeof key === "number" ? [at.value] : { [key]: at.value };
+        const ownLines = countLines(writeYamlFile(entry), false);
+        expect(countLines(text, true) - countLines(spliced, true)).toBe(ownLines - 1);
       }),
       { numRuns: 300 },
     );

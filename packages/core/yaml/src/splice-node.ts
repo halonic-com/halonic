@@ -16,6 +16,7 @@ import {
   columnOf,
   entryEnd,
   insertLines,
+  keepsComments,
   lineStart,
   removeLines,
   renderAfterDash,
@@ -198,7 +199,7 @@ export function deleteEntry(parsed: Parsed, path: YamlPath): string | undefined 
     return undefined;
   }
   if (parent.items.length === 1) {
-    return replaceValue(parsed, parentPath, isMap(parent) ? {} : []);
+    return emptyCollection(parsed, parentPath, parent, key);
   }
   if (isMap(parent)) {
     return deletePair(parsed, parent, key);
@@ -207,6 +208,41 @@ export function deleteEntry(parsed: Parsed, path: YamlPath): string | undefined 
     return deleteItem(parsed, parent, key);
   }
   return undefined;
+}
+
+/**
+ * Writes `{}` or `[]` in place of a collection whose only entry goes. The
+ * comment lines right above that entry stay, under the `{}` or `[]`; when any
+ * other comment would go with it, this gives up.
+ */
+function emptyCollection(
+  parsed: Parsed,
+  path: YamlPath,
+  collection: YAMLMap | YAMLSeq,
+  key: string | number,
+): string | undefined {
+  const { text } = parsed;
+  const entry = isMap(collection) ? pairOf(collection, key) : undefined;
+  const start = isMap(collection)
+    ? (entry?.key as Node | undefined)?.range?.[0]
+    : dashOffset(collection, 0);
+  const valueEnd =
+    entry !== undefined ? pairEnd(entry) : (collection.items[0] as Node | null)?.range?.[1];
+  const end = collection.range?.[1];
+  const emptied = replaceValue(parsed, path, isMap(collection) ? {} : []);
+  if (start === undefined || valueEnd === undefined || end === undefined || emptied === undefined) {
+    return undefined;
+  }
+  const from = startsItsLine(text, start) ? lineStart(text, start) : start;
+  // At the top the comments above the first entry aren't replaced, so they stay anyway.
+  const above =
+    path.length > 0 && from !== start ? text.slice(aboveComments(text, from), from) : "";
+  const at = emptied.length - (text.length - end);
+  if (at < emptied.length && emptied[at - 1] !== "\n") {
+    return undefined;
+  }
+  const result = above === "" ? emptied : insertLines(emptied, at, above);
+  return keepsComments(text, from, entryEnd(text, valueEnd), result) ? result : undefined;
 }
 
 function deletePair(parsed: Parsed, map: YAMLMap, key: string | number): string | undefined {

@@ -188,6 +188,25 @@ verifies("yaml.edit-preserve-entries", () => {
     expect(edited(lines("# top", "a: 1"), del(["a"])).text).toBe(lines("# top", "{}"));
   });
 
+  it("keeps the comments above the last entry of a nested map or list", () => {
+    expect(edited(lines("a:", "  # keep me", "  x: 1", "b: 2"), del(["a", "x"]))).toEqual({
+      text: lines("a: {}", "  # keep me", "b: 2"),
+      layout: "kept",
+    });
+    expect(edited(lines("s:", "  # about a", "  - a", "n: 1"), del(["s", 0]))).toEqual({
+      text: lines("s: []", "  # about a", "n: 1"),
+      layout: "kept",
+    });
+  });
+
+  it("falls back rather than drop a comment that isn't above the entry", () => {
+    const text = lines("a:", "  # one", "", "  # two", "  x: 1", "b: 2");
+    const result = edited(text, del(["a", "x"]));
+    expect(result.layout).toBe("reformatted");
+    expect(result.text).toContain("# one");
+    expect(result.text).toContain("# two");
+  });
+
   it("splices a whole-list set that changes the list's length", () => {
     const text = lines("steps:", "  - a # first", "  - b");
     expect(edited(text, set(["steps"], ["a", "b", "c"]))).toEqual({

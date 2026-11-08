@@ -67,9 +67,13 @@ save(edited.value.text);
   an item that exists; use `insert` to add one. `set` on `[]` replaces the
   whole document.
 - `delete` removes a key or item with its lines and its trailing comment. The
-  comments above it stay. The last entry leaves `{}` or `[]`.
+  comments above it stay. The last entry leaves `{}` or `[]`, with those
+  comments under it.
 - `insert` adds a list item before the given index, or at the end for the
-  list's length, above the comments over the item it goes before.
+  list's length, above the comments over the item it goes before. So at the
+  top of a file that is a list, `insert [0]` goes above a header comment that
+  sits right over the first item; leave a blank line under the header to keep
+  it first.
 - If any edit doesn't fit, nothing is applied and the problem names that edit.
 
 **Setting a whole map or list.** A `set` with a whole object changes only what

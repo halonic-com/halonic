@@ -54,6 +54,22 @@ export function aboveComments(text: string, offset: number): number {
 }
 
 /**
+ * True when every comment line of `before`, outside `before[from, to)`, is
+ * still a line of `after`.
+ */
+export function keepsComments(before: string, from: number, to: number, after: string): boolean {
+  const left = new Map<string, number>();
+  for (const line of commentLines(after)) {
+    left.set(line, (left.get(line) ?? 0) + 1);
+  }
+  return commentLines(before.slice(0, from) + before.slice(to)).every((line) => {
+    const count = left.get(line) ?? 0;
+    left.set(line, count - 1);
+    return count > 0;
+  });
+}
+
+/**
  * Removes the lines from `from` to `to` (both line starts). When blank lines
  * sat on both sides, one of them goes too, so two sections stay one blank
  * line apart instead of two.
@@ -151,6 +167,14 @@ function indent(text: string, column: number, firstLineToo: boolean): string {
     .split("\n")
     .map((line, index) => (line === "" || (index === 0 && !firstLineToo) ? line : pad + line))
     .join("\n");
+}
+
+/** The lines that hold only a comment, without their indent. */
+function commentLines(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("#"));
 }
 
 function isBlank(line: string): boolean {
