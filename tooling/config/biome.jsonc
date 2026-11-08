@@ -37,7 +37,10 @@
       },
       "suspicious": {
         "noExplicitAny": "error",
-        "noTsIgnore": "error"
+        "noTsIgnore": "error",
+        // Skipped and focused tests also fail the requirement guard (plan 9.3).
+        "noSkippedTests": "error",
+        "noFocusedTests": "error"
       },
       "complexity": {
         // TypeScript's noPropertyAccessFromIndexSignature (plan 8) requires

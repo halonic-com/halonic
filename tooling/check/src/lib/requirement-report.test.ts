@@ -41,6 +41,7 @@ function ran(requirement: string, status: string): TestOutcome {
     name: `${requirement} works`,
     status,
     requirement,
+    assertions: 1,
   };
 }
 
