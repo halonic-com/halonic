@@ -29,8 +29,37 @@ the log, and stores nothing else. The log is written in `seq` order.
 
 - A state's transitions are checked in the order they appear in the file.
 - The first transition whose event matches and whose guard passes fires. The
-  rest are not checked.
+  rest are not checked. If none does, the event changes nothing.
 - A `task` state fires `done` when its work ends.
+- A timer transition (one with `after`) never fires on an event.
+- The events a waiting state accepts are its transitions' events, each once,
+  in file order, without its timers. They are listed in `run.waiting`.
+
+The functions are `selectTransition` and `acceptedEvents`.
+
+## Guards
+
+A transition's `when` is a guard. Both sides of a comparison may be
+templates; they are rendered against the scope first. `evaluateGuard`
+decides whether it passes.
+
+| Guard                     | Passes when                                                                 |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `equals: [a, b]`          | `a` and `b` are the same                                                    |
+| `notEquals: [a, b]`       | they are not the same                                                       |
+| `contains: [a, b]`        | `a` is a text that holds the text `b` in any case, or a list that holds `b` |
+| `exists: path`            | the path holds a value other than nothing, `null` or `""`                   |
+| `gt`, `gte`, `lt`, `lte`  | both sides read as numbers and compare that way                             |
+| `not`, `all: [..]`, `any` | the inner guard fails, every inner guard passes, one inner guard passes     |
+
+- **Same value.** Two texts are the same without the spaces around them.
+  Other values are the same when their JSON is. So `1` and `"1"` differ.
+- **`exists`** takes a path such as `context.reply`. Written as a placeholder,
+  `{{context.reply}}`, it means the same.
+- **Numbers** are read as people and models write them: `1,200.50`,
+  `1.200,50`, `EUR 1.250,00`. A side that is no number makes the guard fail,
+  whichever way it compares, so `not` around it passes.
+- **Empty lists.** `all: []` passes and `any: []` fails.
 
 ## Subflows
 
@@ -72,6 +101,9 @@ on an event.
   `halonic routines watch`) calls `fireTimers` for runs whose `nextTimer` has
   passed. A timer missed while nothing was running fires on the next tick.
 - **Task states have no timeout.** An agent is limited by `maxSteps`.
+
+The functions are `stateTimers` (the timers and their due times) and
+`dueTimer` (the one to take now, or none).
 
 ## Knowledge in prompts
 

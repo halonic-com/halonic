@@ -14,6 +14,14 @@ number stays a number; placeholders inside a text are written as text.
 (`1,200.50`) or European (`1.200,50`) style, with or without a money symbol,
 so number guards can compare them.
 
+`evaluateGuard` decides whether a transition's `when` condition passes:
+comparisons, `contains`, `exists`, number comparisons and `not`, `all` and
+`any`. `selectTransition` picks the transition an event fires in a state,
+`acceptedEvents` lists the events a waiting state listens to, and
+`stateTimers` and `dueTimer` handle the `after` transitions of a wait state.
+The rules are written out in the
+[workflow semantics spec](../../../docs/specs/workflow-semantics.md).
+
 `parseDuration` reads the delay of a timer transition (`after: 30m`, `4h`,
 `2d`) in milliseconds. The approval helpers decide what an `approve` or
 `reject` event means for a tool call that waits for a person, and hold the

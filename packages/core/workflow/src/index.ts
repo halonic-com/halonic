@@ -8,6 +8,17 @@ export {
   REJECTED_TOOL_RESULT,
   revisedToolResult,
 } from "./approvals.ts";
+export { evaluateGuard } from "./guards.ts";
+export {
+  acceptedEvents,
+  dueTimer,
+  getState,
+  type Scope,
+  type StateTimer,
+  selectTransition,
+  stateTimers,
+  type TimerTransition,
+} from "./machine.ts";
 export { parseDuration } from "./parse-duration.ts";
 export { getPath, render, renderText } from "./template.ts";
 export { toNumber } from "./to-number.ts";
