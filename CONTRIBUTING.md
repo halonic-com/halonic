@@ -69,14 +69,14 @@ everything they are built from.
 Every package belongs to one **layer**, and a layer may only use the layers
 below it:
 
-| Layer | Where | May use | Never |
-|---|---|---|---|
-| core | `packages/core/*` | lower core packages | any third-party package, Node APIs, browser APIs, React |
-| adapters | `packages/adapters/*` | core, Node or browser APIs, approved libraries for that one adapter | Studio packages, other adapters' internals |
-| host | `packages/host` | core, adapters, Node APIs | Studio packages |
-| studio | `packages/studio/*` | core, React, Tauri, Vite, approved UI libraries | adapters directly, another feature's internals |
-| apps | `apps/*` | the public interface of any package | — |
-| testing | `packages/testing/*` | anything | being a runtime dependency |
+| Layer    | Where                 | May use                                                             | Never                                                   |
+| -------- | --------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
+| core     | `packages/core/*`     | lower core packages                                                 | any third-party package, Node APIs, browser APIs, React |
+| adapters | `packages/adapters/*` | core, Node or browser APIs, approved libraries for that one adapter | Studio packages, other adapters' internals              |
+| host     | `packages/host`       | core, adapters, Node APIs                                           | Studio packages                                         |
+| studio   | `packages/studio/*`   | core, React, Tauri, Vite, approved UI libraries                     | adapters directly, another feature's internals          |
+| apps     | `apps/*`              | the public interface of any package                                 | —                                                       |
+| testing  | `packages/testing/*`  | anything                                                            | being a runtime dependency                              |
 
 A check (`tooling/check`) enforces this on every pull request and explains how
 to fix what it finds. The most important consequences:
@@ -129,7 +129,7 @@ Halonic has one firm rule: **nothing that works may break.**
 ## Code and docs
 
 - **Readable over short.** Clear, full names; early returns; no clever
-  one-liners. Comments explain *why*, not *what*.
+  one-liners. Comments explain _why_, not _what_.
 - **Small files.** Aim for under 300 lines; the check fails above 500.
 - **Every exported function, type and class has a doc comment.**
 - **Docs change in the same pull request as the behaviour.** See the
