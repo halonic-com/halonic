@@ -84,6 +84,19 @@ export function googleAuthUrl(input: AuthUrlInput): string {
     parameters.push(["login_hint", input.loginHint]);
   }
   // The core has no URLSearchParams, so the query is encoded here.
-  const query = parameters.map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join("&");
-  return `${googleAuthEndpoint}?${query}`;
+  const query = parameters.map(([name, value]) => `${name}=${encodeQueryValue(name, value)}`);
+  return `${googleAuthEndpoint}?${query.join("&")}`;
+}
+
+/**
+ * One query value, percent-encoded. `encodeURIComponent` throws a `URIError`
+ * for a lone surrogate, which a hand-typed `login_hint` can hold; that becomes
+ * the `RangeError` `googleAuthUrl` documents. The value isn't quoted.
+ */
+function encodeQueryValue(name: string, value: string): string {
+  try {
+    return encodeURIComponent(value);
+  } catch {
+    throw new RangeError(`The auth URL's ${name} is not well-formed text.`);
+  }
 }

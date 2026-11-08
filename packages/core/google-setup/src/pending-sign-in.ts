@@ -12,6 +12,14 @@ export interface PendingSignInDetails {
   readonly state: string;
   /** The PKCE verifier. A secret: it goes only to Google's token endpoint. */
   readonly codeVerifier: string;
+  /**
+   * The OAuth client ID the auth URL used. Google only exchanges the code for
+   * the same client, so the callback uses this one even if the setup record
+   * has moved to another client meanwhile.
+   */
+  readonly clientId: string;
+  /** The ref of that client's secret in the `TokenStore`. A ref, never the secret. */
+  readonly clientRef: string;
   /** The redirect URI from the auth URL; the token request must repeat it. */
   readonly redirectUri: string;
   /** The scopes the auth URL asked for. */

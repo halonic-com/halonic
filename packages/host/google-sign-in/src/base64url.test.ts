@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeBase64url } from "./base64url.ts";
+import { decodeBase64url, encodeBase64url } from "./base64url.ts";
 
 const text = (value: string): Uint8Array => new TextEncoder().encode(value);
 
@@ -23,5 +23,19 @@ describe("google-sign-in: base64url", () => {
       const bytes = crypto.getRandomValues(new Uint8Array(length));
       expect(encodeBase64url(bytes)).toBe(Buffer.from(bytes).toString("base64url"));
     }
+  });
+
+  it("decodes what it encodes, for every length", () => {
+    for (let length = 0; length <= 40; length += 1) {
+      const bytes = crypto.getRandomValues(new Uint8Array(length));
+      expect(decodeBase64url(encodeBase64url(bytes))).toEqual(bytes);
+    }
+    expect(decodeBase64url("-_8")).toEqual(new Uint8Array([0xfb, 0xff]));
+  });
+
+  it("refuses text that isn't base64url", () => {
+    expect(decodeBase64url("Zm9v=")).toBeUndefined();
+    expect(decodeBase64url("Zm+v")).toBeUndefined();
+    expect(decodeBase64url("Zm9vY")).toBeUndefined();
   });
 });

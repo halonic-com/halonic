@@ -12,6 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/google-setup": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {

@@ -63,6 +63,14 @@ verifies("google-setup.sign-in.auth-url", () => {
     expect(query.getAll("prompt")).toEqual(["consent"]);
   });
 
+  it("refuses a login_hint that isn't well-formed text with a RangeError", () => {
+    const loneSurrogate = "account\ud800@example.com";
+
+    expect(() => googleAuthUrl({ ...input, loginHint: loneSurrogate })).toThrow(
+      "The auth URL's login_hint is not well-formed text.",
+    );
+  });
+
   it("refuses an empty client ID, state or challenge, and a bad redirect", () => {
     expect(() => googleAuthUrl({ ...input, clientId: "" })).toThrow("needs a client ID");
     expect(() => googleAuthUrl({ ...input, state: "" })).toThrow("needs a state");

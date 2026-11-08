@@ -41,6 +41,8 @@ export function testPendingSignIns(now: () => Date): PendingSignIns & {
 export const fakePending: PendingSignInDetails = {
   state: "fake-state-0000000000000000000000000000000",
   codeVerifier: "fake-verifier-00000000000000000000000000000",
+  clientId: "fake-client.apps.example.com",
+  clientRef: "gclient_fake1",
   redirectUri: "http://127.0.0.1:8787/google/callback",
   scopes: ["email", "openid"],
   authUrl:
