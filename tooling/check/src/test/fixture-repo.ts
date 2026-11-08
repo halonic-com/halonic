@@ -37,7 +37,12 @@ export function manifestFor(
  */
 export function runChecks(
   packages: readonly FixturePackage[],
-  options: { coreOrder?: string[]; extraFiles?: Record<string, string> } = {},
+  options: {
+    coreOrder?: string[];
+    extraFiles?: Record<string, string>;
+    /** Replaces the entries of the real `dependencies.json`. */
+    dependencyList?: Record<string, unknown>;
+  } = {},
 ): Problem[] {
   const root = mkdtempSync(join(tmpdir(), "halonic-check-"));
   try {
@@ -55,9 +60,15 @@ export function runChecks(
       "tooling/check/policy.json",
       JSON.stringify({ ...policy, coreOrder: options.coreOrder ?? [] }),
     );
+    const dependencyList = JSON.parse(
+      readFileSync(join(realRoot, "tooling/check/dependencies.json"), "utf8"),
+    );
     write(
       "tooling/check/dependencies.json",
-      readFileSync(join(realRoot, "tooling/check/dependencies.json"), "utf8"),
+      JSON.stringify({
+        ...dependencyList,
+        dependencies: options.dependencyList ?? dependencyList.dependencies,
+      }),
     );
     write(
       "package.json",
