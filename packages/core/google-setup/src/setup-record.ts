@@ -1,0 +1,115 @@
+import { type Infer, parse, s } from "@halonicjs/schema-kit";
+import { isProjectId } from "./console-links.ts";
+import type { StepId } from "./setup-step.ts";
+import { isSetupRef } from "./store-names.ts";
+
+/**
+ * The record store collection that holds the setup records. Workspace
+ * collection ids must start with a letter or digit, so no hub or workspace
+ * collection can have this name, as with `_tokens`.
+ */
+export const setupCollection = "_google_setups";
+
+/** A time as `Date.toISOString` writes it, which is how the record stamps every change. */
+const time = s.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+
+/**
+ * When each step was marked done; a step that isn't done has no key. Typed
+ * as a `Record` over `StepId`, so a new step id doesn't compile until it is
+ * listed here.
+ */
+const stepTicks: Record<StepId, ReturnType<typeof time.optional>> = {
+  project: time.optional(),
+  apis: time.optional(),
+  consent: time.optional(),
+  scopes: time.optional(),
+  client: time.optional(),
+  credentials: time.optional(),
+  "sign-in": time.optional(),
+};
+
+/** A client or account ref, checked as the token names check it (plan D2). */
+const ref = s.string().refine(isSetupRef);
+
+/**
+ * A Google OAuth client ID, such as `1234-abc.apps.googleusercontent.com`.
+ * Only lower-case letters, digits and the fixed ending, so a client secret
+ * pasted into the wrong field (`GOCSPX-…`) can never be saved as one.
+ */
+const clientIdPattern = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
+
+/** A service id from an integration sheet, such as `gmail`. */
+const serviceIdPattern = /^[a-z][a-z0-9-]{0,63}$/;
+
+/**
+ * What the last check after sign-in found for one service (design 3.5):
+ * its API answered, its API is off, or its sheet has no `googleCheck`.
+ */
+export type ServiceCheckResult = "works" | "api-off" | "not-checked";
+
+const serviceResult = s
+  .object({
+    /** Whether Google granted every scope the service needs. */
+    scopeGranted: s.boolean(),
+    check: s.enum(["works", "api-off", "not-checked"]),
+    checkedAt: time,
+  })
+  .strict();
+
+/**
+ * The values of a setup record as stored. Every key is always there, `null`
+ * when it isn't set yet, so an update can clear a value by writing `null`.
+ *
+ * **The keys are the whole list of what the record may hold** (plan D5).
+ * `.strict()` refuses any other key, so nothing can add the client secret,
+ * a refresh, access or ID token, the authorisation code, the PKCE
+ * `code_verifier` or the `state` to it. The e-mail address stays in the
+ * connector settings, not here.
+ */
+const setupValues = s
+  .object({
+    route: s.object({ app: s.literal("own"), runsOn: s.literal("this-computer") }).strict(),
+    accountType: s.enum(["workspace", "personal"]),
+    /** When the setup was started, for "You started this on 8 Nov". */
+    startedAt: time,
+    projectId: s.string().refine(isProjectId).nullable(),
+    stepsDone: s.object(stepTicks).strict(),
+    /** When the user ticked "In production" (personal accounts, step 3). */
+    inProductionTickedAt: time.nullable(),
+    clientId: s.string().regex(clientIdPattern).nullable(),
+    /**
+     * The ref of the client secret in the `TokenStore` and when it was saved.
+     * Never the secret itself. Accounts that share a client hold the same ref.
+     */
+    clientSecret: s.object({ clientRef: ref, savedAt: time }).strict().nullable(),
+    /** When a sign-in was started and hasn't come back, for "didn't finish". */
+    signInStartedAt: time.nullable(),
+    /** When the last sign-in came back, for the 7-day hint. */
+    lastSignInAt: time.nullable(),
+    /** The last check after sign-in per ticked service, by service id. */
+    services: s.record(s.string().regex(serviceIdPattern), serviceResult),
+  })
+  .strict();
+
+/** The stored values of a setup record, without its account ref. */
+export type SetupValues = Infer<typeof setupValues>;
+
+/** One Google account's saved setup progress (design 3.6, plan D5). */
+export interface SetupRecord extends SetupValues {
+  /** The random ref the record is kept under. Never an e-mail address. */
+  readonly accountRef: string;
+}
+
+/**
+ * Checks stored values. The issues are dropped on purpose: a damaged or
+ * edited record could hold anything, and an issue message may repeat it.
+ */
+export function parseSetupValues(values: unknown): SetupValues | undefined {
+  const parsed = parse(setupValues, values);
+  return parsed.ok ? parsed.value : undefined;
+}
+
+/** Whether a text can be a service id in the record. */
+export function isServiceId(text: string): boolean {
+  return serviceIdPattern.test(text);
+}

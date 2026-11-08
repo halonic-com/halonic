@@ -1,8 +1,9 @@
 # @halonicjs/google-setup
 
 The rules of the Google setup flow in Studio's Inbox, as pure logic over the ports. For now: the
-client secret store with staged replace, its token names, the `GOCSPX-` detector and the step
-generator. The progress record, the checks after sign-in and the error classification follow.
+client secret store with staged replace, its token names, the `GOCSPX-` detector, the step
+generator and the saved setup progress. The checks after sign-in and the error classification
+follow.
 
 - **Layer:** core
 - **Owner:** priya
@@ -51,6 +52,40 @@ Links open in the project only when its ID is valid; otherwise `projectIdIgnored
 (an unticked service's rows went away; nothing to do) or `reopened` (new rows, which Studio marks
 "New", or a changed value such as the account type). Step 7 reopens for every new scope or service,
 even with step 4 switched off. `ticksToKeep(changes, ticks)` gives the ticks that stay.
+
+## Setup progress
+
+`setupRecords({ records, clock, ids })` keeps one record per Google account in the record store
+collection `_google_setups`, under a random account ref (`gaccount_…`), never an e-mail address
+(design 3.6, plan D5). The e-mail address stays in the connector settings.
+
+```ts
+const setups = setupRecords({ records, clock, ids });
+const { accountRef } = await setups.start({ route, accountType: "personal" });
+await setups.update(accountRef, { kind: "step-done", step: "project" });
+await setups.update(accountRef, { kind: "client-secret-saved", clientRef }); // the ref only
+```
+
+| Value                  | Holds                                                   |
+| ---------------------- | ------------------------------------------------------- |
+| `route`, `accountType` | the two answers the item asks first                     |
+| `startedAt`            | for "You started this on 8 Nov"                         |
+| `projectId`            | step 1's project ID, if valid                           |
+| `stepsDone`            | when each step was marked done, by step id              |
+| `inProductionTickedAt` | the "In production" tick (personal, step 3)             |
+| `clientId`             | the client ID from step 6                               |
+| `clientSecret`         | the secret's `clientRef` and when it was saved          |
+| `signInStartedAt`      | a sign-in that hasn't come back, for "didn't finish"    |
+| `lastSignInAt`         | the last sign-in, for the 7-day hint                    |
+| `services`             | per service: scope granted, last check result, and when |
+
+Every change is a `SetupEdit` named after what happened, stamped by the clock. The record is checked
+before every write and after every read, and refuses any other key, so it can't hold the client
+secret, a refresh, access or ID token, the authorisation code, the PKCE `code_verifier` or the
+`state`. A record that fails the check reads as `damaged`; errors never repeat a value.
+
+**Agents, tools and hubs must not be able to write to `_google_setups`**: the record decides which
+client secret a sign-in uses. Only the host's setup routes (build plan B5) get the store.
 
 ## Token names
 

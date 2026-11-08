@@ -29,6 +29,7 @@ export {
   type PendingSignIns,
   pendingSignInLifetimeMs,
 } from "./pending-sign-in.ts";
+export type { SetupEdit } from "./setup-edit.ts";
 export type {
   GoogleApi,
   GoogleCheck,
@@ -37,6 +38,14 @@ export type {
   SetupRoute,
   SetupService,
 } from "./setup-input.ts";
+export type { ServiceCheckResult, SetupRecord, SetupValues } from "./setup-record.ts";
+export { SetupRecordError, type SetupRecordErrorReason } from "./setup-record-error.ts";
+export {
+  type NewSetup,
+  type SetupRecords,
+  type SetupRecordsOptions,
+  setupRecords,
+} from "./setup-records.ts";
 export type {
   ApiRow,
   ApisStep,

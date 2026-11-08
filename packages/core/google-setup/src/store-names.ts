@@ -16,6 +16,20 @@ const maxRefLength = 128 - "google-client-".length - "-staged".length;
 /** The prefix `saveClientSecret` gives the `IdGenerator` for a new client ref: `gclient_…`. Internal. */
 export const clientRefPrefix = "gclient";
 
+/** The prefix the setup records give the `IdGenerator` for a new account ref: `gaccount_…`. Internal. */
+export const accountRefPrefix = "gaccount";
+
+/**
+ * Whether a client or account ref follows the rule, so a token name built
+ * from it reaches only that ref's tokens. The setup record checks the refs
+ * it reads with this. Internal.
+ */
+export function isSetupRef(ref: string): boolean {
+  // `google-client-<a>-staged` and `google-client-<b>` are the same token when
+  // b is `<a>_staged`, so no ref may end in that word.
+  return ref.length <= maxRefLength && refPattern.test(ref) && !ref.endsWith("_staged");
+}
+
 /**
  * Checks a client or account ref before it becomes part of a token name. Refs
  * come back from the setup record, so a changed record must not reach another
@@ -31,9 +45,7 @@ function checkRef(ref: string): string {
       `This is not a Google setup ref. Use lower-case letters and digits joined by "_", at most ${maxRefLength} characters.`,
     );
   }
-  // `google-client-<a>-staged` and `google-client-<b>` are the same token when
-  // b is `<a>_staged`, so no ref may end in that word.
-  if (ref.endsWith("_staged")) {
+  if (!isSetupRef(ref)) {
     throw new RangeError(`This is not a Google setup ref: it may not end in "_staged".`);
   }
   return ref;
