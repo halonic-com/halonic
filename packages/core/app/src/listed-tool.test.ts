@@ -67,7 +67,7 @@ verifies("ports.untrusted-tool-listings", () => {
   it("removes the characters a person can't see from the description, and from each description and title", () => {
     // A zero-width space, a right-to-left override, the tag letters for "hi",
     // a variation selector and a bell, around words a reader does see.
-    const hidden = "​‮\u{E0068}\u{E0069}️\u0007";
+    const hidden = "\u200B\u202E\u{E0068}\u{E0069}\uFE0F\u0007";
     const tool = kept(
       listed(
         objectWith({
@@ -94,7 +94,7 @@ verifies("ports.untrusted-tool-listings", () => {
   });
 
   it("applies the 10,000 character cap to the text as the source sent it", () => {
-    const padded = `${"a".repeat(9_999)}${"​".repeat(2)}`;
+    const padded = `${"a".repeat(9_999)}${"\u200B".repeat(2)}`;
     expect(refusalOf(listed({ type: "object" }, { description: padded }))).toBe(
       "its description is longer than 10000 characters",
     );
