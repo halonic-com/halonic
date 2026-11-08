@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { readSource } from "./source.ts";
-import { problemsOf, summary, yaml } from "./test/parse.ts";
+import { problemsOf, summary, yaml } from "./test/parse.spec.ts";
 
 function read(syntax: "yaml" | "front-matter", text: string) {
   const result = readSource(syntax, text);

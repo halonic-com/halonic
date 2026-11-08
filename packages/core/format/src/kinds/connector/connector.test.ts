@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { parseFile } from "../../index.ts";
-import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
+import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 
 verifies("format.connector-file", () => {
   it("fills in tools, stdio args and the Google client", () => {

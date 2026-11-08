@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
+import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 
 verifies("format.hub-file", () => {
   it("fills in defaults and models, and leaves uses out when the file does", () => {

@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { connectorIsLocal } from "../../index.ts";
-import { parsedValue, yaml } from "../../test/parse.ts";
+import { parsedValue, yaml } from "../../test/parse.spec.ts";
 
 function httpConnector(url: string, local?: boolean) {
   const lines = ["id: tracker", "transport:", "  http:", `    url: '${url}'`];

@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { parsedValue, problemsOf, summary } from "../../test/parse.ts";
+import { parsedValue, problemsOf, summary } from "../../test/parse.spec.ts";
 
 const skill = (frontMatter: string, body = "\n- One idea per sentence.\n") =>
   `---\n${frontMatter}\n---\n${body}`;

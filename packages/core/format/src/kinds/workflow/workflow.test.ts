@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
+import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 
 const workflow = (...states: string[]) =>
   yaml("id: invoice", "name: Invoice", "initial: start", "states:", ...states);
