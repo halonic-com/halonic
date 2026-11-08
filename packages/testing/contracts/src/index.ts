@@ -20,6 +20,14 @@ export {
   waiting,
 } from "./run-events.ts";
 export { type MakeRunStore, type RunStoreContractOptions, runStoreContract } from "./run-store.ts";
+export { schedulerContract } from "./scheduler.ts";
+export {
+  type MakeScheduler,
+  RecordingListener,
+  type SchedulerHarness,
+  startScheduler,
+  type TimerBehaviour,
+} from "./scheduler-harness.ts";
 export { invalidSecretNames, longestSecretName } from "./secret-names.ts";
 export {
   type MakeSecrets,
