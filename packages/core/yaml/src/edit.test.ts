@@ -123,17 +123,17 @@ verifies("yaml.edit-preserve", () => {
   it("keeps the comment at the top of the file when it sets the whole document", () => {
     const result = edited(lines("# top", "", "a: 1 # c", "b: 2"), set([], { a: 1, c: 3 }));
     expect(result).toEqual({ text: lines("# top", "", "a: 1 # c", "c: 3"), layout: "kept" });
-    // A flow collection is rendered again; the top comment must survive that too,
-    // with or without a blank line under it.
+    // A flow collection over two lines is rendered again; the top comment must
+    // survive that too, with or without a blank line under it.
     const flow = { tools: ["c"], n: 1 };
-    expect(edited(lines("# top", "", "tools: [a, b]", "n: 1"), set([], flow))).toEqual({
+    expect(edited(lines("# top", "", "tools: [a,", "  b]", "n: 1"), set([], flow))).toEqual({
       text: lines("# top", "", "tools:", "  - c", "n: 1"),
       layout: "reformatted",
     });
-    expect(edited(lines("# top", "tools: [a, b]", "n: 1"), set([], flow)).text).toBe(
+    expect(edited(lines("# top", "tools: [a,", "  b]", "n: 1"), set([], flow)).text).toBe(
       lines("# top", "tools:", "  - c", "n: 1"),
     );
-    expect(edited(lines("# top", "- [a, b]", "- y"), set([], [["z"]])).text).toBe(
+    expect(edited(lines("# top", "- [a,", "  b]", "- y"), set([], [["z"]])).text).toBe(
       lines("# top", "- - z"),
     );
   });
@@ -150,13 +150,6 @@ verifies("yaml.edit-preserve", () => {
       text: "\uFEFFb: 2\nc: 3\n",
       layout: "kept",
     });
-  });
-
-  it("handles an edit inside a flow list", () => {
-    const result = edited("# tools\ntools: [a, b]\n", set(["tools", 0], "c"));
-    expect(result.layout).toBe("reformatted");
-    expect(result.text).toContain("# tools");
-    expect(dataOf(result.text)).toEqual({ tools: ["c", "b"] });
   });
 
   it("keeps the comment on a key's line when it replaces the value under it", () => {
@@ -206,8 +199,8 @@ verifies("yaml.edit-line-endings", () => {
   });
 
   it("keeps \\r\\n when it renders the document again", () => {
-    expect(edited(windows("# tools", "tools: [x]"), set(["tools", 0], "y"))).toEqual({
-      text: windows("# tools", "tools: [ y ]"),
+    expect(edited(windows("# tools", "tools: [x,", "  z]"), insert(["tools", 0], "y"))).toEqual({
+      text: windows("# tools", "tools: [ y, x, z ]"),
       layout: "reformatted",
     });
   });
@@ -389,3 +382,78 @@ function unwrapProblem<T, E>(result: { ok: true; value: T } | { ok: false; error
   }
   return result.error;
 }
+
+verifies("yaml.edit-style", () => {
+  it("indents new lines the way the file does", () => {
+    const four = lines("a:", "    b: 1", "c: 2");
+    expect(edited(four, set(["c"], { d: { e: 1 } }))).toEqual({
+      text: lines("a:", "    b: 1", "c:", "    d:", "        e: 1"),
+      layout: "kept",
+    });
+    expect(edited(four, set(["n"], ["x"])).text).toBe(
+      lines("a:", "    b: 1", "c: 2", "n:", "    - x"),
+    );
+  });
+
+  it("puts a list's dashes at its key's column when the file does", () => {
+    const text = lines("steps:", "- a", "n: 1");
+    expect(edited(text, set(["n"], { tools: ["x"] }))).toEqual({
+      text: lines("steps:", "- a", "n:", "  tools:", "  - x"),
+      layout: "kept",
+    });
+    const four = lines("a:", "    b: 1", "s:", "  - x");
+    expect(edited(four, set(["t"], ["y"])).text).toBe(
+      lines("a:", "    b: 1", "s:", "  - x", "t:", "  - y"),
+    );
+  });
+
+  it("keeps the library's style in a file with nothing nested", () => {
+    expect(edited("a: 1\n", set(["b"], { c: ["d"] })).text).toBe(
+      lines("a: 1", "b:", "  c:", "    - d"),
+    );
+  });
+
+  it("writes a flow collection again on its line", () => {
+    expect(edited(lines("# tools", "tools: [a, b] # the tools"), set(["tools", 0], "c"))).toEqual({
+      text: lines("# tools", "tools: [c, b] # the tools"),
+      layout: "kept",
+    });
+    expect(edited("tools: [ a, b ]\n", insert(["tools", 2], "c"))).toEqual({
+      text: "tools: [ a, b, c ]\n",
+      layout: "kept",
+    });
+    expect(edited("env: {A: 1, B: 2}\nn: 1\n", del(["env", "A"]), set(["env", "C"], [3]))).toEqual({
+      text: "env: {B: 2, C: [3]}\nn: 1\n",
+      layout: "kept",
+    });
+    expect(edited("[a, {b: 1}]\n", set([1, "b"], 2), del([0]))).toEqual({
+      text: "[{b: 2}]\n",
+      layout: "kept",
+    });
+    expect(edited("tools: [a, b]\n", set(["tools"], ["c"]))).toEqual({
+      text: "tools: [c]\n",
+      layout: "kept",
+    });
+  });
+
+  it("changes only a scalar's characters in a flow collection when it can", () => {
+    expect(edited("tools: ['a',  \"b\"]\n", set(["tools", 1], "c")).text).toBe(
+      "tools: ['a',  \"c\"]\n",
+    );
+    expect(edited("tools: [a, b]\n", set(["tools", 0], "x, y")).text).toBe('tools: ["x, y", b]\n');
+  });
+
+  it("falls back when a flow collection over lines or a value that needs them is written", () => {
+    const text = lines("tools: [a,", "  b]");
+    expect(edited(text, set(["tools", 0], "c"))).toEqual({
+      text: lines("tools: [c,", "  b]"),
+      layout: "kept",
+    });
+    const result = edited(text, insert(["tools", 0], "c"));
+    expect(result.layout).toBe("reformatted");
+    expect(dataOf(result.text)).toEqual({ tools: ["c", "a", "b"] });
+    const multi = edited("tools: [a]\n", set(["tools", 0], "x\ny"));
+    expect(multi.layout).toBe("reformatted");
+    expect(dataOf(multi.text)).toEqual({ tools: ["x\ny"] });
+  });
+});

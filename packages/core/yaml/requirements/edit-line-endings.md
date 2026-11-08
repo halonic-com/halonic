@@ -11,5 +11,5 @@ When `editYaml` writes new lines into a text whose line breaks are all `\r\n`, t
 - Given `a: 1` and `b: 2` with `\r\n` line breaks, when `set ["c"]` to `3` runs, then `c: 3` is added with `\r\n` and the layout is `kept`.
 - Given a list with `\r\n` line breaks, when `insert` and `delete` run, then every line break is still `\r\n` and the layout is `kept`.
 - Given `a: 1` with `\r\n` and `b: 2` with `\n`, when `set ["c"]` to `3` runs, then the layout is `reformatted` and the data is right.
-- Given a flow list `[x]` in a text with `\r\n` line breaks, when its item is set, then the layout is `reformatted` and every line break is still `\r\n`.
+- Given a flow list over two lines in a text with `\r\n` line breaks, when an item is inserted, then the layout is `reformatted` and every line break is still `\r\n`.
 - Given random data written with `writeYamlFile` with `\r\n` line breaks, when any fitting edit is spliced, then the text has no `\n` without a `\r` before it.

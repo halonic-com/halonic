@@ -2,6 +2,7 @@ import { unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import fc from "fast-check";
 import { expect, it, vi } from "vitest";
+import { stringify } from "yaml";
 import { editYaml } from "./edit.ts";
 import { applyEditToData, type YamlEdit } from "./edit-data.ts";
 import { readYaml, type YamlPath } from "./read.ts";
@@ -256,6 +257,43 @@ verifies("yaml.edit-preserve-entries", () => {
         const entry = typeof key === "number" ? [at.value] : { [key]: at.value };
         const ownLines = countLines(writeYamlFile(entry), false);
         expect(countLines(text, true) - countLines(spliced, true)).toBe(ownLines - 1);
+      }),
+      { numRuns: 300 },
+    );
+  });
+});
+
+/** True when a map in `data` has a key like `"0"`, which JavaScript orders first. */
+function hasIndexKey(data: unknown): boolean {
+  return valuesOf(data).some(
+    (at) => isRecord(at.value) && Object.keys(at.value).some((key) => /^(0|[1-9]\d*)$/.test(key)),
+  );
+}
+
+/** How far in each line of `text` starts. */
+function indentsOf(text: string): number[] {
+  return text.split("\n").map((line) => line.length - line.trimStart().length);
+}
+
+verifies("yaml.edit-style", () => {
+  /** A map and a list under keys up front, so the file shows its style. */
+  const styledData = fileData.map((data) => ({ "~style": { map: { a: 1 }, list: [1] }, ...data }));
+  const style = fc.record({ indent: fc.integer({ min: 2, max: 4 }), indentSeq: fc.boolean() });
+
+  it("indents every edit the way the file does, as the library would", () => {
+    const fileAndEdit = styledData.chain((data) => fc.tuple(fc.constant(data), editFor(data)));
+    fc.assert(
+      fc.property(fileAndEdit, style, ([data, edit], indent) => {
+        const text = stringify(data, { lineWidth: 100, ...indent });
+        const expected = unwrap(applyEditToData(data, edit));
+        // JavaScript puts keys like "0" first, so the library's order differs from the file's.
+        fc.pre(!hasIndexKey(expected));
+        const spliced = spliceEdit(text, edit) ?? "";
+        expect(unwrap(readYaml(spliced)).data).toEqual(expected);
+        // Quotes may differ (a quoted text keeps its quotes); the indents may not.
+        expect(indentsOf(spliced)).toEqual(
+          indentsOf(stringify(expected, { lineWidth: 100, ...indent })),
+        );
       }),
       { numRuns: 300 },
     );

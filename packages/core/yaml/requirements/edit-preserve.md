@@ -15,4 +15,3 @@ When `editYaml` applies a `set`, the layer shall change only the text of the val
 - Given a `|` block text, when `set` gives another text with line breaks, then it stays a `|` block.
 - Given each of the 20 example files at `784f78d`, when every leaf is set to itself, then no byte changes; when each leaf is set to a new value, then the layout is `kept`, the data is right and only the leaf's lines change.
 - Given random data written with `writeYamlFile` and a comment on every line, also with Windows line endings, when a leaf is set, then only the leaf's line changes.
-- Given a value inside a flow list `[a, b]`, when it is set, then the layout is `reformatted` and the data is right.

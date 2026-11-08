@@ -1,16 +1,18 @@
 import { deepEqual } from "@halonicjs/std";
-import { isCollection, isMap, isScalar, isSeq, type Node } from "yaml";
-import type { YamlEdit } from "./edit-data.ts";
+import { isMap, isScalar, isSeq, type Node } from "yaml";
+import { applyEditToData, type YamlEdit } from "./edit-data.ts";
 import { lineEndingOf } from "./edit-text.ts";
 import type { YamlPath } from "./read.ts";
 import {
   addPair,
   deleteEntry,
+  flowAncestor,
   insertItem,
-  insideFlow,
+  isFilledFlow,
   nodeAt,
   type Parsed,
   parse,
+  replaceFlow,
   replaceScalar,
   replaceValue,
 } from "./splice-node.ts";
@@ -20,10 +22,11 @@ import {
  * key order, quoting and blank lines elsewhere stay byte for byte. Expects an
  * edit that `applyEditToData` accepted on this text's data.
  *
- * New lines get the text's line ending.
+ * New lines get the text's line ending and indent style. An edit inside a
+ * flow collection like `[a, b]` writes that collection again on its line.
  *
  * @returns the new text, or `undefined` for a layout it doesn't handle yet
- *   (an edit inside a flow collection, or a text that mixes line endings)
+ *   (a flow collection over several lines, or a text that mixes line endings)
  */
 export function spliceEdit(text: string, edit: YamlEdit): string | undefined {
   switch (lineEndingOf(text)) {
@@ -41,8 +44,9 @@ export function spliceEdit(text: string, edit: YamlEdit): string | undefined {
 /** `spliceEdit` for a text whose line breaks are all `\n`. */
 function spliceLines(text: string, edit: YamlEdit): string | undefined {
   const parsed = parse(text);
-  if (insideFlow(parsed, edit.path)) {
-    return undefined;
+  const flow = flowAncestor(parsed, edit.path);
+  if (flow !== undefined) {
+    return spliceInFlow(parsed, edit, flow);
   }
   switch (edit.kind) {
     case "set":
@@ -57,6 +61,36 @@ function spliceLines(text: string, edit: YamlEdit): string | undefined {
         edit.value,
       );
   }
+}
+
+/**
+ * An edit inside the flow collection at `edit.path.slice(0, length)`. A set
+ * of one scalar changes only its characters, when that reads back right;
+ * anything else writes the whole collection again.
+ */
+function spliceInFlow(parsed: Parsed, edit: YamlEdit, length: number): string | undefined {
+  const flowPath = edit.path.slice(0, length);
+  const flow = nodeAt(parsed, flowPath);
+  if (!isFilledFlow(flow)) {
+    return undefined;
+  }
+  const value = applyEditToData(flow.toJS(parsed.document), {
+    ...edit,
+    path: edit.path.slice(length),
+  });
+  if (!value.ok) {
+    return undefined;
+  }
+  const target = nodeAt(parsed, edit.path);
+  if (edit.kind === "set" && isScalar(target) && !isCollectionValue(edit.value)) {
+    // In flow style `,` and brackets end a plain text, so check the result.
+    const spliced = replaceScalar(parsed, target, edit.value);
+    const after = spliced === undefined ? undefined : nodeAt(parse(spliced), flowPath);
+    if (after != null && deepEqual(after.toJS(parsed.document), value.value)) {
+      return spliced;
+    }
+  }
+  return replaceFlow(parsed, flow, value.value);
 }
 
 /** Sets an existing value, or adds the first missing key with the maps under it. */
@@ -91,9 +125,8 @@ function setNode(
   if (isSeq(node) && node.flow !== true && isFilledList(value) && node.items.length > 0) {
     return applyAll(parsed.text, listChanges(path, current as unknown[], value));
   }
-  if (isCollection(node) && node.flow === true && node.items.length > 0) {
-    // Rewriting a hand-written `[a, b]` keeps its style: not handled yet.
-    return undefined;
+  if (isFilledFlow(node) && isCollectionValue(value)) {
+    return replaceFlow(parsed, node, value);
   }
   if (isScalar(node) && !isCollectionValue(value)) {
     const spliced = replaceScalar(parsed, node, value);

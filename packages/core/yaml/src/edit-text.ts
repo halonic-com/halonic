@@ -12,6 +12,19 @@ const minimumLineWidth = 40;
 const byteOrderMark = "\uFEFF";
 
 /**
+ * How the file indents its blocks, so new lines match it: the spaces per
+ * level, and whether a list under a key is indented (`indentSeq`) or starts
+ * at the key's column. These are the yaml library's own options.
+ */
+export interface IndentStyle {
+  readonly indent: number;
+  readonly indentSeq: boolean;
+}
+
+/** The library's defaults, which `writeYamlFile` writes with. */
+export const defaultIndentStyle: IndentStyle = { indent: 2, indentSeq: true };
+
+/**
  * The text's line ending: `\r\n` when every line break is one, `\n` when every
  * one is that or there are none, `undefined` when the text mixes them.
  */
@@ -182,34 +195,56 @@ export function keepLineComment(
 }
 
 /** `key: value` as whole lines, indented to `column`. Keys are quoted by the library, never pasted. */
-export function renderPair(key: string, value: unknown, column: number): string {
-  return indent(render({ [key]: value }, column), column, true);
+export function renderPair(
+  key: string,
+  value: unknown,
+  column: number,
+  style: IndentStyle,
+): string {
+  return indent(render({ [key]: value }, column, style), column, true);
 }
 
 /** `- value` as whole lines, indented to `column`. */
-export function renderItem(value: unknown, column: number): string {
-  return indent(render([value], column), column, true);
+export function renderItem(value: unknown, column: number, style: IndentStyle): string {
+  return indent(render([value], column, style), column, true);
 }
 
 /**
  * The text that follows a key to give it `value`: `: 1`, or `:` and the
  * indented lines of a list or map. It starts right after the key.
  */
-export function renderAfterKey(value: unknown, column: number): string {
+export function renderAfterKey(value: unknown, column: number, style: IndentStyle): string {
   // Render under a one-letter key and drop that key; the rest is ours.
-  const pair = render({ k: value }, column);
+  const pair = render({ k: value }, column, style);
   assert(pair.startsWith("k:"), "Expected the yaml library to write a plain key k.");
   return indent(pair.slice(1), column, false);
 }
 
 /** `- value` starting at the dash, with following lines indented to `column`. */
-export function renderAfterDash(value: unknown, column: number): string {
-  return indent(render([value], column), column, false);
+export function renderAfterDash(value: unknown, column: number, style: IndentStyle): string {
+  return indent(render([value], column, style), column, false);
 }
 
 /** A whole document. */
-export function renderDocument(value: unknown): string {
-  return render(value, 0);
+export function renderDocument(value: unknown, style: IndentStyle): string {
+  return render(value, 0, style);
+}
+
+/**
+ * A list or map in flow style on one line, like `[a, b]`, with spaces inside
+ * the brackets when `padding` is set. `undefined` when it needs more than one
+ * line, as a text with a line break does.
+ */
+export function renderFlow(value: unknown, padding: boolean): string | undefined {
+  // Line width 0: the library never breaks a flow collection over lines.
+  const text: string | undefined = stringify(value, {
+    collectionStyle: "flow",
+    flowCollectionPadding: padding,
+    lineWidth: 0,
+  });
+  assert(text !== undefined, "Expected a value checked by checkValue.");
+  const line = text.replace(/\n$/, "");
+  return line.includes("\n") ? undefined : line;
 }
 
 /**
@@ -224,13 +259,13 @@ export function renderScalar(value: unknown, quoteStyle: Scalar.Type | undefined
   if (keepQuotes) {
     node.type = quoteStyle;
   }
-  const text = render(node, column).replace(/\n$/, "");
+  const text = render(node, column, defaultIndentStyle).replace(/\n$/, "");
   return text.includes("\n") ? undefined : text;
 }
 
-function render(value: unknown, column: number): string {
+function render(value: unknown, column: number, style: IndentStyle): string {
   const lineWidth = Math.max(fileLineWidth - column, minimumLineWidth);
-  const text: string | undefined = stringify(value, { lineWidth });
+  const text: string | undefined = stringify(value, { lineWidth, ...style });
   assert(text !== undefined, "Expected a value checked by checkValue.");
   return text;
 }

@@ -15,7 +15,9 @@ import {
   aboveComments,
   alignComments,
   columnOf,
+  defaultIndentStyle,
   entryEnd,
+  type IndentStyle,
   insertLines,
   keepLineComment,
   keepsComments,
@@ -24,6 +26,7 @@ import {
   renderAfterDash,
   renderAfterKey,
   renderDocument,
+  renderFlow,
   renderItem,
   renderPair,
   renderScalar,
@@ -36,14 +39,72 @@ import type { YamlPath } from "./read.ts";
 // characters of what it touches and returns the new text, or `undefined`
 // when the layout is one it doesn't handle (the caller then falls back).
 
-/** A parsed text with the source tokens that give the offsets of `-` markers. */
+/**
+ * A parsed text with the source tokens that give the offsets of `-` markers,
+ * and the indent style new lines follow.
+ */
 export interface Parsed {
   readonly text: string;
   readonly document: Document;
+  readonly style: IndentStyle;
 }
 
 export function parse(text: string): Parsed {
-  return { text, document: parseDocument(text, { keepSourceTokens: true }) };
+  const document = parseDocument(text, { keepSourceTokens: true });
+  return { text, document, style: indentStyleOf(text, document.contents) };
+}
+
+/**
+ * The indent style of the first block map and the first block list that sit
+ * under a key: how far right of the key their entries start. A text without
+ * them gets the library's defaults, as `writeYamlFile` writes.
+ */
+function indentStyleOf(text: string, contents: unknown): IndentStyle {
+  const steps: { map?: number; list?: number } = {};
+  const visit = (node: unknown): void => {
+    if (isSeq(node)) {
+      node.items.forEach(visit);
+    }
+    if (!isMap(node) || node.flow === true) {
+      return;
+    }
+    for (const pair of node.items) {
+      const step = stepUnder(text, pair);
+      if (step !== undefined && isMap(pair.value)) {
+        steps.map ??= step;
+      } else if (step !== undefined) {
+        steps.list ??= step;
+      }
+      visit(pair.value);
+    }
+  };
+  visit(contents);
+  const indent = steps.map ?? (steps.list !== undefined && steps.list > 0 ? steps.list : 2);
+  if (steps.list === undefined) {
+    return { ...defaultIndentStyle, indent };
+  }
+  // Without `indentSeq` the library puts the `-` two columns left of the
+  // entries below it: at the key's column for an indent of 2.
+  return { indent, indentSeq: steps.list !== indent - 2 };
+}
+
+/**
+ * How many columns right of its key the block map or list under `pair`
+ * starts, on the next line. `undefined` for any other value.
+ */
+function stepUnder(text: string, pair: Pair): number | undefined {
+  const keyStart = (pair.key as Node | null)?.range?.[0];
+  const value = pair.value;
+  if (keyStart === undefined || !isCollection(value) || value.flow === true) {
+    return undefined;
+  }
+  const child = isMap(value)
+    ? (value.items[0]?.key as Node | undefined)?.range?.[0]
+    : dashOffset(value, 0);
+  if (child === undefined || !startsItsLine(text, child)) {
+    return undefined;
+  }
+  return columnOf(text, child) - columnOf(text, keyStart);
 }
 
 /**
@@ -65,18 +126,46 @@ export function nodeAt(parsed: Parsed, path: YamlPath): Node | null | undefined 
 }
 
 /**
- * True when a list or map in `path` (the node itself excluded) is written in
- * flow style, like `[a, b]`. An empty `{}` or `[]` doesn't count: adding to
- * it rewrites it in block style.
+ * How long the part of `path` is that leads to the outermost list or map in
+ * flow style, like `[a, b]`, that holds the node at `path` (the node itself
+ * excluded). `undefined` when there is none. An empty `{}` or `[]` doesn't
+ * count: adding to it rewrites it in block style.
  */
-export function insideFlow(parsed: Parsed, path: YamlPath): boolean {
+export function flowAncestor(parsed: Parsed, path: YamlPath): number | undefined {
   for (let length = 0; length < path.length; length++) {
-    const node = nodeAt(parsed, path.slice(0, length));
-    if (isCollection(node) && node.flow === true && node.items.length > 0) {
-      return true;
+    if (isFilledFlow(nodeAt(parsed, path.slice(0, length)))) {
+      return length;
     }
   }
-  return false;
+  return undefined;
+}
+
+/** A list or map in flow style with at least one entry. */
+export function isFilledFlow(node: unknown): node is YAMLMap | YAMLSeq {
+  return isCollection(node) && node.flow === true && node.items.length > 0;
+}
+
+/**
+ * Writes a flow collection that sits on one line again with `value`, on the
+ * same line and with the same spaces inside its brackets. `undefined` when it
+ * spans lines (it may hold comments) or `value` doesn't fit on one line.
+ */
+export function replaceFlow(
+  parsed: Parsed,
+  node: YAMLMap | YAMLSeq,
+  value: unknown,
+): string | undefined {
+  const { text } = parsed;
+  if (node.range == null) {
+    return undefined;
+  }
+  const [start, end] = node.range;
+  const old = text.slice(start, end);
+  if (old.includes("\n") || !/^[[{]/.test(old)) {
+    return undefined;
+  }
+  const rendered = renderFlow(value, old[1] === " ");
+  return rendered === undefined ? undefined : text.slice(0, start) + rendered + text.slice(end);
 }
 
 /** Replaces the value at `path` (which exists, or is the document) with freshly rendered text. */
@@ -85,9 +174,14 @@ export function replaceValue(parsed: Parsed, path: YamlPath, value: unknown): st
   if (path.length === 0) {
     const contents = parsed.document.contents;
     if (contents?.range == null) {
-      return insertLines(text, text.length, renderDocument(value));
+      return insertLines(text, text.length, renderDocument(value, parsed.style));
     }
-    return replaceRange(text, contents.range[0], contents.range[1], renderDocument(value));
+    return replaceRange(
+      text,
+      contents.range[0],
+      contents.range[1],
+      renderDocument(value, parsed.style),
+    );
   }
   const parent = nodeAt(parsed, path.slice(0, -1));
   const key = path[path.length - 1] as string | number;
@@ -99,7 +193,12 @@ export function replaceValue(parsed: Parsed, path: YamlPath, value: unknown): st
     }
     const valueEnd = (pair?.value as Node | null)?.range?.[1] ?? keyNode.range[1];
     const column = columnOf(text, keyNode.range[0]);
-    const kept = keepLineComment(text, keyNode.range[1], valueEnd, renderAfterKey(value, column));
+    const kept = keepLineComment(
+      text,
+      keyNode.range[1],
+      valueEnd,
+      renderAfterKey(value, column, parsed.style),
+    );
     return replaceRange(text, keyNode.range[1], kept.to, kept.rendered);
   }
   if (isSeq(parent) && typeof key === "number") {
@@ -108,7 +207,12 @@ export function replaceValue(parsed: Parsed, path: YamlPath, value: unknown): st
     if (dash === undefined || itemEnd === undefined) {
       return undefined;
     }
-    const kept = keepLineComment(text, dash, itemEnd, renderAfterDash(value, columnOf(text, dash)));
+    const kept = keepLineComment(
+      text,
+      dash,
+      itemEnd,
+      renderAfterDash(value, columnOf(text, dash), parsed.style),
+    );
     return replaceRange(text, dash, kept.to, kept.rendered);
   }
   return undefined;
@@ -155,7 +259,7 @@ export function addPair(
   return insertLines(
     parsed.text,
     at,
-    renderPair(key, value, columnOf(parsed.text, first.range[0])),
+    renderPair(key, value, columnOf(parsed.text, first.range[0]), parsed.style),
   );
 }
 
@@ -182,16 +286,20 @@ export function insertItem(
   const column = columnOf(text, dash);
   if (atEnd) {
     const lastEnd = (list.items[index - 1] as Node | null)?.range?.[1];
-    const lines = renderItem(value, column);
+    const lines = renderItem(value, column, parsed.style);
     return lastEnd === undefined ? undefined : insertLines(text, entryEnd(text, lastEnd), lines);
   }
   if (!startsItsLine(text, dash)) {
     // The first item of a list on a `- ` line (`- - a`): the new item takes
     // that place and the old one moves to the next line.
-    const item = `${renderAfterDash(value, column)}${" ".repeat(column)}`;
+    const item = `${renderAfterDash(value, column, parsed.style)}${" ".repeat(column)}`;
     return text.slice(0, dash) + item + text.slice(dash);
   }
-  return insertLines(text, aboveComments(text, lineStart(text, dash)), renderItem(value, column));
+  return insertLines(
+    text,
+    aboveComments(text, lineStart(text, dash)),
+    renderItem(value, column, parsed.style),
+  );
 }
 
 /** Removes the lines of the entry at `path`. The last entry leaves `{}` or `[]` behind. */
