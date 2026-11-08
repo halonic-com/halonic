@@ -29,8 +29,15 @@ verifies("check.guard-skips", () => {
     'test("a", () => { expect(run({ retry: 2 })).toBe(1); });',
     'test("a", () => { stream.skipWhile(x); });',
     'verifies("workflow.a", () => { test("b", () => {}); });',
+    'test("a", () => { expect(run({ test: { retry: 2 } })).toBe(1); });',
   ])("finds nothing in %s", (text) => {
     expect(kinds(text)).toEqual([]);
+  });
+
+  test("counts a test: { retry } anywhere in a Vitest config file", () => {
+    const text = "export default { test: { retry: 2 } };\n";
+    const configKinds = readTestFileFacts("vitest.config.ts", text).skips.map((use) => use.kind);
+    expect(configKinds).toEqual(["retry option"]);
   });
 });
 

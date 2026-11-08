@@ -35,6 +35,13 @@ const testFunctions = new Set(["test", "it", "describe", "suite", "bench"]);
 const modifiers = new Set(["skip", "only", "todo", "skipIf", "runIf", "fails"]);
 /** Test options that do the same. `retry` lets a flaky failure pass. */
 const options = new Set(["skip", "only", "todo", "fails", "retry"]);
+/** Functions that build a Vitest config, ours included. */
+const configFunctions = new Set(["defineConfig", "defineProject", "definePackageTestConfig"]);
+
+/** A package's Vitest config file, such as `vitest.config.ts`. */
+export function isVitestConfig(file: string): boolean {
+  return /(?:^|\/)vitest\.config\.[cm]?[jt]s$/.test(file);
+}
 
 /**
  * Reads a test file (or a Vitest config) with the TypeScript parser and
@@ -45,7 +52,8 @@ const options = new Set(["skip", "only", "todo", "fails", "retry"]);
  * - a `skip()` call, as in `ctx.skip()` or a `skip` taken from the context
  * - a `skip`, `only`, `todo`, `fails` or `retry` option passed to a test
  *   function, or in a Vitest config's `test` settings. Other objects, such
- *   as a workflow's own `retry` setting in test data, don't count
+ *   as a workflow's own `retry` setting in test data, or a `test: { retry }`
+ *   in a test file outside `defineConfig(…)`, don't count
  * - `vi.mock(…)` and `vi.doMock(…)`, with a string or an `import(…)`
  *
  * It also returns the inline snapshots and `coverage` settings, so the
@@ -93,7 +101,7 @@ function skipAt(node: ts.Node, source: ts.SourceFile): SkipUse | undefined {
   }
   if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) {
     const name = propertyName(node.name);
-    if (name !== undefined && options.has(name) && isTestOptions(node.parent)) {
+    if (name !== undefined && options.has(name) && isTestOptions(node.parent, source)) {
       return { kind: `${name} option`, line: lineOf(node, source) };
     }
   }
@@ -142,20 +150,41 @@ function isSkipCall(node: ts.CallExpression): boolean {
   );
 }
 
-/** An options object of a test function call, or a Vitest config's `test: { … }`. */
-function isTestOptions(node: ts.Node): boolean {
+/**
+ * An options object of a test function call, or a Vitest config's
+ * `test: { … }`. A `test: { … }` counts only in a Vitest config file or
+ * inside `defineConfig(…)` and the like: in a test file it may be test data.
+ */
+function isTestOptions(node: ts.Node, source: ts.SourceFile): boolean {
   if (!ts.isObjectLiteralExpression(node)) {
     return false;
   }
   const parent = node.parent;
   if (ts.isPropertyAssignment(parent)) {
-    return propertyName(parent.name) === "test";
+    return (
+      propertyName(parent.name) === "test" &&
+      (isVitestConfig(source.fileName) || isInsideConfigCall(parent))
+    );
   }
   return (
     ts.isCallExpression(parent) &&
     parent.arguments.includes(node) &&
     startsWithTestFunction(parent.expression)
   );
+}
+
+/** True when a call to one of `configFunctions` holds this node. */
+function isInsideConfigCall(node: ts.Node): boolean {
+  for (let ancestor = node.parent; !ts.isSourceFile(ancestor); ancestor = ancestor.parent) {
+    if (
+      ts.isCallExpression(ancestor) &&
+      ts.isIdentifier(ancestor.expression) &&
+      configFunctions.has(ancestor.expression.text)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function propertyName(name: ts.PropertyName): string | undefined {

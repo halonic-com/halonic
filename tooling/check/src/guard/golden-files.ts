@@ -24,7 +24,11 @@ export function checkGoldenFiles({ base, head }: Checkouts): GuardFinding[] {
       findings.push({ subject: file, file, message: `The golden file ${file} was ${change}.` });
     }
   }
-  for (const file of head.files.filter((path) => isTestFile(path) && isSourceFile(path))) {
+  // The merge base's files too: a deleted test file removes its inline snapshots.
+  const testFiles = new Set(
+    [...base.files, ...head.files].filter((path) => isTestFile(path) && isSourceFile(path)),
+  );
+  for (const file of [...testFiles].sort()) {
     const before = inlineSnapshots(base, file);
     const after = inlineSnapshots(head, file);
     if (before.join("\0") !== after.join("\0")) {

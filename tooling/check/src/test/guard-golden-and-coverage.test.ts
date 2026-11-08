@@ -39,6 +39,15 @@ verifies("check.guard-golden-files", () => {
     ]);
   });
 
+  test("fails when a deleted test file takes its inline snapshots with it", async () => {
+    const base = {
+      "src/timer.test.ts": 'test("a", () => { expect(1).toMatchInlineSnapshot(`1`); });\n',
+    };
+    expect(await errorsOf({ base, head: {}, checks })).toEqual([
+      `${workflowDirectory}/src/timer.test.ts: ${workflowDirectory}/src/timer.test.ts changes, adds or removes an inline snapshot (0 now, 1 on the merge base).`,
+    ]);
+  });
+
   test("passes unchanged golden files, and changes a note covers", async () => {
     const files = { [golden]: "started\n" };
     expect(await errorsOf({ base: files, head: files, checks })).toEqual([]);
@@ -82,6 +91,29 @@ verifies("check.guard-coverage", () => {
         `^${workflowDirectory}/src/index.ts: .* adds a coverage-ignore comment \\(1 now, 0`,
       ),
     );
+  });
+
+  test("fails when a package with a floor is deleted, and follows a moved one", async () => {
+    // A second package next to the workflow package, only on the merge base.
+    const timer = (folder: string): Record<string, string> => ({
+      [`../${folder}/package.json`]: JSON.stringify({ ...withFloor(90), name: "@halonicjs/timer" }),
+    });
+    const timerManifest = "packages/core/timer/package.json";
+    expect(await errorsOf({ base: timer("timer"), head: {}, checks })).toEqual([
+      `${timerManifest}: ${timerManifest} was deleted, and with it the coverage floor for lines, branches.`,
+    ]);
+    expect(await errorsOf({ base: timer("timer"), head: timer("timers"), checks })).toEqual([]);
+  });
+
+  test("reads comments with the parser, past a regex that holds a backtick", async () => {
+    const head = {
+      "src/index.ts": "export const tick = /`/;\n/* v8 ignore next */\nexport const y = 2;\n",
+    };
+    const { errors } = await runGuard({ base: {}, head, checks });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/adds a coverage-ignore comment \(1 now, 0/);
+    const template = { "src/index.ts": "export const x = `${1} // v8 ignore next`;\n" };
+    expect(await errorsOf({ base: {}, head: template, checks })).toEqual([]);
   });
 
   test("passes ignore comments the merge base had, and the words in a string or prose", async () => {

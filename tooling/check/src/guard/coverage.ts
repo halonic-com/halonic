@@ -15,7 +15,8 @@ const ignoreDirective = /^\/[/*]\s*(?:v8|c8|istanbul)\s+ignore\b/;
 
 /**
  * Plan 9.3, point 3: coverage may not be loosened without a note:
- * - a lower coverage floor in a package's `"halonic": { "coverage": … }`
+ * - a lower coverage floor in a package's `"halonic": { "coverage": … }`,
+ *   or a floor that goes away with its package
  * - new coverage-ignore comments (`v8 ignore`, `c8 ignore`, `istanbul ignore`)
  * - changed `coverage` settings in a Vitest config or the shared preset
  */
@@ -30,8 +31,14 @@ export function checkCoverage(checkouts: Checkouts): GuardFinding[] {
 function lowerFloors({ base, head }: Checkouts): GuardFinding[] {
   const findings: GuardFinding[] = [];
   for (const before of base.packages) {
-    const after = head.packages.find((pkg) => pkg.directory === before.directory);
+    // A moved package keeps its name, so follow it by name too.
+    const after =
+      head.packages.find((pkg) => pkg.directory === before.directory) ??
+      head.packages.find(
+        (pkg) => before.manifest.name !== undefined && pkg.manifest.name === before.manifest.name,
+      );
     if (after === undefined) {
+      findings.push(...deletedFloor(before));
       continue;
     }
     const floorAfter = floorOf(after);
@@ -47,6 +54,21 @@ function lowerFloors({ base, head }: Checkouts): GuardFinding[] {
     }
   }
   return findings;
+}
+
+/** A deleted package takes its floor with it; a note says that was meant. */
+function deletedFloor(pkg: WorkspacePackage): GuardFinding[] {
+  const metrics = Object.keys(floorOf(pkg));
+  if (metrics.length === 0) {
+    return [];
+  }
+  return [
+    {
+      subject: pkg.manifestPath,
+      file: pkg.manifestPath,
+      message: `${pkg.manifestPath} was deleted, and with it the coverage floor for ${metrics.join(", ")}.`,
+    },
+  ];
 }
 
 /** The numbers in a package's `"halonic": { "coverage": { … } }`. */
@@ -87,28 +109,41 @@ function newIgnoreComments({ base, head }: Checkouts): GuardFinding[] {
   return findings;
 }
 
-/** The lines of the coverage-ignore comments in a file, read with the TypeScript scanner. */
+/**
+ * The lines of the coverage-ignore comments in a file, read with the
+ * TypeScript parser. The bare scanner has no parser context, so a regex
+ * holding a backtick could make it read code as a template, and miss a
+ * comment.
+ */
 function ignoreComments(context: CheckContext, file: string): number[] {
   const text = context.read(file);
   if (!/(?:v8|c8|istanbul)\s+ignore/.test(text)) {
     return [];
   }
-  const scanner = ts.createScanner(
-    ts.ScriptTarget.Latest,
-    false,
-    ts.LanguageVariant.Standard,
-    text,
-  );
-  const lines: number[] = [];
-  for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
-    const isComment =
-      token === ts.SyntaxKind.SingleLineCommentTrivia ||
-      token === ts.SyntaxKind.MultiLineCommentTrivia;
-    if (isComment && ignoreDirective.test(scanner.getTokenText())) {
-      lines.push(text.slice(0, scanner.getTokenStart()).split("\n").length);
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const starts = new Set<number>();
+  const record = (pos: number, end: number): void => {
+    if (ignoreDirective.test(text.slice(pos, end))) {
+      starts.add(pos);
     }
-  }
-  return lines;
+  };
+  const visit = (node: ts.Node): void => {
+    // A doc comment is a comment already; its parts are not code.
+    if ((node.flags & ts.NodeFlags.JSDoc) !== 0) {
+      return;
+    }
+    const children = node.getChildren(source);
+    // Comments sit in the trivia before a token. JSX text has none, only text.
+    if (children.length === 0 && node.kind !== ts.SyntaxKind.JsxText) {
+      ts.forEachLeadingCommentRange(text, node.pos, record);
+      ts.forEachTrailingCommentRange(text, node.pos, record);
+    }
+    children.forEach(visit);
+  };
+  visit(source);
+  return [...starts]
+    .sort((left, right) => left - right)
+    .map((pos) => source.getLineAndCharacterOfPosition(pos).line + 1);
 }
 
 function changedSettings({ base, head }: Checkouts): GuardFinding[] {
