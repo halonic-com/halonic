@@ -32,7 +32,7 @@ because the reader runs on other people's workspaces.
 ## Writing
 
 - `writeYamlFile(data)`: workspace files, line width 100.
-- `writeFrontMatter(fields)`: the front matter of `SKILL.md`, library
+- `writeFrontMatter({ name, description })`: the front matter of `SKILL.md`, library
   defaults, trimmed. The caller adds the `---` lines.
 
 Both write exactly what the old app wrote (yaml 2.9.1, pinned). Neither keeps
