@@ -1,0 +1,11 @@
+{
+  "//": "The host preset: Web globals only, no Node types, so the suites also run in workerd (plan 4.4). Node-only helpers go in src/node/.",
+  "extends": "@halonicjs/tooling-config/tsconfig/host.json",
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
+}

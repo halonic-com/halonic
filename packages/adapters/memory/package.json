@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-memory",
   "private": true,
   "type": "module",
-  "description": "In-memory implementations of the ports, for tests, the browser demo and the parity harness.",
+  "description": "In-memory implementations of the ports, for tests, the browser demo and the parity harness. They pass the same contract suites as every other adapter.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -11,7 +11,11 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
   "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
