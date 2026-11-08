@@ -1,0 +1,28 @@
+{
+  "name": "@halonicjs/tool-listings",
+  "private": true,
+  "type": "module",
+  "description": "Reads a tool listing from a server the workspace chose: rebuilds each listed tool from an allow-list and marks its texts untrusted. No I/O.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
