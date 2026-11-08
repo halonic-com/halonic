@@ -2,7 +2,7 @@ import { loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem, type Problem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules } from "../rules/all.ts";
-import { phaseOneSlots } from "../rules/phase-one-slots.ts";
+import { inactiveChecks } from "../rules/inactive-checks.ts";
 
 /**
  * pnpm check [rule ...]
@@ -30,7 +30,7 @@ function main(argv: readonly string[]): number {
   for (const problem of problems) {
     console.log(annotate ? formatAnnotation(problem) : formatProblem(problem));
   }
-  for (const [name, purpose] of Object.entries(phaseOneSlots)) {
+  for (const [name, purpose] of Object.entries(inactiveChecks)) {
     if (selected.length === 0 || selected.includes(name)) {
       console.log(`${name}: not active yet. It will check that ${purpose}.`);
     }
