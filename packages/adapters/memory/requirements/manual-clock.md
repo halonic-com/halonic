@@ -1,4 +1,4 @@
-# adapter-memory.manual-clock
+# memory.manual-clock
 
 - Status: active
 - Since: 0.1.0

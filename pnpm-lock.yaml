@@ -289,6 +289,9 @@ importers:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
@@ -624,6 +627,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../spec
     devDependencies:
       '@halonicjs/std':
         specifier: workspace:*

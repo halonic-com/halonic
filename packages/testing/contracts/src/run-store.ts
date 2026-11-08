@@ -1,5 +1,6 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { completed, entered, eventTime, failed, started, waiting } from "./run-events.ts";
 
@@ -23,13 +24,15 @@ export function runStoreContract(
   options: RunStoreContractOptions = {},
 ): void {
   const settle = options.settleList ?? (async () => {});
-  describe(`RunStore contract (contracts.run-store): ${name}`, () => {
-    appendCases(make, settle);
-    conflictCases(make);
-    refusalCases(make);
-    readCases(make);
-    snapshotCases(make);
-    listCases(make, settle);
+  verifies("contracts.run-store", () => {
+    describe(`RunStore contract: ${name}`, () => {
+      appendCases(make, settle);
+      conflictCases(make);
+      refusalCases(make);
+      readCases(make);
+      snapshotCases(make);
+      listCases(make, settle);
+    });
   });
 }
 

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3; `Secrets` port v1
 
-Every `Secrets` adapter shall give a configured secret's value, or `null` for one that isn't configured, and treat two names that differ only in upper and lower case, or in `-` versus `_`, as the same secret. When a name isn't `^[A-Za-z][A-Za-z0-9_-]*$` or is longer than 128 characters, `get` shall reject with a `RangeError`.
+Where an adapter implements `Secrets`, it shall give a configured secret's value, or `null` for one that isn't configured, and treat two names that differ only in upper and lower case, or in `-` versus `_`, as the same secret. When a name isn't `^[A-Za-z][A-Za-z0-9_-]*$` or is longer than 128 characters, `get` shall reject with a `RangeError`.
 
 ## Examples
 

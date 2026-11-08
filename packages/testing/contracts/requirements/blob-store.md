@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3; `BlobStore` port v1; old `784f78d:packages/testing/port-contracts` `blobStoreContract`
 
-Every `BlobStore` adapter shall store bytes under the lowercase hex SHA-256 of the bytes, return their size and this call's media type, keep its own copy of the bytes, and give `null` for an unknown hash. When a hash isn't 64 lowercase hex characters, `get` shall give `null`. When a media type isn't `type/subtype` of HTTP token characters, `put` shall reject with a `RangeError` and store nothing.
+Where an adapter implements `BlobStore`, it shall store bytes under the lowercase hex SHA-256 of the bytes, return their size and this call's media type, keep its own copy of the bytes, and give `null` for an unknown hash. When a hash isn't 64 lowercase hex characters, `get` shall give `null`. When a media type isn't `type/subtype` of HTTP token characters, `put` shall reject with a `RangeError` and store nothing.
 
 ## Examples
 

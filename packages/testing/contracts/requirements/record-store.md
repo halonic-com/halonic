@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3; `RecordStore` port v1; multi-cloud ADR 5.3
 
-Every `RecordStore` adapter shall give every change to a collection, oldest first and exactly as appended, keep collections apart even when one call changes several, give `[]` for an unknown collection, and keep its own copy of the changes. It shall treat a collection name as a value only, so a name such as `../leads` or `leads; DROP TABLE x` is just another collection.
+Where an adapter implements `RecordStore`, it shall give every change to a collection, oldest first and exactly as appended, keep collections apart even when one call changes several, give `[]` for an unknown collection, and keep its own copy of the changes. It shall treat a collection name as a value only, so a name such as `../leads` or `leads; DROP TABLE x` is just another collection.
 
 ## Examples
 

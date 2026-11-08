@@ -1,4 +1,5 @@
 import type { DefinitionSource, DefinitionStore } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 
 /** Workspace files to start with, by relative path. The suite passes them in, so read-only sources can be tested too. */
@@ -41,50 +42,52 @@ const workspace: DefinitionFiles = {
  * {@link DefinitionSource} adapter passes, including read-only ones.
  */
 export function definitionSourceContract(name: string, make: MakeDefinitionSource): void {
-  describe(`DefinitionSource contract (contracts.definition-source): ${name}`, () => {
-    it("reads a file's text, and null for a missing file", async () => {
-      const source = await make(workspace);
-      expect(await source.read("workspace.yaml")).toBe("id: acme\n");
-      expect(await source.read("hubs/a/agents/x.agent.yaml")).toBe("id: x\n");
-      expect(await source.read("missing.yaml")).toBeNull();
-      expect(await source.read("hubs/a")).toBeNull();
-    });
+  verifies("contracts.definition-source", () => {
+    describe(`DefinitionSource contract: ${name}`, () => {
+      it("reads a file's text, and null for a missing file", async () => {
+        const source = await make(workspace);
+        expect(await source.read("workspace.yaml")).toBe("id: acme\n");
+        expect(await source.read("hubs/a/agents/x.agent.yaml")).toBe("id: x\n");
+        expect(await source.read("missing.yaml")).toBeNull();
+        expect(await source.read("hubs/a")).toBeNull();
+      });
 
-    it("lists every file recursively, sorted, relative to the root", async () => {
-      const source = await make(workspace);
-      expect(await source.list()).toEqual([
-        "hubs/a/agents/x.agent.yaml",
-        "hubs/a/hub.yaml",
-        "hubs/ab/hub.yaml",
-        "workspace.yaml",
-      ]);
-      expect(await source.list("hubs/a")).toEqual([
-        "hubs/a/agents/x.agent.yaml",
-        "hubs/a/hub.yaml",
-      ]);
-      expect(await source.list("hubs/a/agents")).toEqual(["hubs/a/agents/x.agent.yaml"]);
-    });
+      it("lists every file recursively, sorted, relative to the root", async () => {
+        const source = await make(workspace);
+        expect(await source.list()).toEqual([
+          "hubs/a/agents/x.agent.yaml",
+          "hubs/a/hub.yaml",
+          "hubs/ab/hub.yaml",
+          "workspace.yaml",
+        ]);
+        expect(await source.list("hubs/a")).toEqual([
+          "hubs/a/agents/x.agent.yaml",
+          "hubs/a/hub.yaml",
+        ]);
+        expect(await source.list("hubs/a/agents")).toEqual(["hubs/a/agents/x.agent.yaml"]);
+      });
 
-    it("lists nothing for a folder that doesn't exist", async () => {
-      const source = await make(workspace);
-      expect(await source.list("hubs/missing")).toEqual([]);
-      expect(await (await make({})).list()).toEqual([]);
-    });
+      it("lists nothing for a folder that doesn't exist", async () => {
+        const source = await make(workspace);
+        expect(await source.list("hubs/missing")).toEqual([]);
+        expect(await (await make({})).list()).toEqual([]);
+      });
 
-    it("refuses an unsafe path with a RangeError", async () => {
-      const source = await make(workspace);
-      for (const path of unsafeDefinitionPaths) {
-        await expect(source.read(path), path).rejects.toThrow(RangeError);
-        await expect(source.list(path), path).rejects.toThrow(RangeError);
-      }
-    });
+      it("refuses an unsafe path with a RangeError", async () => {
+        const source = await make(workspace);
+        for (const path of unsafeDefinitionPaths) {
+          await expect(source.read(path), path).rejects.toThrow(RangeError);
+          await expect(source.list(path), path).rejects.toThrow(RangeError);
+        }
+      });
 
-    it("reports a version that stays the same while nothing changes", async () => {
-      const source = await make(workspace);
-      const version = await source.version();
-      expect(version).not.toBe("");
-      expect(await source.version()).toBe(version);
-      expect(typeof source.location).toBe("string");
+      it("reports a version that stays the same while nothing changes", async () => {
+        const source = await make(workspace);
+        const version = await source.version();
+        expect(version).not.toBe("");
+        expect(await source.version()).toBe(version);
+        expect(typeof source.location).toBe("string");
+      });
     });
   });
 }
@@ -93,9 +96,11 @@ export function definitionSourceContract(name: string, make: MakeDefinitionSourc
 export function definitionStoreContract(name: string, make: MakeDefinitionStore): void {
   definitionSourceContract(name, make);
 
-  describe(`DefinitionStore contract (contracts.definition-store): ${name}`, () => {
-    writeCases(make);
-    unsafeWriteCases(make);
+  verifies("contracts.definition-store", () => {
+    describe(`DefinitionStore contract: ${name}`, () => {
+      writeCases(make);
+      unsafeWriteCases(make);
+    });
   });
 }
 

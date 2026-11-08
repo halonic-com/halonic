@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { unsafeDefinitionPaths } from "./definition-store.ts";
 
-describe("unsafeDefinitionPaths (contracts.definition-source)", () => {
+verifies("contracts.definition-source", () => {
   // The suite is only as strong as this list: each kind of unsafe path from the port doc is in it.
   it.each([
     ["absolute", (path: string) => path.startsWith("/")],

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3; `TokenStore` port v1
 
-Every `TokenStore` adapter shall create or replace a token on `set`, give it on `get` (or `null` when there is none), delete it on `remove` (a missing token is not an error), and treat names that differ only in case or in `-` versus `_` as the same token. When a name breaks the secret name rule, every method shall reject with a `RangeError`.
+Where an adapter implements `TokenStore`, it shall create or replace a token on `set`, give it on `get` (or `null` when there is none), delete it on `remove` (a missing token is not an error), and treat names that differ only in case or in `-` versus `_` as the same token. When a name breaks the secret name rule, every method shall reject with a `RangeError`.
 
 ## Examples
 

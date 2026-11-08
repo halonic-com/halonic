@@ -1,4 +1,4 @@
-# adapter-memory.ids
+# memory.ids
 
 - Status: active
 - Since: 0.1.0

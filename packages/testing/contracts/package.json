@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@halonicjs/events": "workspace:*",
-    "@halonicjs/ports": "workspace:*"
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*"
   },
   "peerDependencies": {
     "vitest": "catalog:"

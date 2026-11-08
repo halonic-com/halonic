@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { ManualClock } from "./clock.ts";
 import { fixedIds } from "./ids.ts";
 import { MemorySecrets } from "./secrets.ts";
 
-describe("ManualClock (adapter-memory.manual-clock)", () => {
+verifies("memory.manual-clock", () => {
   it("starts at 2026-01-01 and stands still until it is moved", () => {
     const clock = new ManualClock();
     expect(clock.now().toISOString()).toBe("2026-01-01T00:00:00.000Z");
@@ -28,11 +29,13 @@ describe("ManualClock (adapter-memory.manual-clock)", () => {
   });
 });
 
-describe("MemorySecrets and fixedIds (adapter-memory.secrets, adapter-memory.ids)", () => {
+verifies("memory.secrets", () => {
   it("refuses a configured secret with a bad name", () => {
     expect(() => new MemorySecrets({ "bad name": "x" })).toThrow(RangeError);
   });
+});
 
+verifies("memory.ids", () => {
   it("counts each prefix on its own from 1", () => {
     const ids = fixedIds();
     expect([ids.next("run"), ids.next("run"), ids.next("event")]).toEqual([

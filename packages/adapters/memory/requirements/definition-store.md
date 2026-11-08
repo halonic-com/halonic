@@ -1,4 +1,4 @@
-# adapter-memory.definition-store
+# memory.definition-store
 
 - Status: active
 - Since: 0.1.0

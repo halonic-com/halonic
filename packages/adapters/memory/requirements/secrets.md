@@ -1,4 +1,4 @@
-# adapter-memory.secrets
+# memory.secrets
 
 - Status: active
 - Since: 0.1.0

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3; `IdGenerator` port v1
 
-Every `IdGenerator` adapter shall give ids that start with the prefix asked for and never give the same id twice, also when one prefix starts with another.
+Where an adapter implements `IdGenerator`, it shall give ids that start with the prefix asked for and never give the same id twice, also when one prefix starts with another.
 
 ## Examples
 

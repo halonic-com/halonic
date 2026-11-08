@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3 ("every port has a contract test suite"); `DefinitionSource` port v1
 
-Every `DefinitionSource` adapter, read-only ones included, shall read a file's text or give `null` for a missing file, list file paths recursively, sorted and relative to the store root, give `[]` for a folder that doesn't exist, and keep its version the same while nothing changes. When a path is absolute, has a `.`, `..` or empty segment, or contains a backslash or NUL, the source shall reject with a `RangeError`.
+Where an adapter implements `DefinitionSource`, read-only ones included, it shall read a file's text or give `null` for a missing file, list file paths recursively, sorted and relative to the store root, give `[]` for a folder that doesn't exist, and keep its version the same while nothing changes. When a path is absolute, has a `.`, `..` or empty segment, or contains a backslash or NUL, the source shall reject with a `RangeError`.
 
 ## Examples
 

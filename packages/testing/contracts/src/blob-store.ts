@@ -1,4 +1,5 @@
 import type { BlobStore } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 
 /** Creates an empty store under test. */
@@ -40,9 +41,11 @@ const badHashes: readonly string[] = [
 
 /** The contract every {@link BlobStore} adapter passes. */
 export function blobStoreContract(name: string, make: MakeBlobStore): void {
-  describe(`BlobStore contract (contracts.blob-store): ${name}`, () => {
-    storingCases(make);
-    refusalCases(make);
+  verifies("contracts.blob-store", () => {
+    describe(`BlobStore contract: ${name}`, () => {
+      storingCases(make);
+      refusalCases(make);
+    });
   });
 }
 

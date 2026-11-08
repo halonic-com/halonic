@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3; `DefinitionStore` port v1; old `784f78d:packages/testing/port-contracts` `definitionStoreContract`
 
-Every `DefinitionStore` adapter shall pass `contracts.definition-source`, create or replace a file on `write`, delete it on `remove` (a missing file is not an error), and change its version when the content changes. When `write` or `remove` gets an unsafe path, the store shall reject with a `RangeError` and change nothing.
+Where an adapter implements `DefinitionStore`, it shall pass `contracts.definition-source`, create or replace a file on `write`, delete it on `remove` (a missing file is not an error), and change its version when the content changes. When `write` or `remove` gets an unsafe path, the store shall reject with a `RangeError` and change nothing.
 
 ## Examples
 

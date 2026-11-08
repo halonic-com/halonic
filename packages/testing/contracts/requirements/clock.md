@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; plan 4.3; `Clock` port v1
 
-Every `Clock` adapter shall give a valid time that doesn't go backwards from one call to the next, as a new `Date` on every call, so a caller that changes the `Date` it got changes nothing else.
+Where an adapter implements `Clock`, it shall give a valid time that doesn't go backwards from one call to the next, as a new `Date` on every call, so a caller that changes the `Date` it got changes nothing else.
 
 ## Examples
 

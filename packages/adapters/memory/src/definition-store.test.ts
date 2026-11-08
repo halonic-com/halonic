@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { MemoryDefinitionStore } from "./definition-store.ts";
 
-describe("MemoryDefinitionStore (adapter-memory.definition-store)", () => {
+verifies("memory.definition-store", () => {
   it("starts with the files it is given, at memory:workspace", async () => {
     const store = new MemoryDefinitionStore({ "hubs/a/hub.yaml": "id: a\n" });
     expect(store.location).toBe("memory:workspace");
