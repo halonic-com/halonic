@@ -73,8 +73,11 @@ save(edited.value.text);
 
 **Setting a whole map or list.** A `set` with a whole object replaces the
 value: keys missing from the new value are deleted, and the comments inside
-the old value go with it. To change one field and keep the comments around
-it, set that field's path instead.
+the old value go with it. A list is compared item by item at the same index, so
+putting an item at the front changes every item after it. To change one
+field and keep the comments around it, set that field's path instead; to add
+or remove a list item, use `insert` or `delete`. A `set` of the whole
+document (`[]`) keeps the comments at the top of the file.
 
 **Layout.** Every result is read back and must give the expected data.
 `layout` says how much of the file's layout was kept:

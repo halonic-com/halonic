@@ -138,7 +138,9 @@ function deleteData(data: unknown, path: YamlPath): Result<unknown, string> {
     if (!container.ok) {
       return container;
     }
-    parent = (container.value as Record<string, unknown>)[path[depth] as string];
+    const child = readChild(container.value, path, depth);
+    // An item past the end of a list is nothing to delete.
+    parent = child.ok ? child.value : undefined;
   }
   if (isMissing(parent)) {
     return ok(copy);
@@ -150,7 +152,7 @@ function deleteData(data: unknown, path: YamlPath): Result<unknown, string> {
   const key = path[path.length - 1] as string | number;
   if (Array.isArray(container.value)) {
     container.value.splice(key as number, 1);
-  } else {
+  } else if (Object.hasOwn(container.value, key)) {
     delete container.value[key as string];
   }
   return ok(copy);

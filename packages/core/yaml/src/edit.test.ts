@@ -53,6 +53,24 @@ describe("yaml.edit", () => {
     expect(edited("a: 1\n", del(["missing"]), del(["b", "x", "y"])).text).toBe("a: 1\n");
   });
 
+  it("never follows inherited keys such as __proto__ and constructor", () => {
+    const hasOwn = Object.prototype.hasOwnProperty;
+    expect(edited("a: 1\n", del(["__proto__", "hasOwnProperty"])).text).toBe("a: 1\n");
+    expect(edited("a: 1\n", del(["constructor", "x"]), del(["toString"])).text).toBe("a: 1\n");
+    expect(Object.prototype.hasOwnProperty).toBe(hasOwn);
+
+    const proto = dataOf(edited("a: 1\n", set(["__proto__", "x"], 1)).text) as object;
+    expect(Object.getPrototypeOf(proto)).toBe(Object.prototype);
+    expect(JSON.stringify(proto)).toBe('{"a":1,"__proto__":{"x":1}}');
+    expect(dataOf(edited("a: 1\n", set(["constructor", "x"], 1)).text)).toEqual({
+      a: 1,
+      constructor: { x: 1 },
+    });
+    expect(problemOf("a: 1\n", insert(["__proto__", 0], 1))).toContain('no list at "__proto__"');
+    expect(problemOf("a: 1\n", insert(["constructor", 0], 1))).toContain("no list");
+    expect(Object.prototype).not.toHaveProperty("x");
+  });
+
   it("lets each edit see the one before", () => {
     const result = edited("{}\n", set(["a"], { b: 1 }), set(["a", "c"], 2));
     expect(dataOf(result.text)).toEqual({ a: { b: 1, c: 2 } });
@@ -74,6 +92,11 @@ describe("yaml.edit layout", () => {
       text: "# billing\nname: x # shown in the list\n",
       layout: "reformatted",
     });
+  });
+
+  it("keeps the comment at the top of the file when it sets the whole document", () => {
+    const result = edited(lines("# top", "", "a: 1 # c", "b: 2"), set([], { a: 1, c: 3 }));
+    expect(result).toEqual({ text: lines("# top", "", "a: 1", "c: 3"), layout: "reformatted" });
   });
 
   it("keeps a byte order mark", () => {

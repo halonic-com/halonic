@@ -142,6 +142,14 @@ function renderWithDocument(text: string, edit: YamlEdit, expected: unknown): st
     const from = firstEmpty(document, path);
     const value = document.createNode(valueAt(expected, path.slice(0, from)));
     if (from === 0) {
+      // The library hangs the comments at the top of the file on the old contents; carry them over.
+      const old = document.contents;
+      if (old?.commentBefore) {
+        value.commentBefore = old.commentBefore;
+      }
+      if (old?.spaceBefore) {
+        value.spaceBefore = true;
+      }
       document.contents = value as typeof document.contents;
     } else {
       document.setIn(path.slice(0, from), value);
@@ -156,7 +164,7 @@ function render(text: string, document: ReturnType<typeof parseDocument>): strin
   return text.startsWith(byteOrderMark) ? byteOrderMark + rendered : rendered;
 }
 
-const byteOrderMark = "﻿";
+const byteOrderMark = "\uFEFF";
 
 function firstEmpty(document: ReturnType<typeof parseDocument>, path: YamlPath): number {
   for (let length = 0; length < path.length; length++) {
