@@ -1,0 +1,5 @@
+{
+  "about": "a workflow in the old flows/ folder still loads, with a hint",
+  "kind": "workflow",
+  "fault": "valid"
+}

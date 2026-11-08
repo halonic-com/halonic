@@ -1,0 +1,23 @@
+id: approval
+name: Approval
+description: A person approves or rejects; after two days it expires.
+states:
+  decide:
+    type: wait
+    description: Approve or reject the payment.
+    on:
+      - to: approved
+        event: approve
+        label: Approve
+      - to: rejected
+        event: reject
+      - to: expired
+        after: 2d
+  approved:
+    type: final
+  rejected:
+    type: final
+  expired:
+    type: final
+context:
+  outcome: pending
