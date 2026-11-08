@@ -236,7 +236,7 @@ verifies("yaml.edit-preserve-entries", () => {
 
   it("leaves no blank line at the start or the end of the file", () => {
     expect(edited("a: |\n  x\n\nb: 2\n", del(["a"]))).toEqual({ text: "b: 2\n", layout: "kept" });
-    expect(edited("﻿a: 1\n\n\nb: 2\n", del(["a"])).text).toBe("﻿b: 2\n");
+    expect(edited("\uFEFFa: 1\n\n\nb: 2\n", del(["a"])).text).toBe("\uFEFFb: 2\n");
     expect(edited("a: 1\n\n\nb: 2\n", del(["b"]))).toEqual({ text: "a: 1\n", layout: "kept" });
     // A blank line that already ended the file stays.
     expect(edited("a: 1\n\nb: 2\n\n", del(["b"])).text).toBe("a: 1\n\n");
