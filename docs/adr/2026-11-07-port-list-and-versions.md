@@ -82,6 +82,25 @@ a filter, an idempotency id or a snapshot: an old adapter would silently
 ignore it and give wrong results. This is why `runId` on starts, the status
 filter and the snapshot are in version 1.
 
+## Added before the freeze
+
+*2026-11-08, decided on HAL-181, built in HAL-231.* The trust gate
+(HAL-65 requirements) adds inputs that adapters must honor, so they go into
+version 1 now rather than as a version 2 later. The versions stay at 1.
+
+- **`ConnectorFactoryContext.trust`:** the `TrustGrant` (location and
+  fingerprint) for the connector's workspace, or `null`. It is required, so
+  a caller can't leave it out by mistake. Without a grant a stdio connector
+  never starts its program, and no connector calls a tool whose `risk`
+  isn't `read`. `TrustService` in `core/app` decides; adapters only check
+  that a grant is there.
+- **`pin` on the stdio transport:** the registry kind, the registry address
+  from the user's profile, the package and the exact version. The app fills
+  it from the trust record, never from workspace YAML. The adapter starts
+  only that version, looks it up only at that address and starts in an
+  empty folder of its own. `ConnectorTool.risk` (`read`, `write`, `send`)
+  was already added with the Google adapter work.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

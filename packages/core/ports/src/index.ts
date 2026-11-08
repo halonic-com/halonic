@@ -14,10 +14,12 @@ export {
   type ConnectorConfig,
   type ConnectorFactory,
   type ConnectorFactoryContext,
+  type ConnectorPin,
   type ConnectorTool,
   type ConnectorTransport,
   connectorClientVersion,
   type ToolRisk,
+  type TrustGrant,
 } from "./connector-client.ts";
 export {
   type Coordination,

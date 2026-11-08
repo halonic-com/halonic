@@ -59,10 +59,52 @@ export interface ConnectorClient {
   close(): Promise<void>;
 }
 
+/**
+ * The exact package version an `npx` or `uvx` connector starts, and the
+ * registry it comes from. It is stored in the trust record when a person
+ * trusts the workspace, so it is per machine and never in a workspace file.
+ *
+ * @example
+ * const pin: ConnectorPin = {
+ *   registry: "npm",
+ *   registryUrl: "https://registry.npmjs.org",
+ *   package: "@acme/mail-mcp",
+ *   version: "2.3.1",
+ * };
+ */
+export interface ConnectorPin {
+  /** `npm` for `npx` connectors, `pypi` for `uvx` connectors. */
+  registry: "npm" | "pypi";
+  /** The registry's address, taken from the user's profile, never from the workspace. */
+  registryUrl: string;
+  /** The package name, such as "@acme/mail-mcp". */
+  package: string;
+  /** An exact version, such as "2.3.1". Never a tag or a range. */
+  version: string;
+}
+
 /** How to reach a connector. */
 export type ConnectorTransport =
   | { kind: "http"; url: string; headers: Record<string, string> }
-  | { kind: "stdio"; command: string; args: string[]; env: Record<string, string>; cwd?: string }
+  | {
+      kind: "stdio";
+      command: string;
+      args: string[];
+      env: Record<string, string>;
+      cwd?: string;
+      /**
+       * The version to start, for `npx` and `uvx` connectors. The app fills it
+       * from the trust record, **never from workspace YAML**, so a workspace
+       * edit can't choose the version or the registry.
+       *
+       * When it is set, the adapter starts exactly `package` at `version`,
+       * looks it up only at `registryUrl`, starts in an empty folder of its
+       * own instead of `cwd`, ignores the workspace's package-manager
+       * settings (`.npmrc`, `node_modules`, `uv.toml`, `pyproject.toml`), and
+       * refuses to start when the command names any other version.
+       */
+      pin?: ConnectorPin;
+    }
   /** Built-in Gmail and Drive for one account; `client` names the OAuth client secrets. */
   | { kind: "google"; account: string; client: string };
 
@@ -76,6 +118,19 @@ export interface ConnectorConfig {
   secretEnv: Record<string, string>;
 }
 
+/**
+ * Proof that a person trusted the workspace a connector comes from.
+ * `TrustService` in `core/app` checks the trust record against the
+ * workspace's current fingerprint and hands out a grant only when they
+ * match; adapters don't compute or compare fingerprints themselves.
+ */
+export interface TrustGrant {
+  /** The trusted workspace's location: its resolved real path. */
+  location: string;
+  /** The fingerprint the person trusted, such as "hfp1:9f86d0…". */
+  fingerprint: string;
+}
+
 /** What a factory may use to build a connector client. */
 export interface ConnectorFactoryContext {
   secrets: Secrets;
@@ -84,6 +139,13 @@ export interface ConnectorFactoryContext {
   http: HttpClient;
   /** The workspace folder, for stdio connectors that run in it. Absent where programs can't start. */
   workspaceRoot?: string;
+  /**
+   * The trust grant for the connector's workspace, or `null` when it isn't
+   * trusted. Required, so a caller can't forget it. Without a grant a stdio
+   * connector never starts its program (`listTools` and `callTool` throw),
+   * and every connector refuses to call a tool whose `risk` isn't `read`.
+   */
+  trust: TrustGrant | null;
 }
 
 /** Creates connector clients for one transport kind. */
