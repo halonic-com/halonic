@@ -448,7 +448,17 @@ importers:
         version: 4.6.7
 
   packages/core/google-setup:
+    dependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../ports
     devDependencies:
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../std
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
