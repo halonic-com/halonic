@@ -34,7 +34,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `Scheduler`         | `scheduler.ts`          | 1       | run timers and the routine tick; timers may arrive late or twice                                | `scheduler`                    |
 | `Secrets`           | `secrets.ts`            | 1       | configured secrets, read-only                                                                   | `secrets`                      |
 | `TokenStore`        | `token-store.ts`        | 1       | secrets the server writes itself, such as refresh tokens                                        | `token-store`                  |
-| `Vcs`               | `vcs.ts`                | 1       | version control of the workspace folder                                                         | `vcs` (phase 3)                |
+| `Vcs`               | `vcs.ts`                | 1       | version control of the workspace folder                                                         | `vcs`, `vcs-safety`            |
 
 Suites without a phase are written with the memory adapters (HAL-114); the
 others come with the first real adapter for that port.
