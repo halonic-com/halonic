@@ -123,10 +123,12 @@ export interface IntegrationConnection {
    * tool it finds here but not in the declaration as `risk: "write"` unless
    * the workspace sets a lower one.
    *
-   * The host also fences off the description and the schema texts of such a
-   * tool, and its results, as untrusted text: a server the workspace chose
-   * wrote them. Don't fence them here, and don't mark them trusted. For a
-   * declared name, the host uses the declared tool instead of the listed one.
+   * A server the workspace chose wrote such a tool, so the host also rebuilds
+   * its parameters from an allow-list, fences off its description, schema
+   * texts and results as untrusted text, and refuses names it can't check
+   * (requirement `ports.untrusted-tool-listings`). Don't fence them here, and
+   * don't mark them trusted. For a declared name, the host uses the declared
+   * tool instead of the listed one.
    */
   listTools?(): Promise<IntegrationTool[]>;
   /** Builds a model provider, for an integration whose sheet `provides` `llm`. */
