@@ -2,6 +2,7 @@ import type { ApprovalLookup } from "../guard/approvals.ts";
 import type { GuardCheck } from "../guard/finding.ts";
 import { checkRequirementGuard } from "../guard/guard.ts";
 import { loadContext } from "../lib/context.ts";
+import { testResultsFile } from "../lib/test-results.ts";
 import { manifestFor, removeFixtureRepo, writeFixtureRepo } from "./fixture-repo.ts";
 
 /** The package every guard fixture puts its files in. */
@@ -105,4 +106,38 @@ ${statement ?? `When the delay has passed, the engine shall fire the ${name} tim
 
 - Given a timer of 5 minutes, when 5 minutes pass, then it fires.
 `;
+}
+
+/** One test in a result file. */
+export interface RanTest {
+  readonly name: string;
+  readonly file?: string;
+  readonly requirement?: string;
+  readonly status?: string;
+  readonly assertions?: number;
+}
+
+/**
+ * The workflow package's result file, as `{ [testResultsFile]: text }`, so
+ * it can be spread into a GuardCase's files. Test files default to
+ * `src/timer.test.ts`.
+ */
+export function results(tests: readonly RanTest[]): Record<string, string> {
+  const byFile = new Map<string, RanTest[]>();
+  for (const test of tests) {
+    const file = test.file ?? "src/timer.test.ts";
+    byFile.set(file, [...(byFile.get(file) ?? []), test]);
+  }
+  const testResults = [...byFile].map(([file, ran]) => ({
+    name: `/ci/checkout/${workflowDirectory}/${file}`,
+    assertionResults: ran.map((test) => ({
+      fullName: test.name,
+      status: test.status ?? "passed",
+      meta: {
+        ...(test.requirement === undefined ? {} : { requirement: test.requirement }),
+        ...(test.assertions === undefined ? {} : { assertions: test.assertions }),
+      },
+    })),
+  }));
+  return { [testResultsFile]: JSON.stringify({ testResults }) };
 }
