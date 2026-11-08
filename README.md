@@ -8,6 +8,8 @@ Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
 as plain files in your own git repository.
 
+- Questions and help: [SUPPORT.md](SUPPORT.md), or ask in
+  [Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a)
 - How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security: [SECURITY.md](SECURITY.md)
 - Licence: [Apache License 2.0](LICENSE), see also [NOTICE](NOTICE) and

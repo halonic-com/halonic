@@ -5,14 +5,19 @@ yet, but there are good places to ask.
 
 | You want to…                                                           | Go to                                                                                  |
 | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| ask a question, share an idea or show what you built                   | **GitHub Discussions** in this repository                                              |
+| ask a question                                                         | [**Q&A** in GitHub Discussions](https://github.com/halonic-com/halonic/discussions/new?category=q-a) |
 | report a bug                                                           | a new issue, using the **Bug report** form                                             |
-| suggest a feature                                                      | a new issue, using the **Feature request** form, or a discussion if it's still an idea |
+| suggest a feature                                                      | a new issue, using the **Feature request** form, or a discussion in **Ideas** if it's still an idea |
+| ask for an integration with another service                            | a new issue, using the **Integration request** form                                    |
+| share an idea or show what you built                                   | **Ideas** or **Show and tell** in [GitHub Discussions](https://github.com/halonic-com/halonic/discussions) |
 | report a security problem                                              | **not** an issue: follow [SECURITY.md](SECURITY.md)                                    |
 | report behaviour that breaks our [code of conduct](CODE_OF_CONDUCT.md) | [conduct@halonic.com](mailto:conduct@halonic.com)                                      |
 
-GitHub Discussions is our only community channel for now. There is no Discord
-or chat server, so anything that claims to be one isn't ours.
+GitHub Discussions is our only community channel for now. When you are not
+sure where a question belongs, start in
+[Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a).
+There is no Discord or chat server, so anything that claims to be one isn't
+ours.
 
 ## Before you ask
 
