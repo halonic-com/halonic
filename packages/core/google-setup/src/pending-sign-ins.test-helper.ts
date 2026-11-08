@@ -14,6 +14,16 @@ export function testPendingSignIns(now: () => Date): PendingSignIns & {
     start(accountRef: string, pending: PendingSignInDetails): void {
       byAccount.set(accountRef, { ...pending, accountRef, startedAt: now() });
     },
+    authUrlFor(accountRef: string): string | undefined {
+      const pending = byAccount.get(accountRef);
+      if (pending === undefined || hasPendingSignInExpired(pending, now())) {
+        return undefined;
+      }
+      return pending.authUrl;
+    },
+    cancel(accountRef: string): void {
+      byAccount.delete(accountRef);
+    },
     take(state: string): PendingSignIn | undefined {
       for (const [accountRef, pending] of byAccount) {
         if (pending.state === state) {
@@ -33,4 +43,6 @@ export const fakePending: PendingSignInDetails = {
   codeVerifier: "fake-verifier-00000000000000000000000000000",
   redirectUri: "http://127.0.0.1:8787/google/callback",
   scopes: ["email", "openid"],
+  authUrl:
+    "https://accounts.google.com/o/oauth2/v2/auth?state=fake-state-0000000000000000000000000000000",
 };

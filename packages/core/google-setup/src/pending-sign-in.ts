@@ -16,6 +16,12 @@ export interface PendingSignInDetails {
   readonly redirectUri: string;
   /** The scopes the auth URL asked for. */
   readonly scopes: readonly string[];
+  /**
+   * The auth URL this sign-in sent the browser to. "Open again" sends the
+   * browser to the same URL, so the first tab's callback still works (plan
+   * D7). It holds `state` and the PKCE challenge, never the verifier.
+   */
+  readonly authUrl: string;
 }
 
 /** A pending sign-in as `PendingSignIns.take` returns it. */
@@ -40,6 +46,22 @@ export interface PendingSignIns {
    * @param pending - the `state`, verifier, redirect URI and scopes
    */
   start(accountRef: string, pending: PendingSignInDetails): void;
+  /**
+   * The auth URL of the account's pending sign-in, for "Open again" (plan
+   * D7). Reusing it keeps the same `state` and verifier, so a callback from
+   * either tab can finish the sign-in. Nothing is removed.
+   *
+   * @param accountRef - the account ref from the setup record
+   * @returns the auth URL, or `undefined` when there is none or it has expired
+   */
+  authUrlFor(accountRef: string): string | undefined;
+  /**
+   * Drops the account's pending sign-in, for "Cancel" (plan D7). Its `state`
+   * then matches nothing. Does nothing when there is none.
+   *
+   * @param accountRef - the account ref from the setup record
+   */
+  cancel(accountRef: string): void;
   /**
    * Finds the pending sign-in whose `state` equals `state` (compared in
    * constant time) and removes it, so a second callback with the same `state`

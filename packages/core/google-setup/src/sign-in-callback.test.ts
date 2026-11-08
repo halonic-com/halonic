@@ -156,3 +156,52 @@ verifies("google-setup.sign-in.no-secret-echo", () => {
     expect(JSON.stringify(cancelled)).not.toContain(fakePending.state);
   });
 });
+
+verifies("google-setup.sign-in.open-again", () => {
+  it("gives the same auth URL while the sign-in is valid, and keeps it pending", () => {
+    const { pendingSignIns, advance } = serverWithPendingSignIn();
+    advance(5 * 60 * 1000);
+
+    expect(pendingSignIns.authUrlFor("gaccount_1")).toBe(fakePending.authUrl);
+    expect(pendingSignIns.size()).toBe(1);
+  });
+
+  it("lets the first tab's callback finish after Open again", () => {
+    const { pendingSignIns } = serverWithPendingSignIn();
+    pendingSignIns.authUrlFor("gaccount_1");
+
+    const result = readSignInCallback(
+      callback(`code=${fakeCode}&state=${fakePending.state}`),
+      pendingSignIns,
+    );
+
+    expect(result.kind).toBe("code");
+  });
+
+  it("gives no URL once the sign-in has expired, or for an account without one", () => {
+    const { pendingSignIns, advance } = serverWithPendingSignIn();
+    advance(pendingSignInLifetimeMs);
+
+    expect(pendingSignIns.authUrlFor("gaccount_1")).toBeUndefined();
+    expect(pendingSignIns.authUrlFor("gaccount_2")).toBeUndefined();
+  });
+
+  it("gives linkNoLongerValid for the callback of a cancelled sign-in", () => {
+    const { pendingSignIns } = serverWithPendingSignIn();
+    pendingSignIns.cancel("gaccount_1");
+
+    expect(pendingSignIns.authUrlFor("gaccount_1")).toBeUndefined();
+    expect(
+      readSignInCallback(callback(`code=${fakeCode}&state=${fakePending.state}`), pendingSignIns),
+    ).toEqual({ kind: "linkNoLongerValid" });
+  });
+
+  it("leaves other accounts' sign-ins in place on Cancel", () => {
+    const { pendingSignIns } = serverWithPendingSignIn();
+    pendingSignIns.start("gaccount_2", { ...fakePending, state: "fake-state-other" });
+
+    pendingSignIns.cancel("gaccount_1");
+
+    expect(pendingSignIns.authUrlFor("gaccount_2")).toBe(fakePending.authUrl);
+  });
+});
