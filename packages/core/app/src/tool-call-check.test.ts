@@ -130,12 +130,44 @@ describe("checkToolCall", () => {
     expect(checkToolCall(typed, { city: "Oslo" })).toEqual({ kind: "run" });
   });
 
-  it("cuts a long argument name in the refusal and names every one", () => {
+  it("cuts a long argument name in the refusal", () => {
     const long = "a".repeat(200);
     const check = checkToolCall(declared({ type: "object" }), { [long]: 1, b: 2 });
     expect(check).toEqual({
       kind: "refused",
       reason: `forecast has no parameter "${"a".repeat(64)}", "b"`,
     });
+  });
+
+  it("escapes quotes, line breaks and bidi characters in a refused name", () => {
+    const hostile = 'x", "y\n‮txt';
+    expect(checkToolCall(declared({ type: "object" }), { [hostile]: 1 })).toEqual({
+      kind: "refused",
+      reason: 'forecast has no parameter "x\\", \\"y\\u{a}\\u{202e}txt"',
+    });
+  });
+
+  it("lists the first 8 refused names and counts the rest", () => {
+    const args = Object.fromEntries(Array.from({ length: 10_000 }, (_, i) => [`n${i}`, i]));
+    const listed = Array.from({ length: 8 }, (_, i) => `"n${i}"`).join(", ");
+    expect(checkToolCall(declared({ type: "object" }), args)).toEqual({
+      kind: "refused",
+      reason: `forecast has no parameter ${listed} and 9992 more`,
+    });
+  });
+
+  it("says the parameters can't be checked when they combine schemas at the top", () => {
+    const combined = [
+      { $ref: "#/$defs/place", $defs: { place: { properties: { city: {} } } } },
+      { anyOf: [{ properties: { city: {} } }] },
+      { oneOf: [{ properties: { city: {} } }] },
+      { allOf: [{ properties: { city: {} } }] },
+    ];
+    for (const parameters of combined) {
+      expect(checkToolCall(declared(parameters), { city: "Oslo" })).toEqual({
+        kind: "refused",
+        reason: `forecast's parameters can't be checked, so "city" can't be sent`,
+      });
+    }
   });
 });

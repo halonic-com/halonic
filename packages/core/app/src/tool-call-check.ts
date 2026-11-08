@@ -3,7 +3,7 @@
 // model was offered are refused, and every risk above `read` needs a
 // person's OK.
 
-import { cutName, isJsonObject } from "./listed-tool-rules.ts";
+import { escapeListedText, isJsonObject } from "./listed-tool-rules.ts";
 import type { OfferedTool } from "./tool-listing.ts";
 
 /** What the host does with one tool call. */
@@ -24,10 +24,15 @@ export type ToolCallCheck =
  *
  * Only the top level of the arguments is checked. Extra names are allowed
  * only when the parameters set `additionalProperties` to `true` or to a
- * schema; leaving it out doesn't allow them.
+ * schema; leaving it out doesn't allow them. When the parameters use `$ref`,
+ * `anyOf`, `oneOf` or `allOf` at the top, the names they declare can't be
+ * read here yet, so a call with a name outside `properties` is refused as
+ * one whose parameters can't be checked.
  *
- * The refusal names only the argument names that were refused, cut to 64
- * characters. The model wrote them, so the refusal can go back to it.
+ * The refusal names the first 8 argument names that were refused, each cut
+ * to 64 characters and escaped, and counts the rest. A model steered by a
+ * hostile listing may have written them, so they get the same escaping as
+ * listed text before the refusal goes back to the model or into a transcript.
  *
  * @param args - the arguments the model sent, unchecked
  *
@@ -41,10 +46,36 @@ export function checkToolCall(tool: OfferedTool, args: unknown): ToolCallCheck {
   }
   const undeclared = undeclaredArguments(tool.parameters, args);
   if (undeclared.length > 0) {
-    const names = undeclared.map((name) => `"${cutName(name)}"`).join(", ");
-    return { kind: "refused", reason: `${tool.name} has no parameter ${names}` };
+    const names = listNames(undeclared);
+    const reason = usesCombinedSchema(tool.parameters)
+      ? `${tool.name}'s parameters can't be checked, so ${names} can't be sent`
+      : `${tool.name} has no parameter ${names}`;
+    return { kind: "refused", reason };
   }
   return tool.risk === "read" ? { kind: "run" } : { kind: "ask" };
+}
+
+/** The most argument names one refusal lists; the rest are only counted. */
+const maxListedNames = 8;
+
+/**
+ * Keywords a rebuilt listing keeps that can declare names outside the top
+ * level's `properties`. This check doesn't follow them yet.
+ */
+const combiningKeywords = ["$ref", "anyOf", "oneOf", "allOf"];
+
+function usesCombinedSchema(parameters: Record<string, unknown>): boolean {
+  return combiningKeywords.some((keyword) => Object.hasOwn(parameters, keyword));
+}
+
+/** Quotes and escapes the first few names, then says how many more there are. */
+function listNames(names: string[]): string {
+  const listed = names
+    .slice(0, maxListedNames)
+    .map((name) => `"${escapeListedText(name)}"`)
+    .join(", ");
+  const rest = names.length - maxListedNames;
+  return rest > 0 ? `${listed} and ${rest} more` : listed;
 }
 
 function undeclaredArguments(
