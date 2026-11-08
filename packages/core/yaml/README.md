@@ -26,7 +26,7 @@ writeYamlFile(data); // the same text the old app wrote
 
 Anchors, aliases, tags, a second document and lists or maps as keys give an
 `unsupported` problem with a message that says what to do instead.
-Nesting past 100 levels and texts over 5,000,000 characters are rejected too,
+Nesting past 100 levels and texts over 1,000,000 characters are rejected too,
 because the reader runs on other people's workspaces.
 
 ## Writing
