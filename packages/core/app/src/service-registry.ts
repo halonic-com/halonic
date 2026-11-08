@@ -21,6 +21,11 @@ export function serviceKey<Service>(name: string): ServiceKey<Service> {
 
 /** A service that holds something to let go of when its workspace closes. */
 export interface Disposable {
+  /**
+   * Lets go of what the service holds. Resolve only when nothing of this
+   * service is still running: the services it was built on are disposed
+   * right after it.
+   */
   dispose(): void | Promise<void>;
 }
 
@@ -32,7 +37,7 @@ function isDisposable(value: unknown): value is Disposable {
   );
 }
 
-/** Thrown for a service that is missing, or provided twice. */
+/** Thrown for a service that is missing, provided twice, or provided after the registry was disposed. */
 export class ServiceError extends Error {
   override name = "ServiceError";
 }
@@ -45,13 +50,21 @@ export class ServiceError extends Error {
  */
 export class ServiceRegistry {
   private readonly services = new Map<string, unknown>();
+  private disposed = false;
 
   /**
    * Adds a service.
    *
-   * @throws ServiceError when a service with the same key name is already there
+   * @throws ServiceError when a service with the same key name is already
+   *   there, or the registry was disposed
    */
   provide<Service>(key: ServiceKey<Service>, service: Service): Service {
+    if (this.disposed) {
+      // Such as a feature that finished loading after its workspace closed.
+      throw new ServiceError(
+        `The service "${key.name}" can't be provided: the workspace is closed.`,
+      );
+    }
     if (this.services.has(key.name)) {
       throw new ServiceError(`The service "${key.name}" is already provided.`);
     }
@@ -77,12 +90,14 @@ export class ServiceRegistry {
   }
 
   /**
-   * Disposes every service, newest first, and empties the registry. A
-   * service whose `dispose` fails doesn't stop the others.
+   * Disposes every service, newest first, and empties the registry; it
+   * accepts no new services afterwards. A service whose `dispose` fails
+   * doesn't stop the others.
    *
    * @throws the one error, or an `AggregateError`, after all services had their turn
    */
   async dispose(): Promise<void> {
+    this.disposed = true;
     const newestFirst = [...this.services.values()].reverse();
     this.services.clear();
     const errors: unknown[] = [];

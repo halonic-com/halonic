@@ -1,5 +1,5 @@
 import { CommandBus, type CommandMap } from "./command-bus.ts";
-import { EventBus, type EventMap } from "./event-bus.ts";
+import { EventBus, type EventMap, type ListenerErrorHandler } from "./event-bus.ts";
 import { ServiceRegistry } from "./service-registry.ts";
 
 /**
@@ -22,29 +22,42 @@ export interface AppEvents {
   "workspace.closing": { location: string };
 }
 
+/** What a {@link WorkspaceScope} needs. */
+export interface WorkspaceScopeOptions {
+  /** Where the workspace lives, as its `DefinitionStore` reports it. */
+  location: string;
+  /**
+   * Receives the error of an event listener that threw, such as a faulty
+   * feature listening to `files.changed`. The host reports it (a log, a
+   * toast); whoever sent the event carries on.
+   */
+  onListenerError: ListenerErrorHandler;
+}
+
 /**
  * Everything that belongs to one open workspace: its commands, events and
  * services. One window can hold several workspaces, so nothing here is
  * global (plan 4.2, U1). Device-wide settings such as the theme live outside
  * any scope and outlive it.
+ *
+ * Features add their commands and events to {@link AppCommands} and
+ * {@link AppEvents}; a scope with its own maps must still include the kernel's.
  */
 export class WorkspaceScope<
-  Commands extends CommandMap<Commands> = AppCommands,
+  Commands extends CommandMap<Commands> & AppCommands = AppCommands,
   Events extends EventMap<Events> & AppEvents = AppEvents,
 > {
   readonly commands = new CommandBus<Commands>();
-  readonly events = new EventBus<Events>();
+  readonly events: EventBus<Events>;
   readonly services = new ServiceRegistry();
   private closing: Promise<void> | null = null;
 
   /** Where the workspace lives, as its `DefinitionStore` reports it. */
   readonly location: string;
 
-  /**
-   * @param location - where the workspace lives, as its `DefinitionStore` reports it
-   */
-  constructor(location: string) {
-    this.location = location;
+  constructor(options: WorkspaceScopeOptions) {
+    this.location = options.location;
+    this.events = new EventBus<Events>(options.onListenerError);
   }
 
   /** Whether {@link close} has been called. */
@@ -55,9 +68,10 @@ export class WorkspaceScope<
   /**
    * Closes the workspace: sends `workspace.closing`, disposes the services
    * newest first, then drops every command handler and event listener.
-   * Closing again returns the same promise.
+   * Closing again returns the same promise. Afterwards the scope accepts no
+   * new commands or services.
    *
-   * @throws when a listener or a service's `dispose` failed; the scope is closed anyway
+   * @throws when a service's `dispose` failed; the scope is closed anyway
    */
   close(): Promise<void> {
     this.closing ??= this.closeOnce();
@@ -65,17 +79,15 @@ export class WorkspaceScope<
   }
 
   private async closeOnce(): Promise<void> {
+    // The bus reports listener errors instead of throwing them, so this can't stop the close.
+    this.events.emit("workspace.closing", {
+      location: this.location,
+    } as Events["workspace.closing"]);
     try {
-      this.events.emit("workspace.closing", {
-        location: this.location,
-      } as Events["workspace.closing"]);
+      await this.services.dispose();
     } finally {
-      try {
-        await this.services.dispose();
-      } finally {
-        this.commands.clear();
-        this.events.clear();
-      }
+      this.commands.close();
+      this.events.clear();
     }
   }
 }
