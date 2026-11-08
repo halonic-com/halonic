@@ -12,6 +12,10 @@ and the `@daily`-style macros. When both day fields are restricted, a day that
 matches either one counts, as in classic cron. A bad expression throws a
 `CronError` whose message can be shown to the user as it is.
 
+`wallTime` reads the wall clock of an instant in an IANA time zone, with the
+standard `Intl` APIs only. `checkTimeZone` turns an unknown zone into a
+readable `CronError`.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
