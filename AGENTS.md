@@ -106,8 +106,8 @@ you spot become a new task.
 Stacks stay short, so a closed pull request never strands work above it:
 
 - A stack is at most 3 pull requests deep, counting from `main`.
-- Never open a pull request on top of one that isn't approved yet. Start a different, independent
-  task instead.
+- Open a stack all at once, for one review (see Review). Never add a pull request on top of one
+  that isn't approved yet. Start a different, independent task instead.
 - When a pull request below yours is closed or replaced, rebase or close everything you have above
   it the same day.
 
@@ -115,6 +115,10 @@ Stacks stay short, so a closed pull request never strands work above it:
 
 - A second agent reviews every pull request, ideally on a different model, and never the author:
   the package owner, or a teammate if the owner wrote it.
+- A stack gets one review, on one task: each reviewer reviews all its pull requests together and
+  approves the whole stack once. The layers then merge bottom-up without another round. A layer
+  that has only been rebased since the approval needs no new review; a layer whose content changed
+  goes back to the same reviewer for that layer only.
 - The maintainer gives final approval only on the core building blocks: `packages/core/*`,
   `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
   and any change to a package's public interface (its `api-report.md`). Everything else merges on
