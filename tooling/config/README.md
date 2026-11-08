@@ -6,9 +6,15 @@ Shared settings every package extends.
 - **Owner:** mateo
 - **TypeScript presets** (`tsconfig/`): `base.json` (strict settings, Node's
   type stripping rules: `.ts` import extensions, erasable syntax only),
-  `core.json` (no Node or browser types, so `fetch`, `document` or `fs`
-  are compile errors), `node.json`, `web.json` and `studio.json`.
+  `core.json` (Web-standard types only, below), `host.json` (those types
+  and their values), `node.json`, `web.json` and `studio.json`.
   A package uses `"extends": "@halonicjs/tooling-config/tsconfig/<preset>.json"`.
+- **Web types** (`types/`): `web-types.d.ts` holds only the interfaces
+  (`Request`, `Response`, `Headers`, `URL`, streams, `AbortSignal`,
+  `TextEncoder`/`TextDecoder`, `crypto.subtle`) and goes to the core;
+  `web-globals.d.ts` holds the values (`fetch`, `new Request()`, timers)
+  and goes to the host only. `test/fixtures/web-types/` proves what each
+  preset allows and forbids; `pnpm typecheck` here runs it.
 - **Biome** (`biome.jsonc`): formatting and lint rules, extended by the
   root `biome.json`.
 - **Vitest preset** (`@halonicjs/tooling-config/vitest`):

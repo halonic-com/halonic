@@ -1,0 +1,13 @@
+{
+  "//": "The host preset, as a package sees it. `types` repeats the preset's list as relative paths, because a package can't resolve its own name there.",
+  "extends": "../../../../tsconfig/host.json",
+  "compilerOptions": {
+    "types": [
+      "../../../../types/web-types.d.ts",
+      "../../../../types/web-globals.d.ts"
+    ]
+  },
+  "include": [
+    "*.ts"
+  ]
+}

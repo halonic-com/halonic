@@ -3,6 +3,7 @@
   "ui": "stream",
   "globalDependencies": [
     "tooling/config/tsconfig/**",
+    "tooling/config/types/**",
     "tooling/config/biome.jsonc",
     "tooling/config/src/vitest-preset.ts",
     "tooling/config/src/coverage.ts",

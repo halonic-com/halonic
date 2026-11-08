@@ -1,0 +1,12 @@
+{
+  "//": "The core preset, as a package sees it. `types` repeats the preset's list as relative paths, because a package can't resolve its own name there.",
+  "extends": "../../../../tsconfig/core.json",
+  "compilerOptions": {
+    "types": [
+      "../../../../types/web-types.d.ts"
+    ]
+  },
+  "include": [
+    "*.ts"
+  ]
+}

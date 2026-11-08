@@ -1,0 +1,8 @@
+# Allow-list for genuine false positives of the leak guard.
+# See docs/guides/leak-guard.md. Changes to this file need review from its
+# code owner. One entry per line:
+#
+#   <rule> <file or glob> [fp:<fingerprint>] <reason, a few words>
+#
+# A secret rule needs the fingerprint the leak guard printed, so an entry
+# allows that one value only. Personal terms can never be allowed here.

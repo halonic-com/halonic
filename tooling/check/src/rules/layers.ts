@@ -244,6 +244,9 @@ function externalImportProblem(
   if (site.layer === "core" && !site.dev) {
     return coreExternalProblem(site.pkg.manifest.name ?? site.pkg.directory, name, approved);
   }
+  if (site.layer === "host" && !site.dev) {
+    return `the host may not use third-party code ("${name}"). Move this code into an adapter or a target.`;
+  }
   // Testing packages are test code themselves, such as testing/spec wrapping Vitest.
   const devLayer = site.layer === "tooling" || site.layer === "testing";
   if (approved?.category === "dev-tooling" && !site.dev && !devLayer) {
