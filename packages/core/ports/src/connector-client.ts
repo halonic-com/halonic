@@ -5,6 +5,13 @@ import type { TokenStore } from "./token-store.ts";
 /** Version of the {@link ConnectorClient} and {@link ConnectorFactory} ports. A breaking change bumps it and comes with an ADR. */
 export const connectorClientVersion = 1;
 
+/**
+ * What calling a tool can do. `read` changes nothing; `write` changes data,
+ * such as mail, files or records; `send` reaches people outside, such as
+ * sending a mail. Approvals, the "allow sending" check and shadow runs use it.
+ */
+export type ToolRisk = "read" | "write" | "send";
+
 /** A tool a connector offers. */
 export interface ConnectorTool {
   /** The tool's name, unique within its connector. */
@@ -13,6 +20,10 @@ export interface ConnectorTool {
   description: string;
   /** JSON Schema of the arguments object. */
   parameters: Record<string, unknown>;
+  /** What calling it can do. Absent means unknown: treat it as `write`. */
+  risk?: ToolRisk;
+  /** Whether its result carries outside content (mail, web pages), which the engine fences off. */
+  untrusted?: boolean;
 }
 
 /** A connection to one connector: an MCP server over HTTP or a local process, or a built-in one. */

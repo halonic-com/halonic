@@ -5,6 +5,7 @@ import { coordinationVersion } from "./coordination.ts";
 import { definitionStoreVersion } from "./definition-store.ts";
 import { httpClientVersion } from "./http-client.ts";
 import { idGeneratorVersion } from "./id-generator.ts";
+import { integrationVersion } from "./integration.ts";
 import { knowledgeProviderVersion } from "./knowledge-provider.ts";
 import { llmCacheVersion } from "./llm-cache.ts";
 import { llmProviderVersion } from "./llm-provider.ts";
@@ -33,6 +34,7 @@ export const portVersions = {
   DefinitionStore: definitionStoreVersion,
   HttpClient: httpClientVersion,
   IdGenerator: idGeneratorVersion,
+  Integration: integrationVersion,
   KnowledgeProvider: knowledgeProviderVersion,
   LlmCache: llmCacheVersion,
   LlmProvider: llmProviderVersion,
