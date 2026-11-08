@@ -6,7 +6,10 @@
 name: CI
 
 on:
+  # "edited" re-runs the terms guard and the title check when a title or
+  # body changes.
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   merge_group:
   push:
     branches: [main]
@@ -76,10 +79,9 @@ jobs:
         with:
           persist-credentials: false
       - uses: $/.github/actions/setup
+      # Reads the title from $GITHUB_EVENT_PATH: an `env:` block is printed in the log.
       - name: Pull request title
         if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
         run: pnpm check:pr-title
       - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths)
         run: pnpm check
@@ -97,6 +99,8 @@ jobs:
   terms:
     # Runs no third-party code: only the repo's own script on Node, so the
     # secret is never near a dependency. Prints locations, never a term.
+    # The branch, title and body are read from $GITHUB_EVENT_PATH, never
+    # passed in `env:`, which GitHub prints in the public job log.
     # Until the HALONIC_DENY_TERMS secret exists it passes with a warning.
     name: Personal-terms guard
     runs-on: ubuntu-24.04
@@ -118,9 +122,6 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
-          BRANCH_NAME: ${{ github.head_ref }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           if [ "$EVENT" = "push" ]; then
             node tooling/check/src/cli/terms.ts
