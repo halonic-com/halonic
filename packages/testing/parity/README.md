@@ -103,7 +103,12 @@ active.
 ## Example
 
 ```ts
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { composeWorkspace, loadCases } from "@halonicjs/testing-parity";
+
+const scratchDir = mkdtempSync(join(tmpdir(), "parity-"));
 
 for (const parityCase of loadCases("packages/testing/parity/fixtures")) {
   composeWorkspace(
