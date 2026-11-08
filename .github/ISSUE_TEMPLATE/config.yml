@@ -1,8 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Ask a question or share an idea
-    url: https://github.com/halonic-com/halonic/discussions
-    about: Questions, ideas and show-and-tell go to GitHub Discussions, our community channel.
+  - name: Ask a question
+    url: https://github.com/halonic-com/halonic/discussions/new?category=q-a
+    about: How do I…? Why does…? Ask in Q&A, our community channel.
+  - name: Share a loose idea
+    url: https://github.com/halonic-com/halonic/discussions/categories/ideas
+    about: Not sure it's a feature request yet? Start a discussion in Ideas.
   - name: Report a security problem
     url: https://github.com/halonic-com/halonic/security/advisories/new
-    about: Report security problems privately, never in a public issue. See SECURITY.md.
+    about: Report security problems privately, never in a public issue or discussion. See SECURITY.md.

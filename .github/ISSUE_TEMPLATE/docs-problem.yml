@@ -1,6 +1,6 @@
 name: Docs problem
 description: Something in the documentation is wrong, missing or hard to follow.
-labels: ["documentation"]
+labels: ["documentation", "needs-triage"]
 body:
   - type: input
     id: page

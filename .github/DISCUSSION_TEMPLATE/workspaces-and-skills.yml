@@ -1,0 +1,20 @@
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What are you sharing or asking about?
+      description: What it does, and a link if you're sharing one.
+    validations:
+      required: true
+  - type: textarea
+    id: starts
+    attributes:
+      label: What does it start or use?
+      description: Programs, connectors and sites it uses, and which actions run without asking. Leave empty if you're only asking a question.
+  - type: checkboxes
+    id: clean
+    attributes:
+      label: Before you post
+      options:
+        - label: Anything I'm sharing uses made-up content, and I've checked the files and git history for keys, tokens and personal data.
+          required: true

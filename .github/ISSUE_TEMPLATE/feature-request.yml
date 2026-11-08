@@ -1,11 +1,20 @@
 name: Feature request
 description: Suggest something Halonic should do.
-labels: ["enhancement"]
+labels: ["enhancement", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the suggestion. If it's still a loose idea, start a [discussion](https://github.com/halonic-com/halonic/discussions) instead; we can turn it into an issue later.
+        Thanks for the suggestion. If it's still a loose idea, start a discussion in [Ideas](https://github.com/halonic-com/halonic/discussions/categories/ideas) instead; we can turn it into an issue later.
+
+        Halonic 0.1.0 is our first release, so a good idea may still have to wait. If it does, we'll say why. We don't give dates.
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Before you suggest
+      options:
+        - label: I searched the open issues and the Ideas discussions, and this isn't there yet.
+          required: true
   - type: textarea
     id: problem
     attributes:

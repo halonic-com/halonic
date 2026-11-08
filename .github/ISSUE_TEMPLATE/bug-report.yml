@@ -1,6 +1,6 @@
 name: Bug report
 description: Something in Halonic doesn't work as it should.
-labels: ["bug"]
+labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
@@ -8,8 +8,15 @@ body:
         Thanks for taking the time to report a bug.
 
         - Security problem? Don't use this form. Follow [SECURITY.md](https://github.com/halonic-com/halonic/blob/main/SECURITY.md).
-        - A question rather than a bug? Ask in [Discussions](https://github.com/halonic-com/halonic/discussions).
+        - A question rather than a bug? Ask in [Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a).
         - Never paste API keys, passwords or personal data, including in logs and screenshots.
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Before you report
+      options:
+        - label: I searched the open issues and the pinned "Known issues" discussion, and this isn't there yet.
+          required: true
   - type: textarea
     id: what-happened
     attributes:
@@ -42,6 +49,17 @@ body:
         - Not sure
     validations:
       required: true
+  - type: dropdown
+    id: model
+    attributes:
+      label: Which kind of model was the agent using?
+      description: Only if the problem happened during a run.
+      options:
+        - Not during a run
+        - The built-in test model (scripted replies)
+        - A local model (Ollama, LM Studio, llama.cpp, vLLM …)
+        - A cloud model
+        - Not sure
   - type: input
     id: version
     attributes:

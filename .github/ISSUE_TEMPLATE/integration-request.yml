@@ -1,0 +1,69 @@
+name: Integration request
+description: A service or app Halonic should be able to connect to.
+labels: ["integration", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Halonic connects to other apps through MCP servers, plus built-in Gmail and Google Drive. Many services already have an MCP server that works with Halonic today, so please check that first.
+
+        Never paste API keys, passwords or personal data.
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Before you request
+      options:
+        - label: I searched the open issues, and nobody has asked for this service yet.
+          required: true
+  - type: input
+    id: service
+    attributes:
+      label: Which service or app?
+      placeholder: e.g. Outlook, Slack, Notion, a company tool
+    validations:
+      required: true
+  - type: textarea
+    id: job
+    attributes:
+      label: What should an agent do with it?
+      description: The tasks, for example "read new messages in one channel" or "create a page from a draft". Say which of them only read, which change something, and which send something to other people.
+    validations:
+      required: true
+  - type: dropdown
+    id: mcp
+    attributes:
+      label: Is there an MCP server for it?
+      options:
+        - I don't know
+        - "No, I looked"
+        - Yes, and it works with Halonic, but something is missing
+        - Yes, but it doesn't work with Halonic
+    validations:
+      required: true
+  - type: textarea
+    id: mcp-details
+    attributes:
+      label: MCP server details
+      description: If there is one, link it and say what's missing or what goes wrong.
+  - type: textarea
+    id: sign-in
+    attributes:
+      label: How does the service let apps sign in?
+      description: If you know, for example "OAuth", "an API key", "a personal access token". Leave it empty if you don't.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to work on this?
+      options:
+        - "No"
+        - Yes, with some guidance
+        - Yes, I have a plan
+    validations:
+      required: true
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance used
+      description: If an AI tool helped write this request, name it (tool / model). Otherwise write "None".
+    validations:
+      required: true
