@@ -1,5 +1,6 @@
 import { CommandBus, type CommandMap, type CommandSpec } from "./command-bus.ts";
 import { EventBus, type EventMap, type ListenerErrorHandler } from "./event-bus.ts";
+import type { RoutineTickResult } from "./routine-scheduler.ts";
 import { ServiceRegistry } from "./service-registry.ts";
 import type { PendingChanges } from "./workspace-files.ts";
 
@@ -31,6 +32,8 @@ export interface AppEvents {
   "files.changed": { pending: PendingChanges; label: string };
   /** Files were written to or deleted from the store. */
   "files.saved": { paths: string[] };
+  /** A routine tick asked what is due, at this ISO time, and started what it could. */
+  "routines.ticked": RoutineTickResult & { at: string };
 }
 
 /** What a {@link WorkspaceScope} needs. */
