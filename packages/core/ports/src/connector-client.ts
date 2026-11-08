@@ -46,7 +46,8 @@ export interface ConnectorClient {
    * these tools. The host rebuilds their parameters from an allow-list,
    * fences off their descriptions and results as untrusted text, treats
    * their `risk` as `write` unless the workspace sets a lower one, and
-   * refuses names it can't check (requirement `ports.untrusted-tool-listings`).
+   * refuses tools that are too large or whose names it can't check
+   * (requirement `ports.untrusted-tool-listings`).
    * Don't fence them here, and don't mark them trusted.
    *
    * @throws when the connector can't be reached or started

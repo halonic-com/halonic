@@ -125,8 +125,8 @@ export interface IntegrationConnection {
    *
    * A server the workspace chose wrote such a tool, so the host also rebuilds
    * its parameters from an allow-list, fences off its description, schema
-   * texts and results as untrusted text, and refuses names it can't check
-   * (requirement `ports.untrusted-tool-listings`). Don't fence them here, and
+   * texts and results as untrusted text, and refuses tools that are too large
+   * or whose names it can't check (requirement `ports.untrusted-tool-listings`). Don't fence them here, and
    * don't mark them trusted. For a declared name, the host uses the declared
    * tool instead of the listed one.
    */
