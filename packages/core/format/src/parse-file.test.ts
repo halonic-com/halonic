@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parseFile } from "./index.ts";
 import { parsedValue, problemsOf, summary, yaml } from "./test/parse.ts";
 
-describe("format.parse-file-positions", () => {
+verifies("format.parse-file-positions", () => {
   it("gives every problem its path, line and column", () => {
     const text = yaml("id: clerk", "name: Clerk", "params:", "  temperature: hot");
     expect(problemsOf("agent", text)).toEqual([
@@ -61,7 +62,7 @@ describe("format.parse-file-positions", () => {
   });
 });
 
-describe("format.id-from-place", () => {
+verifies("format.id-from-place", () => {
   it("fills in the id from the place when the file has none", () => {
     expect(parsedValue("provider", yaml("type: mock"), "spare").id).toBe("spare");
   });
@@ -96,7 +97,7 @@ describe("format.id-from-place", () => {
   });
 });
 
-describe("format.legacy-keys", () => {
+verifies("format.legacy-keys", () => {
   it("reads flow: in a workflow test as workflow:", () => {
     const text = yaml("flow: invoice", "cases:", "  - name: a");
     expect(parsedValue("workflowTest", text).workflow).toBe("invoice");

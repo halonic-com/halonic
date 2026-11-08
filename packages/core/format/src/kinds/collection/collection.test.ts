@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
 const collection = (...lines: string[]) => yaml("id: invoices", "name: Invoices", ...lines);
 
-describe("format.collection-file", () => {
+verifies("format.collection-file", () => {
   it("fills in implements, views, seed and each field's required", () => {
     expect(parsedValue("collection", collection("fields:", "  amount: { type: money }"))).toEqual({
       version: 1,

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { connectorIsLocal } from "../../index.ts";
 import { parsedValue, yaml } from "../../test/parse.ts";
 
@@ -10,7 +11,7 @@ function httpConnector(url: string, local?: boolean) {
   return parsedValue("connector", yaml(...lines));
 }
 
-describe("format.connector-is-local", () => {
+verifies("format.connector-is-local", () => {
   it("counts a program on this machine as local and Google as not", () => {
     expect(
       connectorIsLocal(

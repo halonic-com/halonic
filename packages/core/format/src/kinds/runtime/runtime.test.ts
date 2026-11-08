@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
-describe("format.runtime-file", () => {
+verifies("format.runtime-file", () => {
   it("fills in options", () => {
     expect(parsedValue("runtime", yaml("id: inprocess", "type: inprocess"))).toEqual({
       version: 1,

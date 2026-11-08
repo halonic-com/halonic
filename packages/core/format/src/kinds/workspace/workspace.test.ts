@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
-describe("format.workspace-file", () => {
+verifies("format.workspace-file", () => {
   it("fills in version, privacy and defaults for a minimal file", () => {
     expect(parsedValue("workspace", yaml("id: acme", "name: Acme"))).toEqual({
       version: 1,

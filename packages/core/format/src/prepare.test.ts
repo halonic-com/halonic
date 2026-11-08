@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { prepare } from "./parse-file.ts";
 import { renameKey } from "./shared/legacy-keys.ts";
 
 const fallback = { idFromPlace: "fallback" } as const;
 
-describe("format.id-from-place", () => {
+verifies("format.id-from-place", () => {
   it("fills in the id from the place when the file has none", () => {
     expect(prepare(fallback, { name: "Spare" }, "spare").data).toEqual({
       id: "spare",
@@ -43,7 +44,7 @@ describe("format.id-from-place", () => {
   });
 });
 
-describe("format.legacy-keys", () => {
+verifies("format.legacy-keys", () => {
   const flowKind = {
     idFromPlace: "none",
     upgradeKeys: (data: Readonly<Record<string, unknown>>) => renameKey(data, "flow", "workflow"),

@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
-describe("format.hub-file", () => {
+verifies("format.hub-file", () => {
   it("fills in defaults and models, and leaves uses out when the file does", () => {
     expect(parsedValue("hub", yaml("id: billing", "name: Billing"))).toEqual({
       version: 1,

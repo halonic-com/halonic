@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary } from "../../test/parse.ts";
 
 const skill = (frontMatter: string, body = "\n- One idea per sentence.\n") =>
   `---\n${frontMatter}\n---\n${body}`;
 
-describe("format.skill-file", () => {
+verifies("format.skill-file", () => {
   it("reads the name and description and trims the body; the folder is the id", () => {
     const text = skill("name: Plain words\ndescription: Write short sentences.");
     expect(parsedValue("skill", text, "plain-words")).toEqual({

@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { fileKinds, isKindName, isReservedPath, kindNames, RESERVED_FOLDER } from "./index.ts";
 
-describe("format.kind-registry", () => {
+verifies("format.kind-registry", () => {
   it("lists the 14 kinds the old schema and loader read, workspace-level first, then the integration sheet", () => {
     expect(kindNames()).toEqual([
       "workspace",
@@ -62,7 +63,7 @@ describe("format.kind-registry", () => {
   });
 });
 
-describe("format.reserved-folder", () => {
+verifies("format.reserved-folder", () => {
   it("is called .halonic", () => {
     expect(RESERVED_FOLDER).toBe(".halonic");
   });

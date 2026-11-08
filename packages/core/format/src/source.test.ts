@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { readSource } from "./source.ts";
 import { problemsOf, summary, yaml } from "./test/parse.ts";
 
@@ -10,7 +11,7 @@ function read(syntax: "yaml" | "front-matter", text: string) {
   return result.value;
 }
 
-describe("format.parse-file-positions", () => {
+verifies("format.parse-file-positions", () => {
   it("reads an empty YAML file as an empty map, with problems at line 1", () => {
     const source = read("yaml", "");
     expect(source.data).toEqual({});
