@@ -1,0 +1,10 @@
+{
+  "about": "a header value that is a number, four levels down",
+  "kind": "connector",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "library/connectors/tracker.connector.yaml",
+    "path": "transport.http.headers.X-Team",
+    "line": 5
+  }
+}
