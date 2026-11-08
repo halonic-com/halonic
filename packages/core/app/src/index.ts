@@ -13,6 +13,7 @@ export {
   type EventMap,
   type ListenerErrorHandler,
 } from "./event-bus.ts";
+export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export { lastTickKey, routineRunId } from "./routine-ids.ts";
 export {
@@ -31,6 +32,15 @@ export {
   ServiceRegistry,
   serviceKey,
 } from "./service-registry.ts";
+export {
+  type OfferedDeclaredTool,
+  type OfferedListedTool,
+  type OfferedTool,
+  readToolListing,
+  type ToolListing,
+  type ToolListingInput,
+  type ToolRefusal,
+} from "./tool-listing.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
 export {

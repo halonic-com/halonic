@@ -1,6 +1,6 @@
 # ports.untrusted-tool-listings
 
-- Status: draft
+- Status: active
 - Since: 0.1.0
 - Source: HAL-559, from the review of the MCP tools integration (HAL-504, HAL-517): a server the workspace chose writes the descriptions of the tools `listTools` returns, and `untrusted` fenced off only results
 
