@@ -31,6 +31,10 @@ function requirementIds(): Set<string> {
   return ids;
 }
 
+// Read once while the file loads, as fixtures.test.ts does: walking every package inside the
+// test passed Vitest's 5 s limit on a slow disk under load.
+const knownRequirements = requirementIds();
+
 const difference = {
   id: "memory-run-store-expected-seq",
   requirement: "contracts.run-store",
@@ -98,9 +102,11 @@ verifies("parity.allowed-differences-checked", () => {
   });
 
   it("cites only requirements that exist", () => {
-    const known = requirementIds();
     for (const entry of readAllowedDifferences(file)) {
-      expect(known.has(entry.requirement), `${entry.id} cites ${entry.requirement}`).toBe(true);
+      expect(
+        knownRequirements.has(entry.requirement),
+        `${entry.id} cites ${entry.requirement}`,
+      ).toBe(true);
     }
   });
 });
