@@ -12,6 +12,6 @@ export {
   type RequestLimits,
 } from "./limited-http.ts";
 export { allowedUrl, type IntegrationPolicy, namePattern } from "./policy.ts";
-export { IntegrationRefusedError, type RefusalCode } from "./refused.ts";
+export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } from "./refused.ts";
 export { RequestLog, type RequestLogEntry } from "./request-log.ts";
 export { scopedTokens, storedTokenName } from "./scoped-tokens.ts";

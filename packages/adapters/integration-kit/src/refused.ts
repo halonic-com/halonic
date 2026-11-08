@@ -5,6 +5,7 @@ export type RefusalCode =
   | "host-not-allowed"
   | "secret-not-declared"
   | "secret-not-allowed-for-host"
+  | "secret-over-plain-http"
   | "secret-not-configured"
   | "secret-needs-form-body"
   | "body-not-supported"
@@ -29,4 +30,13 @@ export class IntegrationRefusedError extends Error {
     super(message);
     this.code = code;
   }
+}
+
+/**
+ * A request ran out of time: no headers, no data for the idle time, or not
+ * finished within the overall limit. Named `TimeoutError` like the error of
+ * `AbortSignal.timeout`, and safe to show like {@link IntegrationRefusedError}.
+ */
+export class IntegrationTimeoutError extends Error {
+  override readonly name = "TimeoutError";
 }

@@ -1,4 +1,5 @@
 import type { SecretPlacement, Secrets } from "@halonicjs/ports";
+import { isLoopback } from "./local-address.ts";
 import { hostIn, type IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError } from "./refused.ts";
 
@@ -24,7 +25,18 @@ export function checkPlacements(
         `${policy.name}: the secret "${placement.secret}" may not go to ${url.host}`,
       );
     }
+    if (!mayCarrySecret(url)) {
+      throw new IntegrationRefusedError(
+        "secret-over-plain-http",
+        `${policy.name}: the secret "${placement.secret}" may not go over plain http to another machine (${url.host})`,
+      );
+    }
   }
+}
+
+/** A secret goes over `https`, or over plain `http` only to this machine (plan 11). */
+function mayCarrySecret(url: URL): boolean {
+  return url.protocol === "https:" || isLoopback(url.hostname);
 }
 
 /** Reads each secret's value once. The values never leave the kit. */
@@ -50,7 +62,7 @@ export async function readSecrets(
 
 /**
  * Puts the secrets allowed for this hop's host into the headers and the form
- * body. A placement whose secret may not go to this host is left out, which
+ * body. A placement whose secret may not go to this hop is left out, which
  * happens after a redirect to another declared host.
  *
  * @returns the form body to send, when a placement wrote into it
@@ -67,7 +79,13 @@ export function place(
   for (const placement of placements) {
     const declared = policy.secrets[placement.secret];
     const value = values.get(placement.secret);
-    if (declared === undefined || value === undefined || !hostIn(declared.hosts, url)) continue;
+    if (
+      declared === undefined ||
+      value === undefined ||
+      !hostIn(declared.hosts, url) ||
+      !mayCarrySecret(url)
+    )
+      continue;
     switch (placement.as) {
       case "bearer":
         headers.set("authorization", `Bearer ${value}`);

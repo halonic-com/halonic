@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canary, fakeTransport, policy, redirect, secrets } from "./fake-transport.test-helper.ts";
 import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
+import type { IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError, type RefusalCode } from "./refused.ts";
 import { RequestLog } from "./request-log.ts";
 
@@ -63,6 +64,53 @@ describe("integration-kit.declared-hosts-only", () => {
     const { http } = client();
     const notAString = new URL("https://api.example.com/") as unknown as string;
     expect(await refusal(http.fetch(notAString))).toBe("bad-url");
+  });
+});
+
+describe("integration-kit.local-http-hosts", () => {
+  const local: IntegrationPolicy = {
+    ...policy,
+    localHosts: ["localhost:3000", "192.168.1.5:8080", "api.example.com", "169.254.169.254"],
+    secrets: { "example-key": { hosts: ["localhost:3000", "192.168.1.5:8080"] } },
+  };
+  function localClient() {
+    const { transport, sent } = fakeTransport();
+    const log = new RequestLog();
+    const http = createLimitedHttpClient({ policy: local, transport, secrets, log });
+    return { http, sent };
+  }
+
+  it("sends plain http to a local host the user chose, with a key only to this machine", async () => {
+    const { http, sent } = localClient();
+    await http.fetch("http://localhost:3000/mcp", {
+      auth: { secret: "example-key", as: "bearer" },
+    });
+    await http.fetch("http://192.168.1.5:8080/mcp");
+    expect(sent.map((r) => r.url)).toEqual([
+      "http://localhost:3000/mcp",
+      "http://192.168.1.5:8080/mcp",
+    ]);
+    expect(sent[0]?.headers["authorization"]).toBe(`Bearer ${canary["example-key"]}`);
+  });
+
+  it.each([
+    ["a public host in the local list", "http://api.example.com/", "scheme-not-allowed"],
+    ["the cloud metadata address", "http://169.254.169.254/latest", "scheme-not-allowed"],
+    ["another port", "http://localhost:3001/", "scheme-not-allowed"],
+    ["a local host over https that isn't declared", "https://localhost:3000/", "host-not-allowed"],
+  ])("refuses %s", async (_what, url, code) => {
+    const { http, sent } = localClient();
+    expect(await refusal(http.fetch(url))).toBe(code);
+    expect(sent).toEqual([]);
+  });
+
+  it("refuses a key over plain http to another machine on the network", async () => {
+    const { http, sent } = localClient();
+    const request = http.fetch("http://192.168.1.5:8080/mcp", {
+      auth: { secret: "example-key", as: "bearer" },
+    });
+    expect(await refusal(request)).toBe("secret-over-plain-http");
+    expect(sent).toEqual([]);
   });
 });
 
@@ -249,7 +297,73 @@ describe("integration-kit.request-limits", () => {
       name: "TimeoutError",
     });
   });
+
+  it("times out waiting for headers even when the transport ignores the signal", async () => {
+    const stuck = createLimitedHttpClient({
+      policy,
+      transport: { fetch: () => new Promise<Response>(() => {}) },
+      secrets,
+      log: new RequestLog(),
+      limits: { headersTimeoutMs: 10 },
+    });
+    await expect(stuck.fetch("https://api.example.com/")).rejects.toMatchObject({
+      name: "TimeoutError",
+      message: expect.stringContaining("no response headers"),
+    });
+  });
+
+  it("lets a steady body run past the headers timeout, and fails one that stalls", async () => {
+    const limits = { headersTimeoutMs: 20, idleTimeoutMs: 30 };
+    const steady = client(() => new Response(pieces(["a", "b", "c", "d", "e"], 10)), limits);
+    expect(await (await steady.http.fetch("https://api.example.com/")).text()).toBe("abcde");
+
+    const stalled = client(() => new Response(pieces(["a"], 0, { hang: true })), limits);
+    const response = await stalled.http.fetch("https://api.example.com/");
+    await expect(response.text()).rejects.toMatchObject({
+      name: "TimeoutError",
+      message: expect.stringContaining("no data"),
+    });
+  });
+
+  it("doesn't count time the integration spends between reads", async () => {
+    const { http } = client(() => new Response(pieces(["a", "b"], 0)), { idleTimeoutMs: 10 });
+    const body = (await http.fetch("https://api.example.com/")).body;
+    const reader = body?.getReader();
+    await reader?.read();
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect((await reader?.read())?.done).toBe(false);
+  });
+
+  it("ends the whole request at the overall limit", async () => {
+    const { http } = client(() => new Response(pieces(["a", "b", "c", "d", "e", "f"], 10)), {
+      idleTimeoutMs: 1_000,
+      timeoutMs: 25,
+    });
+    const response = await http.fetch("https://api.example.com/");
+    await expect(response.text()).rejects.toMatchObject({ name: "TimeoutError" });
+  });
 });
+
+/** A body that sends each piece after a pause, and can hang after the last one. */
+function pieces(
+  parts: readonly string[],
+  pauseMs: number,
+  options: { hang?: boolean } = {},
+): ReadableStream<Uint8Array> {
+  const queue = [...parts];
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const next = queue.shift();
+      if (next === undefined) {
+        if (options.hang) await new Promise(() => {});
+        controller.close();
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, pauseMs));
+      controller.enqueue(new TextEncoder().encode(next));
+    },
+  });
+}
 
 describe("integration-kit.request-log", () => {
   it("logs method, host, path, status and time, and no query, header or secret", async () => {

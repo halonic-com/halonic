@@ -1,3 +1,4 @@
+import { isLocalAddress } from "./local-address.ts";
 import { IntegrationRefusedError } from "./refused.ts";
 
 /**
@@ -12,6 +13,12 @@ export interface IntegrationPolicy {
    * 443. Matched exactly, ignoring case. No wildcards.
    */
   readonly hosts: readonly string[];
+  /**
+   * The hosts it may call over plain `http`: only `localhost` or a private
+   * address the user chose in a setting (plan 11), as `host:port`. The kit
+   * refuses any other address here, whatever the list says.
+   */
+  readonly localHosts?: readonly string[];
   /** Each secret it may use, and the hosts that secret may go to. */
   readonly secrets: Readonly<Record<string, { readonly hosts: readonly string[] }>>;
   /** The token names it may read and write. */
@@ -21,7 +28,10 @@ export interface IntegrationPolicy {
 /** Lower-case words joined by `-`: integration, secret-reference and token names. */
 export const namePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
-/** Parses a URL the integration asked for, refusing anything but an allowed `https` host. */
+/**
+ * Parses a URL the integration asked for, refusing anything but an allowed
+ * `https` host or an allowed local `http` host.
+ */
 export function allowedUrl(policy: IntegrationPolicy, raw: unknown, base?: URL): URL {
   let url: URL;
   try {
@@ -33,7 +43,11 @@ export function allowedUrl(policy: IntegrationPolicy, raw: unknown, base?: URL):
       `${policy.name}: the request URL is not a valid absolute URL`,
     );
   }
-  if (url.protocol !== "https:") {
+  const plainLocal =
+    url.protocol === "http:" &&
+    hostIn(policy.localHosts ?? [], url) &&
+    isLocalAddress(url.hostname);
+  if (url.protocol !== "https:" && !plainLocal) {
     throw new IntegrationRefusedError(
       "scheme-not-allowed",
       `${policy.name}: only https is allowed, not ${url.protocol.replace(/:$/, "")}`,
@@ -45,7 +59,7 @@ export function allowedUrl(policy: IntegrationPolicy, raw: unknown, base?: URL):
       `${policy.name}: a URL may not carry a user name or password`,
     );
   }
-  if (!hostIn(policy.hosts, url)) {
+  if (!plainLocal && !hostIn(policy.hosts, url)) {
     throw new IntegrationRefusedError(
       "host-not-allowed",
       `${policy.name}: ${url.host} is not one of the hosts in its permission sheet`,
