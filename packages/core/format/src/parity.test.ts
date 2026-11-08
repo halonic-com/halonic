@@ -5,6 +5,7 @@
 // phase 2 loader's and are not compared here.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { parse as parseWith } from "@halonicjs/schema-kit";
 import {
   type FileRecording,
   loadCases,
@@ -12,7 +13,10 @@ import {
   type Recording,
 } from "@halonicjs/testing-parity";
 import { describe, expect, it } from "vitest";
-import { type FileProblem, isKindName, type KindName, parseFile } from "./index.ts";
+import { type FileProblem, fileKinds, isKindName, type KindName, parseFile } from "./index.ts";
+import { prepare } from "./parse-file.ts";
+import { readSource } from "./source.ts";
+import { fileSchemas as oldSchemas } from "./test/old-schemas.zod.ts";
 
 const fixtures = join(import.meta.dirname, "..", "..", "..", "testing", "parity", "fixtures");
 
@@ -98,6 +102,60 @@ function shapeOf(
 const files = fileCases();
 const compared = files.filter((file) => differences[file.caseId] === undefined);
 
+type ComparedKind = Exclude<KindName, "skill">;
+
+/** The data a file's kind schema gets: its YAML with old keys upgraded and the id from its place. */
+function dataOf(file: FileCase, kind: ComparedKind): unknown {
+  const read = readSource(fileKinds[kind].syntax, file.text);
+  if (!read.ok) {
+    throw new Error(`${file.name}: ${read.error.message}`);
+  }
+  return prepare(fileKinds[kind], read.value.data, file.id).data;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Every key path in the data, maps inside lists included: the keys a variant can leave out. */
+function keyPaths(value: unknown, path: readonly (string | number)[] = []): (string | number)[][] {
+  let children: [string | number, unknown][] = [];
+  if (Array.isArray(value)) {
+    children = value.map((item, index) => [index, item]);
+  } else if (isRecord(value)) {
+    children = Object.entries(value);
+  }
+  return children.flatMap(([key, child]) => [
+    ...(typeof key === "string" ? [[...path, key]] : []),
+    ...keyPaths(child, [...path, key]),
+  ]);
+}
+
+/** A copy of the data without the key at the path. */
+function without(value: unknown, path: readonly (string | number)[]): unknown {
+  const [head, ...rest] = path;
+  if (head === undefined) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item, index) => (index === head ? without(item, rest) : item));
+  }
+  if (!isRecord(value)) {
+    return value;
+  }
+  if (rest.length === 0) {
+    const { [head]: _left, ...kept } = value;
+    return kept;
+  }
+  return { ...value, [head]: without(value[head], rest) };
+}
+
+/** Files the old app read without a problem. Skills are left out: their shape changed on purpose (format.skill-file). */
+const passing = compared.filter(
+  (file) =>
+    file.kind !== "skill" && file.recorded.schema !== null && file.recorded.issues.length === 0,
+);
+
 describe("format.parity-fixtures", () => {
   it("covers every kind in the fixtures", () => {
     expect(new Set(files.map((file) => file.kind)).size).toBe(14);
@@ -155,6 +213,39 @@ describe("format.parity-fixtures", () => {
         expect(problem.col).toBeGreaterThanOrEqual(1);
       }
     }
+  });
+});
+
+describe("format.parity-defaults", () => {
+  it("compares a passing file of every kind but skill", () => {
+    expect(new Set(passing.map((file) => file.kind)).size).toBe(13);
+  });
+
+  it.each(passing)("gives the old app's value for $name", (file) => {
+    const kind = file.kind as ComparedKind;
+    const parsed = parse(file);
+    expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
+    expect(parsed.ok && parsed.value.value).toEqual(oldSchemas[kind].parse(dataOf(file, kind)));
+  });
+
+  // The fixtures spell out most fields, so leave one key out at a time: where
+  // the old schema still passes, its default must be the new kind's.
+  it.each(passing)("fills in the old app's defaults for $name", (file) => {
+    const kind = file.kind as ComparedKind;
+    const data = dataOf(file, kind);
+    const ours: { without: string; value: unknown }[] = [];
+    const theirs: { without: string; value: unknown }[] = [];
+    for (const path of keyPaths(data)) {
+      const variant = without(data, path);
+      const old = oldSchemas[kind].safeParse(variant);
+      if (old.success) {
+        const parsed = parseWith(fileKinds[kind].schema, variant);
+        ours.push({ without: path.join("."), value: parsed.ok ? parsed.value : parsed.error });
+        theirs.push({ without: path.join("."), value: old.data });
+      }
+    }
+    // Some files have only required keys, so the lists can be empty.
+    expect(ours).toEqual(theirs);
   });
 });
 
