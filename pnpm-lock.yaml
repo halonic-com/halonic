@@ -317,6 +317,9 @@ importers:
 
   packages/core/routines:
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
