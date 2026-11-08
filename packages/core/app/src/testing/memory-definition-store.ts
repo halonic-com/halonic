@@ -94,6 +94,9 @@ function isPrivatePath(path: string): boolean {
     }
     const name = segment
       .replace(hfsIgnored, "")
+      // Upper case first, so letters that fold to ASCII on some file system match
+      // too: a long s to `s`, an `st` ligature to `st`, a dotless i to `i`.
+      .toUpperCase()
       .toLowerCase()
       .replace(/[. ]+$/u, "");
     return [".git", ".studio", ".env", ".envrc"].includes(name) || name.startsWith(".env.");

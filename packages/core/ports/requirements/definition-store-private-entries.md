@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-9 plan section 11 (the store layer refuses `.git`, `.studio`, `.env` and symlinks), with the stricter wording decided on HAL-181. The `definition-store` contract suite proves it since HAL-896; symlinks and junctions are left to a folder adapter's own tests
 
-The `DefinitionSource` and `DefinitionStore` ports shall refuse in every method, with a `RangeError`, a path with a private segment, and any symbolic link, Windows junction or other reparse point in any segment, wherever it points. A segment is private when, after removing the code points HFS+ ignores, ignoring case and removing trailing dots and spaces, it is `.git`, `.studio`, `.env` or `.envrc`, or starts with `.env.`; and, whatever its name, when it holds a `:` or a `~` followed by a digit. `list()` shall leave these entries out instead of throwing. The `definition-store` contract suite shall check every adapter against this.
+The `DefinitionSource` and `DefinitionStore` ports shall refuse in every method, with a `RangeError`, a path with a private segment, and any symbolic link, Windows junction or other reparse point in any segment, wherever it points. A segment is private when, after removing the code points HFS+ ignores, ignoring case as any file system might fold it (a long s `\u017F` counts as `s`, the ligature `\uFB06` as `st` and a dotless i `\u0131` as `i`) and removing trailing dots and spaces, it is `.git`, `.studio`, `.env` or `.envrc`, or starts with `.env.`; and, whatever its name, when it holds a `:` or a `~` followed by a digit. `list()` shall leave these entries out instead of throwing. The `definition-store` contract suite shall check every adapter against this.
 
 ## Examples
 
@@ -25,6 +25,9 @@ The `DefinitionSource` and `DefinitionStore` ports shall refuse in every method,
   then it throws a `RangeError`.
 - Given a store,
   when `read(".g\u200Cit/config")` is called (a zero-width non-joiner inside `.git`),
+  then it throws a `RangeError`.
+- Given a store,
+  when `read(".\u017Ftudio/trust.json")`, `read(".\uFB06udio/trust.json")` or `read(".g\u0131t/config")` is called (letters a case-insensitive file system can fold into `.studio` or `.git`),
   then it throws a `RangeError`.
 - Given a folder store where `hubs/shared` is a symlink or a Windows junction to another folder,
   when `read("hubs/shared/a.yaml")` is called,

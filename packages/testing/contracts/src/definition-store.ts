@@ -34,14 +34,18 @@ export const unsafeDefinitionPaths: readonly string[] = [
  * Private paths every method must refuse with a `RangeError`, and `list()`
  * must leave out (port doc, `ports.definition-store-private-entries`): a
  * segment that is `.git`, `.studio`, `.env`, `.envrc` or `.env.*` once the
- * code points HFS+ ignores, case and trailing dots and spaces are set aside,
- * or one with a `:` or a `~` followed by a digit.
+ * code points HFS+ ignores, case (a long s, an `st` ligature and a dotless i
+ * included) and trailing dots and spaces are set aside, or one with a `:` or
+ * a `~` followed by a digit.
  */
 export const privateDefinitionPaths: readonly string[] = [
   ".git/config",
   "hubs/.GIT/config",
   ".g\u200Cit/config",
   ".studio/trust.json",
+  ".\u017Ftudio/trust.json",
+  ".\uFB06udio/trust.json",
+  ".g\u0131t/config",
   ".env",
   ".env.local",
   ".env. ",
