@@ -29,35 +29,99 @@ it with `shell.services.contextFor(featureId, registry)`. The layout reads every
 
 ## Example
 
-```ts
-import { createShell, defineFeature, serviceKey } from "@halonicjs/studio-shell";
+Two features: _routines_ puts a Triggers section on the _agents_ feature's item page, and uses
+_agents_ only through its service key. The code lives in
+[`examples/agents-and-routines.ts`](examples/agents-and-routines.ts), where it is typechecked and
+run by `src/example.test.ts`; keep this copy in step with it. The file imports `../src/index.ts`,
+because a package may not import itself by name; outside this package, import
+`@halonicjs/studio-shell` as below.
 
-const WorkspaceService = serviceKey<{ root: string }>("workspace");
-const AgentsService = serviceKey<{ names(): string[] }>("agents");
+```ts
+import {
+  createShell,
+  defineFeature,
+  loadView,
+  type ServiceKey,
+  type ServiceTarget,
+  serviceKey,
+} from "@halonicjs/studio-shell";
+
+// In a real feature this key lives in the agents feature's api.ts.
+const AgentsService = serviceKey<{ names(): readonly string[] }>("agents");
 
 const agentsFeature = defineFeature({
   id: "agents",
   title: "Agents",
-  needs: [WorkspaceService],
   provides: [AgentsService],
   register(studio) {
-    studio.services.provide(AgentsService, (services) => {
-      const { root } = services.get(WorkspaceService);
-      return { names: () => [`${root}/reviewer`] };
+    studio.services.provide(AgentsService, () => ({ names: () => ["reviewer", "writer"] }));
+    studio.itemKinds.add({
+      kind: "agent",
+      label: "Agent",
+      icon: "agent",
+      open: {
+        view: "AgentEditorView",
+        load: async () => ({ AgentEditorView: () => "agent page" }),
+      },
+    });
+    studio.commands.add({ id: "agents.new", title: "New agent", run: () => {} });
+    studio.keybindings.add({ command: "agents.new", keys: "Ctrl+Alt+A", when: "workspaceFocused" });
+  },
+});
+
+const routinesFeature = defineFeature({
+  id: "routines",
+  title: "Routines",
+  needs: [AgentsService],
+  register(studio) {
+    studio.itemPage.addSection({
+      on: "agent",
+      id: "triggers",
+      order: 30,
+      view: "AgentTriggersSection",
+      load: async () => ({ AgentTriggersSection: () => "triggers" }),
     });
   },
 });
 
-const shell = createShell({ features: [agentsFeature], hostServices: [WorkspaceService] });
+/** A minimal workspace registry; the Studio uses `ServiceRegistry` from `@halonicjs/app`. */
+class WorkspaceServices implements ServiceTarget {
+  private readonly services = new Map<string, unknown>();
+  provide<Service>(key: ServiceKey<Service>, service: Service): void {
+    this.services.set(key.name, service);
+  }
+  get<Service>(key: ServiceKey<Service>): Service {
+    return this.services.get(key.name) as Service;
+  }
+  has(key: ServiceKey<unknown>): boolean {
+    return this.services.has(key.name);
+  }
+}
 
-// Each time a workspace opens:
-const services = new Map<string, unknown>();
-const registry = {
-  provide: <S>(key: { name: string }, service: S) => services.set(key.name, service),
-  get: <S>(key: { name: string }) => services.get(key.name) as S,
-  has: (key: { name: string }) => services.has(key.name),
-};
-registry.provide(WorkspaceService, { root: "acme" });
-shell.services.instantiate(registry);
-registry.get(AgentsService).names(); // ["acme/reviewer"]
+/** Registers both features, opens a workspace and reads back what they contributed. */
+export async function runExample(): Promise<{
+  sections: string[];
+  shortcut: string | undefined;
+  agents: readonly string[];
+  section: string;
+}> {
+  const shell = createShell({ features: [routinesFeature, agentsFeature] });
+
+  const workspace = new WorkspaceServices();
+  shell.services.instantiate(workspace);
+
+  const sections = shell.contributions.itemPage.sectionsFor("agent");
+  const [triggers] = sections;
+  const section = triggers === undefined ? "" : (await loadView<() => string>(triggers))();
+  const pressed = shell.contributions.keybindings.resolve(
+    "ctrl+alt+a",
+    new Set(["workspaceFocused"]),
+  );
+  return {
+    sections: sections.map((entry) => `${entry.featureId}:${entry.id}`), // ["routines:triggers"]
+    shortcut: pressed?.command, // "agents.new"
+    agents: workspace.get(AgentsService).names(), // ["reviewer", "writer"]
+    section, // "triggers"
+  };
+}
 ```
