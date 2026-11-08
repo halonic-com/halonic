@@ -134,32 +134,17 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-    env:
-      # The digest pins the official image, so it replaces the checksum check.
-      GITLEAKS_IMAGE: docker.io/zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f # v8.30.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
+      # Pull requests and merge queue scan their own commits; pushes to main
+      # scan the whole history.
       - name: Scan commits
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
-        # The container runs as root but the checkout belongs to the runner user.
-        # Without safe.directory git refuses the repo and gitleaks scans 0 commits and passes.
-        run: |
-          gitleaks() {
-            docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo \
-              -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
-              "$GITLEAKS_IMAGE" "$@"
-          }
-          if [ "$EVENT" = "push" ]; then
-            gitleaks git --redact --no-banner --exit-code 1 .
-          else
-            gitleaks git --redact --no-banner --exit-code 1 --log-opts="$BASE..$HEAD" .
-          fi
+        uses: ./.github/actions/gitleaks
+        with:
+          log-opts: ${{ github.event_name != 'push' && format('{0}..{1}', github.event.pull_request.base.sha || github.event.merge_group.base_sha, github.event.pull_request.head.sha || github.event.merge_group.head_sha) || '' }}
 
   zizmor:
     name: Workflow lint (zizmor)
