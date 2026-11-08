@@ -1,8 +1,9 @@
 import type { Routine } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import fc from "fast-check";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { DEFAULT_TICK_POLICY, due, type PlacedRoutine } from "./due.ts";
+import { occurrences } from "./occurrences.ts";
 
 const at = (iso: string) => new Date(iso);
 const iso = (date: Date) => date.toISOString();
@@ -95,6 +96,62 @@ verifies("routines.due", () => {
     const runs = due([routine], at("2026-11-02T23:00:00Z"), at("2026-11-03T01:00:00Z"), policy);
     expect(runs[0]?.key).toBe("@workspace/r1");
     expect(runs[0]?.at.toISOString()).toBe("2026-11-03T00:00:00.000Z");
+  });
+
+  describe("after a nine-day window", () => {
+    // 12,960 minutes: more than one walk through the window lists.
+    const lastTick = at("2026-11-01T00:00:00Z");
+    const now = at("2026-11-10T00:00:30Z");
+    const everyMinute = { schedule: "* * * * *", timezone: "UTC" };
+
+    it.each([
+      ["a schedule", everyMinute],
+      ["an interval", { every: "1m" }],
+    ])("gives the newest time for catchUp last on %s", (_name, trigger) => {
+      expect(times(due([placed(trigger, "last")], lastTick, now))).toEqual([
+        "2026-11-10T00:00:00.000Z",
+      ]);
+    });
+
+    it.each([
+      ["a schedule", everyMinute],
+      ["an interval", { every: "1m" }],
+    ])("gives the on-time time for catchUp none on %s", (_name, trigger) => {
+      expect(times(due([placed(trigger, "none")], lastTick, now))).toEqual([
+        "2026-11-10T00:00:00.000Z",
+      ]);
+    });
+
+    it("gives the oldest times up to the cap for catchUp all", () => {
+      const runs = due([placed(everyMinute, "all")], lastTick, now);
+      expect(runs).toHaveLength(DEFAULT_TICK_POLICY.maxCatchUp);
+      expect(runs[0]?.at.toISOString()).toBe("2026-11-01T00:01:00.000Z");
+    });
+
+    it("finds a schedule's newest time long before now", () => {
+      const runs = due([placed({ schedule: "30 6 2 11 *", timezone: "UTC" })], lastTick, now);
+      expect(times(runs)).toEqual(["2026-11-02T06:30:00.000Z"]);
+    });
+  });
+
+  it("gives the same newest schedule time as walking the window", () => {
+    const crons = ["*/7 * * * *", "0 9 * * 1-5", "15 2,14 * * *", "0 0 1 * *"];
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...crons),
+        fc.constantFrom("UTC", "America/New_York"),
+        fc.integer({ min: 0, max: 40 * 86_400_000 }),
+        fc.integer({ min: 1, max: 3 * 86_400_000 }),
+        (schedule, timezone, offset, length) => {
+          const lastTick = new Date(at("2026-10-01T00:00:00Z").getTime() + offset);
+          const now = new Date(lastTick.getTime() + length);
+          const trigger = { schedule, timezone };
+          const walked = occurrences(trigger, lastTick, now, 1_000).map(iso).slice(-1);
+          expect(times(due([placed(trigger, "last")], lastTick, now))).toEqual(walked);
+        },
+      ),
+      { numRuns: 30 },
+    );
   });
 
   it("orders by time, then key", () => {
