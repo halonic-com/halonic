@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: `slugify` in the old Studio (`packages/core/app/src/studio.ts`) at 784f78d
 
-When a display name is turned into an id, the slug function shall lowercase it, drop accents and every character other than ASCII letters, digits, underscores, spaces and hyphens, and join the words with single hyphens, treating runs of spaces and underscores as word breaks, leave no hyphen at either end, giving "item" when nothing is left.
+When a display name is turned into an id, the slug function shall lowercase it, drop accents and every character other than ASCII letters, digits, underscores, spaces and hyphens, and join the words with single hyphens, treating runs of spaces and underscores as word breaks, leaving no hyphen at either end, and giving "item" when nothing is left.
 
 ## Examples
 
