@@ -18,6 +18,8 @@ export interface TestOutcome {
   readonly status: string;
   /** The requirement ID `verifies()` tagged the test with, if any. */
   readonly requirement: string | undefined;
+  /** How many `expect` calls the test made, when `verifies()` recorded it. */
+  readonly assertions: number | undefined;
 }
 
 /** What reading a package's result file gave. */
@@ -77,11 +79,13 @@ function readOutcome(file: string, result: unknown): TestOutcome | undefined {
     return undefined;
   }
   const requirement = isObject(meta) ? meta["requirement"] : undefined;
+  const assertions = isObject(meta) ? meta["assertions"] : undefined;
   return {
     file,
     name: fullName,
     status,
     requirement: typeof requirement === "string" ? requirement : undefined,
+    assertions: typeof assertions === "number" ? assertions : undefined,
   };
 }
 

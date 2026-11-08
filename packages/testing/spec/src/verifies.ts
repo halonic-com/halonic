@@ -1,4 +1,4 @@
-import { describe } from "vitest";
+import { afterEach, describe, expect, type TestContext } from "vitest";
 
 /**
  * A requirement ID: `<package>[.<sub-feature>].<name>`, each part a short
@@ -11,6 +11,8 @@ declare module "vitest" {
   interface TaskMeta {
     /** The requirement the test proves, set by `verifies()`. The trace check reads it. */
     requirement?: string;
+    /** How many `expect` calls the test made, set by `verifies()`. The requirement guard reads it. */
+    assertions?: number;
   }
 }
 
@@ -22,6 +24,8 @@ let insideVerifies = false;
  * Groups the tests that prove one requirement. It is `describe`
  * with the requirement ID as its title, and it tags every test inside with
  * the ID, so Vitest's result file says which requirements ran and passed.
+ * It also records how many `expect` calls each test made, so the
+ * requirement guard can see a requirement's tests assert less.
  *
  * @param requirementId - the ID from the requirement file, such as `workflow.timer-fires-after-delay`
  * @param body - the tests, written as in `describe`
@@ -45,10 +49,22 @@ export function verifies(requirementId: string, body: () => void): void {
   }
   describe(requirementId, { meta: { requirement: requirementId } }, () => {
     insideVerifies = true;
+    afterEach(recordAssertions);
     try {
       body();
     } finally {
       insideVerifies = false;
     }
   });
+}
+
+/**
+ * Writes the test's `expect` count into its tag. A test counts with either
+ * the global `expect` or its own `({ expect })`, so both are added up.
+ * afterEach runs before Vitest resets the counts for the next test.
+ */
+function recordAssertions(context: TestContext): void {
+  const local = context.expect.getState().assertionCalls;
+  const global = expect.getState().assertionCalls;
+  context.task.meta.assertions = local + global;
 }

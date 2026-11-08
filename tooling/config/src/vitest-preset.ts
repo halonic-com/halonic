@@ -26,6 +26,9 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
       environment: "node",
       // A test that never ran must not count as passing.
       passWithNoTests: false,
+      // A test with no assertion fails, so a test can't be emptied out to
+      // pass. verifies() records each test's count for the guard.
+      expect: { requireAssertions: true },
       // Tests may not depend on the order they run in.
       sequence: { shuffle: true },
       restoreMocks: true,

@@ -43,7 +43,7 @@ describe("readTestResults", () => {
     }
   });
 
-  test("reads each test with its file relative to the repo, its status and its requirement", () => {
+  test("reads each test with its file relative to the repo, its status, requirement and expect count", () => {
     const root = repoWithResults({
       testResults: [
         {
@@ -52,10 +52,14 @@ describe("readTestResults", () => {
             {
               fullName: "workflow.timer fires",
               status: "passed",
-              meta: { requirement: "workflow.timer" },
+              meta: { requirement: "workflow.timer", assertions: 2 },
             },
             { fullName: "helper works", status: "failed", meta: {} },
-            { fullName: "odd tag", status: "passed", meta: { requirement: 42 } },
+            {
+              fullName: "odd tag",
+              status: "passed",
+              meta: { requirement: 42, assertions: "2" },
+            },
           ],
         },
         {
@@ -71,24 +75,28 @@ describe("readTestResults", () => {
         name: "workflow.timer fires",
         status: "passed",
         requirement: "workflow.timer",
+        assertions: 2,
       },
       {
         file: "packages/core/workflow/src/timer.test.ts",
         name: "helper works",
         status: "failed",
         requirement: undefined,
+        assertions: undefined,
       },
       {
         file: "packages/core/workflow/src/timer.test.ts",
         name: "odd tag",
         status: "passed",
         requirement: undefined,
+        assertions: undefined,
       },
       {
         file: "packages/core/workflow/src/cron.test.ts",
         name: "cron",
         status: "skipped",
         requirement: undefined,
+        assertions: undefined,
       },
     ]);
   });

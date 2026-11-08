@@ -51,3 +51,25 @@ describe("requirementIdPattern", () => {
     expect(requirementIdPattern.test(id)).toBe(true);
   });
 });
+
+verifies("spec.verifies-counts-assertions", () => {
+  // The last test reads the tags of the two before it, so they keep their order.
+  describe("in order", { shuffle: false }, () => {
+    test("global expect", () => {
+      expect(1).toBe(1);
+      expect.soft(2).toBe(2);
+      expect(3).toBeTruthy();
+    });
+
+    test("the test's own expect", ({ expect: own }) => {
+      own(1).toBe(1);
+    });
+
+    test("records each test's expect count in its tag", ({ task }) => {
+      const countOf = (name: string): number | undefined =>
+        task.suite?.tasks.find((sibling) => sibling.name === name)?.meta.assertions;
+      expect(countOf("global expect")).toBe(3);
+      expect(countOf("the test's own expect")).toBe(1);
+    });
+  });
+});
