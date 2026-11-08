@@ -3,11 +3,18 @@ import { Report } from "../lib/problems.ts";
 import type { ApprovalLookup, ApprovalVerdict } from "./approvals.ts";
 import { type DecisionNote, decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
 import type { GuardCheck, GuardFinding } from "./finding.ts";
+import { checkMocks } from "./mocks.ts";
 import { checkRequirementChanges } from "./requirement-changes.ts";
+import { checkSkips } from "./skips.ts";
 import { checkTestRuns } from "./test-runs.ts";
 
 /** Every check of the requirement guard (plan 9.3, points 2 and 3). */
-export const guardChecks: readonly GuardCheck[] = [checkRequirementChanges, checkTestRuns];
+export const guardChecks: readonly GuardCheck[] = [
+  checkRequirementChanges,
+  checkTestRuns,
+  checkSkips,
+  checkMocks,
+];
 
 /** What one guard run compares, and how it checks approvals. */
 export interface GuardRun {
