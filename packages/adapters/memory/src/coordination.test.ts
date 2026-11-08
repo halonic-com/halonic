@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { ManualClock } from "./clock.ts";
 import { MemoryCoordination } from "./coordination.ts";
 
-describe("MemoryCoordination (adapter-memory.coordination)", () => {
+verifies("memory.coordination", () => {
   it("lets a lease run out when its clock moves, and gives the next holder a new token", async () => {
     const clock = new ManualClock();
     const coordination = new MemoryCoordination(clock);

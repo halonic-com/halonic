@@ -1,3 +1,4 @@
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
   invalidAmounts,
@@ -14,13 +15,15 @@ const iso = (ms: number) => new Date(ms).toISOString();
  * suite moves it.
  */
 export function coordinationContract(name: string, make: MakeCoordination): void {
-  describe(`Coordination contract (contracts.coordination): ${name}`, () => {
-    leaseCases(make);
-    leaseExpiryCases(make);
-    valueCases(make);
-    counterCases(make);
-    windowCases(make);
-    inputCases(make);
+  verifies("contracts.coordination", () => {
+    describe(`Coordination contract: ${name}`, () => {
+      leaseCases(make);
+      leaseExpiryCases(make);
+      valueCases(make);
+      counterCases(make);
+      windowCases(make);
+      inputCases(make);
+    });
   });
 }
 

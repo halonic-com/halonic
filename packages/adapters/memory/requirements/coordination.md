@@ -1,4 +1,4 @@
-# adapter-memory.coordination
+# memory.coordination
 
 - Status: active
 - Since: 0.1.0
