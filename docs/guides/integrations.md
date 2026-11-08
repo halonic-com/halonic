@@ -18,7 +18,10 @@ The interface is decided in
    the isolated worker (I5) refuses them at run time.
 2. **Declare every host** in the permission sheet: exact host names, `https`
    only, no wildcards. The kit refuses anything else, including a redirect
-   to an undeclared host.
+   to an undeclared host. The one exception is a host the user picks in a
+   setting, such as a local MCP server: plain `http` is allowed when it is
+   `localhost`, a loopback or a private network address, and a key goes over
+   plain `http` only to the user's own machine.
 3. **Never touch a secret value.** Name the secret and say where it goes; the
    kit puts the value in, and only for the hosts the sheet allows for it:
 
@@ -39,7 +42,10 @@ The interface is decided in
    less than the code. Set `untrusted: true` on a tool whose result carries
    outside content, such as mail or web pages.
 5. **Don't pass a provider's error body on.** Throw an error with the status
-   and what failed; the body may hold personal data or echo a key.
+   and what failed; the body may hold personal data or echo a key. You may
+   include the provider's short error code (such as `rate_limit_error` or
+   `model_not_found`), because users need it to fix their own setup, but
+   never its free text.
 6. **Pass the `signal` on** to every request, so a cancelled run stops.
 7. **Send nothing in `connect`.** Connect lazily, on the first call.
 8. **Tokens you write are yours alone.** Declare their names in the sheet;
@@ -69,7 +75,15 @@ tools:
     risk: read
     untrusted: true
 needs: [] # such as process, for a local MCP server
+limits: # optional; the defaults suit a short JSON API
+  timeoutMs: 600000 # the whole request, reading the answer included
+  maxResponseBytes: 10485760
 ```
+
+The kit waits up to 30 seconds for the response headers, then up to 60
+seconds for each next piece of the body, so a long streamed answer keeps
+going as long as data arrives. Raise `limits` for a long model answer or a
+large file export.
 
 The field list is v0; the schema in `@halonicjs/format` is the source of
 truth once it lands.
@@ -111,9 +125,16 @@ export const weather: Integration = {
 
 Every integration runs the conformance suite from
 `@halonicjs/testing-integration` on recorded responses; no test reaches the
-network. See its README for the call. Recordings are scrubbed before they are
-written: no auth headers, tokens, e-mail addresses or message bodies. The
-secret scan and the personal-terms guard run over them in CI.
+network. See its README for the call.
+
+Recordings are `halonic.recording/1` files, one scenario each, written by
+`pnpm record` in the integrations repo. They are scrubbed before they are
+written: keys become `<scrubbed:secret>`, the user's own content
+`<scrubbed:content>`, and tokens, e-mail addresses and phone numbers get
+stand-ins. On replay each request must match the next recorded exchange on
+method and URL, and on body and key headers where the recording kept them;
+a placeholder matches any value. The secret scan and the personal-terms
+guard run over recordings in CI.
 
 ## How the integrations repo gets the kit
 
