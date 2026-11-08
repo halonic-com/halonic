@@ -1,6 +1,8 @@
-// Ids and keys of the routine scheduler. Core can't call `crypto.subtle` or
-// `TextEncoder`, so the UTF-8 length and the short hash are done
-// here. They move to `@halonicjs/std` if another package needs them.
+// Ids and keys of the routine scheduler. Core can't call `crypto.subtle`, so
+// the short hash is done here; it moves to `@halonicjs/std` if another
+// package needs it. The UTF-8 bytes come from std.
+
+import { encodeUtf8 } from "@halonicjs/std";
 
 /** The most UTF-8 bytes in a run id or a `Coordination` key (ports). */
 const maxIdBytes = 256;
@@ -41,42 +43,13 @@ const mask64 = (1n << 64n) - 1n;
  */
 export function shortHash(text: string): string {
   let hash = fnvOffset;
-  for (const byte of utf8Bytes(text)) {
+  for (const byte of encodeUtf8(text)) {
     hash = ((hash ^ BigInt(byte)) * fnvPrime) & mask64;
   }
   return hash.toString(16).padStart(16, "0");
 }
 
-/** How many bytes a text takes in UTF-8. */
+/** How many bytes a text takes in UTF-8; a lone surrogate counts as U+FFFD, as with `TextEncoder`. */
 export function utf8Length(text: string): number {
-  let length = 0;
-  for (const _ of utf8Bytes(text)) {
-    length++;
-  }
-  return length;
-}
-
-/** The UTF-8 bytes of a text; a lone surrogate becomes U+FFFD, as `TextEncoder` does. */
-function* utf8Bytes(text: string): Generator<number> {
-  for (const char of text) {
-    let code = char.codePointAt(0) ?? 0;
-    if (code >= 0xd800 && code <= 0xdfff) {
-      code = 0xfffd;
-    }
-    if (code < 0x80) {
-      yield code;
-    } else if (code < 0x800) {
-      yield 0xc0 | (code >> 6);
-      yield 0x80 | (code & 0x3f);
-    } else if (code < 0x10000) {
-      yield 0xe0 | (code >> 12);
-      yield 0x80 | ((code >> 6) & 0x3f);
-      yield 0x80 | (code & 0x3f);
-    } else {
-      yield 0xf0 | (code >> 18);
-      yield 0x80 | ((code >> 12) & 0x3f);
-      yield 0x80 | ((code >> 6) & 0x3f);
-      yield 0x80 | (code & 0x3f);
-    }
-  }
+  return encodeUtf8(text).length;
 }

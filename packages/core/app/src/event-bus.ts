@@ -1,3 +1,5 @@
+import { Emitter } from "@halonicjs/std";
+
 /** A map from event names to the type of their payload. */
 export type EventMap<Events> = { [Name in keyof Events]: unknown };
 
@@ -11,19 +13,19 @@ export type ListenerErrorHandler = (error: unknown, eventName: string) => void;
  * Typed events inside one open workspace, such as "files changed". Commands
  * change things; events tell everyone else that something changed.
  *
- * Listeners run in the order they were added, synchronously. One added or
- * removed while an event is being sent takes effect from the next event. If
- * a listener throws, the others still run. With an `onListenerError`
- * handler, each error goes there and `emit` returns normally, so one faulty
- * listener can't break whoever sent the event; the workspace scope always
- * uses one. Without it, `emit` throws that error (or an `AggregateError`
- * with all of them), which suits tests.
- *
- * Same rules as `Emitter` in `@halonicjs/std`; the bus switches to it once
- * std is on this package's base (HAL-104).
+ * Built on `Emitter` from `@halonicjs/std`, with the same rules: listeners
+ * run in the order they were added, synchronously, and one added or removed
+ * while an event is being sent takes effect from the next event. If a
+ * listener throws, the others still run. With an `onListenerError` handler,
+ * each error goes there as soon as its listener throws and `emit` returns
+ * normally, so one faulty listener can't break whoever sent the event; the
+ * workspace scope always uses one. Without it, `emit` throws that error (or
+ * an `AggregateError` with all of them), which suits tests.
  */
 export class EventBus<Events extends EventMap<Events>> {
-  private readonly listeners = new Map<keyof Events, Set<EventListener<never>>>();
+  // Typed loosely inside: `Emitter` wants a string-keyed record, which an
+  // interface such as `AppEvents` is not. `on` and `emit` check the types.
+  private emitter = new Emitter<Record<PropertyKey, unknown>>();
   private readonly onListenerError: ListenerErrorHandler | undefined;
 
   /**
@@ -39,17 +41,7 @@ export class EventBus<Events extends EventMap<Events>> {
    * @returns a function that removes the listener again; calling it twice is harmless
    */
   on<Name extends keyof Events>(name: Name, listener: EventListener<Events[Name]>): () => void {
-    let forName = this.listeners.get(name);
-    if (forName === undefined) {
-      forName = new Set();
-      this.listeners.set(name, forName);
-    }
-    // Wrapped, so adding the same function twice gives two independent listeners.
-    const entry: EventListener<Events[Name]> = (payload) => listener(payload);
-    forName.add(entry);
-    return () => {
-      forName.delete(entry);
-    };
+    return this.emitter.on(name, this.reporting(name, listener) as EventListener<unknown>);
   }
 
   /**
@@ -59,34 +51,29 @@ export class EventBus<Events extends EventMap<Events>> {
    *   listener that threw, or an `AggregateError` when several did
    */
   emit<Name extends keyof Events>(name: Name, payload: Events[Name]): void {
-    const forName = this.listeners.get(name);
-    if (forName === undefined) {
-      return;
-    }
-    const errors: unknown[] = [];
-    for (const listener of [...forName] as EventListener<Events[Name]>[]) {
-      try {
-        listener(payload);
-      } catch (error) {
-        errors.push(error);
-      }
-    }
-    if (this.onListenerError !== undefined) {
-      for (const error of errors) {
-        this.onListenerError(error, String(name));
-      }
-      return;
-    }
-    if (errors.length === 1) {
-      throw errors[0];
-    }
-    if (errors.length > 1) {
-      throw new AggregateError(errors, `${errors.length} listeners for "${String(name)}" failed.`);
-    }
+    this.emitter.emit(name, payload);
   }
 
   /** Removes every listener. The workspace scope calls this when it closes. */
   clear(): void {
-    this.listeners.clear();
+    this.emitter = new Emitter();
+  }
+
+  /** The listener as the emitter gets it: with a handler, its errors go there instead of to `emit`. */
+  private reporting<Name extends keyof Events>(
+    name: Name,
+    listener: EventListener<Events[Name]>,
+  ): EventListener<Events[Name]> {
+    const onListenerError = this.onListenerError;
+    if (onListenerError === undefined) {
+      return listener;
+    }
+    return (payload) => {
+      try {
+        listener(payload);
+      } catch (error) {
+        onListenerError(error, String(name));
+      }
+    };
   }
 }
