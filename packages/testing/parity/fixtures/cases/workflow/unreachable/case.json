@@ -1,0 +1,10 @@
+{
+  "about": "a state no transition reaches",
+  "kind": "workflow",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.orphan",
+    "line": 9
+  }
+}

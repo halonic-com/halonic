@@ -1,0 +1,10 @@
+{
+  "about": "a deployment name with capitals",
+  "kind": "deployments",
+  "fault": "bad-format",
+  "expect": {
+    "file": "deployments.yaml",
+    "path": "deployments.Laptop",
+    "line": 3
+  }
+}

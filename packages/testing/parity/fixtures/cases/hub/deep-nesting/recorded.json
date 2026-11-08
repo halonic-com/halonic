@@ -1,0 +1,57 @@
+{
+  "reference": "784f78d",
+  "case": "hub/deep-nesting",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/hub.yaml",
+      "flatPath": "hubs/billing/hub.yaml",
+      "read": true,
+      "schema": "hub",
+      "issues": [
+        {
+          "path": [
+            "models",
+            "careful",
+            "params",
+            "temperature"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected number, received string",
+          "line": 10,
+          "col": 28
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/hub.yaml",
+      "message": "models.careful.params.temperature: Invalid input: expected number, received string",
+      "line": 10,
+      "col": 28
+    },
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "Routine \"hourly-check\": unknown hub \"billing\""
+    },
+    {
+      "severity": "error",
+      "path": "routines/on-paid.routine.yaml",
+      "message": "Routine \"on-paid\": unknown hub \"billing\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/hub.yaml: models.careful.params.temperature: Invalid input: expected number, received string\nerror routines/hourly-check.routine.yaml: Routine \"hourly-check\": unknown hub \"billing\"\nerror routines/on-paid.routine.yaml: Routine \"on-paid\": unknown hub \"billing\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 10,
+    "recorded": 10,
+    "verdict": "same"
+  }
+}

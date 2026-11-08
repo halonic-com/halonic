@@ -1,0 +1,10 @@
+{
+  "about": "a cron minute above 59",
+  "kind": "routine",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "path": "trigger.schedule",
+    "line": 4
+  }
+}

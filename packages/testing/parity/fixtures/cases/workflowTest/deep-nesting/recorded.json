@@ -1,0 +1,48 @@
+{
+  "reference": "784f78d",
+  "case": "workflowTest/deep-nesting",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [
+        {
+          "path": [
+            "cases",
+            2,
+            "events",
+            0,
+            "advance"
+          ],
+          "code": "invalid_format",
+          "message": "Invalid string: must match pattern /^[1-9]\\d*(m|h|d)$/",
+          "line": 10,
+          "col": 25
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "cases.2.events.0.advance: Invalid string: must match pattern /^[1-9]\\d*(m|h|d)$/",
+      "line": 10,
+      "col": 25
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.test.yaml: cases.2.events.0.advance: Invalid string: must match pattern /^[1-9]\\d*(m|h|d)$/\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 10,
+    "recorded": 10,
+    "verdict": "same"
+  }
+}

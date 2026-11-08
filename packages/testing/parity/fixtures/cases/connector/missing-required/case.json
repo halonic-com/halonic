@@ -1,0 +1,10 @@
+{
+  "about": "a stdio transport without a command",
+  "kind": "connector",
+  "fault": "missing-required",
+  "expect": {
+    "file": "library/connectors/files.connector.yaml",
+    "path": "transport.stdio.command",
+    "line": 4
+  }
+}

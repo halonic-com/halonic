@@ -1,0 +1,10 @@
+{
+  "about": "a state's transitions are a map, not a list",
+  "kind": "workflow",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "hubs/billing/workflows/invoice.workflow.yaml",
+    "path": "states.notify.on",
+    "line": 55
+  }
+}

@@ -1,0 +1,14 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    agent: checker
+    on:
+      - to: done
+  orphan:
+    agent: checker
+    on:
+      - to: done
+  done:
+    type: final

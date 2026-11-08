@@ -1,0 +1,50 @@
+{
+  "reference": "784f78d",
+  "case": "collection/bad-field-name",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/collections/invoices.collection.yaml",
+      "flatPath": "collections/invoices.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [
+        {
+          "path": [
+            "fields",
+            "due-date"
+          ],
+          "code": "invalid_key",
+          "message": "Invalid key in record",
+          "line": 10,
+          "col": 13
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "collections/invoices.collection.yaml",
+      "message": "fields.due-date: Invalid key in record",
+      "line": 10,
+      "col": 13
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error collections/invoices.collection.yaml: fields.due-date: Invalid key in record\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown collection \"invoices\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 10,
+    "recorded": 10,
+    "verdict": "same"
+  }
+}

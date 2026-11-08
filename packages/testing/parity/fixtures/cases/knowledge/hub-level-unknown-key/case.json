@@ -1,0 +1,10 @@
+{
+  "about": "a hub-level source with an unknown key",
+  "kind": "knowledge",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "hubs/billing/library/knowledge/ledger.yaml",
+    "path": "size",
+    "line": 4
+  }
+}

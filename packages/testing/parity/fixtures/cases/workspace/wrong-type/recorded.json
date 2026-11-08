@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [
+        {
+          "path": [
+            "budget",
+            "perRun"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected number, received string",
+          "line": 9,
+          "col": 11
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "budget.perRun: Invalid input: expected number, received string",
+      "line": 9,
+      "col": 11
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: budget.perRun: Invalid input: expected number, received string\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 9,
+    "recorded": 9,
+    "verdict": "same"
+  }
+}

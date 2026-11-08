@@ -1,0 +1,10 @@
+{
+  "about": "a signal filter with an unknown guard, four levels down",
+  "kind": "routine",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "workflows/routines/on-paid.routine.yaml",
+    "path": "trigger.signal.when",
+    "line": 6
+  }
+}

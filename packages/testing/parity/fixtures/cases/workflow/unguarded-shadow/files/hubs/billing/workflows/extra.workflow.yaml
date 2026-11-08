@@ -1,0 +1,13 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    agent: checker
+    output: answer
+    on:
+      - to: done
+      - to: done
+        when: { exists: "{{context.answer}}" }
+  done:
+    type: final

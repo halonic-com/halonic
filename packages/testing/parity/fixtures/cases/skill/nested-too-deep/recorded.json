@@ -1,0 +1,22 @@
+{
+  "reference": "784f78d",
+  "case": "skill/nested-too-deep",
+  "valid": true,
+  "files": [
+    {
+      "file": "library/skills/plain-words/extra/SKILL.md",
+      "flatPath": "skills/plain-words/extra/SKILL.md",
+      "read": false,
+      "schema": null,
+      "issues": [],
+      "status": "not-read"
+    }
+  ],
+  "diagnostics": [],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "OK: Acme, 1 hub(s), 0 warning(s)\n",
+    "stderr": ""
+  },
+  "line": null
+}

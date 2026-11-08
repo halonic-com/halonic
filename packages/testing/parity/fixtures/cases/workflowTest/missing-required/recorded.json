@@ -1,0 +1,46 @@
+{
+  "reference": "784f78d",
+  "case": "workflowTest/missing-required",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [
+        {
+          "path": [
+            "cases",
+            2,
+            "name"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected string, received undefined",
+          "line": 9,
+          "col": 5
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "cases.2.name: Invalid input: expected string, received undefined",
+      "line": 9,
+      "col": 5
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.test.yaml: cases.2.name: Invalid input: expected string, received undefined\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 9,
+    "recorded": 9,
+    "verdict": "same"
+  }
+}

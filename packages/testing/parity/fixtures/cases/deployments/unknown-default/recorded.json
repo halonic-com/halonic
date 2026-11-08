@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "deployments/unknown-default",
+  "valid": false,
+  "files": [
+    {
+      "file": "deployments.yaml",
+      "flatPath": "deployments.yaml",
+      "read": true,
+      "schema": "deployments",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "deployments.yaml",
+      "message": "The default deployment \"desktop\" is not listed"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error deployments.yaml: The default deployment \"desktop\" is not listed\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "reference": "784f78d",
+  "case": "provider/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "providers/local-llm.yaml",
+      "flatPath": "providers/local-llm.yaml",
+      "read": true,
+      "schema": "provider",
+      "issues": [
+        {
+          "path": [
+            "local"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected boolean, received string",
+          "line": 5,
+          "col": 8
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "providers/local-llm.yaml",
+      "message": "local: Invalid input: expected boolean, received string",
+      "line": 5,
+      "col": 8
+    },
+    {
+      "severity": "error",
+      "path": "models.yaml",
+      "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error providers/local-llm.yaml: local: Invalid input: expected boolean, received string\nerror models.yaml: Alias \"smart\" uses unknown provider \"local-llm\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": 5,
+    "verdict": "same"
+  }
+}

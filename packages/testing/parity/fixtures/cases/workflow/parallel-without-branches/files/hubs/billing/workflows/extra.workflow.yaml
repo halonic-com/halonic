@@ -1,0 +1,10 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    type: parallel
+    on:
+      - to: done
+  done:
+    type: final

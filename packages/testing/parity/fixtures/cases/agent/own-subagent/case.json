@@ -1,0 +1,10 @@
+{
+  "about": "an agent that delegates to itself",
+  "kind": "agent",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/agents/reviewer.agent.yaml",
+    "path": "subagents.0",
+    "line": 7
+  }
+}

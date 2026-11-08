@@ -1,0 +1,10 @@
+{
+  "about": "appearance.characters is not one of expressive, minimal, off",
+  "kind": "workspace",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "appearance.characters",
+    "line": 22
+  }
+}

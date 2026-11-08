@@ -1,0 +1,10 @@
+{
+  "about": "a workspace-level routine without run.hub",
+  "kind": "routine",
+  "fault": "reference",
+  "expect": {
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "path": "run.hub",
+    "line": 5
+  }
+}

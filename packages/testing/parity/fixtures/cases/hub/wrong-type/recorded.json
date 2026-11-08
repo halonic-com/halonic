@@ -1,0 +1,54 @@
+{
+  "reference": "784f78d",
+  "case": "hub/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/hub.yaml",
+      "flatPath": "hubs/billing/hub.yaml",
+      "read": true,
+      "schema": "hub",
+      "issues": [
+        {
+          "path": [
+            "models"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected record, received array",
+          "line": 6,
+          "col": 9
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/hub.yaml",
+      "message": "models: Invalid input: expected record, received array",
+      "line": 6,
+      "col": 9
+    },
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "Routine \"hourly-check\": unknown hub \"billing\""
+    },
+    {
+      "severity": "error",
+      "path": "routines/on-paid.routine.yaml",
+      "message": "Routine \"on-paid\": unknown hub \"billing\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/hub.yaml: models: Invalid input: expected record, received array\nerror routines/hourly-check.routine.yaml: Routine \"hourly-check\": unknown hub \"billing\"\nerror routines/on-paid.routine.yaml: Routine \"on-paid\": unknown hub \"billing\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 6,
+    "recorded": 6,
+    "verdict": "same"
+  }
+}

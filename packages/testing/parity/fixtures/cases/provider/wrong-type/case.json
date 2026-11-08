@@ -1,0 +1,10 @@
+{
+  "about": "local is text",
+  "kind": "provider",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "providers/local-llm.yaml",
+    "path": "local",
+    "line": 5
+  }
+}

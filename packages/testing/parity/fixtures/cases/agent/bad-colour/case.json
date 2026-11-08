@@ -1,0 +1,10 @@
+{
+  "about": "a character colour that is not #RRGGBB",
+  "kind": "agent",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "character.colors.0",
+    "line": 24
+  }
+}

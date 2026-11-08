@@ -1,0 +1,10 @@
+{
+  "about": "the file is a list",
+  "kind": "models",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "models.yaml",
+    "path": "",
+    "line": 1
+  }
+}
