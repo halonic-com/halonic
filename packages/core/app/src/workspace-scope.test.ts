@@ -68,4 +68,26 @@ verifies("app.workspace-scope", () => {
     expect(disposed).toBe(true);
     expect(reported).toEqual([new Error("listener failed")]);
   });
+
+  it("still disposes services and drops handlers when the host's error handler throws", async () => {
+    const scope = new WorkspaceScope<TestCommands, AppEvents>({
+      location: "memory:demo",
+      onListenerError: () => {
+        throw new Error("handler failed");
+      },
+    });
+    let disposed = false;
+    scope.events.on("workspace.closing", () => {
+      throw new Error("listener failed");
+    });
+    scope.services.provide(serviceKey("timer"), {
+      dispose: () => {
+        disposed = true;
+      },
+    });
+    scope.commands.register("greet", () => "hi");
+    await expect(scope.close()).rejects.toThrow("handler failed");
+    expect(disposed).toBe(true);
+    await expect(scope.commands.execute("greet", "Ada")).rejects.toThrow(CommandError);
+  });
 });

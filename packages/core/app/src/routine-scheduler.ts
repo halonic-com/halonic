@@ -144,8 +144,9 @@ export class RoutineScheduler<Routine, Policy> {
   /**
    * Stops reacting to ticks, and resolves once a tick in progress has
    * settled, so the executor isn't disposed under it. That tick starts no
-   * more runs and doesn't store the last tick: the next host picks up what
-   * it didn't start.
+   * more runs. If it left due runs unstarted, it doesn't store the last
+   * tick, so the next host picks them up; if the dispose came during its
+   * last start, every run was started and the last tick is stored as usual.
    */
   async dispose(): Promise<void> {
     this.disposed = true;
@@ -164,6 +165,8 @@ export class RoutineScheduler<Routine, Policy> {
     const result = nothing();
     for (const run of due(await routines(), lastTick, now, policy)) {
       if (this.disposed) {
+        // Not stored and not sent as `routines.ticked`: the workspace is
+        // closing, so start failures from earlier in this tick go unreported.
         return result;
       }
       try {

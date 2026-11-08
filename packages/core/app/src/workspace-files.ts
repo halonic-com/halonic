@@ -138,9 +138,13 @@ export class WorkspaceFiles {
    * it, then saves what is left. With nothing unsaved it does nothing.
    *
    * A discard while the save runs wins: the store is then the truth, and
-   * nothing the save wrote comes back as unsaved. An undo or redo while the
-   * save runs can show a file as unsaved until the save ends, which then
-   * sets the right state.
+   * nothing the save wrote comes back as unsaved. The discard doesn't stop
+   * the save, though: it still writes the files it has left.
+   *
+   * An undo or redo while the save runs can show a file wrongly until the
+   * save ends: as unsaved when it matches the store, or as saved when the
+   * save has already written newer text. The end of the save then sets the
+   * right state.
    *
    * @returns how many files were written or deleted
    */

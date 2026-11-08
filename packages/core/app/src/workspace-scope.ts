@@ -85,7 +85,8 @@ export class WorkspaceScope<
    * Closing again returns the same promise. Afterwards the scope accepts no
    * new commands or services.
    *
-   * @throws when a service's `dispose` failed; the scope is closed anyway
+   * @throws when a service's `dispose` failed, or the host's `onListenerError`
+   *   threw; the scope is closed and every service disposed anyway
    */
   close(): Promise<void> {
     this.closing ??= this.closeOnce();
@@ -93,15 +94,29 @@ export class WorkspaceScope<
   }
 
   private async closeOnce(): Promise<void> {
-    // The bus reports listener errors instead of throwing them, so this can't stop the close.
-    this.events.emit("workspace.closing", {
-      location: this.location,
-    } as Events["workspace.closing"]);
+    const errors: unknown[] = [];
+    try {
+      // The bus reports listener errors instead of throwing them; it throws
+      // only if the host's `onListenerError` itself throws.
+      this.events.emit("workspace.closing", {
+        location: this.location,
+      } as Events["workspace.closing"]);
+    } catch (error) {
+      errors.push(error);
+    }
     try {
       await this.services.dispose();
+    } catch (error) {
+      errors.push(error);
     } finally {
       this.commands.close();
       this.events.clear();
+    }
+    if (errors.length === 1) {
+      throw errors[0];
+    }
+    if (errors.length > 1) {
+      throw new AggregateError(errors, "Closing the workspace failed.");
     }
   }
 }
