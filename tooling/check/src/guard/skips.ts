@@ -1,7 +1,7 @@
 import type { CheckContext } from "../lib/context.ts";
 import { isSourceFile, isTestFile } from "../lib/source-files.ts";
 import type { Checkouts, GuardFinding } from "./finding.ts";
-import { isVitestConfig, readTestFileFacts, type SkipUse } from "./test-file-facts.ts";
+import { isPreset, isVitestConfig, readTestFileFacts, type SkipUse } from "./test-file-facts.ts";
 
 /**
  * Plan 9.3, point 3: any way of skipping a test needs a note: `.skip`,
@@ -37,11 +37,6 @@ export function isWatched(file: string): boolean {
     return false;
   }
   return isTestFile(file) || isVitestConfig(file) || isPreset(file);
-}
-
-/** The shared Vitest preset, which every package's config builds on. */
-export function isPreset(file: string): boolean {
-  return file === "tooling/config/src/vitest-preset.ts";
 }
 
 function skipsIn(context: CheckContext, file: string): readonly SkipUse[] {

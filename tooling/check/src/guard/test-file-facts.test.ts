@@ -21,6 +21,7 @@ verifies("check.guard-skips", () => {
     ['test("a", { retry: 2 }, () => {});', "retry option"],
     ['test("a", { skip: true }, () => {});', "skip option"],
     ["export default defineConfig({ test: { retry: 3 } });", "retry option"],
+    ["export default mergeConfig(preset, { test: { retry: 2 } });", "retry option"],
   ])("finds %s", (text, kind) => {
     expect(kinds(text)).toEqual([kind]);
   });
@@ -38,6 +39,14 @@ verifies("check.guard-skips", () => {
     const text = "export default { test: { retry: 2 } };\n";
     const configKinds = readTestFileFacts("vitest.config.ts", text).skips.map((use) => use.kind);
     expect(configKinds).toEqual(["retry option"]);
+  });
+
+  test("counts a test: { retry } anywhere in the shared preset", () => {
+    const text = "const extra = { test: { retry: 2 } };\n";
+    const presetKinds = readTestFileFacts("tooling/config/src/vitest-preset.ts", text).skips.map(
+      (use) => use.kind,
+    );
+    expect(presetKinds).toEqual(["retry option"]);
   });
 });
 

@@ -36,11 +36,21 @@ const modifiers = new Set(["skip", "only", "todo", "skipIf", "runIf", "fails"]);
 /** Test options that do the same. `retry` lets a flaky failure pass. */
 const options = new Set(["skip", "only", "todo", "fails", "retry"]);
 /** Functions that build a Vitest config, ours included. */
-const configFunctions = new Set(["defineConfig", "defineProject", "definePackageTestConfig"]);
+const configFunctions = new Set([
+  "defineConfig",
+  "defineProject",
+  "definePackageTestConfig",
+  "mergeConfig",
+]);
 
 /** A package's Vitest config file, such as `vitest.config.ts`. */
 export function isVitestConfig(file: string): boolean {
   return /(?:^|\/)vitest\.config\.[cm]?[jt]s$/.test(file);
+}
+
+/** The shared Vitest preset, which every package's config builds on. */
+export function isPreset(file: string): boolean {
+  return file === "tooling/config/src/vitest-preset.ts";
 }
 
 /**
@@ -53,7 +63,7 @@ export function isVitestConfig(file: string): boolean {
  * - a `skip`, `only`, `todo`, `fails` or `retry` option passed to a test
  *   function, or in a Vitest config's `test` settings. Other objects, such
  *   as a workflow's own `retry` setting in test data, or a `test: { retry }`
- *   in a test file outside `defineConfig(…)`, don't count
+ *   in a test file outside `defineConfig(…)` or `mergeConfig(…)`, don't count
  * - `vi.mock(…)` and `vi.doMock(…)`, with a string or an `import(…)`
  *
  * It also returns the inline snapshots and `coverage` settings, so the
@@ -152,8 +162,9 @@ function isSkipCall(node: ts.CallExpression): boolean {
 
 /**
  * An options object of a test function call, or a Vitest config's
- * `test: { … }`. A `test: { … }` counts only in a Vitest config file or
- * inside `defineConfig(…)` and the like: in a test file it may be test data.
+ * `test: { … }`. A `test: { … }` counts only in a Vitest config file, the
+ * shared preset, or inside `defineConfig(…)`, `mergeConfig(…)` and the like:
+ * in a test file it may be test data.
  */
 function isTestOptions(node: ts.Node, source: ts.SourceFile): boolean {
   if (!ts.isObjectLiteralExpression(node)) {
@@ -163,7 +174,7 @@ function isTestOptions(node: ts.Node, source: ts.SourceFile): boolean {
   if (ts.isPropertyAssignment(parent)) {
     return (
       propertyName(parent.name) === "test" &&
-      (isVitestConfig(source.fileName) || isInsideConfigCall(parent))
+      (isVitestConfig(source.fileName) || isPreset(source.fileName) || isInsideConfigCall(parent))
     );
   }
   return (
