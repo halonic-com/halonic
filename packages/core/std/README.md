@@ -1,6 +1,6 @@
 # @halonicjs/std
 
-In-house utilities that replace generic libraries: result type, ids, clock, SHA-256, scrypt, text helpers, deep equality, glob matching, posix paths and a typed event emitter (plan 7.3).
+In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, a constant-time compare, text helpers, deep equality, posix paths and a typed event emitter (plan 7.3).
 
 - **Layer:** core
 - **Owner:** maya
@@ -10,6 +10,13 @@ The core has no access to the platform, so anything that needs the outside
 world comes in as a parameter: the time through a `Clock`, randomness through
 a `RandomBytes` function. Tests pass `fixedClock()` and `fixedIds()` and get
 the same output on every run.
+
+Hashing is not here. SHA-256 comes from WebCrypto through a port, and the
+password hash from `@noble/hashes` in the package that implements
+`PasswordHasher` (plan v1.11). What stays is the part the core can't reach
+otherwise: `encodeUtf8` and `decodeUtf8` replace `TextEncoder` and
+`TextDecoder`, and `constantTimeEqual` compares hashes and tokens without
+leaking where they differ. Never compare those with `===`.
 
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
