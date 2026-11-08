@@ -1,0 +1,185 @@
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
+import {
+  fakeAccountRef,
+  fakeClient,
+  fakeCode,
+  fakeEmail,
+  fakeIdToken,
+  fakeRefreshToken,
+  hostileError,
+  htmlErrorPage,
+  testStart,
+  tokenSuccess,
+} from "./fake-google.test-helper.ts";
+import {
+  driveScope,
+  gmailScope,
+  knownVerifier,
+  signInOnce,
+  startInput,
+  testServer,
+} from "./sign-in.test-helper.ts";
+
+const refreshName = `google-account-${fakeAccountRef}`;
+
+verifies("google-sign-in.exchange", () => {
+  it("exchanges the code with the client, verifier and redirect, and saves the refresh token", async () => {
+    const { result, google, tokens } = await signInOnce(() => tokenSuccess());
+
+    expect(result).toEqual({
+      kind: "signedIn",
+      accountRef: fakeAccountRef,
+      email: fakeEmail,
+      grantedScopes: ["openid", "https://www.googleapis.com/auth/userinfo.email", gmailScope],
+      missingScopes: [],
+      at: new Date(testStart),
+    });
+    expect(google.requests).toHaveLength(1);
+    const [request] = google.requests;
+    expect(request?.url).toBe("https://oauth2.googleapis.com/token");
+    expect(request?.method).toBe("POST");
+    expect(Object.fromEntries(request?.form ?? [])).toEqual({
+      grant_type: "authorization_code",
+      code: fakeCode,
+      client_id: fakeClient.clientId,
+      client_secret: fakeClient.clientSecret,
+      redirect_uri: "http://127.0.0.1:8787/google/callback",
+      code_verifier: knownVerifier,
+    });
+    expect([...tokens.values]).toEqual([[refreshName, fakeRefreshToken]]);
+  });
+
+  it("starts with the account's auth URL and keeps it for Open again", async () => {
+    const server = testServer(() => tokenSuccess());
+    const { authUrl } = await server.start();
+    const query = new URL(authUrl).searchParams;
+
+    expect(query.get("client_id")).toBe(fakeClient.clientId);
+    expect(query.get("login_hint")).toBe("account@example.com");
+    expect(query.get("code_challenge_method")).toBe("S256");
+    expect(server.ports.pendingSignIns.authUrlFor(fakeAccountRef)).toBe(authUrl);
+  });
+
+  it("refuses an account ref that can't name a token before it goes to Google", async () => {
+    const server = testServer(() => tokenSuccess());
+
+    await expect(
+      server.start({ ...startInput, accountRef: "account@example.com" }),
+    ).rejects.toThrow(RangeError);
+    expect(server.ports.pendingSignIns.authUrlFor("account@example.com")).toBeUndefined();
+  });
+
+  it("refuses a client ref that can't name a secret before it goes to Google", async () => {
+    const server = testServer(() => tokenSuccess());
+
+    await expect(server.start({ ...startInput, clientRef: "not a ref" })).rejects.toThrow(
+      RangeError,
+    );
+    expect(server.ports.pendingSignIns.authUrlFor(fakeAccountRef)).toBeUndefined();
+  });
+
+  it("lists the scopes the user unticked", async () => {
+    const server = testServer(() => tokenSuccess());
+    const { state } = await server.start({ ...startInput, scopes: [gmailScope, driveScope] });
+    const result = await server.finish({ code: fakeCode, state });
+
+    expect(result).toMatchObject({ kind: "signedIn", missingScopes: [driveScope] });
+  });
+
+  it("maps Google's errors to results that hold its error code at most", async () => {
+    const outcome = async (answer: () => Response) => (await signInOnce(answer)).result;
+
+    expect(await outcome(() => hostileError("invalid_client", 401))).toEqual({
+      kind: "wrongClientSecret",
+      accountRef: fakeAccountRef,
+    });
+    expect(await outcome(() => hostileError("invalid_grant"))).toEqual({
+      kind: "codeRefused",
+      accountRef: fakeAccountRef,
+    });
+    expect(await outcome(() => hostileError("server_error", 500))).toEqual({
+      kind: "googleError",
+      accountRef: fakeAccountRef,
+      errorCode: "server_error",
+      status: 500,
+    });
+    expect(await outcome(htmlErrorPage)).toEqual({
+      kind: "unexpectedAnswer",
+      accountRef: fakeAccountRef,
+      status: 502,
+    });
+    expect(await outcome(() => tokenSuccess({ refresh_token: undefined }))).toEqual({
+      kind: "noRefreshToken",
+      accountRef: fakeAccountRef,
+    });
+  });
+
+  it("gives unreachable when the network fails, without the HttpClient's error", async () => {
+    const { result } = await signInOnce(() => {
+      throw new Error(`connection reset while sending ${fakeCode}`);
+    });
+
+    expect(result).toEqual({ kind: "unreachable", accountRef: fakeAccountRef });
+  });
+
+  it("saves nothing when the ID token is refused or the client secret is missing", async () => {
+    const refused = await signInOnce(() =>
+      tokenSuccess({ id_token: fakeIdToken({ aud: "other-client.apps.example.com" }) }),
+    );
+    expect(refused.result).toEqual({ kind: "idTokenRefused", accountRef: fakeAccountRef });
+    expect(refused.tokens.values.size).toBe(0);
+
+    const server = testServer(() => tokenSuccess());
+    const { state } = await server.start({ ...startInput, clientRef: "gclient_other" });
+    expect(await server.finish({ code: fakeCode, state })).toEqual({
+      kind: "noClientSecret",
+      accountRef: fakeAccountRef,
+    });
+    expect(server.google.requests).toHaveLength(0);
+  });
+
+  it("overwrites the old refresh token on a second sign-in and never revokes it", async () => {
+    let refreshToken = "";
+    const server = testServer(() => tokenSuccess({ refresh_token: refreshToken }));
+    for (const next of ["fake-refresh-token-first", "fake-refresh-token-second"]) {
+      refreshToken = next;
+      const { state } = await server.start();
+      await server.finish({ code: fakeCode, state });
+    }
+
+    expect([...server.tokens.values]).toEqual([[refreshName, "fake-refresh-token-second"]]);
+    expect(server.google.requests.map((request) => request.url)).toEqual([
+      "https://oauth2.googleapis.com/token",
+      "https://oauth2.googleapis.com/token",
+    ]);
+  });
+
+  it("passes the callback's other results on and sends nothing to Google", async () => {
+    const server = testServer(() => tokenSuccess());
+    const { state } = await server.start();
+
+    expect(await server.finish({ code: fakeCode, state: "fake-wrong-state" })).toEqual({
+      kind: "linkNoLongerValid",
+    });
+    expect(await server.finish({ error: "access_denied", state })).toEqual({
+      kind: "cancelled",
+      accountRef: fakeAccountRef,
+    });
+    expect(await server.finish({ code: fakeCode, state })).toEqual({ kind: "linkNoLongerValid" });
+    expect(server.google.requests).toHaveLength(0);
+  });
+
+  it("exchanges a code only once when the same callback comes twice at once", async () => {
+    const server = testServer(() => tokenSuccess());
+    const { state } = await server.start();
+
+    const results = await Promise.all([
+      server.finish({ code: fakeCode, state }),
+      server.finish({ code: fakeCode, state }),
+    ]);
+
+    expect(results.map((result) => result.kind).sort()).toEqual(["linkNoLongerValid", "signedIn"]);
+    expect(server.google.requests).toHaveLength(1);
+  });
+});

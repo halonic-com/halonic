@@ -71,6 +71,21 @@ function escapeCharacter(character: string): string {
 }
 
 /**
+ * Format characters (zero-width characters, direction marks, the invisible
+ * tag letters), variation selectors, and control characters other than line
+ * breaks and tabs. A person who reads the tool list can't see them, but the
+ * model reads them, so a server could hide instructions in them. Variation
+ * selectors aren't format characters, but a run of them after a visible
+ * character can carry hidden bytes.
+ */
+const hiddenText = /(?![\n\r\t])[\p{Cc}\p{Cf}]|[\u{FE00}-\u{FE0F}]|[\u{E0100}-\u{E01EF}]/gu;
+
+/** `text` without the characters a person can't see. */
+export function withoutHiddenText(text: string): string {
+  return text.replace(hiddenText, "");
+}
+
+/**
  * A text a server wrote, such as a listed tool's description. It reaches the
  * model only inside the untrusted fence, which the caller adds.
  *
@@ -80,12 +95,12 @@ function escapeCharacter(character: string): string {
  * which turn the text into a plain object: fence the texts before either.
  */
 export class UntrustedText {
-  /** The text as the server wrote it. */
+  /** The text the server wrote, without the characters a person can't see. */
   readonly text: string;
 
   /** @param text - the text as the server wrote it */
   constructor(text: string) {
-    this.text = text;
+    this.text = withoutHiddenText(text);
   }
 
   /** @throws always: fence the text first */

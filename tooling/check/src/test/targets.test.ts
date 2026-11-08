@@ -181,3 +181,24 @@ describe("tooling/check: reserved core names", () => {
     expect(found.some((problem) => problem.message.includes("belong to other layers"))).toBe(true);
   });
 });
+
+describe("tooling/check: contract suite", () => {
+  it("keeps node:* out of contract-suite files, except under src/node/", () => {
+    const contracts = (files: Record<string, string>): FixturePackage => ({
+      ...pkg("packages/testing/contracts", "@halonicjs/testing-contracts", "testing"),
+      files: { "src/index.ts": "export const x = 1;\n", ...files },
+    });
+    const node = 'import "node:fs";\nexport const x = 1;\n';
+    const found = messages([
+      contracts({
+        "src/clock.ts": node,
+        "src/node/fs-harness.ts": node,
+        "src/clock.test.ts": node,
+        "vitest.config.ts": 'import "node:url";\nexport default definePackageTestConfig();\n',
+      }),
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("contract-suite files");
+    expect(found[0]).toContain("src/node/");
+  });
+});

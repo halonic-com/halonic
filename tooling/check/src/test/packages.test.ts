@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { loadContext } from "../lib/context.ts";
 import { defaultCoverageFloors } from "../lib/coverage.ts";
-import { exportKeys } from "../rules/packages.ts";
+import { checkPackages, exportKeys } from "../rules/packages.ts";
 import {
   coreOrder,
   type FixturePackage,
   feature,
   format,
   manifestFor,
+  removeFixtureRepo,
   rulesHit,
   runChecks,
   std,
   studioApp,
+  writeFixtureRepo,
 } from "./fixture-repo.ts";
 
 /** The messages of every error the checks report for these packages. */
@@ -120,7 +123,7 @@ describe("tooling/check: packages, exports map", () => {
   it("refuses subpaths other than the public entry points", () => {
     const deep = stdWith({ exports: { ".": "./src/index.ts", "./internal": "./src/index.ts" } });
     expect(messages([deep], order)).toEqual([
-      '"exports" may only contain .. "./internal" would let other packages import internals.',
+      '"exports" may only contain ".". "./internal" would let other packages import internals. A deliberate extra entry point needs an "extraExports" entry in tooling/check/policy.json.',
     ]);
   });
 
@@ -163,6 +166,113 @@ describe("tooling/check: packages, exports map", () => {
       manifest: manifestFor("@halonicjs/tooling-x", "tooling", { exports: undefined }),
     };
     expect(runChecks([tool, studioApp([])])).toEqual([]);
+  });
+});
+
+describe("tooling/check: packages, extraExports", () => {
+  /** `pkg` with a `key` entry point next to `.`. */
+  function withSubpath(pkg: FixturePackage, key = "./recording"): FixturePackage {
+    return {
+      ...pkg,
+      manifest: {
+        ...pkg.manifest,
+        exports: { ".": "./src/index.ts", [key]: "./src/recording.ts" },
+      },
+      files: {
+        "src/index.ts": "export const x = 1;\n",
+        ...pkg.files,
+        "src/recording.ts": "export const r = 1;\n",
+      },
+    };
+  }
+  /** The policy option that sets `extraExports`. */
+  const allow = (extraExports: Record<string, string[]>) => ({
+    coreOrder,
+    policy: (policy: Record<string, unknown>) => ({ ...policy, extraExports }),
+  });
+  const allowFormat = allow({ "@halonicjs/format": ["./recording"] });
+  const notListed = (name: string, allowed: string, key: string) =>
+    `packages packages/core/${name}/package.json: "exports" may only contain ${allowed}. "${key}" would let other packages import internals. A deliberate extra entry point needs an "extraExports" entry in tooling/check/policy.json.`;
+  const problems = (packages: FixturePackage[], options: Parameters<typeof runChecks>[1]) =>
+    runChecks(packages, options).map(
+      (problem) => `${problem.rule} ${problem.file}: ${problem.message}`,
+    );
+
+  it("lets a listed package export a listed subpath, and others import it", () => {
+    const workflow: FixturePackage = {
+      directory: "packages/core/workflow",
+      manifest: manifestFor("@halonicjs/workflow", "core", {
+        dependencies: { "@halonicjs/format": "workspace:*" },
+      }),
+      files: {
+        "src/index.ts": 'import { r } from "@halonicjs/format/recording";\nexport const w = r;\n',
+      },
+    };
+    expect(
+      runChecks([std, withSubpath(format), workflow], {
+        ...allowFormat,
+        coreOrder: [...coreOrder, "@halonicjs/workflow"],
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses the subpath without an entry", () => {
+    expect(problems([std, withSubpath(format)], { coreOrder })).toEqual([
+      notListed("format", '"."', "./recording"),
+    ]);
+  });
+
+  it("refuses the same subpath on another package", () => {
+    expect(problems([withSubpath(std), format], allowFormat)).toEqual([
+      notListed("std", '"."', "./recording"),
+    ]);
+  });
+
+  it("refuses a subpath the entry doesn't list", () => {
+    expect(problems([std, withSubpath(format, "./internal")], allowFormat)).toEqual([
+      notListed("format", '"." and "./recording"', "./internal"),
+    ]);
+  });
+
+  it("reports an entry for a package that isn't in the repo, which allows nothing", () => {
+    expect(
+      problems([std, withSubpath(format)], allow({ "@halonicjs/nope": ["./recording"] })),
+    ).toEqual([
+      'packages tooling/check/policy.json: "extraExports" lists "@halonicjs/nope", which is not a package in this repo. Remove it.',
+      notListed("format", '"."', "./recording"),
+    ]);
+  });
+
+  it("reports a __proto__ entry instead of dropping it", () => {
+    const extraExports = JSON.parse('{ "__proto__": ["./recording"] }');
+    expect(problems([std, format], allow(extraExports))).toEqual([
+      'packages tooling/check/policy.json: "extraExports" lists "__proto__", which is not a package in this repo. Remove it.',
+    ]);
+  });
+
+  it("warns about an entry for a tooling package", () => {
+    const tool: FixturePackage = {
+      directory: "tooling/x",
+      manifest: manifestFor("@halonicjs/tooling-x", "tooling", { exports: undefined }),
+    };
+    const root = writeFixtureRepo([tool, studioApp([])], {
+      policy: (policy) => ({ ...policy, extraExports: { "@halonicjs/tooling-x": ["./cli"] } }),
+    });
+    try {
+      expect(
+        checkPackages(loadContext(root)).problems.map((problem) => [
+          problem.severity,
+          problem.message,
+        ]),
+      ).toEqual([
+        [
+          "warning",
+          '"extraExports" lists "@halonicjs/tooling-x", a package in tooling, whose exports aren\'t limited. Remove it.',
+        ],
+      ]);
+    } finally {
+      removeFixtureRepo(root);
+    }
   });
 });
 

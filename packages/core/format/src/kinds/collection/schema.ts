@@ -1,4 +1,5 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
+import { collectionId } from "../../shared/fields.ts";
 
 /** The value types a collection field can hold. */
 export const FIELD_TYPES = [
@@ -23,7 +24,7 @@ export const CollectionField = s
     /** choice: the allowed values. */
     values: s.array(s.string()).optional(),
     /** ref: the collection whose record ids the value holds. */
-    collection: s.string().optional(),
+    collection: collectionId.optional(),
     min: s.number().optional(),
     max: s.number().optional(),
     default: s.unknown().optional(),
@@ -79,7 +80,7 @@ export const CollectionView = s
 export const Collection = s
   .object({
     version: s.literal(1).default(1),
-    id: s.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+    id: collectionId,
     name: s.string().min(1),
     description: s.string().optional(),
     /** Requirement ids this collection serves. */

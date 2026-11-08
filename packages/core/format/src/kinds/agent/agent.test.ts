@@ -95,6 +95,18 @@ verifies("format.agent-file", () => {
     ]);
   });
 
+  it("refuses Halonic's own collections, whose names start with _", () => {
+    const text = yaml(
+      "id: clerk",
+      "name: Clerk",
+      "collections: [invoices, _tokens, _google_setups]",
+    );
+    expect(summary(problemsOf("agent", text))).toEqual([
+      "collections.1 invalid_format 3",
+      "collections.2 invalid_format 3",
+    ]);
+  });
+
   it("refuses a method without instructions", () => {
     const text = yaml("id: clerk", "name: Clerk", "methods:", "  extract:", "    input: [file]");
     expect(summary(problemsOf("agent", text))).toEqual([

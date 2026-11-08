@@ -18,6 +18,11 @@
   "adapterGateways": [
     "@halonicjs/studio-services"
   ],
+  "extraExports": {
+    "@halonicjs/format": [
+      "./recording"
+    ]
+  },
   "cloudRuntimes": {
     "cloudflare": {
       "providerPackages": [

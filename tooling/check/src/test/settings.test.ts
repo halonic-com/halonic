@@ -145,6 +145,33 @@ describe("tooling/check: settings files are read strictly", () => {
     expect(() => runChecks([], { policy: extra })).toThrow("published2 is not a known setting");
   });
 
+  const malformedExtraExports: [unknown, string][] = [
+    [[], "extraExports must be an object"],
+    ["./recording", "extraExports must be an object"],
+    [null, "extraExports must be an object"],
+    [{ "@halonicjs/format": "./recording" }, 'extraExports["@halonicjs/format"] must be a list'],
+    [{ "@halonicjs/format": [] }, 'extraExports["@halonicjs/format"] must list at least one'],
+    [{ "@halonicjs/format": [1] }, 'extraExports["@halonicjs/format"] must be a list'],
+    ...["recording", ".", "./", "./*", "./rec/*", "./a/b", "./Recording", "./api", "./a--b"].map(
+      (key): [unknown, string] => [
+        { "@halonicjs/format": ["./recording", key] },
+        'extraExports["@halonicjs/format"][1] must be "./" and lower-case words',
+      ],
+    ),
+    [
+      { "@halonicjs/format": ["./recording", "./recording"] },
+      'extraExports["@halonicjs/format"][1] repeats "./recording"',
+    ],
+  ];
+  it.each(malformedExtraExports)(
+    "fails on the malformed extraExports %j in policy.json",
+    (extraExports, message) => {
+      expect(() => runChecks([], { policy: (real) => ({ ...real, extraExports }) })).toThrow(
+        `tooling/check/policy.json: ${message}`,
+      );
+    },
+  );
+
   it("fails on an entry of dependencies.json without layers or with an unknown category", () => {
     const noLayers = withEntry("vitest", {
       category: "dev-tooling",

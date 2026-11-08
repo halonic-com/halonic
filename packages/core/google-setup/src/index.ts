@@ -1,4 +1,11 @@
 export { type AccountType, accountTypeFromAddress } from "./account-type.ts";
+export {
+  type AuthUrlInput,
+  baseSignInScopes,
+  googleAuthEndpoint,
+  googleAuthUrl,
+  signInScopes,
+} from "./auth-url.ts";
 export { ClientSecretError, type ClientSecretErrorReason } from "./client-secret-error.ts";
 export {
   type ClientSecretRemoval,
@@ -14,6 +21,14 @@ export {
 } from "./compare-setups.ts";
 export type { ConsolePage } from "./console-links.ts";
 export { looksLikeGoogleClientSecret } from "./looks-like-google-client-secret.ts";
+export { type LoopbackRedirect, loopbackRedirectUri } from "./loopback-redirect.ts";
+export {
+  hasPendingSignInExpired,
+  type PendingSignIn,
+  type PendingSignInDetails,
+  type PendingSignIns,
+  pendingSignInLifetimeMs,
+} from "./pending-sign-in.ts";
 export type {
   GoogleApi,
   GoogleCheck,
@@ -43,4 +58,11 @@ export type {
   StepLink,
 } from "./setup-step.ts";
 export { setupSteps } from "./setup-steps.ts";
+export { type CallbackQuery, readSignInCallback, type SignInCallback } from "./sign-in-callback.ts";
 export { clientSecretName, refreshTokenName, stagedClientSecretName } from "./store-names.ts";
+export {
+  classifyTokenAnswer,
+  googleTokenEndpoint,
+  type TokenAnswer,
+  type TokenAnswerMeaning,
+} from "./token-answer.ts";

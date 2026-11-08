@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type CheckContext, declaredDependencies } from "../lib/context.ts";
+import { type CheckContext, declaredDependencies, listInWords } from "../lib/context.ts";
 import { coverageFloorProblems, testSetupProblems } from "../lib/coverage.ts";
 import {
   adapterRuntimes,
@@ -25,11 +25,12 @@ import type { WorkspacePackage } from "../lib/workspace.ts";
  */
 export function checkPackages(context: CheckContext): Report {
   const report = new Report("packages");
+  const extraExports = readExtraExports(context, report);
   for (const pkg of context.packages) {
     checkIdentity(context, pkg, report);
     checkInternalVersions(context, pkg, report);
     if (pkg.directory !== ".") {
-      checkExports(context, pkg, report);
+      checkExports(context, pkg, extraExports, report);
       checkCoverageFloor(context, pkg, report);
       checkMeasuredIn(context, pkg, report);
       checkTestSetup(context, pkg, report);
@@ -206,17 +207,56 @@ export function exportKeys(exportsField: unknown): string[] | undefined {
   return keys.every((key) => key.startsWith(".")) ? keys : ["."];
 }
 
-function checkExports(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
+/**
+ * Takes the policy's `extraExports` (its shape is checked when the policy is
+ * read) and reports names that are not packages here. Apps and tooling
+ * export what they like, so an entry for one only earns a warning.
+ */
+function readExtraExports(
+  context: CheckContext,
+  report: Report,
+): ReadonlyMap<string, readonly string[]> {
+  const extra = new Map<string, readonly string[]>();
+  for (const [name, keys] of Object.entries(context.policy.extraExports)) {
+    const pkg = context.packagesByName.get(name);
+    if (pkg === undefined) {
+      report.error(
+        context.policyPath,
+        `"extraExports" lists "${name}", which is not a package in this repo. Remove it.`,
+      );
+      continue;
+    }
+    const layer = context.placeOf(pkg)?.layer;
+    if (layer === "apps" || layer === "tooling") {
+      report.warning(
+        context.policyPath,
+        `"extraExports" lists "${name}", a package in ${layer}, whose exports aren't limited. Remove it.`,
+      );
+    }
+    extra.set(name, keys);
+  }
+  return extra;
+}
+
+function checkExports(
+  context: CheckContext,
+  pkg: WorkspacePackage,
+  extraExports: ReadonlyMap<string, readonly string[]>,
+  report: Report,
+): void {
   const place = context.placeOf(pkg);
   if (place === undefined || place.layer === "tooling" || place.layer === "apps") {
     return;
   }
   const keys = exportKeys(pkg.manifest.exports);
-  const allowed = place.isFeature ? [".", "./api"] : ["."];
+  const allowed = [
+    ...(place.isFeature ? [".", "./api"] : ["."]),
+    ...(extraExports.get(pkg.manifest.name ?? "") ?? []),
+  ];
   if (keys === undefined) {
     report.error(
       pkg.manifestPath,
-      `Add an "exports" map with ${allowed.map((key) => `"${key}"`).join(" and ")}, so only the public entry points resolve.`,
+      `Add an "exports" map with ${listInWords(allowed.map((key) => `"${key}"`))}, so only the public entry points resolve.`,
     );
     return;
   }
@@ -224,7 +264,7 @@ function checkExports(context: CheckContext, pkg: WorkspacePackage, report: Repo
     if (!allowed.includes(key)) {
       report.error(
         pkg.manifestPath,
-        `"exports" may only contain ${allowed.join(" and ")}. "${key}" would let other packages import internals.`,
+        `"exports" may only contain ${listInWords(allowed.map((key) => `"${key}"`))}. "${key}" would let other packages import internals. A deliberate extra entry point needs an "extraExports" entry in ${context.policyPath}.`,
       );
     }
   }

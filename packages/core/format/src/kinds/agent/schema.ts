@@ -1,5 +1,5 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
-import { id, ModelParams, version } from "../../shared/fields.ts";
+import { collectionId, id, ModelParams, version } from "../../shared/fields.ts";
 
 /** The shape of an agent's reply: free text, one of a list of options, or JSON. */
 export const AgentOutput = s.discriminatedUnion("type", [
@@ -89,7 +89,7 @@ export const Agent = s
     /** Read-only access to the run history of earlier runs. Never sees secrets. */
     runLogs: s.boolean().default(false),
     /** Collections this agent may read and write. */
-    collections: s.array(s.string()).default([]),
+    collections: s.array(collectionId).default([]),
     /** Agents of the same hub this agent may hand a task to. */
     subagents: s.array(s.string()).default([]),
     /** Named tasks workflow steps can call. */

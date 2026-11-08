@@ -64,6 +64,42 @@ verifies("ports.untrusted-tool-listings", () => {
     expect(() => JSON.stringify(tool.parameters)).toThrow(/Fence it/);
   });
 
+  it("removes the characters a person can't see from the description, and from each description and title", () => {
+    // A zero-width space, a right-to-left override, the tag letters for "hi",
+    // a variation selector and a bell, around words a reader does see.
+    const hidden = "\u200B\u202E\u{E0068}\u{E0069}\uFE0F\u0007";
+    const tool = kept(
+      listed(
+        objectWith({
+          city: { type: "string", description: `The${hidden} city`, title: `${hidden}City` },
+        }),
+        { description: `Looks${hidden} a word up.` },
+      ),
+    );
+    expect(tool.description.text).toBe("Looks a word up.");
+    expect(tool.parameters).toEqual(
+      objectWith({
+        city: {
+          type: "string",
+          description: new UntrustedText("The city"),
+          title: new UntrustedText("City"),
+        },
+      }),
+    );
+  });
+
+  it("keeps line breaks, tabs and visible text in any script", () => {
+    const text = "Line one\r\n\tLine two: Grüße, 你好, 😀";
+    expect(kept(listed({ type: "object" }, { description: text })).description.text).toBe(text);
+  });
+
+  it("applies the 10,000 character cap to the text as the source sent it", () => {
+    const padded = `${"a".repeat(9_999)}${"\u200B".repeat(2)}`;
+    expect(refusalOf(listed({ type: "object" }, { description: padded }))).toBe(
+      "its description is longer than 10000 characters",
+    );
+  });
+
   it("drops x- keywords, pattern, default and examples, and reports each", () => {
     const tool = kept(
       listed({

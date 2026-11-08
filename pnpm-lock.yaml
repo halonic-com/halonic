@@ -627,6 +627,12 @@ importers:
 
   packages/host/google-sign-in:
     dependencies:
+      '@halonicjs/google-setup':
+        specifier: workspace:*
+        version: link:../../core/google-setup
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../core/std

@@ -81,3 +81,22 @@ be a secret.
   `usedByOthers` from the caller.
 - Before the first sign-in there is nothing to test a new secret with, so the caller uses
   `replaceClientSecret` instead of staging.
+
+## Sign-in (HAL-699)
+
+The pure parts of the Google sign-in round trip. The host package
+`@halonicjs/host-google-sign-in` makes the PKCE pair and `state`, keeps the pending sign-ins and
+talks to Google.
+
+| Export                | What it does                                                                                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `googleAuthUrl`       | the auth URL: code flow, PKCE S256, loopback redirect, `openid email` plus the services' scopes                                                                  |
+| `loopbackRedirectUri` | `http://127.0.0.1:<port><path>`; refuses a query string, a fragment and anything unusual in the path                                                             |
+| `PendingSignIns`      | the port for pending sign-ins: `start` (one per account), `take(state)`, and `authUrlFor` and `cancel` for "Open again" and "Cancel"; in memory only, 10 minutes |
+| `readSignInCallback`  | reads the callback: finds the sign-in by `state` first, then maps `error` or returns the code                                                                    |
+| `classifyTokenAnswer` | what Google's token answer means: `wrongClientSecret`, `codeRefused`, `noRefreshToken` and so on                                                                 |
+
+A pending sign-in holds the PKCE verifier, so it is never written to the `TokenStore` or any other
+store (plan D5). The `code` and `tokens` results hold secrets and never leave the host package.
+Google's `error_description` is never read, and an `error` value that isn't a plain code becomes
+`unrecognised`.

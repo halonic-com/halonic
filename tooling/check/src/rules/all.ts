@@ -1,6 +1,7 @@
 import type { CheckContext } from "../lib/context.ts";
 import type { Report } from "../lib/problems.ts";
 import { checkAbsolutePaths } from "./absolute-paths.ts";
+import { checkAdvisories } from "./advisories.ts";
 import { checkAgentsMd } from "./agents-md.ts";
 import { checkDco } from "./dco.ts";
 import { checkDependencies } from "./dependencies.ts";
@@ -18,6 +19,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "agents-md": checkAgentsMd,
   layers: checkLayers,
   dependencies: checkDependencies,
+  advisories: (context) => checkAdvisories(context),
   names: checkNames,
   features: checkFeatures,
   "file-size": checkFileSize,
