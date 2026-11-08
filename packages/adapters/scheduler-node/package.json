@@ -1,0 +1,32 @@
+{
+  "name": "@halonicjs/adapter-scheduler-node",
+  "private": true,
+  "type": "module",
+  "description": "The Scheduler port on Node: timers per key kept in a RecordStore, so they survive a restart, the retry back-off and the routine tick.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "priya",
+    "runtime": "node",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
