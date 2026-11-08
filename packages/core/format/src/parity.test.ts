@@ -12,7 +12,8 @@ import {
   type ParityCase,
   type Recording,
 } from "@halonicjs/testing-parity";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { type FileProblem, fileKinds, isKindName, type KindName, parseFile } from "./index.ts";
 import { prepare } from "./parse-file.ts";
 import { readSource } from "./source.ts";
@@ -157,7 +158,7 @@ const passing = compared.filter(
     file.kind !== "skill" && file.recorded.schema !== null && file.recorded.issues.length === 0,
 );
 
-describe("format.parity-fixtures", () => {
+verifies("format.parity-fixtures", () => {
   it("covers every kind in the fixtures", () => {
     expect(new Set(files.map((file) => file.kind)).size).toBe(14);
     expect(files.length).toBeGreaterThan(150);
@@ -217,7 +218,7 @@ describe("format.parity-fixtures", () => {
   });
 });
 
-describe("format.parity-defaults", () => {
+verifies("format.parity-defaults", () => {
   it("compares a passing file of every kind but skill", () => {
     expect(new Set(passing.map((file) => file.kind)).size).toBe(13);
   });
@@ -250,8 +251,8 @@ describe("format.parity-defaults", () => {
   });
 });
 
-describe("format.parity-fixtures: the listed differences", () => {
-  it("lists only cases that exist", () => {
+verifies("format.parity-fixtures", () => {
+  it("lists differences only for cases that exist", () => {
     for (const caseId of Object.keys(differences)) {
       expect(
         files.some((file) => file.caseId === caseId),

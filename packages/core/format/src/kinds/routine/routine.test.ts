@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
 const routine = (...lines: string[]) => yaml("id: hourly", "name: Hourly", ...lines);
 
-describe("format.routine-file", () => {
+verifies("format.routine-file", () => {
   it("fills in enabled, overlap, catch-up and the workflow input", () => {
     expect(
       parsedValue("routine", routine("trigger: { every: 1h }", "run: { workflow: invoice }")),
@@ -53,7 +54,7 @@ describe("format.routine-file", () => {
   });
 });
 
-describe("format.routine-mail-interval", () => {
+verifies("format.routine-mail-interval", () => {
   const mail = (every?: string) =>
     routine(
       "trigger:",

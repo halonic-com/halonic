@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
 const workflow = (...states: string[]) =>
   yaml("id: invoice", "name: Invoice", "initial: start", "states:", ...states);
 
-describe("format.workflow-file", () => {
+verifies("format.workflow-file", () => {
   it("fills in context, layout, the state type, its transitions and their event", () => {
     const value = parsedValue(
       "workflow",

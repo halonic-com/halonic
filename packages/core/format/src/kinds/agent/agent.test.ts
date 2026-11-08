@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
-describe("format.agent-file", () => {
+verifies("format.agent-file", () => {
   it("fills in every default of a minimal agent", () => {
     expect(parsedValue("agent", yaml("id: clerk", "name: Clerk"))).toEqual({
       version: 1,

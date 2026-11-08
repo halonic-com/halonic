@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
-describe("format.workflow-test-file", () => {
+verifies("format.workflow-test-file", () => {
   it("fills in every default of a case", () => {
     const value = parsedValue(
       "workflowTest",

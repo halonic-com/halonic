@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { jsonSchemaOf, type KindName, kindNames } from "./index.ts";
 
 /** Each kind's golden JSON Schema sits in its own folder: `kinds/<folder>/golden/<kind>.schema.json`. */
@@ -17,7 +18,7 @@ function asText(schema: unknown): string {
 // CI: there a missing or different golden file fails (plan 9.3).
 const writeGolden = process.env["FORMAT_WRITE_GOLDEN"] === "1" && process.env["CI"] === undefined;
 
-describe("format.json-schema-goldens", () => {
+verifies("format.json-schema-goldens", () => {
   it.each(kindNames())("writes the golden JSON Schema for %s", (kind) => {
     const path = goldenPath(kind);
     const actual = asText(jsonSchemaOf(kind));
