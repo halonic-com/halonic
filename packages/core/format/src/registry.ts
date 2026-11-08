@@ -9,6 +9,8 @@ import { deploymentsKind } from "./kinds/deployments/kind.ts";
 import type { Deployments } from "./kinds/deployments/schema.ts";
 import { hubKind } from "./kinds/hub/kind.ts";
 import type { Hub } from "./kinds/hub/schema.ts";
+import { integrationKind } from "./kinds/integration/kind.ts";
+import type { IntegrationSheet } from "./kinds/integration/schema.ts";
 import { knowledgeKind } from "./kinds/knowledge/kind.ts";
 import type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
 import { modelsKind } from "./kinds/models/kind.ts";
@@ -44,6 +46,7 @@ export interface KindValues {
   workflow: Workflow;
   workflowTest: WorkflowTest;
   routine: Routine;
+  integration: IntegrationSheet;
 }
 
 /** The name of a file kind: `workspace`, `agent`, `workflowTest`, … */
@@ -69,10 +72,12 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   workflow: workflowKind,
   workflowTest: workflowTestKind,
   routine: routineKind,
+  integration: integrationKind,
 };
 
 /**
- * The names of every file kind, workspace-level kinds first, in a fixed order.
+ * The names of every file kind, workspace-level kinds first and the
+ * integration sheet, which sits outside workspaces, last, in a fixed order.
  *
  * @example
  * for (const name of kindNames()) console.log(name, fileKinds[name].about);

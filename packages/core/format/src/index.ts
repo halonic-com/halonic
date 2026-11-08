@@ -10,6 +10,18 @@ export { connectorIsLocal } from "./kinds/connector/is-local.ts";
 export type { Connector } from "./kinds/connector/schema.ts";
 export type { Deployment, Deployments } from "./kinds/deployments/schema.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
+export { checkIntegrationSheet } from "./kinds/integration/kind.ts";
+export {
+  CONTENT_PATH_PATTERN,
+  HOST_PATTERN,
+  INTEGRATION_NAME_PATTERN,
+  type IntegrationHost,
+  type IntegrationSecret,
+  IntegrationSheet,
+  type IntegrationTool,
+  MAX_RESPONSE_BYTES,
+  MAX_TIMEOUT_MS,
+} from "./kinds/integration/schema.ts";
 export type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
 export type { ModelAlias, Models } from "./kinds/models/schema.ts";
 export type { Provider } from "./kinds/provider/schema.ts";

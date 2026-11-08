@@ -102,7 +102,8 @@ function shapeOf(
 const files = fileCases();
 const compared = files.filter((file) => differences[file.caseId] === undefined);
 
-type ComparedKind = Exclude<KindName, "skill">;
+// The old app had no integration sheet, so there is nothing to compare it with.
+type ComparedKind = Exclude<KindName, "skill" | "integration">;
 
 /** The data a file's kind schema gets: its YAML with old keys upgraded and the id from its place. */
 function dataOf(file: FileCase, kind: ComparedKind): unknown {

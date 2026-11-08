@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fileKinds, isKindName, isReservedPath, kindNames, RESERVED_FOLDER } from "./index.ts";
 
 describe("format.kind-registry", () => {
-  it("lists the 14 kinds the old schema and loader read, workspace-level first", () => {
+  it("lists the 14 kinds the old schema and loader read, workspace-level first, then the integration sheet", () => {
     expect(kindNames()).toEqual([
       "workspace",
       "deployments",
@@ -18,15 +18,16 @@ describe("format.kind-registry", () => {
       "workflow",
       "workflowTest",
       "routine",
+      "integration",
     ]);
   });
 
-  it("registers each kind under its own name, with a schema and at least one place", () => {
+  it("registers each kind under its own name, with a schema and a place unless it sits outside workspaces", () => {
     for (const name of kindNames()) {
       const kind = fileKinds[name];
       expect(kind.name).toBe(name);
       expect(kind.about).not.toBe("");
-      expect(kind.places.length).toBeGreaterThan(0);
+      expect(kind.places.length > 0).toBe(name !== "integration");
     }
   });
 

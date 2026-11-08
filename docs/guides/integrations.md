@@ -73,9 +73,11 @@ provides: [connector] # connector, llm and/or knowledge
 hosts:
   - api.example.com
 secrets:
-  - name: weather-key
+  weather-key:
     purpose: API key for the forecast service
     hosts: [api.example.com]
+    as: header # or bearer, or form with field:
+    header: x-api-key
 tokens: []
 tools:
   - name: forecast
@@ -93,8 +95,12 @@ seconds for each next piece of the body, so a long streamed answer keeps
 going as long as data arrives. Raise `limits` for a long model answer or a
 large file export.
 
-The field list is v0; the schema in `@halonicjs/format` is the source of
-truth once it lands.
+The schema is `IntegrationSheet` in `@halonicjs/format`: its JSON Schema is
+`jsonSchemaOf("integration")`, and `parseFile("integration", text)` checks a
+sheet with a line for each problem. Besides the fields above, a secret may
+be `optional: true`, a tool lists its `arguments`, a Google service lists
+its `googleScopes`, and `recording` tells the recorder what to scrub.
+Unknown keys are refused, so a typo fails.
 
 ## The code
 
