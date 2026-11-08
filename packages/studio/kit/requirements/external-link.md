@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-700; Google setup flow design, section 3.1; desktop wiring in HAL-192
 
-An `ExternalLink` shall show its text, which says where it goes, followed by ↗, and screen readers shall also hear "(opens in your browser)". When the user clicks it with the left or middle button, the kit shall cancel the link's own navigation and call the `openExternal` service with its address. The shell provides `openExternal` through `OpenExternalProvider`; where it provides none, the kit shall open the address in a new browser tab with `noopener` and `noreferrer`. A right click shall stay with the browser.
+The kit's `ExternalLink` shall show its text, which says where it goes, followed by ↗, and screen readers shall also hear "(opens in your browser)". When the user clicks it with the left or middle button, the kit shall cancel the link's own navigation and call the `openExternal` service with its address. The shell provides `openExternal` through `OpenExternalProvider`; where it provides none, the kit shall open the address in a new browser tab with `noopener` and `noreferrer`. A right click shall stay with the browser.
 
 ## Examples
 

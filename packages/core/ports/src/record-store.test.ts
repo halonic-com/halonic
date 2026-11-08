@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { compactedChanges, foldRecords, type RecordChange } from "./index.ts";
 
 const change = (
@@ -14,7 +15,7 @@ const change = (
   values,
 });
 
-describe("ports.record-fold", () => {
+verifies("ports.record-fold", () => {
   it("merges an update into the record and keeps the time of the last change", () => {
     const update = change("1", "update", { name: "Ada L." }, 2);
     const records = foldRecords([change("1", "add", { name: "Ada", city: "London" }, 1), update]);

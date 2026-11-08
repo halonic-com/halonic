@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-719, from the security review in HAL-705 (plan D1); `RecordStore` port v2
 
-After it replaces or removes a token, the token store shall compact `_tokens`, so the old sealed value is no longer anywhere in the collection's changes. It shall not compact when it adds a new token.
+When the token store replaces or removes a token, it shall compact `_tokens`, so the old sealed value is no longer anywhere in the collection's changes. It shall not compact when it adds a new token.
 
 ## Examples
 

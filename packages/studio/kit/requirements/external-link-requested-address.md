@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-700; build plan D7 (HAL-678, revision 4)
 
-An `ExternalLink` may take its address from a request (`href: () => Promise<string>`), as "Sign in with Google" and "Open again" do; it then also takes an `onError`. When the user clicks it, the kit shall ask for the address and pass it to `openExternal` at once, still pending, without awaiting anything first, and ignore further clicks until it settles. Where the shell provides no `openExternal`, the kit shall open an empty tab inside the click, cut its handle back to Studio, and set the address when it arrives. If the address doesn't arrive or isn't an `http` or `https` address, then the kit shall close that tab and call `onError` with the error.
+Where an `ExternalLink` takes its address from a request (`href: () => Promise<string>`), as "Sign in with Google" and "Open again" do, the kit shall also require an `onError`. When the user clicks it, the kit shall ask for the address and pass it to `openExternal` at once, still pending, without awaiting anything first, and ignore further clicks until it settles. Where the shell provides no `openExternal`, the kit shall open an empty tab inside the click, cut its handle back to Studio, and set the address when it arrives. If the address doesn't arrive or isn't an `http` or `https` address, then the kit shall close that tab and call `onError` with the error.
 
 ## Examples
 
