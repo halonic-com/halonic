@@ -22,6 +22,7 @@
     "check:pr-title": "node tooling/check/src/cli/pr-title.ts",
     "discover": "node tooling/discover/src/cli/discover.ts",
     "new": "node tooling/discover/src/cli/new.ts",
+    "who-touches": "node tooling/discover/src/cli/who-touches.ts",
     "format": "biome format --write .",
     "ci:all": "turbo run typecheck lint test build --continue",
     "ci:fast": "pnpm check && biome ci --linter-enabled=false . && pnpm discover --check"

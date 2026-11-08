@@ -1,7 +1,8 @@
 # @halonicjs/tooling-discover
 
 Generates the registration files and keeps the Studio's feature list in
-`apps/studio/package.json` correct (plan 5.3). Also scaffolds new packages.
+`apps/studio/package.json` correct (plan 5.3). Also scaffolds new packages
+and shows who else is working on a package.
 
 - **Layer:** tooling
 - **Owner:** mateo
@@ -10,3 +11,4 @@ Generates the registration files and keeps the Studio's feature list in
   - `pnpm discover --fix` also rewrites the feature list; run `pnpm install` after.
   - `pnpm discover --check` changes nothing and fails if the list is out of date.
   - `pnpm new package <layer>/<name> [--owner <agent>]` and `pnpm new feature <name> [--owner <agent>]` create an empty package or feature that passes every check.
+  - `pnpm who-touches [<package>]` lists the open pull requests that change a package (needs `gh`, signed in).
