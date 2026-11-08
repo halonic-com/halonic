@@ -7,17 +7,24 @@ import {
 } from "@halonicjs/ports";
 import { encodeBase64url } from "./base64url.ts";
 
-/** A record store that keeps its log in memory, so tests can read and change it. */
+/**
+ * A record store that keeps its log in memory, so tests can read and change
+ * it. `appended` keeps every change ever appended, also after a compact.
+ */
 export interface MemoryRecords extends RecordStore {
   readonly log: RecordChange[];
+  readonly appended: RecordChange[];
 }
 
 export function memoryRecords(): MemoryRecords {
   const log: RecordChange[] = [];
+  const appended: RecordChange[] = [];
   return {
     log,
+    appended,
     append: async (changes) => {
       log.push(...structuredClone(changes));
+      appended.push(...structuredClone(changes));
     },
     changes: async (collection) =>
       structuredClone(log.filter((change) => change.collection === collection)),

@@ -51,9 +51,8 @@ never `null`, so a key mix-up never looks like "not signed in".
 - **`records` must be a store agents and tools can't write to.** Anyone who can append to it can
   remove a token or roll it back to an older sealed value, which the encryption doesn't prevent.
   `_tokens` can't be a workspace collection id, so a hub can't reach it by listing a collection.
-- **Old values stay in the log.** The record store only appends, so a replaced or removed token
-  stays in its history, encrypted. If the key leaked, old tokens could be read too. Removing them
-  for good needs a compaction step on the `RecordStore` port, which is a separate change with its
-  own ADR.
+- **Old values leave the record store, not the disk blocks.** After a replace or a remove the
+  store calls `RecordStore.compact("_tokens")`, so the old sealed value is no longer in the log.
+  Backups, copies and freed disk blocks are outside the record store and may still hold it.
 - **One key at a time.** A value sealed with another key throws. The key id lets a later version
   open values with a previous key and re-seal them, without a new format.

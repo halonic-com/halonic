@@ -55,7 +55,9 @@ verifies("token-store.get-set-remove", () => {
     expect(await tokens.get("google_refresh")).toBe("value");
     await tokens.remove("GOOGLE_REFRESH");
     expect(await tokens.get("google-refresh")).toBeNull();
-    expect(new Set(records.log.map((change) => change.id))).toEqual(new Set(["google_refresh"]));
+    expect(new Set(records.appended.map((change) => change.id))).toEqual(
+      new Set(["google_refresh"]),
+    );
   });
 
   it("keeps tokens with different names apart", async () => {
@@ -101,7 +103,9 @@ verifies("token-store.change-log", () => {
     await tokens.set("refresh", "one");
     await tokens.set("refresh", "two");
     await tokens.remove("refresh");
-    expect(records.log.map(({ collection, id, op, at }) => ({ collection, id, op, at }))).toEqual(
+    expect(
+      records.appended.map(({ collection, id, op, at }) => ({ collection, id, op, at })),
+    ).toEqual(
       ["add", "update", "remove"].map((op) => ({
         collection: tokenCollection,
         id: "refresh",
@@ -109,8 +113,8 @@ verifies("token-store.change-log", () => {
         at: "2026-11-08T12:00:00.000Z",
       })),
     );
-    expect(records.log[2]?.values).toBeNull();
-    expect(records.log.every((change) => change.by === undefined)).toBe(true);
+    expect(records.appended[2]?.values).toBeNull();
+    expect(records.appended.every((change) => change.by === undefined)).toBe(true);
   });
 
   it("uses a collection name no user collection can have", () => {
@@ -135,6 +139,44 @@ verifies("token-store.change-log", () => {
     await tokens.set("refresh", "kept");
     records.log.push({ ...fixedChange(), op: "update", values: { note: "unrelated" } });
     expect(await tokens.get("refresh")).toBe("kept");
+  });
+});
+
+verifies("token-store.old-values-removed", () => {
+  /** The sealed value of the token's current record in the log. */
+  function sealedNow(records: MemoryRecords): string {
+    const sealed = records.log.at(-1)?.values?.["sealed"];
+    if (typeof sealed !== "string") {
+      throw new Error("expected a sealed value in the log");
+    }
+    return sealed;
+  }
+
+  it("keeps no trace of a replaced token's ciphertext", async () => {
+    const { tokens, records } = setup();
+    await tokens.set("refresh", "old");
+    const oldSealed = sealedNow(records);
+    await tokens.set("refresh", "new");
+    expect(JSON.stringify(records.log)).not.toContain(oldSealed);
+    expect(records.log.map(({ id, op }) => ({ id, op }))).toEqual([{ id: "refresh", op: "seed" }]);
+    expect(await tokens.get("refresh")).toBe("new");
+  });
+
+  it("keeps no trace of a removed token, and leaves the others", async () => {
+    const { tokens, records } = setup();
+    await tokens.set("refresh", "removed");
+    const removedSealed = sealedNow(records);
+    await tokens.set("other", "kept");
+    await tokens.remove("refresh");
+    expect(JSON.stringify(records.log)).not.toContain(removedSealed);
+    expect(records.log.map(({ id }) => id)).toEqual(["other"]);
+    expect(await tokens.get("other")).toBe("kept");
+  });
+
+  it("doesn't compact when a token is first added", async () => {
+    const { tokens, records } = setup();
+    await tokens.set("refresh", "first");
+    expect(records.log.map(({ op }) => op)).toEqual(["add"]);
   });
 });
 

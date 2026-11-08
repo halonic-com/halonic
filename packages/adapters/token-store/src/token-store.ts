@@ -1,4 +1,11 @@
-import type { Clock, RecordChange, RecordStore, Secrets, TokenStore } from "@halonicjs/ports";
+import {
+  type Clock,
+  foldRecords,
+  type RecordChange,
+  type RecordStore,
+  type Secrets,
+  type TokenStore,
+} from "@halonicjs/ports";
 import { damaged, openToken, sealToken } from "./sealed-value.ts";
 import { loadTokenKey, type TokenKey } from "./token-key.ts";
 import { canonicalTokenName } from "./token-name.ts";
@@ -33,7 +40,8 @@ export interface TokenStoreOptions {
  * not remembered, so setting the secret takes effect without a restart.
  *
  * Every `get` reads the store, so several server instances never see an
- * old token. A value that won't open throws `UnreadableTokenError` and is
+ * old token. After a replace or a remove the store compacts `_tokens`, so
+ * the old sealed value leaves the record store's storage. A value that won't open throws `UnreadableTokenError` and is
  * never reported as "no token".
  *
  * @example
@@ -54,7 +62,7 @@ export function createTokenStore(options: TokenStoreOptions): TokenStore {
   };
 
   const currentValues = async (id: string): Promise<Record<string, unknown> | undefined> =>
-    foldRecord(await records.changes(tokenCollection), id);
+    foldRecords(await records.changes(tokenCollection)).get(id)?.values;
 
   const change = (op: RecordChange["op"], id: string, values: RecordChange["values"]) => ({
     at: clock.now().toISOString(),
@@ -83,6 +91,9 @@ export function createTokenStore(options: TokenStoreOptions): TokenStore {
       const sealed = await sealToken(await tokenKey(), id, value);
       const exists = (await currentValues(id)) !== undefined;
       await records.append([change(exists ? "update" : "add", id, { sealed })]);
+      if (exists) {
+        await records.compact(tokenCollection);
+      }
     },
 
     async remove(name) {
@@ -91,27 +102,7 @@ export function createTokenStore(options: TokenStoreOptions): TokenStore {
         return;
       }
       await records.append([change("remove", id, null)]);
+      await records.compact(tokenCollection);
     },
   };
-}
-
-/** One record's current values, from its changes oldest first, or `undefined` when there is none. */
-function foldRecord(
-  changes: readonly RecordChange[],
-  id: string,
-): Record<string, unknown> | undefined {
-  let values: Record<string, unknown> | undefined;
-  for (const entry of changes) {
-    if (entry.id !== id) {
-      continue;
-    }
-    if (entry.op === "remove") {
-      values = undefined;
-    } else if (entry.op === "update") {
-      values = { ...values, ...entry.values };
-    } else {
-      values = { ...entry.values };
-    }
-  }
-  return values;
 }
