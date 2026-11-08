@@ -8,19 +8,55 @@ Our thin layer over the yaml library: reads and writes the YAML our workspace fi
 
 ## Example
 
+Read a file, find the line and column of a node, edit it and write the data back. The code lives in
+[`examples/read-and-edit.ts`](examples/read-and-edit.ts), where it is typechecked and run by
+`src/example.test.ts`; keep this copy in step with it. The file imports `../src/index.ts`, because a
+package may not import itself by name; outside this package, import `@halonicjs/yaml` as below.
+
 ```ts
-import { readYaml, writeYamlFile } from "@halonicjs/yaml";
+import { editYaml, readYaml, writeYamlFile } from "@halonicjs/yaml";
 
-const read = readYaml(text);
-if (!read.ok) {
-  // { kind: "syntax" | "unsupported" | "too-deep" | "too-large", message, line, col }
-  return report(read.error);
+const text = `# Nightly billing check
+name: Billing
+steps:
+  - id: check # runs first
+    model: slow
+`;
+
+/** Reads a file, finds a node's line and column, edits it and writes the data back. */
+export function runExample(): {
+  position: { line: number; col: number } | undefined;
+  problem: string | undefined;
+  edited: string | undefined;
+  layout: string | undefined;
+  written: string;
+} {
+  const read = readYaml(text);
+  if (!read.ok) throw new Error(read.error.message);
+  const position = read.value.positionOf(["steps", 0, "id"]); // { line: 4, col: 9 }
+
+  // A file we don't support says where, and what to do instead.
+  const bad = readYaml("base: &base 1\n");
+  const problem = bad.ok ? undefined : `${bad.error.kind} at ${bad.error.line}:${bad.error.col}`; // "unsupported at 1:13"
+
+  // An edit keeps every comment and line it doesn't touch.
+  const edited = editYaml(text, [{ kind: "set", path: ["steps", 0, "model"], value: "fast" }]);
+
+  // writeYamlFile writes data only: comments are gone.
+  const written = writeYamlFile(read.value.data);
+
+  return {
+    position,
+    problem,
+    edited: edited.ok ? edited.value.text : undefined,
+    layout: edited.ok ? edited.value.layout : undefined, // "kept"
+    written,
+  };
 }
-read.value.data; // plain objects, arrays, strings, numbers, booleans, null
-read.value.positionOf(["steps", 0, "id"]); // { line: 3, col: 9 }, or the nearest parent
-
-writeYamlFile(data); // the same text the old app wrote
 ```
+
+A problem is `{ kind: "syntax" | "unsupported" | "too-deep" | "too-large", message, line, col }`.
+`positionOf` answers with the nearest parent when nothing sits at the path.
 
 ## What it rejects
 
