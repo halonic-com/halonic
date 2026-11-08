@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest something Halonic should do.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. If it's still a loose idea, start a [discussion](https://github.com/halonic-com/halonic/discussions) instead; we can turn it into an issue later.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe what you're trying to do and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: How should it work, from the user's side? If you can, say it as "When ..., Halonic shall ...".
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Other ways to solve it, including workarounds you use now.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to work on this?
+      options:
+        - "No"
+        - Yes, with some guidance
+        - Yes, I have a plan
+    validations:
+      required: true
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance used
+      description: If an AI tool helped write this request, name it (tool / model). Otherwise write "None".
+    validations:
+      required: true
