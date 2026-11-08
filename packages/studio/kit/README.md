@@ -168,7 +168,11 @@ for the address and hands it to the system browser:
 Without a provider, the link uses `openInNewTab`. A known address opens in a new tab with
 `noopener` and `noreferrer`. For a pending address the tab has to open inside the click, or the
 browser blocks it as a popup: it opens empty at once, its handle back to Studio is cut, and it
-gets the address when it arrives. If the request fails, the tab is closed again.
+gets the address when it arrives. If the request fails, the tab is closed again. Unlike a known
+address, that tab is sent Studio's origin as its referrer, because Studio's page navigates it.
+
+The promise `openExternal` returns rejects only when a pending address fails; that goes to
+`onError`. For a known address there's nobody to tell, so the shell reports its own errors.
 
 | State   | What shows                                                          |
 | ------- | ------------------------------------------------------------------- |

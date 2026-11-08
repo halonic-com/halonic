@@ -14,8 +14,12 @@ export type ExternalAddress = string | Promise<string>;
  * It's called inside the click handler, before anything is awaited, because a browser blocks a
  * tab opened after an `await` as a popup.
  *
+ * For a known address the promise never rejects: `ExternalLink` has nobody to tell, so the shell
+ * reports its own errors, such as a system browser that didn't start.
+ *
  * @returns a promise that settles once the page is open
- * @throws (the promise rejects) when the address didn't arrive; a tab opened for it is closed
+ * @throws (the promise rejects) only when a pending address didn't arrive; a tab opened for it is
+ *   closed
  */
 export type OpenExternal = (address: ExternalAddress) => Promise<void>;
 

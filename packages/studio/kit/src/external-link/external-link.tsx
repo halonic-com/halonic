@@ -1,4 +1,4 @@
-import { type MouseEvent, type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { useOpenExternal } from "./open-external.tsx";
 
 /** An `ExternalLink` to a page whose address is known now. */
@@ -10,6 +10,8 @@ interface ExternalLinkToAddress {
    * The kit adds the ↗ after it.
    */
   readonly children: ReactNode;
+  /** Only for an address from a request: a known address can't fail to arrive. */
+  readonly onError?: never;
 }
 
 /** An `ExternalLink` whose address comes from a request, such as "Sign in with Google". */
@@ -70,7 +72,7 @@ function LinkToAddress({ href, children }: ExternalLinkToAddress) {
       return;
     }
     event.preventDefault();
-    // A known address can't fail to arrive; the shell reports its own errors.
+    // Doesn't reject for a known address: the shell reports its own errors (see OpenExternal).
     void openExternal(href);
   }
 
@@ -90,22 +92,27 @@ function LinkToAddress({ href, children }: ExternalLinkToAddress) {
 
 function LinkToRequestedAddress({ href, children, onError }: ExternalLinkToRequestedAddress) {
   const openExternal = useOpenExternal();
-  // While the address is on its way, more clicks would open more tabs, so they're ignored.
+  // While the address is on its way, more clicks would open more tabs, so they're ignored. The
+  // ref guards the clicks, the state shows aria-busy.
+  const busy = useRef(false);
   const [opening, setOpening] = useState(false);
 
   function open() {
-    if (opening) {
+    if (busy.current) {
       return;
     }
+    busy.current = true;
     setOpening(true);
-    // Not awaited before openExternal: a browser has to open its tab inside the click.
-    const address = href().then((url) => {
+    // Not awaited before openExternal: a browser has to open its tab inside the click. Each call
+    // runs inside a promise, so one that throws instead of rejecting still reaches onError.
+    const address = new Promise<string>((resolve) => resolve(href())).then((url) => {
       refuseNonWebAddress(url);
       return url;
     });
-    openExternal(address)
-      .catch(onError)
-      .finally(() => setOpening(false));
+    new Promise<void>((resolve) => resolve(openExternal(address))).catch(onError).finally(() => {
+      busy.current = false;
+      setOpening(false);
+    });
   }
 
   return (

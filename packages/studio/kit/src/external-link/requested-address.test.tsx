@@ -92,6 +92,47 @@ verifies("kit.external-link-requested-address", () => {
     expect(button.getAttribute("aria-busy")).toBe("false");
   });
 
+  it("tells the caller, and takes clicks again, when the request throws instead of rejecting", async () => {
+    const failure = new Error("The start route failed.");
+    const startSignIn = vi.fn((): Promise<string> => {
+      throw failure;
+    });
+    const { button, opened, onError } = renderSignIn(startSignIn);
+
+    await click(button);
+    await settle();
+    expect(onError).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(button.getAttribute("aria-busy")).toBe("false");
+
+    await click(button);
+    await settle();
+    expect(startSignIn).toHaveBeenCalledTimes(2);
+    expect(opened).toEqual([]);
+  });
+
+  it("tells the caller when the shell's openExternal throws instead of rejecting", async () => {
+    const failure = new Error("The system browser didn't start.");
+    const onError = vi.fn<(error: unknown) => void>();
+    const { container } = render(
+      <OpenExternalProvider
+        openExternal={() => {
+          throw failure;
+        }}
+      >
+        <ExternalLink href={async () => signInPage} onError={onError}>
+          Sign in with Google
+        </ExternalLink>
+      </OpenExternalProvider>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+
+    await click(button);
+    await settle();
+
+    expect(onError).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(button.getAttribute("aria-busy")).toBe("false");
+  });
+
   it("refuses an address that arrives but isn't a web address", async () => {
     const { button, opened, onError } = renderSignIn(async () => "javascript:alert(1)");
 
@@ -107,5 +148,15 @@ verifies("kit.external-link-requested-address", () => {
     // @ts-expect-error An address from a request needs onError.
     const element = <ExternalLink href={async () => signInPage}>Sign in with Google</ExternalLink>;
     expect(element.props.onError).toBeUndefined();
+  });
+
+  it("takes no onError with a known address, which can't fail to arrive", () => {
+    const element = (
+      // @ts-expect-error onError is only for an address from a request.
+      <ExternalLink href={signInPage} onError={() => {}}>
+        Sign in with Google
+      </ExternalLink>
+    );
+    expect(element.props.href).toBe(signInPage);
   });
 });
