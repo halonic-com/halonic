@@ -26,8 +26,13 @@ The interface is fixed with the other ports, under the same freeze rule
 - **`Integration`**: `name`, `version`, `tools` and `connect(host)`.
 - **`IntegrationTool`**: the `ConnectorTool` shape with `risk` required.
 - **`IntegrationHost`**: what an integration is given, and all it is given:
-  `http` (an `IntegrationHttpClient`), `tokens` (only its own) and `settings`.
-  It has **no `Secrets` and no raw `HttpClient`**.
+  `http` (an `IntegrationHttpClient`), `tokens` (only its own), `settings`
+  and `wait(ms, signal?)`. It has **no `Secrets`, no raw `HttpClient` and no
+  timer of its own**. `wait` is for the pause a server asks for (SSE
+  `retry:`, `Retry-After`): the host clamps it to `maxIntegrationWaitMs`
+  (30 s) and rejects with `signal.reason` when the call's signal aborts, so a
+  wait never outlives its call. There is no `now()`: a date-form
+  `Retry-After` is measured against the response's own `Date` header (HAL-303).
 - **`IntegrationConnection`**: `callTool`, `close`, and optional
   `listTools` (an MCP server's tools can change), `createLlmProvider` and
   `createKnowledgeProvider`.

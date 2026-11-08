@@ -41,6 +41,7 @@ export {
   type IntegrationRequestInit,
   type IntegrationTool,
   integrationVersion,
+  maxIntegrationWaitMs,
   type SecretPlacement,
 } from "./integration.ts";
 export {
