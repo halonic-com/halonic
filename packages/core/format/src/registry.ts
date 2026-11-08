@@ -15,12 +15,16 @@ import { modelsKind } from "./kinds/models/kind.ts";
 import type { Models } from "./kinds/models/schema.ts";
 import { providerKind } from "./kinds/provider/kind.ts";
 import type { Provider } from "./kinds/provider/schema.ts";
+import { routineKind } from "./kinds/routine/kind.ts";
+import type { Routine } from "./kinds/routine/schema.ts";
 import { runtimeKind } from "./kinds/runtime/kind.ts";
 import type { Runtime } from "./kinds/runtime/schema.ts";
 import { skillKind } from "./kinds/skill/kind.ts";
 import type { Skill } from "./kinds/skill/schema.ts";
 import { workflowKind } from "./kinds/workflow/kind.ts";
 import type { Workflow } from "./kinds/workflow/schema.ts";
+import { workflowTestKind } from "./kinds/workflow-test/kind.ts";
+import type { WorkflowTest } from "./kinds/workflow-test/schema.ts";
 import { workspaceKind } from "./kinds/workspace/kind.ts";
 import type { WorkspaceSettings } from "./kinds/workspace/schema.ts";
 
@@ -38,6 +42,8 @@ export interface KindValues {
   hub: Hub;
   agent: Agent;
   workflow: Workflow;
+  workflowTest: WorkflowTest;
+  routine: Routine;
 }
 
 /** The name of a file kind: `workspace`, `agent`, `workflowTest`, … */
@@ -61,6 +67,8 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   hub: hubKind,
   agent: agentKind,
   workflow: workflowKind,
+  workflowTest: workflowTestKind,
+  routine: routineKind,
 };
 
 /**
