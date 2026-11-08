@@ -1,5 +1,6 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { ManualClock } from "./clock.ts";
 import { MemoryScheduler, memorySchedulerFactory } from "./scheduler.ts";
 
@@ -16,7 +17,7 @@ function recorder() {
   };
 }
 
-describe("MemoryScheduler (adapter-memory.scheduler)", () => {
+verifies("memory.scheduler", () => {
   it("delivers nothing until runDue is called", async () => {
     const clock = new ManualClock();
     const { timers, listener } = recorder();

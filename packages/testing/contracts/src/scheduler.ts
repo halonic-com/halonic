@@ -1,4 +1,5 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type MakeScheduler, startScheduler } from "./scheduler-harness.ts";
 
@@ -19,12 +20,14 @@ type Started = Awaited<ReturnType<typeof startScheduler>>;
  * they never count repeats.
  */
 export function schedulerContract(name: string, make: MakeScheduler): void {
-  describe(`Scheduler contract (contracts.scheduler): ${name}`, () => {
-    deliveryCases(make);
-    changeCases(make);
-    retryCases(make);
-    duringCallCases(make);
-    tickAndLimitCases(make);
+  verifies("contracts.scheduler", () => {
+    describe(`Scheduler contract: ${name}`, () => {
+      deliveryCases(make);
+      changeCases(make);
+      retryCases(make);
+      duringCallCases(make);
+      tickAndLimitCases(make);
+    });
   });
 }
 

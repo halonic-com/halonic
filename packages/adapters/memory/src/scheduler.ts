@@ -75,7 +75,7 @@ export class MemoryScheduler implements Scheduler {
     return [...this.#timers.values()]
       .filter((stored) => stored.timer.key === key)
       .map((stored) => ({ ...stored.timer }))
-      .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.timerId.localeCompare(b.timerId));
+      .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || (a.timerId < b.timerId ? -1 : 1));
   }
 
   /**

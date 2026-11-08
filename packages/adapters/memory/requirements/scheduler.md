@@ -1,4 +1,4 @@
-# adapter-memory.scheduler
+# memory.scheduler
 
 - Status: active
 - Since: 0.1.0
