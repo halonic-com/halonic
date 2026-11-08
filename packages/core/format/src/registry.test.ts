@@ -14,6 +14,8 @@ describe("format.kind-registry", () => {
       "connector",
       "skill",
       "hub",
+      "agent",
+      "workflow",
     ]);
   });
 
@@ -43,6 +45,8 @@ describe("format.kind-registry", () => {
       "connector: workspace-and-hub library/connectors/<id>.connector.yaml",
       "skill: workspace-and-hub library/skills/<id>/SKILL.md",
       "hub: hub /hub.yaml",
+      "agent: workspace-and-hub agents/<id>.agent.yaml",
+      "workflow: workspace-and-hub workflows/<id>.workflow.yaml",
     ]);
   });
 
