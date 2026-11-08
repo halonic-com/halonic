@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PHONE_MAX_WIDTH } from "./index.ts";
 import { blend, contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
 import { blockBody, customProperties, lightDarkPair, readThemeFile } from "./test/theme-file.ts";
 
@@ -166,6 +167,9 @@ describe("theme.css scales", () => {
       "--spacing-statusbar",
       "--spacing-sidebar",
       "--spacing-panel",
+      "--spacing-touch",
+      "--spacing-phone-bar",
+      "--spacing-nav-pill",
     ]);
     expect(themeTokens.get("--spacing")).toBe("4px");
     expect(namesStartingWith(themeTokens, "--breakpoint-")).toEqual(["--breakpoint-wide"]);
@@ -200,5 +204,39 @@ describe("theme.css scales", () => {
       "--duration-base",
       "--duration-slow",
     ]);
+  });
+});
+
+describe("theme.css on a phone", () => {
+  it("has a phone: variant below 600px and no phone breakpoint token", () => {
+    expect(css).toContain("@custom-variant phone (@media (width < 600px));");
+    expect(themeTokens.has("--breakpoint-phone")).toBe(false);
+  });
+
+  it("exports the same width the phone: variant uses", () => {
+    const variantWidth = /@custom-variant phone \(@media \(width < (\d+)px\)\);/.exec(css)?.[1];
+    expect(Number(variantWidth)).toBe(PHONE_MAX_WIDTH);
+    expect(PHONE_MAX_WIDTH).toBe(600);
+  });
+
+  it("keeps the touch sizes", () => {
+    expect(themeTokens.get("--spacing-touch")).toBe("48px");
+    expect(themeTokens.get("--spacing-phone-bar")).toBe("56px");
+    expect(themeTokens.get("--spacing-nav-pill")).toBe("56px");
+    expect(themeTokens.get("--text-input-touch")).toBe("16px");
+    expect(themeTokens.get("--text-input-touch--line-height")).toBe("24px");
+    expect(themeTokens.get("--text-input-touch--font-weight")).toBe("400");
+  });
+
+  it("reads the safe areas once, and pads with the larger of 12px and the home bar", () => {
+    expect(plainVariables.get("--safe-top")).toBe("env(safe-area-inset-top)");
+    expect(plainVariables.get("--safe-bottom")).toBe("env(safe-area-inset-bottom)");
+    expect(blockBody(css, "@utility pt-safe")).toContain("padding-top: var(--safe-top);");
+    expect(blockBody(css, "@utility pb-safe")).toContain(
+      "padding-bottom: max(12px, var(--safe-bottom));",
+    );
+    expect(blockBody(css, "@utility pb-safe-inset")).toContain(
+      "padding-bottom: var(--safe-bottom);",
+    );
   });
 });

@@ -129,6 +129,9 @@
   --text-code: 13px; /* use with font-mono */
   --text-code--line-height: 20px;
   --text-code--font-weight: 400;
+  --text-input-touch: 16px; /* inputs on a phone: below 16px, mobile browsers zoom in on focus */
+  --text-input-touch--line-height: 24px;
+  --text-input-touch--font-weight: 400;
 
   --tracking-label: 0.04em; /* only for small uppercase group labels */
 
@@ -147,9 +150,14 @@
   --spacing-statusbar: 24px; /* one line of caption text with 4px above and below */
   --spacing-sidebar: 264px;
   --spacing-panel: 360px; /* side panels; the shell sets this width, not the panel itself */
+  --spacing-touch: 48px; /* touch targets on a phone: buttons, menu items, inputs (h-touch) */
+  --spacing-phone-bar: 56px; /* the phone's top bar and bottom navigation (h-phone-bar) */
+  --spacing-nav-pill: 56px; /* width of the "where you are" pill in the bottom navigation */
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
   --breakpoint-wide: 900px; /* wide: is the full layout; max-wide: is compact (sidebar collapsed) */
+  /* No --breakpoint-phone: any --breakpoint-* makes Tailwind generate its own phone: (600px and
+     up), which would clash with the phone: variant below. */
 
   /* ---------------------------------------------------------------- Radius (rounded-*) */
   --radius-xs: 4px; /* badges, checkboxes, kbd, tooltips */
@@ -187,6 +195,13 @@
 }
 
 /*
+ * phone: is below 600px, the layout for phones. A media query can't read a CSS variable, so the
+ * width is written here and exported as PHONE_MAX_WIDTH (index.ts) for the shell's matchMedia;
+ * theme.test.ts checks that both say 600.
+ */
+@custom-variant phone (@media (width < 600px));
+
+/*
  * Values that must not become classes. Plain variables, used only inside the kit: in the halo
  * utilities below, the focus ring, duration-(--duration-base) and z-(--layer-dialog).
  */
@@ -217,6 +232,12 @@
   --layer-dialog: 300;
   --layer-toast: 400;
   --layer-tooltip: 500;
+
+  /* The phone's notch and home bar. Only through pt-safe, pb-safe and pb-safe-inset below, so
+     screens never write env() by hand. While the keyboard is open, the shell sets
+     --safe-bottom: 0px, so a bar sits right on the keyboard. */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -280,4 +301,22 @@
     outline-offset: -2px;
     box-shadow: var(--focus-ring-inset);
   }
+}
+
+/* ---------------------------------------------------------------- Safe areas on a phone */
+
+/* The top bar: clears the notch or status bar. */
+@utility pt-safe {
+  padding-top: var(--safe-top);
+}
+
+/* A bottom action bar, a sheet's bottom, the composer: the larger of 12px and the home bar,
+   never the sum. */
+@utility pb-safe {
+  padding-bottom: max(12px, var(--safe-bottom));
+}
+
+/* The bottom navigation: its 56px items need no extra padding, only the home bar. */
+@utility pb-safe-inset {
+  padding-bottom: var(--safe-bottom);
 }

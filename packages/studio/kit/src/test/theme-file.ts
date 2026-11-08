@@ -32,7 +32,10 @@ export function topLevelBlocks(css: string): CssBlock[] {
     } else if (character === "}") {
       depth--;
       if (depth === 0) {
-        const header = css.slice(headerStart, bodyStart - 1).trim();
+        // One-line statements such as `@custom-variant …;` end in a semicolon and aren't part
+        // of the header of the block after them.
+        const statements = css.slice(headerStart, bodyStart - 1).split(";");
+        const header = (statements.at(-1) ?? "").trim();
         blocks.push({ header, body: css.slice(bodyStart, index) });
         headerStart = index + 1;
       }
