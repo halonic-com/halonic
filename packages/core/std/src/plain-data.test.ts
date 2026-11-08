@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { isPlainObject } from "./plain-data.ts";
 
-describe("std.is-plain-object", () => {
+verifies("std.is-plain-object", () => {
   it("accepts objects made by {}, Object.create(null) and JSON.parse", () => {
     expect(isPlainObject({})).toBe(true);
     expect(isPlainObject(Object.create(null))).toBe(true);
