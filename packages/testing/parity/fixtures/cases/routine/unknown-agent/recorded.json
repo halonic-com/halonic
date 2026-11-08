@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "routine/unknown-agent",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+      "flatPath": "hubs/billing/routines/month-end.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/month-end.routine.yaml",
+      "message": "Routine \"month-end\": unknown agent \"accountant\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/routines/month-end.routine.yaml: Routine \"month-end\": unknown agent \"accountant\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

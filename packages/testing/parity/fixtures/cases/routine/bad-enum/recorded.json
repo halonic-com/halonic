@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "routine/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "workflows/routines/hourly-check.routine.yaml",
+      "flatPath": "routines/hourly-check.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [
+        {
+          "path": [
+            "overlap"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"skip\"|\"queue\"|\"allow\"",
+          "line": 9,
+          "col": 10
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "overlap: Invalid option: expected one of \"skip\"|\"queue\"|\"allow\"",
+      "line": 9,
+      "col": 10
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error routines/hourly-check.routine.yaml: overlap: Invalid option: expected one of \"skip\"|\"queue\"|\"allow\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 9,
+    "recorded": 9,
+    "verdict": "same"
+  }
+}

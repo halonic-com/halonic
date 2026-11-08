@@ -1,0 +1,46 @@
+{
+  "reference": "784f78d",
+  "case": "routine/mail-every-15m",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+      "flatPath": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [
+        {
+          "path": [
+            "trigger",
+            "mail",
+            "every"
+          ],
+          "code": "invalid_format",
+          "message": "use a number and a unit, e.g. \"2m\"",
+          "line": 7,
+          "col": 12
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "message": "trigger.mail.every: use a number and a unit, e.g. \"2m\"",
+      "line": 7,
+      "col": 12
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/routines/inbox-mail.routine.yaml: trigger.mail.every: use a number and a unit, e.g. \"2m\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 7,
+    "recorded": 7,
+    "verdict": "same"
+  }
+}
