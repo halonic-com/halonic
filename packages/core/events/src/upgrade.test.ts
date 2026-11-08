@@ -53,4 +53,10 @@ describe("events.parse-event-line", () => {
   it("throws a SyntaxError on a line that isn't JSON", () => {
     expect(() => parseEventLine("not json")).toThrow(SyntaxError);
   });
+
+  it("throws a SyntaxError on JSON that isn't an object", () => {
+    for (const line of ["null", "42", '"run"', "[]"]) {
+      expect(() => parseEventLine(line), line).toThrow(SyntaxError);
+    }
+  });
 });

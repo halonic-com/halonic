@@ -66,6 +66,8 @@ describe("events.summary-start", () => {
       nextTimer: null,
       approval: null,
       signals: [],
+      lastSeq: 1,
+      updatedAt: startedAt,
     });
   });
 
@@ -109,6 +111,21 @@ describe("events.summary-progress", () => {
   it("ends failed with the error", () => {
     const summary = summaryOf({ type: "run.failed", state: null, error: "boom" });
     expect(summary).toMatchObject({ status: "failed", endedAt: "T2", error: "boom" });
+  });
+});
+
+describe("events.summary-last-event", () => {
+  it("names the last event's sequence number and time", () => {
+    const summary = summaryOf(
+      { type: "state.entered", state: "a" },
+      { type: "state.entered", state: "b" },
+    );
+    expect(summary).toMatchObject({ lastSeq: 3, updatedAt: "T3" });
+  });
+
+  it("moves on with events that change nothing else", () => {
+    const summary = summaryOf({ type: "transition", from: "a", to: "b", event: "next" });
+    expect(summary).toMatchObject({ lastSeq: 2, updatedAt: "T2" });
   });
 });
 
@@ -252,8 +269,8 @@ describe("events.summary-approvals-and-signals", () => {
     ]);
   });
 
-  it("ignores events that don't change the summary", () => {
+  it("ignores events that don't change the summary, apart from the last event", () => {
     const quiet = summaryOf({ type: "transition", from: "a", to: "b", event: "next" });
-    expect(quiet).toEqual(summaryOf());
+    expect({ ...quiet, lastSeq: 1, updatedAt: startedAt }).toEqual(summaryOf());
   });
 });

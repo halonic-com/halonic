@@ -48,4 +48,12 @@ export interface RunSummary {
   approval: PendingApproval | null;
   /** Signals the run sent, in order (for signal triggers). */
   signals: SentSignal[];
+  /**
+   * Sequence number of the run's last event. A writer appends after it, and a
+   * client subscribes from it. Not in the old summary; derived, so the run
+   * log doesn't change.
+   */
+  lastSeq: number;
+  /** ISO time of the run's last event, so a watchdog can find runs that stopped moving. */
+  updatedAt: string;
 }
