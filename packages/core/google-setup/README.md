@@ -87,12 +87,15 @@ secret, a refresh, access or ID token, the authorisation code, the PKCE `code_ve
 **Sharing a client** (design 3.6, last bullet): `shareClient(accountRef, fromAccountRef)` lets a
 personal account use another personal account's working app. Both records then hold the same
 client ID and client secret ref, so a rotation is done once; `usingClient(clientRef)` lists them
-for "Used by x and y" and for marking every account **Needs new secret**.
+for "Used by x and y" and for marking every account **Needs new secret**. It refuses an account
+that already has its own client ID, client secret or sign-in, since sharing would leave that
+secret with no record pointing to it; the user starts that setup over first.
 
 **Start over**: `startOver({ setups, secrets, tokens }, accountRef)` removes the account's refresh
 token and its record (compacting `_google_setups`), and the client secret unless another account
 uses it. It returns which case it was, revokes nothing at Google, and removes the secrets before the
-record, so a crash never leaves a secret no record points to. The stores keep no old value after
+record, so a crash never leaves a secret no record points to, except for a damaged record: its
+secret ref can't be trusted, so that secret stays. The stores keep no old value after
 they compact, but backups and freed disk blocks are outside them, so Studio says "Halonic deletes
 the saved client secret and stops using it" (plan D1), never that it is gone from the computer.
 

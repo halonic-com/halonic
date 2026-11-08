@@ -14,7 +14,7 @@ const messages: Record<SetupRecordErrorReason, string> = {
   damaged: "The saved Google setup for this account can't be read. Start the setup over.",
   refused: "This change can't be saved to the Google setup. Check the value and try again.",
   "cannot-share":
-    "This account can't use that Google app. Both accounts must be personal, and the app must be set up and signed in.",
+    "This account can't use that Google app. Both accounts must be personal, the app must be set up and signed in, and this account must not have its own app yet. Start this setup over first if it has one.",
 };
 
 /**

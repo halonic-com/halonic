@@ -154,4 +154,30 @@ verifies("google-setup.shared-client", () => {
     }
     expect(records.log).toHaveLength(written);
   });
+
+  it("refuses an account that already has its own client ID, client secret or sign-in", async () => {
+    const stores = newStores();
+    const working = await signedInSetup(stores);
+    const startPersonal = async () =>
+      (await stores.setups.start({ route, accountType: "personal" })).accountRef;
+
+    const withClientId = await startPersonal();
+    await stores.setups.update(withClientId, { kind: "client-id", clientId: fakeClientId });
+    const withClientSecret = await startPersonal();
+    const ownClientRef = await stores.secrets.saveClientSecret(fakeStagedSecret);
+    await stores.setups.update(withClientSecret, {
+      kind: "client-secret-saved",
+      clientRef: ownClientRef,
+    });
+    const signedIn = await signedInSetup(stores);
+    const written = records.log.length;
+
+    for (const accountRef of [withClientId, withClientSecret, signedIn]) {
+      const error = await errorOf(stores.setups.shareClient(accountRef, working));
+      expect(error.reason).toBe("cannot-share");
+    }
+    expect(records.log).toHaveLength(written);
+    // The account's own secret still has a record pointing to it, so Start over reaches it.
+    expect(await stores.setups.usingClient(ownClientRef)).toHaveLength(1);
+  });
 });

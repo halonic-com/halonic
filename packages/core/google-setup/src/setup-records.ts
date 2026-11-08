@@ -68,7 +68,8 @@ export interface SetupRecords {
    * signs in itself.
    *
    * @throws SetupRecordError `not-found`, `damaged`, or `cannot-share` when
-   *   either account isn't personal or the other app isn't set up and working
+   *   either account isn't personal, the other app isn't set up and working,
+   *   or this account already has a client ID, client secret or sign-in
    */
   shareClient(accountRef: string, fromAccountRef: string): Promise<SetupRecord>;
 
@@ -89,6 +90,16 @@ const stepsDoneBySharedApp = [
   "client",
   "credentials",
 ] as const satisfies readonly StepId[];
+
+/**
+ * Whether the setup already has a client of its own. Sharing would replace
+ * its client secret ref, so no record would point to that secret any more,
+ * and keep a sign-in whose refresh token belongs to the old client. The user
+ * starts the setup over first instead.
+ */
+function hasOwnClient(values: SetupValues): boolean {
+  return values.clientId !== null || values.clientSecret !== null || values.lastSignInAt !== null;
+}
 
 /**
  * The setup records over a `RecordStore`.
@@ -220,7 +231,8 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
         from.inProductionTickedAt !== null &&
         from.clientId !== null &&
         from.clientSecret !== null &&
-        from.lastSignInAt !== null;
+        from.lastSignInAt !== null &&
+        !hasOwnClient(values);
       if (!canShare) {
         throw new SetupRecordError("cannot-share");
       }

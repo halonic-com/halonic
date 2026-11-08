@@ -12,7 +12,8 @@ export type StartOverSecret =
   | "none-saved"
   /**
    * The record was damaged, so which secret it used isn't known and none was
-   * removed. A secret no record points to is never read again.
+   * removed. A secret no record points to is never read again, but Studio
+   * tells the user it may still be stored.
    */
   | "unknown";
 
@@ -49,7 +50,8 @@ export async function startOver(
 
   // Secrets first and the record last: a crash in between leaves a record
   // whose secret is gone, which Start over can remove again, never a secret
-  // that no record points to.
+  // that no record points to, except for a damaged record, whose secret
+  // stays because its ref can't be trusted.
   let secret: StartOverSecret = "unknown";
   if (setup !== "damaged") {
     secret = await removeClientSecret(stores, setup);
