@@ -27,6 +27,7 @@ export {
 } from "./issue.ts";
 export { JSON_SCHEMA_DRAFT, toJsonSchema } from "./json-schema.ts";
 export type { JsonSchema, JsonValue } from "./json-schema-context.ts";
+export { LazySchema, MAX_DEPTH } from "./lazy.ts";
 export { NumberSchema } from "./number.ts";
 export {
   type ExtendedShape,
@@ -50,3 +51,10 @@ export {
   Schema,
 } from "./schema.ts";
 export { StringSchema } from "./string.ts";
+export {
+  type AnyObjectSchema,
+  DiscriminatedUnionSchema,
+  IntersectionSchema,
+  type SchemaList,
+  UnionSchema,
+} from "./union.ts";

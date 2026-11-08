@@ -7,10 +7,18 @@ import {
   UnknownSchema,
 } from "./basic.ts";
 import { ArraySchema, type KeySchema, RecordSchema, TupleSchema } from "./collections.ts";
+import { LazySchema } from "./lazy.ts";
 import { NumberSchema } from "./number.ts";
 import { ObjectSchema, type Shape } from "./object.ts";
-import type { AnySchema } from "./schema.ts";
+import type { AnySchema, Schema } from "./schema.ts";
 import { StringSchema } from "./string.ts";
+import {
+  type AnyObjectSchema,
+  DiscriminatedUnionSchema,
+  IntersectionSchema,
+  type SchemaList,
+  UnionSchema,
+} from "./union.ts";
 
 /**
  * Builds schemas. Every schema is immutable: methods such as `.min()` and
@@ -53,4 +61,24 @@ export const s = {
     key: Key,
     value: Value,
   ): RecordSchema<Key, Value> => new RecordSchema(key, value),
+  /** A value that matches any of `options`. */
+  union: <const Options extends SchemaList>(options: Options): UnionSchema<Options> =>
+    new UnionSchema(options),
+  /** A map whose `key` value picks one of the object schemas in `options`. */
+  discriminatedUnion: <
+    Key extends string,
+    const Options extends readonly [AnyObjectSchema, ...AnyObjectSchema[]],
+  >(
+    key: Key,
+    options: Options,
+  ): DiscriminatedUnionSchema<Key, Options> => new DiscriminatedUnionSchema(key, options),
+  /** A value that matches both schemas; maps are merged. */
+  intersection: <Left extends AnySchema, Right extends AnySchema>(
+    left: Left,
+    right: Right,
+  ): IntersectionSchema<Left, Right> => new IntersectionSchema(left, right),
+  /** A schema that refers to itself. Give the variable a type: `const Guard: Schema<Guard> = s.lazy(...)`. */
+  lazy: <Output, Input = Output>(
+    getSchema: () => Schema<Output, Input>,
+  ): LazySchema<Output, Input> => new LazySchema(getSchema),
 };
