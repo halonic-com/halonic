@@ -138,6 +138,21 @@ describe("yaml.read-unsupported", () => {
     });
   });
 
+  it("rejects an alias to its own anchor, so no circular data is ever returned", () => {
+    const cases: [string, number, number][] = [
+      ["a: &x\n  b: *x\n", 2, 3],
+      ["&l [ *l ]\n", 1, 4],
+    ];
+    for (const [text, line, col] of cases) {
+      const read = readYaml(text);
+      expect(read.ok).toBe(false);
+      expect(read).not.toHaveProperty("data");
+      expect(read).toMatchObject({
+        error: { kind: "unsupported", message: expect.stringMatching(/^Anchors/), line, col },
+      });
+    }
+  });
+
   it("rejects a tag, also a built-in one", () => {
     for (const text of ["count: !!str 2\n", "count: !custom 2\n", "!!map\na: 1\n"]) {
       expect(problemOf(text)).toMatchObject({
