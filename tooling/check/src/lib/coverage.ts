@@ -61,8 +61,10 @@ export function coverageFloorProblems(value: unknown, layer: Layer): string[] {
   const floor = value as Record<string, unknown>;
   const problems: string[] = [];
   for (const key of Object.keys(floor)) {
-    if (key !== "lines" && key !== "branches") {
-      problems.push(`"halonic.coverage" takes only "lines" and "branches", not "${key}".`);
+    if (key !== "lines" && key !== "branches" && key !== "measuredIn") {
+      problems.push(
+        `"halonic.coverage" takes only "lines", "branches" and "measuredIn", not "${key}".`,
+      );
     }
   }
   const minimum = fixedLayers.includes(layer) ? defaultCoverageFloors[layer] : undefined;
@@ -72,7 +74,37 @@ export function coverageFloorProblems(value: unknown, layer: Layer): string[] {
       problems.push(problem);
     }
   }
+  if (floor["measuredIn"] !== undefined) {
+    problems.push(...measuredInProblems(floor, layer));
+  }
   return problems;
+}
+
+/**
+ * `"measuredIn": "<package>"` moves a floor into another package's test run.
+ * Only the testing layer may do that (its suites run inside the adapters),
+ * and only with at least the layer's default, so it can't dodge the floor.
+ */
+function measuredInProblems(floor: Record<string, unknown>, layer: Layer): string[] {
+  const measuredIn = floor["measuredIn"];
+  if (layer !== "testing") {
+    return [
+      `"halonic.coverage.measuredIn" is only for the testing layer, whose suites run inside other packages. Measure this package in its own run.`,
+    ];
+  }
+  if (typeof measuredIn !== "string" || measuredIn.trim() === "") {
+    return [
+      `"halonic.coverage.measuredIn" must name the package whose test run measures this one.`,
+    ];
+  }
+  const required = defaultCoverageFloors.testing.lines;
+  const lines = floor["lines"];
+  if (typeof lines === "number" && lines < required) {
+    return [
+      `"halonic.coverage.lines" must be at least ${required} with "measuredIn": a floor measured elsewhere can't be lower than the default.`,
+    ];
+  }
+  return [];
 }
 
 function percentProblem(

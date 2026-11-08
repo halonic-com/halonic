@@ -80,6 +80,21 @@ below the minimum:
 | apps (CLI)       | 80% of lines                            |
 | testing, tooling | none set; new packages get 80% of lines |
 
+A testing package whose code only runs inside another package's tests, such as
+the contract suites inside the adapters, can be measured there instead:
+
+```json
+"coverage": { "lines": 80, "measuredIn": "@halonicjs/adapter-memory" }
+```
+
+The named package's `pnpm test` then also measures this package's `src`, and
+holds each folder to its own floor (its own `src/**` to its own floor, this
+package's `src/**` to this one), so neither number flatters the other. This
+package's own run still runs its tests, without a floor. `pnpm check` allows
+`measuredIn` only in the testing layer, with at least 80% of lines, and only
+when the named package lists this one in `dependencies` or `devDependencies`
+and runs its tests through the shared preset.
+
 In a pull request, CI compares the floor of every package whose `package.json`
 the pull request changes with its floor at the merge base (where the branch left
 the target branch), and fails if a value went down or was removed (`pnpm check:coverage-floors <base> <head>`).

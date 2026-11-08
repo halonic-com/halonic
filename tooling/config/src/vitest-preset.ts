@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config";
-import { readCoverageFloor } from "./coverage.ts";
+import { coverageSettings } from "./coverage.ts";
 
 /** Where each package's test run writes its result file, relative to the package. */
 export const testResultsFile = "test-results/vitest.json";
@@ -10,7 +10,9 @@ export const testResultsFile = "test-results/vitest.json";
  *
  * Every run measures coverage of `src` and fails below the package's floor
  * in its `package.json`. Vitest runs in the package folder, so
- * that is where the floor is read from. To run a single test file without
+ * that is where the floor is read from. A dependency whose floor says
+ * `"measuredIn"` this package is measured here too, each folder against its
+ * own floor (see `coverageSettings`). To run a single test file without
  * the floor, add `--coverage.enabled=false`.
  *
  * @param overrides - settings for this one package, merged over the preset
@@ -20,6 +22,7 @@ export const testResultsFile = "test-results/vitest.json";
  * export default definePackageTestConfig();
  */
 export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUserConfig {
+  const coverage = coverageSettings(process.cwd());
   const preset = defineConfig({
     test: {
       include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
@@ -44,11 +47,11 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
       coverage: {
         enabled: true,
         provider: "v8",
-        include: ["src/**/*.ts", "src/**/*.tsx"],
-        // Tests, test helpers and generated files aren't the code under test.
-        exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test/**", "src/generated/**"],
+        include: coverage.include,
+        exclude: coverage.exclude,
+        allowExternal: coverage.allowExternal,
         reporter: ["text-summary"],
-        thresholds: readCoverageFloor(process.cwd()),
+        thresholds: coverage.thresholds,
       },
     },
   });

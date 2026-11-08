@@ -30,6 +30,7 @@ export function checkPackages(context: CheckContext): Report {
     if (pkg.directory !== ".") {
       checkExports(context, pkg, report);
       checkCoverageFloor(context, pkg, report);
+      checkMeasuredIn(context, pkg, report);
       checkTestSetup(context, pkg, report);
     }
   }
@@ -95,10 +96,52 @@ function checkCoverageFloor(context: CheckContext, pkg: WorkspacePackage, report
 }
 
 function checkTestSetup(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
+  for (const problem of testSetupProblemsOf(context, pkg)) {
+    report.error(pkg.manifestPath, problem);
+  }
+}
+
+function testSetupProblemsOf(context: CheckContext, pkg: WorkspacePackage): string[] {
   const configPath = join(context.root, pkg.directory, "vitest.config.ts");
   const configText = existsSync(configPath) ? readFileSync(configPath, "utf8") : undefined;
-  for (const problem of testSetupProblems(pkg.manifest.scripts?.["test"], configText)) {
-    report.error(pkg.manifestPath, problem);
+  return testSetupProblems(pkg.manifest.scripts?.["test"], configText);
+}
+
+/**
+ * A floor measured in another package's run is only real if that run
+ * reaches this package's code and enforces floors. Otherwise it would
+ * quietly measure nothing.
+ */
+function checkMeasuredIn(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
+  const coverage = pkg.manifest.halonic?.coverage as { measuredIn?: unknown } | undefined;
+  const measuredIn = coverage?.measuredIn;
+  if (typeof measuredIn !== "string" || measuredIn.trim() === "") {
+    return;
+  }
+  const host = context.packages.find((candidate) => candidate.manifest.name === measuredIn);
+  if (host === undefined || host === pkg || host.directory === ".") {
+    report.error(
+      pkg.manifestPath,
+      `"halonic.coverage.measuredIn" names "${measuredIn}", which isn't another package in this repo.`,
+    );
+    return;
+  }
+  const dependsOnThis = declaredDependencies(host.manifest).some(
+    (dependency) =>
+      dependency.name === pkg.manifest.name &&
+      (dependency.field === "dependencies" || dependency.field === "devDependencies"),
+  );
+  if (!dependsOnThis) {
+    report.error(
+      pkg.manifestPath,
+      `${measuredIn} must list ${pkg.manifest.name ?? "this package"} in "dependencies" or "devDependencies", so its test run measures this package's src.`,
+    );
+  }
+  if (testSetupProblemsOf(context, host).length > 0) {
+    report.error(
+      pkg.manifestPath,
+      `${measuredIn} must run its tests through the shared preset ("vitest run" and definePackageTestConfig()), so this package's floor is enforced there.`,
+    );
   }
 }
 
