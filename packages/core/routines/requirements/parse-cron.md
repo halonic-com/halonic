@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: `parseCron` in the old routines package (`packages/core/routines/src/cron.ts`) at 784f78d
 
-When a five-field cron expression (minute hour day-of-month month day-of-week) or a macro is parsed, the parser shall return the set of allowed values for each field, accepting `*`, single values, ranges, steps, comma lists, three-letter month and weekday names in any case, 7 as a second name for Sunday, and the macros `@hourly`, `@daily`, `@midnight`, `@weekly`, `@monthly`, `@yearly` and `@annually`, and shall record whether day-of-month and day-of-week are both restricted.
+When a five-field cron expression (minute hour day-of-month month day-of-week) or a macro is parsed, the parser shall return the set of allowed values for each field, accepting `*`, single values, ranges, steps, comma lists, three-letter month and weekday names in any case, 7 as a second name for Sunday, and the macros `@hourly`, `@daily`, `@midnight`, `@weekly`, `@monthly`, `@yearly` and `@annually`, shall record whether day-of-month and day-of-week are both restricted, and shall record whether the hour field is `*` or `*/n` (a wildcard hour).
 
 ## Examples
 
@@ -15,4 +15,5 @@ When a five-field cron expression (minute hour day-of-month month day-of-week) o
 - Given `5/20 * * * *`, when it is parsed, then the minutes are 5, 25 and 45 (a single value with a step runs to the end of the field).
 - Given `0 9 1 * mon`, when it is parsed, then day-of-month and day-of-week are both restricted, so a day matching either one counts.
 - Given `0 9 * * mon`, when it is parsed, then only day-of-week restricts the day.
+- Given `*/15 * * * *` or `0 */2 * * *`, when it is parsed, then the hour is a wildcard; given `30 1 * * *` or `0 8-18/2 * * *`, it is not.
 - Given `0 9 1 JAN SUN`, when it is parsed, then the month is 1 and the weekday 0.

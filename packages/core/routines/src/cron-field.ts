@@ -15,6 +15,11 @@ export interface ParsedField {
   values: Set<number>;
   /** The field was a bare `*`, so it doesn't restrict anything. */
   any: boolean;
+  /**
+   * Every part starts from `*` (`*` or a step such as `*\/2`), so the field
+   * runs through its whole range instead of naming set values.
+   */
+  wildcard: boolean;
 }
 
 const WHOLE_NUMBER = /^\d+$/;
@@ -26,11 +31,16 @@ const WHOLE_NUMBER = /^\d+$/;
  * @throws {CronError} when a part is malformed or outside the field's range
  */
 export function parseCronField(text: string, range: FieldRange): ParsedField {
+  const parts = text.split(",");
   const values = new Set<number>();
-  for (const part of text.split(",")) {
+  for (const part of parts) {
     for (const value of partValues(part, range)) values.add(value);
   }
-  return { values, any: text === "*" };
+  return {
+    values,
+    any: text === "*",
+    wildcard: parts.every((part) => part === "*" || part.startsWith("*/")),
+  };
 }
 
 function partValues(part: string, range: FieldRange): number[] {

@@ -65,6 +65,15 @@ verifies("routines.parse-cron", () => {
     // A step over the whole field is not a bare "*", so it still counts as a restriction.
     expect(parseCron("0 9 */1 * *").daysAny).toBe(false);
   });
+
+  it("records whether the hour field runs through every hour", () => {
+    expect(parseCron("*/15 * * * *").hoursWildcard).toBe(true);
+    expect(parseCron("0 */2 * * *").hoursWildcard).toBe(true);
+    expect(parseCron("30 1 * * *").hoursWildcard).toBe(false);
+    // Like classic cron, a step from a set hour still names set hours.
+    expect(parseCron("0 8-18/2 * * *").hoursWildcard).toBe(false);
+    expect(parseCron("@hourly").hoursWildcard).toBe(true);
+  });
 });
 
 verifies("routines.cron-rejects-bad-expressions", () => {

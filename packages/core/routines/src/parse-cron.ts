@@ -21,6 +21,12 @@ export interface Cron {
   daysAny: boolean;
   /** Day-of-week was a bare `*`. */
   weekdaysAny: boolean;
+  /**
+   * The hour field was `*` or `*\/n`. As in classic cron, such a job runs
+   * through both copies of an hour the clocks repeat, while a job at set
+   * hours runs once; see `nextCronTime`.
+   */
+  hoursWildcard: boolean;
 }
 
 const MACROS: Readonly<Record<string, string>> = {
@@ -92,6 +98,7 @@ export function parseCron(expression: string): Cron {
     dayOr: !days.any && !weekdays.any,
     daysAny: days.any,
     weekdaysAny: weekdays.any,
+    hoursWildcard: hours.wildcard,
   };
 }
 
