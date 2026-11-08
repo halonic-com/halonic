@@ -23,6 +23,7 @@ export {
   type Side,
 } from "./compare/compare.ts";
 export { type FileCheck, fileChecks, placeIdOf } from "./compare/file-checks.ts";
+export { composeWorkspace } from "./compose.ts";
 export { cloneProblems, oldEnvironment, oldTsx, referenceHash } from "./old-repo.ts";
 export {
   type FileRecording,
