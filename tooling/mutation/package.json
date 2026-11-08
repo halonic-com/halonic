@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-check": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@stryker-mutator/core": "catalog:",

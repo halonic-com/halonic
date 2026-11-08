@@ -1,11 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, test } from "vitest";
 import { type MutationReport, scoreOf, summaryTable } from "./score.ts";
 
 function report(...statuses: string[]): MutationReport {
   return { files: { "src/a.ts": { mutants: statuses.map((status) => ({ status })) } } };
 }
 
-describe("mutation.score-per-package", () => {
+verifies("mutation.score-per-package", () => {
   test("counts killed and timed-out mutants as detected, survived and uncovered as not", () => {
     const score = scoreOf(
       report("Killed", "Killed", "Killed", "Timeout", "Survived", "NoCoverage", "Ignored"),

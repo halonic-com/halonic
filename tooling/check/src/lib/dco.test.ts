@@ -2,7 +2,8 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { checkDco } from "../rules/dco.ts";
 import type { CheckContext } from "./context.ts";
 import { type CommitFacts, coveredAccounts, dcoProblem, readCommits, signOffEmail } from "./dco.ts";
@@ -22,7 +23,7 @@ function commit(overrides: Partial<CommitFacts>): CommitFacts {
   };
 }
 
-describe("check.dco-sign-off: one commit", () => {
+verifies("check.dco-sign-off", () => {
   test("passes when a sign-off names the author's address, in any case and under any name", () => {
     expect(dcoProblem(commit({ signOffs: ["Ada Lovelace <ADA@example.com>"] }))).toBeUndefined();
   });
@@ -94,7 +95,7 @@ describe("check.dco-sign-off: one commit", () => {
   });
 });
 
-describe("check.dco-sign-off: the standing statement", () => {
+verifies("check.dco-sign-off", () => {
   test("lists exactly the accounts the check skips", () => {
     const statement = readFileSync(
       join(findRepoRoot(), "docs/legal/dco-standing-statement.md"),
@@ -107,7 +108,7 @@ describe("check.dco-sign-off: the standing statement", () => {
   });
 });
 
-describe("check.dco-sign-off: the commits of a real git range", () => {
+verifies("check.dco-sign-off", () => {
   let root = "";
   let base = "";
 

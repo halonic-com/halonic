@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, test } from "vitest";
 import { hasCode, mutationTargets, strykerConfig } from "./targets.ts";
 
@@ -22,7 +23,7 @@ afterEach(() => {
   }
 });
 
-describe("mutation.only-packages-with-code", () => {
+verifies("mutation.only-packages-with-code", () => {
   test("a package from pnpm new has no code to mutate", () => {
     expect(hasCode(packageWith("src/index.ts", "src/index.test.ts", "package.json"))).toBe(false);
   });
