@@ -22,6 +22,9 @@
   },
   "halonic": {
     "layer": "studio",
-    "owner": "noah"
+    "owner": "noah",
+    "coverage": {
+      "lines": 85
+    }
   }
 }
