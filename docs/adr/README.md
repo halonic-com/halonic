@@ -28,6 +28,7 @@ code is built the way it is, before you change something they describe.
 | [Interface is separate from logic](2026-11-08-interface-is-separate-from-logic.md)     | All behaviour lives in a headless package; the Studio only renders it       |
 | [Testable by design](2026-11-08-testable-by-design.md)                                 | Workflows, ports and requirements each have their own kind of test          |
 | [One interface codebase](2026-11-08-one-interface-codebase.md)                         | One React codebase for the Studio on desktop, Android and in the browser    |
+| [Port list and versions](2026-11-07-port-list-and-versions.md)                         | The phase 1 ports, one file each with a version, frozen once adapters start |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).
