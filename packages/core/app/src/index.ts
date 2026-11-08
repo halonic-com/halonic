@@ -14,6 +14,16 @@ export {
   type ListenerErrorHandler,
 } from "./event-bus.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
+export { lastTickKey, routineRunId } from "./routine-ids.ts";
+export {
+  type DueFunction,
+  type DueRun,
+  type RoutineFailure,
+  RoutineScheduler,
+  type RoutineSchedulerOptions,
+  type RoutineStart,
+  type RoutineTickResult,
+} from "./routine-scheduler.ts";
 export {
   type Disposable,
   ServiceError,
