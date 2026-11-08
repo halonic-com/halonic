@@ -82,3 +82,16 @@ are not allowed: arbitrary values (`p-[13px]`, `text-[#333]`) and numeric z-inde
 Colour changes and short fades only. Nothing slides, scales or moves on its own, cards don't lift
 with motion, and status dots stay still. The one exception is the busy spinner (`animate-spin`).
 The curves and durations stay in the file for later.
+
+## Checks
+
+`pnpm turbo run test --filter=@halonicjs/studio-kit` reads `theme.css` and checks that:
+
+- every colour has a light and a dark value;
+- every text colour passes WCAG AA (4.5:1) and every control edge 3:1 on the surfaces it's used on,
+  in both modes, with see-through colours blended onto their real background;
+- the radius, spacing, shadow, animation, layer and duration tokens are exactly the agreed set, so
+  a new one is a visible change in review;
+- the kit imports no other Studio package.
+
+After tuning a colour, run the tests and adjust until they pass.

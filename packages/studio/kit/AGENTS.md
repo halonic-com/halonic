@@ -22,6 +22,8 @@ everything else is internal.
   value becomes a new token there, never a one-off in a component.
 - Every colour is `light-dark(light, dark)`. Never add `dark:` classes or a second dark copy.
 - Never import from another Studio package. The shell and features depend on the kit, not the
-  reverse.
+  reverse; `src/boundaries.test.ts` enforces it.
 - Motion: colour changes and short fades only. No slides, scaling or moving dots; the busy spinner
   is the one exception.
+- Changing a token list or a contrast pair in `src/theme.test.ts` is a design decision: say why in
+  the pull request.

@@ -24,7 +24,8 @@
  *   danger (rose)       failed or destructive
  *   success (green)     done
  *
- * Every text colour passes WCAG AA on the surfaces it's used on, in both modes.
+ * Every text colour passes WCAG AA on the surfaces it's used on, in both modes. theme.test.ts
+ * checks this, so tune a colour, run the tests, and adjust until they pass.
  */
 
 :root {
