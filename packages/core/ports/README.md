@@ -8,10 +8,11 @@ One file per port: the versioned interfaces that core logic depends on and adapt
 
 ## The ports
 
-Each port file exports a version. Since phase 3 the ports are **frozen**:
+Each port file exports a version. From phase 3 the ports are **frozen**:
 adapters are written against them, so a change may only add an optional
-field or a new port. A breaking change bumps the version and comes with an
-ADR (see [the port list ADR](../../../docs/adr/2026-11-07-port-list-and-versions.md)).
+output field, an optional method or a new port. A new input that adapters
+must honor counts as breaking. A breaking change bumps the version and comes
+with an ADR (see [the port list ADR](../../../docs/adr/2026-11-07-port-list-and-versions.md)).
 Every adapter for a port passes its contract suite in `packages/testing/contracts`.
 
 | Port                | File                    | Version | What it does                                                                                    | Contract suite                 |

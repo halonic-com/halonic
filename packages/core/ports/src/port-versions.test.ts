@@ -60,7 +60,33 @@ describe("ports.every-port-versioned", () => {
   });
 });
 
+/**
+ * Every module path a source file names: `import … from`, `export … from`,
+ * a bare `import "…"` and an `import("…")` type.
+ */
+function importedPaths(source: string): string[] {
+  const patterns = [/\bfrom\s+"([^"]+)"/g, /\bimport\s+"([^"]+)"/g, /\bimport\(\s*"([^"]+)"\s*\)/g];
+  return patterns.flatMap((pattern) =>
+    [...source.matchAll(pattern)].map((match) => match[1] ?? ""),
+  );
+}
+
 describe("ports.web-types-only", () => {
+  it("finds every kind of import, so the check below can't be got around", () => {
+    const source = [
+      'import type { A } from "./a.ts";',
+      'export { B } from "@halonicjs/events";',
+      'import "node:fs";',
+      'type R = import("node:stream").Readable;',
+    ].join("\n");
+    expect(importedPaths(source)).toEqual([
+      "./a.ts",
+      "@halonicjs/events",
+      "node:fs",
+      "node:stream",
+    ]);
+  });
+
   const allowedImport = /^(\.\/[\w-]+\.ts|@halonicjs\/events)$/;
   const sourceFiles = readdirSync(sourceFolder).filter(
     (file) => file.endsWith(".ts") && !file.endsWith(".test.ts"),
@@ -69,8 +95,8 @@ describe("ports.web-types-only", () => {
   for (const file of sourceFiles) {
     it(`${file} imports only core packages and names no Node types`, () => {
       const source = readFileSync(`${sourceFolder}/${file}`, "utf8");
-      const imports = [...source.matchAll(/from "([^"]+)"/g)].map((match) => match[1]);
-      expect(imports.filter((path) => path === undefined || !allowedImport.test(path))).toEqual([]);
+      expect(importedPaths(source).filter((path) => !allowedImport.test(path))).toEqual([]);
+      expect(source).not.toMatch(/^\s*\/\/\/\s*<reference/m);
       expect(source).not.toMatch(/\bBuffer\b|\bNodeJS\.|\bprocess\.\w/);
     });
   }

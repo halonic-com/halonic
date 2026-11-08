@@ -14,3 +14,8 @@ The ports package shall name only Web-standard and ECMAScript types, so every po
 - Given a port file that imports `node:stream` or names `Buffer`, `NodeJS.` or `process.`,
   when the tests run,
   then they fail and name the file.
+- Given a port file with `/// <reference types="node" />`, a bare `import "node:fs"` or a type `import("node:stream").Readable`,
+  when the tests run,
+  then they fail and name the file.
+
+The `HttpClient` example is proven by `tsc -p .`, which compiles the port files with the core preset. The type test under the Node test config only shows the signature is the Web `fetch` one.
