@@ -17,6 +17,18 @@
   "adapterGateways": [
     "@halonicjs/studio-services"
   ],
+  "cloudRuntimes": {
+    "cloudflare": {
+      "providerPackages": [
+        "wrangler",
+        "@cloudflare/*"
+      ],
+      "providerModules": [
+        "cloudflare:*",
+        "node:*"
+      ]
+    }
+  },
   "fileSize": {
     "warnLines": 300,
     "maxLines": 500,

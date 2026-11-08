@@ -16,16 +16,61 @@ describe("tooling/check: layers", () => {
   it("stops core from using Node APIs and third-party code", () => {
     const leaky: FixturePackage = {
       ...std,
-      manifest: manifestFor("@halonicjs/std", "core", { dependencies: { zod: "catalog:" } }),
+      manifest: manifestFor("@halonicjs/std", "core", { dependencies: { lodash: "catalog:" } }),
       files: {
         "src/index.ts":
-          'import { readFileSync } from "node:fs";\nimport { z } from "zod";\nexport const x = [readFileSync, z];\n',
+          'import { readFileSync } from "node:fs";\nimport _ from "lodash";\nexport const x = [readFileSync, _];\n',
       },
     };
     const problems = runChecks([leaky], { coreOrder: ["@halonicjs/std"] });
     expect(problems.some((problem) => problem.message.includes("Node APIs"))).toBe(true);
     expect(problems.some((problem) => problem.message.includes("third-party"))).toBe(true);
     expect(problems.some((problem) => problem.rule === "dependencies")).toBe(true);
+  });
+
+  it("lets a core exception into its named core packages only", () => {
+    const usesZod = (directory: string, name: string): FixturePackage => ({
+      directory,
+      manifest: manifestFor(name, "core", { dependencies: { zod: "catalog:" } }),
+      files: { "src/index.ts": 'import { z } from "zod";\nexport const s = z.string();\n' },
+    });
+    const schemaKit = usesZod("packages/core/schema-kit", "@halonicjs/schema-kit");
+    const workflow = usesZod("packages/core/workflow", "@halonicjs/workflow");
+    const order = { coreOrder: ["@halonicjs/schema-kit", "@halonicjs/workflow"] };
+
+    expect(runChecks([schemaKit], { coreOrder: ["@halonicjs/schema-kit"] })).toEqual([]);
+
+    const expected =
+      '@halonicjs/workflow uses "zod". "zod" is allowed only in @halonicjs/schema-kit and @halonicjs/format. Use @halonicjs/schema-kit for validation, or move this code into an adapter. See docs/guides/dependencies.md.';
+    const found = runChecks([schemaKit, workflow], order).map((problem) => [
+      problem.rule,
+      problem.file,
+      problem.message,
+    ]);
+    expect(found).toEqual([
+      ["layers", "packages/core/workflow/src/index.ts", expected],
+      ["dependencies", "packages/core/workflow/package.json", expected],
+    ]);
+  });
+
+  it("keeps an outside-world library out of core and names its package", () => {
+    const hashing: FixturePackage = {
+      directory: "packages/core/std",
+      manifest: manifestFor("@halonicjs/std", "core", {
+        dependencies: { "@noble/hashes": "catalog:" },
+      }),
+      files: {
+        "src/index.ts":
+          'import { scrypt } from "@noble/hashes/scrypt";\nexport const s = scrypt;\n',
+      },
+    };
+    const messages = runChecks([hashing], { coreOrder: ["@halonicjs/std"] }).map(
+      (problem) => problem.message,
+    );
+    expect(messages.some((message) => message.includes("third-party"))).toBe(true);
+    expect(messages.some((message) => message.includes("@halonicjs/adapter-password-scrypt"))).toBe(
+      true,
+    );
   });
 
   it("enforces the declared core order", () => {

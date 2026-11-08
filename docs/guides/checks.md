@@ -4,16 +4,17 @@ Every pull request runs the same checks as `pnpm verify --full`. Run
 `pnpm verify` before you ask for review: it runs the fast checks and then
 typecheck, lint and test for the packages your change affects.
 
-| Command                            | What it does                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm verify`                      | everything below, for the affected packages (`--full` for every package, as CI does) |
-| `pnpm check [rule …]`              | our own repo checks (table below); with rule names, only those                       |
-| `pnpm check:terms`                 | the personal-terms guard; skipped locally unless you have the list                   |
-| `pnpm check:licences`              | every installed package's licence against `tooling/check/licences.json`              |
-| `pnpm discover [--fix \| --check]` | writes the generated files; `--fix` also rewrites the Studio's feature list          |
-| `pnpm new package <layer>/<name>`  | creates an empty package that passes every check                                     |
-| `pnpm new feature <name>`          | creates an empty Studio feature and adds it to the Studio's feature list             |
-| `pnpm who-touches [<package>]`     | the open pull requests that change a package; run it before you start                |
+| Command                                     | What it does                                                                                                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm verify`                               | everything below, for the affected packages (`--full` for every package, as CI does)                                                             |
+| `pnpm check [rule …]`                       | our own repo checks (table below); with rule names, only those                                                                                   |
+| `pnpm check:terms`                          | the personal-terms guard; skipped locally unless you have the list                                                                               |
+| `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                          |
+| `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
+| `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                      |
+| `pnpm new package <layer>/<name>`           | creates an empty package that passes every check                                                                                                 |
+| `pnpm new feature <name>`                   | creates an empty Studio feature and adds it to the Studio's feature list                                                                         |
+| `pnpm who-touches [<package>]`              | the open pull requests that change a package; run it before you start                                                                            |
 
 ## `pnpm check` rules
 
@@ -95,7 +96,7 @@ Who may use what:
 
 | Layer    | May use                                                                                 | Never                                                                                |
 | -------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| core     | core packages listed **before** it in `coreOrder`                                       | third-party code, Node APIs, browser APIs                                            |
+| core     | core packages listed **before** it in `coreOrder`; its `core-exception` libraries       | other third-party code, Node APIs, browser APIs                                      |
 | adapters | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                      |
 | host     | core, Web-standard APIs                                                                 | adapters, Node APIs, Studio packages                                                 |
 | studio   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |

@@ -4,7 +4,7 @@ Owner: elena · Layer: core · Read the root `AGENTS.md` first; this file adds l
 
 ## Scope
 
-Validation with TypeScript types derived from the schemas and JSON Schema export; replaces Zod. Errors carry the path.
+Our thin layer over Zod: validation, TypeScript types derived from the schemas and JSON Schema export. Errors carry the path. The only package besides core/format that imports zod.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

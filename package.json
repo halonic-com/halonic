@@ -20,6 +20,7 @@
     "check": "node tooling/check/src/cli/check.ts",
     "check:terms": "node tooling/check/src/cli/terms.ts",
     "check:licences": "node tooling/check/src/cli/licences.ts",
+    "check:bundle": "node tooling/check/src/cli/bundle.ts",
     "check:pr-title": "node tooling/check/src/cli/pr-title.ts",
     "check:coverage-floors": "node tooling/check/src/cli/coverage-floors.ts",
     "discover": "node tooling/discover/src/cli/discover.ts",

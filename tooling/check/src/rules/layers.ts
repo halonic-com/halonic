@@ -1,6 +1,12 @@
 import { builtinModules } from "node:module";
 import { posix } from "node:path";
-import { type CheckContext, declaredDependencies } from "../lib/context.ts";
+import {
+  type ApprovedDependency,
+  type CheckContext,
+  declaredDependencies,
+  isAllowedIn,
+  notAllowedMessage,
+} from "../lib/context.ts";
 import type { Layer } from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
 import { isSourceFile, isTestFile, splitBareSpecifier } from "../lib/source-files.ts";
@@ -234,16 +240,33 @@ function externalImportProblem(
   site: ImportSite,
   name: string,
 ): string | undefined {
-  if (site.layer === "core" && !site.dev) {
-    return `core packages may not use third-party code ("${name}"). Write it in-house (core/std) or move this code into an adapter.`;
-  }
   const approved = context.dependencyList.dependencies[name];
+  if (site.layer === "core" && !site.dev) {
+    return coreExternalProblem(site.pkg.manifest.name ?? site.pkg.directory, name, approved);
+  }
   // Testing packages are test code themselves, such as testing/spec wrapping Vitest.
   const devLayer = site.layer === "tooling" || site.layer === "testing";
   if (approved?.category === "dev-tooling" && !site.dev && !devLayer) {
     return `"${name}" is dev tooling and may only be imported from tests and config files.`;
   }
   return undefined;
+}
+
+/**
+ * Core uses no third-party code, except a core exception the user approved
+ * for this exact package: today `zod` and `yaml`.
+ */
+function coreExternalProblem(
+  packageName: string,
+  name: string,
+  approved: ApprovedDependency | undefined,
+): string | undefined {
+  if (approved?.category !== "core-exception") {
+    return `core packages may not use third-party code ("${name}"). Write it in-house (core/std) or move this code into an adapter.`;
+  }
+  return isAllowedIn(approved, packageName)
+    ? undefined
+    : `${notAllowedMessage(packageName, name, approved)} ${guide}`;
 }
 
 function subpathProblem(
