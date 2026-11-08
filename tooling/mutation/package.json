@@ -22,6 +22,9 @@
   },
   "halonic": {
     "layer": "tooling",
-    "owner": "mateo"
+    "owner": "mateo",
+    "coverage": {
+      "lines": 50
+    }
   }
 }
