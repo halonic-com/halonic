@@ -158,6 +158,9 @@ function builtinProblem(
   site: ImportSite,
   specifier: string,
 ): string | undefined {
+  if (contractSuiteProblem(site)) {
+    return `contract-suite files run on every target and may not use Node APIs ("${specifier}"). Put Node-only helpers in ${contractSuiteDirectory}/src/node/.`;
+  }
   if (site.dev) {
     return undefined;
   }
@@ -183,6 +186,20 @@ function builtinProblem(
     default:
       return undefined;
   }
+}
+
+const contractSuiteDirectory = "packages/testing/contracts";
+
+/**
+ * True for a contract-suite file outside `src/node/`. Test files stay
+ * exempt: they run in Node only, and the suite files they exercise do not.
+ */
+function contractSuiteProblem(site: ImportSite): boolean {
+  return (
+    site.pkg.directory === contractSuiteDirectory &&
+    !isTestFile(site.file) &&
+    !site.file.startsWith(`${contractSuiteDirectory}/src/node/`)
+  );
 }
 
 /**
