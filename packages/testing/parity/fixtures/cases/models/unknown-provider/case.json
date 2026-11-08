@@ -1,0 +1,10 @@
+{
+  "about": "an alias on a provider that doesn't exist",
+  "kind": "models",
+  "fault": "reference",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.smart.provider",
+    "line": 17
+  }
+}

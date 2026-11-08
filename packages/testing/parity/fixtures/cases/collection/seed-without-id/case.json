@@ -1,0 +1,10 @@
+{
+  "about": "a seed record without an id",
+  "kind": "collection",
+  "fault": "missing-required",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "seed.0.id",
+    "line": 22
+  }
+}

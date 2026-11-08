@@ -1,0 +1,10 @@
+{
+  "about": "mail every 15m: a valid interval the old code rejects (the known 15m bug)",
+  "kind": "routine",
+  "fault": "valid",
+  "expect": {
+    "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+    "path": "trigger.mail.every",
+    "line": 7
+  }
+}

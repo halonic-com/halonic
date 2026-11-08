@@ -1,0 +1,7 @@
+id: local-llm
+name: Local model server
+type: openai-compatible
+baseUrl: http://localhost:11434/v1
+local: yes please
+options:
+  timeoutMs: 30000

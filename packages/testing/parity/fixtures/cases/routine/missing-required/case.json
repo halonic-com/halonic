@@ -1,0 +1,10 @@
+{
+  "about": "no run",
+  "kind": "routine",
+  "fault": "missing-required",
+  "expect": {
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "path": "run",
+    "line": 1
+  }
+}

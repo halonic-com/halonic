@@ -1,0 +1,10 @@
+{
+  "about": "a test file without cases",
+  "kind": "workflowTest",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.test.yaml",
+    "path": "cases",
+    "line": 2
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/invoice.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/invoice.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [
+        {
+          "path": [
+            "states",
+            "notify",
+            "on"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected array, received object",
+          "line": 55,
+          "col": 9
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "states.notify.on: Invalid input: expected array, received object",
+      "line": 55,
+      "col": 9
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.test.yaml",
+      "message": "Test targets unknown workflow \"invoice\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+    },
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/invoice.workflow.yaml: states.notify.on: Invalid input: expected array, received object\nerror hubs/billing/workflows/invoice.test.yaml: Test targets unknown workflow \"invoice\"\nerror hubs/billing/routines/inbox-mail.routine.yaml: Routine \"inbox-mail\": unknown workflow \"invoice\"\nerror routines/hourly-check.routine.yaml: Routine \"hourly-check\": unknown workflow \"invoice\"\n4 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 55,
+    "recorded": 55,
+    "verdict": "same"
+  }
+}

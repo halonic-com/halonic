@@ -1,0 +1,28 @@
+{
+  "reference": "784f78d",
+  "case": "hub/legacy-project",
+  "valid": true,
+  "files": [
+    {
+      "file": "projects/archive/project.yaml",
+      "flatPath": "projects/archive/project.yaml",
+      "read": true,
+      "schema": "hub",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "info",
+      "path": "projects",
+      "message": "Hubs used to be called projects: run `studio migrate` to move projects/ to hubs/"
+    }
+  ],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "info  projects: Hubs used to be called projects: run `studio migrate` to move projects/ to hubs/\nOK: Acme, 2 hub(s), 0 warning(s)\n",
+    "stderr": ""
+  },
+  "line": null
+}

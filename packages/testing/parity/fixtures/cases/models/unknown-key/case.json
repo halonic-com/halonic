@@ -1,0 +1,10 @@
+{
+  "about": "an alias with an unknown key",
+  "kind": "models",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.fast.vendor",
+    "line": 10
+  }
+}

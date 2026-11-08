@@ -1,0 +1,10 @@
+{
+  "about": "the id has capitals",
+  "kind": "workspace",
+  "fault": "bad-format",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "id",
+    "line": 2
+  }
+}

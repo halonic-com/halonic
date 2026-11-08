@@ -1,0 +1,10 @@
+{
+  "about": "host is not local or cloudflare",
+  "kind": "deployments",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "deployments.yaml",
+    "path": "deployments.laptop.host",
+    "line": 6
+  }
+}

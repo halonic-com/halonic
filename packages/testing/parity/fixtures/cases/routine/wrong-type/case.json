@@ -1,0 +1,10 @@
+{
+  "about": "enabled is text",
+  "kind": "routine",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "path": "enabled",
+    "line": 2
+  }
+}

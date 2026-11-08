@@ -1,0 +1,63 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/deep-guard",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/invoice.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/invoice.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [
+        {
+          "path": [
+            "states",
+            "approval",
+            "on",
+            0,
+            "when"
+          ],
+          "code": "invalid_union",
+          "message": "Invalid input",
+          "line": 47,
+          "col": 15
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "states.approval.on.0.when: Invalid input",
+      "line": 47,
+      "col": 15
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.test.yaml",
+      "message": "Test targets unknown workflow \"invoice\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+    },
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/invoice.workflow.yaml: states.approval.on.0.when: Invalid input\nerror hubs/billing/workflows/invoice.test.yaml: Test targets unknown workflow \"invoice\"\nerror hubs/billing/routines/inbox-mail.routine.yaml: Routine \"inbox-mail\": unknown workflow \"invoice\"\nerror routines/hourly-check.routine.yaml: Routine \"hourly-check\": unknown workflow \"invoice\"\n4 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 47,
+    "recorded": 47,
+    "verdict": "same"
+  }
+}

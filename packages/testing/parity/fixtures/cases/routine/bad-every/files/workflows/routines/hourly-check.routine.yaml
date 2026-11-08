@@ -1,0 +1,10 @@
+name: Hourly check
+enabled: false
+trigger:
+  every: hourly
+run:
+  hub: billing
+  workflow: invoice
+  input: { invoice: "{{trigger.at}}" }
+overlap: queue
+catchUp: none

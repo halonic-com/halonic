@@ -1,0 +1,10 @@
+{
+  "about": "the session AI names an alias models.yaml lacks",
+  "kind": "workspace",
+  "fault": "reference",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "assistant.model",
+    "line": 15
+  }
+}

@@ -1,0 +1,17 @@
+id: batch
+name: Batch
+description: Run the line-check workflow once per line, two at a time.
+initial: each
+states:
+  each:
+    type: foreach
+    items: "{{input.lines}}"
+    as: line
+    concurrency: 32
+    workflow: line-check
+    input: { line: "{{line}}" }
+    output: results
+    on:
+      - to: done
+  done:
+    type: final

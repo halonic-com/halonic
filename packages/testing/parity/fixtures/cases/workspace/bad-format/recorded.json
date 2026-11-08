@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/bad-format",
+  "valid": false,
+  "files": [
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [
+        {
+          "path": [
+            "id"
+          ],
+          "code": "invalid_format",
+          "message": "use lowercase letters, digits, '-' or '_'",
+          "line": 2,
+          "col": 5
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "id: use lowercase letters, digits, '-' or '_'",
+      "line": 2,
+      "col": 5
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: id: use lowercase letters, digits, '-' or '_'\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 2,
+    "recorded": 2,
+    "verdict": "same"
+  }
+}

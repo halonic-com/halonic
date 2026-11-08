@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/unknown-model",
+  "valid": false,
+  "files": [
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "The session AI uses unknown model alias \"turbo\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: The session AI uses unknown model alias \"turbo\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 15,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

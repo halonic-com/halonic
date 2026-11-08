@@ -1,0 +1,11 @@
+default: desktop
+deployments:
+  laptop:
+    name: Laptop
+    description: Runs on this machine.
+    host: local
+    stage: development
+  shadow-run:
+    name: Shadow run
+    stage: production
+    shadow: true

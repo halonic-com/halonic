@@ -1,0 +1,10 @@
+{
+  "about": "a model alias that doesn't exist",
+  "kind": "agent",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "model",
+    "line": 4
+  }
+}

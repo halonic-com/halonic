@@ -1,0 +1,47 @@
+{
+  "reference": "784f78d",
+  "case": "workflowTest/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [
+        {
+          "path": [
+            "cases",
+            2,
+            "expect",
+            "status"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"completed\"|\"waiting\"|\"failed\"",
+          "line": 11,
+          "col": 23
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "cases.2.expect.status: Invalid option: expected one of \"completed\"|\"waiting\"|\"failed\"",
+      "line": 11,
+      "col": 23
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.test.yaml: cases.2.expect.status: Invalid option: expected one of \"completed\"|\"waiting\"|\"failed\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 11,
+    "recorded": 11,
+    "verdict": "same"
+  }
+}

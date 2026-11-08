@@ -1,0 +1,10 @@
+{
+  "about": "no name",
+  "kind": "collection",
+  "fault": "missing-required",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "name",
+    "line": 1
+  }
+}

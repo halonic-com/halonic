@@ -1,0 +1,11 @@
+workflow: approval
+cases:
+  - name: approve
+    events: [approve]
+    expect: { final: approved, outcome: approved }
+  - name: the timer fires after two days
+    events: [{ advance: 1d }, { advance: 1d }]
+    expect: { final: expired }
+  - name: one day is not enough
+    events: [{ advance: 1d }]
+    expect: { status: waiting }
