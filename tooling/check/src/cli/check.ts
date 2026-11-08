@@ -1,4 +1,4 @@
-import { loadContext } from "../lib/context.ts";
+import { type CheckContext, loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem, type Problem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules } from "../rules/all.ts";
@@ -14,13 +14,19 @@ import { inactiveChecks } from "../rules/inactive-checks.ts";
  */
 function main(argv: readonly string[]): number {
   const selected = argv.filter((argument) => !argument.startsWith("-"));
-  const unknown = selected.filter((name) => !(name in rules));
+  const unknown = selected.filter((name) => !Object.hasOwn(rules, name));
   if (unknown.length > 0) {
     console.error(`Unknown rule: ${unknown.join(", ")}. Rules: ${Object.keys(rules).join(", ")}.`);
     return 2;
   }
   const started = performance.now();
-  const context = loadContext(findRepoRoot());
+  let context: CheckContext;
+  try {
+    context = loadContext(findRepoRoot());
+  } catch (error) {
+    console.error(`check: ${(error as Error).message}`);
+    return 2;
+  }
   const problems: Problem[] = [];
   for (const [name, rule] of Object.entries(rules)) {
     if (selected.length === 0 || selected.includes(name)) {

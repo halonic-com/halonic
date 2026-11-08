@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CloudRuntime } from "./bundle.ts";
+import {
+  type ApprovedDependency,
+  type DependencyList,
+  type Policy,
+  parseDependencyList,
+  parsePolicy,
+} from "./config-files.ts";
 import { type PackagePlace, placeOf } from "./layout.ts";
 import { isSourceFile, readSourceFacts, type SourceFacts } from "./source-files.ts";
 import {
@@ -13,48 +19,12 @@ import {
   type WorkspacePackage,
 } from "./workspace.ts";
 
-/**
- * What an entry in `dependencies.json` is for. `core-exception`
- * is a library the user approved for named core packages.
- */
-export type DependencyCategory =
-  | "core-exception"
-  | "outside-world"
-  | "studio-framework"
-  | "dev-tooling";
-
-/** One approved external dependency. */
-export interface ApprovedDependency {
-  readonly category: DependencyCategory;
-  readonly allowedIn: readonly string[];
-  readonly reason: string;
-  /** What other packages use instead, e.g. "@halonicjs/schema-kit for validation". */
-  readonly useInstead?: string;
-  /**
-   * May ship inside a cloud runtime bundle. Only `zod`, by
-   * the user's decision of 8 Nov 2026; each addition needs their approval.
-   */
-  readonly cloudRuntime?: boolean;
-}
-
-/** The contents of `tooling/check/dependencies.json`. */
-export interface DependencyList {
-  readonly dependencies: Readonly<Record<string, ApprovedDependency>>;
-}
-
-/** The contents of `tooling/check/policy.json`. */
-export interface Policy {
-  readonly coreOrder: readonly string[];
-  readonly published: readonly string[];
-  readonly adapterGateways: readonly string[];
-  /** Per cloud target, what the provider supplies itself. */
-  readonly cloudRuntimes: Readonly<Record<string, CloudRuntime>>;
-  readonly fileSize: {
-    readonly warnLines: number;
-    readonly maxLines: number;
-    readonly warnFunctionLines: number;
-  };
-}
+export type {
+  ApprovedDependency,
+  DependencyCategory,
+  DependencyList,
+  Policy,
+} from "./config-files.ts";
 
 /** Everything the rules look at, read once per run. */
 export interface CheckContext {
@@ -100,15 +70,18 @@ export function loadContext(root: string): CheckContext {
     files: listRepoFiles(root),
     packages,
     packagesByName,
-    policy: readJson<Policy>(join(root, policyPath)),
-    dependencyList: readJson<DependencyList>(join(root, dependencyListPath)),
+    policy: parsePolicy(policyPath, readJson(join(root, policyPath))),
+    dependencyList: parseDependencyList(
+      dependencyListPath,
+      readJson(join(root, dependencyListPath)),
+    ),
     policyPath,
     dependencyListPath,
     placeOf: (pkg) => placeOf(pkg.directory),
     read,
     sourceFacts(file) {
       if (!isSourceFile(file)) {
-        return { imports: [], functions: [] };
+        return { imports: [], hiddenLoads: [], functions: [] };
       }
       let found = facts.get(file);
       if (found === undefined) {
@@ -118,6 +91,15 @@ export function loadContext(root: string): CheckContext {
       return found;
     },
   };
+}
+
+/** The `dependencies.json` entry for a package name; never an inherited object key such as `toString`. */
+export function approvedDependency(
+  context: CheckContext,
+  name: string,
+): ApprovedDependency | undefined {
+  const { dependencies } = context.dependencyList;
+  return Object.hasOwn(dependencies, name) ? dependencies[name] : undefined;
 }
 
 /** True when a package name matches an `allowedIn` pattern, where `*` matches any text. */
