@@ -291,5 +291,41 @@
         }
       }
     ]
+  },
+  {
+    "id": "routines-due-interval-slots",
+    "requirement": "routines.due",
+    "area": "routines tick: every triggers",
+    "old": "An every trigger ran when now - lastRun was at least the interval, at the time of the check, and right away on the first check if the routine had never run. With every: 30m and a last run at 09:45, the next run came at 10:15.",
+    "new": "due gives the multiples of the interval counted from the Unix epoch in UTC that fall after the last tick, up to now. With every: 30m the runs are at :00 and :30 of every hour, whenever the last one ran, and a routine that never ran waits for its first slot after the scheduler's first tick.",
+    "why": "A slot that comes from the clock alone is the same on every tick and every host, so a repeated or late tick, or a second host, asks for the same run with the same run id and it starts once (routines.due-exactly-once). A time counted from the last run moves whenever a run starts late, and two hosts can disagree on it. Starting at once when a routine never ran also meant every new or renamed every routine fired the moment it was saved.",
+    "status": "proposed"
+  },
+  {
+    "id": "routines-due-grace",
+    "requirement": "routines.due",
+    "area": "routines tick: on-time grace",
+    "old": "A scheduled time counted as on time, for catchUp: none, while now was no more than 2 minutes after it.",
+    "new": "The grace is 60 seconds (DEFAULT_TICK_POLICY.graceMs). A host can pass another value in its TickPolicy.",
+    "why": "The old scheduler checked every 30 seconds, so 60 seconds still covers one late or lost check at that rate. With 2 minutes, a laptop waking from sleep could still start a catchUp: none run up to 2 minutes late, which that setting is meant to prevent.",
+    "status": "proposed"
+  },
+  {
+    "id": "routines-due-catch-up-cap",
+    "requirement": "routines.due",
+    "area": "routines tick: catchUp all cap",
+    "old": "catchUp: all returned at most the 20 newest missed times of a schedule; older ones were reported as skipped and dropped.",
+    "new": "due returns at most 100 missed times per routine (DEFAULT_TICK_POLICY.maxCatchUp), the oldest first. Times past the cap are not returned; a host can pass another cap in its TickPolicy.",
+    "why": "catchUp: all is for routines whose every run counts, such as hourly totals, so a weekend asleep (about 60 hourly times) should not lose any. 100 still bounds one tick. The oldest go first so the runs see their times in order.",
+    "status": "proposed"
+  },
+  {
+    "id": "routines-due-no-skipped-list",
+    "requirement": "routines.due",
+    "area": "routines tick: skipped times",
+    "old": "dueRoutines returned, per routine, a skipped list: due times dropped by catchUp or because a run was still busy (overlap: skip).",
+    "new": "due returns only the runs to start. Times that catchUp drops are left out without a list. Overlap is applied by the app's RoutineScheduler, which reports the times it skips because a run is busy (HAL-1007).",
+    "why": "Nothing in the old app read the skipped list for catch-up; the old Studio only started what was in start. Keeping due a plain list of runs keeps it simple to check for exactly-once, and the skips a person may want to see, those caused by a busy run, are still reported by the scheduler.",
+    "status": "proposed"
   }
 ]
