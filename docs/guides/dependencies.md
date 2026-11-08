@@ -18,13 +18,21 @@ Adding a dependency is a decision, not a side effect (plan 7.1).
    "some-library": {
      "category": "outside-world",
      "allowedIn": ["@halonicjs/adapter-some-service"],
+     "layers": ["adapters"],
      "reason": "Why we need it and what writing it ourselves would cost."
    }
    ```
 
    `category` is `outside-world`, `studio-framework` or `dev-tooling`.
-   `allowedIn` lists package names; `*` matches any text.
-2. Add the version once to the `catalog:` in `pnpm-workspace.yaml`.
+   `allowedIn` lists package names; `*` matches any text. `layers` lists
+   the layers it may be used in. A package may use it only when both its
+   name and its layer match. The category limits both: `outside-world`
+   names exactly one adapter (no `*`) with `"layers": ["adapters"]`, and
+   `studio-framework` lists only `studio` and `apps`.
+2. Add the version once to the `catalog:` in `pnpm-workspace.yaml`, as a
+   plain version: `1.2.3`, `^1.2.3` or `~1.2.3`. Aliases (`npm:other@1`),
+   URLs, tags and other protocols fail the check, because they can install
+   a different package under an approved name.
 3. Use `"some-library": "catalog:"` in the package's `package.json`.
 4. Liam approves it in the pull request; anything outside the four
    categories also needs the user's approval.
@@ -42,6 +50,12 @@ Adding a dependency is a decision, not a side effect (plan 7.1).
 - **`trustPolicy: no-downgrade`**: the install fails when a package loses
   its trusted-publisher status, a common sign of a hijack.
 - **`registries`**: the `@halonicjs` scope always comes from npm.
+
+`overrides`, `packageExtensions`, `patchedDependencies` and named
+`catalogs:` in `pnpm-workspace.yaml`, and `overrides`, `resolutions` or
+`pnpm` in a `package.json`, fail the check: they change the tree around
+the catalog and this list. If a security fix needs an override, propose
+an allow-list for the check in its own pull request.
 
 Internal dependencies always use `"workspace:*"`. A version range would let
 pnpm look the name up on the registry.

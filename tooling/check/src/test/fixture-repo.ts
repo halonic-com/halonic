@@ -31,13 +31,22 @@ export function manifestFor(
   };
 }
 
+/** Ways a test changes the fixture repo's settings; each gets the real file's contents. */
+export interface FixtureOptions {
+  readonly coreOrder?: string[];
+  readonly extraFiles?: Record<string, string>;
+  readonly policy?: (policy: Record<string, unknown>) => unknown;
+  readonly dependencyList?: (list: { dependencies: Record<string, unknown> }) => unknown;
+  readonly workspaceYaml?: (yaml: string) => string;
+}
+
 /**
  * Builds a throwaway git repo with the real workspace globs and check
  * policy, runs every rule on it and returns the errors.
  */
 export function runChecks(
   packages: readonly FixturePackage[],
-  options: { coreOrder?: string[]; extraFiles?: Record<string, string> } = {},
+  options: FixtureOptions = {},
 ): Problem[] {
   const root = mkdtempSync(join(tmpdir(), "halonic-check-"));
   try {
@@ -45,19 +54,19 @@ export function runChecks(
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), text);
     };
-    write("pnpm-workspace.yaml", readFileSync(join(realRoot, "pnpm-workspace.yaml"), "utf8"));
+    const yaml = readFileSync(join(realRoot, "pnpm-workspace.yaml"), "utf8");
+    write("pnpm-workspace.yaml", options.workspaceYaml?.(yaml) ?? yaml);
     write(
       "pnpm-lock.yaml",
       "lockfileVersion: '9.0'\n\npackages:\n\n  a@1.0.0:\n    resolution: {integrity: sha512-AAAA, tarball: https://registry.npmjs.org/a/-/a-1.0.0.tgz}\n",
     );
-    const policy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
-    write(
-      "tooling/check/policy.json",
-      JSON.stringify({ ...policy, coreOrder: options.coreOrder ?? [] }),
-    );
+    const realJson = (path: string) => JSON.parse(readFileSync(join(realRoot, path), "utf8"));
+    const policy = { ...realJson("tooling/check/policy.json"), coreOrder: options.coreOrder ?? [] };
+    write("tooling/check/policy.json", JSON.stringify(options.policy?.(policy) ?? policy));
+    const list = realJson("tooling/check/dependencies.json");
     write(
       "tooling/check/dependencies.json",
-      readFileSync(join(realRoot, "tooling/check/dependencies.json"), "utf8"),
+      JSON.stringify(options.dependencyList?.(list) ?? list),
     );
     write(
       "package.json",
