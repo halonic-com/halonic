@@ -8,6 +8,18 @@
     "biome.json"
   ],
   "tasks": {
+    "//#discover": {
+      "inputs": [
+        "apps/*/package.json",
+        "packages/studio/features/*/package.json",
+        "packages/studio/features/*/src/feature.ts",
+        "tooling/discover/src/**",
+        "tooling/check/src/**"
+      ],
+      "outputs": [
+        "apps/studio/src/generated/**"
+      ]
+    },
     "transit": {
       "dependsOn": [
         "^transit"
@@ -15,6 +27,7 @@
     },
     "typecheck": {
       "dependsOn": [
+        "//#discover",
         "transit"
       ],
       "outputs": []
@@ -24,12 +37,14 @@
     },
     "test": {
       "dependsOn": [
+        "//#discover",
         "transit"
       ],
       "outputs": []
     },
     "build": {
       "dependsOn": [
+        "//#discover",
         "^build"
       ],
       "outputs": [
