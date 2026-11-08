@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
@@ -14,9 +13,9 @@ import { fixFeatureList, writeFeaturesFile } from "../features.ts";
 import { type PackageSpec, packageFiles } from "../templates.ts";
 
 /**
- * pnpm new package <layer>/<name> [--owner <agent>] [--runtime <runtime>]
- * pnpm new package targets/<target>/<kind> [--owner <agent>]
- * pnpm new feature <name> [--owner <agent>]
+ * pnpm new package <layer>/<name> --owner <agent> [--runtime <runtime>]
+ * pnpm new package targets/<target>/<kind> --owner <agent>
+ * pnpm new feature <name> --owner <agent>
  *
  * Creates an empty package or Studio feature that passes every check, so
  * nobody has to copy and edit another package (plan 6.4).
@@ -27,10 +26,10 @@ const runtimes = adapterRuntimes.join(" | ");
 
 const usage = [
   "Usage:",
-  "  pnpm new package <layer>/<name> [--owner <agent>]   layers: core, host, studio, testing, tooling, apps",
-  `  pnpm new package adapters/<name> --runtime <${runtimes}> [--owner <agent>]`,
-  `  pnpm new package targets/<target>/<${targetKinds.join(" | ")}> [--owner <agent>]`,
-  "  pnpm new feature <name> [--owner <agent>]",
+  "  pnpm new package <layer>/<name> --owner <agent>   layers: core, host, studio, testing, tooling, apps",
+  `  pnpm new package adapters/<name> --runtime <${runtimes}> --owner <agent>`,
+  `  pnpm new package targets/<target>/<${targetKinds.join(" | ")}> --owner <agent>`,
+  "  pnpm new feature <name> --owner <agent>",
 ].join("\n");
 
 const layerFolders: Readonly<Record<string, string>> = {
@@ -43,16 +42,6 @@ const layerFolders: Readonly<Record<string, string>> = {
   tooling: "tooling",
   apps: "apps",
 };
-
-function defaultOwner(root: string): string {
-  try {
-    return execFileSync("git", ["config", "user.name"], { cwd: root, encoding: "utf8" })
-      .trim()
-      .toLowerCase();
-  } catch {
-    return "";
-  }
-}
 
 function resolveDirectory(kind: string, target: string): string {
   if (kind === "feature") {
@@ -75,7 +64,7 @@ function addToCoreOrder(root: string, name: string): void {
 }
 
 /** Reads the command line into the package to create. Throws on a usage error. */
-function specFrom(root: string, argv: readonly string[]): PackageSpec {
+function specFrom(argv: readonly string[]): PackageSpec {
   const { values, positionals } = parseArgs({
     args: [...argv],
     options: { owner: { type: "string" }, runtime: { type: "string" } },
@@ -102,9 +91,11 @@ function specFrom(root: string, argv: readonly string[]): PackageSpec {
   if (place.layer !== "adapters" && runtime !== undefined) {
     throw new Error("Only adapters take --runtime; the folder decides where other packages run.");
   }
-  const owner = values.owner ?? defaultOwner(root);
-  if (owner === "") {
-    throw new Error("Name the owner with --owner <agent>.");
+  // Never guessed from `git config user.name`: that names whoever ran the
+  // command, which on CI or a shared machine is not the package's owner.
+  const owner = values.owner?.trim() ?? "";
+  if (!folderNamePattern.test(owner)) {
+    throw new Error(`Name the owner with --owner <agent>, such as --owner mateo.\n${usage}`);
   }
   return {
     directory,
@@ -120,7 +111,7 @@ function specFrom(root: string, argv: readonly string[]): PackageSpec {
 
 function main(argv: readonly string[]): number {
   const root = findRepoRoot();
-  const spec = specFrom(root, argv);
+  const spec = specFrom(argv);
   if (existsSync(join(root, spec.directory))) {
     console.error(`${spec.directory} already exists.`);
     return 1;
