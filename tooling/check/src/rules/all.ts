@@ -5,11 +5,11 @@ import { checkAgentsMd } from "./agents-md.ts";
 import { checkDependencies } from "./dependencies.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
+import { inactiveChecks, inactiveRule } from "./inactive-checks.ts";
 import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
 import { checkNames } from "./names.ts";
 import { checkPackages } from "./packages.ts";
-import { inactiveChecks, inactiveRule } from "./inactive-checks.ts";
 
 /** Every rule `pnpm check` runs, by name. */
 export const rules: Readonly<Record<string, (context: CheckContext) => Report>> = {
