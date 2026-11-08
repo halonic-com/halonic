@@ -28,6 +28,11 @@ export const fakeSecrets: Readonly<Record<string, string>> = {
   "google-api-key": `AIza${filler(35)}`,
   "stripe-key": `sk_live_${filler(24)}`,
   "ai-provider-key": `sk-ant-${filler(40)}`,
+  jwt: `eyJ${filler(20)}.eyJ${filler(60)}.${filler(43)}`,
+  "gitlab-token": `glpat-${filler(20)}`,
+  "huggingface-token": `hf_${filler(34)}`,
+  "url-password": `${["https://deploy", filler(20)].join(":")}@example.com/repo.git`,
+  "npm-auth-token": `//registry.npmjs.org/:_authToken=${filler(36)}`,
 };
 
 /** Joins folder names into an absolute path: `absolute("home", "x")` → slash home slash x. */

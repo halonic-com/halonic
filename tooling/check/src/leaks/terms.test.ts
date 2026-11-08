@@ -5,6 +5,7 @@ import { testTerms } from "./test-values.ts";
 // Made-up stand-in terms: the real list never enters the repo.
 const [single = "", multiWord = ""] = testTerms;
 const matcher = new TermMatcher(testTerms, [`${single}-crossing`]);
+const [first = "", second = ""] = multiWord.split(" ");
 
 describe("TermMatcher", () => {
   it("matches in any case", () => {
@@ -31,7 +32,6 @@ describe("TermMatcher", () => {
   });
 
   it("matches a multi-word term with any separator or none", () => {
-    const [first = "", second = ""] = multiWord.split(" ");
     for (const joined of [`${first}.${second}`, `${first}_${second}`, `${first}${second}`]) {
       expect(matcher.matches(joined.toLowerCase()), "joined form").toBe(true);
     }
@@ -45,9 +45,27 @@ describe("TermMatcher", () => {
     expect(abused.matches(single)).toBe(true);
   });
 
+  it("ignores a term only where it lies inside an allowed phrase", () => {
+    const shortPhrase = new TermMatcher(testTerms, [single.slice(1, 3)]);
+    expect(shortPhrase.matches(single)).toBe(true);
+    const partPhrase = new TermMatcher(testTerms, [`${single.slice(0, -2)} tail`]);
+    expect(partPhrase.matches(`${single.slice(0, -2)} tail and ${single}`)).toBe(true);
+    const longer = new TermMatcher(testTerms, [`x${single}-crossing`]);
+    expect(longer.matches(`${single}-crossing`)).toBe(true);
+  });
+
   it("withholds the parts of a path that contain a term", () => {
     expect(matcher.redactPath(`docs/${single}-notes/plan.md`)).toBe("docs/[withheld]/plan.md");
     expect(matcher.redactPath("docs/plan.md")).toBe("docs/plan.md");
+  });
+
+  it("withholds the whole path when a term is split across folders", () => {
+    expect(matcher.redactPath(`docs/${first}/${second}.md`)).toBe("[withheld]");
+    expect(matcher.redactPath(`docs/${first}/notes.md`)).toBe(`docs/${first}/notes.md`);
+  });
+
+  it("counts the loaded terms", () => {
+    expect(matcher.size).toBe(2);
   });
 
   it("is empty when no terms are configured", () => {
@@ -83,5 +101,13 @@ describe("loadTerms", () => {
       terms: [],
       source: "none",
     });
+  });
+
+  it("treats a secret with only comments and blank lines as not set", () => {
+    const environment = {
+      HALONIC_DENY_TERMS: "# nothing here\n\n  \n",
+      HALONIC_DENY_TERMS_FILE: "missing-file",
+    };
+    expect(loadTerms(environment)).toEqual({ terms: [], source: "none" });
   });
 });

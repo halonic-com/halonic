@@ -44,6 +44,9 @@ export interface AllowFileProblem {
 const secretRuleNames = new Set(secretRules.map((rule) => rule.name));
 const otherRuleNames = new Set([absolutePathRule, ...fileRules.map((rule) => rule.name)]);
 
+/** File rules allow one named file at a time: a glob could let any `.env` or key file in. */
+const exactFileRuleNames = new Set(fileRules.map((rule) => rule.name));
+
 /**
  * Turns a path glob into a pattern: `*` matches within one folder, `**`
  * across folders. Anything else matches itself.
@@ -83,6 +86,12 @@ function parseEntry(text: string): AllowEntry | string {
   }
   if (file === "") {
     return "Name the file (or a glob) the entry applies to.";
+  }
+  if (file.split("/")[0]?.includes("*")) {
+    return "Name the top folder or file: an entry can't start with a glob, which could match the whole repo.";
+  }
+  if (exactFileRuleNames.has(rule) && file.includes("*")) {
+    return `A ${rule} entry needs the exact file path, not a glob.`;
   }
   if (secretRuleNames.has(rule) && fingerprint === undefined) {
     return "A secret rule needs the fingerprint the leak guard printed (fp:…).";

@@ -14,10 +14,31 @@ describe("AllowList", () => {
     expect(list.allows("npm-token", "docs/guides/a.md", print)).toBe(false);
   });
 
-  it("allows a path or file rule for a file or glob", () => {
-    const list = new AllowList("env-file tooling/*/fixtures/.env tests need a sample env file");
+  it("allows a path rule for a file or glob", () => {
+    const list = new AllowList("absolute-path docs/*/layout.md explains where an OS keeps files");
+    expect(list.allows("absolute-path", "docs/guides/layout.md")).toBe(true);
+    expect(list.allows("absolute-path", "docs/guides/deeper/layout.md")).toBe(false);
+  });
+
+  it("allows a file rule for one exact file only", () => {
+    const list = new AllowList("env-file tooling/check/fixtures/.env tests need a sample env file");
+    expect(list.problems).toEqual([]);
     expect(list.allows("env-file", "tooling/check/fixtures/.env")).toBe(true);
-    expect(list.allows("env-file", "tooling/check/deeper/fixtures/.env")).toBe(false);
+    expect(list.allows("env-file", "apps/.env")).toBe(false);
+  });
+
+  it("refuses entries broad enough to switch a rule off", () => {
+    const list = new AllowList(
+      [
+        "key-file ** temporary for now",
+        "env-file * temporary for now",
+        "absolute-path **/* temporary for now",
+        "absolute-path */docs/a.md temporary for now",
+        "env-file tooling/*/fixtures/.env tests need a sample env file",
+      ].join("\n"),
+    );
+    expect(list.problems.map((problem) => problem.line)).toEqual([1, 2, 3, 4, 5]);
+    expect(list.allows("key-file", "deploy/server.pem")).toBe(false);
   });
 
   it("skips comments and blank lines", () => {

@@ -32,9 +32,20 @@ describe("secret rules", () => {
 
   it("masks a secret down to its prefix and length", () => {
     const value = fakeSecrets["github-token"] ?? "";
-    const masked = maskSecret(value);
+    const masked = maskSecret("github-token", value);
     expect(masked).toBe("ghp_******** (40 characters)");
     expect(masked).not.toContain(value.slice(4, 12));
+  });
+
+  it("shows no characters at all of a secret without a public prefix", () => {
+    expect(maskSecret("aws-secret-key", filler(40))).toBe("******** (40 characters)");
+    expect(maskSecret("url-password", filler(20))).toBe("******** (20 characters)");
+  });
+
+  it("lets a URL without a password and an npmrc variable through", () => {
+    expect(secretRulesHit("https://user@example.com and https://example.com:8080/x")).toEqual([]);
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: an npmrc variable, written literally
+    expect(secretRulesHit("//registry.npmjs.org/:_authToken=${NPM_TOKEN}")).toEqual([]);
   });
 
   it("fingerprints a value the same way every time, without showing it", () => {
@@ -88,6 +99,16 @@ describe("file rules", () => {
     expect(fileRulesHit("deploy/id_ed25519")).toEqual(["key-file"]);
     expect(fileRulesHit("android/release.keystore")).toEqual(["key-file"]);
     expect(fileRulesHit("certs/server.PEM")).toEqual(["key-file"]);
+    expect(fileRulesHit("deploy/id_rsa_work")).toEqual(["key-file"]);
+    expect(fileRulesHit("infra/prod.tfvars")).toEqual(["env-file"]);
+    expect(fileRulesHit("worker/.dev.vars")).toEqual(["env-file"]);
+    expect(fileRulesHit("apps/local.env")).toEqual(["env-file"]);
+  });
+
+  it("finds credentials files", () => {
+    for (const path of [".npmrc", "home/.netrc", ".pgpass", "aws/credentials"]) {
+      expect(fileRulesHit(path), path).toEqual(["credential-file"]);
+    }
   });
 
   it("lets templates and look-alike names through", () => {
@@ -97,6 +118,9 @@ describe("file rules", () => {
       "docs/env.md",
       "src/environment.ts",
       "keys.ts",
+      "deploy/id_ed25519.pub",
+      "src/credentials.ts",
+      "src/environment.d.ts",
     ]) {
       expect(fileRulesHit(path), path).toEqual([]);
     }

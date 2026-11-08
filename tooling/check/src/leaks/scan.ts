@@ -69,7 +69,8 @@ function findSecrets(text: string, at: Location, settings: ScanSettings): Findin
         continue;
       }
       // A key block's header is not secret; for anything else only a masked form is shown.
-      const shown = rule.name === "private-key" ? "" : ` (${maskSecret(value)}, ${print})`;
+      const shown =
+        rule.name === "private-key" ? "" : ` (${maskSecret(rule.name, value)}, ${print})`;
       findings.push({
         ...at,
         rule: rule.name,

@@ -1,3 +1,4 @@
-# Harmless technical phrases that contain a protected term, removed before
-# the personal-terms guard matches. Only ever technical phrases
-# such as CSS property names; never a term itself. One per line.
+# Harmless technical phrases that contain a protected term. A term is let
+# through only where it lies wholly inside one of them. Only ever common
+# technical phrases such as CSS property names, at least 8 letters or
+# digits; never a term itself. One per line.

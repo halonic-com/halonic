@@ -159,10 +159,13 @@ function buildMatcher(
     );
     return undefined;
   }
-  if (source !== "none" && matcher.isEmpty) {
-    // A list that is set but holds nothing usable is a broken secret, not a
-    // missing one: failing is the only way anyone notices.
-    console.error(`leak guard: FAILED. The personal terms from ${source} hold no usable term.`);
+  const secret = process.env[termsEnvironmentVariable] ?? "";
+  if (source === "none" && secret.trim() !== "") {
+    // A secret that is set but holds nothing usable is broken, not missing:
+    // failing is the only way anyone notices it checks nothing.
+    console.error(
+      `leak guard: FAILED. ${termsEnvironmentVariable} is set but holds no usable term.`,
+    );
     return undefined;
   }
   return matcher;

@@ -59,6 +59,16 @@ describe("scanChanges", () => {
     expect(printed(findings).toLowerCase()).not.toContain(term.toLowerCase());
   });
 
+  it("withholds the whole path when a two-word term is split across its folders", () => {
+    const [first = "", second = ""] = (testTerms[1] ?? "").split(" ");
+    const findings = scan([fileChange(`docs/${first}/${second}.md`, `at ${homePath}`)]);
+    expect(findings.map(({ file, rule }) => `${file} ${rule}`)).toEqual([
+      "[withheld] personal-term",
+      "[withheld] absolute-path",
+    ]);
+    expect(printed(findings).toLowerCase()).not.toContain(second.toLowerCase());
+  });
+
   it("masks secrets and shows only the root of a path", () => {
     const output = printed(scan([fileChange("a.ts", token, homePath)]));
     expect(output).not.toContain(token.slice(4));

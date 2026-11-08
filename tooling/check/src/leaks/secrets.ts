@@ -62,7 +62,55 @@ export const secretRules: readonly SecretRule[] = [
     label: "an AI provider API key",
     pattern: /\bsk-(?:ant-[A-Za-z0-9_-]{20,}|[A-Za-z0-9_-]{10,}T3BlbkFJ[A-Za-z0-9_-]{10,})/g,
   },
+  {
+    // Signed tokens: header, claims and signature, the first two being
+    // base64 JSON (`eyJ` is `{"`). Agent API keys and broker tokens have
+    // this shape, and they are the secrets most likely to be pasted here.
+    name: "jwt",
+    label: "a signed access token (JWT)",
+    pattern: /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}/g,
+  },
+  {
+    name: "gitlab-token",
+    label: "a GitLab token",
+    pattern: /\bglpat-[A-Za-z0-9_-]{20,}/g,
+  },
+  {
+    name: "huggingface-token",
+    label: "a Hugging Face token",
+    pattern: /\bhf_[A-Za-z0-9]{34,}\b/g,
+  },
+  {
+    // A URL with a login, user then password before the host. Only the
+    // password part is matched.
+    name: "url-password",
+    label: "a password in a URL",
+    pattern: /(?<=\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:)[^\s:/@]{6,}(?=@)/gi,
+  },
+  {
+    // An `.npmrc` line such as `//registry.npmjs.org/:_authToken=…`.
+    name: "npm-auth-token",
+    label: "an npm registry auth token",
+    pattern: /(?<=:_authToken=)(?!\$\{)[^\s"']{16,}/g,
+  },
 ];
+
+/**
+ * Rules whose match starts with a well-known public prefix (`ghp_`,
+ * `AKIA`, `eyJ` …). For the others, even the first characters are secret.
+ */
+const rulesWithPublicPrefix = new Set([
+  "aws-access-key",
+  "github-token",
+  "npm-token",
+  "slack-token",
+  "google-api-key",
+  "stripe-key",
+  "ai-provider-key",
+  "jwt",
+  "gitlab-token",
+  "huggingface-token",
+]);
 
 /**
  * True for values that only look like a secret: the documented AWS
@@ -78,11 +126,13 @@ export function isPlaceholder(value: string): boolean {
 }
 
 /**
- * Shows only the first four characters (the well-known prefix, such as
- * `ghp_` or `AKIA`) and the length, so a report never repeats a secret.
+ * Shows only the length and, when the rule has one, the first four
+ * characters (the well-known prefix, such as `ghp_` or `AKIA`), so a
+ * report never repeats a secret.
  */
-export function maskSecret(value: string): string {
-  return `${value.slice(0, 4)}${"*".repeat(8)} (${value.length} characters)`;
+export function maskSecret(rule: string, value: string): string {
+  const prefix = rulesWithPublicPrefix.has(rule) ? value.slice(0, 4) : "";
+  return `${prefix}${"*".repeat(8)} (${value.length} characters)`;
 }
 
 /**

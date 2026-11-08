@@ -16,25 +16,41 @@ export interface FileRule {
 /** `.env` templates that hold placeholders and are meant to be committed. */
 const envTemplates = new Set(["example", "sample", "template", "defaults"]);
 
+/** Other files that hold settings with secrets: Cloudflare's local vars, Terraform values. */
+const otherEnvFileNames = new Set([".dev.vars"]);
+const otherEnvFileEndings = [".env", ".tfvars"];
+
 function isEnvFile(fileName: string): boolean {
-  if (fileName === ".env" || fileName === ".envrc") {
+  if (fileName === ".env" || fileName === ".envrc" || otherEnvFileNames.has(fileName)) {
+    return true;
+  }
+  if (otherEnvFileEndings.some((ending) => fileName.endsWith(ending))) {
     return true;
   }
   const suffix = /^\.env\.(.+)$/.exec(fileName)?.[1];
   return suffix !== undefined && !envTemplates.has(suffix);
 }
 
-const keyFileNames = new Set(["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"]);
+/** SSH private keys, also with a suffix (`id_rsa_work`); the `.pub` half is public. */
+const sshKeyName = /^id_(?:rsa|dsa|ecdsa|ed25519)(?:[_-][\w-]*)?$/;
 const keyFileEndings = [".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".ppk"];
 
 function isKeyFile(fileName: string): boolean {
   const lower = fileName.toLowerCase();
-  return keyFileNames.has(lower) || keyFileEndings.some((ending) => lower.endsWith(ending));
+  return sshKeyName.test(lower) || keyFileEndings.some((ending) => lower.endsWith(ending));
+}
+
+/** Files that hold login details: registry and machine logins, database and cloud credentials. */
+const credentialFileNames = new Set([".npmrc", ".netrc", "_netrc", ".pgpass", "credentials"]);
+
+function isCredentialFile(fileName: string): boolean {
+  return credentialFileNames.has(fileName.toLowerCase());
 }
 
 export const fileRules: readonly FileRule[] = [
   { name: "env-file", label: "an environment file", matches: isEnvFile },
   { name: "key-file", label: "a private key or keystore file", matches: isKeyFile },
+  { name: "credential-file", label: "a credentials file", matches: isCredentialFile },
 ];
 
 /** The last part of a repo path: `apps/x/.env` → `.env`. */

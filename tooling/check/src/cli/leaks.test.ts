@@ -64,7 +64,7 @@ describe("leak guard command", () => {
   it("fails when the secret is set but holds no term", () => {
     const result = run({ HALONIC_DENY_TERMS: "# only a comment\n, ,\n" });
     expect(result.code).toBe(1);
-    expect(result.output).toContain("hold no usable term");
+    expect(result.output).toContain("holds no usable term");
   });
 
   it("finds a term, also written with look-alike characters, and never prints it", () => {

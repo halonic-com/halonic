@@ -66,7 +66,33 @@ function termPattern(term: string): RegExp | undefined {
     return undefined;
   }
   const escaped = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return new RegExp(escaped.join(`${separator}*`), "iu");
+  return new RegExp(escaped.join(`${separator}*`), "giu");
+}
+
+/**
+ * An allowed phrase needs at least this many letters and digits. A short
+ * phrase would sit inside many terms and could hide them.
+ */
+export const minimumPhraseLength = 8;
+
+/** Where a pattern matches in a text, from `start` up to (not including) `end`. */
+interface Span {
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * Every place the pattern matches, overlapping ones included, so one match
+ * can't hide the next. The pattern must have the `g` flag.
+ */
+function spansOf(pattern: RegExp, text: string): Span[] {
+  const spans: Span[] = [];
+  pattern.lastIndex = 0;
+  for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
+    spans.push({ start: match.index, end: match.index + match[0].length });
+    pattern.lastIndex = match.index + 1;
+  }
+  return spans;
 }
 
 /** Matches text against the protected terms. */
@@ -77,17 +103,25 @@ export class TermMatcher {
   /**
    * @param terms - the protected terms, one per entry
    * @param allowedPhrases - harmless technical phrases that contain a term
-   *   (such as CSS `font-family`); they are removed before matching. A
-   *   phrase that is only a term itself is ignored, so the phrase list can
-   *   never silence a bare term.
+   *   (such as CSS `font-family`). A term found entirely inside one of them
+   *   is not reported; a term anywhere else in the same text still is. A
+   *   phrase that is only a term itself, or shorter than
+   *   {@link minimumPhraseLength}, is ignored, so the phrase list can never
+   *   silence a bare term.
    */
   constructor(terms: readonly string[], allowedPhrases: readonly string[] = []) {
     const patterns = terms.map(termPattern).filter((pattern) => pattern !== undefined);
     const squashedTerms = new Set(terms.map(squash));
     this.patterns = patterns;
     this.allowedPhrases = allowedPhrases
-      .filter((phrase) => phrase.trim() !== "" && !squashedTerms.has(squash(phrase)))
-      .map((phrase) => new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu"));
+      .filter((phrase) => squash(phrase).length >= minimumPhraseLength)
+      .filter((phrase) => !squashedTerms.has(squash(phrase)))
+      .map((phrase) => new RegExp(normalise(phrase).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu"));
+  }
+
+  /** How many terms are loaded. Shown in the summary to confirm the list; never the terms. */
+  get size(): number {
+    return this.patterns.length;
   }
 
   /** True when there are no terms, which means the list isn't configured. */
@@ -95,24 +129,28 @@ export class TermMatcher {
     return this.patterns.length === 0;
   }
 
-  /** True when the text contains any protected term. */
+  /** True when the text contains a protected term outside every allowed phrase. */
   matches(text: string): boolean {
-    let rest = normalise(text);
-    for (const phrase of this.allowedPhrases) {
-      rest = rest.replace(phrase, " ");
-    }
-    return this.patterns.some((pattern) => pattern.test(rest));
+    const normalised = normalise(text);
+    const allowed = this.allowedPhrases.flatMap((phrase) => spansOf(phrase, normalised));
+    const insideAllowed = (term: Span): boolean =>
+      allowed.some((phrase) => phrase.start <= term.start && term.end <= phrase.end);
+    return this.patterns.some((pattern) =>
+      spansOf(pattern, normalised).some((term) => !insideAllowed(term)),
+    );
   }
 
   /**
    * Replaces each part of a path that contains a protected term with
    * `[withheld]`, so the path can be printed without showing the term.
+   * A multi-word term can also be split across folders
+   * (`docs/<first>/<last>.md`); then no single part matches, and the whole
+   * path is withheld.
    */
   redactPath(path: string): string {
-    return path
-      .split("/")
-      .map((part) => (this.matches(part) ? "[withheld]" : part))
-      .join("/");
+    const parts = path.split("/").map((part) => (this.matches(part) ? "[withheld]" : part));
+    const redacted = parts.join("/");
+    return this.matches(redacted) ? "[withheld]" : redacted;
   }
 }
 
@@ -129,19 +167,22 @@ export type TermsSource = "secret" | "file" | "none";
 
 /**
  * Loads the protected terms: from the environment variable (CI) when it is
- * set, otherwise from the local file.
+ * set, otherwise from the local file. A secret or file that holds only
+ * comments and blank lines counts as missing, so it can't pass for a
+ * configured list while checking nothing.
  */
 export function loadTerms(environment: NodeJS.ProcessEnv = process.env): {
   terms: string[];
   source: TermsSource;
 } {
-  const fromEnvironment = environment[termsEnvironmentVariable];
-  if (fromEnvironment !== undefined && fromEnvironment.trim() !== "") {
-    return { terms: parseTermList(fromEnvironment), source: "secret" };
+  const fromEnvironment = parseTermList(environment[termsEnvironmentVariable] ?? "");
+  if (fromEnvironment.length > 0) {
+    return { terms: fromEnvironment, source: "secret" };
   }
   const file = environment[termsFileEnvironmentVariable] || defaultTermsFile;
-  if (existsSync(file)) {
-    return { terms: parseTermList(readFileSync(file, "utf8")), source: "file" };
+  const fromFile = existsSync(file) ? parseTermList(readFileSync(file, "utf8")) : [];
+  if (fromFile.length > 0) {
+    return { terms: fromFile, source: "file" };
   }
   return { terms: [], source: "none" };
 }
