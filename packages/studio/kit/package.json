@@ -14,9 +14,16 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "react": "catalog:"
+  },
   "devDependencies": {
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

@@ -37,6 +37,20 @@
       ],
       "reason": "Type definitions for Node, for Node packages, tests and tooling. The core's tsconfig loads no Node types."
     },
+    "@types/react": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "Type definitions for React (docs/adr/2026-11-08-one-interface-codebase.md)."
+    },
+    "@types/react-dom": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "Type definitions for react-dom, which the kit's tests render with."
+    },
     "@typescript/typescript6": {
       "category": "dev-tooling",
       "allowedIn": [
@@ -61,6 +75,20 @@
       ],
       "reason": "Property-based tests: generated and hostile inputs (deep nesting, huge files and lists, odd Unicode, Windows line endings, BOM) for the YAML layer, which reads other people's workspaces, and for how schema-kit uses Zod; generated cron expressions and times around daylight-saving changes for the routines scheduler; generated templates, scopes, amounts and durations for the workflow rules. Tests only."
     },
+    "jsdom": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "A DOM for Vitest, so the kit's component tests check rendered markup, ARIA and clicks without a browser (HAL-175 section 13). Tests only."
+    },
+    "react": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "The Studio is one React codebase (docs/adr/2026-11-08-one-interface-codebase.md). No dependencies. Starts in the kit; the shell, features and apps/studio join when they render."
+    },
     "react-data-grid": {
       "category": "studio-framework",
       "allowedIn": [
@@ -68,6 +96,13 @@
       ],
       "reason": "The table editor: cell editing, keyboard navigation and screen-reader support. Approved by the user on 8 Nov 2026 (HAL-10).",
       "useInstead": "the data grid from @halonicjs/studio-kit"
+    },
+    "react-dom": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "reason": "Renders React in the webview and in the kit's tests. Its one dependency is React's own scheduler."
     },
     "remark": {
       "category": "studio-framework",

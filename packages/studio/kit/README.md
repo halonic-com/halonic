@@ -96,3 +96,17 @@ The curves and durations stay in the file for later.
 - the kit imports no other Studio package, in any import form.
 
 After tuning a colour, run the tests and adjust until they pass.
+
+## Testing a component
+
+Components are React. Their tests check the rendered markup, ARIA and clicks in jsdom, not
+pixels. A component test starts with `// @vitest-environment jsdom` (the token tests read files and
+stay in Node) and renders with the helper in `src/test/render.tsx`:
+
+```tsx
+// @vitest-environment jsdom
+import { click, render } from "../test/render.tsx";
+
+const { container } = render(<Button>Save</Button>);
+await click(container.querySelector("button") as HTMLButtonElement);
+```
