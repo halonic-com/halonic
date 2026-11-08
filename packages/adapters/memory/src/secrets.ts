@@ -7,11 +7,21 @@ export class MemorySecrets implements Secrets {
 
   /**
    * @param values - the configured secrets, by name
-   * @throws RangeError when a name breaks the secret name rule
+   * @throws RangeError when a name breaks the secret name rule, or two names are the same secret
    */
   constructor(values: Readonly<Record<string, string>> = {}) {
+    const namesByKey = new Map<string, string>();
     for (const [name, value] of Object.entries(values)) {
-      this.#values.set(secretKey(name), value);
+      const key = secretKey(name);
+      const earlier = namesByKey.get(key);
+      // Keeping either value would hide a configuration mistake.
+      if (earlier !== undefined) {
+        throw new RangeError(
+          `Secret names ${JSON.stringify(earlier)} and ${JSON.stringify(name)} are the same secret ${key}; configure it once.`,
+        );
+      }
+      namesByKey.set(key, name);
+      this.#values.set(key, value);
     }
   }
 

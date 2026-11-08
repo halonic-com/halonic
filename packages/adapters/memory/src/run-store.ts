@@ -87,11 +87,12 @@ function checkAppend(runId: string, expectedSeq: number, events: readonly RunEve
 }
 
 function matches(summary: RunSummary, filter: RunFilter): boolean {
-  const statuses = filter.status === undefined ? undefined : [filter.status].flat();
+  // An empty list is no status filter, as the port says.
+  const statuses = filter.status === undefined ? [] : [filter.status].flat();
   return (
     (filter.hubId === undefined || summary.hubId === filter.hubId) &&
     (filter.workflowId === undefined || summary.workflowId === filter.workflowId) &&
     (filter.kind === undefined || summary.kind === filter.kind) &&
-    (statuses === undefined || statuses.includes(summary.status))
+    (statuses.length === 0 || statuses.includes(summary.status))
   );
 }

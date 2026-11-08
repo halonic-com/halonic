@@ -30,7 +30,8 @@
     "layer": "testing",
     "owner": "julian",
     "coverage": {
-      "lines": 0.5
+      "lines": 80,
+      "measuredIn": "@halonicjs/adapter-memory"
     }
   }
 }

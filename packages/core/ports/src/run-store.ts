@@ -8,7 +8,10 @@ export interface RunFilter {
   hubId?: string;
   workflowId?: string;
   kind?: RunKind;
-  /** One status or any of several, such as `["running", "waiting"]` for the watchdog. */
+  /**
+   * One status or any of several, such as `["running", "waiting"]` for the
+   * watchdog. An empty list is no status filter, the same as leaving it out.
+   */
   status?: RunStatus | readonly RunStatus[];
 }
 

@@ -34,6 +34,11 @@ export function runStoreContract(
       listCases(make, settle);
     });
   });
+  verifies("contracts.run-store-empty-status", () => {
+    describe(`RunStore empty status list: ${name}`, () => {
+      emptyStatusCases(make, settle);
+    });
+  });
 }
 
 function appendCases(make: MakeRunStore, settle: (store: RunStore) => Promise<void>): void {
@@ -194,5 +199,19 @@ function listCases(make: MakeRunStore, settle: (store: RunStore) => Promise<void
     expect(await ids({ status: "failed" })).toEqual(["new"]);
     expect(await ids({ status: ["running", "waiting"] })).toEqual(["mid", "old", "wait"]);
     expect(await ids({ hubId: "a", kind: "run" })).toEqual([]);
+  });
+}
+
+function emptyStatusCases(make: MakeRunStore, settle: (store: RunStore) => Promise<void>): void {
+  it("treats an empty status list as no status filter", async () => {
+    const store = await make();
+    const at = (seconds: number) => eventTime(seconds, "2026-02-01T00:00:00.000Z");
+    await store.append("ran", 0, [started("ran", { at: at(1) }), completed("ran", 2)]);
+    await store.append("test", 0, [started("test", { at: at(2), kind: "test" })]);
+    await settle(store);
+    const ids = async (filter: Parameters<RunStore["list"]>[0]) =>
+      (await store.list(filter)).map((summary) => summary.id);
+    expect(await ids({ status: [] })).toEqual(["test", "ran"]);
+    expect(await ids({ status: [], kind: "run" })).toEqual(["ran"]);
   });
 }

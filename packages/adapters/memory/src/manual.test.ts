@@ -29,6 +29,19 @@ verifies("memory.manual-clock", () => {
   });
 });
 
+verifies("memory.secret-name-clash", () => {
+  it("refuses two configured names that are the same secret", () => {
+    expect(() => new MemorySecrets({ "a-b": "first", A_B: "second" })).toThrow(RangeError);
+    expect(() => new MemorySecrets({ "a-b": "first", A_B: "second" })).toThrow(/"a-b" and "A_B"/);
+  });
+
+  it("still takes names that differ after the key is made", async () => {
+    const secrets = new MemorySecrets({ "a-b": "dash", ab: "none" });
+    expect(await secrets.get("A_B")).toBe("dash");
+    expect(await secrets.get("AB")).toBe("none");
+  });
+});
+
 verifies("memory.secrets", () => {
   it("refuses a configured secret with a bad name", () => {
     expect(() => new MemorySecrets({ "bad name": "x" })).toThrow(RangeError);
