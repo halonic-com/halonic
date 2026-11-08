@@ -4,11 +4,13 @@
  */
 export { type CheckContext, loadContext } from "./lib/context.ts";
 export {
+  adapterRuntimes,
   featureNamePrefix,
   featuresDirectory,
   folderNamePattern,
   placeOf,
   studioAppDirectory,
+  targetKinds,
 } from "./lib/layout.ts";
 export { formatProblem, type Problem, Report } from "./lib/problems.ts";
 export { findRepoRoot, listWorkspacePackages, readJson } from "./lib/workspace.ts";

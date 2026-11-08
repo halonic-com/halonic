@@ -1,7 +1,15 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { type CheckContext, declaredDependencies } from "../lib/context.ts";
-import { cliPackageName, folderNamePattern, reservedCorePrefixes, scope } from "../lib/layout.ts";
+import {
+  adapterRuntimes,
+  cliPackageName,
+  folderNamePattern,
+  isReservedCoreName,
+  reservedCoreNames,
+  reservedCorePrefixes,
+  scope,
+} from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
 
@@ -38,15 +46,18 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
     return;
   }
   const folder = pkg.directory.split("/").at(-1) ?? "";
-  if (pkg.directory !== "." && !folderNamePattern.test(folder)) {
-    report.error(file, `Folder name "${folder}" must be kebab-case, such as "schema-kit".`);
+  for (const part of place.target === undefined ? [folder] : [place.target.name]) {
+    if (pkg.directory !== "." && !folderNamePattern.test(part)) {
+      report.error(file, `Folder name "${part}" must be kebab-case, such as "schema-kit".`);
+    }
   }
-  if (place.layer === "core" && reservedCorePrefixes.some((prefix) => folder.startsWith(prefix))) {
+  if (place.layer === "core" && isReservedCoreName(folder)) {
     report.error(
       file,
-      `Core package folders may not start with ${reservedCorePrefixes.join(", ")}: those prefixes belong to other layers.`,
+      `Core package folders may not be named ${reservedCoreNames.join(" or ")}, or start with ${reservedCorePrefixes.join(", ")}: those names belong to other layers.`,
     );
   }
+  checkRuntime(pkg, place.layer, report);
   if (name !== place.expectedName) {
     report.error(
       file,
@@ -70,6 +81,27 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
     report.error(
       file,
       `Name the owner who reviews changes: "halonic": { "owner": "<agent>" } (plan 6.2).`,
+    );
+  }
+}
+
+/** Adapters say where they run; nothing else does, its folder already tells. */
+function checkRuntime(pkg: WorkspacePackage, layer: string, report: Report): void {
+  const runtime = pkg.manifest.halonic?.runtime;
+  const choices = adapterRuntimes.map((choice) => `"${choice}"`).join(", ");
+  if (layer !== "adapters") {
+    if (runtime !== undefined) {
+      report.error(
+        pkg.manifestPath,
+        `Only adapters declare "halonic": { "runtime" }. Remove it; this package's folder decides where it runs.`,
+      );
+    }
+    return;
+  }
+  if (!(adapterRuntimes as readonly unknown[]).includes(runtime)) {
+    report.error(
+      pkg.manifestPath,
+      `Declare where this adapter runs: "halonic": { "runtime": ${choices} }. Only "node" adapters may use Node APIs (plan 4.1).`,
     );
   }
 }
