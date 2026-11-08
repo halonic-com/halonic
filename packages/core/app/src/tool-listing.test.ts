@@ -246,6 +246,38 @@ verifies("ports.untrusted-tool-listings", () => {
     ]);
   });
 
+  it("refuses every listed tool of a listing of more than 128 tools at once, and still offers declared ones", () => {
+    const listed = Array.from({ length: 128 }, (_, index) => tool(`t${index}`));
+    const { tools, refusals } = read([...listed, tool("search", { description: "New." })], {
+      declared: [search],
+    });
+    expect(tools.map(({ kind, name }) => `${kind} ${name}`)).toEqual(["declared search"]);
+    expect(refusals).toEqual([
+      {
+        source: "notes",
+        refused: "listing",
+        reason:
+          "the listing returns 129 tools, more than 128, so none of its listed tools is offered",
+      },
+    ]);
+    expect(read(listed).tools).toHaveLength(128);
+  });
+
+  it("cuts a dropped keyword to 64 characters in the reason and escapes its bidi character", () => {
+    const keyword = `x-‮${"a".repeat(200)}`;
+    const { refusals } = read([tool("lookup", { parameters: { [keyword]: 1 } })]);
+    expect(refusals.map(({ reason }) => reason)).toEqual([
+      `dropped the keyword at /x-\\u{202e}${"a".repeat(61)}`,
+    ]);
+  });
+
+  it("escapes quotes, backslashes and control characters quoted in a reason", () => {
+    const { refusals } = read([tool("lookup", { parameters: { 'say "hi"\\\n\t😀': 1 } })]);
+    expect(refusals.map(({ reason }) => reason)).toEqual([
+      'dropped the keyword at /say \\"hi\\"\\\\\\u{a}\\u{9}\\u{1f600}',
+    ]);
+  });
+
   it("refuses an entry that isn't a tool or whose name isn't text", () => {
     const listed = [
       null,

@@ -3,7 +3,7 @@
 // kept keyword is checked and rebuilt, and everything else is dropped.
 
 import {
-  cutName,
+  escapeListedText,
   isJsonObject,
   maxEnumValues,
   passesNameRule,
@@ -19,7 +19,10 @@ export class RefusedTool extends Error {
 export interface RebuiltParameters {
   /** The new schema. Its `description` and `title` values are {@link UntrustedText}. */
   readonly parameters: Record<string, unknown>;
-  /** A JSON pointer to each dropped keyword, such as `/properties/city/pattern`. */
+  /**
+   * A JSON pointer to each dropped keyword, such as `/properties/city/pattern`,
+   * with each keyword cut to 64 characters and escaped.
+   */
   readonly dropped: readonly string[];
 }
 
@@ -280,7 +283,11 @@ function isCount(value: unknown): boolean {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
-/** A keyword as one JSON pointer segment, cut to 64 characters, since an unknown keyword can be any length. */
+/**
+ * A keyword as one JSON pointer segment. An unknown keyword is text the
+ * server wrote, of any length, and the pointer ends up in a refusal's
+ * reason, so it is cut and escaped.
+ */
 function pointerSegment(keyword: string): string {
-  return cutName(keyword).replaceAll("~", "~0").replaceAll("/", "~1");
+  return escapeListedText(keyword).replaceAll("~", "~0").replaceAll("/", "~1");
 }

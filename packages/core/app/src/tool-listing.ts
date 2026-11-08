@@ -4,7 +4,7 @@
 
 import type { ConnectorTool, IntegrationTool, ToolRisk, TrustGrant } from "@halonicjs/ports";
 import { readListedTool } from "./listed-tool.ts";
-import { cutName, isJsonObject, type UntrustedText } from "./listed-tool-rules.ts";
+import { cutName, isJsonObject, maxListedTools, type UntrustedText } from "./listed-tool-rules.ts";
 import { maxUnfencedLength, unfencedLength } from "./listed-tool-unfenced.ts";
 
 /** One source's listing, and what the host knows around it. */
@@ -75,10 +75,15 @@ export interface OfferedListedTool {
 export interface ToolRefusal {
   /** The source's id. */
   readonly source: string;
-  /** The listed name, cut to 64 characters. */
-  readonly name: string;
-  /** `tool` when the whole tool was left out, `keyword` when only part of its parameters was. */
-  readonly refused: "tool" | "keyword";
+  /** The listed name, cut to 64 characters. Left out when the whole listing is refused. */
+  readonly name?: string;
+  /**
+   * `tool` when the whole tool was left out, `keyword` when only part of its
+   * parameters was, and `listing` when every listed tool of a listing that
+   * returns too many tools was.
+   */
+  readonly refused: "tool" | "keyword" | "listing";
+  /** Why. Text from the listing in it is cut to 64 characters and escaped. */
   readonly reason: string;
 }
 
@@ -93,7 +98,8 @@ export interface ToolListing {
  * declared tool, so a server can't swap the texts Halonic reviewed. A
  * declared tool the listing leaves out isn't offered, because the listing
  * says what the server offers now. Every other tool is a listed tool: it
- * is checked, rebuilt and marked as untrusted, or refused.
+ * is checked, rebuilt and marked as untrusted, or refused. A listing of more
+ * than 128 tools gets one refusal, and none of its listed tools is offered.
  *
  * Call it only for a source that lists its tools. Without `listTools`, an
  * integration's declared tools are the list.
@@ -121,24 +127,39 @@ export function readToolListing(input: ToolListingInput): ToolListing {
   }
   const declared = new Map(input.declared.map((tool) => [tool.name, tool]));
   const timesListed = countNames(input.listed);
+  const tooManyTools = input.listed.length > maxListedTools;
+  if (tooManyTools) {
+    refusals.push({
+      source: input.source,
+      refused: "listing",
+      reason: `the listing returns ${input.listed.length} tools, more than ${maxListedTools}, so none of its listed tools is offered`,
+    });
+  }
 
   for (const entry of input.listed) {
-    if (!isJsonObject(entry)) {
-      refuse(undefined, "tool", "the listing holds an entry that isn't a tool");
-      continue;
-    }
-    const name = entry["name"];
-    const declaredTool = typeof name === "string" ? declared.get(name) : undefined;
-    if (declaredTool === undefined) {
+    const declaredTool = declaredToolFor(entry, declared);
+    if (declaredTool !== undefined) {
+      if (!tools.some((tool) => tool.name === declaredTool.name)) {
+        tools.push(offerDeclared(declaredTool));
+      }
+    } else if (!tooManyTools) {
+      // A listing over the cap is refused whole above, so its listed tools aren't read.
       const offer = offerListed(entry, input, timesListed, refuse);
       if (offer !== undefined) {
         tools.push(offer);
       }
-    } else if (!tools.some((tool) => tool.name === declaredTool.name)) {
-      tools.push(offerDeclared(declaredTool));
     }
   }
   return { tools, refusals };
+}
+
+/** The declared tool a listed entry names, if any. */
+function declaredToolFor(
+  entry: ConnectorTool,
+  declared: ReadonlyMap<string, IntegrationTool>,
+): IntegrationTool | undefined {
+  const name: unknown = isJsonObject(entry) ? entry["name"] : undefined;
+  return typeof name === "string" ? declared.get(name) : undefined;
 }
 
 type Refuse = (name: unknown, refused: ToolRefusal["refused"], reason: string) => void;
@@ -150,7 +171,11 @@ function offerListed(
   timesListed: ReadonlyMap<string, number>,
   refuse: Refuse,
 ): OfferedListedTool | undefined {
-  const name: unknown = entry.name;
+  if (!isJsonObject(entry)) {
+    refuse(undefined, "tool", "the listing holds an entry that isn't a tool");
+    return undefined;
+  }
+  const name: unknown = entry["name"];
   if (typeof name === "string" && (timesListed.get(name) ?? 0) > 1) {
     refuse(name, "tool", "the listing returns this name more than once");
     return undefined;

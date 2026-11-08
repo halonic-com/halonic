@@ -21,8 +21,16 @@ export const maxParametersDepth = 64;
 /** The most values an `enum` keeps. */
 export const maxEnumValues = 64;
 
-/** The longest name, and the most characters of a name a refusal repeats. */
+/** The longest name, and the most characters of listed text a refusal repeats. */
 export const maxNameLength = 64;
+
+/**
+ * The most tools one listing may return. 128 is the most tools one OpenAI
+ * request accepts, so a longer listing couldn't be offered whole anyway, and
+ * the cap bounds the unfenced text one listing carries to 128 × 2,048
+ * characters.
+ */
+export const maxListedTools = 128;
 
 const namePattern = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -38,6 +46,28 @@ export function passesNameRule(text: unknown): text is string {
 /** Cuts a text a server wrote to its first 64 characters, for a refusal shown as plain text. */
 export function cutName(text: string): string {
   return Array.from(text).slice(0, maxNameLength).join("");
+}
+
+/**
+ * Puts text a server wrote into a refusal's reason: cut to its first 64
+ * characters, with quotes, backslashes and every character outside
+ * printable ASCII escaped. The reason then stays one plain line, and
+ * control or bidi characters can't reorder what the integration status shows.
+ *
+ * @example
+ * escapeListedText('say "hi"\n'); // => say \"hi\"\u{a}
+ */
+export function escapeListedText(text: string): string {
+  return Array.from(cutName(text), escapeCharacter).join("");
+}
+
+function escapeCharacter(character: string): string {
+  if (character === '"' || character === "\\") {
+    return `\\${character}`;
+  }
+  const codePoint = character.codePointAt(0) ?? 0;
+  const isPrintableAscii = codePoint >= 0x20 && codePoint <= 0x7e;
+  return isPrintableAscii ? character : `\\u{${codePoint.toString(16)}}`;
 }
 
 /**

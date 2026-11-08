@@ -8,7 +8,7 @@ The host shall treat every tool that a server lists, and that nothing Halonic re
 
 For a listed tool, the host shall:
 
-- **Cap its size.** The host refuses a listed tool whose `parameters`, as the source sent them, are more than 64 KiB as JSON or nest objects and arrays more than 64 levels deep (the `parameters` object itself is level 1), or whose description, or any `description` or `title` in `parameters`, is more than 10,000 characters. An `http` or `stdio` connector goes through no integration, so these caps are the only ones it meets.
+- **Cap its size.** The host refuses a listed tool whose `parameters`, as the source sent them, are more than 64 KiB as JSON or nest objects and arrays more than 64 levels deep (the `parameters` object itself is level 1), or whose description, or any `description` or `title` in `parameters`, is more than 10,000 characters. It reads at most 128 tools from one listing. When a listing returns more, the host offers none of its listed tools and returns one refusal for the whole listing, but still offers the declared tools the listing names. An `http` or `stdio` connector goes through no integration, so these caps are the only ones it meets.
 
 - **Rebuild its parameters from an allow-list.** The host builds a new `parameters` object from the listed one and keeps only these keywords, at every depth:
   - structure: `type` (one of the seven JSON types, or an array of them), `properties`, `required`, `items`, `prefixItems`, `additionalProperties` (a boolean or a schema), `anyOf`, `oneOf`, `allOf`, `$defs` at the root, and a `$ref` of the form `#/$defs/<name>` whose `<name>` is a kept entry under `$defs`;
@@ -29,7 +29,7 @@ For a listed tool, the host shall:
 
 - **Treat its results as untrusted and its risk as `write`.** Its results are fenced whatever its `untrusted` says. Its `risk` counts as `write` whatever it says, unless the workspace sets a lower one for that tool. A lower risk set in the workspace doesn't remove the fence.
 
-- **Report each refusal, but not to the model.** Next to the tools it offers, the host returns a refusal for each tool it refused and each keyword it dropped, with the source's id, the listed name and the reason. A refusal can repeat the text that broke a rule, so it never reaches the model. The workspace's integration status shows these refusals as plain text, with the name cut to 64 characters.
+- **Report each refusal, but not to the model.** Next to the tools it offers, the host returns a refusal for each tool it refused and each keyword it dropped, with the source's id, the listed name and the reason. A refusal can repeat the text that broke a rule, so it never reaches the model. Where a reason quotes text from the listing, it cuts it to 64 characters and escapes quotes, backslashes and every character outside printable ASCII, such as control and bidi characters. The workspace's integration status shows these refusals as plain text, with the name cut to 64 characters.
 
 A tool that `IntegrationConnection.listTools` returns under a declared name is not a listed tool. The host offers the declared tool, with its declared description, parameters, `risk` and `untrusted`, and checks calls against the declared parameters, so a server can't swap texts that were reviewed. A declared tool that the listing leaves out is not offered, because the listing says what the server offers now.
 
@@ -80,6 +80,12 @@ A tool that `IntegrationConnection.listTools` returns under a declared name is n
 - Given a listed tool named with 200 characters that include instructions,
   when the host refuses it,
   then nothing of the refusal reaches the model, and the integration status shows the first 64 characters of the name as plain text.
+- Given a listing that returns 129 tools, one of them declared,
+  when the host reads the listing,
+  then it offers only the declared tool and returns one refusal for the listing.
+- Given a listed tool with a keyword whose name holds a bidi control character followed by 200 letters,
+  when the host drops the keyword,
+  then the refusal's reason shows the keyword's first 64 characters, with the bidi character escaped.
 - Given a listing that returns `fetch` twice with different descriptions, or a listed tool whose final name equals a host tool's name,
   when the host reads the listing,
   then it offers none of the clashing listed tools and returns a refusal for each, and the host tool is still offered.
