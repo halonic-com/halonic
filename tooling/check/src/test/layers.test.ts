@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Layer } from "../lib/layout.ts";
 import {
   coreOrder,
   type FixturePackage,
@@ -80,7 +81,7 @@ describe("tooling/check: layers", () => {
   });
 
   it("lets testing packages use dev tooling such as Vitest outside test files", () => {
-    const usesVitest = (directory: string, name: string, layer: string): FixturePackage => ({
+    const usesVitest = (directory: string, name: string, layer: Layer): FixturePackage => ({
       directory,
       manifest: manifestFor(name, layer, { devDependencies: { vitest: "catalog:" } }),
       files: { "src/index.ts": 'import { describe } from "vitest";\nexport const d = describe;\n' },

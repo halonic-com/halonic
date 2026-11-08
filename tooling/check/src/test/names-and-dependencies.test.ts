@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Layer } from "../lib/layout.ts";
 import { type FixturePackage, manifestFor, rulesHit, runChecks } from "./fixture-repo.ts";
 
 describe("tooling/check: names and dependencies", () => {
@@ -22,7 +23,7 @@ describe("tooling/check: names and dependencies", () => {
   });
 
   it("lets only testing packages list dev tooling as a peerDependency", () => {
-    const peersOnVitest = (directory: string, name: string, layer: string): FixturePackage => ({
+    const peersOnVitest = (directory: string, name: string, layer: Layer): FixturePackage => ({
       directory,
       manifest: manifestFor(name, layer, {
         devDependencies: { vitest: "catalog:" },
