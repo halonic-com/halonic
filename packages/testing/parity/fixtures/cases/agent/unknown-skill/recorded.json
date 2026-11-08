@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "agent/unknown-skill",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/clerk.agent.yaml",
+      "flatPath": "hubs/billing/agents/clerk.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown skill \"poetry\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown skill \"poetry\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

@@ -1,0 +1,9 @@
+name: Tracker
+transport:
+  http:
+    url: https://tracker.example.com/mcp
+    headers: { X-Team: billing }
+  stdio:
+    command: acme-tracker
+secret: tracker-token
+local: false

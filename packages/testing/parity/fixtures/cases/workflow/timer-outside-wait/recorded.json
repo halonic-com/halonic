@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/timer-outside-wait",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"start\" has a timer (after 1h); timers only work on wait states",
+      "state": "start"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml (start): \"start\" has a timer (after 1h); timers only work on wait states\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 9,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

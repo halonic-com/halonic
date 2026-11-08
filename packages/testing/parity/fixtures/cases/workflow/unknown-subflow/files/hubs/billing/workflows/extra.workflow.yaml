@@ -1,0 +1,11 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    type: workflow
+    workflow: payroll
+    on:
+      - to: done
+  done:
+    type: final

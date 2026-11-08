@@ -1,0 +1,10 @@
+{
+  "about": "a price is text",
+  "kind": "models",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.default.price.input",
+    "line": 6
+  }
+}

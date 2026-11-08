@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "agent/own-subagent",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/reviewer.agent.yaml",
+      "flatPath": "hubs/billing/agents/reviewer.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/reviewer.agent.yaml",
+      "message": "Agent \"reviewer\" cannot be its own subagent"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/reviewer.agent.yaml: Agent \"reviewer\" cannot be its own subagent\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

@@ -1,0 +1,29 @@
+name: Docs problem
+description: Something in the documentation is wrong, missing or hard to follow.
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Which page?
+      description: A link or the file path.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong or missing?
+      description: Quote the text if it helps. If the docs and Halonic disagree, say what Halonic actually does.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested fix
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance used
+      description: If an AI tool helped write this report, name it (tool / model). Otherwise write "None".
+    validations:
+      required: true

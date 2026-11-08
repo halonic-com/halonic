@@ -1,0 +1,8 @@
+name: Month end
+enabled: false
+trigger:
+  schedule: "0 9 1 * *"
+  timezone: Mars/Olympus
+run:
+  agent: clerk
+  prompt: Summarise last month's invoices.

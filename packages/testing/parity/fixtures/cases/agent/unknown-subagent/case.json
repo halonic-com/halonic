@@ -1,0 +1,10 @@
+{
+  "about": "a subagent that doesn't exist",
+  "kind": "agent",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/reviewer.agent.yaml",
+    "path": "subagents.0",
+    "line": 7
+  }
+}

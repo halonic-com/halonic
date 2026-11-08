@@ -1,0 +1,11 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    agent: clerk
+    method: summarise
+    on:
+      - to: done
+  done:
+    type: final

@@ -1,0 +1,51 @@
+{
+  "reference": "784f78d",
+  "case": "collection/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/collections/invoices.collection.yaml",
+      "flatPath": "collections/invoices.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [
+        {
+          "path": [
+            "fields",
+            "amount",
+            "min"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected number, received string",
+          "line": 7,
+          "col": 31
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "collections/invoices.collection.yaml",
+      "message": "fields.amount.min: Invalid input: expected number, received string",
+      "line": 7,
+      "col": 31
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error collections/invoices.collection.yaml: fields.amount.min: Invalid input: expected number, received string\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown collection \"invoices\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 7,
+    "recorded": 7,
+    "verdict": "same"
+  }
+}

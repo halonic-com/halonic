@@ -1,0 +1,10 @@
+{
+  "about": "a method answer field of an unknown type, four levels down",
+  "kind": "agent",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "methods.extract.output.amount",
+    "line": 19
+  }
+}

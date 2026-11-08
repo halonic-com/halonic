@@ -1,0 +1,10 @@
+{
+  "about": "a hub routine that names another hub",
+  "kind": "routine",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "path": "run.hub",
+    "line": 7
+  }
+}

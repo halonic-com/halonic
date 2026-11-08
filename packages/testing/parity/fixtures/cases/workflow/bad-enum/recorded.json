@@ -1,0 +1,57 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/approval.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [
+        {
+          "path": [
+            "states",
+            "approved",
+            "type"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"task\"|\"wait\"|\"final\"|\"workflow\"|\"parallel\"|\"foreach\"",
+          "line": 18,
+          "col": 11
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.workflow.yaml",
+      "message": "states.approved.type: Invalid option: expected one of \"task\"|\"wait\"|\"final\"|\"workflow\"|\"parallel\"|\"foreach\"",
+      "line": 18,
+      "col": 11
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "\"approval\" runs unknown workflow \"approval\"",
+      "state": "approval"
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "Test targets unknown workflow \"approval\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.workflow.yaml: states.approved.type: Invalid option: expected one of \"task\"|\"wait\"|\"final\"|\"workflow\"|\"parallel\"|\"foreach\"\nerror hubs/billing/workflows/invoice.workflow.yaml (approval): \"approval\" runs unknown workflow \"approval\"\nerror hubs/billing/workflows/approval.test.yaml: Test targets unknown workflow \"approval\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 18,
+    "recorded": 18,
+    "verdict": "same"
+  }
+}

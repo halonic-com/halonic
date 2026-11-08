@@ -1,0 +1,10 @@
+{
+  "about": "a tool needs approval but is not in tools.allow",
+  "kind": "connector",
+  "fault": "rule",
+  "expect": {
+    "file": "library/connectors/files.connector.yaml",
+    "path": "tools.approve.1",
+    "line": 12
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "a field minimum is text",
+  "kind": "collection",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "fields.amount.min",
+    "line": 7
+  }
+}

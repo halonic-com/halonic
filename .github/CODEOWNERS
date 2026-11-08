@@ -1,0 +1,15 @@
+# Files whose change needs a named person to approve, not just a green check.
+# Turn on "Require review from Code Owners" in the branch ruleset for main
+# for this to block a merge.
+
+# The list of phrases the personal-terms guard ignores: widening it hides
+# text from the guard (plan 11.1).
+/tooling/check/terms-allowed-phrases.txt @timothykorse
+
+# The terms guard and the files that decide how it runs. CI runs the guard from
+# the base commit, so a change here only takes effect once an owner has agreed.
+/.github/CODEOWNERS @timothykorse
+/.github/workflows/ @timothykorse
+/.github/actions/ @timothykorse
+/tooling/check/src/lib/terms.ts @timothykorse
+/tooling/check/src/cli/terms.ts @timothykorse

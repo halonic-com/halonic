@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "models/unknown-provider",
+  "valid": false,
+  "files": [
+    {
+      "file": "models.yaml",
+      "flatPath": "models.yaml",
+      "read": true,
+      "schema": "models",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "models.yaml",
+      "message": "Alias \"smart\" uses unknown provider \"cloud\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error models.yaml: Alias \"smart\" uses unknown provider \"cloud\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 17,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

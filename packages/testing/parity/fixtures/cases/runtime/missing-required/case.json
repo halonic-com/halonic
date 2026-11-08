@@ -1,0 +1,10 @@
+{
+  "about": "no type",
+  "kind": "runtime",
+  "fault": "missing-required",
+  "expect": {
+    "file": "runtimes/inprocess.yaml",
+    "path": "type",
+    "line": 1
+  }
+}

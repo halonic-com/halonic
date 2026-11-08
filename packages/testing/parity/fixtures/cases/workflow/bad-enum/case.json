@@ -1,0 +1,10 @@
+{
+  "about": "a state type that doesn't exist",
+  "kind": "workflow",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.workflow.yaml",
+    "path": "states.approved.type",
+    "line": 18
+  }
+}

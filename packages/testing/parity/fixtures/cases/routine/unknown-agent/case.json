@@ -1,0 +1,10 @@
+{
+  "about": "runs an agent the hub doesn't have",
+  "kind": "routine",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "path": "run.agent",
+    "line": 7
+  }
+}

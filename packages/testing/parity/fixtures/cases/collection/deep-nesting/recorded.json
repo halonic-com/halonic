@@ -1,0 +1,52 @@
+{
+  "reference": "784f78d",
+  "case": "collection/deep-nesting",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/collections/invoices.collection.yaml",
+      "flatPath": "collections/invoices.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [
+        {
+          "path": [
+            "views",
+            "open",
+            "where",
+            "due"
+          ],
+          "code": "unrecognized_keys",
+          "message": "Unrecognized key: \"after\"",
+          "line": 18,
+          "col": 44
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "collections/invoices.collection.yaml",
+      "message": "views.open.where.due: Unrecognized key: \"after\"",
+      "line": 18,
+      "col": 44
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error collections/invoices.collection.yaml: views.open.where.due: Unrecognized key: \"after\"\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown collection \"invoices\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 18,
+    "recorded": 18,
+    "verdict": "same"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "models/unknown-fallback",
+  "valid": false,
+  "files": [
+    {
+      "file": "models.yaml",
+      "flatPath": "models.yaml",
+      "read": true,
+      "schema": "models",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "models.yaml",
+      "message": "Alias \"smart\" falls back to unknown alias \"quick\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error models.yaml: Alias \"smart\" falls back to unknown alias \"quick\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 23,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

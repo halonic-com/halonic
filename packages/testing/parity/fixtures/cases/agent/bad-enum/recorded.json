@@ -1,0 +1,51 @@
+{
+  "reference": "784f78d",
+  "case": "agent/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/reviewer.agent.yaml",
+      "flatPath": "hubs/billing/agents/reviewer.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [
+        {
+          "path": [
+            "output",
+            "type"
+          ],
+          "code": "invalid_union",
+          "message": "Invalid discriminator value. Expected 'text' | 'choice' | 'json'",
+          "line": 5,
+          "col": 9
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/reviewer.agent.yaml",
+      "message": "output.type: Invalid discriminator value. Expected 'text' | 'choice' | 'json'",
+      "line": 5,
+      "col": 9
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "Branch \"vendor\" of \"checks\" uses unknown agent \"reviewer\"",
+      "state": "checks"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/reviewer.agent.yaml: output.type: Invalid discriminator value. Expected 'text' | 'choice' | 'json'\nerror hubs/billing/workflows/invoice.workflow.yaml (checks): Branch \"vendor\" of \"checks\" uses unknown agent \"reviewer\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": 5,
+    "verdict": "same"
+  }
+}

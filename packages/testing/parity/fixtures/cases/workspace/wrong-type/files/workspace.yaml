@@ -1,0 +1,22 @@
+# Made-up test workspace for parity recordings. No real data.
+id: acme
+name: Acme
+description: Parity fixture workspace.
+privacy:
+  localOnly: false
+budget:
+  currency: EUR
+  perRun: a lot
+  monthly: 20
+defaults:
+  runtime: inprocess
+  model: default
+assistant:
+  model: fast
+  params:
+    temperature: 0.2
+  maxSteps: 8
+  connectors: true
+  instructions: Keep answers short.
+appearance:
+  characters: minimal

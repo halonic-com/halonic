@@ -1,0 +1,49 @@
+{
+  "reference": "784f78d",
+  "case": "connector/missing-required",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/connectors/files.connector.yaml",
+      "flatPath": "connectors/files.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [
+        {
+          "path": [
+            "transport"
+          ],
+          "code": "invalid_union",
+          "message": "Invalid input",
+          "line": 4,
+          "col": 3
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "connectors/files.connector.yaml",
+      "message": "transport: Invalid input",
+      "line": 4,
+      "col": 3
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses unknown connector \"files\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error connectors/files.connector.yaml: transport: Invalid input\nerror hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses unknown connector \"files\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": 4,
+    "verdict": "same"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "a SKILL.md without front matter",
+  "kind": "skill",
+  "fault": "missing-required",
+  "expect": {
+    "file": "library/skills/plain-words/SKILL.md",
+    "path": "",
+    "line": 1
+  }
+}

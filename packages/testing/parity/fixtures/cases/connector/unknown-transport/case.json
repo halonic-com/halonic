@@ -1,0 +1,10 @@
+{
+  "about": "a transport kind that doesn't exist",
+  "kind": "connector",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "library/connectors/tracker.connector.yaml",
+    "path": "transport.ftp",
+    "line": 3
+  }
+}

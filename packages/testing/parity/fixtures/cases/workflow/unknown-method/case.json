@@ -1,0 +1,10 @@
+{
+  "about": "a task calls a method the agent doesn't have",
+  "kind": "workflow",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.method",
+    "line": 7
+  }
+}
