@@ -1,8 +1,8 @@
 # @halonicjs/google-setup
 
 The rules of the Google setup flow in Studio's Inbox, as pure logic over the ports. For now: the
-client secret store with staged replace, its token names, and the `GOCSPX-` detector. The progress
-record, the step generator, the checks after sign-in and the error classification follow.
+client secret store with staged replace, its token names, the `GOCSPX-` detector and the step
+generator. The progress record, the checks after sign-in and the error classification follow.
 
 - **Layer:** core
 - **Owner:** priya
@@ -24,6 +24,26 @@ await secrets.discard(clientRef); // or: Google refused it, the old one stays
 
 looksLikeGoogleClientSecret(noteText); // hold a note that holds a secret
 ```
+
+## Setup steps
+
+`setupSteps(input)` turns the route, the account type and the ticked services' sheet fields
+(`googleApis`, `googleScopes`, `googleCheck`) into the steps of design 3.2. It returns ids, values
+and links; Studio owns the sentences. Nothing in it names a service: everything service-specific
+comes from the sheets.
+
+| Id            | Step                 | Carries                                                         |
+| ------------- | -------------------- | --------------------------------------------------------------- |
+| `project`     | Google Cloud project | New project link, `halonic`, Workspace: inside the organisation |
+| `apis`        | Switch on the APIs   | one row per API with its Enable link; Switch on all for 2+      |
+| `consent`     | Consent screen       | app name and e-mails; personal: External and `in-production`    |
+| `scopes`      | Scopes (D4 switch)   | one row per scope with each service's reason, Copy all scopes   |
+| `client`      | Create the client    | `Halonic desktop`; done when step 6 saves a client ID           |
+| `credentials` | Client ID and secret | Clients link, for a lost secret                                 |
+| `sign-in`     | Sign in with Google  | scopes to grant, one check per service, admin note or warning   |
+
+Progress keys ticks by id, so `listScopes: false` renumbers the steps without moving any tick.
+Links open in the project only when its ID is valid; otherwise `projectIdIgnored` is true.
 
 ## Token names
 
