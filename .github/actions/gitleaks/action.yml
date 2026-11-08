@@ -17,7 +17,9 @@ runs:
       # and still reports no leaks, so the commit count is checked as well.
       # The log only says how many leaks there are. The report also holds the
       # author, email and commit message, which may be personal, so only the
-      # commit, file, line and rule are printed from it.
+      # commit, file, line and rule are printed from it. A pull request author
+      # picks the file names, so each field is encoded as the workflow-command
+      # spec requires. Otherwise a newline in a name could start a new command.
       run: |
         image=$(sed -n 's/^FROM //p' "$GITHUB_ACTION_PATH/Dockerfile")
         args=(git --redact --no-banner --exit-code 1 --report-format json --report-path /out/gitleaks.json)
@@ -33,7 +35,8 @@ runs:
         set -e
         cat "$log"
         if [ -s "$RUNNER_TEMP/gitleaks.json" ]; then
-          jq -r '.[] | "::error title=gitleaks::commit \(.Commit[0:7]), \(.File):\(.StartLine) [\(.RuleID)]"' "$RUNNER_TEMP/gitleaks.json"
+          jq -r 'def escape: tostring | gsub("%"; "%25") | gsub("\r"; "%0D") | gsub("\n"; "%0A");
+            .[] | "::error title=gitleaks::commit \(.Commit[0:7] | escape), \(.File | escape):\(.StartLine) [\(.RuleID | escape)]"' "$RUNNER_TEMP/gitleaks.json"
         fi
         rm -f "$RUNNER_TEMP/gitleaks.json"
         scanned=$(grep -oE '[0-9]+ commits scanned' "$log" | grep -oE '^[0-9]+' || true)
