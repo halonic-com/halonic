@@ -1,9 +1,10 @@
-import { fixedIds } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClientSecretError } from "./client-secret-error.ts";
+import { clientSecretReader } from "./client-secret-reader.ts";
 import { clientSecretStore } from "./client-secret-store.ts";
 import { type MemoryTokens, memoryTokens } from "./memory-tokens.test-helper.ts";
+import { testIds, unsavedClientRef } from "./test-ids.test-helper.ts";
 
 // Fake values only. Short enough that the leak check's client secret pattern
 // would not match even with the GOCSPX- prefix.
@@ -12,17 +13,18 @@ const secondSecret = "fake-client-secret-two";
 
 let tokens: MemoryTokens;
 
+/** A store and a reader over the same new memory tokens, as one object. */
 function newStore() {
   tokens = memoryTokens();
-  return clientSecretStore(tokens, fixedIds());
+  return { ...clientSecretStore(tokens, testIds()), ...clientSecretReader(tokens) };
 }
 
 verifies("google-setup.save-client-secret", () => {
   it("saves the secret under google-client-<ref> and returns only the ref", async () => {
     const secrets = newStore();
     const clientRef = await secrets.saveClientSecret(firstSecret);
-    expect(clientRef).toBe("gclient_1");
-    expect(await tokens.get("google-client-gclient_1")).toBe(firstSecret);
+    expect(clientRef).toBe("gclient_mjuohs00_00000001");
+    expect(await tokens.get("google-client-gclient_mjuohs00_00000001")).toBe(firstSecret);
   });
 
   it("makes a new ref for every save", async () => {
@@ -54,7 +56,7 @@ verifies("google-setup.staged-replace", () => {
     await secrets.stageClientSecret(clientRef, secondSecret);
     expect(await secrets.readClientSecret(clientRef)).toBe(firstSecret);
     expect(await secrets.readStagedClientSecret(clientRef)).toBe(secondSecret);
-    expect(await tokens.get("google-client-gclient_1-staged")).toBe(secondSecret);
+    expect(await tokens.get(`google-client-${clientRef}-staged`)).toBe(secondSecret);
   });
 
   it("swaps the staged secret in on promote", async () => {
@@ -84,7 +86,7 @@ verifies("google-setup.staged-replace", () => {
 
   it("refuses to stage for a ref with no saved secret", async () => {
     const secrets = newStore();
-    await expect(secrets.stageClientSecret("gclient_9", secondSecret)).rejects.toMatchObject({
+    await expect(secrets.stageClientSecret(unsavedClientRef, secondSecret)).rejects.toMatchObject({
       reason: "not-saved",
     });
     expect(tokens.values.size).toBe(0);
@@ -103,9 +105,11 @@ verifies("google-setup.replace-before-sign-in", () => {
 
   it("refuses to replace a secret that was never saved", async () => {
     const secrets = newStore();
-    await expect(secrets.replaceClientSecret("gclient_9", secondSecret)).rejects.toMatchObject({
-      reason: "not-saved",
-    });
+    await expect(secrets.replaceClientSecret(unsavedClientRef, secondSecret)).rejects.toMatchObject(
+      {
+        reason: "not-saved",
+      },
+    );
   });
 });
 
@@ -128,7 +132,9 @@ verifies("google-setup.remove-client-secret", () => {
 
   it("is not an error when nothing is saved", async () => {
     const secrets = newStore();
-    expect(await secrets.removeClientSecret("gclient_9", { usedByOthers: false })).toBe("removed");
+    expect(await secrets.removeClientSecret(unsavedClientRef, { usedByOthers: false })).toBe(
+      "removed",
+    );
   });
 
   it("refuses a bad ref even when the secret is kept", async () => {
@@ -164,7 +170,9 @@ verifies("google-setup.secret-never-shown", () => {
     seen.push(await secrets.replaceClientSecret(clientRef, firstSecret));
     seen.push(await secrets.discard(clientRef));
     seen.push(await secrets.promote(clientRef).catch((error: unknown) => error));
-    seen.push(await secrets.stageClientSecret("gclient_9", secondSecret).catch((e: unknown) => e));
+    seen.push(
+      await secrets.stageClientSecret(unsavedClientRef, secondSecret).catch((e: unknown) => e),
+    );
     seen.push(await secrets.removeClientSecret(clientRef, { usedByOthers: false }));
 
     const errors = seen.filter((value) => value instanceof ClientSecretError);

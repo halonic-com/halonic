@@ -1,39 +1,43 @@
-/**
- * A reference from the `IdGenerator`, such as `gclient_mfx3k2a1_a1b2c3d4`:
- * lower-case letters and digits in parts joined by `_`. Lower case and no `-`
- * matter because the `TokenStore` treats names that differ only in case or in
- * `-` versus `_` as the same token, so two different refs could otherwise
- * land on one stored name.
- */
-const refPattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
-
-/**
- * The longest ref that still fits the longest name built from it,
- * `google-client-<ref>-staged`, into the 128 characters a token name may have.
- */
-const maxRefLength = 128 - "google-client-".length - "-staged".length;
-
 /** The prefix `saveClientSecret` gives the `IdGenerator` for a new client ref: `gclient_…`. */
 export const clientRefPrefix = "gclient";
 
+/** The prefix for a Google account's ref in its setup record: `gaccount_…`. */
+export const accountRefPrefix = "gaccount";
+
 /**
- * Checks a client or account ref before it becomes part of a token name. Refs
- * come back from the setup record, so a changed record must not reach another
- * token.
+ * The shape of an id from `randomIds` with the given prefix: the prefix, `_`,
+ * the time in base 36 (at most 11 digits for any `Date`), `_` and 4 bytes in
+ * hex, such as `gclient_mfx3k2a1_a1b2c3d4`.
  *
- * @throws RangeError when the ref breaks the rule. The message holds the ref,
- *   which is an id, never a secret.
+ * Lower case and no `-` matter because the `TokenStore` treats names that
+ * differ only in case or in `-` versus `_` as the same token. Ending in hex
+ * digits means no ref ends in `_staged`, so `google-client-<ref>` can never be
+ * another ref's `google-client-<ref>-staged`.
  */
-function checkRef(ref: string): string {
-  if (ref.length > maxRefLength || !refPattern.test(ref)) {
+function randomIdPattern(prefix: string): RegExp {
+  return new RegExp(`^${prefix}_[0-9a-z]{1,11}_[0-9a-f]{8}$`);
+}
+
+type RefPrefix = typeof clientRefPrefix | typeof accountRefPrefix;
+
+const refPatterns: Record<RefPrefix, RegExp> = {
+  [clientRefPrefix]: randomIdPattern(clientRefPrefix),
+  [accountRefPrefix]: randomIdPattern(accountRefPrefix),
+};
+
+/**
+ * Checks a ref before it becomes part of a token name. Refs come back from
+ * the setup record, so an edited record must not reach another token (plan
+ * D2, from the security review).
+ *
+ * @throws RangeError when the ref isn't a `randomIds` id with the given
+ *   prefix. The message holds the ref, which is an id, never a secret.
+ */
+function checkRef(ref: string, prefix: RefPrefix): string {
+  if (!refPatterns[prefix].test(ref)) {
     throw new RangeError(
-      `"${ref}" is not a Google setup ref. Use lower-case letters and digits joined by "_", at most ${maxRefLength} characters.`,
+      `"${ref}" is not a Google setup ref. It must look like ${prefix}_mfx3k2a1_a1b2c3d4.`,
     );
-  }
-  // `google-client-<a>-staged` and `google-client-<b>` are the same token when
-  // b is `<a>_staged`, so no ref may end in that word.
-  if (ref.endsWith("_staged")) {
-    throw new RangeError(`"${ref}" is not a Google setup ref: it may not end in "_staged".`);
   }
   return ref;
 }
@@ -42,10 +46,10 @@ function checkRef(ref: string): string {
  * The token name of the client secret in use for a client ref.
  *
  * @example
- * clientSecretName("gclient_1"); // "google-client-gclient_1"
+ * clientSecretName("gclient_mfx3k2a1_a1b2c3d4"); // "google-client-gclient_mfx3k2a1_a1b2c3d4"
  */
 export function clientSecretName(clientRef: string): string {
-  return `google-client-${checkRef(clientRef)}`;
+  return `google-client-${checkRef(clientRef, clientRefPrefix)}`;
 }
 
 /**
@@ -53,21 +57,19 @@ export function clientSecretName(clientRef: string): string {
  * (design 4.3).
  *
  * @example
- * stagedClientSecretName("gclient_1"); // "google-client-gclient_1-staged"
+ * stagedClientSecretName("gclient_mfx3k2a1_a1b2c3d4"); // "google-client-gclient_mfx3k2a1_a1b2c3d4-staged"
  */
 export function stagedClientSecretName(clientRef: string): string {
-  return `google-client-${checkRef(clientRef)}-staged`;
+  return `google-client-${checkRef(clientRef, clientRefPrefix)}-staged`;
 }
 
 /**
- * The token name of a Google account's refresh token, one per account ref from
- * the setup record. `google-account` in the integration sheets is the name of
- * the access token the host hands to an integration, not a stored token, so
- * the refresh token gets its own name per account.
+ * The token name of a Google account's refresh token, one per account ref
+ * from the setup record (plan D2). Never an e-mail address.
  *
  * @example
- * refreshTokenName("gaccount_1"); // "google-refresh-gaccount_1"
+ * refreshTokenName("gaccount_mfx3k2a1_a1b2c3d4"); // "google-account-gaccount_mfx3k2a1_a1b2c3d4"
  */
 export function refreshTokenName(accountRef: string): string {
-  return `google-refresh-${checkRef(accountRef)}`;
+  return `google-account-${checkRef(accountRef, accountRefPrefix)}`;
 }

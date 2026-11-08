@@ -10,8 +10,8 @@ export type ClientSecretRemoval = "removed" | "kept-for-other-accounts";
  * (plan D1) under a random client ref, never under an e-mail address or a
  * client ID (plan D2).
  *
- * No call returns a secret except the two reads, which the sign-in and the
- * secret check use to talk to Google. Errors never hold a secret.
+ * No call returns a secret, and errors never hold one. Reading a secret back
+ * is `clientSecretReader`, which only the host's entry point exports.
  */
 export interface ClientSecretStore {
   /**
@@ -58,12 +58,6 @@ export interface ClientSecretStore {
     clientRef: string,
     options: { readonly usedByOthers: boolean },
   ): Promise<ClientSecretRemoval>;
-
-  /** The secret in use, or `null` when none is saved. For the sign-in only. */
-  readClientSecret(clientRef: string): Promise<string | null>;
-
-  /** The staged secret, or `null`. For the token refresh that checks it only. */
-  readStagedClientSecret(clientRef: string): Promise<string | null>;
 }
 
 /**
@@ -131,14 +125,6 @@ export function clientSecretStore(tokens: TokenStore, ids: IdGenerator): ClientS
         await tokens.remove(name);
       }
       return "removed";
-    },
-
-    async readClientSecret(clientRef) {
-      return tokens.get(clientSecretName(clientRef));
-    },
-
-    async readStagedClientSecret(clientRef) {
-      return tokens.get(stagedClientSecretName(clientRef));
     },
   };
 }

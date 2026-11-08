@@ -8,9 +8,9 @@ When a Google client secret is saved, the store shall trim the spaces around it,
 
 ## Examples
 
-- Given an empty store and ids from `fixedIds()`,
+- Given an empty store and ids from `randomIds` whose next client ref is `gclient_mjuohs00_00000001`,
   when a secret is saved,
-  then the call returns `gclient_1` and the token `google-client-gclient_1` holds the secret.
+  then the call returns `gclient_mjuohs00_00000001` and the token `google-client-gclient_mjuohs00_00000001` holds the secret.
 - Given a secret pasted with spaces and a line break around it,
   when it is saved and read back,
   then the value has no spaces around it.

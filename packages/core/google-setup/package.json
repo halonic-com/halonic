@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The Google setup flow's rules: the client secret store with staged replace, and later the progress, steps, checks and error classification.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./host": "./src/host.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

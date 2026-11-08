@@ -6,8 +6,8 @@ Owner: priya · Layer: core · Read the root `AGENTS.md` first; this file adds l
 
 The Google setup flow's rules: the client secret store with staged replace, progress, steps, checks and error classification.
 
-This package may change only through tasks that name it. Its public API is `src/index.ts`;
-everything else is internal.
+This package may change only through tasks that name it. Its public API is `src/index.ts`,
+plus `src/host.ts` for host code only (the client secret reader); everything else is internal.
 
 ## Commands
 

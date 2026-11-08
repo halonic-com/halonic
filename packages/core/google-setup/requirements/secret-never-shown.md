@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-698 (build plan D6)
 
-The client secret store shall never put a client secret in a return value other than the two reads, in an error message or in a log line.
+The client secret store shall never put a client secret in a return value, which only `clientSecretReader` may do, in an error message or in a log line.
 
 ## Examples
 
