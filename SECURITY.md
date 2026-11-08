@@ -58,5 +58,8 @@ Some things are by design and are not security bugs on their own:
 - Model output is untrusted input. A way for model output to do something you
   didn't approve is a security bug.
 
+What Halonic protects, from whom, and which mitigations exist today are in the
+[threat model](docs/security/threat-model.md).
+
 Problems in a third-party dependency are best reported to that project. Tell us
 too if Halonic is affected, so we can update.
