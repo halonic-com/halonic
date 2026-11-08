@@ -29,8 +29,11 @@ typecheck, lint and test for the packages your change affects.
 | `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                  |
 
 `trace`, `requirement-guard` and `dco` are wired in already and report
-"not active yet". They start checking once the repo has requirements and
-decision records to check against.
+"not active yet" until their real versions land. `trace` will check that every
+active requirement has a test that ran and passed; `requirement-guard`, that
+changing a requirement, golden file or test comes with an approved decision
+note; `dco`, that every commit carries the sign-off described in
+[CONTRIBUTING.md](../../CONTRIBUTING.md#developer-certificate-of-origin-dco).
 
 ## Licences
 
