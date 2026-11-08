@@ -97,8 +97,16 @@ verifies("routines.cron-rejects-bad-expressions", () => {
     expect(() => parseCron("1/2/3 * * * *")).toThrow('Bad part "1/2/3"');
   });
 
-  it("rejects a range with an empty end", () => {
-    expect(() => parseCron("1-/5 * * * *")).toThrow('"" is not a number');
+  it("rejects a range with an empty end, naming the part", () => {
+    expect(() => parseCron("1-/5 * * * *")).toThrow('Bad range "1-" in "1-/5"');
+    expect(() => parseCron("-5 * * * *")).toThrow('Bad range "-5"');
+  });
+
+  it("names an unknown macro instead of counting its fields", () => {
+    expect(() => parseCron("@reboot")).toThrow(CronError);
+    expect(() => parseCron("@reboot")).toThrow(
+      'Unknown macro "@reboot"; use one of @hourly, @daily, @midnight, @weekly, @monthly, @yearly, @annually',
+    );
   });
 
   it("rejects a range with more than two ends", () => {

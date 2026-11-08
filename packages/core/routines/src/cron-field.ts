@@ -40,7 +40,7 @@ function partValues(part: string, range: FieldRange): number[] {
   const stepText = pieces[1];
   const step = stepText === undefined ? 1 : parseStep(stepText, part);
 
-  const { low, high } = spanBounds(span, stepText !== undefined, range);
+  const { low, high } = spanBounds(span, part, stepText !== undefined, range);
   if (low < range.min || high > range.max || low > high) {
     throw new CronError(`"${part}" is outside ${range.min}-${range.max}`);
   }
@@ -60,6 +60,7 @@ function parseStep(stepText: string, part: string): number {
 // classic cron; without a step it is just that value.
 function spanBounds(
   span: string,
+  part: string,
   hasStep: boolean,
   range: FieldRange,
 ): { low: number; high: number } {
@@ -69,7 +70,11 @@ function spanBounds(
     const value = fieldValue(span, range);
     return { low: value, high: hasStep ? range.max : value };
   }
-  if (ends.length !== 2) throw new CronError(`Bad range "${span}"`);
+  if (ends.length !== 2 || ends.includes("")) {
+    // Name the whole part too when a step hides behind the range ("1-/5").
+    const where = span === part ? "" : ` in "${part}"`;
+    throw new CronError(`Bad range "${span}"${where}`);
+  }
   return { low: fieldValue(ends[0] ?? "", range), high: fieldValue(ends[1] ?? "", range) };
 }
 

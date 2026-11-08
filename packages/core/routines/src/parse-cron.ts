@@ -63,6 +63,10 @@ const WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 export function parseCron(expression: string): Cron {
   const trimmed = expression.trim();
   const text = MACROS[trimmed.toLowerCase()] ?? trimmed;
+  if (text.startsWith("@")) {
+    // Without this, "@reboot" would be reported as "got 1 field".
+    throw new CronError(`Unknown macro "${text}"; use one of ${Object.keys(MACROS).join(", ")}`);
+  }
   const fields = text.split(/\s+/);
   if (fields.length !== 5) {
     throw new CronError(
