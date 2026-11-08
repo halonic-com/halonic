@@ -9,7 +9,8 @@
     "@halonicjs/format",
     "@halonicjs/workflow",
     "@halonicjs/routines",
-    "@halonicjs/app"
+    "@halonicjs/app",
+    "@halonicjs/google-setup"
   ],
   "published": [
     "halonic"
