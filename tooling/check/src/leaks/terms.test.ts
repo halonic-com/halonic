@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadTerms, parseTermList, TermMatcher } from "./terms.ts";
+import { loadTerms, normalise, parseTermList, TermMatcher } from "./terms.ts";
 import { testTerms } from "./test-values.ts";
 
 // Made-up stand-in terms: the real list never enters the repo.
@@ -53,6 +53,13 @@ describe("TermMatcher", () => {
   it("is empty when no terms are configured", () => {
     expect(new TermMatcher([]).isEmpty).toBe(true);
     expect(new TermMatcher(["  ", "--"]).isEmpty).toBe(true);
+  });
+});
+
+describe("normalise", () => {
+  it("decodes percent escapes, and replaces broken ones with a space", () => {
+    expect(normalise("a%20b")).toBe("a b");
+    expect(normalise("a%E0%A4b")).toBe("a b");
   });
 });
 

@@ -106,6 +106,10 @@ active.
 import { composeWorkspace, loadCases } from "@halonicjs/testing-parity";
 
 for (const parityCase of loadCases("packages/testing/parity/fixtures")) {
-  composeWorkspace("packages/testing/parity/fixtures", parityCase, `/tmp/parity/${parityCase.id}`);
+  composeWorkspace(
+    "packages/testing/parity/fixtures",
+    parityCase,
+    `${scratchDir}/${parityCase.id}`,
+  );
 }
 ```

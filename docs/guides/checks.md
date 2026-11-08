@@ -14,7 +14,7 @@ typecheck, lint and test for the packages your change affects.
 | `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                      |
 | `pnpm new package <layer>/<name>`           | creates an empty package that passes every check                                                                                                 |
 | `pnpm new feature <name>`                   | creates an empty Studio feature and adds it to the Studio's feature list                                                                         |
-| `pnpm who-touches [<package>]`              | the open pull requests that change a package; run it before you start                                                                            |
+| `pnpm who-touches [<package>]`              | the open pull requests that change a package; run it before you start                                                                           |
 
 ## `pnpm check` rules
 
