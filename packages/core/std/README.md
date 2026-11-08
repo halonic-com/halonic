@@ -18,8 +18,9 @@ password hash from `@noble/hashes` in the package that implements
 `constantTimeEqual` compares hashes and tokens without leaking where they
 differ. Never compare those with `===`.
 
-For plain data there are `deepEqual` (key order doesn't matter) and
-`deepClone` (the core has no `structuredClone`). `slugify` and `uniqueName`
+For plain data there are `deepEqual` (key order doesn't matter),
+`deepClone` (the core has no `structuredClone`) and `isPlainObject`, which
+tells a plain record apart from a `Date`, a `Map` or a class instance. `slugify` and `uniqueName`
 turn display names into file-safe ids, as the old Studio did. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, and `Emitter` is a
 small typed event emitter.

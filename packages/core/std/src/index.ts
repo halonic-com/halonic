@@ -7,6 +7,7 @@ export { deepEqual } from "./deep-equal.ts";
 export { Emitter, type Listener } from "./emitter.ts";
 export { bytesToHex } from "./hex.ts";
 export { fixedIds, type IdGenerator, type RandomBytes, randomIds } from "./ids.ts";
+export { isPlainObject } from "./plain-data.ts";
 export { posixPath } from "./posix-path.ts";
 export { type Err, err, mapResult, type Ok, ok, type Result, unwrap } from "./result.ts";
 export { slugify, uniqueName } from "./text.ts";

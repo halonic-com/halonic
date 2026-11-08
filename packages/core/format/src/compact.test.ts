@@ -44,8 +44,33 @@ verifies("format.compact", () => {
     expect(result.meta.tags).not.toBe(input.meta.tags);
   });
 
-  test("reads any other object, such as a Date, through its own keys, like the old app", () => {
-    expect(compact({ at: new Date(5), keep: 1 })).toStrictEqual({ keep: 1 });
+  // Allowed difference: the old app turned these into {} and dropped them.
+  test("refuses any object that isn't a plain object or an array, and says where it is", () => {
+    class Step {}
+    expect(() => compact({ at: new Date(5), keep: 1 })).toThrow(
+      new TypeError("compact writes plain data only, but value.at is a Date."),
+    );
+    expect(() => compact({ steps: [{ seen: new Map() }] })).toThrow(
+      new TypeError("compact writes plain data only, but value.steps[0].seen is a Map."),
+    );
+    expect(() => compact([new Step()])).toThrow(
+      new TypeError("compact writes plain data only, but value[0] is a Step."),
+    );
+  });
+
+  test("compacts objects without a prototype, as Object.create(null) makes them", () => {
+    const input = Object.assign(Object.create(null), { name: "triage", tags: [] });
+    expect(compact(input)).toStrictEqual({ name: "triage" });
+  });
+
+  // Allowed difference: the old app assigned the key, which set the result's prototype instead.
+  test("keeps a __proto__ key from JSON as an ordinary key", () => {
+    const result = compact(JSON.parse('{"__proto__": {"a": 1}, "empty": []}')) as object;
+    expect(Object.keys(result)).toStrictEqual(["__proto__"]);
+    expect(Object.getOwnPropertyDescriptor(result, "__proto__")?.value).toStrictEqual({ a: 1 });
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect("a" in result).toBe(false);
+    expect(Object.prototype).not.toHaveProperty("a");
   });
 
   describe("matches the old app's compact", () => {
