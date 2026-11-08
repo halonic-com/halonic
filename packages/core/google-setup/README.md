@@ -1,9 +1,8 @@
 # @halonicjs/google-setup
 
 The rules of the Google setup flow in Studio's Inbox, as pure logic over the ports. For now: the
-token names of the client secret and the refresh token, and the `GOCSPX-` detector. The client
-secret store, the progress record, the step generator, the checks after sign-in and the error
-classification follow.
+client secret store with staged replace, its token names, and the `GOCSPX-` detector. The progress
+record, the step generator, the checks after sign-in and the error classification follow.
 
 - **Layer:** core
 - **Owner:** priya
@@ -12,9 +11,17 @@ classification follow.
 ## Example
 
 ```ts
-import { clientSecretName, looksLikeGoogleClientSecret } from "@halonicjs/google-setup";
+import { clientSecretStore, looksLikeGoogleClientSecret } from "@halonicjs/google-setup";
 
-clientSecretName("gclient_1"); // "google-client-gclient_1"
+const secrets = clientSecretStore(tokens, ids);
+const clientRef = await secrets.saveClientSecret(pasted); // only the ref comes back
+
+// Replacing a rotated secret after the first sign-in:
+await secrets.stageClientSecret(clientRef, pastedAgain);
+// ...refresh a token with secrets.readStagedClientSecret(clientRef)...
+await secrets.promote(clientRef); // Google accepted it
+await secrets.discard(clientRef); // or: Google refused it, the old one stays
+
 looksLikeGoogleClientSecret(noteText); // hold a note that holds a secret
 ```
 
@@ -32,3 +39,12 @@ e-mail address or a client ID.
 
 `google-account` in the Gmail and Drive sheets names the access token the host hands to an
 integration. It isn't a stored token, so the refresh token gets a name per account.
+
+## Rules
+
+- No call returns a secret except `readClientSecret` and `readStagedClientSecret`, and no error
+  message holds one.
+- Which accounts share a client ref is in the setup records, so `removeClientSecret` takes
+  `usedByOthers` from the caller.
+- Before the first sign-in there is nothing to test a new secret with, so the caller uses
+  `replaceClientSecret` instead of staging.

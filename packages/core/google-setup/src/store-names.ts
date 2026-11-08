@@ -13,7 +13,7 @@ const refPattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
  */
 const maxRefLength = 128 - "google-client-".length - "-staged".length;
 
-/** The prefix of a client ref from the `IdGenerator`: `gclient_…`. */
+/** The prefix `saveClientSecret` gives the `IdGenerator` for a new client ref: `gclient_…`. */
 export const clientRefPrefix = "gclient";
 
 /**
