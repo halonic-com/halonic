@@ -1,10 +1,10 @@
 # ports.definition-store-private-entries
 
-- Status: active
+- Status: draft
 - Since: 0.1.0
-- Source: HAL-9 plan section 11 (the store layer refuses `.git`, `.studio`, `.env` and symlinks), with the stricter wording decided on HAL-181
+- Source: HAL-9 plan section 11 (the store layer refuses `.git`, `.studio`, `.env` and symlinks), with the stricter wording decided on HAL-181. It becomes active when the `definition-store` contract suite proves it (HAL-887 found that no adapter or suite does yet)
 
-Every `DefinitionSource` and `DefinitionStore` method shall refuse, with a `RangeError`, a path with a private segment, and any symbolic link, Windows junction or other reparse point in any segment, wherever it points. A segment is private when, after removing the code points HFS+ ignores, ignoring case and removing trailing dots and spaces, it is `.git`, `.studio`, `.env` or `.envrc`, or starts with `.env.`; and, whatever its name, when it holds a `:` or a `~` followed by a digit. `list()` shall leave these entries out instead of throwing. The `definition-store` contract suite checks every adapter against this.
+The `DefinitionSource` and `DefinitionStore` ports shall refuse in every method, with a `RangeError`, a path with a private segment, and any symbolic link, Windows junction or other reparse point in any segment, wherever it points. A segment is private when, after removing the code points HFS+ ignores, ignoring case and removing trailing dots and spaces, it is `.git`, `.studio`, `.env` or `.envrc`, or starts with `.env.`; and, whatever its name, when it holds a `:` or a `~` followed by a digit. `list()` shall leave these entries out instead of throwing. The `definition-store` contract suite shall check every adapter against this.
 
 ## Examples
 

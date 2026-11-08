@@ -1,5 +1,5 @@
-import { typeTest } from "@halonicjs/testing-spec";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import type { TrustRecord, TrustStore } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
@@ -22,7 +22,7 @@ const record: TrustRecord = {
   origin: "prompt",
 };
 
-describe("ports.trust-store", () => {
+verifies("ports.trust-store", () => {
   typeTest("only stores records: get, grant, revoke and list", () => {
     expectTypeOf<keyof TrustStore>().toEqualTypeOf<"get" | "grant" | "revoke" | "list">();
     expectTypeOf<TrustStore["get"]>().parameters.toEqualTypeOf<[location: string]>();

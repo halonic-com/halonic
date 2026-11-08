@@ -1,4 +1,5 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import type { ChatRequest, ChatResponse, ChatStreamEvent, LlmProvider } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
@@ -32,7 +33,7 @@ const streaming: LlmProvider = {
   },
 };
 
-describe("ports.llm-stream", () => {
+verifies("ports.llm-stream", () => {
   it("keeps stream optional, so a provider with only chat is still a provider", () => {
     expectTypeOf<LlmProvider["stream"]>().toEqualTypeOf<
       ((request: ChatRequest) => AsyncIterable<ChatStreamEvent>) | undefined

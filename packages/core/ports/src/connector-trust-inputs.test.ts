@@ -1,4 +1,5 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import type {
   ConnectorFactory,
   ConnectorFactoryContext,
@@ -23,7 +24,7 @@ const pin: ConnectorPin = {
   version: "2.3.1",
 };
 
-describe("ports.connector-trust-inputs", () => {
+verifies("ports.connector-trust-inputs", () => {
   it("needs the trust grant, which is null for an untrusted workspace", () => {
     const grant: TrustGrant = { location: "/workspaces/acme", fingerprint: "hfp1:ab" };
     const trusted: ConnectorFactoryContext = { ...base, trust: grant };
