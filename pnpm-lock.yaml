@@ -247,6 +247,9 @@ importers:
 
   packages/core/app:
     dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../events
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
