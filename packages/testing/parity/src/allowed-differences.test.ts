@@ -1,8 +1,34 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseAllowedDifferences, readAllowedDifferences } from "./allowed-differences.ts";
 
 const file = fileURLToPath(new URL("../allowed-differences.json", import.meta.url));
+const packagesFolder = fileURLToPath(new URL("../../..", import.meta.url));
+
+/** Every requirement ID in the repo, read from the "# <id>" heading of each requirements/*.md file. */
+function requirementIds(): Set<string> {
+  const ids = new Set<string>();
+  for (const group of readdirSync(packagesFolder, { withFileTypes: true })) {
+    if (!group.isDirectory()) continue;
+    for (const pkg of readdirSync(join(packagesFolder, group.name), { withFileTypes: true })) {
+      if (!pkg.isDirectory()) continue;
+      const folder = join(packagesFolder, group.name, pkg.name, "requirements");
+      let names: string[];
+      try {
+        names = readdirSync(folder);
+      } catch {
+        continue;
+      }
+      for (const name of names.filter((entry) => entry.endsWith(".md"))) {
+        const heading = /^# (\S+)/.exec(readFileSync(join(folder, name), "utf8"));
+        if (heading?.[1]) ids.add(heading[1]);
+      }
+    }
+  }
+  return ids;
+}
 
 const difference = {
   id: "memory-run-store-expected-seq",
@@ -67,5 +93,12 @@ describe("parity.allowed-differences-checked", () => {
       "contracts.blob-store",
       "contracts.run-store",
     ]);
+  });
+
+  it("cites only requirements that exist", () => {
+    const known = requirementIds();
+    for (const entry of readAllowedDifferences(file)) {
+      expect(known.has(entry.requirement), `${entry.id} cites ${entry.requirement}`).toBe(true);
+    }
   });
 });

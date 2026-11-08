@@ -5,7 +5,7 @@
     "area": "memory DefinitionStore: paths",
     "old": "Rewrote a path before using it: a backslash became a slash, one leading \"./\" or \"/\" was dropped, and trailing slashes were dropped, so \"a\\\\b\", \"./a\" and \"a/\" were taken as \"a/b\", \"a\" and \"a\". A \"..\" or empty segment was kept as a literal name, and list(\"\") listed every file.",
     "new": "Refuses a path that is absolute, contains a backslash or NUL, or has a \".\", \"..\" or empty segment, with a RangeError and before the store is touched. That includes \"a\\\\b\", \"./a\", \"a/\", \"..\" and \"\"; list() with no folder lists every file.",
-    "why": "One path names one file in every store. The file system store must refuse paths that could leave the workspace, and the memory store follows the same contract so a test can't pass on memory and fail on disk.",
+    "why": "One path names one file in every store. The file system store must refuse paths that could leave the workspace, and the memory store follows the same contract so a test can't pass on memory and fail on disk. See also contracts.definition-store and adapter-memory.definition-store.",
     "status": "signed-off"
   },
   {
