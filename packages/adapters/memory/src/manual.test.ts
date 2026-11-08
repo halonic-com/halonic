@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ManualClock } from "./clock.ts";
-import { SequentialIds } from "./ids.ts";
+import { fixedIds } from "./ids.ts";
 import { MemorySecrets } from "./secrets.ts";
 
 describe("ManualClock (adapter-memory.manual-clock)", () => {
@@ -28,13 +28,13 @@ describe("ManualClock (adapter-memory.manual-clock)", () => {
   });
 });
 
-describe("MemorySecrets and SequentialIds (adapter-memory.secrets, adapter-memory.ids)", () => {
+describe("MemorySecrets and fixedIds (adapter-memory.secrets, adapter-memory.ids)", () => {
   it("refuses a configured secret with a bad name", () => {
     expect(() => new MemorySecrets({ "bad name": "x" })).toThrow(RangeError);
   });
 
   it("counts each prefix on its own from 1", () => {
-    const ids = new SequentialIds();
+    const ids = fixedIds();
     expect([ids.next("run"), ids.next("run"), ids.next("event")]).toEqual([
       "run_1",
       "run_2",

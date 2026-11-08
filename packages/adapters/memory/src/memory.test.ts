@@ -9,6 +9,7 @@ import {
   tokenStoreContract,
 } from "@halonicjs/testing-contracts";
 import {
+  fixedIds,
   ManualClock,
   MemoryBlobStore,
   MemoryDefinitionStore,
@@ -16,7 +17,6 @@ import {
   MemoryRunStore,
   MemorySecrets,
   MemoryTokenStore,
-  SequentialIds,
 } from "./index.ts";
 
 // The old memory.test.ts ran the old contracts against these adapters; this file does the same.
@@ -27,4 +27,4 @@ recordStoreContract("memory", async () => new MemoryRecordStore());
 secretsContract("memory", async (values) => new MemorySecrets(values));
 tokenStoreContract("memory", async () => new MemoryTokenStore());
 clockContract("memory", async () => new ManualClock());
-idGeneratorContract("memory", async () => new SequentialIds());
+idGeneratorContract("memory", async () => fixedIds());

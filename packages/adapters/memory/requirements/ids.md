@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-114; old `784f78d:packages/core/util` `fixedIds`
 
-The sequential id generator shall give `<prefix>_<n>`, where `n` counts up from 1 for each prefix on its own, as the old `fixedIds` did, so recorded event logs keep the same ids.
+The id generator `fixedIds`, re-exported from `std`, shall give `<prefix>_<n>`, where `n` counts up from 1 for each prefix on its own, as the old `fixedIds` did, so recorded event logs keep the same ids.
 
 ## Examples
 

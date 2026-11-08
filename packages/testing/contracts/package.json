@@ -19,6 +19,7 @@
     "vitest": "catalog:"
   },
   "devDependencies": {
+    "@halonicjs/std": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
