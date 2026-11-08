@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   canary,
   client,
@@ -352,12 +352,28 @@ verifies("integration-kit.request-limits", () => {
   });
 
   it("doesn't count time the integration spends between reads", async () => {
-    const { http } = client(() => new Response(pieces(["a", "b"], 0)), { idleTimeoutMs: 10 });
-    const body = (await http.fetch("https://api.example.com/")).body;
-    const reader = body?.getReader();
-    await reader?.read();
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    expect((await reader?.read())?.done).toBe(false);
+    // A fake clock, so a slow runner can't let the idle timer win the race.
+    vi.useFakeTimers();
+    try {
+      const { http } = client(() => new Response(pieces(["a", "b", "c"], 0)), {
+        idleTimeoutMs: 10,
+      });
+      const { body } = await http.fetch("https://api.example.com/");
+      if (body === null) throw new Error("expected a body");
+      const reader = body.getReader();
+      const first = reader.read();
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await first).done).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(40);
+
+      // Read to the end: a piece the kit already read ahead would hide a stale idle timer.
+      const rest = readAll(reader);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await rest).toBe("bc");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("ends the whole request at the overall limit", async () => {
@@ -369,6 +385,15 @@ verifies("integration-kit.request-limits", () => {
     await expect(response.text()).rejects.toMatchObject({ name: "TimeoutError" });
   });
 });
+
+/** The rest of a body as text. */
+async function readAll(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<string> {
+  const decoder = new TextDecoder();
+  let text = "";
+  for (let next = await reader.read(); !next.done; next = await reader.read())
+    text += decoder.decode(next.value, { stream: true });
+  return text + decoder.decode();
+}
 
 /** A body that sends each piece after a pause, and can hang after the last one. */
 function pieces(
