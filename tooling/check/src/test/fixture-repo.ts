@@ -45,68 +45,85 @@ function agentsMdFor(pkg: FixturePackage): string {
   return `# ${pkg.directory}\n\nOwner: ${owner} · Layer: ${layer} · Read the root \`AGENTS.md\` first.\n\n## Scope\n\nA fixture.\n`;
 }
 
+/** What a fixture repo holds besides its packages. */
+export interface FixtureOptions {
+  readonly coreOrder?: string[];
+  readonly extraFiles?: Record<string, string>;
+  /** Entries added to the real dependencies.json. */
+  readonly extraDependencies?: Record<string, unknown>;
+}
+
 /**
  * Builds a throwaway git repo with the real workspace globs and check
- * policy, runs every rule on it and returns the errors.
+ * policy. The caller removes it with `removeFixtureRepo`.
  */
+export function writeFixtureRepo(
+  packages: readonly FixturePackage[],
+  options: FixtureOptions = {},
+): string {
+  const root = mkdtempSync(join(tmpdir(), "halonic-check-"));
+  const write = (path: string, text: string): void => {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), text);
+  };
+  write("pnpm-workspace.yaml", readFileSync(join(realRoot, "pnpm-workspace.yaml"), "utf8"));
+  write(
+    "pnpm-lock.yaml",
+    "lockfileVersion: '9.0'\n\npackages:\n\n  a@1.0.0:\n    resolution: {integrity: sha512-AAAA, tarball: https://registry.npmjs.org/a/-/a-1.0.0.tgz}\n",
+  );
+  const policy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
+  write(
+    "tooling/check/policy.json",
+    JSON.stringify({ ...policy, coreOrder: options.coreOrder ?? [] }),
+  );
+  const dependencyList = JSON.parse(readFileSync(realDependencyListPath, "utf8"));
+  write(
+    "tooling/check/dependencies.json",
+    JSON.stringify({
+      ...dependencyList,
+      dependencies: { ...dependencyList.dependencies, ...options.extraDependencies },
+    }),
+  );
+  write(
+    "package.json",
+    JSON.stringify(manifestFor("@halonicjs/root", "tooling", { exports: undefined })),
+  );
+  for (const pkg of packages) {
+    write(`${pkg.directory}/package.json`, JSON.stringify(pkg.manifest ?? {}));
+    const files = pkg.files ?? { "src/index.ts": "export const x = 1;\n" };
+    for (const [file, text] of Object.entries({
+      ...(pkg.withoutAgentsMd ? {} : { "AGENTS.md": agentsMdFor(pkg) }),
+      "vitest.config.ts": "export default definePackageTestConfig();\n",
+      ...files,
+    })) {
+      write(`${pkg.directory}/${file}`, text);
+    }
+  }
+  for (const [file, text] of Object.entries(options.extraFiles ?? {})) {
+    write(file, text);
+  }
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  return root;
+}
+
+/** Removes a repo from `writeFixtureRepo`. */
+export function removeFixtureRepo(root: string): void {
+  rmSync(root, { recursive: true, force: true });
+}
+
+/** Builds a fixture repo, runs every rule on it and returns the errors. */
 export function runChecks(
   packages: readonly FixturePackage[],
-  options: {
-    coreOrder?: string[];
-    extraFiles?: Record<string, string>;
-    /** Entries added to the real dependencies.json. */
-    extraDependencies?: Record<string, unknown>;
-  } = {},
+  options: FixtureOptions = {},
 ): Problem[] {
-  const root = mkdtempSync(join(tmpdir(), "halonic-check-"));
+  const root = writeFixtureRepo(packages, options);
   try {
-    const write = (path: string, text: string): void => {
-      mkdirSync(dirname(join(root, path)), { recursive: true });
-      writeFileSync(join(root, path), text);
-    };
-    write("pnpm-workspace.yaml", readFileSync(join(realRoot, "pnpm-workspace.yaml"), "utf8"));
-    write(
-      "pnpm-lock.yaml",
-      "lockfileVersion: '9.0'\n\npackages:\n\n  a@1.0.0:\n    resolution: {integrity: sha512-AAAA, tarball: https://registry.npmjs.org/a/-/a-1.0.0.tgz}\n",
-    );
-    const policy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
-    write(
-      "tooling/check/policy.json",
-      JSON.stringify({ ...policy, coreOrder: options.coreOrder ?? [] }),
-    );
-    const dependencyList = JSON.parse(readFileSync(realDependencyListPath, "utf8"));
-    write(
-      "tooling/check/dependencies.json",
-      JSON.stringify({
-        ...dependencyList,
-        dependencies: { ...dependencyList.dependencies, ...options.extraDependencies },
-      }),
-    );
-    write(
-      "package.json",
-      JSON.stringify(manifestFor("@halonicjs/root", "tooling", { exports: undefined })),
-    );
-    for (const pkg of packages) {
-      write(`${pkg.directory}/package.json`, JSON.stringify(pkg.manifest ?? {}));
-      const files = pkg.files ?? { "src/index.ts": "export const x = 1;\n" };
-      for (const [file, text] of Object.entries({
-        ...(pkg.withoutAgentsMd ? {} : { "AGENTS.md": agentsMdFor(pkg) }),
-        "vitest.config.ts": "export default definePackageTestConfig();\n",
-        ...files,
-      })) {
-        write(`${pkg.directory}/${file}`, text);
-      }
-    }
-    for (const [file, text] of Object.entries(options.extraFiles ?? {})) {
-      write(file, text);
-    }
-    execFileSync("git", ["init", "-q"], { cwd: root });
     const context = loadContext(root);
     return Object.values(rules)
       .flatMap((rule) => rule(context).problems)
       .filter((problem) => problem.severity === "error");
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeFixtureRepo(root);
   }
 }
 
