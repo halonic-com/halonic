@@ -10,6 +10,14 @@ export {
 } from "./approvals.ts";
 export { evaluateGuard } from "./guards.ts";
 export {
+  childInput,
+  contextBefore,
+  MAX_SUBFLOW_DEPTH,
+  promptFor,
+  type StateInput,
+  withGets,
+} from "./inputs.ts";
+export {
   acceptedEvents,
   dueTimer,
   getState,
@@ -22,3 +30,10 @@ export {
 export { parseDuration } from "./parse-duration.ts";
 export { getPath, render, renderText } from "./template.ts";
 export { toNumber } from "./to-number.ts";
+export { validateWorkflow } from "./validate.ts";
+export type {
+  Severity,
+  ValidateOptions,
+  WorkflowIssue,
+  WorkflowIssueCode,
+} from "./workflow-issue.ts";

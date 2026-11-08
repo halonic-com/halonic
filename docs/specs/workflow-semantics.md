@@ -61,6 +61,23 @@ decides whether it passes.
   whichever way it compares, so `not` around it passes.
 - **Empty lists.** `all: []` passes and `any: []` fails.
 
+## Prompts and picked data
+
+- **Agent prompt.** An `input` text is rendered as text. An `input` map is
+  rendered value by value and sent as JSON. With no `input`, the agent gets
+  the run's input as JSON (`promptFor`).
+- **Child input.** A `workflow` state's `input` map is rendered value by value,
+  so a value that is one placeholder keeps its type. An `input` text becomes
+  `{ message: <text> }`. No `input` gives `{}` (`childInput`).
+- **Picked data.** A step's `gets` lists paths such as `input.message` or
+  `context.tags`. After the prompt, without the spaces around it, comes a
+  `## Data` section: each path as a `###` heading, then its value. Text is
+  written as it is, anything else as JSON indented by two spaces, and a value
+  that isn't there as `(not set)` (`withGets`).
+- **What a step can pick.** A step can read the workflow's initial context and
+  the `output` of every state that can run before it, found by following
+  transitions back. A state on a loop sees its own output (`contextBefore`).
+
 ## Subflows
 
 A state with `type: workflow` runs another workflow as a child run.
@@ -152,3 +169,32 @@ A state with `type: foreach` runs once for each item of a list.
 - **Limits.** A child run for an item must finish without waiting. An item agent
   can't pause for an approval.
 - **Log.** An event from an item carries `item`.
+
+## Static checks
+
+`validateWorkflow` checks one workflow before it runs, and the Studio shows the
+results on the canvas. An error stops the workflow from running; a warning
+only points something out. Agent and workflow names are checked only when the
+caller passes the lists it knows. Checks between files (loops between
+workflows, for example) belong to the workspace loader.
+
+| Code                        | Severity | Found when                                                                  |
+| --------------------------- | -------- | --------------------------------------------------------------------------- |
+| `missing-initial`           | error    | the initial state does not exist                                            |
+| `unknown-target`            | error    | a transition goes to a state that does not exist                            |
+| `dead-end`                  | error    | a state that isn't final has no transitions                                 |
+| `unknown-gets`              | error    | a step picks a `context.<key>` that no earlier step writes                  |
+| `timer-outside-wait`        | error    | a state that isn't a wait state has a timer                                 |
+| `foreach-without-items`     | error    | a for-each step has no `items`                                              |
+| `foreach-without-work`      | error    | a for-each step has both or neither of an agent and a workflow              |
+| `workflow-without-target`   | error    | a workflow step names no workflow                                           |
+| `self-subflow`              | error    | a step runs its own workflow                                                |
+| `unknown-workflow`          | error    | a step runs a workflow the hub doesn't have                                 |
+| `parallel-without-branches` | error    | a parallel step has no branches                                             |
+| `unknown-agent`             | error    | a step or a branch uses an agent that doesn't exist                         |
+| `final-has-transitions`     | warning  | a final state has transitions, which never fire                             |
+| `task-without-agent`        | warning  | a task has no agent, so it passes straight through                          |
+| `wait-without-events`       | warning  | a wait state only listens to `done`                                         |
+| `unguarded-shadow`          | warning  | a transition comes after an unguarded one on the same event, so never fires |
+| `unreachable`               | warning  | no path leads from the initial state to a state                             |
+| `no-final`                  | warning  | the workflow has no final state                                             |

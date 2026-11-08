@@ -19,7 +19,10 @@ comparisons, `contains`, `exists`, number comparisons and `not`, `all` and
 `any`. `selectTransition` picks the transition an event fires in a state,
 `acceptedEvents` lists the events a waiting state listens to, and
 `stateTimers` and `dueTimer` handle the `after` transitions of a wait state.
-The rules are written out in the
+`promptFor`, `childInput` and `withGets` build what an agent or a child run
+gets, with the data a step picks (`gets`), and `contextBefore` tells which
+context keys a step can pick. `validateWorkflow` runs the static checks the
+canvas shows before anything runs. The rules are written out in the
 [workflow semantics spec](../../../docs/specs/workflow-semantics.md).
 
 `parseDuration` reads the delay of a timer transition (`after: 30m`, `4h`,
