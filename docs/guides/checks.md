@@ -47,7 +47,8 @@ Plain `pnpm check` leaves it out for that reason; it runs only when named.
 - a test names a requirement that doesn't exist or is retired, or names it
   with something other than a plain string
 - a `verifies(…)` never ran, because the package's Vitest config doesn't
-  collect its file, or a package with tests has no result file
+  collect its file, or a package with tests has no result file or one that
+  can't be read
 - an active requirement has no test that ran and passed
 
 The ID of `packages/core/workflow/requirements/timer-fires.md` is

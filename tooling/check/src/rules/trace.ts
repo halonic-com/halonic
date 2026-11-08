@@ -9,6 +9,7 @@ import { buildTraceModel, type TracedRequirement, type TraceModel } from "../lib
  * - the same requirement ID is in two places (v1.6)
  * - a `verifies(…)` names a requirement that doesn't exist or is retired
  * - a `verifies(…)` never ran, because the runner doesn't collect its file
+ * - a package has tests but no result file, or one that can't be read
  * - an active requirement has no test that ran and passed
  *
  * It reads the result files the tests wrote, so the tests run first:
@@ -25,6 +26,7 @@ export function checkTrace(context: CheckContext): Report {
   reportVerifiesCalls(model, byId, report);
   reportTaggedTests(model, byId, report);
   reportMissingResults(model, report);
+  reportUnreadableResults(model, report);
   reportUnproven(model, report);
   return report;
 }
@@ -76,10 +78,9 @@ function reportVerifiesCalls(
       report.error(call.file, `verifies("${call.id}") ${problem}`, call.line);
       continue;
     }
-    // A package without any result file gets one finding of its own instead.
-    const resultsMissing = [...model.withoutResults].some((pkg) =>
-      call.file.startsWith(`${pkg.directory}/`),
-    );
+    // A package without a readable result file gets one finding of its own instead.
+    const withoutRun = [...model.withoutResults, ...model.unreadableResults.keys()];
+    const resultsMissing = withoutRun.some((pkg) => call.file.startsWith(`${pkg.directory}/`));
     if (!resultsMissing && !ran.has(runKey(call.file, call.id))) {
       report.error(
         call.file,
@@ -135,6 +136,16 @@ function reportMissingResults(model: TraceModel, report: Report): void {
     report.error(
       `${pkg.directory}/${testResultsFile}`,
       `${name} has tests but no result file. Run its tests first: pnpm verify, or pnpm turbo run test --filter ${name}.`,
+    );
+  }
+}
+
+function reportUnreadableResults(model: TraceModel, report: Report): void {
+  for (const [pkg, reason] of model.unreadableResults) {
+    const name = pkg.manifest.name ?? pkg.directory;
+    report.error(
+      `${pkg.directory}/${testResultsFile}`,
+      `${name}'s result file can't be read: ${reason}. Delete it and run the package's tests again.`,
     );
   }
 }

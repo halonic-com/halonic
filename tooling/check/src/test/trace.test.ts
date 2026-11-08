@@ -174,6 +174,21 @@ verifies("check.trace-tests-must-run", () => {
     );
     expect(errors.join("\n")).not.toMatch(/never ran/);
   });
+
+  test("fails on a corrupt result file instead of stopping", () => {
+    const pkg = workflow({
+      "requirements/timer-fires.md": requirementText(id),
+      [testFile]: testText(id),
+      [testResultsFile]: '{"testResults": [',
+    });
+    const errors = traceErrors([pkg]);
+    expect(errors).toContainEqual(
+      expect.stringMatching(
+        /^packages\/core\/workflow\/test-results\/vitest\.json: @halonicjs\/workflow's result file can't be read: it isn't valid JSON \(.+\)\. Delete it and run the package's tests again\.$/,
+      ),
+    );
+    expect(errors.join("\n")).not.toMatch(/never ran/);
+  });
 });
 
 verifies("check.trace-rejects-malformed-requirements", () => {
