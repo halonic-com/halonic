@@ -7,9 +7,10 @@ export const definitionStoreVersion = 1;
  * relative and "/" separated.
  *
  * **Every method refuses an unsafe path** with a `RangeError` before it
- * touches storage: one that is absolute, has a `..` or empty segment, or
+ * touches storage: one that is absolute, has a `.`, `..` or empty segment, or
  * contains a backslash or NUL. The port says so, not each adapter, because
- * in the old repo only the Node adapter checked.
+ * in the old repo only the Node adapter checked. Refusing `.` keeps `a/./b`
+ * from meaning `a/b` in a folder but another key in a key-value store.
  *
  * A cloud deployment hands out only this read side, so a stolen session can't
  * change what runs (multi-cloud ADR 5.5).
@@ -17,7 +18,13 @@ export const definitionStoreVersion = 1;
 export interface DefinitionSource {
   /** Human-readable location, such as "~/workspaces/acme" or "memory:demo". */
   readonly location: string;
-  /** Lists file paths under a directory (the whole store when omitted), recursively and sorted. */
+  /**
+   * Lists the file paths under a directory, recursively and sorted. The
+   * paths are relative to the store root, not to `dir`, as in the old
+   * adapter. Omit `dir` for the whole store; `""` is an empty path and is
+   * refused like any other unsafe path. A directory that doesn't exist
+   * gives `[]`.
+   */
   list(dir?: string): Promise<string[]>;
   /** The file's text, or `null` when there is no such file. */
   read(path: string): Promise<string | null>;

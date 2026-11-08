@@ -33,13 +33,16 @@ export interface SchedulerListener {
   /**
    * A timer is due. It is removed after this resolves, unless `schedule` set
    * the same key and id again while this ran (a retry, say): a timer set
-   * during the call always stays.
+   * during the call always stays as it was set, whether this resolves or
+   * rejects. The retry wait after a rejection never replaces a time set
+   * during the call.
    */
   onTimer(timer: ScheduledTimer): Promise<void>;
   /**
    * The routine tick, about once a minute, with the ISO time of the tick.
    * Ticks can be missed (a deploy, a laptop asleep), so the receiver works
-   * out what is due from its last tick, with a catch-up policy.
+   * out what is due from its last tick, with a catch-up policy. A tick that
+   * rejects is not retried: the next tick catches up.
    */
   onTick(at: string): Promise<void>;
 }

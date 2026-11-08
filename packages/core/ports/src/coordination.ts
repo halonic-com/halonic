@@ -43,8 +43,10 @@ export interface WindowCount {
  * in two of them names two different things. Every operation is atomic.
  *
  * **Input rules**, the same on every adapter:
- * - Keys are at most 256 UTF-8 bytes. Core hashes user input (an email
+ * - Keys are 1 to 256 UTF-8 bytes. Core hashes user input (an email
  *   address, a file name) before putting it in a key.
+ * - A value set with `compareAndSet` is at most 64 KiB of UTF-8, below
+ *   the per-value limit of Durable Objects storage.
  * - `ttlMs`, `windowMs`, `limit` and `by` are positive safe whole numbers.
  *   Amounts that have fractions, such as the budget, are counted in whole
  *   micro-units (1 = 0.000001), so every store adds them up the same way.

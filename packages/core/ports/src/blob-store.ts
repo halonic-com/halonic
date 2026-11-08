@@ -14,7 +14,16 @@ export interface BlobRef {
  * them twice keeps one copy.
  */
 export interface BlobStore {
-  /** Stores the bytes and returns their reference. */
+  /**
+   * Stores the bytes and returns their reference, which echoes this call's
+   * `mediaType`. Storing the same bytes again with another type keeps one
+   * copy, and `get` doesn't promise which type, if any, was kept: callers
+   * keep the `BlobRef` they got.
+   *
+   * @throws RangeError when `mediaType` isn't `type/subtype` made of HTTP
+   *   token characters (no parameters, spaces or line breaks), because it
+   *   ends up in storage metadata and in a served `Content-Type` header
+   */
   put(data: Uint8Array, mediaType: string): Promise<BlobRef>;
   /**
    * The bytes stored under a hash, or `null` when there are none. A hash that

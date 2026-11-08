@@ -9,10 +9,13 @@ export const secretsVersion = 1;
  *
  * **Names** match `^[A-Za-z][A-Za-z0-9_-]*$` and are at most 128 characters,
  * so the same name works as an environment variable, a Workers secret and a
- * keychain entry. A store that can't hold `-` maps it to `_`, as the old
- * environment adapter did (`serve-password` is `STUDIO_SECRET_SERVE_PASSWORD`),
- * so two names that differ only there are the same secret. Any other mapping
- * (a prefix, upper case) is up to the adapter.
+ * keychain entry.
+ *
+ * **Two names that differ only in upper and lower case, or in `-` versus
+ * `_`, are the same secret on every adapter.** The old environment adapter
+ * upper-cased names and mapped `-` to `_` (`serve-password` is
+ * `STUDIO_SECRET_SERVE_PASSWORD`), so a keychain or file store must match
+ * names the same way. A prefix is up to the adapter.
  */
 export interface Secrets {
   /**

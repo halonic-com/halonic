@@ -19,7 +19,9 @@ export interface StartRunRequest {
    * The id the run gets, for a start that may be repeated: a routine fire, a
    * mail or a signal. When a run with this id already exists, `start` returns
    * its summary and starts nothing, whatever the rest of the request says.
-   * A new id from the executor's `IdGenerator` when absent.
+   * A new id from the executor's `IdGenerator` when absent. At most 256
+   * UTF-8 bytes, because it becomes a `Scheduler` key; a longer one
+   * is refused with a `RangeError` before anything is recorded.
    */
   runId?: string;
 }
@@ -29,7 +31,10 @@ export interface StartAgentRequest {
   hubId: string;
   agentId: string;
   prompt: string;
-  /** As {@link StartRunRequest.runId}: repeating a start with the same id starts nothing. */
+  /**
+   * As {@link StartRunRequest.runId}: repeating a start with the same id
+   * starts nothing, and an id over 256 UTF-8 bytes is a `RangeError`.
+   */
   runId?: string;
 }
 
@@ -124,6 +129,12 @@ export interface RunExecutor {
    * then new ones as they are appended, until the run ends or the stream
    * breaks (see {@link RunEventListener.onClose}). A client that reconnects
    * passes the last sequence number it saw (multi-cloud ADR 5.2).
+   *
+   * It returns at once and never throws for the run itself, because a
+   * remote executor only learns later whether the run exists: an unknown
+   * run gets `onClose(error)`. The listener is never called before
+   * `subscribe` returns, so the caller always holds the handle it may
+   * need to `close()`.
    */
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription;
   /**

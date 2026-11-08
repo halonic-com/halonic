@@ -6,8 +6,9 @@ export const tokenStoreVersion = 1;
  * sign-in. Adapters keep them encrypted at rest. Configured secrets are read
  * through {@link Secrets} and never written here.
  *
- * Names follow the same rule as {@link Secrets} names, and every method throws
- * a `RangeError` for a name that breaks it.
+ * Names follow the same rule as {@link Secrets} names, including that names
+ * differing only in case or in `-` versus `_` are the same token. Every
+ * method throws a `RangeError` for a name that breaks the rule.
  */
 export interface TokenStore {
   /** The token's value, or `null` when there is none. */
