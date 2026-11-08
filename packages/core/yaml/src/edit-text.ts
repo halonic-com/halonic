@@ -9,7 +9,7 @@ const fileLineWidth = 100;
 /** Deeply indented text still gets this much room before it folds. */
 const minimumLineWidth = 40;
 
-const byteOrderMark = "﻿";
+const byteOrderMark = "\uFEFF";
 
 /**
  * The text's line ending: `\r\n` when every line break is one, `\n` when every
