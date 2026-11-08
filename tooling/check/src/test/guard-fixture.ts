@@ -18,6 +18,10 @@ export interface GuardCase {
   readonly head: Readonly<Record<string, string>>;
   /** Files outside the package, in both checkouts. */
   readonly shared?: Readonly<Record<string, string>>;
+  /** Files outside the package on the merge base only. */
+  readonly baseOutside?: Readonly<Record<string, string>>;
+  /** Files outside the package in the pull request only. */
+  readonly headOutside?: Readonly<Record<string, string>>;
   /** The text of the branch's decision note, if the pull request has one. */
   readonly note?: string;
   /** What the approval lookup answers. Defaults to approved. */
@@ -45,11 +49,11 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
       ],
       { coreOrder: ["@halonicjs/workflow"], extraFiles: { ...guardCase.shared, ...extra } },
     );
-  const baseRoot = repo(guardCase.base, {});
-  const headRoot = repo(
-    guardCase.head,
-    guardCase.note === undefined ? {} : { [noteFile]: guardCase.note },
-  );
+  const baseRoot = repo(guardCase.base, { ...guardCase.baseOutside });
+  const headRoot = repo(guardCase.head, {
+    ...guardCase.headOutside,
+    ...(guardCase.note === undefined ? {} : { [noteFile]: guardCase.note }),
+  });
   const approvals: ApprovalLookup = {
     check: () =>
       Promise.resolve(

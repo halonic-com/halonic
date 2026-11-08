@@ -5,6 +5,7 @@ import { checkCoverage } from "./coverage.ts";
 import { type DecisionNote, decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
 import type { GuardCheck, GuardFinding } from "./finding.ts";
 import { checkGoldenFiles } from "./golden-files.ts";
+import { checkGuardedPaths } from "./guarded-paths.ts";
 import { checkMocks } from "./mocks.ts";
 import { checkReleasedSpecs } from "./released-specs.ts";
 import { checkRequirementChanges } from "./requirement-changes.ts";
@@ -20,6 +21,7 @@ export const guardChecks: readonly GuardCheck[] = [
   checkGoldenFiles,
   checkReleasedSpecs,
   checkCoverage,
+  checkGuardedPaths,
 ];
 
 /** What one guard run compares, and how it checks approvals. */
