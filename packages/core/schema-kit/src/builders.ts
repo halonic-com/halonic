@@ -1,5 +1,19 @@
 import { z } from "zod";
 
+/** A host as `URL` writes it: lower-case name labels, a dotted IPv4 address or a bracketed IPv6 address. */
+const urlHost = String.raw`(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|\[[0-9a-f:.]+\])`;
+
+/** What may follow the host: RFC 3986's unreserved and reserved characters and `%` with two hex digits. */
+const urlRest = String.raw`(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})*`;
+
+/**
+ * An absolute `http` or `https` URL as `URL` writes it. The core has no `URL`
+ * class (plan 4.1), so this is a pattern, and stricter than Zod's `z.url()`:
+ * lower-case scheme and host, no user or password, no spaces or other
+ * characters `URL` would escape. Anything else, such as `mailto:` or `file:`, is refused.
+ */
+const URL_PATTERN = new RegExp(String.raw`^https?://${urlHost}(?::\d{1,5})?(?:[/?#]${urlRest})?$`);
+
 /**
  * Builds schemas. These are Zod's own builders, limited to the ones the file
  * format uses, so the rest of the code never imports Zod. The
@@ -44,4 +58,8 @@ export const s = {
   intersection: z.intersection,
   /** A schema that refers to itself. */
   lazy: z.lazy,
+  /** Any JSON value: null, a boolean, a finite number, text, or a list or map of JSON values. */
+  json: z.json,
+  /** An absolute `http` or `https` URL as `URL` writes it; see `URL_PATTERN`. */
+  url: () => z.string().regex(URL_PATTERN, "must be an http or https URL as URL writes it"),
 } as const;

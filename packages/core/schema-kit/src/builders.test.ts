@@ -14,6 +14,7 @@ verifies("schema-kit.builders", () => {
       "discriminatedUnion",
       "enum",
       "intersection",
+      "json",
       "lazy",
       "literal",
       "null",
@@ -24,6 +25,7 @@ verifies("schema-kit.builders", () => {
       "tuple",
       "union",
       "unknown",
+      "url",
     ]);
   });
 
@@ -63,5 +65,49 @@ verifies("schema-kit.builders", () => {
       value: { a: 1, b: 2 },
     });
     expect(parse(s.object(shape), { a: 1, b: 2 })).toEqual({ ok: true, value: { a: 1 } });
+  });
+
+  it("accepts any JSON value with s.json and nothing else", () => {
+    const schema = s.json();
+    for (const value of [null, true, 1.5, "text", [1, "a"], { a: { b: [null] } }]) {
+      expect(parse(schema, value).ok).toBe(true);
+    }
+    for (const value of [undefined, Number.NaN, Number.POSITIVE_INFINITY, { a: () => 1 }]) {
+      expect(parse(schema, value).ok).toBe(false);
+    }
+  });
+
+  it("accepts an http or https URL as URL writes it with s.url", () => {
+    const accepted = [
+      "https://api.example.com",
+      "https://api.example.com/v1/messages",
+      "http://localhost:11434/api/chat",
+      "http://127.0.0.1:8080/",
+      "http://[::1]:8080/mcp",
+      "https://www.googleapis.com/drive/v3/files?q=%27root%27+in+parents&pageSize=300",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
+      "https://example.com/a#part",
+    ];
+    for (const url of accepted) expect(parse(s.url(), url)).toEqual({ ok: true, value: url });
+  });
+
+  it("refuses with s.url what z.url() lets through", () => {
+    const refused = [
+      "mailto:family@example.com",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "HTTPS://api.example.com/",
+      "https://API.example.com/",
+      "https://user@example.com/",
+      "https://example.com/a b",
+      "https://ä.example.com/",
+      "https://example.com/%zz",
+      "https://-example.com/",
+      "https://",
+      "example.com/path",
+    ];
+    for (const url of refused) {
+      expect(issuesOf(parse(s.url(), url))).toMatchObject([{ code: "invalid_format", path: [] }]);
+    }
   });
 });
