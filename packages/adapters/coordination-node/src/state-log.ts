@@ -65,9 +65,17 @@ export class StateLog {
     return state;
   }
 
-  /** Records the entry, replacing the one of the same kind and key. */
-  async put(entry: StateEntry): Promise<void> {
-    await this.#append("add", recordId(entry.kind, entry.key), toRecordValues(entry));
+  /**
+   * Records an entry that is new (`isNew`) or replaces the one of the same
+   * kind and key. Like the scheduler's timer log, a new entry is an `add` and
+   * a replacement an `update`; both carry all the values.
+   */
+  async put(entry: StateEntry, isNew: boolean): Promise<void> {
+    await this.#append(
+      isNew ? "add" : "update",
+      recordId(entry.kind, entry.key),
+      toRecordValues(entry),
+    );
   }
 
   /** Records that the entry of this kind and key is gone. */
@@ -91,6 +99,17 @@ export function addEntry(state: CoordinationState, entry: StateEntry): void {
   if (entry.kind === "value") state.values.set(entry.key, entry.value);
   if (entry.kind === "counter") state.counters.set(entry.key, entry.value);
   if (entry.kind === "window") state.windows.set(entry.key, entry.window);
+}
+
+/** Whether the state holds an entry of this kind and key. */
+export function hasEntry(state: CoordinationState, kind: StateEntry["kind"], key: string): boolean {
+  const maps = {
+    lease: state.leases,
+    value: state.values,
+    counter: state.counters,
+    window: state.windows,
+  } satisfies Record<StateEntry["kind"], Map<string, unknown>>;
+  return maps[kind].has(key);
 }
 
 /** One id per kind and key; JSON keeps every key apart, whatever it contains. */

@@ -52,5 +52,7 @@ await scheduler.close();
   per missed minute: the listener catches up. A tick that rejects isn't retried.
 - **Errors:** every error the scheduler handles itself goes to `reportError`,
   with the timer, `"tick"` or `"wake-up"` as its source.
-- **One process:** memory is the scheduler's working copy, so two processes
-  must not share one collection.
+- **One process, one scheduler:** memory is the scheduler's working copy,
+  so two processes must not share one collection. The schedulers a
+  `nodeSchedulerFactory` creates all use its one collection, so only one of
+  them may be live at a time.

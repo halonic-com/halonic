@@ -224,7 +224,11 @@ export class NodeScheduler implements Scheduler {
   }
 }
 
-/** Creates Node schedulers that share `options`, as a `SchedulerFactory`. */
+/**
+ * Creates Node schedulers that share `options`, as a `SchedulerFactory`. They
+ * all keep their timers in the same collection, so only one of them may be
+ * live at a time: close one before you create the next.
+ */
 export function nodeSchedulerFactory(
   options: NodeSchedulerOptions,
 ): (listener: SchedulerListener) => NodeScheduler {

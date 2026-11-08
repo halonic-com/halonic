@@ -60,6 +60,13 @@ verifies("adapter-coordination-node.coordination", () => {
       expect(await coordination.increment("budget", 1, 5)).toEqual({ applied: false, value: 5 });
       expect(await coordination.increment("budget", 2)).toEqual({ applied: true, value: 7 });
     });
+
+    it("without a limit, stops a counter at the largest safe whole number", async () => {
+      const { coordination } = startCoordination();
+      const max = Number.MAX_SAFE_INTEGER;
+      expect(await coordination.increment("total", max)).toEqual({ applied: true, value: max });
+      expect(await coordination.increment("total", 1)).toEqual({ applied: false, value: max });
+    });
   });
 
   describe("windows", () => {

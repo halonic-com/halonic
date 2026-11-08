@@ -47,5 +47,12 @@ if (lease !== null) {
 - **Input rules** are the port's: keys of 1 to 256 UTF-8 bytes, values up to
   64 KiB, positive safe whole amounts. Breaking one throws a `RangeError`
   before anything is read or written.
+- **Counters** never go past `Number.MAX_SAFE_INTEGER`. Without a `limit`,
+  that is the ceiling: going over it answers `applied: false`, as going over
+  a `limit` does.
 - **One process:** memory is the adapter's working copy, so two processes
   must not share one collection.
+- **Growth:** an expired lease or a closed window is only replaced when its
+  key is used again, so it stays in memory and in the store's log. Every
+  change is a new log entry. Compacting the log is a follow-up for the
+  file-backed record store.

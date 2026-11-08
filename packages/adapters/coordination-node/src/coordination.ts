@@ -11,6 +11,7 @@ import {
   addEntry,
   type CoordinationState,
   type HeldLease,
+  hasEntry,
   type StateEntry,
   StateLog,
 } from "./state-log.ts";
@@ -114,13 +115,20 @@ export class NodeCoordination implements Coordination {
     });
   }
 
+  /**
+   * Adds `by` unless the result would go above `limit`. Without a `limit` the
+   * ceiling is `Number.MAX_SAFE_INTEGER`, and going above it is treated the
+   * same way: `applied: false` and the counter stays as it is. A counter is
+   * stored as a safe whole number, so a bigger one could not be loaded again.
+   */
   async increment(key: string, by: number, limit?: number): Promise<CounterResult> {
     checkKey(key);
     checkAmount("by", by);
     if (limit !== undefined) checkAmount("limit", limit);
+    const ceiling = limit ?? Number.MAX_SAFE_INTEGER;
     return this.#inTurn(async (state) => {
       const value = state.counters.get(key) ?? 0;
-      if (limit !== undefined && value + by > limit) return { applied: false, value };
+      if (value + by > ceiling) return { applied: false, value };
       await this.#put(state, { kind: "counter", key, value: value + by });
       return { applied: true, value: value + by };
     });
@@ -145,7 +153,7 @@ export class NodeCoordination implements Coordination {
 
   /** Writes the entry to the store, then to memory, so memory never runs ahead of the store. */
   async #put(state: CoordinationState, entry: StateEntry): Promise<void> {
-    await this.#log.put(entry);
+    await this.#log.put(entry, !hasEntry(state, entry.kind, entry.key));
     addEntry(state, entry);
   }
 

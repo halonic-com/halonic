@@ -42,6 +42,27 @@ verifies("adapter-coordination-node.restart", () => {
       expect(await after.tryAcquire("lock", 60_000)).not.toBeNull();
     });
 
+    it("loads again after a counter reached the largest safe whole number", async () => {
+      const world = newWorld();
+      const before = startCoordination(world).coordination;
+      const max = Number.MAX_SAFE_INTEGER;
+      await before.increment("total", max);
+      await before.increment("total", 1);
+
+      const after = startCoordination(world).coordination;
+      expect(await after.read("cursor")).toBeNull();
+      expect(await after.increment("total", 1)).toEqual({ applied: false, value: max });
+    });
+
+    it("writes a new record as an add and a replacement as an update", async () => {
+      const world = newWorld();
+      const { coordination } = startCoordination(world);
+      await coordination.increment("budget", 1);
+      await coordination.increment("budget", 1);
+      const changes = await world.store.changes(defaultCoordinationCollection);
+      expect(changes.map((change) => change.op)).toEqual(["add", "update"]);
+    });
+
     it("rejects a call and changes nothing when the store fails the write", async () => {
       const { coordination, store } = startCoordination();
       await coordination.increment("budget", 1);
