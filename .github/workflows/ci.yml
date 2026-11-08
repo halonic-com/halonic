@@ -142,7 +142,7 @@ jobs:
       # Pull requests and merge queue scan their own commits; pushes to main
       # scan the whole history.
       - name: Scan commits
-        uses: ./.github/actions/gitleaks
+        uses: $/.github/actions/gitleaks
         with:
           log-opts: ${{ github.event_name != 'push' && format('{0}..{1}', github.event.pull_request.base.sha || github.event.merge_group.base_sha, github.event.pull_request.head.sha || github.event.merge_group.head_sha) || '' }}
 

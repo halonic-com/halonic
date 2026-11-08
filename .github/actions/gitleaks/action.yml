@@ -26,7 +26,7 @@ runs:
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
           "$image" "${args[@]}" . 2>&1 | tee "$log"
         scanned=$(grep -oE '[0-9]+ commits scanned' "$log" | grep -oE '^[0-9]+' || true)
-        if [ -z "$scanned" ] || [ "$scanned" -eq 0 ]; then
+        if ! [[ "$scanned" =~ ^[1-9][0-9]*$ ]]; then
           echo "::error title=gitleaks::No commits were scanned, so the scan proves nothing. See the log above."
           exit 1
         fi

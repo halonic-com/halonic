@@ -59,7 +59,7 @@ jobs:
           HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
         run: node tooling/check/src/cli/terms.ts --all
       - name: gitleaks over the whole history
-        uses: ./.github/actions/gitleaks
+        uses: $/.github/actions/gitleaks
 
   report:
     name: Open an issue on failure
