@@ -1,6 +1,7 @@
 // The public API of @halonicjs/format. Internal code imports by relative path.
 
 export { compact } from "./compact.ts";
+export { jsonSchemaOf } from "./json-schema.ts";
 export type { FileKind, FilePlace, KindCheckProblem, KindSyntax } from "./kind.ts";
 export type { Agent, AgentMethod, AgentOutput, MethodField } from "./kinds/agent/schema.ts";
 export type { Collection, CollectionField, CollectionView } from "./kinds/collection/schema.ts";

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "default": 1,
+      "type": "number",
+      "const": 1
+    },
+    "default": {
+      "type": "string"
+    },
+    "deployments": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-z0-9][a-z0-9-_]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "host": {
+            "default": "local",
+            "type": "string",
+            "enum": [
+              "local",
+              "cloudflare"
+            ]
+          },
+          "stage": {
+            "default": "development",
+            "type": "string",
+            "enum": [
+              "development",
+              "production"
+            ]
+          },
+          "shadow": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "deployments"
+  ],
+  "additionalProperties": false
+}
