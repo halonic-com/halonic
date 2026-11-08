@@ -17,36 +17,82 @@ function colourToken(name: string, mode: Mode): Rgba {
   return parseColour(pair[mode]);
 }
 
-/** A background as the eye sees it: a see-through colour (a `-soft` badge) over the surface. */
-function backgroundToken(name: string, mode: Mode): Rgba {
+/**
+ * A background as the eye sees it: a see-through colour (a `-soft` badge) painted over the
+ * surface beneath it. Opaque backgrounds ignore `beneath`.
+ */
+function backgroundToken(name: string, beneath: string, mode: Mode): Rgba {
   const colour = colourToken(name, mode);
   if (colour.alpha === 1) {
     return colour;
   }
-  return blend(colour, colourToken("surface", mode));
+  return blend(colour, colourToken(beneath, mode));
 }
 
 const text = 4.5;
 const control = 3;
 
-/** [foreground, background, minimum]: every place the specs put text or a control edge. */
-const contrastPairs: ReadonlyArray<readonly [string, string, number]> = [
-  ...["surface", "surface-subtle", "surface-muted", "surface-raised"].flatMap((background) =>
-    ["fg", "fg-muted", "fg-subtle"].map((foreground) => [foreground, background, text] as const),
+/** The surfaces text and controls sit on: pages, the sidebar, and menus, dialogs and toasts. */
+const surfaces = ["surface", "surface-subtle", "surface-raised"];
+
+/** Text or a control edge on a background, and the surface under that background. */
+interface ContrastPair {
+  readonly name: string;
+  readonly foreground: string;
+  readonly background: string;
+  readonly beneath: string;
+  readonly minimum: number;
+}
+
+function onSurfaces(foreground: string, minimum: number, extra: string[] = []): ContrastPair[] {
+  return [...surfaces, ...extra].map((surface) => ({
+    name: `${foreground} on ${surface}`,
+    foreground,
+    background: surface,
+    beneath: surface,
+    minimum,
+  }));
+}
+
+/** A colour on its own see-through `-soft` fill (a status chip), over every surface. */
+function onSoftFill(foreground: string, softFill: string): ContrastPair[] {
+  return surfaces.map((surface) => ({
+    name: `${foreground} on ${softFill} over ${surface}`,
+    foreground,
+    background: softFill,
+    beneath: surface,
+    minimum: text,
+  }));
+}
+
+function onFill(foreground: string, fill: string): ContrastPair {
+  return {
+    name: `${foreground} on ${fill}`,
+    foreground,
+    background: fill,
+    beneath: "surface",
+    minimum: text,
+  };
+}
+
+/** Every place the specs put text or a control edge. */
+const contrastPairs: ContrastPair[] = [
+  ...["fg", "fg-muted", "fg-subtle"].flatMap((foreground) =>
+    onSurfaces(foreground, text, ["surface-muted"]),
   ),
-  ["accent-text", "surface", text],
-  ["accent-text", "surface-subtle", text],
-  ["on-primary", "primary", text],
-  ["on-primary", "primary-hover", text],
-  ["on-danger", "danger", text],
-  ["on-danger", "danger-hover", text],
+  ...onSurfaces("accent-text", text),
+  ...onSoftFill("accent-text", "accent-soft"),
+  onFill("on-primary", "primary"),
+  onFill("on-primary", "primary-hover"),
+  onFill("on-danger", "danger"),
+  onFill("on-danger", "danger-hover"),
   ...["running", "warning", "danger", "success"].flatMap((status) => [
-    [status, "surface", text] as const,
-    [status, `${status}-soft`, text] as const,
+    ...onSurfaces(status, text),
+    ...onSoftFill(status, `${status}-soft`),
   ]),
-  ["accent-text", "accent-soft", text],
-  ["border-control", "surface", control],
-  ["accent", "surface", control],
+  // The switch's off track and a checkbox in a hovered menu item sit on surface-muted.
+  ...onSurfaces("border-control", control, ["surface-muted"]),
+  ...onSurfaces("accent", control),
 ];
 
 describe("theme.css colours", () => {
@@ -60,13 +106,27 @@ describe("theme.css colours", () => {
   });
 
   for (const mode of ["light", "dark"] as const) {
-    it.each(contrastPairs)(`keeps %s on %s readable in ${mode} mode`, (fg, bg, minimum) => {
-      const ratio = contrastRatio(colourToken(fg, mode), backgroundToken(bg, mode));
-      expect(ratio, `${fg} on ${bg} (${mode}) is ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(
-        minimum,
-      );
-    });
+    it.each(contrastPairs)(
+      `keeps $name readable in ${mode} mode`,
+      ({ name, foreground, background, beneath, minimum }) => {
+        const ratio = contrastRatio(
+          colourToken(foreground, mode),
+          backgroundToken(background, beneath, mode),
+        );
+        expect(ratio, `${name} (${mode}) is ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(minimum);
+      },
+    );
   }
+});
+
+describe("theme.css focus rings", () => {
+  it("never removes the outline, so the ring shows in Windows high-contrast mode", () => {
+    expect(css).not.toMatch(/outline:\s*(?:none|0)\s*;/);
+    expect(blockBody(css, "@utility focus-ring")).toContain("outline: 2px solid transparent;");
+    expect(blockBody(css, "@utility focus-ring-inset")).toContain(
+      "outline: 2px solid transparent;",
+    );
+  });
 });
 
 describe("theme.css light and dark switch", () => {
@@ -108,6 +168,7 @@ describe("theme.css scales", () => {
       "--spacing-panel",
     ]);
     expect(themeTokens.get("--spacing")).toBe("4px");
+    expect(namesStartingWith(themeTokens, "--breakpoint-")).toEqual(["--breakpoint-wide"]);
     expect(namesStartingWith(themeTokens, "--shadow-")).toEqual([
       "--shadow-1",
       "--shadow-2",
@@ -115,6 +176,14 @@ describe("theme.css scales", () => {
     ]);
     expect(namesStartingWith(themeTokens, "--animate-")).toEqual(["--animate-spin"]);
     expect(css).toMatch(/@keyframes spin\s*\{/);
+  });
+
+  it("keeps the sizes the shell's layout is built on", () => {
+    expect(themeTokens.get("--spacing-titlebar")).toBe("40px");
+    expect(themeTokens.get("--spacing-statusbar")).toBe("24px");
+    expect(themeTokens.get("--spacing-sidebar")).toBe("264px");
+    expect(themeTokens.get("--spacing-panel")).toBe("360px");
+    expect(themeTokens.get("--breakpoint-wide")).toBe("900px");
   });
 
   it("has exactly the agreed layers and durations", () => {

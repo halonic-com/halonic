@@ -89,9 +89,10 @@ The curves and durations stay in the file for later.
 
 - every colour has a light and a dark value;
 - every text colour passes WCAG AA (4.5:1) and every control edge 3:1 on the surfaces it's used on,
-  in both modes, with see-through colours blended onto their real background;
-- the radius, spacing, shadow, animation, layer and duration tokens are exactly the agreed set, so
-  a new one is a visible change in review;
-- the kit imports no other Studio package.
+  in both modes, with see-through colours (status chips) blended over each surface they can sit on;
+- the radius, spacing, shadow, animation, breakpoint, layer and duration tokens are exactly the
+  agreed set, and the shell's layout sizes keep their values, so a change is visible in review;
+- the focus rings never remove the outline, so they show in Windows high-contrast mode;
+- the kit imports no other Studio package, in any import form.
 
 After tuning a colour, run the tests and adjust until they pass.
