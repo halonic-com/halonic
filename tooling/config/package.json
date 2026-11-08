@@ -2,7 +2,7 @@
   "name": "@halonicjs/tooling-config",
   "private": true,
   "type": "module",
-  "description": "Shared TypeScript presets, Biome config and Vitest preset.",
+  "description": "Shared TypeScript presets, Biome config and the Vitest preset with coverage floors.",
   "exports": {
     "./vitest": "./src/vitest-preset.ts",
     "./tsconfig/*.json": "./tsconfig/*.json",
@@ -10,15 +10,20 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "halonic": {
     "layer": "tooling",
-    "owner": "mateo"
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    }
   }
 }

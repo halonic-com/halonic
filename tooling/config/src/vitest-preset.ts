@@ -1,8 +1,14 @@
 import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config";
+import { readCoverageFloor } from "./coverage.ts";
 
 /**
  * The shared Vitest settings for every package. Each package's
  * `vitest.config.ts` calls this so test runs behave the same everywhere.
+ *
+ * Every run measures coverage of `src` and fails below the package's floor
+ * in its `package.json` (plan 9.3). Vitest runs in the package folder, so
+ * that is where the floor is read from. To run a single test file without
+ * the floor, add `--coverage.enabled=false`.
  *
  * @param overrides - settings for this one package, merged over the preset
  * @returns the Vitest config for the package
@@ -23,6 +29,15 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
       unstubEnvs: true,
       unstubGlobals: true,
       reporters: process.env["CI"] ? ["default", "github-actions"] : ["default"],
+      coverage: {
+        enabled: true,
+        provider: "v8",
+        include: ["src/**/*.ts", "src/**/*.tsx"],
+        // Tests, test helpers and generated files aren't the code under test.
+        exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test/**", "src/generated/**"],
+        reporter: ["text-summary"],
+        thresholds: readCoverageFloor(process.cwd()),
+      },
     },
   });
   return mergeConfig(preset, overrides);

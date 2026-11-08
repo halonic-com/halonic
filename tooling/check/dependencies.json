@@ -22,6 +22,13 @@
       ],
       "reason": "The TypeScript parser API for tooling/check until TypeScript 7.1 ships its own API (D9). Remove then."
     },
+    "@vitest/coverage-v8": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/tooling-config"
+      ],
+      "reason": "Measures test coverage for the shared Vitest preset, which fails a package below the floor in its package.json (plan 9.3, D9, D12). Vitest finds it as its own optional peer, so packages don't list it."
+    },
     "turbo": {
       "category": "dev-tooling",
       "allowedIn": [
