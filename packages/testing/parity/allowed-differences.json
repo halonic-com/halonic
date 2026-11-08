@@ -6,7 +6,7 @@
     "old": "Rewrote a path before using it: a backslash became a slash, one leading \"./\" or \"/\" was dropped, and trailing slashes were dropped, so \"a\\\\b\", \"./a\" and \"a/\" were taken as \"a/b\", \"a\" and \"a\". A \"..\" or empty segment was kept as a literal name, and list(\"\") listed every file.",
     "new": "Refuses a path that is absolute, contains a backslash or NUL, or has a \".\", \"..\" or empty segment, with a RangeError and before the store is touched. That includes \"a\\\\b\", \"./a\", \"a/\", \"..\" and \"\"; list() with no folder lists every file.",
     "why": "One path names one file in every store. The file system store must refuse paths that could leave the workspace, and the memory store follows the same contract so a test can't pass on memory and fail on disk.",
-    "status": "proposed"
+    "status": "signed-off"
   },
   {
     "id": "memory-blob-store-media-type",
@@ -15,7 +15,7 @@
     "old": "put stored any string as the media type, including parameters (\"text/plain; charset=utf-8\") and line breaks.",
     "new": "put refuses a media type that isn't type/subtype of HTTP token characters, with a RangeError, and stores nothing. A malformed hash (upper case, wrong length, \"../etc/passwd\") gives null from get, as the old store already did for any unknown hash.",
     "why": "A media type ends up in HTTP headers and file metadata; a line break there could split a header. Parameters are left out so one blob has one plain type.",
-    "status": "proposed"
+    "status": "signed-off"
   },
   {
     "id": "memory-run-store-expected-seq",
@@ -24,6 +24,6 @@
     "old": "append(event) took one event and added it to its run, whatever its seq and whatever was stored before, so two writers could both append and a run could get gaps or repeated numbers.",
     "new": "append(runId, expectedSeq, events) adds the events only when the run's last stored seq is expectedSeq, and otherwise returns { ok: false, reason: \"conflict\", lastSeq } and stores nothing. Empty, misnumbered or other-run events are refused with a RangeError.",
     "why": "The run log is the source of truth for a run. Checking expectedSeq means two writers can never interleave events, and of two at the same seq exactly one wins.",
-    "status": "proposed"
+    "status": "signed-off"
   }
 ]
