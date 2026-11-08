@@ -52,29 +52,44 @@ export function findRepoRoot(start: string = process.cwd()): string {
 
 /**
  * Reads the `packages:` globs from `pnpm-workspace.yaml`. We only use plain
- * folders and `folder/*`, so a line reader is enough and keeps the check
- * free of a YAML library.
+ * folders and `folder/*` in a block list, so a line reader is enough and
+ * keeps the check free of a YAML library. Anything else in `packages:`
+ * throws: reading too few globs would hide packages from every rule.
+ *
+ * @throws when `packages:` is missing, empty, flow style or has a line this can't read
  */
 export function readWorkspaceGlobs(root: string): string[] {
   const lines = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8").split("\n");
+  const fail = (reason: string): never => {
+    throw new Error(
+      `pnpm-workspace.yaml: ${reason} Write "packages:" as a block list of "- folder" or "- folder/*" lines.`,
+    );
+  };
   const globs: string[] = [];
   let inPackages = false;
-  for (const line of lines) {
-    if (/^packages:\s*$/.test(line)) {
+  for (const [index, line] of lines.entries()) {
+    if (/^packages:/.test(line)) {
+      if (!/^packages:\s*(?:#.*)?$/.test(line)) {
+        fail(`line ${index + 1} is not a block list.`);
+      }
       inPackages = true;
       continue;
     }
-    if (!inPackages) {
+    if (!inPackages || line.trim() === "" || line.trimStart().startsWith("#")) {
       continue;
     }
-    const item = /^\s+-\s+["']?([^"'#\s]+)["']?\s*$/.exec(line);
-    if (item?.[1] !== undefined) {
-      globs.push(item[1]);
+    const item = /^\s*-\s+(["']?)([^"'#\s[\]{},]+)\1\s*(?:#.*)?$/.exec(line);
+    if (item?.[2] !== undefined) {
+      globs.push(item[2]);
       continue;
     }
-    if (line.trim() !== "" && !line.trimStart().startsWith("#")) {
+    if (/^[^\s-]/.test(line)) {
       break;
     }
+    fail(`can't read line ${index + 1} of "packages:".`);
+  }
+  if (globs.length === 0) {
+    fail(`"packages:" is missing or lists no folders.`);
   }
   return globs;
 }
