@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -93,6 +93,23 @@ describe("pre-commit hook", () => {
     const result = commitFile("docs/thanks.md", `Thanks to ${term}!\n`);
     expect(result.status).toBe(0);
     expect(result.output).toContain("personal terms were not checked");
+  });
+});
+
+describe("pre-commit hook without a usable Node.js", () => {
+  it("says the Node.js on PATH is too old, and refuses the commit", () => {
+    const bin = join(scratch, "bin");
+    mkdirSync(bin);
+    // A Node.js stand-in that fails the version check and passes everything else on.
+    writeFileSync(
+      join(bin, "node"),
+      `#!/bin/sh\ncase "$2" in *versions.node*) exit 1;; esac\nexec "${process.execPath}" "$@"\n`,
+    );
+    chmodSync(join(bin, "node"), 0o755);
+    environment["PATH"] = `${bin}${delimiter}${environment["PATH"] ?? ""}`;
+    const result = commitFile("docs/readme.md", "hello\n");
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain("Node.js on PATH is too old");
   });
 });
 
