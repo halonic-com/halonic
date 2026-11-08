@@ -5,6 +5,7 @@ import type {
   DefinitionSource,
   DefinitionStore,
   HttpClient,
+  KnowledgeProvider,
   RunEventListener,
   RunExecutor,
   RunFilter,
@@ -124,5 +125,28 @@ describe("ports.frozen-inputs", () => {
 
   it("deletes a coordination value by setting it to null", () => {
     expectTypeOf<Coordination["compareAndSet"]>().toBeCallableWith("k", "old", null);
+  });
+});
+
+describe("ports.untrusted-knowledge", () => {
+  const provider: KnowledgeProvider = {
+    id: "docs",
+    capabilities: { search: true, semantic: false, ingest: false },
+    search: async () => [],
+    get: async () => null,
+  };
+
+  it("lets a knowledge source say whether its content is untrusted", () => {
+    const remote: KnowledgeProvider = { ...provider, untrusted: true };
+    const own: KnowledgeProvider = { ...provider, untrusted: false };
+    expect([remote.untrusted, own.untrusted]).toEqual([true, false]);
+    // @ts-expect-error: untrusted is a boolean
+    const wrong: KnowledgeProvider = { ...provider, untrusted: "yes" };
+    expect(wrong).toBeDefined();
+  });
+
+  it("leaves it out for a source that doesn't say, which counts as untrusted", () => {
+    expectTypeOf<KnowledgeProvider["untrusted"]>().toEqualTypeOf<boolean | undefined>();
+    expect(provider.untrusted ?? true).toBe(true);
   });
 });

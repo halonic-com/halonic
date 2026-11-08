@@ -31,6 +31,14 @@ export interface KnowledgeCapabilities {
 export interface KnowledgeProvider {
   readonly id: string;
   readonly capabilities: KnowledgeCapabilities;
+  /**
+   * Whether hits and documents may hold text someone outside the workspace
+   * wrote, such as a remote server's answers. Halonic fences that text off
+   * like an untrusted tool result, so instructions in it aren't followed.
+   * Leaving it out counts as `true`: only a source whose content the
+   * workspace itself wrote, such as its own files, says `false`.
+   */
+  readonly untrusted?: boolean;
   /** The best matches first. */
   search(query: string, options?: { limit?: number }): Promise<KnowledgeHit[]>;
   /** The document, or `null` when there is no such ref. */
