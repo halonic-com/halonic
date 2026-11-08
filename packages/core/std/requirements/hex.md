@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-104 (plan 7.3)
+- Source: new in the core std package
 
 The hex writer shall write each byte as two lowercase hexadecimal characters, in order.
 

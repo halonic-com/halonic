@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-104 (plan 7.3); the old util package (`packages/core/util`) `systemClock` and `fixedClock` at 784f78d
+- Source: the old util package (`packages/core/util`) `systemClock` and `fixedClock` at 784f78d
 
 The system clock shall return the machine's current time, and a fixed clock shall return its start time on the first call and move on by its step on each later call.
 

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-104 (plan 7.3)
+- Source: new in the core std package
 
 If an asserted condition does not hold, then the assertion helpers shall throw an `AssertionError` whose message says what was expected.
 

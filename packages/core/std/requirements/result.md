@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-104 (plan 7.3)
+- Source: new in the core std package
 
 The result type shall carry either a value (`ok`) or an error (`err`), and `mapResult` and `unwrap` shall act on the value only when the result is successful.
 

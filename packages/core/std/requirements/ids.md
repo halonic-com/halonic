@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-104 (plan 4.1, 7.3); the old util package (`packages/core/util`) `randomIds` and `fixedIds` at 784f78d
+- Source: the old util package (`packages/core/util`) `randomIds` and `fixedIds` at 784f78d
 
 The random id generator shall build each id from the prefix, the clock's time in base 36 and 4 random bytes from the injected source in hex, and the fixed id generator shall count up from 1 per prefix.
 
