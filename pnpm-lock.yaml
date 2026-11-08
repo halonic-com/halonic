@@ -433,6 +433,9 @@ importers:
 
   tooling/check:
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../packages/testing/spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../config
