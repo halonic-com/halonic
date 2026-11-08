@@ -33,9 +33,10 @@
     "fast-check": {
       "category": "dev-tooling",
       "allowedIn": [
-        "@halonicjs/schema-kit"
+        "@halonicjs/schema-kit",
+        "@halonicjs/yaml"
       ],
-      "reason": "Property-based tests: generated and hostile inputs (deep nesting, huge lists, odd Unicode) for how schema-kit uses Zod (plan 7.2, 9.3). Tests only."
+      "reason": "Property-based tests: generated and hostile inputs (deep nesting, huge lists and files, odd Unicode, Windows line endings, BOM) for how schema-kit uses Zod and for the YAML layer (plan 7.2, 9.3). Tests only."
     },
     "react-data-grid": {
       "category": "studio-framework",

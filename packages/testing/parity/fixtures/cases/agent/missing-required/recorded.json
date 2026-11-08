@@ -1,0 +1,57 @@
+{
+  "reference": "784f78d",
+  "case": "agent/missing-required",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/clerk.agent.yaml",
+      "flatPath": "hubs/billing/agents/clerk.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [
+        {
+          "path": [
+            "methods",
+            "extract",
+            "instructions"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected string, received undefined",
+          "line": 13,
+          "col": 5
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "methods.extract.instructions: Invalid input: expected string, received undefined",
+      "line": 13,
+      "col": 5
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "\"extract\" uses unknown agent \"clerk\"",
+      "state": "extract"
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/month-end.routine.yaml",
+      "message": "Routine \"month-end\": unknown agent \"clerk\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/clerk.agent.yaml: methods.extract.instructions: Invalid input: expected string, received undefined\nerror hubs/billing/workflows/invoice.workflow.yaml (extract): \"extract\" uses unknown agent \"clerk\"\nerror hubs/billing/routines/month-end.routine.yaml: Routine \"month-end\": unknown agent \"clerk\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 12,
+    "recorded": 13,
+    "verdict": "different"
+  }
+}

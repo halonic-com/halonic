@@ -1,0 +1,10 @@
+{
+  "about": "a timer that is not a number and a unit",
+  "kind": "workflow",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.workflow.yaml",
+    "path": "states.decide.on.2.after",
+    "line": 16
+  }
+}

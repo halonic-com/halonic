@@ -1,0 +1,46 @@
+{
+  "reference": "784f78d",
+  "case": "deployments/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "deployments.yaml",
+      "flatPath": "deployments.yaml",
+      "read": true,
+      "schema": "deployments",
+      "issues": [
+        {
+          "path": [
+            "deployments",
+            "laptop",
+            "host"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"local\"|\"cloudflare\"",
+          "line": 6,
+          "col": 11
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "deployments.yaml",
+      "message": "deployments.laptop.host: Invalid option: expected one of \"local\"|\"cloudflare\"",
+      "line": 6,
+      "col": 11
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error deployments.yaml: deployments.laptop.host: Invalid option: expected one of \"local\"|\"cloudflare\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 6,
+    "recorded": 6,
+    "verdict": "same"
+  }
+}

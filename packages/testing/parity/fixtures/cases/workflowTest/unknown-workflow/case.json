@@ -1,0 +1,10 @@
+{
+  "about": "a test for a workflow that doesn't exist",
+  "kind": "workflowTest",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.test.yaml",
+    "path": "workflow",
+    "line": 1
+  }
+}

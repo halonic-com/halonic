@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/final-has-transitions",
+  "valid": true,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "Final state \"done\" has transitions that never fire",
+      "state": "done"
+    }
+  ],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "warn  hubs/billing/workflows/extra.workflow.yaml (done): Final state \"done\" has transitions that never fire\nOK: Acme, 1 hub(s), 1 warning(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 11,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

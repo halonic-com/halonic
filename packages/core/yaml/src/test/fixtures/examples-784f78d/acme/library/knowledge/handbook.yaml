@@ -1,0 +1,6 @@
+id: handbook
+name: Support handbook
+description: How-to articles for customers.
+provider: files
+config:
+  path: docs/handbook

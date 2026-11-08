@@ -1,0 +1,10 @@
+{
+  "about": "path at the top instead of under config",
+  "kind": "knowledge",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "library/knowledge/handbook.yaml",
+    "path": "path",
+    "line": 7
+  }
+}

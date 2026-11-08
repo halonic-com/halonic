@@ -1,0 +1,42 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/unknown-key",
+  "valid": false,
+  "files": [
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [
+        {
+          "path": [],
+          "code": "unrecognized_keys",
+          "message": "Unrecognized key: \"colour\"",
+          "line": 2,
+          "col": 1
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "Unrecognized key: \"colour\"",
+      "line": 2,
+      "col": 1
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: Unrecognized key: \"colour\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": 2,
+    "verdict": "different"
+  }
+}

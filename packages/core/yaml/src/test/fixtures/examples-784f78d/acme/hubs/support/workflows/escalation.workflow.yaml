@@ -1,0 +1,26 @@
+id: escalation
+name: Escalation
+description: Run support triage on a message as one step, then tell the team what happened.
+initial: triage
+states:
+  triage:
+    # A subflow: the whole Support triage workflow runs as its own linked run.
+    # If it waits for an approval, this workflow waits too; send the event here.
+    type: workflow
+    workflow: triage
+    input: { message: "{{input.message}}" }
+    output: result
+    on:
+      - to: notify
+  notify:
+    agent: writer
+    input: "In two lines, tell the support team what happened with this message: {{context.result}}"
+    output: note
+    on:
+      - to: done
+  done:
+    type: final
+layout:
+  triage: { x: 0, y: 0 }
+  notify: { x: 0, y: 240 }
+  done: { x: 0, y: 480 }

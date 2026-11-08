@@ -1,0 +1,10 @@
+# A workspace is a folder. Everything here is plain YAML and Markdown you own.
+id: acme
+name: Acme
+description: Example workspace for Halonic Studio.
+privacy:
+  # true = only providers marked local may be used; nothing leaves this machine.
+  localOnly: false
+defaults:
+  runtime: inprocess
+  model: default

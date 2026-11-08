@@ -1,0 +1,10 @@
+{
+  "about": "no provider",
+  "kind": "knowledge",
+  "fault": "missing-required",
+  "expect": {
+    "file": "library/knowledge/handbook.yaml",
+    "path": "provider",
+    "line": 1
+  }
+}

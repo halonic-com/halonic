@@ -1,0 +1,56 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/foreach-concurrency",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/batch.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/batch.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [
+        {
+          "path": [
+            "states",
+            "each",
+            "concurrency"
+          ],
+          "code": "too_big",
+          "message": "Too big: expected number to be <=16",
+          "line": 10,
+          "col": 18
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/batch.workflow.yaml",
+      "message": "states.each.concurrency: Too big: expected number to be <=16",
+      "line": 10,
+      "col": 18
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/batch.test.yaml",
+      "message": "Test targets unknown workflow \"batch\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/by-hand.routine.yaml",
+      "message": "Routine \"by-hand\": unknown workflow \"batch\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/batch.workflow.yaml: states.each.concurrency: Too big: expected number to be <=16\nerror hubs/billing/workflows/batch.test.yaml: Test targets unknown workflow \"batch\"\nerror hubs/billing/routines/by-hand.routine.yaml: Routine \"by-hand\": unknown workflow \"batch\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 10,
+    "recorded": 10,
+    "verdict": "same"
+  }
+}

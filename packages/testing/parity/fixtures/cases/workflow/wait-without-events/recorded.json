@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/wait-without-events",
+  "valid": true,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "Wait state \"start\" only listens to \"done\"; give it named events like \"approve\"",
+      "state": "start"
+    }
+  ],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "warn  hubs/billing/workflows/extra.workflow.yaml (start): Wait state \"start\" only listens to \"done\"; give it named events like \"approve\"\nOK: Acme, 1 hub(s), 1 warning(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

@@ -1,0 +1,6 @@
+id: ledger
+provider: files
+mode: auto
+size: large
+config:
+  path: ledger

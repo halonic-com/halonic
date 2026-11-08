@@ -1,0 +1,10 @@
+{
+  "about": "no name",
+  "kind": "hub",
+  "fault": "missing-required",
+  "expect": {
+    "file": "hubs/billing/hub.yaml",
+    "path": "name",
+    "line": 1
+  }
+}

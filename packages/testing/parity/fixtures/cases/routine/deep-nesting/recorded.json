@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "routine/deep-nesting",
+  "valid": false,
+  "files": [
+    {
+      "file": "workflows/routines/on-paid.routine.yaml",
+      "flatPath": "routines/on-paid.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [
+        {
+          "path": [
+            "trigger"
+          ],
+          "code": "invalid_union",
+          "message": "Invalid input",
+          "line": 4,
+          "col": 3
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "routines/on-paid.routine.yaml",
+      "message": "trigger: Invalid input",
+      "line": 4,
+      "col": 3
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error routines/on-paid.routine.yaml: trigger: Invalid input\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 6,
+    "recorded": 4,
+    "verdict": "different"
+  }
+}

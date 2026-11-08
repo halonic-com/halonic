@@ -1,0 +1,10 @@
+{
+  "about": "a method call without an argument the method needs",
+  "kind": "workflow",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.with",
+    "line": 8
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "a method name with capitals",
+  "kind": "agent",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "methods.Extract",
+    "line": 12
+  }
+}

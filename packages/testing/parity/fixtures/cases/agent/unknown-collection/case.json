@@ -1,0 +1,10 @@
+{
+  "about": "a collection that doesn't exist",
+  "kind": "agent",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "collections.0",
+    "line": 10
+  }
+}

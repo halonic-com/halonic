@@ -1,0 +1,6 @@
+id: local-llm
+name: Local model server
+baseUrl: http://localhost:11434/v1
+local: true
+options:
+  timeoutMs: 30000

@@ -1,0 +1,10 @@
+{
+  "about": "front matter that is not valid YAML",
+  "kind": "skill",
+  "fault": "yaml-syntax",
+  "expect": {
+    "file": "library/skills/plain-words/SKILL.md",
+    "path": "name",
+    "line": 2
+  }
+}

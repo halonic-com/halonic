@@ -1,0 +1,11 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    agent: checker
+    gets: [context.total]
+    on:
+      - to: done
+  done:
+    type: final

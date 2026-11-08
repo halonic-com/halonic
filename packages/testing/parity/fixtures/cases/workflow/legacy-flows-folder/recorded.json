@@ -1,0 +1,28 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/legacy-flows-folder",
+  "valid": true,
+  "files": [
+    {
+      "file": "hubs/billing/flows/archive.flow.yaml",
+      "flatPath": "hubs/billing/flows/archive.flow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "info",
+      "path": "hubs/billing/flows",
+      "message": "Legacy flows/ folder: run `studio migrate` to move it to workflows/"
+    }
+  ],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "info  hubs/billing/flows: Legacy flows/ folder: run `studio migrate` to move it to workflows/\nOK: Acme, 1 hub(s), 0 warning(s)\n",
+    "stderr": ""
+  },
+  "line": null
+}

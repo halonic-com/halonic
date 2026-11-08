@@ -1,0 +1,10 @@
+{
+  "about": "a knowledge source that doesn't exist",
+  "kind": "agent",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "knowledge.1",
+    "line": 9
+  }
+}

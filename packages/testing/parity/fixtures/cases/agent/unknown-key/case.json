@@ -1,0 +1,10 @@
+{
+  "about": "a method with an unknown key",
+  "kind": "agent",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "methods.extract.retries",
+    "line": 19
+  }
+}

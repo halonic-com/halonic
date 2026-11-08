@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "routine/mail-unknown-connector",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+      "flatPath": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "message": "Routine \"inbox-mail\": unknown connector \"post\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/routines/inbox-mail.routine.yaml: Routine \"inbox-mail\": unknown connector \"post\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

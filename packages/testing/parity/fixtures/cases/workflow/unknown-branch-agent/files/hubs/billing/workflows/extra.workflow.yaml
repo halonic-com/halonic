@@ -1,0 +1,12 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    type: parallel
+    branches:
+      audit: { agent: auditor }
+    on:
+      - to: done
+  done:
+    type: final

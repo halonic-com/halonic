@@ -1,0 +1,6 @@
+id: cloudflare
+name: Cloudflare Workers AI
+type: cloudflare
+secret: cloudflare
+options:
+  accountId: your-account-id

@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "runtime/bad-format",
+  "valid": false,
+  "files": [
+    {
+      "file": "runtimes/inprocess.yaml",
+      "flatPath": "runtimes/inprocess.yaml",
+      "read": true,
+      "schema": "runtime",
+      "issues": [
+        {
+          "path": [
+            "id"
+          ],
+          "code": "invalid_format",
+          "message": "use lowercase letters, digits, '-' or '_'",
+          "line": 1,
+          "col": 5
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "runtimes/inprocess.yaml",
+      "message": "id: use lowercase letters, digits, '-' or '_'",
+      "line": 1,
+      "col": 5
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error runtimes/inprocess.yaml: id: use lowercase letters, digits, '-' or '_'\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 1,
+    "recorded": 1,
+    "verdict": "same"
+  }
+}

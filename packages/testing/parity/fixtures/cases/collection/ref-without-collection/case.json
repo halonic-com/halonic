@@ -1,0 +1,10 @@
+{
+  "about": "a ref field without a collection",
+  "kind": "collection",
+  "fault": "rule",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "fields.supplier",
+    "line": 14
+  }
+}

@@ -1,0 +1,32 @@
+# Agents ask for an alias, never a vendor model. Switch providers here,
+# per workspace or per hub, without touching agents or workflows.
+# Model names are examples; set them to what you have access to.
+aliases:
+  default:
+    description: Local first. Runs on this machine.
+    provider: ollama
+    model: llama3.2
+  fast:
+    provider: ollama
+    model: llama3.2
+    params:
+      temperature: 0.1
+  smart:
+    description: Cloud model, falls back to local when offline or unavailable.
+    provider: anthropic
+    model: claude-sonnet-5-5
+    params:
+      temperature: 0.3
+    fallback: [default]
+  openai:
+    provider: openai
+    model: gpt-5-mini
+    fallback: [default]
+  gemini:
+    provider: gemini
+    model: gemini-2.5-flash
+    fallback: [default]
+  workers:
+    provider: cloudflare
+    model: "@cf/meta/llama-3.1-8b-instruct"
+    fallback: [default]

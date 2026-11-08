@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/missing-initial",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "Initial state \"begin\" does not exist"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml: Initial state \"begin\" does not exist\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 3,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}
