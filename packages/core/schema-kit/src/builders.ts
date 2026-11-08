@@ -1,7 +1,21 @@
 import { z } from "zod";
 
-/** A host as `URL` writes it: lower-case name labels, a dotted IPv4 address or a bracketed IPv6 address. */
-const urlHost = String.raw`(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|\[[0-9a-f:.]+\])`;
+/** An IPv4 octet as `URL` writes it: 0 to 255, without leading zeros. */
+const ipv4Octet = String.raw`(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)`;
+
+/** One lower-case name label. */
+const nameLabel = String.raw`[a-z0-9](?:[a-z0-9-]*[a-z0-9])?`;
+
+/**
+ * A host as `URL` writes it: a dotted IPv4 address, lower-case name labels or a
+ * bracketed IPv6 address. `URL` reads a name whose last label is a number, such
+ * as `999.999.999.999` or `1.2.3`, as an IPv4 address and refuses or rewrites
+ * it, so a name's last label may not be digits or `0x` with hex digits.
+ */
+const urlHost = String.raw`(?:${ipv4Octet}(?:\.${ipv4Octet}){3}|(?:${nameLabel}\.)*(?!(?:\d+|0x[0-9a-f]*)(?![a-z0-9-]))${nameLabel}|\[[0-9a-f:.]+\])`;
+
+/** A port as `URL` writes it: 0 to 65535, without leading zeros. */
+const urlPort = String.raw`(?:6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)`;
 
 /** What may follow the host: RFC 3986's unreserved and reserved characters and `%` with two hex digits. */
 const urlRest = String.raw`(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})*`;
@@ -12,7 +26,9 @@ const urlRest = String.raw`(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{
  * lower-case scheme and host, no user or password, no spaces or other
  * characters `URL` would escape. Anything else, such as `mailto:` or `file:`, is refused.
  */
-const URL_PATTERN = new RegExp(String.raw`^https?://${urlHost}(?::\d{1,5})?(?:[/?#]${urlRest})?$`);
+const URL_PATTERN = new RegExp(
+  String.raw`^https?://${urlHost}(?::${urlPort})?(?:[/?#]${urlRest})?$`,
+);
 
 /**
  * Builds schemas. These are Zod's own builders, limited to the ones the file

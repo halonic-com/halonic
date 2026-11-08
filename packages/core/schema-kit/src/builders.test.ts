@@ -87,6 +87,10 @@ verifies("schema-kit.builders", () => {
       "https://www.googleapis.com/drive/v3/files?q=%27root%27+in+parents&pageSize=300",
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
       "https://example.com/a#part",
+      "http://255.255.255.255:65535/",
+      "http://0.0.0.0:0/",
+      "https://123.example.com/",
+      "https://example.0xg/",
     ];
     for (const url of accepted) expect(parse(s.url(), url)).toEqual({ ok: true, value: url });
   });
@@ -105,6 +109,14 @@ verifies("schema-kit.builders", () => {
       "https://-example.com/",
       "https://",
       "example.com/path",
+      "http://999.999.999.999/",
+      "http://256.0.0.1/",
+      "http://010.0.0.1/",
+      "http://1.2.3/",
+      "http://example.123/",
+      "http://x.com:99999/",
+      "http://x.com:65536/",
+      "http://x.com:08080/",
     ];
     for (const url of refused) {
       expect(issuesOf(parse(s.url(), url))).toMatchObject([{ code: "invalid_format", path: [] }]);
