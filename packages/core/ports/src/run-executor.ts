@@ -1,18 +1,27 @@
-import type { RunEvent, RunKind, RunParent, RunSummary, RunTrigger } from "@halonicjs/events";
+import type { RunEvent, RunKind, RunSummary, RunTrigger } from "@halonicjs/events";
 import type { ChatMessage, ChatParams, ChatResponse, ToolDefinition } from "./chat.ts";
 
 /** Version of the {@link RunExecutor} port. A breaking change bumps it and comes with an ADR. */
 export const runExecutorVersion = 1;
 
-/** Start a workflow run. */
+/**
+ * Start a workflow run. Subflows are not started through this port: the
+ * engine starts them inside the executor, which also tells the parent when a
+ * child finishes.
+ */
 export interface StartRunRequest {
   hubId: string;
   workflowId: string;
   input: Record<string, unknown>;
   kind?: RunKind;
   trigger?: RunTrigger;
-  /** Set by the engine when a workflow state starts this run (a subflow). */
-  parent?: RunParent;
+  /**
+   * The id the run gets, for a start that may be repeated: a routine fire, a
+   * mail or a signal. When a run with this id already exists, `start` returns
+   * its summary and starts nothing, whatever the rest of the request says.
+   * A new id from the executor's `IdGenerator` when absent.
+   */
+  runId?: string;
 }
 
 /** Start a run of a single agent with a prompt. */
@@ -20,14 +29,24 @@ export interface StartAgentRequest {
   hubId: string;
   agentId: string;
   prompt: string;
+  /** As {@link StartRunRequest.runId}: repeating a start with the same id starts nothing. */
+  runId?: string;
 }
 
 /** An agent's model settings for a chat turn that aren't saved in a file yet. */
 export interface ChatAgentSettings {
+  /** The provider adapter type, such as "openai". */
   type: string;
+  /** The model name at that provider. */
   model: string;
+  /** The provider's address, when it isn't the adapter's default. */
   baseUrl?: string;
+  /**
+   * The **name** of the secret that holds the API key, never the key itself.
+   * This travels over the wire to a remote host, which looks the name up.
+   */
   secret?: string;
+  /** Whether the model runs on this machine (such as Ollama), so it has no price. */
   local: boolean;
 }
 
@@ -38,8 +57,10 @@ export interface ChatTurnRequest {
   alias?: string;
   messages: ChatMessage[];
   tools: ToolDefinition[];
+  /** The agent whose settings and prompt apply, if any. */
   agentId?: string;
   params?: ChatParams;
+  /** Unsaved model settings from the agent editor; they win over the saved ones. */
   agent?: ChatAgentSettings;
 }
 
@@ -48,8 +69,18 @@ export interface ChatTurnResponse extends ChatResponse {
   model: string;
 }
 
-/** Receives a run's events, in order and without gaps. */
-export type RunEventListener = (event: RunEvent) => void;
+/** Receives a run's events from {@link RunExecutor.subscribe}. */
+export interface RunEventListener {
+  /** One durable event, in order and without gaps. */
+  onEvent(event: RunEvent): void;
+  /**
+   * The stream ended, once and for good. Without an error: the run ended and
+   * every event was delivered. With an error: the stream broke (such as a
+   * dropped connection), and the caller subscribes again after the last
+   * `seq` it saw. Not called when the caller closes the subscription.
+   */
+  onClose(error?: Error): void;
+}
 
 /** An open subscription. Closing it twice is not an error. */
 export interface RunSubscription {
@@ -70,13 +101,14 @@ export interface RunExecutor {
   /** Identifies the implementation, such as "local" or "remote". */
   readonly id: string;
   /**
-   * Starts a workflow run.
+   * Starts a workflow run, or returns the existing one for a repeated `runId`.
    *
    * @throws when the hub or workflow doesn't exist or the input is refused
    */
   start(request: StartRunRequest): Promise<RunSummary>;
   /**
-   * Starts a run of one agent; its workflow id is "agent:<agentId>".
+   * Starts a run of one agent; its workflow id is "agent:<agentId>". A
+   * repeated `runId` returns the existing run.
    *
    * @throws when the hub or agent doesn't exist
    */
@@ -89,8 +121,9 @@ export interface RunExecutor {
   send(runId: string, event: string, payload?: unknown): Promise<RunSummary>;
   /**
    * Streams a run's durable events: first the stored ones after `afterSeq`,
-   * then new ones as they are appended. A client that reconnects passes the
-   * last sequence number it saw (multi-cloud ADR 5.2).
+   * then new ones as they are appended, until the run ends or the stream
+   * breaks (see {@link RunEventListener.onClose}). A client that reconnects
+   * passes the last sequence number it saw (multi-cloud ADR 5.2).
    */
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription;
   /**
