@@ -16,6 +16,10 @@ matches either one counts, as in classic cron. A bad expression throws a
 standard `Intl` APIs only. `checkTimeZone` turns an unknown zone into a
 readable `CronError`.
 
+`describeCron` writes an expression out in words for people, such as
+"Weekdays at 08:00", and falls back to `Cron "<expression>"` for shapes
+without a short phrase.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
