@@ -15,18 +15,30 @@ runs:
       # The container runs as root but the checkout belongs to the runner user.
       # Without safe.directory git refuses the repo, and gitleaks scans 0 commits
       # and still reports no leaks, so the commit count is checked as well.
+      # The log only says how many leaks there are. The report also holds the
+      # author, email and commit message, which may be personal, so only the
+      # commit, file, line and rule are printed from it.
       run: |
         image=$(sed -n 's/^FROM //p' "$GITHUB_ACTION_PATH/Dockerfile")
-        args=(git --redact --no-banner --exit-code 1)
+        args=(git --redact --no-banner --exit-code 1 --report-format json --report-path /out/gitleaks.json)
         if [ -n "$LOG_OPTS" ]; then
           args+=("--log-opts=$LOG_OPTS")
         fi
         log="$RUNNER_TEMP/gitleaks.log"
-        docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo \
+        set +e
+        docker run --rm -v "$GITHUB_WORKSPACE:/repo" -v "$RUNNER_TEMP:/out" -w /repo \
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
-          "$image" "${args[@]}" . 2>&1 | tee "$log"
+          "$image" "${args[@]}" . > "$log" 2>&1
+        status=$?
+        set -e
+        cat "$log"
+        if [ -s "$RUNNER_TEMP/gitleaks.json" ]; then
+          jq -r '.[] | "::error title=gitleaks::commit \(.Commit[0:7]), \(.File):\(.StartLine) [\(.RuleID)]"' "$RUNNER_TEMP/gitleaks.json"
+        fi
+        rm -f "$RUNNER_TEMP/gitleaks.json"
         scanned=$(grep -oE '[0-9]+ commits scanned' "$log" | grep -oE '^[0-9]+' || true)
         if ! [[ "$scanned" =~ ^[1-9][0-9]*$ ]]; then
           echo "::error title=gitleaks::No commits were scanned, so the scan proves nothing. See the log above."
           exit 1
         fi
+        exit "$status"
