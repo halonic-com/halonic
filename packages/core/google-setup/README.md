@@ -84,6 +84,18 @@ before every write and after every read, and refuses any other key, so it can't 
 secret, a refresh, access or ID token, the authorisation code, the PKCE `code_verifier` or the
 `state`. A record that fails the check reads as `damaged`; errors never repeat a value.
 
+**Sharing a client** (design 3.6, last bullet): `shareClient(accountRef, fromAccountRef)` lets a
+personal account use another personal account's working app. Both records then hold the same
+client ID and client secret ref, so a rotation is done once; `usingClient(clientRef)` lists them
+for "Used by x and y" and for marking every account **Needs new secret**.
+
+**Start over**: `startOver({ setups, secrets, tokens }, accountRef)` removes the account's refresh
+token and its record (compacting `_google_setups`), and the client secret unless another account
+uses it. It returns which case it was, revokes nothing at Google, and removes the secrets before the
+record, so a crash never leaves a secret no record points to. The stores keep no old value after
+they compact, but backups and freed disk blocks are outside them, so Studio says "Halonic deletes
+the saved client secret and stops using it" (plan D1), never that it is gone from the computer.
+
 **Agents, tools and hubs must not be able to write to `_google_setups`**: the record decides which
 client secret a sign-in uses. Only the host's setup routes (build plan B5) get the store.
 
@@ -113,7 +125,7 @@ be a secret.
   (B4, B5). Studio, the kit, hubs and integrations never call them: an integration only ever gets
   an access token, through scoped tokens that can't reach `google-client-*`.
 - Which accounts share a client ref is in the setup records, so `removeClientSecret` takes
-  `usedByOthers` from the caller.
+  `usedByOthers` from the caller; `startOver` works it out with `usingClient`.
 - Before the first sign-in there is nothing to test a new secret with, so the caller uses
   `replaceClientSecret` instead of staging.
 

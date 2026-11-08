@@ -68,6 +68,7 @@ export type {
 } from "./setup-step.ts";
 export { setupSteps } from "./setup-steps.ts";
 export { type CallbackQuery, readSignInCallback, type SignInCallback } from "./sign-in-callback.ts";
+export { type StartOverSecret, type StartOverStores, startOver } from "./start-over.ts";
 export { clientSecretName, refreshTokenName, stagedClientSecretName } from "./store-names.ts";
 export {
   classifyTokenAnswer,
