@@ -1,4 +1,4 @@
-import type { Clock, RecordChange, RecordStore } from "@halonicjs/ports";
+import { type Clock, foldRecords, type RecordChange, type RecordStore } from "@halonicjs/ports";
 
 /** A lease as it is kept: who holds it and until when, in ms. */
 export interface HeldLease {
@@ -30,7 +30,7 @@ export type StateEntry =
 /**
  * The coordination state as records in a {@link RecordStore} collection, one
  * record per kind and key. The store keeps a log of changes, so loading folds
- * the log into the current state.
+ * the log into the current state and then compacts it.
  */
 export class StateLog {
   readonly #store: RecordStore;
@@ -44,24 +44,25 @@ export class StateLog {
   }
 
   /**
-   * The state the log holds now.
+   * The state the log holds now. Leases that have run out are removed, and
+   * the log is compacted, so only the current entries stay in the store.
+   * A log with a record this adapter didn't write is left as it is.
    *
    * @throws Error naming the record when a record isn't one this adapter wrote
    */
   async load(): Promise<CoordinationState> {
-    const records = new Map<string, Record<string, unknown>>();
-    for (const change of await this.#store.changes(this.#collection)) {
-      applyChange(records, change);
-    }
+    const records = foldRecords(await this.#store.changes(this.#collection));
     const state: CoordinationState = {
       leases: new Map(),
       values: new Map(),
       counters: new Map(),
       windows: new Map(),
     };
-    for (const [recordId, values] of records) {
+    for (const [recordId, { values }] of records) {
       addEntry(state, readEntry(recordId, values));
     }
+    await this.#removeLeasesRunOut(state);
+    await this.#store.compact(this.#collection);
     return state;
   }
 
@@ -83,13 +84,38 @@ export class StateLog {
     await this.#append("remove", recordId(kind, key), null);
   }
 
+  /**
+   * Removes the leases that ran out before now. Nobody holds them any more,
+   * so dropping them changes no answer; a window can't be judged the same
+   * way, because only the caller knows how long it is.
+   */
+  async #removeLeasesRunOut(state: CoordinationState): Promise<void> {
+    const now = this.#clock.now().getTime();
+    const runOut = [...state.leases]
+      .filter(([, lease]) => lease.expiresAt <= now)
+      .map(([key]) => key);
+    if (runOut.length === 0) return;
+    await this.#store.append(
+      runOut.map((key) => this.#change("remove", recordId("lease", key), null)),
+    );
+    for (const key of runOut) state.leases.delete(key);
+  }
+
   async #append(
     op: RecordChange["op"],
     id: string,
     values: Record<string, unknown> | null,
   ): Promise<void> {
+    await this.#store.append([this.#change(op, id, values)]);
+  }
+
+  #change(
+    op: RecordChange["op"],
+    id: string,
+    values: Record<string, unknown> | null,
+  ): RecordChange {
     const at = this.#clock.now().toISOString();
-    await this.#store.append([{ at, collection: this.#collection, id, op, values }]);
+    return { at, collection: this.#collection, id, op, values };
   }
 }
 
@@ -164,18 +190,4 @@ function readEntry(id: string, values: Record<string, unknown>): StateEntry {
     }
   }
   throw new Error(`Coordination record ${id} is not a lease, value, counter or window.`);
-}
-
-/** Folds one change into the current records, as the {@link RecordChange} rules say. */
-function applyChange(records: Map<string, Record<string, unknown>>, change: RecordChange): void {
-  if (change.op === "remove") {
-    records.delete(change.id);
-    return;
-  }
-  const values = change.values ?? {};
-  if (change.op === "update") {
-    records.set(change.id, { ...records.get(change.id), ...values });
-    return;
-  }
-  records.set(change.id, { ...values });
 }

@@ -1,9 +1,5 @@
-import {
-  type Clock,
-  compactedChanges,
-  type RecordChange,
-  type RecordStore,
-} from "@halonicjs/ports";
+import { MemoryRecordStore } from "@halonicjs/adapter-memory";
+import type { Clock, RecordChange } from "@halonicjs/ports";
 import { NodeCoordination } from "./coordination.ts";
 
 /** The start of every fake clock: 2026-01-01T00:00:00Z. */
@@ -24,40 +20,24 @@ export class ManualClock implements Clock {
 }
 
 /**
- * A record store in memory, for these tests only, until the shared memory
- * adapter lands on `main`. `failNextAppend` makes the next write reject.
+ * The shared in-memory record store, with one addition for tests:
+ * `failNextAppend` makes the next write reject.
  */
-export class MemoryRecordStore implements RecordStore {
-  readonly #changes: RecordChange[] = [];
+export class FlakyRecordStore extends MemoryRecordStore {
   failNextAppend = false;
 
-  async append(changes: readonly RecordChange[]): Promise<void> {
+  override async append(changes: readonly RecordChange[]): Promise<void> {
     if (this.failNextAppend) {
       this.failNextAppend = false;
       throw new Error("the record store is unavailable");
     }
-    this.#changes.push(...changes.map((change) => structuredClone(change)));
-  }
-
-  async changes(collection: string): Promise<RecordChange[]> {
-    return this.#changes
-      .filter((change) => change.collection === collection)
-      .map((change) => structuredClone(change));
-  }
-
-  async compact(collection: string): Promise<void> {
-    const kept = this.#changes.filter((change) => change.collection !== collection);
-    const compacted = compactedChanges(
-      collection,
-      this.#changes.filter((change) => change.collection === collection),
-    );
-    this.#changes.splice(0, this.#changes.length, ...kept, ...compacted);
+    await super.append(changes);
   }
 }
 
 /** A store and a clock that coordination adapters in one test share, as processes before and after a restart would. */
 export interface World {
-  store: MemoryRecordStore;
+  store: FlakyRecordStore;
   clock: ManualClock;
   /** Makes predictable tokens that never repeat in the world, also across a restart. */
   newToken: () => string;
@@ -70,7 +50,7 @@ export function newWorld(): World {
     tokens += 1;
     return `lease_${tokens}`;
   };
-  return { store: new MemoryRecordStore(), clock: new ManualClock(), newToken };
+  return { store: new FlakyRecordStore(), clock: new ManualClock(), newToken };
 }
 
 /** Starts a coordination adapter in `world`. */

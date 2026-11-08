@@ -251,6 +251,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/ports
     devDependencies:
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../memory
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts
@@ -329,6 +332,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/ports
     devDependencies:
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../memory
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

@@ -1,5 +1,5 @@
 import type { ScheduledTimer, SchedulerListener } from "@halonicjs/ports";
-import { ManualClock, ManualTimers, MemoryRecordStore } from "./fakes.test-helper.ts";
+import { FlakyRecordStore, ManualClock, ManualTimers } from "./fakes.test-helper.ts";
 import { NodeScheduler, type SchedulerErrorSource } from "./scheduler.ts";
 
 /** A listener that records its calls and does what the test says. */
@@ -22,7 +22,7 @@ export class RecordingListener implements SchedulerListener {
 
 /** What a test shares with the scheduler it started: the store, clock and timers. */
 export interface World {
-  store: MemoryRecordStore;
+  store: FlakyRecordStore;
   clock: ManualClock;
   timers: ManualTimers;
 }
@@ -30,7 +30,7 @@ export interface World {
 /** A store, a clock at the fake start and fake timers on it. */
 export function newWorld(): World {
   const clock = new ManualClock();
-  return { store: new MemoryRecordStore(), clock, timers: new ManualTimers(clock) };
+  return { store: new FlakyRecordStore(), clock, timers: new ManualTimers(clock) };
 }
 
 /**

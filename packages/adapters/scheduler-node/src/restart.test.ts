@@ -71,6 +71,28 @@ verifies("scheduler-node.restart", () => {
       expect(after.listener.timers).toEqual([{ key: "run_1", timerId: "step", at }]);
     });
 
+    it("compacts the log, so only the timers still waiting stay in the store", async () => {
+      const world = newWorld();
+      const before = startScheduler(world);
+      before.listener.onTimerBehaviour = async (timer) => {
+        if (timer.timerId === "step") await fail();
+      };
+      await before.scheduler.schedule("run_1", "done", before.inMs(0));
+      await before.scheduler.schedule("run_1", "cancelled", before.inMs(minute));
+      await before.scheduler.cancel("run_1", "cancelled");
+      await before.scheduler.schedule("run_1", "step", before.inMs(0));
+      await before.wait(0);
+      await before.wait(second);
+      await before.scheduler.close();
+
+      const after = startScheduler(world);
+      await after.scheduler.pending("run_1");
+      const changes = await world.store.changes(defaultTimerCollection);
+      expect(changes).toMatchObject([
+        { op: "seed", id: '["run_1","step"]', values: { timerId: "step", failures: 2 } },
+      ]);
+    });
+
     it("rejects every call, naming the record, when a record isn't a timer", async () => {
       const world = newWorld();
       await world.store.append([
@@ -87,6 +109,7 @@ verifies("scheduler-node.restart", () => {
       await expect(s.scheduler.schedule("run_1", "b", s.inMs(0))).rejects.toThrow("not a timer");
       await expect(s.scheduler.deliverDue()).rejects.toThrow("not a timer");
       expect(s.errors.map((entry) => entry.source)).toEqual(["wake-up"]);
+      expect(await world.store.changes(defaultTimerCollection)).toMatchObject([{ op: "add" }]);
     });
   });
 });
