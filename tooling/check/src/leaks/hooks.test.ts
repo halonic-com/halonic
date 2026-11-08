@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { absolute, fakeSecrets, testTerms } from "./test-values.ts";
 
 /**
@@ -10,6 +10,10 @@ import { absolute, fakeSecrets, testTerms } from "./test-values.ts";
  * commit or a push and checks that the hook lets it through or refuses
  * it, and that a personal term never shows up in what the hook prints.
  */
+
+// Each test starts real git and Node.js processes. On a loaded runner one takes
+// 6 to 12 s, over the 5 s default, so give them room instead of flaking.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 const hooksPath = resolve(import.meta.dirname, "../../hooks");
 const [term = ""] = testTerms;
