@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseFile } from "../../index.ts";
-import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
+import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 
 /** The `integration.yaml` example in the guide, so the guide can't drift from the schema. */
 function guideExample(): string {
