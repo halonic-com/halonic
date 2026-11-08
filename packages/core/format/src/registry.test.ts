@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fileKinds, isKindName, isReservedPath, kindNames, RESERVED_FOLDER } from "./index.ts";
 
 describe("format.kind-registry", () => {
-  it("lists the kinds ported so far, workspace-level first", () => {
+  it("lists the 14 kinds the old schema and loader read, workspace-level first", () => {
     expect(kindNames()).toEqual([
       "workspace",
       "deployments",
@@ -16,6 +16,8 @@ describe("format.kind-registry", () => {
       "hub",
       "agent",
       "workflow",
+      "workflowTest",
+      "routine",
     ]);
   });
 
@@ -47,11 +49,13 @@ describe("format.kind-registry", () => {
       "hub: hub /hub.yaml",
       "agent: workspace-and-hub agents/<id>.agent.yaml",
       "workflow: workspace-and-hub workflows/<id>.workflow.yaml",
+      "workflowTest: workspace-and-hub workflows/<id>.test.yaml",
+      "routine: workspace-and-hub workflows/routines/<id>.routine.yaml",
     ]);
   });
 
   it("knows its kind names and nothing else", () => {
-    expect(isKindName("workspace")).toBe(true);
+    expect(isKindName("workflowTest")).toBe(true);
     expect(isKindName("flow")).toBe(false);
     expect(isKindName("toString")).toBe(false);
   });

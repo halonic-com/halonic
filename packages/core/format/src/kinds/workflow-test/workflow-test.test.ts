@@ -1,0 +1,53 @@
+import { describe, expect, it } from "vitest";
+import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
+
+describe("format.workflow-test-file", () => {
+  it("fills in every default of a case", () => {
+    const value = parsedValue(
+      "workflowTest",
+      yaml("workflow: invoice", "cases:", "  - name: happy path"),
+    );
+    expect(value).toEqual({
+      version: 1,
+      workflow: "invoice",
+      cases: [{ name: "happy path", input: {}, mocks: {}, events: [], tools: {}, expect: {} }],
+    });
+  });
+
+  it("accepts the three kinds of event", () => {
+    const text = yaml(
+      "workflow: approval",
+      "cases:",
+      "  - name: expires",
+      "    events: [approve, { advance: 2d }, { event: reject, payload: { comment: Shorter } }]",
+    );
+    expect(parsedValue("workflowTest", text).cases[0]?.events).toEqual([
+      "approve",
+      { advance: "2d" },
+      { event: "reject", payload: { comment: "Shorter" } },
+    ]);
+  });
+
+  it("refuses a file without cases and a clock move without a unit", () => {
+    expect(summary(problemsOf("workflowTest", yaml("workflow: invoice", "cases: []")))).toEqual([
+      "cases too_small 2",
+    ]);
+    const text = yaml("workflow: invoice", "cases:", "  - name: a", "    events: [{ advance: 2 }]");
+    expect(summary(problemsOf("workflowTest", text))).toEqual(["cases.0.events.0 invalid_union 4"]);
+  });
+
+  it("refuses an unknown status and an unknown expect key", () => {
+    const text = yaml(
+      "workflow: invoice",
+      "cases:",
+      "  - name: a",
+      "    expect: { status: paused }",
+      "  - name: b",
+      "    expect: { output: x }",
+    );
+    expect(summary(problemsOf("workflowTest", text))).toEqual([
+      "cases.0.expect.status invalid_value 4",
+      "cases.1.expect unrecognized_keys 6",
+    ]);
+  });
+});

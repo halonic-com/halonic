@@ -12,6 +12,7 @@ export type { Hub, HubUses } from "./kinds/hub/schema.ts";
 export type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
 export type { ModelAlias, Models } from "./kinds/models/schema.ts";
 export type { Provider } from "./kinds/provider/schema.ts";
+export type { Routine, RoutineTarget, RoutineTrigger } from "./kinds/routine/schema.ts";
 export type { Runtime } from "./kinds/runtime/schema.ts";
 export type { Skill } from "./kinds/skill/schema.ts";
 export type {
@@ -21,6 +22,7 @@ export type {
   Workflow,
   WorkflowState,
 } from "./kinds/workflow/schema.ts";
+export type { WorkflowTest, WorkflowTestCase } from "./kinds/workflow-test/schema.ts";
 export type { SessionAssistant, WorkspaceSettings } from "./kinds/workspace/schema.ts";
 export {
   type FileProblem,
