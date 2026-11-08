@@ -10,6 +10,9 @@ import { rules } from "../rules/all.ts";
 
 const realRoot = join(import.meta.dirname, "..", "..", "..", "..");
 
+/** The real allow-list, which every fixture repo starts from. */
+export const realDependencyListPath = join(realRoot, "tooling/check/dependencies.json");
+
 /** A small package for a fixture repo. */
 export interface FixturePackage {
   readonly directory: string;
@@ -47,7 +50,12 @@ function agentsMdFor(pkg: FixturePackage): string {
  */
 export function runChecks(
   packages: readonly FixturePackage[],
-  options: { coreOrder?: string[]; extraFiles?: Record<string, string> } = {},
+  options: {
+    coreOrder?: string[];
+    extraFiles?: Record<string, string>;
+    /** Entries added to the real dependencies.json. */
+    extraDependencies?: Record<string, unknown>;
+  } = {},
 ): Problem[] {
   const root = mkdtempSync(join(tmpdir(), "halonic-check-"));
   try {
@@ -65,9 +73,13 @@ export function runChecks(
       "tooling/check/policy.json",
       JSON.stringify({ ...policy, coreOrder: options.coreOrder ?? [] }),
     );
+    const dependencyList = JSON.parse(readFileSync(realDependencyListPath, "utf8"));
     write(
       "tooling/check/dependencies.json",
-      readFileSync(join(realRoot, "tooling/check/dependencies.json"), "utf8"),
+      JSON.stringify({
+        ...dependencyList,
+        dependencies: { ...dependencyList.dependencies, ...options.extraDependencies },
+      }),
     );
     write(
       "package.json",

@@ -1,9 +1,14 @@
-import { type CheckContext, declaredDependencies, matchesNamePattern } from "../lib/context.ts";
+import {
+  type CheckContext,
+  declaredDependencies,
+  isAllowedIn,
+  notAllowedMessage,
+} from "../lib/context.ts";
 import { Report } from "../lib/problems.ts";
 import type { DependencyField, WorkspacePackage } from "../lib/workspace.ts";
 
 const guide = "See docs/guides/dependencies.md.";
-const categories = new Set(["outside-world", "studio-framework", "dev-tooling"]);
+const categories = new Set(["core-exception", "outside-world", "studio-framework", "dev-tooling"]);
 
 interface ExternalDependency {
   readonly name: string;
@@ -47,10 +52,10 @@ function checkOne(
     );
     return;
   }
-  if (!approved.allowedIn.some((pattern) => matchesNamePattern(packageName, pattern))) {
+  if (!isAllowedIn(approved, packageName)) {
     report.error(
       pkg.manifestPath,
-      `"${dependency.name}" is approved only for ${approved.allowedIn.join(", ")}, not ${packageName}. ${guide}`,
+      `${notAllowedMessage(packageName, dependency.name, approved)} ${guide}`,
     );
   }
   if (!dependency.version.startsWith("catalog:")) {
@@ -73,6 +78,12 @@ function checkList(context: CheckContext, used: ReadonlySet<string>, report: Rep
       report.error(
         context.dependencyListPath,
         `"${name}" has an unknown category "${entry.category}". Use one of: ${[...categories].join(", ")}.`,
+      );
+    }
+    if (entry.category === "core-exception" && entry.allowedIn.some((p) => p.includes("*"))) {
+      report.error(
+        context.dependencyListPath,
+        `"${name}" is a core exception, so it names each core package exactly; "*" isn't allowed. Each one needs the user's approval.`,
       );
     }
     if (entry.reason.trim() === "") {
