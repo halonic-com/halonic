@@ -27,10 +27,14 @@ export function upgradeEvent(raw: unknown): RunEvent {
  *
  * @param line - one line of the log, without the line break
  * @returns the event, upgraded by {@link upgradeEvent}
- * @throws SyntaxError when the line isn't valid JSON
+ * @throws SyntaxError when the line isn't valid JSON or isn't a JSON object
  */
 export function parseEventLine(line: string): RunEvent {
-  return upgradeEvent(JSON.parse(line));
+  const parsed: unknown = JSON.parse(line);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new SyntaxError("A run log line must be a JSON object");
+  }
+  return upgradeEvent(parsed);
 }
 
 /**

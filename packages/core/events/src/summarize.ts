@@ -43,8 +43,14 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
     nextTimer: null,
     approval: null,
     signals: [],
+    lastSeq: first.seq,
+    updatedAt: first.at,
   };
-  for (const event of events) applyEvent(summary, event);
+  for (const event of events) {
+    applyEvent(summary, event);
+    summary.lastSeq = event.seq;
+    summary.updatedAt = event.at;
+  }
   return summary;
 }
 

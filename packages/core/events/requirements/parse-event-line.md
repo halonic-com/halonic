@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-112 (reference `parseEventLine`)
 
-When one line of a JSON-lines run log is parsed, the events package shall return the event in today's shape. If the line is not valid JSON, then it shall throw a `SyntaxError`.
+When one line of a JSON-lines run log is parsed, the events package shall return the event in today's shape. If the line is not valid JSON, or is JSON but not an object, then it shall throw a `SyntaxError`.
 
 ## Examples
 
@@ -15,5 +15,8 @@ When one line of a JSON-lines run log is parsed, the events package shall return
   when it is parsed,
   then the event equals the JSON object.
 - Given the line `not json`,
+  when it is parsed,
+  then a `SyntaxError` is thrown.
+- Given the line `null` (or `42`, `"run"`, `[]`),
   when it is parsed,
   then a `SyntaxError` is thrown.
