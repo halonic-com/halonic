@@ -52,7 +52,7 @@
   /* ---------------------------------------------------------------- Colour: lines (border-*) */
   --color-border: light-dark(#e3e3f0, #2d2d41); /* dividers, card edges */
   --color-border-strong: light-dark(#c6c7dc, #3f3f58); /* secondary button, table header edge */
-  --color-border-control: light-dark(#8587a6, #6c6e90); /* inputs, checkboxes: 3:1 on surface */
+  --color-border-control: light-dark(#8284a3, #6e7092); /* inputs, checkboxes: 3:1 on surfaces */
 
   /* ---------------------------------------------------------------- Colour: text (text-fg*) */
   /* Ink with a deep indigo cast, toned down with alpha so it sits on any surface. */
@@ -71,15 +71,15 @@
   --color-on-primary: light-dark(#ffffff, #0d0d1f);
 
   /* ---------------------------------------------------------------- Colour: status */
-  --color-running: light-dark(#7034e0, #a78bfa); /* an agent or run is working */
-  --color-running-soft: light-dark(rgb(112 52 224 / 0.1), rgb(167 139 250 / 0.18));
+  --color-running: light-dark(#7034e0, #b197fc); /* an agent or run is working */
+  --color-running-soft: light-dark(rgb(112 52 224 / 0.1), rgb(177 151 252 / 0.18));
   --color-success: light-dark(#0b7052, #3dd6a0);
   --color-success-soft: light-dark(rgb(11 112 82 / 0.1), rgb(61 214 160 / 0.18));
   --color-warning: light-dark(#a84b05, #fcc24c); /* waiting for you ("Needs you") */
   --color-warning-soft: light-dark(rgb(168 75 5 / 0.1), rgb(252 194 76 / 0.18));
-  --color-danger: light-dark(#cc1740, #fb7185);
+  --color-danger: light-dark(#c4143d, #fc7f92);
   --color-danger-hover: light-dark(#ad1236, #fda4af);
-  --color-danger-soft: light-dark(rgb(204 23 64 / 0.1), rgb(251 113 133 / 0.18));
+  --color-danger-soft: light-dark(rgb(196 20 61 / 0.1), rgb(252 127 146 / 0.18));
   --color-on-danger: light-dark(#ffffff, #0d0d1f);
 
   /* ---------------------------------------------------------------- Typography (font-*, text-*) */
@@ -148,7 +148,7 @@
   --spacing-panel: 360px; /* side panels; the shell sets this width, not the panel itself */
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
-  --breakpoint-compact: 900px; /* below this the sidebar collapses */
+  --breakpoint-wide: 900px; /* wide: is the full layout; max-wide: is compact (sidebar collapsed) */
 
   /* ---------------------------------------------------------------- Radius (rounded-*) */
   --radius-xs: 4px; /* badges, checkboxes, kbd, tooltips */
@@ -204,6 +204,7 @@
   --halo-tint-violet: light-dark(rgb(139 92 246 / 0.12), rgb(139 92 246 / 0.2));
 
   --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
+  --focus-ring-inset: inset 0 0 0 2px var(--color-accent);
 
   --duration-fast: 120ms; /* hover, press, colour changes */
   --duration-base: 200ms; /* menus, toasts, tabs, toggles */
@@ -229,7 +230,12 @@
 /* The window frame: the halo over the canvas. */
 @utility bg-halo-frame {
   background:
-    linear-gradient(135deg, rgb(59 139 255 / 0.3), rgb(139 92 246 / 0.28)), var(--color-canvas);
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--halo-blue) 30%, transparent),
+      color-mix(in srgb, var(--halo-violet) 28%, transparent)
+    ),
+    var(--color-canvas);
 }
 
 /* "You are here": the active sidebar item, the active segment of a page's own tabs. */
@@ -252,10 +258,25 @@
   background: linear-gradient(90deg, var(--halo-blue), var(--halo-violet));
 }
 
-/* Every interactive element gets the same focus ring, on keyboard focus only. */
+/*
+ * Every interactive element gets the same focus ring, on keyboard focus only. The outline is
+ * transparent rather than removed: in Windows high-contrast mode the browser drops box shadows
+ * and paints outlines in the system colour, so the outline becomes the visible ring there.
+ */
 @utility focus-ring {
   &:focus-visible {
-    outline: none;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
     box-shadow: var(--focus-ring);
+  }
+}
+
+/* The same ring drawn inside the element, for rows in a scrolling list where an outer ring
+   would be clipped: sidebar items, tree rows, list rows. */
+@utility focus-ring-inset {
+  &:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+    box-shadow: var(--focus-ring-inset);
   }
 }

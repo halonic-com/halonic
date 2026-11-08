@@ -14,22 +14,30 @@ The app's entry CSS sets up Tailwind once and then imports the tokens. Plain CSS
 package name resolves to `theme.css` through the `style` export condition.
 
 ```css
-/* apps/studio/src/app.css (an example: the real path is set when apps/studio exists) */
+/* apps/studio/src/app.css */
 @import "tailwindcss";
 @import "@halonicjs/studio-kit";
 
 /* Required, not optional: the kit and the Studio packages reach the app through node_modules
-   links, and Tailwind skips node_modules. The path is relative to this file. */
+   links, and Tailwind skips node_modules. The paths are relative to this file. */
 @source "../../../packages/studio";
+/* READMEs and AGENTS.md files mention classes too, including the "not allowed" examples below;
+   without this line those would end up in the app's CSS. */
+@source not "../../../packages/studio/**/*.md";
 ```
 
 Then use the token classes in markup:
 
 ```html
-<aside class="w-sidebar bg-surface-subtle text-body text-fg">
-  <a class="flex h-control-md items-center gap-2 rounded-sm px-2 bg-halo-tint focus-ring">Agents</a>
+<aside class="w-sidebar bg-surface-subtle text-body text-fg max-wide:hidden">
+  <a class="flex h-control-md items-center gap-2 rounded-sm px-2 bg-halo-tint focus-ring-inset">
+    Agents
+  </a>
 </aside>
 ```
+
+`wide:` is the full layout (900px and wider) and `max-wide:` the compact one, where the sidebar
+collapses.
 
 Code that needs a value outside CSS (a canvas, a code editor theme) reads the CSS variable, such as
 `var(--color-surface)`, never a copied hex value.
@@ -60,7 +68,8 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 | `--spacing-control-*`, `-titlebar`, `-statusbar`, others | `h-control-md`, `h-statusbar`, `w-sidebar`        |
 | `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter`            |
 | the halo                                                 | `bg-halo-frame`, `-tint`, `-wash`, `-line`        |
-| the focus ring                                           | `focus-ring` (on keyboard focus only)             |
+| the focus ring (keyboard focus only)                     | `focus-ring`, `focus-ring-inset` for list rows    |
+| `--breakpoint-wide`                                      | `wide:`, `max-wide:` (compact)                    |
 | `--duration-*`, `--layer-*` (plain variables)            | `duration-(--duration-base)`, `z-(--layer-toast)` |
 
 The theme starts from `--*: initial`, so Tailwind's own palette and scales don't exist:
