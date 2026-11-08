@@ -91,15 +91,28 @@ version 1 now rather than as a version 2 later. The versions stay at 1.
 - **`ConnectorFactoryContext.trust`:** the `TrustGrant` (location and
   fingerprint) for the connector's workspace, or `null`. It is required, so
   a caller can't leave it out by mistake. Without a grant a stdio connector
-  never starts its program, and no connector calls a tool whose `risk`
-  isn't `read`. `TrustService` in `core/app` decides; adapters only check
-  that a grant is there.
+  never starts its program, an `http` connector calls no tool, and the
+  `google` connector calls only tools whose own `risk` is `read`. The host
+  also checks: without a grant it ignores a `risk` the workspace sets, so
+  a listed tool counts as `write`, and it calls only `read` tools. An
+  `http` adapter can't use the listed `risk`, because the server wrote it.
+  `TrustService` in `core/app` decides; adapters only check that a grant
+  is there.
 - **`pin` on the stdio transport:** the registry kind, the registry address
   from the user's profile, the package and the exact version. The app fills
-  it from the trust record, never from workspace YAML. The adapter starts
-  only that version, looks it up only at that address and starts in an
-  empty folder of its own. `ConnectorTool.risk` (`read`, `write`, `send`)
-  was already added with the Google adapter work.
+  it from the trust record, never from workspace YAML. A package runner
+  (`npx`, `uvx`, `pnpm dlx` and the others the port lists) without a pin
+  doesn't start, and neither does one whose version is a tag or a range.
+  The adapter starts only that version, looks it up only at that address,
+  starts in an empty folder of its own and refuses environment variables
+  that move the registry or run code first, such as `NODE_OPTIONS` and
+  `npm_config_*`. `ConnectorTool.risk` (`read`, `write`, `send`) was
+  already added with the Google adapter work.
+- **No integrity hash in the pin, on purpose.** An exact version guards
+  against a new release, not against a registry that serves other files.
+  The registry address comes from the user's profile, so the user already
+  trusts it, and a Python package has a different file, so a different
+  hash, per platform. A hash would be a version 2 change with its own ADR.
 
 ## Consequences
 

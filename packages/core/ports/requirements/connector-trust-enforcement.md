@@ -1,0 +1,26 @@
+# ports.connector-trust-enforcement
+
+- Status: draft
+- Since: 0.1.0
+- Source: HAL-659 review of HAL-231: without these rules an untrusted or edited workspace could get around the trust grant and the pin of `ports.connector-trust-inputs`. It becomes active when the connector contract suites (HAL-181) prove it.
+
+The connector port's documentation shall state these rules, and the adapters and the host shall follow them:
+
+- **Without a grant**, a `stdio` connector doesn't start its program, an `http` connector's `callTool` throws for every tool, and the `google` connector's `callTool` throws for every tool whose own `risk` isn't `read`. The host ignores any `risk` the workspace sets, counts every tool an `http` or `stdio` connector lists as `write`, and calls no tool whose risk isn't `read`.
+- **A package runner needs a pin.** A stdio `command` whose program name, without its folder, any case and any `.cmd`, `.exe`, `.bat` or `.ps1` ending, is `npx`, `bunx` or `uvx`, or one of `npm exec`, `pnpm dlx`, `yarn dlx`, `pipx run` and `uv tool run`, doesn't start without a `pin`. A pin whose `version` is a tag or a range doesn't start either.
+- **The environment can't override the pin.** With a pin, the adapter doesn't start when `env` sets, in any case, `NODE_OPTIONS`, `NODE_PATH`, `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONHOME`, or a name starting with `npm_config_`, `YARN_`, `PNPM_`, `BUN_`, `COREPACK_`, `UV_`, `PIP_` or `PIPX_`.
+
+## Examples
+
+- Given an untrusted workspace whose YAML sets `risk: read` on a tool its `http` connector lists,
+  when the agent calls that tool,
+  then the host refuses it and the adapter's `callTool` throws.
+- Given a stdio transport with `command: "NPX.CMD"`, `args: ["-y", "@acme/mail-mcp"]` and no `pin`,
+  when the adapter is asked to start it,
+  then it refuses.
+- Given a pinned stdio transport whose `pin.version` is `latest` or `^2.3.1`,
+  when the adapter is asked to start it,
+  then it refuses.
+- Given a pinned stdio transport whose `env` sets `node_options` to `--require ./evil.js` or `NPM_CONFIG_REGISTRY` to another address,
+  when the adapter is asked to start it,
+  then it refuses.

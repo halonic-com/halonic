@@ -6,6 +6,8 @@
 
 `ConnectorFactoryContext` shall carry the trust grant for the connector's workspace, as a required field that is `null` when the workspace isn't trusted, so the launcher and the tools that act outside can refuse without one. The stdio transport shall carry an optional `pin` with the registry kind, the registry address, the package and the exact version, which the app fills from the trust record and never from workspace YAML.
 
+The rules adapters and the host follow with these inputs are in `ports.connector-trust-enforcement`.
+
 ## Examples
 
 - Given a `ConnectorFactoryContext` without `trust`,

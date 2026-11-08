@@ -60,9 +60,15 @@ export interface ConnectorClient {
 }
 
 /**
- * The exact package version an `npx` or `uvx` connector starts, and the
- * registry it comes from. It is stored in the trust record when a person
- * trusts the workspace, so it is per machine and never in a workspace file.
+ * The exact package version a package-runner connector (`npx`, `uvx` and the
+ * others listed on the stdio transport) starts, and the registry it comes
+ * from. It is stored in the trust record when a person trusts the workspace,
+ * so it is per machine and never in a workspace file.
+ *
+ * It has no integrity hash, on purpose: `registryUrl` comes from the user's
+ * profile, so the person already trusts that registry, and a Python package
+ * has a different file, so a different hash, per platform. See the port
+ * list ADR.
  *
  * @example
  * const pin: ConnectorPin = {
@@ -73,13 +79,16 @@ export interface ConnectorClient {
  * };
  */
 export interface ConnectorPin {
-  /** `npm` for `npx` connectors, `pypi` for `uvx` connectors. */
+  /** `npm` for the npm runners (`npx`, `pnpm dlx`, `bunx` and so on), `pypi` for the Python ones (`uvx`, `pipx run`, `uv tool run`). */
   registry: "npm" | "pypi";
   /** The registry's address, taken from the user's profile, never from the workspace. */
   registryUrl: string;
   /** The package name, such as "@acme/mail-mcp". */
   package: string;
-  /** An exact version, such as "2.3.1". Never a tag or a range. */
+  /**
+   * An exact version, such as "2.3.1". The adapter refuses to start on a tag
+   * or a range (`latest`, `^2.3.1`, `>=2`) instead of resolving it.
+   */
   version: string;
 }
 
@@ -93,15 +102,30 @@ export type ConnectorTransport =
       env: Record<string, string>;
       cwd?: string;
       /**
-       * The version to start, for `npx` and `uvx` connectors. The app fills it
+       * The version to start, for package-runner connectors. The app fills it
        * from the trust record, **never from workspace YAML**, so a workspace
        * edit can't choose the version or the registry.
+       *
+       * A package runner is a `command` whose program name, without its
+       * folder, any case and any `.cmd`, `.exe`, `.bat` or `.ps1` ending, is
+       * `npx`, `bunx` or `uvx`, or one of `npm exec`, `pnpm dlx`,
+       * `yarn dlx`, `pipx run` and `uv tool run`. The adapter refuses to
+       * start a package runner without a `pin`, so leaving the pin out
+       * can't start whatever version is newest.
        *
        * When it is set, the adapter starts exactly `package` at `version`,
        * looks it up only at `registryUrl`, starts in an empty folder of its
        * own instead of `cwd`, ignores the workspace's package-manager
        * settings (`.npmrc`, `node_modules`, `uv.toml`, `pyproject.toml`), and
        * refuses to start when the command names any other version.
+       *
+       * It also refuses to start when `env` sets a variable, in any case,
+       * that can move the registry or run code before the package:
+       * `NODE_OPTIONS`, `NODE_PATH`, `PYTHONPATH`, `PYTHONSTARTUP`,
+       * `PYTHONHOME`, or any name starting with `npm_config_`, `YARN_`,
+       * `PNPM_`, `BUN_`, `COREPACK_`, `UV_`, `PIP_` or `PIPX_`. It drops
+       * those it inherits from its own process and sets the registry from
+       * `registryUrl` itself.
        */
       pin?: ConnectorPin;
     }
@@ -141,9 +165,21 @@ export interface ConnectorFactoryContext {
   workspaceRoot?: string;
   /**
    * The trust grant for the connector's workspace, or `null` when it isn't
-   * trusted. Required, so a caller can't forget it. Without a grant a stdio
-   * connector never starts its program (`listTools` and `callTool` throw),
-   * and every connector refuses to call a tool whose `risk` isn't `read`.
+   * trusted. Required, so a caller can't forget it.
+   *
+   * Without a grant:
+   * - a `stdio` connector never starts its program (`listTools` and
+   *   `callTool` throw);
+   * - an `http` connector's `callTool` always throws, because the only
+   *   `risk` it sees is the one the server wrote;
+   * - the built-in `google` connector's `callTool` throws for every tool
+   *   whose own `risk` isn't `read`;
+   * - the host ignores any `risk` the workspace sets, so every tool an
+   *   `http` or `stdio` connector lists counts as `write`, and it refuses
+   *   to call a tool whose risk isn't `read`.
+   *
+   * Both checks hold on their own, so a mistake in one doesn't open the gate
+   * (requirement `ports.connector-trust-enforcement`).
    */
   trust: TrustGrant | null;
 }
