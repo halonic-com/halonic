@@ -35,10 +35,6 @@ typecheck, lint and test for the packages your change affects.
 | `invisible-characters` | docs, code, config or tests hold a character nobody can see: a format character (zero-width, bidi control, tag letter, byte order mark), a variation selector, or a control character other than tab, line feed and carriage return. Emoji with their joiners and selectors, and other visible non-ASCII such as umlauts or CJK, are fine. Write such a character as an escape (`\u202E`) in code; name it in words in docs                                                                                        |
 | `readme-examples`      | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block                                                                                                                                                                                                                                 |
 
-`requirement-guard` is wired in already and reports "not active yet" until
-its real version lands. It will check that changing a requirement, golden
-file or test comes with an approved decision note.
-
 ### The DCO sign-off
 
 `dco` fails when a commit in a pull request has no `Signed-off-by: Name
@@ -92,6 +88,70 @@ The ID of `packages/core/workflow/requirements/timer-fires.md` is
 `workflow.timer-fires`; in a Studio feature,
 `packages/studio/features/agents/src/explorer/requirements/filter-by-hub.md`
 is `agents.explorer.filter-by-hub`.
+
+## Requirement guard: nothing that works may break
+
+The requirement guard compares a pull request with its merge
+base (in the merge queue, the queue's base), including both sides' test
+results. It fails on any of these, unless the branch's decision note
+covers it:
+
+| Change                                                                                                                           | The note lists       |
+| -------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| an active requirement is edited, retired, demoted to draft, renamed or deleted                                                   | the requirement ID   |
+| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls                     | the requirement ID   |
+| a test file is deleted, or fewer of its tests ran                                                                                | the test file        |
+| a new `.skip`, `.only`, `.todo`, `skipIf`, `runIf`, `ctx.skip()`, `test.fails` or `retry` option in a test file or Vitest config | the file             |
+| a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about                                    | the test file        |
+| a golden file (`golden/`, `__snapshots__/`, `.snap`) changed, added or deleted, or an inline snapshot changed                    | the golden/test file |
+| a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings              | the changed file     |
+
+A package with tests but no readable result file on either side always
+fails: no note can stand in for a comparison the guard couldn't make.
+
+**The decision note** is `decisions/<branch-name>.md`, so the branch
+`julian/HAL-118-01-x` adds `decisions/julian/HAL-118-01-x.md`:
+
+```markdown
+# Decision: retire the old timer rule
+
+- Approval: <link to the Paperclip approval>
+- Kind: internal
+
+What changes and why.
+
+## Covers
+
+- workflow.timer-fires
+- packages/core/workflow/src/timer.test.ts
+```
+
+`Kind` says who approves: `user-visible` changes need the user's
+approval, `internal` ones Liam's. The guard asks Paperclip whether the
+approval exists, is approved by the right person and names this branch.
+**That lookup is a stub for now and fails closed**: it needs a Paperclip
+API token as a CI secret, which is parked on HAL-58. Until then no note
+lets a change through.
+
+**CI runs the guard and `trace` from the merge base's copy** of
+`tooling/check`, not the pull request's, so a pull request can't weaken
+the checks that judge it. The merge base's test results are the guard's
+baseline, so a separate job produces them where no pull-request code
+runs: it switches to the merge base before anything runs and reads no
+cache (neither Turbo's nor the pnpm store, which a pull request's runs can
+write). A third job, which also runs no pull-request code, installs only
+the merge base's dependencies, takes both sides' result files and runs
+both checks with the merge base's code and Node. To run the guard locally:
+
+```sh
+git worktree add --detach ../merge-base "$(git merge-base origin/main HEAD)"
+(cd ../merge-base && pnpm install && pnpm exec turbo run test --force)
+pnpm exec turbo run test
+pnpm exec node ../merge-base/tooling/check/src/cli/requirement-guard.ts --base ../merge-base --branch "$(git branch --show-current)"
+```
+
+Biome's `noSkippedTests` and `noFocusedTests` and Vitest's
+`expect.requireAssertions` back the guard up on every run.
 
 ## Coverage floors
 
@@ -301,15 +361,17 @@ for every other job and fails if any failed. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
-| Job                          | What                                                                                                                                    |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
-| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                   |
-| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                           |
-| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash                                                      |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                                             |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                      |
-| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                              |
+| Job                          | What                                                                                                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies                   |
+| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                                     |
+| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                                             |
+| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash                                                                        |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` it then runs `trace`; on a pull request it hands its test results to the guard job |
+| Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                              |
+| Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results   |
+| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                        |
+| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                                                |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full leak guard and secret scan over the whole history
