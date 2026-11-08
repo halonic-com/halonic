@@ -278,6 +278,19 @@ verifies("ports.untrusted-tool-listings", () => {
     ]);
   });
 
+  it("cuts a refused name to 64 characters and escapes its bidi and control characters", () => {
+    const name = `a‮"\n${"b".repeat(200)}`;
+    const { refusals } = read([tool(name)]);
+    expect(refusals).toEqual([
+      {
+        source: "notes",
+        name: `a\\u{202e}\\"\\u{a}${"b".repeat(60)}`,
+        refused: "tool",
+        reason: "its name breaks the name rule",
+      },
+    ]);
+  });
+
   it("refuses an entry that isn't a tool or whose name isn't text", () => {
     const listed = [
       null,
@@ -296,12 +309,7 @@ verifies("ports.untrusted-tool-listings", () => {
       const { tools, refusals } = read(listed as unknown as ConnectorTool[]);
       expect(tools).toEqual([]);
       expect(refusals).toEqual([
-        {
-          source: "notes",
-          name: "(a name that isn't text)",
-          refused: "tool",
-          reason: "the listing isn't a list of tools",
-        },
+        { source: "notes", refused: "listing", reason: "the listing isn't a list of tools" },
       ]);
     }
   });

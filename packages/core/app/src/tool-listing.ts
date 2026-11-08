@@ -4,7 +4,12 @@
 
 import type { ConnectorTool, IntegrationTool, ToolRisk, TrustGrant } from "@halonicjs/ports";
 import { readListedTool } from "./listed-tool.ts";
-import { cutName, isJsonObject, maxListedTools, type UntrustedText } from "./listed-tool-rules.ts";
+import {
+  escapeListedText,
+  isJsonObject,
+  maxListedTools,
+  type UntrustedText,
+} from "./listed-tool-rules.ts";
 import { maxUnfencedLength, unfencedLength } from "./listed-tool-unfenced.ts";
 
 /** One source's listing, and what the host knows around it. */
@@ -75,12 +80,15 @@ export interface OfferedListedTool {
 export interface ToolRefusal {
   /** The source's id. */
   readonly source: string;
-  /** The listed name, cut to 64 characters. Left out when the whole listing is refused. */
+  /**
+   * The listed name, cut to 64 characters and escaped like text in a reason.
+   * Left out when the whole listing is refused.
+   */
   readonly name?: string;
   /**
    * `tool` when the whole tool was left out, `keyword` when only part of its
-   * parameters was, and `listing` when every listed tool of a listing that
-   * returns too many tools was.
+   * parameters was, and `listing` when the whole listing was, because it
+   * isn't a list or returns too many tools.
    */
   readonly refused: "tool" | "keyword" | "listing";
   /** Why. Text from the listing in it is cut to 64 characters and escaped. */
@@ -119,21 +127,22 @@ export function readToolListing(input: ToolListingInput): ToolListing {
   const refuse: Refuse = (name, refused, reason) => {
     refusals.push({ source: input.source, name: nameForRefusal(name), refused, reason });
   };
+  const refuseListing = (reason: string) => {
+    refusals.push({ source: input.source, refused: "listing", reason });
+  };
   // The type says list, but a hostile source decides what `listTools` returns.
   const listed: unknown = input.listed;
   if (!Array.isArray(listed)) {
-    refuse(undefined, "tool", "the listing isn't a list of tools");
+    refuseListing("the listing isn't a list of tools");
     return { tools, refusals };
   }
   const declared = new Map(input.declared.map((tool) => [tool.name, tool]));
   const timesListed = countNames(input.listed);
   const tooManyTools = input.listed.length > maxListedTools;
   if (tooManyTools) {
-    refusals.push({
-      source: input.source,
-      refused: "listing",
-      reason: `the listing returns ${input.listed.length} tools, more than ${maxListedTools}, so none of its listed tools is offered`,
-    });
+    refuseListing(
+      `the listing returns ${input.listed.length} tools, more than ${maxListedTools}, so none of its listed tools is offered`,
+    );
   }
 
   for (const entry of input.listed) {
@@ -237,7 +246,11 @@ function countNames(listed: readonly ConnectorTool[]): Map<string, number> {
   return counts;
 }
 
-/** A hostile source can send a name that isn't text; the refusal still needs something to show. */
+/**
+ * The name a refusal shows: cut and escaped, so control or bidi characters in
+ * it can't reorder the integration status. A hostile source can send a name
+ * that isn't text; the refusal still needs something to show.
+ */
 function nameForRefusal(name: unknown): string {
-  return typeof name === "string" ? cutName(name) : "(a name that isn't text)";
+  return typeof name === "string" ? escapeListedText(name) : "(a name that isn't text)";
 }
