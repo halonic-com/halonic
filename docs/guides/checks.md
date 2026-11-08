@@ -61,7 +61,7 @@ Who may use what:
 
 | Layer    | May use                                                                                 | Never                                                                                |
 | -------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| core     | core packages listed **before** it in `coreOrder`                                       | third-party code, Node APIs, browser APIs                                            |
+| core     | core packages listed **before** it in `coreOrder`; its `core-exception` libraries       | other third-party code, Node APIs, browser APIs                                      |
 | adapters | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                      |
 | host     | core, adapters, Node APIs                                                               | Studio packages                                                                      |
 | studio   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
