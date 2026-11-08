@@ -12,6 +12,17 @@ export const definitionStoreVersion = 1;
  * in the old repo only the Node adapter checked. Refusing `.` keeps `a/./b`
  * from meaning `a/b` in a folder but another key in a key-value store.
  *
+ * **Every method also refuses a private entry** with a `RangeError`, and
+ * `list()` leaves such entries out instead of throwing. A private entry is
+ * a path with a segment named `.git`, `.studio` or `.env`, or starting with
+ * `.env.` (such as `.env.local`). Segments are matched the way Windows and
+ * macOS would open them: in any case, with trailing dots or spaces
+ * removed, and as their 8.3 short names (`GIT~1`, `STUDIO~1`, `ENV~1`).
+ * **Any symbolic link** counts as private too, wherever it points, inside
+ * the root or not: a store that has links refuses to read, write or remove
+ * through one and doesn't list it. This keeps the served Studio and agents
+ * away from git internals, Halonic's own data and secrets files.
+ *
  * A cloud deployment hands out only this read side, so a stolen session can't
  * change what runs.
  */
