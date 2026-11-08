@@ -87,9 +87,12 @@ export function parseFile<Name extends KindName>(
   return ok({ value: parsed.value, warnings: problems });
 }
 
-/** Old key names read as new ones, then the id from the file's place. */
-function prepare<Value>(
-  kind: FileKind<Value>,
+/**
+ * Old key names read as new ones, then the id from the file's place: the data
+ * the kind's schema gets. Exported for the tests, not from the package.
+ */
+export function prepare(
+  kind: Pick<FileKind<unknown>, "idFromPlace" | "upgradeKeys">,
   data: unknown,
   placeId: string | undefined,
 ): unknown {
