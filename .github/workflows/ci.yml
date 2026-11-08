@@ -7,9 +7,9 @@ name: CI
 
 on:
   # "edited" re-runs the terms guard and the title check when a title or
-  # body changes.
+  # body changes; "labeled" and "unlabeled" re-run the coverage-floor check.
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   merge_group:
   push:
     branches: [main]
@@ -138,6 +138,41 @@ jobs:
               --range "$BASE..$HEAD"
           fi
 
+  coverage-floors:
+    # Fails when a pull request lowers a package's coverage floor. Runs the
+    # base commit's copy of the script on Node alone: no dependency is
+    # installed, and the change under test can't weaken its own check (the one
+    # pull request that adds the script runs its own copy). The
+    # `coverage-floor-lowered` label (read from the event file) allows it.
+    name: Coverage floors don't go down
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - name: Compare floors with the base
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base" "$BASE"
+          script=tooling/check/src/cli/coverage-floors.ts
+          # The pull request that adds this script has no base copy to run.
+          if [ -f "$RUNNER_TEMP/base/$script" ]; then
+            node "$RUNNER_TEMP/base/$script" "$BASE" "$HEAD"
+          else
+            node "$script" "$BASE" "$HEAD"
+          fi
+
   gitleaks:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-24.04
@@ -264,7 +299,8 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, fast, terms, gitleaks, zizmor, build, scaffold, tauri, e2e, docs]
+    needs:
+      [changes, fast, terms, coverage-floors, gitleaks, zizmor, build, scaffold, tauri, e2e, docs]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions: {}

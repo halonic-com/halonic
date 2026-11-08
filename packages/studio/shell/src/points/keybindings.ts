@@ -4,6 +4,13 @@ import { type Registered, registered } from "./point-store.ts";
 
 const modifierOrder = ["Ctrl", "Alt", "Shift", "Meta"] as const;
 const contextNamePattern = /^[A-Za-z][\w.-]*$/;
+type Modifier = (typeof modifierOrder)[number];
+
+/**
+ * The operating system the Studio runs on. The shell stays headless, so the
+ * host tells it; it decides what `Mod` means in a binding.
+ */
+export type KeyboardPlatform = "macos" | "windows" | "linux";
 
 /**
  * The named keys a binding can use, in their `KeyboardEvent.key` spelling.
@@ -32,6 +39,61 @@ const namedKeysByLowerCase = new Map<string, string>(
 );
 const functionKeyPattern = /^f([1-9]|1[0-9]|2[0-4])$/i;
 
+/** Other spellings of a key, by lower case, and the key they mean. */
+const keyAliases = new Map<string, string>([
+  [" ", "Space"],
+  ["esc", "Escape"],
+  ["plus", "+"],
+]);
+
+/**
+ * The modifier each spelling means. `Cmd` is `Meta`; `Mod` is `Cmd` on macOS
+ * and `Ctrl` everywhere else.
+ */
+function modifierFor(part: string, platform: KeyboardPlatform): Modifier | undefined {
+  const lowerCase = part.toLowerCase();
+  if (lowerCase === "cmd") {
+    return "Meta";
+  }
+  if (lowerCase === "mod") {
+    return platform === "macos" ? "Meta" : "Ctrl";
+  }
+  return modifierOrder.find((name) => name.toLowerCase() === lowerCase);
+}
+
+/**
+ * What `Mod` means when the host doesn't say which platform it runs on. A
+ * macOS desktop host must always pass its platform.
+ */
+const platformWhenUnknown: KeyboardPlatform = "linux";
+
+/** Keys that end in the space bar, directly after a `+` with no space before it. */
+const trailingSpaceKeyPattern = /\S\+ $/;
+
+/**
+ * Splits keys on `+` and trims each part. A `+` at the end, after the
+ * separator, is the plus key, so `Ctrl++` is Ctrl and `+`. A single space is
+ * the space bar, as `KeyboardEvent.key` spells it, but only as the whole keys
+ * or directly after the last `+`, as in `Ctrl+ `. Anywhere else it is padding,
+ * so the typo `Ctrl + ` is refused instead of becoming `Ctrl+Space`.
+ */
+function splitKeys(keys: string): string[] {
+  if (keys === "+" || keys === " ") {
+    return [keys];
+  }
+  if (keys.endsWith("++")) {
+    return [...trimmedParts(keys.slice(0, -2)), "+"];
+  }
+  if (trailingSpaceKeyPattern.test(keys)) {
+    return [...trimmedParts(keys.slice(0, -2)), " "];
+  }
+  return trimmedParts(keys);
+}
+
+function trimmedParts(keys: string): string[] {
+  return keys.split("+").map((part) => part.trim());
+}
+
 /**
  * One key in its canonical spelling: a single character in upper case, or a
  * named key spelled as in `KeyboardEvent.key`, whatever case it was written in.
@@ -39,6 +101,10 @@ const functionKeyPattern = /^f([1-9]|1[0-9]|2[0-4])$/i;
  * @throws ShellError for a name that isn't a known key
  */
 function canonicalKey(keys: string, part: string): string {
+  const alias = keyAliases.get(part.toLowerCase());
+  if (alias !== undefined) {
+    return alias;
+  }
   if ([...part].length === 1) {
     return part.toUpperCase();
   }
@@ -70,17 +136,20 @@ interface Entry {
 
 /**
  * Writes keys in one form, so `alt+ctrl+a` and `Ctrl+Alt+A` are the same,
- * and so are `ctrl+arrowup` and `Ctrl+ArrowUp`.
+ * and so are `ctrl+arrowup` and `Ctrl+ArrowUp`, `Esc` and `Escape`, and
+ * `Cmd+S` and `Meta+S`. `Mod` becomes `Meta` on macOS and `Ctrl` elsewhere.
  *
  * @throws ShellError when there's no key, more than one, an unknown key name,
  *   or a repeated modifier
  */
-export function normalizeKeys(keys: string): string {
-  const modifiers = new Set<string>();
+export function normalizeKeys(
+  keys: string,
+  platform: KeyboardPlatform = platformWhenUnknown,
+): string {
+  const modifiers = new Set<Modifier>();
   let key: string | undefined;
-  for (const rawPart of keys.split("+")) {
-    const part = rawPart.trim();
-    const modifier = modifierOrder.find((name) => name.toLowerCase() === part.toLowerCase());
+  for (const part of splitKeys(keys)) {
+    const modifier = modifierFor(part, platform);
     if (modifier !== undefined) {
       if (modifiers.has(modifier)) {
         throw new ShellError(`The keys "${keys}" name ${modifier} twice.`);
@@ -105,8 +174,10 @@ export function normalizeKeys(keys: string): string {
 
 /**
  * Reads a `when`: context names joined by `&&`, each optionally negated with `!`.
+ * A term written twice counts once, so `a && a` is as specific as `a`.
  *
- * @throws ShellError for an empty term or a name that isn't a plain identifier
+ * @throws ShellError for an empty term, a name that isn't a plain identifier,
+ *   or a name both required and negated, which can never hold
  */
 export function parseWhen(when: string | undefined): WhenTerm[] {
   if (when === undefined) {
@@ -122,7 +193,14 @@ export function parseWhen(when: string | undefined): WhenTerm[] {
         `The keybinding condition "${when}" is not valid. Use context names joined by "&&", each optionally starting with "!".`,
       );
     }
-    terms.push({ name, negated });
+    const same = terms.find((existing) => existing.name === name);
+    if (same === undefined) {
+      terms.push({ name, negated });
+    } else if (same.negated !== negated) {
+      throw new ShellError(
+        `The keybinding condition "${when}" asks for "${name}" and "!${name}" at once, so it can never hold.`,
+      );
+    }
   }
   return terms.sort(byName);
 }
@@ -155,6 +233,12 @@ function holds(when: readonly WhenTerm[], active: ReadonlySet<string>): boolean 
  */
 export class KeybindingTable {
   private readonly entries: Entry[] = [];
+  private readonly platform: KeyboardPlatform;
+
+  /** @param platform decides what `Mod` means, in bindings and in key presses */
+  constructor(platform: KeyboardPlatform = platformWhenUnknown) {
+    this.platform = platform;
+  }
 
   /**
    * Adds a binding.
@@ -162,7 +246,7 @@ export class KeybindingTable {
    * @throws ShellError for bad keys or `when`, or when the same keys and `when` are bound already
    */
   add(featureId: string, binding: KeybindingContribution): void {
-    const keys = normalizeKeys(binding.keys);
+    const keys = normalizeKeys(binding.keys, this.platform);
     const when = parseWhen(binding.when);
     const existing = this.entries.find(
       (entry) => entry.keys === keys && sameWhen(entry.when, when),
@@ -181,7 +265,7 @@ export class KeybindingTable {
     keys: string,
     activeContexts: ReadonlySet<string>,
   ): Registered<KeybindingContribution> | undefined {
-    const pressed = normalizeKeys(keys);
+    const pressed = normalizeKeys(keys, this.platform);
     let best: Entry | undefined;
     for (const entry of this.entries) {
       if (entry.keys !== pressed || !holds(entry.when, activeContexts)) {

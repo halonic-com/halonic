@@ -14,7 +14,7 @@ workflows. Workspaces are plain files in git. The engine records every run as an
 | -------- | --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | core     | `packages/core/*`     | core packages listed before it in `coreOrder`                                           | third-party code, Node APIs, browser APIs                                            |
 | adapters | `packages/adapters/*` | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                      |
-| host     | `packages/host`       | core, adapters, Node APIs                                                               | Studio packages                                                                      |
+| host     | `packages/host`       | core, Web-standard APIs                                                                 | adapters, Node APIs, Studio packages                                                 |
 | studio   | `packages/studio/*`   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
 | apps     | `apps/*`              | the public entry point of any package                                                   | —                                                                                    |
 | testing  | `packages/testing/*`  | anything                                                                                | being a runtime dependency                                                           |
@@ -105,7 +105,14 @@ you spot become a new task.
 
 ## Review
 
-- A second agent reviews first, ideally on a different model. Then the maintainer approves.
+- A second agent reviews every pull request, ideally on a different model, and never the author:
+  the package owner, or a teammate if the owner wrote it.
+- The maintainer gives final approval only on the core building blocks: `packages/core/*`,
+  `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
+  and any change to a package's public interface (its `api-report.md`). Everything else merges on
+  the teammates' approvals.
+- The last required reviewer merges, in order: the bottom of a stack first, up to date with `main`
+  and CI green.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The
   CI reviewer reviews build, CI and releases. The docs reviewer reviews docs and community files.
 - Agents record approvals in Paperclip, not on GitHub. Outside contributors get a normal GitHub

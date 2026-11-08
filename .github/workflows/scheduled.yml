@@ -1,11 +1,12 @@
 # New advisories appear without any code change, so main is checked on a
-# schedule too. A failure opens an issue.
+# schedule too. Mutation testing runs here too, nightly rather than on
+# every pull request. A failure opens an issue.
 
 name: Scheduled checks
 
 on:
   schedule:
-    - cron: "17 4 * * *" # daily: advisories and the lockfile
+    - cron: "17 4 * * *" # daily: advisories, the lockfile and mutation testing
     - cron: "47 4 * * 1" # weekly: full terms and secret scan
   workflow_dispatch:
 
@@ -37,6 +38,24 @@ jobs:
       - name: Audit dev tooling (report only)
         run: pnpm audit || echo "::warning::Advisories in dev tooling; see the log above."
 
+  mutation:
+    # Report only for now: the score per package goes into the job summary
+    # and a low score never fails. A floor that can only go up comes once
+    # the scores are stable. Only a broken Stryker run fails.
+    name: Mutation testing (report only)
+    if: github.event.schedule != '47 4 * * 1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Stryker on workflow, routines, schema-kit and yaml (packages with code only)
+        run: pnpm exec node tooling/mutation/src/cli/mutation.ts
+
   full-scan:
     # Weekly, and on demand: the whole tree and the whole history.
     name: Full terms and secret scan
@@ -63,7 +82,7 @@ jobs:
 
   report:
     name: Open an issue on failure
-    needs: [advisories, full-scan]
+    needs: [advisories, mutation, full-scan]
     if: failure()
     runs-on: ubuntu-24.04
     timeout-minutes: 5

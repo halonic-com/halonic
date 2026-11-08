@@ -19,7 +19,13 @@ export interface CommandContribution {
 export interface KeybindingContribution {
   /** The id of a command; any feature's. */
   readonly command: string;
-  /** Modifiers and one key joined by `+`, such as `Ctrl+Alt+A`. Case and modifier order don't matter. */
+  /**
+   * Modifiers and one key joined by `+`, such as `Ctrl+Alt+A`. Case and
+   * modifier order don't matter. `Cmd` is `Meta`; `Mod` is `Cmd` on macOS and
+   * `Ctrl` elsewhere. A trailing `+` is the plus key, as in `Ctrl++`. Shift
+   * counts as written: `Ctrl++` matches a press the host sends as `Ctrl++`,
+   * not `Ctrl+Shift++`, which is what a US keyboard gives, since `+` needs Shift there.
+   */
   readonly keys: string;
   /**
    * The contexts that must hold: names joined by `&&`, each optionally

@@ -22,8 +22,8 @@
     "layer": "testing",
     "owner": "julian",
     "coverage": {
-      "lines": 53,
-      "branches": 56
+      "lines": 90,
+      "branches": 85
     }
   }
 }

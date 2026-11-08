@@ -142,6 +142,139 @@ describe("shell.keybindings", () => {
     expect(() => normalizeKeys("Ctrl+ctrl+A")).toThrow("name Ctrl twice");
   });
 
+  it("binds the plus key, written as a trailing + or as Plus", () => {
+    expect(normalizeKeys("Ctrl++")).toBe("Ctrl++");
+    expect(normalizeKeys("shift+ctrl+plus")).toBe("Ctrl+Shift++");
+    expect(normalizeKeys("+")).toBe("+");
+    expect(() => normalizeKeys("Ctrl+++")).toThrow(ShellError);
+    expect(() => normalizeKeys("++")).toThrow(ShellError);
+    const shell = createShell({
+      features: [
+        feature("zoom", (studio) => {
+          studio.commands.add(command("zoom.in"));
+          studio.keybindings.add({ command: "zoom.in", keys: "Ctrl++" });
+        }),
+      ],
+    });
+    expect(shell.contributions.keybindings.resolve("Ctrl+Plus", new Set())?.command).toBe(
+      "zoom.in",
+    );
+  });
+
+  it("reads Cmd as Meta and Mod as Cmd on macOS and Ctrl elsewhere", () => {
+    expect(normalizeKeys("cmd+s")).toBe("Meta+S");
+    expect(normalizeKeys("Mod+S", "macos")).toBe("Meta+S");
+    expect(normalizeKeys("Mod+S", "windows")).toBe("Ctrl+S");
+    expect(normalizeKeys("Mod+S")).toBe("Ctrl+S");
+    expect(() => normalizeKeys("Mod+Ctrl+S")).toThrow("name Ctrl twice");
+    const files = feature("files", (studio) => {
+      studio.commands.add(command("files.save"));
+      studio.keybindings.add({ command: "files.save", keys: "Mod+S" });
+    });
+    const mac = createShell({ features: [files], platform: "macos" });
+    expect(mac.contributions.keybindings.resolve("Meta+S", new Set())?.command).toBe("files.save");
+    expect(mac.contributions.keybindings.resolve("Ctrl+S", new Set())).toBeUndefined();
+    const linux = createShell({ features: [files], platform: "linux" });
+    expect(linux.contributions.keybindings.resolve("Ctrl+S", new Set())?.command).toBe(
+      "files.save",
+    );
+  });
+
+  it("refuses Mod and Ctrl bound to the same keys off macOS", () => {
+    const create = () =>
+      createShell({
+        platform: "windows",
+        features: [
+          feature("files", (studio) => {
+            studio.commands.add(command("files.save"));
+            studio.keybindings.add({ command: "files.save", keys: "Mod+S" });
+            studio.keybindings.add({ command: "files.save", keys: "Ctrl+S" });
+          }),
+        ],
+      });
+    expect(create).toThrow("Ctrl+S everywhere is bound by both");
+  });
+
+  it("refuses Mod and Cmd bound to the same keys on macOS", () => {
+    const create = () =>
+      createShell({
+        platform: "macos",
+        features: [
+          feature("files", (studio) => {
+            studio.commands.add(command("files.save"));
+            studio.keybindings.add({ command: "files.save", keys: "Mod+S" });
+            studio.keybindings.add({ command: "files.save", keys: "Cmd+S" });
+          }),
+        ],
+      });
+    expect(create).toThrow("Meta+S everywhere is bound by both");
+  });
+
+  it("accepts the space bar as KeyboardEvent.key spells it, and Esc for Escape", () => {
+    expect(normalizeKeys(" ")).toBe("Space");
+    expect(normalizeKeys("Ctrl+ ")).toBe("Ctrl+Space");
+    expect(() => normalizeKeys("Ctrl + ")).toThrow(ShellError);
+    expect(() => normalizeKeys("Shift + ")).toThrow(ShellError);
+    expect(() => normalizeKeys("Ctrl+ +A")).toThrow(ShellError);
+    expect(normalizeKeys("esc")).toBe("Escape");
+    expect(normalizeKeys("Shift+Esc")).toBe("Shift+Escape");
+    const shell = createShell({
+      features: [
+        feature("palette", (studio) => {
+          studio.commands.add(command("palette.open"));
+          studio.commands.add(command("palette.close"));
+          studio.keybindings.add({ command: "palette.open", keys: "Ctrl+Space" });
+          studio.keybindings.add({ command: "palette.close", keys: "Esc" });
+        }),
+      ],
+    });
+    const { keybindings } = shell.contributions;
+    expect(keybindings.resolve("Ctrl+ ", new Set())?.command).toBe("palette.open");
+    expect(keybindings.resolve("Escape", new Set())?.command).toBe("palette.close");
+  });
+
+  it("counts a repeated when term once, so it doesn't beat a binding with more conditions", () => {
+    expect(parseWhen("a && a && !b && !b")).toEqual([
+      { name: "a", negated: false },
+      { name: "b", negated: true },
+    ]);
+    const shell = createShell({
+      features: [
+        feature("editor", (studio) => {
+          studio.commands.add(command("editor.repeated"));
+          studio.commands.add(command("editor.both"));
+          studio.keybindings.add({
+            command: "editor.repeated",
+            keys: "Ctrl+K",
+            when: "editorFocused && editorFocused",
+          });
+          studio.keybindings.add({
+            command: "editor.both",
+            keys: "Ctrl+K",
+            when: "editorFocused && selection",
+          });
+        }),
+      ],
+    });
+    const active = new Set(["editorFocused", "selection"]);
+    expect(shell.contributions.keybindings.resolve("Ctrl+K", active)?.command).toBe("editor.both");
+  });
+
+  it("refuses a when that asks for a context and its negation", () => {
+    expect(() => parseWhen("a && !a")).toThrow('asks for "a" and "!a" at once');
+    expect(() => parseWhen("!b && c && b")).toThrow(ShellError);
+    const create = () =>
+      createShell({
+        features: [
+          feature("editor", (studio) => {
+            studio.commands.add(command("editor.never"));
+            studio.keybindings.add({ command: "editor.never", keys: "Ctrl+K", when: "a && !a" });
+          }),
+        ],
+      });
+    expect(create).toThrow('asks for "a" and "!a" at once');
+  });
+
   it("reads when terms in one order and refuses malformed ones", () => {
     expect(parseWhen("b && !a")).toEqual([
       { name: "a", negated: true },

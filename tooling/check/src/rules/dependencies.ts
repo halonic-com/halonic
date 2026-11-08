@@ -1,9 +1,15 @@
-import { type CheckContext, declaredDependencies, matchesNamePattern } from "../lib/context.ts";
+import {
+  type CheckContext,
+  declaredDependencies,
+  isAllowedIn,
+  notAllowedMessage,
+} from "../lib/context.ts";
 import { Report } from "../lib/problems.ts";
 import type { DependencyField, WorkspacePackage } from "../lib/workspace.ts";
 
 const guide = "See docs/guides/dependencies.md.";
-const categories = new Set(["outside-world", "studio-framework", "dev-tooling"]);
+const categories = new Set(["core-exception", "outside-world", "studio-framework", "dev-tooling"]);
+const cloudRuntimeCategories = new Set(["core-exception", "outside-world"]);
 
 interface ExternalDependency {
   readonly name: string;
@@ -13,7 +19,8 @@ interface ExternalDependency {
 
 /**
  * Checks every external dependency against `dependencies.json`: it must be listed, used only in its allowed packages,
- * take its version from the catalog, and dev tooling stays in devDependencies.
+ * take its version from the catalog, and dev tooling stays in devDependencies. Testing packages may also list dev
+ * tooling they wrap as a peerDependency, because the package using them brings it.
  */
 export function checkDependencies(context: CheckContext): Report {
   const report = new Report("dependencies");
@@ -47,10 +54,10 @@ function checkOne(
     );
     return;
   }
-  if (!approved.allowedIn.some((pattern) => matchesNamePattern(packageName, pattern))) {
+  if (!isAllowedIn(approved, packageName)) {
     report.error(
       pkg.manifestPath,
-      `"${dependency.name}" is approved only for ${approved.allowedIn.join(", ")}, not ${packageName}. ${guide}`,
+      `${notAllowedMessage(packageName, dependency.name, approved)} ${guide}`,
     );
   }
   if (!dependency.version.startsWith("catalog:")) {
@@ -59,12 +66,20 @@ function checkOne(
       `"${dependency.name}": "${dependency.version}" must be "catalog:". Put the version once in the catalog in pnpm-workspace.yaml.`,
     );
   }
-  if (approved.category === "dev-tooling" && dependency.field !== "devDependencies") {
+  if (approved.category === "dev-tooling" && !isDevField(context, pkg, dependency.field)) {
     report.error(
       pkg.manifestPath,
       `"${dependency.name}" is dev tooling and belongs in devDependencies; it must never ship.`,
     );
   }
+}
+
+/** Where dev tooling may be listed: devDependencies, or peerDependencies in a testing package. */
+function isDevField(context: CheckContext, pkg: WorkspacePackage, field: DependencyField): boolean {
+  if (field === "devDependencies") {
+    return true;
+  }
+  return field === "peerDependencies" && context.placeOf(pkg)?.layer === "testing";
 }
 
 function checkList(context: CheckContext, used: ReadonlySet<string>, report: Report): void {
@@ -73,6 +88,18 @@ function checkList(context: CheckContext, used: ReadonlySet<string>, report: Rep
       report.error(
         context.dependencyListPath,
         `"${name}" has an unknown category "${entry.category}". Use one of: ${[...categories].join(", ")}.`,
+      );
+    }
+    if (entry.category === "core-exception" && entry.allowedIn.some((p) => p.includes("*"))) {
+      report.error(
+        context.dependencyListPath,
+        `"${name}" is a core exception, so it names each core package exactly; "*" isn't allowed. Each one needs the user's approval.`,
+      );
+    }
+    if (entry.cloudRuntime === true && !cloudRuntimeCategories.has(entry.category)) {
+      report.error(
+        context.dependencyListPath,
+        `"${name}" is ${entry.category}, so it can't be marked cloudRuntime. Only core exceptions and outside-world libraries may ship in a cloud runtime, with the user's approval.`,
       );
     }
     if (entry.reason.trim() === "") {

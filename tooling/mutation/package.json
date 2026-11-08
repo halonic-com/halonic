@@ -1,0 +1,30 @@
+{
+  "name": "@halonicjs/tooling-mutation",
+  "private": true,
+  "type": "module",
+  "description": "Runs Stryker mutation testing on the core packages that have code and reports a score per package.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-check": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 50
+    }
+  }
+}

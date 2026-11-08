@@ -2,6 +2,7 @@ import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
 import { type CommandContributions, CommandStores } from "./points/command-points.ts";
 import { type FrameContributions, FrameStores } from "./points/frame-points.ts";
+import type { KeyboardPlatform } from "./points/keybindings.ts";
 import { type LayoutContributions, LayoutStores } from "./points/layout-points.ts";
 import { lookupFor, ServiceCatalog, type ServiceTarget } from "./service-catalog.ts";
 import type { ServiceKey } from "./service-key.ts";
@@ -15,6 +16,11 @@ export interface ShellOptions {
   readonly features: readonly Feature[];
   /** Services the app itself provides to every workspace, such as the workspace service. */
   readonly hostServices?: readonly ServiceKey<unknown>[];
+  /**
+   * The operating system the Studio runs on. A keybinding's `Mod` means `Cmd`
+   * on `"macos"` and `Ctrl` elsewhere. Leave it out and `Mod` means `Ctrl`.
+   */
+  readonly platform?: KeyboardPlatform;
 }
 
 /** The registered features and everything they contributed. */
@@ -57,7 +63,7 @@ export function createShell(options: ShellOptions): Shell {
   const catalog = new ServiceCatalog();
   const layout = new LayoutStores();
   const frame = new FrameStores();
-  const commands = new CommandStores();
+  const commands = new CommandStores(options.platform);
   for (const feature of features) {
     registerFeature(feature, catalog, { layout, frame, commands });
   }

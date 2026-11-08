@@ -5,7 +5,7 @@ import type {
   PersistContribution,
   SearchProviderContribution,
 } from "./commands.ts";
-import { KeybindingTable } from "./keybindings.ts";
+import { KeybindingTable, type KeyboardPlatform } from "./keybindings.ts";
 import {
   byOrder,
   type Point,
@@ -56,12 +56,17 @@ export interface CommandContributions {
 /** Holds commands, keybindings, search providers and persist hooks while features register. */
 export class CommandStores {
   private readonly commands = new PointStore<CommandContribution>("commands.add", ["id"]);
-  private readonly keybindings = new KeybindingTable();
+  private readonly keybindings: KeybindingTable;
   private readonly searchProviders = new PointStore<SearchProviderContribution>(
     "search.addProvider",
     ["id"],
   );
   private readonly persisted: Registered<PersistContribution>[] = [];
+
+  /** @param platform decides what `Mod` means in keybindings */
+  constructor(platform?: KeyboardPlatform) {
+    this.keybindings = new KeybindingTable(platform);
+  }
 
   /** The command points for one feature. */
   pointsFor(featureId: string, guard: PointGuard): CommandPoints {
