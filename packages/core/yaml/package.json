@@ -11,9 +11,14 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/std": "workspace:*",
+    "yaml": "catalog:"
+  },
   "devDependencies": {
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
+    "fast-check": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

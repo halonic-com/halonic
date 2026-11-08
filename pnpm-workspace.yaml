@@ -20,9 +20,11 @@ catalog:
   "@types/node": ^26.6.6
   "@typescript/typescript6": ^6.0.2
   "@vitest/coverage-v8": ^5.1.0
+  fast-check: ^4.10.2
   turbo: ^2.11.10
   typescript: ^7.0.2
   vitest: ^5.1.0
+  yaml: 2.9.1
 
 # Our scope always comes from npm, also on a machine with another default
 # registry. A backstop only: owning @halonicjs is the real protection (3.2).

@@ -51,6 +51,13 @@
       ],
       "reason": "Measures test coverage for the shared Vitest preset, which fails a package below the floor in its package.json. Vitest finds it as its own optional peer, so packages don't list it."
     },
+    "fast-check": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/yaml"
+      ],
+      "reason": "Property-based tests: generated and hostile inputs (deep nesting, huge files, odd Unicode, Windows line endings, BOM) for the YAML layer, which reads other people's workspaces. Tests only."
+    },
     "react-data-grid": {
       "category": "studio-framework",
       "allowedIn": [
