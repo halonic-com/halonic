@@ -1601,7 +1601,6 @@ snapshots:
       expect-type: 1.4.0
       magic-string: 1.4.5
       obug: 3.0.0
-      picocolors: 1.1.1
       picomatch: 4.0.7
       std-env: 4.3.0
       tinybench: 6.2.3
