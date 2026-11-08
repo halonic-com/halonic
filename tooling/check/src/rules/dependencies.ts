@@ -12,8 +12,8 @@ interface ExternalDependency {
 }
 
 /**
- * Checks every external dependency against `dependencies.json`: it must be listed, used only in its allowed packages, take its
- * version from the catalog, and dev tooling stays in devDependencies.
+ * Checks every external dependency against `dependencies.json`: it must be listed, used only in its allowed packages,
+ * take its version from the catalog, and dev tooling stays in devDependencies.
  */
 export function checkDependencies(context: CheckContext): Report {
   const report = new Report("dependencies");

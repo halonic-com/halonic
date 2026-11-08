@@ -57,8 +57,7 @@ The maintainer approves it before you write code. When two features must talk, t
 
 ## Requirements and tests
 
-The `requirements/` and `decisions/` folders and the `verifies()` helper are not in the repo yet; these
-rules apply once they are.
+The `verifies()` helper and the checks that enforce these rules are not active yet. The rules apply now.
 
 - No feature without a recorded requirement (`requirements/<name>.md`, EARS form) and tests that name it with `verifies("<id>", …)`.
 - A bug fix starts with a regression test that fails before the fix.
