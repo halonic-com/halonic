@@ -24,6 +24,7 @@ export type {
   TabBehaviour,
   TabDescription,
 } from "./points/item-kinds.ts";
+export type { KeyboardPlatform } from "./points/keybindings.ts";
 export type {
   ExplorerGroupContribution,
   ExplorerItem,
