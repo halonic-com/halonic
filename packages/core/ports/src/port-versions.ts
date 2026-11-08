@@ -16,6 +16,7 @@ import { runStoreVersion } from "./run-store.ts";
 import { schedulerVersion } from "./scheduler.ts";
 import { secretsVersion } from "./secrets.ts";
 import { tokenStoreVersion } from "./token-store.ts";
+import { trustStoreVersion } from "./trust-store.ts";
 import { vcsVersion } from "./vcs.ts";
 
 /**
@@ -45,6 +46,7 @@ export const portVersions = {
   Scheduler: schedulerVersion,
   Secrets: secretsVersion,
   TokenStore: tokenStoreVersion,
+  TrustStore: trustStoreVersion,
   Vcs: vcsVersion,
 } as const;
 

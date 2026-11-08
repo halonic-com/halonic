@@ -96,6 +96,12 @@ export {
 export { type Secrets, secretsVersion } from "./secrets.ts";
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
 export {
+  type TrustOrigin,
+  type TrustRecord,
+  type TrustStore,
+  trustStoreVersion,
+} from "./trust-store.ts";
+export {
   type Vcs,
   type VcsChange,
   type VcsCommit,

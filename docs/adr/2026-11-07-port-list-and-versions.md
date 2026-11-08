@@ -113,6 +113,16 @@ version 1 now rather than as a version 2 later. The versions stay at 1.
   The registry address comes from the user's profile, so the user already
   trusts it, and a Python package has a different file, so a different
   hash, per platform. A hash would be a version 2 change with its own ADR.
+- **`TrustStore`, a new port:** `get`, `grant`, `revoke` and `list` trust
+  records by location. A record holds the fingerprint, the normalised
+  content it was computed from, the time, the app version, the connector
+  pins and how it was granted. The port only stores: `TrustService` in
+  `core/app` resolves the location, computes the fingerprint and decides.
+  Records live in the user's profile, never in a workspace. A record that
+  can't be read makes `get` and `list` throw with its location, so the
+  service treats the source as untrusted and says why, and `revoke` still
+  deletes it. `list` is in version 1 because `halonic trust --list` and
+  the trusted-sources list need it.
 
 ## Consequences
 

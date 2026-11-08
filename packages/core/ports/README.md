@@ -35,6 +35,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `Scheduler`         | `scheduler.ts`          | 1       | run timers and the routine tick; timers may arrive late or twice                                | `scheduler`                               |
 | `Secrets`           | `secrets.ts`            | 1       | configured secrets, read-only                                                                   | `secrets`                                 |
 | `TokenStore`        | `token-store.ts`        | 1       | secrets the server writes itself, such as refresh tokens                                        | `token-store`                             |
+| `TrustStore`        | `trust-store.ts`        | 1       | trust records in the user's profile, by location and fingerprint; `TrustService` decides        | `trust-store`                             |
 | `Vcs`               | `vcs.ts`                | 1       | version control of the workspace folder                                                         | `vcs` (with first adapter)                |
 
 Suites marked "with first adapter" come with the first real adapter for
