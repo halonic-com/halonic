@@ -1,2 +1,3 @@
-/** The npm name of this package. A placeholder export, so the empty package has an API to test. */
-export const packageName = "@halonicjs/host-google-sign-in";
+// The public API of @halonicjs/host-google-sign-in. Everything else in src/ is internal.
+export { createPkcePair, type PkcePair, pkceChallenge } from "./pkce.ts";
+export { createState, stateMatches } from "./state.ts";
