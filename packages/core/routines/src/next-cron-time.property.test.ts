@@ -16,8 +16,8 @@ const DAY = 24 * HOUR;
 // prints its own seed and path to replay it.
 const SEED = 302;
 
-// The oracle walks every minute through Intl, which takes a second or two here;
-// allow for slower CI runners.
+// The oracle walks every minute, but reads Intl once per steady hour, so a run
+// takes well under a second here; this leaves room for a slow CI runner.
 const PROPERTY_TIMEOUT = 30_000;
 
 const ZONES = [
@@ -36,12 +36,27 @@ function offsetReader(zone: Zone): (instant: number) => number {
     timeZone: zone,
     timeZoneName: "longOffset",
   });
-  return (instant) => {
+  const read = (instant: number): number => {
     const name = formatter.formatToParts(instant).find((part) => part.type === "timeZoneName");
     const match = /GMT([+-])(\d\d):(\d\d)/.exec(name?.value ?? "");
     if (!match) return 0; // plain "GMT"
     const minutes = Number(match[2]) * 60 + Number(match[3]);
     return (match[1] === "-" ? -minutes : minutes) * MINUTE;
+  };
+  // Asking Intl for every minute is what makes the oracle slow. An hour whose
+  // first and last minute have the same offset has no change inside it (every
+  // zone here changes at most once an hour), so one read covers the whole hour.
+  // Hours with a change are read minute by minute.
+  const steady = new Map<number, number | null>();
+  return (instant) => {
+    const hour = Math.floor(instant / HOUR);
+    let offset = steady.get(hour);
+    if (offset === undefined) {
+      const first = read(hour * HOUR);
+      offset = first === read(hour * HOUR + HOUR - MINUTE) ? first : null;
+      steady.set(hour, offset);
+    }
+    return offset ?? read(instant);
   };
 }
 
