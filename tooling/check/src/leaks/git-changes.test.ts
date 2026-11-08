@@ -35,4 +35,27 @@ describe("parseDiff", () => {
       { path: "docs/été.md", lines: [{ number: 1, text: "summer" }] },
     ]);
   });
+
+  it("reads the combined diff of a merge, keeping what either side or the merge adds", () => {
+    const diff = [
+      "::100644 000000 100644 7898192 0000000 9d6934f MA\ta.txt",
+      "diff --cc a.txt",
+      "--- a/a.txt",
+      "+++ b/a.txt",
+      "@@@ -1,1 -1,0 +1,3 @@@",
+      " +from the other side",
+      "- gone in the merge",
+      "++written in the merge",
+      "  unchanged",
+    ].join("\n");
+    expect(parseDiff(diff)).toEqual([
+      {
+        path: "a.txt",
+        lines: [
+          { number: 1, text: "from the other side" },
+          { number: 2, text: "written in the merge" },
+        ],
+      },
+    ]);
+  });
 });

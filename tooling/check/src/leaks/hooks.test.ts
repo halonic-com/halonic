@@ -63,7 +63,7 @@ afterEach(() => {
 describe("pre-commit hook", () => {
   it("lets a clean commit through", () => {
     const result = commitFile("docs/readme.md", "Temporary files go to /tmp by default.\n");
-    expect(result.output).toContain("leak guard: clean (with personal terms)");
+    expect(result.output).toContain("leak guard: clean (with 2 personal terms");
     expect(result.status).toBe(0);
   });
 
@@ -116,12 +116,53 @@ describe("pre-push hook", () => {
     expect(result.output).not.toContain(fakeSecrets["aws-access-key"]);
   });
 
+  it("refuses a push to a branch whose name holds a term, without showing it", () => {
+    const result = run("git", ["push", "-q", "origin", `main:fix/${term.toLowerCase()}`]);
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain("pushed ref name [personal-term]");
+    expect(result.output.toLowerCase()).not.toContain(term.toLowerCase());
+  });
+
   it("refuses a push with a term in a commit message, without showing it", () => {
     run("git", ["push", "-q", "origin", "main"]);
     commitFile("docs/b.md", "fine\n", "-m", `credit ${term.toUpperCase()}`);
     const result = run("git", ["push", "-q", "origin", "main"]);
     expect(result.status).not.toBe(0);
     expect(result.output).toContain("commit message [personal-term]");
+    expect(result.output.toLowerCase()).not.toContain(term.toLowerCase());
+  });
+});
+
+describe("history scan (--all)", () => {
+  const leaks = resolve(import.meta.dirname, "../cli/leaks.ts");
+
+  beforeEach(() => {
+    commitFile("README.md", "hello\n");
+  });
+
+  it("finds what a merge commit adds that neither side had", () => {
+    run("git", ["switch", "-q", "-c", "side"]);
+    commitFile("side.md", "side\n");
+    run("git", ["switch", "-q", "main"]);
+    commitFile("main.md", "main\n");
+    run("git", ["merge", "-q", "--no-commit", "side"]);
+    writeFileSync(join(repo, "merge.md"), `${absolute("home", "someone", "x")}\n`);
+    run("git", ["add", "merge.md"]);
+    run("git", ["commit", "-q", "--no-verify", "-m", "merge side"]);
+    run("git", ["rm", "-q", "merge.md"]);
+    run("git", ["commit", "-q", "-m", "remove it again"]);
+    const result = run(process.execPath, [leaks, "--all"]);
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain("merge.md:1 [absolute-path]");
+  });
+
+  it("finds a term in a tag message, a tagger or a tag name, without showing it", () => {
+    run("git", ["tag", "-a", "v1", "-m", `thanks ${term}`]);
+    run("git", ["tag", `old-${term.toLowerCase()}`]);
+    const result = run(process.execPath, [leaks, "--all"]);
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain("tag message [personal-term]");
+    expect(result.output).toContain("ref name [personal-term]");
     expect(result.output.toLowerCase()).not.toContain(term.toLowerCase());
   });
 });

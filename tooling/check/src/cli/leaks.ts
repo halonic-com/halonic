@@ -1,8 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AllowList, allowFilePath } from "../leaks/allow.ts";
-import { commitChanges, git, stagedChanges, treeChanges } from "../leaks/git-changes.ts";
-import { pushedRevisions } from "../leaks/push.ts";
+import {
+  commitChanges,
+  git,
+  refChanges,
+  stagedChanges,
+  treeChanges,
+} from "../leaks/git-changes.ts";
+import { pushedRefNames, pushedRevisions } from "../leaks/push.ts";
 import type { Change, ChangeText, Finding } from "../leaks/scan.ts";
 import { scanChanges } from "../leaks/scan.ts";
 import {
@@ -10,6 +16,7 @@ import {
   loadAllowedPhrases,
   loadTerms,
   TermMatcher,
+  type TermsSource,
   termsEnvironmentVariable,
   termsFileEnvironmentVariable,
   termsRequiredVariable,
@@ -27,7 +34,8 @@ import { readPullRequestText } from "../lib/pull-request.ts";
  *   pnpm check:leaks --push <remote>    the commits a push sends, refs on stdin (pre-push hook)
  *   pnpm check:leaks --range A..B       the commits of a pull request, plus its branch,
  *                                       title and body from $GITHUB_EVENT_PATH (CI)
- *   pnpm check:leaks --all              the working tree and every commit on every ref
+ *   pnpm check:leaks --all              the working tree, every commit on every ref, and
+ *                                       every branch and tag name and tag message
  *
  * --allowed-phrases FILE and --allow-file FILE read those two lists from FILE
  * instead of the repo's copy. CI points them at the base commit's copies, so
@@ -91,10 +99,20 @@ function selectChanges(root: string, argv: readonly string[]): Change[] | undefi
       return treeChanges(root);
     case "--staged":
       return stagedChanges(root);
-    case "--push":
-      return pushedRevisions(root, readFileSync(0, "utf8"), value).flatMap((revisions) =>
-        commitChanges(root, revisions),
-      );
+    case "--push": {
+      const refLines = readFileSync(0, "utf8");
+      const refNames = pushedRefNames(refLines).map((text) => ({
+        label: "pushed ref name",
+        text,
+        termsOnly: false,
+      }));
+      return [
+        ...pushedRevisions(root, refLines, value).flatMap((revisions) =>
+          commitChanges(root, revisions),
+        ),
+        { commit: undefined, files: [], texts: refNames },
+      ];
+    }
     case "--range":
       if (!/^[\w./-]+\.\.[\w./-]+$/.test(value)) {
         return undefined;
@@ -104,7 +122,7 @@ function selectChanges(root: string, argv: readonly string[]): Change[] | undefi
         { commit: undefined, files: [], texts: pullRequestTexts() },
       ];
     case "--all":
-      return [...treeChanges(root), ...commitChanges(root, ["--all"])];
+      return [...treeChanges(root), ...commitChanges(root, ["--all"]), ...refChanges(root)];
     default:
       return undefined;
   }
@@ -121,11 +139,25 @@ function formatFinding(finding: Finding): string {
   return `  ${commit}${finding.file}${line} [${finding.rule}] ${finding.message}`;
 }
 
-/** Says why the personal terms were not checked. Never the terms. */
+/**
+ * Says which terms were checked: how many and where from, which confirms
+ * the secret or file is set up as intended. Never the terms.
+ */
+function termsSummary(source: TermsSource, count: number): string {
+  if (source === "secret") {
+    return `with ${count} personal terms from ${termsEnvironmentVariable}`;
+  }
+  if (source === "file") {
+    return `with ${count} personal terms from your deny-terms file`;
+  }
+  return "without personal terms";
+}
+
+/** Says why the terms are missing. Never the terms. */
 function termsNotice(inCi: boolean): string {
   return inCi
     ? `The ${termsEnvironmentVariable} secret is not set, so personal terms were not checked.`
-    : `No deny-terms file at ~/.config/halonic/deny-terms (or ${termsFileEnvironmentVariable}), so personal terms were not checked; see ${docs}`;
+    : `No deny-terms file (or an empty one) at ~/.config/halonic/deny-terms (or ${termsFileEnvironmentVariable}), so personal terms were not checked; see ${docs}`;
 }
 
 /**
@@ -147,31 +179,25 @@ function buildMatcher(
   root: string,
   options: Options,
   terms: readonly string[],
-  source: string,
 ): TermMatcher | undefined {
-  let matcher: TermMatcher;
   try {
     const phrasesPath = options.allowedPhrasesFile ?? join(root, allowedPhrasesFile);
-    matcher = new TermMatcher(terms, loadAllowedPhrases(phrasesPath));
+    return new TermMatcher(terms, loadAllowedPhrases(phrasesPath));
   } catch (error) {
     console.error(
       `leak guard: FAILED. ${error instanceof Error ? error.message : "Bad phrase list."}`,
     );
     return undefined;
   }
-  const secret = process.env[termsEnvironmentVariable] ?? "";
-  if (source === "none" && secret.trim() !== "") {
-    // A secret that is set but holds nothing usable is broken, not missing:
-    // failing is the only way anyone notices it checks nothing.
-    console.error(
-      `leak guard: FAILED. ${termsEnvironmentVariable} is set but holds no usable term.`,
-    );
-    return undefined;
-  }
-  return matcher;
 }
 
-function main(argv: readonly string[]): number {
+/** True when the secret is set to something, yet holds no usable term: a broken secret, not a missing one. */
+function secretIsBroken(source: TermsSource): boolean {
+  const secret = process.env[termsEnvironmentVariable] ?? "";
+  return source === "none" && secret.trim() !== "";
+}
+
+function scan(argv: readonly string[]): number {
   const options = parseOptions(argv);
   const root = git(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
   const changes = selectChanges(root, options.rest);
@@ -186,7 +212,14 @@ function main(argv: readonly string[]): number {
   if (inCi) {
     maskTerms(terms);
   }
-  const matcher = buildMatcher(root, options, terms, source);
+  if (secretIsBroken(source)) {
+    // Failing is the only way anyone notices that the secret checks nothing.
+    console.error(
+      `leak guard: FAILED. ${termsEnvironmentVariable} is set but holds no usable term.`,
+    );
+    return 1;
+  }
+  const matcher = buildMatcher(root, options, terms);
   if (matcher === undefined) {
     return 1;
   }
@@ -202,7 +235,7 @@ function main(argv: readonly string[]): number {
     console.log(inCi ? `::warning title=leak guard::${notice}` : `leak guard: ${notice}.`);
   }
   if (findings.length === 0 && !termsRequiredButMissing) {
-    console.log(`leak guard: clean (${source === "none" ? "without" : "with"} personal terms).`);
+    console.log(`leak guard: clean (${termsSummary(source, matcher.size)}).`);
     return 0;
   }
   if (findings.length > 0) {
@@ -218,6 +251,21 @@ function main(argv: readonly string[]): number {
     );
   }
   return 1;
+}
+
+/**
+ * Runs the scan. A git failure (say, output too large) prints only its
+ * message: the full error would repeat git's output, which can hold the
+ * very text the guard must not print.
+ */
+function main(argv: readonly string[]): number {
+  try {
+    return scan(argv);
+  } catch (error) {
+    const message = error instanceof Error ? error.message.split("\n")[0] : "unknown error";
+    console.error(`leak guard: could not run (${message}).`);
+    return 2;
+  }
 }
 
 process.exitCode = main(process.argv.slice(2));

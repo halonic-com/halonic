@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AddedLine, Change, ChangedFile } from "./scan.ts";
+import type { AddedLine, Change, ChangedFile, ChangeText } from "./scan.ts";
 
 /**
  * Reads changes from git in the shape the scanner wants: for each file,
@@ -66,28 +66,35 @@ function unquote(path: string): string {
 
 /**
  * Parses the output of one diff (raw part, then patch) into changed files.
- * Inside a hunk every line starts with `+`, `-` or `\\`, so an added line
- * that itself starts with `++ ` is never mistaken for a file header.
+ * A merge commit comes as a combined diff (`diff --cc`), with one prefix
+ * column per parent instead of one: `++new`, ` +from one side`, `- gone`.
+ * A line is in the new file when no column says `-`, and added when one
+ * says `+`. So an added line that itself starts with `++ ` is never
+ * mistaken for a file header.
  */
 export function parseDiff(output: string): ChangedFile[] {
   const files = new Map<string, AddedLine[]>();
   let current: AddedLine[] | undefined;
-  let inHunk = false;
+  let columns = 0; // prefix columns in the current hunk; 0 outside a hunk
   let nextLine = 0;
   for (const line of output.split("\n")) {
-    if (line.startsWith("diff --git ")) {
+    if (/^diff --(?:git|cc|combined) /.test(line)) {
       current = undefined;
-      inHunk = false;
-    } else if (line.startsWith("@@ ")) {
-      inHunk = true;
+      columns = 0;
+    } else if (line.startsWith("@@")) {
+      columns = (/^@+/.exec(line)?.[0].length ?? 2) - 1;
       nextLine = hunkStart(line);
-    } else if (inHunk) {
-      if (line.startsWith("+")) {
-        current?.push({ number: nextLine, text: line.slice(1) });
-        nextLine += 1;
+    } else if (columns > 0) {
+      const prefix = line.slice(0, columns);
+      if (prefix.startsWith("\\") || prefix.includes("-")) {
+        continue; // "\ No newline at end of file", or a removed line
       }
+      if (prefix.includes("+")) {
+        current?.push({ number: nextLine, text: line.slice(columns) });
+      }
+      nextLine += 1;
     } else if (line.startsWith(":")) {
-      // `:100644 100644 abc def M\tpath`, or `R100\told\tnew` for a rename.
+      // `:100644 100644 abc def M\tpath`, `R100\told\tnew` for a rename, `::…` for a merge.
       files.set(unquote(line.split("\t").at(-1) ?? ""), []);
     } else if (line.startsWith("+++ ")) {
       current = files.get(newPath(line));
@@ -96,7 +103,7 @@ export function parseDiff(output: string): ChangedFile[] {
   return [...files].map(([path, lines]) => ({ path, lines }));
 }
 
-/** The first line number in the new file: `@@ -3,2 +5,4 @@` → 5. */
+/** The first line number in the new file: `@@ -3,2 +5,4 @@` → 5, also with `@@@ … @@@`. */
 function hunkStart(header: string): number {
   return Number(/\+(\d+)/.exec(header)?.[1] ?? 0);
 }
@@ -129,6 +136,9 @@ export function commitChanges(root: string, revisions: readonly string[]): Chang
     "log",
     format,
     ...diffOptions,
+    // Show what a merge commit adds that neither side had, such as text
+    // written while resolving a conflict. Without this, `git log` skips merges.
+    "--diff-merges=dense-combined",
     ...revisions,
   ]);
   return output
@@ -147,6 +157,38 @@ export function commitChanges(root: string, revisions: readonly string[]): Chang
         ],
       };
     });
+}
+
+/**
+ * The name of every branch and tag, and each annotated tag's message and
+ * tagger (the history scan). A tag is reported by its object's short hash,
+ * so a name with a term in it is never printed.
+ */
+export function refChanges(root: string): Change[] {
+  const fields = [
+    "%(refname)",
+    "%(objectname:short)",
+    "%(objecttype)",
+    "%(taggername) %(taggeremail)",
+    "%(contents)",
+  ];
+  // No field can hold a NUL byte, so NULs split the output safely.
+  const values = git(root, ["for-each-ref", `--format=${fields.join("%00")}%00`]).split("\0");
+  const changes: Change[] = [];
+  for (let index = 0; index + fields.length <= values.length; index += fields.length) {
+    const [refName = "", commit = "", type = "", tagger = "", message = ""] = values
+      .slice(index, index + fields.length)
+      .map((value) => value.replace(/^\n/, ""));
+    const texts: ChangeText[] = [{ label: "ref name", text: refName, termsOnly: false }];
+    if (type === "tag") {
+      texts.push(
+        { label: "tag message", text: message, termsOnly: false },
+        { label: "tagger", text: tagger, termsOnly: true },
+      );
+    }
+    changes.push({ commit, files: [], texts });
+  }
+  return changes;
 }
 
 /** Every tracked file in the working tree, each line counted as added. */

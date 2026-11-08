@@ -40,3 +40,16 @@ export function pushedRevisions(root: string, refLines: string, remote: string):
   }
   return revisions;
 }
+
+/**
+ * The names of the branches and tags a push creates or updates on the
+ * remote. GitHub shows a branch name as soon as it arrives, before CI can
+ * look at it, so the hook checks the names too.
+ */
+export function pushedRefNames(refLines: string): string[] {
+  return refLines
+    .split("\n")
+    .map((line) => line.trim().split(/\s+/))
+    .filter(([, localSha = ""]) => localSha !== "" && !noCommit.test(localSha))
+    .map(([, , remoteRef = ""]) => remoteRef);
+}

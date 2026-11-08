@@ -136,11 +136,18 @@ jobs:
           HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
           HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && github.event.pull_request.head.repo.fork != true && github.event.pull_request.user.login != 'dependabot[bot]' && 'true' || 'false' }}
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.event.after }}
         run: |
           if [ "$EVENT" = "push" ]; then
+            # A push to main scans the pushed commits too, not only the tree it
+            # ends at. The first push to a new repo has no "before" commit.
             node tooling/check/src/cli/leaks.ts
+            case "$BASE" in
+              *[!0]*) ;;
+              *) exit 0 ;;
+            esac
+            node tooling/check/src/cli/leaks.ts --range "$BASE..$HEAD"
           else
             git worktree add --detach "$RUNNER_TEMP/base" "$BASE"
             BASE_DIR="$RUNNER_TEMP/base"
