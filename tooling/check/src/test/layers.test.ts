@@ -73,6 +73,19 @@ describe("tooling/check: layers", () => {
     );
   });
 
+  it.each([
+    ["a dynamic import", 'export const load = () => import("node:fs");\n'],
+    ["require", 'export const fs = require("node:fs");\n'],
+    ["export from", 'export { readFileSync } from "node:fs";\n'],
+    ["a type-only import", 'import type { Stats } from "node:fs";\nexport type S = Stats;\n'],
+    ["an import type", 'export type S = import("node:fs").Stats;\n'],
+  ])("sees a Node API reached through %s", (_form, text) => {
+    const leaky: FixturePackage = { ...std, files: { "src/index.ts": text } };
+    const problems = runChecks([leaky], { coreOrder: ["@halonicjs/std"] });
+    expect(problems.map((problem) => [problem.rule, problem.line])).toEqual([["layers", 1]]);
+    expect(problems[0]?.message).toContain("Node APIs");
+  });
+
   it("enforces the declared core order", () => {
     expect(rulesHit([std, format], { coreOrder: ["@halonicjs/format", "@halonicjs/std"] })).toEqual(
       ["layers"],

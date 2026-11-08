@@ -51,6 +51,8 @@ export interface FixtureOptions {
   readonly extraFiles?: Record<string, string>;
   /** Entries added to the real dependencies.json. */
   readonly extraDependencies?: Record<string, unknown>;
+  /** Replaces the entries of the real dependencies.json. */
+  readonly dependencyList?: Record<string, unknown>;
 }
 
 /**
@@ -81,7 +83,10 @@ export function writeFixtureRepo(
     "tooling/check/dependencies.json",
     JSON.stringify({
       ...dependencyList,
-      dependencies: { ...dependencyList.dependencies, ...options.extraDependencies },
+      dependencies: {
+        ...(options.dependencyList ?? dependencyList.dependencies),
+        ...options.extraDependencies,
+      },
     }),
   );
   write(
