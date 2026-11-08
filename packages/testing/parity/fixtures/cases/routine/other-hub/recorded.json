@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "routine/other-hub",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+      "flatPath": "hubs/billing/routines/month-end.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/month-end.routine.yaml",
+      "message": "Routine \"month-end\": it lives in hub \"billing\" and can only run that hub's workflows and agents"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/routines/month-end.routine.yaml: Routine \"month-end\": it lives in hub \"billing\" and can only run that hub's workflows and agents\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

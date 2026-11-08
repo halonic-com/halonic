@@ -1,0 +1,10 @@
+{
+  "about": "both http and stdio under transport",
+  "kind": "connector",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "library/connectors/tracker.connector.yaml",
+    "path": "transport.stdio",
+    "line": 6
+  }
+}

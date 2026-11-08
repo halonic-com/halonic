@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "routine/no-hub",
+  "valid": false,
+  "files": [
+    {
+      "file": "workflows/routines/hourly-check.routine.yaml",
+      "flatPath": "routines/hourly-check.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "Routine \"hourly-check\": workspace-level routines need run.hub (or agents/ and workflows/ at the root)"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error routines/hourly-check.routine.yaml: Routine \"hourly-check\": workspace-level routines need run.hub (or agents/ and workflows/ at the root)\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

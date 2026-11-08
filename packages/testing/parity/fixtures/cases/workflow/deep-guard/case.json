@@ -1,0 +1,10 @@
+{
+  "about": "a guard with one value instead of two, five levels down",
+  "kind": "workflow",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "hubs/billing/workflows/invoice.workflow.yaml",
+    "path": "states.approval.on.0.when",
+    "line": 47
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "a parallel branch with an agent that doesn't exist",
+  "kind": "workflow",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.branches.audit.agent",
+    "line": 8
+  }
+}

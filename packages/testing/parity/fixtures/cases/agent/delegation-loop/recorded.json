@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "agent/delegation-loop",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/checker.agent.yaml",
+      "flatPath": "hubs/billing/agents/checker.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/checker.agent.yaml",
+      "message": "Agents delegate in a loop: checker → reviewer → checker"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/checker.agent.yaml: Agents delegate in a loop: checker → reviewer → checker\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

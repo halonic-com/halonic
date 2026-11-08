@@ -1,0 +1,49 @@
+{
+  "reference": "784f78d",
+  "case": "provider/missing-required",
+  "valid": false,
+  "files": [
+    {
+      "file": "providers/local-llm.yaml",
+      "flatPath": "providers/local-llm.yaml",
+      "read": true,
+      "schema": "provider",
+      "issues": [
+        {
+          "path": [
+            "type"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected string, received undefined",
+          "line": 1,
+          "col": 1
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "providers/local-llm.yaml",
+      "message": "type: Invalid input: expected string, received undefined",
+      "line": 1,
+      "col": 1
+    },
+    {
+      "severity": "error",
+      "path": "models.yaml",
+      "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error providers/local-llm.yaml: type: Invalid input: expected string, received undefined\nerror models.yaml: Alias \"smart\" uses unknown provider \"local-llm\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 1,
+    "recorded": 1,
+    "verdict": "same"
+  }
+}

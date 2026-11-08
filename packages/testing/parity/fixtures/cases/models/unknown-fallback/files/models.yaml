@@ -1,0 +1,23 @@
+aliases:
+  default:
+    description: Scripted replies, no network.
+    provider: mock
+    model: echo
+    price: { input: 0.1, output: 0.4 }
+  fast:
+    provider: mock
+    model: echo-fast
+    params:
+      temperature: 0
+      maxTokens: 512
+      reasoningEffort: low
+    price: { input: 0.05, output: 0.2 }
+    fallback: [default]
+  smart:
+    provider: local-llm
+    model: acme-large
+    params:
+      topP: 0.9
+      stop: ["END"]
+      extra: { seed: 7 }
+    fallback: [fast, quick]

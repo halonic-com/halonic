@@ -1,0 +1,10 @@
+{
+  "about": "a final state with transitions",
+  "kind": "workflow",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.done.on",
+    "line": 11
+  }
+}

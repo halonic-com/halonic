@@ -1,0 +1,10 @@
+{
+  "about": "maxSteps is text",
+  "kind": "agent",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "maxSteps",
+    "line": 20
+  }
+}

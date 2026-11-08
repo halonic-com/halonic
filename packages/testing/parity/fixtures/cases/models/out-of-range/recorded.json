@@ -1,0 +1,62 @@
+{
+  "reference": "784f78d",
+  "case": "models/out-of-range",
+  "valid": false,
+  "files": [
+    {
+      "file": "models.yaml",
+      "flatPath": "models.yaml",
+      "read": true,
+      "schema": "models",
+      "issues": [
+        {
+          "path": [
+            "aliases",
+            "fast",
+            "params",
+            "temperature"
+          ],
+          "code": "too_big",
+          "message": "Too big: expected number to be <=2",
+          "line": 11,
+          "col": 20
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "models.yaml",
+      "message": "aliases.fast.params.temperature: Too big: expected number to be <=2",
+      "line": 11,
+      "col": 20
+    },
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "The session AI uses unknown model alias \"fast\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses unknown model alias \"default\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error models.yaml: aliases.fast.params.temperature: Too big: expected number to be <=2\nerror workspace.yaml: The session AI uses unknown model alias \"fast\"\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown model alias \"fast\"\nerror hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses unknown model alias \"default\"\n4 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 11,
+    "recorded": 11,
+    "verdict": "same"
+  }
+}

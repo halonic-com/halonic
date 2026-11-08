@@ -1,0 +1,10 @@
+{
+  "about": "assistant.maxSteps is above 64",
+  "kind": "workspace",
+  "fault": "bad-format",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "assistant.maxSteps",
+    "line": 18
+  }
+}

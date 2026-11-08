@@ -1,0 +1,10 @@
+{
+  "about": "a field name with a dash",
+  "kind": "collection",
+  "fault": "bad-format",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "fields.due-date",
+    "line": 10
+  }
+}

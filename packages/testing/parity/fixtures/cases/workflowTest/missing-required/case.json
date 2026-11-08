@@ -1,0 +1,10 @@
+{
+  "about": "a case without a name",
+  "kind": "workflowTest",
+  "fault": "missing-required",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.test.yaml",
+    "path": "cases.2.name",
+    "line": 9
+  }
+}

@@ -1,0 +1,6 @@
+id: extra
+name: Extra
+initial: begin
+states:
+  done:
+    type: final

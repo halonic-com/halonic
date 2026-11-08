@@ -1,0 +1,10 @@
+{
+  "about": "every is not a number and a unit",
+  "kind": "routine",
+  "fault": "bad-format",
+  "expect": {
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "path": "trigger.every",
+    "line": 4
+  }
+}

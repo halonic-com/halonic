@@ -1,0 +1,10 @@
+{
+  "about": "a workflow state for a workflow that doesn't exist",
+  "kind": "workflow",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.workflow",
+    "line": 7
+  }
+}

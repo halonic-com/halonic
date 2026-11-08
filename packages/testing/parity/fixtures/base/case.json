@@ -1,0 +1,5 @@
+{
+  "about": "A valid workspace with every file kind, foreach, parallel and nested workflows, an approval with a timer, and a budget",
+  "kind": "workspace",
+  "fault": "valid"
+}

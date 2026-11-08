@@ -1,0 +1,10 @@
+{
+  "about": "baseUrl is not a URL",
+  "kind": "provider",
+  "fault": "bad-format",
+  "expect": {
+    "file": "providers/local-llm.yaml",
+    "path": "baseUrl",
+    "line": 4
+  }
+}

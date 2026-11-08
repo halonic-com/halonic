@@ -1,0 +1,56 @@
+{
+  "reference": "784f78d",
+  "case": "connector/bad-email",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/library/connectors/mailbox.connector.yaml",
+      "flatPath": "hubs/billing/connectors/mailbox.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [
+        {
+          "path": [
+            "transport",
+            "google",
+            "account"
+          ],
+          "code": "invalid_format",
+          "message": "Invalid email address",
+          "line": 4,
+          "col": 14
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/connectors/mailbox.connector.yaml",
+      "message": "transport.google.account: Invalid email address",
+      "line": 4,
+      "col": 14
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses unknown connector \"mailbox\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "message": "Routine \"inbox-mail\": unknown connector \"mailbox\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/connectors/mailbox.connector.yaml: transport.google.account: Invalid email address\nerror hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses unknown connector \"mailbox\"\nerror hubs/billing/routines/inbox-mail.routine.yaml: Routine \"inbox-mail\": unknown connector \"mailbox\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": 4,
+    "verdict": "same"
+  }
+}

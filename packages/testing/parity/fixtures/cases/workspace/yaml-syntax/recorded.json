@@ -1,0 +1,34 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/yaml-syntax",
+  "valid": false,
+  "files": [
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": null,
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "YAML: Missing closing \"quote",
+      "line": 23,
+      "col": 1
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: YAML: Missing closing \"quote\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": 23,
+    "verdict": "different"
+  }
+}
