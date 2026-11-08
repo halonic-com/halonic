@@ -1,6 +1,7 @@
 import {
   blobStoreContract,
   clockContract,
+  coordinationContract,
   definitionStoreContract,
   idGeneratorContract,
   recordStoreContract,
@@ -12,6 +13,7 @@ import {
 import {
   ManualClock,
   MemoryBlobStore,
+  MemoryCoordination,
   MemoryDefinitionStore,
   MemoryRecordStore,
   MemoryRunStore,
@@ -34,4 +36,8 @@ schedulerContract("memory", async (listener) => {
   const clock = new ManualClock();
   const scheduler = new MemoryScheduler(listener, clock);
   return { scheduler, clock, settle: () => scheduler.runDue() };
+});
+coordinationContract("memory", async () => {
+  const clock = new ManualClock();
+  return { coordination: new MemoryCoordination(clock), clock };
 });

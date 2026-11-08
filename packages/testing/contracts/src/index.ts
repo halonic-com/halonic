@@ -1,5 +1,13 @@
 export { blobStoreContract, type MakeBlobStore } from "./blob-store.ts";
 export { type ControlledClock, clockContract, type MakeClock } from "./clock.ts";
+export { coordinationContract } from "./coordination.ts";
+export {
+  type CoordinationHarness,
+  invalidAmounts,
+  invalidCoordinationKeys,
+  longestCoordinationKey,
+  type MakeCoordination,
+} from "./coordination-harness.ts";
 export {
   type DefinitionFiles,
   definitionSourceContract,
