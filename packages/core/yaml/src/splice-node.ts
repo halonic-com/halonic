@@ -84,8 +84,9 @@ function indentStyleOf(text: string, contents: unknown): IndentStyle {
     return { ...defaultIndentStyle, indent };
   }
   // Without `indentSeq` the library puts the `-` two columns left of the
-  // entries below it: at the key's column for an indent of 2.
-  return { indent, indentSeq: steps.list !== indent - 2 };
+  // entries below it: at the key's column for an indent of 2. It can't go
+  // further left, so a wider file with its `-` at the key's column gets that.
+  return { indent, indentSeq: steps.list > indent - 2 };
 }
 
 /**

@@ -289,10 +289,13 @@ verifies("yaml.edit-style", () => {
         // JavaScript puts keys like "0" first, so the library's order differs from the file's.
         fc.pre(!hasIndexKey(expected));
         const spliced = spliceEdit(text, edit) ?? "";
-        expect(unwrap(readYaml(spliced)).data).toEqual(expected);
-        // Quotes may differ (a quoted text keeps its quotes); the indents may not.
+        const read = unwrap(readYaml(spliced)).data;
+        expect(read).toEqual(expected);
+        // Render the data as read back, so the library follows the file's key order (a set keeps
+        // shared keys where they were). Quotes may differ (a quoted text keeps its quotes); the
+        // indents may not.
         expect(indentsOf(spliced)).toEqual(
-          indentsOf(stringify(expected, { lineWidth: 100, ...indent })),
+          indentsOf(stringify(read, { lineWidth: 100, ...indent })),
         );
       }),
       { numRuns: 300 },

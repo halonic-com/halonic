@@ -407,6 +407,13 @@ verifies("yaml.edit-style", () => {
     );
   });
 
+  it("puts the dashes 2 columns in when a wider file keeps them at the key's column", () => {
+    const four = lines("a:", "    b: 1", "s:", "- x");
+    expect(edited(four, set(["t"], ["y"])).text).toBe(
+      lines("a:", "    b: 1", "s:", "- x", "t:", "  - y"),
+    );
+  });
+
   it("keeps the library's style in a file with nothing nested", () => {
     expect(edited("a: 1\n", set(["b"], { c: ["d"] })).text).toBe(
       lines("a: 1", "b:", "  c:", "    - d"),
