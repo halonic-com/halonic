@@ -1,5 +1,5 @@
-import { typeTest } from "@halonicjs/testing-spec";
-import { describe, expectTypeOf } from "vitest";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
 import type { RunKind, RunParent, RunTrigger, Usage } from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
@@ -11,7 +11,7 @@ import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-e
 
 type EventOf<T extends RunEventType> = Extract<RunEventBody, { type: T }>;
 
-describe("events.run-log-contract", () => {
+verifies("events.run-log-contract", () => {
   typeTest("has exactly the reference event types", () => {
     expectTypeOf<RunEventType>().toEqualTypeOf<
       | "run.started"

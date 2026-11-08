@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { isLocalAddress, isLoopback } from "./local-address.ts";
 
 const hostname = (url: string) => new URL(url).hostname;
 
-describe("integration-kit.local-http-hosts", () => {
+verifies("integration-kit.local-http-hosts", () => {
   it.each([
     "http://localhost:3000/",
     "http://127.0.0.1/",

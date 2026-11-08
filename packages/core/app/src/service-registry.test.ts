@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { ServiceError, ServiceRegistry, serviceKey } from "./service-registry.ts";
 
 const clockKey = serviceKey<{ now(): Date }>("clock");
 const logKey = serviceKey<string[]>("log");
 
-describe("app.service-registry", () => {
+verifies("app.service-registry", () => {
   it("returns the service provided for a key", () => {
     const registry = new ServiceRegistry();
     const clock = { now: () => new Date(0) };

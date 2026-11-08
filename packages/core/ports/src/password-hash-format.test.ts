@@ -1,7 +1,8 @@
 import { scryptSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 
 // The ports package has no hasher; the `password-hasher` contract suite runs
 // these vectors against every adapter. This test proves the vectors in the
@@ -49,7 +50,7 @@ function recompute(
   return { salt, key, expected };
 }
 
-describe("ports.password-hash-format", () => {
+verifies("ports.password-hash-format", () => {
   for (const { password, hash } of vectors) {
     it(`matches Node's scrypt for ${JSON.stringify(password)}`, () => {
       const { salt, key, expected } = recompute(password, hash);

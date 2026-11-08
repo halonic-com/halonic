@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: new in the core ports package: one hash format on every runtime, so a hash made locally verifies in the cloud
 
-Every `PasswordHasher` adapter shall produce and accept hashes in the form `$scrypt$ln=<log2 N>,r=<r>,p=<p>$<salt>$<key>`, with exactly a 16-byte salt and a 32-byte key in standard base64 without padding, over the NFC-normalised UTF-8 password. New hashes shall use ln=14, r=8, p=5, and `needsRehash` shall return `true` for any other settings. If a hash is malformed (another salt or key length, or `=` padding), in another format, or uses settings outside ln 14 to 15, r 8 and p 5 to 16, then `verify` and `needsRehash` shall throw a `RangeError`.
+The `PasswordHasher` adapters shall all produce and accept hashes in the form `$scrypt$ln=<log2 N>,r=<r>,p=<p>$<salt>$<key>`, with exactly a 16-byte salt and a 32-byte key in standard base64 without padding, over the NFC-normalised UTF-8 password. New hashes shall use ln=14, r=8, p=5, and `needsRehash` shall return `true` for any other settings. If a hash is malformed (another salt or key length, or `=` padding), in another format, or uses settings outside ln 14 to 15, r 8 and p 5 to 16, then `verify` and `needsRehash` shall throw a `RangeError`.
 
 The vectors below were computed with Node's `crypto.scryptSync` (OpenSSL), not with `core/std`, so they check the in-house scrypt against an independent implementation. The salt is the bytes 0 to 15.
 

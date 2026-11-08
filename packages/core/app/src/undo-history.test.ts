@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { UndoHistory, undoLimit } from "./undo-history.ts";
 
-describe("app.workspace-undo (history)", () => {
+verifies("app.workspace-undo", () => {
   it("steps back and forward through recorded states", () => {
     const history = new UndoHistory<string>();
     history.record("a");

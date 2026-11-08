@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import type { RunEvent } from "./run-event.ts";
 import { summarize } from "./summarize.ts";
 import { parseEventLine, upgradeEvent } from "./upgrade.ts";
@@ -6,7 +7,7 @@ import { parseEventLine, upgradeEvent } from "./upgrade.ts";
 const base = { runId: "r", seq: 1, at: "2026-01-01T00:00:00Z" };
 const started = { ...base, type: "run.started", input: {}, kind: "run", definitionsVersion: "v" };
 
-describe("events.upgrade-old-run-logs", () => {
+verifies("events.upgrade-old-run-logs", () => {
   // Old test: legacy.test.ts "reads old run logs that say projectId".
   it("reads old run logs that say projectId", () => {
     const old = { ...started, projectId: "p", workflowId: "greet" };
@@ -39,7 +40,7 @@ describe("events.upgrade-old-run-logs", () => {
   });
 });
 
-describe("events.parse-event-line", () => {
+verifies("events.parse-event-line", () => {
   it("parses an old run.started line into today's shape", () => {
     const line = JSON.stringify({ ...started, projectId: "p", workflowId: "greet" });
     expect(parseEventLine(line)).toEqual({ ...started, hubId: "p", workflowId: "greet" });

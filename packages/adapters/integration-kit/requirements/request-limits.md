@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-135 (Ravi's input on HAL-99 and his review of #86)
 
-Every request shall have a timeout for its response headers (redirects included), an idle timeout between pieces of the body while the integration waits for them, an overall timeout and a response size limit, and shall honor the caller's abort signal.
+The limited client shall give every request a timeout for its response headers (redirects included), an idle timeout between pieces of the body while the integration waits for them, an overall timeout and a response size limit, and shall honor the caller's abort signal.
 
 ## Examples
 

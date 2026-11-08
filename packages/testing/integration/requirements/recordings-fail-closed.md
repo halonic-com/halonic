@@ -1,4 +1,4 @@
-# testing-integration.recordings-fail-closed
+# integration.recordings-fail-closed
 
 - Status: active
 - Since: 0.1.0

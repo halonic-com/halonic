@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { scanIntegrationSource } from "./source-scan.ts";
 
-describe("testing-integration.source-scan", () => {
+verifies("integration.source-scan", () => {
   it.each([
     ["global fetch (use host.http)", 'await fetch("https://x.example")'],
     ["globalThis, window or self", "globalThis.secret = 1;"],

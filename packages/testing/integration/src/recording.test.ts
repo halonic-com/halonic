@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { NoRecordingError, type RecordingFile, replayTransport } from "./recording.ts";
 
 const file: RecordingFile = {
@@ -43,7 +44,7 @@ const create = {
   headers: { authorization: "Bearer placed-by-kit", "content-type": "application/json" },
 };
 
-describe("testing-integration.recordings-fail-closed", () => {
+verifies("integration.recordings-fail-closed", () => {
   it("answers in order on method and URL, with placeholders matching any value", async () => {
     const { transport, seen, unused } = replayTransport(file);
     const made = await transport.fetch("https://API.example.com/v1/items?key=real-key", create);

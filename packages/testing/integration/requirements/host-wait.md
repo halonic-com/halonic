@@ -1,4 +1,4 @@
-# testing-integration.host-wait
+# integration.host-wait
 
 - Status: active
 - Since: 0.1.0

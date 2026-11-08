@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-135 (step I2; secrets tied to their provider and address)
 
-An integration shall reach the outside world only through the `IntegrationHost` it is given: an `IntegrationHttpClient` that places secrets for it, the tokens it writes itself, its settings and `wait`. `wait(ms, signal?)` is the integration's only timer: the host shall wait at most `maxIntegrationWaitMs` (30 000 ms) and shall reject with `signal.reason` when `signal` aborts. The host shall give it no raw `Secrets`, so integration code never holds a secret value. Every integration tool shall carry a `risk` of `read`, `write` or `send`. Connector tools may carry the same `risk` and an `untrusted` flag as optional fields, so version 1 of `ConnectorClient` keeps working.
+The `IntegrationHost` an integration is given shall be its only way to reach the outside world: an `IntegrationHttpClient` that places secrets for it, the tokens it writes itself, its settings and `wait`. `wait(ms, signal?)` is the integration's only timer: the host shall wait at most `maxIntegrationWaitMs` (30 000 ms) and shall reject with `signal.reason` when `signal` aborts. The host shall give it no raw `Secrets`, so integration code never holds a secret value. Every integration tool shall carry a `risk` of `read`, `write` or `send`. Connector tools may carry the same `risk` and an `untrusted` flag as optional fields, so version 1 of `ConnectorClient` keeps working.
 
 ## Examples
 

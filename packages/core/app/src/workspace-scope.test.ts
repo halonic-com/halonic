@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { CommandError, type CommandSpec } from "./command-bus.ts";
 import { serviceKey } from "./service-registry.ts";
 import { type AppCommands, type AppEvents, WorkspaceScope } from "./workspace-scope.ts";
@@ -14,7 +15,7 @@ function openScope(location = "memory:demo", reported: unknown[] = []) {
   });
 }
 
-describe("app.workspace-scope", () => {
+verifies("app.workspace-scope", () => {
   it("gives each open workspace its own commands, events and services", async () => {
     const first = openScope("memory:a");
     const second = openScope("memory:b");

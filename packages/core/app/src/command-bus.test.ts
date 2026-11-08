@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { CommandBus, CommandError, type CommandSpec } from "./command-bus.ts";
 
 interface TestCommands {
@@ -6,7 +7,7 @@ interface TestCommands {
   save: CommandSpec<void, number>;
 }
 
-describe("app.command-bus", () => {
+verifies("app.command-bus", () => {
   it("runs a command through its handler and returns the result", async () => {
     const bus = new CommandBus<TestCommands>();
     bus.register("greet", (name) => `Hello ${name}`);

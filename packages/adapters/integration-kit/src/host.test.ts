@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { fakeTransport, memoryTokens, policy, secrets } from "./fake-transport.test-helper.ts";
 import { createIntegrationHost } from "./host.ts";
 import { IntegrationRefusedError } from "./refused.ts";
 import { storedTokenName } from "./scoped-tokens.ts";
 
-describe("integration-kit.scoped-tokens", () => {
+verifies("integration-kit.scoped-tokens", () => {
   it("keeps an integration's tokens under its own names", async () => {
     const shared = memoryTokens();
     const { host } = createIntegrationHost({
@@ -40,7 +41,7 @@ describe("integration-kit.scoped-tokens", () => {
   });
 });
 
-describe("integration-kit.scoped-tokens: the host", () => {
+verifies("integration-kit.scoped-tokens", () => {
   it("gives the integration only http, tokens, settings and wait, frozen", () => {
     const { host } = createIntegrationHost({
       policy,

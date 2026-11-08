@@ -1,4 +1,4 @@
-# testing-integration.source-scan
+# integration.source-scan
 
 - Status: active
 - Since: 0.1.0

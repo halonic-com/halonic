@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-135 (Ravi's input on HAL-99)
 
-An integration shall read and write only the tokens its policy declares, stored under a name no other integration can reach, and its host shall offer only `http`, `tokens` and `settings`.
+The kit shall let an integration read and write only the tokens its policy declares, stored under a name no other integration can reach, and its host shall offer only `http`, `tokens`, `settings` and `wait`.
 
 ## Examples
 

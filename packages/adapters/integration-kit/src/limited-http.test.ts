@@ -1,3 +1,4 @@
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { canary, fakeTransport, policy, redirect, secrets } from "./fake-transport.test-helper.ts";
 import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
@@ -29,7 +30,7 @@ async function refusal(promise: Promise<unknown>): Promise<RefusalCode> {
   return (error as IntegrationRefusedError).code;
 }
 
-describe("integration-kit.declared-hosts-only", () => {
+verifies("integration-kit.declared-hosts-only", () => {
   it("sends to a declared host over https, matching the host exactly", async () => {
     const { http, sent } = client();
     const response = await http.fetch("https://API.example.com/v1/forecast?city=Ghent");
@@ -67,7 +68,7 @@ describe("integration-kit.declared-hosts-only", () => {
   });
 });
 
-describe("integration-kit.local-http-hosts", () => {
+verifies("integration-kit.local-http-hosts", () => {
   const local: IntegrationPolicy = {
     ...policy,
     localHosts: ["localhost:3000", "192.168.1.5:8080", "api.example.com", "169.254.169.254"],
@@ -114,7 +115,7 @@ describe("integration-kit.local-http-hosts", () => {
   });
 });
 
-describe("integration-kit.secrets-placed-by-kit", () => {
+verifies("integration-kit.secrets-placed-by-kit", () => {
   it("puts a bearer secret in only for its declared host", async () => {
     const { http, sent } = client();
     await http.fetch("https://api.example.com/v1", {
@@ -244,7 +245,7 @@ describe("integration-kit.secrets-placed-by-kit", () => {
   });
 });
 
-describe("integration-kit.redirects-checked", () => {
+verifies("integration-kit.redirects-checked", () => {
   it("follows a redirect to a declared host and drops a secret that may not go there", async () => {
     const { http, sent } = client((url) =>
       url.host === "api.example.com"
@@ -303,7 +304,7 @@ describe("integration-kit.redirects-checked", () => {
   });
 });
 
-describe("integration-kit.request-limits", () => {
+verifies("integration-kit.request-limits", () => {
   it("refuses a response whose declared length is over the limit", async () => {
     const { http } = client(() => new Response("12345", { headers: { "content-length": "5" } }), {
       maxResponseBytes: 4,
@@ -407,7 +408,7 @@ function pieces(
   });
 }
 
-describe("integration-kit.request-log", () => {
+verifies("integration-kit.request-log", () => {
   it("logs method, host, path, status and time, and no query, header or secret", async () => {
     const { http, log } = client();
     await http.fetch("https://api.example.com/v1/forecast?city=Ghent&token=abc", {

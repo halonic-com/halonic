@@ -1,5 +1,6 @@
 import { maxIntegrationWaitMs } from "@halonicjs/ports";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { ConformanceFailure, checkAbort, checkCase, checkHostWait } from "./checks.ts";
 import { fakeWait } from "./fake-wait.ts";
 import { weatherSubject } from "./fixtures/weather.ts";
@@ -28,7 +29,7 @@ function pausing(ms: number): ConformanceSubject {
 
 const forecast = weatherSubject.cases[0];
 
-describe("testing-integration.host-wait", () => {
+verifies("integration.host-wait", () => {
   it("resolves at once and records the clamped pause", async () => {
     const fake = fakeWait();
     for (const ms of [2_000, Number.NaN, -1, Number.POSITIVE_INFINITY]) await fake.wait(ms);

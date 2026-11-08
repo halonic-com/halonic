@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { lastTickKey, routineRunId, shortHash, utf8Length } from "./routine-ids.ts";
 
 const at = new Date("2026-11-03T08:00:00Z");
 
-describe("app.routine-scheduler: run ids and keys", () => {
+verifies("app.routine-scheduler", () => {
   it("gives the same id for the same workspace, routine and time, and a new one otherwise", () => {
     const id = routineRunId("memory:a", "p/daily", at);
     expect(id).toBe(`routine:${shortHash("memory:a")}/p/daily@2026-11-03T08:00:00.000Z`);

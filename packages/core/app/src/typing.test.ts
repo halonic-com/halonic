@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { type CommandSpec, WorkspaceScope } from "./index.ts";
 
 // What a feature package writes to add its own commands and events, with
@@ -19,7 +20,7 @@ function openScope() {
   return new WorkspaceScope({ location: "memory:typing", onListenerError: () => {} });
 }
 
-describe("app.command-bus: features add typed commands and events", () => {
+verifies("app.command-bus", () => {
   it("checks the names and payloads a feature adds", async () => {
     const scope = openScope();
     const renamed: string[] = [];

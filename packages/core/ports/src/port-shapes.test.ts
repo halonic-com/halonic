@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
-import { typeTest } from "@halonicjs/testing-spec";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import type {
   Coordination,
   DefinitionSource,
@@ -33,7 +33,7 @@ const definitions: DefinitionStore = {
   remove: async () => {},
 };
 
-describe("ports.read-only-sides", () => {
+verifies("ports.read-only-sides", () => {
   typeTest("gives Secrets no way to write", () => {
     const secrets: Secrets = { get: async () => null };
     // @ts-expect-error: configured secrets are read-only at run time
@@ -55,7 +55,7 @@ describe("ports.read-only-sides", () => {
   });
 });
 
-describe("ports.web-types-only", () => {
+verifies("ports.web-types-only", () => {
   typeTest("lets HttpClient be the Web fetch signature", () => {
     expectTypeOf<HttpClient["fetch"]>().toBeCallableWith("https://example.com", {
       method: "POST",
@@ -83,7 +83,7 @@ describe("ports.web-types-only", () => {
   });
 });
 
-describe("ports.frozen-inputs", () => {
+verifies("ports.frozen-inputs", () => {
   it("lets a start choose its run id, and has no parent", () => {
     const run: StartRunRequest = { hubId: "h", workflowId: "w", input: {}, runId: "run_fire_1" };
     const agent: StartAgentRequest = {
@@ -129,7 +129,7 @@ describe("ports.frozen-inputs", () => {
   });
 });
 
-describe("ports.untrusted-knowledge", () => {
+verifies("ports.untrusted-knowledge", () => {
   const provider: KnowledgeProvider = {
     id: "docs",
     capabilities: { search: true, semantic: false, ingest: false },

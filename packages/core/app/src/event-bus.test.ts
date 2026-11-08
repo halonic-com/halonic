@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { EventBus } from "./event-bus.ts";
 
 interface TestEvents {
@@ -6,7 +7,7 @@ interface TestEvents {
   closed: undefined;
 }
 
-describe("app.event-bus", () => {
+verifies("app.event-bus", () => {
   it("calls every listener once, in the order they were added", () => {
     const bus = new EventBus<TestEvents>();
     const calls: string[] = [];

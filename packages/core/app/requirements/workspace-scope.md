@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-116 (feature state belongs to one open workspace)
 
-Each open workspace shall have its own command bus, event bus and service registry, shared with no other workspace. When a workspace scope is closed, it shall send `workspace.closing` once, dispose its services, drop every command handler and event listener, and refuse new commands and services. The scope's event bus shall report listener errors to the host instead of throwing them.
+The app shall give each open workspace its own command bus, event bus and service registry, shared with no other workspace. When a workspace scope is closed, it shall send `workspace.closing` once, dispose its services, drop every command handler and event listener, and refuse new commands and services. The scope's event bus shall report listener errors to the host instead of throwing them.
 
 ## Examples
 

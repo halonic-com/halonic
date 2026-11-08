@@ -1,3 +1,4 @@
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
   ConformanceFailure,
@@ -25,7 +26,7 @@ function fail(): never {
   throw new Error("the subject has no case");
 }
 
-describe("testing-integration.attack-cases", () => {
+verifies("integration.attack-cases", () => {
   for (const [attack, { catchBy, reason, subject }] of Object.entries(attacks)) {
     it(`fails an integration that ${attack}`, async () => {
       const failure = await checks[catchBy](subject).then(

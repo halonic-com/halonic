@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { portVersions } from "./port-versions.ts";
 
 const sourceFolder = fileURLToPath(new URL(".", import.meta.url));
@@ -29,7 +30,7 @@ function readmeVersions(): Record<string, number> {
   return versions;
 }
 
-describe("ports.every-port-versioned", () => {
+verifies("ports.every-port-versioned", () => {
   it("finds the port files", () => {
     expect(portFiles.length).toBeGreaterThanOrEqual(12);
   });
@@ -71,7 +72,7 @@ function importedPaths(source: string): string[] {
   );
 }
 
-describe("ports.web-types-only", () => {
+verifies("ports.web-types-only", () => {
   it("finds every kind of import, so the check below can't be got around", () => {
     const source = [
       'import type { A } from "./a.ts";',

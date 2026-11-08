@@ -1,4 +1,4 @@
-# testing-integration.attack-cases
+# integration.attack-cases
 
 - Status: active
 - Since: 0.1.0

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 import { ModelHistory, modelPaths, randomStep, seededRandom } from "./testing/model-history.ts";
@@ -20,7 +21,7 @@ function open(files: Record<string, string> = { [workflowPath]: workflow }) {
   return { store, scope, files: scope.services.get(workspaceFilesKey), changes };
 }
 
-describe("app.workspace-undo", () => {
+verifies("app.workspace-undo", () => {
   // Ported from 784f78d studio.test.ts "edits a workflow, validates live, undoes, and saves to files".
   // The workflow model, diagnostics and graph checks of that case move to the workflows feature.
   it("edits a workflow, undoes, redoes, and saves to files", async () => {
@@ -139,7 +140,7 @@ describe("app.workspace-undo", () => {
   });
 });
 
-describe("app.workspace-save", () => {
+verifies("app.workspace-save", () => {
   // Ported from 784f78d studio.test.ts "creates agents as files and runs workflow tests as test runs".
   // Running workflow tests moves to the workflows feature with the engine.
   it("creates an agent as a file, edits it and saves it", async () => {

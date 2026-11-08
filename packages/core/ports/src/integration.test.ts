@@ -1,5 +1,5 @@
-import { typeTest } from "@halonicjs/testing-spec";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import type {
   ConnectorTool,
   HttpClient,
@@ -21,7 +21,7 @@ const host: IntegrationHost = {
   wait: async () => {},
 };
 
-describe("ports.integration-host", () => {
+verifies("ports.integration-host", () => {
   typeTest("gives an integration http, tokens, settings and wait, and no secrets", () => {
     expectTypeOf<keyof IntegrationHost>().toEqualTypeOf<"http" | "tokens" | "settings" | "wait">();
     // @ts-expect-error: an integration never gets the Secrets port

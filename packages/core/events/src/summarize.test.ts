@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import type { RunEvent, RunEventBody } from "./run-event.ts";
 import { summarize } from "./summarize.ts";
 
@@ -28,7 +29,7 @@ function summaryOf(...bodies: RunEventBody[]) {
   return summary;
 }
 
-describe("events.summary-start", () => {
+verifies("events.summary-start", () => {
   it("is null for an empty stream", () => {
     expect(summarize([])).toBeNull();
   });
@@ -76,7 +77,7 @@ describe("events.summary-start", () => {
   });
 });
 
-describe("events.summary-progress", () => {
+verifies("events.summary-progress", () => {
   it("tracks the current state and every state visited", () => {
     const summary = summaryOf(
       { type: "state.entered", state: "a" },
@@ -114,7 +115,7 @@ describe("events.summary-progress", () => {
   });
 });
 
-describe("events.summary-last-event", () => {
+verifies("events.summary-last-event", () => {
   it("names the last event's sequence number and time", () => {
     const summary = summaryOf(
       { type: "state.entered", state: "a" },
@@ -129,7 +130,7 @@ describe("events.summary-last-event", () => {
   });
 });
 
-describe("events.summary-cost", () => {
+verifies("events.summary-cost", () => {
   const response = {
     type: "llm.response",
     agent: "a",
@@ -159,7 +160,7 @@ describe("events.summary-cost", () => {
   });
 });
 
-describe("events.summary-waiting", () => {
+verifies("events.summary-waiting", () => {
   const waiting: RunEventBody = {
     type: "run.waiting",
     state: "w",
@@ -225,7 +226,7 @@ describe("events.summary-waiting", () => {
   });
 });
 
-describe("events.summary-approvals-and-signals", () => {
+verifies("events.summary-approvals-and-signals", () => {
   const requested: RunEventBody = {
     type: "approval.requested",
     state: "s",

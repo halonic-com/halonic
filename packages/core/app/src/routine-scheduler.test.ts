@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { EventBus } from "./event-bus.ts";
 import { lastTickKey, routineRunId } from "./routine-ids.ts";
 import {
@@ -103,7 +104,7 @@ function setUp(
 
 const ids = (runs: { id: string }[]) => runs.map((run) => run.id);
 
-describe("app.routine-scheduler", () => {
+verifies("app.routine-scheduler", () => {
   it("catches up on missed ticks under the policy, once each", async () => {
     const { scheduler, coordination, executor, at } = setUp([{ key: "p/hourly", minute: 0 }]);
     await scheduler.tick();

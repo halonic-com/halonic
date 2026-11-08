@@ -1,10 +1,11 @@
 import { maxIntegrationWaitMs } from "@halonicjs/ports";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeTransport, memoryTokens, policy, secrets } from "./fake-transport.test-helper.ts";
 import { createIntegrationHost } from "./host.ts";
 import { clampWaitMs, integrationWait } from "./wait.ts";
 
-describe("integration-kit.wait-capped", () => {
+verifies("integration-kit.wait-capped", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
