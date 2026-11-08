@@ -1,0 +1,418 @@
+[
+  {
+    "case": "agent/bad-method-id",
+    "about": "a method name with capitals",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 12,
+    "recorded": 13,
+    "verdict": "different"
+  },
+  {
+    "case": "agent/delegation-loop",
+    "about": "two agents that delegate to each other",
+    "file": "hubs/billing/agents/checker.agent.yaml",
+    "expected": 4,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/missing-required",
+    "about": "a method without instructions",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 12,
+    "recorded": 13,
+    "verdict": "different"
+  },
+  {
+    "case": "agent/own-subagent",
+    "about": "an agent that delegates to itself",
+    "file": "hubs/billing/agents/reviewer.agent.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/unknown-collection",
+    "about": "a collection that doesn't exist",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 10,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/unknown-connector",
+    "about": "a connector that doesn't exist",
+    "file": "hubs/billing/agents/notifier.agent.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/unknown-key",
+    "about": "a method with an unknown key",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 19,
+    "recorded": 13,
+    "verdict": "different"
+  },
+  {
+    "case": "agent/unknown-knowledge",
+    "about": "a knowledge source that doesn't exist",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 9,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/unknown-method-model",
+    "about": "a method model alias that doesn't exist",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 17,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/unknown-model",
+    "about": "a model alias that doesn't exist",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 4,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/unknown-skill",
+    "about": "a skill that doesn't exist",
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "agent/unknown-subagent",
+    "about": "a subagent that doesn't exist",
+    "file": "hubs/billing/agents/reviewer.agent.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "connector/approve-not-allowed",
+    "about": "a tool needs approval but is not in tools.allow",
+    "file": "library/connectors/files.connector.yaml",
+    "expected": 12,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "connector/deep-nesting",
+    "about": "a header value that is a number, four levels down",
+    "file": "library/connectors/tracker.connector.yaml",
+    "expected": 5,
+    "recorded": 3,
+    "verdict": "different"
+  },
+  {
+    "case": "connector/two-transports",
+    "about": "both http and stdio under transport",
+    "file": "library/connectors/tracker.connector.yaml",
+    "expected": 6,
+    "recorded": 3,
+    "verdict": "different"
+  },
+  {
+    "case": "connector/unknown-key",
+    "about": "an unknown key inside transport.stdio",
+    "file": "library/connectors/files.connector.yaml",
+    "expected": 10,
+    "recorded": 5,
+    "verdict": "different"
+  },
+  {
+    "case": "deployments/bad-id",
+    "about": "a deployment name with capitals",
+    "file": "deployments.yaml",
+    "expected": 3,
+    "recorded": 4,
+    "verdict": "different"
+  },
+  {
+    "case": "deployments/missing-required",
+    "about": "a deployment without a name",
+    "file": "deployments.yaml",
+    "expected": 8,
+    "recorded": 9,
+    "verdict": "different"
+  },
+  {
+    "case": "deployments/unknown-default",
+    "about": "the default names a deployment that isn't listed",
+    "file": "deployments.yaml",
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "deployments/unknown-key",
+    "about": "a deployment with an unknown key",
+    "file": "deployments.yaml",
+    "expected": 8,
+    "recorded": 4,
+    "verdict": "different"
+  },
+  {
+    "case": "hub/unknown-key",
+    "about": "an unknown key",
+    "file": "hubs/billing/hub.yaml",
+    "expected": 3,
+    "recorded": 1,
+    "verdict": "different"
+  },
+  {
+    "case": "hub/uses-leaves-out",
+    "about": "uses leaves out a shared connector an agent needs",
+    "file": "hubs/billing/agents/notifier.agent.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "knowledge/hub-level-unknown-key",
+    "about": "a hub-level source with an unknown key",
+    "file": "hubs/billing/library/knowledge/ledger.yaml",
+    "expected": 4,
+    "recorded": 1,
+    "verdict": "different"
+  },
+  {
+    "case": "knowledge/unknown-key",
+    "about": "path at the top instead of under config",
+    "file": "library/knowledge/handbook.yaml",
+    "expected": 7,
+    "recorded": 1,
+    "verdict": "different"
+  },
+  {
+    "case": "models/missing-required",
+    "about": "an alias without a model",
+    "file": "models.yaml",
+    "expected": 16,
+    "recorded": 17,
+    "verdict": "different"
+  },
+  {
+    "case": "models/unknown-fallback",
+    "about": "a fallback to an alias that doesn't exist",
+    "file": "models.yaml",
+    "expected": 23,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "models/unknown-key",
+    "about": "an alias with an unknown key",
+    "file": "models.yaml",
+    "expected": 10,
+    "recorded": 8,
+    "verdict": "different"
+  },
+  {
+    "case": "models/unknown-provider",
+    "about": "an alias on a provider that doesn't exist",
+    "file": "models.yaml",
+    "expected": 17,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "provider/duplicate-id",
+    "about": "a second file with the id of another provider",
+    "file": "providers/mock-copy.yaml",
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-error"
+  },
+  {
+    "case": "provider/unknown-key",
+    "about": "an unknown key",
+    "file": "providers/local-llm.yaml",
+    "expected": 4,
+    "recorded": 1,
+    "verdict": "different"
+  },
+  {
+    "case": "routine/bad-cron",
+    "about": "a cron minute above 59",
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "expected": 4,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/bad-timezone",
+    "about": "a time zone that doesn't exist",
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/deep-nesting",
+    "about": "a signal filter with an unknown guard, four levels down",
+    "file": "workflows/routines/on-paid.routine.yaml",
+    "expected": 6,
+    "recorded": 4,
+    "verdict": "different"
+  },
+  {
+    "case": "routine/mail-not-google",
+    "about": "a mail trigger on a connector that is not Google",
+    "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/mail-unknown-connector",
+    "about": "a mail trigger on a connector that doesn't exist",
+    "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/no-hub",
+    "about": "a workspace-level routine without run.hub",
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/other-hub",
+    "about": "a hub routine that names another hub",
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/unknown-agent",
+    "about": "runs an agent the hub doesn't have",
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/unknown-hub",
+    "about": "a workspace-level routine for a hub that doesn't exist",
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "expected": 6,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "routine/unknown-key",
+    "about": "an unknown top-level key",
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "expected": 10,
+    "recorded": 1,
+    "verdict": "different"
+  },
+  {
+    "case": "routine/unknown-workflow",
+    "about": "runs a workflow the hub doesn't have",
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "runtime/unknown-key",
+    "about": "an unknown key",
+    "file": "runtimes/inprocess.yaml",
+    "expected": 3,
+    "recorded": 1,
+    "verdict": "different"
+  },
+  {
+    "case": "skill/missing-description",
+    "about": "front matter without a description",
+    "file": "library/skills/plain-words/SKILL.md",
+    "expected": 2,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "skill/no-front-matter",
+    "about": "a SKILL.md without front matter",
+    "file": "library/skills/plain-words/SKILL.md",
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "skill/wrong-type",
+    "about": "a name that is a list",
+    "file": "library/skills/plain-words/SKILL.md",
+    "expected": 2,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "skill/yaml-syntax",
+    "about": "front matter that is not valid YAML",
+    "file": "library/skills/plain-words/SKILL.md",
+    "expected": 2,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/bad-indent",
+    "about": "a key indented wrongly",
+    "file": "hubs/billing/workflows/approval.workflow.yaml",
+    "expected": 8,
+    "recorded": 7,
+    "verdict": "different"
+  },
+  {
+    "case": "workflow/unknown-key",
+    "about": "a parallel branch with an unknown key",
+    "file": "hubs/billing/workflows/invoice.workflow.yaml",
+    "expected": 24,
+    "recorded": 22,
+    "verdict": "different"
+  },
+  {
+    "case": "workflowTest/unknown-workflow",
+    "about": "a test for a workflow that doesn't exist",
+    "file": "hubs/billing/workflows/approval.test.yaml",
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workspace/unknown-key",
+    "about": "an unknown top-level key",
+    "file": "workspace.yaml",
+    "expected": 5,
+    "recorded": 2,
+    "verdict": "different"
+  },
+  {
+    "case": "workspace/unknown-model",
+    "about": "the session AI names an alias models.yaml lacks",
+    "file": "workspace.yaml",
+    "expected": 15,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workspace/yaml-syntax",
+    "about": "an unclosed quote",
+    "file": "workspace.yaml",
+    "expected": 4,
+    "recorded": 23,
+    "verdict": "different"
+  }
+]
