@@ -28,6 +28,18 @@ describe("MemoryScheduler (adapter-memory.scheduler)", () => {
     expect(timers).toHaveLength(1);
   });
 
+  it("delivers a timer exactly once by default, however often runDue is called", async () => {
+    const clock = new ManualClock();
+    const { timers, listener } = recorder();
+    const scheduler = new MemoryScheduler(listener, clock);
+    const at = clock.now().toISOString();
+    await scheduler.schedule("run_1", "wait", at);
+    await scheduler.runDue();
+    clock.advance(15 * 60_000);
+    await scheduler.runDue();
+    expect(timers).toEqual([{ key: "run_1", timerId: "wait", at }]);
+  });
+
   it("delivers every timer twice when asked to, as a real platform may", async () => {
     const clock = new ManualClock();
     const { timers, listener } = recorder();
