@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
@@ -45,9 +46,15 @@ verifies("parity.fixtures-cover-every-kind", () => {
     expect([...faulty].sort()).toEqual([...kinds].sort());
   });
 
-  it("has a recording from the reference for every case", () => {
-    for (const parityCase of cases) {
-      const recording = recordingOf(parityCase.folder);
+  // Reads every recording at once: one by one, on a slow disk under load, they passed 5 s.
+  it("has a recording from the reference for every case", { timeout: 20_000 }, async () => {
+    const recorded = await Promise.all(
+      cases.map(async (parityCase) => {
+        const text = await readFile(join(parityCase.folder, "recorded.json"), "utf8");
+        return { parityCase, recording: JSON.parse(text) as Recording };
+      }),
+    );
+    for (const { parityCase, recording } of recorded) {
       expect(recording.case, parityCase.id).toBe(parityCase.id);
       expect(recording.reference).toBe("784f78d");
       expect(recording.line === null, parityCase.id).toBe(parityCase.expect === null);
