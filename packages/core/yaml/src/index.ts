@@ -7,3 +7,4 @@ export {
   type YamlLimits,
   type YamlPath,
 } from "./read.ts";
+export { type FrontMatterFields, writeFrontMatter, writeYamlFile } from "./write.ts";
