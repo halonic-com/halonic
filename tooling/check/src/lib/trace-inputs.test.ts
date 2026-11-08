@@ -18,13 +18,29 @@ describe("readTestResults", () => {
     roots.push(root);
     const directory = join(root, "packages/core/workflow/test-results");
     mkdirSync(directory, { recursive: true });
-    writeFileSync(join(root, "packages/core/workflow", testResultsFile), JSON.stringify(report));
+    const text = typeof report === "string" ? report : JSON.stringify(report);
+    writeFileSync(join(root, "packages/core/workflow", testResultsFile), text);
     return root;
   }
 
-  test("returns undefined when the package has no result file", () => {
+  test("says so when the package has no result file", () => {
     const root = repoWithResults({});
-    expect(readTestResults(root, "packages/core/std")).toBeUndefined();
+    expect(readTestResults(root, "packages/core/std")).toEqual({ kind: "missing" });
+  });
+
+  test("gives a reason instead of throwing when the result file is corrupt", () => {
+    const corrupt: [unknown, string][] = [
+      ['{"testResults": [', "isn't valid JSON"],
+      [null, "has no testResults list"],
+      [{ testResults: {} }, "has no testResults list"],
+      [{ testResults: [{ name: "a.test.ts" }] }, "no name or assertionResults"],
+      [{ testResults: [{ name: "a.test.ts", assertionResults: [{}] }] }, "no fullName or status"],
+    ];
+    for (const [report, reason] of corrupt) {
+      const results = readTestResults(repoWithResults(report), "packages/core/workflow");
+      expect(results.kind).toBe("unreadable");
+      expect(results.kind === "unreadable" && results.reason).toContain(reason);
+    }
   });
 
   test("reads each test with its file relative to the repo, its status and its requirement", () => {
@@ -48,7 +64,8 @@ describe("readTestResults", () => {
         },
       ],
     });
-    expect(readTestResults(root, "packages/core/workflow")).toEqual([
+    const results = readTestResults(root, "packages/core/workflow");
+    expect(results.kind === "read" && results.outcomes).toEqual([
       {
         file: "packages/core/workflow/src/timer.test.ts",
         name: "workflow.timer fires",

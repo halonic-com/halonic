@@ -36,6 +36,8 @@ export interface TraceModel {
   readonly taggedTests: readonly TestOutcome[];
   /** Packages with test files but no result file. */
   readonly withoutResults: ReadonlySet<WorkspacePackage>;
+  /** Packages whose result file can't be read, with the reason. */
+  readonly unreadableResults: ReadonlyMap<WorkspacePackage, string>;
 }
 
 /** Reads every requirement file, `verifies` call and result file in the repo. */
@@ -71,15 +73,18 @@ export function buildTraceModel(context: CheckContext): TraceModel {
 
   const taggedTests: TestOutcome[] = [];
   const withoutResults = new Set<WorkspacePackage>();
+  const unreadableResults = new Map<WorkspacePackage, string>();
   for (const pkg of context.packages) {
-    const outcomes = readTestResults(context.root, pkg.directory);
-    if (outcomes === undefined) {
+    const results = readTestResults(context.root, pkg.directory);
+    if (results.kind === "missing") {
       if (packagesWithTests.has(pkg)) {
         withoutResults.add(pkg);
       }
-      continue;
+    } else if (results.kind === "unreadable") {
+      unreadableResults.set(pkg, results.reason);
+    } else {
+      taggedTests.push(...results.outcomes.filter((outcome) => outcome.requirement !== undefined));
     }
-    taggedTests.push(...outcomes.filter((outcome) => outcome.requirement !== undefined));
   }
 
   const requirements = found.map(({ requirement, pkg }) => ({
@@ -87,5 +92,5 @@ export function buildTraceModel(context: CheckContext): TraceModel {
     pkg,
     tests: taggedTests.filter((test) => test.requirement === requirement.id),
   }));
-  return { requirements, malformed, calls, taggedTests, withoutResults };
+  return { requirements, malformed, calls, taggedTests, withoutResults, unreadableResults };
 }
