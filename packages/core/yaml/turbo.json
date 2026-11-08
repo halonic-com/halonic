@@ -1,9 +1,14 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "test": {
-      "inputs": ["$TURBO_DEFAULT$", "../../testing/parity/fixtures/**"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../testing/parity/fixtures/**"
+      ]
     }
   }
 }
