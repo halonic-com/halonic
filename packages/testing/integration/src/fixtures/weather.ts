@@ -60,16 +60,25 @@ export const weather: Integration = {
 
 export const weatherSubject: ConformanceSubject = {
   integration: weather,
-  policy: {
-    name: "weather",
+  sheet: {
+    id: "weather",
+    version: "1.0.0",
+    kit: 1,
+    provides: ["connector"],
     hosts: ["api.example.com", "cdn.example.com"],
-    secrets: { "weather-key": { hosts: ["api.example.com"] } },
-    tokens: [],
+    secrets: {
+      "weather-key": {
+        purpose: "API key for the forecast service",
+        hosts: ["api.example.com"],
+        as: "header",
+        header: "x-api-key",
+      },
+    },
+    tools: [
+      { name: "forecast", description: "Today's forecast for a city.", risk: "read", untrusted: true },
+      { name: "save-favourite", description: "Saves a city as a favourite.", risk: "write", untrusted: false },
+    ],
   },
-  declaredTools: [
-    { name: "forecast", risk: "read", untrusted: true },
-    { name: "save-favourite", risk: "write" },
-  ],
   recordings: [
     recording("forecast-ghent", [forecastExchange({ kind: "json", value: { summary: "Rain, 12°C" } })]),
     recording("save-favourite", [

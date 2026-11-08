@@ -134,13 +134,16 @@ export const attacks = {
   },
   "declares a lower risk than its code": {
     catchBy: "declaration",
-    reason: /\"save-favourite\" has risk \"write\" in code but \"read\"/,
+    reason: /"save-favourite" differs in risk between code and sheet/,
     subject: {
       ...weatherSubject,
-      declaredTools: [
-        { name: "forecast", risk: "read", untrusted: true },
-        { name: "save-favourite", risk: "read" },
-      ],
+      sheet: {
+        ...(weatherSubject.sheet as Record<string, unknown>),
+        tools: [
+          { name: "forecast", description: "Today's forecast for a city.", risk: "read", untrusted: true },
+          { name: "save-favourite", description: "Saves a city as a favourite.", risk: "read", untrusted: false },
+        ],
+      },
     },
   },
   "ignores an aborted signal": {

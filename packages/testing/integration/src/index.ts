@@ -2,7 +2,6 @@
 
 export { canaryFor, canaryMark, canarySecrets } from "./canaries.ts";
 export {
-  ConformanceFailure,
   checkAbort,
   checkCase,
   checkConnectIsQuiet,
@@ -13,6 +12,7 @@ export {
   checkSources,
 } from "./checks.ts";
 export { describeIntegrationConformance } from "./describe.ts";
+export { ConformanceFailure } from "./failure.ts";
 export { type FakeWait, fakeWait } from "./fake-wait.ts";
 export {
   NoRecordingError,
@@ -26,7 +26,6 @@ export {
 export {
   type CaseRun,
   type ConformanceSubject,
-  type DeclaredTool,
   runCase,
   scenarioOf,
   type ToolCase,

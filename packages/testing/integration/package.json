@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@halonicjs/adapter-integration-kit": "workspace:*",
-    "@halonicjs/ports": "workspace:*"
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/schema-kit": "workspace:*"
   },
   "peerDependencies": {
     "vitest": "catalog:"

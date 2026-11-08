@@ -1,7 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
-  ConformanceFailure,
   checkAbort,
   checkCase,
   checkDeclaration,
@@ -9,6 +8,7 @@ import {
   checkSources,
 } from "./checks.ts";
 import { passes } from "./describe.ts";
+import { ConformanceFailure } from "./failure.ts";
 import { attacks } from "./fixtures/attacks.ts";
 import { weatherSubject } from "./fixtures/weather.ts";
 import type { ConformanceSubject } from "./run.ts";

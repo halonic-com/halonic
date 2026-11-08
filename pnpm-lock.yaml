@@ -756,9 +756,15 @@ importers:
       '@halonicjs/adapter-integration-kit':
         specifier: workspace:*
         version: link:../../adapters/integration-kit
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../../core/schema-kit
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*

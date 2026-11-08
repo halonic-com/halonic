@@ -1,11 +1,11 @@
-import {
-  clampWaitMs,
-  createIntegrationHost,
-  namePattern,
-} from "@halonicjs/adapter-integration-kit";
+import { clampWaitMs, declarationProblems } from "@halonicjs/adapter-integration-kit";
+import { recordingFileSchema } from "@halonicjs/format/recording";
 import { type IntegrationHost, maxIntegrationWaitMs } from "@halonicjs/ports";
-import { canaryFor, canaryMark, canarySecrets } from "./canaries.ts";
+import { parse } from "@halonicjs/schema-kit";
+import { canaryFor, canaryMark } from "./canaries.ts";
+import { fail } from "./failure.ts";
 import { fakeWait } from "./fake-wait.ts";
+import { loadSubject, policyOf, sheetOf } from "./load.ts";
 import { replayTransport } from "./recording.ts";
 import {
   type CaseRun,
@@ -16,92 +16,52 @@ import {
 } from "./run.ts";
 import { scanIntegrationSource } from "./source-scan.ts";
 
-/** A conformance check failed. The message says what to fix. */
-export class ConformanceFailure extends Error {
-  override readonly name = "ConformanceFailure";
-}
-
-function fail(message: string): never {
-  throw new ConformanceFailure(message);
-}
-
-const versionPattern = /^\d+\.\d+\.\d+$/;
-const label = "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?";
-const hostPattern = new RegExp(`^${label}(?:\\.${label})+(?::\\d{1,5})?$`);
-
-/** The integration is what its sheet says: name, version, and the same tools with the same risk. */
+/**
+ * The sheet passes its schema, and the integration is exactly what it says:
+ * kit version, name, version, and each tool's text, arguments, `risk` and
+ * `untrusted`, as the kit's loader checks them. Every case calls a declared
+ * tool, and every recording is a valid `halonic.recording/1` file of this
+ * integration.
+ */
 export function checkDeclaration(subject: ConformanceSubject): void {
-  const { integration, policy, declaredTools } = subject;
-  if (integration.name !== policy.name) {
-    fail(`the integration is named "${integration.name}" but its sheet says "${policy.name}"`);
-  }
-  if (!namePattern.test(integration.name))
-    fail(`"${integration.name}" is not lower-case words joined by -`);
-  if (!versionPattern.test(integration.version))
-    fail(`version "${integration.version}" is not major.minor.patch`);
-  const implemented = new Map(integration.tools.map((tool) => [tool.name, tool]));
-  if (implemented.size !== integration.tools.length) fail("two tools have the same name");
-  const declared = new Map(declaredTools.map((tool) => [tool.name, tool]));
-  for (const name of new Set([...implemented.keys(), ...declared.keys()])) {
-    const code = implemented.get(name);
-    const sheet = declared.get(name);
-    if (code === undefined)
-      fail(`the sheet declares the tool "${name}" but the integration doesn't offer it`);
-    if (sheet === undefined)
-      fail(`the integration offers the tool "${name}" but the sheet doesn't declare it`);
-    if (code.risk !== sheet.risk)
-      fail(`"${name}" has risk "${code.risk}" in code but "${sheet.risk}" in the sheet`);
-    if ((code.untrusted ?? false) !== (sheet.untrusted ?? false)) {
-      fail(`"${name}" differs in "untrusted" between code and sheet`);
-    }
-  }
-  checkCases(subject, new Set(implemented.keys()));
-}
-
-/** Every case calls a declared tool and has a recording of this integration. */
-function checkCases(subject: ConformanceSubject, tools: ReadonlySet<string>): void {
+  const sheet = sheetOf(subject);
+  const problems = declarationProblems(sheet, subject.integration);
+  if (problems.length > 0) fail(problems.map((problem) => problem.message).join("\n"));
+  checkRecordings(subject);
+  const tools = new Set(sheet.tools.map((tool) => tool.name));
   for (const toolCase of subject.cases) {
     if (!tools.has(toolCase.tool)) fail(`a case calls "${toolCase.tool}", which isn't declared`);
     if (scenarioOf(subject, toolCase) === undefined)
       fail(`a case replays the scenario "${toolCase.scenario}", which has no recording`);
   }
-  for (const recording of subject.recordings) {
+}
+
+/** Every recording passes the format's schema and belongs to this integration. */
+function checkRecordings(subject: ConformanceSubject): void {
+  for (const [index, recording] of subject.recordings.entries()) {
+    const parsed = parse(recordingFileSchema, recording);
+    if (!parsed.ok) {
+      const issues = parsed.error.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
+      fail(`recording ${index + 1} isn't a valid halonic.recording/1 file:\n${issues.join("\n")}`);
+    }
     if (recording.integration !== subject.integration.name)
       fail(`the recording "${recording.scenario}" is for "${recording.integration}"`);
   }
 }
 
-/** The sheet's hosts are exact names, each secret goes only to declared hosts, and the names are valid. */
+/**
+ * Every host in the sheet resolves with the subject's settings: a
+ * `{ fromSetting }` host has a URL, plain `http` goes only to a local
+ * address, and a secret goes over it only to this machine.
+ */
 export function checkPolicy(subject: ConformanceSubject): void {
-  const { policy } = subject;
-  for (const host of policy.hosts) {
-    if (!hostPattern.test(host))
-      fail(`"${host}" is not an exact lower-case host name (no wildcards, no scheme)`);
-  }
-  for (const [secret, { hosts }] of Object.entries(policy.secrets)) {
-    if (!namePattern.test(secret))
-      fail(`the secret name "${secret}" is not lower-case words joined by -`);
-    for (const host of hosts) {
-      if (!policy.hosts.includes(host) && !(policy.localHosts ?? []).includes(host))
-        fail(`the secret "${secret}" may go to "${host}", which isn't a declared host`);
-    }
-  }
-  for (const token of policy.tokens) {
-    if (!namePattern.test(token))
-      fail(`the token name "${token}" is not lower-case words joined by -`);
-  }
+  policyOf(subject);
 }
 
 /** Connecting sends nothing, and closing twice is safe. */
 export async function checkConnectIsQuiet(subject: ConformanceSubject): Promise<void> {
   const replay = replayTransport(undefined);
-  const { host } = createIntegrationHost({
-    policy: subject.policy,
-    transport: replay.transport,
-    secrets: canarySecrets,
-    tokens: { get: async () => null, set: async () => {}, remove: async () => {} },
-    ...(subject.settings ? { settings: subject.settings } : {}),
-  });
+  const { host } = loadSubject(subject, replay.transport);
   const connection = subject.integration.connect(host);
   await connection.close();
   await connection.close();
@@ -150,7 +110,7 @@ export async function checkProviderErrors(
   subject: ConformanceSubject,
   toolCase: ToolCase,
 ): Promise<void> {
-  const providerBody = `PROVIDER-BODY ${Object.keys(subject.policy.secrets).map(canaryFor).join(" ")}`;
+  const providerBody = `PROVIDER-BODY ${Object.keys(sheetOf(subject).secrets).map(canaryFor).join(" ")}`;
   const recorded = scenarioOf(subject, toolCase);
   const recording = recorded && {
     ...recorded,
@@ -189,12 +149,7 @@ export async function checkHostWait(subject: ConformanceSubject): Promise<void> 
     if (clampWaitMs(ms) !== expected || fake.waits[index] !== expected)
       fail(`wait(${ms}) must wait ${expected} ms`);
   }
-  const { host } = createIntegrationHost({
-    policy: subject.policy,
-    transport: replayTransport(undefined).transport,
-    secrets: canarySecrets,
-    tokens: { get: async () => null, set: async () => {}, remove: async () => {} },
-  });
+  const { host } = loadSubject(subject, replayTransport(undefined).transport);
   for (const wait of [host.wait, fake.wait]) {
     const already = new Error("aborted before the wait");
     await expectRejection(wait(maxIntegrationWaitMs, AbortSignal.abort(already)), already);
@@ -235,6 +190,7 @@ function checkNoBypass(run: CaseRun): void {
 }
 
 function checkNoLeak(subject: ConformanceSubject, run: CaseRun): void {
+  const policy = policyOf(subject);
   const shown = `${run.result ?? ""}\n${run.error === undefined ? "" : messageOf(run.error)}`;
   if (shown.includes(canaryMark)) fail("a secret value appears in the tool's result or error");
   if (JSON.stringify(run.log).includes(canaryMark))
@@ -244,7 +200,7 @@ function checkNoLeak(subject: ConformanceSubject, run: CaseRun): void {
     if (request.url.includes(canaryMark))
       fail(`a secret value was put in the URL of ${url.host}${url.pathname}`);
     const carried = `${JSON.stringify(request.headers)}\n${request.body ?? ""}`;
-    for (const [secret, { hosts }] of Object.entries(subject.policy.secrets)) {
+    for (const [secret, { hosts }] of Object.entries(policy.secrets)) {
       if (carried.includes(canaryFor(secret)) && !hosts.includes(url.host)) {
         fail(`the secret "${secret}" went to ${url.host}, which it may not go to`);
       }

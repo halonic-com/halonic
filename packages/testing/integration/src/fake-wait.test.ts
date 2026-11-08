@@ -1,7 +1,8 @@
 import { maxIntegrationWaitMs } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { ConformanceFailure, checkAbort, checkCase, checkHostWait } from "./checks.ts";
+import { checkAbort, checkCase, checkHostWait } from "./checks.ts";
+import { ConformanceFailure } from "./failure.ts";
 import { fakeWait } from "./fake-wait.ts";
 import { weatherSubject } from "./fixtures/weather.ts";
 import { type ConformanceSubject, runCase } from "./run.ts";

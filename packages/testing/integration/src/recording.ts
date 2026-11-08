@@ -4,8 +4,8 @@ import type { HttpClient } from "@halonicjs/ports";
  * A recording file in the `halonic.recording/1` format that `pnpm record`
  * writes in the integrations repo (HAL-149): one scenario, its HTTP
  * exchanges in call order, scrubbed before it was saved. These types follow
- * that format exactly. Its schema moves into `@halonicjs/format` with the
- * permission sheet, and the suite then checks every file against it.
+ * that format exactly; `checkDeclaration` checks every file against its
+ * schema in `@halonicjs/format/recording`.
  */
 export interface RecordingFile {
   readonly format: typeof recordingFormat;

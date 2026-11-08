@@ -1,8 +1,9 @@
 # @halonicjs/testing-integration
 
 The conformance suite every integration runs against recorded responses.
-It runs the integration through the real
-integration kit with fake ("canary") secret values, a replay transport that
+It loads the integration from its permission sheet through the kit's real
+loader, as Halonic does, so the sheet's limits and `{ fromSetting }` hosts
+apply. It runs it with fake ("canary") secret values, a replay transport that
 fails closed, and the global network APIs replaced by tripwires. It includes
 its attack cases: an integration that reaches an undeclared
 host, reads a file or leaks a key fails. Published for the
@@ -17,8 +18,8 @@ host, reads a file or leaks a key fails. Published for the
 
 | Check                 | Fails when                                                                                                                                                                                                                                                                                                                                                        |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checkDeclaration`    | name, version, tools, `risk` or `untrusted` differ between code and sheet                                                                                                                                                                                                                                                                                         |
-| `checkPolicy`         | a host isn't an exact lower-case name, or a secret may go to an undeclared host                                                                                                                                                                                                                                                                                   |
+| `checkDeclaration`    | the sheet fails its schema; the code differs from the sheet in kit version, name, version, or a tool's text, arguments, `risk` or `untrusted` (the loader's own check); a case calls an undeclared tool; or a recording isn't a valid `halonic.recording/1` file                                                                                                  |
+| `checkPolicy`         | a `{ fromSetting }` host has no usable URL in `settings`, plain `http` goes to a non-local address, or a secret goes over it to another machine                                                                                                                                                                                                                   |
 | `checkConnectIsQuiet` | connecting sends a request, or closing twice throws                                                                                                                                                                                                                                                                                                               |
 | `checkSources`        | the source uses global `fetch`, `globalThis`, `process`, `node:` modules, `import()`, `eval`, timers or other network APIs                                                                                                                                                                                                                                        |
 | `checkCase`           | the call fails, the kit refused a request (even one the integration swallowed), a request didn't match the next recorded exchange or some were never asked for, the global `fetch` was used, or a canary appears in the result, the error, the log, a URL, or a request to a host the secret may not go to, or the call took other pauses than the case's `waits` |
@@ -41,13 +42,7 @@ import forecastGhent from "../recordings/forecast-ghent.json" with { type: "json
 
 describeIntegrationConformance({
   integration: weather,
-  policy: {
-    name: "weather",
-    hosts: ["api.example.com"],
-    secrets: { "weather-key": { hosts: ["api.example.com"] } },
-    tokens: [],
-  },
-  declaredTools: [{ name: "forecast", risk: "read", untrusted: true }],
+  sheet: JSON.parse(readFileSync("integration.json", "utf8")), // the sheet the build writes
   recordings: [forecastGhent],
   cases: [{ tool: "forecast", scenario: "forecast-ghent", args: { city: "Ghent" } }],
   sources: { "src/index.ts": readFileSync("src/index.ts", "utf8") },

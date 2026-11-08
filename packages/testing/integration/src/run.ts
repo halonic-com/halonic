@@ -1,19 +1,8 @@
-import {
-  createIntegrationHost,
-  type IntegrationPolicy,
-  type RequestLogEntry,
-} from "@halonicjs/adapter-integration-kit";
-import type { Integration, TokenStore, ToolRisk } from "@halonicjs/ports";
-import { canarySecrets } from "./canaries.ts";
+import type { RequestLogEntry } from "@halonicjs/adapter-integration-kit";
+import type { Integration, TokenStore } from "@halonicjs/ports";
 import { fakeWait } from "./fake-wait.ts";
+import { loadSubject } from "./load.ts";
 import { type RecordingFile, type ReplayedRequest, replayTransport } from "./recording.ts";
-
-/** A tool as the permission sheet declares it. */
-export interface DeclaredTool {
-  readonly name: string;
-  readonly risk: ToolRisk;
-  readonly untrusted?: boolean;
-}
 
 /** One tool call the suite makes, answered from one recording. */
 export interface ToolCase {
@@ -33,13 +22,16 @@ export interface ToolCase {
  */
 export interface ConformanceSubject {
   readonly integration: Integration;
-  /** The hosts, secrets and tokens of its sheet. */
-  readonly policy: IntegrationPolicy;
-  /** The tools of its sheet. */
-  readonly declaredTools: readonly DeclaredTool[];
+  /**
+   * Its permission sheet as data: the JSON the build writes, or
+   * `integration.yaml` parsed. The suite loads it through the kit's loader,
+   * as Halonic does.
+   */
+  readonly sheet: unknown;
   /** Its recording files (`halonic.recording/1`), one per scenario. */
   readonly recordings: readonly RecordingFile[];
   readonly cases: readonly ToolCase[];
+  /** Its settings, such as the URL a `{ fromSetting }` host reads. */
   readonly settings?: Readonly<Record<string, unknown>>;
   /** Its source files by path, scanned for what integration code may not use. */
   readonly sources?: Readonly<Record<string, string>>;
@@ -61,7 +53,7 @@ export interface CaseRun {
 }
 
 /**
- * Runs one tool call through the real kit, on recordings, with canary
+ * Runs one tool call through the kit's real loader and host, on recordings, with canary
  * secrets and the network globals tripped. Its `wait` is a {@link fakeWait}.
  */
 export async function runCase(
@@ -70,13 +62,7 @@ export async function runCase(
   options: { recording?: RecordingFile; signal?: AbortSignal } = {},
 ): Promise<CaseRun> {
   const replay = replayTransport(options.recording ?? scenarioOf(subject, toolCase));
-  const { host: kitHost, log } = createIntegrationHost({
-    policy: subject.policy,
-    transport: replay.transport,
-    secrets: canarySecrets,
-    tokens: memoryTokens(),
-    ...(subject.settings ? { settings: subject.settings } : {}),
-  });
+  const { host: kitHost, log } = loadSubject(subject, replay.transport, memoryTokens());
   const pauses = fakeWait();
   const host = Object.freeze({ ...kitHost, wait: pauses.wait });
   const globalCalls: string[] = [];
