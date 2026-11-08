@@ -47,6 +47,8 @@ verifies("events.run-log-contract", () => {
       at: string;
       branch?: string;
       item?: number;
+      // Added after the reference by events.timeline-entry-id (HAL-974).
+      entry?: number;
     }>();
     expectTypeOf<RunEvent>().toEqualTypeOf<RunEventBase & RunEventBody>();
   });

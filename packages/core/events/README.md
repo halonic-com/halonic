@@ -16,6 +16,10 @@ optional and come with a requirement.
   store uses it.
 - `upgradeEvent(raw)` and `parseEventLine(line)`: read stored events,
   renaming the fields of older logs (`projectId`, `flowId`).
+- `entryOf(events)`: the timeline entry of each event, the `seq` of the event
+  that opened it. Events keep their own `entry`; logs written before that
+  field existed get the same entries worked out (requirement
+  `timeline-entry-id`).
 
 ## Example
 

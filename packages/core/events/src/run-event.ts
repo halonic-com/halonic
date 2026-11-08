@@ -16,6 +16,12 @@ export interface RunEventBase {
   branch?: string;
   /** Set on events of one item of a for-each state (0-based). */
   item?: number;
+  /**
+   * The timeline entry this event belongs to: the `seq` of the event that
+   * opened the entry. On an opening event it equals `seq`. Logs written
+   * before this field existed don't have it; read them with `entryOf`.
+   */
+  entry?: number;
 }
 
 /** What one event says, by its `type`. A run log is a list of these, each with a {@link RunEventBase}. */

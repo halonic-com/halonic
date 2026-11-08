@@ -3,4 +3,5 @@ export type { RunKind, RunParent, RunStatus, RunTrigger, Usage } from "./run-bas
 export type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
 export type { PendingApproval, RunSummary, SentSignal } from "./run-summary.ts";
 export { summarize } from "./summarize.ts";
+export { entryOf } from "./timeline-entry.ts";
 export { parseEventLine, upgradeEvent } from "./upgrade.ts";
