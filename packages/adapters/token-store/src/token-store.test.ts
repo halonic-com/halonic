@@ -113,6 +113,8 @@ describe("token-store.change-log", () => {
   });
 
   it("uses a collection name no user collection can have", () => {
+    // A copy of the id rule in packages/core/format/src/shared/fields.ts.
+    // Update it here if that rule changes, or this test can't notice.
     expect(tokenCollection).not.toMatch(/^[a-z0-9][a-z0-9-_]*$/);
   });
 
