@@ -1,0 +1,5 @@
+{
+  "about": "flow: instead of workflow: still loads",
+  "kind": "workflowTest",
+  "fault": "valid"
+}

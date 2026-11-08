@@ -1,0 +1,270 @@
+{
+  "reference": "784f78d",
+  "case": "base",
+  "valid": true,
+  "files": [
+    {
+      "file": "deployments.yaml",
+      "flatPath": "deployments.yaml",
+      "read": true,
+      "schema": "deployments",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/agents/checker.agent.yaml",
+      "flatPath": "hubs/billing/agents/checker.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/agents/clerk.agent.yaml",
+      "flatPath": "hubs/billing/agents/clerk.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/agents/notifier.agent.yaml",
+      "flatPath": "hubs/billing/agents/notifier.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/agents/reviewer.agent.yaml",
+      "flatPath": "hubs/billing/agents/reviewer.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/hub.yaml",
+      "flatPath": "hubs/billing/hub.yaml",
+      "read": true,
+      "schema": "hub",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/library/connectors/mailbox.connector.yaml",
+      "flatPath": "hubs/billing/connectors/mailbox.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/library/knowledge/ledger.yaml",
+      "flatPath": "hubs/billing/knowledge/ledger.yaml",
+      "read": true,
+      "schema": "knowledge",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/library/skills/invoice-style/SKILL.md",
+      "flatPath": "hubs/billing/skills/invoice-style/SKILL.md",
+      "read": true,
+      "schema": "skill",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/approval.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/approval.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/batch.test.yaml",
+      "flatPath": "hubs/billing/workflows/batch.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/batch.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/batch.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/invoice.test.yaml",
+      "flatPath": "hubs/billing/workflows/invoice.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/invoice.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/invoice.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/line-check.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/line-check.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/routines/by-hand.routine.yaml",
+      "flatPath": "hubs/billing/routines/by-hand.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+      "flatPath": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+      "flatPath": "hubs/billing/routines/month-end.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "library/collections/invoices.collection.yaml",
+      "flatPath": "collections/invoices.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "library/collections/suppliers.collection.yaml",
+      "flatPath": "collections/suppliers.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "library/connectors/files.connector.yaml",
+      "flatPath": "connectors/files.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "library/connectors/tracker.connector.yaml",
+      "flatPath": "connectors/tracker.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "library/knowledge/handbook.yaml",
+      "flatPath": "knowledge/handbook.yaml",
+      "read": true,
+      "schema": "knowledge",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "library/skills/plain-words/SKILL.md",
+      "flatPath": "skills/plain-words/SKILL.md",
+      "read": true,
+      "schema": "skill",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "models.yaml",
+      "flatPath": "models.yaml",
+      "read": true,
+      "schema": "models",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "providers/local-llm.yaml",
+      "flatPath": "providers/local-llm.yaml",
+      "read": true,
+      "schema": "provider",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "providers/mock.yaml",
+      "flatPath": "providers/mock.yaml",
+      "read": true,
+      "schema": "provider",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "runtimes/inprocess.yaml",
+      "flatPath": "runtimes/inprocess.yaml",
+      "read": true,
+      "schema": "runtime",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "workflows/routines/hourly-check.routine.yaml",
+      "flatPath": "routines/hourly-check.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "workflows/routines/on-paid.routine.yaml",
+      "flatPath": "routines/on-paid.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "pass"
+    },
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "OK: Acme, 1 hub(s), 0 warning(s)\n",
+    "stderr": ""
+  },
+  "line": null
+}

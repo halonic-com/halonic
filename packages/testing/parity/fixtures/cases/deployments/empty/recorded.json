@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "deployments/empty",
+  "valid": false,
+  "files": [
+    {
+      "file": "deployments.yaml",
+      "flatPath": "deployments.yaml",
+      "read": true,
+      "schema": "deployments",
+      "issues": [
+        {
+          "path": [
+            "deployments"
+          ],
+          "code": "custom",
+          "message": "Name at least one deployment",
+          "line": 2,
+          "col": 14
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "deployments.yaml",
+      "message": "deployments: Name at least one deployment",
+      "line": 2,
+      "col": 14
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error deployments.yaml: deployments: Name at least one deployment\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 2,
+    "recorded": 2,
+    "verdict": "same"
+  }
+}

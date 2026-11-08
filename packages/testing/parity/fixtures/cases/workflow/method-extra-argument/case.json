@@ -1,0 +1,10 @@
+{
+  "about": "a method call with an argument the method doesn't take",
+  "kind": "workflow",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.with.currency",
+    "line": 8
+  }
+}

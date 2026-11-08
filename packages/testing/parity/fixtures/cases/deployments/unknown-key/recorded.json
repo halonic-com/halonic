@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "deployments/unknown-key",
+  "valid": false,
+  "files": [
+    {
+      "file": "deployments.yaml",
+      "flatPath": "deployments.yaml",
+      "read": true,
+      "schema": "deployments",
+      "issues": [
+        {
+          "path": [
+            "deployments",
+            "laptop"
+          ],
+          "code": "unrecognized_keys",
+          "message": "Unrecognized key: \"region\"",
+          "line": 4,
+          "col": 5
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "deployments.yaml",
+      "message": "deployments.laptop: Unrecognized key: \"region\"",
+      "line": 4,
+      "col": 5
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error deployments.yaml: deployments.laptop: Unrecognized key: \"region\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 8,
+    "recorded": 4,
+    "verdict": "different"
+  }
+}

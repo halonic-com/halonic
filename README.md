@@ -1,5 +1,5 @@
 # Halonic
 
-Halonic Studio — local-first agent workflows.
+A local-first Studio app, engine and CLI.
 
-This repository is being set up. See the project plan for phases and scope.
+This repository is being set up. More soon.

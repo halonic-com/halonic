@@ -1,0 +1,10 @@
+workflow: batch
+cases:
+  - name: each line runs the line-check workflow
+    input: { lines: [paper, ink, toner] }
+    mocks:
+      checker: ['{"ok": true}', '{"ok": true}', '{"ok": true}']
+    expect:
+      status: completed
+      final: done
+      states: [each, done]

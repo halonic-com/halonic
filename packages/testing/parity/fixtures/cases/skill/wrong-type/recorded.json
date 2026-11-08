@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "skill/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/skills/plain-words/SKILL.md",
+      "flatPath": "skills/plain-words/SKILL.md",
+      "read": true,
+      "schema": "skill",
+      "issues": [
+        {
+          "path": [
+            "name"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected string, received array"
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "skills/plain-words/SKILL.md",
+      "message": "SKILL.md needs front matter with name and description"
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown skill \"plain-words\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error skills/plain-words/SKILL.md: SKILL.md needs front matter with name and description\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown skill \"plain-words\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 2,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

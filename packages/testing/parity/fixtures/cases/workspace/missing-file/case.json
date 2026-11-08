@@ -1,0 +1,13 @@
+{
+  "about": "no workspace.yaml at all",
+  "kind": "workspace",
+  "fault": "missing-required",
+  "remove": [
+    "workspace.yaml"
+  ],
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "",
+    "line": null
+  }
+}

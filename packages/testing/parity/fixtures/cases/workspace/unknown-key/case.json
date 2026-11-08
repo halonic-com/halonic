@@ -1,0 +1,10 @@
+{
+  "about": "an unknown top-level key",
+  "kind": "workspace",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "colour",
+    "line": 5
+  }
+}

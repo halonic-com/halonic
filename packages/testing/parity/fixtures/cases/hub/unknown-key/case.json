@@ -1,0 +1,10 @@
+{
+  "about": "an unknown key",
+  "kind": "hub",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "hubs/billing/hub.yaml",
+    "path": "owner",
+    "line": 3
+  }
+}

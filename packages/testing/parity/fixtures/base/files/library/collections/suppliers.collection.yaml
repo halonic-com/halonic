@@ -1,0 +1,4 @@
+id: suppliers
+name: Suppliers
+fields:
+  name: { type: text, required: true }

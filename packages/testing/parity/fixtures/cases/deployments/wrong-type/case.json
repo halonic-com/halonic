@@ -1,0 +1,10 @@
+{
+  "about": "shadow is text, not true or false",
+  "kind": "deployments",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "deployments.yaml",
+    "path": "deployments.shadow-run.shadow",
+    "line": 11
+  }
+}

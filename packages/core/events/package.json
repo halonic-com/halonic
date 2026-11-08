@@ -1,0 +1,24 @@
+{
+  "name": "@halonicjs/events",
+  "private": true,
+  "type": "module",
+  "description": "Run event log types and the summaries worked out from them.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "liam"
+  }
+}

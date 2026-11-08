@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/duplicate-key",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/approval.workflow.yaml",
+      "read": true,
+      "schema": null,
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.workflow.yaml",
+      "message": "YAML: Map keys must be unique",
+      "line": 23,
+      "col": 3
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "\"approval\" runs unknown workflow \"approval\"",
+      "state": "approval"
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "Test targets unknown workflow \"approval\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.workflow.yaml: YAML: Map keys must be unique\nerror hubs/billing/workflows/invoice.workflow.yaml (approval): \"approval\" runs unknown workflow \"approval\"\nerror hubs/billing/workflows/approval.test.yaml: Test targets unknown workflow \"approval\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 23,
+    "recorded": 23,
+    "verdict": "same"
+  }
+}

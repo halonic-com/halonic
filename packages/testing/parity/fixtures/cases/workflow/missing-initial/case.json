@@ -1,0 +1,10 @@
+{
+  "about": "initial names a state that doesn't exist",
+  "kind": "workflow",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "initial",
+    "line": 3
+  }
+}

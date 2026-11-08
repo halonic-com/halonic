@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "connector/approve-not-allowed",
+  "valid": true,
+  "files": [
+    {
+      "file": "library/connectors/files.connector.yaml",
+      "flatPath": "connectors/files.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "path": "connectors/files.connector.yaml",
+      "message": "Connector \"files\": \"delete_file\" needs approval but is not in tools.allow, so agents never see it"
+    }
+  ],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "warn  connectors/files.connector.yaml: Connector \"files\": \"delete_file\" needs approval but is not in tools.allow, so agents never see it\nOK: Acme, 1 hub(s), 1 warning(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 12,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

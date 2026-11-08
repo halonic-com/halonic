@@ -1,0 +1,10 @@
+{
+  "about": "uses lists an id with capitals",
+  "kind": "hub",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/hub.yaml",
+    "path": "uses.connectors.0",
+    "line": 11
+  }
+}

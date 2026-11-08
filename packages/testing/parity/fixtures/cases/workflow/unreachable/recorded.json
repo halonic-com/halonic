@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/unreachable",
+  "valid": true,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"orphan\" can never be reached",
+      "state": "orphan"
+    }
+  ],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "warn  hubs/billing/workflows/extra.workflow.yaml (orphan): \"orphan\" can never be reached\nOK: Acme, 1 hub(s), 1 warning(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 9,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

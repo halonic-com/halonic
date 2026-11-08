@@ -1,0 +1,47 @@
+{
+  "//": "Every external dependency, why we have it and which packages may use it (plan 7.1). Adding one needs Liam's approval. allowedIn takes package names; * matches any text.",
+  "dependencies": {
+    "@biomejs/biome": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/root"
+      ],
+      "reason": "Formatter and linter in one fast tool."
+    },
+    "@types/node": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "*"
+      ],
+      "reason": "Type definitions for Node, for Node packages, tests and tooling. The core's tsconfig loads no Node types."
+    },
+    "@typescript/typescript6": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/tooling-check"
+      ],
+      "reason": "The TypeScript parser API for tooling/check until TypeScript 7.1 ships its own API (D9). Remove then."
+    },
+    "turbo": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/root"
+      ],
+      "reason": "Per-package tasks, --affected and the build cache (D9)."
+    },
+    "typescript": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "*"
+      ],
+      "reason": "Type-checking with TypeScript 7 (D9)."
+    },
+    "vitest": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "*"
+      ],
+      "reason": "Test runner (D9)."
+    }
+  }
+}

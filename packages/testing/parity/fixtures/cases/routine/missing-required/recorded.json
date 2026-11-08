@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "routine/missing-required",
+  "valid": false,
+  "files": [
+    {
+      "file": "workflows/routines/hourly-check.routine.yaml",
+      "flatPath": "routines/hourly-check.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [
+        {
+          "path": [
+            "run"
+          ],
+          "code": "invalid_union",
+          "message": "Invalid input",
+          "line": 1,
+          "col": 1
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "run: Invalid input",
+      "line": 1,
+      "col": 1
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error routines/hourly-check.routine.yaml: run: Invalid input\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 1,
+    "recorded": 1,
+    "verdict": "same"
+  }
+}

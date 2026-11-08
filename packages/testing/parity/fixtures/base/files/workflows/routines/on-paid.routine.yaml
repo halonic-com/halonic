@@ -1,0 +1,12 @@
+name: On paid
+enabled: false
+trigger:
+  signal:
+    name: invoice.paid
+    when: { exists: "{{trigger.signal.vendor}}" }
+run:
+  hub: billing
+  agent: notifier
+  prompt: "Tell the team {{trigger.signal.vendor}} was paid."
+overlap: allow
+catchUp: all

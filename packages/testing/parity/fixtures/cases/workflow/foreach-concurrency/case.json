@@ -1,0 +1,10 @@
+{
+  "about": "foreach concurrency above 16",
+  "kind": "workflow",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/workflows/batch.workflow.yaml",
+    "path": "states.each.concurrency",
+    "line": 10
+  }
+}

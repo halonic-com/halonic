@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/unknown-gets",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"start\" gets context.total, but no earlier step writes context.total",
+      "state": "start"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml (start): \"start\" gets context.total, but no earlier step writes context.total\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

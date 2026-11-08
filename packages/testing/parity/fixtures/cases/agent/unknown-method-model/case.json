@@ -1,0 +1,10 @@
+{
+  "about": "a method model alias that doesn't exist",
+  "kind": "agent",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "methods.extract.model",
+    "line": 17
+  }
+}

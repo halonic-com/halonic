@@ -1,0 +1,10 @@
+{
+  "about": "a connector that doesn't exist",
+  "kind": "agent",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/notifier.agent.yaml",
+    "path": "connectors.2",
+    "line": 5
+  }
+}
