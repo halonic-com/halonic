@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-135 (Ravi's input on HAL-99; plan 15.2 step I5 enforces the same at run time)
 
-The source scan shall report each line of integration source that uses the global `fetch`, `globalThis`, `window` or `self`, `process`, `Deno` or `Bun`, `node:` modules or `require`, dynamic `import()`, `eval` or `Function`, a timer (`setTimeout`, `setInterval`, `setImmediate`), or another network API, and shall allow `host.http.fetch` and `host.wait`.
+The source scan shall report each line of integration source that uses the global `fetch`, `globalThis`, `window` or `self`, `process`, `Deno` or `Bun`, `node:` modules or `require`, dynamic `import()`, `eval` or `Function`, a timer (`setTimeout`, `setInterval`, `setImmediate`, `AbortSignal.timeout`), or another network API, and shall allow `host.http.fetch` and `host.wait`.
 
 ## Examples
 

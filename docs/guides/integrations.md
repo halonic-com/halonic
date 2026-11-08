@@ -14,8 +14,10 @@ The interface is decided in
 1. **Reach the outside world only through the host.** Your integration gets
    an `IntegrationHost` with `http`, `tokens`, `settings` and `wait`, and
    nothing else. No global `fetch`, `globalThis`, `process`, `node:` modules,
-   dynamic `import()`, `eval` or timers such as `setTimeout`. The conformance suite scans for these, and
-   the isolated worker (I5) refuses them at run time.
+   dynamic `import()`, `eval` or timers (`setTimeout`, `setInterval`,
+   `setImmediate`, `AbortSignal.timeout`): pause with `host.wait`. The
+   conformance suite scans for these, and the isolated worker (I5) refuses
+   them at run time.
 2. **Declare every host** in the permission sheet: exact host names, `https`
    only, no wildcards. The kit refuses anything else, including a redirect
    to an undeclared host. The one exception is a host the user picks in a

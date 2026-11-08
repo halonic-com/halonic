@@ -12,6 +12,7 @@ describe("testing-integration.source-scan", () => {
     ["eval or new Function", 'new Function("return 1")();'],
     ["other network APIs", 'new WebSocket("wss://x.example");'],
     ["timers (use host.wait)", "await new Promise((done) => setTimeout(done, 2000));"],
+    ["timers (use host.wait)", "const signal = AbortSignal.timeout(5000);"],
   ])("finds %s", (rule, line) => {
     expect(scanIntegrationSource({ "src/a.ts": `export {};\n${line}` })).toContainEqual({
       file: "src/a.ts",

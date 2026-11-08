@@ -18,7 +18,10 @@ const rules: readonly { rule: string; pattern: RegExp }[] = [
   { rule: "node: modules", pattern: /["']node:|\brequire\s*\(/ },
   { rule: "dynamic import", pattern: /\bimport\s*\(/ },
   { rule: "eval or new Function", pattern: /\beval\s*\(|\bnew\s+Function\b|\bFunction\s*\(/ },
-  { rule: "timers (use host.wait)", pattern: /\b(?:setTimeout|setInterval|setImmediate)\s*\(/ },
+  {
+    rule: "timers (use host.wait)",
+    pattern: /\b(?:setTimeout|setInterval|setImmediate)\s*\(|\bAbortSignal\s*\.\s*timeout\b/,
+  },
   { rule: "other network APIs", pattern: /\b(?:XMLHttpRequest|WebSocket|EventSource|navigator)\b/ },
 ];
 
