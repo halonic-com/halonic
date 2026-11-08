@@ -101,9 +101,9 @@ function layerRule(
         ? undefined
         : "adapters may use core packages and other adapters' public interfaces only.";
     case "host":
-      return toLayer === "core" || toLayer === "adapters"
+      return toLayer === "core"
         ? undefined
-        : "the host may use core packages and adapters only, never Studio packages.";
+        : "the host may use core packages only, never adapters or Studio packages (plan 4.1).";
     case "studio":
       return studioRule(context, toLayer, from, to);
   }
@@ -221,6 +221,9 @@ function builtinProblem(site: ImportSite, specifier: string): string | undefined
   }
   if (site.layer === "core") {
     return `core packages may not use Node APIs ("${specifier}"). Use a port, or move this code into an adapter (plan 4.1).`;
+  }
+  if (site.layer === "host") {
+    return `the host uses Web-standard APIs only, never Node APIs ("${specifier}"). Move this code into an adapter (plan 4.1).`;
   }
   if (site.layer === "studio") {
     return `Studio packages run in the browser and may not use Node APIs ("${specifier}"). Go through studio/services.`;
