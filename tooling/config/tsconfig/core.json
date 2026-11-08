@@ -1,11 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "//": "Core is pure: no Node types and no DOM. fetch, document or fs are compile errors here.",
+  "//": "Core is pure. Web-standard types only: ports can name Request, Response, ReadableStream or CryptoKey, but fetch, new Request(), setTimeout, document, window and fs are compile errors. See types/web-types.d.ts for why that is an in-house subset and not lib.dom.",
   "extends": "./base.json",
   "compilerOptions": {
     "lib": [
       "es2024"
     ],
-    "types": []
+    "types": [
+      "@halonicjs/tooling-config/types/web-types.d.ts"
+    ]
   }
 }

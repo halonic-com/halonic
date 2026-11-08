@@ -6,10 +6,11 @@
   "exports": {
     "./vitest": "./src/vitest-preset.ts",
     "./tsconfig/*.json": "./tsconfig/*.json",
-    "./biome.jsonc": "./biome.jsonc"
+    "./biome.jsonc": "./biome.jsonc",
+    "./types/*.d.ts": "./types/*.d.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p .",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p test/fixtures/web-types/core && tsc --noEmit -p test/fixtures/web-types/host",
     "lint": "biome check .",
     "test": "vitest run"
   },

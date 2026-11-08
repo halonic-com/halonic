@@ -100,6 +100,35 @@ Who may use what:
 Tests (`*.test.ts`, `test/` folders) and tool config files
 (`vitest.config.ts`) may use dev tooling and Node APIs in every layer.
 
+## What the TypeScript presets allow
+
+Core and host code may only use Web-standard APIs, so the same code runs
+on Node, Workers and in the browser (multi-cloud ADR 5.1). The presets
+in `tooling/config/tsconfig/` make that a compile error, not a review
+comment:
+
+| Preset        | Used by                          | Can name the Web types | Can call `fetch`, `new Request()`, timers | DOM (`document`, `window`) | Node (`process`, `Buffer`, `node:*`) |
+| ------------- | -------------------------------- | ---------------------- | ----------------------------------------- | -------------------------- | ------------------------------------ |
+| `core.json`   | core packages                    | yes                    | no                                        | no                         | no                                   |
+| `host.json`   | the host                         | yes                    | yes                                       | no                         | no                                   |
+| `node.json`   | Node adapters, CLI, tests, tools | yes                    | yes                                       | no                         | yes                                  |
+| `web.json`    | browser adapters                 | yes                    | yes                                       | yes                        | no                                   |
+| `studio.json` | Studio packages                  | yes                    | yes                                       | yes                        | no                                   |
+
+"The Web types" are `Request`, `Response`, `Headers`, `URL`,
+`URLSearchParams`, `ReadableStream`, `WritableStream`, `TransformStream`,
+`AbortSignal`, `TextEncoder`, `TextDecoder` and the `crypto.subtle` types.
+Core and host get them from two short files we own,
+`tooling/config/types/web-types.d.ts` (interfaces only) and
+`web-globals.d.ts` (the values, host only), instead of `lib.dom`, which
+would also bring `document` and `window`. A port that needs a member
+that isn't there yet adds it, copying the `lib.dom` signature.
+`tooling/config/test/fixtures/web-types/` proves each line of the core
+and host rows; it fails if a forbidden global starts to compile.
+
+Store a timer as `ReturnType<typeof setTimeout>`, so host code also
+type-checks in tests, which use `node.json`.
+
 ## The personal-terms guard
 
 Nothing private may enter the repo. The list of protected terms is never
