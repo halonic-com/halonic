@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { compact } from "./compact.ts";
-import golden from "./test/compact-golden.json" with { type: "json" };
+import golden from "./golden/compact.json" with { type: "json" };
 
 // The golden file is what the old app's compact (commit 784f78d) returned for
 // each input. JSON has no undefined, so the recording writes it as a marker
