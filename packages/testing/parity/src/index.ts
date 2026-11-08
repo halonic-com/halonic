@@ -1,4 +1,11 @@
 export {
+  type AllowedDifference,
+  type DifferenceStatus,
+  differenceStatuses,
+  parseAllowedDifferences,
+  readAllowedDifferences,
+} from "./allowed-differences.ts";
+export {
   type ExpectedError,
   type Fault,
   faults,
