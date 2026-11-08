@@ -2,6 +2,11 @@
 
 export { compact } from "./compact.ts";
 export type { FileKind, FilePlace, KindCheckProblem, KindSyntax } from "./kind.ts";
+export type { Deployment, Deployments } from "./kinds/deployments/schema.ts";
+export type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
+export type { ModelAlias, Models } from "./kinds/models/schema.ts";
+export type { Provider } from "./kinds/provider/schema.ts";
+export type { Runtime } from "./kinds/runtime/schema.ts";
 export type { SessionAssistant, WorkspaceSettings } from "./kinds/workspace/schema.ts";
 export {
   type FileProblem,

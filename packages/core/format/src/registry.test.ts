@@ -3,7 +3,14 @@ import { fileKinds, isKindName, isReservedPath, kindNames, RESERVED_FOLDER } fro
 
 describe("format.kind-registry", () => {
   it("lists the kinds ported so far, workspace-level first", () => {
-    expect(kindNames()).toEqual(["workspace"]);
+    expect(kindNames()).toEqual([
+      "workspace",
+      "deployments",
+      "models",
+      "provider",
+      "runtime",
+      "knowledge",
+    ]);
   });
 
   it("registers each kind under its own name, with a schema and at least one place", () => {
@@ -21,7 +28,14 @@ describe("format.kind-registry", () => {
         (place) => `${name}: ${place.scope} ${place.folder}/${place.name}`,
       ),
     );
-    expect(places).toEqual(["workspace: workspace /workspace.yaml"]);
+    expect(places).toEqual([
+      "workspace: workspace /workspace.yaml",
+      "deployments: workspace /deployments.yaml",
+      "models: workspace /models.yaml",
+      "provider: workspace providers/<id>.yaml",
+      "runtime: workspace runtimes/<id>.yaml",
+      "knowledge: workspace-and-hub library/knowledge/<id>.yaml",
+    ]);
   });
 
   it("knows its kind names and nothing else", () => {

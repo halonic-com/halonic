@@ -1,10 +1,25 @@
 import type { FileKind } from "./kind.ts";
+import { deploymentsKind } from "./kinds/deployments/kind.ts";
+import type { Deployments } from "./kinds/deployments/schema.ts";
+import { knowledgeKind } from "./kinds/knowledge/kind.ts";
+import type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
+import { modelsKind } from "./kinds/models/kind.ts";
+import type { Models } from "./kinds/models/schema.ts";
+import { providerKind } from "./kinds/provider/kind.ts";
+import type { Provider } from "./kinds/provider/schema.ts";
+import { runtimeKind } from "./kinds/runtime/kind.ts";
+import type { Runtime } from "./kinds/runtime/schema.ts";
 import { workspaceKind } from "./kinds/workspace/kind.ts";
 import type { WorkspaceSettings } from "./kinds/workspace/schema.ts";
 
 /** The value each file kind parses to, by kind name. */
 export interface KindValues {
   workspace: WorkspaceSettings;
+  deployments: Deployments;
+  models: Models;
+  provider: Provider;
+  runtime: Runtime;
+  knowledge: KnowledgeSource;
 }
 
 /** The name of a file kind: `workspace`, `agent`, `workflowTest`, … */
@@ -17,6 +32,11 @@ export type KindName = keyof KindValues;
  */
 export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]> } = {
   workspace: workspaceKind,
+  deployments: deploymentsKind,
+  models: modelsKind,
+  provider: providerKind,
+  runtime: runtimeKind,
+  knowledge: knowledgeKind,
 };
 
 /**
