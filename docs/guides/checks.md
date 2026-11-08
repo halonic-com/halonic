@@ -107,13 +107,17 @@ lets a change through.
 
 **CI runs the guard and `trace` from the merge base's copy** of
 `tooling/check`, not the pull request's, so a pull request can't weaken
-the checks that judge it. The build job checks out the merge base next to
-the pull request, runs its tests (mostly cache hits), then runs both
-checks with the merge base's code. To run the guard locally:
+the checks that judge it. The merge base's test results are the guard's
+baseline, so a separate job produces them where no pull-request code
+runs: it switches to the merge base before anything runs and reads no
+cache (neither Turbo's nor the pnpm store, which a pull request's runs can
+write). A third job, which also runs no pull-request code, installs only
+the merge base's dependencies, takes both sides' result files and runs
+both checks with the merge base's code and Node. To run the guard locally:
 
 ```sh
 git worktree add --detach ../merge-base "$(git merge-base origin/main HEAD)"
-(cd ../merge-base && pnpm install && pnpm exec turbo run test)
+(cd ../merge-base && pnpm install && pnpm exec turbo run test --force)
 pnpm exec turbo run test
 pnpm exec node ../merge-base/tooling/check/src/cli/requirement-guard.ts --base ../merge-base --branch "$(git branch --show-current)"
 ```
@@ -182,15 +186,17 @@ for every other job and fails if any failed. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
-| Job                          | What                                                                                                                                |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Fast gates                   | pull request title, `pnpm check`, licences, formatting, the feature list, `pnpm audit` for shipped dependencies                     |
-| Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                    |
-| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                       |
-| Workflow lint                | `zizmor` over `.github/`                                                                                                            |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits; then `trace` and the requirement guard, run from the merge base's copy |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                  |
-| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                          |
+| Job                          | What                                                                                                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast gates                   | pull request title, `pnpm check`, licences, formatting, the feature list, `pnpm audit` for shipped dependencies                                           |
+| Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                                          |
+| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                                             |
+| Workflow lint                | `zizmor` over `.github/`                                                                                                                                  |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` it then runs `trace`; on a pull request it hands its test results to the guard job |
+| Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                              |
+| Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results   |
+| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                        |
+| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                                                |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full terms and secret scan over the whole history
