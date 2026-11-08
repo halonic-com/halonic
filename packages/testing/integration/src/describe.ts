@@ -19,8 +19,8 @@ import type { ConformanceSubject } from "./run.ts";
  *   integration: weather,
  *   policy: { name: "weather", hosts: ["api.example.com"], secrets: { "weather-key": { hosts: ["api.example.com"] } }, tokens: [] },
  *   declaredTools: [{ name: "forecast", risk: "read", untrusted: true }],
- *   recordings,
- *   cases: [{ tool: "forecast", args: { city: "Ghent" } }],
+ *   recordings: [forecastGhent],
+ *   cases: [{ tool: "forecast", scenario: "forecast-ghent", args: { city: "Ghent" } }],
  *   sources: { "src/index.ts": readFileSync("src/index.ts", "utf8") },
  * });
  */
@@ -36,7 +36,7 @@ export function describeIntegrationConformance(subject: ConformanceSubject): voi
     }
     for (const [index, toolCase] of subject.cases.entries()) {
       const name = `${toolCase.tool} (case ${index + 1})`;
-      it(`${name} answers from the recordings without leaking a secret`, async () => {
+      it(`${name} answers from its recording without leaking a secret`, async () => {
         await checkCase(subject, toolCase);
       });
       it(`${name} stops when its signal is aborted`, () => checkAbort(subject, toolCase));

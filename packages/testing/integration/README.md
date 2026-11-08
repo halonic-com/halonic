@@ -15,15 +15,15 @@ host, reads a file or leaks a key fails. Published for the
 
 ## What it checks
 
-| Check                 | Fails when                                                                                                                                                                                                                                             |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `checkDeclaration`    | name, version, tools, `risk` or `untrusted` differ between code and sheet                                                                                                                                                                              |
-| `checkPolicy`         | a host isn't an exact lower-case name, or a secret may go to an undeclared host                                                                                                                                                                        |
-| `checkConnectIsQuiet` | connecting sends a request, or closing twice throws                                                                                                                                                                                                    |
-| `checkSources`        | the source uses global `fetch`, `globalThis`, `process`, `node:` modules, `import()`, `eval` or other network APIs                                                                                                                                     |
-| `checkCase`           | the call fails, the kit refused a request (even one the integration swallowed), a request had no recording, the global `fetch` was used, or a canary appears in the result, the error, the log, a URL, or a request to a host the secret may not go to |
-| `checkAbort`          | an aborted call doesn't reject                                                                                                                                                                                                                         |
-| `checkProviderErrors` | the provider's error body reaches the result or the error                                                                                                                                                                                              |
+| Check                 | Fails when                                                                                                                                                                                                                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkDeclaration`    | name, version, tools, `risk` or `untrusted` differ between code and sheet                                                                                                                                                                                                                                  |
+| `checkPolicy`         | a host isn't an exact lower-case name, or a secret may go to an undeclared host                                                                                                                                                                                                                            |
+| `checkConnectIsQuiet` | connecting sends a request, or closing twice throws                                                                                                                                                                                                                                                        |
+| `checkSources`        | the source uses global `fetch`, `globalThis`, `process`, `node:` modules, `import()`, `eval` or other network APIs                                                                                                                                                                                         |
+| `checkCase`           | the call fails, the kit refused a request (even one the integration swallowed), a request didn't match the next recorded exchange or some were never asked for, the global `fetch` was used, or a canary appears in the result, the error, the log, a URL, or a request to a host the secret may not go to |
+| `checkAbort`          | an aborted call doesn't reject                                                                                                                                                                                                                                                                             |
+| `checkProviderErrors` | the provider's error body reaches the result or the error                                                                                                                                                                                                                                                  |
 
 ## Example
 
@@ -31,7 +31,7 @@ host, reads a file or leaks a key fails. Published for the
 import { readFileSync } from "node:fs";
 import { describeIntegrationConformance } from "@halonicjs/testing-integration";
 import { weather } from "./index.ts";
-import recordings from "../recordings/weather.json" with { type: "json" };
+import forecastGhent from "../recordings/forecast-ghent.json" with { type: "json" };
 
 describeIntegrationConformance({
   integration: weather,
@@ -42,11 +42,18 @@ describeIntegrationConformance({
     tokens: [],
   },
   declaredTools: [{ name: "forecast", risk: "read", untrusted: true }],
-  recordings,
-  cases: [{ tool: "forecast", args: { city: "Ghent" } }],
+  recordings: [forecastGhent],
+  cases: [{ tool: "forecast", scenario: "forecast-ghent", args: { city: "Ghent" } }],
   sources: { "src/index.ts": readFileSync("src/index.ts", "utf8") },
 });
 ```
+
+Recordings are `halonic.recording/1` files, as `pnpm record` writes them in
+the integrations repo: one scenario each, its exchanges in call order. On
+replay each request must match the next exchange on method and URL, and on
+body and key headers where the recording kept them. `<scrubbed:secret>` and
+`<scrubbed:content>` match any value, and user content saved as `0` or
+`false` matches any number or boolean.
 
 `policy` and `declaredTools` repeat the permission sheet for now. Once the
 sheet kind lands in `@halonicjs/format`, the suite takes the sheet itself and
@@ -56,4 +63,4 @@ checks it is valid too.
 
 - Running the suite in `workerd` as well as Node (with the Cloudflare target's test setup).
 - Sub-suites per kind that reuse the port contracts (`LlmProvider`, `ConnectorClient`, knowledge).
-- The recorder that writes scrubbed recordings (step I3).
+- Checking each recording file against the format's schema. The schema moves into `@halonicjs/format` with the permission sheet; the recorder (`tooling/record` in the integrations repo, HAL-149) then imports it from there.

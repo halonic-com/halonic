@@ -25,9 +25,14 @@ function fail(): never {
 }
 
 describe("testing-integration.attack-cases", () => {
-  for (const [attack, { catchBy, subject }] of Object.entries(attacks)) {
+  for (const [attack, { catchBy, reason, subject }] of Object.entries(attacks)) {
     it(`fails an integration that ${attack}`, async () => {
-      await expect(checks[catchBy](subject)).rejects.toBeInstanceOf(ConformanceFailure);
+      const failure = await checks[catchBy](subject).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(failure).toBeInstanceOf(ConformanceFailure);
+      expect((failure as Error).message).toMatch(reason);
     });
   }
 

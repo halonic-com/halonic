@@ -1,4 +1,5 @@
 import type { Integration, IntegrationHost } from "@halonicjs/ports";
+import type { RecordedExchange, RecordingFile } from "../recording.ts";
 import type { ConformanceSubject } from "../run.ts";
 
 // A small, well-behaved integration the suite's own tests run. The attack
@@ -70,23 +71,53 @@ export const weatherSubject: ConformanceSubject = {
     { name: "save-favourite", risk: "write" },
   ],
   recordings: [
-    {
-      request: { method: "GET", url: `${api}/forecast?city=Ghent` },
-      response: { status: 200, headers: { "content-type": "application/json" }, body: '{"summary":"Rain, 12°C"}' },
-    },
-    {
-      request: { method: "POST", url: `${api}/favourites`, body: '{"city":"Ghent"}' },
-      response: { status: 201, body: "" },
-    },
+    recording("forecast-ghent", [forecastExchange({ kind: "json", value: { summary: "Rain, 12°C" } })]),
+    recording("save-favourite", [
+      {
+        transport: "http",
+        request: {
+          method: "POST",
+          url: `${api}/favourites`,
+          headers: { authorization: "Bearer <scrubbed:secret>", "content-type": "application/json" },
+          // The city is the user's own content, so the recorder replaced it.
+          body: { kind: "json", value: { city: "<scrubbed:content>" } },
+        },
+        response: { status: 201, headers: {}, body: { kind: "empty" } },
+      },
+    ]),
   ],
   cases: [
     {
       tool: "forecast",
+      scenario: "forecast-ghent",
       args: { city: "Ghent" },
       check: (result) => {
         if (result !== "Forecast: Rain, 12°C") throw new Error(`unexpected result ${result}`);
       },
     },
-    { tool: "save-favourite", args: { city: "Ghent" } },
+    { tool: "save-favourite", scenario: "save-favourite", args: { city: "Ghent" } },
   ],
 };
+
+/** A recording file of the weather integration, as `pnpm record` writes it. */
+export function recording(scenario: string, exchanges: RecordedExchange[]): RecordingFile {
+  return { format: "halonic.recording/1", integration: "weather", scenario, exchanges, scrubReport: [] };
+}
+
+/** The forecast request for Ghent, with its key placed by the kit, and the given answer. */
+export function forecastExchange(
+  body: RecordedExchange["response"]["body"],
+  status = 200,
+  headers: Record<string, string> = {},
+): RecordedExchange {
+  return {
+    transport: "http",
+    request: {
+      method: "GET",
+      url: `${api}/forecast?city=Ghent`,
+      headers: { "x-api-key": "<scrubbed:secret>" },
+      body: { kind: "empty" },
+    },
+    response: { status, headers, body },
+  };
+}

@@ -5,7 +5,7 @@ import {
 } from "@halonicjs/adapter-integration-kit";
 import type { Integration, TokenStore, ToolRisk } from "@halonicjs/ports";
 import { canarySecrets } from "./canaries.ts";
-import { type Recording, type ReplayedRequest, replayTransport } from "./recording.ts";
+import { type RecordingFile, type ReplayedRequest, replayTransport } from "./recording.ts";
 
 /** A tool as the permission sheet declares it. */
 export interface DeclaredTool {
@@ -14,10 +14,12 @@ export interface DeclaredTool {
   readonly untrusted?: boolean;
 }
 
-/** One tool call the suite makes, answered from the recordings. */
+/** One tool call the suite makes, answered from one recording. */
 export interface ToolCase {
   readonly tool: string;
   readonly args: Record<string, unknown>;
+  /** The recording that answers it, by its `scenario`. */
+  readonly scenario: string;
   /** Extra checks on the result. Throw to fail. */
   readonly check?: (result: string) => void;
 }
@@ -32,7 +34,8 @@ export interface ConformanceSubject {
   readonly policy: IntegrationPolicy;
   /** The tools of its sheet. */
   readonly declaredTools: readonly DeclaredTool[];
-  readonly recordings: readonly Recording[];
+  /** Its recording files (`halonic.recording/1`), one per scenario. */
+  readonly recordings: readonly RecordingFile[];
   readonly cases: readonly ToolCase[];
   readonly settings?: Readonly<Record<string, unknown>>;
   /** Its source files by path, scanned for what integration code may not use. */
@@ -48,15 +51,17 @@ export interface CaseRun {
   readonly log: readonly RequestLogEntry[];
   /** Calls that went around the host to a global network API. */
   readonly globalCalls: readonly string[];
+  /** Recorded exchanges the call never asked for. */
+  readonly unusedExchanges: number;
 }
 
 /** Runs one tool call through the real kit, on recordings, with canary secrets and the network globals tripped. */
 export async function runCase(
   subject: ConformanceSubject,
   toolCase: ToolCase,
-  options: { recordings?: readonly Recording[]; signal?: AbortSignal } = {},
+  options: { recording?: RecordingFile; signal?: AbortSignal } = {},
 ): Promise<CaseRun> {
-  const replay = replayTransport(options.recordings ?? subject.recordings);
+  const replay = replayTransport(options.recording ?? scenarioOf(subject, toolCase));
   const { host, log } = createIntegrationHost({
     policy: subject.policy,
     transport: replay.transport,
@@ -86,7 +91,16 @@ export async function runCase(
     seen: replay.seen,
     log: log.entries(),
     globalCalls,
+    unusedExchanges: replay.unused(),
   };
+}
+
+/** The recording a case replays; undefined when there is none, so every request fails closed. */
+export function scenarioOf(
+  subject: ConformanceSubject,
+  toolCase: ToolCase,
+): RecordingFile | undefined {
+  return subject.recordings.find((recording) => recording.scenario === toolCase.scenario);
 }
 
 /** Replaces the global network APIs with ones that record the call and throw. */

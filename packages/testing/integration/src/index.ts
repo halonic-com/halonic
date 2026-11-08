@@ -13,10 +13,12 @@ export {
 } from "./checks.ts";
 export { describeIntegrationConformance } from "./describe.ts";
 export {
-  canonicalBody,
   NoRecordingError,
-  type Recording,
+  type RecordedBody,
+  type RecordedExchange,
+  type RecordingFile,
   type ReplayedRequest,
+  recordingFormat,
   replayTransport,
 } from "./recording.ts";
 export {
@@ -24,6 +26,7 @@ export {
   type ConformanceSubject,
   type DeclaredTool,
   runCase,
+  scenarioOf,
   type ToolCase,
   tripNetworkGlobals,
 } from "./run.ts";

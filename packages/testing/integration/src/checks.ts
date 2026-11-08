@@ -1,7 +1,13 @@
 import { createIntegrationHost, namePattern } from "@halonicjs/adapter-integration-kit";
 import { canaryFor, canaryMark, canarySecrets } from "./canaries.ts";
 import { replayTransport } from "./recording.ts";
-import { type CaseRun, type ConformanceSubject, runCase, type ToolCase } from "./run.ts";
+import {
+  type CaseRun,
+  type ConformanceSubject,
+  runCase,
+  scenarioOf,
+  type ToolCase,
+} from "./run.ts";
 import { scanIntegrationSource } from "./source-scan.ts";
 
 /** A conformance check failed. The message says what to fix. */
@@ -43,9 +49,19 @@ export function checkDeclaration(subject: ConformanceSubject): void {
       fail(`"${name}" differs in "untrusted" between code and sheet`);
     }
   }
+  checkCases(subject, new Set(implemented.keys()));
+}
+
+/** Every case calls a declared tool and has a recording of this integration. */
+function checkCases(subject: ConformanceSubject, tools: ReadonlySet<string>): void {
   for (const toolCase of subject.cases) {
-    if (!implemented.has(toolCase.tool))
-      fail(`a case calls "${toolCase.tool}", which isn't declared`);
+    if (!tools.has(toolCase.tool)) fail(`a case calls "${toolCase.tool}", which isn't declared`);
+    if (scenarioOf(subject, toolCase) === undefined)
+      fail(`a case replays the scenario "${toolCase.scenario}", which has no recording`);
+  }
+  for (const recording of subject.recordings) {
+    if (recording.integration !== subject.integration.name)
+      fail(`the recording "${recording.scenario}" is for "${recording.integration}"`);
   }
 }
 
@@ -60,7 +76,7 @@ export function checkPolicy(subject: ConformanceSubject): void {
     if (!namePattern.test(secret))
       fail(`the secret name "${secret}" is not lower-case words joined by -`);
     for (const host of hosts) {
-      if (!policy.hosts.includes(host))
+      if (!policy.hosts.includes(host) && !(policy.localHosts ?? []).includes(host))
         fail(`the secret "${secret}" may go to "${host}", which isn't a declared host`);
     }
   }
@@ -72,7 +88,7 @@ export function checkPolicy(subject: ConformanceSubject): void {
 
 /** Connecting sends nothing, and closing twice is safe. */
 export async function checkConnectIsQuiet(subject: ConformanceSubject): Promise<void> {
-  const replay = replayTransport(subject.recordings);
+  const replay = replayTransport(undefined);
   const { host } = createIntegrationHost({
     policy: subject.policy,
     transport: replay.transport,
@@ -97,6 +113,11 @@ export async function checkCase(subject: ConformanceSubject, toolCase: ToolCase)
   checkNoLeak(subject, run);
   if (run.error !== undefined) fail(`"${toolCase.tool}" failed: ${messageOf(run.error)}`);
   const result = run.result ?? fail(`"${toolCase.tool}" returned nothing`);
+  if (run.unusedExchanges > 0) {
+    fail(
+      `"${toolCase.tool}" made ${run.unusedExchanges} request(s) fewer than the recording "${toolCase.scenario}" has`,
+    );
+  }
   toolCase.check?.(result);
   return result;
 }
@@ -119,11 +140,19 @@ export async function checkProviderErrors(
   toolCase: ToolCase,
 ): Promise<void> {
   const providerBody = `PROVIDER-BODY ${Object.keys(subject.policy.secrets).map(canaryFor).join(" ")}`;
-  const recordings = subject.recordings.map((recording) => ({
-    request: recording.request,
-    response: { status: 500, headers: { "content-type": "text/plain" }, body: providerBody },
-  }));
-  const run = await runCase(subject, toolCase, { recordings });
+  const recorded = scenarioOf(subject, toolCase);
+  const recording = recorded && {
+    ...recorded,
+    exchanges: recorded.exchanges.map((exchange) => ({
+      ...exchange,
+      response: {
+        status: 500,
+        headers: {},
+        body: { kind: "text" as const, contentType: "text/plain", value: providerBody },
+      },
+    })),
+  };
+  const run = await runCase(subject, toolCase, recording ? { recording } : {});
   checkNoBypass(run);
   const shown = `${run.result ?? ""} ${run.error === undefined ? "" : messageOf(run.error)}`;
   if (shown.includes("PROVIDER-BODY") || shown.includes(canaryMark)) {
