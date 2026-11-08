@@ -1,0 +1,31 @@
+{
+  "name": "@halonicjs/adapter-token-store",
+  "private": true,
+  "type": "module",
+  "description": "The TokenStore port over a RecordStore, encrypted at rest with AES-256-GCM through Web Crypto.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "ravi",
+    "runtime": "any",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
