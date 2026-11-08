@@ -2,6 +2,7 @@ import {
   baseSignInScopes,
   type CallbackQuery,
   classifyTokenAnswer,
+  clientSecretName,
   googleAuthUrl,
   googleTokenEndpoint,
   type LoopbackRedirect,
@@ -47,15 +48,17 @@ export interface StartGoogleSignInInput {
  * @param pendingSignIns - the server's pending sign-ins
  * @param randomBytes - where `state` and the verifier come from; tests pass fixed bytes
  * @returns the auth URL
- * @throws RangeError when the account ref, redirect or a scope is refused
+ * @throws RangeError when the account ref, client ref, redirect or a scope is refused
  */
 export async function startGoogleSignIn(
   input: StartGoogleSignInInput,
   pendingSignIns: PendingSignIns,
   randomBytes: RandomBytes = webRandomBytes,
 ): Promise<string> {
-  // The refresh token is saved under this name at the end; a bad ref fails now, not after Google.
+  // The client secret is read and the refresh token saved under these names at the end.
+  // A bad ref fails now, not after the user has been through Google's consent screen.
   refreshTokenName(input.accountRef);
+  clientSecretName(input.clientRef);
   const pkce = await createPkcePair(randomBytes);
   const state = createState(randomBytes);
   const scopes = signInScopes(input.scopes);

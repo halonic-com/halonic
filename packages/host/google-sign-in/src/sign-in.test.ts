@@ -70,6 +70,15 @@ verifies("google-sign-in.exchange", () => {
     expect(server.ports.pendingSignIns.authUrlFor("account@example.com")).toBeUndefined();
   });
 
+  it("refuses a client ref that can't name a secret before it goes to Google", async () => {
+    const server = testServer(() => tokenSuccess());
+
+    await expect(server.start({ ...startInput, clientRef: "not a ref" })).rejects.toThrow(
+      RangeError,
+    );
+    expect(server.ports.pendingSignIns.authUrlFor(fakeAccountRef)).toBeUndefined();
+  });
+
   it("lists the scopes the user unticked", async () => {
     const server = testServer(() => tokenSuccess());
     const { state } = await server.start({ ...startInput, scopes: [gmailScope, driveScope] });
