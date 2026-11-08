@@ -1,4 +1,5 @@
 import type { AccountType } from "./account-type.ts";
+import type { ConsolePage } from "./console-links.ts";
 import type { GoogleCheck } from "./setup-input.ts";
 
 /**
@@ -16,13 +17,22 @@ export type StepId =
 
 /** A link to a Console page. Studio picks the link text from the id. */
 export interface StepLink {
-  readonly id: string;
+  readonly id: ConsolePage;
   readonly url: string;
 }
 
+/** What a copy value is. Studio picks its label from this id. */
+export type CopyValueId =
+  | "project-name"
+  | "app-name"
+  | "support-email"
+  | "contact-email"
+  | "all-scopes"
+  | "client-name";
+
 /** A value the user types into Google, offered with a copy button. */
 export interface CopyValue {
-  readonly id: string;
+  readonly id: CopyValueId;
   readonly value: string;
 }
 

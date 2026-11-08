@@ -100,6 +100,24 @@ verifies("google-setup.steps", () => {
     ]);
   });
 
+  it("lists a service once on a scope its sheet names twice", () => {
+    const repeated = {
+      ...ledgerService,
+      googleScopes: [
+        ...ledgerService.googleScopes,
+        { scope: "https://www.googleapis.com/auth/ledger", reason: "Writes your ledger" },
+      ],
+    };
+    const { steps } = setupSteps(personalSetup([repeated]));
+    expect(step(steps, "scopes").scopes).toEqual([
+      {
+        scope: "https://www.googleapis.com/auth/ledger",
+        restricted: true,
+        neededBy: [{ service: "ledger", reason: "Reads and writes your ledger" }],
+      },
+    ]);
+  });
+
   it("refuses a setup with no services or with two services of one id", () => {
     expect(() => setupSteps(personalSetup([]))).toThrow(RangeError);
     expect(() => setupSteps(personalSetup([ledgerService, ledgerService]))).toThrow(RangeError);

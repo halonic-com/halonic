@@ -1,4 +1,12 @@
 export { type AccountType, accountTypeFromAddress } from "./account-type.ts";
+export { ClientSecretError, type ClientSecretErrorReason } from "./client-secret-error.ts";
+export {
+  type ClientSecretRemoval,
+  type ClientSecretStore,
+  clientSecretStore,
+} from "./client-secret-store.ts";
+export type { ConsolePage } from "./console-links.ts";
+export { looksLikeGoogleClientSecret } from "./looks-like-google-client-secret.ts";
 export type {
   GoogleApi,
   GoogleCheck,
@@ -13,6 +21,7 @@ export type {
   ClientStep,
   ConsentStep,
   CopyValue,
+  CopyValueId,
   CredentialsStep,
   DoneWhen,
   ProjectStep,
@@ -27,11 +36,4 @@ export type {
   StepLink,
 } from "./setup-step.ts";
 export { setupSteps } from "./setup-steps.ts";
-export { ClientSecretError, type ClientSecretErrorReason } from "./client-secret-error.ts";
-export {
-  type ClientSecretRemoval,
-  type ClientSecretStore,
-  clientSecretStore,
-} from "./client-secret-store.ts";
-export { looksLikeGoogleClientSecret } from "./looks-like-google-client-secret.ts";
 export { clientSecretName, refreshTokenName, stagedClientSecretName } from "./store-names.ts";

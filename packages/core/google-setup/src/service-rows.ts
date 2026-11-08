@@ -43,7 +43,10 @@ export function mergeScopes(services: readonly SetupService[]): ScopeRow[] {
     for (const { scope, reason, restricted = false } of service.googleScopes) {
       const row = rows.get(scope) ?? { scope, restricted: false, neededBy: [] };
       row.restricted ||= restricted;
-      row.neededBy.push({ service: service.id, reason });
+      // A sheet that lists a scope twice still gives one reason per service.
+      if (!row.neededBy.some((need) => need.service === service.id)) {
+        row.neededBy.push({ service: service.id, reason });
+      }
       rows.set(scope, row);
     }
   }

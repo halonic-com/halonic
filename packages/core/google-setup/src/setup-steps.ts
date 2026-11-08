@@ -1,7 +1,14 @@
 import { consoleUrl, enableAllApisUrl, isProjectId } from "./console-links.ts";
 import { mergeApis, mergeScopes } from "./service-rows.ts";
 import type { SetupInput } from "./setup-input.ts";
-import type { CopyValue, ScopeRow, SetupStep, SetupSteps, StepId } from "./setup-step.ts";
+import type {
+  CopyValue,
+  CopyValueId,
+  ScopeRow,
+  SetupStep,
+  SetupSteps,
+  StepId,
+} from "./setup-step.ts";
 
 /** The values the flow fills in itself (design 3.2). */
 const suggestedProjectName = "halonic";
@@ -70,7 +77,7 @@ function checkServices(input: SetupInput): void {
   }
 }
 
-function copyValue(id: string, value: string): CopyValue {
+function copyValue(id: CopyValueId, value: string): CopyValue {
   return { id, value };
 }
 
