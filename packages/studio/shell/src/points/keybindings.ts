@@ -62,16 +62,36 @@ function modifierFor(part: string, platform: KeyboardPlatform): Modifier | undef
 }
 
 /**
- * Splits keys on `+`. A `+` at the end, after the separator, is the plus key,
- * so `Ctrl++` is Ctrl and `+`. A part that is a single space stays one: it is
- * the space bar, as `KeyboardEvent.key` spells it.
+ * What `Mod` means when the host doesn't say which platform it runs on. A
+ * macOS desktop host must always pass its platform.
+ */
+const platformWhenUnknown: KeyboardPlatform = "linux";
+
+/** Keys that end in the space bar, directly after a `+` with no space before it. */
+const trailingSpaceKeyPattern = /\S\+ $/;
+
+/**
+ * Splits keys on `+` and trims each part. A `+` at the end, after the
+ * separator, is the plus key, so `Ctrl++` is Ctrl and `+`. A single space is
+ * the space bar, as `KeyboardEvent.key` spells it, but only as the whole keys
+ * or directly after the last `+`, as in `Ctrl+ `. Anywhere else it is padding,
+ * so the typo `Ctrl + ` is refused instead of becoming `Ctrl+Space`.
  */
 function splitKeys(keys: string): string[] {
-  if (keys === "+") {
-    return ["+"];
+  if (keys === "+" || keys === " ") {
+    return [keys];
   }
-  const parts = keys.endsWith("++") ? [...keys.slice(0, -2).split("+"), "+"] : keys.split("+");
-  return parts.map((part) => (part === " " ? part : part.trim()));
+  if (keys.endsWith("++")) {
+    return [...trimmedParts(keys.slice(0, -2)), "+"];
+  }
+  if (trailingSpaceKeyPattern.test(keys)) {
+    return [...trimmedParts(keys.slice(0, -2)), " "];
+  }
+  return trimmedParts(keys);
+}
+
+function trimmedParts(keys: string): string[] {
+  return keys.split("+").map((part) => part.trim());
 }
 
 /**
@@ -122,7 +142,10 @@ interface Entry {
  * @throws ShellError when there's no key, more than one, an unknown key name,
  *   or a repeated modifier
  */
-export function normalizeKeys(keys: string, platform: KeyboardPlatform = "linux"): string {
+export function normalizeKeys(
+  keys: string,
+  platform: KeyboardPlatform = platformWhenUnknown,
+): string {
   const modifiers = new Set<Modifier>();
   let key: string | undefined;
   for (const part of splitKeys(keys)) {
@@ -213,7 +236,7 @@ export class KeybindingTable {
   private readonly platform: KeyboardPlatform;
 
   /** @param platform decides what `Mod` means, in bindings and in key presses */
-  constructor(platform: KeyboardPlatform = "linux") {
+  constructor(platform: KeyboardPlatform = platformWhenUnknown) {
     this.platform = platform;
   }
 

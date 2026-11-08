@@ -22,7 +22,9 @@ export interface KeybindingContribution {
   /**
    * Modifiers and one key joined by `+`, such as `Ctrl+Alt+A`. Case and
    * modifier order don't matter. `Cmd` is `Meta`; `Mod` is `Cmd` on macOS and
-   * `Ctrl` elsewhere. A trailing `+` is the plus key, as in `Ctrl++`.
+   * `Ctrl` elsewhere. A trailing `+` is the plus key, as in `Ctrl++`. Shift
+   * counts as written: `Ctrl++` matches a press the host sends as `Ctrl++`,
+   * not `Ctrl+Shift++`, which is what a US keyboard gives, since `+` needs Shift there.
    */
   readonly keys: string;
   /**

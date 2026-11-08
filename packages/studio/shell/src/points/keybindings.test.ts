@@ -195,9 +195,27 @@ describe("shell.keybindings", () => {
     expect(create).toThrow("Ctrl+S everywhere is bound by both");
   });
 
+  it("refuses Mod and Cmd bound to the same keys on macOS", () => {
+    const create = () =>
+      createShell({
+        platform: "macos",
+        features: [
+          feature("files", (studio) => {
+            studio.commands.add(command("files.save"));
+            studio.keybindings.add({ command: "files.save", keys: "Mod+S" });
+            studio.keybindings.add({ command: "files.save", keys: "Cmd+S" });
+          }),
+        ],
+      });
+    expect(create).toThrow("Meta+S everywhere is bound by both");
+  });
+
   it("accepts the space bar as KeyboardEvent.key spells it, and Esc for Escape", () => {
     expect(normalizeKeys(" ")).toBe("Space");
     expect(normalizeKeys("Ctrl+ ")).toBe("Ctrl+Space");
+    expect(() => normalizeKeys("Ctrl + ")).toThrow(ShellError);
+    expect(() => normalizeKeys("Shift + ")).toThrow(ShellError);
+    expect(() => normalizeKeys("Ctrl+ +A")).toThrow(ShellError);
     expect(normalizeKeys("esc")).toBe("Escape");
     expect(normalizeKeys("Shift+Esc")).toBe("Shift+Escape");
     const shell = createShell({
@@ -245,6 +263,16 @@ describe("shell.keybindings", () => {
   it("refuses a when that asks for a context and its negation", () => {
     expect(() => parseWhen("a && !a")).toThrow('asks for "a" and "!a" at once');
     expect(() => parseWhen("!b && c && b")).toThrow(ShellError);
+    const create = () =>
+      createShell({
+        features: [
+          feature("editor", (studio) => {
+            studio.commands.add(command("editor.never"));
+            studio.keybindings.add({ command: "editor.never", keys: "Ctrl+K", when: "a && !a" });
+          }),
+        ],
+      });
+    expect(create).toThrow('asks for "a" and "!a" at once');
   });
 
   it("reads when terms in one order and refuses malformed ones", () => {
