@@ -6,6 +6,26 @@ Workflow rules: the statecharts subset, guards, inputs, templates and validation
 - **Owner:** mateo
 - **Public API:** `@halonicjs/workflow`
 
+Templates fill `{{path}}` placeholders from a scope (the context and the
+current input). A value that is exactly one placeholder keeps its type, so a
+number stays a number; placeholders inside a text are written as text.
+
+`toNumber` reads amounts as people and models write them, in English
+(`1,200.50`) or European (`1.200,50`) style, with or without a money symbol,
+so number guards can compare them.
+
+Each behaviour has a requirement in [`requirements/`](requirements/).
+
 ## Example
 
-Added together with the first real API.
+```ts
+import { render, renderText, toNumber } from "@halonicjs/workflow";
+
+const scope = { input: { n: 3, name: "Ada" } };
+render("{{input.n}}", scope); // 3
+render("Hi {{input.name}}, {{input.n}}!", scope); // "Hi Ada, 3!"
+renderText("{{input.n}}", scope); // "3"
+
+toNumber("EUR 1.250,00"); // 1250
+toNumber("n/a"); // null
+```

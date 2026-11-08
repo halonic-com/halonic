@@ -56,9 +56,10 @@
       "allowedIn": [
         "@halonicjs/yaml",
         "@halonicjs/schema-kit",
-        "@halonicjs/routines"
+        "@halonicjs/routines",
+        "@halonicjs/workflow"
       ],
-      "reason": "Property-based tests: generated and hostile inputs (deep nesting, huge files and lists, odd Unicode, Windows line endings, BOM) for the YAML layer, which reads other people's workspaces, and for how schema-kit uses Zod; generated cron expressions and times around daylight-saving changes for the routines scheduler. Tests only."
+      "reason": "Property-based tests: generated and hostile inputs (deep nesting, huge files and lists, odd Unicode, Windows line endings, BOM) for the YAML layer, which reads other people's workspaces, and for how schema-kit uses Zod; generated cron expressions and times around daylight-saving changes for the routines scheduler; generated templates, scopes, amounts and durations for the workflow rules. Tests only."
     },
     "react-data-grid": {
       "category": "studio-framework",
