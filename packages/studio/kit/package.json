@@ -1,0 +1,27 @@
+{
+  "name": "@halonicjs/studio-kit",
+  "private": true,
+  "type": "module",
+  "description": "The Studio's design tokens (one theme.css) and, later, its shared base components.",
+  "exports": {
+    ".": {
+      "style": "./src/theme.css",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "noah"
+  }
+}
