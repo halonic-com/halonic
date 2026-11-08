@@ -33,6 +33,6 @@
     "old": "Checked a value with plain Zod 4.6.7, which has no nesting limit: input nested deeper than the call stack allows threw a RangeError (\"Maximum call stack size exceeded\") instead of giving issues, and a value that contains itself was accepted.",
     "new": "parse first walks the input without recursion and, if it is nested more than 256 keys and indexes deep (MAX_DEPTH) or contains itself, returns one too_deep issue at the path of the first value past the limit, without running the schema. Up to 256 levels it gives the same verdict as plain Zod.",
     "why": "A file must never crash the check, and a value that contains itself is never a valid workspace file. Real workspace files are nowhere near 256 levels deep (the old guard schema nested 200 levels still passes), so no file that loaded before is refused now. It is the only schema-kit difference that remains on real Zod; see also schema-kit.old-schema-parity.",
-    "status": "proposed"
+    "status": "signed-off"
   }
 ]
