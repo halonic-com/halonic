@@ -48,7 +48,7 @@ export function runChecks(
     write("pnpm-workspace.yaml", readFileSync(join(realRoot, "pnpm-workspace.yaml"), "utf8"));
     write(
       "pnpm-lock.yaml",
-      "lockfileVersion: '9.0'\n\npackages:\n\n  a@1.0.0:\n    resolution: {integrity: sha512-AAAA}\n",
+      "lockfileVersion: '9.0'\n\npackages:\n\n  a@1.0.0:\n    resolution: {integrity: sha512-AAAA, tarball: https://registry.npmjs.org/a/-/a-1.0.0.tgz}\n",
     );
     const policy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
     write(
