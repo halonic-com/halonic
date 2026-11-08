@@ -1,2 +1,9 @@
-/** The npm name of this package. A placeholder export, so the empty package has an API to test. */
-export const packageName = "@halonicjs/yaml";
+// The public API of @halonicjs/yaml. Everything else in src/ is internal.
+export type { SourcePosition, YamlProblem, YamlProblemKind } from "./problem.ts";
+export {
+  defaultYamlLimits,
+  readYaml,
+  type YamlFile,
+  type YamlLimits,
+  type YamlPath,
+} from "./read.ts";
