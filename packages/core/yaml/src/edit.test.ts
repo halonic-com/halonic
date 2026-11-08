@@ -122,12 +122,20 @@ verifies("yaml.edit-preserve", () => {
 
   it("keeps the comment at the top of the file when it sets the whole document", () => {
     const result = edited(lines("# top", "", "a: 1 # c", "b: 2"), set([], { a: 1, c: 3 }));
-    expect(result).toEqual({ text: lines("# top", "", "a: 1", "c: 3"), layout: "reformatted" });
-    // Without a blank line the library hangs the comment on the first key or item.
-    expect(edited(lines("# top", "a: 1 # c", "b: 2"), set([], { a: 1, c: 3 })).text).toBe(
-      lines("# top", "a: 1", "c: 3"),
+    expect(result).toEqual({ text: lines("# top", "", "a: 1 # c", "c: 3"), layout: "kept" });
+    // A flow collection is rendered again; the top comment must survive that too,
+    // with or without a blank line under it.
+    const flow = { tools: ["c"], n: 1 };
+    expect(edited(lines("# top", "", "tools: [a, b]", "n: 1"), set([], flow))).toEqual({
+      text: lines("# top", "", "tools:", "  - c", "n: 1"),
+      layout: "reformatted",
+    });
+    expect(edited(lines("# top", "tools: [a, b]", "n: 1"), set([], flow)).text).toBe(
+      lines("# top", "tools:", "  - c", "n: 1"),
     );
-    expect(edited(lines("# top", "- x", "- y"), set([], ["z"])).text).toBe(lines("# top", "- z"));
+    expect(edited(lines("# top", "- [a, b]", "- y"), set([], [["z"]])).text).toBe(
+      lines("# top", "- - z"),
+    );
   });
 
   it("splices a whole-map set into key edits when no key goes away", () => {
@@ -138,7 +146,10 @@ verifies("yaml.edit-preserve", () => {
   it("keeps a byte order mark", () => {
     const text = "\uFEFFa: 1\nb: 2\n";
     expect(edited(text, set(["a"], 2))).toEqual({ text: "\uFEFFa: 2\nb: 2\n", layout: "kept" });
-    expect(edited(text, set(["c"], 3), del(["a"])).text).toBe("\uFEFFb: 2\nc: 3\n");
+    expect(edited(text, set(["c"], 3), del(["a"]))).toEqual({
+      text: "\uFEFFb: 2\nc: 3\n",
+      layout: "kept",
+    });
   });
 
   it("handles an edit inside a flow list", () => {
@@ -146,6 +157,47 @@ verifies("yaml.edit-preserve", () => {
     expect(result.layout).toBe("reformatted");
     expect(result.text).toContain("# tools");
     expect(dataOf(result.text)).toEqual({ tools: ["c", "b"] });
+  });
+});
+
+verifies("yaml.edit-preserve-entries", () => {
+  it("inserts above the comment over the item it goes before", () => {
+    const text = lines("steps:", "  # the check", "  - check");
+    expect(edited(text, insert(["steps", 0], "first"))).toEqual({
+      text: lines("steps:", "  - first", "  # the check", "  - check"),
+      layout: "kept",
+    });
+  });
+
+  it("deletes an entry with its trailing comment and keeps the comments above it", () => {
+    const text = lines("a: 1", "# about b", "b: 2 # gone", "c: 3");
+    expect(edited(text, del(["b"]))).toEqual({
+      text: lines("a: 1", "# about b", "c: 3"),
+      layout: "kept",
+    });
+  });
+
+  it("keeps sections one blank line apart after a delete", () => {
+    expect(edited("a: 1\n\nb: 2\n\nc: 3\n", del(["b"])).text).toBe("a: 1\n\nc: 3\n");
+  });
+
+  it("leaves [] or {} when the last entry goes", () => {
+    expect(edited(lines("steps:", "  - a", "n: 1"), del(["steps", 0])).text).toBe(
+      lines("steps: []", "n: 1"),
+    );
+    expect(edited(lines("# top", "a: 1"), del(["a"])).text).toBe(lines("# top", "{}"));
+  });
+
+  it("splices a whole-list set that changes the list's length", () => {
+    const text = lines("steps:", "  - a # first", "  - b");
+    expect(edited(text, set(["steps"], ["a", "b", "c"]))).toEqual({
+      text: lines("steps:", "  - a # first", "  - b", "  - c"),
+      layout: "kept",
+    });
+    expect(edited(text, set(["steps"], ["a"]))).toEqual({
+      text: lines("steps:", "  - a # first"),
+      layout: "kept",
+    });
   });
 });
 

@@ -4,6 +4,8 @@ import type { YamlEdit } from "./edit-data.ts";
 import type { YamlPath } from "./read.ts";
 import {
   addPair,
+  deleteEntry,
+  insertItem,
   insideFlow,
   nodeAt,
   type Parsed,
@@ -17,18 +19,27 @@ import {
  * key order, quoting and blank lines elsewhere stay byte for byte. Expects an
  * edit that `applyEditToData` accepted on this text's data.
  *
- * @returns the new text, or `undefined` for an edit or layout it doesn't
- *   handle yet (a `delete`, an `insert`, or an edit inside a flow collection)
+ * @returns the new text, or `undefined` for a layout it doesn't handle yet
+ *   (an edit inside a flow collection, for example)
  */
 export function spliceEdit(text: string, edit: YamlEdit): string | undefined {
   const parsed = parse(text);
   if (insideFlow(parsed, edit.path)) {
     return undefined;
   }
-  if (edit.kind !== "set") {
-    return undefined;
+  switch (edit.kind) {
+    case "set":
+      return spliceSet(parsed, edit.path, edit.value);
+    case "delete":
+      return nodeAt(parsed, edit.path) === undefined ? text : deleteEntry(parsed, edit.path);
+    case "insert":
+      return insertItem(
+        parsed,
+        edit.path.slice(0, -1),
+        edit.path[edit.path.length - 1] as number,
+        edit.value,
+      );
   }
-  return spliceSet(parsed, edit.path, edit.value);
 }
 
 /** Sets an existing value, or adds the first missing key with the maps under it. */
@@ -79,7 +90,6 @@ function setNode(
 /**
  * A whole-map set as key edits: changed keys are set (and diffed further),
  * new keys are added at the end, and keys the new map lacks are deleted.
- * A diff that needs a delete or an insert isn't spliced yet, so it falls back.
  */
 function mapChanges(
   path: YamlPath,

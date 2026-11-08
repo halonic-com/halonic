@@ -1,4 +1,4 @@
-import { deepEqual, unwrap } from "@halonicjs/std";
+import { unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import fc from "fast-check";
 import { expect, it, vi } from "vitest";
@@ -52,13 +52,15 @@ function valuesOf(data: unknown, path: YamlPath = []): Located[] {
   return [here];
 }
 
-/** A `set` that fits `data`: a new value somewhere in it, or a new key in one of its maps. */
+/** An edit that fits `data`: set, add, delete or insert somewhere in it. */
 function editFor(data: unknown): fc.Arbitrary<YamlEdit> {
   const located = valuesOf(data);
   const maps = located.filter((at) => isRecord(at.value));
+  const lists = located.filter((at) => Array.isArray(at.value));
   const inside = located.filter((at) => at.path.length > 0);
   const options: fc.Arbitrary<YamlEdit>[] = [
     fc.record({ kind: fc.constant("set"), path: pick(inside), value: plainData }),
+    fc.record({ kind: fc.constant("delete"), path: pick(inside) }),
   ];
   if (maps.length > 0) {
     const newKey = fc.tuple(fc.constantFrom(...maps), fc.string({ maxLength: 8 }));
@@ -72,19 +74,18 @@ function editFor(data: unknown): fc.Arbitrary<YamlEdit> {
       ),
     );
   }
+  if (lists.length > 0) {
+    options.push(
+      fc.constantFrom(...lists).chain((list) =>
+        fc.record({
+          kind: fc.constant("insert"),
+          path: fc.nat((list.value as unknown[]).length).map((index) => [...list.path, index]),
+          value: plainData,
+        }),
+      ),
+    );
+  }
   return fc.oneof(...options);
-}
-
-/**
- * True when a whole map is set over a map, or a list over a list. The diff
- * may then need a delete or an insert, which isn't spliced yet.
- */
-function mayNeedDeleteOrInsert(data: unknown, edit: YamlEdit): boolean {
-  const current = valuesOf(data).find((at) => deepEqual(at.path, edit.path))?.value;
-  const value = edit.kind === "set" ? edit.value : undefined;
-  const filledList = (it: unknown) => Array.isArray(it) && it.length > 0;
-  const filledMap = (it: unknown) => isRecord(it) && Object.keys(it).length > 0;
-  return (filledList(current) && filledList(value)) || (filledMap(current) && filledMap(value));
 }
 
 function pick(located: Located[]): fc.Arbitrary<YamlPath> {
@@ -106,7 +107,7 @@ function commentEveryLine(text: string): string {
 }
 
 verifies("yaml.edit", () => {
-  it("splices any fitting set into text that reads back as the edited data", () => {
+  it("splices any fitting edit into text that reads back as the edited data", () => {
     const fileAndEdit = fileData.chain((data) => fc.tuple(fc.constant(data), editFor(data)));
     fc.assert(
       fc.property(fileAndEdit, ([data, edit]) => {
@@ -114,11 +115,8 @@ verifies("yaml.edit", () => {
         const expected = unwrap(applyEditToData(data, edit));
         // The splicer itself, so a fallback can't hide a bug.
         const spliced = spliceEdit(text, edit);
-        if (spliced === undefined) {
-          expect(mayNeedDeleteOrInsert(data, edit)).toBe(true);
-          return;
-        }
-        expect(unwrap(readYaml(spliced)).data).toEqual(expected);
+        expect(spliced).toBeDefined();
+        expect(unwrap(readYaml(spliced ?? "")).data).toEqual(expected);
         expect(unwrap(editYaml(text, [edit])).layout).toBe("kept");
       }),
       { numRuns: 300 },
@@ -182,9 +180,9 @@ verifies("yaml.edit-preserve", () => {
         const edits: YamlEdit[] = [
           { kind: "set", path: ["first"], value: text },
           { kind: "set", path: [text, "x"], value: text },
-          { kind: "set", path: ["list", 0], value: text },
+          { kind: "insert", path: ["list", 0], value: text },
         ];
-        const expected = { first: text, list: [text], [text]: { x: text } };
+        const expected = { first: text, list: [text, "a"], [text]: { x: text } };
         for (const edit of edits) {
           const spliced = spliceEdit(file, edit) ?? "";
           const want = unwrap(applyEditToData(unwrap(readYaml(file)).data, edit));

@@ -66,26 +66,26 @@ save(edited.value.text);
 - `set` creates missing maps on the way (never lists). On a list it replaces
   an item that exists; use `insert` to add one. `set` on `[]` replaces the
   whole document.
-- `delete` removes a key or item. The last entry leaves `{}` or `[]`.
+- `delete` removes a key or item with its lines and its trailing comment. The
+  comments above it stay. The last entry leaves `{}` or `[]`.
 - `insert` adds a list item before the given index, or at the end for the
-  list's length.
+  list's length, above the comments over the item it goes before.
 - If any edit doesn't fit, nothing is applied and the problem names that edit.
 
 **Setting a whole map or list.** A `set` with a whole object changes only what
 differs: changed keys are set, new keys go at the end, and keys missing from
 the new value are deleted. Lists are compared item by item at the same index,
-so putting an item at the front of a list rewrites every item after it. To add
-or remove a list item, use `insert` or `delete`. A `set` of the whole document
+so putting an item at the front of a list rewrites every item after it and
+moves their comments. To add, remove or reorder items, use `insert` and
+`delete`: they keep the comments with their items. A `set` of the whole document
 (`[]`) keeps the comments at the top of the file.
 
 **Layout.** Every result is read back and must give the expected data. When
 the splice can't manage that, the edit falls back, and `layout` says how far:
 
-- `kept`: only the edited text changed. Today that covers every `set` outside
-  a flow collection such as `[a, b]`, except a whole-map or whole-list `set`
-  that removes keys or changes how many items a list has.
+- `kept`: only the edited text changed.
 - `reformatted`: the file was rendered again from the parsed document;
-  comments stay, spacing and some quoting may not. `delete`, `insert` and the
-  cases above land here for now.
+  comments stay, spacing and some quoting may not. Edits inside flow
+  collections such as `[a, b]` land here for now.
 - `rewritten`: the file was written from its data with `writeYamlFile`, and
   every comment is gone.
