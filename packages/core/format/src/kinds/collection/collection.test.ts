@@ -60,6 +60,19 @@ verifies("format.collection-file", () => {
     expect(summary(problemsOf("collection", text))).toEqual(["id invalid_format 1"]);
   });
 
+  it("refuses a ref to Halonic's own collections, whose names start with _", () => {
+    const text = collection(
+      "fields:",
+      "  supplier: { type: ref, collection: suppliers }",
+      "  token: { type: ref, collection: _tokens }",
+      "  setup: { type: ref, collection: _google_setups }",
+    );
+    expect(summary(problemsOf("collection", text))).toEqual([
+      "fields.token.collection invalid_format 5",
+      "fields.setup.collection invalid_format 6",
+    ]);
+  });
+
   it("refuses an unknown comparison in a view", () => {
     const text = collection(
       "fields:",
