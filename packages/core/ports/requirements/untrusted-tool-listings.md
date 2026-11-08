@@ -1,8 +1,8 @@
 # ports.untrusted-tool-listings
 
-- Status: draft
+- Status: active
 - Since: 0.1.0
-- Source: HAL-559, from the review of the MCP tools integration (HAL-504, HAL-517): a server the workspace chose writes the descriptions of the tools `listTools` returns, and `untrusted` fenced off only results. It becomes active when the engine proves the call-time and fence examples (HAL-803).
+- Source: HAL-559, from the review of the MCP tools integration (HAL-504, HAL-517): a server the workspace chose writes the descriptions of the tools `listTools` returns, and `untrusted` fenced off only results. Active since HAL-803, whose `toolForModel`, `toolResultForModel`, `checkToolCall` and `refusalStatusLine` in `@halonicjs/app` prove the call-time and fence examples. The engine must use them when it puts a turn together.
 
 The host shall treat every tool that a server lists, and that nothing Halonic reviewed declares, as written by an outsider. Such a tool is a _listed tool_. It is a tool that `IntegrationConnection.listTools` returns and the integration's declared `tools` don't name, or any tool that `ConnectorClient.listTools` returns for an `http` or `stdio` connector. Built-in `google` connectors are Halonic's own code and are not covered. The integration or connector shall not fence a listed tool's texts and has no way to mark them trusted, so every source gets the same fence and a hostile one can't opt out. The ports stay at version 1, because this adds no input or duty for integrations or connectors.
 

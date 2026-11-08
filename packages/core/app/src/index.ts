@@ -15,6 +15,7 @@ export {
 } from "./event-bus.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
+export { refusalStatusLine } from "./refusal-status.ts";
 export { lastTickKey, routineRunId } from "./routine-ids.ts";
 export {
   type DueFunction,
