@@ -1,0 +1,16 @@
+# A connector gives agents tools from an MCP server. This one is a local
+# program (stdio), so it counts as local and works under "local only".
+# No agent uses it yet, so tests and the demo stay offline. To try it, add
+# `connectors: [handbook-files]` to an agent and run the workflow from the CLI
+# (needs Node; npx downloads the server the first time).
+name: Handbook files
+description: Read-only access to docs/handbook through the MCP filesystem server.
+transport:
+  stdio:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "docs/handbook"]
+tools:
+  # Only these tools are offered; everything else the server lists is hidden.
+  allow: [read_text_file, list_directory, search_files]
+  # Tools listed here wait for a person to approve each call, e.g.:
+  # approve: [write_file]

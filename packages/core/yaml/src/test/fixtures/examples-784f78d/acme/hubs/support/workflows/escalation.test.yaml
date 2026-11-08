@@ -1,0 +1,14 @@
+workflow: escalation
+cases:
+  - name: a bug goes through triage (approved there), then the team hears about it
+    input: { message: "The export button crashes the app." }
+    mocks:
+      classifier: [bug]
+      writer:
+        - "Title: Export crashes\nSteps: click Export\nExpected: a file\nActual: crash"
+        - "Bug report on the export crash approved and filed. No customer reply needed."
+    events: [approve]
+    expect:
+      final: done
+      states: [triage, notify, done]
+      context: { note: "Bug report on the export crash approved and filed. No customer reply needed." }
