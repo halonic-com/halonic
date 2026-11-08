@@ -50,7 +50,8 @@ milliseconds as numbers, so every runtime can keep them as they are.
 - `RunHost.runRoutine`, `blockedRoutines` and `deployment` are host status
   and routine control. They become typed commands of the host RPC in phase
   4. The routine scheduler service in `core/app` starts routine runs through
-  `RunExecutor.start` with a trigger.
+  `RunExecutor.start` or `startAgent`, each with a trigger, so a routine
+  finds its own runs again whether it runs a workflow or one agent.
 - `RunHost.connectorTools` and `callConnectorTool` (connector tools for the
   chat panel, outside a run) wait for the `ConnectorReadService` and the
   outside-run gate of proposal 3. They come back as a new port then.

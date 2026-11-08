@@ -32,6 +32,12 @@ export interface StartAgentRequest {
   agentId: string;
   prompt: string;
   /**
+   * What started the run, as for a workflow run. A routine that runs one
+   * agent sets it, so the routine can find its own runs again (last run,
+   * overlap). The old local engine accepted it too.
+   */
+  trigger?: RunTrigger;
+  /**
    * As {@link StartRunRequest.runId}: repeating a start with the same id
    * starts nothing, and an id over 256 UTF-8 bytes is a `RangeError`.
    */
