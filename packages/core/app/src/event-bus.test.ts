@@ -65,6 +65,25 @@ describe("app.event-bus", () => {
     expect(() => bus.emit("closed", undefined)).toThrow(AggregateError);
   });
 
+  it("reports listener errors to onListenerError instead of throwing them", () => {
+    const reported: string[] = [];
+    const bus = new EventBus<TestEvents>((error, name) =>
+      reported.push(`${name}: ${(error as Error).message}`),
+    );
+    let reached = false;
+    for (const message of ["one", "two"]) {
+      bus.on("closed", () => {
+        throw new Error(message);
+      });
+    }
+    bus.on("closed", () => {
+      reached = true;
+    });
+    expect(() => bus.emit("closed", undefined)).not.toThrow();
+    expect(reached).toBe(true);
+    expect(reported).toEqual(["closed: one", "closed: two"]);
+  });
+
   it("calls a listener added during an event from the next event on", () => {
     const bus = new EventBus<TestEvents>();
     let late = 0;

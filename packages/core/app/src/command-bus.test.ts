@@ -19,6 +19,12 @@ describe("app.command-bus", () => {
     expect(await bus.execute("save", undefined)).toBe(3);
   });
 
+  it("lets a command without input leave the input out", async () => {
+    const bus = new CommandBus<TestCommands>();
+    bus.register("save", () => 3);
+    expect(await bus.execute("save")).toBe(3);
+  });
+
   it("rejects a command without a handler", async () => {
     const bus = new CommandBus<TestCommands>();
     expect(bus.has("save")).toBe(false);
@@ -50,10 +56,12 @@ describe("app.command-bus", () => {
     expect(await bus.execute("greet", "Ada")).toBe("second");
   });
 
-  it("drops every handler on clear", async () => {
+  it("drops every handler on close and refuses new ones", () => {
     const bus = new CommandBus<TestCommands>();
     bus.register("greet", () => "hi");
-    bus.clear();
+    bus.close();
     expect(bus.has("greet")).toBe(false);
+    expect(() => bus.register("save", () => 1)).toThrow(CommandError);
+    expect(bus.has("save")).toBe(false);
   });
 });

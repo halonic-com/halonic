@@ -41,6 +41,13 @@ describe("app.service-registry", () => {
     expect(registry.has(serviceKey("a"))).toBe(false);
   });
 
+  it("refuses a service provided after it was disposed", async () => {
+    const registry = new ServiceRegistry();
+    await registry.dispose();
+    expect(() => registry.provide(logKey, [])).toThrow(ServiceError);
+    expect(registry.has(logKey)).toBe(false);
+  });
+
   it("throws an AggregateError when several services fail to dispose", async () => {
     const registry = new ServiceRegistry();
     for (const name of ["a", "b"]) {

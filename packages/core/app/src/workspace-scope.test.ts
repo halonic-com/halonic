@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { CommandError, type CommandSpec } from "./command-bus.ts";
 import { serviceKey } from "./service-registry.ts";
-import { type AppEvents, WorkspaceScope } from "./workspace-scope.ts";
+import { type AppCommands, type AppEvents, WorkspaceScope } from "./workspace-scope.ts";
 
-interface TestCommands {
+interface TestCommands extends AppCommands {
   greet: CommandSpec<string, string>;
 }
 
-function openScope(location = "memory:demo") {
-  return new WorkspaceScope<TestCommands, AppEvents>(location);
+function openScope(location = "memory:demo", reported: unknown[] = []) {
+  return new WorkspaceScope<TestCommands, AppEvents>({
+    location,
+    onListenerError: (error) => reported.push(error),
+  });
 }
 
 describe("app.workspace-scope", () => {
@@ -33,6 +36,8 @@ describe("app.workspace-scope", () => {
     expect(scope.closed).toBe(true);
     expect(seen).toEqual(["closing memory:demo", "disposed"]);
     await expect(scope.commands.execute("greet", "Ada")).rejects.toThrow(CommandError);
+    expect(() => scope.commands.register("greet", () => "late")).toThrow(CommandError);
+    expect(() => scope.services.provide(serviceKey("late"), {})).toThrow();
   });
 
   it("closes once, however often close is called", async () => {
@@ -46,8 +51,9 @@ describe("app.workspace-scope", () => {
     expect([closing, disposed]).toEqual([1, 1]);
   });
 
-  it("still disposes services when a closing listener throws", async () => {
-    const scope = openScope();
+  it("reports a closing listener that throws and still disposes services", async () => {
+    const reported: unknown[] = [];
+    const scope = openScope("memory:demo", reported);
     let disposed = false;
     scope.events.on("workspace.closing", () => {
       throw new Error("listener failed");
@@ -57,7 +63,8 @@ describe("app.workspace-scope", () => {
         disposed = true;
       },
     });
-    await expect(scope.close()).rejects.toThrow("listener failed");
+    await scope.close();
     expect(disposed).toBe(true);
+    expect(reported).toEqual([new Error("listener failed")]);
   });
 });
