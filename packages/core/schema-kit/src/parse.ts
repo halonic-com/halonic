@@ -1,6 +1,6 @@
+import { err, ok, type Result } from "@halonicjs/std";
 import { findTooDeep } from "./depth.ts";
 import { fromZodIssue, type Issue } from "./issue.ts";
-import { err, ok, type Result } from "./result.ts";
 import type { Infer, Schema } from "./schema.ts";
 
 /**

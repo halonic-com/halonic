@@ -5,5 +5,4 @@ export { MAX_DEPTH } from "./depth.ts";
 export { formatPath, type Issue, type IssueCode, type Path, type PathSegment } from "./issue.ts";
 export { JSON_SCHEMA_DRAFT, type JsonSchema, type JsonValue, toJsonSchema } from "./json-schema.ts";
 export { parse } from "./parse.ts";
-export type { Err, Ok, Result } from "./result.ts";
 export type { Infer, InferInput, Schema } from "./schema.ts";

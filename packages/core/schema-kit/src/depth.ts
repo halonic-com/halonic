@@ -15,6 +15,9 @@ interface Pending {
 /**
  * Finds the first value nested deeper than `MAX_DEPTH`, without recursion,
  * and describes it as a `too_deep` issue at its path.
+ *
+ * It walks shared sub-objects once per reference, so `core/yaml` must keep
+ * its alias limit on: YAML aliases are the only way a file can share them.
  */
 export function findTooDeep(input: unknown): Issue | undefined {
   const pending: Pending[] = [{ value: input, path: [] }];
