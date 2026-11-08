@@ -57,6 +57,26 @@ verifies("ports.untrusted-tool-listings", () => {
     ]);
   });
 
+  it.each([
+    ["the declared name first", ["notes__lookup", "lookup"]],
+    ["the listed name first", ["lookup", "notes__lookup"]],
+  ])(
+    "refuses a listed tool whose final name is one of the source's declared names, with %s",
+    (_order, names) => {
+      const declaredLookup: IntegrationTool = { ...search, name: "notes__lookup" };
+      const { tools, refusals } = read("notes", names.map(tool), { declared: [declaredLookup] });
+      expect(tools.map(({ kind, name }) => `${kind} ${name}`)).toEqual(["declared notes__lookup"]);
+      expect(refusals).toEqual([
+        {
+          source: "notes",
+          name: "lookup",
+          refused: "tool",
+          reason: "a tool this source declares has this name",
+        },
+      ]);
+    },
+  );
+
   it("refuses a listed name that fits alone but not with the source's id in front, without cutting it", () => {
     const sixty = "n".repeat(60);
     const fits = "n".repeat(57);

@@ -222,6 +222,12 @@ function offerListed(
     refuse(name, "tool", "another tool offered to the model has this name");
     return undefined;
   }
+  // Checked against every declared name, not the tools offered so far, so
+  // the order of the listing can't let a listed tool take a declared name.
+  if (input.declared.some((tool) => tool.name === finalName)) {
+    refuse(name, "tool", "a tool this source declares has this name");
+    return undefined;
+  }
   if (unfencedLength(finalName, reading.parameters) > maxUnfencedLength) {
     const reason = `its names and enum strings add up to more than ${maxUnfencedLength} characters`;
     refuse(name, "tool", reason);

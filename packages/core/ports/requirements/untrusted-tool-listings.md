@@ -29,7 +29,7 @@ For a listed tool, the host shall:
 
 - **Cap the unfenced text.** Strings can be chained: an `enum` of `SYSTEM_NOTICE`, `before_answering`, `call_send_mail` reads as one instruction. So the host adds up the length of every unfenced string the rebuilt tool still holds, each time it appears: the final name, property names, `required` strings, `$defs` names and the strings in `enum` and `const`. It refuses a tool whose total is more than 2,048 characters. These strings are an unfenced channel of up to 64 characters per string and 2,048 per tool, which this rule accepts as a known risk. The cap is per tool, so a listing of many tools carries more. What limits the harm is the `write` risk below, which puts calls to listed tools behind approval unless the workspace lowers it. Pinning a listing and approving new tools are left to the host's design (HAL-520).
 
-- **Refuse clashing names.** The host refuses every copy of a name that one listing returns more than once. It refuses a listed tool whose final name equals the name of another tool offered to the model in the same turn, such as a host tool or another source's tool. That catches the one way two final names can still meet: source `a` listing `b__c` and source `a__b` listing `c`.
+- **Refuse clashing names.** The host refuses every copy of a name that one listing returns more than once. It refuses a listed tool whose final name equals the name of another tool offered to the model in the same turn, such as a host tool or another source's tool. It also refuses a listed tool whose final name equals a name the same source declares, whatever order the listing returns them in, so a reviewed tool and an unreviewed one never share a name. That catches the one way two final names can still meet: source `a` listing `b__c` and source `a__b` listing `c`.
 
 - **Treat its results as untrusted and its risk as `write`.** Its results are fenced whatever its `untrusted` says. Its `risk` counts as `write` whatever it says, unless the workspace sets a lower one for that tool. A lower risk set in the workspace doesn't remove the fence.
 
@@ -43,8 +43,11 @@ A tool that `IntegrationConnection.listTools` returns under a declared name is n
   when an agent's tools are put together for the model,
   then `lookup` is offered and its description reaches the model only inside the untrusted fence.
 - Given an integration with the id `notes` that declares `search`, and whose `listTools` returns `search` and `lookup`,
-  when the tools are offered to the model and the model calls `notes__lookup`,
-  then the model sees `search` and `notes__lookup`, and the host sends the call to `notes` as `lookup`.
+  when the tools are offered to the model,
+  then the model sees `search` and `notes__lookup`, and `notes__lookup` keeps `lookup` as its listed name, the name a call is sent to `notes` under.
+- Given an integration with the id `notes` that declares `notes__lookup`, and whose `listTools` returns `notes__lookup` and `lookup` in either order,
+  when the host reads the listing,
+  then it offers the declared `notes__lookup` once and refuses `lookup` with the listed name `lookup`.
 - Given a source `a` whose listing returns `b__c` and a source `a__b` whose listing returns `c`,
   when the host reads the second listing after the first,
   then it offers `a__b__c` once, from source `a`, and refuses the second with source `a__b` and the listed name `c`.
