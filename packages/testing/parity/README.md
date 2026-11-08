@@ -80,6 +80,17 @@ Errors the old loader found between files (an unknown agent, a workflow rule)
 are kept with the file for the report; the new loader checks those in
 phase 2, so only the file's own result is compared now.
 
+`format`'s `parity.test.ts` runs it, because this package can't depend on
+`format` (`format` already uses the fixtures):
+
+```ts
+const report = judge(
+  fileChecks(fixtures).map((file) => compareFile(file, parseFile(file.kind, file.text))),
+  readAllowedDifferences(allowedDifferencesFile),
+);
+// Passes only when report.unexplained and report.stale are both empty.
+```
+
 ## Allowed differences
 
 `allowed-differences.json` is the one file that lists where the new repo may
@@ -91,6 +102,14 @@ behave differently from the old one. Each entry has:
 - `area`, `old`, `new`, `why`: what it is about, what `784f78d` did, what the
   new repo does, and why that is right, in plain words
 - `status`: `proposed` until the maintainer signs it off in review, then `signed-off`
+- `fixtures`, only where the difference shows in the parity fixtures: each
+  fixture file (`case` and `file`) with its `old` and `new` result written out
+  in full, as the compare sees them. The compare allows exactly that
+  difference. An entry whose file no longer differs, or differs in another
+  way, is stale and fails the compare
+
+The compare code, `src/allowed-differences.ts` and `allowed-differences.json`
+are guarded: a change could make parity pass by comparing less.
 
 `readAllowedDifferences` refuses a malformed entry, an unknown field or a
 repeated id, and names the entry. A new entry always starts as `proposed`.

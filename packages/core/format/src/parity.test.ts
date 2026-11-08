@@ -1,107 +1,57 @@
 // Acceptance: every file the old loader read in Julian's parity fixtures
 // (packages/testing/parity), parsed on its own with parseFile, must give the
-// recorded pass or fail, issue paths, codes, lines and columns. Checks that
-// span files (unknown references, workflow rules, routine triggers) are the
-// phase 2 loader's and are not compared here.
-import { readFileSync } from "node:fs";
+// recorded pass or fail, issue paths, codes, lines and columns. The compare
+// and the allowed differences live in testing-parity (plan 9.3 point 7);
+// this file only feeds it parseFile. Checks that span files (unknown
+// references, workflow rules, routine triggers) are the phase 2 loader's.
 import { join } from "node:path";
 import { parse as parseWith } from "@halonicjs/schema-kit";
 import {
-  type FileRecording,
-  loadCases,
-  type ParityCase,
-  type Recording,
+  allowedDifferencesFile,
+  compareFile,
+  type FileCheck,
+  fileChecks,
+  judge,
+  readAllowedDifferences,
 } from "@halonicjs/testing-parity";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type FileProblem, fileKinds, isKindName, type KindName, parseFile } from "./index.ts";
+import { fileKinds, isKindName, type KindName, parseFile } from "./index.ts";
 import { prepare } from "./parse-file.ts";
 import { readSource } from "./source.ts";
 import { fileSchemas as oldSchemas } from "./test/old-schemas.zod.ts";
 
 const fixtures = join(import.meta.dirname, "..", "..", "..", "testing", "parity", "fixtures");
 
-/** Where the new code means to differ from a recording, and the requirement that says why. */
-const differences: Readonly<Record<string, string>> = {
-  "routine/mail-every-15m": "format.routine-mail-interval",
-  "skill/yaml-syntax": "format.skill-file",
-  "deployments/unknown-default": "format.deployments-file",
-};
-
-interface FileCase {
-  readonly name: string;
-  readonly caseId: string;
+interface FileCase extends FileCheck {
   readonly kind: KindName;
-  readonly text: string;
-  readonly id: string | undefined;
-  readonly recorded: FileRecording;
-  readonly diagnostics: Recording["diagnostics"];
-}
-
-function textOf(parityCase: ParityCase, file: string): string {
-  const own = parityCase.files.includes(file);
-  const folder = own ? join(parityCase.folder, "files") : join(fixtures, "base", "files");
-  return readFileSync(join(folder, file), "utf8");
-}
-
-/** The id the old loader gave a file from its place (784f78d: collect, the hub loop, collectSkills). */
-function placeIdOf(kind: KindName, file: string): string | undefined {
-  const parts = file.split("/");
-  const name = parts.at(-1) ?? "";
-  if (kind === "hub" || kind === "skill") {
-    return parts.at(-2);
-  }
-  if (
-    kind === "workspace" ||
-    kind === "deployments" ||
-    kind === "models" ||
-    kind === "workflowTest"
-  ) {
-    return undefined;
-  }
-  return name.replace(/(\.(agent|workflow|flow|test|routine|connector))?\.ya?ml$/, "");
 }
 
 function fileCases(): FileCase[] {
-  const found: FileCase[] = [];
-  for (const parityCase of loadCases(fixtures)) {
-    const recording = JSON.parse(
-      readFileSync(join(parityCase.folder, "recorded.json"), "utf8"),
-    ) as Recording;
-    for (const recorded of recording.files) {
-      const kind = recorded.schema ?? parityCase.kind;
-      if (!recorded.read || !isKindName(kind)) {
-        continue;
-      }
-      found.push({
-        name: `${parityCase.id}: ${recorded.file}`,
-        caseId: parityCase.id,
-        kind,
-        text: textOf(parityCase, recorded.file),
-        id: placeIdOf(kind, recorded.file),
-        recorded,
-        diagnostics: recording.diagnostics,
-      });
+  return fileChecks(fixtures).map((check) => {
+    const kind = check.kind;
+    if (!isKindName(kind)) {
+      throw new Error(`${check.name}: no file kind "${kind}"`);
     }
-  }
-  return found;
+    return { ...check, kind };
+  });
 }
 
 function parse(file: FileCase) {
   return parseFile(file.kind, file.text, file.id === undefined ? {} : { id: file.id });
 }
 
-/** Path, code and position of each schema problem; skills had no line before, so theirs leave it out. */
-function shapeOf(
-  problem: { path: readonly (string | number)[]; code: string; line?: number; col?: number },
-  kind: KindName,
-) {
-  const shape = { path: problem.path, code: problem.code };
-  return kind === "skill" ? shape : { ...shape, line: problem.line, col: problem.col };
-}
-
 const files = fileCases();
-const compared = files.filter((file) => differences[file.caseId] === undefined);
+const entries = readAllowedDifferences(allowedDifferencesFile);
+const report = judge(
+  files.map((file) => compareFile(file, parse(file))),
+  entries,
+);
+/** The cases an allowed difference names: the new code means to differ there. */
+const differing = new Set(
+  entries.flatMap((entry) => (entry.fixtures ?? []).map((fixture) => fixture.case)),
+);
+const compared = files.filter((file) => !differing.has(file.caseId));
 
 // The old app had no integration sheet, so there is nothing to compare it with.
 type ComparedKind = Exclude<KindName, "skill" | "integration">;
@@ -164,29 +114,14 @@ verifies("format.parity-fixtures", () => {
     expect(files.length).toBeGreaterThan(150);
   });
 
-  it.each(compared)("matches the recording for $name", (file) => {
-    const parsed = parse(file);
-    const { recorded } = file;
-    if (recorded.schema === null) {
-      const yamlError = file.diagnostics.find(
-        (diagnostic) =>
-          diagnostic.path === recorded.flatPath && diagnostic.message.startsWith("YAML:"),
-      );
-      expect(parsed.ok).toBe(false);
-      const problems: FileProblem[] = parsed.ok ? [] : parsed.error;
-      expect(problems.map((problem) => [problem.source, problem.line, problem.col])).toEqual([
-        ["syntax", yamlError?.line, yamlError?.col],
-      ]);
-      return;
-    }
-    if (recorded.issues.length === 0) {
-      expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
-      return;
-    }
-    expect(parsed.ok).toBe(false);
-    const problems = parsed.ok ? [] : parsed.error;
-    expect(problems.map((problem) => shapeOf(problem, file.kind))).toEqual(
-      recorded.issues.map((issue) => shapeOf(issue, file.kind)),
+  it("has no difference that isn't allowed, and no stale allowed difference", () => {
+    expect(report.unexplained.map((result) => [result.name, result.old, result.new])).toEqual([]);
+    expect(report.stale).toEqual([]);
+  });
+
+  it.each(report.results)("matches the recording for $name", (result) => {
+    expect(result.verdict, JSON.stringify({ old: result.old, new: result.new })).not.toBe(
+      "different",
     );
   });
 
@@ -252,13 +187,8 @@ verifies("format.parity-defaults", () => {
 });
 
 verifies("format.parity-fixtures", () => {
-  it("lists differences only for cases that exist", () => {
-    for (const caseId of Object.keys(differences)) {
-      expect(
-        files.some((file) => file.caseId === caseId),
-        caseId,
-      ).toBe(true);
-    }
+  it("allows the six files the format entries name", () => {
+    expect(report.results.filter((result) => result.verdict === "allowed").length).toBe(6);
   });
 
   it("passes a mail interval of 15m, which the old code refused (format.routine-mail-interval)", () => {

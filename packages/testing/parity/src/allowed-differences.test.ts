@@ -98,6 +98,13 @@ verifies("parity.allowed-differences-checked", () => {
       "contracts.blob-store",
       "contracts.run-store",
       "schema-kit.nesting-limit",
+      "app.workspace-save",
+      "app.workspace-undo",
+      "app.workspace-save",
+      "format.routine-mail-interval",
+      "format.deployments-file",
+      "format.skill-file",
+      "format.skill-file",
     ]);
   });
 

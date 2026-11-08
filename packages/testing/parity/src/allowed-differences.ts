@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { type AllowedFixture, readAllowedFixtures } from "./compare/allowed-fixtures.ts";
 
 /** The statuses an allowed difference can have, in order. */
 export const differenceStatuses = ["proposed", "signed-off"] as const;
@@ -20,12 +22,22 @@ export interface AllowedDifference {
   /** Why the new behaviour is right. */
   readonly why: string;
   readonly status: DifferenceStatus;
+  /**
+   * The parity fixture files this difference shows in, each with its old and
+   * new result in full. Left out when the fixtures don't reach it.
+   */
+  readonly fixtures?: readonly AllowedFixture[];
 }
+
+/** The package's own allowed-differences file. */
+export const allowedDifferencesFile = fileURLToPath(
+  new URL("../allowed-differences.json", import.meta.url),
+);
 
 const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** A requirement ID: the package's short name, a dot, and the requirement's kebab-case name. */
 const requirementPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const fields = ["id", "requirement", "area", "old", "new", "why", "status"] as const;
+const fields = ["id", "requirement", "area", "old", "new", "why", "status", "fixtures"] as const;
 
 function text(entry: Record<string, unknown>, field: string, where: string): string {
   const value = entry[field];
@@ -58,7 +70,7 @@ function readEntry(raw: unknown, where: string): AllowedDifference {
       `${where}: unknown status "${status}" (one of ${differenceStatuses.join(", ")})`,
     );
   }
-  return {
+  const difference: AllowedDifference = {
     id,
     requirement,
     area: text(entry, "area", where),
@@ -67,6 +79,9 @@ function readEntry(raw: unknown, where: string): AllowedDifference {
     why: text(entry, "why", where),
     status: status as DifferenceStatus,
   };
+  return entry["fixtures"] === undefined
+    ? difference
+    : { ...difference, fixtures: readAllowedFixtures(entry["fixtures"], where) };
 }
 
 /**
@@ -79,12 +94,20 @@ export function parseAllowedDifferences(raw: unknown): AllowedDifference[] {
     throw new Error("allowed differences: the file must hold a list");
   }
   const seen = new Set<string>();
+  const seenFixtures = new Set<string>();
   return raw.map((item, index) => {
     const difference = readEntry(item, `allowed difference ${index + 1}`);
     if (seen.has(difference.id)) {
       throw new Error(`allowed difference ${index + 1}: id "${difference.id}" is used twice`);
     }
     seen.add(difference.id);
+    for (const fixture of difference.fixtures ?? []) {
+      const name = `${fixture.case}: ${fixture.file}`;
+      if (seenFixtures.has(name)) {
+        throw new Error(`allowed difference ${index + 1}: fixture "${name}" is listed twice`);
+      }
+      seenFixtures.add(name);
+    }
     return difference;
   });
 }

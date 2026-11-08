@@ -34,5 +34,262 @@
     "new": "parse first walks the input without recursion and, if it is nested more than 256 keys and indexes deep (MAX_DEPTH) or contains itself, returns one too_deep issue at the path of the first value past the limit, without running the schema. Up to 256 levels it gives the same verdict as plain Zod.",
     "why": "A file must never crash the check, and a value that contains itself is never a valid workspace file. Real workspace files are nowhere near 256 levels deep (the old guard schema nested 200 levels still passes), so no file that loaded before is refused now. It is the only schema-kit difference that remains on real Zod; see also schema-kit.old-schema-parity.",
     "status": "signed-off"
+  },
+  {
+    "id": "save-keeps-edits-made-during-it",
+    "requirement": "app.workspace-save",
+    "area": "app kernel: save",
+    "old": "784f78d packages/core/app/src/studio.ts:577-599: Studio.save() set pending to {} after writing, so a change made to a file while the save ran was lost.",
+    "new": "Only the changes that were written are cleared. A file changed during the save stays unsaved with its new text. A failed write still leaves every change unsaved.",
+    "why": "Losing an edit silently is data loss. Signed off by Liam (CTO) on HAL-117, comment eab55441; only a bug fix to users, so not for HAL-58.",
+    "status": "signed-off"
+  },
+  {
+    "id": "undo-past-a-save-gives-unsaved-text",
+    "requirement": "app.workspace-undo",
+    "area": "app kernel: undo after a save",
+    "old": "784f78d packages/core/app/src/studio.ts:535-599: an undo step restored the older parsed workspace and unsaved map but left the saved files as they were, so the model and the files disagreed and nothing showed as unsaved.",
+    "new": "Undoing past a save makes the file read its text from before the change and marks it unsaved. A saved new file comes back as an unsaved delete, a saved delete as the old file, unsaved. Redo is the mirror.",
+    "why": "The model and the files must agree; this is how editors such as VS Code undo past a save. Signed off by Liam (CTO) on HAL-117, comment 0b30ec44.",
+    "status": "signed-off"
+  },
+  {
+    "id": "second-save-waits-empty-save-does-nothing",
+    "requirement": "app.workspace-save",
+    "area": "app kernel: save twice, or with nothing to save",
+    "old": "784f78d packages/core/app/src/studio.ts:577-599: two saves at once both wrote every file and both finished; a save with nothing unsaved still ran and reported \"Saved 0 files\".",
+    "new": "A save that starts while another runs waits, then writes only what is still unsaved. A save with nothing unsaved writes nothing and sends no events.",
+    "why": "Writing every file twice, or reporting an empty save, is noise and a race. Signed off by Liam (CTO) on HAL-117, comment 0b30ec44.",
+    "status": "signed-off"
+  },
+  {
+    "id": "routine-mail-every-two-digits",
+    "requirement": "format.routine-mail-interval",
+    "area": "routine files: mail interval",
+    "old": "784f78d packages/core/schema/src/index.ts: the pattern /^[1-9]d*(m|h|d)$/ missed a backslash, so every interval of two or more digits failed with invalid_format at trigger.mail.every.",
+    "new": "Any whole number from 1 followed by m, h or d passes. This is the known 15m bug the plan names (9.3 points 4 and 7.3).",
+    "why": "The old pattern missed a backslash: the known 15m bug the approved plan names as an allowed difference (9.3 points 4 and 7.3). Signed off by Liam (CTO) on HAL-873, comment b803700b; not for HAL-58.",
+    "status": "signed-off",
+    "fixtures": [
+      {
+        "case": "routine/mail-every-15m",
+        "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "trigger",
+                "mail",
+                "every"
+              ],
+              "code": "invalid_format",
+              "line": 7,
+              "col": 12
+            }
+          ]
+        },
+        "new": {
+          "status": "pass",
+          "problems": []
+        }
+      }
+    ]
+  },
+  {
+    "id": "deployments-default-checked-in-the-file",
+    "requirement": "format.deployments-file",
+    "area": "deployments file: default deployment",
+    "old": "784f78d: the loader checked the default deployment after loading, as an error between files with no line (\"The default deployment ... is not listed\"); the file's own schema passed.",
+    "new": "The deployments file itself fails, with default-deployment-not-listed at default, line 1. The workspace still fails, as before.",
+    "why": "The check needs only the deployments file, so it belongs to the file kind, where it gets a line. The workspace fails as before. Signed off by Liam (CTO) on HAL-873, comment b803700b; not for HAL-58.",
+    "status": "signed-off",
+    "fixtures": [
+      {
+        "case": "deployments/unknown-default",
+        "file": "deployments.yaml",
+        "old": {
+          "status": "pass",
+          "problems": []
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "default"
+              ],
+              "code": "default-deployment-not-listed",
+              "line": 1,
+              "col": 10
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "skill-problems-have-lines",
+    "requirement": "format.skill-file",
+    "area": "skill files: positions",
+    "old": "784f78d packages/core/config/src/workspace.ts parseSkillMarkdown: skill problems had a path and a code but no line or column.",
+    "new": "The same path and code, with the line and column in the file (line 1 when there is no front matter).",
+    "why": "Every problem in the new format has a line and a column, so an editor can always point at it. Same path and code as before. Signed off by Liam (CTO) on HAL-873, comment b803700b; not for HAL-58.",
+    "status": "signed-off",
+    "fixtures": [
+      {
+        "case": "skill/missing-description",
+        "file": "library/skills/plain-words/SKILL.md",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "description"
+              ],
+              "code": "invalid_type",
+              "line": null,
+              "col": null
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "description"
+              ],
+              "code": "invalid_type",
+              "line": 2,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "skill/no-front-matter",
+        "file": "library/skills/plain-words/SKILL.md",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "name"
+              ],
+              "code": "invalid_type",
+              "line": null,
+              "col": null
+            },
+            {
+              "path": [
+                "description"
+              ],
+              "code": "invalid_type",
+              "line": null,
+              "col": null
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "name"
+              ],
+              "code": "invalid_type",
+              "line": 1,
+              "col": 1
+            },
+            {
+              "path": [
+                "description"
+              ],
+              "code": "invalid_type",
+              "line": 1,
+              "col": 1
+            }
+          ]
+        }
+      },
+      {
+        "case": "skill/wrong-type",
+        "file": "library/skills/plain-words/SKILL.md",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "name"
+              ],
+              "code": "invalid_type",
+              "line": null,
+              "col": null
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "name"
+              ],
+              "code": "invalid_type",
+              "line": 2,
+              "col": 7
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "skill-broken-yaml-is-a-yaml-problem",
+    "requirement": "format.skill-file",
+    "area": "skill files: broken front matter",
+    "old": "784f78d parseSkillMarkdown: front matter that wasn't valid YAML was read as empty, so the skill failed for a missing name and description, with no line.",
+    "new": "One YAML syntax problem, at the line where the YAML breaks (line 3 in the fixture). The file still fails.",
+    "why": "The old loader hid the YAML error and blamed missing fields. The file still fails, now with the real cause and its line. Signed off by Liam (CTO) on HAL-873, comment b803700b; not for HAL-58.",
+    "status": "signed-off",
+    "fixtures": [
+      {
+        "case": "skill/yaml-syntax",
+        "file": "library/skills/plain-words/SKILL.md",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "name"
+              ],
+              "code": "invalid_type",
+              "line": null,
+              "col": null
+            },
+            {
+              "path": [
+                "description"
+              ],
+              "code": "invalid_type",
+              "line": null,
+              "col": null
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [],
+              "code": "syntax",
+              "line": 3,
+              "col": 1
+            }
+          ]
+        }
+      }
+    ]
   }
 ]

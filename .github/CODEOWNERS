@@ -29,3 +29,9 @@
 /tooling/check/src/cli/leaks.ts @halonic-com/maintainers
 /tooling/check/leak-allow.txt @halonic-com/maintainers
 /tooling/check/hooks/ @halonic-com/maintainers
+
+# The parity compare and its allowed differences (plan 9.3 point 7.3): a
+# change could make parity pass by comparing less.
+/packages/testing/parity/src/compare/ @halonic-com/maintainers
+/packages/testing/parity/src/allowed-differences.ts @halonic-com/maintainers
+/packages/testing/parity/allowed-differences.json @halonic-com/maintainers

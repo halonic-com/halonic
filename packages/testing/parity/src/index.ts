@@ -1,5 +1,6 @@
 export {
   type AllowedDifference,
+  allowedDifferencesFile,
   type DifferenceStatus,
   differenceStatuses,
   parseAllowedDifferences,
@@ -14,6 +15,7 @@ export {
   type ParityCase,
   readCase,
 } from "./cases.ts";
+export type { AllowedFixture } from "./compare/allowed-fixtures.ts";
 export {
   type Comparison,
   compareFile,
@@ -23,6 +25,13 @@ export {
   type Side,
 } from "./compare/compare.ts";
 export { type FileCheck, fileChecks, placeIdOf } from "./compare/file-checks.ts";
+export {
+  type Judged,
+  judge,
+  type ParityReport,
+  type StaleFixture,
+  type Verdict,
+} from "./compare/judge.ts";
 export { composeWorkspace } from "./compose.ts";
 export { cloneProblems, oldEnvironment, oldTsx, referenceHash } from "./old-repo.ts";
 export {
