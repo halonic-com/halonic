@@ -108,6 +108,7 @@ describe("yaml.round-trip on the parity fixtures", () => {
   });
 
   it.each(brokenCases)("gives $name a syntax problem on line $line", ({ file, line }) => {
+    expect(line).toBeDefined();
     const result = readYaml(readFileSync(file, "utf8"));
     expect(result.ok).toBe(false);
     if (!result.ok) {
