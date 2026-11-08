@@ -30,6 +30,30 @@ export const unsafeDefinitionPaths: readonly string[] = [
   "a\u0000b.yaml",
 ];
 
+/**
+ * Private paths every method must refuse with a `RangeError`, and `list()`
+ * must leave out (port doc, `ports.definition-store-private-entries`): a
+ * segment that is `.git`, `.studio`, `.env`, `.envrc` or `.env.*` once the
+ * code points HFS+ ignores, case and trailing dots and spaces are set aside,
+ * or one with a `:` or a `~` followed by a digit.
+ */
+export const privateDefinitionPaths: readonly string[] = [
+  ".git/config",
+  "hubs/.GIT/config",
+  ".g\u200Cit/config",
+  ".studio/trust.json",
+  ".env",
+  ".env.local",
+  ".env. ",
+  ".envrc",
+  "hubs/a/.Env.Production",
+  "GIT~1/config",
+  "ENV~1.LOC",
+  "GI3F2A~1/config",
+  ".env::$DATA",
+  ".git::$INDEX_ALLOCATION/config",
+];
+
 const workspace: DefinitionFiles = {
   "workspace.yaml": "id: acme\n",
   "hubs/a/hub.yaml": "id: a\n",
@@ -90,6 +114,33 @@ export function definitionSourceContract(name: string, make: MakeDefinitionSourc
       });
     });
   });
+
+  // Symbolic links, junctions and other reparse points are private too, but
+  // only an adapter over a real folder can hold one. Its own tests cover
+  // them, since this suite builds stores from text files only.
+  verifies("ports.definition-store-private-entries", () => {
+    describe(`DefinitionSource private entries: ${name}`, () => {
+      it("refuses to read or list a private path with a RangeError", async () => {
+        const source = await make(workspace);
+        for (const path of privateDefinitionPaths) {
+          await expect(source.read(path), path).rejects.toThrow(RangeError);
+          await expect(source.list(path), path).rejects.toThrow(RangeError);
+        }
+      });
+
+      it("leaves private entries out of a listing", async () => {
+        const source = await make({
+          ".studio/trust.json": "{}",
+          ".env": "A=1",
+          "hubs/a/.git/config": "[core]",
+          "hubs/a/hub.yaml": "id: a\n",
+          "workflows/a.yaml": "id: a\n",
+        });
+        expect(await source.list()).toEqual(["hubs/a/hub.yaml", "workflows/a.yaml"]);
+        expect(await source.list("hubs/a")).toEqual(["hubs/a/hub.yaml"]);
+      });
+    });
+  });
 }
 
 /** The whole {@link DefinitionStore} port: the read side, plus writing and removing. */
@@ -100,6 +151,21 @@ export function definitionStoreContract(name: string, make: MakeDefinitionStore)
     describe(`DefinitionStore contract: ${name}`, () => {
       writeCases(make);
       unsafeWriteCases(make);
+    });
+  });
+
+  verifies("ports.definition-store-private-entries", () => {
+    describe(`DefinitionStore private entries: ${name}`, () => {
+      it("refuses to write or remove a private path, and changes nothing", async () => {
+        const store = await make({ "a.yaml": "1", ".env": "A=1" });
+        const before = await store.version();
+        for (const path of privateDefinitionPaths) {
+          await expect(store.write(path, "x"), path).rejects.toThrow(RangeError);
+          await expect(store.remove(path), path).rejects.toThrow(RangeError);
+        }
+        expect(await store.list()).toEqual(["a.yaml"]);
+        expect(await store.version()).toBe(before);
+      });
     });
   });
 }

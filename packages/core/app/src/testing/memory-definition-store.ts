@@ -5,7 +5,8 @@ import type { DefinitionStore } from "@halonicjs/ports";
  * hook to make a write fail and a log of what was written. A deliberate
  * fake: core may not use adapters, not even in tests, so the memory adapter
  * is out of reach. It passes the `DefinitionStore` contract suite, so it
- * keeps the port's rules, unsafe paths included.
+ * keeps the port's rules, unsafe and private paths included. Like a folder,
+ * it may start with private entries, but it never serves or lists them.
  */
 export class TestDefinitionStore implements DefinitionStore {
   readonly location = "memory:test";
@@ -25,7 +26,9 @@ export class TestDefinitionStore implements DefinitionStore {
       checkPath(dir);
     }
     const prefix = dir === undefined ? "" : `${dir}/`;
-    return [...this.files.keys()].filter((path) => path.startsWith(prefix)).sort();
+    return [...this.files.keys()]
+      .filter((path) => path.startsWith(prefix) && !isPrivatePath(path))
+      .sort();
   }
 
   async read(path: string): Promise<string | null> {
@@ -61,7 +64,8 @@ export class TestDefinitionStore implements DefinitionStore {
 
 /**
  * Refuses a path the `DefinitionSource` port calls unsafe: absolute, with a
- * `.`, `..` or empty segment, or with a backslash or NUL.
+ * `.`, `..` or empty segment, or with a backslash or NUL. Refuses a private
+ * path too.
  *
  * @throws RangeError naming the path
  */
@@ -74,4 +78,24 @@ function checkPath(path: string): void {
   if (unsafe) {
     throw new RangeError(`Unsafe workspace path ${JSON.stringify(path)}.`);
   }
+  if (isPrivatePath(path)) {
+    throw new RangeError(`Private workspace path ${JSON.stringify(path)}.`);
+  }
+}
+
+/** Code points HFS+ ignores in a name, as in git's `next_hfs_char`. */
+const hfsIgnored = /[\u200C-\u200F\u202A-\u202E\u206A-\u206F\uFEFF]/gu;
+
+/** Whether a path has a segment the port calls private (see the port doc). */
+function isPrivatePath(path: string): boolean {
+  return path.split("/").some((segment) => {
+    if (segment.includes(":") || /~\d/u.test(segment)) {
+      return true;
+    }
+    const name = segment
+      .replace(hfsIgnored, "")
+      .toLowerCase()
+      .replace(/[. ]+$/u, "");
+    return [".git", ".studio", ".env", ".envrc"].includes(name) || name.startsWith(".env.");
+  });
 }

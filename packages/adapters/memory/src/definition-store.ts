@@ -1,10 +1,12 @@
 import type { DefinitionStore } from "@halonicjs/ports";
-import { checkWorkspacePath } from "./paths.ts";
+import { checkPublicWorkspacePath, checkWorkspacePath, isPrivatePath } from "./paths.ts";
 import { sha256Hex } from "./sha256.ts";
 
 /**
  * Workspace files in a map: for tests, the browser demo and the parity
- * harness. Paths are checked like every other store's (see the port).
+ * harness. Paths are checked like every other store's (see the port). It may
+ * start with private entries, such as `.env`, as a folder can hold them, but
+ * it never serves or lists them.
  */
 export class MemoryDefinitionStore implements DefinitionStore {
   readonly location: string;
@@ -24,25 +26,26 @@ export class MemoryDefinitionStore implements DefinitionStore {
   }
 
   async list(dir?: string): Promise<string[]> {
+    const paths = [...this.#files.keys()].filter((path) => !isPrivatePath(path));
     if (dir === undefined) {
-      return [...this.#files.keys()].sort();
+      return paths.sort();
     }
-    checkWorkspacePath(dir);
-    return [...this.#files.keys()].filter((path) => path.startsWith(`${dir}/`)).sort();
+    checkPublicWorkspacePath(dir);
+    return paths.filter((path) => path.startsWith(`${dir}/`)).sort();
   }
 
   async read(path: string): Promise<string | null> {
-    checkWorkspacePath(path);
+    checkPublicWorkspacePath(path);
     return this.#files.get(path) ?? null;
   }
 
   async write(path: string, content: string): Promise<void> {
-    checkWorkspacePath(path);
+    checkPublicWorkspacePath(path);
     this.#files.set(path, content);
   }
 
   async remove(path: string): Promise<void> {
-    checkWorkspacePath(path);
+    checkPublicWorkspacePath(path);
     this.#files.delete(path);
   }
 

@@ -14,6 +14,13 @@ verifies("memory.definition-store", () => {
     expect(() => new MemoryDefinitionStore({ "../x.yaml": "x" })).toThrow(RangeError);
   });
 
+  it("may start with private entries, but never serves or lists them", async () => {
+    const store = new MemoryDefinitionStore({ ".env": "A=1", "a.yaml": "1" });
+    expect(await store.list()).toEqual(["a.yaml"]);
+    await expect(store.read(".env")).rejects.toThrow(RangeError);
+    expect(store.snapshot()).toEqual({ ".env": "A=1", "a.yaml": "1" });
+  });
+
   it("gives a version of sha256: and 16 hex characters that depends only on the files", async () => {
     const a = new MemoryDefinitionStore({ "a.yaml": "1", "b.yaml": "2" });
     const b = new MemoryDefinitionStore({ "b.yaml": "2", "a.yaml": "1" });
