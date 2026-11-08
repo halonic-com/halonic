@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type IntegrationSheet, integrationPolicy } from "../../index.ts";
-import { parsedValue, yaml } from "../../test/parse.ts";
+import { parsedValue, yaml } from "../../test/parse.spec.ts";
 
 function fixture(name: string): IntegrationSheet {
   return parsedValue(
