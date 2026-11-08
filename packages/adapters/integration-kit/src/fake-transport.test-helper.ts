@@ -1,5 +1,8 @@
 import type { HttpClient, Secrets, TokenStore } from "@halonicjs/ports";
+import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
 import type { IntegrationPolicy } from "./policy.ts";
+import { IntegrationRefusedError, type RefusalCode } from "./refused.ts";
+import { RequestLog } from "./request-log.ts";
 
 /** A request as the fake transport saw it, with the headers and body the kit actually sent. */
 export interface SentRequest {
@@ -69,4 +72,32 @@ export const policy: IntegrationPolicy = {
 
 export function redirect(status: number, location: string): Response {
   return new Response(null, { status, headers: { location } });
+}
+
+/** The limited client over a fake transport, with a clock that ticks once per reading. */
+export function client(answer?: Parameters<typeof fakeTransport>[0], limits?: RequestLimits) {
+  const { transport, sent } = fakeTransport(answer);
+  const log = new RequestLog();
+  let clock = 0;
+  const http = createLimitedHttpClient({
+    policy,
+    transport,
+    secrets,
+    log,
+    now: () => clock++,
+    ...(limits ? { limits } : {}),
+  });
+  return { http, sent, log };
+}
+
+/** The refusal code a promise rejects with; throws when it settles any other way. */
+export async function refusal(promise: Promise<unknown>): Promise<RefusalCode> {
+  const error = await promise.then(
+    () => undefined,
+    (thrown: unknown) => thrown,
+  );
+  if (!(error instanceof IntegrationRefusedError)) {
+    throw new Error(`expected the kit to refuse, but it ended with ${String(error)}`);
+  }
+  return error.code;
 }

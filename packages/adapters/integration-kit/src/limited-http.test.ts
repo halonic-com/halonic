@@ -1,34 +1,17 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { canary, fakeTransport, policy, redirect, secrets } from "./fake-transport.test-helper.ts";
-import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
+import {
+  canary,
+  client,
+  fakeTransport,
+  policy,
+  redirect,
+  refusal,
+  secrets,
+} from "./fake-transport.test-helper.ts";
+import { createLimitedHttpClient } from "./limited-http.ts";
 import type { IntegrationPolicy } from "./policy.ts";
-import { IntegrationRefusedError, type RefusalCode } from "./refused.ts";
 import { RequestLog } from "./request-log.ts";
-
-function client(answer?: Parameters<typeof fakeTransport>[0], limits?: RequestLimits) {
-  const { transport, sent } = fakeTransport(answer);
-  const log = new RequestLog();
-  let clock = 0;
-  const http = createLimitedHttpClient({
-    policy,
-    transport,
-    secrets,
-    log,
-    now: () => clock++,
-    ...(limits ? { limits } : {}),
-  });
-  return { http, sent, log };
-}
-
-async function refusal(promise: Promise<unknown>): Promise<RefusalCode> {
-  const error = await promise.then(
-    () => undefined,
-    (thrown: unknown) => thrown,
-  );
-  expect(error).toBeInstanceOf(IntegrationRefusedError);
-  return (error as IntegrationRefusedError).code;
-}
 
 verifies("integration-kit.declared-hosts-only", () => {
   it("sends to a declared host over https, matching the host exactly", async () => {

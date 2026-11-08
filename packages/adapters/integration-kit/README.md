@@ -28,6 +28,11 @@ Node, in the Worker and in the browser. Published as
   refused as `secret-not-configured`.
 - **Limits:** 30 s per request with its redirects, 10 MiB per response, 5
   redirects. All three can be changed.
+- **Request bodies** are at most 720 KiB (`maxRequestBodyBytes`), counted in
+  bytes sent: text as UTF-8, a form after encoding, bytes as they are. A
+  bigger body is refused as `request-too-large`; a stream, `Blob` or
+  `FormData` body as `body-not-supported`. The limit can be lowered, never raised, so an
+  integration behaves the same in-process and in the fenced runner.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name

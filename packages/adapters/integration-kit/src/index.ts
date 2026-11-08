@@ -13,6 +13,7 @@ export {
 } from "./limited-http.ts";
 export { allowedUrl, type IntegrationPolicy, namePattern } from "./policy.ts";
 export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } from "./refused.ts";
+export { maxRequestBodyBytes } from "./request-body.ts";
 export { RequestLog, type RequestLogEntry } from "./request-log.ts";
 export { scopedTokens, storedTokenName } from "./scoped-tokens.ts";
 export { clampWaitMs, integrationWait } from "./wait.ts";

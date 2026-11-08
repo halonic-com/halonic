@@ -7,6 +7,14 @@ import type {
 } from "@halonicjs/ports";
 import { allowedUrl, type IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError, IntegrationTimeoutError } from "./refused.ts";
+import {
+  type Body,
+  bodyBytes,
+  checkBody,
+  requestBodyLimit,
+  requestTooLarge,
+  toForm,
+} from "./request-body.ts";
 import type { RequestLog } from "./request-log.ts";
 import { checkPlacements, place, readSecrets } from "./secret-placement.ts";
 
@@ -24,6 +32,12 @@ export interface RequestLimits {
   readonly timeoutMs?: number;
   /** The response body. Default 10 MiB. */
   readonly maxResponseBytes?: number;
+  /**
+   * The request body, in bytes sent. Default and ceiling 720 KiB
+   * (`maxRequestBodyBytes`): it can be lowered, never raised, so an
+   * integration behaves the same in-process and in the fenced runner.
+   */
+  readonly maxRequestBodyBytes?: number;
   /** Redirects followed before the request fails. Default 5. */
   readonly maxRedirects?: number;
 }
@@ -97,8 +111,6 @@ interface Hop {
   readonly headers: Headers;
 }
 
-type Body = NonNullable<RequestInit["body"]> | null;
-
 async function send(
   options: LimitedHttpOptions,
   rawUrl: string,
@@ -110,9 +122,10 @@ async function send(
   const placements: readonly SecretPlacement[] = auth === undefined ? [] : [auth].flat();
   const url = allowedUrl(policy, rawUrl);
   checkPlacements(policy, placements, url);
-  checkBody(policy, rest.body);
-  const values = await readSecrets(policy, options.secrets, placements);
   const body = rest.body ?? null;
+  checkBody(policy, body);
+  const maxBodyBytes = requestBodyLimit(limits.maxRequestBodyBytes);
+  const values = await readSecrets(policy, options.secrets, placements);
   const hop: Hop = {
     url,
     method,
@@ -146,12 +159,14 @@ async function send(
     for (let count = 0; ; count++) {
       const headers = new Headers(hop.headers);
       const placedForm = place(policy, hop.placements, values, hop.url, headers, hop.form);
+      const body = placedForm ?? hop.body;
+      if (bodyBytes(body) > maxBodyBytes) throw requestTooLarge(policy, hop.url, maxBodyBytes);
       const response = await untilAborted(
         options.transport.fetch(hop.url.href, {
           ...rest,
           method: hop.method,
           headers,
-          body: placedForm ?? hop.body,
+          body,
           redirect: "manual",
           signal: combined,
         }),
@@ -204,25 +219,6 @@ function follow(hop: Hop, status: number, next: URL): void {
     hop.headers.delete("content-length");
   }
   hop.url = next;
-}
-
-/** Bodies the kit can send again after a redirect. A stream can be read only once. */
-function checkBody(policy: IntegrationPolicy, body: Body | undefined): void {
-  if (body instanceof ReadableStream) {
-    throw new IntegrationRefusedError(
-      "body-not-supported",
-      `${policy.name}: a streamed request body is not supported; send text, bytes or a form`,
-    );
-  }
-}
-
-function toForm(policy: IntegrationPolicy, body: Body): URLSearchParams {
-  if (body instanceof URLSearchParams) return body;
-  if (typeof body === "string") return new URLSearchParams(body);
-  throw new IntegrationRefusedError(
-    "secret-needs-form-body",
-    `${policy.name}: a secret placed in a form field needs a URLSearchParams or text form body`,
-  );
 }
 
 /**

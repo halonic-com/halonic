@@ -10,6 +10,7 @@ export type RefusalCode =
   | "secret-needs-form-body"
   | "body-not-supported"
   | "too-many-redirects"
+  | "request-too-large"
   | "response-too-large"
   | "token-not-declared";
 
