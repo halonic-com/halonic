@@ -32,7 +32,11 @@ that holds a term as `[withheld]`.
 - **On push**, the `pre-push` hook checks every commit you are about to
   push, including its message and author.
 - **In CI**, the `Leak guard` job runs the same rules on every pull
-  request. Any finding fails `ci-ok`, so nothing can merge.
+  request, and on the commits of every push to `main`. Any finding fails
+  `ci-ok`, so nothing can merge. On a pull request the job runs the script
+  and both allow lists from the base commit, so a pull request can't weaken
+  the check it is judged by. It also checks the branch name, title and body
+  of the pull request.
 
 `pnpm install` installs the hooks. It points git's `core.hooksPath` at
 `tooling/check/hooks`, for this clone only. There is no hook framework.
@@ -61,10 +65,16 @@ nickname
 Set `HALONIC_DENY_TERMS_FILE` to keep the file somewhere else. If there is
 no file, or it holds only comments, the hooks print a one-line notice and
 check everything else. CI reads the terms from the `HALONIC_DENY_TERMS`
-Actions secret and fails when that secret is missing or holds no terms. The
-summary line says how many terms were loaded, never which.
+Actions secret. A secret that is set but holds no term always fails. A
+missing secret passes with a warning until the repository variable
+`HALONIC_TERMS_ENFORCED` is `true`; from then on a missing secret fails
+(pull requests from forks and from Dependabot never get the secret, so
+they are exempt). The summary line says how many terms were loaded, never
+which. CI also asks GitHub to mask every term in the job log.
 
-Matching ignores case and finds a term inside longer words. The words of a
+Matching ignores case and finds a term inside longer words. It also sees
+through look-alike spellings: percent escapes (`first%20lastname`),
+full-width letters, accents and invisible characters. The words of a
 term may be joined by any separator, so `First Lastname` also matches
 `first.lastname` and `FirstLastname`.
 
