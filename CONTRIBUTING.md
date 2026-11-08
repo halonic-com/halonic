@@ -200,6 +200,8 @@ ships. So AI tools are welcome here, with these rules:
 - **Same bar for everyone.** AI-assisted pull requests get the same review and
   the same checks as any other. Requirements and tests are never optional.
 - **Low-effort generated pull requests are closed** with a short note.
+- **Replies from the Halonic team may come from an AI agent.** Such a reply is
+  marked as an AI agent reply and names the person accountable for it.
 
 ## How changes are reviewed
 
