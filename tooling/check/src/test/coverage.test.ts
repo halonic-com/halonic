@@ -30,7 +30,7 @@ describe("tooling/check: coverage floors", () => {
 
   it("keeps core at 90% of lines and 85% of branches", () => {
     expect(coverageFloorProblems({ lines: 89 }, "core")).toEqual([
-      '"halonic.coverage.lines" is 89, below the 90 that plan 9.3 sets for the core layer.',
+      '"halonic.coverage.lines" is 89, below the 90 that the plan sets for the core layer.',
       '"halonic.coverage" needs "branches". "halonic": { "coverage": { "lines": 90, "branches": 85 } } is the default.',
     ]);
     expect(coverageFloorProblems({ lines: 90, branches: 80 }, "core")).toHaveLength(1);

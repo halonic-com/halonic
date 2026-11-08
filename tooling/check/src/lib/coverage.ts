@@ -4,14 +4,14 @@ import type { Layer } from "./layout.ts";
  * A package's coverage floor: the lowest share of its source lines (and
  * branches) its tests must run, in percent. It lives in the package's own
  * `package.json` as `"halonic": { "coverage": { ... } }` and may only go
- * up (plan 9.3).
+ * up.
  */
 export interface CoverageFloor {
   readonly lines: number;
   readonly branches?: number;
 }
 
-/** The floor `pnpm new` writes for a new package in each layer (plan 9.3). */
+/** The floor `pnpm new` writes for a new package in each layer. */
 export const defaultCoverageFloors: Readonly<Record<Layer, CoverageFloor>> = {
   core: { lines: 90, branches: 85 },
   adapters: { lines: 80 },
@@ -23,7 +23,7 @@ export const defaultCoverageFloors: Readonly<Record<Layer, CoverageFloor>> = {
 };
 
 /**
- * The layers whose floor plan 9.3 fixes: a package there may not set a lower
+ * The layers whose floor is fixed: a package there may not set a lower
  * one. The plan sets no number for testing and tooling, so their packages
  * start from what they have and raise it.
  */
@@ -48,7 +48,7 @@ function example(layer: Layer): string {
 export function coverageFloorProblems(value: unknown, layer: Layer): string[] {
   if (value === undefined) {
     return [
-      `Set a coverage floor: ${example(layer)} is the default for the ${layer} layer. Every package needs one (plan 9.3).`,
+      `Set a coverage floor: ${example(layer)} is the default for the ${layer} layer. Every package needs one.`,
     ];
   }
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -86,7 +86,7 @@ function percentProblem(
     return `"halonic.coverage.${key}" must be a percentage from 0 to 100.`;
   }
   if (required !== undefined && percent < required) {
-    return `"halonic.coverage.${key}" is ${percent}, below the ${required} that plan 9.3 sets for the ${layer} layer.`;
+    return `"halonic.coverage.${key}" is ${percent}, below the ${required} that the plan sets for the ${layer} layer.`;
   }
   return undefined;
 }

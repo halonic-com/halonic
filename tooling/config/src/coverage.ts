@@ -9,7 +9,7 @@ export interface CoverageThresholds {
 
 /**
  * Reads a package's coverage floor from `"halonic": { "coverage": { ... } }`
- * in its `package.json` (plan 9.3), so each owner keeps it in their own file.
+ * in its `package.json`, so each owner keeps it in their own file.
  * `pnpm check` makes sure every package has a valid one; here we only take
  * the numbers that are there.
  *

@@ -21,4 +21,4 @@ Shared settings every package extends.
 
   The preset measures coverage of `src` on every run and fails when it is
   below the package's floor, `"halonic": { "coverage": { "lines", "branches" } }`
-  in its `package.json` (plan 9.3). See [checks.md](../../docs/guides/checks.md#coverage-floors).
+  in its `package.json`. See [checks.md](../../docs/guides/checks.md#coverage-floors).

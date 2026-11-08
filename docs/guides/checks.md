@@ -38,7 +38,7 @@ note; `dco`, that every commit carries the sign-off described in
 ## Coverage floors
 
 Every package keeps its coverage floor in its own `package.json`, and the
-floor only goes up (plan 9.3):
+floor only goes up:
 
 ```json
 "halonic": { "layer": "core", "owner": "maya", "coverage": { "lines": 90, "branches": 85 } }
