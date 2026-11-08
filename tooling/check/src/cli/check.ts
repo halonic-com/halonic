@@ -1,14 +1,16 @@
 import { loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem, type Problem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
-import { rules } from "../rules/all.ts";
+import { rules, rulesAfterTests, selectRules } from "../rules/all.ts";
 import { phaseOneSlots } from "../rules/phase-one-slots.ts";
 
 /**
  * pnpm check [rule ...]
  *
  * Runs our own repo checks (plan 4.1, 6.3, 7.4, 10.2). With rule names it
- * runs only those. The personal-terms guard has its own command,
+ * runs only those. Without, it runs every rule except `trace`, which reads
+ * the test result files and so runs after the tests: `pnpm check trace`.
+ * The personal-terms guard has its own command,
  * `pnpm check:terms`, because CI runs it with a secret.
  */
 function main(argv: readonly string[]): number {
@@ -18,11 +20,12 @@ function main(argv: readonly string[]): number {
     console.error(`Unknown rule: ${unknown.join(", ")}. Rules: ${Object.keys(rules).join(", ")}.`);
     return 2;
   }
+  const toRun = selectRules(selected);
   const started = performance.now();
   const context = loadContext(findRepoRoot());
   const problems: Problem[] = [];
   for (const [name, rule] of Object.entries(rules)) {
-    if (selected.length === 0 || selected.includes(name)) {
+    if (toRun.includes(name)) {
       problems.push(...rule(context).problems);
     }
   }
@@ -31,9 +34,13 @@ function main(argv: readonly string[]): number {
     console.log(annotate ? formatAnnotation(problem) : formatProblem(problem));
   }
   for (const [name, purpose] of Object.entries(phaseOneSlots)) {
-    if (selected.length === 0 || selected.includes(name)) {
+    if (toRun.includes(name)) {
       console.log(`${name}: not active yet, becomes real in Phase 1: ${purpose}.`);
     }
+  }
+  if (selected.length === 0) {
+    const names = rulesAfterTests.join(" ");
+    console.log(`${names}: runs after the tests, with pnpm check ${names}.`);
   }
   const errors = problems.filter((problem) => problem.severity === "error").length;
   const warnings = problems.length - errors;

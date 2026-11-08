@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process";
 import { findRepoRoot } from "../lib/workspace.ts";
-import { rules } from "../rules/all.ts";
 
 /**
  * pnpm verify
@@ -20,12 +19,12 @@ interface Step {
 function main(argv: readonly string[]): number {
   const full = argv.includes("--full");
   const turboScope = full ? [] : ["--affected"];
-  const rulesBeforeTests = Object.keys(rules).filter((name) => name !== "trace");
   const steps: Step[] = [
     {
       label: "repo checks",
       command: "pnpm",
-      args: ["run", "--silent", "check", ...rulesBeforeTests],
+      // Plain check leaves out trace, which runs last, after the tests.
+      args: ["run", "--silent", "check"],
     },
     { label: "personal-terms guard", command: "pnpm", args: ["run", "--silent", "check:terms"] },
     { label: "licences", command: "pnpm", args: ["run", "--silent", "check:licences"] },

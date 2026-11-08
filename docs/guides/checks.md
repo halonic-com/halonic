@@ -7,7 +7,7 @@ typecheck, lint and test for the packages your change affects.
 | Command                            | What it does                                                                         |
 | ---------------------------------- | ------------------------------------------------------------------------------------ |
 | `pnpm verify`                      | everything below, for the affected packages (`--full` for every package, as CI does) |
-| `pnpm check [rule …]`              | our own repo checks (table below); with rule names, only those                       |
+| `pnpm check [rule …]`              | our own repo checks (table below) except `trace`; with rule names, only those        |
 | `pnpm check:terms`                 | the personal-terms guard; skipped locally unless you have the list                   |
 | `pnpm check:licences`              | every installed package's licence against `tooling/check/licences.json`              |
 | `pnpm discover [--fix \| --check]` | writes the generated files; `--fix` also rewrites the Studio's feature list          |
@@ -36,8 +36,9 @@ yet". They become real in Phase 1 (plan 9.3, 12).
 `pnpm check trace` (plan 9.1, 9.2) reads every `requirements/*.md` file,
 every `verifies(…)` call in test files and every package's
 `test-results/vitest.json`, which the shared Vitest preset writes on each
-test run. It reads the tests that actually ran, so run the tests first;
-`pnpm verify` runs this check last, after them. It fails when:
+test run. It reads the tests that actually ran, so run the tests first.
+Plain `pnpm check` leaves it out for that reason; it runs only when named.
+`pnpm verify` and CI run it last, after the tests. It fails when:
 
 - a requirement file is malformed: the heading isn't the ID its path gives,
   `Status`, `Since` or `Source` is missing or wrong, the sentence isn't in

@@ -81,6 +81,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: pnpm check:pr-title
+      # Plain check leaves out trace; the build job runs it after the tests.
       - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths)
         run: pnpm check
       - name: Licences
@@ -201,6 +202,11 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - name: Run every task through the cache
         run: pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize
+      # Reads the result files the tests just wrote (plan 9.2). Runs even when
+      # a task failed: a missing result file fails the check anyway.
+      - name: Requirements and their tests (trace)
+        if: always()
+        run: pnpm check trace
       - name: Task timings
         if: always()
         run: |
