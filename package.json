@@ -19,13 +19,13 @@
     "verify": "node tooling/check/src/cli/verify.ts",
     "check": "node tooling/check/src/cli/check.ts",
     "check:terms": "node tooling/check/src/cli/terms.ts",
+    "check:licences": "node tooling/check/src/cli/licences.ts",
     "check:pr-title": "node tooling/check/src/cli/pr-title.ts",
     "discover": "node tooling/discover/src/cli/discover.ts",
+    "codegen": "node tooling/discover/src/cli/discover.ts",
     "new": "node tooling/discover/src/cli/new.ts",
     "who-touches": "node tooling/discover/src/cli/who-touches.ts",
-    "format": "biome format --write .",
-    "ci:all": "turbo run typecheck lint test build --continue",
-    "ci:fast": "pnpm check && biome ci --linter-enabled=false . && pnpm discover --check"
+    "format": "biome format --write ."
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

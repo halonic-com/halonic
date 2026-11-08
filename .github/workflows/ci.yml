@@ -83,6 +83,8 @@ jobs:
         run: pnpm check:pr-title
       - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths)
         run: pnpm check
+      - name: Licences
+        run: pnpm check:licences
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
