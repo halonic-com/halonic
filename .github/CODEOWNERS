@@ -23,6 +23,8 @@
 /.github/CODEOWNERS @halonic-com/maintainers
 /.github/workflows/ @halonic-com/maintainers
 /.github/actions/ @halonic-com/maintainers
+# The root manifest holds the script that installs the git hooks.
+/package.json @halonic-com/maintainers
 /tooling/check/src/leaks/ @halonic-com/maintainers
 /tooling/check/src/cli/leaks.ts @halonic-com/maintainers
 /tooling/check/leak-allow.txt @halonic-com/maintainers
