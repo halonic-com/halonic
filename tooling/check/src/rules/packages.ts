@@ -11,6 +11,7 @@ import {
   scope,
 } from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
+import { namesTestFile } from "../lib/source-files.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
 
 const guide = "See docs/guides/checks.md.";
@@ -180,6 +181,12 @@ function checkExports(context: CheckContext, pkg: WorkspacePackage, report: Repo
   for (const target of targets) {
     if (typeof target === "string" && !existsSync(join(context.root, pkg.directory, target))) {
       report.error(pkg.manifestPath, `"exports" points at ${target}, which doesn't exist.`);
+    }
+    if (typeof target === "string" && namesTestFile(target)) {
+      report.error(
+        pkg.manifestPath,
+        `"exports" points at the test file ${target}. Export source files only.`,
+      );
     }
   }
 }

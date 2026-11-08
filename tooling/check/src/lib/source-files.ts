@@ -13,9 +13,20 @@ export interface FunctionSpan {
   readonly lineCount: number;
 }
 
+/**
+ * A way to load code that the import check can't follow: `import(x)` or
+ * `require(x)` with a computed name, `createRequire`,
+ * `process.getBuiltinModule` and `/// <reference types|lib>` directives.
+ */
+export interface HiddenLoad {
+  readonly what: string;
+  readonly line: number;
+}
+
 /** The facts the rules need from one TypeScript or JavaScript file. */
 export interface SourceFacts {
   readonly imports: readonly ImportReference[];
+  readonly hiddenLoads: readonly HiddenLoad[];
   readonly functions: readonly FunctionSpan[];
 }
 
@@ -28,11 +39,16 @@ export function isSourceFile(file: string): boolean {
 }
 
 /**
- * Test files may use dev tooling such as Vitest. They end in `.test.ts`
- * or live in a `test/` folder.
+ * Test files may use dev tooling such as Vitest. They end in `.test.ts` or
+ * `.spec.ts`; a `test/` folder alone doesn't make a file a test.
  */
 export function isTestFile(file: string): boolean {
-  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file) || /(?:^|\/)tests?\//.test(file);
+  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file);
+}
+
+/** True when an import path names a test file, with or without its file ending. */
+export function namesTestFile(path: string): boolean {
+  return /\.(?:test|spec)(?:\.[cm]?[jt]sx?)?$/.test(path);
 }
 
 /**
@@ -48,14 +64,31 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
     scriptKind(fileName),
   );
   const imports: ImportReference[] = [];
+  const hiddenLoads: HiddenLoad[] = [];
   const functions: FunctionSpan[] = [];
   const lineOf = (position: number): number =>
     source.getLineAndCharacterOfPosition(position).line + 1;
+  for (const directive of source.typeReferenceDirectives) {
+    hiddenLoads.push({
+      what: `/// <reference types="${directive.fileName}" />`,
+      line: lineOf(directive.pos),
+    });
+  }
+  for (const directive of source.libReferenceDirectives) {
+    hiddenLoads.push({
+      what: `/// <reference lib="${directive.fileName}" />`,
+      line: lineOf(directive.pos),
+    });
+  }
 
   const visit = (node: ts.Node): void => {
     const specifier = moduleSpecifierOf(node);
     if (specifier !== undefined) {
       imports.push({ specifier: specifier.text, line: lineOf(specifier.getStart(source)) });
+    }
+    const hidden = hiddenLoadOf(node);
+    if (hidden !== undefined) {
+      hiddenLoads.push({ what: hidden, line: lineOf(node.getStart(source)) });
     }
     if (isFunctionLike(node) && node.body !== undefined) {
       const start = lineOf(node.getStart(source));
@@ -65,7 +98,7 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return { imports, functions };
+  return { imports, hiddenLoads, functions };
 }
 
 function scriptKind(fileName: string): ts.ScriptKind {
@@ -103,6 +136,43 @@ function moduleSpecifierOf(node: ts.Node): ts.StringLiteralLike | undefined {
   if (ts.isCallExpression(node) && isImportOrRequire(node)) {
     const first = node.arguments[0];
     return first !== undefined && ts.isStringLiteralLike(first) ? first : undefined;
+  }
+  return undefined;
+}
+
+/** Names the hidden load a node is, or returns `undefined` for anything else. */
+function hiddenLoadOf(node: ts.Node): string | undefined {
+  if (ts.isCallExpression(node) && isImportOrRequire(node)) {
+    const first = node.arguments[0];
+    if (first === undefined || !ts.isStringLiteralLike(first)) {
+      const callee = node.expression.kind === ts.SyntaxKind.ImportKeyword ? "import" : "require";
+      return `${callee}() with a computed module name`;
+    }
+    return undefined;
+  }
+  const name = memberName(node);
+  if (name === "createRequire" || name === "getBuiltinModule") {
+    return name;
+  }
+  const parent = node.parent as ts.Node | undefined;
+  const called = parent !== undefined && ts.isCallExpression(parent) && parent.expression === node;
+  if (name === "require" && !(ts.isIdentifier(node) && called)) {
+    return "require other than a direct require() call";
+  }
+  return undefined;
+}
+
+/** The name an identifier, `a.name` or `a["name"]` refers to. */
+function memberName(node: ts.Node): string | undefined {
+  if (ts.isIdentifier(node)) {
+    const isMemberName = ts.isPropertyAccessExpression(node.parent) && node.parent.name === node;
+    return isMemberName ? undefined : node.text;
+  }
+  if (ts.isPropertyAccessExpression(node)) {
+    return node.name.text;
+  }
+  if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+    return node.argumentExpression.text;
   }
   return undefined;
 }

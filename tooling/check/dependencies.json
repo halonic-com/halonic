@@ -1,10 +1,13 @@
 {
-  "//": "Every external dependency, why we have it and which packages may use it (plan 7.1). Adding one needs Liam's approval. allowedIn takes package names; * matches any text.",
+  "//": "Every external dependency, why we have it and where it may be used (plan 7.1). Adding one needs Liam's approval. A package may use it when its name matches allowedIn (* matches any text) and its layer is in layers. See docs/guides/dependencies.md.",
   "dependencies": {
     "@biomejs/biome": {
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/root"
+      ],
+      "layers": [
+        "tooling"
       ],
       "reason": "Formatter and linter in one fast tool."
     },
@@ -13,12 +16,25 @@
       "allowedIn": [
         "*"
       ],
-      "reason": "Type definitions for Node, for Node packages, tests and tooling. The core's tsconfig loads no Node types."
+      "layers": [
+        "core",
+        "adapters",
+        "host",
+        "targets",
+        "studio",
+        "apps",
+        "testing",
+        "tooling"
+      ],
+      "reason": "Type definitions for Node, for Node packages, tests and tooling. Every package's tsconfig.test.json loads them; core, host and Studio sources load no Node types (their tsconfig sets types: [] and the layers rule rejects /// <reference types> there)."
     },
     "@typescript/typescript6": {
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/tooling-check"
+      ],
+      "layers": [
+        "tooling"
       ],
       "reason": "The TypeScript parser API for tooling/check until TypeScript 7.1 ships its own API (D9). Remove then."
     },
@@ -27,6 +43,9 @@
       "allowedIn": [
         "@halonicjs/root"
       ],
+      "layers": [
+        "tooling"
+      ],
       "reason": "Per-package tasks, --affected and the build cache (D9)."
     },
     "typescript": {
@@ -34,12 +53,32 @@
       "allowedIn": [
         "*"
       ],
+      "layers": [
+        "core",
+        "adapters",
+        "host",
+        "targets",
+        "studio",
+        "apps",
+        "testing",
+        "tooling"
+      ],
       "reason": "Type-checking with TypeScript 7 (D9)."
     },
     "vitest": {
       "category": "dev-tooling",
       "allowedIn": [
         "*"
+      ],
+      "layers": [
+        "core",
+        "adapters",
+        "host",
+        "targets",
+        "studio",
+        "apps",
+        "testing",
+        "tooling"
       ],
       "reason": "Test runner (D9)."
     }
