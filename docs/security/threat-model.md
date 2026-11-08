@@ -6,7 +6,8 @@ To report a problem, see the [security policy](../../SECURITY.md).
 
 Every mitigation carries one of two marks:
 
-- **On `main`**: the code is merged and tested.
+- **On `main`**: the code is merged and tested. This is library code. No app or
+  command-line tool uses it yet, so it isn't a protection you get today.
 - **Planned (HAL-n)**: decided, not built. Don't rely on it. The number is the
   task that builds it.
 
@@ -15,15 +16,19 @@ promise about a mitigation marked **Planned**.
 
 ## 1. Scope
 
-Halonic is a local-first app. Today the Studio and the `halonic` command-line
-tool run on your own machine, as you.
+Halonic is a local-first app. The Studio and the `halonic` command-line tool
+are designed to run on your own machine, as you. Neither ships yet: `apps/studio`
+holds only a feature list and there is no command-line package. The **On
+`main`** items on this page are tested library code that no app calls yet (for
+example `readToolListing` has no caller outside its tests), not protections a
+user has today.
 
-| Shape                                      | Who can reach it                          | Status                                                   |
-| ------------------------------------------ | ----------------------------------------- | -------------------------------------------------------- |
-| Studio and `halonic` on your machine       | you, and programs running as you          | the shape that ships today                               |
-| `halonic serve` on loopback                | programs and web pages on your machine    | Planned (phase 4, plan HAL-9)                            |
-| `serve` on a LAN, tunnel or VPS            | everyone on that network, or the internet | Planned (phase 4). Treated as public                     |
-| Cloud deployments (Cloudflare, containers) | the whole internet                        | Planned (phase 4). See [section 6](#6-cloud-deployments) |
+| Shape                                      | Who can reach it                          | Status                                                      |
+| ------------------------------------------ | ----------------------------------------- | ----------------------------------------------------------- |
+| Studio and `halonic` on your machine       | you, and programs running as you          | Planned (phase 1, plan HAL-9). Not shipped                  |
+| `halonic serve` on loopback                | programs and web pages on your machine    | Planned (phase 4, plan HAL-9)                               |
+| `serve` on a LAN, tunnel or VPS            | everyone on that network, or the internet | Planned (phase 4). Treated as public                        |
+| Cloud deployments (Cloudflare, containers) | the whole internet                        | Planned (phase 4). See [section 6](#6-cloud-deployments-b7) |
 
 One deployment has **one owner**. Several users on one deployment are out of
 scope. That needs its own section here first.
@@ -66,8 +71,8 @@ them.
 | B3  | tool listings from servers to host | names, descriptions and schemas a server writes    | [4.3](#43-tool-listings-from-servers-b3)        |
 | B4  | host to outside services           | provider keys, tokens, prompts                     | [4.4](#44-secrets-tokens-and-outbound-calls-b4) |
 | B5  | Google setup and sign-in           | client secret, sign-in callback, tokens            | [4.5](#45-google-setup-and-sign-in-b5)          |
-| B6  | client to `serve`                  | HTTP from browsers, phones, scanners               | [5](#5-serve-b7)                                |
-| B7  | owner to cloud deployment          | deploy credentials, workspace files, runtime data  | [6](#6-cloud-deployments)                       |
+| B6  | client to `serve`                  | HTTP from browsers, phones, scanners               | [5](#5-serve-b6)                                |
+| B7  | owner to cloud deployment          | deploy credentials, workspace files, runtime data  | [6](#6-cloud-deployments-b7)                    |
 
 ## 4. Threats per boundary
 
@@ -77,13 +82,14 @@ them.
 machine, and tests, hooks and scripts in a workspace are too. Opening a
 workspace you didn't write is like running its code.
 
-| Threat                                                     | Mitigation                                                                                                                                                                                                         | Mark                                       |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| A workspace starts programs before you trust it            | Ask "trust this workspace" before any program starts; no `shell: true`. The `TrustStore` port and its record format exist; nothing asks yet. The requirement `ports.connector-trust-enforcement` is still a draft. | **Planned** (phase 2, plan HAL-9; HAL-659) |
-| A workspace reads another workspace's or hub's data        | `_tokens` can't be a workspace collection, so a hub can't list it (`packages/adapters/token-store`)                                                                                                                | **On `main`**                              |
-| A listed tool of an untrusted workspace lowers its risk    | Without a trust grant every listed tool counts as `write`; `readToolListing` ignores the workspace's lower risks (`packages/core/app/src/tool-listing.ts`)                                                         | **On `main`**                              |
-| Secrets committed to the repository                        | The leak guard blocks private keys, Google client secrets, OAuth tokens, protected personal terms and absolute local paths (`tooling/check/src/leaks`, [leak guard](../guides/leak-guard.md))                      | **On `main`**                              |
-| A sandbox limits what a trusted workspace's program can do | not built                                                                                                                                                                                                          | **Planned** (phase 3, plan HAL-9)          |
+| Threat                                                     | Mitigation                                                                                                                                                                                                         | Mark                                                                                                |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| A workspace starts programs before you trust it            | Ask "trust this workspace" before any program starts; no `shell: true`. The `TrustStore` port and its record format exist; nothing asks yet. The requirement `ports.connector-trust-enforcement` is still a draft. | **Planned** (phase 2, plan HAL-9; the requirement becomes active with the contract suites, HAL-181) |
+| A hub lists the token collection                           | `_tokens` can't be a workspace collection id, so a hub can't list it (`packages/core/format`, collection schema)                                                                                                   | **On `main`**                                                                                       |
+| A workspace reads another workspace's or hub's data        | Isolation between workspaces and hubs is not built                                                                                                                                                                 | **Planned** (phase 2, plan HAL-9)                                                                   |
+| A listed tool of an untrusted workspace lowers its risk    | Without a trust grant every listed tool counts as `write`; `readToolListing` ignores the workspace's lower risks (`packages/core/app/src/tool-listing.ts`)                                                         | **On `main`**                                                                                       |
+| Secrets committed to the repository                        | The leak guard blocks private keys, Google client secrets, OAuth tokens, protected personal terms and absolute local paths (`tooling/check/src/leaks`, [leak guard](../guides/leak-guard.md))                      | **On `main`**                                                                                       |
+| A sandbox limits what a trusted workspace's program can do | not built                                                                                                                                                                                                          | **Planned** (phase 3, plan HAL-9)                                                                   |
 
 **Known limit.** After you trust a workspace, its programs run with your
 rights. Trust only workspaces from people you trust.
@@ -94,12 +100,15 @@ rights. Trust only workspaces from people you trust.
 tool result) can steer what it asks for. Prompt injection isn't solved. The
 rule is that a steered model must not be able to do more than you approved.
 
-| Threat                                          | Mitigation                                                                                                                              | Mark                                        |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Injected text makes the model call a risky tool | Tools have a risk (`read` or `write`). A `write` tool needs approval in the engine, not in the model's prompt                           | Planned (HAL-803 for listed tools; see 4.3) |
-| A tool result carries instructions              | Results from tools marked untrusted reach the model only inside a fence                                                                 | Planned (HAL-803)                           |
-| Knowledge or documents carry instructions       | The active requirement `ports.untrusted-knowledge` says such text is fenced; the fence is rendered when tools and prompts are assembled | Planned (HAL-803)                           |
-| A run is changed after the fact                 | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md))          | **On `main`**                               |
+| Threat                                          | Mitigation                                                                                                                                                                                                                     | Mark                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| Injected text makes the model call a risky tool | Tools have a risk (`read` or `write`). A `write` tool needs approval in the engine, not in the model's prompt                                                                                                                  | Planned (HAL-803 for listed tools; see 4.3) |
+| A tool result carries instructions              | Results from tools marked untrusted reach the model only inside a fence                                                                                                                                                        | Planned (HAL-803)                           |
+| Knowledge or documents carry instructions       | The active requirement `ports.untrusted-knowledge` says such text is fenced; the fence is rendered when tools and prompts are assembled                                                                                        | Planned (HAL-803)                           |
+| A run is changed after the fact                 | Each run is an append-only event log, kept apart from the definitions ([ADR](../adr/2026-11-08-runs-are-stored-separately.md)). On `main` there is the `RunStore` port and a memory adapter only; the durable log is not built | **Planned** (phase 1, plan HAL-9)           |
+
+**Known limit.** Run logs have no tamper evidence. An append-only interface
+doesn't stop a program running as you from rewriting the files.
 
 **Known limit.** Approvals and secret bindings limit the harm of a steered
 model. They don't stop it from being steered.
@@ -109,20 +118,20 @@ model. They don't stop it from being steered.
 A server you connect to writes the descriptions of the tools it lists. A
 **listed tool** is one the server lists and nothing Halonic reviewed declares.
 Its text is attacker text. The rules are the draft requirement
-`ports.untrusted-tool-listings`.
+`ports.untrusted-tool-listings` (still draft, active with HAL-803), so the
+**On `main`** rows below rest on a draft.
 
-| Threat                                                                           | Mitigation                                                                                                                                                                                      | Mark              |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| Oversized or deeply nested schemas                                               | Parameters over 64 KiB, nested over 64 levels, or with a text over 10,000 characters are refused                                                                                                | **On `main`**     |
-| Hidden instructions in schema keywords (`default`, `examples`, `x-…`, `pattern`) | `parameters` are rebuilt from an allow-list of keywords; everything else is dropped and reported                                                                                                | **On `main`**     |
-| Instructions in names, `enum` and `const` values, which can't be fenced          | Names must be 1 to 64 letters, digits, `_` or `-`; a bad `enum` is dropped; unfenced text is capped at 2,048 characters per tool                                                                | **On `main`**     |
-| A server swaps a reviewed tool's text                                            | A declared tool keeps its declared description, parameters and risk; the listing can't change them                                                                                              | **On `main`**     |
-| A listed tool lowers its own risk or marks itself trusted                        | Its `risk` and `untrusted` are ignored; it counts as `write` unless a trusted workspace says otherwise                                                                                          | **On `main`**     |
-| Two tools share a name                                                           | Every clashing listed tool is refused                                                                                                                                                           | **On `main`**     |
-| The description reaches the model as an instruction                              | Descriptions and titles come back as `UntrustedText`, whose `toString` and `toJSON` throw, so they can't be serialised without the fence. The fence itself is rendered when tools are assembled | Planned (HAL-803) |
-| A call uses arguments the listing never declared                                 | Refused at call time; `write` needs approval                                                                                                                                                    | Planned (HAL-803) |
-| More than 128 tools in one listing                                               | One refusal for the listing                                                                                                                                                                     | Planned (HAL-680) |
-| A server changes its tools after you looked                                      | Pinning and approving listings                                                                                                                                                                  | Planned (HAL-520) |
+| Threat                                                                           | Mitigation                                                                                                                                                                                                                                                                                                                                                             | Mark              |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Oversized or deeply nested schemas                                               | Parameters over 64 KiB, nested over 64 levels, or with a text over 10,000 characters are refused                                                                                                                                                                                                                                                                       | **On `main`**     |
+| Hidden instructions in schema keywords (`default`, `examples`, `x-…`, `pattern`) | `parameters` are rebuilt from an allow-list of keywords; everything else is dropped and reported                                                                                                                                                                                                                                                                       | **On `main`**     |
+| Instructions in names, `enum` and `const` values, which can't be fenced          | Names must be 1 to 64 letters, digits, `_` or `-`; a bad `enum` is dropped; unfenced text is capped at 2,048 characters per tool                                                                                                                                                                                                                                       | **On `main`**     |
+| A server swaps a reviewed tool's text                                            | A declared tool keeps its declared description, parameters and risk; the listing can't change them                                                                                                                                                                                                                                                                     | **On `main`**     |
+| A listed tool lowers its own risk or marks itself trusted                        | Its `risk` and `untrusted` are ignored; it counts as `write` unless a trusted workspace says otherwise                                                                                                                                                                                                                                                                 | **On `main`**     |
+| Two tools share a name                                                           | Every clashing listed tool is refused                                                                                                                                                                                                                                                                                                                                  | **On `main`**     |
+| The description reaches the model as an instruction                              | Descriptions and titles come back as `UntrustedText`, whose `toJSON` throws, so they can't be serialised to JSON without the fence. `toString` doesn't throw: a template string gives `[object Object]`, which doesn't leak the text. `structuredClone` or IPC turns it into a plain object and loses the guard. The fence itself is rendered when tools are assembled | Planned (HAL-803) |
+| A call uses arguments the listing never declared                                 | Refused at call time; `write` needs approval                                                                                                                                                                                                                                                                                                                           | Planned (HAL-803) |
+| A server changes its tools after you looked                                      | Pinning and approving listings                                                                                                                                                                                                                                                                                                                                         | Planned (HAL-520) |
 
 **Known limit.** Unfenced strings (names, `enum` values) can still carry up to
 64 characters each and 2,048 per tool. The `write` risk, and approval for it, is
@@ -160,16 +169,16 @@ what limits the harm.
 The Google setup flow stores your own Google client secret and signs you in.
 Decisions from the security reviews:
 
-| Threat                                                          | Mitigation                                                                                                                     | Mark                                           |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| A leaked client secret or token is committed                    | The leak guard has `google-client-secret` and OAuth token and code rules                                                       | **On `main`**                                  |
-| Sign-in code intercepted                                        | PKCE (S256); the verifier is 32 random bytes, stays in memory and goes only to Google's token endpoint                         | **On `main`** (`packages/host/google-sign-in`) |
-| Forged or replayed callback                                     | A random `state` (32 bytes), compared in constant time; a missing one never matches                                            | **On `main`**                                  |
-| A callback with the wrong `state` cancels or consumes a sign-in | A missing or wrong `state` is checked first and changes nothing; the pending sign-in is taken once, synchronously              | Planned (HAL-699, in review)                   |
-| Crafted redirect or auth URL                                    | Only `127.0.0.1` redirects; every value is URL-encoded; no `error_description` is read                                         | Planned (HAL-699, in review)                   |
-| The client secret is read by an integration or hub              | It goes only through the `TokenStore`; only the host's sign-in and refresh code reads it; integrations get only `scopedTokens` | Planned (HAL-698, in review)                   |
-| Two setup refs map to one stored name                           | A ref is checked against the store's name folding before use, so none fold to another's name                                   | Planned (HAL-698, in review)                   |
-| A secret ends up in an error message                            | Errors have fixed texts; a rejected input is never repeated                                                                    | Planned (HAL-698, in review)                   |
+| Threat                                                          | Mitigation                                                                                                                                                                                          | Mark                                                 |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| A leaked client secret or token is committed                    | The leak guard has `google-client-secret` and OAuth token and code rules                                                                                                                            | **On `main`**                                        |
+| Sign-in code intercepted                                        | PKCE (S256); the verifier is 32 random bytes, stays in memory (`packages/host/google-sign-in`). Sending it only to Google's token endpoint is part of the code exchange, which is Planned (HAL-699) | **On `main`** for the verifier; exchange **Planned** |
+| Forged or replayed callback                                     | A random `state` (32 bytes), compared in constant time; a missing one never matches                                                                                                                 | **On `main`**                                        |
+| A callback with the wrong `state` cancels or consumes a sign-in | A missing or wrong `state` is checked first and changes nothing; the pending sign-in is taken once, synchronously                                                                                   | Planned (HAL-699)                                    |
+| Crafted redirect or auth URL                                    | Only `127.0.0.1` redirects; every value is URL-encoded; no `error_description` is read                                                                                                              | Planned (HAL-699)                                    |
+| The client secret is read by an integration or hub              | It goes only through the `TokenStore`; only the host's sign-in and refresh code reads it; integrations get only `scopedTokens`                                                                      | Planned (HAL-698)                                    |
+| Two setup refs map to one stored name                           | A ref is checked against the store's name folding before use, so none fold to another's name                                                                                                        | Planned (HAL-698)                                    |
+| A secret ends up in an error message                            | Errors have fixed texts; a rejected input is never repeated                                                                                                                                         | Planned (HAL-698)                                    |
 
 **Known limit.** The token store's old-copies limit (4.4) applies to the
 client secret and to refresh tokens.
@@ -204,7 +213,7 @@ Pieces already on `main` that `serve` will build on:
 **Known limits.** Sign-in is a single factor on the public internet until
 passkeys land. On loopback, "no password" may stay.
 
-## 6. Cloud deployments
+## 6. Cloud deployments (B7)
 
 Not built yet (phase 4, plan HAL-9). A cloud deployment is reachable by the
 whole internet and holds provider keys, Google tokens and your data, so the
