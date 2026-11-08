@@ -2,5 +2,6 @@
 export const packageName = "@halonicjs/routines";
 
 export { CronError } from "./cron-error.ts";
+export { nextCronTime } from "./next-cron-time.ts";
 export { type Cron, parseCron } from "./parse-cron.ts";
 export { checkTimeZone, type WallTime, wallTime } from "./time-zone.ts";

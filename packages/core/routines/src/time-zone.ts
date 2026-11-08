@@ -81,3 +81,21 @@ export function utcOffset(instant: number, wall: WallTime): number {
   const wallAsUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute);
   return wallAsUtc - Math.floor(instant / MINUTE) * MINUTE;
 }
+
+/**
+ * The wall time `minutes` later on the same wall clock, as if its offset never
+ * changed. Used to name the wall times the clocks jump over.
+ */
+export function addWallMinutes(wall: WallTime, minutes: number): WallTime {
+  const date = new Date(
+    Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute + minutes),
+  );
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    hour: date.getUTCHours(),
+    minute: date.getUTCMinutes(),
+    weekday: date.getUTCDay(),
+  };
+}
