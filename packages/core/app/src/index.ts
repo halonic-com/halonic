@@ -32,6 +32,7 @@ export {
   ServiceRegistry,
   serviceKey,
 } from "./service-registry.ts";
+export { checkToolCall, type ToolCallCheck } from "./tool-call-check.ts";
 export { toolForModel, toolResultForModel } from "./tool-for-model.ts";
 export {
   type OfferedDeclaredTool,
