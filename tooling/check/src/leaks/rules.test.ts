@@ -30,7 +30,7 @@ describe("secret rules", () => {
     expect(secretRulesHit(`hash = "${filler(40)}"`)).toEqual([]);
   });
 
-  it.each(["client_secret", "refresh_token", "access_token"])(
+  it.each(["client_secret", "refresh_token", "access_token", "id_token", "code_verifier"])(
     "finds a literal value in %s, quoted or in a form body",
     (name) => {
       expect(secretRulesHit(`{ "${name}": "${filler(40)}" }`)).toEqual(["oauth-field"]);
@@ -67,6 +67,15 @@ describe("secret rules", () => {
     expect(secretRulesHit("{ grant_type: GRANT, code: authorizationCodeFromCallback }")).toEqual(
       [],
     );
+  });
+
+  it("checks a long line after code quickly", () => {
+    // Without a token request on the line, the rule must give up on the value
+    // once, not once per character: that would take seconds on a minified file.
+    const line = `code="${filler(50_000)}`;
+    const start = performance.now();
+    expect(secretRulesHit(line)).toEqual([]);
+    expect(performance.now() - start).toBeLessThan(500);
   });
 
   it("masks a secret down to its prefix and length", () => {

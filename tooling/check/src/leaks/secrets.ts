@@ -26,6 +26,13 @@ const assigned = String.raw`(?:["']?\s*[:=]\s*["']|=)`;
 const oauthValue = String.raw`[A-Za-z0-9._~%/+=-]{16,}`;
 
 /**
+ * The end of an OAuth value. A lookahead after a value must follow this, so
+ * the regex engine can't shorten the value one character at a time and run
+ * the lookahead again: on a long line that takes quadratic time.
+ */
+const oauthValueEnd = String.raw`(?![A-Za-z0-9._~%/+=-])`;
+
+/**
  * `code` is a common word, so it counts only in the two places where it is
  * the OAuth authorization code: a query string or form body
  * (`?code=…`, `&code=…`), and a token request, which names a `grant_type`
@@ -35,7 +42,7 @@ const oauthCodePattern = new RegExp(
   [
     String.raw`(?<=[?&]code=)${oauthValue}`,
     String.raw`(?<=\bgrant_type\b.*\bcode${assigned})${oauthValue}`,
-    String.raw`(?<=\bcode${assigned})${oauthValue}(?=.*\bgrant_type\b)`,
+    String.raw`(?<=\bcode${assigned})${oauthValue}${oauthValueEnd}(?=.*\bgrant_type\b)`,
   ].join("|"),
   "g",
 );
@@ -86,10 +93,11 @@ export const secretRules: readonly SecretRule[] = [
   },
   {
     // The secret fields of an OAuth token request or answer, holding a literal value.
+    // `id_token` carries the user's e-mail address; `code_verifier` is the PKCE secret.
     name: "oauth-field",
     label: "an OAuth client secret or token",
     pattern: new RegExp(
-      String.raw`(?<=\b(?:client_secret|refresh_token|access_token)${assigned})${oauthValue}`,
+      String.raw`(?<=\b(?:client_secret|refresh_token|access_token|id_token|code_verifier)${assigned})${oauthValue}`,
       "g",
     ),
   },
