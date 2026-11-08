@@ -13,6 +13,7 @@ export {
   type EventMap,
   type ListenerErrorHandler,
 } from "./event-bus.ts";
+export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export {
   type Disposable,
   ServiceError,
@@ -20,6 +21,8 @@ export {
   ServiceRegistry,
   serviceKey,
 } from "./service-registry.ts";
+export { UndoHistory, undoLimit } from "./undo-history.ts";
+export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
 export {
   type AppCommands,
   type AppEvents,

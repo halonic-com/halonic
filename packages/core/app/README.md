@@ -16,6 +16,9 @@ Device-wide settings such as the theme live outside any scope.
 | `EventBus`        | typed events, listeners in order, one failing listener stops nothing | `app.event-bus`        |
 | `ServiceRegistry` | services by typed key, disposed newest first                         | `app.service-registry` |
 | `WorkspaceScope`  | the three above for one workspace, closed together                   | `app.workspace-scope`  |
+| `WorkspaceFiles`  | unsaved changes by path, `save()` through the `DefinitionStore`      | `app.workspace-save`   |
+| `UndoHistory`     | one workspace-wide undo, 200 steps, typing in one file is one step   | `app.workspace-undo`   |
+| `openWorkspace`   | a scope with the files service and `workspace.save`, `undo`, `redo`  | `app.workspace-save`   |
 
 ## Example
 
