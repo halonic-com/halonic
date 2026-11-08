@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { decodeBase64url, encodeBase64url } from "./base64url.ts";
 
 const text = (value: string): Uint8Array => new TextEncoder().encode(value);
 
-describe("token-store.token-key: strict base64url", () => {
+verifies("token-store.token-key", () => {
   it("encodes without padding, using - and _", () => {
     expect(encodeBase64url(text(""))).toBe("");
     expect(encodeBase64url(text("f"))).toBe("Zg");

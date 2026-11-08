@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { encodeBase64url } from "./base64url.ts";
 import {
   fixedClock,
@@ -36,7 +37,7 @@ function readableForms(value: string): string[] {
   return [value, base64, base64.replace(/=+$/, ""), encodeBase64url(bytes)];
 }
 
-describe("token-store.get-set-remove", () => {
+verifies("token-store.get-set-remove", () => {
   it("stores, replaces and removes a token", async () => {
     const { tokens } = setup();
     expect(await tokens.get("google-refresh")).toBeNull();
@@ -94,7 +95,7 @@ describe("token-store.get-set-remove", () => {
   });
 });
 
-describe("token-store.change-log", () => {
+verifies("token-store.change-log", () => {
   it("writes add, update and remove to the _tokens collection, stamped by the clock", async () => {
     const { tokens, records } = setup();
     await tokens.set("refresh", "one");
@@ -137,7 +138,7 @@ describe("token-store.change-log", () => {
   });
 });
 
-describe("token-store.encrypted-at-rest", () => {
+verifies("token-store.encrypted-at-rest", () => {
   it("never stores the token as readable text, anywhere in the log", async () => {
     const { tokens, records } = setup();
     await tokens.set("google-refresh", refreshToken);
@@ -219,7 +220,7 @@ describe("token-store.encrypted-at-rest", () => {
   });
 });
 
-describe("token-store.token-key", () => {
+verifies("token-store.token-key", () => {
   it("explains how to set a missing key", async () => {
     const { tokens } = setup(null);
     await expect(tokens.set("refresh", "value")).rejects.toThrow(

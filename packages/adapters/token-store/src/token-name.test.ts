@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { canonicalTokenName } from "./token-name.ts";
 
-describe("token-store.token-names", () => {
+verifies("token-store.token-names", () => {
   it("treats case and - versus _ as the same name", () => {
     expect(canonicalTokenName("Google-Refresh")).toBe("google_refresh");
     expect(canonicalTokenName("google_refresh")).toBe("google_refresh");
