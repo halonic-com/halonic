@@ -18,6 +18,11 @@ export { nextRun } from "./next-run.ts";
 export { occurrences } from "./occurrences.ts";
 export { type Cron, parseCron } from "./parse-cron.ts";
 export { parseEvery } from "./parse-every.ts";
+export {
+  type RoutineStart,
+  routineStart,
+  type TriggerFacts,
+} from "./routine-start.ts";
 export { checkTimeZone, type WallTime, wallTime } from "./time-zone.ts";
 export { triggerError } from "./trigger-error.ts";
 export { type TriggerKind, triggerKind } from "./trigger-kind.ts";
