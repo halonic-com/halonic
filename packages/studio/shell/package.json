@@ -19,6 +19,9 @@
   },
   "halonic": {
     "layer": "studio",
-    "owner": "elena"
+    "owner": "elena",
+    "coverage": {
+      "lines": 85
+    }
   }
 }
