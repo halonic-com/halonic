@@ -46,8 +46,8 @@ jobs:
     permissions:
       contents: read
     env:
-      GITLEAKS_VERSION: 8.30.1
-      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+      # The digest pins the official image, so it replaces the checksum check.
+      GITLEAKS_IMAGE: docker.io/zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f # v8.30.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,14 +62,11 @@ jobs:
           HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
         run: node tooling/check/src/cli/terms.ts --all
       - name: gitleaks over the whole history
+        # safe.directory: see the gitleaks job in ci.yml.
         run: |
-          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 \
-            -o "$RUNNER_TEMP/$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
-          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
-          "$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 .
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            "$GITLEAKS_IMAGE" git --redact --no-banner --exit-code 1 .
 
   report:
     name: Open an issue on failure
