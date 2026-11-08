@@ -1332,6 +1332,8 @@ snapshots:
       '@rolldown/binding-linux-arm64-musl': 1.2.16
       '@rolldown/binding-linux-ppc64-gnu': 1.2.16
       '@rolldown/binding-linux-s390x-gnu': 1.2.16
+      '@rolldown/binding-linux-x64-gnu': 1.2.16
+      '@rolldown/binding-linux-x64-musl': 1.2.16
       '@rolldown/binding-openharmony-arm64': 1.2.16
       '@rolldown/binding-win32-arm64-msvc': 1.2.16
       '@rolldown/binding-win32-x64-msvc': 1.2.16
