@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: (the timing-safe password compare is a protection that must survive the rewrite)
+- Source: the old app's timing-safe password compare, a protection that must survive the rewrite
 
 The constant-time compare shall read every byte of two equal-length arrays before it answers, so the time it takes doesn't depend on where they differ.
 

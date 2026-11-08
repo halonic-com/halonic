@@ -11,6 +11,13 @@ world comes in as a parameter: the time through a `Clock`, randomness through
 a `RandomBytes` function. Tests pass `fixedClock()` and `fixedIds()` and get
 the same output on every run.
 
+Hashing is not here. SHA-256 comes from WebCrypto through a port, and the
+password hash from `@noble/hashes` in the package that implements
+`PasswordHasher`. What stays is the part the core can't reach otherwise:
+`encodeUtf8` and `decodeUtf8` replace `TextEncoder` and `TextDecoder`, and
+`constantTimeEqual` compares hashes and tokens without leaking where they
+differ. Never compare those with `===`.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
