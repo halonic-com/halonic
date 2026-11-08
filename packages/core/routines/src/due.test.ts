@@ -1,0 +1,139 @@
+import type { Routine } from "@halonicjs/format";
+import { verifies } from "@halonicjs/testing-spec";
+import fc from "fast-check";
+import { expect, it } from "vitest";
+import { DEFAULT_TICK_POLICY, due, type PlacedRoutine } from "./due.ts";
+
+const at = (iso: string) => new Date(iso);
+const iso = (date: Date) => date.toISOString();
+
+function placed(
+  trigger: object,
+  catchUp: Routine["catchUp"] = "last",
+  enabled = true,
+  id = "r1",
+): PlacedRoutine {
+  const routine = {
+    version: 1,
+    id,
+    name: id,
+    enabled,
+    trigger,
+    overlap: "skip",
+    catchUp,
+    run: { workflow: "w", input: {} },
+  } as unknown as Routine;
+  return { hub: "h", routine };
+}
+const times = (runs: ReturnType<typeof due>) => runs.map((run) => iso(run.at));
+const hourly = { schedule: "0 * * * *", timezone: "UTC" };
+
+verifies("routines.due", () => {
+  it("gives the newest quarter hour for catchUp last", () => {
+    const runs = due(
+      [placed({ every: "15m" })],
+      at("2026-11-03T08:01:00Z"),
+      at("2026-11-03T08:40:00Z"),
+    );
+    expect(times(runs)).toEqual(["2026-11-03T08:30:00.000Z"]);
+    expect(runs[0]?.key).toBe("h/r1");
+    expect(runs[0]?.trigger).toBe("every");
+  });
+
+  it("gives every missed time for catchUp all, up to the cap", () => {
+    const routine = placed(hourly, "all");
+    const runs = due([routine], at("2026-11-03T08:30:00Z"), at("2026-11-03T11:10:00Z"));
+    expect(times(runs)).toEqual([
+      "2026-11-03T09:00:00.000Z",
+      "2026-11-03T10:00:00.000Z",
+      "2026-11-03T11:00:00.000Z",
+    ]);
+    const capped = due([routine], at("2026-11-03T08:30:00Z"), at("2026-11-03T11:10:00Z"), {
+      ...DEFAULT_TICK_POLICY,
+      maxCatchUp: 2,
+    });
+    expect(times(capped)).toEqual(["2026-11-03T09:00:00.000Z", "2026-11-03T10:00:00.000Z"]);
+  });
+
+  it("gives only on-time times for catchUp none", () => {
+    const routine = placed(hourly, "none");
+    expect(times(due([routine], at("2026-11-03T08:30:00Z"), at("2026-11-03T10:00:30Z")))).toEqual([
+      "2026-11-03T10:00:00.000Z",
+    ]);
+    expect(due([routine], at("2026-11-03T08:30:00Z"), at("2026-11-03T10:30:00Z"))).toEqual([]);
+  });
+
+  it("gives the newest time for catchUp last on a schedule", () => {
+    const runs = due(
+      [placed(hourly, "last")],
+      at("2026-11-03T08:30:00Z"),
+      at("2026-11-03T11:10:00Z"),
+    );
+    expect(times(runs)).toEqual(["2026-11-03T11:00:00.000Z"]);
+  });
+
+  it("gives nothing without a last tick, or when now is not after it", () => {
+    expect(due([placed(hourly)], null, at("2026-11-03T11:10:00Z"))).toEqual([]);
+    expect(due([placed(hourly)], at("2026-11-03T11:10:00Z"), at("2026-11-03T11:10:00Z"))).toEqual(
+      [],
+    );
+  });
+
+  it("skips disabled routines, other triggers and bad triggers", () => {
+    const routines = [
+      placed(hourly, "all", false, "off"),
+      placed({ manual: true }, "all", true, "manual"),
+      placed({ schedule: "nope" }, "all", true, "bad"),
+      placed({ every: "soon" }, "all", true, "worse"),
+    ];
+    expect(due(routines, at("2026-11-03T08:30:00Z"), at("2026-11-03T11:10:00Z"))).toEqual([]);
+  });
+
+  it("uses the policy zone when the schedule names none, and the workspace key without a hub", () => {
+    const routine = { ...placed({ schedule: "0 9 * * *" }), hub: null };
+    const policy = { ...DEFAULT_TICK_POLICY, timeZone: "Asia/Tokyo" };
+    const runs = due([routine], at("2026-11-02T23:00:00Z"), at("2026-11-03T01:00:00Z"), policy);
+    expect(runs[0]?.key).toBe("@workspace/r1");
+    expect(runs[0]?.at.toISOString()).toBe("2026-11-03T00:00:00.000Z");
+  });
+
+  it("orders by time, then key", () => {
+    const runs = due(
+      [placed({ every: "1h" }, "last", true, "b"), placed({ every: "1h" }, "last", true, "a")],
+      at("2026-11-03T08:10:00Z"),
+      at("2026-11-03T09:10:00Z"),
+    );
+    expect(runs.map((run) => run.key)).toEqual(["h/a", "h/b"]);
+  });
+});
+
+verifies("routines.due-exactly-once", () => {
+  it("makes each time due exactly once across late and repeated ticks", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.integer({ min: 0, max: 6 * 3_600_000 }), { minLength: 1, maxLength: 12 }),
+        (steps) => {
+          const start = at("2026-11-03T08:10:00Z").getTime();
+          const routine = placed({ every: "1h" }, "all");
+          let last = new Date(start);
+          const started = new Set<string>();
+          let now = start;
+          const all: string[] = [];
+          for (const step of steps) {
+            now += step;
+            const tick = new Date(now);
+            for (const run of due([routine], last, tick)) {
+              all.push(`${run.key}@${iso(run.at)}`);
+              started.add(`${run.key}@${iso(run.at)}`);
+            }
+            if (tick > last) last = tick;
+          }
+          // Repeated ticks (step 0) add nothing; each time appears once.
+          expect(all.length).toBe(new Set(all).size);
+          const expected = Math.floor(now / 3_600_000) - Math.floor(start / 3_600_000);
+          expect(started.size).toBe(expected);
+        },
+      ),
+    );
+  });
+});

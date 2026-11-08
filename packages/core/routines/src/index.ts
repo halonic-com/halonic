@@ -4,6 +4,14 @@ export const packageName = "@halonicjs/routines";
 export { CronError } from "./cron-error.ts";
 export { describeCron } from "./describe-cron.ts";
 export { describeTrigger } from "./describe-trigger.ts";
+export {
+  DEFAULT_TICK_POLICY,
+  type DueRun,
+  due,
+  type PlacedRoutine,
+  routineKey,
+  type TickPolicy,
+} from "./due.ts";
 export { MAIL_OVERLAP_MS, mailCheckDue, mailQuery } from "./mail-trigger.ts";
 export { nextCronTime } from "./next-cron-time.ts";
 export { nextRun } from "./next-run.ts";
