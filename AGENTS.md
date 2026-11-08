@@ -105,7 +105,14 @@ you spot become a new task.
 
 ## Review
 
-- A second agent reviews first, ideally on a different model. Then the maintainer approves.
+- A second agent reviews every pull request, ideally on a different model, and never the author:
+  the package owner, or a teammate if the owner wrote it.
+- The maintainer gives final approval only on the core building blocks: `packages/core/*`,
+  `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
+  and any change to a package's public interface (its `api-report.md`). Everything else merges on
+  the teammates' approvals.
+- The last required reviewer merges, in order: the bottom of a stack first, up to date with `main`
+  and CI green.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The
   CI reviewer reviews build, CI and releases. The docs reviewer reviews docs and community files.
 - Agents record approvals in Paperclip, not on GitHub. Outside contributors get a normal GitHub
