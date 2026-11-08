@@ -137,6 +137,26 @@ export const weather: Integration = {
 };
 ```
 
+## Loading
+
+Halonic loads an integration with the kit's `loadIntegration`, which reads
+the sheet from `@halonicjs/format/integration` (no YAML reader) and refuses
+it, before anything is sent, when:
+
+- the sheet fails its schema or names another `kit` version;
+- the code differs from the sheet: name, version, or a tool's description,
+  argument texts, `risk` or `untrusted` (write each text once and use it in
+  both places);
+- a `needs` entry isn't available where it runs, or a `{ fromSetting }`
+  host has no usable URL;
+- for a local integration, the sheet isn't the one the user approved.
+
+The workspace picks a secret for each secret in the sheet, and the kit reads
+only that one. For a model provider, `providerChoices` maps the provider
+entry's `baseUrl` onto the sheet's one `{ fromSetting }` host and its secret
+onto the sheet's one secret, so an integration ignores
+`ProviderConfig.baseUrl` and `.secret`.
+
 ## Testing
 
 Every integration runs the conformance suite from
