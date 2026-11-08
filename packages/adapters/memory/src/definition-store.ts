@@ -1,0 +1,60 @@
+import type { DefinitionStore } from "@halonicjs/ports";
+import { checkWorkspacePath } from "./paths.ts";
+import { sha256Hex } from "./sha256.ts";
+
+/**
+ * Workspace files in a map: for tests, the browser demo and the parity
+ * harness. Paths are checked like every other store's (see the port).
+ */
+export class MemoryDefinitionStore implements DefinitionStore {
+  readonly location: string;
+  readonly #files = new Map<string, string>();
+
+  /**
+   * @param files - the files to start with, by relative path
+   * @param location - shown to people as where the files live
+   * @throws RangeError when a path in `files` is unsafe
+   */
+  constructor(files: Readonly<Record<string, string>> = {}, location = "memory:workspace") {
+    this.location = location;
+    for (const [path, content] of Object.entries(files)) {
+      checkWorkspacePath(path);
+      this.#files.set(path, content);
+    }
+  }
+
+  async list(dir?: string): Promise<string[]> {
+    if (dir === undefined) {
+      return [...this.#files.keys()].sort();
+    }
+    checkWorkspacePath(dir);
+    return [...this.#files.keys()].filter((path) => path.startsWith(`${dir}/`)).sort();
+  }
+
+  async read(path: string): Promise<string | null> {
+    checkWorkspacePath(path);
+    return this.#files.get(path) ?? null;
+  }
+
+  async write(path: string, content: string): Promise<void> {
+    checkWorkspacePath(path);
+    this.#files.set(path, content);
+  }
+
+  async remove(path: string): Promise<void> {
+    checkWorkspacePath(path);
+    this.#files.delete(path);
+  }
+
+  /** `sha256:` and the first 16 hex characters of a hash over every path and its text, as in the old adapter. */
+  async version(): Promise<string> {
+    const paths = [...this.#files.keys()].sort();
+    const listing = paths.map((path) => `${path}\n${this.#files.get(path)}`).join("\n\0");
+    return `sha256:${(await sha256Hex(listing)).slice(0, 16)}`;
+  }
+
+  /** A copy of every file, by path: what the demo saves and the parity harness compares. */
+  snapshot(): Record<string, string> {
+    return Object.fromEntries(this.#files);
+  }
+}

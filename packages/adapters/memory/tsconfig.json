@@ -1,5 +1,6 @@
 {
-  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "//": "The host preset: Web globals only, no Node types, because this adapter runs anywhere (\"runtime\": \"any\"), including the browser demo and workerd.",
+  "extends": "@halonicjs/tooling-config/tsconfig/host.json",
   "include": [
     "src"
   ],
