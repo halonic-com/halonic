@@ -95,6 +95,10 @@ export function writeFixtureRepo(
     JSON.stringify(options.editDependencyList?.(list) ?? list),
   );
   write(
+    "tooling/check/advisories-ignored.json",
+    readFileSync(join(realRoot, "tooling/check/advisories-ignored.json"), "utf8"),
+  );
+  write(
     "package.json",
     JSON.stringify(manifestFor("@halonicjs/root", "tooling", { exports: undefined })),
   );

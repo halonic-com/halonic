@@ -4,17 +4,18 @@ Every pull request runs the same checks as `pnpm verify --full`. Run
 `pnpm verify` before you ask for review: it runs the fast checks and then
 typecheck, lint and test for the packages your change affects.
 
-| Command                                     | What it does                                                                                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm verify`                               | everything below, for the affected packages (`--full` for every package, as CI does)                                                             |
-| `pnpm check [rule …]`                       | our own repo checks (table below); with rule names, only those                                                                                   |
-| `pnpm check:leaks`                          | the leak guard over the working tree; see [leak-guard.md](leak-guard.md)                                                                         |
-| `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                          |
-| `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
-| `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                      |
-| `pnpm new package <layer>/<name>`           | creates an empty package that passes every check (adapters: add `--runtime <r>`)                                                                 |
-| `pnpm new feature <name>`                   | creates an empty Studio feature and adds it to the Studio's feature list                                                                         |
-| `pnpm who-touches [<package>]`              | the open pull requests that change a package; run it before you start                                                                            |
+| Command                                     | What it does                                                                                                                                          |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm verify`                               | everything below, for the affected packages (`--full` for every package, as CI does)                                                                  |
+| `pnpm check [rule …]`                       | our own repo checks (table below); with rule names, only those                                                                                        |
+| `pnpm check:leaks`                          | the leak guard over the working tree; see [leak-guard.md](leak-guard.md)                                                                              |
+| `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                               |
+| `pnpm check:audit [options]`                | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
+| `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles))      |
+| `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                           |
+| `pnpm new package <layer>/<name>`           | creates an empty package that passes every check (adapters: add `--runtime <r>`)                                                                      |
+| `pnpm new feature <name>`                   | creates an empty Studio feature and adds it to the Studio's feature list                                                                              |
+| `pnpm who-touches [<package>]`              | the open pull requests that change a package; run it before you start                                                                                 |
 
 ## `pnpm check` rules
 
@@ -23,6 +24,7 @@ typecheck, lint and test for the packages your change affects.
 | `packages`       | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features, and the subpaths listed for it under `extraExports` in `policy.json`) or point at a test file; an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder` |
 | `layers`         | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core, host or Studio code uses Node APIs; non-test code imports a test file; core, host or Studio code loads code the check can't follow (`import(x)` or `require(x)` with a computed name, `createRequire`, `process.getBuiltinModule`, `/// <reference types\|lib>`); a feature uses another feature other than through its `/api`                                |
 | `dependencies`   | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages or `layers`, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`; an entry doesn't fit its category; a catalog version isn't a plain version (`1.2.3`, `^1.2.3`, `~1.2.3`); `overrides`, `resolutions`, `packageExtensions`, `patchedDependencies` or named catalogs are used. See [dependencies.md](dependencies.md)                                                        |
+| `advisories`     | `tooling/check/advisories-ignored.json` has an unknown field, a missing or thin reason, a bad advisory ID or date, a repeated advisory, an expired entry or one expiring more than 90 days out; or an advisory is ignored anywhere else (`auditConfig` and `ignoreGhsas` in the workspace file, an `--ignore` on an audit command in a workflow or `package.json`)                                                                                                                                                 |
 | `names`          | a file or path contains a package name in the `@halonic` or `@studio` npm scope. Both scopes belong to someone else                                                                                                                                                                                                                                                                                                                                                                                                |
 | `features`       | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install`                                                                                                                                                                                                                                                                                                                                                                         |
 | `file-size`      | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt                                                                                                                                                                                                                                                                                                                                                                             |
@@ -173,6 +175,47 @@ lower-case words joined by `-`, never a wildcard, a nested path or
 `./api`. A malformed entry stops `pnpm check`; a name that is not a
 package here is a `packages` error. Adding an entry is a public interface
 change, so it needs Liam's review.
+
+## Ignoring an advisory
+
+`pnpm audit` fails the daily run and the pull request check on a high or
+critical advisory in shipped code. When the fix doesn't exist yet, or
+the code can't be reached, the decision is written down in
+`tooling/check/advisories-ignored.json`, the only place an advisory can be
+ignored. `pnpm check:audit` reads it and passes each ID to `pnpm audit
+--ignore`; `pnpm check` rejects an ignore anywhere else.
+
+To add an entry, open a pull request that adds this and nothing else:
+
+```json
+{
+  "ignored": [
+    {
+      "ghsa": "GHSA-xxxx-xxxx-xxxx",
+      "cve": "CVE-2026-12345",
+      "package": "name-of-the-package",
+      "reason": "Why this is safe for now and what we are waiting for.",
+      "expires": "2027-01-31"
+    }
+  ]
+}
+```
+
+- `cve` is optional; every other field is required and no others are allowed.
+- `reason` is plain language: why we can live with it and what ends it
+  (a fix release, a replacement). At least 20 characters.
+- `expires` is a real day, `YYYY-MM-DD`, at most 90 days from today.
+- Each advisory appears once.
+
+The file is part of the guard, so Liam reviews the pull request. At
+expiry the entry stops working: `pnpm check` and `pnpm check:audit` fail
+until the dependency is fixed (remove the entry) or someone renews it in a new
+pull request with a fresh reason and date. A renewal is a new decision, not
+an edit of the date alone.
+
+`cargo-deny` has an ignore list too. It follows the same rule (reason,
+expiry, guard) once the Tauri shell brings Rust into the repo; until then
+there is no `deny.toml` and nothing to ignore.
 
 ## What the TypeScript presets allow
 

@@ -34,9 +34,9 @@ jobs:
       - name: Licences
         run: pnpm check:licences
       - name: Audit shipped dependencies (high and critical fail)
-        run: pnpm audit --prod --audit-level high
+        run: pnpm check:audit --prod --audit-level high
       - name: Audit dev tooling (report only)
-        run: pnpm audit || echo "::warning::Advisories in dev tooling; see the log above."
+        run: pnpm check:audit || echo "::warning::Advisories in dev tooling; see the log above."
 
   mutation:
     # Report only for now: the score per package goes into the job summary

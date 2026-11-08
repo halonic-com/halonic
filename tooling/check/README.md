@@ -13,6 +13,7 @@ TypeScript parser, not regular expressions.
 - **Settings:** `policy.json` (core order, published packages, file size),
   `dependencies.json` (approved external dependencies),
   `licences.json` (licence allow-lists),
+  `advisories-ignored.json` (ignored security advisories, each with a reason and expiry),
   `leak-allow.txt` (leak guard false positives),
   `terms-allowed-phrases.txt`
 

@@ -110,7 +110,7 @@ jobs:
       # High and critical advisories in shipped dependencies fail; dev
       # tooling findings are reported by the daily scheduled run.
       - name: Dependency audit (shipped code)
-        run: pnpm audit --prod --audit-level high
+        run: pnpm check:audit --prod --audit-level high
 
   leaks:
     # The leak guard: the same rules as the local git hooks (secrets, keys,
