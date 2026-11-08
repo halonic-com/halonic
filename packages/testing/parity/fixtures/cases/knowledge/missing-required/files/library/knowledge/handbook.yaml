@@ -1,0 +1,8 @@
+id: handbook
+name: Handbook
+description: How-to notes.
+summary: Short notes on billing and refunds.
+mode: tools
+writable: false
+config:
+  path: docs/handbook

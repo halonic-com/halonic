@@ -1,0 +1,10 @@
+{
+  "about": "writable is text",
+  "kind": "knowledge",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "library/knowledge/handbook.yaml",
+    "path": "writable",
+    "line": 7
+  }
+}
