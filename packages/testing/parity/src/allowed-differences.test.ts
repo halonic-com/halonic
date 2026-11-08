@@ -92,6 +92,7 @@ describe("parity.allowed-differences-checked", () => {
       "contracts.definition-source",
       "contracts.blob-store",
       "contracts.run-store",
+      "schema-kit.nesting-limit",
     ]);
   });
 
