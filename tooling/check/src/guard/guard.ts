@@ -4,9 +4,10 @@ import type { ApprovalLookup, ApprovalVerdict } from "./approvals.ts";
 import { type DecisionNote, decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
 import type { GuardCheck, GuardFinding } from "./finding.ts";
 import { checkRequirementChanges } from "./requirement-changes.ts";
+import { checkTestRuns } from "./test-runs.ts";
 
 /** Every check of the requirement guard (plan 9.3, points 2 and 3). */
-export const guardChecks: readonly GuardCheck[] = [checkRequirementChanges];
+export const guardChecks: readonly GuardCheck[] = [checkRequirementChanges, checkTestRuns];
 
 /** What one guard run compares, and how it checks approvals. */
 export interface GuardRun {
@@ -33,9 +34,20 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
   if (findings.length === 0) {
     return report;
   }
+  const needNote: GuardFinding[] = [];
+  for (const finding of findings) {
+    if (finding.subject === undefined) {
+      report.error(finding.file, finding.message, finding.line);
+    } else {
+      needNote.push(finding);
+    }
+  }
+  if (needNote.length === 0) {
+    return report;
+  }
   const noteFile = decisionNoteFile(run.branch);
   if (!run.head.files.includes(noteFile)) {
-    for (const finding of findings) {
+    for (const finding of needNote) {
       report.error(
         finding.file,
         `${finding.message} That needs a decision note: add ${noteFile}, list "${finding.subject}" under Covers and link an approval (plan 9.3).`,
@@ -49,7 +61,7 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
     for (const problem of parsed.problems) {
       report.error(noteFile, `Malformed decision note: ${problem.message}`, problem.line);
     }
-    for (const finding of findings) {
+    for (const finding of needNote) {
       report.error(finding.file, `${finding.message} ${noteFile} can't be read, see its errors.`);
     }
     return report;
@@ -59,7 +71,7 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
     branch: run.branch,
     kind: parsed.note.kind,
   });
-  for (const finding of findings) {
+  for (const finding of needNote) {
     reportAgainstNote(finding, parsed.note, verdict, report);
   }
   return report;
@@ -71,7 +83,7 @@ function reportAgainstNote(
   verdict: ApprovalVerdict,
   report: Report,
 ): void {
-  if (!note.covers.includes(finding.subject)) {
+  if (finding.subject === undefined || !note.covers.includes(finding.subject)) {
     report.error(
       finding.file,
       `${finding.message} ${note.file} doesn't list "${finding.subject}" under Covers.`,

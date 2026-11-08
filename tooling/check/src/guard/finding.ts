@@ -2,8 +2,11 @@ import type { CheckContext } from "../lib/context.ts";
 
 /** One change the guard found that needs a decision note (plan 9.3). */
 export interface GuardFinding {
-  /** What the note must list under Covers: a requirement ID or a repo path. */
-  readonly subject: string;
+  /**
+   * What the note must list under Covers: a requirement ID or a repo path.
+   * `undefined` when no note can allow it, such as a missing result file.
+   */
+  readonly subject: string | undefined;
   /** Where to point the finding. */
   readonly file: string;
   readonly line?: number;
