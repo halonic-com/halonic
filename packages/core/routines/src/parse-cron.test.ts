@@ -109,6 +109,14 @@ verifies("routines.cron-rejects-bad-expressions", () => {
     );
   });
 
+  it("treats names inherited by every object as plain text, not macros", () => {
+    // These once matched Object.prototype members and failed with a TypeError.
+    expect(() => parseCron("constructor")).toThrow(CronError);
+    expect(() => parseCron("constructor")).toThrow(/5 fields/);
+    expect(() => parseCron("__proto__")).toThrow(CronError);
+    expect(() => parseCron("__proto__")).toThrow(/5 fields/);
+  });
+
   it("rejects a range with more than two ends", () => {
     expect(() => parseCron("1-2-3 * * * *")).toThrow('Bad range "1-2-3"');
   });

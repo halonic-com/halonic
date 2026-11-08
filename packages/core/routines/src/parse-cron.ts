@@ -62,7 +62,7 @@ const WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
  */
 export function parseCron(expression: string): Cron {
   const trimmed = expression.trim();
-  const text = MACROS[trimmed.toLowerCase()] ?? trimmed;
+  const text = expandMacro(trimmed);
   if (text.startsWith("@")) {
     // Without this, "@reboot" would be reported as "got 1 field".
     throw new CronError(`Unknown macro "${text}"; use one of ${Object.keys(MACROS).join(", ")}`);
@@ -93,4 +93,11 @@ export function parseCron(expression: string): Cron {
     daysAny: days.any,
     weekdaysAny: weekdays.any,
   };
+}
+
+/** Returns the five fields a macro stands for, or the text itself when it is no macro. */
+function expandMacro(text: string): string {
+  const key = text.toLowerCase();
+  // An own-property check, so "constructor" or "__proto__" never reach Object.prototype.
+  return Object.hasOwn(MACROS, key) ? (MACROS[key] ?? text) : text;
 }
