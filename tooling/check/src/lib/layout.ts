@@ -5,15 +5,19 @@
  */
 
 /** The layers from plan 4.1, plus `tooling` for the repo's own scripts. */
-export type Layer =
-  | "core"
-  | "adapters"
-  | "host"
-  | "targets"
-  | "studio"
-  | "apps"
-  | "testing"
-  | "tooling";
+export const layers = [
+  "core",
+  "adapters",
+  "host",
+  "targets",
+  "studio",
+  "apps",
+  "testing",
+  "tooling",
+] as const;
+
+/** One of the layers. */
+export type Layer = (typeof layers)[number];
 
 /** Where an adapter runs, declared as `"halonic": { "runtime" }` (plan 4.1, v1.2). */
 export const adapterRuntimes = ["node", "web", "workers", "any"] as const;
