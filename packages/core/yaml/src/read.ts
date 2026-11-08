@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "@halonicjs/std";
 import { type Document, LineCounter, type Node, parseDocument, type YAMLError } from "yaml";
+import { findDepthOffset } from "./depth.ts";
 import type { SourcePosition, YamlProblem } from "./problem.ts";
 import { findUnsupported, tooDeepMessage, unsupportedMessages } from "./unsupported.ts";
 
@@ -18,7 +19,7 @@ export interface YamlLimits {
  * Generous for workspace files, which nest about ten levels and stay well
  * under a megabyte.
  */
-export const defaultYamlLimits: YamlLimits = { maxDepth: 100, maxLength: 5_000_000 };
+export const defaultYamlLimits: YamlLimits = { maxDepth: 100, maxLength: 1_000_000 };
 
 /** A YAML text that was read: its data, and where each value sits. */
 export interface YamlFile {
@@ -61,6 +62,16 @@ export function readYaml(
       col: 1,
     });
   }
+  // Look at the nesting first: the yaml library builds the whole tree before
+  // we could, and a hostile file can use up memory doing that.
+  const tooDeepAt = findDepthOffset(text, limits.maxDepth);
+  if (tooDeepAt !== undefined) {
+    return err({
+      kind: "too-deep",
+      message: tooDeepMessage(limits.maxDepth),
+      ...positionAtOffset(text, tooDeepAt),
+    });
+  }
   // The same options as the old app (784f78d, packages/core/config/src/workspace.ts).
   const lines = new LineCounter();
   const document = parseDocument(text, { lineCounter: lines, prettyErrors: false });
@@ -80,7 +91,9 @@ export function readYaml(
   }
 
   return ok({
-    data: document.toJS(),
+    // Aliases are already rejected above; a limit of 0 keeps the library from
+    // expanding one if that ever changes.
+    data: document.toJS({ maxAliasCount: 0 }),
     positionOf: (path) => positionOf(document, lines, path),
   });
 }
@@ -133,6 +146,17 @@ function startOf(node: Node, lines: LineCounter): SourcePosition {
   const start = node.range?.[0] ?? 0;
   const { line, col } = lines.linePos(start);
   return { line, col };
+}
+
+/** The line and column of a character offset, counting lines like the parser. */
+function positionAtOffset(text: string, offset: number): SourcePosition {
+  let line = 1;
+  let lineStart = 0;
+  for (let at = text.indexOf("\n"); at !== -1 && at < offset; at = text.indexOf("\n", at + 1)) {
+    line++;
+    lineStart = at + 1;
+  }
+  return { line, col: offset - lineStart + 1 };
 }
 
 function firstLine(message: string): string {
