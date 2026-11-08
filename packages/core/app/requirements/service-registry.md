@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-116; plan 4.2
 
-The service registry shall return the service provided for a key. If a key is provided twice, or a missing key is asked for, then it shall throw a `ServiceError`. When the registry is disposed, it shall call `dispose` on each service that has one, newest first, and a failing `dispose` shall not stop the others.
+The service registry shall return the service provided for a key. If a key is provided twice, a missing key is asked for, or a service is provided after the registry was disposed, then it shall throw a `ServiceError`. When the registry is disposed, it shall call `dispose` on each service that has one, newest first, and a failing `dispose` shall not stop the others.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The service registry shall return the service provided for a key. If a key is pr
 - Given services A then B, both disposable, and A's `dispose` throws,
   when the registry is disposed,
   then B is disposed before A, A's error is thrown, and the registry is empty.
+- Given a disposed registry,
+  when a service is provided,
+  then a `ServiceError` is thrown.

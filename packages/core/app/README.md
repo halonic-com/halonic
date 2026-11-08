@@ -28,7 +28,10 @@ declare module "@halonicjs/app" {
   }
 }
 
-const scope = new WorkspaceScope("memory:demo");
+const scope = new WorkspaceScope({
+  location: "memory:demo",
+  onListenerError: (error, eventName) => console.error(eventName, error),
+});
 scope.commands.register("agents.create", ({ name }) => name.toLowerCase());
 await scope.commands.execute("agents.create", { name: "Reviewer" }); // "reviewer"
 await scope.close();
