@@ -106,6 +106,10 @@ describe("format.integration-policy", () => {
     "http://8.8.8.8",
     "http://169.254.169.254",
     "http://172.32.0.1",
+    "http://127.example.com",
+    "http://127.0.0.1.example.com",
+    "http://10.example.com",
+    "http://[::]",
   ])("refuses plain http to %s, which isn't local", (url) => {
     expect(problems(fromSetting(true), { url })).toEqual([
       "hosts.0 plain-http-not-local",
@@ -125,10 +129,29 @@ describe("format.integration-policy", () => {
     [{ url: "https://127.1" }, "setting-not-a-url"],
     [{ url: "https://0x7f.0.0.1" }, "setting-not-a-url"],
     [{ url: "https://mcp_server.example.com" }, "setting-not-a-url"],
+    [{ url: "http://[0:0:0:0:0:0:0:1]" }, "setting-not-a-url"],
+    [{ url: "http://[0::1]" }, "setting-not-a-url"],
+    [{ url: "http://[::0001]" }, "setting-not-a-url"],
+    [{ url: "http://[::ffff:127.0.0.1]" }, "setting-not-a-url"],
+    [{ url: "https://[1:2:3:4:5:6:7::]" }, "setting-not-a-url"],
+    [{ url: "https://[1:0:0:2:0:0:0:3]" }, "setting-not-a-url"],
+    [{ url: "https://[2001:db8:0:0:1::1]" }, "setting-not-a-url"],
+    [{ url: "https://[1::2:3:4:5:6:7:8]" }, "setting-not-a-url"],
+    [{ url: "https://[1:2:3:4:5:6:7]" }, "setting-not-a-url"],
+    [{ url: "https://[1::2::3]" }, "setting-not-a-url"],
+    [{ url: "https://[:1::]" }, "setting-not-a-url"],
   ])("refuses the setting %j", (settings, code) => {
     expect(problems(fromSetting(true), settings)).toEqual([
       `hosts.0 ${code}`,
       `secrets.mcp-key.hosts.0 ${code}`,
+    ]);
+  });
+
+  it("lets a secret go over plain http only to a whole loopback address", () => {
+    const { policy } = resolve(fromSetting(false), { url: "http://127.8.9.10:8080" });
+    expect(policy.secrets).toEqual({ "mcp-key": { hosts: ["127.8.9.10:8080"] } });
+    expect(problems(fromSetting(false), { url: "http://10.0.0.7" })).toEqual([
+      "secrets.mcp-key.hosts.0 secret-over-plain-http",
     ]);
   });
 
@@ -156,6 +179,12 @@ describe("format.integration-policy", () => {
     "http://10.0.0.7#top",
     "http://[::1]:8080",
     "http://[fd12:3456::1]",
+    "http://[fd00:0:0:1::]",
+    "https://[::]",
+    "https://[1:0:0:2::3]",
+    "https://[2001:db8::1:0:0:1]",
+    "https://[1:2:3:4:5:6:7:8]",
+    "https://[1:2:3:4:5:6:7:0]",
   ])("reads the host of %s as URL does", (url) => {
     const { policy } = resolve(fromSetting(true), { url });
     expect([...policy.hosts, ...(policy.localHosts ?? [])]).toEqual([new URL(url).host]);

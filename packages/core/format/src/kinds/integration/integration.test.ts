@@ -276,6 +276,9 @@ describe("format.integration-file", () => {
     "request.body",
     "response.body[*].data.result.content[*].text",
     "response.body.owners[*].*",
+    "response.body.*",
+    "response.body.*.name",
+    "response.body.data.*.*",
     "response.body.items[0].name",
     "request.query.q",
   ])("takes the recorder path %s", (path) => {
@@ -293,6 +296,8 @@ describe("format.integration-file", () => {
     "response.body..text",
     "response.body.a*b",
     "response.body.a b",
+    "response.body.*x",
+    "response.body.**",
     "request.query.*",
     "request.query.q.more",
     "response.query.q",

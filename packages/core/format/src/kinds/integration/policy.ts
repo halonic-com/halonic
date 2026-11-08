@@ -157,20 +157,23 @@ function resolveHost(
  * The scheme, host and port of an absolute `http` or `https` URL, as
  * `URL.host` gives them. The core has no `URL` class (plan 4.1), so this
  * reads it by hand and accepts only the plain forms `URL` leaves unchanged:
- * a name or dotted IPv4 address in lower case or a bracketed IPv6 address.
- * Anything else is refused, so the kit's own match never sees a host spelled
- * two ways.
+ * a name or dotted IPv4 address in lower case or a bracketed IPv6 address
+ * as `URL` writes it. Anything else is refused, so the kit's own match never
+ * sees a host spelled two ways.
  */
 function parseUrlHost(url: string): FoundHost | undefined {
   const parts = /^(https?):\/\/([^/?#]*)(?:[/?#]|$)/i.exec(url);
   const scheme = parts?.[1]?.toLowerCase();
   const authority = parts?.[2]?.toLowerCase() ?? "";
   const hostAndPort =
-    /^(\[[0-9a-f:.]+\]|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)(?::(\d{1,5}))?$/.exec(
+    /^(\[[0-9a-f:]+\]|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)(?::(\d{1,5}))?$/.exec(
       authority,
     );
   const hostname = hostAndPort?.[1];
-  if (scheme === undefined || hostname === undefined || !canonicalIpv4(hostname)) {
+  if (scheme === undefined || hostname === undefined) {
+    return undefined;
+  }
+  if (hostname.startsWith("[") ? !canonicalIpv6(hostname) : !canonicalIpv4(hostname)) {
     return undefined;
   }
   const port = hostAndPort?.[2];
@@ -198,13 +201,53 @@ function canonicalIpv4(hostname: string): boolean {
   );
 }
 
+/**
+ * A bracketed IPv6 address as `URL` writes it: eight groups in lower-case hex
+ * without leading zeros, the longest run of two or more zero groups (the
+ * first, on a tie) written `::`, and no dotted IPv4 tail.
+ */
+function canonicalIpv6(bracketed: string): boolean {
+  const address = bracketed.slice(1, -1);
+  const halves = address.split("::");
+  const groupsOf = (half: string) => (half === "" ? [] : half.split(":"));
+  const head = groupsOf(halves[0] ?? "");
+  const tail = groupsOf(halves[1] ?? "");
+  const zeros = 8 - head.length - tail.length;
+  if (halves.length > 2 || (halves.length === 2 ? zeros < 1 : zeros !== 0)) {
+    return false;
+  }
+  if (![...head, ...tail].every((group) => /^[0-9a-f]{1,4}$/.test(group))) {
+    return false;
+  }
+  const groups = [...head, ...Array<string>(zeros).fill("0"), ...tail].map((group) =>
+    Number.parseInt(group, 16).toString(16),
+  );
+  let start = -1;
+  let length = 0;
+  for (let i = 0; i < 8; i += 1) {
+    let end = i;
+    while (end < 8 && groups[end] === "0") {
+      end += 1;
+    }
+    if (end - i >= 2 && end - i > length) {
+      start = i;
+      length = end - i;
+    }
+  }
+  const written =
+    start === -1
+      ? groups.join(":")
+      : `${groups.slice(0, start).join(":")}::${groups.slice(start + length).join(":")}`;
+  return written === address;
+}
+
 // The same rules as the kit's `local-address.ts`, which checks again on every
 // request: only literal addresses and `localhost` count, since a name can
 // resolve anywhere. Link-local addresses (169.254/16) don't count.
 
 /** `localhost`, `127.0.0.0/8` or `::1`: this machine. */
 function isLoopback(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "[::1]" || /^127\./.test(hostname);
+  return hostname === "localhost" || hostname === "[::1]" || ipv4(hostname)?.[0] === 127;
 }
 
 /** Loopback, or `10/8`, `172.16/12`, `192.168/16` or IPv6 `fc00::/7`. */
@@ -212,13 +255,18 @@ function isLocalAddress(hostname: string): boolean {
   if (isLoopback(hostname)) {
     return true;
   }
-  const v4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(hostname);
-  if (v4 !== null) {
-    const a = Number(v4[1]);
-    const b = Number(v4[2]);
+  const v4 = ipv4(hostname);
+  if (v4 !== undefined) {
+    const [a = 0, b = 0] = v4;
     return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
   }
   return /^\[f[cd][0-9a-f]{2}:/.test(hostname);
+}
+
+/** The four numbers of a whole dotted IPv4 address, as the kit reads it. */
+function ipv4(hostname: string): readonly number[] | undefined {
+  const parts = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+  return parts?.slice(1).map(Number);
 }
 
 function unique(values: readonly string[]): string[] {
