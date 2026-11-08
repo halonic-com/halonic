@@ -106,8 +106,8 @@ you spot become a new task.
 Stacks stay short, so a closed pull request never strands work above it:
 
 - A stack is at most 3 pull requests deep, counting from `main`.
-- Open a stack all at once, for one review (see Review). Never add a pull request on top of one
-  that isn't approved yet. Start a different, independent task instead.
+- Open a stack all at once, for one review (see Review). Once that review has started, don't add
+  more pull requests on top of the stack. Start a different, independent task instead.
 - When a pull request below yours is closed or replaced, rebase or close everything you have above
   it the same day.
 
