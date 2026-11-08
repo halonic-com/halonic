@@ -1,0 +1,6 @@
+#!/bin/sh
+# Refuses a commit that adds a secret or key, a private key block, an .env
+# or key file, an absolute local path or a personal term.
+# Installed by `pnpm install`; see docs/guides/leak-guard.md.
+. "$(dirname "$0")/run-leak-guard.sh"
+exec "$node" "$hooks_dir/../src/cli/leaks.ts" --staged

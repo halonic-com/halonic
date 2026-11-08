@@ -16,6 +16,7 @@
     }
   },
   "scripts": {
+    "prepare": "node tooling/check/src/cli/install-hooks.ts",
     "verify": "node tooling/check/src/cli/verify.ts",
     "check": "node tooling/check/src/cli/check.ts",
     "check:leaks": "node tooling/check/src/cli/leaks.ts",

@@ -8,7 +8,7 @@ typecheck, lint and test for the packages your change affects.
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `pnpm verify`                               | everything below, for the affected packages (`--full` for every package, as CI does)                                                             |
 | `pnpm check [rule …]`                       | our own repo checks (table below); with rule names, only those                                                                                   |
-| `pnpm check:leaks`                          | the leak guard: secrets, keys, key files, local paths and personal terms                                                                         |
+| `pnpm check:leaks`                          | the leak guard over the working tree; see [leak-guard.md](leak-guard.md)                                                                         |
 | `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                          |
 | `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
 | `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                      |
@@ -158,17 +158,13 @@ and host rows; it fails if a forbidden global starts to compile.
 Store a timer as `ReturnType<typeof setTimeout>`, so host code also
 type-checks in tests, which use `node.json`.
 
-## The personal-terms guard
+## The leak guard
 
-Nothing private may enter the repo. The list of protected terms is never
-in the repo: CI reads it from the `HALONIC_DENY_TERMS` Actions secret, and
-you can keep a local copy in `~/.config/halonic/deny-terms` (one term per
-line). The guard scans changed files and their names, commit messages and
-authors, the branch name and the pull request title and body. It prints
-where a term is, never the term, and withholds path parts that contain
-one. Harmless technical phrases that contain a term go in
-`tooling/check/terms-allowed-phrases.txt`. Until the secret is set, the
-guard passes with a warning that says nothing was scanned.
+Secrets and keys, private key blocks, `.env` and key files, absolute local
+paths and personal terms must never reach the repo. The git hooks refuse
+them on every commit and push, and CI runs the same rules as the final
+gate. See [leak-guard.md](leak-guard.md) for what it checks, how to set up
+your deny-terms file and how to allow a false positive.
 
 ## CI
 
@@ -181,7 +177,7 @@ produces packages that pass) are then skipped without blocking the merge.
 | Job                          | What                                                                                                                                    |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
-| Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                        |
+| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                   |
 | Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                           |
 | Workflow lint                | `zizmor` over `.github/`                                                                                                                |
 | Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                                             |
@@ -189,7 +185,7 @@ produces packages that pass) are then skipped without blocking the merge.
 | Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                              |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
-the licence check daily, and the full terms and secret scan over the whole history
+the licence check daily, and the full leak guard and secret scan over the whole history
 weekly. A failure opens an issue.
 
 It also runs **mutation testing** every night: Stryker on
