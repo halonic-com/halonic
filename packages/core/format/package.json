@@ -12,12 +12,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@halonicjs/std": "workspace:*"
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
-    "@halonicjs/yaml": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

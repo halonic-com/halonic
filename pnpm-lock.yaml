@@ -312,9 +312,15 @@ importers:
 
   packages/core/format:
     dependencies:
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std
+      '@halonicjs/yaml':
+        specifier: workspace:*
+        version: link:../yaml
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*
@@ -322,9 +328,6 @@ importers:
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
-      '@halonicjs/yaml':
-        specifier: workspace:*
-        version: link:../yaml
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6

@@ -1,3 +1,15 @@
+// The public API of @halonicjs/format. Internal code imports by relative path.
+
 export { compact } from "./compact.ts";
-/** The npm name of this package. A placeholder export, so the empty package has an API to test. */
-export const packageName = "@halonicjs/format";
+export type { FileKind, FilePlace, KindCheckProblem, KindSyntax } from "./kind.ts";
+export type { SessionAssistant, WorkspaceSettings } from "./kinds/workspace/schema.ts";
+export {
+  type FileProblem,
+  type ParsedFile,
+  type ParseFileOptions,
+  parseFile,
+} from "./parse-file.ts";
+export { fileKinds, isKindName, type KindName, type KindValues, kindNames } from "./registry.ts";
+export { isReservedPath, RESERVED_FOLDER } from "./reserved.ts";
+export { SCHEMA_VERSION } from "./shared/fields.ts";
+export type { Guard } from "./shared/guard.ts";

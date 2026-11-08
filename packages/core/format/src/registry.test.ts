@@ -1,0 +1,58 @@
+import { describe, expect, it } from "vitest";
+import { fileKinds, isKindName, isReservedPath, kindNames, RESERVED_FOLDER } from "./index.ts";
+
+describe("format.kind-registry", () => {
+  it("lists the kinds ported so far, workspace-level first", () => {
+    expect(kindNames()).toEqual(["workspace"]);
+  });
+
+  it("registers each kind under its own name, with a schema and at least one place", () => {
+    for (const name of kindNames()) {
+      const kind = fileKinds[name];
+      expect(kind.name).toBe(name);
+      expect(kind.about).not.toBe("");
+      expect(kind.places.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("places every kind in the one layout", () => {
+    const places = kindNames().flatMap((name) =>
+      fileKinds[name].places.map(
+        (place) => `${name}: ${place.scope} ${place.folder}/${place.name}`,
+      ),
+    );
+    expect(places).toEqual(["workspace: workspace /workspace.yaml"]);
+  });
+
+  it("knows its kind names and nothing else", () => {
+    expect(isKindName("workspace")).toBe(true);
+    expect(isKindName("flow")).toBe(false);
+    expect(isKindName("toString")).toBe(false);
+  });
+});
+
+describe("format.reserved-folder", () => {
+  it("is called .halonic", () => {
+    expect(RESERVED_FOLDER).toBe(".halonic");
+  });
+
+  it.each([
+    ".halonic",
+    ".halonic/staging/abc/hub.yaml",
+    "hubs/billing/.halonic",
+    "hubs/billing/.halonic/source.json",
+    "hubs/billing/.halonic/agents/clerk.agent.yaml",
+  ])("reserves %s", (path) => {
+    expect(isReservedPath(path)).toBe(true);
+  });
+
+  it.each([
+    "hubs/billing/agents/clerk.agent.yaml",
+    "hubs/billing/library/.halonic/x.yaml",
+    ".halonic-notes.md",
+    "hubs/.halonic/hub.yaml",
+    "docs/.halonic/x",
+  ])("leaves %s to the loader", (path) => {
+    expect(isReservedPath(path)).toBe(false);
+  });
+});
