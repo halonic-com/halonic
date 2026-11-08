@@ -38,7 +38,8 @@ export function checkGoldenFiles({ base, head }: Checkouts): GuardFinding[] {
   return findings;
 }
 
-function changeOf(file: string, base: CheckContext, head: CheckContext): string | undefined {
+/** How a file differs between the checkouts: "added", "deleted", "changed" or not at all. */
+export function changeOf(file: string, base: CheckContext, head: CheckContext): string | undefined {
   const inBase = base.files.includes(file);
   const inHead = head.files.includes(file);
   if (!inBase) {
