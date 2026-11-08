@@ -6,6 +6,8 @@
 
 The ports package shall have a `TrustStore` port that gets, grants, revokes and lists trust records by location, where a record holds the location, the fingerprint, the normalised content it was computed from, the time, the app version, the connector pins and the origin. The port shall only store records: it shall have no method that computes a fingerprint or decides whether a source is trusted.
 
+The port's documentation shall state that a record that can't be read makes `get` and `list` throw with its location, and that `revoke` still deletes it.
+
 ## Examples
 
 - Given the `TrustStore` port,

@@ -32,7 +32,7 @@ export interface TrustRecord {
   grantedAt: string;
   /** The version of Halonic that wrote the record. */
   appVersion: string;
-  /** The pinned version of each `npx` or `uvx` connector, by connector id. */
+  /** The pinned version of each package-runner connector (`npx`, `uvx` and so on), by connector id. */
   pins: Record<string, ConnectorPin>;
   origin: TrustOrigin;
 }
@@ -48,16 +48,26 @@ export interface TrustRecord {
  * trusted. Locations are compared exactly as given.
  *
  * A record that exists but can't be read makes `get` and `list` throw,
- * never return `null`: the service then treats the source as untrusted and
- * tells the user why, instead of asking again as if it were new.
+ * never return `null` or skip it: the service then treats the source as
+ * untrusted and tells the user why, instead of asking again as if it were
+ * new. The error names the record's location, and `revoke` still deletes
+ * that record, so the user can recover with `halonic trust --revoke`.
  */
 export interface TrustStore {
   /** The record for a location, or `null` when there is none. */
   get(location: string): Promise<TrustRecord | null>;
   /** Saves a record, replacing any record for the same location. */
   grant(record: TrustRecord): Promise<void>;
-  /** Deletes the record for a location. Revoking one that isn't there is not an error. */
+  /**
+   * Deletes the record for a location, even one that can't be read.
+   * Revoking one that isn't there is not an error.
+   */
   revoke(location: string): Promise<void>;
-  /** Every record, sorted by location, for `halonic trust --list` and the trusted-sources list. */
+  /**
+   * Every record, sorted by location, for `halonic trust --list` and the
+   * trusted-sources list.
+   *
+   * @throws when any record can't be read, naming its location
+   */
   list(): Promise<TrustRecord[]>;
 }
