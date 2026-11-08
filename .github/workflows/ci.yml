@@ -308,8 +308,13 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+    # The guard downloads the archive by these, not by name: the build job
+    # runs pull-request code that could upload an artifact with the same
+    # name, but no other job can set this job's outputs.
     outputs:
       sha: ${{ steps.merge-base.outputs.sha }}
+      results-id: ${{ steps.upload.outputs.artifact-id }}
+      results-sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -331,12 +336,16 @@ jobs:
       - name: Run the merge base's tests without reading any cache
         run: pnpm exec turbo run test --force --continue --output-logs=errors-only
       # Runs even when a test failed: the guard reports a missing result file.
-      - name: Pack the test results
+      - id: pack
+        name: Pack the test results
         if: always()
         run: |
           find . -name node_modules -prune -o -path '*/test-results/vitest.json' -type f -print \
             | sed 's|^\./||' | sort | tar -cf "$RUNNER_TEMP/test-results.tar" -T -
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          sha256=$(sha256sum "$RUNNER_TEMP/test-results.tar" | cut -d' ' -f1)
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+      - id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: merge-base-test-results
@@ -365,12 +374,18 @@ jobs:
     steps:
       # Without it the base checkout below would fall back to the pull
       # request's own commit, and the guard would compare it with itself.
-      - name: Stop if the merge base is unknown
+      - name: Stop if the merge base or its results are unknown
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
+          RESULTS_ID: ${{ needs.base-tests.outputs.results-id }}
+          RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
         run: |
           if [ -z "$BASE_SHA" ]; then
             echo "::error::The merge base's tests job didn't report which commit it tested."
+            exit 1
+          fi
+          if ! grep -qE '^[0-9]+$' <<< "$RESULTS_ID" || ! grep -qE '^[0-9a-f]{64}$' <<< "$RESULTS_SHA256"; then
+            echo "::error::The merge base's tests job didn't report its result archive's ID and sha256."
             exit 1
           fi
       # The same commit the build job tested.
@@ -394,10 +409,17 @@ jobs:
         with:
           name: pull-request-test-results
           path: ${{ runner.temp }}/head-results
+      # By the ID its own job reported, then checked against its sha256: an
+      # artifact a pull request uploads under the same name is never read.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: merge-base-test-results
+          artifact-ids: ${{ needs.base-tests.outputs.results-id }}
           path: ${{ runner.temp }}/base-results
+      - name: Check the merge base's archive is the one its job packed
+        env:
+          RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
+        run: |
+          echo "$RESULTS_SHA256  $RUNNER_TEMP/base-results/test-results.tar" | sha256sum --check --strict
       # The pull request's archive is its own code's output, so each entry
       # must be a plain result file that lands where its name says: no
       # links, no "..", and no folder in the checkout that links elsewhere.
