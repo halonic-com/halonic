@@ -15,7 +15,7 @@ const input: AuthUrlInput = {
 
 const parameters = (url: string) => new URL(url).searchParams;
 
-verifies("google-setup.sign-in.auth-url", () => {
+verifies("google-setup.sign-in-auth-url", () => {
   it("asks for the code flow with PKCE S256, a loopback redirect and a refresh token", () => {
     const url = googleAuthUrl(input);
     const query = parameters(url);

@@ -1,4 +1,4 @@
-# google-setup.sign-in.loopback-redirect
+# google-setup.sign-in-loopback-redirect
 
 - Status: active
 - Since: 0.1.0

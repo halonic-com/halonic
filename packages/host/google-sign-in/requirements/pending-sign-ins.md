@@ -14,6 +14,7 @@ The sign-in shall keep each server's pending sign-ins in memory in a holder of i
 - Given two starts for one account,
   then only the second one's `state` and auth URL count.
 - Given a sign-in started at 12:00,
-  when it is taken at 12:09:59.999 it is returned; at 12:10 it is removed and nothing is returned.
+  when it is taken at 12:09:59.999,
+  then it is returned; taken at 12:10 instead, it is removed and nothing is returned.
 - Given a `state` that differs in one character,
   then nothing is returned and the pending sign-in stays.

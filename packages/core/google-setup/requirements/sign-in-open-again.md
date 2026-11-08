@@ -1,4 +1,4 @@
-# google-setup.sign-in.open-again
+# google-setup.sign-in-open-again
 
 - Status: active
 - Since: 0.1.0

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: spec "Run events: the timeline entry id" on HAL-970 (sections 1, 3 and 4), for accessibility check L7 on HAL-966
 
-Every run event may have an `entry`: the `seq` of the event that opened its timeline entry. The events package shall work out each event's entry with `entryOf(events)`. An event that has `entry` keeps it. An event that updates an entry (table below) gets the `seq` of the latest still-open opener of the matching type with the same `branch`, `item` and "matched on" fields. Every other event gets its own `seq`.
+The `entry` of a run event, which any run event may have, is the `seq` of the event that opened its timeline entry. The events package shall work out each event's entry with `entryOf(events)`. An event that has `entry` keeps it. An event that updates an entry (table below) gets the `seq` of the latest still-open opener of the matching type with the same `branch`, `item` and "matched on" fields. Every other event gets its own `seq`.
 
 | Opens an entry       | Updated later by                | Matched on                 |
 | -------------------- | ------------------------------- | -------------------------- |

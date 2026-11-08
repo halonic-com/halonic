@@ -1,4 +1,4 @@
-# google-setup.sign-in.auth-url
+# google-setup.sign-in-auth-url
 
 - Status: active
 - Since: 0.1.0

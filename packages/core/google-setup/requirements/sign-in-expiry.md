@@ -1,10 +1,10 @@
-# google-setup.sign-in.expiry
+# google-setup.sign-in-expiry
 
 - Status: active
 - Since: 0.1.0
 - Source: HAL-699 (plan D5, HAL-705)
 
-A pending sign-in shall be kept in memory only, at most one per account, and shall count as expired, so that the callback can't finish it, from 10 minutes after its start by the `Clock`.
+The package shall keep a pending sign-in in memory only, at most one per account, and shall count it as expired, so that the callback can't finish it, from 10 minutes after its start by the `Clock`.
 
 ## Examples
 

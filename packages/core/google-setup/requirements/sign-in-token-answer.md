@@ -1,4 +1,4 @@
-# google-setup.sign-in.token-answer
+# google-setup.sign-in-token-answer
 
 - Status: active
 - Since: 0.1.0

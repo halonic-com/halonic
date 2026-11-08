@@ -1,4 +1,4 @@
-# google-setup.sign-in.no-secret-echo
+# google-setup.sign-in-no-secret-echo
 
 - Status: active
 - Since: 0.1.0

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-707 (build plan B2; design 2.3)
 
-For a Workspace account, the steps shall create the project inside the organisation, set the audience to Internal with no required tick, and show the admin note before sign-in. For a personal account, they shall allow any project, set the audience to External with the required tick `in-production`, and show the warning preview before sign-in. `accountTypeFromAddress` shall return `personal` for `@gmail.com` and `@googlemail.com` addresses in any case, and nothing for any other address.
+Where the account is a Workspace account, the steps shall create the project inside the organisation, set the audience to Internal with no required tick, and show the admin note before sign-in. For a personal account, they shall allow any project, set the audience to External with the required tick `in-production`, and show the warning preview before sign-in. `accountTypeFromAddress` shall return `personal` for `@gmail.com` and `@googlemail.com` addresses in any case, and nothing for any other address.
 
 ## Examples
 

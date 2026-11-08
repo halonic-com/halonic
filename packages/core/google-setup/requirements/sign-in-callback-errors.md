@@ -1,4 +1,4 @@
-# google-setup.sign-in.callback-errors
+# google-setup.sign-in-callback-errors
 
 - Status: active
 - Since: 0.1.0

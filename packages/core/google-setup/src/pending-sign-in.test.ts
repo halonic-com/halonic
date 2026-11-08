@@ -5,7 +5,7 @@ import { hasPendingSignInExpired, pendingSignInLifetimeMs } from "./pending-sign
 const startedAt = new Date(Date.UTC(2026, 10, 8, 12, 0, 0));
 const after = (milliseconds: number) => new Date(startedAt.getTime() + milliseconds);
 
-verifies("google-setup.sign-in.expiry", () => {
+verifies("google-setup.sign-in-expiry", () => {
   it("lasts 10 minutes", () => {
     expect(pendingSignInLifetimeMs).toBe(600_000);
   });

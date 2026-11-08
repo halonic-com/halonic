@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-706 (build plan D5, security review A7 in HAL-705)
 
-A setup record shall hold only its listed values: route, account type, start time, project ID, step ticks, the "In production" tick, client ID, the client secret's ref and save time, the sign-in start and last sign-in times, and the check result per service. The setup records shall refuse, without writing anything, an edit that would make an invalid record, such as a client ID that isn't one. They shall report a stored record with any other key or an invalid value as damaged, leave it out of the list, and never repeat a stored or edited value in an error message.
+The setup records shall let a record hold only its listed values: route, account type, start time, project ID, step ticks, the "In production" tick, client ID, the client secret's ref and save time, the sign-in start and last sign-in times, and the check result per service. The setup records shall refuse, without writing anything, an edit that would make an invalid record, such as a client ID that isn't one. They shall report a stored record with any other key or an invalid value as damaged, leave it out of the list, and never repeat a stored or edited value in an error message.
 
 ## Examples
 

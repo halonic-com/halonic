@@ -22,7 +22,7 @@ function serverWithPendingSignIn() {
 
 const callback = (query: string) => new URLSearchParams(query);
 
-verifies("google-setup.sign-in.callback-state", () => {
+verifies("google-setup.sign-in-callback-state", () => {
   it("returns the code and the pending sign-in when state matches, and removes it", () => {
     const { pendingSignIns } = serverWithPendingSignIn();
 
@@ -85,7 +85,7 @@ verifies("google-setup.sign-in.callback-state", () => {
   });
 });
 
-verifies("google-setup.sign-in.callback-errors", () => {
+verifies("google-setup.sign-in-callback-errors", () => {
   describe("with a matching state", () => {
     it.each([
       ["access_denied", { kind: "cancelled", accountRef: "gaccount_1" }],
@@ -126,7 +126,7 @@ verifies("google-setup.sign-in.callback-errors", () => {
   });
 });
 
-verifies("google-setup.sign-in.no-secret-echo", () => {
+verifies("google-setup.sign-in-no-secret-echo", () => {
   it("never keeps error_description, nor an error value that isn't a plain code", () => {
     const { pendingSignIns } = serverWithPendingSignIn();
     const query = callback(
@@ -157,7 +157,7 @@ verifies("google-setup.sign-in.no-secret-echo", () => {
   });
 });
 
-verifies("google-setup.sign-in.open-again", () => {
+verifies("google-setup.sign-in-open-again", () => {
   it("gives the same auth URL while the sign-in is valid, and keeps it pending", () => {
     const { pendingSignIns, advance } = serverWithPendingSignIn();
     advance(5 * 60 * 1000);

@@ -1,4 +1,4 @@
-# google-setup.sign-in.callback-state
+# google-setup.sign-in-callback-state
 
 - Status: active
 - Since: 0.1.0

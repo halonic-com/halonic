@@ -19,7 +19,7 @@ const success = {
   token_type: "Bearer",
 };
 
-verifies("google-setup.sign-in.token-answer", () => {
+verifies("google-setup.sign-in-token-answer", () => {
   it("returns the refresh token, the ID token and the scopes Google granted, not the access token", () => {
     const meaning = classifyTokenAnswer({ status: 200, json: success });
 
@@ -79,7 +79,7 @@ verifies("google-setup.sign-in.token-answer", () => {
   });
 });
 
-verifies("google-setup.sign-in.no-secret-echo", () => {
+verifies("google-setup.sign-in-no-secret-echo", () => {
   it("never keeps error_description or an error value that echoes the request", () => {
     const hostile = [
       {

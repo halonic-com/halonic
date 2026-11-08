@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { loopbackRedirectUri } from "./loopback-redirect.ts";
 
-verifies("google-setup.sign-in.loopback-redirect", () => {
+verifies("google-setup.sign-in-loopback-redirect", () => {
   it("builds http://127.0.0.1 with the port and path", () => {
     expect(loopbackRedirectUri({ port: 8787, path: "/google/callback" })).toBe(
       "http://127.0.0.1:8787/google/callback",
