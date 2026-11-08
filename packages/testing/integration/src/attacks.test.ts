@@ -7,6 +7,7 @@ import {
   checkProviderErrors,
   checkSources,
 } from "./checks.ts";
+import { passes } from "./describe.ts";
 import { attacks } from "./fixtures/attacks.ts";
 import { weatherSubject } from "./fixtures/weather.ts";
 import type { ConformanceSubject } from "./run.ts";
@@ -38,7 +39,7 @@ describe("testing-integration.attack-cases", () => {
 
   it("passes the well-behaved integration on every check the attacks fail", async () => {
     const clean = { ...weatherSubject, sources: { "src/index.ts": "export {};" } };
-    for (const check of Object.values(checks)) await check(clean);
+    for (const check of Object.values(checks)) await passes(() => check(clean));
   });
 
   it("names the refused host in the failure", async () => {

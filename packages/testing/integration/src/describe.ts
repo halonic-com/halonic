@@ -1,4 +1,4 @@
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   checkAbort,
   checkCase,
@@ -28,22 +28,36 @@ import type { ConformanceSubject } from "./run.ts";
 export function describeIntegrationConformance(subject: ConformanceSubject): void {
   describe(`integration conformance: ${subject.integration.name}`, () => {
     it("is what its sheet declares: name, version, tools and their risk", () =>
-      checkDeclaration(subject));
-    it("declares exact https hosts and ties every secret to them", () => checkPolicy(subject));
+      passes(() => checkDeclaration(subject)));
+    it("declares exact https hosts and ties every secret to them", () =>
+      passes(() => checkPolicy(subject)));
     it("sends nothing when it connects, and closes twice safely", () =>
-      checkConnectIsQuiet(subject));
-    it("waits through a host that caps the pause and stops on abort", () => checkHostWait(subject));
+      passes(() => checkConnectIsQuiet(subject)));
+    it("waits through a host that caps the pause and stops on abort", () =>
+      passes(() => checkHostWait(subject)));
     if (subject.sources !== undefined) {
-      it("uses nothing that reaches past its host", () => checkSources(subject));
+      it("uses nothing that reaches past its host", () => passes(() => checkSources(subject)));
     }
     for (const [index, toolCase] of subject.cases.entries()) {
       const name = `${toolCase.tool} (case ${index + 1})`;
-      it(`${name} answers from its recording without leaking a secret`, async () => {
-        await checkCase(subject, toolCase);
-      });
-      it(`${name} stops when its signal is aborted`, () => checkAbort(subject, toolCase));
+      it(`${name} answers from its recording without leaking a secret`, () =>
+        passes(() => checkCase(subject, toolCase)));
+      it(`${name} stops when its signal is aborted`, () =>
+        passes(() => checkAbort(subject, toolCase)));
       it(`${name} doesn't pass a provider's error body through`, () =>
-        checkProviderErrors(subject, toolCase));
+        passes(() => checkProviderErrors(subject, toolCase)));
     }
   });
+}
+
+/**
+ * Runs one check as an assertion, so the test counts it (a test without an
+ * assertion fails) and a failed check still shows its own message.
+ */
+export async function passes(check: () => unknown): Promise<void> {
+  await expect(
+    (async () => {
+      await check();
+    })(),
+  ).resolves.toBeUndefined();
 }
