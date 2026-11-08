@@ -2,8 +2,8 @@
 
 Made-up fixture workspaces and golden recordings of how the old repo (commit
 `784f78d`) treats them: which files pass or fail, the error's key path and
-line, and the output of the old `validate` command. The compare task checks the
-new code against these recordings.
+line, and the output of the old `validate` command. The compare in
+`src/compare/` checks the new code against these recordings.
 
 - **Layer:** testing
 - **Owner:** julian
@@ -68,6 +68,17 @@ The validate output carries no time and no run IDs. The recorder still checks
 this and refuses to write output that does, so a later change can't slip a
 clock into the goldens. It runs the old code with `TZ=UTC`, `LANG=C` and an
 empty home folder, so nothing from the person's own settings is read.
+
+## The compare
+
+For every file the old loader read, in the base and in every case, the
+compare takes the old result from `recorded.json` and the new one from
+`parseFile`, and compares them exactly: pass or fail, then each error's key
+path, code, line and column, in order. Nothing is dropped or rounded. A YAML
+syntax error is compared by its line and column, with the code `syntax`.
+Errors the old loader found between files (an unknown agent, a workflow rule)
+are kept with the file for the report; the new loader checks those in
+phase 2, so only the file's own result is compared now.
 
 ## Allowed differences
 
