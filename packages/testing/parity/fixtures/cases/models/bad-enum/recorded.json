@@ -1,0 +1,62 @@
+{
+  "reference": "784f78d",
+  "case": "models/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "models.yaml",
+      "flatPath": "models.yaml",
+      "read": true,
+      "schema": "models",
+      "issues": [
+        {
+          "path": [
+            "aliases",
+            "fast",
+            "params",
+            "reasoningEffort"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"low\"|\"medium\"|\"high\"",
+          "line": 13,
+          "col": 24
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "models.yaml",
+      "message": "aliases.fast.params.reasoningEffort: Invalid option: expected one of \"low\"|\"medium\"|\"high\"",
+      "line": 13,
+      "col": 24
+    },
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "The session AI uses unknown model alias \"fast\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown model alias \"fast\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses unknown model alias \"default\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error models.yaml: aliases.fast.params.reasoningEffort: Invalid option: expected one of \"low\"|\"medium\"|\"high\"\nerror workspace.yaml: The session AI uses unknown model alias \"fast\"\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown model alias \"fast\"\nerror hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses unknown model alias \"default\"\n4 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 13,
+    "recorded": 13,
+    "verdict": "same"
+  }
+}
