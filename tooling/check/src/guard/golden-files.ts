@@ -1,0 +1,57 @@
+import type { CheckContext } from "../lib/context.ts";
+import { isSourceFile, isTestFile } from "../lib/source-files.ts";
+import type { Checkouts, GuardFinding } from "./finding.ts";
+import { readTestFileFacts } from "./test-file-facts.ts";
+
+/**
+ * Golden files and snapshots (plan 9.3, 9.6): files in a `golden/` or
+ * `__snapshots__/` folder, and `.snap` files.
+ */
+export function isGoldenFile(file: string): boolean {
+  return /(?:^|\/)(?:golden|__snapshots__)\//.test(file) || file.endsWith(".snap");
+}
+
+/**
+ * Plan 9.3, point 3: a changed, added or deleted golden file or snapshot,
+ * inline snapshots included, needs a note that lists the file.
+ */
+export function checkGoldenFiles({ base, head }: Checkouts): GuardFinding[] {
+  const findings: GuardFinding[] = [];
+  const golden = new Set([...base.files, ...head.files].filter(isGoldenFile));
+  for (const file of [...golden].sort()) {
+    const change = changeOf(file, base, head);
+    if (change !== undefined) {
+      findings.push({ subject: file, file, message: `The golden file ${file} was ${change}.` });
+    }
+  }
+  for (const file of head.files.filter((path) => isTestFile(path) && isSourceFile(path))) {
+    const before = inlineSnapshots(base, file);
+    const after = inlineSnapshots(head, file);
+    if (before.join("\0") !== after.join("\0")) {
+      findings.push({
+        subject: file,
+        file,
+        message: `${file} changes, adds or removes an inline snapshot (${after.length} now, ${before.length} on the merge base).`,
+      });
+    }
+  }
+  return findings;
+}
+
+function changeOf(file: string, base: CheckContext, head: CheckContext): string | undefined {
+  const inBase = base.files.includes(file);
+  const inHead = head.files.includes(file);
+  if (!inBase) {
+    return "added";
+  }
+  if (!inHead) {
+    return "deleted";
+  }
+  return base.read(file) === head.read(file) ? undefined : "changed";
+}
+
+function inlineSnapshots(context: CheckContext, file: string): readonly string[] {
+  return context.files.includes(file)
+    ? readTestFileFacts(file, context.read(file)).inlineSnapshots
+    : [];
+}

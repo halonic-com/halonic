@@ -17,7 +17,17 @@ export interface MockUse {
 export interface TestFileFacts {
   readonly skips: readonly SkipUse[];
   readonly mocks: readonly MockUse[];
+  /** The source text of each inline snapshot, in file order. */
+  readonly inlineSnapshots: readonly string[];
+  /** The source text of each `coverage: { … }` setting, in file order. */
+  readonly coverageSettings: readonly string[];
 }
+
+/** Matchers whose argument is an inline snapshot. */
+const inlineSnapshotMatchers = new Set([
+  "toMatchInlineSnapshot",
+  "toThrowErrorMatchingInlineSnapshot",
+]);
 
 /** Vitest's functions that take `.skip`, `.only` and the rest. */
 const testFunctions = new Set(["test", "it", "describe", "suite", "bench"]);
@@ -37,34 +47,71 @@ const options = new Set(["skip", "only", "todo", "fails", "retry"]);
  *   function, or in a Vitest config's `test` settings. Other objects, such
  *   as a workflow's own `retry` setting in test data, don't count
  * - `vi.mock(…)` and `vi.doMock(…)`, with a string or an `import(…)`
+ *
+ * It also returns the inline snapshots and `coverage` settings, so the
+ * guard can tell when they changed.
  */
 export function readTestFileFacts(file: string, text: string): TestFileFacts {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
-  const lineOf = (node: ts.Node): number =>
-    source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
-  const skips: SkipUse[] = [];
-  const mocks: MockUse[] = [];
+  const facts: CollectedFacts = { skips: [], mocks: [], inlineSnapshots: [], coverageSettings: [] };
   const visit = (node: ts.Node): void => {
-    if (ts.isPropertyAccessExpression(node) && isTestModifier(node)) {
-      skips.push({ kind: `.${node.name.text}`, line: lineOf(node.name) });
-    } else if (ts.isCallExpression(node) && isSkipCall(node)) {
-      skips.push({ kind: `${node.expression.getText(source)}()`, line: lineOf(node) });
-    } else if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) {
-      const name = propertyName(node.name);
-      if (name !== undefined && options.has(name) && isTestOptions(node.parent)) {
-        skips.push({ kind: `${name} option`, line: lineOf(node) });
-      }
+    const skip = skipAt(node, source);
+    if (skip !== undefined) {
+      facts.skips.push(skip);
     }
     if (ts.isCallExpression(node)) {
-      const mocked = mockedModule(node);
-      if (mocked !== undefined) {
-        mocks.push({ specifier: mocked, line: lineOf(node) });
-      }
+      readCall(node, source, facts);
+    }
+    if (ts.isPropertyAssignment(node) && propertyName(node.name) === "coverage") {
+      facts.coverageSettings.push(node.initializer.getText(source));
     }
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return { skips, mocks };
+  return facts;
+}
+
+/** The facts while they are collected. */
+interface CollectedFacts {
+  skips: SkipUse[];
+  mocks: MockUse[];
+  inlineSnapshots: string[];
+  coverageSettings: string[];
+}
+
+function lineOf(node: ts.Node, source: ts.SourceFile): number {
+  return source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+}
+
+/** The skip this node writes, if it is one. */
+function skipAt(node: ts.Node, source: ts.SourceFile): SkipUse | undefined {
+  if (ts.isPropertyAccessExpression(node) && isTestModifier(node)) {
+    return { kind: `.${node.name.text}`, line: lineOf(node.name, source) };
+  }
+  if (ts.isCallExpression(node) && isSkipCall(node)) {
+    return { kind: `${node.expression.getText(source)}()`, line: lineOf(node, source) };
+  }
+  if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) {
+    const name = propertyName(node.name);
+    if (name !== undefined && options.has(name) && isTestOptions(node.parent)) {
+      return { kind: `${name} option`, line: lineOf(node, source) };
+    }
+  }
+  return undefined;
+}
+
+/** Records a call that mocks a module or holds an inline snapshot. */
+function readCall(node: ts.CallExpression, source: ts.SourceFile, facts: CollectedFacts): void {
+  const mocked = mockedModule(node);
+  if (mocked !== undefined) {
+    facts.mocks.push({ specifier: mocked, line: lineOf(node, source) });
+  }
+  const callee = node.expression;
+  if (ts.isPropertyAccessExpression(callee) && inlineSnapshotMatchers.has(callee.name.text)) {
+    facts.inlineSnapshots.push(
+      node.arguments.map((argument) => argument.getText(source)).join(", "),
+    );
+  }
 }
 
 /** `test.skip`, `describe.only`, `test.concurrent.skip`, …: a modifier on a test function. */
