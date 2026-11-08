@@ -28,7 +28,7 @@ export function checkAdvisories(context: CheckContext, today = new Date()): Repo
     }
   }
   for (const file of context.files) {
-    const settingsFile = file === "pnpm-workspace.yaml" || file === "package.json";
+    const settingsFile = file === "pnpm-workspace.yaml" || file === "package.json" || file.endsWith("/package.json");
     if (!settingsFile && !file.startsWith(".github/")) {
       continue;
     }

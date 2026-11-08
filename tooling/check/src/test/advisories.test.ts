@@ -112,4 +112,11 @@ describe("tooling/check: advisories rule", () => {
     }).filter((problem) => problem.rule === "advisories");
     expect(problemsInYaml.length).toBeGreaterThan(0);
   });
+
+  it("rejects an ignore flag in any package's package.json", () => {
+    const script = '{ "scripts": { "audit": "pnpm audit --ignore GHSA-cfgh-2345-wxrv" } }\n';
+    const hits = withFile('{ "ignored": [] }', { "packages/x/package.json": script });
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toContain("Advisories are ignored only in");
+  });
 });
