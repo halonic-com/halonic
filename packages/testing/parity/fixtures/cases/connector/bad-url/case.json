@@ -1,0 +1,10 @@
+{
+  "about": "an http transport whose url is not a URL",
+  "kind": "connector",
+  "fault": "bad-format",
+  "expect": {
+    "file": "library/connectors/tracker.connector.yaml",
+    "path": "transport.http.url",
+    "line": 4
+  }
+}

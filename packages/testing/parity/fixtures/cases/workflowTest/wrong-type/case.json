@@ -1,0 +1,10 @@
+{
+  "about": "cases is a map, not a list",
+  "kind": "workflowTest",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.test.yaml",
+    "path": "cases",
+    "line": 3
+  }
+}

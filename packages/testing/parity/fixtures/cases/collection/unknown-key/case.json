@@ -1,0 +1,10 @@
+{
+  "about": "a field with an unknown key",
+  "kind": "collection",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "fields.vendor.label",
+    "line": 6
+  }
+}

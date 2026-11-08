@@ -1,0 +1,10 @@
+{
+  "about": "mode is not tools or auto",
+  "kind": "knowledge",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "library/knowledge/handbook.yaml",
+    "path": "mode",
+    "line": 5
+  }
+}

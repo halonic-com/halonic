@@ -1,0 +1,66 @@
+id: invoice
+name: Invoice
+description: Extract, check in parallel, check each line, then ask for approval.
+initial: extract
+context:
+  attempts: 0
+start: { label: Check an invoice, field: invoice }
+states:
+  extract:
+    agent: clerk
+    method: extract
+    with: { invoice: "{{input.invoice}}" }
+    output: fields
+    on:
+      - to: checks
+  checks:
+    type: parallel
+    join: all
+    continueOnError: true
+    branches:
+      vendor:
+        agent: reviewer
+        input: "Vendor: {{context.fields.vendor}}"
+      amount:
+        agent: checker
+        input: { amount: "{{context.fields.amount}}" }
+    output: checks
+    on:
+      - to: lines
+  lines:
+    type: foreach
+    items: "{{input.lines}}"
+    as: line
+    concurrency: 2
+    agent: checker
+    input: "Line {{index}}: {{line}}"
+    output: lineChecks
+    on:
+      - to: approval
+  approval:
+    type: workflow
+    workflow: approval
+    input: { summary: "{{context.fields}}" }
+    output: decision
+    on:
+      - to: notify
+        when: { equals: ["{{context.decision.lastEvent.outcome}}", approved] }
+      - to: rejected
+  notify:
+    agent: notifier
+    gets: [input.invoice, fields]
+    format: text
+    conversation: chat
+    output: note
+    signal:
+      name: invoice.paid
+      data: { vendor: "{{context.fields.vendor}}" }
+    artifact: { name: note.md }
+    on:
+      - to: done
+  done:
+    type: final
+  rejected:
+    type: final
+layout:
+  extract: { x: 0, y: 0 }

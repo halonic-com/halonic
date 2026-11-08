@@ -1,0 +1,10 @@
+{
+  "about": "an unclosed quote",
+  "kind": "workspace",
+  "fault": "yaml-syntax",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "description",
+    "line": 4
+  }
+}

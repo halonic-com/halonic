@@ -1,0 +1,10 @@
+{
+  "about": "the default names a deployment that isn't listed",
+  "kind": "deployments",
+  "fault": "reference",
+  "expect": {
+    "file": "deployments.yaml",
+    "path": "default",
+    "line": 1
+  }
+}

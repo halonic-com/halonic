@@ -1,0 +1,10 @@
+{
+  "about": "tools.approve is one name, not a list",
+  "kind": "connector",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "library/connectors/files.connector.yaml",
+    "path": "tools.approve",
+    "line": 12
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "deployments/bad-id",
+  "valid": false,
+  "files": [
+    {
+      "file": "deployments.yaml",
+      "flatPath": "deployments.yaml",
+      "read": true,
+      "schema": "deployments",
+      "issues": [
+        {
+          "path": [
+            "deployments",
+            "Laptop"
+          ],
+          "code": "invalid_key",
+          "message": "Invalid key in record",
+          "line": 4,
+          "col": 5
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "deployments.yaml",
+      "message": "deployments.Laptop: Invalid key in record",
+      "line": 4,
+      "col": 5
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error deployments.yaml: deployments.Laptop: Invalid key in record\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 3,
+    "recorded": 4,
+    "verdict": "different"
+  }
+}

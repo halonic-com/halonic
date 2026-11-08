@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "workflowTest/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [
+        {
+          "path": [
+            "cases"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected array, received object",
+          "line": 3,
+          "col": 3
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "cases: Invalid input: expected array, received object",
+      "line": 3,
+      "col": 3
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.test.yaml: cases: Invalid input: expected array, received object\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 3,
+    "recorded": 3,
+    "verdict": "same"
+  }
+}

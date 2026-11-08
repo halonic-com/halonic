@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "For Studio packages and features: browser APIs and JSX.",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": [
+      "es2024",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react-jsx",
+    "types": []
+  }
+}

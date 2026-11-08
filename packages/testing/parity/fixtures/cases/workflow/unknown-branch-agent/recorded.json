@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/unknown-branch-agent",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "Branch \"audit\" of \"start\" uses unknown agent \"auditor\"",
+      "state": "start"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml (start): Branch \"audit\" of \"start\" uses unknown agent \"auditor\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

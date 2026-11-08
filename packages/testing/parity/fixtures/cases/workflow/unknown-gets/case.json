@@ -1,0 +1,10 @@
+{
+  "about": "gets a context key no earlier step writes",
+  "kind": "workflow",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.gets.0",
+    "line": 7
+  }
+}

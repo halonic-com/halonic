@@ -1,0 +1,5 @@
+{
+  "about": "an agent file in a sub-folder is not read",
+  "kind": "agent",
+  "fault": "valid"
+}

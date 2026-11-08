@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "workflowTest/unknown-workflow",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "Test targets unknown workflow \"payment\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.test.yaml: Test targets unknown workflow \"payment\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

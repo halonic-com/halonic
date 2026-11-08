@@ -1,0 +1,55 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalDependencies": [
+    "tooling/config/tsconfig/**",
+    "tooling/config/biome.jsonc",
+    "tooling/config/src/vitest-preset.ts",
+    "biome.json"
+  ],
+  "tasks": {
+    "//#codegen": {
+      "inputs": [
+        "apps/*/package.json",
+        "packages/studio/features/*/package.json",
+        "packages/studio/features/*/src/feature.ts",
+        "tooling/discover/src/**",
+        "tooling/check/src/**"
+      ],
+      "outputs": [
+        "apps/studio/src/generated/**"
+      ]
+    },
+    "transit": {
+      "dependsOn": [
+        "^transit"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "//#codegen",
+        "transit"
+      ],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": [
+        "//#codegen",
+        "transit"
+      ],
+      "outputs": []
+    },
+    "build": {
+      "dependsOn": [
+        "//#codegen",
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "options is a list",
+  "kind": "runtime",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "runtimes/inprocess.yaml",
+    "path": "options",
+    "line": 3
+  }
+}

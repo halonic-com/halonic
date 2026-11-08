@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/bad-indent",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/approval.workflow.yaml",
+      "read": true,
+      "schema": null,
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.workflow.yaml",
+      "message": "YAML: Nested mappings are not allowed in compact mappings",
+      "line": 7,
+      "col": 11
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "\"approval\" runs unknown workflow \"approval\"",
+      "state": "approval"
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "Test targets unknown workflow \"approval\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.workflow.yaml: YAML: Nested mappings are not allowed in compact mappings\nerror hubs/billing/workflows/invoice.workflow.yaml (approval): \"approval\" runs unknown workflow \"approval\"\nerror hubs/billing/workflows/approval.test.yaml: Test targets unknown workflow \"approval\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 8,
+    "recorded": 7,
+    "verdict": "different"
+  }
+}

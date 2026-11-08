@@ -1,0 +1,24 @@
+{
+  "name": "@halonicjs/app",
+  "private": true,
+  "type": "module",
+  "description": "The headless app kernel: command bus, event bus, service registry, workspace-wide undo and the routine scheduler service. No React.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "liam"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "an unknown top-level key",
+  "kind": "routine",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "path": "retries",
+    "line": 10
+  }
+}

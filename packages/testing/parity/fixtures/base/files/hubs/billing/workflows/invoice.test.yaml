@@ -1,0 +1,48 @@
+workflow: invoice
+cases:
+  - name: an approved invoice is paid and announced
+    input: { invoice: "Acme Paper, 120 EUR", lines: [paper, ink] }
+    mocks:
+      clerk: ['{"vendor": "Acme Paper", "amount": 120}']
+      reviewer: [ok]
+      checker: ['{"ok": true}', '{"ok": true}', '{"ok": true}']
+      notifier: [Paid Acme Paper.]
+    events:
+      - { event: approve, payload: { outcome: approved } }
+    expect:
+      status: completed
+      final: done
+      states: [extract, checks, lines, approval, notify, done]
+      context: { note: Paid Acme Paper. }
+      artifacts: [note.md]
+
+  - name: a rejection with a comment ends in rejected
+    input: { invoice: "Acme Paper, 120 EUR", lines: [] }
+    mocks:
+      clerk: ['{"vendor": "Acme Paper", "amount": 120}']
+      reviewer: [suspicious]
+      checker: ['{"ok": false}']
+    events:
+      - { event: reject, payload: { comment: Wrong amount } }
+    expect:
+      final: rejected
+
+  - name: an approval nobody answers expires after two days
+    input: { invoice: "Acme Paper, 120 EUR", lines: [] }
+    mocks:
+      clerk: ['{"vendor": "Acme Paper", "amount": 120}']
+      reviewer: [ok]
+      checker: ['{"ok": true}']
+    events:
+      - { advance: 2d }
+    expect:
+      final: rejected
+
+  - name: without a decision the run waits
+    input: { invoice: "Acme Paper, 120 EUR", lines: [] }
+    mocks:
+      clerk: ['{"vendor": "Acme Paper", "amount": 120}']
+      reviewer: [ok]
+      checker: ['{"ok": true}']
+    expect:
+      status: waiting

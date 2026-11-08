@@ -1,0 +1,10 @@
+{
+  "about": "a mail trigger on a connector that doesn't exist",
+  "kind": "routine",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/workflows/routines/inbox-mail.routine.yaml",
+    "path": "trigger.mail.connector",
+    "line": 5
+  }
+}

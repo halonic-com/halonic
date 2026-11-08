@@ -1,0 +1,10 @@
+{
+  "about": "a time zone that doesn't exist",
+  "kind": "routine",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+    "path": "trigger.timezone",
+    "line": 5
+  }
+}

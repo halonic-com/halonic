@@ -1,0 +1,10 @@
+{
+  "about": "an unknown key inside transport.stdio",
+  "kind": "connector",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "library/connectors/files.connector.yaml",
+    "path": "transport.stdio.shell",
+    "line": 10
+  }
+}

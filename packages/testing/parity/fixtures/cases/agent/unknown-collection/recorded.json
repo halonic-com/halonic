@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "agent/unknown-collection",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/clerk.agent.yaml",
+      "flatPath": "hubs/billing/agents/clerk.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown collection \"receipts\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown collection \"receipts\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 10,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

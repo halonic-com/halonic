@@ -1,0 +1,50 @@
+{
+  "reference": "784f78d",
+  "case": "connector/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/connectors/files.connector.yaml",
+      "flatPath": "connectors/files.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [
+        {
+          "path": [
+            "tools",
+            "approve"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected array, received string",
+          "line": 12,
+          "col": 12
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "connectors/files.connector.yaml",
+      "message": "tools.approve: Invalid input: expected array, received string",
+      "line": 12,
+      "col": 12
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses unknown connector \"files\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error connectors/files.connector.yaml: tools.approve: Invalid input: expected array, received string\nerror hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses unknown connector \"files\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 12,
+    "recorded": 12,
+    "verdict": "same"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "an unknown key",
+  "kind": "provider",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "providers/local-llm.yaml",
+    "path": "region",
+    "line": 4
+  }
+}
