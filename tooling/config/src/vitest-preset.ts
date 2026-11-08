@@ -1,6 +1,9 @@
 import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config";
 import { readCoverageFloor } from "./coverage.ts";
 
+/** Where each package's test run writes its result file, relative to the package. */
+export const testResultsFile = "test-results/vitest.json";
+
 /**
  * The shared Vitest settings for every package. Each package's
  * `vitest.config.ts` calls this so test runs behave the same everywhere.
@@ -28,7 +31,13 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
       restoreMocks: true,
       unstubEnvs: true,
       unstubGlobals: true,
-      reporters: process.env["CI"] ? ["default", "github-actions"] : ["default"],
+      reporters: [
+        ...(process.env["CI"] ? ["default", "github-actions"] : ["default"]),
+        // The result file: which tests ran and passed, with the requirement
+        // each one proves. `pnpm check trace` reads it, and Turbo
+        // caches it as an output of the test task.
+        ["json", { outputFile: testResultsFile }],
+      ],
       coverage: {
         enabled: true,
         provider: "v8",
