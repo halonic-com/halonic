@@ -68,16 +68,16 @@ base (in the merge queue, the queue's base), including both sides' test
 results. It fails on any of these, unless the branch's decision note
 covers it:
 
-| Change                                                                                                                                                                    | The note lists             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| an active requirement is edited, retired, demoted to draft, renamed or deleted                                                                                            | the requirement ID         |
-| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls                                                              | the requirement ID         |
-| a test file is deleted, or fewer of its tests ran                                                                                                                         | the test file              |
-| a new `.skip`, `.only`, `.todo`, `skipIf`, `runIf`, `ctx.skip()`, `test.fails` or `retry` option in a test file or Vitest config                                          | the file                   |
-| a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about                                                                             | the test file              |
-| a golden file (`golden/`, `__snapshots__/`, `.snap`) changed, added or deleted, or an inline snapshot changed                                                             | the golden/test file       |
-| a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings                                                       | the changed file           |
-| a file under the guard's own paths changed, added or deleted: `.github/`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
+| Change                                                                                                                                                                                                                        | The note lists             |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| an active requirement is edited, retired, demoted to draft, renamed or deleted                                                                                                                                                | the requirement ID         |
+| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls                                                                                                                  | the requirement ID         |
+| a test file is deleted, or fewer of its tests ran                                                                                                                                                                             | the test file              |
+| a new `.skip`, `.only`, `.todo`, `skipIf`, `runIf`, `ctx.skip()`, `test.fails` or `retry` option in a test file or Vitest config                                                                                              | the file                   |
+| a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about                                                                                                                                 | the test file              |
+| a golden file (`golden/`, `__snapshots__/`, `.snap`) changed, added or deleted, or an inline snapshot changed                                                                                                                 | the golden/test file       |
+| a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings                                                                                                           | the changed file           |
+| a file under the guard's own paths changed, added or deleted: `.github/`, `packages/testing/parity/allowed-differences.json`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
 
 A package with tests but no readable result file on either side always
 fails: no note can stand in for a comparison the guard couldn't make.

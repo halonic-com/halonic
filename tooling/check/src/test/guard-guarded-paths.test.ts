@@ -14,6 +14,10 @@ verifies("check.guard-own-paths", () => {
   test.each([
     [".github/", ".github/workflows/ci.yml"],
     [".github/", ".github/actions/setup/action.yml"],
+    [
+      "packages/testing/parity/allowed-differences.json",
+      "packages/testing/parity/allowed-differences.json",
+    ],
     ["packages/testing/spec/", "packages/testing/spec/src/verifies.ts"],
     ["tooling/check/", "tooling/check/src/guard/guard.ts"],
     ["tooling/config/src/vitest-preset.ts", "tooling/config/src/vitest-preset.ts"],
@@ -46,6 +50,7 @@ verifies("check.guard-own-paths", () => {
       "tooling/checker/x.ts": "export {};\n",
       "turbo.json.bak": "{}\n",
       ".githubx/notes.md": "x\n",
+      "packages/testing/parity/src/compare.ts": "export {};\n",
     };
     expect(await errorsOf({ headOutside: nearby })).toEqual([]);
   });

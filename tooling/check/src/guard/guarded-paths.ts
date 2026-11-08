@@ -5,13 +5,16 @@ import { changeOf } from "./golden-files.ts";
  * The guard's own paths (plan 9.3, point 3). CI runs the guard from the
  * merge base's copy, but a pull request's test results still come from its
  * own `testing/spec` and Vitest preset, and its own workflows decide what
- * runs. A folder ends in `/`; anything else is one file.
+ * runs. `allowed-differences.json` lists the signed-off exceptions to
+ * parity, so each entry needs the same note as a golden file. A folder ends
+ * in `/`; anything else is one file.
  *
  * The golden-file compare helpers and `testing/contracts/target/live` with
  * its sweeper join this list when they are added.
  */
 export const guardedPaths: readonly string[] = [
   ".github/",
+  "packages/testing/parity/allowed-differences.json",
   "packages/testing/spec/",
   "tooling/check/",
   "tooling/config/src/vitest-preset.ts",
