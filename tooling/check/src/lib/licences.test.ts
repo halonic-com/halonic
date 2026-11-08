@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { findLicenceProblems, isAllowedExpression, type LicencePolicy } from "./licences.ts";
+import {
+  findCorrectionKeyProblems,
+  findLicenceProblems,
+  isAllowedExpression,
+  type LicencePolicy,
+} from "./licences.ts";
 
 const allowed = new Set(["MIT", "Apache-2.0"]);
 
@@ -27,7 +32,7 @@ describe("findLicenceProblems", () => {
   const policy: LicencePolicy = {
     shipped: ["MIT"],
     devOnly: ["MPL-2.0"],
-    corrections: { fixed: "MIT" },
+    corrections: { "fixed@1.0.0": "MIT", "@scope/fixed@2.0.0": "MIT" },
   };
 
   test("dev-only licences pass for tooling but not for shipped code", () => {
@@ -39,5 +44,22 @@ describe("findLicenceProblems", () => {
   test("a hand-checked correction replaces a wrong upstream licence field", () => {
     const pkg = { name: "fixed", versions: ["1.0.0"], licence: "SEE LICENSE IN LICENSE" };
     expect(findLicenceProblems([pkg], policy, "shipped")).toEqual([]);
+    const scoped = { name: "@scope/fixed", versions: ["2.0.0"], licence: "UNKNOWN" };
+    expect(findLicenceProblems([scoped], policy, "shipped")).toEqual([]);
+  });
+
+  test("a correction covers only the version that was checked", () => {
+    const pkg = { name: "fixed", versions: ["1.0.0", "1.1.0"], licence: "SEE LICENSE IN LICENSE" };
+    const problems = findLicenceProblems([pkg], policy, "shipped");
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/^fixed@1\.1\.0 is licensed/);
+  });
+});
+
+describe("findCorrectionKeyProblems", () => {
+  test("every correction names an exact version", () => {
+    const corrections = { "a@1.0.0": "MIT", "@s/b@2.0.0": "MIT", c: "MIT", "@s/d": "MIT" };
+    const problems = findCorrectionKeyProblems({ shipped: [], devOnly: [], corrections });
+    expect(problems.map((problem) => problem.match(/"([^"]+)"/)?.[1])).toEqual(["c", "@s/d"]);
   });
 });

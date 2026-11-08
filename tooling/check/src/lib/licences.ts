@@ -9,7 +9,11 @@ export interface LicencePolicy {
   readonly shipped: readonly string[];
   /** Allowed on top of `shipped` for build and dev tooling only. */
   readonly devOnly: readonly string[];
-  /** Packages whose licence field is wrong upstream, checked by hand: name → SPDX ID. */
+  /**
+   * Packages whose licence field is wrong upstream, checked by hand:
+   * `name@version` → SPDX ID. Keyed by version, because a later release
+   * can change its licence and must be checked again.
+   */
   readonly corrections: Readonly<Record<string, string>>;
 }
 
@@ -80,6 +84,11 @@ export function isAllowedExpression(expression: string, allowed: ReadonlySet<str
   }
 }
 
+/** True when a corrections key names one exact version: `name@1.2.3` or `@scope/name@1.2.3`. */
+export function isVersionedKey(key: string): boolean {
+  return /^(?:@[^@/\s]+\/)?[^@/\s]+@[^@\s]+$/.test(key);
+}
+
 /** The packages whose licence isn't on the list, with a message that says what to do. */
 export function findLicenceProblems(
   installed: readonly InstalledPackage[],
@@ -91,13 +100,30 @@ export function findLicenceProblems(
   );
   const problems: string[] = [];
   for (const pkg of installed) {
-    const licence = policy.corrections[pkg.name] ?? pkg.licence;
-    if (!isAllowedExpression(licence, allowed)) {
-      const where = kind === "shipped" ? "code we ship" : "dev tooling";
-      problems.push(
-        `${pkg.name}@${pkg.versions.join(", ")} is licensed "${licence}", which isn't allowed in ${where}. Pick another package, or ask Julian to review the licence and add it to tooling/check/licences.json (plan 11).`,
-      );
+    // Group the versions by their effective licence, so one message covers them.
+    const byLicence = new Map<string, string[]>();
+    for (const version of pkg.versions) {
+      const licence = policy.corrections[`${pkg.name}@${version}`] ?? pkg.licence;
+      byLicence.set(licence, [...(byLicence.get(licence) ?? []), version]);
+    }
+    for (const [licence, versions] of byLicence) {
+      if (!isAllowedExpression(licence, allowed)) {
+        const where = kind === "shipped" ? "code we ship" : "dev tooling";
+        problems.push(
+          `${pkg.name}@${versions.join(", ")} is licensed "${licence}", which isn't allowed in ${where}. Pick another package, or ask Julian to review the licence and add it to tooling/check/licences.json (plan 11).`,
+        );
+      }
     }
   }
   return problems;
+}
+
+/** Corrections keys without a version, which would silently cover every future release. */
+export function findCorrectionKeyProblems(policy: LicencePolicy): string[] {
+  return Object.keys(policy.corrections)
+    .filter((key) => !isVersionedKey(key))
+    .map(
+      (key) =>
+        `tooling/check/licences.json: the correction "${key}" needs an exact version, such as "${key}@1.2.3". A new release can change its licence, so each version is checked by hand (plan 11).`,
+    );
 }

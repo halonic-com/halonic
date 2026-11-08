@@ -1,6 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { findLicenceProblems, type InstalledPackage, type LicencePolicy } from "../lib/licences.ts";
+import {
+  findCorrectionKeyProblems,
+  findLicenceProblems,
+  type InstalledPackage,
+  type LicencePolicy,
+} from "../lib/licences.ts";
 import { findRepoRoot, readJson } from "../lib/workspace.ts";
 
 /**
@@ -39,6 +44,7 @@ function main(): number {
   const shippedNames = new Set(shipped.map((pkg) => pkg.name));
   const devOnly = listInstalled(root, false).filter((pkg) => !shippedNames.has(pkg.name));
   const problems = [
+    ...findCorrectionKeyProblems(policy),
     ...findLicenceProblems(shipped, policy, "shipped"),
     ...findLicenceProblems(devOnly, policy, "dev"),
   ];

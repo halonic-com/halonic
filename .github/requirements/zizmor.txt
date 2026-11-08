@@ -1,0 +1,6 @@
+# zizmor for the "Workflow lint" CI job, pinned by hash (plan 10.1): pip
+# refuses any file whose hash isn't listed here. zizmor has no dependencies.
+# To update, take the new version's sha256 for this wheel from
+# https://pypi.org/project/zizmor/#files and change both lines together.
+zizmor==1.32.0 \
+    --hash=sha256:84a6acb975accc13408786a2bd274b572537ca19c933ebbc13e78f3988562071
