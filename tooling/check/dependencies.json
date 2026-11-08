@@ -30,6 +30,13 @@
       ],
       "reason": "The TypeScript parser API for tooling/check until TypeScript 7.1 ships its own API (D9). Remove then."
     },
+    "fast-check": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/schema-kit"
+      ],
+      "reason": "Property-based tests: generated and hostile inputs (deep nesting, huge lists, odd Unicode) for how schema-kit uses Zod (plan 7.2, 9.3). Tests only."
+    },
     "react-data-grid": {
       "category": "studio-framework",
       "allowedIn": [
