@@ -1,0 +1,5 @@
+id: ollama
+name: Ollama (this machine)
+type: ollama
+baseUrl: http://localhost:11434/v1
+local: true

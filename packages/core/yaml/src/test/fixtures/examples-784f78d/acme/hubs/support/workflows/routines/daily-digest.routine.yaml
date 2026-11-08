@@ -1,0 +1,16 @@
+# A routine says WHEN something runs; the workflow or agent says WHAT happens.
+# Off by default so the example never calls a model on its own.
+# Turn it on in the studio, or keep `pnpm studio routines watch examples/acme` running.
+name: Daily digest
+description: Every weekday morning, a short note on what support should know today.
+enabled: false
+trigger:
+  schedule: "0 8 * * 1-5"
+  timezone: Europe/Amsterdam
+run:
+  agent: support
+  prompt: |
+    Write a short digest for the support team for {{trigger.at}}.
+    List the three handbook topics customers ask about most, with one tip each.
+overlap: skip
+catchUp: last

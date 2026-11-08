@@ -1,0 +1,48 @@
+id: triage
+name: Support triage
+description: Classify a message, answer questions from the handbook, turn bugs into reports a person approves.
+initial: classify
+states:
+  classify:
+    agent: classifier
+    input: "{{input.message}}"
+    output: category
+    on:
+      - to: answer
+        when: { equals: ["{{context.category}}", question] }
+        label: question
+      - to: report
+        when: { equals: ["{{context.category}}", bug] }
+        label: bug
+      - to: done
+        label: other
+  answer:
+    agent: support
+    input: "Customer asks: {{input.message}}"
+    output: reply
+    on:
+      - to: done
+  report:
+    agent: writer
+    input: "Write a bug report for: {{input.message}}"
+    output: report
+    artifact:
+      name: bug-report.md
+    on:
+      - to: review
+  review:
+    type: wait
+    description: A person approves the report or sends it back.
+    on:
+      - to: done
+        event: approve
+      - to: report
+        event: reject
+  done:
+    type: final
+layout:
+  classify: { x: 160, y: 0 }
+  answer: { x: 0, y: 240 }
+  report: { x: 300, y: 240 }
+  done: { x: 160, y: 720 }
+  review: { x: 160, y: 480 }

@@ -1,0 +1,42 @@
+# Test runs use scripted model replies: fast, free, offline, deterministic.
+# Run them with the Test button in the studio or `pnpm studio test examples/acme`.
+workflow: triage
+cases:
+  - name: a question is answered from the handbook
+    input: { message: "How do I reset my password?" }
+    mocks:
+      classifier: [question]
+      support:
+        - 'tool:search_handbook {"query": "reset password"}'
+        - Go to Settings > Security and choose "Reset password". The link is valid for 30 minutes.
+    expect:
+      states: [classify, answer, done]
+      context: { category: question }
+
+  - name: a bug becomes a report that waits for approval
+    input: { message: "The export button does nothing on Safari." }
+    mocks:
+      classifier: [bug]
+      writer: ["## Summary\nExport does nothing on Safari."]
+    expect:
+      status: waiting
+      states: [classify, report, review]
+      artifacts: [bug-report.md]
+
+  - name: a rejected report is rewritten, then approved
+    input: { message: "The export button does nothing on Safari." }
+    mocks:
+      classifier: [bug]
+      writer: ["first draft", "second draft"]
+    events: [reject, approve]
+    expect:
+      final: done
+      states: [classify, report, review, report, review, done]
+      context: { report: second draft }
+
+  - name: anything else ends right away
+    input: { message: "Thanks, great product." }
+    mocks:
+      classifier: [other]
+    expect:
+      states: [classify, done]

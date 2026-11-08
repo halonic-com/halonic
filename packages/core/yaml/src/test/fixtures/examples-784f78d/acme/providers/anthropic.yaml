@@ -1,0 +1,5 @@
+id: anthropic
+name: Anthropic
+type: anthropic
+# Name of a secret in your OS keychain (desktop) or STUDIO_SECRET_ANTHROPIC (CLI).
+secret: anthropic

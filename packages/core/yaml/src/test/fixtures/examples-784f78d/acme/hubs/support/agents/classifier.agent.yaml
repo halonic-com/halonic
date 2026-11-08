@@ -1,0 +1,15 @@
+id: classifier
+name: Classifier
+description: Sorts an incoming message into question, bug or other.
+model: fast
+params:
+  temperature: 0
+instructions: |
+  You classify customer messages.
+  question = the customer wants to know how to do something.
+  bug = something is broken or behaves unexpectedly.
+  other = anything else.
+output:
+  type: choice
+  options: [question, bug, other]
+maxSteps: 1

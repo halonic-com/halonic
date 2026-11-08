@@ -1,0 +1,5 @@
+id: lmstudio
+name: LM Studio (this machine)
+type: lmstudio
+baseUrl: http://localhost:1234/v1
+local: true
