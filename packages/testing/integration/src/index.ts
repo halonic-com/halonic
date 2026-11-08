@@ -7,11 +7,13 @@ export {
   checkCase,
   checkConnectIsQuiet,
   checkDeclaration,
+  checkHostWait,
   checkPolicy,
   checkProviderErrors,
   checkSources,
 } from "./checks.ts";
 export { describeIntegrationConformance } from "./describe.ts";
+export { type FakeWait, fakeWait } from "./fake-wait.ts";
 export {
   NoRecordingError,
   type RecordedBody,

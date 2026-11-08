@@ -7,7 +7,7 @@ export interface SourceFinding {
 
 /**
  * What integration code may not use: everything that reaches the network,
- * the file system, the environment or new code without the host. The
+ * the file system, the environment, new code or a timer without the host. The
  * isolated worker of step I5 refuses the same at run time; this catches it
  * before review.
  */
@@ -18,6 +18,7 @@ const rules: readonly { rule: string; pattern: RegExp }[] = [
   { rule: "node: modules", pattern: /["']node:|\brequire\s*\(/ },
   { rule: "dynamic import", pattern: /\bimport\s*\(/ },
   { rule: "eval or new Function", pattern: /\beval\s*\(|\bnew\s+Function\b|\bFunction\s*\(/ },
+  { rule: "timers (use host.wait)", pattern: /\b(?:setTimeout|setInterval|setImmediate)\s*\(/ },
   { rule: "other network APIs", pattern: /\b(?:XMLHttpRequest|WebSocket|EventSource|navigator)\b/ },
 ];
 

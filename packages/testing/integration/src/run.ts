@@ -5,6 +5,7 @@ import {
 } from "@halonicjs/adapter-integration-kit";
 import type { Integration, TokenStore, ToolRisk } from "@halonicjs/ports";
 import { canarySecrets } from "./canaries.ts";
+import { fakeWait } from "./fake-wait.ts";
 import { type RecordingFile, type ReplayedRequest, replayTransport } from "./recording.ts";
 
 /** A tool as the permission sheet declares it. */
@@ -20,6 +21,8 @@ export interface ToolCase {
   readonly args: Record<string, unknown>;
   /** The recording that answers it, by its `scenario`. */
   readonly scenario: string;
+  /** The pauses the call must take through `host.wait`, clamped, in order. */
+  readonly waits?: readonly number[];
   /** Extra checks on the result. Throw to fail. */
   readonly check?: (result: string) => void;
 }
@@ -53,22 +56,29 @@ export interface CaseRun {
   readonly globalCalls: readonly string[];
   /** Recorded exchanges the call never asked for. */
   readonly unusedExchanges: number;
+  /** The pauses the call took through `host.wait`, clamped. The suite doesn't really wait. */
+  readonly waits: readonly number[];
 }
 
-/** Runs one tool call through the real kit, on recordings, with canary secrets and the network globals tripped. */
+/**
+ * Runs one tool call through the real kit, on recordings, with canary
+ * secrets and the network globals tripped. Its `wait` is a {@link fakeWait}.
+ */
 export async function runCase(
   subject: ConformanceSubject,
   toolCase: ToolCase,
   options: { recording?: RecordingFile; signal?: AbortSignal } = {},
 ): Promise<CaseRun> {
   const replay = replayTransport(options.recording ?? scenarioOf(subject, toolCase));
-  const { host, log } = createIntegrationHost({
+  const { host: kitHost, log } = createIntegrationHost({
     policy: subject.policy,
     transport: replay.transport,
     secrets: canarySecrets,
     tokens: memoryTokens(),
     ...(subject.settings ? { settings: subject.settings } : {}),
   });
+  const pauses = fakeWait();
+  const host = Object.freeze({ ...kitHost, wait: pauses.wait });
   const globalCalls: string[] = [];
   const restore = tripNetworkGlobals(globalCalls);
   let result: string | undefined;
@@ -92,6 +102,7 @@ export async function runCase(
     log: log.entries(),
     globalCalls,
     unusedExchanges: replay.unused(),
+    waits: [...pauses.waits],
   };
 }
 

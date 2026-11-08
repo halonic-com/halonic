@@ -1,5 +1,11 @@
-import { createIntegrationHost, namePattern } from "@halonicjs/adapter-integration-kit";
+import {
+  clampWaitMs,
+  createIntegrationHost,
+  namePattern,
+} from "@halonicjs/adapter-integration-kit";
+import { type IntegrationHost, maxIntegrationWaitMs } from "@halonicjs/ports";
 import { canaryFor, canaryMark, canarySecrets } from "./canaries.ts";
+import { fakeWait } from "./fake-wait.ts";
 import { replayTransport } from "./recording.ts";
 import {
   type CaseRun,
@@ -118,6 +124,11 @@ export async function checkCase(subject: ConformanceSubject, toolCase: ToolCase)
       `"${toolCase.tool}" made ${run.unusedExchanges} request(s) fewer than the recording "${toolCase.scenario}" has`,
     );
   }
+  if (toolCase.waits !== undefined && run.waits.join() !== toolCase.waits.join()) {
+    fail(
+      `"${toolCase.tool}" waited [${run.waits.join(", ")}] ms, the case expects [${toolCase.waits.join(", ")}]`,
+    );
+  }
   toolCase.check?.(result);
   return result;
 }
@@ -158,6 +169,50 @@ export async function checkProviderErrors(
   if (shown.includes("PROVIDER-BODY") || shown.includes(canaryMark)) {
     fail(`"${toolCase.tool}" passed the provider's error body through`);
   }
+}
+
+/**
+ * The host's `wait`, real and fake alike, waits at most 30 s and rejects
+ * with the signal's reason when the signal is already aborted or aborts
+ * during the wait.
+ */
+export async function checkHostWait(subject: ConformanceSubject): Promise<void> {
+  const clamps: readonly [number, number][] = [
+    [Number.NaN, 0],
+    [-1, 0],
+    [2_000, 2_000],
+    [Number.POSITIVE_INFINITY, maxIntegrationWaitMs],
+  ];
+  const fake = fakeWait();
+  for (const [ms] of clamps) await fake.wait(ms);
+  for (const [index, [ms, expected]] of clamps.entries()) {
+    if (clampWaitMs(ms) !== expected || fake.waits[index] !== expected)
+      fail(`wait(${ms}) must wait ${expected} ms`);
+  }
+  const { host } = createIntegrationHost({
+    policy: subject.policy,
+    transport: replayTransport(undefined).transport,
+    secrets: canarySecrets,
+    tokens: { get: async () => null, set: async () => {}, remove: async () => {} },
+  });
+  for (const wait of [host.wait, fake.wait]) {
+    const already = new Error("aborted before the wait");
+    await expectRejection(wait(maxIntegrationWaitMs, AbortSignal.abort(already)), already);
+  }
+  const controller = new AbortController();
+  const during = new Error("aborted during the wait");
+  const waiting = host.wait(maxIntegrationWaitMs, controller.signal);
+  controller.abort(during);
+  await expectRejection(waiting, during);
+}
+
+async function expectRejection(waiting: ReturnType<IntegrationHost["wait"]>, reason: Error) {
+  const outcome = await waiting.then(
+    () => "resolved",
+    (thrown: unknown) => (thrown === reason ? "rejected" : `rejected with ${messageOf(thrown)}`),
+  );
+  if (outcome !== "rejected")
+    fail(`wait must reject with the signal's reason ("${reason.message}") but ${outcome}`);
 }
 
 /** The source uses nothing that reaches past its host. */

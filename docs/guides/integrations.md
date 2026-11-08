@@ -12,9 +12,9 @@ The interface is decided in
 ## The rules
 
 1. **Reach the outside world only through the host.** Your integration gets
-   an `IntegrationHost` with `http`, `tokens` and `settings`, and nothing
-   else. No global `fetch`, `globalThis`, `process`, `node:` modules,
-   dynamic `import()` or `eval`. The conformance suite scans for these, and
+   an `IntegrationHost` with `http`, `tokens`, `settings` and `wait`, and
+   nothing else. No global `fetch`, `globalThis`, `process`, `node:` modules,
+   dynamic `import()`, `eval` or timers such as `setTimeout`. The conformance suite scans for these, and
    the isolated worker (I5) refuses them at run time.
 2. **Declare every host** in the permission sheet: exact host names, `https`
    only, no wildcards. The kit refuses anything else, including a redirect
@@ -50,6 +50,12 @@ The interface is decided in
 7. **Send nothing in `connect`.** Connect lazily, on the first call.
 8. **Tokens you write are yours alone.** Declare their names in the sheet;
    `host.tokens` refuses any other name.
+9. **Wait only through `host.wait(ms, signal)`**, for the pause a server
+   asks for (SSE `retry:`, `Retry-After`), and pass the call's `signal` so a
+   cancelled call stops waiting. The host waits at most
+   `maxIntegrationWaitMs` (30 s); when a server asks for longer, return the
+   error instead. There is no clock: measure a date-form `Retry-After`
+   against the response's own `Date` header.
 
 ## The permission sheet
 

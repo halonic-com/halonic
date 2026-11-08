@@ -4,6 +4,7 @@ import {
   checkCase,
   checkConnectIsQuiet,
   checkDeclaration,
+  checkHostWait,
   checkPolicy,
   checkProviderErrors,
   checkSources,
@@ -31,6 +32,7 @@ export function describeIntegrationConformance(subject: ConformanceSubject): voi
     it("declares exact https hosts and ties every secret to them", () => checkPolicy(subject));
     it("sends nothing when it connects, and closes twice safely", () =>
       checkConnectIsQuiet(subject));
+    it("waits through a host that caps the pause and stops on abort", () => checkHostWait(subject));
     if (subject.sources !== undefined) {
       it("uses nothing that reaches past its host", () => checkSources(subject));
     }

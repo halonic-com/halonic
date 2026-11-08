@@ -11,6 +11,7 @@ describe("testing-integration.source-scan", () => {
     ["dynamic import", 'const m = await import("./other.js");'],
     ["eval or new Function", 'new Function("return 1")();'],
     ["other network APIs", 'new WebSocket("wss://x.example");'],
+    ["timers (use host.wait)", "await new Promise((done) => setTimeout(done, 2000));"],
   ])("finds %s", (rule, line) => {
     expect(scanIntegrationSource({ "src/a.ts": `export {};\n${line}` })).toContainEqual({
       file: "src/a.ts",
@@ -19,8 +20,9 @@ describe("testing-integration.source-scan", () => {
     });
   });
 
-  it("allows host.http.fetch and plain code", () => {
-    const source = "const r = await host.http.fetch(url, { signal });\nconst fetchCount = 1;\n";
+  it("allows host.http.fetch, host.wait and plain code", () => {
+    const source =
+      "const r = await host.http.fetch(url, { signal });\nawait host.wait(retryMs, signal);\nconst fetchCount = 1;\n";
     expect(scanIntegrationSource({ "src/a.ts": source })).toEqual([]);
   });
 });
