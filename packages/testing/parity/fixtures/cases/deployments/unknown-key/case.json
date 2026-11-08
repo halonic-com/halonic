@@ -1,0 +1,10 @@
+{
+  "about": "a deployment with an unknown key",
+  "kind": "deployments",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "deployments.yaml",
+    "path": "deployments.laptop.region",
+    "line": 8
+  }
+}
