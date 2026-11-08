@@ -16,6 +16,7 @@ import {
   columnOf,
   entryEnd,
   insertLines,
+  keepLineComment,
   keepsComments,
   lineStart,
   removeLines,
@@ -97,7 +98,8 @@ export function replaceValue(parsed: Parsed, path: YamlPath, value: unknown): st
     }
     const valueEnd = (pair?.value as Node | null)?.range?.[1] ?? keyNode.range[1];
     const column = columnOf(text, keyNode.range[0]);
-    return replaceRange(text, keyNode.range[1], valueEnd, renderAfterKey(value, column));
+    const kept = keepLineComment(text, keyNode.range[1], valueEnd, renderAfterKey(value, column));
+    return replaceRange(text, keyNode.range[1], kept.to, kept.rendered);
   }
   if (isSeq(parent) && typeof key === "number") {
     const dash = dashOffset(parent, key);
@@ -105,7 +107,8 @@ export function replaceValue(parsed: Parsed, path: YamlPath, value: unknown): st
     if (dash === undefined || itemEnd === undefined) {
       return undefined;
     }
-    return replaceRange(text, dash, itemEnd, renderAfterDash(value, columnOf(text, dash)));
+    const kept = keepLineComment(text, dash, itemEnd, renderAfterDash(value, columnOf(text, dash)));
+    return replaceRange(text, dash, kept.to, kept.rendered);
   }
   return undefined;
 }

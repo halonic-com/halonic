@@ -1,6 +1,7 @@
 import { deepEqual, err, ok, type Result } from "@halonicjs/std";
 import { isCollection, isNode, isPair, isScalar, isSeq, type Node, parseDocument } from "yaml";
 import { applyEditToData, checkValue, type YamlEdit } from "./edit-data.ts";
+import { lineEndingOf } from "./edit-text.ts";
 import type { YamlProblem } from "./problem.ts";
 import { defaultYamlLimits, readYaml, type YamlLimits, type YamlPath } from "./read.ts";
 import { spliceEdit } from "./splice.ts";
@@ -161,8 +162,9 @@ function renderWithDocument(text: string, edit: YamlEdit, expected: unknown): st
 }
 
 function render(text: string, document: ReturnType<typeof parseDocument>): string {
-  const rendered = document.toString({ lineWidth: 100 });
-  // The library drops a byte order mark; Windows editors that wrote one expect it back.
+  const lines = document.toString({ lineWidth: 100 });
+  // The library writes `\n` and drops a byte order mark; Windows editors expect both back.
+  const rendered = lineEndingOf(text) === "\r\n" ? lines.replaceAll("\n", "\r\n") : lines;
   return text.startsWith(byteOrderMark) ? byteOrderMark + rendered : rendered;
 }
 

@@ -87,9 +87,13 @@ moves their comments. To add, remove or reorder items, use `insert` and
 **Layout.** Every result is read back and must give the expected data. When
 the splice can't manage that, the edit falls back, and `layout` says how far:
 
-- `kept`: only the edited text changed.
+- `kept`: only the edited text changed. New lines get the file's line
+  ending, `\r\n` or `\n`. A comment on a key's line over a block value
+  (`a: # about a`) stays when the value is replaced; comment lines inside the
+  old value go with it.
 - `reformatted`: the file was rendered again from the parsed document;
-  comments stay, spacing and some quoting may not. Edits inside flow
-  collections such as `[a, b]` land here for now.
+  comments stay, spacing and some quoting may not. A `\r\n` file stays
+  `\r\n`. Edits inside flow collections such as `[a, b]`, and every edit in a
+  file that mixes `\r\n` and `\n`, land here for now.
 - `rewritten`: the file was written from its data with `writeYamlFile`, and
   every comment is gone.

@@ -158,6 +158,55 @@ verifies("yaml.edit-preserve", () => {
     expect(result.text).toContain("# tools");
     expect(dataOf(result.text)).toEqual({ tools: ["c", "b"] });
   });
+
+  it("keeps the comment on a key's line when it replaces the value under it", () => {
+    const text = lines("a: # about a", "  b: 1", "c: 2");
+    expect(edited(text, set(["a"], 5))).toEqual({
+      text: lines("a: 5 # about a", "c: 2"),
+      layout: "kept",
+    });
+    expect(edited(text, set(["a"], ["x"])).text).toBe(lines("a: # about a", "  - x", "c: 2"));
+    expect(edited(lines("a: # about a", "c: 2"), set(["a", "b"], 1))).toEqual({
+      text: lines("a: # about a", "  b: 1", "c: 2"),
+      layout: "kept",
+    });
+    expect(edited(lines("run: | # the script", "  one", "n: 1"), set(["run"], "x")).text).toBe(
+      lines("run: x # the script", "n: 1"),
+    );
+    expect(edited(lines("- # first", "  b: 1", "- 2"), set([0], 5))).toEqual({
+      text: lines("- 5 # first", "- 2"),
+      layout: "kept",
+    });
+  });
+});
+
+verifies("yaml.edit-line-endings", () => {
+  const windows = (...all: string[]) => `${all.join("\r\n")}\r\n`;
+
+  it("writes new lines with \\r\\n in a text that uses \\r\\n", () => {
+    expect(edited(windows("a: 1", "b: 2"), set(["c"], 3))).toEqual({
+      text: windows("a: 1", "b: 2", "c: 3"),
+      layout: "kept",
+    });
+    const list = windows("steps:", "  # the check", "  - check", "  - b");
+    expect(edited(list, insert(["steps", 0], "first"), del(["steps", 2]))).toEqual({
+      text: windows("steps:", "  - first", "  # the check", "  - check"),
+      layout: "kept",
+    });
+  });
+
+  it("falls back when a text mixes line endings", () => {
+    const result = edited("a: 1\r\nb: 2\n", set(["c"], 3));
+    expect(result.layout).toBe("reformatted");
+    expect(dataOf(result.text)).toEqual({ a: 1, b: 2, c: 3 });
+  });
+
+  it("keeps \\r\\n when it renders the document again", () => {
+    expect(edited(windows("# tools", "tools: [x]"), set(["tools", 0], "y"))).toEqual({
+      text: windows("# tools", "tools: [ y ]"),
+      layout: "reformatted",
+    });
+  });
 });
 
 verifies("yaml.edit-preserve-entries", () => {

@@ -138,6 +138,26 @@ function countLines(text: string, comments: boolean): number {
     .filter((line) => line.trim() !== "" && line.trim().startsWith("#") === comments).length;
 }
 
+verifies("yaml.edit-line-endings", () => {
+  it("splices any fitting edit into a \\r\\n text with \\r\\n line breaks only", () => {
+    const fileAndEdit = fileData.chain((data) => fc.tuple(fc.constant(data), editFor(data)));
+    fc.assert(
+      fc.property(fileAndEdit, fc.boolean(), ([data, edit], comments) => {
+        const plain = writeYamlFile(data);
+        const text = comments ? commentEveryLine(plain) : plain;
+        const spliced = spliceEdit(text.replaceAll("\n", "\r\n"), edit);
+        expect(spliced ?? "").not.toMatch(/(^|[^\r])\n/);
+        if (!comments) {
+          // Without comments every fitting edit splices, as on `\n` text.
+          expect(spliced).toBeDefined();
+          expect(unwrap(readYaml(spliced ?? "")).data).toEqual(unwrap(applyEditToData(data, edit)));
+        }
+      }),
+      { numRuns: 200 },
+    );
+  });
+});
+
 verifies("yaml.edit-preserve", () => {
   const leafSet = scalarData
     .filter((data) => typeof data === "object" && data !== null)

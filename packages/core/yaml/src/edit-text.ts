@@ -11,6 +11,18 @@ const minimumLineWidth = 40;
 
 const byteOrderMark = "﻿";
 
+/**
+ * The text's line ending: `\r\n` when every line break is one, `\n` when every
+ * one is that or there are none, `undefined` when the text mixes them.
+ */
+export function lineEndingOf(text: string): "\n" | "\r\n" | undefined {
+  const breaks = new Set(text.match(/\r\n|\r|\n/g));
+  if (breaks.size === 0 || (breaks.size === 1 && breaks.has("\n"))) {
+    return "\n";
+  }
+  return breaks.size === 1 && breaks.has("\r\n") ? "\r\n" : undefined;
+}
+
 /** Where the line holding `offset` starts. A byte order mark isn't part of the first line. */
 export function lineStart(text: string, offset: number): number {
   const start = text.lastIndexOf("\n", offset - 1) + 1;
@@ -104,6 +116,34 @@ export function replaceRange(text: string, from: number, to: number, rendered: s
   const body = rendered.endsWith("\n") ? rendered.slice(0, -1) : rendered;
   const ending = to > from && text[to - 1] === "\n" ? "\n" : "";
   return text.slice(0, from) + body + ending + text.slice(to);
+}
+
+/**
+ * Moves a comment on the line where `text[from, to)` starts onto the first line of
+ * `rendered`, when only the `:` or `-` and a block text header come before it:
+ * `a: # about a` over a block value, or with no value. Comment lines inside the
+ * old value go with it.
+ *
+ * @returns where the replaced text ends (past the comment) and what replaces it
+ */
+export function keepLineComment(
+  text: string,
+  from: number,
+  to: number,
+  rendered: string,
+): { to: number; rendered: string } {
+  const lineBreak = text.indexOf("\n", from);
+  const lineEnd = lineBreak === -1 ? text.length : lineBreak;
+  const comment = /^[:-]?(?:[ \t]+[|>][-+1-9]*)?[ \t]+(#.*)$/.exec(text.slice(from, lineEnd))?.[1];
+  if (comment === undefined) {
+    return { to, rendered };
+  }
+  const firstBreak = rendered.indexOf("\n");
+  const head = firstBreak === -1 ? rendered : rendered.slice(0, firstBreak);
+  return {
+    to: Math.max(to, lineEnd),
+    rendered: `${head} ${comment}${rendered.slice(head.length)}`,
+  };
 }
 
 /** `key: value` as whole lines, indented to `column`. Keys are quoted by the library, never pasted. */

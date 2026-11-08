@@ -1,6 +1,7 @@
 import { deepEqual } from "@halonicjs/std";
 import { isCollection, isMap, isScalar, isSeq, type Node } from "yaml";
 import type { YamlEdit } from "./edit-data.ts";
+import { lineEndingOf } from "./edit-text.ts";
 import type { YamlPath } from "./read.ts";
 import {
   addPair,
@@ -19,10 +20,26 @@ import {
  * key order, quoting and blank lines elsewhere stay byte for byte. Expects an
  * edit that `applyEditToData` accepted on this text's data.
  *
+ * New lines get the text's line ending.
+ *
  * @returns the new text, or `undefined` for a layout it doesn't handle yet
- *   (an edit inside a flow collection, for example)
+ *   (an edit inside a flow collection, or a text that mixes line endings)
  */
 export function spliceEdit(text: string, edit: YamlEdit): string | undefined {
+  switch (lineEndingOf(text)) {
+    case "\n":
+      return spliceLines(text, edit);
+    case "\r\n":
+      // Every line break is `\r\n`, so this round trip is exact.
+      return spliceLines(text.replaceAll("\r\n", "\n"), edit)?.replaceAll("\n", "\r\n");
+    default:
+      // New lines would have to pick one of the endings.
+      return undefined;
+  }
+}
+
+/** `spliceEdit` for a text whose line breaks are all `\n`. */
+function spliceLines(text: string, edit: YamlEdit): string | undefined {
   const parsed = parse(text);
   if (insideFlow(parsed, edit.path)) {
     return undefined;
@@ -131,7 +148,7 @@ function listChanges(path: YamlPath, current: unknown[], value: unknown[]): Yaml
 function applyAll(text: string, edits: readonly YamlEdit[]): string | undefined {
   let current: string | undefined = text;
   for (const edit of edits) {
-    current = spliceEdit(current, edit);
+    current = spliceLines(current, edit);
     if (current === undefined) {
       return undefined;
     }
