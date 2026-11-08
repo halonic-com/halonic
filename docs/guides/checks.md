@@ -80,8 +80,9 @@ below the minimum:
 | apps (CLI)       | 80% of lines                            |
 | testing, tooling | none set; new packages get 80% of lines |
 
-In a pull request, CI compares every package's floor with the target branch's
-and fails if a value went down or was removed (`pnpm check:coverage-floors <base> <head>`).
+In a pull request, CI compares the floor of every package whose `package.json`
+the pull request changes with its floor at the merge base (where the branch left
+the target branch), and fails if a value went down or was removed (`pnpm check:coverage-floors <base> <head>`).
 New packages and packages with no floor on the target branch pass. If lowering
 a floor is deliberate, the maintainer adds the `coverage-floor-lowered` label
 to the pull request and the check passes.

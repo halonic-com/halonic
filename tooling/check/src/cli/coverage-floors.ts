@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import {
   type FloorsByManifest,
+  type LoweredFloor,
   loweredFloorMessage,
   loweredFloors,
   lowerFloorLabel,
@@ -10,13 +11,29 @@ import {
 
 /**
  * Fails when a pull request lowers a package's coverage floor compared with
- * the target branch. Run as `coverage-floors.ts <base-sha> <head-sha>` inside
- * a clone that has both commits. The `coverage-floor-lowered` label on the
+ * the point where it branched off the target branch (the merge base, not the
+ * target's tip: floors raised on the target since then are not a drop). Only
+ * packages whose `package.json` the pull request changes are compared. Run as
+ * `coverage-floors.ts <base-sha> <head-sha>` inside a clone that has both
+ * commits. The `coverage-floor-lowered` label on the
  * pull request (read from the event file) allows it.
  */
 
 function git(...args: string[]): string {
   return execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+}
+
+/** Compares the floors the pull request changed with those at its merge base. */
+export function loweredSinceBranchPoint(base: string, head: string): LoweredFloor[] {
+  const mergeBase = git("merge-base", base, head).trim();
+  const changed = new Set(
+    git("diff", "--name-only", `${mergeBase}...${head}`)
+      .split("\n")
+      .filter((file) => file !== ""),
+  );
+  const only = (floors: FloorsByManifest): FloorsByManifest =>
+    new Map([...floors].filter(([file]) => changed.has(file)));
+  return loweredFloors(only(floorsAt(mergeBase)), only(floorsAt(head)));
 }
 
 function floorsAt(commit: string): FloorsByManifest {
@@ -49,7 +66,7 @@ if (import.meta.main) {
     console.error("coverage-floors: usage: coverage-floors.ts <base-sha> <head-sha>");
     process.exit(2);
   }
-  const lowered = loweredFloors(floorsAt(base), floorsAt(head));
+  const lowered = loweredSinceBranchPoint(base, head);
   if (lowered.length === 0) {
     console.log("coverage-floors: no floor went down.");
   } else if (labels().includes(lowerFloorLabel)) {
