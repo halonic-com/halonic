@@ -22,7 +22,10 @@ Node, in the Worker and in the browser. Published as
 - **Secrets are placed by the kit.** The integration names a secret
   (`auth: { secret, as: "bearer" | "header" | "form" }`); the kit reads the
   value and puts it in only when the sheet allows that secret to go to the
-  hop's host. The integration never holds the value.
+  hop's host. The integration never holds the value. A secret the sheet
+  marks `optional`, such as the key of a server that may need none, is left
+  out when the workspace hasn't set it up; any other missing secret is
+  refused as `secret-not-configured`.
 - **Limits:** 30 s per request with its redirects, 10 MiB per response, 5
   redirects. All three can be changed.
 - **Request log:** method, host, path, status and time. No query, headers or

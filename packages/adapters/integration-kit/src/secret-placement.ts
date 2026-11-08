@@ -39,7 +39,10 @@ function mayCarrySecret(url: URL): boolean {
   return url.protocol === "https:" || isLoopback(url.hostname);
 }
 
-/** Reads each secret's value once. The values never leave the kit. */
+/**
+ * Reads each secret's value once. The values never leave the kit. An
+ * optional secret without a value gets no entry, so `place` leaves it out.
+ */
 export async function readSecrets(
   policy: IntegrationPolicy,
   secrets: Secrets,
@@ -50,6 +53,8 @@ export async function readSecrets(
     if (values.has(secret)) continue;
     const value = await secrets.get(secret);
     if (value === null || value === "") {
+      // `checkPlacements` ran first, so the secret is declared.
+      if (policy.secrets[secret]?.optional === true) continue;
       throw new IntegrationRefusedError(
         "secret-not-configured",
         `${policy.name}: the secret "${secret}" is not configured`,

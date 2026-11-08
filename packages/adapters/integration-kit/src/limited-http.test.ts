@@ -178,6 +178,48 @@ describe("integration-kit.secrets-placed-by-kit", () => {
     expect(sent).toEqual([]);
   });
 
+  describe("an optional secret", () => {
+    const optionalPolicy: IntegrationPolicy = {
+      ...policy,
+      secrets: { ...policy.secrets, "example-key": { hosts: ["api.example.com"], optional: true } },
+    };
+    const bearer = { secret: "example-key", as: "bearer" } as const;
+
+    function optionalClient(value: string | null) {
+      const { transport, sent } = fakeTransport();
+      const http = createLimitedHttpClient({
+        policy: optionalPolicy,
+        transport,
+        secrets: { get: async () => value },
+        log: new RequestLog(),
+      });
+      return { http, sent };
+    }
+
+    it("is left out when it isn't configured, and the request still goes", async () => {
+      for (const value of [null, ""]) {
+        const { http, sent } = optionalClient(value);
+        await http.fetch("https://api.example.com/", { auth: bearer });
+        expect(sent).toHaveLength(1);
+        expect(sent[0]?.headers["authorization"]).toBeUndefined();
+      }
+    });
+
+    it("is put in when it is configured", async () => {
+      const { http, sent } = optionalClient(canary["example-key"]);
+      await http.fetch("https://api.example.com/", { auth: bearer });
+      expect(sent[0]?.headers["authorization"]).toBe(`Bearer ${canary["example-key"]}`);
+    });
+
+    it("is still refused for a host the sheet doesn't allow it for", async () => {
+      const { http, sent } = optionalClient(null);
+      expect(await refusal(http.fetch("https://cdn.example.com/", { auth: bearer }))).toBe(
+        "secret-not-allowed-for-host",
+      );
+      expect(sent).toEqual([]);
+    });
+  });
+
   it("refuses a form placement without a form body, and a streamed body", async () => {
     const { http, sent } = client();
     const placement = { secret: "client-secret", as: "form", field: "client_secret" } as const;

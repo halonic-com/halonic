@@ -19,8 +19,15 @@ export interface IntegrationPolicy {
    * refuses any other address here, whatever the list says.
    */
   readonly localHosts?: readonly string[];
-  /** Each secret it may use, and the hosts that secret may go to. */
-  readonly secrets: Readonly<Record<string, { readonly hosts: readonly string[] }>>;
+  /**
+   * Each secret it may use, and the hosts that secret may go to. An
+   * `optional` secret, such as the key of a server that may need none, is
+   * left out of the request when the workspace hasn't set it up, instead of
+   * refusing the request.
+   */
+  readonly secrets: Readonly<
+    Record<string, { readonly hosts: readonly string[]; readonly optional?: boolean }>
+  >;
   /** The token names it may read and write. */
   readonly tokens: readonly string[];
 }
