@@ -42,8 +42,8 @@ writing is up to the caller.
 ## Editing
 
 `editYaml(text, edits)` applies `set`, `delete` and `insert` edits to a file
-and keeps its comments, so a structured editor can save while the user
-watches the file.
+and keeps everything the edits don't touch, so a structured editor can save
+while the user watches the file.
 
 ```ts
 import { editYaml } from "@halonicjs/yaml";
@@ -71,22 +71,21 @@ save(edited.value.text);
   list's length.
 - If any edit doesn't fit, nothing is applied and the problem names that edit.
 
-**Setting a whole map or list.** A `set` with a whole object replaces the
-value: keys missing from the new value are deleted, and the comments inside
-the old value go with it. A list is compared item by item at the same index, so
-putting an item at the front changes every item after it. To change one
-field and keep the comments around it, set that field's path instead; to add
-or remove a list item, use `insert` or `delete`. A `set` of the whole
-document (`[]`) keeps the comments at the top of the file.
+**Setting a whole map or list.** A `set` with a whole object changes only what
+differs: changed keys are set, new keys go at the end, and keys missing from
+the new value are deleted. Lists are compared item by item at the same index,
+so putting an item at the front of a list rewrites every item after it. To add
+or remove a list item, use `insert` or `delete`. A `set` of the whole document
+(`[]`) keeps the comments at the top of the file.
 
-**Layout.** Every result is read back and must give the expected data.
-`layout` says how much of the file's layout was kept:
+**Layout.** Every result is read back and must give the expected data. When
+the splice can't manage that, the edit falls back, and `layout` says how far:
 
-- `kept`: only the edited text changed. For now that means a `set` that gives
-  the value already there; a text splice that keeps the layout for every edit
-  follows.
+- `kept`: only the edited text changed. Today that covers every `set` outside
+  a flow collection such as `[a, b]`, except a whole-map or whole-list `set`
+  that removes keys or changes how many items a list has.
 - `reformatted`: the file was rendered again from the parsed document;
-  comments stay, spacing and some quoting may not.
-- `rewritten`: the parsed document couldn't give the expected data, so the
-  file was written from its data with `writeYamlFile`, and every comment is
-  gone.
+  comments stay, spacing and some quoting may not. `delete`, `insert` and the
+  cases above land here for now.
+- `rewritten`: the file was written from its data with `writeYamlFile`, and
+  every comment is gone.

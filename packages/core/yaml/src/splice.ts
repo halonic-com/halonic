@@ -1,0 +1,154 @@
+import { deepEqual } from "@halonicjs/std";
+import { isCollection, isMap, isScalar, isSeq, type Node } from "yaml";
+import type { YamlEdit } from "./edit-data.ts";
+import type { YamlPath } from "./read.ts";
+import {
+  addPair,
+  insideFlow,
+  nodeAt,
+  type Parsed,
+  parse,
+  replaceScalar,
+  replaceValue,
+} from "./splice-node.ts";
+
+/**
+ * Applies one edit by changing only the text of what it touches, so comments,
+ * key order, quoting and blank lines elsewhere stay byte for byte. Expects an
+ * edit that `applyEditToData` accepted on this text's data.
+ *
+ * @returns the new text, or `undefined` for an edit or layout it doesn't
+ *   handle yet (a `delete`, an `insert`, or an edit inside a flow collection)
+ */
+export function spliceEdit(text: string, edit: YamlEdit): string | undefined {
+  const parsed = parse(text);
+  if (insideFlow(parsed, edit.path)) {
+    return undefined;
+  }
+  if (edit.kind !== "set") {
+    return undefined;
+  }
+  return spliceSet(parsed, edit.path, edit.value);
+}
+
+/** Sets an existing value, or adds the first missing key with the maps under it. */
+function spliceSet(parsed: Parsed, path: YamlPath, value: unknown): string | undefined {
+  for (let length = 0; length <= path.length; length++) {
+    const prefix = path.slice(0, length);
+    const node = nodeAt(parsed, prefix);
+    const nested = nest(path.slice(length), value);
+    if (node === undefined) {
+      return addPair(parsed, prefix.slice(0, -1), String(path[length - 1]), nested);
+    }
+    if (length === path.length || isEmpty(node)) {
+      return setNode(parsed, prefix, node, nested);
+    }
+  }
+  return undefined;
+}
+
+function setNode(
+  parsed: Parsed,
+  path: YamlPath,
+  node: Node | null,
+  value: unknown,
+): string | undefined {
+  const current = node === null ? null : node.toJS(parsed.document);
+  if (deepEqual(current, value)) {
+    return parsed.text;
+  }
+  if (isMap(node) && node.flow !== true && isFilledRecord(value) && node.items.length > 0) {
+    return applyAll(parsed.text, mapChanges(path, current as Record<string, unknown>, value));
+  }
+  if (isSeq(node) && node.flow !== true && isFilledList(value) && node.items.length > 0) {
+    return applyAll(parsed.text, listChanges(path, current as unknown[], value));
+  }
+  if (isCollection(node) && node.flow === true && node.items.length > 0) {
+    // Rewriting a hand-written `[a, b]` keeps its style: not handled yet.
+    return undefined;
+  }
+  if (isScalar(node) && !isCollectionValue(value)) {
+    const spliced = replaceScalar(parsed, node, value);
+    if (spliced !== undefined) {
+      return spliced;
+    }
+  }
+  return replaceValue(parsed, path, value);
+}
+
+/**
+ * A whole-map set as key edits: changed keys are set (and diffed further),
+ * new keys are added at the end, and keys the new map lacks are deleted.
+ * A diff that needs a delete or an insert isn't spliced yet, so it falls back.
+ */
+function mapChanges(
+  path: YamlPath,
+  current: Record<string, unknown>,
+  value: Record<string, unknown>,
+): YamlEdit[] {
+  const sets: YamlEdit[] = Object.entries(value)
+    .filter(([key, child]) => !(Object.hasOwn(current, key) && deepEqual(current[key], child)))
+    .map(([key, child]) => ({ kind: "set", path: [...path, key], value: child }));
+  const deletes: YamlEdit[] = Object.keys(current)
+    .filter((key) => !Object.hasOwn(value, key))
+    .map((key) => ({ kind: "delete", path: [...path, key] }));
+  // Sets first, so a map never empties out on the way and turns into `{}`.
+  return [...sets, ...deletes];
+}
+
+/**
+ * A whole-list set as item edits, compared index by index: the shared
+ * indexes are set, then new items are added at the end or extra ones
+ * deleted from the end.
+ */
+function listChanges(path: YamlPath, current: unknown[], value: unknown[]): YamlEdit[] {
+  const changes: YamlEdit[] = [];
+  const shared = Math.min(current.length, value.length);
+  for (let index = 0; index < shared; index++) {
+    if (!deepEqual(current[index], value[index])) {
+      changes.push({ kind: "set", path: [...path, index], value: value[index] });
+    }
+  }
+  for (let index = shared; index < value.length; index++) {
+    changes.push({ kind: "insert", path: [...path, index], value: value[index] });
+  }
+  for (let index = current.length - 1; index >= value.length; index--) {
+    changes.push({ kind: "delete", path: [...path, index] });
+  }
+  return changes;
+}
+
+function applyAll(text: string, edits: readonly YamlEdit[]): string | undefined {
+  let current: string | undefined = text;
+  for (const edit of edits) {
+    current = spliceEdit(current, edit);
+    if (current === undefined) {
+      return undefined;
+    }
+  }
+  return current;
+}
+
+/** `value` under the keys of `path`, as maps: `["a", "b"], 1` gives `{ a: { b: 1 } }`. */
+function nest(path: YamlPath, value: unknown): unknown {
+  return path.reduceRight<unknown>((inner, key) => Object.fromEntries([[key, inner]]), value);
+}
+
+/** An empty document or a `key:` with no value: `set` builds the maps below it. */
+function isEmpty(node: Node | null): boolean {
+  return node === null || (isScalar(node) && node.value === null);
+}
+
+function isCollectionValue(value: unknown): boolean {
+  return typeof value === "object" && value !== null;
+}
+
+function isFilledRecord(value: unknown): value is Record<string, unknown> {
+  return (
+    isCollectionValue(value) && !Array.isArray(value) && Object.keys(value as object).length > 0
+  );
+}
+
+function isFilledList(value: unknown): value is unknown[] {
+  return Array.isArray(value) && value.length > 0;
+}

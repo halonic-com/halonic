@@ -3,6 +3,7 @@ import { isCollection, isNode, isPair, isScalar, isSeq, type Node, parseDocument
 import { applyEditToData, checkValue, type YamlEdit } from "./edit-data.ts";
 import type { YamlProblem } from "./problem.ts";
 import { defaultYamlLimits, readYaml, type YamlLimits, type YamlPath } from "./read.ts";
+import { spliceEdit } from "./splice.ts";
 import { writeYamlFile } from "./write.ts";
 
 /** An edit that doesn't fit the data, or would give a file `readYaml` rejects. */
@@ -31,10 +32,11 @@ export interface YamlEdited {
 }
 
 /**
- * Applies edits to a YAML text and keeps its comments. Edits run in order; each
- * sees the result of the one before. After each edit the text is read back and
- * must give the expected data; when the parsed document can't render that, the
- * edit falls back to a `rewritten` layout, so the data is always right.
+ * Applies edits to a YAML text and keeps everything they don't touch: comments,
+ * key order, quoting, blank lines. Edits run in order; each sees the result
+ * of the one before. After each edit the text is read back and must give the
+ * expected data; when the splice can't manage that, the edit falls back to a
+ * `reformatted` and then a `rewritten` layout, so the data is always right.
  *
  * @param text - the whole file
  * @param edits - the changes, applied in order
@@ -44,10 +46,10 @@ export interface YamlEdited {
  *   no edit applied
  *
  * @example
- * const edited = editYaml("# billing\nname: Billing\n", [
+ * const edited = editYaml("name: Billing # shown in the list\n", [
  *   { kind: "set", path: ["name"], value: "Invoices" },
  * ]);
- * // { ok: true, value: { text: "# billing\nname: Invoices\n", layout: "reformatted" } }
+ * // { ok: true, value: { text: "name: Invoices # shown in the list\n", layout: "kept" } }
  */
 export function editYaml(
   text: string,
@@ -94,6 +96,7 @@ function applyEdit(before: Step, edit: YamlEdit, limits: YamlLimits): Result<Ste
     return ok({ text: before.text, data: before.data, layout: "kept" });
   }
   const attempts: [YamlLayout, () => string | undefined][] = [
+    ["kept", () => spliceEdit(before.text, edit)],
     ["reformatted", () => renderWithDocument(before.text, edit, expected.value)],
     ["rewritten", () => writeYamlFile(expected.value)],
   ];

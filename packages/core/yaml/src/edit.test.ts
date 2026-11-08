@@ -1,5 +1,6 @@
 import { unwrap } from "@halonicjs/std";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { editYaml, type YamlEdited } from "./edit.ts";
 import type { YamlEdit } from "./edit-data.ts";
 import { readYaml } from "./read.ts";
@@ -23,7 +24,7 @@ function problemOf(text: string, ...edits: YamlEdit[]): string {
 
 const lines = (...all: string[]) => `${all.join("\n")}\n`;
 
-describe("yaml.edit", () => {
+verifies("yaml.edit", () => {
   it("sets a value", () => {
     expect(dataOf(edited("name: Billing\n", set(["name"], "Invoices")).text)).toEqual({
       name: "Invoices",
@@ -77,7 +78,7 @@ describe("yaml.edit", () => {
   });
 });
 
-describe("yaml.edit layout", () => {
+verifies("yaml.edit-preserve", () => {
   it("changes nothing when the value is already there", () => {
     const text = "# top\nq: 'x'   # odd spacing\nn: 0x1F\n";
     expect(edited(text, set(["q"], "x"), set(["n"], 31), set([], dataOf(text)))).toEqual({
@@ -86,12 +87,37 @@ describe("yaml.edit layout", () => {
     });
   });
 
-  it("keeps comments when it renders the parsed document again", () => {
+  it("changes only the value's characters and keeps the comment on its line", () => {
     const result = edited("# billing\nname: Billing # shown in the list\n", set(["name"], "x"));
-    expect(result).toEqual({
-      text: "# billing\nname: x # shown in the list\n",
-      layout: "reformatted",
+    expect(result).toEqual({ text: "# billing\nname: x # shown in the list\n", layout: "kept" });
+  });
+
+  it("keeps the quote style of a quoted text", () => {
+    expect(edited("q: 'it'\n", set(["q"], "it's")).text).toBe("q: 'it''s'\n");
+    expect(edited('q: "a"\n', set(["q"], "yes")).text).toBe('q: "yes"\n');
+  });
+
+  it("changes only the fields that differ when a whole map is set", () => {
+    const text = lines("steps:", "  # check first", "  - id: check # the id", "    retries: 2");
+    expect(edited(text, set(["steps", 0], { id: "check", retries: 3 }))).toEqual({
+      text: lines("steps:", "  # check first", "  - id: check # the id", "    retries: 3"),
+      layout: "kept",
     });
+  });
+
+  it("adds keys at their map's indent, quoted by the library", () => {
+    const result = edited(lines("a:", "  b: 1", "c: 2"), set(["a", "yes"], "null"));
+    expect(result).toEqual({
+      text: lines("a:", "  b: 1", '  yes: "null"', "c: 2"),
+      layout: "kept",
+    });
+  });
+
+  it("keeps a | block a | block", () => {
+    const text = lines("run: |", "  one", "  two", "next: 1");
+    expect(edited(text, set(["run"], "three\nfour\n")).text).toBe(
+      lines("run: |", "  three", "  four", "next: 1"),
+    );
   });
 
   it("keeps the comment at the top of the file when it sets the whole document", () => {
@@ -104,8 +130,14 @@ describe("yaml.edit layout", () => {
     expect(edited(lines("# top", "- x", "- y"), set([], ["z"])).text).toBe(lines("# top", "- z"));
   });
 
+  it("splices a whole-map set into key edits when no key goes away", () => {
+    const result = edited(lines("# top", "a: 1 # c", "b: 2"), set([], { a: 1, b: 3, d: 4 }));
+    expect(result).toEqual({ text: lines("# top", "a: 1 # c", "b: 3", "d: 4"), layout: "kept" });
+  });
+
   it("keeps a byte order mark", () => {
     const text = "\uFEFFa: 1\nb: 2\n";
+    expect(edited(text, set(["a"], 2))).toEqual({ text: "\uFEFFa: 2\nb: 2\n", layout: "kept" });
     expect(edited(text, set(["c"], 3), del(["a"])).text).toBe("\uFEFFb: 2\nc: 3\n");
   });
 
@@ -117,7 +149,7 @@ describe("yaml.edit layout", () => {
   });
 });
 
-describe("yaml.edit-problems", () => {
+verifies("yaml.edit-problems", () => {
   it("returns the read problem for an unreadable text", () => {
     const result = editYaml("a: [1\n", [set(["a"], 1)]);
     expect(result.ok).toBe(false);
