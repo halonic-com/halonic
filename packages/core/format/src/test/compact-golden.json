@@ -1,0 +1,583 @@
+{
+  "source": "the old compact at commit 784f78d, packages/core/config/src/workspace.ts",
+  "undefinedMarker": {
+    "$undefined": true
+  },
+  "cases": [
+    {
+      "name": "drops an undefined value",
+      "rule": "drop-undefined",
+      "input": {
+        "a": {
+          "$undefined": true
+        },
+        "b": 1
+      },
+      "output": {
+        "b": 1
+      }
+    },
+    {
+      "name": "drops an empty array",
+      "rule": "drop-empty-array",
+      "input": {
+        "a": [],
+        "b": 1
+      },
+      "output": {
+        "b": 1
+      }
+    },
+    {
+      "name": "drops an empty object",
+      "rule": "drop-empty-object",
+      "input": {
+        "a": {},
+        "b": 1
+      },
+      "output": {
+        "b": 1
+      }
+    },
+    {
+      "name": "drops a value that compacting empties",
+      "rule": "compact-first",
+      "input": {
+        "a": {
+          "b": []
+        },
+        "c": {
+          "d": {
+            "e": {
+              "$undefined": true
+            }
+          }
+        },
+        "f": {
+          "g": [
+            {}
+          ]
+        },
+        "keep": 1
+      },
+      "output": {
+        "f": {
+          "g": [
+            {}
+          ]
+        },
+        "keep": 1
+      }
+    },
+    {
+      "name": "keeps null, empty string, zero and false",
+      "rule": "keep-falsy",
+      "input": {
+        "n": null,
+        "s": "",
+        "z": 0,
+        "f": false,
+        "nested": {
+          "n": null
+        }
+      },
+      "output": {
+        "n": null,
+        "s": "",
+        "z": 0,
+        "f": false,
+        "nested": {
+          "n": null
+        }
+      }
+    },
+    {
+      "name": "keeps every array item, even empty ones",
+      "rule": "keep-array-items",
+      "input": {
+        "list": [
+          {
+            "$undefined": true
+          },
+          {},
+          [],
+          null,
+          {
+            "a": []
+          },
+          0,
+          "",
+          false
+        ]
+      },
+      "output": {
+        "list": [
+          {
+            "$undefined": true
+          },
+          {},
+          [],
+          null,
+          {},
+          0,
+          "",
+          false
+        ]
+      }
+    },
+    {
+      "name": "compacts objects inside nested arrays",
+      "rule": "keep-array-items",
+      "input": [
+        [
+          {
+            "a": [],
+            "b": "x"
+          }
+        ],
+        [
+          {
+            "c": {
+              "$undefined": true
+            }
+          }
+        ]
+      ],
+      "output": [
+        [
+          {
+            "b": "x"
+          }
+        ],
+        [
+          {}
+        ]
+      ]
+    },
+    {
+      "name": "keeps an empty top-level object",
+      "rule": "keep-top-level",
+      "input": {},
+      "output": {}
+    },
+    {
+      "name": "keeps a top-level object it emptied",
+      "rule": "keep-top-level",
+      "input": {
+        "a": {},
+        "b": []
+      },
+      "output": {}
+    },
+    {
+      "name": "keeps an empty top-level array",
+      "rule": "keep-top-level",
+      "input": [],
+      "output": []
+    },
+    {
+      "name": "returns top-level null",
+      "rule": "keep-top-level",
+      "input": null,
+      "output": null
+    },
+    {
+      "name": "returns top-level undefined",
+      "rule": "keep-top-level",
+      "input": {
+        "$undefined": true
+      },
+      "output": {
+        "$undefined": true
+      }
+    },
+    {
+      "name": "returns a top-level string",
+      "rule": "keep-top-level",
+      "input": "text",
+      "output": "text"
+    },
+    {
+      "name": "returns a top-level zero",
+      "rule": "keep-top-level",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "name": "returns a top-level false",
+      "rule": "keep-top-level",
+      "input": false,
+      "output": false
+    },
+    {
+      "name": "keeps the key order",
+      "rule": "key-order",
+      "input": {
+        "z": 1,
+        "a": {},
+        "m": 2,
+        "b": {
+          "y": [],
+          "x": 1
+        },
+        "c": 3
+      },
+      "output": {
+        "z": 1,
+        "m": 2,
+        "b": {
+          "x": 1
+        },
+        "c": 3
+      }
+    },
+    {
+      "name": "acme workspace",
+      "rule": "example-file",
+      "input": {
+        "version": 1,
+        "id": "acme",
+        "name": "Acme",
+        "description": "Example workspace for Halonic Studio.",
+        "privacy": {
+          "localOnly": false
+        },
+        "defaults": {
+          "runtime": "inprocess",
+          "model": "default"
+        }
+      },
+      "output": {
+        "version": 1,
+        "id": "acme",
+        "name": "Acme",
+        "description": "Example workspace for Halonic Studio.",
+        "privacy": {
+          "localOnly": false
+        },
+        "defaults": {
+          "runtime": "inprocess",
+          "model": "default"
+        }
+      }
+    },
+    {
+      "name": "acme support agent",
+      "rule": "example-file",
+      "input": {
+        "version": 1,
+        "id": "support",
+        "name": "Support agent",
+        "description": "Answers how-to questions from the handbook.",
+        "model": "smart",
+        "params": {},
+        "instructions": "You answer customer questions using only the handbook.\nIf the handbook does not cover it, say so and offer to connect them with a person.\n",
+        "skills": [
+          "friendly-tone"
+        ],
+        "knowledge": [
+          "handbook"
+        ],
+        "connectors": [],
+        "runLogs": false,
+        "collections": [],
+        "subagents": [
+          "writer"
+        ],
+        "methods": {},
+        "output": {
+          "type": "text"
+        },
+        "maxSteps": 6
+      },
+      "output": {
+        "version": 1,
+        "id": "support",
+        "name": "Support agent",
+        "description": "Answers how-to questions from the handbook.",
+        "model": "smart",
+        "instructions": "You answer customer questions using only the handbook.\nIf the handbook does not cover it, say so and offer to connect them with a person.\n",
+        "skills": [
+          "friendly-tone"
+        ],
+        "knowledge": [
+          "handbook"
+        ],
+        "runLogs": false,
+        "subagents": [
+          "writer"
+        ],
+        "output": {
+          "type": "text"
+        },
+        "maxSteps": 6
+      }
+    },
+    {
+      "name": "acme triage workflow",
+      "rule": "example-file",
+      "input": {
+        "version": 1,
+        "id": "triage",
+        "name": "Support triage",
+        "description": "Classify a message, answer questions from the handbook, turn bugs into reports a person approves.",
+        "initial": "classify",
+        "context": {},
+        "states": {
+          "classify": {
+            "type": "task",
+            "agent": "classifier",
+            "input": "{{input.message}}",
+            "output": "category",
+            "on": [
+              {
+                "to": "answer",
+                "event": "done",
+                "when": {
+                  "equals": [
+                    "{{context.category}}",
+                    "question"
+                  ]
+                },
+                "label": "question"
+              },
+              {
+                "to": "report",
+                "event": "done",
+                "when": {
+                  "equals": [
+                    "{{context.category}}",
+                    "bug"
+                  ]
+                },
+                "label": "bug"
+              },
+              {
+                "to": "done",
+                "event": "done",
+                "label": "other"
+              }
+            ]
+          },
+          "answer": {
+            "type": "task",
+            "agent": "support",
+            "input": "Customer asks: {{input.message}}",
+            "output": "reply",
+            "on": [
+              {
+                "to": "done",
+                "event": "done"
+              }
+            ]
+          },
+          "report": {
+            "type": "task",
+            "agent": "writer",
+            "input": "Write a bug report for: {{input.message}}",
+            "output": "report",
+            "artifact": {
+              "name": "bug-report.md",
+              "mediaType": "text/markdown"
+            },
+            "on": [
+              {
+                "to": "review",
+                "event": "done"
+              }
+            ]
+          },
+          "review": {
+            "type": "wait",
+            "description": "A person approves the report or sends it back.",
+            "on": [
+              {
+                "to": "done",
+                "event": "approve"
+              },
+              {
+                "to": "report",
+                "event": "reject"
+              }
+            ]
+          },
+          "done": {
+            "type": "final",
+            "on": []
+          }
+        },
+        "layout": {
+          "classify": {
+            "x": 160,
+            "y": 0
+          },
+          "answer": {
+            "x": 0,
+            "y": 240
+          },
+          "report": {
+            "x": 300,
+            "y": 240
+          },
+          "done": {
+            "x": 160,
+            "y": 720
+          },
+          "review": {
+            "x": 160,
+            "y": 480
+          }
+        }
+      },
+      "output": {
+        "version": 1,
+        "id": "triage",
+        "name": "Support triage",
+        "description": "Classify a message, answer questions from the handbook, turn bugs into reports a person approves.",
+        "initial": "classify",
+        "states": {
+          "classify": {
+            "type": "task",
+            "agent": "classifier",
+            "input": "{{input.message}}",
+            "output": "category",
+            "on": [
+              {
+                "to": "answer",
+                "event": "done",
+                "when": {
+                  "equals": [
+                    "{{context.category}}",
+                    "question"
+                  ]
+                },
+                "label": "question"
+              },
+              {
+                "to": "report",
+                "event": "done",
+                "when": {
+                  "equals": [
+                    "{{context.category}}",
+                    "bug"
+                  ]
+                },
+                "label": "bug"
+              },
+              {
+                "to": "done",
+                "event": "done",
+                "label": "other"
+              }
+            ]
+          },
+          "answer": {
+            "type": "task",
+            "agent": "support",
+            "input": "Customer asks: {{input.message}}",
+            "output": "reply",
+            "on": [
+              {
+                "to": "done",
+                "event": "done"
+              }
+            ]
+          },
+          "report": {
+            "type": "task",
+            "agent": "writer",
+            "input": "Write a bug report for: {{input.message}}",
+            "output": "report",
+            "artifact": {
+              "name": "bug-report.md",
+              "mediaType": "text/markdown"
+            },
+            "on": [
+              {
+                "to": "review",
+                "event": "done"
+              }
+            ]
+          },
+          "review": {
+            "type": "wait",
+            "description": "A person approves the report or sends it back.",
+            "on": [
+              {
+                "to": "done",
+                "event": "approve"
+              },
+              {
+                "to": "report",
+                "event": "reject"
+              }
+            ]
+          },
+          "done": {
+            "type": "final"
+          }
+        },
+        "layout": {
+          "classify": {
+            "x": 160,
+            "y": 0
+          },
+          "answer": {
+            "x": 0,
+            "y": 240
+          },
+          "report": {
+            "x": 300,
+            "y": 240
+          },
+          "done": {
+            "x": 160,
+            "y": 720
+          },
+          "review": {
+            "x": 160,
+            "y": 480
+          }
+        }
+      }
+    },
+    {
+      "name": "acme daily-digest routine",
+      "rule": "example-file",
+      "input": {
+        "version": 1,
+        "id": "daily-digest",
+        "name": "Daily digest",
+        "description": "Every weekday morning, a short note on what support should know today.",
+        "enabled": false,
+        "trigger": {
+          "schedule": "0 8 * * 1-5",
+          "timezone": "Europe/Amsterdam"
+        },
+        "run": {
+          "agent": "support",
+          "prompt": "Write a short digest for the support team for {{trigger.at}}.\nList the three handbook topics customers ask about most, with one tip each.\n"
+        },
+        "overlap": "skip",
+        "catchUp": "last"
+      },
+      "output": {
+        "version": 1,
+        "id": "daily-digest",
+        "name": "Daily digest",
+        "description": "Every weekday morning, a short note on what support should know today.",
+        "enabled": false,
+        "trigger": {
+          "schedule": "0 8 * * 1-5",
+          "timezone": "Europe/Amsterdam"
+        },
+        "run": {
+          "agent": "support",
+          "prompt": "Write a short digest for the support team for {{trigger.at}}.\nList the three handbook topics customers ask about most, with one tip each.\n"
+        },
+        "overlap": "skip",
+        "catchUp": "last"
+      }
+    }
+  ]
+}

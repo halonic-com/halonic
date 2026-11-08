@@ -274,6 +274,9 @@ importers:
 
   packages/core/format:
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
