@@ -16,15 +16,15 @@ export {
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
-export { lastTickKey, routineRunId } from "./routine-ids.ts";
+export { lastRunKey, lastTickKey, routineRunId } from "./routine-ids.ts";
 export {
   type DueFunction,
-  type DueRun,
   type RoutineFailure,
   RoutineScheduler,
   type RoutineSchedulerOptions,
   type RoutineStart,
   type RoutineTickResult,
+  type ScheduledRun,
 } from "./routine-scheduler.ts";
 export {
   type Disposable,
@@ -48,6 +48,11 @@ export {
 export { UndoHistory, undoLimit } from "./undo-history.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
+export {
+  startOfDueRun,
+  type WorkspaceRoutineSchedulerOptions,
+  workspaceRoutineScheduler,
+} from "./workspace-routines.ts";
 export {
   type AppCommands,
   type AppEvents,

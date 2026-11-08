@@ -399,10 +399,16 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../routines
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std
     devDependencies:
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../format
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

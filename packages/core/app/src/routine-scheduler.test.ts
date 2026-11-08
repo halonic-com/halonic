@@ -4,9 +4,9 @@ import { EventBus } from "./event-bus.ts";
 import { lastTickKey, routineRunId } from "./routine-ids.ts";
 import {
   type DueFunction,
-  type DueRun,
   RoutineScheduler,
   type RoutineStart,
+  type ScheduledRun,
 } from "./routine-scheduler.ts";
 import { TestCoordination } from "./testing/memory-coordination.ts";
 import { TestExecutor } from "./testing/test-executor.ts";
@@ -22,6 +22,9 @@ interface TestRoutine {
 
 type Policy = "all" | "last";
 
+/** A due run of a {@link TestRoutine}. */
+type TestRun = ScheduledRun & { routine: TestRoutine };
+
 const hourMs = 3_600_000;
 
 /**
@@ -29,11 +32,11 @@ const hourMs = 3_600_000;
  * due time in (lastTick, now], all of them or only the last. Nothing on the
  * first tick.
  */
-const testDue: DueFunction<TestRoutine, Policy> = (routines, lastTick, now, policy) => {
+const testDue: DueFunction<TestRoutine, Policy, TestRun> = (routines, lastTick, now, policy) => {
   if (lastTick === null) {
     return [];
   }
-  const runs: DueRun<TestRoutine>[] = [];
+  const runs: TestRun[] = [];
   for (const routine of routines) {
     const times: Date[] = [];
     let at = Math.floor(lastTick.getTime() / hourMs) * hourMs + routine.minute * 60_000;
@@ -56,7 +59,7 @@ const testDue: DueFunction<TestRoutine, Policy> = (routines, lastTick, now, poli
   return runs;
 };
 
-function startOf(run: DueRun<TestRoutine>): RoutineStart {
+function startOf(run: TestRun): RoutineStart {
   const hubId = run.key.split("/")[0] ?? "";
   if (run.routine.agent !== undefined) {
     return { agent: { hubId, agentId: run.routine.agent, prompt: "Say hi" } };
@@ -68,7 +71,7 @@ interface SetUpOptions {
   policy?: Policy;
   /** Another host of the same workspace. */
   shared?: { coordination: TestCoordination; executor: TestExecutor };
-  startOf?: (run: DueRun<TestRoutine>) => RoutineStart;
+  startOf?: (run: TestRun) => RoutineStart;
   workspaceId?: string;
 }
 
@@ -85,7 +88,7 @@ function setUp(
   const events = new EventBus<AppEvents>();
   const ticks: AppEvents["routines.ticked"][] = [];
   events.on("routines.ticked", (tick) => ticks.push(tick));
-  const scheduler = new RoutineScheduler<TestRoutine, Policy>({
+  const scheduler = new RoutineScheduler<TestRoutine, Policy, TestRun>({
     workspaceId,
     clock: { now: () => new Date(now) },
     coordination,

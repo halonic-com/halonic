@@ -14,9 +14,11 @@
   "dependencies": {
     "@halonicjs/events": "workspace:*",
     "@halonicjs/ports": "workspace:*",
+    "@halonicjs/routines": "workspace:*",
     "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

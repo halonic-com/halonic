@@ -32,6 +32,15 @@ export function lastTickKey(workspaceId: string): string {
   return `routines/${shortHash(workspaceId)}/last-tick`;
 }
 
+/**
+ * The `Coordination` key that keeps when a routine of a workspace last ran,
+ * for `{{trigger.lastRun}}`. The routine key is hashed, so the key stays
+ * short however long the routine key is.
+ */
+export function lastRunKey(workspaceId: string, key: string): string {
+  return `routines/${shortHash(workspaceId)}/last-run/${shortHash(key)}`;
+}
+
 const fnvOffset = 0xcbf29ce484222325n;
 const fnvPrime = 0x100000001b3n;
 const mask64 = (1n << 64n) - 1n;

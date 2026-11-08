@@ -6,38 +6,34 @@ import type {
   StartAgentRequest,
   StartRunRequest,
 } from "@halonicjs/ports";
+import type { DueRun, PlacedRoutine, TickPolicy } from "@halonicjs/routines";
 import type { EventBus } from "./event-bus.ts";
-import { lastTickKey, routineRunId } from "./routine-ids.ts";
+import { lastRunKey, lastTickKey, routineRunId } from "./routine-ids.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
-/** One run the routine tick says to start. The tick function of `@halonicjs/routines` returns these. */
-export interface DueRun<Routine> {
-  /** Routine key: "<hubId>/<routineId>" or "@workspace/<routineId>". */
-  key: string;
-  routine: Routine;
-  /** When the run was due: the scheduled time, not the time of the tick. */
-  at: Date;
-  /** Which kind of trigger made it due. */
-  trigger: "schedule" | "every";
-}
+/**
+ * What the scheduler reads of a due run: the routine key, the due time and
+ * the kind of trigger. The rest, such as the routine itself, is for `startOf`.
+ */
+export type ScheduledRun = Pick<DueRun, "key" | "at" | "trigger">;
 
 /**
- * The pure tick function of `@halonicjs/routines`: the runs to start
+ * A tick function such as `due` of `@halonicjs/routines`: the runs to start
  * for the time from `lastTick` (exclusive) up to `now` (inclusive), under a
  * catch-up policy for missed ticks. `lastTick` is `null` on the very first
  * tick of a workspace.
  */
-export type DueFunction<Routine, Policy> = (
+export type DueFunction<Routine, Policy, Run extends ScheduledRun> = (
   routines: readonly Routine[],
   lastTick: Date | null,
   now: Date,
   policy: Policy,
-) => DueRun<Routine>[];
+) => readonly Run[];
 
 /**
  * How to start a due run: a workflow with its input, or one agent with a
- * prompt. The routines package fills in the templates (`{{trigger.at}}`);
- * the scheduler adds the run id and the trigger.
+ * prompt. `startOf` fills in the templates (`{{trigger.at}}`); the
+ * scheduler adds the run id and the trigger.
  */
 export type RoutineStart =
   | { workflow: Omit<StartRunRequest, "runId" | "trigger" | "kind"> }
@@ -57,8 +53,15 @@ export interface RoutineTickResult {
   failed: RoutineFailure[];
 }
 
-/** What a {@link RoutineScheduler} works with. */
-export interface RoutineSchedulerOptions<Routine, Policy> {
+/**
+ * What a {@link RoutineScheduler} works with. The types default to those of
+ * `@halonicjs/routines`; tests may pass their own routines and tick function.
+ */
+export interface RoutineSchedulerOptions<
+  Routine = PlacedRoutine,
+  Policy = TickPolicy,
+  Run extends ScheduledRun = DueRun,
+> {
   /**
    * Names the workspace for as long as it exists, and is the same on every
    * host that ticks it: a stable id kept with the workspace, never a path or
@@ -75,10 +78,14 @@ export interface RoutineSchedulerOptions<Routine, Policy> {
   executor: RunExecutor;
   /** The routines of the workspace, read fresh on every tick. */
   routines: () => Promise<readonly Routine[]>;
-  due: DueFunction<Routine, Policy>;
+  due: DueFunction<Routine, Policy, Run>;
   policy: Policy;
-  /** Turns a due run into what to start. May throw, such as for a routine without a hub. */
-  startOf: (run: DueRun<Routine>) => RoutineStart;
+  /**
+   * Turns a due run into what to start, given the due time of the routine's
+   * last run that started (`null` if none did). May throw, such as for a
+   * routine without a hub.
+   */
+  startOf: (run: Run, lastRun: Date | null) => RoutineStart;
   /** Receives `routines.ticked` after each tick that got as far as asking what is due. */
   events?: EventBus<AppEvents>;
 }
@@ -102,14 +109,21 @@ const nothing = (): RoutineTickResult => ({ started: [], failed: [] });
  * `Studio`, so one broken routine never holds the others back. If reading
  * the routines or the tick function throws, the tick rejects before it
  * stores anything, so the next tick catches up.
+ *
+ * It also keeps, per routine, the due time of the last run it started, and
+ * gives it to `startOf` for `{{trigger.lastRun}}`.
  */
-export class RoutineScheduler<Routine, Policy> {
-  private readonly options: RoutineSchedulerOptions<Routine, Policy>;
+export class RoutineScheduler<
+  Routine = PlacedRoutine,
+  Policy = TickPolicy,
+  Run extends ScheduledRun = DueRun,
+> {
+  private readonly options: RoutineSchedulerOptions<Routine, Policy, Run>;
   private readonly lastTickKey: string;
   private current: Promise<RoutineTickResult> | null = null;
   private disposed = false;
 
-  constructor(options: RoutineSchedulerOptions<Routine, Policy>) {
+  constructor(options: RoutineSchedulerOptions<Routine, Policy, Run>) {
     this.options = options;
     this.lastTickKey = lastTickKey(options.workspaceId);
   }
@@ -183,13 +197,25 @@ export class RoutineScheduler<Routine, Policy> {
     return result;
   }
 
-  private start(run: DueRun<Routine>): Promise<RunSummary> {
-    const what = this.options.startOf(run);
-    const trigger = { type: run.trigger, routineId: run.key, at: run.at.toISOString() };
-    const runId = routineRunId(this.options.workspaceId, run.key, run.at);
-    const { executor } = this.options;
-    return "workflow" in what
+  private async start(run: Run): Promise<RunSummary> {
+    const { coordination, executor, startOf, workspaceId } = this.options;
+    const runKey = lastRunKey(workspaceId, run.key);
+    const stored = await coordination.read(runKey);
+    const lastRun = stored === null ? null : new Date(stored);
+    const what = startOf(run, lastRun);
+    const at = run.at.toISOString();
+    const trigger = { type: run.trigger, routineId: run.key, at };
+    const runId = routineRunId(workspaceId, run.key, run.at);
+    const summary = await ("workflow" in what
       ? executor.start({ ...what.workflow, trigger, runId })
-      : executor.startAgent({ ...what.agent, trigger, runId });
+      : executor.startAgent({ ...what.agent, trigger, runId }));
+    // A repeated start (see the class notes) finds its own time stored and
+    // fills a different `lastRun`, but the executor returns the run that
+    // exists, so the input it started with stays. The time never moves back;
+    // a lost race means another host stored it first.
+    if (lastRun === null || lastRun.getTime() < run.at.getTime()) {
+      await coordination.compareAndSet(runKey, stored, at);
+    }
+    return summary;
   }
 }
