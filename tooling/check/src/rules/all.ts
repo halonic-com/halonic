@@ -2,6 +2,7 @@ import type { CheckContext } from "../lib/context.ts";
 import type { Report } from "../lib/problems.ts";
 import { checkAbsolutePaths } from "./absolute-paths.ts";
 import { checkAgentsMd } from "./agents-md.ts";
+import { checkDco } from "./dco.ts";
 import { checkDependencies } from "./dependencies.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
@@ -22,5 +23,6 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "file-size": checkFileSize,
   lockfile: checkLockfile,
   "absolute-paths": checkAbsolutePaths,
+  dco: (context) => checkDco(context),
   ...Object.fromEntries(Object.keys(inactiveChecks).map((name) => [name, inactiveRule(name)])),
 };

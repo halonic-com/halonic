@@ -75,16 +75,32 @@ jobs:
     permissions:
       contents: read
     steps:
+      # The whole history (without file contents), so the DCO rule can
+      # read every commit of the pull request.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
       - uses: $/.github/actions/setup
       # Reads the title from $GITHUB_EVENT_PATH: an `env:` block is printed in the log.
       - name: Pull request title
         if: github.event_name == 'pull_request'
         run: pnpm check:pr-title
-      - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths)
-        run: pnpm check
+      # The DCO rule checks the pull request's own commits. A merge queue
+      # or a push to main only holds commits that passed it here.
+      - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths, DCO)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            export DCO_RANGE="$BASE..$HEAD"
+            export DCO_PR_AUTHOR="$PR_AUTHOR"
+          fi
+          pnpm check
       - name: Licences
         run: pnpm check:licences
       - name: Formatting

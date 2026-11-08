@@ -29,12 +29,34 @@ typecheck, lint and test for the packages your change affects.
 | `lockfile`       | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                                                                                                 |
 | `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                                                                                     |
 
-`trace`, `requirement-guard` and `dco` are wired in already and report
-"not active yet" until their real versions land. `trace` will check that every
-active requirement has a test that ran and passed; `requirement-guard`, that
-changing a requirement, golden file or test comes with an approved decision
-note; `dco`, that every commit carries the sign-off described in
-[CONTRIBUTING.md](../../CONTRIBUTING.md#developer-certificate-of-origin-dco).
+`trace` and `requirement-guard` are wired in already and report "not active
+yet" until their real versions land. `trace` will check that every active
+requirement has a test that ran and passed; `requirement-guard`, that changing a
+requirement, golden file or test comes with an approved decision note.
+
+### The DCO sign-off
+
+`dco` fails when a commit in a pull request has no `Signed-off-by: Name
+<email>` trailer for its author's email address (how to sign off
+is in `CONTRIBUTING.md`). The address is compared without regard to case,
+the name may differ, and merge commits are skipped.
+
+Commits by the agents' `halonic-dev` account need no sign-off:
+Halonic certifies the DCO for them in
+[`docs/legal/dco-standing-statement.md`](../legal/dco-standing-statement.md).
+The rule skips a commit only when both its author address and the account
+that opened the pull request are on that statement's list, so borrowing
+the address in another account's pull request doesn't help. The list
+lives in `coveredAccounts` in `tooling/check/src/lib/dco.ts`, and a test
+keeps it the same as the statement.
+
+CI checks the pull request's commits by setting `DCO_RANGE=BASE..HEAD`
+and `DCO_PR_AUTHOR` to the login that opened it; a local `pnpm check` has
+no range and skips it. To check your branch yourself:
+
+```sh
+DCO_RANGE=origin/main..HEAD pnpm check dco
+```
 
 ## Coverage floors
 
@@ -127,15 +149,15 @@ for every other job and fails if any failed. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
-| Job                          | What                                                                                                             |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Fast gates                   | pull request title, `pnpm check`, licences, formatting, the feature list, `pnpm audit` for shipped dependencies  |
-| Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
-| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                    |
-| Workflow lint                | `zizmor` over `.github/`                                                                                         |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                      |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                               |
-| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist       |
+| Job                          | What                                                                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
+| Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                        |
+| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                           |
+| Workflow lint                | `zizmor` over `.github/`                                                                                                                |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                                             |
+| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                      |
+| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                              |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full terms and secret scan over the whole history

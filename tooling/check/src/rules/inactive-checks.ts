@@ -10,7 +10,6 @@ export const inactiveChecks: Readonly<Record<string, string>> = {
   trace: "every active requirement has a test that ran and passed",
   "requirement-guard":
     "changing a requirement, golden file or test needs an approved decision note",
-  dco: "every commit carries the sign-off the contribution policy asks for",
 };
 
 /** The rule for an inactive check: reports nothing until its real version lands. */
