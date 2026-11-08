@@ -5,6 +5,7 @@ import {
   idGeneratorContract,
   recordStoreContract,
   runStoreContract,
+  schedulerContract,
   secretsContract,
   tokenStoreContract,
 } from "@halonicjs/testing-contracts";
@@ -15,6 +16,7 @@ import {
   MemoryDefinitionStore,
   MemoryRecordStore,
   MemoryRunStore,
+  MemoryScheduler,
   MemorySecrets,
   MemoryTokenStore,
 } from "./index.ts";
@@ -28,3 +30,8 @@ secretsContract("memory", async (values) => new MemorySecrets(values));
 tokenStoreContract("memory", async () => new MemoryTokenStore());
 clockContract("memory", async () => new ManualClock());
 idGeneratorContract("memory", async () => fixedIds());
+schedulerContract("memory", async (listener) => {
+  const clock = new ManualClock();
+  const scheduler = new MemoryScheduler(listener, clock);
+  return { scheduler, clock, settle: () => scheduler.runDue() };
+});
