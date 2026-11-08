@@ -133,3 +133,8 @@ produces packages that pass) are then skipped without blocking the merge.
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full terms and secret scan over the whole history
 weekly. A failure opens an issue.
+
+It also runs **mutation testing** every night: Stryker on
+`workflow`, `routines`, `schema-kit` and `yaml`, for each package that has
+code. The score per package goes into the job summary. It only reports for
+now; see [tooling/mutation](../../tooling/mutation/README.md).

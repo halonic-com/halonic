@@ -15,6 +15,8 @@ packages:
 # check fails on any other version for an external dependency.
 catalog:
   "@biomejs/biome": 2.6.5
+  "@stryker-mutator/core": ^10.1.1
+  "@stryker-mutator/vitest-runner": ^10.1.1
   "@types/node": ^26.6.6
   "@typescript/typescript6": ^6.0.2
   "@vitest/coverage-v8": ^5.1.0

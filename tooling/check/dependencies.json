@@ -8,6 +8,20 @@
       ],
       "reason": "Formatter and linter in one fast tool."
     },
+    "@stryker-mutator/core": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/tooling-mutation"
+      ],
+      "reason": "Mutation testing: finds tests whose assertions were hollowed out. Runs nightly in CI only, report-only at first."
+    },
+    "@stryker-mutator/vitest-runner": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/tooling-mutation"
+      ],
+      "reason": "Lets Stryker run each package's Vitest tests."
+    },
     "@types/node": {
       "category": "dev-tooling",
       "allowedIn": [
