@@ -376,12 +376,204 @@
     "verdict": "different"
   },
   {
+    "case": "workflow/branch-unknown-method",
+    "about": "a parallel branch calls a method the agent doesn't have",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/dead-end",
+    "about": "a task with no way out",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/final-has-transitions",
+    "about": "a final state with transitions",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 11,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/foreach-agent-and-workflow",
+    "about": "a foreach state with both an agent and a workflow",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/foreach-without-items",
+    "about": "a foreach state without items",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/method-extra-argument",
+    "about": "a method call with an argument the method doesn't take",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/method-missing-argument",
+    "about": "a method call without an argument the method needs",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/missing-initial",
+    "about": "initial names a state that doesn't exist",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 3,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/no-final",
+    "about": "a workflow without a final state",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/parallel-without-branches",
+    "about": "a parallel state without branches",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/self-subflow",
+    "about": "a workflow that runs itself",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/subflow-loop",
+    "about": "two workflows that run each other",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/subflow-without-target",
+    "about": "a workflow state that doesn't say which workflow",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/task-without-agent",
+    "about": "a task state without an agent",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/timer-outside-wait",
+    "about": "a timer on a task state",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 9,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/unguarded-shadow",
+    "about": "a transition hidden by an earlier one without a condition",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 10,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/unknown-agent",
+    "about": "a task with an agent that doesn't exist",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 6,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/unknown-branch-agent",
+    "about": "a parallel branch with an agent that doesn't exist",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/unknown-gets",
+    "about": "gets a context key no earlier step writes",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
     "case": "workflow/unknown-key",
     "about": "a parallel branch with an unknown key",
     "file": "hubs/billing/workflows/invoice.workflow.yaml",
     "expected": 24,
     "recorded": 22,
     "verdict": "different"
+  },
+  {
+    "case": "workflow/unknown-method",
+    "about": "a task calls a method the agent doesn't have",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/unknown-subflow",
+    "about": "a workflow state for a workflow that doesn't exist",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/unknown-target",
+    "about": "a transition to a state that doesn't exist",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/unreachable",
+    "about": "a state no transition reaches",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 9,
+    "recorded": null,
+    "verdict": "no-line"
+  },
+  {
+    "case": "workflow/wait-without-events",
+    "about": "a wait state that only listens to done",
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
   },
   {
     "case": "workflowTest/unknown-workflow",
