@@ -1,0 +1,49 @@
+{
+  "reference": "784f78d",
+  "case": "provider/bad-format",
+  "valid": false,
+  "files": [
+    {
+      "file": "providers/local-llm.yaml",
+      "flatPath": "providers/local-llm.yaml",
+      "read": true,
+      "schema": "provider",
+      "issues": [
+        {
+          "path": [
+            "baseUrl"
+          ],
+          "code": "invalid_format",
+          "message": "Invalid URL",
+          "line": 4,
+          "col": 10
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "providers/local-llm.yaml",
+      "message": "baseUrl: Invalid URL",
+      "line": 4,
+      "col": 10
+    },
+    {
+      "severity": "error",
+      "path": "models.yaml",
+      "message": "Alias \"smart\" uses unknown provider \"local-llm\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error providers/local-llm.yaml: baseUrl: Invalid URL\nerror models.yaml: Alias \"smart\" uses unknown provider \"local-llm\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": 4,
+    "verdict": "same"
+  }
+}

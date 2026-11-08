@@ -1,0 +1,4 @@
+workflow: approval
+cases:
+  name: approve
+  events: [approve]

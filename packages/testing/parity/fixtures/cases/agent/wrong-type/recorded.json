@@ -1,0 +1,55 @@
+{
+  "reference": "784f78d",
+  "case": "agent/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/clerk.agent.yaml",
+      "flatPath": "hubs/billing/agents/clerk.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [
+        {
+          "path": [
+            "maxSteps"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected number, received string",
+          "line": 20,
+          "col": 11
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "maxSteps: Invalid input: expected number, received string",
+      "line": 20,
+      "col": 11
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "\"extract\" uses unknown agent \"clerk\"",
+      "state": "extract"
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/month-end.routine.yaml",
+      "message": "Routine \"month-end\": unknown agent \"clerk\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/clerk.agent.yaml: maxSteps: Invalid input: expected number, received string\nerror hubs/billing/workflows/invoice.workflow.yaml (extract): \"extract\" uses unknown agent \"clerk\"\nerror hubs/billing/routines/month-end.routine.yaml: Routine \"month-end\": unknown agent \"clerk\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 20,
+    "recorded": 20,
+    "verdict": "same"
+  }
+}

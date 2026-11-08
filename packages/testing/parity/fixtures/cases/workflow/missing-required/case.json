@@ -1,0 +1,10 @@
+{
+  "about": "no initial state",
+  "kind": "workflow",
+  "fault": "missing-required",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.workflow.yaml",
+    "path": "initial",
+    "line": 1
+  }
+}

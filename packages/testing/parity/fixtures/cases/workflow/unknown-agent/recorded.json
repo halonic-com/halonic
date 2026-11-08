@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/unknown-agent",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"start\" uses unknown agent \"auditor\"",
+      "state": "start"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml (start): \"start\" uses unknown agent \"auditor\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 6,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

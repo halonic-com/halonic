@@ -1,0 +1,22 @@
+{
+  "reference": "784f78d",
+  "case": "routine/legacy-run-keys",
+  "valid": true,
+  "files": [
+    {
+      "file": "workflows/routines/hourly-check.routine.yaml",
+      "flatPath": "routines/hourly-check.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "OK: Acme, 1 hub(s), 0 warning(s)\n",
+    "stderr": ""
+  },
+  "line": null
+}

@@ -1,0 +1,47 @@
+{
+  "reference": "784f78d",
+  "case": "knowledge/hub-level-unknown-key",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/library/knowledge/ledger.yaml",
+      "flatPath": "hubs/billing/knowledge/ledger.yaml",
+      "read": true,
+      "schema": "knowledge",
+      "issues": [
+        {
+          "path": [],
+          "code": "unrecognized_keys",
+          "message": "Unrecognized key: \"size\"",
+          "line": 1,
+          "col": 1
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/knowledge/ledger.yaml",
+      "message": "Unrecognized key: \"size\"",
+      "line": 1,
+      "col": 1
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown knowledge \"ledger\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/knowledge/ledger.yaml: Unrecognized key: \"size\"\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown knowledge \"ledger\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": 1,
+    "verdict": "different"
+  }
+}

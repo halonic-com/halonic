@@ -1,0 +1,10 @@
+{
+  "about": "an output type that doesn't exist",
+  "kind": "agent",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "hubs/billing/agents/reviewer.agent.yaml",
+    "path": "output.type",
+    "line": 5
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/out-of-range",
+  "valid": false,
+  "files": [
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [
+        {
+          "path": [
+            "assistant",
+            "maxSteps"
+          ],
+          "code": "too_big",
+          "message": "Too big: expected number to be <=64",
+          "line": 18,
+          "col": 13
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "assistant.maxSteps: Too big: expected number to be <=64",
+      "line": 18,
+      "col": 13
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: assistant.maxSteps: Too big: expected number to be <=64\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 18,
+    "recorded": 18,
+    "verdict": "same"
+  }
+}

@@ -1,0 +1,12 @@
+name: Files
+description: A local MCP server over stdio.
+transport:
+  stdio:
+    command: acme-files-server
+    args: ["--read-only"]
+    env: { LOG_LEVEL: warn }
+    secretEnv: { FILES_TOKEN: files-token }
+    cwd: docs
+tools:
+  allow: [read_file, list_files, write_file]
+  approve: [write_file, delete_file]

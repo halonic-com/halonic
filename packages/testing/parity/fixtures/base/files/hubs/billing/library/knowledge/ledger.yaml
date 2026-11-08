@@ -1,0 +1,5 @@
+id: ledger
+provider: files
+mode: auto
+config:
+  path: ledger

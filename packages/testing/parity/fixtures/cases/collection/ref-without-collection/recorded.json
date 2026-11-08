@@ -1,0 +1,50 @@
+{
+  "reference": "784f78d",
+  "case": "collection/ref-without-collection",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/collections/invoices.collection.yaml",
+      "flatPath": "collections/invoices.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [
+        {
+          "path": [
+            "fields",
+            "supplier"
+          ],
+          "code": "custom",
+          "message": "A ref field needs a collection",
+          "line": 14,
+          "col": 13
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "collections/invoices.collection.yaml",
+      "message": "fields.supplier: A ref field needs a collection",
+      "line": 14,
+      "col": 13
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error collections/invoices.collection.yaml: fields.supplier: A ref field needs a collection\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown collection \"invoices\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 14,
+    "recorded": 14,
+    "verdict": "same"
+  }
+}

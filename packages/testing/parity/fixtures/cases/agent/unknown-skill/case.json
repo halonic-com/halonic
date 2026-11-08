@@ -1,0 +1,10 @@
+{
+  "about": "a skill that doesn't exist",
+  "kind": "agent",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "skills.1",
+    "line": 8
+  }
+}

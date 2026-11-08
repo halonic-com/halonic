@@ -1,0 +1,46 @@
+{
+  "reference": "784f78d",
+  "case": "workflowTest/unknown-key",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [
+        {
+          "path": [
+            "cases",
+            0,
+            "expect"
+          ],
+          "code": "unrecognized_keys",
+          "message": "Unrecognized key: \"outcome\"",
+          "line": 5,
+          "col": 13
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "cases.0.expect: Unrecognized key: \"outcome\"",
+      "line": 5,
+      "col": 13
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.test.yaml: cases.0.expect: Unrecognized key: \"outcome\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": 5,
+    "verdict": "same"
+  }
+}

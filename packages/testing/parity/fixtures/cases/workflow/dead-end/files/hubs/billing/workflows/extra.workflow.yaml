@@ -1,0 +1,8 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    agent: checker
+  done:
+    type: final

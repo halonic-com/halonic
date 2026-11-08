@@ -1,0 +1,10 @@
+{
+  "about": "a fallback to an alias that doesn't exist",
+  "kind": "models",
+  "fault": "reference",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.smart.fallback.1",
+    "line": 23
+  }
+}

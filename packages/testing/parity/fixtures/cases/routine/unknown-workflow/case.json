@@ -1,0 +1,10 @@
+{
+  "about": "runs a workflow the hub doesn't have",
+  "kind": "routine",
+  "fault": "reference",
+  "expect": {
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "path": "run.workflow",
+    "line": 7
+  }
+}

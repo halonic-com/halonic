@@ -1,0 +1,50 @@
+{
+  "reference": "784f78d",
+  "case": "collection/choice-without-values",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/collections/invoices.collection.yaml",
+      "flatPath": "collections/invoices.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [
+        {
+          "path": [
+            "fields",
+            "state"
+          ],
+          "code": "custom",
+          "message": "A choice field needs values",
+          "line": 12,
+          "col": 10
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "collections/invoices.collection.yaml",
+      "message": "fields.state: A choice field needs values",
+      "line": 12,
+      "col": 10
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Agent \"clerk\" uses unknown collection \"invoices\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error collections/invoices.collection.yaml: fields.state: A choice field needs values\nerror hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown collection \"invoices\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 12,
+    "recorded": 12,
+    "verdict": "same"
+  }
+}

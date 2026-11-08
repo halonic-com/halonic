@@ -1,0 +1,10 @@
+{
+  "about": "a google account that is not an email address",
+  "kind": "connector",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/library/connectors/mailbox.connector.yaml",
+    "path": "transport.google.account",
+    "line": 4
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "budget.perRun is text, not a number",
+  "kind": "workspace",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "budget.perRun",
+    "line": 9
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "a parallel branch with an unknown key",
+  "kind": "workflow",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "hubs/billing/workflows/invoice.workflow.yaml",
+    "path": "states.checks.branches.vendor.prompt",
+    "line": 24
+  }
+}

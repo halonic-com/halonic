@@ -1,0 +1,7 @@
+name: Tracker
+transport:
+  http:
+    url: tracker dot example
+    headers: { X-Team: billing }
+secret: tracker-token
+local: false

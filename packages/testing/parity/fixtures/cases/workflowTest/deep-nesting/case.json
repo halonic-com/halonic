@@ -1,0 +1,10 @@
+{
+  "about": "an advance step that is not a number and a unit",
+  "kind": "workflowTest",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.test.yaml",
+    "path": "cases.2.events.0.advance",
+    "line": 10
+  }
+}

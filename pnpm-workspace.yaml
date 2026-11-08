@@ -26,6 +26,11 @@ catalog:
 registries:
   "@halonicjs": https://registry.npmjs.org/
 
+# Always write the tarball URL, even for the default registry, so the
+# lockfile check can prove every package came from registry.npmjs.org. pnpm
+# leaves it out when it equals the default, so a mirror would look like npm.
+lockfileIncludeTarballUrl: true
+
 # --- Install hardening (plan 10.1) ---
 
 # Install scripts run only for packages listed here; unlisted ones fail.

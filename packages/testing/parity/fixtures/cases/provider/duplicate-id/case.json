@@ -1,0 +1,10 @@
+{
+  "about": "a second file with the id of another provider",
+  "kind": "provider",
+  "fault": "rule",
+  "expect": {
+    "file": "providers/mock-copy.yaml",
+    "path": "id",
+    "line": 1
+  }
+}

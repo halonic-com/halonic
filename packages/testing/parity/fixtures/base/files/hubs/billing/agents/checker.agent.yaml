@@ -1,0 +1,6 @@
+id: checker
+name: Checker
+instructions: Check one invoice line.
+output:
+  type: json
+  schema: { type: object }

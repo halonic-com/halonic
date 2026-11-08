@@ -1,0 +1,23 @@
+id: clerk
+name: Clerk
+description: Reads invoices.
+model: fast
+params:
+  temperature: 0
+instructions: Read the invoice and answer with the requested fields.
+skills: [plain-words, invoice-style]
+knowledge: [handbook, ledger]
+collections: [invoices]
+methods:
+  extract:
+    description: Pull the vendor and amount out of an invoice.
+    input: [invoice]
+    tools: []
+    model: careful
+    maxSteps: 2
+    output: { vendor: string, amount: number, note: string? }
+maxSteps: 4
+character:
+  surface: glossy
+  body: firm
+  colors: ["#3B82F6", "#8B5CF6"]

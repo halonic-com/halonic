@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "agent/unknown-method-model",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/clerk.agent.yaml",
+      "flatPath": "hubs/billing/agents/clerk.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/clerk.agent.yaml",
+      "message": "Method \"clerk.extract\" uses unknown model alias \"turbo\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/clerk.agent.yaml: Method \"clerk.extract\" uses unknown model alias \"turbo\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 17,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

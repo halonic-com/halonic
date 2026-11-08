@@ -1,0 +1,13 @@
+id: line-check
+name: Line check
+description: Check one invoice line; used per item by the batch workflow.
+initial: check
+states:
+  check:
+    agent: checker
+    input: "{{input.line}}"
+    output: result
+    on:
+      - to: done
+  done:
+    type: final

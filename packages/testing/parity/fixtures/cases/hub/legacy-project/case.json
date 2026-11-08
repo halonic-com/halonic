@@ -1,0 +1,5 @@
+{
+  "about": "projects/<p>/project.yaml still loads as a hub, with a hint",
+  "kind": "hub",
+  "fault": "valid"
+}

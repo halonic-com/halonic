@@ -1,0 +1,61 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/bad-join",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/invoice.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/invoice.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [
+        {
+          "path": [
+            "states",
+            "checks",
+            "join"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"all\"|\"any\"",
+          "line": 18,
+          "col": 11
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "states.checks.join: Invalid option: expected one of \"all\"|\"any\"",
+      "line": 18,
+      "col": 11
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.test.yaml",
+      "message": "Test targets unknown workflow \"invoice\""
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/routines/inbox-mail.routine.yaml",
+      "message": "Routine \"inbox-mail\": unknown workflow \"invoice\""
+    },
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "Routine \"hourly-check\": unknown workflow \"invoice\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/invoice.workflow.yaml: states.checks.join: Invalid option: expected one of \"all\"|\"any\"\nerror hubs/billing/workflows/invoice.test.yaml: Test targets unknown workflow \"invoice\"\nerror hubs/billing/routines/inbox-mail.routine.yaml: Routine \"inbox-mail\": unknown workflow \"invoice\"\nerror routines/hourly-check.routine.yaml: Routine \"hourly-check\": unknown workflow \"invoice\"\n4 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 18,
+    "recorded": 18,
+    "verdict": "same"
+  }
+}

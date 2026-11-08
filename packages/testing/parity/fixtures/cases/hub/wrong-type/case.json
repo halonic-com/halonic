@@ -1,0 +1,10 @@
+{
+  "about": "models is a list",
+  "kind": "hub",
+  "fault": "wrong-type",
+  "expect": {
+    "file": "hubs/billing/hub.yaml",
+    "path": "models",
+    "line": 6
+  }
+}

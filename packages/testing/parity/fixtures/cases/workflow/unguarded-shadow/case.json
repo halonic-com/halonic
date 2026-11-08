@@ -1,0 +1,10 @@
+{
+  "about": "a transition hidden by an earlier one without a condition",
+  "kind": "workflow",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.on.1",
+    "line": 10
+  }
+}
