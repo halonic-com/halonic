@@ -14,6 +14,6 @@ The events package shall describe every run log event with the same type name an
 - Given the reference fields of `llm.response`,
   when the events package's `llm.response` event is compared with them,
   then it has the same required fields (`agent`, `provider`, `model`, `usage`, `latencyMs`, `text`) and the same optional ones (`thoughts`, `cost`, `cached`).
-- Given the three phase 2 fields `tool.result.outcome`, `run.failed.reason` and `approval.resolved.by`,
+- Given the three fields that come with the engine, `tool.result.outcome`, `run.failed.reason` and `approval.resolved.by`,
   when the events package is checked,
   then none of them exists yet.

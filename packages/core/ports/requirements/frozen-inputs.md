@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: new in the core ports package: inputs that adapters must check the same way, so ports can be frozen
 
-The version 1 ports shall carry every input that an adapter must honor and that the engine needs before phase 3, because adding such an input after the freeze is a breaking change (port list ADR, "The freeze"). These are: a caller-chosen run id on starts, a status filter on the run list, a snapshot written with an append, a close signal on run subscriptions, a scheduler factory that takes its listener, and deleting a coordination value.
+The version 1 ports shall carry every input that an adapter must honor and that the engine needs before the first adapter is written, because adding such an input after the freeze is a breaking change (port list ADR, "The freeze"). These are: a caller-chosen run id on starts, a status filter on the run list, a snapshot written with an append, a close signal on run subscriptions, a scheduler factory that takes its listener, and deleting a coordination value.
 
 ## Examples
 

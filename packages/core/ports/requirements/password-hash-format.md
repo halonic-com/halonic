@@ -38,4 +38,4 @@ The vectors below were computed with Node's `crypto.scryptSync` (OpenSSL), not w
   when it is verified,
   then a `RangeError` is thrown, never `false`.
 
-The contract suite `password-hasher` (phase 3) runs these examples against every adapter.
+The contract suite `password-hasher` comes with the first real adapter and runs these examples against every adapter.

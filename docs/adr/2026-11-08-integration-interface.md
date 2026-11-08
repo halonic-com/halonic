@@ -14,8 +14,8 @@ interface between an integration and Halonic has to hold even when the
 integration's code is wrong or hostile: it must not reach a host it didn't
 declare, read a file, or leak a key.
 
-The interface is fixed in phase 1 with the other ports, under the same freeze
-rule (port list ADR, "The freeze").
+The interface is fixed with the other ports, under the same freeze rule
+(port list ADR, "The freeze").
 
 ## Decision
 

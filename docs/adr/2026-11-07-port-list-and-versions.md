@@ -1,4 +1,4 @@
-# The phase 1 port list and port versions
+# The first port list and port versions
 
 - **Status:** Accepted
 - **Date:** 2026-11-07
@@ -11,8 +11,8 @@ that overlapped (`Runtime` and `RunHost`). The multi-cloud design adds ports
 for timers, coordination, outbound HTTP and password hashing, and requires
 that every port works on Node, on Workers and in the browser.
 
-Phase 3 writes adapters against these ports, so the list has to be settled
-before then.
+Adapters are written against these ports, so the list has to be settled
+before the first adapter starts.
 
 ## Decision
 
@@ -46,15 +46,15 @@ milliseconds as numbers, so every runtime can keep them as they are.
 **Left out of the ports on purpose:**
 
 - `RunHost.runRoutine`, `blockedRoutines` and `deployment` are host status
-  and routine control. They become typed commands of the host RPC in phase
-  4. The routine scheduler service in `core/app` starts routine runs through
+  and routine control. They become typed commands of the host RPC later. The routine
+  scheduler service in `core/app` starts routine runs through
   `RunExecutor.start` or `startAgent`, each with a trigger, so a routine
   finds its own runs again whether it runs a workflow or one agent.
 - `RunHost.connectorTools` and `callConnectorTool` (connector tools for the
   chat panel, outside a run) wait for the `ConnectorReadService` and the
   gate for tool calls outside a run. They come back as a new port then.
-- Run log additions are phase 2 and not in `@halonicjs/events` yet. All of
-  them are additive. They are:
+- Run log additions come with the engine and are not in
+  `@halonicjs/events` yet. All of them are additive. They are:
   - three optional fields (`tool.result.outcome`,
     `run.failed.reason`, `approval.resolved.by`)
   - the definitions embedded in `run.started`, so a run keeps the
@@ -68,7 +68,8 @@ milliseconds as numbers, so every runtime can keep them as they are.
 
 ## The freeze
 
-From phase 3 the ports are frozen. These changes keep the version:
+Once adapters are written against them, the ports are frozen. These
+changes keep the version:
 
 - an optional field in what a port returns, which callers may ignore
 - an optional method, which callers check for before they use it
@@ -85,7 +86,7 @@ filter and the snapshot are in version 1.
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a
   contract suite can run unchanged in Node and `workerd`.
-- The engine (phase 2) uses `RunStore.append` with a sequence check and the
+- The engine uses `RunStore.append` with a sequence check and the
   `Scheduler` for every wait, so it needs no timers of its own.
 - `RunExecutor.start` and `send` return once the input is recorded, so
   callers follow progress through `subscribe` instead of polling.

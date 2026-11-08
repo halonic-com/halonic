@@ -98,7 +98,7 @@ describe("events.run-log-contract", () => {
       state: string;
       context: Record<string, unknown>;
     }>();
-    // `reason` is a phase 2 field and must not be here yet.
+    // `reason` is added with the engine and must not be here yet.
     expectTypeOf<EventOf<"run.failed">>().toEqualTypeOf<{
       type: "run.failed";
       state: string | null;
@@ -163,7 +163,7 @@ describe("events.run-log-contract", () => {
       query: string;
       refs: string[];
     }>();
-    // `outcome` is a phase 2 field and must not be here yet.
+    // `outcome` is added with the engine and must not be here yet.
     expectTypeOf<EventOf<"tool.result">>().toEqualTypeOf<{
       type: "tool.result";
       agent: string;
@@ -179,7 +179,7 @@ describe("events.run-log-contract", () => {
       callId: string;
       resume: AgentResume;
     }>();
-    // `by` is a phase 2 field and must not be here yet.
+    // `by` is added with the engine and must not be here yet.
     expectTypeOf<EventOf<"approval.resolved">>().toEqualTypeOf<{
       type: "approval.resolved";
       state: string;
