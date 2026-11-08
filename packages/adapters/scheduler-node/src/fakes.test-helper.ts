@@ -1,4 +1,9 @@
-import type { Clock, RecordChange, RecordStore } from "@halonicjs/ports";
+import {
+  type Clock,
+  compactedChanges,
+  type RecordChange,
+  type RecordStore,
+} from "@halonicjs/ports";
 import type { SetTimer } from "./set-timer.ts";
 
 /** The start of every fake clock: 2026-01-01T00:00:00Z. */
@@ -67,7 +72,7 @@ export class ManualTimers {
  * adapter lands on `main`. `failNextAppend` makes the next write reject.
  */
 export class MemoryRecordStore implements RecordStore {
-  readonly #changes: RecordChange[] = [];
+  #changes: RecordChange[] = [];
   failNextAppend = false;
 
   async append(changes: readonly RecordChange[]): Promise<void> {
@@ -82,5 +87,14 @@ export class MemoryRecordStore implements RecordStore {
     return this.#changes
       .filter((change) => change.collection === collection)
       .map((change) => structuredClone(change));
+  }
+
+  async compact(collection: string): Promise<void> {
+    const kept = this.#changes.filter((change) => change.collection !== collection);
+    const compacted = compactedChanges(
+      collection,
+      this.#changes.filter((change) => change.collection === collection),
+    );
+    this.#changes = [...kept, ...compacted];
   }
 }

@@ -1,4 +1,10 @@
-import type { Clock, RecordChange, RecordStore, Secrets } from "@halonicjs/ports";
+import {
+  type Clock,
+  compactedChanges,
+  type RecordChange,
+  type RecordStore,
+  type Secrets,
+} from "@halonicjs/ports";
 import { encodeBase64url } from "./base64url.ts";
 
 /** A record store that keeps its log in memory, so tests can read and change it. */
@@ -15,6 +21,14 @@ export function memoryRecords(): MemoryRecords {
     },
     changes: async (collection) =>
       structuredClone(log.filter((change) => change.collection === collection)),
+    compact: async (collection) => {
+      const kept = log.filter((change) => change.collection !== collection);
+      const compacted = compactedChanges(
+        collection,
+        log.filter((change) => change.collection === collection),
+      );
+      log.splice(0, log.length, ...kept, ...compacted);
+    },
   };
 }
 

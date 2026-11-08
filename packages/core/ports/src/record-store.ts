@@ -1,5 +1,5 @@
 /** Version of the {@link RecordStore} port. A breaking change bumps it and comes with an ADR. */
-export const recordStoreVersion = 1;
+export const recordStoreVersion = 2;
 
 /** One change to a record in a collection. The current records are the log folded up. */
 export interface RecordChange {
@@ -23,4 +23,59 @@ export interface RecordStore {
   append(changes: readonly RecordChange[]): Promise<void>;
   /** Every change to a collection, oldest first. Empty for an unknown collection. */
   changes(collection: string): Promise<RecordChange[]>;
+  /**
+   * Replaces a collection's log with its current records, so overwritten and
+   * removed values leave the storage. Afterwards {@link changes} gives one
+   * `seed` per current record, with the values {@link foldRecords} gives, the
+   * `at` of the record's last change and no `by`. Other collections stay as
+   * they are; an unknown or empty collection stays empty.
+   */
+  compact(collection: string): Promise<void>;
+}
+
+/** A record as its changes leave it: its current values and the time of its last change. */
+export interface CurrentRecord {
+  values: Record<string, unknown>;
+  at: string;
+}
+
+/**
+ * Folds changes, oldest first, into the current records by id. `add` and
+ * `seed` set all values, `update` merges its values into the record's, and
+ * `remove` drops the record. Every reader of a {@link RecordStore} and every
+ * {@link RecordStore.compact} folds this way.
+ *
+ * @example
+ * const leads = foldRecords(await records.changes("leads"));
+ * leads.get("1")?.values; // { name: "Ada L." }
+ */
+export function foldRecords(changes: readonly RecordChange[]): Map<string, CurrentRecord> {
+  const records = new Map<string, CurrentRecord>();
+  for (const change of changes) {
+    if (change.op === "remove") {
+      records.delete(change.id);
+      continue;
+    }
+    const earlier = change.op === "update" ? records.get(change.id)?.values : undefined;
+    records.set(change.id, { values: { ...earlier, ...change.values }, at: change.at });
+  }
+  return records;
+}
+
+/**
+ * What a collection's changes become when it is compacted: one `seed` per
+ * current record, with its folded values, the `at` of its last change and
+ * no `by`. Adapters write this in place of the collection's log.
+ */
+export function compactedChanges(
+  collection: string,
+  changes: readonly RecordChange[],
+): RecordChange[] {
+  return [...foldRecords(changes)].map(([id, record]) => ({
+    at: record.at,
+    collection,
+    id,
+    op: "seed",
+    values: record.values,
+  }));
 }

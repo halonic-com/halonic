@@ -67,7 +67,14 @@ export {
 } from "./llm-provider.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";
 export { type PortName, portVersions } from "./port-versions.ts";
-export { type RecordChange, type RecordStore, recordStoreVersion } from "./record-store.ts";
+export {
+  type CurrentRecord,
+  compactedChanges,
+  foldRecords,
+  type RecordChange,
+  type RecordStore,
+  recordStoreVersion,
+} from "./record-store.ts";
 export {
   type ChatAgentSettings,
   type ChatTurnRequest,
