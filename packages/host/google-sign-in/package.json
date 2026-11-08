@@ -1,0 +1,27 @@
+{
+  "name": "@halonicjs/host-google-sign-in",
+  "private": true,
+  "type": "module",
+  "description": "Google Sign In.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "host",
+    "owner": "priya",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
