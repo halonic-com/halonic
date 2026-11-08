@@ -3,6 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { loadContext } from "../lib/context.ts";
+import { defaultCoverageFloors } from "../lib/coverage.ts";
+import type { Layer } from "../lib/layout.ts";
 import type { Problem } from "../lib/problems.ts";
 import { rules } from "../rules/all.ts";
 
@@ -20,7 +22,7 @@ export interface FixturePackage {
 /** A valid package.json for a folder, which tests then break on purpose. */
 export function manifestFor(
   name: string,
-  layer: string,
+  layer: Layer,
   extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {
@@ -28,7 +30,7 @@ export function manifestFor(
     private: true,
     type: "module",
     exports: { ".": "./src/index.ts" },
-    halonic: { layer, owner: "mateo" },
+    halonic: { layer, owner: "mateo", coverage: defaultCoverageFloors[layer] },
     ...extra,
   };
 }

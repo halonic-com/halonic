@@ -12,7 +12,11 @@ export interface PackageJson {
   readonly devDependencies?: Readonly<Record<string, string>>;
   readonly peerDependencies?: Readonly<Record<string, string>>;
   readonly optionalDependencies?: Readonly<Record<string, string>>;
-  readonly halonic?: { readonly layer?: string; readonly owner?: string };
+  readonly halonic?: {
+    readonly layer?: string;
+    readonly owner?: string;
+    readonly coverage?: unknown;
+  };
 }
 
 /** A package in the workspace, with its folder relative to the repo root. */

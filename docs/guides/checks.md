@@ -17,16 +17,16 @@ typecheck, lint and test for the packages your change affects.
 
 ## `pnpm check` rules
 
-| Rule             | Fails when                                                                                                                                                                                                                                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages`       | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner" }`; its `exports` expose more than `.` (and `./api` for features); an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder` |
-| `layers`         | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core or Studio code uses Node APIs; a feature uses another feature other than through its `/api`                                                                                                   |
-| `dependencies`   | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`. See [dependencies.md](dependencies.md)                                                                                                                |
-| `names`          | a file or path contains a package name in the `@halonic` or `@studio` npm scope. Both scopes belong to someone else                                                                                                                                                                                                                               |
-| `features`       | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install`                                                                                                                                                                                                        |
-| `file-size`      | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt                                                                                                                                                                                                            |
-| `lockfile`       | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                              |
-| `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                  |
+| Rule             | Fails when                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages`       | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features); an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder` |
+| `layers`         | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core or Studio code uses Node APIs; a feature uses another feature other than through its `/api`                                                                                                                                                                      |
+| `dependencies`   | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`. See [dependencies.md](dependencies.md)                                                                                                                                                                                   |
+| `names`          | a file or path contains a package name in the `@halonic` or `@studio` npm scope. Both scopes belong to someone else                                                                                                                                                                                                                                                                                                  |
+| `features`       | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install`                                                                                                                                                                                                                                                                           |
+| `file-size`      | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt                                                                                                                                                                                                                                                                               |
+| `lockfile`       | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                                                                                                 |
+| `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                                                                                     |
 
 `trace`, `requirement-guard` and `dco` are wired in already and report
 "not active yet" until their real versions land. `trace` will check that every
@@ -34,6 +34,30 @@ active requirement has a test that ran and passed; `requirement-guard`, that
 changing a requirement, golden file or test comes with an approved decision
 note; `dco`, that every commit carries the sign-off described in
 [CONTRIBUTING.md](../../CONTRIBUTING.md#developer-certificate-of-origin-dco).
+
+## Coverage floors
+
+Every package keeps its coverage floor in its own `package.json`, and the
+floor only goes up (plan 9.3):
+
+```json
+"halonic": { "layer": "core", "owner": "maya", "coverage": { "lines": 90, "branches": 85 } }
+```
+
+`pnpm test` measures the package's `src` (without tests, `test/` folders
+and generated files) and fails below the floor. `pnpm new package` writes
+the default for the layer; `pnpm check` fails when a floor is missing or
+below the minimum:
+
+| Layer            | Minimum                                 |
+| ---------------- | --------------------------------------- |
+| core             | 90% of lines, 85% branches              |
+| studio           | 85% of lines                            |
+| adapters, host   | 80% of lines                            |
+| apps (CLI)       | 80% of lines                            |
+| testing, tooling | none set; new packages get 80% of lines |
+
+To run one test file without the floor: `pnpm exec vitest run <file> --coverage.enabled=false`.
 
 ## Licences
 

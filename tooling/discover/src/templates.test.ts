@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { packageFiles } from "./templates.ts";
+import { type PackageSpec, packageFiles } from "./templates.ts";
 
-const core = {
+const core: PackageSpec = {
   directory: "packages/core/std",
   name: "@halonicjs/std",
   layer: "core",
@@ -17,7 +17,7 @@ describe("packageFiles", () => {
       name: "@halonicjs/std",
       private: true,
       exports: { ".": "./src/index.ts" },
-      halonic: { layer: "core", owner: "elena" },
+      halonic: { layer: "core", owner: "elena", coverage: { lines: 90, branches: 85 } },
       devDependencies: { typescript: "catalog:", "@halonicjs/tooling-config": "workspace:*" },
     });
   });
@@ -42,5 +42,10 @@ describe("packageFiles", () => {
       "./api": "./src/api.ts",
     });
     expect(files["src/feature.ts"]).toContain("export const inboxFeature");
+  });
+
+  it("writes the coverage floor of the package's layer", () => {
+    const files = packageFiles({ ...core, layer: "adapters" });
+    expect(JSON.parse(files["package.json"] ?? "{}").halonic.coverage).toEqual({ lines: 80 });
   });
 });

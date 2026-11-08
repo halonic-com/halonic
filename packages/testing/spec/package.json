@@ -19,6 +19,9 @@
   },
   "halonic": {
     "layer": "testing",
-    "owner": "julian"
+    "owner": "julian",
+    "coverage": {
+      "lines": 80
+    }
   }
 }

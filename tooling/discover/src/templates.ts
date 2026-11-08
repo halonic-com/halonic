@@ -1,3 +1,4 @@
+import { defaultCoverageFloors } from "@halonicjs/tooling-check";
 import { renderAgentsMd } from "./agents-md.ts";
 import { featureExportName } from "./features.ts";
 
@@ -5,7 +6,7 @@ import { featureExportName } from "./features.ts";
 export interface PackageSpec {
   readonly directory: string;
   readonly name: string;
-  readonly layer: string;
+  readonly layer: keyof typeof defaultCoverageFloors;
   readonly owner: string;
   readonly isFeature: boolean;
   readonly folder: string;
@@ -87,7 +88,7 @@ function packageJson(spec: PackageSpec): string {
       typescript: "catalog:",
       vitest: "catalog:",
     },
-    halonic: { layer: spec.layer, owner: spec.owner },
+    halonic: { layer: spec.layer, owner: spec.owner, coverage: defaultCoverageFloors[spec.layer] },
   });
 }
 

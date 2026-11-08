@@ -3,6 +3,7 @@
  * tests can run them. The command lines live in `cli/`.
  */
 export { type CheckContext, loadContext } from "./lib/context.ts";
+export { type CoverageFloor, defaultCoverageFloors } from "./lib/coverage.ts";
 export {
   featureNamePrefix,
   featuresDirectory,

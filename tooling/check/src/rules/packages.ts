@@ -1,15 +1,16 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { type CheckContext, declaredDependencies } from "../lib/context.ts";
+import { coverageFloorProblems } from "../lib/coverage.ts";
 import { cliPackageName, folderNamePattern, reservedCorePrefixes, scope } from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
 
 /**
  * Checks each package's `package.json`: its name follows from its folder,
- * it is private unless listed as published, it declares its layer and
- * owner, it exposes only public entry points, and every internal
- * dependency uses `workspace:*`.
+ * it is private unless listed as published, it declares its layer, owner
+ * and coverage floor, it exposes only public entry points, and every
+ * internal dependency uses `workspace:*`.
  */
 export function checkPackages(context: CheckContext): Report {
   const report = new Report("packages");
@@ -18,6 +19,7 @@ export function checkPackages(context: CheckContext): Report {
     checkInternalVersions(context, pkg, report);
     if (pkg.directory !== ".") {
       checkExports(context, pkg, report);
+      checkCoverageFloor(context, pkg, report);
     }
   }
   checkCoreOrder(context, report);
@@ -66,6 +68,16 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
   }
   if (typeof halonic?.owner !== "string" || halonic.owner.trim() === "") {
     report.error(file, `Name the owner who reviews changes: "halonic": { "owner": "<agent>" }.`);
+  }
+}
+
+function checkCoverageFloor(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
+  const place = context.placeOf(pkg);
+  if (place === undefined) {
+    return;
+  }
+  for (const problem of coverageFloorProblems(pkg.manifest.halonic?.coverage, place.layer)) {
+    report.error(pkg.manifestPath, problem);
   }
 }
 

@@ -17,6 +17,9 @@
   },
   "halonic": {
     "layer": "apps",
-    "owner": "elena"
+    "owner": "elena",
+    "coverage": {
+      "lines": 80
+    }
   }
 }

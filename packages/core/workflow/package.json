@@ -19,6 +19,10 @@
   },
   "halonic": {
     "layer": "core",
-    "owner": "mateo"
+    "owner": "mateo",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
   }
 }
