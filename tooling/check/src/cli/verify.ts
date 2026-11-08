@@ -66,7 +66,7 @@ function main(argv: readonly string[]): number {
   steps.push({
     label: "requirements and their tests (trace)",
     command: "pnpm",
-    args: ["run", "--silent", "check", "trace"],
+    args: ["run", "--silent", "check", "trace", "--report"],
   });
   const root = findRepoRoot();
   const started = performance.now();
