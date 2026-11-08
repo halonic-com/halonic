@@ -125,10 +125,19 @@ you spot become a new task.
   and never commit `.env` files or key files. If you find a secret, report its location, never its value.
 - Never write personal names, private workspace details or absolute local paths (a home folder,
   a Windows user folder, an agent's workspace or temporary folder) into the repo, issues or pull
-  requests. Use paths relative to the repo root. `pnpm check` and a CI guard block them.
-- **Never skip git hooks**: no `--no-verify` on commit or push, and no other way around them. If a
-  hook flags a genuine false positive, tell the maintainer on your task with the reason; it gets
-  reviewed.
+  requests. Use paths relative to the repo root. The leak guard blocks them.
+- **Every working copy has the leak guard's git hooks.** `pnpm install` installs them (it prints
+  `leak guard: git hooks installed`). Check with `git config --local core.hooksPath`, which must
+  print `tooling/check/hooks`. If `pnpm install` says the hooks were NOT installed, fix that before
+  your first commit. Keep your personal terms in `~/.config/halonic/deny-terms`, never in the repo.
+  Details: [docs/guides/leak-guard.md](docs/guides/leak-guard.md).
+- **Never skip git hooks**: no `--no-verify` on commit or push, and no other way around them.
+- **A genuine false positive** goes on the allow-list, never around the hook. For an absolute path
+  that has to stay, add `leak-guard: allow absolute-path <reason>` on the same line. For any other
+  rule, add `<rule> <file> [fp:<fingerprint>] <reason>` to `tooling/check/leak-allow.txt`; a secret
+  needs the fingerprint from the report. Every entry needs a reason. A change to that file is a
+  change to the guard, so the maintainer reviews it, in its own pull request or called out in the
+  description. A personal term can never be allowed: reword the text.
 - **Never add a git remote to the old local copy of Halonic.** Its private history must never reach
   this repo. Copy files from it one by one, never by folder, and only when a task says so.
 
