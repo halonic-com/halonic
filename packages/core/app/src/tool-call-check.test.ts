@@ -202,6 +202,24 @@ describe("checkToolCall", () => {
     });
   });
 
+  it("refuses a name whose schema is false, at the top, nested and in any allOf part", () => {
+    const forbidden = [
+      { properties: { city: false }, additionalProperties: true },
+      { allOf: [{ properties: { city: {} } }, { properties: { city: false } }] },
+    ];
+    for (const parameters of forbidden) {
+      expect(checkToolCall(declared(parameters), { city: "Oslo" })).toEqual({
+        kind: "refused",
+        reason: 'forecast has no parameter "city"',
+      });
+      const nested = declared({ properties: { place: parameters } });
+      expect(checkToolCall(nested, { place: { city: "Oslo" } })).toEqual({
+        kind: "refused",
+        reason: 'forecast has no parameter "place.city"',
+      });
+    }
+  });
+
   it("refuses a name a nested object of a declared tool doesn't declare", () => {
     const offered = declared({
       type: "object",

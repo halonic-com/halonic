@@ -26,9 +26,10 @@ export type ToolCallCheck =
  * `additionalProperties` to `true` or to a schema; leaving it out doesn't
  * allow them. The check reads through `$ref` (to `#`, `#/$defs/<name>` or
  * `#/definitions/<name>`) and `allOf`, so a name any part declares is
- * declared. When a part uses `anyOf` or `oneOf`, or a `$ref` it can't
- * follow, a name outside the declared ones is refused as one whose
- * parameters can't be checked.
+ * declared. A name whose schema is `false` in any part is forbidden, so it
+ * is refused as undeclared even where extra names are allowed. When a part
+ * uses `anyOf` or `oneOf`, or a `$ref` it can't follow, a name outside the
+ * declared ones is refused as one whose parameters can't be checked.
  *
  * For a declared tool, every nested object and array item with a schema is
  * checked the same way, down to {@link maxParametersDepth} levels. A value
@@ -155,7 +156,10 @@ class ArgumentChecker {
     for (const [name, member] of Object.entries(value)) {
       const memberPath = [...path, name];
       const declared = propertySchemas(level.parts, name);
-      if (declared !== undefined) {
+      if (declared?.includes(false)) {
+        // `properties: { name: false }` forbids the name, whatever else allows it.
+        this.undeclared.add(memberPath);
+      } else if (declared !== undefined) {
         this.checkValue(declared, member, memberPath, depth + 1);
       } else if (extra !== undefined) {
         this.checkValue(extra, member, memberPath, depth + 1);
