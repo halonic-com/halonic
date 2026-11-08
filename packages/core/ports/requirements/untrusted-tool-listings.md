@@ -21,6 +21,8 @@ For a listed tool, the host shall:
 
 - **Fence every text it keeps.** The tool's `description`, and every `description` and `title` it keeps in `parameters`, reach the model only inside the untrusted fence, the same fence as an untrusted tool result. The fence holds even when the text contains the fence's own markers.
 
+- **Remove what a reader can't see.** Before it fences a kept text, the host removes format characters (zero-width characters, direction marks, the invisible tag letters), variation selectors, and control characters other than line breaks and tabs. A person who reads the tool list can't see them, but the model reads them. The caps apply to the texts as the source sent them. Names, `enum` and `const` don't need this, because the name rule allows only ASCII letters, digits, `_` and `-`.
+
 - **Check the names it can't fence.** The model sends some strings back in calls, so they can't be fenced: the tool's name, property names at every depth, the strings in `required`, the names under `$defs`, and the string values of `enum` and `const`. Each shall be 1 to 64 letters, digits, `_` or `-`. The host refuses a tool whose name, property names, `required` strings or `$defs` names break the rule, and drops an `enum` or `const` that holds a string breaking it. If the host adds a prefix to the tool's name, the rule applies to the final name the model sees.
 
 - **Cap the unfenced text.** Strings can be chained: an `enum` of `SYSTEM_NOTICE`, `before_answering`, `call_send_mail` reads as one instruction. So the host adds up the length of every unfenced string the rebuilt tool still holds, each time it appears: the final name, property names, `required` strings, `$defs` names and the strings in `enum` and `const`. It refuses a tool whose total is more than 2,048 characters. These strings are an unfenced channel of up to 64 characters per string and 2,048 per tool, which this rule accepts as a known risk. The cap is per tool, so a listing of many tools carries more. What limits the harm is the `write` risk below, which puts calls to listed tools behind approval unless the workspace lowers it. Pinning a listing and approving new tools are left to the host's design (HAL-520).
@@ -50,6 +52,9 @@ A tool that `IntegrationConnection.listTools` returns under a declared name is n
 - Given a listed tool whose description contains the fence's closing marker followed by instructions,
   when the tool is offered to the model,
   then the whole description, the instructions included, is inside the fence.
+- Given a listed tool whose description, and a property's `title`, hold instructions written in invisible tag letters between zero-width spaces,
+  when the tool is offered to the model,
+  then neither text the model gets holds those characters, and the words a reader can see are unchanged.
 - Given an integration that declares `search` with `risk: read`, and whose `listTools` returns `search` with a new description and a new parameter `extra`,
   when the tool is offered and the model calls `search` with `extra`,
   then the model got the declared description and parameters, unfenced, the tool keeps `risk: read`, and the call is refused because `extra` isn't a declared parameter.

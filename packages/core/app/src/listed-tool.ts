@@ -1,6 +1,7 @@
 // Reads one listed tool, a tool a server wrote and nothing Halonic reviewed
-// declares (`ports.untrusted-tool-listings`): the size caps, the name rule
-// and the allow-list rebuild of its parameters.
+// declares (`ports.untrusted-tool-listings`): the size caps, the name rule,
+// the allow-list rebuild of its parameters, and the removal of characters a
+// person can't see from the texts it keeps.
 
 import type { ConnectorTool } from "@halonicjs/ports";
 import { isJsonObject, passesNameRule, sizeProblem, UntrustedText } from "./listed-tool-rules.ts";
