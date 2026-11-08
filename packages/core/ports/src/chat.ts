@@ -78,3 +78,26 @@ export interface ChatResponse {
   /** The provider's record of this turn; the engine copies it onto the assistant message unchanged. */
   replay?: ProviderReplay;
 }
+
+/**
+ * One piece of a streamed answer. Deltas arrive in the order the model
+ * writes them; the stream ends with exactly one `done`, whose `response` is
+ * what `chat()` would have returned for the same request.
+ *
+ * A tool call arrives in pieces too: the first piece for an `index` carries
+ * its `id` and `name`, and the `arguments` pieces join into the JSON text of
+ * its arguments. Only `done` holds the parsed {@link ToolCall}.
+ *
+ * @example
+ * if (provider.capabilities.streaming && provider.stream) {
+ *   for await (const event of provider.stream(request)) {
+ *     if (event.type === "text") showText(event.delta);
+ *     if (event.type === "done") return event.response;
+ *   }
+ * }
+ */
+export type ChatStreamEvent =
+  | { type: "text"; delta: string }
+  | { type: "reasoning"; delta: string }
+  | { type: "tool-call"; index: number; id?: string; name?: string; arguments: string }
+  | { type: "done"; response: ChatResponse };

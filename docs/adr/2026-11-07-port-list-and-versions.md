@@ -123,6 +123,12 @@ version 1 now rather than as a version 2 later. The versions stay at 1.
   service treats the source as untrusted and says why, and `revoke` still
   deletes it. `list` is in version 1 because `halonic trust --list` and
   the trusted-sources list need it.
+- **`LlmProvider.stream?(request)`:** an optional method that yields text,
+  reasoning and tool-call deltas (`ChatStreamEvent`) and ends with one
+  `done` event holding the full `ChatResponse`. A provider offers it only
+  when `capabilities.streaming` is true. It gives the phase 3 streaming
+  adapters a contract. Nothing in the engine reads it yet: `RunExecutor`
+  still has no live-progress channel (see above).
 
 ## Consequences
 

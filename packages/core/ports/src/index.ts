@@ -4,6 +4,7 @@ export type {
   ChatParams,
   ChatRequest,
   ChatResponse,
+  ChatStreamEvent,
   ProviderReplay,
   ToolCall,
   ToolDefinition,

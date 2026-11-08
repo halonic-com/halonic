@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse } from "./chat.ts";
+import type { ChatRequest, ChatResponse, ChatStreamEvent } from "./chat.ts";
 import type { HttpClient } from "./http-client.ts";
 import type { Secrets } from "./secrets.ts";
 
@@ -31,6 +31,14 @@ export interface LlmProvider {
    * @throws when the provider can't be reached, refuses the call or `request.signal` aborts it
    */
   chat(request: ChatRequest): Promise<ChatResponse>;
+  /**
+   * Makes one model call and yields the answer as it is written, ending
+   * with a `done` event that holds the full {@link ChatResponse}. Present
+   * only when `capabilities.streaming` is true; callers check both and
+   * fall back to `chat()`. Aborting `request.signal` ends the stream with
+   * an error.
+   */
+  stream?(request: ChatRequest): AsyncIterable<ChatStreamEvent>;
 }
 
 /** A provider as the workspace's YAML configures it. */
