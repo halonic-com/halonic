@@ -38,3 +38,55 @@ because the reader runs on other people's workspaces.
 Both write exactly what the old app wrote (yaml 2.9.1, pinned). Neither keeps
 comments: they write data, as the old app did. Dropping empty values before
 writing is up to the caller.
+
+## Editing
+
+`editYaml(text, edits)` applies `set`, `delete` and `insert` edits to a file
+and keeps its comments, so a structured editor can save while the user
+watches the file.
+
+```ts
+import { editYaml } from "@halonicjs/yaml";
+
+const edited = editYaml(text, [
+  { kind: "set", path: ["steps", 0, "model"], value: "fast" },
+  { kind: "insert", path: ["steps", 1], value: { id: "review" } },
+  { kind: "delete", path: ["draft"] },
+]);
+if (!edited.ok) {
+  // a readYaml problem, or { kind: "bad-edit", edit: 1, message }
+  return report(edited.error);
+}
+if (edited.value.layout === "rewritten") {
+  // The comments are gone: warn before saving.
+}
+save(edited.value.text);
+```
+
+- `set` creates missing maps on the way (never lists). On a list it replaces
+  an item that exists; use `insert` to add one. `set` on `[]` replaces the
+  whole document.
+- `delete` removes a key or item. The last entry leaves `{}` or `[]`.
+- `insert` adds a list item before the given index, or at the end for the
+  list's length.
+- If any edit doesn't fit, nothing is applied and the problem names that edit.
+
+**Setting a whole map or list.** A `set` with a whole object replaces the
+value: keys missing from the new value are deleted, and the comments inside
+the old value go with it. A list is compared item by item at the same index, so
+putting an item at the front changes every item after it. To change one
+field and keep the comments around it, set that field's path instead; to add
+or remove a list item, use `insert` or `delete`. A `set` of the whole
+document (`[]`) keeps the comments at the top of the file.
+
+**Layout.** Every result is read back and must give the expected data.
+`layout` says how much of the file's layout was kept:
+
+- `kept`: only the edited text changed. For now that means a `set` that gives
+  the value already there; a text splice that keeps the layout for every edit
+  follows.
+- `reformatted`: the file was rendered again from the parsed document;
+  comments stay, spacing and some quoting may not.
+- `rewritten`: the parsed document couldn't give the expected data, so the
+  file was written from its data with `writeYamlFile`, and every comment is
+  gone.
