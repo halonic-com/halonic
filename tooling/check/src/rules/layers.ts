@@ -12,7 +12,7 @@ import { Report } from "../lib/problems.ts";
 import { isSourceFile, isTestFile, splitBareSpecifier } from "../lib/source-files.ts";
 import { owningPackage, type WorkspacePackage } from "../lib/workspace.ts";
 import { type EdgeKind, layerOf, layerProblem } from "./layer-table.ts";
-import { exportKeys } from "./packages.ts";
+import { exportKeys, hostEntryPoint, hostEntryPointUsers } from "./packages.ts";
 
 const guide = "See docs/guides/dependencies.md.";
 
@@ -232,6 +232,10 @@ function subpathProblem(
     context.placeOf(site.pkg)?.isFeature === true && context.placeOf(target)?.isFeature === true;
   if (bothFeatures && subpath !== "./api") {
     return `features use each other only through "${name}/api".`;
+  }
+  const hostOnly = subpath === hostEntryPoint && context.placeOf(target)?.layer === "core";
+  if (hostOnly && (site.layer === undefined || !hostEntryPointUsers.includes(site.layer))) {
+    return `"${name}/host" is for host code only: ${hostEntryPointUsers.join(", ")}.`;
   }
   return undefined;
 }

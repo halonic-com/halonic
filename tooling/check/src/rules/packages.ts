@@ -148,6 +148,16 @@ function checkInternalVersions(context: CheckContext, pkg: WorkspacePackage, rep
 }
 
 /**
+ * The entry point a core package may add for what only host code may use,
+ * such as a call that reads a secret back. The layers rule keeps everyone
+ * else out of it.
+ */
+export const hostEntryPoint = "./host";
+
+/** The layers that may import a core package's `./host` entry point. */
+export const hostEntryPointUsers: readonly Layer[] = ["host", "targets", "apps"];
+
+/**
  * Lists the keys of an `exports` field, or `undefined` when it is missing
  * or not a subpath map.
  */
@@ -162,13 +172,24 @@ export function exportKeys(exportsField: unknown): string[] | undefined {
   return keys.every((key) => key.startsWith(".")) ? keys : ["."];
 }
 
+/** The `exports` keys a package may have: `./api` for features, `./host` for core. */
+function allowedExportKeys(place: {
+  readonly layer: Layer;
+  readonly isFeature: boolean;
+}): string[] {
+  if (place.isFeature) {
+    return [".", "./api"];
+  }
+  return place.layer === "core" ? [".", hostEntryPoint] : ["."];
+}
+
 function checkExports(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
   const place = context.placeOf(pkg);
   if (place === undefined || place.layer === "tooling" || place.layer === "apps") {
     return;
   }
   const keys = exportKeys(pkg.manifest.exports);
-  const allowed = place.isFeature ? [".", "./api"] : ["."];
+  const allowed = allowedExportKeys(place);
   if (keys === undefined) {
     report.error(
       pkg.manifestPath,

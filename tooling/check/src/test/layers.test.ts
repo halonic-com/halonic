@@ -102,6 +102,40 @@ describe("tooling/check: layers", () => {
     expect(rulesHit([feature("agents"), viaApi, app])).toEqual([]);
   });
 
+  it("lets only host, target and app code import a core package's ./host", () => {
+    const secrets: FixturePackage = {
+      directory: "packages/core/secrets",
+      manifest: manifestFor("@halonicjs/secrets", "core", {
+        exports: { ".": "./src/index.ts", "./host": "./src/host.ts" },
+      }),
+      files: { "src/index.ts": "export const x = 1;\n", "src/host.ts": "export const read = 1;\n" },
+    };
+    const importer = (directory: string, name: string, layer: Layer): FixturePackage => ({
+      directory,
+      manifest: manifestFor(name, layer, {
+        dependencies: { "@halonicjs/secrets": "workspace:*" },
+      }),
+      files: { "src/index.ts": 'export { read } from "@halonicjs/secrets/host";\n' },
+    });
+    const hostOnlyMessages = (user: FixturePackage, order = ["@halonicjs/secrets"]) =>
+      runChecks([secrets, user], { coreOrder: order })
+        .map((problem) => problem.message)
+        .filter((message) => message.includes("is for host code only"));
+
+    expect(
+      hostOnlyMessages(importer("packages/host/server", "@halonicjs/host-server", "host")),
+    ).toEqual([]);
+    expect(
+      hostOnlyMessages(importer("packages/studio/shell", "@halonicjs/studio-shell", "studio")),
+    ).toHaveLength(1);
+    expect(
+      hostOnlyMessages(importer("packages/core/format", "@halonicjs/format", "core"), [
+        "@halonicjs/secrets",
+        "@halonicjs/format",
+      ]),
+    ).toHaveLength(1);
+  });
+
   it("keeps Studio packages away from adapters and testing out of runtime", () => {
     const adapter: FixturePackage = {
       directory: "packages/adapters/git",
