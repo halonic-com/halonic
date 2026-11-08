@@ -1,6 +1,5 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readJson } from "./workspace.ts";
 
 /**
  * Where each package's test run writes Vitest's JSON report, relative to
@@ -21,47 +20,73 @@ export interface TestOutcome {
   readonly requirement: string | undefined;
 }
 
-/** The parts of Vitest's JSON report the trace check reads. */
-interface VitestJsonReport {
-  readonly testResults?: readonly {
-    readonly name: string;
-    readonly assertionResults?: readonly {
-      readonly fullName: string;
-      readonly status: string;
-      readonly meta?: { readonly requirement?: unknown };
-    }[];
-  }[];
-}
+/** What reading a package's result file gave. */
+export type TestResults =
+  | { readonly kind: "missing" }
+  | { readonly kind: "unreadable"; readonly reason: string }
+  | { readonly kind: "read"; readonly outcomes: readonly TestOutcome[] };
 
 /**
- * Reads a package's result file.
+ * Reads a package's result file. A file that isn't a Vitest JSON report,
+ * for example one cut short, comes back as `unreadable` with the reason,
+ * so the check can name the file instead of stopping.
  *
  * Vitest writes absolute paths. The file may come from Turbo's cache,
  * made in another checkout, so a path is matched by the package folder in
  * it rather than by this checkout's root.
- *
- * @returns the tests that ran, or `undefined` when the package has no result file
  */
-export function readTestResults(root: string, packageDirectory: string): TestOutcome[] | undefined {
+export function readTestResults(root: string, packageDirectory: string): TestResults {
   const path = join(root, packageDirectory, testResultsFile);
   if (!existsSync(path)) {
-    return undefined;
+    return { kind: "missing" };
   }
-  const report = readJson<VitestJsonReport>(path);
+  let report: unknown;
+  try {
+    report = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    return { kind: "unreadable", reason: `it isn't valid JSON (${(error as Error).message})` };
+  }
+  const testFiles = isObject(report) ? report["testResults"] : undefined;
+  if (!Array.isArray(testFiles)) {
+    return { kind: "unreadable", reason: "it has no testResults list" };
+  }
   const outcomes: TestOutcome[] = [];
-  for (const testFile of report.testResults ?? []) {
-    const file = repoRelativeTestFile(testFile.name, packageDirectory);
-    for (const result of testFile.assertionResults ?? []) {
-      const requirement = result.meta?.requirement;
-      outcomes.push({
-        file,
-        name: result.fullName,
-        status: result.status,
-        requirement: typeof requirement === "string" ? requirement : undefined,
-      });
+  for (const testFile of testFiles) {
+    const results = isObject(testFile) ? testFile["assertionResults"] : undefined;
+    if (!isObject(testFile) || typeof testFile["name"] !== "string" || !Array.isArray(results)) {
+      return { kind: "unreadable", reason: "a test file in it has no name or assertionResults" };
+    }
+    const file = repoRelativeTestFile(testFile["name"], packageDirectory);
+    for (const result of results) {
+      const outcome = readOutcome(file, result);
+      if (outcome === undefined) {
+        return { kind: "unreadable", reason: `a test in ${file} has no fullName or status` };
+      }
+      outcomes.push(outcome);
     }
   }
-  return outcomes;
+  return { kind: "read", outcomes };
+}
+
+function readOutcome(file: string, result: unknown): TestOutcome | undefined {
+  if (!isObject(result)) {
+    return undefined;
+  }
+  const { fullName, status, meta } = result;
+  if (typeof fullName !== "string" || typeof status !== "string") {
+    return undefined;
+  }
+  const requirement = isObject(meta) ? meta["requirement"] : undefined;
+  return {
+    file,
+    name: fullName,
+    status,
+    requirement: typeof requirement === "string" ? requirement : undefined,
+  };
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function repoRelativeTestFile(absolutePath: string, packageDirectory: string): string {
