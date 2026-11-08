@@ -46,6 +46,12 @@ for the packages your change affects. Run it before every push.
 `pnpm verify --full` runs everything. `pnpm check` runs
 only the repo checks; the rules are listed in [docs/guides/checks.md](docs/guides/checks.md).
 
+`pnpm install` also installs a git hook that refuses secrets, private keys,
+`.env` files, absolute local paths and personal terms before they leave your
+machine. See [docs/guides/leak-guard.md](docs/guides/leak-guard.md) for what it
+checks, how to add your own local deny-terms file and how to allow a false
+positive.
+
 To add something new, use the generators instead of
 copying a folder by hand:
 
