@@ -48,6 +48,11 @@ export interface Policy {
   readonly coreOrder: readonly string[];
   readonly published: readonly string[];
   readonly adapterGateways: readonly string[];
+  /**
+   * Subpath exports a package may have besides `.` (and `./api` for a
+   * feature), by package name. Empty when `policy.json` has none.
+   */
+  readonly extraExports: Readonly<Record<string, readonly string[]>>;
   /** Per cloud target, what the provider supplies itself. */
   readonly cloudRuntimes: Readonly<Record<string, CloudRuntime>>;
   readonly fileSize: {
@@ -64,13 +69,12 @@ export interface Policy {
  */
 export function parsePolicy(path: string, value: unknown): Policy {
   const at = new Place(path);
-  const policy = at.object(value, "", [
-    "coreOrder",
-    "published",
-    "adapterGateways",
-    "cloudRuntimes",
-    "fileSize",
-  ]);
+  const policy = at.object(
+    value,
+    "",
+    ["coreOrder", "published", "adapterGateways", "cloudRuntimes", "fileSize"],
+    ["extraExports"],
+  );
   const fileSize = at.object(policy["fileSize"], "fileSize", [
     "warnLines",
     "maxLines",
@@ -80,6 +84,8 @@ export function parsePolicy(path: string, value: unknown): Policy {
     coreOrder: at.strings(policy["coreOrder"], "coreOrder"),
     published: at.strings(policy["published"], "published"),
     adapterGateways: at.strings(policy["adapterGateways"], "adapterGateways"),
+    extraExports:
+      policy["extraExports"] === undefined ? {} : parseExtraExports(at, policy["extraExports"]),
     cloudRuntimes: parseCloudRuntimes(at, policy["cloudRuntimes"]),
     fileSize: {
       warnLines: at.count(fileSize["warnLines"], "fileSize.warnLines"),
@@ -87,6 +93,32 @@ export function parsePolicy(path: string, value: unknown): Policy {
       warnFunctionLines: at.count(fileSize["warnFunctionLines"], "fileSize.warnFunctionLines"),
     },
   };
+}
+
+/** A subpath `extraExports` may allow: `./` and lower-case words, no wildcards. */
+const extraExportKey = /^\.\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function parseExtraExports(at: Place, value: unknown): Record<string, readonly string[]> {
+  const entries = at.object(value, "extraExports", undefined);
+  // Built with fromEntries, so a "__proto__" entry stays an entry and is reported.
+  const extra: [string, readonly string[]][] = [];
+  for (const [name, raw] of Object.entries(entries)) {
+    const field = `extraExports["${name}"]`;
+    const keys = at.strings(raw, field, true);
+    keys.forEach((key, index) => {
+      if (!extraExportKey.test(key) || key === "./api") {
+        at.fail(
+          `${field}[${index}]`,
+          'must be "./" and lower-case words joined by "-", such as "./recording", and not "./api"',
+        );
+      }
+      if (keys.indexOf(key) !== index) {
+        at.fail(`${field}[${index}]`, `repeats "${key}"`);
+      }
+    });
+    extra.push([name, keys]);
+  }
+  return Object.fromEntries(extra);
 }
 
 function parseCloudRuntimes(at: Place, value: unknown): Record<string, CloudRuntime> {
