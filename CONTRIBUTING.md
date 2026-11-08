@@ -15,14 +15,14 @@ Security problems go to [SECURITY.md](SECURITY.md), never to a public issue.
   packages, a new dependency): open an issue or a discussion first, so we can
   agree on the approach before you spend time on it.
 - Check that nobody is already working on it: look at the open issues and pull
-  requests, and run `pnpm who-touches <package>` (coming in Phase 0) to list
+  requests, and run `pnpm who-touches <package>` to list
   the open pull requests that change the package you plan to work on.
 
 ## Setup
 
-> **The repo is still being set up.** The workspace, `pnpm verify` and the
-> generators below are coming in Phase 0, and the requirement and DCO checks
-> in Phase 1. Until a command exists, this guide describes it as "coming".
+> **Some checks are still being built.** The requirement, test-weakening and DCO
+> checks are coming in Phase 1. Until a check exists, this guide describes it
+> as "coming".
 
 You need:
 
@@ -42,17 +42,12 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` (coming in Phase 0) runs the checks, type checks, lint and tests
+`pnpm verify` runs the checks, type checks, lint and tests
 for the packages your change affects. Run it before every push.
-`pnpm verify --full` runs everything. `pnpm check` (coming in Phase 0) runs
-only the repo checks.
+`pnpm verify --full` runs everything. `pnpm check` runs
+only the repo checks; the rules are listed in [docs/guides/checks.md](docs/guides/checks.md).
 
-**Leak guard** (coming in Phase 0). `pnpm install` sets up git hooks that
-refuse secrets, keys, `.env` files, absolute local paths and personal terms.
-Don't skip them with `--no-verify`; CI runs the same rules. See
-[docs/guides/leak-guard.md](docs/guides/leak-guard.md).
-
-To add something new, use the generators (coming in Phase 0) instead of
+To add something new, use the generators instead of
 copying a folder by hand:
 
 ```sh
@@ -84,8 +79,9 @@ to fix what it finds. The most important consequences:
 - **The core has no third-party code.** If you need a helper, look in
   `packages/core/std` first.
 - **No new dependency without approval.** Ask in an issue first. Every
-  dependency is on an allow-list with its reason, and `tooling/check` fails on
-  anything that isn't.
+  dependency is on an allow-list with its reason (`tooling/check/dependencies.json`,
+  see [docs/guides/dependencies.md](docs/guides/dependencies.md)), and
+  `tooling/check` fails on anything that isn't.
 - **No central lists.** New file kinds, engine states, CLI commands and Studio
   features register themselves from their own folder. You add a folder, not a
   line in a shared file.
@@ -151,7 +147,7 @@ Halonic has one firm rule: **nothing that works may break.**
   CI before anything is merged.
 - **Rebase on `main`** rather than merging `main` into your branch.
 - **Two pull requests adding features at once?** After rebasing, run
-  `pnpm discover --fix` (coming in Phase 0).
+  `pnpm discover --fix`.
 
 ## Developer Certificate of Origin (DCO)
 
