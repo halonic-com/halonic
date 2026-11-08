@@ -142,15 +142,33 @@ own navigation, so Studio never leaves its page. The address stays on the link, 
 address" still works. A right click is left to the browser. Only `http` and `https` addresses are
 allowed: anything else throws, because addresses are often built from what the user typed.
 
-The shell provides the service once, at the root of the app. Without one, the link opens a new
-browser tab (`openInNewTab`, with `noopener` and `noreferrer`). The desktop app hands the address
-to the system browser instead:
+**An address from a request.** "Sign in with Google" gets its address from the host's start
+route, so `href` can be a function that returns a promise. Then `onError` is required, because the
+request can fail. The link is a button that looks the same, since there's no address to put on a
+link yet. A click asks for the address and passes it to `openExternal` at once, still pending;
+further clicks are ignored until it settles (`aria-busy`). An address that isn't `http` or
+`https` goes to `onError` too.
 
 ```tsx
-<OpenExternalProvider openExternal={(url) => desktop.openInSystemBrowser(url)}>
+<ExternalLink href={() => startSignIn(account)} onError={showError}>
+  Sign in with Google
+</ExternalLink>;
+```
+
+**The service.** The shell provides it once, at the root of the app. It gets the address or a
+promise of one, and is called inside the click, before anything is awaited. The desktop app waits
+for the address and hands it to the system browser:
+
+```tsx
+<OpenExternalProvider openExternal={async (address) => desktop.openInSystemBrowser(await address)}>
   <App />
 </OpenExternalProvider>;
 ```
+
+Without a provider, the link uses `openInNewTab`. A known address opens in a new tab with
+`noopener` and `noreferrer`. For a pending address the tab has to open inside the click, or the
+browser blocks it as a popup: it opens empty at once, its handle back to Studio is cut, and it
+gets the address when it arrives. If the request fails, the tab is closed again.
 
 | State   | What shows                                                          |
 | ------- | ------------------------------------------------------------------- |

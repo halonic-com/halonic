@@ -4,11 +4,11 @@ import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { click, render } from "../test/render.tsx";
 import { ExternalLink } from "./external-link.tsx";
-import { OpenExternalProvider, openInNewTab } from "./open-external.tsx";
+import { type OpenExternal, OpenExternalProvider } from "./open-external.tsx";
 
 const audiencePage = "https://console.cloud.google.com/auth/audience?project=halonic-x";
 
-function renderLink(openExternal = vi.fn<(url: string) => void>()) {
+function renderLink(openExternal = vi.fn<OpenExternal>(async () => {})) {
   const { container } = render(
     <OpenExternalProvider openExternal={openExternal}>
       <ExternalLink href={audiencePage}>Audience page</ExternalLink>
@@ -69,12 +69,6 @@ verifies("kit.external-link", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const { container } = render(<ExternalLink href={audiencePage}>Audience page</ExternalLink>);
     await click(container.querySelector("a") as HTMLAnchorElement);
-    expect(open).toHaveBeenCalledExactlyOnceWith(audiencePage, "_blank", "noopener,noreferrer");
-  });
-
-  it("opens a new tab without a handle back to Studio", () => {
-    const open = vi.spyOn(window, "open").mockReturnValue(null);
-    openInNewTab(audiencePage);
     expect(open).toHaveBeenCalledExactlyOnceWith(audiencePage, "_blank", "noopener,noreferrer");
   });
 });

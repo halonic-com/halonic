@@ -7,6 +7,7 @@
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export { ExternalLink, type ExternalLinkProps } from "./external-link/external-link.tsx";
 export {
+  type ExternalAddress,
   type OpenExternal,
   OpenExternalProvider,
   type OpenExternalProviderProps,
