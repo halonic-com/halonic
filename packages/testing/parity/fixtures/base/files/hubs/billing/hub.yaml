@@ -1,0 +1,14 @@
+id: billing
+name: Billing
+description: Checks invoices and asks a person to approve payments.
+defaults:
+  model: fast
+models:
+  careful:
+    provider: mock
+    model: echo-careful
+uses:
+  connectors: [files, tracker]
+  skills: [plain-words]
+  knowledge: [handbook]
+  collections: [invoices]

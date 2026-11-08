@@ -1,0 +1,10 @@
+{
+  "about": "a wait state that only listens to done",
+  "kind": "workflow",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start",
+    "line": 5
+  }
+}

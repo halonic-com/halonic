@@ -1,0 +1,7 @@
+name: Mailbox
+transport:
+  google:
+    account: billing
+secret: mailbox-refresh
+tools:
+  approve: [gmail_send]

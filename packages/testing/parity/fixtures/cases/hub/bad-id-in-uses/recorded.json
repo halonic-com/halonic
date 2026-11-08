@@ -1,0 +1,56 @@
+{
+  "reference": "784f78d",
+  "case": "hub/bad-id-in-uses",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/hub.yaml",
+      "flatPath": "hubs/billing/hub.yaml",
+      "read": true,
+      "schema": "hub",
+      "issues": [
+        {
+          "path": [
+            "uses",
+            "connectors",
+            0
+          ],
+          "code": "invalid_format",
+          "message": "use lowercase letters, digits, '-' or '_'",
+          "line": 11,
+          "col": 16
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/hub.yaml",
+      "message": "uses.connectors.0: use lowercase letters, digits, '-' or '_'",
+      "line": 11,
+      "col": 16
+    },
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "Routine \"hourly-check\": unknown hub \"billing\""
+    },
+    {
+      "severity": "error",
+      "path": "routines/on-paid.routine.yaml",
+      "message": "Routine \"on-paid\": unknown hub \"billing\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/hub.yaml: uses.connectors.0: use lowercase letters, digits, '-' or '_'\nerror routines/hourly-check.routine.yaml: Routine \"hourly-check\": unknown hub \"billing\"\nerror routines/on-paid.routine.yaml: Routine \"on-paid\": unknown hub \"billing\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 11,
+    "recorded": 11,
+    "verdict": "same"
+  }
+}

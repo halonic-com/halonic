@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "collection/no-fields",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/collections/suppliers.collection.yaml",
+      "flatPath": "collections/suppliers.collection.yaml",
+      "read": true,
+      "schema": "collection",
+      "issues": [
+        {
+          "path": [
+            "fields"
+          ],
+          "code": "custom",
+          "message": "A collection needs fields",
+          "line": 3,
+          "col": 9
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "collections/suppliers.collection.yaml",
+      "message": "fields: A collection needs fields",
+      "line": 3,
+      "col": 9
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error collections/suppliers.collection.yaml: fields: A collection needs fields\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 3,
+    "recorded": 3,
+    "verdict": "same"
+  }
+}

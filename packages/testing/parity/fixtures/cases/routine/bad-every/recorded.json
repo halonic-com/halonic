@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "routine/bad-every",
+  "valid": false,
+  "files": [
+    {
+      "file": "workflows/routines/hourly-check.routine.yaml",
+      "flatPath": "routines/hourly-check.routine.yaml",
+      "read": true,
+      "schema": "routine",
+      "issues": [
+        {
+          "path": [
+            "trigger",
+            "every"
+          ],
+          "code": "invalid_format",
+          "message": "use a number and a unit, e.g. \"15m\", \"1h\", \"1d\"",
+          "line": 4,
+          "col": 10
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "routines/hourly-check.routine.yaml",
+      "message": "trigger.every: use a number and a unit, e.g. \"15m\", \"1h\", \"1d\"",
+      "line": 4,
+      "col": 10
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error routines/hourly-check.routine.yaml: trigger.every: use a number and a unit, e.g. \"15m\", \"1h\", \"1d\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": 4,
+    "verdict": "same"
+  }
+}

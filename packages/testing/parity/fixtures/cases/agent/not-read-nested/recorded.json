@@ -1,0 +1,22 @@
+{
+  "reference": "784f78d",
+  "case": "agent/not-read-nested",
+  "valid": true,
+  "files": [
+    {
+      "file": "hubs/billing/agents/old/spare.agent.yaml",
+      "flatPath": "hubs/billing/agents/old/spare.agent.yaml",
+      "read": false,
+      "schema": null,
+      "issues": [],
+      "status": "not-read"
+    }
+  ],
+  "diagnostics": [],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "OK: Acme, 1 hub(s), 0 warning(s)\n",
+    "stderr": ""
+  },
+  "line": null
+}

@@ -1,0 +1,10 @@
+{
+  "about": "a deployment without a name",
+  "kind": "deployments",
+  "fault": "missing-required",
+  "expect": {
+    "file": "deployments.yaml",
+    "path": "deployments.shadow-run.name",
+    "line": 8
+  }
+}

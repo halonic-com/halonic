@@ -1,0 +1,10 @@
+{
+  "about": "a method without instructions",
+  "kind": "agent",
+  "fault": "missing-required",
+  "expect": {
+    "file": "hubs/billing/agents/clerk.agent.yaml",
+    "path": "methods.extract.instructions",
+    "line": 12
+  }
+}

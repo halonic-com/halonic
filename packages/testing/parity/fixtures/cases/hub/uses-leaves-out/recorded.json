@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "hub/uses-leaves-out",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/hub.yaml",
+      "flatPath": "hubs/billing/hub.yaml",
+      "read": true,
+      "schema": "hub",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses the shared connector \"tracker\", which hub \"billing\" does not list in uses.connectors"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses the shared connector \"tracker\", which hub \"billing\" does not list in uses.connectors\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

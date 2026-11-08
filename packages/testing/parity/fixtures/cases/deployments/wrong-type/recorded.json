@@ -1,0 +1,46 @@
+{
+  "reference": "784f78d",
+  "case": "deployments/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "deployments.yaml",
+      "flatPath": "deployments.yaml",
+      "read": true,
+      "schema": "deployments",
+      "issues": [
+        {
+          "path": [
+            "deployments",
+            "shadow-run",
+            "shadow"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected boolean, received string",
+          "line": 11,
+          "col": 13
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "deployments.yaml",
+      "message": "deployments.shadow-run.shadow: Invalid input: expected boolean, received string",
+      "line": 11,
+      "col": 13
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error deployments.yaml: deployments.shadow-run.shadow: Invalid input: expected boolean, received string\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 11,
+    "recorded": 11,
+    "verdict": "same"
+  }
+}

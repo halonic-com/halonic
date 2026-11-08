@@ -1,0 +1,22 @@
+{
+  "name": "@halonicjs/app-studio",
+  "private": true,
+  "type": "module",
+  "description": "The Studio app: wires the Studio packages and features together. Vite, Tauri and Android come in later phases.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "apps",
+    "owner": "elena"
+  }
+}

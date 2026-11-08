@@ -1,0 +1,13 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    type: foreach
+    items: "{{input.lines}}"
+    agent: checker
+    workflow: line-check
+    on:
+      - to: done
+  done:
+    type: final

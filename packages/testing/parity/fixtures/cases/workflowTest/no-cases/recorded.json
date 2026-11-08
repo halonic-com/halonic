@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "workflowTest/no-cases",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.test.yaml",
+      "flatPath": "hubs/billing/workflows/approval.test.yaml",
+      "read": true,
+      "schema": "workflowTest",
+      "issues": [
+        {
+          "path": [
+            "cases"
+          ],
+          "code": "too_small",
+          "message": "Too small: expected array to have >=1 items",
+          "line": 2,
+          "col": 8
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "cases: Too small: expected array to have >=1 items",
+      "line": 2,
+      "col": 8
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.test.yaml: cases: Too small: expected array to have >=1 items\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 2,
+    "recorded": 2,
+    "verdict": "same"
+  }
+}

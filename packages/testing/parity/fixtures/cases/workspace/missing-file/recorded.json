@@ -1,0 +1,23 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/missing-file",
+  "valid": false,
+  "files": [],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "Missing workspace.yaml"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: Missing workspace.yaml\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": null,
+    "recorded": null,
+    "verdict": "same"
+  }
+}

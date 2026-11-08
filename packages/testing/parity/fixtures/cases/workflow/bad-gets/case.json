@@ -1,0 +1,10 @@
+{
+  "about": "gets names something other than input or context",
+  "kind": "workflow",
+  "fault": "bad-format",
+  "expect": {
+    "file": "hubs/billing/workflows/invoice.workflow.yaml",
+    "path": "states.notify.gets.1",
+    "line": 51
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "no type",
+  "kind": "provider",
+  "fault": "missing-required",
+  "expect": {
+    "file": "providers/local-llm.yaml",
+    "path": "type",
+    "line": 1
+  }
+}

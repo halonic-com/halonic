@@ -1,0 +1,10 @@
+{
+  "about": "an alias without a model",
+  "kind": "models",
+  "fault": "missing-required",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.smart.model",
+    "line": 16
+  }
+}

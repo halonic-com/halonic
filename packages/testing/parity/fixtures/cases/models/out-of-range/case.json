@@ -1,0 +1,10 @@
+{
+  "about": "temperature above 2",
+  "kind": "models",
+  "fault": "bad-format",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.fast.params.temperature",
+    "line": 11
+  }
+}

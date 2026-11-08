@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "provider/duplicate-id",
+  "valid": false,
+  "files": [
+    {
+      "file": "providers/mock-copy.yaml",
+      "flatPath": "providers/mock-copy.yaml",
+      "read": true,
+      "schema": "provider",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "providers/mock.yaml",
+      "message": "Duplicate id \"mock\" (also in providers/mock-copy.yaml)"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error providers/mock.yaml: Duplicate id \"mock\" (also in providers/mock-copy.yaml)\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 1,
+    "recorded": null,
+    "verdict": "no-error"
+  }
+}

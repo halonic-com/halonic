@@ -1,0 +1,10 @@
+{
+  "about": "a state written twice (YAML forbids duplicate keys)",
+  "kind": "workflow",
+  "fault": "yaml-syntax",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.workflow.yaml",
+    "path": "states.approved",
+    "line": 23
+  }
+}

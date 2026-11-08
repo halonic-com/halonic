@@ -1,0 +1,44 @@
+{
+  "reference": "784f78d",
+  "case": "runtime/wrong-type",
+  "valid": false,
+  "files": [
+    {
+      "file": "runtimes/inprocess.yaml",
+      "flatPath": "runtimes/inprocess.yaml",
+      "read": true,
+      "schema": "runtime",
+      "issues": [
+        {
+          "path": [
+            "options"
+          ],
+          "code": "invalid_type",
+          "message": "Invalid input: expected record, received array",
+          "line": 3,
+          "col": 10
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "runtimes/inprocess.yaml",
+      "message": "options: Invalid input: expected record, received array",
+      "line": 3,
+      "col": 10
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error runtimes/inprocess.yaml: options: Invalid input: expected record, received array\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 3,
+    "recorded": 3,
+    "verdict": "same"
+  }
+}

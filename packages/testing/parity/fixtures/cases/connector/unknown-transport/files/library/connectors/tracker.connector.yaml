@@ -1,0 +1,6 @@
+name: Tracker
+transport:
+  ftp:
+    url: ftp://tracker.example.com
+secret: tracker-token
+local: false

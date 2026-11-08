@@ -1,0 +1,10 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    agent: auditor
+    on:
+      - to: done
+  done:
+    type: final

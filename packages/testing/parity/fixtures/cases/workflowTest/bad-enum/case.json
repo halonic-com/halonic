@@ -1,0 +1,10 @@
+{
+  "about": "an expected status that doesn't exist",
+  "kind": "workflowTest",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.test.yaml",
+    "path": "cases.2.expect.status",
+    "line": 11
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "reference": "784f78d",
+  "case": "agent/unknown-connector",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/agents/notifier.agent.yaml",
+      "flatPath": "hubs/billing/agents/notifier.agent.yaml",
+      "read": true,
+      "schema": "agent",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses unknown connector \"fax\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses unknown connector \"fax\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

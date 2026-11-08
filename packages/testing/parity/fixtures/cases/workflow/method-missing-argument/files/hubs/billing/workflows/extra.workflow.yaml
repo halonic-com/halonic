@@ -1,0 +1,12 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    agent: clerk
+    method: extract
+    with: {}
+    on:
+      - to: done
+  done:
+    type: final

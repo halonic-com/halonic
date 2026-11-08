@@ -1,0 +1,10 @@
+{
+  "about": "overlap is not skip, queue or allow",
+  "kind": "routine",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "workflows/routines/hourly-check.routine.yaml",
+    "path": "overlap",
+    "line": 9
+  }
+}
