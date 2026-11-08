@@ -97,7 +97,7 @@ Who may use what:
 | -------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | core     | core packages listed **before** it in `coreOrder`                                       | third-party code, Node APIs, browser APIs                                            |
 | adapters | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                      |
-| host     | core, adapters, Node APIs                                                               | Studio packages                                                                      |
+| host     | core, Web-standard APIs                                                                 | adapters, Node APIs, Studio packages                                                 |
 | studio   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
 | apps     | the public entry point of any package                                                   | —                                                                                    |
 | testing  | anything                                                                                | being a runtime dependency                                                           |
