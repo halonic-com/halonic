@@ -16,6 +16,8 @@ import {
   toForm,
 } from "./request-body.ts";
 import type { RequestLog } from "./request-log.ts";
+import { type BodyGuard, guardBody, untilAborted } from "./response-body.ts";
+import { secretForms } from "./secret-filter.ts";
 import { checkPlacements, place, readSecrets } from "./secret-placement.ts";
 
 /**
@@ -153,6 +155,12 @@ async function send(
     maxBytes: limits.maxResponseBytes ?? 10 * 1024 * 1024,
     onIdle: () => stop("no data", limits.idleTimeoutMs ?? 60_000),
     done: () => clearTimeout(total),
+    secrets: secretForms(
+      [...values].map(([secret, value]) => ({
+        value,
+        placements: placements.filter((placement) => placement.secret === secret),
+      })),
+    ),
   };
 
   try {
@@ -193,18 +201,6 @@ async function send(
   }
 }
 
-/** What {@link guardBody} enforces while the integration reads the body. */
-interface BodyGuard {
-  /** The caller's signal and the request's deadlines. */
-  readonly signal: AbortSignal;
-  readonly idleMs: number;
-  readonly maxBytes: number;
-  /** Ends the request because the body stalled. */
-  readonly onIdle: () => void;
-  /** Called once when the body is finished, failed or cancelled. */
-  readonly done: () => void;
-}
-
 /** Moves the hop on to an allowed redirect target, the way `fetch` does. */
 function follow(hop: Hop, status: number, next: URL): void {
   if (next.origin !== hop.url.origin)
@@ -219,94 +215,6 @@ function follow(hop: Hop, status: number, next: URL): void {
     hop.headers.delete("content-length");
   }
   hop.url = next;
-}
-
-/**
- * Passes the body through, failing it when it grows over the size limit,
- * when no data comes for the idle time while the integration is waiting, or
- * when the request is aborted. Time the integration spends between reads
- * doesn't count.
- */
-function guardBody(
-  policy: IntegrationPolicy,
-  response: Response,
-  url: URL,
-  guard: BodyGuard,
-): Response {
-  const tooLarge = () =>
-    new IntegrationRefusedError(
-      "response-too-large",
-      `${policy.name}: the response from ${url.host}${url.pathname} is larger than ${guard.maxBytes} bytes`,
-    );
-  const declared = Number(response.headers.get("content-length") ?? Number.NaN);
-  if (Number.isFinite(declared) && declared > guard.maxBytes) {
-    guard.done();
-    void response.body?.cancel();
-    throw tooLarge();
-  }
-  if (response.body === null) {
-    guard.done();
-    return withUrl(response, url);
-  }
-  const reader = response.body.getReader();
-  let seen = 0;
-  const fail = (error: unknown) => {
-    guard.done();
-    reader.cancel(error).catch(() => {});
-    throw error;
-  };
-  const guarded = new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      const idle = setTimeout(guard.onIdle, guard.idleMs);
-      try {
-        const next = await untilAborted(reader.read(), guard.signal);
-        if (next.done) {
-          guard.done();
-          controller.close();
-          return;
-        }
-        seen += next.value.byteLength;
-        if (seen > guard.maxBytes) throw tooLarge();
-        controller.enqueue(next.value);
-      } catch (error) {
-        fail(error);
-      } finally {
-        clearTimeout(idle);
-      }
-    },
-    cancel(reason) {
-      guard.done();
-      return reader.cancel(reason);
-    },
-  });
-  return withUrl(
-    new Response(guarded, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    }),
-    url,
-  );
-}
-
-/** Settles like the promise, or rejects as soon as the signal aborts, whatever the transport does. */
-function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    if (signal.aborted) {
-      promise.catch(() => {});
-      reject(signal.reason);
-      return;
-    }
-    const onAbort = () => reject(signal.reason);
-    signal.addEventListener("abort", onAbort, { once: true });
-    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
-  });
-}
-
-/** Gives the response the URL of the hop that answered, as `fetch` does. */
-function withUrl(target: Response, url: URL): Response {
-  Object.defineProperty(target, "url", { value: url.href });
-  return target;
 }
 
 /** Host and path for the log, without query or fragment. Empty when the URL doesn't parse. */

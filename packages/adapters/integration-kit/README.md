@@ -33,6 +33,15 @@ Node, in the Worker and in the browser. Published as
   bigger body is refused as `request-too-large`; a stream, `Blob` or
   `FormData` body as `body-not-supported`. The limit can be lowered, never raised, so an
   integration behaves the same in-process and in the fenced runner.
+- **Echoed secrets are removed.** Every value the kit placed in a request
+  becomes `[secret removed]` in the response's headers, final URL and body:
+  the raw value, the placed form (`Bearer …`, the form field) and their
+  URL-encoded, form-encoded and JSON-escaped copies. A gzip or deflate body
+  is decompressed first, and a value split across two pieces is still
+  found. Base64, reversed or otherwise transformed copies are not: a host
+  allowed to receive a key can always send it back in some other form.
+  `secretForms` and `removeSecrets` are exported so the bridge can filter
+  tool results, errors and stderr the same way.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name

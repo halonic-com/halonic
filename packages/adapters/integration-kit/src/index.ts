@@ -16,4 +16,14 @@ export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } fr
 export { maxRequestBodyBytes } from "./request-body.ts";
 export { RequestLog, type RequestLogEntry } from "./request-log.ts";
 export { scopedTokens, storedTokenName } from "./scoped-tokens.ts";
+export {
+  removeSecrets,
+  removeSecretsFromHeaders,
+  removeSecretsStream,
+  type SecretForms,
+  type SecretOnWire,
+  SecretRemover,
+  secretForms,
+  secretRemoved,
+} from "./secret-filter.ts";
 export { clampWaitMs, integrationWait } from "./wait.ts";
