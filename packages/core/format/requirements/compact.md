@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-216; HAL-111 review; old app `compact` at commit 784f78d; HAL-345
+- Source: HAL-216; HAL-111 review; old app `compact` at commit 784f78d; HAL-345; HAL-506
 
 When a value is compacted before it is written to a file, the format shall leave out every object key whose value, once compacted itself, is `undefined`, an empty array or an empty object, keep `null`, `""`, `0` and `false`, compact array items without removing any, keep the value passed in even when it ends up empty, keep a key named `__proto__` as an ordinary key, and otherwise give the same result as the old app's `compact`.
 
@@ -30,6 +30,12 @@ Both rules are allowed differences from the old app, which turned such an object
 - Given `{ at: new Date(5), keep: 1 }`,
   when it is compacted,
   then a `TypeError` says "value.at is a Date".
+- Given `{ a: Object.create({}) }`,
+  when it is compacted,
+  then a `TypeError` says "value.a is an object with a custom prototype".
+- Given `{ "a.b": { "0": new Map() } }`,
+  when it is compacted,
+  then a `TypeError` says `value["a.b"]["0"] is a Map`.
 - Given `JSON.parse('{"__proto__": {"a": 1}}')`,
   when it is compacted,
   then the result has an own `__proto__` key whose value is `{ a: 1 }`, its prototype is still `Object.prototype`, and `Object.prototype` is unchanged.

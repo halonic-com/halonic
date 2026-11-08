@@ -67,4 +67,20 @@ verifies("std.deep-clone", () => {
     class Step {}
     expect(() => deepClone(new Step())).toThrow(/is a Step/);
   });
+
+  it("names objects with no class, or an unnamed one, in words", () => {
+    expect(() => deepClone({ a: Object.create({}) })).toThrow(
+      "deepClone copies plain data only, but value.a is an object with a custom prototype.",
+    );
+    const Unnamed = (() => class {})();
+    expect(() => deepClone([new Unnamed()])).toThrow(
+      "deepClone copies plain data only, but value[0] is an instance of an unnamed class.",
+    );
+  });
+
+  it("quotes keys in the path that aren't simple identifiers", () => {
+    expect(() => deepClone({ "a.b": { "0": () => 1 } })).toThrow(
+      'deepClone can\'t copy the function at value["a.b"]["0"].',
+    );
+  });
 });

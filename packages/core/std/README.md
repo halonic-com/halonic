@@ -20,7 +20,8 @@ differ. Never compare those with `===`.
 
 For plain data there are `deepEqual` (key order doesn't matter),
 `deepClone` (the core has no `structuredClone`) and `isPlainObject`, which
-tells a plain record apart from a `Date`, a `Map` or a class instance. `slugify` and `uniqueName`
+tells a plain record apart from a `Date`, a `Map` or a class instance. `describeObject` and `keyPath` word the errors
+about data that isn't plain, so they say what and where. `slugify` and `uniqueName`
 turn display names into file-safe ids, as the old Studio did. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, and `Emitter` is a
 small typed event emitter.

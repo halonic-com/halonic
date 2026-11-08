@@ -58,6 +58,26 @@ verifies("format.compact", () => {
     );
   });
 
+  test("names objects with no class, or an unnamed one, in words", () => {
+    expect(() => compact({ a: Object.create({}) })).toThrow(
+      new TypeError(
+        "compact writes plain data only, but value.a is an object with a custom prototype.",
+      ),
+    );
+    const Unnamed = (() => class {})();
+    expect(() => compact([new Unnamed()])).toThrow(
+      new TypeError(
+        "compact writes plain data only, but value[0] is an instance of an unnamed class.",
+      ),
+    );
+  });
+
+  test("quotes keys in the path that aren't simple identifiers", () => {
+    expect(() => compact({ "a.b": { "0": new Map() } })).toThrow(
+      new TypeError('compact writes plain data only, but value["a.b"]["0"] is a Map.'),
+    );
+  });
+
   test("compacts objects without a prototype, as Object.create(null) makes them", () => {
     const input = Object.assign(Object.create(null), { name: "triage", tags: [] });
     expect(compact(input)).toStrictEqual({ name: "triage" });

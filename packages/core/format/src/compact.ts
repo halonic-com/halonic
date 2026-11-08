@@ -1,4 +1,4 @@
-import { isPlainObject } from "@halonicjs/std";
+import { describeObject, isPlainObject, keyPath } from "@halonicjs/std";
 
 /**
  * Removes the values a saved file doesn't need, so files stay small: in every
@@ -41,8 +41,7 @@ function compactValue(value: unknown, path: string): unknown {
     return compactObject(value, path);
   }
   if (typeof value === "object" && value !== null) {
-    const kind = value.constructor?.name ?? "object";
-    throw new TypeError(`compact writes plain data only, but ${path} is a ${kind}.`);
+    throw new TypeError(`compact writes plain data only, but ${path} is ${describeObject(value)}.`);
   }
   return value;
 }
@@ -50,7 +49,7 @@ function compactValue(value: unknown, path: string): unknown {
 function compactObject(value: Record<string, unknown>, path: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    const compacted = compactValue(child, `${path}.${key}`);
+    const compacted = compactValue(child, keyPath(path, key));
     if (isEmpty(compacted)) {
       continue;
     }

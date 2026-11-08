@@ -1,4 +1,4 @@
-import { isPlainObject } from "./plain-data.ts";
+import { describeObject, isPlainObject, keyPath } from "./plain-data.ts";
 
 /**
  * Copies plain data all the way down: arrays, plain objects, dates and
@@ -50,7 +50,7 @@ function cloneValue(value: unknown, copies: Map<object, unknown>, path: string):
       // defineProperty, not assignment: a "__proto__" key from JSON.parse
       // stays a plain key instead of changing the copy's prototype.
       Object.defineProperty(copy, key, {
-        value: cloneValue(value[key], copies, `${path}.${key}`),
+        value: cloneValue(value[key], copies, keyPath(path, key)),
         enumerable: true,
         writable: true,
         configurable: true,
@@ -58,6 +58,5 @@ function cloneValue(value: unknown, copies: Map<object, unknown>, path: string):
     }
     return copy;
   }
-  const kind = value.constructor?.name ?? "object";
-  throw new TypeError(`deepClone copies plain data only, but ${path} is a ${kind}.`);
+  throw new TypeError(`deepClone copies plain data only, but ${path} is ${describeObject(value)}.`);
 }
