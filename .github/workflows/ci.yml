@@ -223,8 +223,8 @@ jobs:
         run: |
           git config user.name "CI"
           git config user.email "ci@users.noreply.github.com"
-          pnpm new package core/ci-example --owner ci
-          pnpm new feature ci-example --owner ci
+          pnpm new package core/ci-example --owner ci --purpose "Empty example package that CI generates to prove the scaffold passes every check."
+          pnpm new feature ci-example --owner ci --purpose "Empty example feature that CI generates to prove the scaffold passes every check."
           pnpm install --no-frozen-lockfile
       - name: pnpm verify --full
         run: pnpm verify --full
