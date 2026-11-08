@@ -29,6 +29,9 @@ Node, in the Worker and in the browser. Published as
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name
   no other integration can reach.
+- **Waiting** goes through `host.wait(ms, signal)`, the integration's only
+  timer: at most 30 s (`maxIntegrationWaitMs`), and it rejects with
+  `signal.reason` when the call's signal aborts.
 
 A refusal throws an `IntegrationRefusedError` with a `code`. Its message
 names the host and path only, never a query or a secret.
