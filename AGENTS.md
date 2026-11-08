@@ -2,7 +2,7 @@
 
 Rules for every agent and contributor working in this repo. This file is a map: it keeps the rules
 short and links to guides in `docs/guides/` for detail. The `AGENTS.md` closest to the file you're
-changing wins, so read your package's own `AGENTS.md` if it has one. Only the maintainer changes
+changing wins, so read your package's own `AGENTS.md` too. Only the maintainer changes
 this file, and only in a dedicated pull request.
 
 ## What this repo is
@@ -26,18 +26,19 @@ Each package declares its layer and owner in `package.json` (`"halonic": { "laye
 
 ## Commands
 
-| Command                                           | What it does                                                                           |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `pnpm install`                                    | install dependencies (Node and pnpm versions are pinned; don't override them)          |
-| `pnpm verify`                                     | repo checks, then typecheck, lint, test and build for the packages your change affects |
-| `pnpm verify --full`                              | the same for every package, as CI runs it                                              |
-| `pnpm check [rule …]`                             | only the repo checks; takes seconds                                                    |
-| `pnpm new package <layer>/<name> --owner <agent>` | create a package that passes every check                                               |
-| `pnpm new feature <name> --owner <agent>`         | create a Studio feature and add it to the Studio's feature list                        |
-| `pnpm discover`                                   | rewrite the generated files; `--fix` also repairs the Studio's feature list            |
-| `pnpm who-touches <package>`                      | list open pull requests that change that package                                       |
+| Command                                                                  | What it does                                                                           |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `pnpm install`                                                           | install dependencies (Node and pnpm versions are pinned; don't override them)          |
+| `pnpm verify`                                                            | repo checks, then typecheck, lint, test and build for the packages your change affects |
+| `pnpm verify --full`                                                     | the same for every package, as CI runs it                                              |
+| `pnpm check [rule …]`                                                    | only the repo checks; takes seconds                                                    |
+| `pnpm new package <layer>/<name> --owner <agent> --purpose "<one line>"` | create a package, with its own `AGENTS.md`, that passes every check                    |
+| `pnpm new feature <name> --owner <agent> --purpose "<one line>"`         | create a Studio feature and add it to the Studio's feature list                        |
+| `pnpm discover`                                                          | rewrite the generated files; `--fix` also repairs the Studio's feature list            |
+| `pnpm who-touches <package>`                                             | list open pull requests that change that package                                       |
 
-Never create a package or feature by hand; use the generators.
+Never create a package or feature by hand; use the generators. Every package has an `AGENTS.md`
+whose owner matches `package.json`; `pnpm check` fails otherwise.
 
 ## Before you start
 
