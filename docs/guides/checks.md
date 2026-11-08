@@ -4,16 +4,16 @@ Every pull request runs the same checks as `pnpm verify --full`. Run
 `pnpm verify` before you ask for review: it runs the fast checks and then
 typecheck, lint and test for the packages your change affects.
 
-| Command                            | What it does                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm verify`                      | everything below, for the affected packages (`--full` for every package, as CI does) |
-| `pnpm check [rule …]`              | our own repo checks (table below); with rule names, only those                       |
-| `pnpm check:terms`                 | the personal-terms guard; skipped locally unless you have the list                   |
-| `pnpm check:licences`              | every installed package's licence against `tooling/check/licences.json`              |
-| `pnpm discover [--fix \| --check]` | writes the generated files; `--fix` also rewrites the Studio's feature list          |
-| `pnpm new package <layer>/<name>`  | creates an empty package that passes every check (adapters: add `--runtime <r>`)     |
-| `pnpm new feature <name>`          | creates an empty Studio feature and adds it to the Studio's feature list             |
-| `pnpm who-touches [<package>]`     | the open pull requests that change a package; run it before you start                |
+| Command                            | What it does                                                                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm verify`                      | everything below, for the affected packages (`--full` for every package, as CI does)                                             |
+| `pnpm check [rule …]`              | our own repo checks (table below); with rule names, only those                                                                   |
+| `pnpm check:terms`                 | the personal-terms guard; skipped locally unless you have the list                                                               |
+| `pnpm check:licences`              | every installed package's licence against `tooling/check/licences.json`                                                          |
+| `pnpm discover [--fix \| --check]` | writes the generated files; `--fix` also rewrites the Studio's feature list                                                      |
+| `pnpm new package <layer>/<name>`  | creates an empty package that passes every check; needs `--owner <agent>` (adapters: also `--runtime <r>`)                       |
+| `pnpm new feature <name>`          | creates an empty Studio feature, adds it to the Studio's feature list; needs `--owner <agent>`                                   |
+| `pnpm who-touches [<package>]`     | the open pull requests that change a package; run it before you start. No sign-in needed; set `GH_TOKEN` for a higher rate limit |
 
 ## `pnpm check` rules
 
@@ -26,7 +26,7 @@ typecheck, lint and test for the packages your change affects.
 | `features`       | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install`                                                                                                                                                                                                        |
 | `file-size`      | a source file has more than 500 lines (a warning above 300; a warning for functions above 60). Generated files and fixtures are exempt                                                                                                                                                                                                            |
 | `lockfile`       | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                              |
-| `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                  |
+| `absolute-paths` | docs, code, scripts or config (including `.rs`, `.sh`, `.ps1`, `.txt`, `.svg` and files without an extension) hold an absolute path from one machine, such as a folder on any Windows drive or a Linux home folder. Tests, fixtures and binary files are exempt                                                                                   |
 
 `trace`, `requirement-guard` and `dco` are wired in already and report
 "not active yet". They become real in Phase 1 (plan 9.2, 9.3).
@@ -38,7 +38,9 @@ dependencies must use a licence from the `shipped` list in
 `tooling/check/licences.json`; dev tooling may also use the `devOnly`
 list. `OR` needs one allowed side, `AND` both. A package whose licence
 field is wrong upstream goes under `corrections`, after Julian has
-checked it by hand.
+checked it by hand. Each correction names one exact version
+(`"some-package@1.2.3": "MIT"`), because a new release can change its
+licence; the next version fails until someone checks it again.
 
 ## Package names and layers
 
@@ -91,8 +93,18 @@ line). The guard scans changed files and their names, commit messages and
 authors, the branch name and the pull request title and body. It prints
 where a term is, never the term, and withholds path parts that contain
 one. Harmless technical phrases that contain a term go in
-`tooling/check/terms-allowed-phrases.txt`. Until the secret is set, the
-guard passes with a warning that says nothing was scanned.
+`tooling/check/terms-allowed-phrases.txt`. Words are split inside
+identifiers and where letters meet digits, so `someName2` counts.
+
+`pnpm check:terms --all` (weekly in CI) also scans history: every commit,
+and every old file version and file name any branch or tag still holds.
+A hit there names the path and the blob; `git log --all --find-object=<blob>`
+finds the commits.
+
+Until the secret is set, the guard passes with a warning that says nothing
+was scanned. GitHub gives no Actions secrets to pull requests from forks
+or Dependabot, so there it also passes with a warning that says why; the
+merge queue, which has the secret, is the hard gate (plan 11.1).
 
 ## CI
 
@@ -107,7 +119,7 @@ produces packages that pass) are then skipped without blocking the merge.
 | Fast gates                   | pull request title, `pnpm check`, licences, formatting, the feature list, `pnpm audit` for shipped dependencies  |
 | Personal-terms guard         | the guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
 | Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                    |
-| Workflow lint                | `zizmor` over `.github/`                                                                                         |
+| Workflow lint                | `zizmor` over `.github/`, installed by hash from `.github/requirements/zizmor.txt`                               |
 | Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                      |
 | Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                               |
 | Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist       |
