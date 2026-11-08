@@ -3,6 +3,7 @@ import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
 import type { IntegrationPolicy } from "./policy.ts";
 import { RequestLog } from "./request-log.ts";
 import { scopedTokens } from "./scoped-tokens.ts";
+import { integrationWait } from "./wait.ts";
 
 /** What {@link createIntegrationHost} needs: the raw ports, which the integration never sees. */
 export interface IntegrationHostOptions {
@@ -43,6 +44,7 @@ export function createIntegrationHost(options: IntegrationHostOptions): CreatedI
     http: Object.freeze(http),
     tokens: Object.freeze(scopedTokens(options.policy, options.tokens)),
     settings: Object.freeze({ ...options.settings }),
+    wait: integrationWait,
   });
   return { host, log };
 }

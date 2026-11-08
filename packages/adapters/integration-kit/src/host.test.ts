@@ -41,7 +41,7 @@ describe("integration-kit.scoped-tokens", () => {
 });
 
 describe("integration-kit.scoped-tokens: the host", () => {
-  it("gives the integration only http, tokens and settings, frozen", () => {
+  it("gives the integration only http, tokens, settings and wait, frozen", () => {
     const { host } = createIntegrationHost({
       policy,
       transport: fakeTransport().transport,
@@ -49,7 +49,7 @@ describe("integration-kit.scoped-tokens: the host", () => {
       tokens: memoryTokens(),
       settings: { city: "Ghent" },
     });
-    expect(Object.keys(host).sort()).toEqual(["http", "settings", "tokens"]);
+    expect(Object.keys(host).sort()).toEqual(["http", "settings", "tokens", "wait"]);
     expect(
       Object.isFrozen(host) && Object.isFrozen(host.http) && Object.isFrozen(host.settings),
     ).toBe(true);
