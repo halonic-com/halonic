@@ -1,6 +1,6 @@
 # @halonicjs/schema-kit
 
-Validation with TypeScript types derived from the schemas and JSON Schema export; replaces Zod. Errors carry the path (plan 7.3).
+Our thin layer over Zod: validation, TypeScript types derived from the schemas and JSON Schema export. Errors carry the path. The only package besides core/format that imports zod (plan 7.2, 7.3).
 
 - **Layer:** core
 - **Owner:** elena
