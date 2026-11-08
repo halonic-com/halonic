@@ -1,5 +1,5 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
-import { id, version } from "../../shared/fields.ts";
+import { collectionId, id, version } from "../../shared/fields.ts";
 import { ModelAlias } from "../models/schema.ts";
 
 /** The shared items a hub takes from its workspace, by kind. */
@@ -8,7 +8,7 @@ export const HubUses = s
     connectors: s.array(id).default([]),
     skills: s.array(id).default([]),
     knowledge: s.array(id).default([]),
-    collections: s.array(id).default([]),
+    collections: s.array(collectionId).default([]),
   })
   .strict();
 

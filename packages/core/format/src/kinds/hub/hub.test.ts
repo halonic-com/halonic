@@ -45,4 +45,19 @@ verifies("format.hub-file", () => {
     const text = yaml("id: billing", "name: Billing", "uses:", "  connectors: [Mailbox]");
     expect(summary(problemsOf("hub", text))).toEqual(["uses.connectors.0 invalid_format 4"]);
   });
+
+  it("refuses Halonic's own collections, whose names start with _", () => {
+    const text = yaml(
+      "id: billing",
+      "name: Billing",
+      "uses:",
+      "  collections: [invoices, _tokens, _google_setups]",
+    );
+    const problems = problemsOf("hub", text);
+    expect(summary(problems)).toEqual([
+      "uses.collections.1 invalid_format 4",
+      "uses.collections.2 invalid_format 4",
+    ]);
+    expect(problems[0]?.message).toBe("use lowercase letters, digits or '-'");
+  });
 });

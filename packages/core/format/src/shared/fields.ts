@@ -16,7 +16,9 @@ export const id = s
  * with a letter or digit. Halonic's own collections (`_tokens`,
  * `_google_setups`) start with `_`, so no workspace file can name them.
  */
-export const collectionId = s.string().regex(/^[a-z0-9][a-z0-9-]*$/);
+export const collectionId = s
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]*$/, "use lowercase letters, digits or '-'");
 
 /** The `version` key: `1`, and `1` when the file leaves it out. */
 export const version = s.literal(SCHEMA_VERSION).default(SCHEMA_VERSION);
