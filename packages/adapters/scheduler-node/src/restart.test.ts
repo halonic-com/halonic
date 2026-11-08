@@ -93,6 +93,23 @@ verifies("scheduler-node.restart", () => {
       ]);
     });
 
+    it("still delivers the timers it read when the store fails the compaction", async () => {
+      const world = newWorld();
+      const before = startScheduler(world);
+      const at = before.inMs(minute);
+      await before.scheduler.schedule("run_1", "wait", at);
+      await before.scheduler.close();
+
+      world.store.failNextCompact = true;
+      const after = startScheduler(world);
+      expect(await after.scheduler.pending("run_1")).toEqual([
+        { key: "run_1", timerId: "wait", at },
+      ]);
+      await after.wait(minute);
+      expect(after.listener.timers).toEqual([{ key: "run_1", timerId: "wait", at }]);
+      expect(after.errors).toEqual([]);
+    });
+
     it("rejects every call, naming the record, when a record isn't a timer", async () => {
       const world = newWorld();
       await world.store.append([

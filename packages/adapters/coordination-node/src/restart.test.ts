@@ -76,6 +76,7 @@ verifies("coordination-node.restart", () => {
       world.clock.advance(1_000);
 
       const after = startCoordination(world).coordination;
+      // Any call waits for the start, so the clean-up has run once it answers.
       expect(await after.read("cursor")).toBeNull();
       const changes = await world.store.changes(defaultCoordinationCollection);
       expect(changes).toMatchObject([
@@ -83,6 +84,25 @@ verifies("coordination-node.restart", () => {
       ]);
       expect(await after.tryAcquire("ran-out", 1_000)).not.toBeNull();
     });
+
+    it.each([
+      ["removing the leases that ran out", "failNextAppend"],
+      ["compacting", "failNextCompact"],
+    ] as const)(
+      "still starts from the state it read when the store fails %s",
+      async (_, failure) => {
+        const world = newWorld();
+        const before = startCoordination(world).coordination;
+        await before.tryAcquire("ran-out", 1_000);
+        await before.increment("budget", 3);
+        world.clock.advance(1_000);
+
+        world.store[failure] = true;
+        const after = startCoordination(world).coordination;
+        expect(await after.increment("budget", 1)).toEqual({ applied: true, value: 4 });
+        expect(await after.tryAcquire("ran-out", 1_000)).not.toBeNull();
+      },
+    );
 
     it("rejects a call and changes nothing when the store fails the write", async () => {
       const { coordination, store } = startCoordination();

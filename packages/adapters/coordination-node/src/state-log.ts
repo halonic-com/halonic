@@ -46,7 +46,9 @@ export class StateLog {
   /**
    * The state the log holds now. Leases that have run out are removed, and
    * the log is compacted, so only the current entries stay in the store.
-   * A log with a record this adapter didn't write is left as it is.
+   * That clean-up is best effort: when the store fails it, the state read is
+   * still returned. A log with a record this adapter didn't write is left as
+   * it is.
    *
    * @throws Error naming the record when a record isn't one this adapter wrote
    */
@@ -61,9 +63,22 @@ export class StateLog {
     for (const [recordId, { values }] of records) {
       addEntry(state, readEntry(recordId, values));
     }
-    await this.#removeLeasesRunOut(state);
-    await this.#store.compact(this.#collection);
+    await this.#cleanUp(state);
     return state;
+  }
+
+  /**
+   * Removes the leases that have run out and compacts the log. A failure is
+   * not passed on: the state is already read, and a lease that has run out
+   * is not held whether or not its record is removed.
+   */
+  async #cleanUp(state: CoordinationState): Promise<void> {
+    try {
+      await this.#removeLeasesRunOut(state);
+      await this.#store.compact(this.#collection);
+    } catch {
+      // The store is left for the next start to clean up.
+    }
   }
 
   /**

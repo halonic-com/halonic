@@ -20,11 +20,13 @@ export class ManualClock implements Clock {
 }
 
 /**
- * The shared in-memory record store, with one addition for tests:
- * `failNextAppend` makes the next write reject.
+ * The shared in-memory record store, with two additions for tests:
+ * `failNextAppend` makes the next write reject, and `failNextCompact` the
+ * next compaction.
  */
 export class FlakyRecordStore extends MemoryRecordStore {
   failNextAppend = false;
+  failNextCompact = false;
 
   override async append(changes: readonly RecordChange[]): Promise<void> {
     if (this.failNextAppend) {
@@ -32,6 +34,14 @@ export class FlakyRecordStore extends MemoryRecordStore {
       throw new Error("the record store is unavailable");
     }
     await super.append(changes);
+  }
+
+  override async compact(collection: string): Promise<void> {
+    if (this.failNextCompact) {
+      this.failNextCompact = false;
+      throw new Error("the record store is unavailable");
+    }
+    await super.compact(collection);
   }
 }
 
