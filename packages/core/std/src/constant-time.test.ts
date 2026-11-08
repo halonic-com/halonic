@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { constantTimeEqual } from "./constant-time.ts";
 
 const bytes = (...values: number[]) => Uint8Array.from(values);
 
-describe("std.constant-time-equal", () => {
+verifies("std.constant-time-equal", () => {
   it("is true for the same bytes", () => {
     expect(constantTimeEqual(bytes(1, 2, 3), bytes(1, 2, 3))).toBe(true);
     expect(constantTimeEqual(bytes(), bytes())).toBe(true);

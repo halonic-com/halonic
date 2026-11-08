@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { err, mapResult, ok, unwrap } from "./result.ts";
 
-describe("std.result", () => {
+verifies("std.result", () => {
   it("maps the value of a successful result", () => {
     expect(mapResult(ok(2), (n) => n * 10)).toEqual(ok(20));
   });

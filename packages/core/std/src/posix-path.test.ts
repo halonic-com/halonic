@@ -1,5 +1,6 @@
 import { posix } from "node:path";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { posixPath } from "./posix-path.ts";
 import { SeededRandom } from "./test/seeded-random.ts";
 
@@ -21,7 +22,7 @@ function generatedPaths(seed: number, count: number): string[] {
   return paths;
 }
 
-describe("std.posix-path-normalize", () => {
+verifies("std.posix-path-normalize", () => {
   it.each([
     ["hubs//support/./agents/../skills/", "hubs/support/skills/"],
     ["", "."],
@@ -42,7 +43,7 @@ describe("std.posix-path-normalize", () => {
   });
 });
 
-describe("std.posix-path-join", () => {
+verifies("std.posix-path-join", () => {
   it("joins segments and cleans the result", () => {
     expect(posixPath.join("hubs", "support/", "agents", "triage.agent.yaml")).toBe(
       "hubs/support/agents/triage.agent.yaml",
@@ -65,7 +66,7 @@ describe("std.posix-path-join", () => {
   });
 });
 
-describe("std.posix-path-parts", () => {
+verifies("std.posix-path-parts", () => {
   it.each([
     ["hubs/support/agents/triage.agent.yaml", "hubs/support/agents", "triage.agent.yaml"],
     ["triage.agent.yaml", ".", "triage.agent.yaml"],

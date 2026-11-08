@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { slugify, uniqueName } from "./text.ts";
 
-describe("std.slugify", () => {
+verifies("std.slugify", () => {
   it.each([
     ["Weekly Report", "weekly-report"],
     ["  Inbox   triage  ", "inbox-triage"],
@@ -26,7 +27,7 @@ describe("std.slugify", () => {
   });
 });
 
-describe("std.unique-name", () => {
+verifies("std.unique-name", () => {
   it("keeps the base when it is free", () => {
     expect(uniqueName("report", ["inbox"])).toBe("report");
   });

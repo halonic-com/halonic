@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { deepEqual } from "./deep-equal.ts";
 
-describe("std.deep-equal", () => {
+verifies("std.deep-equal", () => {
   it("compares primitives by value", () => {
     expect(deepEqual(1, 1)).toBe(true);
     expect(deepEqual("a", "a")).toBe(true);

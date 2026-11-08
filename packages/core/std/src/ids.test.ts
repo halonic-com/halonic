@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { AssertionError } from "./assert.ts";
 import { fixedClock } from "./clock.ts";
 import { fixedIds, randomIds } from "./ids.ts";
 
-describe("std.ids", () => {
+verifies("std.ids", () => {
   it("builds a random id from the prefix, the time in base 36 and the random bytes in hex", () => {
     const ids = randomIds(
       () => new Uint8Array([0xde, 0xad, 0xbe, 0xef]),

@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { AssertionError, assert, assertDefined, assertNever } from "./assert.ts";
 
-describe("std.assertions", () => {
+verifies("std.assertions", () => {
   it("does nothing when the condition holds", () => {
     expect(() => assert(true, "unused")).not.toThrow();
   });

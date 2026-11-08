@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { AssertionError } from "./assert.ts";
 import { fixedClock, systemClock } from "./clock.ts";
 
-describe("std.clock", () => {
+verifies("std.clock", () => {
   it("starts a default fixed clock at 2026-01-01 and moves on by one second", () => {
     const clock = fixedClock();
     expect(clock.now().toISOString()).toBe("2026-01-01T00:00:00.000Z");

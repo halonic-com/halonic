@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { deepClone } from "./deep-clone.ts";
 
-describe("std.deep-clone", () => {
+verifies("std.deep-clone", () => {
   it("copies nested plain data so nothing is shared", () => {
     const original = { name: "run", steps: [{ id: "a", tags: ["x"] }], at: new Date(5) };
     const copy = deepClone(original);

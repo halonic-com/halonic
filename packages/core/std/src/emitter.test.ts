@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { Emitter } from "./emitter.ts";
 
 interface TestEvents extends Record<string, unknown> {
@@ -6,7 +7,7 @@ interface TestEvents extends Record<string, unknown> {
   closed: undefined;
 }
 
-describe("std.emitter", () => {
+verifies("std.emitter", () => {
   it("sends each event to its listeners, in the order they were added", () => {
     const emitter = new Emitter<TestEvents>();
     const calls: string[] = [];

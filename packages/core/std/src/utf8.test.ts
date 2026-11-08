@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { SeededRandom } from "./test/seeded-random.ts";
 import { decodeUtf8, encodeUtf8 } from "./utf8.ts";
 
@@ -9,7 +10,7 @@ const byteOrderMark = String.fromCodePoint(0xfeff);
 const loneHighSurrogate = String.fromCharCode(0xd800);
 const loneLowSurrogate = String.fromCharCode(0xdfff);
 
-describe("std.utf8", () => {
+verifies("std.utf8", () => {
   it("encodes one to four byte characters", () => {
     expect(encodeUtf8("A")).toEqual(bytes(0x41));
     expect(encodeUtf8("é")).toEqual(bytes(0xc3, 0xa9));
