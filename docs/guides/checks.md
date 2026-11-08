@@ -57,6 +57,12 @@ below the minimum:
 | apps (CLI)       | 80% of lines                            |
 | testing, tooling | none set; new packages get 80% of lines |
 
+In a pull request, CI compares every package's floor with the target branch's
+and fails if a value went down or was removed (`pnpm check:coverage-floors <base> <head>`).
+New packages and packages with no floor on the target branch pass. If lowering
+a floor is deliberate, the maintainer adds the `coverage-floor-lowered` label
+to the pull request and the check passes.
+
 To run one test file without the floor: `pnpm exec vitest run <file> --coverage.enabled=false`.
 
 ## Licences

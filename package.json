@@ -21,6 +21,7 @@
     "check:terms": "node tooling/check/src/cli/terms.ts",
     "check:licences": "node tooling/check/src/cli/licences.ts",
     "check:pr-title": "node tooling/check/src/cli/pr-title.ts",
+    "check:coverage-floors": "node tooling/check/src/cli/coverage-floors.ts",
     "discover": "node tooling/discover/src/cli/discover.ts",
     "codegen": "node tooling/discover/src/cli/discover.ts",
     "new": "node tooling/discover/src/cli/new.ts",
