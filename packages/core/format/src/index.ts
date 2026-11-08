@@ -11,6 +11,7 @@ export type { Connector } from "./kinds/connector/schema.ts";
 export type { Deployment, Deployments } from "./kinds/deployments/schema.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
 export { checkIntegrationSheet } from "./kinds/integration/kind.ts";
+export { parseIntegrationSheet, type SheetProblem } from "./kinds/integration/parse-sheet.ts";
 export {
   type IntegrationLimits,
   type IntegrationPolicy,
