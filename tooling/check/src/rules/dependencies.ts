@@ -9,6 +9,7 @@ import type { DependencyField, WorkspacePackage } from "../lib/workspace.ts";
 
 const guide = "See docs/guides/dependencies.md.";
 const categories = new Set(["core-exception", "outside-world", "studio-framework", "dev-tooling"]);
+const cloudRuntimeCategories = new Set(["core-exception", "outside-world"]);
 
 interface ExternalDependency {
   readonly name: string;
@@ -84,6 +85,12 @@ function checkList(context: CheckContext, used: ReadonlySet<string>, report: Rep
       report.error(
         context.dependencyListPath,
         `"${name}" is a core exception, so it names each core package exactly; "*" isn't allowed. Each one needs the user's approval.`,
+      );
+    }
+    if (entry.cloudRuntime === true && !cloudRuntimeCategories.has(entry.category)) {
+      report.error(
+        context.dependencyListPath,
+        `"${name}" is ${entry.category}, so it can't be marked cloudRuntime. Only core exceptions and outside-world libraries may ship in a cloud runtime, with the user's approval.`,
       );
     }
     if (entry.reason.trim() === "") {
