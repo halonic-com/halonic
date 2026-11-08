@@ -177,6 +177,10 @@ verifies("yaml.edit-preserve", () => {
       text: lines("- 5 # first", "- 2"),
       layout: "kept",
     });
+    expect(edited(lines('"a" : # about a', "  b: 1", "c: 2"), set(["a"], 5))).toEqual({
+      text: lines('"a": 5 # about a', "c: 2"),
+      layout: "kept",
+    });
   });
 });
 

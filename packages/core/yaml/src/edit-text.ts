@@ -120,7 +120,7 @@ export function replaceRange(text: string, from: number, to: number, rendered: s
 
 /**
  * Moves a comment on the line where `text[from, to)` starts onto the first line of
- * `rendered`, when only the `:` or `-` and a block text header come before it:
+ * `rendered`, when only blanks, the `:` or `-` and a block text header come before it:
  * `a: # about a` over a block value, or with no value. Comment lines inside the
  * old value go with it.
  *
@@ -134,7 +134,9 @@ export function keepLineComment(
 ): { to: number; rendered: string } {
   const lineBreak = text.indexOf("\n", from);
   const lineEnd = lineBreak === -1 ? text.length : lineBreak;
-  const comment = /^[:-]?(?:[ \t]+[|>][-+1-9]*)?[ \t]+(#.*)$/.exec(text.slice(from, lineEnd))?.[1];
+  const comment = /^[ \t]*[:-]?(?:[ \t]+[|>][-+1-9]*)?[ \t]+(#.*)$/.exec(
+    text.slice(from, lineEnd),
+  )?.[1];
   if (comment === undefined) {
     return { to, rendered };
   }
