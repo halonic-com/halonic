@@ -1,0 +1,284 @@
+# Checks on every pull request (plan 10.2). The only required check is
+# `ci-ok`: it always runs, waits for every other job and fails if any of
+# them failed. Jobs that only run for some changes can then be skipped
+# without blocking the merge.
+
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  changes:
+    name: Changed areas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      tooling: ${{ steps.diff.outputs.tooling }}
+      tauri: ${{ steps.diff.outputs.tauri }}
+      studio: ${{ steps.diff.outputs.studio }}
+      docs: ${{ steps.diff.outputs.docs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - id: diff
+        name: Find changed areas
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          areas=(
+            "tooling=^(tooling/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|turbo\.json$|biome\.json$)"
+            "tauri=^apps/studio/src-tauri/"
+            "studio=^(apps/studio/|packages/studio/)"
+            "docs=^(apps/docs/|docs/)"
+          )
+          if [ "$EVENT" != "pull_request" ]; then
+            changed=""
+          else
+            changed=$(git diff --name-only "$BASE...HEAD")
+          fi
+          for area in "${areas[@]}"; do
+            name="${area%%=*}"
+            if [ "$EVENT" != "pull_request" ] || grep -qE "${area#*=}" <<< "$changed"; then
+              echo "$name=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$name=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+  fast:
+    name: Fast gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Pull request title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: pnpm check:pr-title
+      - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths)
+        run: pnpm check
+      - name: Formatting
+        run: pnpm exec biome ci --linter-enabled=false .
+      - name: Feature list and generated files
+        run: pnpm discover --check
+      # High and critical advisories in shipped dependencies fail; dev
+      # tooling findings are reported by the daily scheduled run (plan 10.2).
+      - name: Dependency audit (shipped code)
+        run: pnpm audit --prod --audit-level high
+
+  terms:
+    # Runs no third-party code: only the repo's own script on Node, so the
+    # secret is never near a dependency. Prints locations, never a term.
+    # Until the HALONIC_DENY_TERMS secret exists it passes with a warning.
+    name: Personal-terms guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - name: Scan the change
+        env:
+          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          BRANCH_NAME: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if [ "$EVENT" = "push" ]; then
+            node tooling/check/src/cli/terms.ts
+          else
+            node tooling/check/src/cli/terms.ts --range "$BASE..$HEAD"
+          fi
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install gitleaks (checksum verified)
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan commits
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+        run: |
+          if [ "$EVENT" = "push" ]; then
+            "$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 .
+          else
+            "$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 --log-opts="$BASE..$HEAD" .
+          fi
+
+  zizmor:
+    name: Workflow lint (zizmor)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      ZIZMOR_VERSION: 1.32.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run zizmor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pipx run "zizmor==${ZIZMOR_VERSION}" --format=github --min-severity=low .github/
+
+  build:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      TURBO_CACHE_DIR: ${{ github.workspace }}/../turbo-cache
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      # Every task runs; unchanged packages are cache hits (plan 6.4). The
+      # cache is GitHub's own, scoped per branch, so a pull request can read
+      # main's cache but never write to it.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TURBO_CACHE_DIR }}
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+      - name: Run every task through the cache
+        run: pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize
+      - name: Task timings
+        if: always()
+        run: |
+          summary=$(ls -t .turbo/runs/*.json 2>/dev/null | head -1)
+          [ -n "$summary" ] || exit 0
+          jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+  scaffold:
+    # Proves the templates still pass every check, so `pnpm new` never
+    # hands an agent a package that fails (phase 0 "done when").
+    name: Empty package and feature pass every check
+    needs: changes
+    if: needs.changes.outputs.tooling == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Create an empty package and an empty feature
+        run: |
+          git config user.name "CI"
+          git config user.email "ci@users.noreply.github.com"
+          pnpm new package core/ci-example --owner ci
+          pnpm new feature ci-example --owner ci
+          pnpm install --no-frozen-lockfile
+      - name: pnpm verify --full
+        run: pnpm verify --full
+
+  # Conditional jobs (plan 10.2). Stubs until the code they check exists;
+  # each runs only when its area changes, and ci-ok accepts "skipped".
+  tauri:
+    name: Tauri shell (Rust checks, Windows smoke build)
+    needs: changes
+    if: needs.changes.outputs.tauri == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - run: echo "::notice title=tauri::Not set up yet; arrives with the desktop shell in phase 3."
+
+  e2e:
+    name: Studio end-to-end (Playwright)
+    needs: changes
+    if: needs.changes.outputs.studio == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - run: echo "::notice title=e2e::Not set up yet; arrives with the Studio shell."
+
+  docs:
+    name: Docs build and link check
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - run: echo "::notice title=docs::Not set up yet; arrives with apps/docs."
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [changes, fast, terms, gitleaks, zizmor, build, scaffold, tauri, e2e, docs]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Every job passed or was skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          failed=$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped")] | length')
+          if [ "$failed" != "0" ]; then
+            echo "::error::$failed required job(s) failed or were cancelled."
+            exit 1
+          fi
