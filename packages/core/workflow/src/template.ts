@@ -5,15 +5,23 @@
  * The result is `undefined` as soon as a part is missing, or when the value
  * before it is not an object (a string, a number, `null` or `undefined`).
  *
+ * Only own properties count. Inherited names such as `constructor`,
+ * `__proto__` or `toString` would otherwise give a function or a prototype,
+ * which a template then writes as `undefined` or `{}`.
+ *
  * @example
  * getPath({ context: { user: { name: "Ada" } } }, "context.user.name"); // "Ada"
  * getPath({ tags: ["urgent"] }, "tags.0"); // "urgent"
  * getPath({ context: {} }, "context.user.name"); // undefined
+ * getPath({}, "constructor"); // undefined
  */
 export function getPath(scope: unknown, path: string): unknown {
   let current: unknown = scope;
   for (const part of path.split(".")) {
     if (current === null || typeof current !== "object") {
+      return undefined;
+    }
+    if (!Object.hasOwn(current, part)) {
       return undefined;
     }
     current = (current as Record<string, unknown>)[part];

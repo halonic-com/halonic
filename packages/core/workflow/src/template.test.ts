@@ -31,12 +31,18 @@ verifies("workflow.get-path", () => {
     expect(getPath({ input: {} }, "")).toBeUndefined();
   });
 
-  // Old behaviour, kept as it is in this port: plain property access also
-  // reads inherited properties. HAL-638 changes this to own properties only.
-  it("reads inherited properties, as the old code did", () => {
-    expect(getPath({}, "constructor")).toBe(Object);
-    expect(getPath({}, "__proto__")).toBe(Object.prototype);
-    expect(getPath({ input: {} }, "input.toString")).toBe(Object.prototype.toString);
+  // The old code also read inherited properties; see
+  // decisions/tomas/HAL-638-get-path-own-properties.md.
+  it("does not read inherited properties", () => {
+    expect(getPath({}, "constructor")).toBeUndefined();
+    expect(getPath({}, "__proto__")).toBeUndefined();
+    expect(getPath({ input: {} }, "input.toString")).toBeUndefined();
+    expect(getPath({ tags: ["a"] }, "tags.map")).toBeUndefined();
+  });
+
+  it("reads an own property named __proto__", () => {
+    const scope: unknown = JSON.parse('{ "__proto__": { "n": 1 } }');
+    expect(getPath(scope, "__proto__.n")).toBe(1);
   });
 });
 
@@ -78,6 +84,12 @@ verifies("workflow.render-template", () => {
     expect(render("{input.n}", scope)).toBe("{input.n}");
   });
 
+  it("gives nothing for an inherited property name", () => {
+    const scope = { input: {} };
+    expect(render("{{input.constructor}}", scope)).toBeUndefined();
+    expect(render("x {{input.constructor}} {{__proto__}}", scope)).toBe("x  ");
+  });
+
   it("returns values that are not strings unchanged", () => {
     const object = { a: "{{input.n}}" };
     expect(render(42, {})).toBe(42);
@@ -95,6 +107,11 @@ verifies("workflow.render-text", () => {
   it("gives empty text for a missing or null value", () => {
     expect(renderText("{{input.missing}}", { input: {} })).toBe("");
     expect(renderText("{{input.nothing}}", { input: { nothing: null } })).toBe("");
+  });
+
+  it("gives empty text for an inherited property name", () => {
+    expect(renderText("{{constructor}}", {})).toBe("");
+    expect(renderText("{{__proto__}}", {})).toBe("");
   });
 
   it("renders placeholders inside a text", () => {
