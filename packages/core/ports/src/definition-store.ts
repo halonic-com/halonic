@@ -6,6 +6,11 @@ export const definitionStoreVersion = 1;
  * they live: a folder, git, memory or a deployed snapshot. Paths are
  * relative and "/" separated.
  *
+ * **Every method refuses an unsafe path** with a `RangeError` before it
+ * touches storage: one that is absolute, has a `..` or empty segment, or
+ * contains a backslash or NUL. The port says so, not each adapter, because
+ * in the old repo only the Node adapter checked.
+ *
  * A cloud deployment hands out only this read side, so a stolen session can't
  * change what runs (multi-cloud ADR 5.5).
  */

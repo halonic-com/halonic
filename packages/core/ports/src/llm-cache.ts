@@ -10,5 +10,6 @@ export const llmCacheVersion = 1;
 export interface LlmCache {
   /** The cached answer, or `null` when there is none. */
   get(key: string): Promise<ChatResponse | null>;
+  /** Stores an answer, replacing any answer already stored under the key. */
   set(key: string, response: ChatResponse): Promise<void>;
 }

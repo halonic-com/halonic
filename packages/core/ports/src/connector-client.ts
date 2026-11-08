@@ -7,7 +7,9 @@ export const connectorClientVersion = 1;
 
 /** A tool a connector offers. */
 export interface ConnectorTool {
+  /** The tool's name, unique within its connector. */
   name: string;
+  /** What the tool does, written for the model. */
   description: string;
   /** JSON Schema of the arguments object. */
   parameters: Record<string, unknown>;
@@ -15,7 +17,13 @@ export interface ConnectorTool {
 
 /** A connection to one connector: an MCP server over HTTP or a local process, or a built-in one. */
 export interface ConnectorClient {
+  /** The connector's id in the workspace. */
   readonly id: string;
+  /**
+   * The tools the connector offers now. Connects on the first call.
+   *
+   * @throws when the connector can't be reached or started
+   */
   listTools(): Promise<ConnectorTool[]>;
   /** Calls a tool and returns its text result. Throws on transport errors and tool errors. */
   callTool(name: string, args: Record<string, unknown>): Promise<string>;

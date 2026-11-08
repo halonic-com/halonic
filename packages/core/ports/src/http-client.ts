@@ -7,6 +7,11 @@ export const httpClientVersion = 1;
  * Web `fetch`, so most adapters wrap it directly. Some refuse addresses:
  * the container target refuses loopback, link-local and private addresses
  * unless a connector is explicitly allowed (multi-cloud ADR 5.5).
+ *
+ * An adapter that refuses addresses checks every redirect hop, and the
+ * address a host name resolves to when it connects, not only the first URL.
+ * Otherwise a redirect or a DNS answer that changes between check and
+ * connect (DNS rebinding) gets around it.
  */
 export interface HttpClient {
   /**

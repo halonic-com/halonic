@@ -63,10 +63,18 @@ export {
   type StartAgentRequest,
   type StartRunRequest,
 } from "./run-executor.ts";
-export { type AppendResult, type RunFilter, type RunStore, runStoreVersion } from "./run-store.ts";
+export {
+  type AppendOptions,
+  type AppendResult,
+  type RunFilter,
+  type RunSnapshot,
+  type RunStore,
+  runStoreVersion,
+} from "./run-store.ts";
 export {
   type ScheduledTimer,
   type Scheduler,
+  type SchedulerFactory,
   type SchedulerListener,
   schedulerVersion,
 } from "./scheduler.ts";

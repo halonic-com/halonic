@@ -3,5 +3,6 @@ export const clockVersion = 1;
 
 /** The current time. Passed in, so tests and replays can fix it. */
 export interface Clock {
+  /** The current time. Each call returns a new `Date`, so callers may change it. */
   now(): Date;
 }

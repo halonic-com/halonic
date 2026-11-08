@@ -16,6 +16,11 @@ export interface BlobRef {
 export interface BlobStore {
   /** Stores the bytes and returns their reference. */
   put(data: Uint8Array, mediaType: string): Promise<BlobRef>;
-  /** The bytes stored under a hash, or `null` when there are none. */
+  /**
+   * The bytes stored under a hash, or `null` when there are none. A hash that
+   * isn't 64 lowercase hex characters returns `null` without touching
+   * storage, so it can never reach a file path or key (the old Node adapter
+   * read `get("../…")` outside its folder).
+   */
   get(hash: string): Promise<Uint8Array | null>;
 }

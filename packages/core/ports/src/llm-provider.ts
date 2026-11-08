@@ -7,9 +7,13 @@ export const llmProviderVersion = 1;
 
 /** What a provider's models can do. */
 export interface LlmCapabilities {
+  /** Whether its models can call tools. */
   tools: boolean;
+  /** Whether it can be asked for a JSON answer. */
   jsonOutput: boolean;
+  /** Whether its models accept images. */
   vision: boolean;
+  /** Whether it can stream an answer as it is written. */
   streaming: boolean;
 }
 
@@ -19,6 +23,7 @@ export interface LlmProvider {
   readonly id: string;
   /** The adapter type, such as "openai". */
   readonly type: string;
+  /** What its models can do. */
   readonly capabilities: LlmCapabilities;
   /**
    * Makes one model call.
@@ -30,12 +35,17 @@ export interface LlmProvider {
 
 /** A provider as the workspace's YAML configures it. */
 export interface ProviderConfig {
+  /** The provider's id in the workspace. */
   id: string;
+  /** The adapter type, such as "openai"; picks the factory. */
   type: string;
+  /** The provider's address, when it isn't the adapter's default. */
   baseUrl?: string;
-  /** Name of the secret that holds the API key. */
+  /** The **name** of the secret that holds the API key, never the key itself. */
   secret?: string;
+  /** Whether the models run on this machine (such as Ollama), so they have no price. */
   local: boolean;
+  /** Settings only this adapter type understands. */
   options: Record<string, unknown>;
 }
 
