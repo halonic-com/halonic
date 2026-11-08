@@ -8,7 +8,7 @@ The host shall treat every tool that a server lists, and that nothing Halonic re
 
 For a listed tool, the host shall:
 
-- **Cap its size.** The host refuses a listed tool whose `parameters`, as the source sent them, are more than 64 KiB as JSON, or whose description, or any `description` or `title` in `parameters`, is more than 10,000 characters. An `http` or `stdio` connector goes through no integration, so these caps are the only ones it meets.
+- **Cap its size.** The host refuses a listed tool whose `parameters`, as the source sent them, are more than 64 KiB as JSON or nest objects and arrays more than 64 levels deep, or whose description, or any `description` or `title` in `parameters`, is more than 10,000 characters. An `http` or `stdio` connector goes through no integration, so these caps are the only ones it meets.
 
 - **Rebuild its parameters from an allow-list.** The host builds a new `parameters` object from the listed one and keeps only these keywords, at every depth:
   - structure: `type` (one of the seven JSON types, or an array of them), `properties`, `required`, `items`, `prefixItems`, `additionalProperties` (a boolean or a schema), `anyOf`, `oneOf`, `allOf`, `$defs` at the root, and a `$ref` of the form `#/$defs/<name>` whose `<name>` is a kept entry under `$defs`;
@@ -66,6 +66,9 @@ A tool that `IntegrationConnection.listTools` returns under a declared name is n
   when the host reads the listing,
   then it refuses the tool, returns a refusal and still offers the other tools.
 - Given a listed tool whose description is 10,001 characters, or whose `parameters` are 65 KiB as JSON,
+  when the host reads the listing,
+  then it refuses the tool and returns a refusal.
+- Given a listed tool whose `parameters` hold 65 arrays, each inside the one before,
   when the host reads the listing,
   then it refuses the tool and returns a refusal.
 - Given a listed tool with `"$ref": "#/$defs/address"` and no `address` under `$defs`,
