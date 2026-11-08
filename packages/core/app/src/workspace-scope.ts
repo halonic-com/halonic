@@ -1,6 +1,7 @@
-import { CommandBus, type CommandMap } from "./command-bus.ts";
+import { CommandBus, type CommandMap, type CommandSpec } from "./command-bus.ts";
 import { EventBus, type EventMap, type ListenerErrorHandler } from "./event-bus.ts";
 import { ServiceRegistry } from "./service-registry.ts";
+import type { PendingChanges } from "./workspace-files.ts";
 
 /**
  * The commands of an open workspace. Each feature adds its own with
@@ -13,13 +14,23 @@ import { ServiceRegistry } from "./service-registry.ts";
  *   }
  * }
  */
-// biome-ignore lint/suspicious/noEmptyInterface: features extend it with declaration merging.
-export interface AppCommands {}
+export interface AppCommands {
+  /** Writes every unsaved change; answers how many files were written or deleted. */
+  "workspace.save": CommandSpec<void, number>;
+  /** Steps back through the workspace-wide undo; `false` when there was nothing to undo. */
+  "workspace.undo": CommandSpec<void, boolean>;
+  /** Steps forward again; `false` when there was nothing to redo. */
+  "workspace.redo": CommandSpec<void, boolean>;
+}
 
 /** The events of an open workspace. Features add their own as for {@link AppCommands}. */
 export interface AppEvents {
   /** The workspace is closing: its services are disposed next. Sent once. */
   "workspace.closing": { location: string };
+  /** The unsaved changes changed: an edit, undo, redo, save or discard. */
+  "files.changed": { pending: PendingChanges; label: string };
+  /** Files were written to or deleted from the store. */
+  "files.saved": { paths: string[] };
 }
 
 /** What a {@link WorkspaceScope} needs. */
