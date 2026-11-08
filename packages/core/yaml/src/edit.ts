@@ -1,5 +1,5 @@
 import { deepEqual, err, ok, type Result } from "@halonicjs/std";
-import { isScalar, isSeq, parseDocument } from "yaml";
+import { isCollection, isNode, isPair, isScalar, isSeq, type Node, parseDocument } from "yaml";
 import { applyEditToData, checkValue, type YamlEdit } from "./edit-data.ts";
 import type { YamlProblem } from "./problem.ts";
 import { defaultYamlLimits, readYaml, type YamlLimits, type YamlPath } from "./read.ts";
@@ -142,12 +142,11 @@ function renderWithDocument(text: string, edit: YamlEdit, expected: unknown): st
     const from = firstEmpty(document, path);
     const value = document.createNode(valueAt(expected, path.slice(0, from)));
     if (from === 0) {
-      // The library hangs the comments at the top of the file on the old contents; carry them over.
-      const old = document.contents;
-      if (old?.commentBefore) {
-        value.commentBefore = old.commentBefore;
+      const top = topCommentNode(document.contents);
+      if (top?.commentBefore) {
+        value.commentBefore = top.commentBefore;
       }
-      if (old?.spaceBefore) {
+      if (top?.spaceBefore) {
         value.spaceBefore = true;
       }
       document.contents = value as typeof document.contents;
@@ -165,6 +164,20 @@ function render(text: string, document: ReturnType<typeof parseDocument>): strin
 }
 
 const byteOrderMark = "\uFEFF";
+
+/**
+ * The node that holds the comment at the top of the file, which a whole-document `set`
+ * must carry over. With a blank line after it, the comment is on the document and stays
+ * by itself. Without one, the library hangs it on the first key or item, or on the contents.
+ */
+function topCommentNode(contents: Node | null): Node | undefined {
+  if (contents?.commentBefore || !isCollection(contents)) {
+    return contents ?? undefined;
+  }
+  const first: unknown = contents.items[0];
+  const node = isPair(first) ? first.key : first;
+  return isNode(node) ? node : undefined;
+}
 
 function firstEmpty(document: ReturnType<typeof parseDocument>, path: YamlPath): number {
   for (let length = 0; length < path.length; length++) {

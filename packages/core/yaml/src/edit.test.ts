@@ -97,6 +97,11 @@ describe("yaml.edit layout", () => {
   it("keeps the comment at the top of the file when it sets the whole document", () => {
     const result = edited(lines("# top", "", "a: 1 # c", "b: 2"), set([], { a: 1, c: 3 }));
     expect(result).toEqual({ text: lines("# top", "", "a: 1", "c: 3"), layout: "reformatted" });
+    // Without a blank line the library hangs the comment on the first key or item.
+    expect(edited(lines("# top", "a: 1 # c", "b: 2"), set([], { a: 1, c: 3 })).text).toBe(
+      lines("# top", "a: 1", "c: 3"),
+    );
+    expect(edited(lines("# top", "- x", "- y"), set([], ["z"])).text).toBe(lines("# top", "- z"));
   });
 
   it("keeps a byte order mark", () => {
