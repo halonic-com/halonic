@@ -78,12 +78,14 @@ describe("yaml.round-trip", () => {
   });
 
   it("reads the same data after a byte order mark, for files whose top level is a map", () => {
-    const topLevelMap = fc.dictionary(fc.string(), plainData);
+    // The byte order mark is skipped once, before the text is parsed, so a hundred small maps
+    // cover it. Three hundred maps of unbounded size took 11.6 s on a busy CI runner.
+    const topLevelMap = fc.dictionary(fc.string(), plainData, { maxKeys: 8 });
     fc.assert(
       fc.property(topLevelMap, (data) => {
         expect(unwrap(readYaml(`${byteOrderMark}${writeYamlFile(data)}`)).data).toEqual(data);
       }),
-      { numRuns: 300 },
+      { numRuns: 100 },
     );
-  });
+  }, 20_000);
 });
