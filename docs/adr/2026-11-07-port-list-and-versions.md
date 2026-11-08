@@ -28,19 +28,22 @@ list and the table disagree.
 preset. Times that adapters store are ISO text, and durations are
 milliseconds as numbers, so every runtime can keep them as they are.
 
-| Port                                                                      | From the old repo                                                                                                                                                                            |
-| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DefinitionStore`                                                         | same methods. New read-only side, `DefinitionSource`, which is all a cloud deployment hands out (multi-cloud ADR 5.5)                                                                        |
-| `RunStore`                                                                | `append(event)` becomes `append(runId, expectedSeq, events)` and returns a conflict instead of letting two writers both win. `events` takes `afterSeq`, for streaming from a sequence number |
-| `RecordStore`, `BlobStore`, `Vcs`, `Clock`, `IdGenerator`, `LlmCache`     | unchanged                                                                                                                                                                                    |
-| `Secrets`                                                                 | read-only: the optional `set` is gone                                                                                                                                                        |
-| `TokenStore`                                                              | new: what the server writes itself (refresh tokens), split out of `Secrets`                                                                                                                  |
-| `LlmProvider`, `KnowledgeProvider`, `ConnectorClient` and their factories | unchanged, except that factories get an `HttpClient` instead of `fetch`. Knowledge factories get the read-only `DefinitionSource`. Connector factories also get the `TokenStore`             |
-| `HttpClient`                                                              | new, replaces `FetchLike`. Same signature as the Web `fetch`                                                                                                                                 |
-| `RunExecutor`                                                             | new, replaces `Runtime` and `RunHost` (plan 4.2): `start`, `startAgent`, `send`, `subscribe` (events after a sequence number) and `chatTurn`                                                 |
-| `Scheduler`                                                               | new: `schedule`, `cancel` and `pending` timers per key. The adapter calls a `SchedulerListener` with due timers and the routine tick. Timers may arrive late or twice                        |
-| `Coordination`                                                            | new: leases (`tryAcquire`, `renew`, `release`), `read` and `compareAndSet` values, `increment` with a limit, and `countInWindow` for login limits                                            |
-| `PasswordHasher`                                                          | new: `hash`, `verify`, `needsRehash`                                                                                                                                                         |
+| Port                                                                      | From the old repo                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DefinitionStore`                                                         | same methods. New read-only side, `DefinitionSource`, which is all a cloud deployment hands out (multi-cloud ADR 5.5). Every method refuses absolute paths, `..`, backslashes and NUL; the old repo checked only in the Node adapter                                                                                                                                                                                                |
+| `RunStore`                                                                | `append(event)` becomes `append(runId, expectedSeq, events, { snapshot })`: it returns a conflict instead of letting two writers both win, and stores the engine's state snapshot in the same write (multi-cloud ADR 5.4 rule 3). New `snapshot(runId)`. `events` takes `afterSeq`. `list` filters by status, so the watchdog finds stuck runs, and may lag the log                                                                 |
+| `RecordStore`, `Clock`, `LlmCache`                                        | unchanged                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `BlobStore`                                                               | unchanged, except that `get` returns `null` for anything but a 64-character lowercase hex hash, without touching storage                                                                                                                                                                                                                                                                                                            |
+| `Vcs`                                                                     | unchanged; the docs now say what the old git adapter did (`log` newest first, `pull` fast-forward only)                                                                                                                                                                                                                                                                                                                             |
+| `IdGenerator`                                                             | unchanged; ids are unique but not secret                                                                                                                                                                                                                                                                                                                                                                                            |
+| `Secrets`                                                                 | read-only: the optional `set` is gone. Names match `^[A-Za-z][A-Za-z0-9_-]*$`, at most 128 characters; stores that can't hold `-` map it to `_`, as the old environment adapter did                                                                                                                                                                                                                                                 |
+| `TokenStore`                                                              | new: what the server writes itself (refresh tokens), split out of `Secrets`. Same name rule                                                                                                                                                                                                                                                                                                                                         |
+| `LlmProvider`, `KnowledgeProvider`, `ConnectorClient` and their factories | unchanged, except that factories get an `HttpClient` instead of `fetch`. Knowledge factories get the read-only `DefinitionSource`. Connector factories also get the `TokenStore`                                                                                                                                                                                                                                                    |
+| `HttpClient`                                                              | new, replaces `FetchLike`. Same signature as the Web `fetch`. An adapter that refuses addresses checks every redirect hop and the resolved address                                                                                                                                                                                                                                                                                  |
+| `RunExecutor`                                                             | new, replaces `Runtime` and `RunHost` (plan 4.2): `start`, `startAgent`, `send`, `subscribe` and `chatTurn`. A start may carry its own `runId`, and repeating it returns the existing run, so routine fires, mails and signals start one run each. `subscribe` takes `onEvent` and `onClose(error?)`, so a client can tell a dropped stream from a quiet run. Subflows are internal to the executor, so the request has no `parent` |
+| `Scheduler`                                                               | new: `schedule`, `cancel` and `pending` timers per key, and a `SchedulerFactory` that takes the `SchedulerListener`. Timers may arrive late or twice; `at` is the time the timer was set for. A timer set again during `onTimer` stays. A rejecting `onTimer` is retried with backoff from 1 second up to 15 minutes, never dropped                                                                                                 |
+| `Coordination`                                                            | new: leases (`tryAcquire`, `renew` keeping the token, `release`), `read` and `compareAndSet` values (`null` deletes), `increment` with a limit, and `countInWindow` for login limits. Keys up to 256 bytes; amounts are positive whole numbers, money in micro-units; bad input throws `RangeError`                                                                                                                                 |
+| `PasswordHasher`                                                          | new: `hash`, `verify`, `needsRehash`. Fixed format `$scrypt$ln=14,r=8,p=5$<salt>$<key>` over the NFC password, with a known-answer vector; `verify` throws on a malformed hash. The old server compared SHA-256 of a plain-text password                                                                                                                                                                                            |
 
 **Left out of the ports on purpose:**
 
@@ -51,16 +54,33 @@ milliseconds as numbers, so every runtime can keep them as they are.
 - `RunHost.connectorTools` and `callConnectorTool` (connector tools for the
   chat panel, outside a run) wait for the `ConnectorReadService` and the
   outside-run gate of proposal 3. They come back as a new port then.
-- The three optional run log fields of proposal 1 (`tool.result.outcome`,
-  `run.failed.reason`, `approval.resolved.by`) are phase 2 and not in
-  `@halonicjs/events` yet.
+- Run log additions are phase 2 and not in `@halonicjs/events` yet. All of
+  them are additive. They are:
+  - the three optional fields of proposal 1 (`tool.result.outcome`,
+    `run.failed.reason`, `approval.resolved.by`)
+  - the definitions embedded in `run.started`, so a run keeps the
+    definitions it started with (multi-cloud ADR 5.4)
+  - the "effect requested" record that marks an outcome as unknown after a
+    crash (5.4 rule 2)
+  - the blob hash reference for payloads over 256 KB (5.3)
+- A live-progress channel (tokens, "typing") and cancelling a run. The old
+  Studio has neither, so there is no parity gap; both can come later as
+  optional methods.
 
 ## The freeze
 
-From phase 3 the ports are frozen. A change may add an optional field, an
-optional method or a new port, and keeps the version. Anything else is
-breaking: it bumps the port's version, comes with a new ADR, and updates the
-contract suite and every adapter in the same change.
+From phase 3 the ports are frozen. These changes keep the version:
+
+- an optional field in what a port returns, which callers may ignore
+- an optional method, which callers check for before they use it
+- a new port
+
+Anything else is breaking: it bumps the port's version, comes with a new
+ADR, and updates the contract suite and every adapter in the same change.
+That includes a new optional **input** that the adapter must honor, such as
+a filter, an idempotency id or a snapshot: an old adapter would silently
+ignore it and give wrong results. This is why `runId` on starts, the status
+filter and the snapshot are in version 1.
 
 ## Consequences
 
