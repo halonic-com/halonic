@@ -1,5 +1,6 @@
 import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
+import { type FrameContributions, FrameStores } from "./points/frame-points.ts";
 import { type LayoutContributions, LayoutStores } from "./points/layout-points.ts";
 import { lookupFor, ServiceCatalog, type ServiceTarget } from "./service-catalog.ts";
 import type { ServiceKey } from "./service-key.ts";
@@ -37,7 +38,7 @@ export interface Shell {
     contextFor(featureId: string, target: ServiceTarget): WorkspaceContext;
   };
   /** Everything the features contributed, for the shell's layout. */
-  readonly contributions: LayoutContributions;
+  readonly contributions: LayoutContributions & FrameContributions;
 }
 
 /**
@@ -54,8 +55,9 @@ export function createShell(options: ShellOptions): Shell {
   const features = orderFeatures(options.features, hostServices);
   const catalog = new ServiceCatalog();
   const layout = new LayoutStores();
+  const frame = new FrameStores();
   for (const feature of features) {
-    registerFeature(feature, catalog, layout);
+    registerFeature(feature, catalog, layout, frame);
   }
   layout.check();
   return {
@@ -66,11 +68,16 @@ export function createShell(options: ShellOptions): Shell {
         services: lookupFor(findFeature(features, featureId), target),
       }),
     },
-    contributions: layout.contributions(),
+    contributions: { ...layout.contributions(), ...frame.contributions() },
   };
 }
 
-function registerFeature(feature: Feature, catalog: ServiceCatalog, layout: LayoutStores): void {
+function registerFeature(
+  feature: Feature,
+  catalog: ServiceCatalog,
+  layout: LayoutStores,
+  frame: FrameStores,
+): void {
   let open = true;
   const isOpen = (): boolean => open;
   const guard = (pointName: string): void => {
@@ -82,6 +89,7 @@ function registerFeature(feature: Feature, catalog: ServiceCatalog, layout: Layo
   };
   const studio: Studio = {
     ...layout.pointsFor(feature.id, guard),
+    ...frame.pointsFor(feature.id, guard),
     services: catalog.pointFor(feature, isOpen),
   };
   try {

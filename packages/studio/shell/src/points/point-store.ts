@@ -113,6 +113,32 @@ export class PointStore<Contribution> {
   }
 }
 
+/** Adds one kind of contribution. */
+export interface Point<Contribution> {
+  add(contribution: Contribution): void;
+}
+
+/** Throws when the feature's `register` already returned. */
+export type PointGuard = (pointName: string) => void;
+
+/** A contribution as the shell hands it out: frozen, with the feature that added it. */
+export type Registered<Contribution> = Contribution & Contributed;
+
+/** The point a feature adds to: checks the guard, then adds under the feature's id. */
+export function pointOn<Contribution>(
+  name: string,
+  store: PointStore<Contribution>,
+  featureId: string,
+  guard: PointGuard,
+): Point<Contribution> {
+  return {
+    add: (contribution) => {
+      guard(name);
+      store.add(featureId, contribution);
+    },
+  };
+}
+
 /** Sorts by `order`, then by `id`, so the result doesn't depend on load order. */
 export function byOrder<Item extends Ordered>(items: readonly Item[]): Item[] {
   return [...items].sort((left, right) => {

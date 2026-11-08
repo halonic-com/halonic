@@ -1,6 +1,14 @@
 // The public API of @halonicjs/studio-shell. Everything else in src/ is internal.
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export type {
+  BarItemContribution,
+  CardContribution,
+  PanelWindowContribution,
+  PhoneBarContribution,
+  SettingsSectionContribution,
+} from "./points/frame.ts";
+export type { FrameContributions, FramePoints } from "./points/frame-points.ts";
+export type {
   ItemAction,
   ItemKindContribution,
   ItemRef,
@@ -13,13 +21,13 @@ export type {
   ExplorerSectionContribution,
   ItemPageSectionContribution,
 } from "./points/layout.ts";
+export type { LayoutContributions, LayoutPoints } from "./points/layout-points.ts";
 export type {
-  LayoutContributions,
-  LayoutPoints,
+  Contributed,
+  Ordered,
   Point,
   Registered,
-} from "./points/layout-points.ts";
-export type { Contributed, Ordered } from "./points/point-store.ts";
+} from "./points/point-store.ts";
 export type {
   FeatureServices,
   ServiceFactory,

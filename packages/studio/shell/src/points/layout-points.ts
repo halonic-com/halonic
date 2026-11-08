@@ -5,12 +5,15 @@ import type {
   ExplorerSectionContribution,
   ItemPageSectionContribution,
 } from "./layout.ts";
-import { byOrder, type Contributed, PointStore } from "./point-store.ts";
-
-/** Adds one kind of contribution. */
-export interface Point<Contribution> {
-  add(contribution: Contribution): void;
-}
+import {
+  byOrder,
+  type Contributed,
+  type Point,
+  type PointGuard,
+  PointStore,
+  pointOn,
+  type Registered,
+} from "./point-store.ts";
 
 /** The layout points a feature adds to in `register`. Each throws a `ShellError` on a duplicate id. */
 export interface LayoutPoints {
@@ -21,9 +24,6 @@ export interface LayoutPoints {
   };
   readonly itemPage: { addSection(section: ItemPageSectionContribution): void };
 }
-
-/** A contribution as the shell hands it out: frozen, with the feature that added it. */
-export type Registered<Contribution> = Contribution & Contributed;
 
 /**
  * What the shell's layout reads. Explorer groups, explorer sections and item
@@ -45,9 +45,6 @@ export interface LayoutContributions {
   };
 }
 
-/** Throws when the feature's `register` already returned. */
-export type PointGuard = (pointName: string) => void;
-
 /** Holds every layout contribution while features register, then serves them. */
 export class LayoutStores {
   private readonly itemKinds = new PointStore<ItemKindContribution>("itemKinds.add", ["kind"]);
@@ -65,15 +62,8 @@ export class LayoutStores {
 
   /** The layout points for one feature. */
   pointsFor(featureId: string, guard: PointGuard): LayoutPoints {
-    const pointOf = <Contribution>(
-      name: string,
-      store: PointStore<Contribution>,
-    ): Point<Contribution> => ({
-      add: (contribution) => {
-        guard(name);
-        store.add(featureId, contribution);
-      },
-    });
+    const pointOf = <Contribution>(name: string, store: PointStore<Contribution>) =>
+      pointOn(name, store, featureId, guard);
     return {
       itemKinds: pointOf("itemKinds.add", this.itemKinds),
       explorer: {
