@@ -1,0 +1,31 @@
+import { describe, expect, it } from "vitest";
+import { gitInternalPaths, invalidBranchNames, optionLikePaths } from "./vcs-harness.ts";
+
+describe("Vcs safety lists (contracts.vcs-safety)", () => {
+  // The suite is only as strong as these lists: each kind of input from the port doc is in them.
+  it.each([
+    ["a .git segment in another case", (path: string) => path.split("/").includes(".GIT")],
+    ["a .git segment below the root", (path: string) => /^[^/]+\/\.git\//.test(path)],
+    ["a .git segment with a trailing dot", (path: string) => path.startsWith(".git./")],
+    ["a .git segment with a trailing space", (path: string) => path.startsWith(".git /")],
+    ["the short name git~1", (path: string) => path.toLowerCase().startsWith("git~1/")],
+  ])("has a git-internal path with %s", (_kind, matches) => {
+    expect(gitInternalPaths.some(matches)).toBe(true);
+  });
+
+  it.each([
+    ["an option prefix git expands", "--upload-pac=touch pwned"],
+    ["a short option with its value attached", "-ccore.sshCommand=touch pwned"],
+    ["the name HEAD", "HEAD"],
+    ["a .lock part", "a.lock"],
+    ["a control character", "a\u007fb"],
+  ])("has a branch name with %s", (_kind, name) => {
+    expect(invalidBranchNames).toContain(name);
+  });
+
+  it("has option-like paths for git add, git diff and git clean", () => {
+    expect(optionLikePaths).toEqual(
+      expect.arrayContaining(["--all", "--output=written.txt", "-f"]),
+    );
+  });
+});

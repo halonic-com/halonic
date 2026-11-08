@@ -43,3 +43,14 @@ export {
   secretsContract,
   tokenStoreContract,
 } from "./secrets.ts";
+export { vcsContract } from "./vcs.ts";
+export {
+  gitInternalPaths,
+  invalidBranchNames,
+  type MakeVcs,
+  optionLikeMessages,
+  optionLikePaths,
+  unsafeVcsPaths,
+  type VcsHarness,
+  validBranchNames,
+} from "./vcs-harness.ts";
