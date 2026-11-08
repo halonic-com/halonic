@@ -13,7 +13,8 @@ Shared settings every package extends.
   and `studio.json`.
   A package uses `"extends": "@halonicjs/tooling-config/tsconfig/<preset>.json"`.
 - **Biome** (`biome.jsonc`): formatting and lint rules, extended by the
-  root `biome.json`.
+  root `biome.json`. A skipped test (`it.skip`, `describe.skip`, `xit`)
+  is a lint error, so it can't land on `main`.
 - **Vitest preset** (`@halonicjs/tooling-config/vitest`):
 
   ```ts
@@ -21,3 +22,7 @@ Shared settings every package extends.
 
   export default definePackageTestConfig();
   ```
+
+  A package with no tests fails, tests run in random order, and a test
+  that never calls `expect()` fails.
+  `src/test-hygiene.test.ts` proves both test rules.

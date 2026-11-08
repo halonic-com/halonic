@@ -19,6 +19,8 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
       passWithNoTests: false,
       // Tests may not depend on the order they run in.
       sequence: { shuffle: true },
+      // A test with no expect() call proves nothing, so it fails.
+      expect: { requireAssertions: true },
       restoreMocks: true,
       unstubEnvs: true,
       unstubGlobals: true,

@@ -37,7 +37,9 @@
       },
       "suspicious": {
         "noExplicitAny": "error",
-        "noTsIgnore": "error"
+        "noTsIgnore": "error",
+        // Off by default in Biome 2.6.5: a skipped test must not land on main.
+        "noSkippedTests": "error"
       },
       "complexity": {
         // TypeScript's noPropertyAccessFromIndexSignature (plan 8) requires
