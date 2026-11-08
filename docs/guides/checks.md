@@ -180,7 +180,7 @@ produces packages that pass) are then skipped without blocking the merge.
 | Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
 | Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                   |
 | Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                           |
-| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash                                                                                                              |
+| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash                                                      |
 | Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                                             |
 | Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                      |
 | Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                              |
