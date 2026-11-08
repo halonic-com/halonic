@@ -6,7 +6,7 @@
 
 Where an adapter implements `RecordStore`, it shall give every change to a collection, oldest first and exactly as appended, keep collections apart even when one call changes several, give `[]` for an unknown collection, and keep its own copy of the changes. It shall treat a collection name as a value only, so a name such as `../leads` or `leads; DROP TABLE x` is just another collection.
 
-After `compact(collection)`, it shall give one `seed` change per current record of that collection, holding the values `foldRecords` gives, the `at` of the record's last change and no `by`. No overwritten or removed value shall be left in that collection's changes. Changes appended later shall fold onto the seeds as usual, other collections shall stay exactly as they were, and an unknown or empty collection shall stay `[]`.
+After `compact(collection)`, it shall give one `seed` change per current record of that collection, holding the values `foldRecords` gives, the `at` of the record's last change and no `by`. No overwritten or removed value shall be left in that collection's changes. Changes appended later shall fold onto the seeds as usual, other collections shall stay exactly as they were, and an unknown or empty collection shall stay `[]`. A change appended while a compact runs shall be either folded into the seeds or kept after them, never lost.
 
 ## Examples
 

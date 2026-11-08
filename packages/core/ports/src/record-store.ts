@@ -29,6 +29,10 @@ export interface RecordStore {
    * `seed` per current record, with the values {@link foldRecords} gives, the
    * `at` of the record's last change and no `by`. Other collections stay as
    * they are; an unknown or empty collection stays empty.
+   *
+   * A change appended while a compact runs is either folded into the seeds
+   * or kept after them, never lost; for example, read, fold and replace in
+   * one transaction or under the store's write lock.
    */
   compact(collection: string): Promise<void>;
 }
