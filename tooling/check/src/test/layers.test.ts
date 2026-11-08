@@ -150,7 +150,7 @@ describe("tooling/check: layers", () => {
     expect(messages.some((message) => message.includes("not a public entry point"))).toBe(true);
   });
 
-  it("lets the host use core only: no adapters and no Node APIs", () => {
+  it("lets the host use core only: no adapters, no Node APIs and no third-party code", () => {
     const adapter: FixturePackage = {
       directory: "packages/adapters/git",
       manifest: manifestFor("@halonicjs/adapter-git", "adapters"),
@@ -170,8 +170,15 @@ describe("tooling/check: layers", () => {
     const usesBareBuiltin = host({
       "src/index.ts": 'import { join } from "path";\nexport const y = join;\n',
     });
+    const usesThirdParty = host(
+      { "src/index.ts": 'import { z } from "zod";\nexport const y = z;\n' },
+      { zod: "catalog:" },
+    );
     const messages = (packages: FixturePackage[]): string[] =>
       runChecks(packages).map((problem) => problem.message);
+    expect(messages([usesThirdParty]).some((m) => m.includes('third-party code ("zod")'))).toBe(
+      true,
+    );
     expect(messages([adapter, usesAdapter]).some((m) => m.includes("core packages only"))).toBe(
       true,
     );
