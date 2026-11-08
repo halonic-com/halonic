@@ -17,6 +17,7 @@ export {
   type ConnectorTool,
   type ConnectorTransport,
   connectorClientVersion,
+  type ToolRisk,
 } from "./connector-client.ts";
 export {
   type Coordination,
@@ -32,6 +33,16 @@ export {
 } from "./definition-store.ts";
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
 export { type IdGenerator, idGeneratorVersion } from "./id-generator.ts";
+export {
+  type Integration,
+  type IntegrationConnection,
+  type IntegrationHost,
+  type IntegrationHttpClient,
+  type IntegrationRequestInit,
+  type IntegrationTool,
+  integrationVersion,
+  type SecretPlacement,
+} from "./integration.ts";
 export {
   type KnowledgeCapabilities,
   type KnowledgeDoc,

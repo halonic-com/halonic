@@ -24,6 +24,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `DefinitionStore`   | `definition-store.ts`   | 1       | the workspace files; `DefinitionSource` is its read-only side                                   | `definition-store`             |
 | `HttpClient`        | `http-client.ts`        | 1       | outbound HTTP, replaces `FetchLike`                                                             | `http-client` (phase 3)        |
 | `IdGenerator`       | `id-generator.ts`       | 1       | unique ids                                                                                      | `id-generator`                 |
+| `Integration`       | `integration.ts`        | 1       | an integration's declaration and the `IntegrationHost` it is given: limited HTTP, scoped tokens | `integration` (own package)    |
 | `KnowledgeProvider` | `knowledge-provider.ts` | 1       | knowledge sources agents search and read, and their factory                                     | `knowledge-provider` (phase 3) |
 | `LlmCache`          | `llm-cache.ts`          | 1       | model answers reused by simulation re-runs                                                      | `llm-cache` (phase 3)          |
 | `LlmProvider`       | `llm-provider.ts`       | 1       | model providers, and their factory                                                              | `llm-provider` (phase 3)       |
