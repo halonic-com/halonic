@@ -1,6 +1,6 @@
+import { encodeBase64url } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { encodeBase64url } from "./base64url.ts";
 import {
   fixedClock,
   type MemoryRecords,

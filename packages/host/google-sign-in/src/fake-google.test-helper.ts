@@ -1,6 +1,5 @@
 import type { HttpClient, TokenStore } from "@halonicjs/ports";
-import { encodeUtf8 } from "@halonicjs/std";
-import { encodeBase64url } from "./base64url.ts";
+import { encodeBase64url, encodeUtf8 } from "@halonicjs/std";
 
 /** Fake values for one sign-in. None is real. */
 export const fakeClient = {

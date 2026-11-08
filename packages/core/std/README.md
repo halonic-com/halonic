@@ -1,6 +1,6 @@
 # @halonicjs/std
 
-In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, text helpers, deep equality and clone, posix paths, constant-time comparison and a typed event emitter.
+In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison and a typed event emitter.
 
 - **Layer:** core
 - **Owner:** maya
@@ -17,6 +17,8 @@ password hash from `@noble/hashes` in the package that implements
 `encodeUtf8` and `decodeUtf8` replace `TextEncoder` and `TextDecoder`, and
 `constantTimeEqual` compares hashes and tokens without leaking where they
 differ. Never compare those with `===`.
+`encodeBase64url` and `decodeBase64url` stand in for `Buffer`'s `base64url`;
+the decoder is strict, so each byte string has exactly one text.
 
 For plain data there are `deepEqual` (key order doesn't matter),
 `deepClone` (the core has no `structuredClone`) and `isPlainObject`, which

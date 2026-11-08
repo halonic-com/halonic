@@ -1,5 +1,4 @@
-import { encodeUtf8, type RandomBytes } from "@halonicjs/std";
-import { encodeBase64url } from "./base64url.ts";
+import { encodeBase64url, encodeUtf8, type RandomBytes } from "@halonicjs/std";
 import { secretBytes, webRandomBytes } from "./random.ts";
 
 /**

@@ -5,7 +5,7 @@ import {
   type RecordStore,
   type Secrets,
 } from "@halonicjs/ports";
-import { encodeBase64url } from "./base64url.ts";
+import { encodeBase64url } from "@halonicjs/std";
 
 /**
  * A record store that keeps its log in memory, so tests can read and change

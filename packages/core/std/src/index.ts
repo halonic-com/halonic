@@ -1,5 +1,6 @@
 // The public API of @halonicjs/std. Everything else in src/ is internal.
 export { AssertionError, assert, assertDefined, assertNever } from "./assert.ts";
+export { decodeBase64url, encodeBase64url } from "./base64url.ts";
 export { type Clock, fixedClock, fixedClockStart, systemClock } from "./clock.ts";
 export { constantTimeEqual } from "./constant-time.ts";
 export { deepClone } from "./deep-clone.ts";

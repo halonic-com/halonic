@@ -1,5 +1,4 @@
-import { decodeUtf8, isPlainObject } from "@halonicjs/std";
-import { decodeBase64url } from "./base64url.ts";
+import { decodeBase64url, decodeUtf8, isPlainObject } from "@halonicjs/std";
 
 /** The two `iss` values Google's ID tokens carry. */
 const googleIssuers: readonly string[] = ["https://accounts.google.com", "accounts.google.com"];

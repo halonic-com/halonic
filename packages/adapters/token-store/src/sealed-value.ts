@@ -8,7 +8,7 @@
 // The additional data binds the value to its token name and to the header,
 // so a value copied to another name won't open.
 
-import { decodeBase64url, encodeBase64url } from "./base64url.ts";
+import { decodeBase64url, encodeBase64url } from "@halonicjs/std";
 import type { TokenKey } from "./token-key.ts";
 
 const formatVersion = 1;
