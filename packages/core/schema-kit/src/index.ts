@@ -1,2 +1,9 @@
-/** The npm name of this package. A placeholder export, so the empty package has an API to test. */
-export const packageName = "@halonicjs/schema-kit";
+// The public API of @halonicjs/schema-kit. Internal code imports by relative path.
+
+export { s } from "./builders.ts";
+export { MAX_DEPTH } from "./depth.ts";
+export { formatPath, type Issue, type IssueCode, type Path, type PathSegment } from "./issue.ts";
+export { JSON_SCHEMA_DRAFT, type JsonSchema, type JsonValue, toJsonSchema } from "./json-schema.ts";
+export { parse } from "./parse.ts";
+export type { Err, Ok, Result } from "./result.ts";
+export type { Infer, InferInput, Schema } from "./schema.ts";
