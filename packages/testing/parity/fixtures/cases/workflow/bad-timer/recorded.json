@@ -1,0 +1,59 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/bad-timer",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/approval.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/approval.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [
+        {
+          "path": [
+            "states",
+            "decide",
+            "on",
+            2,
+            "after"
+          ],
+          "code": "invalid_format",
+          "message": "use a number and a unit, e.g. \"30m\", \"4h\", \"2d\"",
+          "line": 16,
+          "col": 16
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.workflow.yaml",
+      "message": "states.decide.on.2.after: use a number and a unit, e.g. \"30m\", \"4h\", \"2d\"",
+      "line": 16,
+      "col": 16
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/invoice.workflow.yaml",
+      "message": "\"approval\" runs unknown workflow \"approval\"",
+      "state": "approval"
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/approval.test.yaml",
+      "message": "Test targets unknown workflow \"approval\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/approval.workflow.yaml: states.decide.on.2.after: use a number and a unit, e.g. \"30m\", \"4h\", \"2d\"\nerror hubs/billing/workflows/invoice.workflow.yaml (approval): \"approval\" runs unknown workflow \"approval\"\nerror hubs/billing/workflows/approval.test.yaml: Test targets unknown workflow \"approval\"\n3 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 16,
+    "recorded": 16,
+    "verdict": "same"
+  }
+}

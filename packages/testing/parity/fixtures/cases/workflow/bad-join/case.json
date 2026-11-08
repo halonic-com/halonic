@@ -1,0 +1,10 @@
+{
+  "about": "a parallel join that is not all or any",
+  "kind": "workflow",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "hubs/billing/workflows/invoice.workflow.yaml",
+    "path": "states.checks.join",
+    "line": 18
+  }
+}
