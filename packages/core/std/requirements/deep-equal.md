@@ -6,7 +6,7 @@
 
 The deep-equality function shall compare arrays item by item in order, plain objects key by key in any order, dates by time and primitives by value with `NaN` equal to `NaN`, and shall treat any other object as equal only to itself.
 
-The deep-equality function does not support circular data and throws a `RangeError` for it. Plain data comes from JSON and YAML and can't have cycles. The deep-clone function keeps cycles because it mirrors `structuredClone`, and copying a cycle is cheap to do safely, while comparing one would need extra bookkeeping on every call.
+The deep-equality function does not support circular data and throws a `RangeError` for it. JSON can't express cycles, and `@halonicjs/yaml` rejects aliases that refer to themselves. The deep-clone function keeps cycles because it mirrors `structuredClone`, while comparing a cycle would need extra bookkeeping on every call.
 
 ## Examples
 

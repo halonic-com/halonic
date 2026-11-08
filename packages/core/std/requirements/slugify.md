@@ -13,7 +13,7 @@ When a display name is turned into an id, the slug function shall lowercase it, 
 - Given "snake_case name", when it is slugified, then the id is "snake-case-name".
 - Given "_a_", when it is slugified, then the id is "a".
 - Given "___", when it is slugified, then the id is "item".
-- Given "_draft_", when it is slugified, then the id is "draft", so an id never starts with a hyphen that a command line could read as a flag.
+- Given "-draft-", when it is slugified, then the id is "draft", so an id never starts with a hyphen that a command line could read as a flag.
 - Given "!!! - !!!", when it is slugified, then the id is "item".
 - Given "!!!", when it is slugified, then the id is "item".
 

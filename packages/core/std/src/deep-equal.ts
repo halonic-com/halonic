@@ -10,10 +10,10 @@ import { isPlainObject } from "./plain-data.ts";
  * key whose value is `undefined` is still a key: `{ a: undefined }` doesn't
  * equal `{}`.
  *
- * Cyclic data isn't supported: comparing it throws a `RangeError`. Plain data
- * comes from JSON and YAML and can't have cycles. `deepClone` keeps cycles only
- * because it mirrors `structuredClone`, and copying a cycle is cheap to do
- * safely, while comparing one would need extra bookkeeping on every call.
+ * Cyclic data isn't supported: comparing it throws a `RangeError`. JSON can't
+ * express cycles, and `@halonicjs/yaml` rejects aliases that refer to
+ * themselves. `deepClone` keeps cycles because it mirrors `structuredClone`,
+ * while comparing a cycle would need extra bookkeeping on every call.
  *
  * @param first - the first value
  * @param second - the second value
