@@ -7,7 +7,6 @@ import { Report } from "../lib/problems.ts";
  * version lands.
  */
 export const inactiveChecks: Readonly<Record<string, string>> = {
-  trace: "every active requirement has a test that ran and passed",
   "requirement-guard":
     "changing a requirement, golden file or test needs an approved decision note",
 };

@@ -1,7 +1,7 @@
 import { type CheckContext, loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem, type Problem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
-import { rules } from "../rules/all.ts";
+import { rules, rulesAfterTests, selectRules } from "../rules/all.ts";
 import { dcoRange } from "../rules/dco.ts";
 import { inactiveChecks } from "../rules/inactive-checks.ts";
 
@@ -9,7 +9,9 @@ import { inactiveChecks } from "../rules/inactive-checks.ts";
  * pnpm check [rule ...]
  *
  * Runs our own repo checks. With rule names it
- * runs only those. The personal-terms guard has its own command,
+ * runs only those. Without, it runs every rule except `trace`, which reads
+ * the test result files and so runs after the tests: `pnpm check trace`.
+ * The personal-terms guard has its own command,
  * `pnpm check:leaks`, because CI runs it with a secret.
  */
 function main(argv: readonly string[]): number {
@@ -19,6 +21,7 @@ function main(argv: readonly string[]): number {
     console.error(`Unknown rule: ${unknown.join(", ")}. Rules: ${Object.keys(rules).join(", ")}.`);
     return 2;
   }
+  const toRun = selectRules(selected);
   const started = performance.now();
   let context: CheckContext;
   try {
@@ -29,7 +32,7 @@ function main(argv: readonly string[]): number {
   }
   const problems: Problem[] = [];
   for (const [name, rule] of Object.entries(rules)) {
-    if (selected.length === 0 || selected.includes(name)) {
+    if (toRun.includes(name)) {
       problems.push(...rule(context).problems);
     }
   }
@@ -38,12 +41,16 @@ function main(argv: readonly string[]): number {
     console.log(annotate ? formatAnnotation(problem) : formatProblem(problem));
   }
   for (const [name, purpose] of Object.entries(inactiveChecks)) {
-    if (selected.length === 0 || selected.includes(name)) {
+    if (toRun.includes(name)) {
       console.log(`${name}: not active yet. It will check that ${purpose}.`);
     }
   }
   if ((selected.length === 0 || selected.includes("dco")) && dcoRange() === undefined) {
     console.log("dco: no commits to check; CI sets DCO_RANGE=BASE..HEAD for each pull request.");
+  }
+  if (selected.length === 0) {
+    const names = rulesAfterTests.join(" ");
+    console.log(`${names}: runs after the tests, with pnpm check ${names}.`);
   }
   const errors = problems.filter((problem) => problem.severity === "error").length;
   const warnings = problems.length - errors;

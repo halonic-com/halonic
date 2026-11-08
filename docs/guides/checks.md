@@ -7,7 +7,7 @@ typecheck, lint and test for the packages your change affects.
 | Command                                     | What it does                                                                                                                                          |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm verify`                               | everything below, for the affected packages (`--full` for every package, as CI does)                                                                  |
-| `pnpm check [rule …]`                       | our own repo checks (table below); with rule names, only those                                                                                        |
+| `pnpm check [rule …]`                       | our own repo checks (table below) except `trace`; with rule names, only those                                                                         |
 | `pnpm check:leaks`                          | the leak guard over the working tree; see [leak-guard.md](leak-guard.md)                                                                              |
 | `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                               |
 | `pnpm check:audit [options]`                | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
@@ -31,10 +31,9 @@ typecheck, lint and test for the packages your change affects.
 | `lockfile`       | a `pnpm-lock.yaml` entry has no sha512 hash, or comes from a tarball URL, git, a local folder or another registry. The only exception is the Node runtime from `devEngines`, which must come from the Node.js release hosts with a hash per platform                                                                                                                                                                                                                                                               |
 | `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                                                                                                                                                                                   |
 
-`trace` and `requirement-guard` are wired in already and report "not active
-yet" until their real versions land. `trace` will check that every active
-requirement has a test that ran and passed; `requirement-guard`, that changing a
-requirement, golden file or test comes with an approved decision note.
+`requirement-guard` is wired in already and reports "not active yet" until
+its real version lands. It will check that changing a requirement, golden
+file or test comes with an approved decision note.
 
 ### The DCO sign-off
 
@@ -59,6 +58,31 @@ no range and skips it. To check your branch yourself:
 ```sh
 DCO_RANGE=origin/main..HEAD pnpm check dco
 ```
+
+## `trace`: requirements and their tests
+
+`pnpm check trace` reads every `requirements/*.md` file,
+every `verifies(…)` call in test files and every package's
+`test-results/vitest.json`, which the shared Vitest preset writes on each
+test run. It reads the tests that actually ran, so run the tests first.
+Plain `pnpm check` leaves it out for that reason; it runs only when named.
+`pnpm verify` and CI run it last, after the tests. It fails when:
+
+- a requirement file is malformed: the heading isn't the ID its path gives,
+  `Status`, `Since` or `Source` is missing or wrong, the sentence isn't in
+  EARS form, or an example doesn't read "Given …, (when …,) then …"
+- the same requirement ID is in two places
+- a test names a requirement that doesn't exist or is retired, or names it
+  with something other than a plain string
+- a `verifies(…)` never ran, because the package's Vitest config doesn't
+  collect its file, or a package with tests has no result file or one that
+  can't be read
+- an active requirement has no test that ran and passed
+
+The ID of `packages/core/workflow/requirements/timer-fires.md` is
+`workflow.timer-fires`; in a Studio feature,
+`packages/studio/features/agents/src/explorer/requirements/filter-by-hub.md`
+is `agents.explorer.filter-by-hub`.
 
 ## Coverage floors
 

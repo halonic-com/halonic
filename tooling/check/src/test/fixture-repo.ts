@@ -6,7 +6,7 @@ import { loadContext } from "../lib/context.ts";
 import { defaultCoverageFloors } from "../lib/coverage.ts";
 import type { Layer } from "../lib/layout.ts";
 import type { Problem } from "../lib/problems.ts";
-import { rules } from "../rules/all.ts";
+import { rules, selectRules } from "../rules/all.ts";
 
 const realRoot = join(import.meta.dirname, "..", "..", "..", "..");
 
@@ -57,6 +57,8 @@ export interface FixtureOptions {
   readonly policy?: (policy: Record<string, unknown>) => unknown;
   /** Changes the real pnpm-workspace.yaml before it is written. */
   readonly workspaceYaml?: (yaml: string) => string;
+  /** The rules to run. Without it, the ones a plain `pnpm check` runs, so not `trace`. */
+  readonly rules?: readonly string[];
 }
 
 /**
@@ -133,8 +135,8 @@ export function runChecks(
   const root = writeFixtureRepo(packages, options);
   try {
     const context = loadContext(root);
-    return Object.values(rules)
-      .flatMap((rule) => rule(context).problems)
+    return selectRules(options.rules ?? [])
+      .flatMap((name) => rules[name]?.(context).problems ?? [])
       .filter((problem) => problem.severity === "error");
   } finally {
     removeFixtureRepo(root);

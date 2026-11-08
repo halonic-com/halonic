@@ -87,6 +87,7 @@ jobs:
       - name: Pull request title
         if: github.event_name == 'pull_request'
         run: pnpm check:pr-title
+      # Plain check leaves out trace; the build job runs it after the tests.
       # The DCO rule checks the pull request's own commits. A merge queue
       # or a push to main only holds commits that passed it here.
       - name: Repo checks (layers, dependencies, names, feature list, file size, lockfile, paths, DCO)
@@ -260,6 +261,11 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - name: Run every task through the cache
         run: pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize
+      # Reads the result files the tests just wrote. Runs even when
+      # a task failed: a missing result file fails the check anyway.
+      - name: Requirements and their tests (trace)
+        if: always()
+        run: pnpm check trace
       - name: Task timings
         if: always()
         run: |
