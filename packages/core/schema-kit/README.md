@@ -8,6 +8,12 @@ Our thin layer over Zod: validation, TypeScript types derived from the schemas a
 
 ## Example
 
+Parse good and bad input, list the problems with their paths and export a JSON Schema. The code
+lives in [`examples/parse-and-export.ts`](examples/parse-and-export.ts), where it is typechecked and
+run by `src/example.test.ts`; keep this copy in step with it. The file imports `../src/index.ts`,
+because a package may not import itself by name; outside this package, import
+`@halonicjs/schema-kit` as below.
+
 ```ts
 import { formatPath, type Infer, parse, s, toJsonSchema } from "@halonicjs/schema-kit";
 
@@ -19,12 +25,29 @@ const Deployment = s
   .strict();
 type Deployment = Infer<typeof Deployment>; // { name: string; host: "local" | "cloudflare" }
 
-const parsed = parse(Deployment, { name: "" });
-if (!parsed.ok) {
-  for (const issue of parsed.error) console.log(formatPath(issue.path), issue.message);
-}
+/** Parses good and bad input, lists the problems with their paths and exports a JSON Schema. */
+export function runExample(): {
+  value: Deployment | undefined;
+  problems: string[];
+  required: unknown;
+} {
+  // Defaults are filled in.
+  const good = parse(Deployment, { name: "prod" });
+  const value = good.ok ? good.value : undefined; // { name: "prod", host: "local" }
 
-toJsonSchema(Deployment); // `host` is not required: it has a default
+  // A bad input never throws: every problem comes back with its path.
+  const problems: string[] = [];
+  const parsed = parse(Deployment, { name: "", extra: true });
+  if (!parsed.ok) {
+    for (const issue of parsed.error) {
+      problems.push(`${issue.code} ${formatPath(issue.path)}`.trim());
+    }
+  }
+
+  // `host` is not required: it has a default.
+  const required = toJsonSchema(Deployment)["required"]; // ["name"]
+  return { value, problems, required };
+}
 ```
 
 ## What it gives you
