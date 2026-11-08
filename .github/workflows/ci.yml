@@ -230,6 +230,9 @@ jobs:
           git config user.name "CI"
           git config user.email "ci@users.noreply.github.com"
           pnpm new package core/ci-example --owner ci
+          pnpm new package adapters/ci-example --runtime node --owner ci
+          pnpm new package host/ci-example --owner ci
+          pnpm new package targets/ci-example/runtime --owner ci
           pnpm new feature ci-example --owner ci
           pnpm install --no-frozen-lockfile
       - name: pnpm verify --full

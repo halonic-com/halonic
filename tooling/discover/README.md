@@ -10,5 +10,5 @@ and shows who else is working on a package.
   - `pnpm discover` writes `apps/studio/src/generated/features.ts` (gitignored). Turbo runs it as the `codegen` task before every typecheck, test and build.
   - `pnpm discover --fix` also rewrites the feature list; run `pnpm install` after.
   - `pnpm discover --check` changes nothing and fails if the list is out of date.
-  - `pnpm new package <layer>/<name> [--owner <agent>]` and `pnpm new feature <name> [--owner <agent>]` create an empty package or feature that passes every check.
+  - `pnpm new package <layer>/<name> [--owner <agent>]` and `pnpm new feature <name> [--owner <agent>]` create an empty package or feature that passes every check. Adapters also take `--runtime <node | web | workers | any>`; target packages are `targets/<target>/<runtime | deploy | testing>`. The TypeScript preset follows from the layer and the runtime.
   - `pnpm who-touches [<package>]` lists the open pull requests that change a package (needs `gh`, signed in).

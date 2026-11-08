@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "Web-standard APIs only (fetch, Request, Response, URL, crypto.subtle, streams): no DOM, no Node. For host packages, Workers code and adapters that run anywhere (plan 4.1, 4.4).",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": [
+      "es2024",
+      "webworker"
+    ],
+    "types": []
+  }
+}

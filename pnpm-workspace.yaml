@@ -5,7 +5,8 @@ packages:
   - apps/*
   - packages/core/*
   - packages/adapters/*
-  - packages/host
+  - packages/host/*
+  - packages/targets/*/*
   - packages/studio/*
   - packages/studio/features/*
   - packages/testing/*

@@ -7,7 +7,10 @@ Shared settings every package extends.
 - **TypeScript presets** (`tsconfig/`): `base.json` (strict settings, Node's
   type stripping rules: `.ts` import extensions, erasable syntax only),
   `core.json` (no Node or browser types, so `fetch`, `document` or `fs`
-  are compile errors), `node.json`, `web.json` and `studio.json`.
+  are compile errors), `web-standard.json` (`fetch`, `Request`, `URL`,
+  `crypto.subtle` and streams, but no DOM and no Node: host packages,
+  Workers code and adapters that run anywhere), `node.json`, `web.json`
+  and `studio.json`.
   A package uses `"extends": "@halonicjs/tooling-config/tsconfig/<preset>.json"`.
 - **Biome** (`biome.jsonc`): formatting and lint rules, extended by the
   root `biome.json`.
