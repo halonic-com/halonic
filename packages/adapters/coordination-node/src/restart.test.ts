@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { defaultCoordinationCollection } from "./coordination.ts";
 import { newWorld, startCoordination } from "./fakes.test-helper.ts";
 
-verifies("adapter-coordination-node.restart", () => {
+verifies("coordination-node.restart", () => {
   describe("surviving a restart", () => {
     it("keeps a lease held until it runs out, and gives the next holder a new token", async () => {
       const world = newWorld();

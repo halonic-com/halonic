@@ -6,7 +6,7 @@ import { defaultTimerCollection } from "./scheduler.ts";
 const second = 1000;
 const minute = 60 * second;
 
-verifies("adapter-scheduler-node.restart", () => {
+verifies("scheduler-node.restart", () => {
   describe("surviving a restart", () => {
     it("delivers a timer the scheduler before the restart set", async () => {
       const world = newWorld();

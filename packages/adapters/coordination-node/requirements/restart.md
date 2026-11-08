@@ -1,4 +1,4 @@
-# adapter-coordination-node.restart
+# coordination-node.restart
 
 - Status: active
 - Since: 0.1.0

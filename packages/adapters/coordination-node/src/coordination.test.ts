@@ -4,7 +4,7 @@ import { startCoordination } from "./fakes.test-helper.ts";
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
-verifies("adapter-coordination-node.coordination", () => {
+verifies("coordination-node.coordination", () => {
   describe("leases", () => {
     it("gives a lease to one holder at a time, until its expiry time", async () => {
       const { coordination, clock } = startCoordination();

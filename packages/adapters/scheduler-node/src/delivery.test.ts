@@ -6,7 +6,7 @@ import { retryWait } from "./scheduler.ts";
 const second = 1000;
 const minute = 60 * second;
 
-verifies("adapter-scheduler-node.delivery", () => {
+verifies("scheduler-node.delivery", () => {
   describe("delivering timers", () => {
     it("delivers a timer when it is due and not before, then removes it", async () => {
       const s = startScheduler();

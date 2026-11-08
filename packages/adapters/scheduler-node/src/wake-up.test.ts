@@ -5,7 +5,7 @@ import { startScheduler } from "./harness.test-helper.ts";
 const second = 1000;
 const minute = 60 * second;
 
-verifies("adapter-scheduler-node.wake-up", () => {
+verifies("scheduler-node.wake-up", () => {
   describe("waking itself", () => {
     it("asks to be woken for the tick when there are no timers", async () => {
       const s = startScheduler();

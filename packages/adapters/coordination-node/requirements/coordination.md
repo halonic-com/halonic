@@ -1,4 +1,4 @@
-# adapter-coordination-node.coordination
+# coordination-node.coordination
 
 - Status: active
 - Since: 0.1.0

@@ -1,4 +1,4 @@
-# adapter-scheduler-node.restart
+# scheduler-node.restart
 
 - Status: active
 - Since: 0.1.0

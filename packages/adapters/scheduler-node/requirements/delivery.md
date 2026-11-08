@@ -1,4 +1,4 @@
-# adapter-scheduler-node.delivery
+# scheduler-node.delivery
 
 - Status: active
 - Since: 0.1.0

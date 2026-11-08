@@ -1,4 +1,4 @@
-# adapter-scheduler-node.wake-up
+# scheduler-node.wake-up
 
 - Status: active
 - Since: 0.1.0
