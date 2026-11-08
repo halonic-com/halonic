@@ -1,6 +1,7 @@
 import { unwrap } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { readYaml } from "./read.ts";
 import { writeYamlFile } from "./write.ts";
 
@@ -28,7 +29,7 @@ const nestedText = fc
   .array(fc.constantFrom("[", "{ k: ", "- ", "k:\n "), { maxLength: 300 })
   .map((openers) => openers.join(""));
 
-describe("yaml.read-hostile", () => {
+verifies("yaml.read-hostile", () => {
   it("never throws, and every problem has a 1-based line and column", () => {
     fc.assert(
       fc.property(hostileText, (text) => {
@@ -54,7 +55,7 @@ describe("yaml.read-hostile", () => {
   });
 });
 
-describe("yaml.round-trip", () => {
+verifies("yaml.round-trip", () => {
   it("reads written data back unchanged, and writes it the same way again", () => {
     fc.assert(
       fc.property(plainData, (data) => {

@@ -1,5 +1,6 @@
 import { unwrap } from "@halonicjs/std";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { readYaml } from "./read.ts";
 
 /** U+FEFF, the byte order mark some Windows editors put at the start of a file. */
@@ -19,7 +20,7 @@ const workflow = [
 const positionOf = (text: string, path: readonly (string | number)[]) =>
   unwrap(readYaml(text)).positionOf(path);
 
-describe("yaml.position-of", () => {
+verifies("yaml.position-of", () => {
   it("gives the line and column of a value in a map", () => {
     expect(positionOf(workflow, ["name"])).toEqual({ line: 1, col: 7 });
   });

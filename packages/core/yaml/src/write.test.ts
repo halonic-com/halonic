@@ -1,12 +1,13 @@
 import { AssertionError } from "@halonicjs/std";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { writeFrontMatter, writeYamlFile } from "./write.ts";
 
 // Golden tests: the expected text is written out by hand from what the old
 // app saved (yaml 2.9.1, the options in 784f78d). If a yaml upgrade changes
 // any of it, these fail before a user's files do.
 
-describe("yaml.write-file", () => {
+verifies("yaml.write-file", () => {
   it("writes maps and lists in block style", () => {
     const workflow = {
       name: "Invoice",
@@ -115,7 +116,7 @@ describe("yaml.write-file", () => {
   });
 });
 
-describe("yaml.write-front-matter", () => {
+verifies("yaml.write-front-matter", () => {
   it("writes the fields without a trailing newline", () => {
     expect(writeFrontMatter({ name: "invoice-style", description: "How invoices read" })).toBe(
       "name: invoice-style\ndescription: How invoices read",

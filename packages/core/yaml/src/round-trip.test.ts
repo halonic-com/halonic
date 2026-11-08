@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { unwrap } from "@halonicjs/std";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parse as parseWithLibrary } from "yaml";
 import { readYaml } from "./read.ts";
 import { type FrontMatterFields, writeFrontMatter, writeYamlFile } from "./write.ts";
@@ -29,7 +30,7 @@ function frontMatterOf(markdown: string): string {
   return match?.[1] ?? "";
 }
 
-describe("yaml.round-trip", () => {
+verifies("yaml.round-trip", () => {
   it("has the 20 example files and the one skill", () => {
     expect(yamlFiles).toHaveLength(20);
     expect(skillFiles).toHaveLength(1);
@@ -92,7 +93,7 @@ const parityFiles = filesUnder(parityRoot)
   .filter((path) => path.endsWith(".yaml") && !brokenFiles.has(path))
   .map((path) => ({ name: relative(parityRoot, path), text: readFileSync(path, "utf8") }));
 
-describe("yaml.round-trip on the parity fixtures", () => {
+verifies("yaml.round-trip", () => {
   it("has the 175 valid files and the 3 broken cases", () => {
     expect(parityFiles).toHaveLength(175);
     expect(brokenCases).toHaveLength(3);

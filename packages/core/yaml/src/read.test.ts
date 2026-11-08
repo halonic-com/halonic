@@ -1,5 +1,6 @@
 import { unwrap } from "@halonicjs/std";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { readYaml } from "./read.ts";
 
 /** U+FEFF, the byte order mark some Windows editors put at the start of a file. */
@@ -7,7 +8,7 @@ const byteOrderMark = String.fromCodePoint(0xfeff);
 
 const dataOf = (text: string): unknown => unwrap(readYaml(text)).data;
 
-describe("yaml.read-data", () => {
+verifies("yaml.read-data", () => {
   it("reads block maps and lists", () => {
     expect(dataOf("name: Billing\nsteps:\n  - id: check\n  - id: send\n")).toEqual({
       name: "Billing",
@@ -80,7 +81,7 @@ describe("yaml.read-data", () => {
   });
 });
 
-describe("yaml.read-syntax-error", () => {
+verifies("yaml.read-syntax-error", () => {
   it("reports an unclosed flow list with its line and column", () => {
     expect(readYaml("a: [1, 2\n")).toEqual({
       ok: false,
@@ -107,7 +108,7 @@ describe("yaml.read-syntax-error", () => {
   });
 });
 
-describe("yaml.read-unsupported", () => {
+verifies("yaml.read-unsupported", () => {
   const problemOf = (text: string) => {
     const read = readYaml(text);
     return read.ok ? undefined : read.error;

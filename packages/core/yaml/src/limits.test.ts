@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { stringify } from "yaml";
 import { defaultYamlLimits, readYaml } from "./read.ts";
 
@@ -9,7 +10,7 @@ const nestedLists = (depth: number) => "[".repeat(depth) + "]".repeat(depth);
 const nestedMaps = (depth: number) =>
   Array.from({ length: depth }, (_, level) => `${"  ".repeat(level)}k:`).join("\n");
 
-describe("yaml.read-limits", () => {
+verifies("yaml.read-limits", () => {
   it("allows 100 levels of nesting by default", () => {
     expect(defaultYamlLimits.maxDepth).toBe(100);
     expect(readYaml(nestedLists(100)).ok).toBe(true);
