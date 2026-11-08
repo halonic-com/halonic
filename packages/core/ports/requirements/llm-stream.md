@@ -6,6 +6,8 @@
 
 Where a model provider sets `capabilities.streaming`, the `LlmProvider` port shall let it offer an optional `stream(request)` that yields text, reasoning and tool-call deltas in order and ends with exactly one `done` event holding the full `ChatResponse`. A provider without it shall still satisfy the port.
 
+The port's documentation shall state that the text deltas joined equal the `done` response's content, that the `arguments` pieces for each tool call joined parse to that call's arguments, that a stream ending without `done` or yielding after it is an error for the caller, and that the engine runs tool calls only from `done`.
+
 ## Examples
 
 - Given an `LlmProvider` with only `chat`,
