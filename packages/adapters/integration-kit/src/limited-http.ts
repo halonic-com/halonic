@@ -18,6 +18,12 @@ import {
 import type { RequestLog } from "./request-log.ts";
 import { type BodyGuard, guardBody, untilAborted } from "./response-body.ts";
 import { removeSecretsFromError, secretForms } from "./secret-filter.ts";
+import {
+  carriedForms,
+  readDeclaredSecrets,
+  refuseCarriedSecrets,
+  SecretInRequestError,
+} from "./secret-in-request.ts";
 import { checkPlacements, copyPlacements, place, readSecrets } from "./secret-placement.ts";
 
 /**
@@ -92,7 +98,7 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
         const refused = error instanceof IntegrationRefusedError;
         options.log.add({
           method,
-          ...where,
+          ...(error instanceof SecretInRequestError ? error.logged : where),
           durationMs: now() - started,
           outcome: refused ? "refused" : "failed",
           ...(refused ? { refusal: error.code } : {}),
@@ -123,10 +129,19 @@ async function send(
   const { auth, signal, redirect: _redirect, ...rest } = init;
   // From here on only the frozen copies are read, never the code's `auth`.
   const placements = copyPlacements(policy, auth === undefined ? [] : [auth].flat());
-  const url = allowedUrl(policy, rawUrl);
-  checkPlacements(policy, placements, url);
   const body = rest.body ?? null;
   checkBody(policy, body);
+  const declared = await readDeclaredSecrets(policy, options.secrets);
+  const carried = carriedForms(declared.values());
+  // Before the URL is parsed, so no refusal message or log entry names a host that holds one.
+  refuseCarriedSecrets(policy, carried, {
+    method: init.method,
+    url: String(rawUrl),
+    headers: new Headers(rest.headers),
+    body,
+  });
+  const url = allowedUrl(policy, rawUrl);
+  checkPlacements(policy, placements, url);
   const maxBodyBytes = requestBodyLimit(limits.maxRequestBodyBytes);
   const values = await readSecrets(policy, options.secrets, placements);
   const hop: Hop = {
@@ -156,8 +171,9 @@ async function send(
     maxBytes: limits.maxResponseBytes ?? 10 * 1024 * 1024,
     onIdle: () => stop("no data", limits.idleTimeoutMs ?? 60_000),
     done: () => clearTimeout(total),
+    // Every declared secret, not only the placed ones: the bridge filters the same way.
     secrets: secretForms(
-      [...values].map(([secret, value]) => ({
+      [...declared].map(([secret, value]) => ({
         value,
         placements: placements.filter((placement) => placement.secret === secret),
       })),
@@ -193,6 +209,7 @@ async function send(
           `${policy.name}: ${hop.url.host}${hop.url.pathname} redirected more than ${maxRedirects} times`,
         );
       }
+      refuseCarriedSecrets(policy, carried, { url: location, base: hop.url });
       follow(hop, response.status, allowedUrl(policy, location, hop.url));
     }
   } catch (error) {

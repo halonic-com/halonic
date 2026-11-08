@@ -1,0 +1,28 @@
+# integration-kit.secret-in-request
+
+- Status: active
+- Since: 0.1.0
+- Source: HAL-994 (I5 design v0.2 on HAL-958, section 3.6; Julian's ruling in HAL-972; attack case A25)
+
+The kit shall refuse with `secret-in-request`, and send nothing, a request whose method, URL, headers or body holds the value of one of the integration's secrets that the kit didn't put there itself. That applies to every declared secret that is set up, whether the request places it or not, in any form the secret filter matches (raw, URL-encoded, form-encoded, JSON-escaped), to any host, including one the secret is declared for, and to the `Location` of every redirect hop. Neither the refusal message nor the request log shall hold the value: they name the host only, with any secret removed. The kit shall also remove every declared secret, not only the placed ones, from the responses it hands back.
+
+## Examples
+
+- Given `example-key` that a server echoed in a form the filter missed,
+  when the integration puts the value in the query, the path, a header of its own, a text, form or byte body, or the method, raw or encoded,
+  then the kit throws `secret-in-request`, and the transport sees nothing.
+- Given the same value,
+  when the integration sends it to `cdn.example.com`, which the secret isn't declared for, or to `api.example.com`, which it is,
+  then the kit refuses both.
+- Given `client-secret`, which this request doesn't place,
+  when the integration puts its value in a request to `api.example.com` that places `example-key`,
+  then the kit refuses it.
+- Given a server whose redirect `Location` holds the value,
+  when the kit follows it,
+  then it throws `secret-in-request` and sends nothing more.
+- Given a refused request with the value in the host or the path,
+  when the error and the request log are read,
+  then neither holds the value.
+- Given `example-key` placed by the kit as a bearer token,
+  when the integration sends an otherwise clean request,
+  then it goes out as before.

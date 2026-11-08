@@ -365,22 +365,23 @@ verifies("integration-kit.request-limits", () => {
     // A fake clock, so a slow runner can't let the idle timer win the race.
     vi.useFakeTimers();
     try {
-      const { http } = client(() => new Response(pieces(["a", "b", "c"], 0)), {
-        idleTimeoutMs: 10,
-      });
+      // Pieces longer than the secret filter holds back, so the first read gets data.
+      const long = ["a".repeat(100), "b".repeat(100), "c".repeat(100)];
+      const { http } = client(() => new Response(pieces(long, 0)), { idleTimeoutMs: 10 });
       const { body } = await http.fetch("https://api.example.com/");
       if (body === null) throw new Error("expected a body");
       const reader = body.getReader();
       const first = reader.read();
       await vi.advanceTimersByTimeAsync(1);
-      expect((await first).done).toBe(false);
+      const { done, value } = await first;
+      expect(done).toBe(false);
 
       await vi.advanceTimersByTimeAsync(40);
 
       // Read to the end: a piece the kit already read ahead would hide a stale idle timer.
       const rest = readAll(reader);
       await vi.advanceTimersByTimeAsync(1);
-      expect(await rest).toBe("bc");
+      expect(new TextDecoder().decode(value) + (await rest)).toBe(long.join(""));
     } finally {
       vi.useRealTimers();
     }

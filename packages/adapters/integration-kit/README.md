@@ -57,6 +57,11 @@ Node, in the Worker and in the browser. Published as
   is replaced everywhere it occurs in a body, even where it is part of
   unrelated data. `secretForms` and `removeSecrets` are exported so the
   bridge can filter tool results, errors and stderr the same way.
+- **Secrets can't be carried out.** A request whose method, URL, headers or
+  body holds a secret value the kit didn't place there itself, in any of
+  those forms, is refused as `secret-in-request`, to every host, including
+  the one the secret is declared for, and on every redirect hop. The message
+  and the log name the host only, never the value.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name

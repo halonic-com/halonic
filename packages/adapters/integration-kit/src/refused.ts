@@ -12,6 +12,7 @@ export type RefusalCode =
   | "body-not-supported"
   | "too-many-redirects"
   | "request-too-large"
+  | "secret-in-request"
   | "response-too-large"
   | "token-not-declared";
 

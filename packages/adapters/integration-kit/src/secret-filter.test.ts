@@ -213,8 +213,16 @@ verifies("integration-kit.secret-filter", () => {
     },
   );
 
-  it("passes a body without placed secrets through unchanged", async () => {
-    const { http } = client(() => new Response("hello", { headers: { "content-length": "5" } }));
+  it("passes the body of an integration without secrets through unchanged", async () => {
+    const { transport } = fakeTransport(
+      () => new Response("hello", { headers: { "content-length": "5" } }),
+    );
+    const http = createLimitedHttpClient({
+      policy: { ...policy, secrets: {} },
+      transport,
+      secrets,
+      log: new RequestLog(),
+    });
     const response = await http.fetch("https://api.example.com/");
     expect(response.headers.get("content-length")).toBe("5");
     expect(await response.text()).toBe("hello");

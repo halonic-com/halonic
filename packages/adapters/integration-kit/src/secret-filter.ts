@@ -135,6 +135,7 @@ export class SecretRemover {
   /** The forms by their first byte, longest first, to skip most bytes quickly. */
   readonly #byFirstByte = new Map<number, Uint8Array[]>();
   #held: Uint8Array = new Uint8Array(0);
+  #removed = 0;
 
   constructor(forms: SecretForms) {
     this.#forms = forms;
@@ -142,6 +143,11 @@ export class SecretRemover {
       const first = form[0] as number;
       this.#byFirstByte.set(first, [...(this.#byFirstByte.get(first) ?? []), form]);
     }
+  }
+
+  /** How many secrets it has replaced so far. */
+  get removed(): number {
+    return this.#removed;
   }
 
   /** The filtered bytes that are safe to pass on; may be empty while bytes are held back. */
@@ -176,6 +182,7 @@ export class SecretRemover {
         continue;
       }
       pieces.push(data.subarray(kept, at), removedBytes);
+      this.#removed++;
       at += match;
       kept = at;
     }
