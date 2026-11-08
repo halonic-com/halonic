@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { parseFile } from "../../index.ts";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.ts";
 
@@ -31,7 +32,7 @@ const base = [
   "hosts: [api.example.com]",
 ];
 
-describe("format.integration-file", () => {
+verifies("format.integration-file", () => {
   it("reads the weather example in the guide", () => {
     const sheet = parsedValue("integration", guideExample());
     expect(sheet.secrets).toEqual({
