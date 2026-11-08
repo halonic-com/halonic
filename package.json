@@ -16,11 +16,15 @@
     }
   },
   "scripts": {
+    "verify": "node tooling/check/src/cli/verify.ts",
     "check": "node tooling/check/src/cli/check.ts",
+    "check:terms": "node tooling/check/src/cli/terms.ts",
+    "check:pr-title": "node tooling/check/src/cli/pr-title.ts",
+    "discover": "node tooling/discover/src/cli/discover.ts",
+    "new": "node tooling/discover/src/cli/new.ts",
     "format": "biome format --write .",
-    "typecheck": "turbo run typecheck",
-    "lint": "turbo run lint",
-    "test": "turbo run test"
+    "ci:all": "turbo run typecheck lint test build --continue",
+    "ci:fast": "pnpm check && biome ci --linter-enabled=false . && pnpm discover --check"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
