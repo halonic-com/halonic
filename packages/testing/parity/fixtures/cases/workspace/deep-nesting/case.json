@@ -1,0 +1,10 @@
+{
+  "about": "assistant.params.reasoningEffort is not low, medium or high",
+  "kind": "workspace",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "assistant.params.reasoningEffort",
+    "line": 18
+  }
+}
