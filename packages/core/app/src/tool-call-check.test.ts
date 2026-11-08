@@ -11,7 +11,7 @@ function tool(name: string, overrides: Partial<ConnectorTool> = {}): ConnectorTo
 
 const grant: TrustGrant = { location: "/work/notes", fingerprint: "hfp1:0000" };
 
-/** Reads one listing and returns the offered tool with that name. */
+/** Reads one listing and returns the offered tool with that name, as the model sees it. */
 function offer(
   listed: ConnectorTool[],
   name: string,
@@ -64,12 +64,12 @@ verifies("ports.untrusted-tool-listings", () => {
   });
 
   it("asks for approval for a listed tool that says it only reads", () => {
-    const offered = offer([tool("lookup", { risk: "read", untrusted: false })], "lookup");
+    const offered = offer([tool("lookup", { risk: "read", untrusted: false })], "notes__lookup");
     expect(checkToolCall(offered, {})).toEqual({ kind: "ask" });
   });
 
   it("runs a listed tool without asking when a trusted workspace sets risk read", () => {
-    const offered = offer([tool("lookup")], "lookup", {
+    const offered = offer([tool("lookup")], "notes__lookup", {
       trust: grant,
       workspaceRisks: new Map([["lookup", "read"]]),
     });
@@ -77,7 +77,7 @@ verifies("ports.untrusted-tool-listings", () => {
   });
 
   it("still asks when an untrusted workspace sets risk read", () => {
-    const offered = offer([tool("lookup")], "lookup", {
+    const offered = offer([tool("lookup")], "notes__lookup", {
       workspaceRisks: new Map([["lookup", "read"]]),
     });
     expect(checkToolCall(offered, {})).toEqual({ kind: "ask" });
@@ -85,10 +85,10 @@ verifies("ports.untrusted-tool-listings", () => {
 
   it("refuses a listed tool's argument that its rebuilt parameters don't name", () => {
     const parameters = { type: "object", properties: { word: { type: "string" } } };
-    const offered = offer([tool("lookup", { parameters })], "lookup");
+    const offered = offer([tool("lookup", { parameters })], "notes__lookup");
     expect(checkToolCall(offered, { word: "tea", path: "/" })).toEqual({
       kind: "refused",
-      reason: 'lookup has no parameter "path"',
+      reason: 'notes__lookup has no parameter "path"',
     });
   });
 });
@@ -292,7 +292,7 @@ describe("checkToolCall", () => {
       type: "object",
       properties: { place: { type: "object", properties: { city: { type: "string" } } } },
     };
-    const offered = offer([tool("lookup", { parameters })], "lookup");
+    const offered = offer([tool("lookup", { parameters })], "notes__lookup");
     expect(checkToolCall(offered, { place: { city: "Oslo", path: "/" } })).toEqual({
       kind: "ask",
     });
