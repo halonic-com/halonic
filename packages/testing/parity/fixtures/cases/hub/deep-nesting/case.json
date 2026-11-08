@@ -1,0 +1,10 @@
+{
+  "about": "a hub alias temperature that is text, four levels down",
+  "kind": "hub",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "hubs/billing/hub.yaml",
+    "path": "models.careful.params.temperature",
+    "line": 10
+  }
+}

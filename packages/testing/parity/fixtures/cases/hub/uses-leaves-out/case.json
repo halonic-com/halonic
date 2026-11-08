@@ -1,0 +1,10 @@
+{
+  "about": "uses leaves out a shared connector an agent needs",
+  "kind": "hub",
+  "fault": "reference",
+  "expect": {
+    "file": "hubs/billing/agents/notifier.agent.yaml",
+    "path": "connectors.0",
+    "line": 5
+  }
+}
