@@ -13,6 +13,7 @@ import {
 } from "yaml";
 import {
   aboveComments,
+  alignComments,
   columnOf,
   entryEnd,
   insertLines,
@@ -257,7 +258,11 @@ function deletePair(parsed: Parsed, map: YAMLMap, key: string | number): string 
   }
   const end = entryEnd(text, pairEnd(pair));
   if (startsItsLine(text, start)) {
-    return removeLines(text, lineStart(text, start), end);
+    return removeLines(
+      alignComments(text, end, columnOf(text, start)),
+      lineStart(text, start),
+      end,
+    );
   }
   // The first key of a map on a `- ` line: the next key moves up to its place.
   const next = (map.items[1]?.key as Node | undefined)?.range?.[0];
@@ -274,12 +279,16 @@ function deleteItem(parsed: Parsed, list: YAMLSeq, index: number): string | unde
   if (dash === undefined || end === undefined) {
     return undefined;
   }
+  const lineEnd = entryEnd(text, end);
   if (startsItsLine(text, dash)) {
-    return removeLines(text, lineStart(text, dash), entryEnd(text, end));
+    return removeLines(
+      alignComments(text, lineEnd, columnOf(text, dash)),
+      lineStart(text, dash),
+      lineEnd,
+    );
   }
   // The first item of a list on a `- ` line: the next item moves up to its place.
   const next = dashOffset(list, 1);
-  const lineEnd = entryEnd(text, end);
   if (index !== 0 || next === undefined || text.slice(lineEnd, next).includes("#")) {
     return undefined;
   }

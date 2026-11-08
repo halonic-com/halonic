@@ -84,20 +84,53 @@ export function keepsComments(before: string, from: number, to: number, after: s
 /**
  * Removes the lines from `from` to `to` (both line starts). When blank lines
  * sat on both sides, one of them goes too, so two sections stay one blank
- * line apart instead of two.
+ * line apart instead of two. At the start or the end of the file, the blank
+ * lines next to the removed ones go too, so none is left there.
  */
 export function removeLines(text: string, from: number, to: number): string {
-  const lineBefore = from > 0 ? lineStart(text, from - 1) : from;
-  const blankBefore = from > 0 && isBlank(text.slice(lineBefore, from));
-  if (blankBefore && to === text.length) {
-    // The last entry of the file: don't leave a blank line at the end.
-    return text.slice(0, lineBefore);
+  if (isBlank(text.slice(to))) {
+    // The last entry of the file: the blank lines above it go with it.
+    return text.slice(0, blankLinesAbove(text, from)) + text.slice(to);
   }
-  const lineAfter = text.indexOf("\n", to);
-  const lineAfterEnd = lineAfter === -1 ? text.length : lineAfter + 1;
-  const blankAfter = to < text.length && isBlank(text.slice(to, lineAfterEnd));
+  if (from === lineStart(text, 0)) {
+    // The first entry of the file: the blank lines below it go with it.
+    return text.slice(0, from) + text.slice(blankLinesBelow(text, to));
+  }
+  const lineBefore = lineStart(text, from - 1);
+  const blankBefore = isBlank(text.slice(lineBefore, from));
+  const lineAfterEnd = lineEnd(text, to);
+  const blankAfter = isBlank(text.slice(to, lineAfterEnd));
   const end = blankBefore && blankAfter ? lineAfterEnd : to;
   return text.slice(0, from) + text.slice(end);
+}
+
+/**
+ * Moves the comment lines from `at` (a line start) down to the next entry to
+ * that entry's indent, when it starts at `column`. These are comments left
+ * indented under a block that is deleted above them; less indented ones stay.
+ */
+export function alignComments(text: string, at: number, column: number): string {
+  const comments: number[] = [];
+  let start = at;
+  while (start < text.length) {
+    const line = text.slice(start, lineEnd(text, start));
+    if (!isBlank(line) && !line.trim().startsWith("#")) {
+      break;
+    }
+    if (!isBlank(line) && indentOf(line) > column) {
+      comments.push(start);
+    }
+    start = lineEnd(text, start);
+  }
+  if (start === text.length || indentOf(text.slice(start, lineEnd(text, start))) !== column) {
+    return text;
+  }
+  const pad = " ".repeat(column);
+  // From the last, so the earlier offsets still hold.
+  return comments.reduceRight((result, comment) => {
+    const indent = indentOf(result.slice(comment, lineEnd(result, comment)));
+    return result.slice(0, comment) + pad + result.slice(comment + indent);
+  }, text);
 }
 
 /** Inserts whole lines at a line start; at the end of a text without a final line break, adds one first. */
@@ -221,4 +254,33 @@ function commentLines(text: string): string[] {
 
 function isBlank(line: string): boolean {
   return line.trim() === "";
+}
+
+/** Where the line holding `offset` ends: after its line break, or at the end of the text. */
+function lineEnd(text: string, offset: number): number {
+  const lineBreak = text.indexOf("\n", offset);
+  return lineBreak === -1 ? text.length : lineBreak + 1;
+}
+
+/** How many spaces start `line`. */
+function indentOf(line: string): number {
+  return line.length - line.trimStart().length;
+}
+
+/** Moves `offset` (a line start) up over the blank lines right above it. */
+function blankLinesAbove(text: string, offset: number): number {
+  let start = offset;
+  while (start > lineStart(text, 0) && isBlank(text.slice(lineStart(text, start - 1), start))) {
+    start = lineStart(text, start - 1);
+  }
+  return start;
+}
+
+/** Moves `offset` (a line start) down over the blank lines from it. */
+function blankLinesBelow(text: string, offset: number): number {
+  let end = offset;
+  while (end < text.length && isBlank(text.slice(end, lineEnd(text, end)))) {
+    end = lineEnd(text, end);
+  }
+  return end;
 }

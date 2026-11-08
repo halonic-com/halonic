@@ -234,6 +234,31 @@ verifies("yaml.edit-preserve-entries", () => {
     expect(edited("a: 1\n\nb: 2\n\nc: 3\n", del(["b"])).text).toBe("a: 1\n\nc: 3\n");
   });
 
+  it("leaves no blank line at the start or the end of the file", () => {
+    expect(edited("a: |\n  x\n\nb: 2\n", del(["a"]))).toEqual({ text: "b: 2\n", layout: "kept" });
+    expect(edited("﻿a: 1\n\n\nb: 2\n", del(["a"])).text).toBe("﻿b: 2\n");
+    expect(edited("a: 1\n\n\nb: 2\n", del(["b"]))).toEqual({ text: "a: 1\n", layout: "kept" });
+    // A blank line that already ended the file stays.
+    expect(edited("a: 1\n\nb: 2\n\n", del(["b"])).text).toBe("a: 1\n\n");
+    expect(edited(lines("x:", "  - a", "", "  - b"), del(["x", 1])).text).toBe(
+      lines("x:", "  - a"),
+    );
+  });
+
+  it("moves a comment left under a deleted block to the next entry's indent", () => {
+    expect(edited(lines("a:", "  x: 1", "  # about b", "b: 2"), del(["a"]))).toEqual({
+      text: lines("# about b", "b: 2"),
+      layout: "kept",
+    });
+    expect(
+      edited(lines("s:", "  - a:", "      x: 1", "    # about b", "  - b"), del(["s", 0])).text,
+    ).toBe(lines("s:", "  # about b", "  - b"));
+    // A comment over a less indented line isn't the next entry's; it stays put.
+    expect(
+      edited(lines("p:", "  z: 0", "  a:", "    x: 1", "    # c", "q: 1"), del(["p", "a"])).text,
+    ).toBe(lines("p:", "  z: 0", "    # c", "q: 1"));
+  });
+
   it("leaves [] or {} when the last entry goes", () => {
     expect(edited(lines("steps:", "  - a", "n: 1"), del(["steps", 0])).text).toBe(
       lines("steps: []", "n: 1"),
