@@ -7,7 +7,8 @@ Shared settings every package extends.
 - **TypeScript presets** (`tsconfig/`): `base.json` (strict settings, Node's
   type stripping rules: `.ts` import extensions, erasable syntax only),
   `core.json` (Web-standard types only, below), `host.json` (those types
-  and their values), `node.json`, `web.json` and `studio.json`.
+  and their values: host packages, Workers code and adapters that run
+  anywhere), `node.json`, `web.json` and `studio.json`.
   A package uses `"extends": "@halonicjs/tooling-config/tsconfig/<preset>.json"`.
 - **Web types** (`types/`): `web-types.d.ts` holds only the interfaces
   (`Request`, `Response`, `Headers`, `URL`, streams, `AbortSignal`,

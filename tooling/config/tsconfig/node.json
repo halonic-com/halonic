@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "//": "For Node adapters, the host, the CLI, tests and tooling.",
+  "//": "For Node adapters, the Node target, deploy packages, the CLI, tests and tooling.",
   "extends": "./base.json",
   "compilerOptions": {
     "lib": [

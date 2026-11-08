@@ -156,8 +156,8 @@ describe("tooling/check: layers", () => {
       manifest: manifestFor("@halonicjs/adapter-git", "adapters"),
     };
     const host = (files: Record<string, string>, dependencies = {}): FixturePackage => ({
-      directory: "packages/host",
-      manifest: manifestFor("@halonicjs/host", "host", { dependencies }),
+      directory: "packages/host/server",
+      manifest: manifestFor("@halonicjs/host-server", "host", { dependencies }),
       files,
     });
     const usesAdapter = host(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type PackageSpec, packageFiles } from "./templates.ts";
+import { type PackageSpec, packageFiles, presetFor } from "./templates.ts";
 
 const core: PackageSpec = {
   directory: "packages/core/std",
@@ -47,5 +47,44 @@ describe("packageFiles", () => {
   it("writes the coverage floor of the package's layer", () => {
     const files = packageFiles({ ...core, layer: "adapters" });
     expect(JSON.parse(files["package.json"] ?? "{}").halonic.coverage).toEqual({ lines: 80 });
+  });
+
+  it("writes an adapter's runtime into package.json and its README", () => {
+    const files = packageFiles({
+      ...core,
+      directory: "packages/adapters/fs-node",
+      name: "@halonicjs/adapter-fs-node",
+      layer: "adapters",
+      folder: "fs-node",
+      runtime: "node",
+    });
+    expect(JSON.parse(files["package.json"] ?? "{}").halonic).toEqual({
+      layer: "adapters",
+      owner: "elena",
+      coverage: { lines: 80 },
+      runtime: "node",
+    });
+    expect(files["README.md"]).toContain("**Runtime:** node");
+    expect(JSON.parse(packageFiles(core)["package.json"] ?? "{}").halonic).not.toHaveProperty(
+      "runtime",
+    );
+  });
+});
+
+describe("presetFor", () => {
+  const spec: PackageSpec = { ...core, layer: "adapters" };
+  it.each<[PackageSpec, string]>([
+    [{ ...spec, runtime: "node" }, "node"],
+    [{ ...spec, runtime: "web" }, "web"],
+    [{ ...spec, runtime: "workers" }, "host"],
+    [{ ...spec, runtime: "any" }, "host"],
+    [{ ...core, layer: "host" }, "host"],
+    [{ ...core, layer: "targets", target: { name: "node", kind: "runtime" } }, "node"],
+    [{ ...core, layer: "targets", target: { name: "cloudflare", kind: "runtime" } }, "host"],
+    [{ ...core, layer: "targets", target: { name: "cloudflare", kind: "deploy" } }, "node"],
+    [{ ...core, layer: "studio" }, "studio"],
+    [core, "core"],
+  ])("picks the preset for %o", (input, preset) => {
+    expect(presetFor(input)).toBe(preset);
   });
 });

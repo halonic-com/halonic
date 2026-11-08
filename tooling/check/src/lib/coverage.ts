@@ -16,6 +16,7 @@ export const defaultCoverageFloors: Readonly<Record<Layer, CoverageFloor>> = {
   core: { lines: 90, branches: 85 },
   adapters: { lines: 80 },
   host: { lines: 80 },
+  targets: { lines: 80 },
   studio: { lines: 85 },
   apps: { lines: 80 },
   testing: { lines: 80 },
@@ -27,7 +28,7 @@ export const defaultCoverageFloors: Readonly<Record<Layer, CoverageFloor>> = {
  * one. The testing and tooling layers have no fixed number, so their packages
  * start from what they have and raise it.
  */
-const fixedLayers: readonly Layer[] = ["core", "adapters", "host", "studio", "apps"];
+const fixedLayers: readonly Layer[] = ["core", "adapters", "host", "targets", "studio", "apps"];
 
 /** Layers with no fixed number, where a floor of 0 would still switch the check off. */
 const zeroNotAllowed: readonly Layer[] = ["testing", "tooling"];

@@ -20,6 +20,7 @@
   "halonic": {
     "layer": "adapters",
     "owner": "julian",
+    "runtime": "any",
     "coverage": {
       "lines": 80
     }

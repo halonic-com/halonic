@@ -11,12 +11,10 @@ import type { Layer } from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
 import { isSourceFile, isTestFile, splitBareSpecifier } from "../lib/source-files.ts";
 import { owningPackage, type WorkspacePackage } from "../lib/workspace.ts";
+import { type EdgeKind, layerOf, layerProblem } from "./layer-table.ts";
 import { exportKeys } from "./packages.ts";
 
 const guide = "See docs/guides/dependencies.md.";
-
-/** Where an edge comes from: a runtime dependency, or dev-only (devDependencies, tests, config files). */
-type EdgeKind = "runtime" | "dev";
 
 /**
  * Checks the layer table for every internal `package.json`
@@ -55,106 +53,6 @@ export function isDevFile(file: string): boolean {
   return isTestFile(file) || /(?:^|\/)[^/]+\.config\.[cm]?[jt]s$/.test(file);
 }
 
-function layerOf(context: CheckContext, pkg: WorkspacePackage): Layer | undefined {
-  return context.placeOf(pkg)?.layer;
-}
-
-/** Explains why `from` may not use `to`, or returns `undefined` when it may. */
-function layerProblem(
-  context: CheckContext,
-  from: WorkspacePackage,
-  to: WorkspacePackage,
-  kind: EdgeKind,
-): string | undefined {
-  const fromLayer = layerOf(context, from);
-  const toLayer = layerOf(context, to);
-  if (fromLayer === undefined || toLayer === undefined || from === to) {
-    return undefined;
-  }
-  if (toLayer === "testing" && fromLayer !== "testing" && kind === "runtime") {
-    return "testing packages are never a runtime dependency. Move it to devDependencies.";
-  }
-  if (toLayer === "tooling" && fromLayer !== "tooling" && kind === "runtime") {
-    return "tooling packages are dev-only. Move it to devDependencies.";
-  }
-  if (kind === "dev" && (toLayer === "testing" || toLayer === "tooling")) {
-    return undefined;
-  }
-  return layerRule(context, fromLayer, toLayer, from, to);
-}
-
-function layerRule(
-  context: CheckContext,
-  fromLayer: Layer,
-  toLayer: Layer,
-  from: WorkspacePackage,
-  to: WorkspacePackage,
-): string | undefined {
-  const fromName = from.manifest.name ?? from.directory;
-  const toName = to.manifest.name ?? to.directory;
-  switch (fromLayer) {
-    case "apps":
-    case "testing":
-      return undefined;
-    case "tooling":
-      return toLayer === "tooling"
-        ? undefined
-        : "tooling packages use only other tooling packages.";
-    case "core":
-      return coreRule(context, toLayer, fromName, toName);
-    case "adapters":
-      return toLayer === "core" || toLayer === "adapters"
-        ? undefined
-        : "adapters may use core packages and other adapters' public interfaces only.";
-    case "host":
-      return toLayer === "core"
-        ? undefined
-        : "the host may use core packages only, never adapters or Studio packages.";
-    case "studio":
-      return studioRule(context, toLayer, from, to);
-  }
-}
-
-function coreRule(
-  context: CheckContext,
-  toLayer: Layer,
-  fromName: string,
-  toName: string,
-): string | undefined {
-  if (toLayer !== "core") {
-    return "core packages may use only other core packages. Move this code into an adapter, or use a port.";
-  }
-  const order = context.policy.coreOrder;
-  if (order.indexOf(toName) >= order.indexOf(fromName)) {
-    return `core packages may use only core packages listed before them in "coreOrder" (${context.policyPath}). Reorder only if it keeps the list free of cycles.`;
-  }
-  return undefined;
-}
-
-function studioRule(
-  context: CheckContext,
-  toLayer: Layer,
-  from: WorkspacePackage,
-  to: WorkspacePackage,
-): string | undefined {
-  if (toLayer === "core") {
-    return undefined;
-  }
-  if (toLayer === "adapters") {
-    const gateway = context.policy.adapterGateways.includes(from.manifest.name ?? "");
-    return gateway ? undefined : "Studio packages reach adapters only through studio/services.";
-  }
-  if (toLayer !== "studio") {
-    return "Studio packages may use core and other Studio packages only.";
-  }
-  const fromFeature = context.placeOf(from)?.isFeature === true;
-  const toFeature = context.placeOf(to)?.isFeature === true;
-  if (toFeature && !fromFeature) {
-    return "shared Studio packages never depend on a feature; features plug in through the shell's contribution points.";
-  }
-  return undefined;
-}
-
 function checkImports(context: CheckContext, file: string, report: Report): void {
   const pkg = owningPackage(file, context.packages);
   if (pkg === undefined) {
@@ -185,8 +83,11 @@ function importProblem(
   if (specifier.startsWith(".") || specifier.startsWith("/")) {
     return relativeImportProblem(site, specifier);
   }
+  if (specifier.startsWith("cloudflare:")) {
+    return cloudflareProblem(context, site, specifier);
+  }
   if (specifier.startsWith("node:") || builtinModules.includes(specifier)) {
-    return builtinProblem(site, specifier);
+    return builtinProblem(context, site, specifier);
   }
   const { name, subpath } = splitBareSpecifier(specifier);
   const target = context.packagesByName.get(name);
@@ -219,20 +120,60 @@ function relativeImportProblem(site: ImportSite, specifier: string): string | un
   return undefined;
 }
 
-function builtinProblem(site: ImportSite, specifier: string): string | undefined {
+function builtinProblem(
+  context: CheckContext,
+  site: ImportSite,
+  specifier: string,
+): string | undefined {
   if (site.dev) {
     return undefined;
   }
-  if (site.layer === "core") {
-    return `core packages may not use Node APIs ("${specifier}"). Use a port, or move this code into an adapter.`;
+  switch (site.layer) {
+    case "core":
+      return `core packages may not use Node APIs ("${specifier}"). Use a port, or move this code into an adapter.`;
+    case "host":
+      return `host packages are runtime-neutral and may use Web-standard APIs only, not Node APIs ("${specifier}"). Move this into targets/node/runtime or an adapter.`;
+    case "studio":
+      return `Studio packages run in the browser and may not use Node APIs ("${specifier}"). Go through studio/services.`;
+    case "adapters": {
+      const runtime = site.pkg.manifest.halonic?.runtime;
+      return runtime === "node"
+        ? undefined
+        : `only adapters with "halonic": { "runtime": "node" } may use Node APIs ("${specifier}"); this one declares "${runtime ?? "(none)"}".`;
+    }
+    case "targets": {
+      const target = context.placeOf(site.pkg)?.target;
+      return target?.kind === "runtime" && target.name !== "node"
+        ? `only the Node target's runtime may use Node APIs ("${specifier}"); the ${target.name} runtime uses its own platform's APIs.`
+        : undefined;
+    }
+    default:
+      return undefined;
   }
-  if (site.layer === "host") {
-    return `the host uses Web-standard APIs only, never Node APIs ("${specifier}"). Move this code into an adapter.`;
-  }
-  if (site.layer === "studio") {
-    return `Studio packages run in the browser and may not use Node APIs ("${specifier}"). Go through studio/services.`;
-  }
-  return undefined;
+}
+
+/**
+ * `cloudflare:*` modules exist only in the Cloudflare runtime and in
+ * `cloudflare-*` adapters that declare `"runtime": "workers"` or `"any"`.
+ */
+function cloudflareProblem(
+  context: CheckContext,
+  site: ImportSite,
+  specifier: string,
+): string | undefined {
+  const place = context.placeOf(site.pkg);
+  const folder = site.pkg.directory.split("/").at(-1) ?? "";
+  const runtime = site.pkg.manifest.halonic?.runtime;
+  const allowed =
+    site.dev ||
+    site.layer === "testing" ||
+    (site.layer === "adapters" &&
+      folder.startsWith("cloudflare-") &&
+      (runtime === "workers" || runtime === "any")) ||
+    (place?.target?.name === "cloudflare" && place.target.kind === "runtime");
+  return allowed
+    ? undefined
+    : `"${specifier}" exists only on Cloudflare. Use it in targets/cloudflare/runtime, or in a cloudflare-* adapter that declares "runtime": "workers" or "any".`;
 }
 
 function externalImportProblem(

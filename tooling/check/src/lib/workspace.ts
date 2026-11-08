@@ -17,6 +17,8 @@ export interface PackageJson {
     readonly layer?: string;
     readonly owner?: string;
     readonly coverage?: unknown;
+    /** Where an adapter runs: `node`, `web`, `workers` or `any`. */
+    readonly runtime?: string;
   };
 }
 
@@ -57,7 +59,7 @@ export function findRepoRoot(start: string = process.cwd()): string {
 
 /**
  * Reads the `packages:` globs from `pnpm-workspace.yaml`. We only use plain
- * folders and `folder/*` in a block list, so a line reader is enough and
+ * folders and `*` segments in a block list, so a line reader is enough and
  * keeps the check free of a YAML library. Anything else in `packages:`
  * throws: reading too few globs would hide packages from every rule.
  *
@@ -103,22 +105,7 @@ export function readWorkspaceGlobs(root: string): string[] {
 export function listWorkspacePackages(root: string): WorkspacePackage[] {
   const directories = ["."];
   for (const glob of readWorkspaceGlobs(root)) {
-    if (glob.includes("*") && !glob.endsWith("/*")) {
-      throw new Error(`Unsupported workspace glob "${glob}". Use "folder" or "folder/*".`);
-    }
-    if (!glob.endsWith("/*")) {
-      directories.push(glob);
-      continue;
-    }
-    const parent = glob.slice(0, -2);
-    if (!existsSync(join(root, parent))) {
-      continue;
-    }
-    for (const entry of readdirSync(join(root, parent), { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        directories.push(`${parent}/${entry.name}`);
-      }
-    }
+    directories.push(...expandWorkspaceGlob(root, glob));
   }
   const packages: WorkspacePackage[] = [];
   for (const directory of directories.sort(byRootFirst)) {
@@ -128,6 +115,45 @@ export function listWorkspacePackages(root: string): WorkspacePackage[] {
     }
   }
   return packages;
+}
+
+/**
+ * Expands one workspace glob into the folders it matches. Each `*` stands
+ * for exactly one folder name, so two of them under `packages/targets`
+ * match `packages/targets/node/runtime`. Folders whose name starts with a dot
+ * (`.git`, `.turbo`) are skipped, and `..` is refused so a glob can't leave the
+ * repo. Other glob syntax is refused.
+ */
+export function expandWorkspaceGlob(root: string, glob: string): string[] {
+  const segments = glob.split("/");
+  if (segments.includes("..")) {
+    throw new Error(`Unsupported workspace glob "${glob}". A glob can't use "..".`);
+  }
+  if (segments.some((segment) => /[*?[\]{}!]/.test(segment) && segment !== "*")) {
+    throw new Error(
+      `Unsupported workspace glob "${glob}". Use folder names and "*" for one whole folder name, such as "packages/targets/*/*".`,
+    );
+  }
+  let matches = [""];
+  for (const segment of segments) {
+    const next: string[] = [];
+    for (const parent of matches) {
+      if (segment !== "*") {
+        next.push(parent === "" ? segment : `${parent}/${segment}`);
+        continue;
+      }
+      if (!existsSync(join(root, parent))) {
+        continue;
+      }
+      for (const entry of readdirSync(join(root, parent), { withFileTypes: true })) {
+        if (entry.isDirectory() && !entry.name.startsWith(".")) {
+          next.push(parent === "" ? entry.name : `${parent}/${entry.name}`);
+        }
+      }
+    }
+    matches = next;
+  }
+  return matches;
 }
 
 function byRootFirst(left: string, right: string): number {

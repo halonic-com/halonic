@@ -1,4 +1,8 @@
-import { defaultCoverageFloors } from "@halonicjs/tooling-check";
+import {
+  type AdapterRuntime,
+  defaultCoverageFloors,
+  type TargetKind,
+} from "@halonicjs/tooling-check";
 import { renderAgentsMd } from "./agents-md.ts";
 import { featureExportName } from "./features.ts";
 
@@ -12,15 +16,28 @@ export interface PackageSpec {
   readonly folder: string;
   /** One sentence for AGENTS.md; a to-do line is written when missing. */
   readonly purpose?: string;
+  /** Where an adapter runs (`node`, `web`, `workers` or `any`); adapters only. */
+  readonly runtime?: AdapterRuntime;
+  /** Set for a package under `packages/targets/<target>/<kind>`. */
+  readonly target?: { readonly name: string; readonly kind: TargetKind };
 }
 
-/** The TypeScript preset each layer uses (tooling/config/tsconfig). */
-function presetFor(layer: string): string {
-  switch (layer) {
+/** The TypeScript preset a package's source uses (tooling/config/tsconfig). */
+export function presetFor(spec: PackageSpec): string {
+  switch (spec.layer) {
     case "core":
       return "core";
     case "studio":
       return "studio";
+    case "host":
+      return "host";
+    case "adapters":
+      if (spec.runtime === "node" || spec.runtime === "web") {
+        return spec.runtime;
+      }
+      return "host";
+    case "targets":
+      return spec.target?.kind === "runtime" && spec.target.name !== "node" ? "host" : "node";
     default:
       return "node";
   }
@@ -42,7 +59,7 @@ export function packageFiles(spec: PackageSpec): Record<string, string> {
   const files: Record<string, string> = {
     "package.json": packageJson(spec),
     "tsconfig.json": json({
-      extends: `@halonicjs/tooling-config/tsconfig/${presetFor(spec.layer)}.json`,
+      extends: `@halonicjs/tooling-config/tsconfig/${presetFor(spec)}.json`,
       include: ["src"],
       exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     }),
@@ -88,7 +105,12 @@ function packageJson(spec: PackageSpec): string {
       typescript: "catalog:",
       vitest: "catalog:",
     },
-    halonic: { layer: spec.layer, owner: spec.owner, coverage: defaultCoverageFloors[spec.layer] },
+    halonic: {
+      layer: spec.layer,
+      owner: spec.owner,
+      coverage: defaultCoverageFloors[spec.layer],
+      ...(spec.runtime === undefined ? {} : { runtime: spec.runtime }),
+    },
   });
 }
 
@@ -164,6 +186,7 @@ function readme(spec: PackageSpec): string {
     "",
     `- **Layer:** ${spec.layer}`,
     `- **Owner:** ${spec.owner}`,
+    ...(spec.runtime === undefined ? [] : [`- **Runtime:** ${spec.runtime}`]),
     `- **Public API:** ${entry}`,
     "",
     "## Example",

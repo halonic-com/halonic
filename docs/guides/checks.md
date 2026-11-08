@@ -12,7 +12,7 @@ typecheck, lint and test for the packages your change affects.
 | `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                          |
 | `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles)) |
 | `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                      |
-| `pnpm new package <layer>/<name>`           | creates an empty package that passes every check                                                                                                 |
+| `pnpm new package <layer>/<name>`           | creates an empty package that passes every check (adapters: add `--runtime <r>`)                                                                 |
 | `pnpm new feature <name>`                   | creates an empty Studio feature and adds it to the Studio's feature list                                                                         |
 | `pnpm who-touches [<package>]`              | the open pull requests that change a package; run it before you start                                                                            |
 
@@ -108,7 +108,10 @@ invent a name:
 | --------------------------------- | -------- | ------------------------------------- |
 | `packages/core/<name>`            | core     | `@halonicjs/<name>`                   |
 | `packages/adapters/<name>`        | adapters | `@halonicjs/adapter-<name>`           |
-| `packages/host`                   | host     | `@halonicjs/host`                     |
+| `packages/host/<name>`            | host     | `@halonicjs/host-<name>`              |
+| `packages/targets/<t>/runtime`    | targets  | `@halonicjs/target-<t>-runtime`       |
+| `packages/targets/<t>/deploy`     | targets  | `@halonicjs/target-<t>-deploy`        |
+| `packages/targets/<t>/testing`    | testing  | `@halonicjs/target-<t>-testing`       |
 | `packages/studio/<name>`          | studio   | `@halonicjs/studio-<name>`            |
 | `packages/studio/features/<name>` | studio   | `@halonicjs/studio-feature-<name>`    |
 | `packages/testing/<name>`         | testing  | `@halonicjs/testing-<name>`           |
@@ -118,15 +121,22 @@ invent a name:
 
 Who may use what:
 
-| Layer    | May use                                                                                 | Never                                                                                |
-| -------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| core     | core packages listed **before** it in `coreOrder`; its `core-exception` libraries       | other third-party code, Node APIs, browser APIs                                      |
-| adapters | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                      |
-| host     | core, Web-standard APIs                                                                 | adapters, Node APIs, third-party code, Studio packages                               |
-| studio   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
-| apps     | the public entry point of any package                                                   | —                                                                                    |
-| testing  | anything                                                                                | being a runtime dependency                                                           |
-| tooling  | other tooling packages                                                                  | being a runtime dependency                                                           |
+| Layer    | May use                                                                                                              | Never                                                                                |
+| -------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| core     | core packages listed **before** it in `coreOrder`; its `core-exception` libraries                                    | other third-party code, Node APIs, browser APIs                                      |
+| adapters | core, other adapters' public entry points, its approved libraries; Node APIs only with `"runtime": "node"`           | Studio packages                                                                      |
+| host     | core; Web-standard APIs                                                                                              | Node APIs, adapters, third-party code, Studio packages                               |
+| targets  | runtime: core, host, adapters, its platform's APIs. Deploy: core, adapters, Node APIs, the runtime packages it ships | Studio packages; a runtime never uses a deploy package or another target's runtime   |
+| studio   | core, other Studio packages, React, Tauri, Vite                                                                      | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
+| apps     | the public entry point of any package                                                                                | —                                                                                    |
+| testing  | anything                                                                                                             | being a runtime dependency                                                           |
+| tooling  | other tooling packages                                                                                               | being a runtime dependency                                                           |
+
+`node:*` is allowed in adapters with `"runtime": "node"`, in
+`targets/node/runtime` and in every deploy package. `cloudflare:*` is allowed only in
+`targets/cloudflare/runtime` and `cloudflare-*` adapters with `"runtime": "workers"` or `"any"`. A core package
+may not be named `root` or `host`, or start with another layer's prefix
+(`app-`, `adapter-`, `host-`, `target-`, `studio-`, `testing-`, `tooling-`).
 
 Tests (`*.test.ts`, `test/` folders) and tool config files
 (`vitest.config.ts`) may use dev tooling and Node APIs in every layer.
@@ -138,13 +148,13 @@ on Node, Workers and in the browser (multi-cloud ADR 5.1). The presets
 in `tooling/config/tsconfig/` make that a compile error, not a review
 comment:
 
-| Preset        | Used by                          | Can name the Web types | Can call `fetch`, `new Request()`, timers | DOM (`document`, `window`) | Node (`process`, `Buffer`, `node:*`) |
-| ------------- | -------------------------------- | ---------------------- | ----------------------------------------- | -------------------------- | ------------------------------------ |
-| `core.json`   | core packages                    | yes                    | no                                        | no                         | no                                   |
-| `host.json`   | the host                         | yes                    | yes                                       | no                         | no                                   |
-| `node.json`   | Node adapters, CLI, tests, tools | yes                    | yes                                       | no                         | yes                                  |
-| `web.json`    | browser adapters                 | yes                    | yes                                       | yes                        | no                                   |
-| `studio.json` | Studio packages                  | yes                    | yes                                       | yes                        | no                                   |
+| Preset        | Used by                                                 | Can name the Web types | Can call `fetch`, `new Request()`, timers | DOM (`document`, `window`) | Node (`process`, `Buffer`, `node:*`) |
+| ------------- | ------------------------------------------------------- | ---------------------- | ----------------------------------------- | -------------------------- | ------------------------------------ |
+| `core.json`   | core packages                                           | yes                    | no                                        | no                         | no                                   |
+| `host.json`   | host packages, Workers code, adapters that run anywhere | yes                    | yes                                       | no                         | no                                   |
+| `node.json`   | Node adapters, CLI, tests, tools                        | yes                    | yes                                       | no                         | yes                                  |
+| `web.json`    | browser adapters                                        | yes                    | yes                                       | yes                        | no                                   |
+| `studio.json` | Studio packages                                         | yes                    | yes                                       | yes                        | no                                   |
 
 "The Web types" are `Request`, `Response`, `Headers`, `URL`,
 `URLSearchParams`, `ReadableStream`, `WritableStream`, `TransformStream`,
