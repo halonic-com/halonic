@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { loadCases } from "./cases.ts";
 import type { Recording } from "./recording.ts";
 
@@ -29,7 +30,7 @@ const kinds = [
   "routine",
 ];
 
-describe("parity.fixtures-cover-every-kind", () => {
+verifies("parity.fixtures-cover-every-kind", () => {
   it("has a passing file of every kind in the base recording", () => {
     const base = recordingOf(join(fixtures, "base"));
     expect(base.valid).toBe(true);

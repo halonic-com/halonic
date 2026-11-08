@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, expect, it, vi } from "vitest";
 import type { OldResult } from "./recording.ts";
 import { fakeOldRepo } from "./test/fake-old-repo.ts";
 import { TestFolders } from "./test-folders.ts";
@@ -42,7 +43,7 @@ async function runOld(clone: string, jobs: readonly Job[]): Promise<OldResult[]>
   return JSON.parse(readFileSync(outPath, "utf8")) as OldResult[];
 }
 
-describe("parity.runner-traces-old-loader", () => {
+verifies("parity.runner-traces-old-loader", () => {
   it("records the schema, issues with lines and the old validate for each file", async () => {
     const { clone } = fakeOldRepo(folders);
     const [result] = await runOld(clone, [

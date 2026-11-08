@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, expect, it, vi } from "vitest";
 import { cloneProblems, oldEnvironment } from "./old-repo.ts";
 import { TestFolders } from "./test-folders.ts";
 
@@ -34,7 +35,7 @@ function clone(withTsx: boolean): { folder: string; head: string } {
   return { folder, head: git(folder, "rev-parse", "HEAD") };
 }
 
-describe("parity.record-only-from-reference", () => {
+verifies("parity.record-only-from-reference", () => {
   it("accepts a clean clone at the expected commit with tsx installed", () => {
     const { folder, head } = clone(true);
     expect(cloneProblems(folder, head)).toEqual([]);

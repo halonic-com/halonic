@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, expect, it } from "vitest";
 import { readCase } from "./cases.ts";
 import { composeWorkspace } from "./compose.ts";
 import { TestFolders } from "./test-folders.ts";
@@ -25,7 +26,7 @@ function fixturesWith(caseDescription: object, caseFiles: Record<string, string>
 
 const about = { about: "x", kind: "models", fault: "valid" };
 
-describe("parity.compose-case-workspace", () => {
+verifies("parity.compose-case-workspace", () => {
   it("puts the case's files over the base", () => {
     const fixtures = fixturesWith(about, { "models.yaml": "aliases: []\n", "extra/a.yaml": "a\n" });
     const target = join(folders.make(), "workspace");

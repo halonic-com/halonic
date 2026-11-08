@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import type { ParityCase } from "./cases.ts";
 import { goldenText, lineVerdict, normalise, type OldResult, toRecording } from "./recording.ts";
 
@@ -23,7 +24,7 @@ const mapped = [
   { file: "library/m.yaml", flatPath: "m.yaml", read: true, schema: "models", issues: [] },
 ];
 
-describe("parity.recording-is-machine-free", () => {
+verifies("parity.recording-is-machine-free", () => {
   it("replaces every scratch folder with <workspace>", () => {
     expect(
       normalise("error /scratch/w1/m.yaml and /real/w1/m.yaml", ["/scratch/w1", "/real/w1"]),
@@ -62,7 +63,7 @@ describe("parity.recording-is-machine-free", () => {
   });
 });
 
-describe("parity.line-verdict", () => {
+verifies("parity.line-verdict", () => {
   const error = (line?: number) => ({
     severity: "error" as const,
     path: "m.yaml",

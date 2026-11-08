@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-204
 
-For each composed workspace, the old runner shall record what the old loader reported, and for each file whether the loader read it, which file kind's schema checked it, and that schema's issues with their key paths. Where the loader gave a line for an issue, the runner shall add it.
+When the old runner runs on a composed workspace, it shall record what the old loader reported, and for each file whether the loader read it, which file kind's schema checked it, and that schema's issues with their key paths. Where the loader gave a line for an issue, the runner shall add it.
 
 The runner shall map files in a grouped or legacy-grouped layout to the flat path the old loader uses, and record the exit code and output of the old `validate` command, run with the old repo's own `tsx`.
 

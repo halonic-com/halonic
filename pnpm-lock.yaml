@@ -493,6 +493,9 @@ importers:
 
   packages/testing/parity:
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config

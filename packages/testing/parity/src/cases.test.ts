@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, expect, it } from "vitest";
 import { loadCases, readCase } from "./cases.ts";
 import { TestFolders } from "./test-folders.ts";
 
@@ -23,7 +24,7 @@ function caseFolder(description: unknown, files: Record<string, string> = {}): s
   return folder;
 }
 
-describe("parity.case-description-checked", () => {
+verifies("parity.case-description-checked", () => {
   it("reads a case with its expectation and its sorted files", () => {
     const folder = caseFolder(faulty, { "b.yaml": "b", "a/c.yaml": "c" });
     const parityCase = readCase("agent/x", folder);
