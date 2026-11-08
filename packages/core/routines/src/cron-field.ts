@@ -61,7 +61,7 @@ function partValues(part: string, range: FieldRange): number[] {
 
 function parseStep(stepText: string, part: string): number {
   if (!WHOLE_NUMBER.test(stepText) || Number(stepText) < 1) {
-    throw new CronError(`The step in "${part}" must be a whole number of 1 or more.`);
+    throw new CronError(`"${part}" needs a step that is a whole number of 1 or more.`);
   }
   return Number(stepText);
 }

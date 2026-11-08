@@ -10,15 +10,15 @@ If a cron expression is an unknown macro, doesn't have five fields, or a field h
 
 - Given `* * * *`, when it is parsed, then the error says `Cron needs 5 fields (minute hour day month weekday), got 4.`
 - Given an empty expression, when it is parsed, then the error says cron needs 5 fields.
-- Given `60 * * * *`, when it is parsed, then the error says `Minute: "60" is outside 0-59.`.
+- Given `60 * * * *`, when it is parsed, then the error says `Minute: "60" is outside 0-59.`
 - Given `0 0 * * 5-1`, when it is parsed, then the error says `Weekday: "5-1" is outside 0-7.`
 - Given `*/0 * * * *`, when it is parsed, then the error is about the step and names the minute field.
-- Given `x * * * *`, when it is parsed, then the error says `Minute: "x" is not a number.`.
+- Given `x * * * *`, when it is parsed, then the error says `Minute: "x" is not a number.`
 - Given `/5 * * * *` or `1/2/3 * * * *`, when it is parsed, then the error says `Minute: "/5" is not a valid part.` (or the same for `"1/2/3"`).
-- Given `1-/5 * * * *`, when it is parsed, then the error says `Minute: "1-" in "1-/5" is not a valid range.`.
+- Given `1-/5 * * * *`, when it is parsed, then the error says `Minute: "1-" in "1-/5" is not a valid range.`
 - Given `@reboot`, when it is parsed, then the error says `Unknown macro "@reboot".` and lists the known ones.
 - Given `1-2-3 * * * *`, when it is parsed, then the error says `Minute: "1-2-3" is not a valid range.`
-- Given `*/1e1 * * * *`, when it is parsed, then the error says `Minute: The step in "*/1e1" must be a whole number of 1 or more.`
+- Given `*/1e1 * * * *`, when it is parsed, then the error says `Minute: "*/1e1" needs a step that is a whole number of 1 or more.`
 
 ## Difference from the old routines package
 

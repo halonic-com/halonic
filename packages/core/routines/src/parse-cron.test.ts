@@ -132,7 +132,7 @@ verifies("routines.cron-rejects-bad-expressions", () => {
 
   it("rejects a step that is not a plain whole number", () => {
     expect(() => parseCron("*/1e1 * * * *")).toThrow(
-      'Minute: The step in "*/1e1" must be a whole number of 1 or more.',
+      'Minute: "*/1e1" needs a step that is a whole number of 1 or more.',
     );
     expect(() => parseCron("*/ * * * *")).toThrow(/step/);
   });
