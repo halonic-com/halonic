@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCases, type ParityCase } from "../cases.ts";
 import { composeWorkspace } from "../compose.ts";
-import { cloneProblems, oldEnvironment, oldTsx } from "../old-repo.ts";
+import { cloneProblems, oldEnvironment, oldTsx, referenceHash } from "../old-repo.ts";
 import { goldenText, type OldResult, type Recording, toRecording } from "../recording.ts";
 
 /**
@@ -23,6 +23,17 @@ interface Options {
   readonly clone: string;
   readonly only: readonly string[];
 }
+
+/** Where the fixtures are and which commit the clone must be at; tests pass their own. */
+export interface Setup {
+  readonly fixtures: string;
+  readonly reference: string;
+}
+
+const defaultSetup: Setup = {
+  fixtures: fileURLToPath(new URL("../../fixtures/", import.meta.url)),
+  reference: referenceHash,
+};
 
 function parseOptions(argv: readonly string[]): Options | null {
   const clone = argv[argv.indexOf("--old") + 1];
@@ -70,18 +81,19 @@ function runOld(clone: string, jobs: unknown, scratch: string): OldResult[] {
   return JSON.parse(readFileSync(outPath, "utf8")) as OldResult[];
 }
 
-function main(argv: readonly string[]): number {
+/** Records every case (or only the --case ones) and returns the exit code. */
+export function main(argv: readonly string[], setup: Setup = defaultSetup): number {
   const options = parseOptions(argv);
   if (options === null) {
     console.error(usage);
     return 2;
   }
-  const problems = cloneProblems(options.clone);
+  const problems = cloneProblems(options.clone, setup.reference);
   if (problems.length > 0) {
     console.error(`Cannot record from ${options.clone}:\n- ${problems.join("\n- ")}`);
     return 1;
   }
-  const fixtures = fileURLToPath(new URL("../../fixtures/", import.meta.url));
+  const { fixtures } = setup;
   const cases = loadCases(fixtures).filter(
     (c) => options.only.length === 0 || options.only.includes(c.id),
   );
@@ -112,4 +124,6 @@ function main(argv: readonly string[]): number {
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+if (import.meta.main) {
+  process.exitCode = main(process.argv.slice(2));
+}
