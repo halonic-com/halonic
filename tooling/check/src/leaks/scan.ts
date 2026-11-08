@@ -1,7 +1,7 @@
 import { type AllowList, allowFilePath, hasInlineAllow } from "./allow.ts";
 import { fileNameOf, fileRules } from "./files.ts";
 import { absolutePathRule, findAbsolutePaths } from "./paths.ts";
-import { fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
+import { findRuleMatches, fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
 import { personalTermRule, type TermMatcher } from "./terms.ts";
 
 /**
@@ -63,7 +63,7 @@ const termMessage = "Contains a personal term. Remove or reword it; the term is 
 function findSecrets(text: string, at: Location, settings: ScanSettings): Finding[] {
   const findings: Finding[] = [];
   for (const rule of secretRules) {
-    for (const [value] of text.matchAll(rule.pattern)) {
+    for (const value of findRuleMatches(rule, text)) {
       const print = fingerprint(value);
       if (isPlaceholder(value) || settings.allowList.allows(rule.name, at.file, print)) {
         continue;

@@ -12,6 +12,21 @@ export interface SecretRule {
   readonly label: string;
   /** Matches the secret itself. Must have the `g` flag. */
   readonly pattern: RegExp;
+  /** More of the same rule, run only on lines that contain a word. */
+  readonly onLinesWith?: LineGatedPattern;
+}
+
+/**
+ * A pattern that has to look across the whole line for a word, such as
+ * `grant_type`. Looking costs the length of the line for each candidate, so
+ * on a long line with many candidates and no such word it would take
+ * quadratic time. A plain search for the word first rules those lines out.
+ */
+export interface LineGatedPattern {
+  /** The word the line must contain before `pattern` runs on it. */
+  readonly word: string;
+  /** Matches the secret itself. Must have the `g` flag. */
+  readonly pattern: RegExp;
 }
 
 /**
@@ -38,14 +53,22 @@ const oauthValueEnd = String.raw`(?![A-Za-z0-9._~%/+=-])`;
  * (`?code=…`, `&code=…`), and a token request, which names a `grant_type`
  * on the same line, before or after the code.
  */
-const oauthCodePattern = new RegExp(
-  [
-    String.raw`(?<=[?&]code=)${oauthValue}`,
-    String.raw`(?<=\bgrant_type\b.*\bcode${assigned})${oauthValue}`,
-    String.raw`(?<=\bcode${assigned})${oauthValue}${oauthValueEnd}(?=.*\bgrant_type\b)`,
-  ].join("|"),
-  "g",
-);
+const oauthCodeInQuery = new RegExp(String.raw`(?<=[?&]code=)${oauthValue}`, "g");
+
+/**
+ * The token-request part of `oauth-code`. Both alternatives look across the
+ * line for `grant_type`, so they run only on lines that contain it.
+ */
+const oauthCodeInTokenRequest: LineGatedPattern = {
+  word: "grant_type",
+  pattern: new RegExp(
+    [
+      String.raw`(?<=\bgrant_type\b.*\bcode${assigned})${oauthValue}`,
+      String.raw`(?<=\bcode${assigned})${oauthValue}${oauthValueEnd}(?=.*\bgrant_type\b)`,
+    ].join("|"),
+    "g",
+  ),
+};
 
 export const secretRules: readonly SecretRule[] = [
   {
@@ -104,7 +127,8 @@ export const secretRules: readonly SecretRule[] = [
   {
     name: "oauth-code",
     label: "an OAuth authorization code",
-    pattern: oauthCodePattern,
+    pattern: oauthCodeInQuery,
+    onLinesWith: oauthCodeInTokenRequest,
   },
   {
     name: "stripe-key",
@@ -148,6 +172,20 @@ export const secretRules: readonly SecretRule[] = [
     pattern: /(?<=:_authToken=)(?!\$\{)[^\s"']{16,}/g,
   },
 ];
+
+/**
+ * The values one rule finds on one line, each once. A value that both the
+ * rule's pattern and its line-gated pattern match counts once.
+ */
+export function findRuleMatches(rule: SecretRule, line: string): string[] {
+  const matches = [...line.matchAll(rule.pattern)];
+  const gated = rule.onLinesWith;
+  if (gated !== undefined && line.includes(gated.word)) {
+    matches.push(...line.matchAll(gated.pattern));
+  }
+  const byPosition = new Map(matches.map((match) => [match.index, match[0]]));
+  return [...byPosition.entries()].sort(([a], [b]) => a - b).map(([, value]) => value);
+}
 
 /**
  * Rules whose match starts with a well-known public prefix (`ghp_`,

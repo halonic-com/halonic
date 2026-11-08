@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { fileNameOf, fileRules } from "./files.ts";
 import { findAbsolutePaths } from "./paths.ts";
-import { fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
+import { findRuleMatches, fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
 import { absolute, fakeSecrets, filler } from "./test-values.ts";
 
 function secretRulesHit(line: string): string[] {
   return secretRules
-    .filter((rule) => [...line.matchAll(rule.pattern)].some(([value]) => !isPlaceholder(value)))
+    .filter((rule) => findRuleMatches(rule, line).some((value) => !isPlaceholder(value)))
     .map((rule) => rule.name);
 }
 
@@ -76,6 +76,22 @@ describe("secret rules", () => {
     const start = performance.now();
     expect(secretRulesHit(line)).toEqual([]);
     expect(performance.now() - start).toBeLessThan(500);
+  });
+
+  it("checks a long line with many code matches and no grant type quickly", () => {
+    // Minified code such as `x.code===someLongPropertyChain`, 5,000 times on one
+    // line. Looking for `grant_type` after each of them would take seconds.
+    const line = Array.from({ length: 5_000 }, () => `x.code===${filler(30)}`).join(";");
+    const start = performance.now();
+    expect(secretRulesHit(line)).toEqual([]);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
+  it("finds a code that is both in a query string and in a token request once", () => {
+    const code = filler(40);
+    const rule = secretRules.find(({ name }) => name === "oauth-code");
+    const line = `grant_type=authorization_code&code=${code}`;
+    expect(rule && findRuleMatches(rule, line)).toEqual([code]);
   });
 
   it("masks a secret down to its prefix and length", () => {
