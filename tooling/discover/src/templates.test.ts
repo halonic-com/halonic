@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { packageFiles } from "./templates.ts";
+import { packageFiles, presetFor } from "./templates.ts";
 
 const core = {
   directory: "packages/core/std",
@@ -42,5 +42,46 @@ describe("packageFiles", () => {
       "./api": "./src/api.ts",
     });
     expect(files["src/feature.ts"]).toContain("export const inboxFeature");
+  });
+
+  it("writes an adapter's runtime into package.json and its README", () => {
+    const files = packageFiles({
+      ...core,
+      directory: "packages/adapters/fs-node",
+      name: "@halonicjs/adapter-fs-node",
+      layer: "adapters",
+      folder: "fs-node",
+      runtime: "node",
+    });
+    expect(JSON.parse(files["package.json"] ?? "{}").halonic).toEqual({
+      layer: "adapters",
+      owner: "elena",
+      runtime: "node",
+    });
+    expect(files["README.md"]).toContain("**Runtime:** node");
+    expect(JSON.parse(packageFiles(core)["package.json"] ?? "{}").halonic).not.toHaveProperty(
+      "runtime",
+    );
+  });
+});
+
+describe("presetFor", () => {
+  const spec = { ...core, layer: "adapters" };
+  it.each([
+    [{ ...spec, runtime: "node" }, "node"],
+    [{ ...spec, runtime: "web" }, "web"],
+    [{ ...spec, runtime: "workers" }, "web-standard"],
+    [{ ...spec, runtime: "any" }, "web-standard"],
+    [{ ...core, layer: "host" }, "web-standard"],
+    [{ ...core, layer: "targets", target: { name: "node", kind: "runtime" } }, "node"],
+    [
+      { ...core, layer: "targets", target: { name: "cloudflare", kind: "runtime" } },
+      "web-standard",
+    ],
+    [{ ...core, layer: "targets", target: { name: "cloudflare", kind: "deploy" } }, "node"],
+    [{ ...core, layer: "studio" }, "studio"],
+    [core, "core"],
+  ])("picks the preset for %o", (input, preset) => {
+    expect(presetFor(input)).toBe(preset);
   });
 });

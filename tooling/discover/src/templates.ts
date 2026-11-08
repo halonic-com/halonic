@@ -8,15 +8,30 @@ export interface PackageSpec {
   readonly owner: string;
   readonly isFeature: boolean;
   readonly folder: string;
+  /** Where an adapter runs (`node`, `web`, `workers` or `any`); adapters only. */
+  readonly runtime?: string;
+  /** Set for a package under `packages/targets/<target>/<kind>`. */
+  readonly target?: { readonly name: string; readonly kind: string };
 }
 
-/** The TypeScript preset each layer uses (tooling/config/tsconfig). */
-function presetFor(layer: string): string {
-  switch (layer) {
+/** The TypeScript preset a package's source uses (tooling/config/tsconfig). */
+export function presetFor(spec: PackageSpec): string {
+  switch (spec.layer) {
     case "core":
       return "core";
     case "studio":
       return "studio";
+    case "host":
+      return "web-standard";
+    case "adapters":
+      if (spec.runtime === "node" || spec.runtime === "web") {
+        return spec.runtime;
+      }
+      return "web-standard";
+    case "targets":
+      return spec.target?.kind === "runtime" && spec.target.name !== "node"
+        ? "web-standard"
+        : "node";
     default:
       return "node";
   }
@@ -38,7 +53,7 @@ export function packageFiles(spec: PackageSpec): Record<string, string> {
   const files: Record<string, string> = {
     "package.json": packageJson(spec),
     "tsconfig.json": json({
-      extends: `@halonicjs/tooling-config/tsconfig/${presetFor(spec.layer)}.json`,
+      extends: `@halonicjs/tooling-config/tsconfig/${presetFor(spec)}.json`,
       include: ["src"],
       exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     }),
@@ -83,7 +98,10 @@ function packageJson(spec: PackageSpec): string {
       typescript: "catalog:",
       vitest: "catalog:",
     },
-    halonic: { layer: spec.layer, owner: spec.owner },
+    halonic:
+      spec.runtime === undefined
+        ? { layer: spec.layer, owner: spec.owner }
+        : { layer: spec.layer, owner: spec.owner, runtime: spec.runtime },
   });
 }
 
@@ -159,6 +177,7 @@ function readme(spec: PackageSpec): string {
     "",
     `- **Layer:** ${spec.layer}`,
     `- **Owner:** ${spec.owner}`,
+    ...(spec.runtime === undefined ? [] : [`- **Runtime:** ${spec.runtime}`]),
     `- **Public API:** ${entry}`,
     "",
     "## Example",
