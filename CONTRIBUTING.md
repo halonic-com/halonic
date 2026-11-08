@@ -25,8 +25,6 @@ You need:
   `packageManager` and installs the Node version the repo pins, so installing
   any recent pnpm is enough.
 - **Git.**
-- **Rust**, only if you work on the desktop shell (`apps/studio/src-tauri`),
-  once it lands. The toolchain will be pinned in `rust-toolchain.toml`.
 
 Then:
 
@@ -58,14 +56,16 @@ everything they are built from.
 Every package belongs to one **layer**, and a layer may only use the layers
 below it:
 
-| Layer | Where | May use | Never |
-|---|---|---|---|
-| core | `packages/core/*` | lower core packages | any third-party package, Node APIs, browser APIs, React |
-| adapters | `packages/adapters/*` | core, Node or browser APIs, approved libraries for that one adapter | Studio packages, other adapters' internals |
-| host | `packages/host` | core, adapters, Node APIs | Studio packages |
-| studio | `packages/studio/*` | core, React, Tauri, Vite, approved UI libraries | adapters directly, another feature's internals |
-| apps | `apps/*` | the public interface of any package | — |
-| testing | `packages/testing/*` | anything | being a runtime dependency |
+| Layer    | Where                 | May use                                                             | Never                                                   |
+| -------- | --------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
+| core     | `packages/core/*`     | lower core packages                                                 | any third-party package, Node APIs, browser APIs, React |
+| adapters | `packages/adapters/*` | core, Node or browser APIs, approved libraries for that one adapter | Studio packages, other adapters' internals              |
+| host     | `packages/host`       | core, adapters, Web-standard APIs                                   | Studio packages, Node APIs                              |
+| studio   | `packages/studio/*`   | core, React, Tauri, Vite, approved UI libraries                     | adapters directly, another feature's internals          |
+| apps     | `apps/*`              | the public interface of any package                                 | —                                                       |
+| targets  | `packages/targets/*`  | core, host, adapters, the APIs of its own platform                  | Studio packages, another target's internals             |
+| testing  | `packages/testing/*`  | anything                                                            | being a runtime dependency                              |
+| tooling  | `tooling/*`           | other tooling packages                                              | being a runtime dependency                              |
 
 A check (`tooling/check`) enforces this on every pull request and explains how
 to fix what it finds. The most important consequences:
@@ -116,13 +116,12 @@ Halonic has one firm rule: **nothing that works may break.**
 ## Code and docs
 
 - **Readable over short.** Clear, full names; early returns; no clever
-  one-liners. Comments explain *why*, not *what*.
+  one-liners. Comments explain _why_, not _what_.
 - **Small files.** Aim for under 300 lines; the check fails above 500.
 - **Every exported function, type and class has a doc comment.**
 - **Docs change in the same pull request as the behaviour.** See the
   [writing guide](docs/guides/writing-docs.md).
-- Formatting is automatic (Biome for TypeScript, CSS and JSON; `rustfmt` for
-  Rust). Don't reformat code you didn't otherwise change.
+- Formatting is automatic (Biome for TypeScript, CSS and JSON). Don't reformat code you didn't otherwise change.
 
 ## Pull requests
 
@@ -132,9 +131,8 @@ Halonic has one firm rule: **nothing that works may break.**
   `fix(routines): fire interval triggers at the right time`.
 - **Fill in the template:** what and why, the requirement IDs, how you tested
   it, docs, a changeset sentence and AI assistance.
-- **Add a changeset** if users will notice the change, once the repo has its
-  `.changeset` folder (run `pnpm changeset`). Write one sentence a user would
-  understand.
+- **Describe the change for users** in one sentence a user would understand,
+  if they will notice it. The template has a place for it.
 - **`pnpm verify` is green** before you ask for review. All checks must pass in
   CI before anything is merged.
 - **Rebase on `main`** rather than merging `main` into your branch.
