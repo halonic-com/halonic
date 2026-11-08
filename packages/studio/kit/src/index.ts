@@ -5,6 +5,14 @@
  */
 
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
+export { ExternalLink, type ExternalLinkProps } from "./external-link/external-link.tsx";
+export {
+  type OpenExternal,
+  OpenExternalProvider,
+  type OpenExternalProviderProps,
+  openInNewTab,
+  useOpenExternal,
+} from "./external-link/open-external.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
 
 /** The npm name of this package. */

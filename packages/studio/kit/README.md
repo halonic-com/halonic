@@ -2,7 +2,7 @@
 
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
-by one. So far: [`CopyButton`](#copybutton).
+by one. So far: [`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
 
 - **Layer:** studio
 - **Owner:** noah
@@ -126,6 +126,38 @@ it falls back to selecting the text in a hidden text box and running the browser
 only a `string`, so passing a secret is a type error, and the button throws if one gets through a
 cast. A `SecretText` turned into text by accident shows `[secret]`; only the request that saves it
 calls `reveal()`.
+
+## ExternalLink
+
+A link to a page outside Studio, such as a Google Cloud Console page. Its text says where it goes
+("Audience page", never "click here"); the kit adds ↗ after it, and screen readers also hear
+"(opens in your browser)".
+
+```tsx
+<ExternalLink href="https://console.cloud.google.com/auth/audience">Audience page</ExternalLink>;
+```
+
+A left or middle click calls the **`openExternal` service** with the address and cancels the link's
+own navigation, so Studio never leaves its page. The address stays on the link, so "Copy link
+address" still works. A right click is left to the browser. Only `http` and `https` addresses are
+allowed: anything else throws, because addresses are often built from what the user typed.
+
+The shell provides the service once, at the root of the app. Without one, the link opens a new
+browser tab (`openInNewTab`, with `noopener` and `noreferrer`). The desktop app hands the address
+to the system browser instead:
+
+```tsx
+<OpenExternalProvider openExternal={(url) => desktop.openInSystemBrowser(url)}>
+  <App />
+</OpenExternalProvider>;
+```
+
+| State   | What shows                                                          |
+| ------- | ------------------------------------------------------------------- |
+| Default | `accent-text`, like every inline link                               |
+| Hover   | Underlined                                                          |
+| Focus   | The standard focus ring                                             |
+| Phone   | At least 48px high (`min-h-touch`), so the whole line is the target |
 
 ## Testing a component
 
