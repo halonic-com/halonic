@@ -214,6 +214,9 @@ importers:
 
   packages/adapters/memory:
     dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../core/events
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
@@ -375,6 +378,9 @@ importers:
 
   packages/testing/contracts:
     dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../core/events
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
