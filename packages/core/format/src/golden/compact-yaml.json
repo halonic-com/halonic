@@ -1,0 +1,230 @@
+{
+  "source": "the old toYaml at commit 784f78d, packages/core/config/src/workspace.ts (yaml 2.9.1)",
+  "inputs": "the cases of compact.json whose input is a map or a list, matched by name",
+  "format": "each case keeps the YAML text as its lines; every line ends with a line break",
+  "cases": [
+    {
+      "name": "drops an undefined value",
+      "lines": [
+        "b: 1"
+      ]
+    },
+    {
+      "name": "drops an empty array",
+      "lines": [
+        "b: 1"
+      ]
+    },
+    {
+      "name": "drops an empty object",
+      "lines": [
+        "b: 1"
+      ]
+    },
+    {
+      "name": "drops a value that compacting empties",
+      "lines": [
+        "f:",
+        "  g:",
+        "    - {}",
+        "keep: 1"
+      ]
+    },
+    {
+      "name": "keeps null, empty string, zero and false",
+      "lines": [
+        "n: null",
+        "s: \"\"",
+        "z: 0",
+        "f: false",
+        "nested:",
+        "  n: null"
+      ]
+    },
+    {
+      "name": "keeps every array item, even empty ones",
+      "lines": [
+        "list:",
+        "  - null",
+        "  - {}",
+        "  - []",
+        "  - null",
+        "  - {}",
+        "  - 0",
+        "  - \"\"",
+        "  - false"
+      ]
+    },
+    {
+      "name": "compacts objects inside nested arrays",
+      "lines": [
+        "- - b: x",
+        "- - {}"
+      ]
+    },
+    {
+      "name": "keeps an empty top-level object",
+      "lines": [
+        "{}"
+      ]
+    },
+    {
+      "name": "keeps a top-level object it emptied",
+      "lines": [
+        "{}"
+      ]
+    },
+    {
+      "name": "keeps an empty top-level array",
+      "lines": [
+        "[]"
+      ]
+    },
+    {
+      "name": "keeps the key order",
+      "lines": [
+        "z: 1",
+        "m: 2",
+        "b:",
+        "  x: 1",
+        "c: 3"
+      ]
+    },
+    {
+      "name": "acme workspace",
+      "lines": [
+        "version: 1",
+        "id: acme",
+        "name: Acme",
+        "description: Example workspace for Halonic Studio.",
+        "privacy:",
+        "  localOnly: false",
+        "defaults:",
+        "  runtime: inprocess",
+        "  model: default"
+      ]
+    },
+    {
+      "name": "acme support agent",
+      "lines": [
+        "version: 1",
+        "id: support",
+        "name: Support agent",
+        "description: Answers how-to questions from the handbook.",
+        "model: smart",
+        "instructions: |",
+        "  You answer customer questions using only the handbook.",
+        "  If the handbook does not cover it, say so and offer to connect them with a person.",
+        "skills:",
+        "  - friendly-tone",
+        "knowledge:",
+        "  - handbook",
+        "runLogs: false",
+        "subagents:",
+        "  - writer",
+        "output:",
+        "  type: text",
+        "maxSteps: 6"
+      ]
+    },
+    {
+      "name": "acme triage workflow",
+      "lines": [
+        "version: 1",
+        "id: triage",
+        "name: Support triage",
+        "description: Classify a message, answer questions from the handbook, turn bugs into reports a person approves.",
+        "initial: classify",
+        "states:",
+        "  classify:",
+        "    type: task",
+        "    agent: classifier",
+        "    input: \"{{input.message}}\"",
+        "    output: category",
+        "    on:",
+        "      - to: answer",
+        "        event: done",
+        "        when:",
+        "          equals:",
+        "            - \"{{context.category}}\"",
+        "            - question",
+        "        label: question",
+        "      - to: report",
+        "        event: done",
+        "        when:",
+        "          equals:",
+        "            - \"{{context.category}}\"",
+        "            - bug",
+        "        label: bug",
+        "      - to: done",
+        "        event: done",
+        "        label: other",
+        "  answer:",
+        "    type: task",
+        "    agent: support",
+        "    input: \"Customer asks: {{input.message}}\"",
+        "    output: reply",
+        "    on:",
+        "      - to: done",
+        "        event: done",
+        "  report:",
+        "    type: task",
+        "    agent: writer",
+        "    input: \"Write a bug report for: {{input.message}}\"",
+        "    output: report",
+        "    artifact:",
+        "      name: bug-report.md",
+        "      mediaType: text/markdown",
+        "    on:",
+        "      - to: review",
+        "        event: done",
+        "  review:",
+        "    type: wait",
+        "    description: A person approves the report or sends it back.",
+        "    on:",
+        "      - to: done",
+        "        event: approve",
+        "      - to: report",
+        "        event: reject",
+        "  done:",
+        "    type: final",
+        "layout:",
+        "  classify:",
+        "    x: 160",
+        "    y: 0",
+        "  answer:",
+        "    x: 0",
+        "    y: 240",
+        "  report:",
+        "    x: 300",
+        "    y: 240",
+        "  done:",
+        "    x: 160",
+        "    y: 720",
+        "  review:",
+        "    x: 160",
+        "    y: 480"
+      ]
+    },
+    {
+      "name": "acme daily-digest routine",
+      "lines": [
+        "version: 1",
+        "id: daily-digest",
+        "name: Daily digest",
+        "description: Every weekday morning, a short note on what support should know today.",
+        "enabled: false",
+        "trigger:",
+        "  schedule: 0 8 * * 1-5",
+        "  timezone: Europe/Amsterdam",
+        "run:",
+        "  agent: support",
+        "  prompt: |",
+        "    Write a short digest for the support team for {{trigger.at}}.",
+        "    List the three handbook topics customers ask about most, with one tip each.",
+        "overlap: skip",
+        "catchUp: last"
+      ]
+    }
+  ]
+}

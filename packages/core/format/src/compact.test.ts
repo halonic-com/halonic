@@ -2,29 +2,9 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { compact } from "./compact.ts";
 import golden from "./golden/compact.json" with { type: "json" };
+import { decodeUndefined } from "./test/golden.ts";
 
-// The golden file is what the old app's compact (commit 784f78d) returned for
-// each input. JSON has no undefined, so the recording writes it as a marker
-// object; this turns the marker back into undefined.
-function decodeUndefined(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(decodeUndefined);
-  }
-  if (typeof value !== "object" || value === null) {
-    return value;
-  }
-  if (isUndefinedMarker(value)) {
-    return undefined;
-  }
-  return Object.fromEntries(
-    Object.entries(value).map(([key, child]) => [key, decodeUndefined(child)]),
-  );
-}
-
-function isUndefinedMarker(value: object): boolean {
-  const keys = Object.keys(value);
-  return keys.length === 1 && keys[0] === "$undefined";
-}
+// The golden file is what the old app's compact (commit 784f78d) returned for each input.
 
 verifies("format.compact", () => {
   test("leaves out undefined values, empty arrays and empty objects", () => {
