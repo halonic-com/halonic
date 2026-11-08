@@ -84,7 +84,7 @@ filter and the snapshot are in version 1.
 
 ## Added before the freeze
 
-*2026-11-08, decided on HAL-181, built in HAL-231.* The trust gate
+_2026-11-08, decided on HAL-181, built in HAL-231._ The trust gate
 (HAL-65 requirements) adds inputs that adapters must honor, so they go into
 version 1 now rather than as a version 2 later. The versions stay at 1.
 
