@@ -74,10 +74,13 @@ export function parseFile<Name extends KindName>(
     return err([syntaxProblem(read.error)]);
   }
   const source = read.value;
-  const data = prepare(fileKind, source.data, options.id);
-  const parsed = parse(fileKind.schema, data);
+  const prepared = prepare(fileKind, source.data, options.id);
+  const parsed = parse(fileKind.schema, prepared.data);
   if (!parsed.ok) {
-    return err(parsed.error.map((issue) => schemaProblem(issue, source)));
+    const problems = parsed.error.map((issue) => schemaProblem(issue, source));
+    return err(
+      prepared.idFromPlace ? problems.map((problem) => namePlaceId(problem, options.id)) : problems,
+    );
   }
   const found = fileKind.check?.(parsed.value) ?? [];
   const problems = found.map((problem) => checkProblem(problem, source));
@@ -85,6 +88,12 @@ export function parseFile<Name extends KindName>(
     return err(problems);
   }
   return ok({ value: parsed.value, warnings: problems });
+}
+
+/** The data the kind's schema gets, and whether its id is the place's. */
+export interface Prepared {
+  readonly data: unknown;
+  readonly idFromPlace: boolean;
 }
 
 /**
@@ -95,21 +104,35 @@ export function prepare(
   kind: Pick<FileKind<unknown>, "idFromPlace" | "upgradeKeys">,
   data: unknown,
   placeId: string | undefined,
-): unknown {
+): Prepared {
   if (!isMap(data)) {
-    return data;
+    return { data, idFromPlace: false };
   }
   const upgraded = kind.upgradeKeys === undefined ? data : kind.upgradeKeys(data);
   if (placeId === undefined) {
-    return upgraded;
+    return { data: upgraded, idFromPlace: false };
   }
   if (kind.idFromPlace === "always") {
-    return { ...upgraded, id: placeId };
+    return { data: { ...upgraded, id: placeId }, idFromPlace: true };
   }
   if (kind.idFromPlace === "fallback" && !Object.hasOwn(upgraded, "id")) {
-    return { id: placeId, ...upgraded };
+    return { data: { id: placeId, ...upgraded }, idFromPlace: true };
   }
-  return upgraded;
+  return { data: upgraded, idFromPlace: false };
+}
+
+/**
+ * An id problem says the id came from the file name when the file has none of
+ * its own: its line and column would otherwise point at nothing in particular.
+ */
+function namePlaceId(problem: FileProblem, placeId: string | undefined): FileProblem {
+  if (problem.path.length !== 1 || problem.path[0] !== "id") {
+    return problem;
+  }
+  return {
+    ...problem,
+    message: `${problem.message} (the id "${placeId}" comes from the file name)`,
+  };
 }
 
 function syntaxProblem(problem: YamlProblem): FileProblem {

@@ -76,6 +76,16 @@ describe("format.id-from-place", () => {
     ]);
   });
 
+  it("says when a failing id came from the file name", () => {
+    const [problem] = problemsOf("provider", yaml("type: mock"), "Spare");
+    expect(problem?.message).toMatch(/the id "Spare" comes from the file name\)$/);
+  });
+
+  it("leaves the message of an id in the file as it is", () => {
+    const [problem] = problemsOf("provider", yaml("id: Spare", "type: mock"), "spare");
+    expect(problem?.message).not.toMatch(/comes from/);
+  });
+
   it("ignores the place for kinds that have no id of their own", () => {
     const parsed = parseFile("models", yaml("aliases: {}"), { id: "models" });
     expect(parsed.ok && parsed.value.value).toEqual({ version: 1, aliases: {} });
