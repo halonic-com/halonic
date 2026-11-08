@@ -56,3 +56,63 @@ describe("yaml.round-trip", () => {
     expect(writeFrontMatter(fields)).toBe(block);
   });
 });
+
+/** Julian's parity fixtures: every YAML file the old app was recorded reading. */
+const parityRoot = join(import.meta.dirname, "..", "..", "..", "testing", "parity", "fixtures");
+
+interface Recording {
+  diagnostics: { path: string; message: string; line?: number }[];
+}
+
+/** The broken cases: the file, and the line the old app's recording gave for its syntax problem. */
+const brokenCases = filesUnder(join(parityRoot, "cases"))
+  .filter((path) => path.endsWith("case.json"))
+  .flatMap((path) => {
+    const info = JSON.parse(readFileSync(path, "utf8")) as {
+      fault?: string;
+      expect?: { file: string };
+    };
+    if (info.fault !== "yaml-syntax" || !info.expect?.file.endsWith(".yaml")) return [];
+    const recording = JSON.parse(
+      readFileSync(join(path, "..", "recorded.json"), "utf8"),
+    ) as Recording;
+    const problem = recording.diagnostics.find((d) => d.path === info.expect?.file);
+    const name = relative(join(parityRoot, "cases"), join(path, ".."));
+    return [
+      {
+        name,
+        file: join(path, "..", "files", info.expect.file),
+        line: problem?.line,
+      },
+    ];
+  });
+const brokenFiles = new Set(brokenCases.map((c) => c.file));
+
+const parityFiles = filesUnder(parityRoot)
+  .filter((path) => path.endsWith(".yaml") && !brokenFiles.has(path))
+  .map((path) => ({ name: relative(parityRoot, path), text: readFileSync(path, "utf8") }));
+
+describe("yaml.round-trip on the parity fixtures", () => {
+  it("has the 175 valid files and the 3 broken cases", () => {
+    expect(parityFiles).toHaveLength(175);
+    expect(brokenCases).toHaveLength(3);
+  });
+
+  it.each(parityFiles)("reads $name to the same data as the yaml library", ({ text }) => {
+    expect(unwrap(readYaml(text)).data).toEqual(parseWithLibrary(text));
+  });
+
+  it.each(parityFiles)("writes $name the same way twice", ({ text }) => {
+    const once = writeYamlFile(unwrap(readYaml(text)).data);
+    expect(writeYamlFile(unwrap(readYaml(once)).data)).toBe(once);
+  });
+
+  it.each(brokenCases)("gives $name a syntax problem on line $line", ({ file, line }) => {
+    const result = readYaml(readFileSync(file, "utf8"));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("syntax");
+      expect(result.error.line).toBe(line);
+    }
+  });
+});
