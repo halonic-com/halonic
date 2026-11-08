@@ -15,6 +15,7 @@
     "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
