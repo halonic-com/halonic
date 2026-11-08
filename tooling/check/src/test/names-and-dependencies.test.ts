@@ -77,4 +77,21 @@ describe("tooling/check: names and dependencies", () => {
       '"left-pad" is a core exception, so it names each core package exactly; "*" isn\'t allowed. Each one needs the user\'s approval (plan 7.1).',
     ]);
   });
+
+  it("keeps Studio and dev-tooling libraries out of the cloud runtime list", () => {
+    const shipped = {
+      "left-pad": {
+        category: "studio-framework",
+        allowedIn: ["@halonicjs/studio-kit"],
+        reason: "A test entry.",
+        cloudRuntime: true,
+      },
+    };
+    const messages = runChecks([], { extraDependencies: shipped }).map(
+      (problem) => problem.message,
+    );
+    expect(messages).toEqual([
+      "\"left-pad\" is studio-framework, so it can't be marked cloudRuntime. Only core exceptions and outside-world libraries may ship in a cloud runtime, with the user's approval (plan 7.1, 2a).",
+    ]);
+  });
 });

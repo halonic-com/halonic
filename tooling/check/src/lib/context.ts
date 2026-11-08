@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { CloudRuntime } from "./bundle.ts";
 import { type PackagePlace, placeOf } from "./layout.ts";
 import { isSourceFile, readSourceFacts, type SourceFacts } from "./source-files.ts";
 import {
@@ -29,6 +30,11 @@ export interface ApprovedDependency {
   readonly reason: string;
   /** What other packages use instead, e.g. "@halonicjs/schema-kit for validation". */
   readonly useInstead?: string;
+  /**
+   * May ship inside a cloud runtime bundle (plan 7.1, 2a). Only `zod`, by
+   * the user's decision of 8 Nov 2026; each addition needs their approval.
+   */
+  readonly cloudRuntime?: boolean;
 }
 
 /** The contents of `tooling/check/dependencies.json`. */
@@ -41,6 +47,8 @@ export interface Policy {
   readonly coreOrder: readonly string[];
   readonly published: readonly string[];
   readonly adapterGateways: readonly string[];
+  /** Per cloud target, what the provider supplies itself (plan 7.4). */
+  readonly cloudRuntimes: Readonly<Record<string, CloudRuntime>>;
   readonly fileSize: {
     readonly warnLines: number;
     readonly maxLines: number;
@@ -149,7 +157,7 @@ export function notAllowedMessage(
 }
 
 /** "a", "a and b", "a, b and c". */
-function listInWords(items: readonly string[]): string {
+export function listInWords(items: readonly string[]): string {
   if (items.length <= 1) {
     return items.join("");
   }
