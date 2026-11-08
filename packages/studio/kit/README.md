@@ -1,12 +1,13 @@
 # @halonicjs/studio-kit
 
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
-file (`src/theme.css`), for light and dark mode. The shared base components (button, input, dialog
-and so on) will be added here later.
+file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
+by one. So far: [`CopyButton`](#copybutton).
 
 - **Layer:** studio
 - **Owner:** noah
-- **Public API:** `@halonicjs/studio-kit` (the tokens are CSS, imported from CSS)
+- **Public API:** `@halonicjs/studio-kit` (the tokens are CSS, imported from CSS; the components
+  are named exports)
 
 ## Example
 
@@ -96,6 +97,35 @@ The curves and durations stay in the file for later.
 - the kit imports no other Studio package, in any import form.
 
 After tuning a colour, run the tests and adjust until they pass.
+
+## CopyButton
+
+A button for a value the user types somewhere else, such as an app name in Google Cloud Console.
+It copies the text and says "Copied" in place for two seconds (`COPIED_FOR_MS`).
+
+```tsx
+<CopyButton text="Halonic (own app)" label="Copy the app name" />;
+```
+
+| Prop    | What it is                                                               |
+| ------- | ------------------------------------------------------------------------ |
+| `text`  | The text to copy. Plain text only: never a secret (below)                |
+| `label` | The name screen readers hear, saying what it copies: "Copy the app name" |
+
+| State        | What shows                                                                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ready        | The secondary button at the small size (28px; 48px on a phone), saying "Copy"                                                              |
+| Copied       | "Copied" in place, with no change in width. Screen readers hear "Copied" through a status region next to the button, which is always there |
+| Failed       | The button still says "Copy". A caption next to it says "Couldn't copy. Select the text and copy it yourself."                             |
+| Hover, focus | A `surface-subtle` fill on hover; the standard focus ring                                                                                  |
+
+**How it copies.** `navigator.clipboard` first. Without a secure context (a phone on plain http)
+it falls back to selecting the text in a hidden text box and running the browser's copy command.
+
+**Never a secret.** A secret field holds its value as a `SecretText`, not a string. `text` takes
+only a `string`, so passing a secret is a type error, and the button throws if one gets through a
+cast. A `SecretText` turned into text by accident shows `[secret]`; only the request that saves it
+calls `reveal()`.
 
 ## Testing a component
 

@@ -18,6 +18,7 @@
     "react": "catalog:"
   },
   "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

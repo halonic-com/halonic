@@ -1,10 +1,13 @@
 /**
- * The Studio's shared kit. For now it holds only the design tokens, which are CSS, not
+ * The Studio's shared kit: the design tokens and the base components. The tokens are CSS, not
  * TypeScript: import them from CSS with `@import "@halonicjs/studio-kit";` (see README.md). The
- * base components arrive here one by one, each with its own named export.
+ * components arrive here one by one, each with its own named export.
  */
 
-/** The npm name of this package. A placeholder export until the first component lands. */
+export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
+export { SecretText } from "./secret-text/secret-text.ts";
+
+/** The npm name of this package. */
 export const packageName = "@halonicjs/studio-kit";
 
 /**
