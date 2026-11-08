@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
 import { definePackageTestConfig, testResultsFile } from "./vitest-preset.ts";
 
 describe("definePackageTestConfig", () => {
@@ -12,5 +13,18 @@ describe("definePackageTestConfig", () => {
     const config = definePackageTestConfig({ test: { environment: "jsdom" } });
     expect(config.test?.environment).toBe("jsdom");
     expect(config.test?.passWithNoTests).toBe(false);
+  });
+
+  it("refuses a package that turns requireAssertions off", () => {
+    expect(() =>
+      definePackageTestConfig({ test: { expect: { requireAssertions: false } } }),
+    ).toThrow("requireAssertions");
+  });
+
+  it("fails the run when a test was skipped", () => {
+    const reporters = definePackageTestConfig().test?.reporters;
+    expect(
+      Array.isArray(reporters) && reporters.some((r) => r instanceof NoSkippedTestsReporter),
+    ).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config";
 import { coverageSettings } from "./coverage.ts";
+import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
 
 /** Where each package's test run writes its result file, relative to the package. */
 export const testResultsFile = "test-results/vitest.json";
@@ -15,6 +16,10 @@ export const testResultsFile = "test-results/vitest.json";
  * own floor (see `coverageSettings`). To run a single test file without
  * the floor, add `--coverage.enabled=false`.
  *
+ * A package may not turn `expect.requireAssertions` off, and a skipped or
+ * todo test fails the run (see `NoSkippedTestsReporter`). Test files end in
+ * `.test.ts` or `.test.tsx`; a `.spec.ts` file is a helper, not a test.
+ *
  * @param overrides - settings for this one package, merged over the preset
  * @returns the Vitest config for the package
  *
@@ -22,6 +27,11 @@ export const testResultsFile = "test-results/vitest.json";
  * export default definePackageTestConfig();
  */
 export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUserConfig {
+  if (overrides.test?.expect?.requireAssertions !== undefined) {
+    throw new Error(
+      "A package can't change expect.requireAssertions: every test needs an assertion.",
+    );
+  }
   const coverage = coverageSettings(process.cwd());
   const preset = defineConfig({
     test: {
@@ -43,6 +53,8 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
         // each one proves. `pnpm check trace` reads it, and Turbo
         // caches it as an output of the test task.
         ["json", { outputFile: testResultsFile }],
+        // A skipped or todo test fails the run, however it was written.
+        new NoSkippedTestsReporter(),
       ],
       coverage: {
         enabled: true,

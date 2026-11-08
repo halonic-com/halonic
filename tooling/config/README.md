@@ -29,3 +29,12 @@ Shared settings every package extends.
   The preset measures coverage of `src` on every run and fails when it is
   below the package's floor, `"halonic": { "coverage": { "lines", "branches" } }`
   in its `package.json`. See [checks.md](../../docs/guides/checks.md#coverage-floors).
+
+  Test hygiene, proven by `src/test-hygiene.test.ts`:
+  - A test that never calls `expect()` fails, and a package can't turn
+    that off (`definePackageTestConfig` throws).
+  - A skipped or todo test fails the run, however it is written (`it.skip`,
+    `it.todo`, `skipIf`, `ctx.skip()`). Biome's `noSkippedTests` catches the
+    common spellings at lint time; the reporter catches the rest.
+  - Tests end in `.test.ts(x)`. A `.spec.ts` file is a helper that tests
+    import; the preset doesn't run it, so it must hold no tests.
