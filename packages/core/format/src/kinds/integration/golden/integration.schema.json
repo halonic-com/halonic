@@ -270,7 +270,8 @@
               "minLength": 1
             },
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             }
           },
           "risk": {
@@ -337,7 +338,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^(?:(?:request|response)\\.body(?:\\.[^.[\\]]+|\\[(?:\\*|\\d+)\\])*|request\\.query\\.[^.[\\]*]+)$"
+            "pattern": "^(?:(?:request|response)\\.body(?:\\.[^.[\\]*\\s]+|\\.\\*|\\[(?:\\*|\\d+)\\])*|request\\.query\\.[^.[\\]*\\s]+)$"
           }
         },
         "secretFields": {

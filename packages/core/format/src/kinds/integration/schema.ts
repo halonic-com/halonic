@@ -73,7 +73,7 @@ const Tool = s
     /** Word for word the code's text: it is what the user approves and the model reads. */
     description: s.string().min(1),
     /** Each argument's description, word for word as in the code. */
-    arguments: s.record(s.string().min(1), s.string()).optional(),
+    arguments: s.record(s.string().min(1), s.string().min(1)).optional(),
     /** `read` changes nothing, `write` changes data, `send` reaches people outside. */
     risk: s.enum(["read", "write", "send"]),
     /** Whether the result carries outside content, such as mail. Always stated. */
@@ -110,7 +110,7 @@ const Limits = s
  * steps; or `request.query.<name>`, one query parameter.
  */
 export const CONTENT_PATH_PATTERN =
-  /^(?:(?:request|response)\.body(?:\.[^.[\]]+|\[(?:\*|\d+)\])*|request\.query\.[^.[\]*]+)$/;
+  /^(?:(?:request|response)\.body(?:\.[^.[\]*\s]+|\.\*|\[(?:\*|\d+)\])*|request\.query\.[^.[\]*\s]+)$/;
 
 /** What the recorder must scrub beyond the rules every integration gets. */
 const Recording = s
