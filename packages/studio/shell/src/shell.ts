@@ -1,5 +1,6 @@
 import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
+import { type CommandContributions, CommandStores } from "./points/command-points.ts";
 import { type FrameContributions, FrameStores } from "./points/frame-points.ts";
 import { type LayoutContributions, LayoutStores } from "./points/layout-points.ts";
 import { lookupFor, ServiceCatalog, type ServiceTarget } from "./service-catalog.ts";
@@ -38,7 +39,7 @@ export interface Shell {
     contextFor(featureId: string, target: ServiceTarget): WorkspaceContext;
   };
   /** Everything the features contributed, for the shell's layout. */
-  readonly contributions: LayoutContributions & FrameContributions;
+  readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
 }
 
 /**
@@ -56,10 +57,12 @@ export function createShell(options: ShellOptions): Shell {
   const catalog = new ServiceCatalog();
   const layout = new LayoutStores();
   const frame = new FrameStores();
+  const commands = new CommandStores();
   for (const feature of features) {
-    registerFeature(feature, catalog, layout, frame);
+    registerFeature(feature, catalog, { layout, frame, commands });
   }
   layout.check();
+  commands.check();
   return {
     features,
     services: {
@@ -68,16 +71,21 @@ export function createShell(options: ShellOptions): Shell {
         services: lookupFor(findFeature(features, featureId), target),
       }),
     },
-    contributions: { ...layout.contributions(), ...frame.contributions() },
+    contributions: {
+      ...layout.contributions(),
+      ...frame.contributions(),
+      ...commands.contributions(),
+    },
   };
 }
 
-function registerFeature(
-  feature: Feature,
-  catalog: ServiceCatalog,
-  layout: LayoutStores,
-  frame: FrameStores,
-): void {
+interface PointStores {
+  readonly layout: LayoutStores;
+  readonly frame: FrameStores;
+  readonly commands: CommandStores;
+}
+
+function registerFeature(feature: Feature, catalog: ServiceCatalog, stores: PointStores): void {
   let open = true;
   const isOpen = (): boolean => open;
   const guard = (pointName: string): void => {
@@ -88,8 +96,9 @@ function registerFeature(
     }
   };
   const studio: Studio = {
-    ...layout.pointsFor(feature.id, guard),
-    ...frame.pointsFor(feature.id, guard),
+    ...stores.layout.pointsFor(feature.id, guard),
+    ...stores.frame.pointsFor(feature.id, guard),
+    ...stores.commands.pointsFor(feature.id, guard),
     services: catalog.pointFor(feature, isOpen),
   };
   try {

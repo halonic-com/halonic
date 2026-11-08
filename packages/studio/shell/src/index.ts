@@ -1,5 +1,14 @@
 // The public API of @halonicjs/studio-shell. Everything else in src/ is internal.
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
+export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
+export type {
+  CommandContribution,
+  KeybindingContribution,
+  PersistContribution,
+  PersistedSession,
+  SearchProviderContribution,
+  SearchResult,
+} from "./points/commands.ts";
 export type {
   BarItemContribution,
   CardContribution,
