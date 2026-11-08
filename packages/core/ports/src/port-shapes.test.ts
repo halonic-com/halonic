@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import { typeTest } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type {
   Coordination,
@@ -33,7 +34,7 @@ const definitions: DefinitionStore = {
 };
 
 describe("ports.read-only-sides", () => {
-  it("gives Secrets no way to write", () => {
+  typeTest("gives Secrets no way to write", () => {
     const secrets: Secrets = { get: async () => null };
     // @ts-expect-error: configured secrets are read-only at run time
     secrets.set?.("key", "value");
@@ -55,7 +56,7 @@ describe("ports.read-only-sides", () => {
 });
 
 describe("ports.web-types-only", () => {
-  it("lets HttpClient be the Web fetch signature", () => {
+  typeTest("lets HttpClient be the Web fetch signature", () => {
     expectTypeOf<HttpClient["fetch"]>().toBeCallableWith("https://example.com", {
       method: "POST",
       body: "{}",
@@ -66,7 +67,7 @@ describe("ports.web-types-only", () => {
     expectTypeOf(client).toEqualTypeOf<HttpClient>();
   });
 
-  it("uses ISO text and plain numbers for times, so every runtime can store them", () => {
+  typeTest("uses ISO text and plain numbers for times, so every runtime can store them", () => {
     expectTypeOf<Parameters<Scheduler["schedule"]>>().toEqualTypeOf<
       [key: string, timerId: string, at: string]
     >();
@@ -76,7 +77,7 @@ describe("ports.web-types-only", () => {
     >();
   });
 
-  it("checks run log appends against the last sequence number", () => {
+  typeTest("checks run log appends against the last sequence number", () => {
     expectTypeOf<Parameters<RunStore["append"]>[1]>().toEqualTypeOf<number>();
     expectTypeOf<ReturnType<RunExecutor["start"]>>().toEqualTypeOf<Promise<RunSummary>>();
   });
@@ -104,7 +105,7 @@ describe("ports.frozen-inputs", () => {
     expect([one, several]).toHaveLength(2);
   });
 
-  it("writes a snapshot with an append and reads it back", () => {
+  typeTest("writes a snapshot with an append and reads it back", () => {
     expectTypeOf<RunStore["append"]>().toBeCallableWith("run_1", 0, [], { snapshot: { step: 1 } });
     expectTypeOf<RunStore["snapshot"]>().returns.toEqualTypeOf<Promise<RunSnapshot | null>>();
   });
@@ -118,12 +119,12 @@ describe("ports.frozen-inputs", () => {
     expect(bare).toBeDefined();
   });
 
-  it("builds a scheduler from its listener", () => {
+  typeTest("builds a scheduler from its listener", () => {
     expectTypeOf<SchedulerFactory>().parameter(0).toEqualTypeOf<SchedulerListener>();
     expectTypeOf<SchedulerFactory>().returns.toEqualTypeOf<Scheduler>();
   });
 
-  it("deletes a coordination value by setting it to null", () => {
+  typeTest("deletes a coordination value by setting it to null", () => {
     expectTypeOf<Coordination["compareAndSet"]>().toBeCallableWith("k", "old", null);
   });
 });

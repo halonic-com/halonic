@@ -1,3 +1,4 @@
+import { typeTest } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type {
   ConnectorTool,
@@ -19,7 +20,7 @@ const host: IntegrationHost = {
 };
 
 describe("ports.integration-host", () => {
-  it("gives an integration http, tokens and settings, and no secrets", () => {
+  typeTest("gives an integration http, tokens and settings, and no secrets", () => {
     expectTypeOf<keyof IntegrationHost>().toEqualTypeOf<"http" | "tokens" | "settings">();
     // @ts-expect-error: an integration never gets the Secrets port
     host.secrets?.get("example-key");

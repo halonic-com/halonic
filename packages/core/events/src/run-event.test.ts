@@ -1,4 +1,5 @@
-import { describe, expectTypeOf, it } from "vitest";
+import { typeTest } from "@halonicjs/testing-spec";
+import { describe, expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
 import type { RunKind, RunParent, RunTrigger, Usage } from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
@@ -11,7 +12,7 @@ import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-e
 type EventOf<T extends RunEventType> = Extract<RunEventBody, { type: T }>;
 
 describe("events.run-log-contract", () => {
-  it("has exactly the reference event types", () => {
+  typeTest("has exactly the reference event types", () => {
     expectTypeOf<RunEventType>().toEqualTypeOf<
       | "run.started"
       | "state.entered"
@@ -39,7 +40,7 @@ describe("events.run-log-contract", () => {
     >();
   });
 
-  it("gives every event the reference base fields", () => {
+  typeTest("gives every event the reference base fields", () => {
     expectTypeOf<RunEventBase>().toEqualTypeOf<{
       runId: string;
       seq: number;
@@ -50,7 +51,7 @@ describe("events.run-log-contract", () => {
     expectTypeOf<RunEvent>().toEqualTypeOf<RunEventBase & RunEventBody>();
   });
 
-  it("keeps the run lifecycle events", () => {
+  typeTest("keeps the run lifecycle events", () => {
     expectTypeOf<EventOf<"run.started">>().toEqualTypeOf<{
       type: "run.started";
       hubId: string;
@@ -106,7 +107,7 @@ describe("events.run-log-contract", () => {
     }>();
   });
 
-  it("keeps the agent and model events", () => {
+  typeTest("keeps the agent and model events", () => {
     expectTypeOf<EventOf<"agent.started">>().toEqualTypeOf<{
       type: "agent.started";
       state: string;
@@ -149,7 +150,7 @@ describe("events.run-log-contract", () => {
     }>();
   });
 
-  it("keeps the tool, knowledge and approval events", () => {
+  typeTest("keeps the tool, knowledge and approval events", () => {
     expectTypeOf<EventOf<"tool.called">>().toEqualTypeOf<{
       type: "tool.called";
       agent: string;
@@ -191,7 +192,7 @@ describe("events.run-log-contract", () => {
     }>();
   });
 
-  it("keeps the artifact, signal and child workflow events", () => {
+  typeTest("keeps the artifact, signal and child workflow events", () => {
     expectTypeOf<EventOf<"artifact.created">>().toEqualTypeOf<{
       type: "artifact.created";
       state: string;
@@ -222,7 +223,7 @@ describe("events.run-log-contract", () => {
     }>();
   });
 
-  it("keeps the shared types the events use", () => {
+  typeTest("keeps the shared types the events use", () => {
     expectTypeOf<RunKind>().toEqualTypeOf<"run" | "test">();
     expectTypeOf<Usage>().toEqualTypeOf<{ inputTokens: number; outputTokens: number }>();
     expectTypeOf<RunTrigger>().toEqualTypeOf<{
