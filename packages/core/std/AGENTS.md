@@ -4,7 +4,7 @@ Owner: maya · Layer: core · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-In-house utilities that replace generic libraries: result type, ids, clock, SHA-256, scrypt, text helpers, deep equality, glob matching, posix paths and a typed event emitter.
+In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, text helpers, deep equality and clone, posix paths, constant-time comparison and a typed event emitter.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

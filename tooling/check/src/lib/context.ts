@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { CloudRuntime } from "./bundle.ts";
 import { type PackagePlace, placeOf } from "./layout.ts";
 import { isSourceFile, readSourceFacts, type SourceFacts } from "./source-files.ts";
 import {
@@ -12,14 +13,28 @@ import {
   type WorkspacePackage,
 } from "./workspace.ts";
 
-/** What an entry in `dependencies.json` is for. */
-export type DependencyCategory = "outside-world" | "studio-framework" | "dev-tooling";
+/**
+ * What an entry in `dependencies.json` is for. `core-exception`
+ * is a library the user approved for named core packages.
+ */
+export type DependencyCategory =
+  | "core-exception"
+  | "outside-world"
+  | "studio-framework"
+  | "dev-tooling";
 
 /** One approved external dependency. */
 export interface ApprovedDependency {
   readonly category: DependencyCategory;
   readonly allowedIn: readonly string[];
   readonly reason: string;
+  /** What other packages use instead, e.g. "@halonicjs/schema-kit for validation". */
+  readonly useInstead?: string;
+  /**
+   * May ship inside a cloud runtime bundle. Only `zod`, by
+   * the user's decision of 8 Nov 2026; each addition needs their approval.
+   */
+  readonly cloudRuntime?: boolean;
 }
 
 /** The contents of `tooling/check/dependencies.json`. */
@@ -32,6 +47,8 @@ export interface Policy {
   readonly coreOrder: readonly string[];
   readonly published: readonly string[];
   readonly adapterGateways: readonly string[];
+  /** Per cloud target, what the provider supplies itself. */
+  readonly cloudRuntimes: Readonly<Record<string, CloudRuntime>>;
   readonly fileSize: {
     readonly warnLines: number;
     readonly maxLines: number;
@@ -107,6 +124,44 @@ export function loadContext(root: string): CheckContext {
 export function matchesNamePattern(name: string, pattern: string): boolean {
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*");
   return new RegExp(`^${escaped}$`).test(name);
+}
+
+/** True when an approved dependency may be used in this package. */
+export function isAllowedIn(approved: ApprovedDependency, packageName: string): boolean {
+  return approved.allowedIn.some((pattern) => matchesNamePattern(packageName, pattern));
+}
+
+/**
+ * Explains that a package uses an approved library outside its allowed
+ * packages, and what to use instead.
+ *
+ * @example
+ * notAllowedMessage("@halonicjs/workflow", "zod", zodEntry);
+ * // '@halonicjs/workflow uses "zod". "zod" is allowed only in @halonicjs/schema-kit
+ * //  and @halonicjs/format. Use @halonicjs/schema-kit for validation, or move this
+ * //  code into an adapter.'
+ */
+export function notAllowedMessage(
+  packageName: string,
+  dependencyName: string,
+  approved: ApprovedDependency,
+): string {
+  const places = listInWords(approved.allowedIn);
+  let message = `${packageName} uses "${dependencyName}". "${dependencyName}" is allowed only in ${places}.`;
+  if (approved.useInstead !== undefined) {
+    const orAdapter =
+      approved.category === "core-exception" ? ", or move this code into an adapter" : "";
+    message += ` Use ${approved.useInstead}${orAdapter}.`;
+  }
+  return message;
+}
+
+/** "a", "a and b", "a, b and c". */
+export function listInWords(items: readonly string[]): string {
+  if (items.length <= 1) {
+    return items.join("");
+  }
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
 /** All dependencies a manifest declares, with the field each one is in. */
