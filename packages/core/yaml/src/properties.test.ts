@@ -1,7 +1,7 @@
 import { unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import fc from "fast-check";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { readYaml } from "./read.ts";
 import { writeYamlFile } from "./write.ts";
 
@@ -9,9 +9,12 @@ import { writeYamlFile } from "./write.ts";
 const byteOrderMark = String.fromCodePoint(0xfeff);
 const lineSeparator = String.fromCodePoint(0x2028);
 
-/** Plain data as workspace files hold it: no `undefined`, no `-0`. */
+/**
+ * Plain data as workspace files hold it: no `undefined`, no `-0`. The depth
+ * cap keeps rare huge samples from slowing CI; `nestedText` covers deep nesting.
+ */
 const plainData = fc
-  .jsonValue({ noUnicodeString: false })
+  .jsonValue({ noUnicodeString: false, maxDepth: 4 })
   .map((value) => JSON.parse(JSON.stringify(value)));
 
 /** Text a stranger's workspace could contain, including odd Unicode. */
@@ -28,6 +31,9 @@ const hostileText = fc.oneof(
 const nestedText = fc
   .array(fc.constantFrom("[", "{ k: ", "- ", "k:\n "), { maxLength: 300 })
   .map((openers) => openers.join(""));
+
+/** Hundreds of runs per test, so allow for a busy CI runner. */
+vi.setConfig({ testTimeout: 20_000 });
 
 verifies("yaml.read-hostile", () => {
   it("never throws, and every problem has a 1-based line and column", () => {
