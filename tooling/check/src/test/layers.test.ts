@@ -79,6 +79,19 @@ describe("tooling/check: layers", () => {
     expect(messages.some((message) => message.includes("never a runtime dependency"))).toBe(true);
   });
 
+  it("lets testing packages use dev tooling such as Vitest outside test files", () => {
+    const usesVitest = (directory: string, name: string, layer: string): FixturePackage => ({
+      directory,
+      manifest: manifestFor(name, layer, { devDependencies: { vitest: "catalog:" } }),
+      files: { "src/index.ts": 'import { describe } from "vitest";\nexport const d = describe;\n' },
+    });
+    const spec = usesVitest("packages/testing/spec", "@halonicjs/testing-spec", "testing");
+    const adapter = usesVitest("packages/adapters/git", "@halonicjs/adapter-git", "adapters");
+    expect(runChecks([spec]).map((problem) => problem.message)).toEqual([]);
+    const messages = runChecks([adapter]).map((problem) => problem.message);
+    expect(messages.some((message) => message.includes("is dev tooling"))).toBe(true);
+  });
+
   it("catches relative imports that leave the package and deep imports past exports", () => {
     const sneaky = {
       ...format,
