@@ -225,8 +225,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-    env:
-      ZIZMOR_VERSION: 1.32.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -234,7 +232,10 @@ jobs:
       - name: Run zizmor
         env:
           GH_TOKEN: ${{ github.token }}
-        run: pipx run "zizmor==${ZIZMOR_VERSION}" --format=github --min-severity=low .github/
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zizmor"
+          "$RUNNER_TEMP/zizmor/bin/pip" install --quiet --require-hashes --only-binary :all: -r .github/zizmor-requirements.txt
+          "$RUNNER_TEMP/zizmor/bin/zizmor" --format=github --min-severity=low .github/
 
   build:
     name: Typecheck, lint, test, build

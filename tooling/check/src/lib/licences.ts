@@ -9,7 +9,7 @@ export interface LicencePolicy {
   readonly shipped: readonly string[];
   /** Allowed on top of `shipped` for build and dev tooling only. */
   readonly devOnly: readonly string[];
-  /** Packages whose licence field is wrong upstream, checked by hand: name → SPDX ID. */
+  /** Packages whose licence field is wrong upstream, checked by hand: `name@version` → SPDX ID. */
   readonly corrections: Readonly<Record<string, string>>;
 }
 
@@ -90,13 +90,22 @@ export function findLicenceProblems(
     kind === "shipped" ? policy.shipped : [...policy.shipped, ...policy.devOnly],
   );
   const problems: string[] = [];
-  for (const pkg of installed) {
-    const licence = policy.corrections[pkg.name] ?? pkg.licence;
-    if (!isAllowedExpression(licence, allowed)) {
-      const where = kind === "shipped" ? "code we ship" : "dev tooling";
+  for (const key of Object.keys(policy.corrections)) {
+    if (!/^.+@[^@]+$/.test(key)) {
       problems.push(
-        `${pkg.name}@${pkg.versions.join(", ")} is licensed "${licence}", which isn't allowed in ${where}. Pick another package, or ask Julian to review the licence and add it to tooling/check/licences.json.`,
+        `tooling/check/licences.json: the correction "${key}" needs a version, as "name@version". A correction for a name alone would also cover versions nobody checked.`,
       );
+    }
+  }
+  for (const pkg of installed) {
+    for (const version of pkg.versions) {
+      const licence = policy.corrections[`${pkg.name}@${version}`] ?? pkg.licence;
+      if (!isAllowedExpression(licence, allowed)) {
+        const where = kind === "shipped" ? "code we ship" : "dev tooling";
+        problems.push(
+          `${pkg.name}@${version} is licensed "${licence}", which isn't allowed in ${where}. Pick another package, or ask Julian to review the licence and add it to tooling/check/licences.json.`,
+        );
+      }
     }
   }
   return problems;

@@ -27,7 +27,7 @@ describe("findLicenceProblems", () => {
   const policy: LicencePolicy = {
     shipped: ["MIT"],
     devOnly: ["MPL-2.0"],
-    corrections: { fixed: "MIT" },
+    corrections: { "fixed@1.0.0": "MIT" },
   };
 
   test("dev-only licences pass for tooling but not for shipped code", () => {
@@ -39,5 +39,22 @@ describe("findLicenceProblems", () => {
   test("a hand-checked correction replaces a wrong upstream licence field", () => {
     const pkg = { name: "fixed", versions: ["1.0.0"], licence: "SEE LICENSE IN LICENSE" };
     expect(findLicenceProblems([pkg], policy, "shipped")).toEqual([]);
+  });
+
+  test("a correction covers only the version that was checked", () => {
+    const pkg = { name: "fixed", versions: ["1.0.0", "2.0.0"], licence: "UNLICENSED" };
+    const problems = findLicenceProblems([pkg], policy, "shipped");
+    expect(problems.filter((problem) => problem.startsWith("fixed@2.0.0"))).toHaveLength(1);
+    expect(problems.some((problem) => problem.startsWith("fixed@1.0.0"))).toBe(false);
+  });
+
+  test("reports a correction without a version", () => {
+    const problems = findLicenceProblems(
+      [],
+      { ...policy, corrections: { loose: "MIT" } },
+      "shipped",
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('"loose"');
   });
 });

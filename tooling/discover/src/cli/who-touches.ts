@@ -1,58 +1,83 @@
 import { execFileSync } from "node:child_process";
-import { findRepoRoot, listWorkspacePackages } from "@halonicjs/tooling-check";
+import { parseArgs } from "node:util";
+import { findRepoRoot, listWorkspacePackages, owningPackage } from "@halonicjs/tooling-check";
 import {
+  fetchOpenPullRequests,
   type OpenPullRequest,
   type PackageFolder,
+  repoFromRemote,
   resolvePackage,
   touchesByPackage,
 } from "../who-touches.ts";
 
 /**
- * pnpm who-touches [<package>]
+ * pnpm who-touches [<package>] [--repo <owner/name>]
  *
  * Asks GitHub which files each open pull request changes and maps them to
  * packages, so an agent sees who else is working on a package before it
  * starts. Without a package it lists every package with open
- * pull requests. Needs the GitHub CLI (`gh`), signed in.
+ * pull requests. Uses GitHub's public REST API, so it needs no sign-in;
+ * set `GH_TOKEN` for the higher rate limit.
  */
 
-function openPullRequests(root: string): OpenPullRequest[] {
-  const output = execFileSync(
-    "gh",
-    ["pr", "list", "--state", "open", "--limit", "200", "--json", "number,title,headRefName,files"],
-    { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
-  );
-  return JSON.parse(output) as OpenPullRequest[];
+const defaultRepo = "halonic-com/halonic";
+
+function originRepo(root: string): string | undefined {
+  try {
+    const url = execFileSync("git", ["remote", "get-url", "origin"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return repoFromRemote(url);
+  } catch {
+    return undefined;
+  }
 }
 
 function describe(pullRequest: OpenPullRequest): string {
   return `  #${pullRequest.number}  ${pullRequest.headRefName}  ${pullRequest.title}`;
 }
 
-function main(argv: readonly string[]): number {
+async function main(argv: readonly string[]): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args: [...argv],
+    options: { repo: { type: "string" } },
+    allowPositionals: true,
+  });
   const root = findRepoRoot();
-  const packages: PackageFolder[] = listWorkspacePackages(root).map((pkg) => ({
-    name: pkg.manifest.name ?? pkg.directory,
+  const workspace = listWorkspacePackages(root);
+  const nameOf = (pkg: { directory: string; manifest: { name?: string } }): string =>
+    pkg.manifest.name ?? pkg.directory;
+  const packages: PackageFolder[] = workspace.map((pkg) => ({
+    name: nameOf(pkg),
     directory: pkg.directory,
   }));
-  const query = argv.find((argument) => !argument.startsWith("-"));
-  const target = query === undefined ? undefined : resolvePackage(query, packages);
-  if (query !== undefined && target === undefined) {
+  const query = positionals[0];
+  const matches = query === undefined ? [] : resolvePackage(query, packages);
+  if (query !== undefined && matches.length !== 1) {
     console.error(
-      `No package matches "${query}". Use its name, its folder or its folder's last part.`,
+      matches.length === 0
+        ? `No package matches "${query}". Use its name, its folder or its folder's last part.`
+        : `"${query}" could be ${matches.map((pkg) => pkg.name).join(", ")}. Use the full name.`,
     );
     return 2;
   }
+  const repo = values.repo ?? originRepo(root) ?? defaultRepo;
   let pullRequests: OpenPullRequest[];
   try {
-    pullRequests = openPullRequests(root);
-  } catch {
-    console.error(
-      "who-touches: couldn't ask GitHub. Install the GitHub CLI and run `gh auth login`.",
-    );
+    pullRequests = await fetchOpenPullRequests(repo, { token: process.env["GH_TOKEN"] });
+  } catch (error) {
+    console.error(`who-touches: couldn't read the open pull requests of ${repo}.`);
+    console.error(`  ${(error as Error).message}`);
+    console.error("  If GitHub's rate limit is the cause, set GH_TOKEN and try again.");
     return 1;
   }
-  const touches = touchesByPackage(pullRequests, packages);
+  const touches = touchesByPackage(pullRequests, (file) => {
+    const owner = owningPackage(file, workspace);
+    return owner === undefined ? "(repo root)" : nameOf(owner);
+  });
+  const target = matches[0];
   if (target !== undefined) {
     const list = touches.get(target.name) ?? [];
     console.log(
@@ -71,4 +96,4 @@ function main(argv: readonly string[]): number {
   return 0;
 }
 
-process.exitCode = main(process.argv.slice(2));
+process.exitCode = await main(process.argv.slice(2));

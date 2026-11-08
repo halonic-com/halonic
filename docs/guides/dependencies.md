@@ -98,7 +98,10 @@ checked JSON. Passwords are checked with WebCrypto, not `@noble/hashes`.
 - **`registries`**: the `@halonicjs` scope always comes from npm.
 
 Internal dependencies always use `"workspace:*"`. A version range would let
-pnpm look the name up on the registry.
+pnpm look the name up on the registry. Add one with
+`pnpm add @halonicjs/<name> --workspace`, which writes `"workspace:*"`. A
+plain `pnpm add @halonicjs/<name>` writes `"workspace:^"`, which
+`pnpm check` rejects; pnpm 12 has no setting that changes this.
 
 Never edit `pnpm-lock.yaml` by hand. On a conflict, take either side and
 run `pnpm install`.

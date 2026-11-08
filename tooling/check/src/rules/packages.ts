@@ -103,7 +103,7 @@ function checkInternalVersions(context: CheckContext, pkg: WorkspacePackage, rep
     if (dependency.version !== "workspace:*") {
       report.error(
         pkg.manifestPath,
-        `"${dependency.name}": "${dependency.version}" in ${dependency.field} must be "workspace:*". A version range lets pnpm look the name up on the registry, which is how dependency confusion happens.`,
+        `"${dependency.name}": "${dependency.version}" in ${dependency.field} must be "workspace:*". A version range lets pnpm look the name up on the registry, which is how dependency confusion happens. Add our own packages with "pnpm add ${dependency.name} --workspace", which writes "workspace:*".`,
       );
     }
     if (!context.packagesByName.has(dependency.name)) {

@@ -94,8 +94,9 @@ To run one test file without the floor: `pnpm exec vitest run <file> --coverage.
 dependencies must use a licence from the `shipped` list in
 `tooling/check/licences.json`; dev tooling may also use the `devOnly`
 list. `OR` needs one allowed side, `AND` both. A package whose licence
-field is wrong upstream goes under `corrections`, after Julian has
-checked it by hand.
+field is wrong upstream goes under `corrections` as `name@version`, after
+Julian has checked that version by hand. A correction without a version is
+an error.
 
 ## Package names and layers
 
@@ -179,7 +180,7 @@ produces packages that pass) are then skipped without blocking the merge.
 | Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies |
 | Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                   |
 | Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                           |
-| Workflow lint                | `zizmor` over `.github/`                                                                                                                |
+| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash                                                                                                              |
 | Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits                                                                             |
 | Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                      |
 | Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                              |

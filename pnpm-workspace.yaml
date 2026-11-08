@@ -62,4 +62,8 @@ enableGlobalVirtualStore: true
 # Workspace packages are always linked, never copied, so TypeScript never
 # sits inside node_modules (Node refuses to strip types there).
 linkWorkspacePackages: true
+# Our own packages are always "workspace:*" (pnpm check enforces it). With
+# rolling, `pnpm add @halonicjs/<name> --workspace` writes exactly that; a
+# plain `pnpm add` writes "workspace:^", and no setting changes that in
+# pnpm 12 (savePrefix and saveExact don't apply to rolling).
 saveWorkspaceProtocol: rolling
