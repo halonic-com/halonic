@@ -56,12 +56,21 @@ nobody said otherwise. `read` changes nothing, `write` changes data, and
   `halonic validate` and the JSON Schema cover it. It declares `id`,
   `version`, `kit` (the `Integration` port version it was built against),
   `provides`, `hosts`, `secrets` (each with the hosts it may go to),
-  `tokens`, `tools` (with `risk` and `untrusted`) and `needs`.
+  `tokens`, `tools` (with `risk` and `untrusted`), `needs` and `limits`
+  (timeouts and response size, for long model answers and large exports).
 - `adapters/integration-kit` builds the `IntegrationHost` from the sheet: exact
   host match, `https` only, redirects followed by the kit and every hop
-  checked again, a timeout, a response size limit, and a request log with
-  method, host, path, status and time only. Web types only, so it runs in the
-  Worker too.
+  checked again, a timeout for the response headers, an idle timeout
+  between pieces of the body, an overall timeout, a response size limit,
+  and a request log with method, host, path, status and time only. Web types
+  only, so it runs in the Worker too.
+- Plain `http` only to a host the user chose in a setting that is
+  `localhost`, a loopback or a private network address, such as a
+  local MCP server. A secret goes over plain `http` only to this machine.
+- The loader maps the workspace's choices onto the sheet before `connect`:
+  a provider's `baseUrl` becomes the sheet's `fromSetting` host, and the
+  workspace secret the user picked becomes the secret named in the sheet.
+  The integration ignores `ProviderConfig.baseUrl` and `ProviderConfig.secret`.
 - The kit's workspace name follows the layout rule
   (`@halonicjs/adapter-integration-kit`); it is published as
   `@halonicjs/integration-kit` (below). The suite lives in
