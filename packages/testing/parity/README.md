@@ -72,14 +72,14 @@ empty home folder, so nothing from the person's own settings is read.
 ## Allowed differences
 
 `allowed-differences.json` is the one file that lists where the new repo may
-behave differently from the old one (plan 9.3 point 7.3). Each entry has:
+behave differently from the old one. Each entry has:
 
 - `id`: a stable kebab-case name
 - `requirement`: the requirement ID that explains the difference, for example
   `contracts.run-store`
 - `area`, `old`, `new`, `why`: what it is about, what `784f78d` did, what the
   new repo does, and why that is right, in plain words
-- `status`: `proposed` until Liam signs it off in review, then `signed-off`
+- `status`: `proposed` until the maintainer signs it off in review, then `signed-off`
 
 `readAllowedDifferences` refuses a malformed entry, an unknown field or a
 repeated id, and names the entry. A new entry always starts as `proposed`.

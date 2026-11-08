@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 
-/** "proposed" until the CTO signs the difference off in review (plan 9.3 point 7). */
+/** The statuses an allowed difference can have, in order. */
 export const differenceStatuses = ["proposed", "signed-off"] as const;
+/** "proposed" until the maintainer signs the difference off in review, then "signed-off". */
 export type DifferenceStatus = (typeof differenceStatuses)[number];
 
 /** One way the new repo is allowed to behave differently from the old one. */

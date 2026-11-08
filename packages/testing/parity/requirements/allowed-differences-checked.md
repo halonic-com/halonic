@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-137 (plan 9.3 point 7.3: "allowed differences live in one file, each with the requirement ID that explains it")
+- Source: HAL-137
 
 The parity package shall keep every allowed difference from the old repo in one file, `allowed-differences.json`, each entry with an id, the requirement ID that explains it, what the old repo did, what the new repo does, why, and whether it is proposed or signed off.
 
