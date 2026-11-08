@@ -2,6 +2,9 @@ import { unwrap } from "@halonicjs/std";
 import { describe, expect, it } from "vitest";
 import { readYaml } from "./read.ts";
 
+/** U+FEFF, the byte order mark some Windows editors put at the start of a file. */
+const byteOrderMark = String.fromCodePoint(0xfeff);
+
 const dataOf = (text: string): unknown => unwrap(readYaml(text)).data;
 
 describe("yaml.read-data", () => {
@@ -20,7 +23,8 @@ describe("yaml.read-data", () => {
   });
 
   it("reads escapes in double-quoted text", () => {
-    expect(dataOf(String.raw`text: "line\nnext \"quoted\" back\\slash é"`)).toEqual({
+    // `${"\\"}u` puts a backslash before the u, keeping the escape in the YAML text.
+    expect(dataOf(String.raw`text: "line\nnext \"quoted\" back\\slash ${"\\"}u00e9"`)).toEqual({
       text: 'line\nnext "quoted" back\\slash é',
     });
   });
@@ -56,16 +60,16 @@ describe("yaml.read-data", () => {
   });
 
   it("reads a byte order mark and Windows line endings", () => {
-    expect(dataOf("﻿a: 1\r\nb:\r\n  - x\r\n")).toEqual({ a: 1, b: ["x"] });
+    expect(dataOf(`${byteOrderMark}a: 1\r\nb:\r\n  - x\r\n`)).toEqual({ a: 1, b: ["x"] });
   });
 
   it("rejects a byte order mark right before a top-level block list, as the old app did", () => {
     // A quirk of yaml 2.9.1, kept for parity. Workspace files start with a map.
-    expect(readYaml("﻿- a\n")).toMatchObject({
+    expect(readYaml(`${byteOrderMark}- a\n`)).toMatchObject({
       ok: false,
       error: { kind: "syntax", line: 1, col: 4 },
     });
-    expect(dataOf("﻿[a]\n")).toEqual(["a"]);
+    expect(dataOf(`${byteOrderMark}[a]\n`)).toEqual(["a"]);
   });
 
   it("keeps a __proto__ key as plain data, without touching the prototype", () => {

@@ -2,6 +2,9 @@ import { unwrap } from "@halonicjs/std";
 import { describe, expect, it } from "vitest";
 import { readYaml } from "./read.ts";
 
+/** U+FEFF, the byte order mark some Windows editors put at the start of a file. */
+const byteOrderMark = String.fromCodePoint(0xfeff);
+
 const workflow = [
   "name: Invoice", //            line 1
   "steps:", //                   line 2
@@ -57,7 +60,7 @@ describe("yaml.position-of", () => {
   });
 
   it("counts lines after a Windows line ending and columns after a byte order mark", () => {
-    expect(positionOf("﻿a: 1\r\nb: 2\r\n", ["b"])).toEqual({ line: 2, col: 4 });
-    expect(positionOf("﻿a: 1\r\n", ["a"])).toEqual({ line: 1, col: 5 });
+    expect(positionOf(`${byteOrderMark}a: 1\r\nb: 2\r\n`, ["b"])).toEqual({ line: 2, col: 4 });
+    expect(positionOf(`${byteOrderMark}a: 1\r\n`, ["a"])).toEqual({ line: 1, col: 5 });
   });
 });

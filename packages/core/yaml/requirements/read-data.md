@@ -10,7 +10,7 @@ When `readYaml` reads valid YAML that uses only supported features, the reader s
 
 - Given `name: Billing` and a block list of steps, when `readYaml` runs, then the data is `{ name: "Billing", steps: [...] }`.
 - Given flow maps and lists such as `tags: [a, 'b c']`, when `readYaml` runs, then they read like their block forms.
-- Given a double-quoted value with `\n`, `\"`, `\\` and `é`, when `readYaml` runs, then each escape becomes its character.
+- Given a double-quoted value with `\n`, `\"`, `\\` and a `\u` escape, when `readYaml` runs, then each escape becomes its character.
 - Given `|`, `|-`, `>` and `>+` blocks, when `readYaml` runs, then line breaks are kept, stripped, folded or kept as YAML says.
 - Given `a: yes`, when `readYaml` runs, then `a` is the text `"yes"`, not `true`.
 - Given an empty file, or one with only comments, when `readYaml` runs, then the data is `null`.
