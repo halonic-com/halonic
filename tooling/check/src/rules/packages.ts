@@ -1,7 +1,7 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CheckContext, declaredDependencies } from "../lib/context.ts";
-import { coverageFloorProblems } from "../lib/coverage.ts";
+import { coverageFloorProblems, testSetupProblems } from "../lib/coverage.ts";
 import { cliPackageName, folderNamePattern, reservedCorePrefixes, scope } from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
@@ -9,7 +9,8 @@ import type { WorkspacePackage } from "../lib/workspace.ts";
 /**
  * Checks each package's `package.json`: its name follows from its folder,
  * it is private unless listed as published, it declares its layer, owner
- * and coverage floor, it exposes only public entry points, and every
+ * and coverage floor, its tests run through the shared Vitest preset with
+ * coverage on, it exposes only public entry points, and every
  * internal dependency uses `workspace:*`.
  */
 export function checkPackages(context: CheckContext): Report {
@@ -20,6 +21,7 @@ export function checkPackages(context: CheckContext): Report {
     if (pkg.directory !== ".") {
       checkExports(context, pkg, report);
       checkCoverageFloor(context, pkg, report);
+      checkTestSetup(context, pkg, report);
     }
   }
   checkCoreOrder(context, report);
@@ -77,6 +79,14 @@ function checkCoverageFloor(context: CheckContext, pkg: WorkspacePackage, report
     return;
   }
   for (const problem of coverageFloorProblems(pkg.manifest.halonic?.coverage, place.layer)) {
+    report.error(pkg.manifestPath, problem);
+  }
+}
+
+function checkTestSetup(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
+  const configPath = join(context.root, pkg.directory, "vitest.config.ts");
+  const configText = existsSync(configPath) ? readFileSync(configPath, "utf8") : undefined;
+  for (const problem of testSetupProblems(pkg.manifest.scripts?.["test"], configText)) {
     report.error(pkg.manifestPath, problem);
   }
 }

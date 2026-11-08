@@ -33,6 +33,7 @@ export function manifestFor(
     private: true,
     type: "module",
     exports: { ".": "./src/index.ts" },
+    scripts: { test: "vitest run" },
     halonic: { layer, owner: "mateo", coverage: defaultCoverageFloors[layer] },
     ...extra,
   };
@@ -90,6 +91,7 @@ export function runChecks(
       const files = pkg.files ?? { "src/index.ts": "export const x = 1;\n" };
       for (const [file, text] of Object.entries({
         ...(pkg.withoutAgentsMd ? {} : { "AGENTS.md": agentsMdFor(pkg) }),
+        "vitest.config.ts": "export default definePackageTestConfig();\n",
         ...files,
       })) {
         write(`${pkg.directory}/${file}`, text);

@@ -29,6 +29,9 @@ export const defaultCoverageFloors: Readonly<Record<Layer, CoverageFloor>> = {
  */
 const fixedLayers: readonly Layer[] = ["core", "adapters", "host", "studio", "apps"];
 
+/** Layers with no fixed number, where a floor of 0 would still switch the check off. */
+const zeroNotAllowed: readonly Layer[] = ["testing", "tooling"];
+
 function example(layer: Layer): string {
   const fields = Object.entries(defaultCoverageFloors[layer]).map(
     ([key, percent]) => `"${key}": ${percent}`,
@@ -85,8 +88,45 @@ function percentProblem(
   if (typeof percent !== "number" || !Number.isFinite(percent) || percent < 0 || percent > 100) {
     return `"halonic.coverage.${key}" must be a percentage from 0 to 100.`;
   }
+  if (percent === 0 && zeroNotAllowed.includes(layer)) {
+    return `"halonic.coverage.${key}" can't be 0 in the ${layer} layer: a floor of 0 turns the check off. Set what the tests reach today and raise it.`;
+  }
   if (required !== undefined && percent < required) {
     return `"halonic.coverage.${key}" is ${percent}, below the ${required} that the ${layer} layer requires.`;
   }
   return undefined;
+}
+
+/**
+ * Checks that a package's tests run through the shared Vitest preset with
+ * coverage on, so its floor is enforced and can't be switched off.
+ *
+ * @param testScript - the `test` script from `package.json`
+ * @param configText - the text of `vitest.config.ts`, or `undefined` when missing
+ * @returns one message per problem, empty when the setup is fine
+ *
+ * @example
+ * testSetupProblems("vitest run", "export default definePackageTestConfig();"); // []
+ */
+export function testSetupProblems(testScript: unknown, configText: string | undefined): string[] {
+  const problems: string[] = [];
+  if (typeof testScript !== "string" || testScript.trim() !== "vitest run") {
+    problems.push(
+      'The "test" script must be exactly "vitest run": coverage and its floor come from the shared preset, so no flags such as --coverage.enabled=false.',
+    );
+  }
+  if (configText === undefined) {
+    problems.push(
+      'Add a vitest.config.ts with `export default definePackageTestConfig();` from "@halonicjs/tooling-config/vitest".',
+    );
+  } else if (!/\bdefinePackageTestConfig\(/.test(configText)) {
+    problems.push(
+      "vitest.config.ts must build its config with definePackageTestConfig() from the shared preset.",
+    );
+  } else if (/\bcoverage\b|\bthresholds\b/.test(configText)) {
+    problems.push(
+      'vitest.config.ts may not set "coverage" or "thresholds": the floor lives in package.json under halonic.coverage and may only go up.',
+    );
+  }
+  return problems;
 }

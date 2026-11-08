@@ -9,10 +9,10 @@ const checked = /\.(?:[cm]?[jt]sx?|md|mdx|json|jsonc|ya?ml|toml|astro|css|html)$
  * parts so this file doesn't trip its own check.
  */
 const machinePaths: readonly RegExp[] = [
-  new RegExp(String.raw`(?<![\w.])[A-Za-z]:(?:\\{1,2}|/)(?:Users|Documents and Settings)\b`, "i"),
+  /(?<![\w.])[A-Za-z]:(?:\\{1,2}|\/)(?:Users|Documents and Settings)\b/i,
   new RegExp(`(?<![\\w.~])/(?:${["home", "Users", "root"].join("|")})/[\\w.-]+`),
   new RegExp(`(?<![\\w.])/(?:${["mnt/[a-z]", "paperclip", "tmp/paperclip"].join("|")})/`),
-  new RegExp(String.raw`\\\\wsl(?:\$|\.localhost)\\`, "i"),
+  /\\\\wsl(?:\$|\.localhost)\\/i,
 ];
 
 /** Test files and fixtures may hold such paths on purpose, for example in attack tests. */

@@ -12,6 +12,7 @@ export interface PackageJson {
   readonly devDependencies?: Readonly<Record<string, string>>;
   readonly peerDependencies?: Readonly<Record<string, string>>;
   readonly optionalDependencies?: Readonly<Record<string, string>>;
+  readonly scripts?: Readonly<Record<string, unknown>>;
   readonly halonic?: {
     readonly layer?: string;
     readonly owner?: string;
