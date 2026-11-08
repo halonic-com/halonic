@@ -1,6 +1,6 @@
 # Dependencies
 
-Adding a dependency is a decision, not a side effect (plan 7.1).
+Adding a dependency is a decision, not a side effect.
 
 1. **Core uses no external code.** Write it in-house, usually in `core/std`.
 2. **Outside-world libraries** (model providers, MCP, Google, the OS

@@ -29,7 +29,8 @@ typecheck, lint and test for the packages your change affects.
 | `absolute-paths` | docs, code or config hold an absolute path from one machine, such as a Windows user folder or a Linux home folder. Tests and fixtures are exempt                                                                                                                                                                                                  |
 
 `trace`, `requirement-guard` and `dco` are wired in already and report
-"not active yet". They become real in Phase 1 (plan 9.2, 9.3).
+"not active yet". They start checking once the repo has requirements and
+decision records to check against.
 
 ## Licences
 
