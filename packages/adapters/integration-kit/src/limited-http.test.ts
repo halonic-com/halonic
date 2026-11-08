@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   canary,
   client,
@@ -352,12 +352,22 @@ verifies("integration-kit.request-limits", () => {
   });
 
   it("doesn't count time the integration spends between reads", async () => {
-    const { http } = client(() => new Response(pieces(["a", "b"], 0)), { idleTimeoutMs: 10 });
-    const body = (await http.fetch("https://api.example.com/")).body;
-    const reader = body?.getReader();
-    await reader?.read();
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    expect((await reader?.read())?.done).toBe(false);
+    // Fake timers, so a busy machine can't stretch the source's own pauses past the idle limit.
+    vi.useFakeTimers();
+    try {
+      const { http } = client(() => new Response(pieces(["a", "b", "c"], 0)), {
+        idleTimeoutMs: 10,
+      });
+      const body = (await http.fetch("https://api.example.com/")).body;
+      const reader = body?.getReader();
+      expect((await afterPendingTimers(reader?.read()))?.done).toBe(false);
+      await vi.advanceTimersByTimeAsync(40);
+      // "b" is already buffered; "c" is only fetched after the pause, so it shows the pause didn't count.
+      expect((await afterPendingTimers(reader?.read()))?.done).toBe(false);
+      expect((await afterPendingTimers(reader?.read()))?.done).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("ends the whole request at the overall limit", async () => {
@@ -369,6 +379,12 @@ verifies("integration-kit.request-limits", () => {
     await expect(response.text()).rejects.toMatchObject({ name: "TimeoutError" });
   });
 });
+
+/** Under fake timers: runs the timers that are due now, then waits for `promise`. */
+async function afterPendingTimers<T>(promise: Promise<T> | undefined): Promise<T | undefined> {
+  await vi.advanceTimersByTimeAsync(0);
+  return promise;
+}
 
 /** A body that sends each piece after a pause, and can hang after the last one. */
 function pieces(
