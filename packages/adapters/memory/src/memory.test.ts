@@ -30,8 +30,11 @@ secretsContract("memory", async (values) => new MemorySecrets(values));
 tokenStoreContract("memory", async () => new MemoryTokenStore());
 clockContract("memory", async () => new ManualClock());
 idGeneratorContract("memory", async () => new SequentialIds());
-schedulerContract("memory", async (listener) => {
-  const clock = new ManualClock();
-  const scheduler = new MemoryScheduler(listener, clock);
-  return { scheduler, clock, settle: () => scheduler.runDue() };
-});
+for (const duplicateDeliveries of [false, true]) {
+  const name = duplicateDeliveries ? "memory, delivering every timer twice" : "memory";
+  schedulerContract(name, async (listener) => {
+    const clock = new ManualClock();
+    const scheduler = new MemoryScheduler(listener, clock, { duplicateDeliveries });
+    return { scheduler, clock, settle: () => scheduler.runDue() };
+  });
+}

@@ -20,15 +20,24 @@ export type MakeScheduler = (listener: SchedulerListener) => Promise<SchedulerHa
 /** What the listener should do with one delivery: resolve, reject, or run something first. */
 export type TimerBehaviour = (timer: ScheduledTimer, call: number) => Promise<void>;
 
-/** A listener that records every call, and does what the test tells it to. */
+/**
+ * A listener that records every call, with the clock time it arrived, and
+ * does what the test tells it to. A timer can arrive twice (multi-cloud ADR
+ * 5.3), so `timers` can hold repeats: read it through {@link delivered}.
+ */
 export class RecordingListener implements SchedulerListener {
   readonly timers: ScheduledTimer[] = [];
+  /** The clock time, in ms, at which each entry of `timers` arrived. */
+  readonly arrivals: number[] = [];
   readonly ticks: string[] = [];
   behaviour: TimerBehaviour = async () => {};
   tickBehaviour: () => Promise<void> = async () => {};
+  /** Reads the scheduler's clock; set by {@link startScheduler} once the harness exists. */
+  now: () => number = () => Number.NaN;
 
   async onTimer(timer: ScheduledTimer): Promise<void> {
     this.timers.push({ ...timer });
+    this.arrivals.push(this.now());
     await this.behaviour(timer, this.timers.length);
   }
 
@@ -42,6 +51,7 @@ export class RecordingListener implements SchedulerListener {
 export async function startScheduler(make: MakeScheduler) {
   const listener = new RecordingListener();
   const harness = await make(listener);
+  listener.now = () => harness.clock.now().getTime();
   const inMs = (ms: number) => new Date(harness.clock.now().getTime() + ms).toISOString();
   const wait = async (ms: number) => {
     harness.clock.advance(ms);
