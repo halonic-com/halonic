@@ -14,6 +14,32 @@ export interface SecretRule {
   readonly pattern: RegExp;
 }
 
+/**
+ * A literal value after a field name: quoted after `:` or `=`
+ * (`"access_token": "…"`, `access_token = '…'`), or bare straight after `=`
+ * as in a query string or form body. A variable after the name
+ * (`access_token: tokens.access`) is never a match.
+ */
+const assigned = String.raw`(?:["']?\s*[:=]\s*["']|=)`;
+
+/** An OAuth token or code: URL-safe characters, percent-escapes and base64. */
+const oauthValue = String.raw`[A-Za-z0-9._~%/+=-]{16,}`;
+
+/**
+ * `code` is a common word, so it counts only in the two places where it is
+ * the OAuth authorization code: a query string or form body
+ * (`?code=…`, `&code=…`), and a token request, which names a `grant_type`
+ * on the same line, before or after the code.
+ */
+const oauthCodePattern = new RegExp(
+  [
+    String.raw`(?<=[?&]code=)${oauthValue}`,
+    String.raw`(?<=\bgrant_type\b.*\bcode${assigned})${oauthValue}`,
+    String.raw`(?<=\bcode${assigned})${oauthValue}(?=.*\bgrant_type\b)`,
+  ].join("|"),
+  "g",
+);
+
 export const secretRules: readonly SecretRule[] = [
   {
     name: "private-key",
@@ -51,6 +77,26 @@ export const secretRules: readonly SecretRule[] = [
     name: "google-api-key",
     label: "a Google API key",
     pattern: /\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])/g,
+  },
+  {
+    // Google OAuth client secrets, always with this prefix.
+    name: "google-client-secret",
+    label: "a Google OAuth client secret",
+    pattern: /\bGOCSPX-[A-Za-z0-9_-]{20,}/g,
+  },
+  {
+    // The secret fields of an OAuth token request or answer, holding a literal value.
+    name: "oauth-field",
+    label: "an OAuth client secret or token",
+    pattern: new RegExp(
+      String.raw`(?<=\b(?:client_secret|refresh_token|access_token)${assigned})${oauthValue}`,
+      "g",
+    ),
+  },
+  {
+    name: "oauth-code",
+    label: "an OAuth authorization code",
+    pattern: oauthCodePattern,
   },
   {
     name: "stripe-key",
@@ -105,6 +151,7 @@ const rulesWithPublicPrefix = new Set([
   "npm-token",
   "slack-token",
   "google-api-key",
+  "google-client-secret",
   "stripe-key",
   "ai-provider-key",
   "jwt",
