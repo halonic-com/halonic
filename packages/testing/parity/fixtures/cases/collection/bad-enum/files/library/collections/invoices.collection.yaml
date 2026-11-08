@@ -1,0 +1,22 @@
+id: invoices
+name: Invoices
+description: Invoices the billing hub tracks.
+implements: [billing.track-invoices]
+fields:
+  vendor: { type: text, required: true }
+  amount: { type: money, min: 0 }
+  vat: { type: number, default: 21 }
+  total: { type: money, compute: "amount * (100 + vat) / 100" }
+  due: { type: datetime }
+  period: { type: month }
+  state: { type: choice, values: [open, paid, disputed], default: open }
+  urgent: { type: boolean }
+  supplier: { type: ref, collection: suppliers }
+views:
+  open:
+    description: Not paid yet.
+    where: { state: [open, disputed], due: { lte: today } }
+    total: total
+    sort: due
+seed:
+  - { id: inv-1, vendor: Acme Paper, amount: 120, due: "2026-01-31" }

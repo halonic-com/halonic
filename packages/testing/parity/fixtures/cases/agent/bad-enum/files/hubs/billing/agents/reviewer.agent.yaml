@@ -1,0 +1,8 @@
+id: reviewer
+name: Reviewer
+instructions: Decide whether the invoice looks right.
+output:
+  type: xml
+  options: [ok, suspicious]
+subagents: [checker]
+runLogs: true

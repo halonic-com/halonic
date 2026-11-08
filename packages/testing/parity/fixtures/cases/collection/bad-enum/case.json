@@ -1,0 +1,10 @@
+{
+  "about": "a field type that doesn't exist",
+  "kind": "collection",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "fields.due.type",
+    "line": 10
+  }
+}

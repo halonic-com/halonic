@@ -1,0 +1,10 @@
+{
+  "about": "reasoningEffort is not low, medium or high",
+  "kind": "models",
+  "fault": "bad-enum",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.fast.params.reasoningEffort",
+    "line": 13
+  }
+}

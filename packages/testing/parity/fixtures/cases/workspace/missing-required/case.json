@@ -1,0 +1,10 @@
+{
+  "about": "name is missing",
+  "kind": "workspace",
+  "fault": "missing-required",
+  "expect": {
+    "file": "workspace.yaml",
+    "path": "name",
+    "line": 2
+  }
+}

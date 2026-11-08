@@ -1,0 +1,10 @@
+{
+  "about": "a view filter with an unknown comparison, four levels down",
+  "kind": "collection",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "library/collections/invoices.collection.yaml",
+    "path": "views.open.where.due",
+    "line": 18
+  }
+}

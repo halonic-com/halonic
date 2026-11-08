@@ -1,0 +1,5 @@
+name: By hand
+trigger:
+  manual: true
+run:
+  workflow: batch

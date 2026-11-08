@@ -1,0 +1,25 @@
+{
+  "name": "@halonicjs/testing-parity",
+  "private": true,
+  "type": "module",
+  "description": "Made-up fixture workspaces and golden recordings of the old repo's validation, for the parity check (plan 9.3).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "record": "node src/cli/record.ts"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "julian"
+  }
+}

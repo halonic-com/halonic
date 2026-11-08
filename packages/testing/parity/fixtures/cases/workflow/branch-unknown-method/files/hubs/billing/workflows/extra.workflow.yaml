@@ -1,0 +1,12 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    type: parallel
+    branches:
+      one: { agent: clerk, method: summarise }
+    on:
+      - to: done
+  done:
+    type: final

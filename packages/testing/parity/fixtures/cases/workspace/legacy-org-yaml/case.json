@@ -1,0 +1,8 @@
+{
+  "about": "org.yaml instead of workspace.yaml still loads, with a hint",
+  "kind": "workspace",
+  "fault": "valid",
+  "remove": [
+    "workspace.yaml"
+  ]
+}

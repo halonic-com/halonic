@@ -1,0 +1,42 @@
+{
+  "reference": "784f78d",
+  "case": "runtime/unknown-key",
+  "valid": false,
+  "files": [
+    {
+      "file": "runtimes/inprocess.yaml",
+      "flatPath": "runtimes/inprocess.yaml",
+      "read": true,
+      "schema": "runtime",
+      "issues": [
+        {
+          "path": [],
+          "code": "unrecognized_keys",
+          "message": "Unrecognized key: \"image\"",
+          "line": 1,
+          "col": 1
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "runtimes/inprocess.yaml",
+      "message": "Unrecognized key: \"image\"",
+      "line": 1,
+      "col": 1
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error runtimes/inprocess.yaml: Unrecognized key: \"image\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 3,
+    "recorded": 1,
+    "verdict": "different"
+  }
+}

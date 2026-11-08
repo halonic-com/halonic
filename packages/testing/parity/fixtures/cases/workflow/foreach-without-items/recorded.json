@@ -1,0 +1,33 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/foreach-without-items",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "For-each step \"start\" needs items, e.g. \"{{context.list}}\"",
+      "state": "start"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml (start): For-each step \"start\" needs items, e.g. \"{{context.list}}\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

@@ -1,0 +1,10 @@
+name: Inbox mail
+enabled: false
+trigger:
+  mail:
+    connector: mailbox
+    query: "in:inbox -from:me"
+    every: 1d
+run:
+  workflow: invoice
+  input: { invoice: "{{trigger.message.snippet}}" }

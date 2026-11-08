@@ -1,0 +1,10 @@
+{
+  "about": "two agents that delegate to each other",
+  "kind": "agent",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/agents/checker.agent.yaml",
+    "path": "subagents",
+    "line": 4
+  }
+}

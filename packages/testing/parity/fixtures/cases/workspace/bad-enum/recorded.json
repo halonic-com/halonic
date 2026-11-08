@@ -1,0 +1,45 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/bad-enum",
+  "valid": false,
+  "files": [
+    {
+      "file": "workspace.yaml",
+      "flatPath": "workspace.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [
+        {
+          "path": [
+            "appearance",
+            "characters"
+          ],
+          "code": "invalid_value",
+          "message": "Invalid option: expected one of \"expressive\"|\"minimal\"|\"off\"",
+          "line": 22,
+          "col": 15
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "workspace.yaml",
+      "message": "appearance.characters: Invalid option: expected one of \"expressive\"|\"minimal\"|\"off\"",
+      "line": 22,
+      "col": 15
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: appearance.characters: Invalid option: expected one of \"expressive\"|\"minimal\"|\"off\"\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 22,
+    "recorded": 22,
+    "verdict": "same"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/dead-end",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"start\" has no way out; add a transition or make it final",
+      "state": "start"
+    },
+    {
+      "severity": "warning",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"done\" can never be reached",
+      "state": "done"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml (start): \"start\" has no way out; add a transition or make it final\nwarn  hubs/billing/workflows/extra.workflow.yaml (done): \"done\" can never be reached\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 5,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "about": "no deployments listed",
+  "kind": "deployments",
+  "fault": "rule",
+  "expect": {
+    "file": "deployments.yaml",
+    "path": "deployments",
+    "line": 2
+  }
+}

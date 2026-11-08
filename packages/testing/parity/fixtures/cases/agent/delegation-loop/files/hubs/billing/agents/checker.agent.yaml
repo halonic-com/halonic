@@ -1,0 +1,7 @@
+id: checker
+name: Checker
+instructions: Check one invoice line.
+subagents: [reviewer]
+output:
+  type: json
+  schema: { type: object }

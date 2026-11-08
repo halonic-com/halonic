@@ -1,0 +1,10 @@
+{
+  "about": "a workflow that runs itself",
+  "kind": "workflow",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/workflows/extra.workflow.yaml",
+    "path": "states.start.workflow",
+    "line": 7
+  }
+}

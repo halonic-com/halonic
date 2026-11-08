@@ -1,0 +1,24 @@
+{
+  "name": "@halonicjs/format",
+  "private": true,
+  "type": "module",
+  "description": "The workspace file format: one folder per file kind with its schema, defaults, cross-checks and JSON Schema.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "elena"
+  }
+}

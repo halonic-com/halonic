@@ -1,0 +1,4 @@
+id: inprocess
+type: inprocess
+image: acme/runner
+options: {}

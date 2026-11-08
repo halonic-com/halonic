@@ -1,0 +1,10 @@
+{
+  "about": "a stop word that is a number, three levels down",
+  "kind": "models",
+  "fault": "deep-nesting",
+  "expect": {
+    "file": "models.yaml",
+    "path": "aliases.smart.params.stop.1",
+    "line": 21
+  }
+}

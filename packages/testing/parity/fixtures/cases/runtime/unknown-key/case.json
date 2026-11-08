@@ -1,0 +1,10 @@
+{
+  "about": "an unknown key",
+  "kind": "runtime",
+  "fault": "unknown-key",
+  "expect": {
+    "file": "runtimes/inprocess.yaml",
+    "path": "image",
+    "line": 3
+  }
+}

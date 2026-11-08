@@ -1,0 +1,11 @@
+id: extra
+name: Extra
+initial: start
+states:
+  start:
+    type: foreach
+    agent: checker
+    on:
+      - to: done
+  done:
+    type: final

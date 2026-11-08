@@ -1,0 +1,39 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/unknown-target",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"start\" goes to unknown state \"finish\"",
+      "state": "start"
+    },
+    {
+      "severity": "warning",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "\"done\" can never be reached",
+      "state": "done"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml (start): \"start\" goes to unknown state \"finish\"\nwarn  hubs/billing/workflows/extra.workflow.yaml (done): \"done\" can never be reached\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 8,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

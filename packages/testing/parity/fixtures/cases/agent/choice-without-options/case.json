@@ -1,0 +1,10 @@
+{
+  "about": "a choice output with no options",
+  "kind": "agent",
+  "fault": "rule",
+  "expect": {
+    "file": "hubs/billing/agents/reviewer.agent.yaml",
+    "path": "output.options",
+    "line": 6
+  }
+}

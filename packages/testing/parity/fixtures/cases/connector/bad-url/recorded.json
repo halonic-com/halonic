@@ -1,0 +1,51 @@
+{
+  "reference": "784f78d",
+  "case": "connector/bad-url",
+  "valid": false,
+  "files": [
+    {
+      "file": "library/connectors/tracker.connector.yaml",
+      "flatPath": "connectors/tracker.connector.yaml",
+      "read": true,
+      "schema": "connector",
+      "issues": [
+        {
+          "path": [
+            "transport",
+            "http",
+            "url"
+          ],
+          "code": "invalid_format",
+          "message": "Invalid URL",
+          "line": 4,
+          "col": 10
+        }
+      ],
+      "status": "fail"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "connectors/tracker.connector.yaml",
+      "message": "transport.http.url: Invalid URL",
+      "line": 4,
+      "col": 10
+    },
+    {
+      "severity": "error",
+      "path": "hubs/billing/agents/notifier.agent.yaml",
+      "message": "Agent \"notifier\" uses unknown connector \"tracker\""
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error connectors/tracker.connector.yaml: transport.http.url: Invalid URL\nerror hubs/billing/agents/notifier.agent.yaml: Agent \"notifier\" uses unknown connector \"tracker\"\n2 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 4,
+    "recorded": 4,
+    "verdict": "same"
+  }
+}

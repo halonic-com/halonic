@@ -1,0 +1,28 @@
+{
+  "reference": "784f78d",
+  "case": "workspace/legacy-org-yaml",
+  "valid": true,
+  "files": [
+    {
+      "file": "org.yaml",
+      "flatPath": "org.yaml",
+      "read": true,
+      "schema": "workspace",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "info",
+      "path": "org.yaml",
+      "message": "org.yaml is now called workspace.yaml; run studio migrate to rename it"
+    }
+  ],
+  "validate": {
+    "exitCode": 0,
+    "stdout": "info  org.yaml: org.yaml is now called workspace.yaml; run studio migrate to rename it\nOK: Acme, 1 hub(s), 0 warning(s)\n",
+    "stderr": ""
+  },
+  "line": null
+}

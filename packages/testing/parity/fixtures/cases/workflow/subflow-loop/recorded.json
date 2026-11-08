@@ -1,0 +1,40 @@
+{
+  "reference": "784f78d",
+  "case": "workflow/subflow-loop",
+  "valid": false,
+  "files": [
+    {
+      "file": "hubs/billing/workflows/extra.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/extra.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "fail"
+    },
+    {
+      "file": "hubs/billing/workflows/line-check.workflow.yaml",
+      "flatPath": "hubs/billing/workflows/line-check.workflow.yaml",
+      "read": true,
+      "schema": "workflow",
+      "issues": [],
+      "status": "pass"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "path": "hubs/billing/workflows/extra.workflow.yaml",
+      "message": "Workflows run each other in a loop: extra → line-check → extra"
+    }
+  ],
+  "validate": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/workflows/extra.workflow.yaml: Workflows run each other in a loop: extra → line-check → extra\n1 error(s)\n",
+    "stderr": ""
+  },
+  "line": {
+    "expected": 7,
+    "recorded": null,
+    "verdict": "no-line"
+  }
+}

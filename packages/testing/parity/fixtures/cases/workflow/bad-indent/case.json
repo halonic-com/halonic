@@ -1,0 +1,10 @@
+{
+  "about": "a key indented wrongly",
+  "kind": "workflow",
+  "fault": "yaml-syntax",
+  "expect": {
+    "file": "hubs/billing/workflows/approval.workflow.yaml",
+    "path": "states.decide.description",
+    "line": 8
+  }
+}
