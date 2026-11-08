@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/google-setup",
+  "private": true,
+  "type": "module",
+  "description": "The Google setup flow's rules: the client secret store with staged replace, and later the progress, steps, checks and error classification.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "priya",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
