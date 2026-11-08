@@ -156,12 +156,12 @@ describe("checkToolCall", () => {
     });
   });
 
-  it("says the parameters can't be checked when they combine schemas at the top", () => {
+  it("says the parameters can't be checked when they use anyOf or oneOf", () => {
     const combined = [
-      { $ref: "#/$defs/place", $defs: { place: { properties: { city: {} } } } },
       { anyOf: [{ properties: { city: {} } }] },
       { oneOf: [{ properties: { city: {} } }] },
-      { allOf: [{ properties: { city: {} } }] },
+      { $ref: "https://example.com/place.json" },
+      { $ref: "#/$defs/missing", $defs: {} },
     ];
     for (const parameters of combined) {
       expect(checkToolCall(declared(parameters), { city: "Oslo" })).toEqual({
@@ -169,5 +169,132 @@ describe("checkToolCall", () => {
         reason: `forecast's parameters can't be checked, so "city" can't be sent`,
       });
     }
+  });
+
+  it("reads through $ref and allOf at the top", () => {
+    const place = { properties: { city: { type: "string" } }, additionalProperties: false };
+    const readable = [
+      { $ref: "#/$defs/place", $defs: { place } },
+      { $ref: "#/definitions/place", definitions: { place } },
+      { allOf: [place] },
+      { allOf: [{ $ref: "#/$defs/place" }], $defs: { place } },
+    ];
+    for (const parameters of readable) {
+      const offered = declared(parameters);
+      expect(checkToolCall(offered, { city: "Oslo" })).toEqual({ kind: "run" });
+      expect(checkToolCall(offered, { city: "Oslo", path: "/" })).toEqual({
+        kind: "refused",
+        reason: 'forecast has no parameter "path"',
+      });
+    }
+  });
+
+  it("takes the names of every allOf part, and lets one false forbid extra names", () => {
+    const parameters = {
+      allOf: [
+        { properties: { city: {} }, additionalProperties: true },
+        { properties: { days: {} }, additionalProperties: false },
+      ],
+    };
+    expect(checkToolCall(declared(parameters), { city: "Oslo", days: 3, path: "/" })).toEqual({
+      kind: "refused",
+      reason: 'forecast has no parameter "path"',
+    });
+  });
+
+  it("refuses a name a nested object of a declared tool doesn't declare", () => {
+    const offered = declared({
+      type: "object",
+      properties: {
+        place: { type: "object", properties: { city: { type: "string" } } },
+        days: { type: "integer" },
+      },
+    });
+    expect(checkToolCall(offered, { place: { city: "Oslo" }, days: 3 })).toEqual({ kind: "run" });
+    expect(checkToolCall(offered, { place: { city: "Oslo", path: "/" } })).toEqual({
+      kind: "refused",
+      reason: 'forecast has no parameter "place.path"',
+    });
+  });
+
+  it("checks array items and the values of extra names that have a schema", () => {
+    const stop = { type: "object", properties: { city: {} } };
+    const offered = declared({
+      type: "object",
+      properties: { stops: { type: "array", items: stop } },
+      additionalProperties: stop,
+    });
+    const args = { stops: [{ city: "Oslo" }, { city: "Bergen", path: "/" }], home: { path: "/" } };
+    expect(checkToolCall(offered, args)).toEqual({
+      kind: "refused",
+      reason: 'forecast has no parameter "stops[1].path", "home.path"',
+    });
+  });
+
+  it("allows nested extra names when additionalProperties allows them", () => {
+    const offered = declared({
+      type: "object",
+      properties: {
+        tags: { type: "object", additionalProperties: true },
+        anything: true,
+      },
+    });
+    const args = { tags: { colour: { shade: "blue" } }, anything: { path: "/" } };
+    expect(checkToolCall(offered, args)).toEqual({ kind: "run" });
+  });
+
+  it("follows a schema that refers to itself, and refuses arguments nested too deeply", () => {
+    const offered = declared({
+      $ref: "#/$defs/folder",
+      $defs: { folder: { properties: { name: {}, child: { $ref: "#/$defs/folder" } } } },
+    });
+    expect(checkToolCall(offered, { name: "a", child: { name: "b", child: { size: 1 } } })).toEqual(
+      {
+        kind: "refused",
+        reason: 'forecast has no parameter "child.child.size"',
+      },
+    );
+    let deep: Record<string, unknown> = { name: "leaf" };
+    for (let level = 0; level < 100; level += 1) {
+      deep = { child: deep };
+    }
+    expect(checkToolCall(offered, deep)).toEqual({
+      kind: "refused",
+      reason: "forecast's arguments nest more than 64 levels deep",
+    });
+  });
+
+  it("caps and escapes nested refused names like top-level ones", () => {
+    const offered = declared({ type: "object", properties: { place: { type: "object" } } });
+    const place = Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`n${i}\n`, i]));
+    const listed = Array.from({ length: 8 }, (_, i) => `"place.n${i}\\u{a}"`).join(", ");
+    expect(checkToolCall(offered, { place })).toEqual({
+      kind: "refused",
+      reason: `forecast has no parameter ${listed} and 2 more`,
+    });
+  });
+
+  it("names both kinds of refused argument in one reason", () => {
+    const offered = declared({
+      type: "object",
+      properties: { place: { anyOf: [{ properties: { city: {} } }] } },
+    });
+    expect(checkToolCall(offered, { place: { city: "Oslo" }, path: "/" })).toEqual({
+      kind: "refused",
+      reason:
+        'forecast has no parameter "path"; ' +
+        "forecast's parameters can't be checked, so \"place.city\" can't be sent",
+    });
+  });
+
+  it("checks only the top level of a listed tool's arguments", () => {
+    const parameters = {
+      type: "object",
+      properties: { place: { type: "object", properties: { city: { type: "string" } } } },
+    };
+    const offered = offer([tool("lookup", { parameters })], "lookup");
+    expect(checkToolCall(offered, { place: { city: "Oslo", path: "/" } })).toEqual({
+      kind: "ask",
+    });
   });
 });
