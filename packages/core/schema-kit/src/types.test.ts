@@ -1,9 +1,10 @@
+import { verifies } from "@halonicjs/testing-spec";
 // The derived types are checked by the compiler (pnpm typecheck runs this
 // file); the `it` blocks also run it, so a type error shows up in both.
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { expect, expectTypeOf, it } from "vitest";
 import { type Infer, type InferInput, type Issue, parse, type Schema, s } from "./index.ts";
 
-describe("schema-kit.derived-types", () => {
+verifies("schema-kit.derived-types", () => {
   it("makes optional keys optional and keys with defaults optional only in the input", () => {
     const schema = s.object({
       a: s.string(),

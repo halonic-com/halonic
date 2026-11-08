@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { MAX_DEPTH, parse, type Schema, s } from "./index.ts";
 
 type Tree = { child?: Tree | undefined };
@@ -10,7 +11,7 @@ function nested(depth: number): Tree {
   return value;
 }
 
-describe("schema-kit.nesting-limit", () => {
+verifies("schema-kit.nesting-limit", () => {
   it("accepts input right at the limit", () => {
     // `depth` wrappers put the innermost map at a path of `depth` keys.
     expect(parse(tree, nested(MAX_DEPTH)).ok).toBe(true);

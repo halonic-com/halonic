@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-171; plan 5.3, 5.4
 
-A feature shall provide each service in its `provides` by giving a factory in `register`. If it provides a service it doesn't list, provides one twice, or leaves a listed one out, then the shell shall throw a `ShellError`. When the services are built for a workspace, the shell shall run the factories in dependency order, and a factory shall get only services its feature lists in `needs` or `provides`. A factory may read another of its own feature's services; the shell shall build that one first, whatever order `provide` was called in. If a feature's own services need each other in a cycle, then the shell shall throw a `ShellError` naming the feature and the cycle.
+The shell shall take each service a feature lists in `provides` from a factory the feature gives in `register`. If it provides a service it doesn't list, provides one twice, or leaves a listed one out, then the shell shall throw a `ShellError`. When the services are built for a workspace, the shell shall run the factories in dependency order, and a factory shall get only services its feature lists in `needs` or `provides`. When a factory reads another of its own feature's services, the shell shall build that one first, whatever order `provide` was called in. If a feature's own services need each other in a cycle, then the shell shall throw a `ShellError` naming the feature and the cycle.
 
 ## Examples
 

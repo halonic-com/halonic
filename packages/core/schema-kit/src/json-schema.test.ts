@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { JSON_SCHEMA_DRAFT, type Schema, s, toJsonSchema } from "./index.ts";
 
-describe("schema-kit.json-schema-input-mode", () => {
+verifies("schema-kit.json-schema-input-mode", () => {
   it("writes a 2020-12 document", () => {
     expect(toJsonSchema(s.string())).toEqual({ $schema: JSON_SCHEMA_DRAFT, type: "string" });
   });

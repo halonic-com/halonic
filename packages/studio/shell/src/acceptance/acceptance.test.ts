@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { createShell } from "../shell.ts";
 import { MapTarget } from "../test-support/map-target.ts";
 import { loadView } from "../view.ts";
@@ -29,7 +30,7 @@ function importsOf(featureFolder: string): string[] {
   return imports;
 }
 
-describe("shell.feature-isolation", () => {
+verifies("shell.feature-isolation", () => {
   it("shows the routines Triggers section on the agent page", async () => {
     const shell = createShell({ features: [routinesFeature, agentsFeature] });
     expect(shell.features.map((feature) => feature.id)).toEqual(["agents", "routines"]);

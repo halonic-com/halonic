@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { ShellError } from "./shell-error.ts";
 import { loadView } from "./view.ts";
 
-describe("shell.view-loading", () => {
+verifies("shell.view-loading", () => {
   it("returns the named export of the loaded module", async () => {
     const AgentEditorView = () => "editor";
     const view = await loadView({

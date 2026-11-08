@@ -1,3 +1,4 @@
+import { verifies } from "@halonicjs/testing-spec";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { type Issue, parse, type Schema, s } from "./index.ts";
@@ -15,7 +16,7 @@ function nestedNot(depth: number): unknown {
   return guard;
 }
 
-describe("schema-kit.parse-result", () => {
+verifies("schema-kit.parse-result", () => {
   describe("hostile input", () => {
     it("never throws on any generated value", () => {
       const schemas: Schema[] = [Guard, ...Object.values(fileSchemas)];
@@ -38,7 +39,7 @@ describe("schema-kit.parse-result", () => {
   });
 });
 
-describe("schema-kit.nesting-limit", () => {
+verifies("schema-kit.nesting-limit", () => {
   it("accepts the old guards nested 200 levels", () => {
     expect(parse(Guard, nestedNot(200)).ok).toBe(true);
   });
@@ -49,7 +50,7 @@ describe("schema-kit.nesting-limit", () => {
   });
 });
 
-describe("schema-kit.prototype-keys", () => {
+verifies("schema-kit.prototype-keys", () => {
   const hostile = JSON.parse('{"__proto__": {"polluted": true}, "a": 1}') as unknown;
 
   it("drops __proto__ from records and keeps the plain prototype", () => {

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-171; plan 5.3
 
-A feature shall add commands through `commands.add`, search providers through `search.addProvider` and at most one UI state hook through `persist`. The shell shall list commands by id and search providers by `order`, then `id`, each with the feature that added it. Command and search provider ids shall be names of letters, digits and dashes, starting with a letter, joined by dots. If two commands or two search providers share an id, an id isn't a valid name, a contribution or `persist` hook isn't a plain object, or a feature calls `persist` twice, then the shell shall throw a `ShellError`.
+The shell shall let a feature add commands through `commands.add`, search providers through `search.addProvider` and at most one UI state hook through `persist`. The shell shall list commands by id and search providers by `order`, then `id`, each with the feature that added it. The shell shall accept as command and search provider ids only names of letters, digits and dashes, starting with a letter, joined by dots. If two commands or two search providers share an id, an id isn't a valid name, a contribution or `persist` hook isn't a plain object, or a feature calls `persist` twice, then the shell shall throw a `ShellError`.
 
 ## Examples
 

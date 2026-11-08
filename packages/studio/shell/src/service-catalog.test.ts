@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { defineFeature, type Studio } from "./index.ts";
 import { serviceKey } from "./service-key.ts";
 import { createShell } from "./shell.ts";
@@ -41,7 +42,7 @@ function workspace(): MapTarget {
   return target;
 }
 
-describe("shell.feature-services", () => {
+verifies("shell.feature-services", () => {
   it("builds services in dependency order for each workspace", () => {
     const shell = createShell({ features: [routines, agents], hostServices: [workspaceKey] });
     const first = workspace();

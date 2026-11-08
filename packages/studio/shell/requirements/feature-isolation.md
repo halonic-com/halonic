@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-171; plan 5.3 (the shell's acceptance test), 5.4
 
-A feature shall be able to add a section to another feature's item page through `itemPage.addSection`, using the other feature only through its `api.ts`. The page's owner shall not import anything of the feature that adds the section.
+The shell shall let a feature add a section to another feature's item page through `itemPage.addSection`, using the other feature only through its `api.ts`. The page's owner shall not import anything of the feature that adds the section.
 
 ## Examples
 

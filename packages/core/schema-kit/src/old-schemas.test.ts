@@ -1,3 +1,4 @@
+import { verifies } from "@halonicjs/testing-spec";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -13,7 +14,7 @@ const kinds = Object.keys(kit.fileSchemas) as (keyof typeof kit.fileSchemas)[];
 // SCHEMA_KIT_SEED to explore other inputs locally.
 const seed = Number(process.env["SCHEMA_KIT_SEED"] ?? 20261107);
 
-describe("schema-kit.old-schema-parity", () => {
+verifies("schema-kit.old-schema-parity", () => {
   for (const kind of kinds) {
     for (const noise of ["high", "low"] as const) {
       it(`gives plain Zod's pass or fail, paths and value for ${kind} (${noise} noise)`, () => {
@@ -30,7 +31,7 @@ describe("schema-kit.old-schema-parity", () => {
   }
 });
 
-describe("schema-kit.json-schema-input-mode", () => {
+verifies("schema-kit.json-schema-input-mode", () => {
   describe("the old repo's schemas", () => {
     for (const kind of kinds) {
       it(`writes the JSON Schema plain Zod writes for ${kind}`, () => {

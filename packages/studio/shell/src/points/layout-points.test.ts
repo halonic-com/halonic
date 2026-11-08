@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
@@ -12,7 +13,7 @@ function feature(id: string, register: (studio: Studio) => void) {
 
 const agentKind = { kind: "agent", label: "Agent", icon: "agent", open: { view: "View", load } };
 
-describe("shell.layout-points", () => {
+verifies("shell.layout-points", () => {
   it("lists contributions by order, then id, with the feature that added them", () => {
     const group = (id: string, order: number) => ({ id, order, title: id, items: () => [] });
     const shell = createShell({

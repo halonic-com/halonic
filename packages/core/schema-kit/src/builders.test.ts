@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { type Issue, parse, type Schema, s } from "./index.ts";
 
 function issuesOf(result: { ok: true } | { ok: false; error: Issue[] }): Issue[] {
   return result.ok ? [] : result.error;
 }
 
-describe("schema-kit.builders", () => {
+verifies("schema-kit.builders", () => {
   it("offers exactly the builders the file format uses", () => {
     expect(Object.keys(s).sort()).toEqual([
       "array",

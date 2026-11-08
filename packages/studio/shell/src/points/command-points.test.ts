@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
@@ -9,7 +10,7 @@ function feature(id: string, register: (studio: Studio) => void) {
   return defineFeature({ id, title: id, register });
 }
 
-describe("shell.commands", () => {
+verifies("shell.commands", () => {
   it("lists commands by id and search providers by order, with their features", () => {
     const shell = createShell({
       features: [

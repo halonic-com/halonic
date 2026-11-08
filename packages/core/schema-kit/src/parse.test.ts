@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { formatPath, parse, s } from "./index.ts";
 
-describe("schema-kit.parse-result", () => {
+verifies("schema-kit.parse-result", () => {
   it("returns the value with defaults filled in", () => {
     const schema = s.object({ name: s.string(), local: s.boolean().default(false) });
     expect(parse(schema, { name: "a" })).toEqual({ ok: true, value: { name: "a", local: false } });
@@ -33,7 +34,7 @@ describe("schema-kit.parse-result", () => {
   });
 });
 
-describe("schema-kit.issue-path", () => {
+verifies("schema-kit.issue-path", () => {
   const schema = s.object({ cases: s.array(s.object({ name: s.string() })) });
 
   it("gives the keys and indexes from the root", () => {

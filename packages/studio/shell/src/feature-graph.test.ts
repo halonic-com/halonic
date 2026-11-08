@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { defineFeature, type Feature } from "./feature.ts";
 import { serviceKey } from "./service-key.ts";
 import { createShell } from "./shell.ts";
@@ -26,7 +27,7 @@ function stub(
   });
 }
 
-describe("shell.feature-registry", () => {
+verifies("shell.feature-registry", () => {
   it("registers a feature after the features whose services it needs", () => {
     const log: string[] = [];
     const routines = stub("routines", { needs: [agentsKey] }, log);

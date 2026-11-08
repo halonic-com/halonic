@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
@@ -13,7 +14,7 @@ function command(id: string) {
   return { id, title: id, run: () => {} };
 }
 
-describe("shell.keybindings", () => {
+verifies("shell.keybindings", () => {
   it("prefers the binding whose context holds over the one for everywhere", () => {
     const shell = createShell({
       features: [
