@@ -80,6 +80,9 @@ jobs:
       - name: Leak guard over every file and commit
         env:
           HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
+          # Never runs from a fork, so the secret is always passed and a missing
+          # list fails here and opens an issue instead of passing with a warning.
+          HALONIC_TERMS_REQUIRED: "true"
         run: node tooling/check/src/cli/leaks.ts --all
       - name: gitleaks over the whole history
         uses: $/.github/actions/gitleaks
