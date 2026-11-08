@@ -24,7 +24,7 @@ export const defaultCoverageFloors: Readonly<Record<Layer, CoverageFloor>> = {
 
 /**
  * The layers whose floor is fixed: a package there may not set a lower
- * one. The plan sets no number for testing and tooling, so their packages
+ * one. The testing and tooling layers have no fixed number, so their packages
  * start from what they have and raise it.
  */
 const fixedLayers: readonly Layer[] = ["core", "adapters", "host", "studio", "apps"];
@@ -86,7 +86,7 @@ function percentProblem(
     return `"halonic.coverage.${key}" must be a percentage from 0 to 100.`;
   }
   if (required !== undefined && percent < required) {
-    return `"halonic.coverage.${key}" is ${percent}, below the ${required} that the plan sets for the ${layer} layer.`;
+    return `"halonic.coverage.${key}" is ${percent}, below the ${required} that the ${layer} layer requires.`;
   }
   return undefined;
 }

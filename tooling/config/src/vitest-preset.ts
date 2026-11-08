@@ -6,7 +6,7 @@ import { readCoverageFloor } from "./coverage.ts";
  * `vitest.config.ts` calls this so test runs behave the same everywhere.
  *
  * Every run measures coverage of `src` and fails below the package's floor
- * in its `package.json` (plan 9.3). Vitest runs in the package folder, so
+ * in its `package.json`. Vitest runs in the package folder, so
  * that is where the floor is read from. To run a single test file without
  * the floor, add `--coverage.enabled=false`.
  *
