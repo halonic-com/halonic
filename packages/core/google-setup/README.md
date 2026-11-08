@@ -45,6 +45,13 @@ comes from the sheets.
 Progress keys ticks by id, so `listScopes: false` renumbers the steps without moving any tick.
 Links open in the project only when its ID is valid; otherwise `projectIdIgnored` is true.
 
+## When the services change
+
+`compareSetups(before, after)` matches the steps by id and marks each one `unchanged`, `lost-only`
+(an unticked service's rows went away; nothing to do) or `reopened` (new rows, which Studio marks
+"New", or a changed value such as the account type). Step 7 reopens for every new scope or service,
+even with step 4 switched off. `ticksToKeep(changes, ticks)` gives the ticks that stay.
+
 ## Token names
 
 The secrets live in the `TokenStore` (encrypted, written by the server), not in `Secrets`, which is

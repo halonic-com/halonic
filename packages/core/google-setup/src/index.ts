@@ -5,6 +5,13 @@ export {
   type ClientSecretStore,
   clientSecretStore,
 } from "./client-secret-store.ts";
+export {
+  compareSetups,
+  type SetupChanges,
+  type StepChange,
+  type StepRow,
+  ticksToKeep,
+} from "./compare-setups.ts";
 export type { ConsolePage } from "./console-links.ts";
 export { looksLikeGoogleClientSecret } from "./looks-like-google-client-secret.ts";
 export type {
