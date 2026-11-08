@@ -1,6 +1,6 @@
 # @halonicjs/yaml
 
-Reads and writes the YAML our workspace files use, with a line and column for every node; replaces the yaml package (plan 7.3).
+Reads and writes the YAML our workspace files use, with a line and column for every node; replaces the yaml package.
 
 - **Layer:** core
 - **Owner:** maya

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "//": "Core is pure: no Node types and no DOM. fetch, document or fs are compile errors here (plan 4.1).",
+  "//": "Core is pure: no Node types and no DOM. fetch, document or fs are compile errors here.",
   "extends": "./base.json",
   "compilerOptions": {
     "lib": [

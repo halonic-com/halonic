@@ -4,7 +4,7 @@ Owner: liam · Layer: core · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-One file per port: the versioned interfaces that core logic depends on and adapters implement. Web types only (plan 4.3, 4.4).
+One file per port: the versioned interfaces that core logic depends on and adapters implement. Web types only.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

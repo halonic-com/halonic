@@ -12,7 +12,7 @@ import {
   type WorkspacePackage,
 } from "./workspace.ts";
 
-/** What an entry in `dependencies.json` is for (plan 7.1). */
+/** What an entry in `dependencies.json` is for. */
 export type DependencyCategory = "outside-world" | "studio-framework" | "dev-tooling";
 
 /** One approved external dependency. */

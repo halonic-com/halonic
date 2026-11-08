@@ -9,8 +9,8 @@ import { type PackageSpec, packageFiles } from "../templates.ts";
  * pnpm new feature <name> --owner <agent> [--purpose "<one line>"]
  *
  * Creates an empty package or Studio feature that passes every check, so
- * nobody has to copy and edit another package (plan 6.4). Its AGENTS.md
- * passes once the purpose line is filled in (plan 13).
+ * nobody has to copy and edit another package. Its AGENTS.md
+ * passes once the purpose line is filled in.
  * Layers: core, adapters, studio, testing, tooling, apps.
  */
 

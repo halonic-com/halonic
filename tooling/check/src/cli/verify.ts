@@ -4,7 +4,7 @@ import { findRepoRoot } from "../lib/workspace.ts";
 /**
  * pnpm verify
  *
- * The agent's local check before asking for review (plan 6.4): our own
+ * The agent's local check before asking for review: our own
  * checks, formatting, the feature list, then typecheck, lint and test for
  * the packages the change affects. CI runs every task through the cache.
  * Pass --full to run every package, as CI does.

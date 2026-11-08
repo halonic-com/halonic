@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-108 (plan 9.3 point 7: fixed clock and fixed IDs)
+- Source: HAL-108
 
 The recorder shall replace the scratch folder in every recorded message and output with `<workspace>`, and write each recording as two-space JSON with a final newline.
 

@@ -1,5 +1,5 @@
 {
-  "//": "Every external dependency, why we have it and which packages may use it (plan 7.1). Adding one needs Liam's approval. allowedIn takes package names; * matches any text.",
+  "//": "Every external dependency, why we have it and which packages may use it. Adding one needs Liam's approval. allowedIn takes package names; * matches any text.",
   "dependencies": {
     "@biomejs/biome": {
       "category": "dev-tooling",

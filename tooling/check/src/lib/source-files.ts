@@ -36,7 +36,7 @@ export function isTestFile(file: string): boolean {
 }
 
 /**
- * Parses a file with the TypeScript parser (not a regex, plan 4.1) and
+ * Parses a file with the TypeScript parser (not a regex) and
  * returns its imports and functions.
  */
 export function readSourceFacts(fileName: string, text: string): SourceFacts {

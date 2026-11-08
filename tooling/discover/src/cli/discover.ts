@@ -6,7 +6,7 @@ import { fixFeatureList, generatedFeaturesFile, writeFeaturesFile } from "../fea
  * pnpm discover --fix      also rewrite the Studio's feature list in apps/studio/package.json
  * pnpm discover --check    change nothing; fail if the feature list is out of date (CI)
  *
- * Turbo runs it before every typecheck, test and build (plan 5.3).
+ * Turbo runs it before every typecheck, test and build.
  */
 function main(argv: readonly string[]): number {
   const root = findRepoRoot();

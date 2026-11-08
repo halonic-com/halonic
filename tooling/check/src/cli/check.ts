@@ -7,7 +7,7 @@ import { phaseOneSlots } from "../rules/phase-one-slots.ts";
 /**
  * pnpm check [rule ...]
  *
- * Runs our own repo checks (plan 4.1, 6.3, 7.4, 10.2). With rule names it
+ * Runs our own repo checks. With rule names it
  * runs only those. The personal-terms guard has its own command,
  * `pnpm check:terms`, because CI runs it with a secret.
  */
@@ -32,7 +32,7 @@ function main(argv: readonly string[]): number {
   }
   for (const [name, purpose] of Object.entries(phaseOneSlots)) {
     if (selected.length === 0 || selected.includes(name)) {
-      console.log(`${name}: not active yet, becomes real in Phase 1: ${purpose}.`);
+      console.log(`${name}: not active yet. It will check that ${purpose}.`);
     }
   }
   const errors = problems.filter((problem) => problem.severity === "error").length;

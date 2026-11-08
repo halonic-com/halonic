@@ -2,7 +2,7 @@
   "name": "@halonicjs/schema-kit",
   "private": true,
   "type": "module",
-  "description": "Validation with TypeScript types derived from the schemas and JSON Schema export; replaces Zod. Errors carry the path (plan 7.3).",
+  "description": "Validation with TypeScript types derived from the schemas and JSON Schema export; replaces Zod. Errors carry the path.",
   "exports": {
     ".": "./src/index.ts"
   },

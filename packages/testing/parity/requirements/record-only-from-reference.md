@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-108 (plan 9.3 point 7, plan 15: the fixed reference)
+- Source: HAL-108
 
 If the old repo's clone is not at the reference commit `784f78d`, has changed tracked files, or has no installed dependencies, then the recorder shall refuse to record and say why.
 

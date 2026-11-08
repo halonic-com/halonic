@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-108 (plan 9.3 point 7)
+- Source: HAL-108
 
 When the recorder builds the workspace for a case, the parity package shall copy the base workspace, put the case's own files on top of it (a file at the same path replaces the base file), and then delete the files the case removes.
 

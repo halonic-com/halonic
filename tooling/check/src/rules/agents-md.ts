@@ -8,7 +8,7 @@ const headerPattern = /^Owner: (\S+) · Layer: (\S+) · /m;
 
 /**
  * Every package has its own short `AGENTS.md` with its owner, scope,
- * commands and local rules (plan 13). Its `Owner:` and `Layer:` line must
+ * commands and local rules. Its `Owner:` and `Layer:` line must
  * say the same as `package.json`, and the purpose line must be filled in.
  */
 export function checkAgentsMd(context: CheckContext): Report {

@@ -2,7 +2,7 @@ import type { CheckContext } from "../lib/context.ts";
 import { Report } from "../lib/problems.ts";
 
 /**
- * The scopes that belong to someone else (plan 3.2). Built from parts so
+ * The scopes that belong to someone else. Built from parts so
  * this file doesn't trip its own check.
  */
 const forbiddenScopes = ["halonic", "studio"].map((name) => `@${name}/`);
@@ -13,7 +13,7 @@ const binaryExtensions =
 /**
  * Fails on any name in a forbidden scope anywhere in the repo, in
  * file contents and in file paths. Both scopes belong to someone else,
- * so using one would open a dependency-confusion hole (plan 3.2).
+ * so using one would open a dependency-confusion hole.
  */
 export function checkNames(context: CheckContext): Report {
   const report = new Report("names");
@@ -22,7 +22,7 @@ export function checkNames(context: CheckContext): Report {
       if (file.includes(forbidden)) {
         report.error(
           file,
-          `The path contains "${forbidden}". That scope belongs to someone else; use @halonicjs/ (plan 3.2).`,
+          `The path contains "${forbidden}". That scope belongs to someone else; use @halonicjs/.`,
         );
       }
     }
@@ -35,7 +35,7 @@ export function checkNames(context: CheckContext): Report {
         if (text.includes(forbidden)) {
           report.error(
             file,
-            `"${forbidden}" belongs to someone else. Use the @halonicjs/ scope (plan 3.2).`,
+            `"${forbidden}" belongs to someone else. Use the @halonicjs/ scope.`,
             index + 1,
           );
         }

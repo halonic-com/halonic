@@ -1,10 +1,10 @@
 /**
- * Where a package sits in the repo decides its layer and its npm name
- * (plan 3.4 and 4.1). Deriving both from the path means nobody has to
+ * Where a package sits in the repo decides its layer and its npm name.
+ * Deriving both from the path means nobody has to
  * invent a name, and two packages can never end up with the same one.
  */
 
-/** The layers from plan 4.1, plus `tooling` for the repo's own scripts. */
+/** The layers, plus `tooling` for the repo's own scripts. */
 export type Layer = "core" | "adapters" | "host" | "studio" | "apps" | "testing" | "tooling";
 
 /** What the path of a package tells us about it. */
@@ -14,7 +14,7 @@ export interface PackagePlace {
   readonly isFeature: boolean;
 }
 
-/** The npm scope of every workspace package (plan 3.2). */
+/** The npm scope of every workspace package. */
 export const scope = "@halonicjs";
 
 /** The CLI is the one package with an unscoped name. */
@@ -76,7 +76,7 @@ export function placeOf(directory: string): PackagePlace | undefined {
 /** The folder that holds every Studio feature package. */
 export const featuresDirectory = "packages/studio/features";
 
-/** The Studio app, whose `package.json` lists every feature (plan 5.3). */
+/** The Studio app, whose `package.json` lists every feature. */
 export const studioAppDirectory = "apps/studio";
 
 /** The npm name prefix of every Studio feature package. */

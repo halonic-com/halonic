@@ -12,8 +12,7 @@ interface ExternalDependency {
 }
 
 /**
- * Checks every external dependency against `dependencies.json` (plan 7.1
- * and 7.4): it must be listed, used only in its allowed packages, take its
+ * Checks every external dependency against `dependencies.json`: it must be listed, used only in its allowed packages, take its
  * version from the catalog, and dev tooling stays in devDependencies.
  */
 export function checkDependencies(context: CheckContext): Report {
@@ -57,13 +56,13 @@ function checkOne(
   if (!dependency.version.startsWith("catalog:")) {
     report.error(
       pkg.manifestPath,
-      `"${dependency.name}": "${dependency.version}" must be "catalog:". Put the version once in the catalog in pnpm-workspace.yaml (plan 7.4).`,
+      `"${dependency.name}": "${dependency.version}" must be "catalog:". Put the version once in the catalog in pnpm-workspace.yaml.`,
     );
   }
   if (approved.category === "dev-tooling" && dependency.field !== "devDependencies") {
     report.error(
       pkg.manifestPath,
-      `"${dependency.name}" is dev tooling and belongs in devDependencies; it must never ship (plan 7.1).`,
+      `"${dependency.name}" is dev tooling and belongs in devDependencies; it must never ship.`,
     );
   }
 }

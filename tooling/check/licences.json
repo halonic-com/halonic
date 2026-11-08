@@ -1,5 +1,5 @@
 {
-  "//": "Licence allow-lists from plan 11. Changes need Julian's review. See docs/guides/checks.md.",
+  "//": "Licence allow-lists. Changes need Julian's review. See docs/guides/checks.md.",
   "shipped": [
     "MIT",
     "Apache-2.0",

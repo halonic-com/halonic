@@ -4,7 +4,7 @@ Owner: julian · Layer: testing · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-Links tests to requirement IDs with verifies(), and records which requirements ran and passed (plan 9.2).
+Links tests to requirement IDs with verifies(), and records which requirements ran and passed.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

@@ -1,6 +1,6 @@
 # @halonicjs/schema-kit
 
-Validation with TypeScript types derived from the schemas and JSON Schema export; replaces Zod. Errors carry the path (plan 7.3).
+Validation with TypeScript types derived from the schemas and JSON Schema export; replaces Zod. Errors carry the path.
 
 - **Layer:** core
 - **Owner:** elena

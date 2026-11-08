@@ -7,7 +7,7 @@ import {
   studioAppDirectory,
 } from "@halonicjs/tooling-check";
 
-/** Where the generated feature list goes. It is gitignored (plan 5.3). */
+/** Where the generated feature list goes. It is gitignored. */
 export const generatedFeaturesFile = `${studioAppDirectory}/src/generated/features.ts`;
 
 /** `agents` → `agentsFeature`, `source-control` → `sourceControlFeature`: the export each feature names. */

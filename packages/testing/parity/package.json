@@ -2,7 +2,7 @@
   "name": "@halonicjs/testing-parity",
   "private": true,
   "type": "module",
-  "description": "Made-up fixture workspaces and golden recordings of the old repo's validation, for the parity check (plan 9.3).",
+  "description": "Made-up fixture workspaces and golden recordings of the old repo's validation, for the parity check.",
   "exports": {
     ".": "./src/index.ts"
   },

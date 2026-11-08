@@ -1,6 +1,6 @@
 import type { ParityCase } from "./cases.ts";
 
-/** The commit of the old repo every recording comes from (plan 9.3 point 7). */
+/** The commit of the old repo every recording comes from. */
 export const referenceCommit = "784f78d";
 
 /** A loader message, as the old `loadWorkspace` reports it. */

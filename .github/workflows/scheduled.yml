@@ -1,5 +1,5 @@
 # New advisories appear without any code change, so main is checked on a
-# schedule too (plan 10.2, 11.1). A failure opens an issue.
+# schedule too. A failure opens an issue.
 
 name: Scheduled checks
 

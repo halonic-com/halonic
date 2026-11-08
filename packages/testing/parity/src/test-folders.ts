@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-/** Temporary folders for tests, each removed by `cleanUp` (plan 9.3 point 8). */
+/** Temporary folders for tests, each removed by `cleanUp`. */
 export class TestFolders {
   readonly #made: string[] = [];
 

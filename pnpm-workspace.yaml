@@ -12,7 +12,7 @@ packages:
   - tooling/*
 
 # One version line per shared dependency. Packages use "catalog:" and the
-# check fails on any other version for an external dependency (plan 7.4).
+# check fails on any other version for an external dependency.
 catalog:
   "@biomejs/biome": 2.6.5
   "@types/node": ^26.6.6
@@ -31,7 +31,7 @@ registries:
 # leaves it out when it equals the default, so a mirror would look like npm.
 lockfileIncludeTarballUrl: true
 
-# --- Install hardening (plan 10.1) ---
+# --- Install hardening ---
 
 # Install scripts run only for packages listed here; unlisted ones fail.
 allowBuilds:

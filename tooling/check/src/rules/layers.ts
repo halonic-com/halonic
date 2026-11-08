@@ -13,7 +13,7 @@ const guide = "See docs/guides/dependencies.md.";
 type EdgeKind = "runtime" | "dev";
 
 /**
- * Checks the layer table of plan 4.1 for every internal `package.json`
+ * Checks the layer table for every internal `package.json`
  * dependency and every import in source files. Also catches relative
  * imports that leave their package, Node built-ins outside Node layers,
  * imports of undeclared packages and deep imports past `exports`.
@@ -103,7 +103,7 @@ function layerRule(
     case "host":
       return toLayer === "core"
         ? undefined
-        : "the host may use core packages only, never adapters or Studio packages (plan 4.1).";
+        : "the host may use core packages only, never adapters or Studio packages.";
     case "studio":
       return studioRule(context, toLayer, from, to);
   }
@@ -116,7 +116,7 @@ function coreRule(
   toName: string,
 ): string | undefined {
   if (toLayer !== "core") {
-    return "core packages may use only other core packages (plan 4.1). Move this code into an adapter, or use a port.";
+    return "core packages may use only other core packages. Move this code into an adapter, or use a port.";
   }
   const order = context.policy.coreOrder;
   if (order.indexOf(toName) >= order.indexOf(fromName)) {
@@ -136,9 +136,7 @@ function studioRule(
   }
   if (toLayer === "adapters") {
     const gateway = context.policy.adapterGateways.includes(from.manifest.name ?? "");
-    return gateway
-      ? undefined
-      : "Studio packages reach adapters only through studio/services (plan 4.1).";
+    return gateway ? undefined : "Studio packages reach adapters only through studio/services.";
   }
   if (toLayer !== "studio") {
     return "Studio packages may use core and other Studio packages only.";
@@ -146,7 +144,7 @@ function studioRule(
   const fromFeature = context.placeOf(from)?.isFeature === true;
   const toFeature = context.placeOf(to)?.isFeature === true;
   if (toFeature && !fromFeature) {
-    return "shared Studio packages never depend on a feature; features plug in through the shell's contribution points (plan 5.3).";
+    return "shared Studio packages never depend on a feature; features plug in through the shell's contribution points.";
   }
   return undefined;
 }
@@ -220,10 +218,10 @@ function builtinProblem(site: ImportSite, specifier: string): string | undefined
     return undefined;
   }
   if (site.layer === "core") {
-    return `core packages may not use Node APIs ("${specifier}"). Use a port, or move this code into an adapter (plan 4.1).`;
+    return `core packages may not use Node APIs ("${specifier}"). Use a port, or move this code into an adapter.`;
   }
   if (site.layer === "host") {
-    return `the host uses Web-standard APIs only, never Node APIs ("${specifier}"). Move this code into an adapter (plan 4.1).`;
+    return `the host uses Web-standard APIs only, never Node APIs ("${specifier}"). Move this code into an adapter.`;
   }
   if (site.layer === "studio") {
     return `Studio packages run in the browser and may not use Node APIs ("${specifier}"). Go through studio/services.`;
@@ -237,7 +235,7 @@ function externalImportProblem(
   name: string,
 ): string | undefined {
   if (site.layer === "core" && !site.dev) {
-    return `core packages may not use third-party code ("${name}"). Write it in-house (core/std) or move this code into an adapter (plan 7.1).`;
+    return `core packages may not use third-party code ("${name}"). Write it in-house (core/std) or move this code into an adapter.`;
   }
   const approved = context.dependencyList.dependencies[name];
   if (approved?.category === "dev-tooling" && !site.dev && site.layer !== "tooling") {
@@ -264,7 +262,7 @@ function subpathProblem(
   const bothFeatures =
     context.placeOf(site.pkg)?.isFeature === true && context.placeOf(target)?.isFeature === true;
   if (bothFeatures && subpath !== "./api") {
-    return `features use each other only through "${name}/api" (plan 5.4).`;
+    return `features use each other only through "${name}/api".`;
   }
   return undefined;
 }

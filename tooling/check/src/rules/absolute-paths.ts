@@ -23,7 +23,7 @@ function isExempt(file: string): boolean {
 /**
  * Fails on absolute local paths (such as a Windows user folder or a Linux
  * home folder) in docs, code and config. They leak who wrote the file and
- * where, and they never work on another machine (plan 10.2, 11).
+ * where, and they never work on another machine.
  */
 export function checkAbsolutePaths(context: CheckContext): Report {
   const report = new Report("absolute-paths");
@@ -38,7 +38,7 @@ export function checkAbsolutePaths(context: CheckContext): Report {
         if (machinePaths.some((pattern) => pattern.test(text))) {
           report.error(
             file,
-            "This line holds an absolute path from one machine. Use a path relative to the repo root, or a placeholder such as <workspace> or ~/.config/halonic (plan 10.2).",
+            "This line holds an absolute path from one machine. Use a path relative to the repo root, or a placeholder such as <workspace> or ~/.config/halonic.",
             index + 1,
           );
         }

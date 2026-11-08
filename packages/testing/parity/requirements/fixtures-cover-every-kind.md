@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-108 (plan 15, phase 1: schema fixtures for every file kind)
+- Source: HAL-108
 
 The parity fixtures shall hold, for every file kind the old schema and loader accept, a valid file in the base workspace and at least one invalid case, and every fixture shall have a recording from the reference commit.
 

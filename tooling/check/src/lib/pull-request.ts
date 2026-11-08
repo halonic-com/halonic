@@ -10,7 +10,7 @@ export interface PullRequestText {
 /**
  * Reads the pull request from the event JSON at `$GITHUB_EVENT_PATH`. We
  * never pass this text through `env:`, because GitHub prints a step's
- * `env:` block in the public job log (plan 11.1).
+ * `env:` block in the public job log.
  *
  * @returns `undefined` outside Actions, or when the event isn't a pull request
  */

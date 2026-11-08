@@ -2,7 +2,7 @@ import { readPullRequestText } from "../lib/pull-request.ts";
 
 /**
  * Checks the pull request title against Conventional Commits, because
- * squash merges use it as the commit message (plan 10.2). In CI the title
+ * squash merges use it as the commit message. In CI the title
  * comes from the event file; locally, set PR_TITLE.
  */
 

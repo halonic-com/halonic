@@ -20,7 +20,7 @@ export interface LockedPackages {
   readonly unreadableLines: number[];
 }
 
-/** Where every registry package must come from (plan 3.2). */
+/** Where every registry package must come from. */
 export const npmRegistry = "https://registry.npmjs.org/";
 
 /**
@@ -146,7 +146,7 @@ export function lockedPackageProblem(entry: LockedPackage): string | undefined {
 /**
  * Finds committed settings that point a scope or the default registry
  * somewhere other than npm: `registry`/`registries:` in `pnpm-workspace.yaml`
- * and `registry=` lines in `.npmrc` (plan 3.2).
+ * and `registry=` lines in `.npmrc`.
  */
 export function registryOverrides(
   workspaceYaml: string,
@@ -204,7 +204,7 @@ function nodeRuntimeProblem(key: string, version: string, resolution: string): s
  * Fails on any lockfile entry without an integrity hash, from a registry
  * other than npm, or from git, a tarball URL or `file:`, on any lockfile
  * line it can't read, and on committed settings that point at another
- * registry (plan 3.2, 10.2).
+ * registry.
  */
 export function checkLockfile(context: CheckContext): Report {
   const report = new Report("lockfile");
@@ -223,7 +223,7 @@ export function checkLockfile(context: CheckContext): Report {
   for (const line of unreadableLines) {
     report.error(
       lockfile,
-      "This line of packages: has a shape the check can't read, so it can't be checked. Regenerate the lockfile with pnpm install (plan 3.2).",
+      "This line of packages: has a shape the check can't read, so it can't be checked. Regenerate the lockfile with pnpm install.",
       line,
     );
   }
@@ -232,7 +232,7 @@ export function checkLockfile(context: CheckContext): Report {
     if (problem !== undefined) {
       report.error(
         lockfile,
-        `${problem} Only packages from registry.npmjs.org with a sha512 hash, and the pinned Node runtime, are allowed (plan 3.2).`,
+        `${problem} Only packages from registry.npmjs.org with a sha512 hash, and the pinned Node runtime, are allowed.`,
         entry.line,
       );
     }
@@ -241,7 +241,7 @@ export function checkLockfile(context: CheckContext): Report {
   for (const { file, url } of registryOverrides(context.read("pnpm-workspace.yaml"), npmrc)) {
     report.error(
       file,
-      `A committed setting points at the registry ${url}. Packages come from registry.npmjs.org only (plan 3.2).`,
+      `A committed setting points at the registry ${url}. Packages come from registry.npmjs.org only.`,
     );
   }
   return report;

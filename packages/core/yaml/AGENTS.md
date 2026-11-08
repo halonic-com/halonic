@@ -4,7 +4,7 @@ Owner: maya · Layer: core · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-Reads and writes the YAML our workspace files use, with a line and column for every node; replaces the yaml package (plan 7.3).
+Reads and writes the YAML our workspace files use, with a line and column for every node; replaces the yaml package.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

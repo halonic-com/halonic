@@ -2,7 +2,7 @@
   "name": "@halonicjs/app-studio",
   "private": true,
   "type": "module",
-  "description": "The Studio app: wires the Studio packages and features together. Vite, Tauri and Android come in later phases.",
+  "description": "The Studio app: wires the Studio packages and features together. Vite, Tauri and Android come later.",
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
     "lint": "biome check .",

@@ -2,7 +2,7 @@
   "name": "@halonicjs/ports",
   "private": true,
   "type": "module",
-  "description": "One file per port: the versioned interfaces that core logic depends on and adapters implement. Web types only (plan 4.3, 4.4).",
+  "description": "One file per port: the versioned interfaces that core logic depends on and adapters implement. Web types only.",
   "exports": {
     ".": "./src/index.ts"
   },

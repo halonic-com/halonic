@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
- * The personal-terms guard (plan 11.1). The list of protected terms never
+ * The personal-terms guard. The list of protected terms never
  * enters the repo: CI reads it from an encrypted secret, and a person can
  * keep a local copy outside the repo. Nothing here ever prints a term.
  */

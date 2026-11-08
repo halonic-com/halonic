@@ -20,7 +20,7 @@ export function readFeatureList(context: CheckContext): { folders: string[]; lis
 
 /**
  * The Studio app's `package.json` must list exactly the feature folders, so
- * pnpm, Turbo and the editor all see the same graph (plan 5.3).
+ * pnpm, Turbo and the editor all see the same graph.
  */
 export function checkFeatures(context: CheckContext): Report {
   const report = new Report("features");

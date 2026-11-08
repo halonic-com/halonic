@@ -15,7 +15,7 @@
 # for this to block a merge.
 
 # The list of phrases the personal-terms guard ignores: widening it hides
-# text from the guard (plan 11.1).
+# text from the guard.
 /tooling/check/terms-allowed-phrases.txt @timothykorse
 
 # The terms guard and the files that decide how it runs. CI runs the guard from

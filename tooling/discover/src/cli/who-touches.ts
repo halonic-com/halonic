@@ -12,7 +12,7 @@ import {
  *
  * Asks GitHub which files each open pull request changes and maps them to
  * packages, so an agent sees who else is working on a package before it
- * starts (plan 6.2). Without a package it lists every package with open
+ * starts. Without a package it lists every package with open
  * pull requests. Needs the GitHub CLI (`gh`), signed in.
  */
 

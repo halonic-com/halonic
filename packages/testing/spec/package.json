@@ -2,7 +2,7 @@
   "name": "@halonicjs/testing-spec",
   "private": true,
   "type": "module",
-  "description": "Links tests to requirement IDs with verifies(), and records which requirements ran and passed (plan 9.2).",
+  "description": "Links tests to requirement IDs with verifies(), and records which requirements ran and passed.",
   "exports": {
     ".": "./src/index.ts"
   },

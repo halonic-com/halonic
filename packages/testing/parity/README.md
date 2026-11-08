@@ -3,7 +3,7 @@
 Made-up fixture workspaces and golden recordings of how the old repo (commit
 `784f78d`) treats them: which files pass or fail, the error's key path and
 line, and the output of the old `validate` command. The compare task checks the
-new code against these recordings (plan 9.3 point 7).
+new code against these recordings.
 
 - **Layer:** testing
 - **Owner:** julian
@@ -98,7 +98,7 @@ The 3 uncommitted changes in the user's copy of the old repo are documents and
 aren't part of the reference; a clean clone at `784f78d` leaves them out.
 
 Changed golden files need a decision note once the requirement guard is
-active (plan 9.3 point 3).
+active.
 
 ## Example
 

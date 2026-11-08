@@ -1,5 +1,5 @@
 /**
- * The licence check (plan 11): exact SPDX IDs, with `OR`, `AND`, `WITH` and
+ * The licence check: exact SPDX IDs, with `OR`, `AND`, `WITH` and
  * parentheses understood. Shipped code and dev tooling have separate lists.
  */
 
@@ -95,7 +95,7 @@ export function findLicenceProblems(
     if (!isAllowedExpression(licence, allowed)) {
       const where = kind === "shipped" ? "code we ship" : "dev tooling";
       problems.push(
-        `${pkg.name}@${pkg.versions.join(", ")} is licensed "${licence}", which isn't allowed in ${where}. Pick another package, or ask Julian to review the licence and add it to tooling/check/licences.json (plan 11).`,
+        `${pkg.name}@${pkg.versions.join(", ")} is licensed "${licence}", which isn't allowed in ${where}. Pick another package, or ask Julian to review the licence and add it to tooling/check/licences.json.`,
       );
     }
   }

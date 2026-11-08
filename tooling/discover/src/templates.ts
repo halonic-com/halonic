@@ -118,7 +118,7 @@ function featureSources(spec: PackageSpec): Record<string, string> {
     "src/feature.ts": [
       "/**",
       ` * The ${titleOf(spec.folder)} feature as the Studio shell sees it. Becomes`,
-      " * defineFeature() from @halonicjs/studio-shell once the shell exists (plan 5.3).",
+      " * defineFeature() from @halonicjs/studio-shell once the shell exists.",
       " */",
       `export const ${exportName} = {`,
       `  id: "${spec.folder}",`,
@@ -129,7 +129,7 @@ function featureSources(spec: PackageSpec): Record<string, string> {
     "src/index.ts": [`export { ${exportName} } from "./feature.ts";`, ""].join("\n"),
     "src/api.ts": [
       "/**",
-      " * The services and types other features may use (plan 5.4). Features",
+      " * The services and types other features may use. Features",
       " * import each other only through this file. Empty until this feature",
       " * offers something.",
       " */",

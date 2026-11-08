@@ -40,7 +40,7 @@
         "noTsIgnore": "error"
       },
       "complexity": {
-        // TypeScript's noPropertyAccessFromIndexSignature (plan 8) requires
+        // TypeScript's noPropertyAccessFromIndexSignature requires
         // record["key"] for index signatures; this rule would undo that.
         "useLiteralKeys": "off",
         "noExcessiveCognitiveComplexity": {

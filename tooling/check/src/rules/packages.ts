@@ -5,13 +5,11 @@ import { cliPackageName, folderNamePattern, reservedCorePrefixes, scope } from "
 import { Report } from "../lib/problems.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
 
-const guide = "See docs/guides/checks.md.";
-
 /**
  * Checks each package's `package.json`: its name follows from its folder,
  * it is private unless listed as published, it declares its layer and
  * owner, it exposes only public entry points, and every internal
- * dependency uses `workspace:*` (plan 3.2, 4.1, 6.2).
+ * dependency uses `workspace:*`.
  */
 export function checkPackages(context: CheckContext): Report {
   const report = new Report("packages");
@@ -33,7 +31,7 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
   if (place === undefined) {
     report.error(
       file,
-      `Packages live only in the folders listed in plan 3.4. Move this one. ${guide}`,
+      "Packages live only in the folders listed in the table in docs/guides/checks.md. Move this one.",
     );
     return;
   }
@@ -57,7 +55,7 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
   if (!published && pkg.manifest.private !== true) {
     report.error(
       file,
-      `Add "private": true. Only the packages listed under "published" in ${context.policyPath} may be published (plan 3.2).`,
+      `Add "private": true. Only the packages listed under "published" in ${context.policyPath} may be published.`,
     );
   }
   if (halonic?.layer !== place.layer) {
@@ -67,10 +65,7 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
     );
   }
   if (typeof halonic?.owner !== "string" || halonic.owner.trim() === "") {
-    report.error(
-      file,
-      `Name the owner who reviews changes: "halonic": { "owner": "<agent>" } (plan 6.2).`,
-    );
+    report.error(file, `Name the owner who reviews changes: "halonic": { "owner": "<agent>" }.`);
   }
 }
 
@@ -86,7 +81,7 @@ function checkInternalVersions(context: CheckContext, pkg: WorkspacePackage, rep
     if (dependency.version !== "workspace:*") {
       report.error(
         pkg.manifestPath,
-        `"${dependency.name}": "${dependency.version}" in ${dependency.field} must be "workspace:*". A version range lets pnpm look the name up on the registry, which is how dependency confusion happens (plan 3.2).`,
+        `"${dependency.name}": "${dependency.version}" in ${dependency.field} must be "workspace:*". A version range lets pnpm look the name up on the registry, which is how dependency confusion happens.`,
       );
     }
     if (!context.packagesByName.has(dependency.name)) {
@@ -123,7 +118,7 @@ function checkExports(context: CheckContext, pkg: WorkspacePackage, report: Repo
   if (keys === undefined) {
     report.error(
       pkg.manifestPath,
-      `Add an "exports" map with ${allowed.map((key) => `"${key}"`).join(" and ")}, so only the public entry points resolve (plan 4.1).`,
+      `Add an "exports" map with ${allowed.map((key) => `"${key}"`).join(" and ")}, so only the public entry points resolve.`,
     );
     return;
   }
@@ -131,14 +126,14 @@ function checkExports(context: CheckContext, pkg: WorkspacePackage, report: Repo
     if (!allowed.includes(key)) {
       report.error(
         pkg.manifestPath,
-        `"exports" may only contain ${allowed.join(" and ")}. "${key}" would let other packages import internals (plan 4.1).`,
+        `"exports" may only contain ${allowed.join(" and ")}. "${key}" would let other packages import internals.`,
       );
     }
   }
   if (place.isFeature && !keys.includes("./api")) {
     report.error(
       pkg.manifestPath,
-      `A feature exports "./api": the services and types other features may use (plan 5.4).`,
+      `A feature exports "./api": the services and types other features may use.`,
     );
   }
   const targets =
@@ -160,7 +155,7 @@ function checkCoreOrder(context: CheckContext, report: Report): void {
     if (!context.policy.coreOrder.includes(name)) {
       report.error(
         context.policyPath,
-        `Core package "${name}" is missing from "coreOrder". Add it after every core package it uses (plan 4.1).`,
+        `Core package "${name}" is missing from "coreOrder". Add it after every core package it uses.`,
       );
     }
   }

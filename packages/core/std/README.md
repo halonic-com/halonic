@@ -1,6 +1,6 @@
 # @halonicjs/std
 
-In-house utilities that replace generic libraries: result type, ids, clock, SHA-256, scrypt, text helpers, deep equality, glob matching, posix paths and a typed event emitter (plan 7.3).
+In-house utilities that replace generic libraries: result type, ids, clock, SHA-256, scrypt, text helpers, deep equality, glob matching, posix paths and a typed event emitter.
 
 - **Layer:** core
 - **Owner:** maya

@@ -1,7 +1,7 @@
 # @halonicjs/tooling-discover
 
 Generates the registration files and keeps the Studio's feature list in
-`apps/studio/package.json` correct (plan 5.3). Also scaffolds new packages
+`apps/studio/package.json` correct. Also scaffolds new packages
 and shows who else is working on a package.
 
 - **Layer:** tooling

@@ -14,7 +14,7 @@ export interface AgentsMdInput {
 }
 
 /**
- * Fills in the `AGENTS.md` template (plan 13).
+ * Fills in the `AGENTS.md` template.
  *
  * @throws when the template uses a placeholder this doesn't know, so a typo
  *   never ends up as `{{text}}` in a package

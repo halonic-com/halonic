@@ -91,7 +91,7 @@ describe("tooling/check: layers", () => {
     expect(messages.some((message) => message.includes("not a public entry point"))).toBe(true);
   });
 
-  it("lets the host use core only: no adapters and no Node APIs (plan 4.1)", () => {
+  it("lets the host use core only: no adapters and no Node APIs", () => {
     const adapter: FixturePackage = {
       directory: "packages/adapters/git",
       manifest: manifestFor("@halonicjs/adapter-git", "adapters"),

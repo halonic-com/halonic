@@ -7,7 +7,7 @@ import { findRepoRoot, readJson } from "../lib/workspace.ts";
  * pnpm check:licences
  *
  * Compares every installed package's licence with the allow-lists in
- * `tooling/check/licences.json` (plan 11): production dependencies against
+ * `tooling/check/licences.json`: production dependencies against
  * the shipped list, everything else against the wider dev-tooling list.
  */
 
