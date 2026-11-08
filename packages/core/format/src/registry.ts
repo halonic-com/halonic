@@ -1,4 +1,6 @@
 import type { FileKind } from "./kind.ts";
+import { agentKind } from "./kinds/agent/kind.ts";
+import type { Agent } from "./kinds/agent/schema.ts";
 import { collectionKind } from "./kinds/collection/kind.ts";
 import type { Collection } from "./kinds/collection/schema.ts";
 import { connectorKind } from "./kinds/connector/kind.ts";
@@ -17,6 +19,8 @@ import { runtimeKind } from "./kinds/runtime/kind.ts";
 import type { Runtime } from "./kinds/runtime/schema.ts";
 import { skillKind } from "./kinds/skill/kind.ts";
 import type { Skill } from "./kinds/skill/schema.ts";
+import { workflowKind } from "./kinds/workflow/kind.ts";
+import type { Workflow } from "./kinds/workflow/schema.ts";
 import { workspaceKind } from "./kinds/workspace/kind.ts";
 import type { WorkspaceSettings } from "./kinds/workspace/schema.ts";
 
@@ -32,6 +36,8 @@ export interface KindValues {
   connector: Connector;
   skill: Skill;
   hub: Hub;
+  agent: Agent;
+  workflow: Workflow;
 }
 
 /** The name of a file kind: `workspace`, `agent`, `workflowTest`, … */
@@ -53,6 +59,8 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   connector: connectorKind,
   skill: skillKind,
   hub: hubKind,
+  agent: agentKind,
+  workflow: workflowKind,
 };
 
 /**
