@@ -17,3 +17,4 @@ absolute-path packages/core/app/src/routine-scheduler.test.ts test data: a fake 
 absolute-path packages/core/schema-kit/src/url.test.ts test data: a fake /tmp path
 absolute-path packages/testing/contracts/src/definition-store.ts old fixture: a fake Windows path
 absolute-path packages/testing/parity/README.md old example: a /tmp path
+url-password packages/core/format/src/kinds/connector/is-local.test.ts fp:2bb80d537b1da3e3 test data: a fake password in a URL
