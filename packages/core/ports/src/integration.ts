@@ -13,6 +13,13 @@ import type { TokenStore } from "./token-store.ts";
 export const integrationVersion = 1;
 
 /**
+ * The longest {@link IntegrationHost.wait} waits, in milliseconds (30 s). The
+ * host enforces it; it is exported so an integration can tell in advance
+ * that a server asks for a longer pause and give up instead.
+ */
+export const maxIntegrationWaitMs = 30_000;
+
+/**
  * A tool an integration offers: the {@link ConnectorTool} shape, with its
  * `risk` required. The permission sheet lists the same tools with the same
  * `risk` and `untrusted`, and the conformance suite fails when they differ.
@@ -66,8 +73,8 @@ export interface IntegrationHttpClient extends HttpClient {
 
 /**
  * What an integration is given, and all it is given. There is no raw
- * `HttpClient`, no `Secrets` and no file system: an integration reaches the
- * outside world only through these.
+ * `HttpClient`, no `Secrets`, no file system and no timer: an integration
+ * reaches the outside world, and waits, only through these.
  */
 export interface IntegrationHost {
   /** Outbound HTTP, limited to the declared hosts and secrets. */
@@ -83,6 +90,19 @@ export interface IntegrationHost {
    * or an account name. Never a secret value.
    */
   readonly settings: Readonly<Record<string, unknown>>;
+  /**
+   * Waits `ms` milliseconds, at most {@link maxIntegrationWaitMs}, such as
+   * the pause a server asks for with SSE `retry:` or `Retry-After`. The host
+   * clamps `ms`: `NaN` and negative values wait 0, `Infinity` waits the
+   * maximum. Pass the tool call's own `signal`, so cancelling the call also
+   * cancels the pause and a wait never outlives its call.
+   *
+   * @example
+   * await host.wait(retryMs, signal);
+   *
+   * @throws `signal.reason` when `signal` aborts during the wait or is already aborted
+   */
+  wait(ms: number, signal?: AbortSignal): Promise<void>;
 }
 
 /**

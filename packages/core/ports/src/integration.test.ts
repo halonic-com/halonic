@@ -8,6 +8,7 @@ import type {
   SecretPlacement,
   ToolRisk,
 } from "./index.ts";
+import { maxIntegrationWaitMs } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -16,11 +17,12 @@ const host: IntegrationHost = {
   http: { fetch: async () => new Response("ok") },
   tokens: { get: async () => null, set: async () => {}, remove: async () => {} },
   settings: {},
+  wait: async () => {},
 };
 
 describe("ports.integration-host", () => {
-  it("gives an integration http, tokens and settings, and no secrets", () => {
-    expectTypeOf<keyof IntegrationHost>().toEqualTypeOf<"http" | "tokens" | "settings">();
+  it("gives an integration http, tokens, settings and wait, and no secrets", () => {
+    expectTypeOf<keyof IntegrationHost>().toEqualTypeOf<"http" | "tokens" | "settings" | "wait">();
     // @ts-expect-error: an integration never gets the Secrets port
     host.secrets?.get("example-key");
   });
@@ -41,6 +43,16 @@ describe("ports.integration-host", () => {
     const withValue: SecretPlacement = { secret: "example-key", as: "bearer", value: "sk-1" };
     expect(withValue.secret).toBe("example-key");
     expect((await plain.fetch("https://api.example.com/v1")).ok).toBe(true);
+  });
+
+  it("lets an integration wait, capped at 30 seconds and cancelled by the call's signal", async () => {
+    expectTypeOf(host.wait).toBeCallableWith(2_000);
+    expectTypeOf(host.wait).toBeCallableWith(2_000, new AbortController().signal);
+    expectTypeOf(host.wait).returns.toEqualTypeOf<Promise<void>>();
+    // @ts-expect-error: the pause is a number of milliseconds
+    void host.wait("2s");
+    expect(maxIntegrationWaitMs).toBe(30_000);
+    await expect(host.wait(0)).resolves.toBeUndefined();
   });
 
   it("requires a risk of read, write or send on every integration tool", () => {
