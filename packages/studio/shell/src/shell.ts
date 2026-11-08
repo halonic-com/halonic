@@ -1,9 +1,11 @@
 import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
-import { ServiceCatalog, type ServiceTarget } from "./service-catalog.ts";
+import { type LayoutContributions, LayoutStores } from "./points/layout-points.ts";
+import { lookupFor, ServiceCatalog, type ServiceTarget } from "./service-catalog.ts";
 import type { ServiceKey } from "./service-key.ts";
 import { ShellError } from "./shell-error.ts";
 import type { Studio } from "./studio.ts";
+import type { WorkspaceContext } from "./workspace-context.ts";
 
 /** What the app hands to {@link createShell}. */
 export interface ShellOptions {
@@ -26,7 +28,16 @@ export interface Shell {
      * @throws ShellError when a host service is missing from the target
      */
     instantiate(target: ServiceTarget): void;
+    /**
+     * The context for one feature's callbacks in a workspace: its services,
+     * limited to what the feature lists in `needs` and `provides`.
+     *
+     * @throws ShellError when no feature has this id
+     */
+    contextFor(featureId: string, target: ServiceTarget): WorkspaceContext;
   };
+  /** Everything the features contributed, for the shell's layout. */
+  readonly contributions: LayoutContributions;
 }
 
 /**
@@ -42,21 +53,35 @@ export function createShell(options: ShellOptions): Shell {
   const hostServices = options.hostServices ?? [];
   const features = orderFeatures(options.features, hostServices);
   const catalog = new ServiceCatalog();
+  const layout = new LayoutStores();
   for (const feature of features) {
-    registerFeature(feature, catalog);
+    registerFeature(feature, catalog, layout);
   }
+  layout.check();
   return {
     features,
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),
+      contextFor: (featureId, target) => ({
+        services: lookupFor(findFeature(features, featureId), target),
+      }),
     },
+    contributions: layout.contributions(),
   };
 }
 
-function registerFeature(feature: Feature, catalog: ServiceCatalog): void {
+function registerFeature(feature: Feature, catalog: ServiceCatalog, layout: LayoutStores): void {
   let open = true;
   const isOpen = (): boolean => open;
+  const guard = (pointName: string): void => {
+    if (!open) {
+      throw new ShellError(
+        `The feature "${feature.id}" called ${pointName} after register returned. Add contributions inside register.`,
+      );
+    }
+  };
   const studio: Studio = {
+    ...layout.pointsFor(feature.id, guard),
     services: catalog.pointFor(feature, isOpen),
   };
   try {
@@ -82,4 +107,12 @@ function describeError(error: unknown): string {
     return error.message;
   }
   return String(error);
+}
+
+function findFeature(features: readonly Feature[], featureId: string): Feature {
+  const feature = features.find((candidate) => candidate.id === featureId);
+  if (feature === undefined) {
+    throw new ShellError(`No feature has the id "${featureId}".`);
+  }
+  return feature;
 }

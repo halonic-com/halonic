@@ -22,6 +22,11 @@ look up services its feature lists in `needs`.
 | `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry` |
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services` |
 
+Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
+`items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
+it with `shell.services.contextFor(featureId, registry)`. The layout reads everything back from
+`shell.contributions`, for example `shell.contributions.itemPage.sectionsFor("agent")`.
+
 ## Example
 
 ```ts

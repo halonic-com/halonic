@@ -144,7 +144,7 @@ export class ServiceCatalog {
  * in `needs` and `provides`. `beforeGet` runs before each allowed lookup;
  * `instantiate` uses it to build the feature's own services on demand.
  */
-function lookupFor(
+export function lookupFor(
   feature: Feature,
   target: ServiceTarget,
   beforeGet?: (key: ServiceKey<unknown>) => void,

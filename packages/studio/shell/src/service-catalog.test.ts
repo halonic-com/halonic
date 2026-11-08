@@ -157,6 +157,18 @@ describe("shell.feature-services", () => {
     );
   });
 
+  it("gives each feature's callbacks a context limited to its needs", () => {
+    const shell = createShell({ features: [routines, agents], hostServices: [workspaceKey] });
+    const target = workspace();
+    shell.services.instantiate(target);
+    const context = shell.services.contextFor("routines", target);
+    expect(context.services.get(agentsKey).names()).toHaveLength(2);
+    expect(() => context.services.get(workspaceKey)).toThrow("doesn't list it in needs");
+    expect(() => shell.services.contextFor("nobody", target)).toThrow(
+      'No feature has the id "nobody"',
+    );
+  });
+
   it("refuses to build when a host service is missing", () => {
     const shell = createShell({ features: [agents], hostServices: [workspaceKey] });
     expect(() => shell.services.instantiate(new MapTarget())).toThrow(
