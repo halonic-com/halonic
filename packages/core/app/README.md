@@ -10,21 +10,21 @@ Everything belongs to **one open workspace** (`WorkspaceScope`) and is
 disposed with it, because one window can hold several workspaces.
 Device-wide settings such as the theme live outside any scope.
 
-| Part                | What it does                                                                                       | Requirement                     |
-| ------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `CommandBus`        | typed commands, exactly one handler each                                                           | `app.command-bus`               |
-| `EventBus`          | typed events, listeners in order, one failing listener stops nothing                               | `app.event-bus`                 |
-| `ServiceRegistry`   | services by typed key, disposed newest first                                                       | `app.service-registry`          |
-| `WorkspaceScope`    | the three above for one workspace, closed together                                                 | `app.workspace-scope`           |
-| `WorkspaceFiles`    | unsaved changes by path, `save()` through the `DefinitionStore`                                    | `app.workspace-save`            |
-| `UndoHistory`       | one workspace-wide undo, 200 steps, typing in one file is one step                                 | `app.workspace-undo`            |
-| `openWorkspace`     | a scope with the files service and `workspace.save`, `undo`, `redo`                                | `app.workspace-save`            |
-| `RoutineScheduler`  | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                      | `app.routine-scheduler`         |
-| `readToolListing`   | the tools a server lists, checked and rebuilt, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
-| `toolForModel`      | the tool definition the model gets, with every text a server wrote inside the untrusted fence      | `ports.untrusted-tool-listings` |
-| `checkToolCall`     | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs      | `ports.untrusted-tool-listings` |
-| `refusalStatusLine` | one line of plain text for a refusal in the integration status, never for the model                | `ports.untrusted-tool-listings` |
-| `fenceUntrusted`    | puts outside text inside the untrusted fence, which holds when the text holds its markers          | `ports.untrusted-tool-listings` |
+| Part                | What it does                                                                                                                 | Requirement                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `CommandBus`        | typed commands, exactly one handler each                                                                                     | `app.command-bus`               |
+| `EventBus`          | typed events, listeners in order, one failing listener stops nothing                                                         | `app.event-bus`                 |
+| `ServiceRegistry`   | services by typed key, disposed newest first                                                                                 | `app.service-registry`          |
+| `WorkspaceScope`    | the three above for one workspace, closed together                                                                           | `app.workspace-scope`           |
+| `WorkspaceFiles`    | unsaved changes by path, `save()` through the `DefinitionStore`                                                              | `app.workspace-save`            |
+| `UndoHistory`       | one workspace-wide undo, 200 steps, typing in one file is one step                                                           | `app.workspace-undo`            |
+| `openWorkspace`     | a scope with the files service and `workspace.save`, `undo`, `redo`                                                          | `app.workspace-save`            |
+| `RoutineScheduler`  | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                                                | `app.routine-scheduler`         |
+| `readToolListing`   | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
+| `toolForModel`      | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                | `ports.untrusted-tool-listings` |
+| `checkToolCall`     | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs                                | `ports.untrusted-tool-listings` |
+| `refusalStatusLine` | one line of plain text for a refusal in the integration status, never for the model                                          | `ports.untrusted-tool-listings` |
+| `fenceUntrusted`    | puts outside text inside the untrusted fence, which holds when the text holds its markers                                    | `ports.untrusted-tool-listings` |
 
 ## Example
 

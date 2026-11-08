@@ -36,6 +36,7 @@ export {
 export { checkToolCall, type ToolCallCheck } from "./tool-call-check.ts";
 export { toolForModel, toolResultForModel } from "./tool-for-model.ts";
 export {
+  listedToolName,
   type OfferedDeclaredTool,
   type OfferedListedTool,
   type OfferedTool,

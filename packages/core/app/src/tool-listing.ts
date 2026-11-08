@@ -8,13 +8,17 @@ import {
   escapeListedText,
   isJsonObject,
   maxListedTools,
+  passesNameRule,
   type UntrustedText,
 } from "./listed-tool-rules.ts";
 import { maxUnfencedLength, unfencedLength } from "./listed-tool-unfenced.ts";
 
 /** One source's listing, and what the host knows around it. */
 export interface ToolListingInput {
-  /** The integration's or connector's id in the workspace. */
+  /**
+   * The integration's or connector's id in the workspace. It goes in front
+   * of every listed tool's name, as {@link listedToolName} shows.
+   */
   readonly source: string;
   /**
    * What the source's `listTools` returned, unchecked. A source that
@@ -27,8 +31,9 @@ export interface ToolListingInput {
    */
   readonly declared: readonly IntegrationTool[];
   /**
-   * The names of every other tool offered to the model in the same turn:
-   * the host's own tools and the tools of every other source.
+   * The names of every other tool offered to the model in the same turn, as
+   * the model sees them: the host's own tools and the tools of every other
+   * source, listed ones with their source's id in front.
    */
   readonly otherNames: ReadonlySet<string>;
   /**
@@ -38,7 +43,10 @@ export interface ToolListingInput {
    * (requirement `ports.connector-trust-enforcement`).
    */
   readonly trust: TrustGrant | null;
-  /** The risk the workspace sets for a listed tool, by the tool's name. Used only with a grant. */
+  /**
+   * The risk the workspace sets for a listed tool, by the name the server
+   * lists it under, without the source's id. Used only with a grant.
+   */
   readonly workspaceRisks?: ReadonlyMap<string, ToolRisk>;
 }
 
@@ -63,7 +71,15 @@ export interface OfferedDeclaredTool {
  */
 export interface OfferedListedTool {
   readonly kind: "listed";
+  /** The name the model sees and calls: the source's id, `__`, then {@link listedName}. */
   readonly name: string;
+  /**
+   * The name as the server listed it, which the engine sends the call to the
+   * source under. It passed the name rule, so it is safe to send unfenced.
+   * Route a call by the offered tool, never by splitting `name` on `__`:
+   * a source's id can itself hold `_`.
+   */
+  readonly listedName: string;
   readonly description: UntrustedText;
   /** Rebuilt from the allow-list. */
   readonly parameters: Record<string, unknown>;
@@ -81,8 +97,9 @@ export interface ToolRefusal {
   /** The source's id. */
   readonly source: string;
   /**
-   * The listed name, cut to 64 characters and escaped like text in a reason.
-   * Left out when the whole listing is refused.
+   * The name as the server listed it, without the source's id, cut to 64
+   * characters and escaped like text in a reason. Left out when the whole
+   * listing is refused.
    */
   readonly name?: string;
   /**
@@ -106,7 +123,8 @@ export interface ToolListing {
  * declared tool, so a server can't swap the texts Halonic reviewed. A
  * declared tool the listing leaves out isn't offered, because the listing
  * says what the server offers now. Every other tool is a listed tool: it
- * is checked, rebuilt and marked as untrusted, or refused. A listing of more
+ * is checked, rebuilt, named with the source's id in front and marked as
+ * untrusted, or refused. A listing of more
  * than 128 tools gets one refusal, and none of its listed tools is offered.
  *
  * Call it only for a source that lists its tools. Without `listTools`, an
@@ -189,16 +207,22 @@ function offerListed(
     refuse(name, "tool", "the listing returns this name more than once");
     return undefined;
   }
-  if (typeof name === "string" && input.otherNames.has(name)) {
-    refuse(name, "tool", "another tool offered to the model has this name");
-    return undefined;
-  }
   const reading = readListedTool(entry);
   if (reading.kind === "refused") {
     refuse(name, "tool", reading.reason);
     return undefined;
   }
-  if (unfencedLength(reading.name, reading.parameters) > maxUnfencedLength) {
+  // The name rule, the clash check and the cap all look at the name the model sees.
+  const finalName = listedToolName(input.source, reading.name);
+  if (!passesNameRule(finalName)) {
+    refuse(name, "tool", "its name breaks the name rule once the source's id is in front");
+    return undefined;
+  }
+  if (input.otherNames.has(finalName)) {
+    refuse(name, "tool", "another tool offered to the model has this name");
+    return undefined;
+  }
+  if (unfencedLength(finalName, reading.parameters) > maxUnfencedLength) {
     const reason = `its names and enum strings add up to more than ${maxUnfencedLength} characters`;
     refuse(name, "tool", reason);
     return undefined;
@@ -208,12 +232,25 @@ function offerListed(
   }
   return {
     kind: "listed",
-    name: reading.name,
+    name: finalName,
+    listedName: reading.name,
     description: reading.description,
     parameters: reading.parameters,
     risk: listedRisk(reading.name, input),
     untrusted: true,
   };
+}
+
+/**
+ * The name the model sees for a listed tool: the source's id, `__`, then the
+ * name the server listed. Two sources' tools can't then share a name by
+ * accident, and the model can tell which server wrote a tool.
+ *
+ * @example
+ * listedToolName("notes", "lookup"); // => "notes__lookup"
+ */
+export function listedToolName(source: string, listedName: string): string {
+  return `${source}__${listedName}`;
 }
 
 /** A listed tool is `write`, unless a trusted workspace sets another risk for it. */
