@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { defaultCoverageFloors } from "../lib/coverage.ts";
 import type { Layer } from "../lib/layout.ts";
 import {
   type FixturePackage,
@@ -85,6 +86,7 @@ describe("tooling/check: names and dependencies", () => {
       "left-pad": {
         category: "core-exception",
         allowedIn: ["@halonicjs/*"],
+        layers: ["core"],
         reason: "A test entry.",
       },
     };
@@ -99,6 +101,7 @@ describe("tooling/check: names and dependencies", () => {
       "left-pad": {
         category: "studio-framework",
         allowedIn: ["@halonicjs/studio-kit"],
+        layers: ["studio"],
         reason: "A test entry.",
         cloudRuntime: true,
       },
@@ -134,14 +137,28 @@ function toolWith(devDependencies: Record<string, string>, name = "x"): FixtureP
 }
 
 /** One entry of `dependencies.json`. */
-function entry(allowedIn: string[], category = "dev-tooling", reason = "Because.") {
-  return { category, allowedIn, reason };
+function entry(
+  allowedIn: string[],
+  category = "dev-tooling",
+  reason = "Because.",
+  layers: string[] = [
+    "core",
+    "adapters",
+    "host",
+    "targets",
+    "studio",
+    "apps",
+    "testing",
+    "tooling",
+  ],
+) {
+  return { category, allowedIn, layers, reason };
 }
 
 describe("tooling/check: dependencies.json", () => {
   it("uses a dependency only in the packages its allowedIn names", () => {
     const list = { vitest: entry(["@halonicjs/tooling-check"]) };
-    expect(runChecks([toolWith({ vitest: "catalog:" })], { dependencyList: list })).toEqual([
+    expect(runChecks([toolWith({ vitest: "catalog:" })], { extraDependencies: list })).toEqual([
       expect.objectContaining({
         rule: "dependencies",
         message:
@@ -152,9 +169,9 @@ describe("tooling/check: dependencies.json", () => {
 
   it("matches * in allowedIn against any text", () => {
     const list = { vitest: entry(["@halonicjs/tooling-*"]) };
-    expect(runChecks([toolWith({ vitest: "catalog:" })], { dependencyList: list })).toEqual([]);
+    expect(runChecks([toolWith({ vitest: "catalog:" })], { extraDependencies: list })).toEqual([]);
     const narrow = { vitest: entry(["@halonicjs/app-*"]) };
-    expect(rulesHit([toolWith({ vitest: "catalog:" })], { dependencyList: narrow })).toEqual([
+    expect(rulesHit([toolWith({ vitest: "catalog:" })], { extraDependencies: narrow })).toEqual([
       "dependencies",
     ]);
   });
@@ -166,46 +183,53 @@ describe("tooling/check: dependencies.json", () => {
         dependencies: { vitest: "catalog:" },
       }),
     };
-    const found = runChecks([tool], { dependencyList: { vitest: entry(["*"]) } });
+    const found = runChecks([tool], { extraDependencies: { vitest: entry(["*"]) } });
     expect(found.map((problem) => problem.message)).toEqual([
       '"vitest" is dev tooling and belongs in devDependencies; it must never ship.',
     ]);
   });
 
   it("lets other categories ship in dependencies", () => {
-    const tool: FixturePackage = {
-      directory: "tooling/x",
-      manifest: manifestFor("@halonicjs/tooling-x", "tooling", {
+    const adapter: FixturePackage = {
+      directory: "packages/adapters/x",
+      manifest: manifestFor("@halonicjs/adapter-x", "adapters", {
+        halonic: {
+          layer: "adapters",
+          owner: "mateo",
+          runtime: "node",
+          coverage: defaultCoverageFloors.adapters,
+        },
         dependencies: { zod: "catalog:" },
       }),
     };
-    const list = { zod: entry(["*"], "outside-world") };
-    expect(runChecks([tool], { dependencyList: list })).toEqual([]);
+    const list = {
+      zod: entry(["@halonicjs/adapter-x"], "outside-world", "Because.", ["adapters"]),
+    };
+    expect(runChecks([adapter], { extraDependencies: list })).toEqual([]);
   });
 
-  it("refuses an unknown category", () => {
+  it("stops on an unknown category", () => {
     const list = { vitest: entry(["*"], "nice-to-have") };
-    const found = runChecks([toolWith({ vitest: "catalog:" })], { dependencyList: list });
-    expect(found.map((problem) => [problem.file, problem.message])).toEqual([
-      [
-        "tooling/check/dependencies.json",
-        '"vitest" has an unknown category "nice-to-have". Use one of: core-exception, outside-world, studio-framework, dev-tooling.',
-      ],
-    ]);
+    expect(() =>
+      runChecks([toolWith({ vitest: "catalog:" })], { extraDependencies: list }),
+    ).toThrow(
+      'dependencies["vitest"].category must be one of: core-exception, outside-world, studio-framework, dev-tooling',
+    );
   });
 
   it("requires a reason", () => {
     const list = { vitest: entry(["*"], "dev-tooling", "  ") };
-    const found = runChecks([toolWith({ vitest: "catalog:" })], { dependencyList: list });
-    expect(found.map((problem) => problem.message)).toEqual(['"vitest" needs a reason.']);
+    expect(() =>
+      runChecks([toolWith({ vitest: "catalog:" })], { extraDependencies: list }),
+    ).toThrow('dependencies["vitest"].reason must be a non-empty string');
   });
 
   it("only warns about an entry no package uses", () => {
-    expect(runChecks([], { dependencyList: { vitest: entry(["*"]) } })).toEqual([]);
+    expect(runChecks([], { extraDependencies: { vitest: entry(["*"]) } })).toEqual([]);
   });
 
   it("doesn't check internal dependencies against the list", () => {
     const tool = toolWith({ "@halonicjs/tooling-y": "workspace:*" });
-    expect(runChecks([tool, toolWith({}, "y")], { dependencyList: {} })).toEqual([]);
+    expect(runChecks([tool, toolWith({}, "y")])).toEqual([]);
   });
 });

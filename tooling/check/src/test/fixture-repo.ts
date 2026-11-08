@@ -51,8 +51,12 @@ export interface FixtureOptions {
   readonly extraFiles?: Record<string, string>;
   /** Entries added to the real dependencies.json. */
   readonly extraDependencies?: Record<string, unknown>;
-  /** Replaces the entries of the real dependencies.json. */
-  readonly dependencyList?: Record<string, unknown>;
+  /** Changes the real dependencies.json (the whole parsed file) before it is written. */
+  readonly editDependencyList?: (list: { dependencies: Record<string, unknown> }) => unknown;
+  /** Changes the real policy.json before it is written. */
+  readonly policy?: (policy: Record<string, unknown>) => unknown;
+  /** Changes the real pnpm-workspace.yaml before it is written. */
+  readonly workspaceYaml?: (yaml: string) => string;
 }
 
 /**
@@ -68,26 +72,26 @@ export function writeFixtureRepo(
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), text);
   };
-  write("pnpm-workspace.yaml", readFileSync(join(realRoot, "pnpm-workspace.yaml"), "utf8"));
+  const yaml = readFileSync(join(realRoot, "pnpm-workspace.yaml"), "utf8");
+  write("pnpm-workspace.yaml", options.workspaceYaml?.(yaml) ?? yaml);
   write(
     "pnpm-lock.yaml",
     "lockfileVersion: '9.0'\n\npackages:\n\n  a@1.0.0:\n    resolution: {integrity: sha512-AAAA, tarball: https://registry.npmjs.org/a/-/a-1.0.0.tgz}\n",
   );
-  const policy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
-  write(
-    "tooling/check/policy.json",
-    JSON.stringify({ ...policy, coreOrder: options.coreOrder ?? [] }),
-  );
+  const realPolicy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
+  const policy = { ...realPolicy, coreOrder: options.coreOrder ?? [] };
+  write("tooling/check/policy.json", JSON.stringify(options.policy?.(policy) ?? policy));
   const dependencyList = JSON.parse(readFileSync(realDependencyListPath, "utf8"));
+  const list = {
+    ...dependencyList,
+    dependencies: {
+      ...dependencyList.dependencies,
+      ...options.extraDependencies,
+    },
+  };
   write(
     "tooling/check/dependencies.json",
-    JSON.stringify({
-      ...dependencyList,
-      dependencies: {
-        ...(options.dependencyList ?? dependencyList.dependencies),
-        ...options.extraDependencies,
-      },
-    }),
+    JSON.stringify(options.editDependencyList?.(list) ?? list),
   );
   write(
     "package.json",

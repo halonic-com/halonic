@@ -71,18 +71,28 @@ describe("tooling/check: packages", () => {
   });
 
   it("flags a declared layer that doesn't match the folder", () => {
-    const found = messages([stdWith({ halonic: { layer: "studio", owner: "mateo", coverage: defaultCoverageFloors.core } })], {
-      coreOrder: ["@halonicjs/std"],
-    });
+    const found = messages(
+      [
+        stdWith({
+          halonic: { layer: "studio", owner: "mateo", coverage: defaultCoverageFloors.core },
+        }),
+      ],
+      {
+        coreOrder: ["@halonicjs/std"],
+      },
+    );
     expect(found).toEqual([
       'Declare the layer: "halonic": { "layer": "core" }. The folder puts this package in the core layer.',
     ]);
   });
 
   it("flags a missing layer", () => {
-    const found = messages([stdWith({ halonic: { owner: "mateo", coverage: defaultCoverageFloors.core } })], {
-      coreOrder: ["@halonicjs/std"],
-    });
+    const found = messages(
+      [stdWith({ halonic: { owner: "mateo", coverage: defaultCoverageFloors.core } })],
+      {
+        coreOrder: ["@halonicjs/std"],
+      },
+    );
     expect(found.some((message) => message.startsWith("Declare the layer"))).toBe(true);
   });
 });

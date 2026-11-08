@@ -3,8 +3,8 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { toJsonSchema } from "./index.ts";
-import { inputFor } from "./test/arbitrary.ts";
-import { expectSameOutcome } from "./test/compare.ts";
+import { inputFor } from "./test/arbitrary.spec.ts";
+import { expectSameOutcome } from "./test/compare.spec.ts";
 import * as kit from "./test/old-schemas.kit.ts";
 import * as zod from "./test/old-schemas.zod.ts";
 

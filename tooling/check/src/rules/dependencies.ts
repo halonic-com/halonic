@@ -1,6 +1,7 @@
 import { plainVersion, readWorkspaceVersions } from "../lib/catalog.ts";
 import type { ApprovedDependency } from "../lib/config-files.ts";
 import {
+  approvedDependency,
   type CheckContext,
   declaredDependencies,
   isAllowedIn,

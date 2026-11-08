@@ -113,11 +113,11 @@ describe("splitBareSpecifier", () => {
 });
 
 describe("isTestFile", () => {
-  it("knows test files by name and by folder", () => {
+  it("knows test files by name, not by folder", () => {
     expect(isTestFile("src/a.test.ts")).toBe(true);
     expect(isTestFile("src/a.spec.tsx")).toBe(true);
-    expect(isTestFile("src/test/fixture.ts")).toBe(true);
-    expect(isTestFile("tests/a.ts")).toBe(true);
+    expect(isTestFile("src/test/fixture.ts")).toBe(false);
+    expect(isTestFile("tests/a.ts")).toBe(false);
     expect(isTestFile("src/latest/a.ts")).toBe(false);
     expect(isTestFile("src/contest.ts")).toBe(false);
   });

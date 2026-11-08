@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PHONE_MAX_WIDTH } from "./index.ts";
 import { blend, contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
-import { blockBody, customProperties, lightDarkPair, readThemeFile } from "./test/theme-file.ts";
+import {
+  blockBody,
+  customProperties,
+  lightDarkPair,
+  readThemeFile,
+} from "./test/theme-file.spec.ts";
 
 const css = readThemeFile();
 const themeTokens = customProperties(blockBody(css, "@theme static"));

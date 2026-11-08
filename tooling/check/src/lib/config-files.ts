@@ -115,10 +115,12 @@ export function parseDependencyList(path: string, value: unknown): DependencyLis
   const dependencies: Record<string, ApprovedDependency> = {};
   for (const [name, raw] of Object.entries(entries)) {
     const field = `dependencies["${name}"]`;
-    const entry = at.object(raw, field, ["category", "allowedIn", "layers", "reason"], [
-      "useInstead",
-      "cloudRuntime",
-    ]);
+    const entry = at.object(
+      raw,
+      field,
+      ["category", "allowedIn", "layers", "reason"],
+      ["useInstead", "cloudRuntime"],
+    );
     const reason = at.text(entry["reason"], `${field}.reason`);
     dependencies[name] = {
       ...(entry["useInstead"] === undefined
