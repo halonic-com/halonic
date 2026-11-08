@@ -1,5 +1,6 @@
 export { MemoryBlobStore } from "./blob-store.ts";
 export { ManualClock, manualClockStart } from "./clock.ts";
+export { MemoryCoordination } from "./coordination.ts";
 export { MemoryDefinitionStore } from "./definition-store.ts";
 export { fixedIds } from "./ids.ts";
 export { MemoryRecordStore } from "./record-store.ts";

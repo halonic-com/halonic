@@ -1,6 +1,7 @@
 import {
   blobStoreContract,
   clockContract,
+  coordinationContract,
   definitionStoreContract,
   idGeneratorContract,
   recordStoreContract,
@@ -13,6 +14,7 @@ import {
   fixedIds,
   ManualClock,
   MemoryBlobStore,
+  MemoryCoordination,
   MemoryDefinitionStore,
   MemoryRecordStore,
   MemoryRunStore,
@@ -38,3 +40,7 @@ for (const duplicateDeliveries of [false, true]) {
     return { scheduler, clock, settle: () => scheduler.runDue() };
   });
 }
+coordinationContract("memory", async () => {
+  const clock = new ManualClock();
+  return { coordination: new MemoryCoordination(clock), clock };
+});
