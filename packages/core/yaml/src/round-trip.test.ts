@@ -4,7 +4,7 @@ import { unwrap } from "@halonicjs/std";
 import { describe, expect, it } from "vitest";
 import { parse as parseWithLibrary } from "yaml";
 import { readYaml } from "./read.ts";
-import { writeFrontMatter, writeYamlFile } from "./write.ts";
+import { type FrontMatterFields, writeFrontMatter, writeYamlFile } from "./write.ts";
 
 /** Every YAML file and SKILL.md under `examples/` in the old repo at 784f78d. */
 const examplesRoot = join(import.meta.dirname, "test", "fixtures", "examples-784f78d");
@@ -52,7 +52,7 @@ describe("yaml.round-trip", () => {
 
   it.each(skillFiles)("reads and writes the front matter of $name unchanged", ({ text }) => {
     const block = frontMatterOf(text);
-    const fields = unwrap(readYaml(block)).data as Record<string, unknown>;
+    const fields = unwrap(readYaml(block)).data as FrontMatterFields;
     expect(writeFrontMatter(fields)).toBe(block);
   });
 });
