@@ -21,6 +21,8 @@ Device-wide settings such as the theme live outside any scope.
 | `openWorkspace`    | a scope with the files service and `workspace.save`, `undo`, `redo`                                | `app.workspace-save`            |
 | `RoutineScheduler` | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                      | `app.routine-scheduler`         |
 | `readToolListing`  | the tools a server lists, checked and rebuilt, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
+| `toolForModel`     | the tool definition the model gets, with every text a server wrote inside the untrusted fence      | `ports.untrusted-tool-listings` |
+| `fenceUntrusted`   | puts outside text inside the untrusted fence, which holds when the text holds its markers          | `ports.untrusted-tool-listings` |
 
 ## Example
 

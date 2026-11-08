@@ -32,6 +32,7 @@ export {
   ServiceRegistry,
   serviceKey,
 } from "./service-registry.ts";
+export { toolForModel, toolResultForModel } from "./tool-for-model.ts";
 export {
   type OfferedDeclaredTool,
   type OfferedListedTool,
@@ -42,6 +43,7 @@ export {
   type ToolRefusal,
 } from "./tool-listing.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
+export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
 export {
   type AppCommands,
