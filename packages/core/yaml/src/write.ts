@@ -23,6 +23,12 @@ export function writeYamlFile(value: unknown): string {
   return stringifyOrThrow(value, { lineWidth: fileLineWidth });
 }
 
+/** The two fields the old app wrote into the front matter of a `SKILL.md`. */
+export interface FrontMatterFields {
+  readonly name: string;
+  readonly description: string;
+}
+
 /**
  * Writes the fields of a Markdown front matter block, with exactly the text
  * the old app wrote for `SKILL.md` (`stringify(fields).trim()` in 784f78d:
@@ -36,7 +42,7 @@ export function writeYamlFile(value: unknown): string {
  * writeFrontMatter({ name: "invoice-style", description: "How invoices read" });
  * // 'name: invoice-style\ndescription: How invoices read'
  */
-export function writeFrontMatter(fields: Readonly<Record<string, unknown>>): string {
+export function writeFrontMatter(fields: FrontMatterFields): string {
   return stringifyOrThrow(fields).trim();
 }
 

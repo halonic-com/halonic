@@ -124,8 +124,9 @@ describe("yaml.write-front-matter", () => {
 
   it("folds long text at 80 columns, the library default", () => {
     const words = Array.from({ length: 16 }, (_, index) => `word${index}`).join(" ");
-    expect(writeFrontMatter({ description: words })).toBe(
+    expect(writeFrontMatter({ name: "n", description: words })).toBe(
       [
+        "name: n",
         "description: word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10",
         "  word11 word12 word13 word14 word15",
       ].join("\n"),
