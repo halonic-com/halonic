@@ -182,15 +182,22 @@ jobs:
   build:
     name: Typecheck, lint, test, build
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       contents: read
+      # The requirement guard looks up the branch of a merge-queue entry.
+      pull-requests: read
     env:
       TURBO_CACHE_DIR: ${{ github.workspace }}/../turbo-cache
+      # The merge base's checkout. On main there is none: main checks itself.
+      CHECKS_FROM: ${{ github.event_name == 'push' && github.workspace || format('{0}/merge-base', runner.temp) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The merge base must be in the clone for the requirement guard. A
+          # full clone, because without credentials missing blobs can't be fetched later.
+          fetch-depth: 0
       - uses: $/.github/actions/setup
       # Every task runs; unchanged packages are cache hits (plan 6.4). The
       # cache is GitHub's own, scoped per branch, so a pull request can read
@@ -202,11 +209,46 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - name: Run every task through the cache
         run: pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize
+      # Plan 9.3: trace and the requirement guard run from the merge base's
+      # copy of tooling/check, never the pull request's, so a pull request
+      # can't weaken the checks that judge it. The merge base's own tests run
+      # too (mostly cache hits), because the guard compares both runs.
+      - name: Check out and test the merge base
+        if: always() && github.event_name != 'push'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          git worktree add --detach "$CHECKS_FROM" "$(git merge-base "$BASE" HEAD)"
+          cd "$CHECKS_FROM"
+          pnpm install --frozen-lockfile
+          pnpm exec turbo run test --output-logs=errors-only
       # Reads the result files the tests just wrote (plan 9.2). Runs even when
       # a task failed: a missing result file fails the check anyway.
-      - name: Requirements and their tests (trace)
+      - name: Requirements and their tests (trace, merge base's copy)
         if: always()
-        run: pnpm check trace --report
+        # pnpm exec gives the Node version from devEngines, which runs TypeScript.
+        run: pnpm exec node "$CHECKS_FROM/tooling/check/src/cli/check.ts" trace --report
+      - name: Requirement guard (merge base's copy)
+        if: always() && github.event_name != 'push'
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          guard="$CHECKS_FROM/tooling/check/src/cli/requirement-guard.ts"
+          if [ ! -f "$guard" ]; then
+            echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
+            exit 0
+          fi
+          branch="$HEAD_BRANCH"
+          if [ "$EVENT" = "merge_group" ]; then
+            # gh-readonly-queue/<base>/pr-<number>-<sha>: the note is named after the pull request's branch.
+            number=$(sed -E 's|.*/pr-([0-9]+)-[0-9a-f]+$|\1|' <<< "$QUEUE_REF")
+            branch=$(gh api "repos/$REPO/pulls/$number" --jq .head.ref)
+          fi
+          pnpm exec node "$guard" --base "$CHECKS_FROM" --branch "$branch"
       - name: Task timings
         if: always()
         run: |

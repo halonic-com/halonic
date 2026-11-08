@@ -6,8 +6,6 @@ import { Report } from "../lib/problems.ts";
  * check` and the docs already have their place. Each one passes until then.
  */
 export const phaseOneSlots: Readonly<Record<string, string>> = {
-  "requirement-guard":
-    "changing a requirement, golden file or test needs an approved decision note (plan 9.3)",
   dco: "every commit carries the sign-off the contribution policy asks for (plan 12)",
 };
 
