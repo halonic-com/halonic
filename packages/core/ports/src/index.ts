@@ -42,10 +42,12 @@ export {
 } from "./definition-store.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {
+  type Harness,
   type HarnessBridge,
   type HarnessDetection,
   type HarnessEvent,
   type HarnessInput,
+  type HarnessRun,
   type HarnessTask,
   harnessVersion,
 } from "./harness.ts";

@@ -1,4 +1,5 @@
 import type { AgentResume, RunEventBody, RunEventType } from "@halonicjs/events";
+import type { SandboxSession } from "./sandbox.ts";
 
 /** Version of the {@link Harness} port. A breaking change bumps it and comes with an ADR. */
 export const harnessVersion = 1;
@@ -102,3 +103,55 @@ export type HarnessInput =
   | { type: "answer"; text: string }
   /** A person's decision on the `approval.requested` event with this `callId`. */
   | { type: "approval"; callId: string; approved: boolean; comment?: string };
+
+/**
+ * One harness run: its events, read with `for await`, and the way to answer
+ * it or stop it.
+ *
+ * The stream ends with the task agent's `agent.finished` and yields nothing
+ * after it. A run that fails or is cancelled ends the stream with an error
+ * instead. An error never contains the bridge token.
+ */
+export interface HarnessRun extends AsyncIterable<HarnessEvent> {
+  /**
+   * Passes a person's answer or approval decision to the run.
+   *
+   * @throws when the run has ended, or no `approval.requested` with that `callId` is waiting
+   */
+  send(input: HarnessInput): Promise<void>;
+  /** Stops the run. Resolves once every program it started has stopped; does nothing on a run that has ended. */
+  cancel(): Promise<void>;
+}
+
+/**
+ * What drives an agent: Halonic's own agent loop, Claude Code or Codex. An
+ * agent's file picks one by `id`.
+ *
+ * Every harness runs behind Halonic's `Sandbox` port and reaches Halonic
+ * only through the bridge, so integrations, secrets and approvals stay in
+ * Halonic. The built-in loop starts no program for the agent: it calls the
+ * model port and Halonic's tools directly, ignores `bridge`, and uses
+ * `session` only to start the stdio connectors a workspace names.
+ *
+ * @example
+ * if ((await harness.detect()).status !== "ready") return;
+ * const run = harness.start(task, session, bridge);
+ * for await (const event of run) {
+ *   if (event.type === "approval.requested") await run.send(await askPerson(event));
+ *   else record(event);
+ * }
+ */
+export interface Harness {
+  /** The value of `harness` in an agent's file, such as "claude-code". */
+  readonly id: string;
+  /** The name a person reads, such as "Claude Code". */
+  readonly name: string;
+  /** Finds the harness's program on this machine and checks its version. Never throws: a problem is a {@link HarnessDetection}. */
+  detect(): Promise<HarnessDetection>;
+  /**
+   * Starts the agent on `task` inside the sandbox `session`, pointed at the
+   * run's `bridge`. Returns at once; a program that can't start ends the
+   * stream with an error.
+   */
+  start(task: HarnessTask, session: SandboxSession, bridge: HarnessBridge): HarnessRun;
+}
