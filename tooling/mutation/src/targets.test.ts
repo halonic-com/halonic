@@ -1,9 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, test } from "vitest";
-import { hasCode, mutationTargets, strykerConfig } from "./targets.ts";
+import {
+  hasCode,
+  mutationTargets,
+  parityFixturesVariable,
+  sandboxEnv,
+  strykerConfig,
+} from "./targets.ts";
 
 const folders: string[] = [];
 
@@ -68,5 +74,18 @@ describe("strykerConfig", () => {
     expect(config["plugins"]).toEqual(["/r/runner.js"]);
     expect(config["jsonReporter"]).toEqual({ fileName: "/w/yaml.json" });
     expect(config["tempDirName"]).toBe("/w/s");
+  });
+});
+
+verifies("mutation.parity-fixtures-in-sandbox", () => {
+  test("the sandbox run is told the real parity fixtures folder", () => {
+    expect(sandboxEnv("/repo")).toEqual({
+      [parityFixturesVariable]: join("/repo", "packages", "testing", "parity", "fixtures"),
+    });
+  });
+
+  test("the variable names a folder that exists in this repo", () => {
+    const root = join(import.meta.dirname, "..", "..", "..");
+    expect(existsSync(sandboxEnv(root)[parityFixturesVariable] ?? "")).toBe(true);
   });
 });

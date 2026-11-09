@@ -45,6 +45,19 @@ export function hasCode(packageDirectory: string): boolean {
   return files.some((file) => file !== "src/index.ts" && !isTest(file));
 }
 
+/** The environment variable that tells a test where the parity fixtures are. */
+export const parityFixturesVariable = "HALONIC_PARITY_FIXTURES";
+
+/**
+ * What the Stryker run adds to its environment. Stryker copies only the
+ * package into its sandbox, so a test that reads the shared parity
+ * fixtures by a path relative to the package can't find them there. The
+ * variable names the real folder instead.
+ */
+export function sandboxEnv(root: string): Record<string, string> {
+  return { [parityFixturesVariable]: join(root, "packages", "testing", "parity", "fixtures") };
+}
+
 /** Where one Stryker run reads its plugin and writes its files. */
 export interface StrykerPaths {
   /** The absolute path of `@stryker-mutator/vitest-runner`'s entry file. */

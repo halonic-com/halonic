@@ -6,4 +6,11 @@ export {
   scoreOf,
   summaryTable,
 } from "./score.ts";
-export { hasCode, mutationTargets, type StrykerPaths, strykerConfig } from "./targets.ts";
+export {
+  hasCode,
+  mutationTargets,
+  parityFixturesVariable,
+  type StrykerPaths,
+  sandboxEnv,
+  strykerConfig,
+} from "./targets.ts";

@@ -58,8 +58,14 @@ verifies("yaml.round-trip", () => {
   });
 });
 
-/** Julian's parity fixtures: every YAML file the old app was recorded reading. */
-const parityRoot = join(import.meta.dirname, "..", "..", "..", "testing", "parity", "fixtures");
+/**
+ * Julian's parity fixtures: every YAML file the old app was recorded reading.
+ * The mutation run copies this package into a sandbox, so it names the real
+ * folder in HALONIC_PARITY_FIXTURES (see tooling/mutation).
+ */
+const parityRoot =
+  process.env["HALONIC_PARITY_FIXTURES"] ??
+  join(import.meta.dirname, "..", "..", "..", "testing", "parity", "fixtures");
 
 interface Recording {
   diagnostics: { path: string; message: string; line?: number }[];
