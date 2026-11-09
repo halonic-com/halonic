@@ -52,7 +52,7 @@ jobs:
           areas=(
             "tooling=^(tooling/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|turbo\.json$|biome\.json$)"
             "tauri=^apps/studio/src-tauri/"
-            "android=^(apps/studio/src-tauri/|apps/studio/connect/|apps/studio/package\.json$)"
+            "android=^(apps/studio/src-tauri/|apps/studio/connect/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
             "studio=^(apps/studio/|packages/studio/)"
             "docs=^(apps/docs/|docs/)"
           )
