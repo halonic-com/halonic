@@ -1,3 +1,4 @@
+import type { ServerResponse } from "node:http";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -41,13 +42,24 @@ function testRoute(fetch: Fetch): BridgeRoute {
 }
 
 /** Opens a bridge that serves only the test route. */
-async function open(fetch: Fetch) {
+function open(fetch: Fetch) {
+  return openWith(testRoute(fetch));
+}
+
+/** Opens a bridge that serves only `route`. */
+async function openWith(route: BridgeRoute) {
   const bridge = await openBridge(fakeRun(), {
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
-    routes: [testRoute(fetch)],
+    routes: [route],
   });
   closers.push(bridge.close);
   return bridge;
+}
+
+/** A reply body that has a new 64 KiB chunk whenever the bridge asks for one. */
+function endlessStream() {
+  const chunk = new Uint8Array(64 * 1024);
+  return new ReadableStream<Uint8Array>({ pull: (controller) => controller.enqueue(chunk) });
 }
 
 /** The program's request, with the run token and a header the provider must not get. */
@@ -172,7 +184,45 @@ verifies("harness-bridge.pass-through", () => {
 
       await vi.advanceTimersByTimeAsync(500);
       await expect(reader?.read()).rejects.toThrow();
+      expect(provider.calls[0]?.signal.reason).toMatchObject({
+        message: "The provider sent nothing for 0.5 seconds.",
+      });
+    });
+
+    it("cuts a reply the program stops reading, and doesn't blame the provider", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const provider = fakeProvider(() => new Response(endlessStream()));
+      const route = testRoute(provider.fetch);
+      let response: ServerResponse | undefined;
+      const bridge = await openWith({
+        ...route,
+        handle: (context) => {
+          response = context.response;
+          return route.handle(context);
+        },
+      });
+      // The program never reads the body, so the bridge soon waits for room to write.
+      await programRequest(bridge);
+      while (response?.writableNeedDrain !== true) await new Promise(setImmediate);
+
+      await vi.advanceTimersByTimeAsync(500);
+      expect(provider.calls[0]?.signal.reason).toMatchObject({
+        message: "The program read nothing of the reply for 0.5 seconds.",
+      });
+    });
+
+    it("stops it when the bridge closes in the middle of a reply", async () => {
+      const stream = controlledStream();
+      const provider = fakeProvider(() => new Response(stream.body));
+      const bridge = await open(provider.fetch);
+      const reply = await programRequest(bridge);
+      const reader = reply.body?.getReader();
+      stream.push("event: ping\n\n");
+      await reader?.read();
+
+      await bridge.close();
       expect(provider.calls[0]?.signal.aborted).toBe(true);
+      await expect(reader?.read()).rejects.toThrow();
     });
   });
 

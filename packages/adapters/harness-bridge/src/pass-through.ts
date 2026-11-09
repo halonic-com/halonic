@@ -10,7 +10,11 @@ export type Fetch = typeof globalThis.fetch;
 export interface UpstreamLimits {
   /** How long the provider may take to start its reply, in milliseconds. */
   responseTimeoutMs: number;
-  /** How long a reply that has started may go without sending anything, in milliseconds. */
+  /**
+   * How long a reply that has started may go without sending anything, in
+   * milliseconds. The program gets the same time to take what was already
+   * sent once it stops reading.
+   */
   idleTimeoutMs: number;
 }
 
@@ -55,9 +59,11 @@ export function pickHeaders(
  * provider's own error replies go back unchanged.
  *
  * The call to the provider stops when the program goes away, the bridge
- * closes, or the provider is silent for longer than the limits allow.
+ * closes, the provider is silent for longer than the limits allow, or the
+ * program stops reading for as long as the idle limit. Each wait has its own
+ * reason, so a program that stops reading isn't taken for a silent provider.
  *
- * @throws KindedError `unavailable` when the provider can't be reached or doesn't start its reply in time
+ * @throws KindedError `unavailable` when the provider can't be reached or doesn't start its reply in time, goes silent, or the program stops reading
  */
 export async function passThrough(
   context: BridgeRequestContext,
@@ -65,32 +71,81 @@ export async function passThrough(
   caller: UpstreamCaller,
 ): Promise<void> {
   const { limits } = caller;
-  const timedOut = new AbortController();
-  let timer = setTimeout(() => timedOut.abort(), limits.responseTimeoutMs);
-  const restartTimer = (ms: number) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => timedOut.abort(), ms);
-  };
-  const signal = AbortSignal.any([context.signal, timedOut.signal]);
+  const deadline = new Deadline();
+  const signal = AbortSignal.any([context.signal, deadline.signal]);
 
   try {
-    const reply = await callProvider(upstream, caller.fetch, signal, timedOut.signal, limits);
+    deadline.start(limits.responseTimeoutMs, didNotAnswer(upstream, limits));
+    const reply = await callProvider(upstream, caller.fetch, signal);
     context.response.writeHead(reply.status, replyHeaders(reply.headers, upstream.replyHeader));
     // Send the status now: a program waiting on a stream shouldn't wait for its first event too.
     context.response.flushHeaders();
     if (reply.body !== null) {
       const reader = reply.body.getReader();
       for (;;) {
-        restartTimer(limits.idleTimeoutMs);
+        deadline.start(limits.idleTimeoutMs, wentSilent(upstream, limits));
         const { done, value } = await reader.read();
         if (done) break;
-        if (!context.response.write(value)) await once(context.response, "drain", { signal });
+        if (!context.response.write(value)) {
+          deadline.start(limits.idleTimeoutMs, stoppedReading(limits));
+          await once(context.response, "drain", { signal });
+        }
       }
     }
     context.response.end();
+  } catch (error) {
+    throw deadline.signal.aborted ? deadline.signal.reason : error;
   } finally {
-    clearTimeout(timer);
+    deadline.clear();
   }
+}
+
+/**
+ * The time limit of the wait in progress. It stops the call with that wait's
+ * reason when the time is up.
+ */
+class Deadline {
+  readonly #passed = new AbortController();
+  #timer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Aborted, with the reason of the wait whose time ran out. */
+  get signal(): AbortSignal {
+    return this.#passed.signal;
+  }
+
+  /** Ends the previous wait's limit and gives the next wait `ms` milliseconds. */
+  start(ms: number, reason: KindedError): void {
+    this.clear();
+    this.#timer = setTimeout(() => this.#passed.abort(reason), ms);
+  }
+
+  clear(): void {
+    clearTimeout(this.#timer);
+  }
+}
+
+function didNotAnswer(upstream: UpstreamRequest, limits: UpstreamLimits): KindedError {
+  const seconds = limits.responseTimeoutMs / 1000;
+  return new KindedError(
+    "unavailable",
+    `${upstream.provider} didn't answer within ${seconds} seconds.`,
+  );
+}
+
+function wentSilent(upstream: UpstreamRequest, limits: UpstreamLimits): KindedError {
+  const seconds = limits.idleTimeoutMs / 1000;
+  return new KindedError(
+    "unavailable",
+    `${upstream.provider} sent nothing for ${seconds} seconds.`,
+  );
+}
+
+function stoppedReading(limits: UpstreamLimits): KindedError {
+  const seconds = limits.idleTimeoutMs / 1000;
+  return new KindedError(
+    "unavailable",
+    `The program read nothing of the reply for ${seconds} seconds.`,
+  );
 }
 
 /** Calls the provider and waits for its reply to start. */
@@ -98,8 +153,6 @@ async function callProvider(
   upstream: UpstreamRequest,
   fetch: Fetch,
   signal: AbortSignal,
-  timedOut: AbortSignal,
-  limits: UpstreamLimits,
 ): Promise<Response> {
   try {
     return await fetch(upstream.url, {
@@ -109,14 +162,6 @@ async function callProvider(
       signal,
     });
   } catch (cause) {
-    if (timedOut.aborted) {
-      const seconds = limits.responseTimeoutMs / 1000;
-      throw new KindedError(
-        "unavailable",
-        `${upstream.provider} didn't answer within ${seconds} seconds.`,
-        { cause },
-      );
-    }
     if (signal.aborted) throw cause;
     throw new KindedError("unavailable", `Halonic couldn't reach ${upstream.provider}.`, {
       cause,
