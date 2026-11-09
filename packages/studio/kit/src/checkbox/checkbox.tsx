@@ -1,7 +1,6 @@
 import {
   type ChangeEvent,
   type FocusEvent,
-  type MouseEvent,
   type ReactNode,
   type Ref,
   useLayoutEffect,
@@ -130,21 +129,16 @@ export function Checkbox(props: CheckboxProps) {
         aria-describedby={describedBy(unavailable?.reason, field?.describedBy)}
         tabIndex={tabIndex}
         className={`${boxShared} ${boxStateClasses[boxState(isUnavailable, field?.invalid === true, checked || indeterminate)]}`}
-        // Space and a click on the box or its words both arrive here. While unavailable the click is
-        // cancelled, so the browser puts the box back as it was, mixed included. React reports the
-        // change from that same click, so onChange still has to skip it.
-        onClick={(event: MouseEvent<HTMLInputElement>) => {
-          if (isUnavailable) {
-            event.preventDefault();
-          }
-        }}
+        // Space and a click on the box or its words both arrive here, and the browser has already
+        // flipped the box and cleared its dash. React puts `checked` back from the prop; the dash is
+        // put back here, because the screen may keep the box mixed without rendering again. An
+        // unavailable box reports nothing. (Cancelling the click instead fights React's own restore
+        // and leaves the box flipped.)
         onChange={(event: ChangeEvent<HTMLInputElement>) => {
-          if (isUnavailable) {
-            return;
-          }
-          onChange(event.target.checked);
-          // The screen may keep the box mixed without rendering again, so the dash comes back now.
           event.target.indeterminate = indeterminate;
+          if (!isUnavailable) {
+            onChange(event.target.checked);
+          }
         }}
         onFocus={onFocus}
       />

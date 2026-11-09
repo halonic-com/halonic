@@ -588,15 +588,15 @@ when it stands without words, as in a List row.
 | `children`      | Its words: "Run on a schedule". Or `label`, its name when it has no words    |
 | `tabIndex`      | `-1` only inside a grid, which moves focus with the arrow keys               |
 
-| State         | What shows                                                                                                       |
-| ------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Default       | A 16px box, radius 4px, a `border-control` edge on `surface`                                                     |
-| Hover         | The edge turns `fg-muted`, over the box or a label round it                                                      |
-| Focus         | The standard ring round the box                                                                                  |
-| Checked       | `primary` fill with an `on-primary` check; mixed shows a dash                                                    |
-| Unavailable   | 45% (60% for more contrast), an `fg-disabled` edge, `GrayText` in high contrast. Focusable; keeps its value      |
-| Error         | In a Field with an error: a `danger` edge, `aria-invalid` and the Field's error line                             |
-| High contrast | A checked or mixed box fills `Highlight` with a `HighlightText` mark (`checkbox-forced`)                         |
+| State         | What shows                                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| Default       | A 16px box, radius 4px, a `border-control` edge on `surface`                                                |
+| Hover         | The edge turns `fg-muted`, over the box or a label round it                                                 |
+| Focus         | The standard ring round the box                                                                             |
+| Checked       | `primary` fill with an `on-primary` check; mixed shows a dash                                               |
+| Unavailable   | 45% (60% for more contrast), an `fg-disabled` edge, `GrayText` in high contrast. Focusable; keeps its value |
+| Error         | In a Field with an error: a `danger` edge, `aria-invalid` and the Field's error line                        |
+| High contrast | A checked or mixed box fills `Highlight` with a `HighlightText` mark (`checkbox-forced`)                    |
 
 **On a phone or a touch screen** the box stays 16px, and a checkbox with words is at least 48px
 high, words included.
