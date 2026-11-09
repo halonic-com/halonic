@@ -191,6 +191,12 @@ export function List<Id extends string>({
   );
   const showEmpty = empty !== undefined && rows.length === 0;
   const emptyFocus = useFocusOnEmpty(showEmpty);
+  const headingNode =
+    heading === undefined ? null : (
+      <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
+    );
+  const labelProps =
+    heading === undefined ? { "aria-label": label } : { "aria-labelledby": headingId };
 
   // With rows, the heading is the box's first line, so the first row's top corners are square
   // under it. With none, the Empty state takes the box's place below the heading.
@@ -198,9 +204,7 @@ export function List<Id extends string>({
     <div>
       {showEmpty ? (
         <>
-          {heading === undefined ? null : (
-            <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
-          )}
+          {headingNode}
           <EmptyList
             empty={empty}
             listHeadingLevel={heading === undefined ? undefined : headingLevel}
@@ -210,14 +214,11 @@ export function List<Id extends string>({
       ) : (
         // Not overflow-hidden, which would cut the focus rings of the first and last rows.
         <div className={look === "bordered" ? "rounded-md border border-border" : ""}>
-          {heading === undefined ? null : (
-            <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
-          )}
+          {headingNode}
           <table
             // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table; on a div Biome asks for the table
             role="grid"
-            aria-labelledby={heading === undefined ? undefined : headingId}
-            aria-label={heading === undefined ? label : undefined}
+            {...labelProps}
             aria-multiselectable={selection?.multiple === true ? true : undefined}
             className="w-full table-fixed border-separate border-spacing-0"
             {...grid.gridProps}
