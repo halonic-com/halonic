@@ -62,6 +62,16 @@
       ],
       "reason": "Tauri's command-line tool: generates the Android project and builds the shell (plan 7.2). Pinned to match the Rust tauri crate. Approved by Liam on HAL-1222."
     },
+    "@tauri-apps/plugin-opener": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/app-studio"
+      ],
+      "layers": [
+        "apps"
+      ],
+      "reason": "Opens a link in the phone's browser: the Android connect page's Open release page (flow 5.4). The Rust side, tauri-plugin-opener, also sends links that leave the connected address to the browser. Granted to the local connect page only, never the served page (plan 7.2 v1.27). Approved by Liam on HAL-1130."
+    },
     "@types/node": {
       "category": "dev-tooling",
       "allowedIn": [

@@ -4,10 +4,9 @@
 # in. Plain library crates live under crates/ and stay free of Tauri types,
 # so they build and test anywhere.
 #
-# Today the shell is the minimal Android connect shell (HAL-229): it loads
-# the connect page and has no plugins, commands or capabilities. Those
-# arrive with HAL-1140. The desktop shell (HAL-192) extends this package
-# rather than adding a second one.
+# Today the shell is the Android connect shell (HAL-229, HAL-1375): it loads
+# the connect page and offers it the `connect` command. The desktop shell
+# (HAL-192) extends this package rather than adding a second one.
 [package]
 name = "halonic-studio"
 description = "The Studio shell: the Tauri app that hosts the Studio on desktop and Android."
@@ -30,7 +29,14 @@ crate-type = ["cdylib", "rlib"]
 tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
+halonic-connect = { path = "crates/connect" }
 tauri = { version = "=2.12.5", features = [] }
+# The plugins are pinned with tauri, for the same reason. The http plugin
+# is used only from Rust, for its reqwest client (the hello call); it is
+# never registered, so no page can make HTTP calls through it. Only
+# rustls-tls: no system proxy and no cookie store.
+tauri-plugin-http = { version = "=2.8.3", default-features = false, features = ["rustls-tls"] }
+tauri-plugin-opener = "=2.7.2"
 
 [lints]
 workspace = true

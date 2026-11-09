@@ -59,6 +59,24 @@ impl fmt::Display for Address {
     }
 }
 
+impl Address {
+    /// The address as the connect page shows it in "Can't reach Halonic at
+    /// …", for example `192.168.1.20:4280`, `my-laptop.local` or
+    /// `https://halonic.example`: `http://` and the scheme's own port are
+    /// left out, as the user would type them.
+    pub fn display_form(&self) -> String {
+        let scheme = match self.scheme {
+            Scheme::Http => "",
+            Scheme::Https => "https://",
+        };
+        if self.port == self.scheme.default_port() {
+            format!("{scheme}{}", self.host)
+        } else {
+            format!("{scheme}{}:{}", self.host, self.port)
+        }
+    }
+}
+
 /// The input isn't an address: "Enter an address like 192.168.1.20:4280."
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NotAnAddress;
@@ -175,6 +193,20 @@ mod tests {
             "https://halonic.example:443"
         );
         assert_eq!(origin("localhost"), "http://localhost:80");
+    }
+
+    #[test]
+    fn address_format_shows_the_address_as_typed() {
+        let shown = |input: &str| parse_address(input).expect("an address").display_form();
+        assert_eq!(shown(" http://192.168.1.20:4280/ "), "192.168.1.20:4280");
+        assert_eq!(shown("My-Laptop.local"), "my-laptop.local");
+        assert_eq!(shown("my-laptop.local:80"), "my-laptop.local");
+        assert_eq!(shown("[fd00::20]:4280"), "[fd00::20]:4280");
+        assert_eq!(shown("https://halonic.example"), "https://halonic.example");
+        assert_eq!(
+            shown("https://halonic.example:8443"),
+            "https://halonic.example:8443"
+        );
     }
 
     #[test]

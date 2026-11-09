@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-1140, HAL-1150 (flow-install-update 5.3)
+- Source: HAL-1140, HAL-1150, HAL-1375 (flow-install-update 5.3)
 
-The connect check shall look a host name up before it judges it, and return the IP addresses it checked so the hello call connects only to them. If any address is unusable, or the scheme is `http://` and any address is not on the home network, then the check shall report "not on your home network". If the name resolves to nothing or the lookup fails, then the check shall report "not answering".
+The connect check shall look a host name up before it judges it, and return the IP addresses it checked so the hello call connects only to them. If any address is unusable, or the scheme is `http://` and any address is not on the home network, then the check shall report "not on your home network". If the name resolves to nothing, the lookup fails or it takes longer than the hello call's 5 second limit, then the check shall report "not answering".
 
 ## Examples
 
@@ -20,3 +20,6 @@ The connect check shall look a host name up before it judges it, and return the 
 - Given a name that resolves to nothing,
   when it is checked,
   then the result is "not answering".
+- Given a name lookup that hangs,
+  when it is checked,
+  then the result is "not answering" after 5 seconds.

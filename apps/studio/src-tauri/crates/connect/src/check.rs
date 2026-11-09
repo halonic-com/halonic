@@ -68,6 +68,11 @@ impl CheckedAddress {
     pub fn hello_url(&self) -> String {
         format!("{}/api/hello", self.address)
     }
+
+    /// The Studio's first page, for example `http://192.168.1.20:4280/`.
+    pub fn studio_url(&self) -> String {
+        format!("{}/", self.address)
+    }
 }
 
 /// Checks what the user typed, before the hello call.
