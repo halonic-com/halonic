@@ -1,0 +1,147 @@
+# Publishes @halonicjs/integration-kit and @halonicjs/testing-integration to
+# npm, so the integrations repo can run the conformance suite in its own CI.
+#
+# KEEP THIS FILE NAME. It is entered in the npm trusted-publisher settings of
+# both packages (repository halonic-com/halonic, workflow publish-kit.yml,
+# no environment). Renaming it stops every publish.
+#
+# No npm token exists anywhere. npm trusts this workflow's identity (OIDC) and
+# records the provenance. Only the `publish` job has `id-token: write`; it
+# checks out nothing and runs no repo code, only the tarballs the `pack` job
+# made, so a dependency in the build can never reach the identity.
+#
+# Run it by hand from the Actions tab, on `main`. It never runs on pull
+# requests. `dry_run` is on by default: it builds and checks the tarballs and
+# stops short of `npm publish`. A version already on npm is skipped, so a run
+# can be repeated after a partial failure.
+
+name: Publish kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build and check the tarballs, publish nothing"
+        required: true
+        default: true
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: publish-kit
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  pack:
+    name: Build and check the tarballs
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No dependency cache: a cache a pull request could have written must
+      # not feed a release build.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Stage both packages
+        run: pnpm turbo run build --filter=@halonicjs/adapter-integration-kit --filter=@halonicjs/testing-integration
+      - name: Pack, in the order they publish
+        run: |
+          mkdir -p tarballs
+          # The kit first: the conformance suite depends on it.
+          (cd packages/adapters/integration-kit/dist/package && npm pack --pack-destination ../../../../../tarballs)
+          (cd packages/testing/integration/dist/package && npm pack --pack-destination ../../../../../tarballs)
+          ls -l tarballs
+      - name: Check what is in the tarballs
+        run: |
+          for tarball in tarballs/*.tgz; do
+            echo "== $tarball"
+            tar -tzf "$tarball" | sed 's/^package\///' | sort > files.txt
+            wc -l < files.txt
+            # Only built files, the licence files, the readme and the manifest.
+            if grep -vE '^(package\.json|README\.md|LICENSE|NOTICE|dist/.+\.(js|d\.ts))$' files.txt; then
+              echo "::error::$tarball holds files that do not belong in it (listed above)."
+              exit 1
+            fi
+            # No tests and no maps (a `.ts` source already failed the list above).
+            if grep -E '\.(test|spec)\.|\.map$' files.txt; then
+              echo "::error::$tarball holds tests or maps."
+              exit 1
+            fi
+            tar -xzOf "$tarball" package/package.json > manifest.json
+            node -e '
+              const m = JSON.parse(require("node:fs").readFileSync("manifest.json", "utf8"));
+              const own = Object.keys({ ...m.dependencies, ...m.peerDependencies }).filter((n) => n.startsWith("@halonicjs/"));
+              const allowed = ["@halonicjs/integration-kit"];
+              const bad = own.filter((n) => !allowed.includes(n));
+              if (m.private || m.version === undefined || bad.length > 0) {
+                console.error("Bad manifest for " + m.name + ": private, no version or an unpublished dependency: " + bad);
+                process.exit(1);
+              }
+              console.log(m.name + "@" + m.version, "depends on", Object.keys(m.dependencies ?? {}).join(", "));
+            '
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kit-tarballs
+          path: tarballs/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: pack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # Trusted publishing needs npm 11.5.1 or newer, which comes with Node.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+      - name: Check the npm version
+        run: |
+          version=$(npm --version)
+          echo "npm $version"
+          if [ "$(printf '%s\n' 11.5.1 "$version" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm $version is too old for trusted publishing (needs 11.5.1 or newer)."
+            exit 1
+          fi
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: kit-tarballs
+          path: tarballs
+      - name: Publish, kit first
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          # Alphabetical order would put the suite before the kit it needs.
+          for tarball in tarballs/halonicjs-integration-kit-*.tgz tarballs/halonicjs-testing-integration-*.tgz; do
+            name=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).name')
+            version=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
+            if npm view "$name@$version" version > /dev/null 2>&1; then
+              echo "$name@$version is already on npm, skipping."
+              continue
+            fi
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "Dry run: would publish $name@$version"
+              npm publish "$tarball" --dry-run --access public --provenance
+            else
+              npm publish "$tarball" --access public --provenance
+            fi
+          done
