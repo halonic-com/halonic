@@ -39,7 +39,8 @@ const widthClasses: Record<SkeletonBarWidth, string> = {
 /**
  * A still grey bar in the shape of text that is still loading: a List's skeleton rows, a Side
  * panel's loading lines. No shimmer and no pulse. Hidden from screen readers; the list or panel
- * says it's loading.
+ * says it's loading. The transparent border is what forced colours paints once it drops the fill,
+ * so the bars stay visible in high contrast (kit 23.5).
  *
  * @example
  * <SkeletonBar kind="title" width="2/5" />
@@ -47,6 +48,9 @@ const widthClasses: Record<SkeletonBarWidth, string> = {
 export function SkeletonBar({ kind, width = "full" }: SkeletonBarProps) {
   const sized = kind === "title" || kind === "meta" ? ` ${widthClasses[width]}` : "";
   return (
-    <span aria-hidden="true" className={`block bg-surface-muted ${kindClasses[kind]}${sized}`} />
+    <span
+      aria-hidden="true"
+      className={`block border border-transparent bg-surface-muted ${kindClasses[kind]}${sized}`}
+    />
   );
 }

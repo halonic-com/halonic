@@ -306,20 +306,22 @@ alone for a list the kit doesn't draw, such as the shell's Settings nav.
 | -------------- | -------------------------------------------------------------------------- |
 | `name`         | The group's name, in sentence case: CSS draws the capitals. It may be cut  |
 | `detail`       | Says which group: "Workspace settings". Never cut                          |
-| `headingLevel` | 2 by default; lower where the list sits under a panel's own headings       |
+| `headingLevel` | 2 by default; 3 or 4 where the list sits under a panel's own headings      |
 | `id`           | So the list it names can point `aria-labelledby` at it                     |
 | `layout`       | `inline` (the default): name · detail. `stacked`: the name over the detail |
 
 `text-caption` in capitals, `tracking-label`, `fg-muted`, padded 16px 16px 4px so its text starts
 where the rows' text does. The "·" is hidden from screen readers, which hear a comma instead:
 "Acme, Workspace settings". When the detail doesn't fit after the name (at 320px and 200% text),
-it wraps onto its own line. Use `stacked` in a narrow column, such as the 208px Settings nav.
+it moves onto its own line, and a detail too long even for that wraps. Use `stacked` in a narrow
+column, such as the 208px Settings nav.
 
 ## SkeletonBar
 
 A still grey bar in the shape of text that is still loading: the List's skeleton rows and the
 Side panel's loading lines. No shimmer and no pulse. Hidden from screen readers; the list or
-panel says it's loading.
+panel says it's loading. A transparent 1px border keeps the bars visible in high contrast, where
+the grey fill is dropped.
 
 ```tsx
 <SkeletonBar kind="avatar" />;

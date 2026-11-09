@@ -38,7 +38,7 @@ verifies("kit.list-heading", () => {
     const [name, detail] = Array.from(heading.children) as HTMLElement[];
     expect(heading.className).toContain("flex flex-wrap");
     expect(name?.className).toBe("min-w-0 truncate");
-    expect(detail?.className).toBe("shrink-0 whitespace-nowrap");
+    expect(detail?.className).toBe("min-w-0 wrap-break-word");
     expect(heading.textContent).toBe("Acme· , Workspace settings");
     expect(spokenText(heading)).toBe("Acme, Workspace settings");
   });
@@ -51,7 +51,7 @@ verifies("kit.list-heading", () => {
     const detail = heading.lastElementChild as HTMLElement;
     expect(heading.className).toContain("flex flex-col gap-0.5");
     expect(heading.textContent).not.toContain("·");
-    expect(detail.className).toBe("wrap-break-word");
+    expect(detail.className).toBe("min-w-0 wrap-break-word");
     expect(spokenText(heading)).toBe("Acme, Workspace settings");
   });
 

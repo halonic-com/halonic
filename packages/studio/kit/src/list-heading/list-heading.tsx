@@ -1,6 +1,7 @@
 /**
- * `inline` puts the detail after the name ("ACME · WORKSPACE SETTINGS") and wraps it onto its own
- * line when the two don't fit. `stacked` always puts the name over the detail, for a narrow column.
+ * `inline` puts the detail after the name ("ACME · WORKSPACE SETTINGS") and moves it onto its own
+ * line when the two don't fit; a detail too long even for its own line wraps, and is never cut.
+ * `stacked` always puts the name over the detail, for a narrow column.
  */
 export type ListHeadingLayout = "inline" | "stacked";
 
@@ -9,7 +10,7 @@ export interface ListHeadingProps {
   readonly name: string;
   /** Says which group: "Workspace settings". Never cut. */
   readonly detail?: string;
-  /** Default 2. Lower where the list sits under a panel's own headings. */
+  /** Default 2. Use 3 or 4 where the list sits under a panel's own headings. */
   readonly headingLevel?: 2 | 3 | 4;
   /** So a list that isn't a kit List can point `aria-labelledby` at the heading. */
   readonly id?: string;
@@ -25,7 +26,7 @@ const layoutClasses: Record<ListHeadingLayout, string> = {
 
 /**
  * The heading over a group of rows: a List's `heading`, or a list the kit doesn't draw, such as
- * the shell's Settings nav. A visible "·" is read as a comma: "Acme, workspace settings".
+ * the shell's Settings nav. A visible "·" is read as a comma: "Acme, Workspace settings".
  *
  * @example
  * <ListHeading name="Acme" detail="Workspace settings" id="settings-acme" layout="stacked" />
@@ -44,7 +45,7 @@ export function ListHeading({
     <Heading id={id} className={`${shared} ${layoutClasses[layout]}`}>
       <span className="min-w-0 truncate">{name}</span>
       {hasDetail ? (
-        <span className={layout === "inline" ? "shrink-0 whitespace-nowrap" : "wrap-break-word"}>
+        <span className="min-w-0 wrap-break-word">
           {layout === "inline" ? <span aria-hidden="true">· </span> : null}
           <span className="sr-only">, </span>
           {detail}

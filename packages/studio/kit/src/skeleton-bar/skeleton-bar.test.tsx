@@ -18,8 +18,13 @@ verifies("kit.skeleton-bar", () => {
     const { container } = render(<SkeletonBar kind="title" />);
     const bar = container.firstElementChild as HTMLElement;
     expect(bar.getAttribute("aria-hidden")).toBe("true");
-    expect(bar.className).toContain("block bg-surface-muted");
+    expect(bar.className).toContain("block border border-transparent bg-surface-muted");
     expect(bar.className).not.toMatch(/animate|pulse/);
+  });
+
+  it("keeps a transparent edge that high contrast paints once it drops the fill", () => {
+    expect(barClasses("title")).toContain("border border-transparent");
+    expect(barClasses("avatar")).toContain("border border-transparent");
   });
 
   it("has the height of the text it stands in for, at a width from the fixed set", () => {
