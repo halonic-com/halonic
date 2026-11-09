@@ -15,7 +15,10 @@ export interface ListRow<Id extends string = string> {
   readonly title: string;
   /** One line under the title, cut with an ellipsis. */
   readonly meta?: string;
-  /** A 20px icon before the text. Hidden from screen readers: the title names the row. */
+  /**
+   * A 20px icon before the text, 16px in a `dense` row as in a Menu item. Hidden from screen
+   * readers: the title names the row.
+   */
   readonly icon?: ReactNode;
   /** A 28px avatar before the text, in place of the icon. Hidden from screen readers too. */
   readonly avatar?: ReactNode;
@@ -248,7 +251,7 @@ function Row<Id extends string>({
         <div
           className={`flex items-center gap-3 px-4 ${heightClasses(phone, dense, meta !== undefined)}`}
         >
-          <Leading row={row} />
+          <Leading row={row} small={dense && !phone} />
           <div className="flex min-w-0 flex-1 flex-col">
             <span
               className={`truncate text-body-strong ${isDisabled ? "text-fg-disabled" : "text-fg"}`}
@@ -282,7 +285,8 @@ function Row<Id extends string>({
   );
 }
 
-function Leading({ row }: { readonly row: ListRow }) {
+/** The row's icon or avatar. `small` is a 32px `dense` row; a dense row 48px high keeps 20px. */
+function Leading({ row, small }: { readonly row: ListRow; readonly small: boolean }) {
   const dim = row.disabled === true;
   if (row.avatar !== undefined) {
     return (
@@ -295,7 +299,7 @@ function Leading({ row }: { readonly row: ListRow }) {
     return (
       <span
         aria-hidden="true"
-        className={`inline-grid size-icon-md shrink-0 place-items-center *:size-full ${dim ? "text-fg-disabled" : "text-fg-muted"}`}
+        className={`inline-grid ${small ? "size-icon-sm" : "size-icon-md"} shrink-0 place-items-center *:size-full ${dim ? "text-fg-disabled" : "text-fg-muted"}`}
       >
         {row.icon}
       </span>

@@ -346,8 +346,8 @@ List draws them.
 | `dense`        | 32px rows, for menus and pickers                                                      |
 | `flush`        | No outer border or radius, lines from 16px. On by default on a phone                  |
 
-A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` or a 28px
-`avatar` (both hidden from screen readers), a `trailing` chip or value, a `more` button
+A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
+32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a `trailing` chip or value, a `more` button
 (`{ label, onClick }`, its label naming the row), `disabled` and `error` (`{ reason, chip }`).
 
 **Keyboard.** The list is one Tab stop. The up and down arrow keys, Home and End move between
@@ -366,7 +366,7 @@ rows hold a button.
 | Selected | `accent-soft`, `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
 
 **On a phone** the list is `flush` and rows are at least 56px (64px with a meta line), padded
-12px 16px; `dense` rows are 48px. The More button is always there at 48px, and the right edge has
+12px 16px; `dense` rows are 48px, with a 20px icon. The More button is always there at 48px, and the right edge has
 one job: a row with a More button puts its chip under the text. **On a touch screen** at desktop
 width the More button is always shown too.
 
