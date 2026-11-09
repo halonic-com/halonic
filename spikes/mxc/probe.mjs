@@ -21,7 +21,7 @@ const { run, getPlatformSupport } = await import("@microsoft/mxc-sdk/v1");
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const quote = (p) => `"${p}"`;
 
-async function runIn(command, { work, extraRead = [], denied = [], loopback = "deny", timeoutMs = 60_000 }) {
+async function runIn(command, { work, extraRead = [], denied = [], loopback = "deny", timeoutMs = 15_000 }) {
   const t0 = performance.now();
   try {
     const out = await run({
@@ -107,7 +107,8 @@ console.log(JSON.stringify(r));
     out[name] = [];
     for (let i = 0; i < n; i += 1) {
       const r = await runIn(command, { work });
-      out[name].push({ ms: Math.round(r.ms), exitCode: r.exitCode, error: r.error });
+      out[name].push({ ms: Math.round(r.ms), exitCode: r.exitCode, timedOut: r.timedOut, error: r.error?.split("\n")[0] });
+      console.error(`${mode} ${name} #${i}: ${Math.round(r.ms)} ms, exit ${r.exitCode}, timedOut ${r.timedOut}, ${r.error?.split("\n")[0] ?? ""}`);
     }
     if (mode === "warm") out[`${name}Median`] = Math.round(median(out[name].map((x) => x.ms)));
   }

@@ -49,24 +49,29 @@ jobs:
           $exe = Get-ChildItem node_modules\@microsoft -Recurse -Filter wxc-exec.exe | Select-Object -First 1
           if ($exe) { & $exe.FullName --probe }
         continue-on-error: true
+        timeout-minutes: 6
       - name: Elevated, fence probes
         working-directory: spikes/mxc
         run: node probe.mjs fence
         continue-on-error: true
+        timeout-minutes: 6
         id: fence
       - name: Elevated, warm starts (20)
         working-directory: spikes/mxc
         run: node probe.mjs warm
         continue-on-error: true
+        timeout-minutes: 6
       - name: Elevated, cold starts (20, each in a new node process)
         working-directory: spikes/mxc
         run: |
           1..20 | ForEach-Object { node probe.mjs cold }
         continue-on-error: true
+        timeout-minutes: 6
       - name: Elevated, tools
         working-directory: spikes/mxc
         run: node probe.mjs tools
         continue-on-error: true
+        timeout-minutes: 6
       # A plain local user, no admin group. Everything lives under $env:SystemDrive\mxc-spike
       # so that user can read the node binary and the SDK. The password is
       # random, kept in memory, never printed.
@@ -86,6 +91,7 @@ jobs:
           Get-LocalGroupMember -Group Administrators | Select-Object Name
       - name: Normal user, fence probes, warm starts, tools
         continue-on-error: true
+        timeout-minutes: 6
         run: |
           $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
           $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
