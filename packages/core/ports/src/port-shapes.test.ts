@@ -1,4 +1,4 @@
-import type { RunSummary } from "@halonicjs/events";
+import type { RunEventBody, RunEventType, RunSummary } from "@halonicjs/events";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import type {
@@ -6,6 +6,8 @@ import type {
   Coordination,
   DefinitionSource,
   DefinitionStore,
+  HarnessDetection,
+  HarnessEvent,
   HttpClient,
   KnowledgeProvider,
   RunEventListener,
@@ -287,5 +289,63 @@ verifies("ports.sandbox-fence-proof", () => {
     // @ts-expect-error: a fenced session has no reason
     const fencedWithReason: SandboxFence = { state: "fenced", reason: "x" };
     expect(fencedWithReason).toBeDefined();
+  });
+});
+
+verifies("ports.harness-detect", () => {
+  it("tells Studio which harness is missing", () => {
+    const missing: HarnessDetection = { status: "missing" };
+    const old: HarnessDetection = { status: "unsupported", version: "0.9.0", supported: ">=1.0.0" };
+    expect([missing.status, old.status]).toEqual(["missing", "unsupported"]);
+  });
+
+  it("needs the version on a ready harness", () => {
+    const ready: HarnessDetection = { status: "ready", version: "1.4.2" };
+    // @ts-expect-error: a ready harness says which version it found
+    const unknown: HarnessDetection = { status: "ready" };
+    expect([ready, unknown]).toHaveLength(2);
+  });
+});
+
+verifies("ports.harness-run-events", () => {
+  typeTest("uses only run log event types", () => {
+    expectTypeOf<HarnessEvent["type"]>().toEqualTypeOf<
+      | "agent.started"
+      | "llm.request"
+      | "llm.response"
+      | "llm.fallback"
+      | "knowledge.searched"
+      | "tool.called"
+      | "tool.result"
+      | "approval.requested"
+      | "agent.finished"
+    >();
+    expectTypeOf<HarnessEvent["type"]>().toExtend<RunEventType>();
+  });
+
+  typeTest("reports token use and cost as the run log has them", () => {
+    type HarnessResponse = Extract<HarnessEvent, { type: "llm.response" }>;
+    type LoggedResponse = Extract<RunEventBody, { type: "llm.response" }>;
+    expectTypeOf<HarnessResponse>().toEqualTypeOf<LoggedResponse>();
+  });
+
+  it("leaves the workflow state to the engine and has no events of its own", () => {
+    const finished: HarnessEvent = { type: "agent.finished", agent: "writer", output: "done" };
+    // @ts-expect-error: the engine adds the workflow state
+    const withState: HarnessEvent = { ...finished, state: "draft" };
+    // @ts-expect-error: sandbox.blocked comes with the engine wiring, not with the port
+    const blocked: HarnessEvent = { type: "sandbox.blocked", path: "/etc/hosts" };
+    expect([withState, blocked]).toHaveLength(2);
+  });
+
+  it("lets a program ask for approval without a resume record", () => {
+    const asked: HarnessEvent = {
+      type: "approval.requested",
+      agent: "writer",
+      tool: "gmail.send",
+      args: { to: "team@acme.example" },
+      callId: "call_1",
+    };
+    expect(asked.type).toBe("approval.requested");
   });
 });

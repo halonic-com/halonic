@@ -5,6 +5,7 @@ import { connectorClientVersion } from "./connector-client.ts";
 import { coordinationVersion } from "./coordination.ts";
 import { definitionStoreVersion } from "./definition-store.ts";
 import { digestVersion } from "./digest.ts";
+import { harnessVersion } from "./harness.ts";
 import { httpClientVersion } from "./http-client.ts";
 import { idGeneratorVersion } from "./id-generator.ts";
 import { integrationVersion } from "./integration.ts";
@@ -39,6 +40,7 @@ export const portVersions = {
   Coordination: coordinationVersion,
   DefinitionStore: definitionStoreVersion,
   Digest: digestVersion,
+  Harness: harnessVersion,
   HttpClient: httpClientVersion,
   IdGenerator: idGeneratorVersion,
   Integration: integrationVersion,
