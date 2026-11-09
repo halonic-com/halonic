@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type FixturePackage, runChecks, std } from "./fixture-repo.ts";
+import { type FixturePackage, manifestFor, runChecks, std } from "./fixture-repo.ts";
 
 const example = 'import { x } from "../src/index.ts";\n\nexport const y = x;\n';
 const copy = 'import { x } from "@halonicjs/std";\n\nexport const y = x;';
@@ -88,6 +88,47 @@ describe("tooling/check: readme-examples", () => {
         withFiles({ "examples/y.ts": example, "examples/z.ts": other, "README.md": readme }),
       ),
     ).toEqual([expect.stringContaining("differs from packages/core/std/examples/z.ts")]);
+  });
+
+  describe("with an entry besides the package's own", () => {
+    const sub = (extra: Record<string, unknown> = {}): FixturePackage => ({
+      ...std,
+      manifest: manifestFor("@halonicjs/std", "core", {
+        exports: { ".": "./src/index.ts", "./extra": "./src/extra/index.ts" },
+        ...extra,
+      }),
+      files: { "src/index.ts": "export const x = 1;\n", "src/extra/index.ts": "export {};\n" },
+    });
+    const file =
+      'import { x } from "../src/index.ts";\nimport { z } from "../src/extra/index.ts";\n\nexport const y = x + z;\n';
+    const readmeFor = (second: string): string =>
+      readmeWith(
+        `import { x } from "@halonicjs/std";\nimport { z } from "${second}";\n\nexport const y = x + z;`,
+      );
+    const withExample = (pkg: FixturePackage, readme: string): FixturePackage => ({
+      ...pkg,
+      files: { ...pkg.files, "examples/y.ts": file, "README.md": readme },
+    });
+
+    it("shows the entry as the package name with its subpath", () => {
+      expect(messages(withExample(sub(), readmeFor("@halonicjs/std/extra")))).toEqual([]);
+    });
+
+    it("shows the published entry under the published name", () => {
+      const published = sub({
+        halonic: {
+          layer: "core",
+          owner: "mateo",
+          publish: { name: "@halonicjs/extra", entry: "./extra" },
+        },
+      });
+      expect(messages(withExample(published, readmeFor("@halonicjs/extra")))).toEqual([]);
+      expect(messages(withExample(published, readmeFor("@halonicjs/std/extra")))).toHaveLength(1);
+    });
+
+    it("flags the entry's own path in the README", () => {
+      expect(messages(withExample(sub(), readmeFor("../src/extra/index.ts")))).toHaveLength(1);
+    });
   });
 
   it("passes a package with no examples folder", () => {

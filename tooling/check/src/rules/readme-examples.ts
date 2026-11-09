@@ -1,8 +1,32 @@
 import type { CheckContext } from "../lib/context.ts";
 import { Report } from "../lib/problems.ts";
+import type { WorkspacePackage } from "../lib/workspace.ts";
 
-/** How an example file reaches the package's own code, which a package may not import by name. */
-const ownImport = '"../src/index.ts"';
+/**
+ * How an example file reaches the package's own code, which a package may not
+ * import by name: each `exports` entry as the quoted `../src/...` path the
+ * example imports, with the name the README shows instead. The `.` entry is
+ * the package name; another entry is the name with its subpath, or the
+ * published name when `halonic.publish.entry` is that entry.
+ */
+function ownImports(pkg: WorkspacePackage): Map<string, string> {
+  const imports = new Map<string, string>();
+  const name = pkg.manifest.name ?? pkg.directory;
+  const exported = pkg.manifest.exports;
+  const entries = typeof exported === "object" && exported !== null ? Object.entries(exported) : [];
+  for (const [subpath, target] of entries) {
+    if (typeof target !== "string" || !target.startsWith("./src/")) {
+      continue;
+    }
+    const publish = pkg.manifest.halonic?.publish;
+    const published = publish?.entry === subpath ? publish.name : undefined;
+    imports.set(JSON.stringify(`.${target}`), published ?? name + subpath.slice(1));
+  }
+  if (!imports.has('"../src/index.ts"')) {
+    imports.set('"../src/index.ts"', name);
+  }
+  return imports;
+}
 
 const fenceStart = /^```(?:ts|typescript)\s*$/;
 
@@ -30,8 +54,8 @@ const withoutTrailingNewline = (text: string): string => text.replace(/(?:\r?\n)
  * The README of a package with an `examples/` folder holds a copy of every
  * example file: the first TypeScript block after the line that links to
  * `examples/<file>`. The copy must equal the file, except that the file
- * imports `../src/index.ts` and the README imports the package by name, and a
- * trailing newline doesn't count. The tested example can't go stale behind
+ * imports the package's own `../src/` entries by path and the README imports
+ * them by name (see `ownImports`), and a trailing newline doesn't count. The tested example can't go stale behind
  * the README.
  */
 export function checkReadmeExamples(context: CheckContext): Report {
@@ -45,6 +69,7 @@ export function checkReadmeExamples(context: CheckContext): Report {
     );
     const readme = `${pkg.directory}/README.md`;
     const name = pkg.manifest.name ?? pkg.directory;
+    const imports = ownImports(pkg);
     for (const example of examples) {
       const relative = example.slice(pkg.directory.length + 1);
       const fix = `Add a \`\`\`ts block with the contents of ${example} to ${readme}, right after a line that links to [\`${relative}\`](${relative}).`;
@@ -67,14 +92,14 @@ export function checkReadmeExamples(context: CheckContext): Report {
         );
         continue;
       }
-      const expected = withoutTrailingNewline(context.read(example)).replaceAll(
-        ownImport,
-        JSON.stringify(name),
-      );
+      let expected = withoutTrailingNewline(context.read(example));
+      for (const [path, specifier] of imports) {
+        expected = expected.replaceAll(path, JSON.stringify(specifier));
+      }
       if (withoutTrailingNewline(block.text) !== expected) {
         report.error(
           readme,
-          `${name}: the block in ${readme} differs from ${example}. Copy the file into the block again; only the import of ${ownImport} may differ, and it reads "${name}" in the README.`,
+          `${name}: the block in ${readme} differs from ${example}. Copy the file into the block again; only the imports of the package's own \`../src/\` files may differ, and they read as the package name in the README, e.g. "${name}".`,
           block.line,
         );
       }
