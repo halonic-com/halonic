@@ -94,6 +94,23 @@ fn check_alternates(folders: &OpenedFolders, objects: &Path, depth: usize) -> Re
     Ok(())
 }
 
+/// The paths of the gitlinks (submodules and other repositories added as
+/// one) in the output of `ls-files --stage -z`, relative to the top folder.
+pub(crate) fn gitlinks(listing: &[u8]) -> Result<Vec<PathBuf>, GitError> {
+    let mut paths = Vec::new();
+    for entry in listing.split(|byte| *byte == 0) {
+        // `<mode> <object> <stage>\t<path>`; a gitlink's mode is 160000.
+        let Some(rest) = entry.strip_prefix(b"160000 ") else {
+            continue;
+        };
+        let Some(tab) = rest.iter().position(|byte| *byte == b'\t') else {
+            continue;
+        };
+        paths.push(path_from_git(&rest[tab + 1..])?);
+    }
+    Ok(paths)
+}
+
 /// A path as git wrote it: raw bytes on Unix, where a file name need not be
 /// UTF-8, and UTF-8 on Windows.
 pub(crate) fn path_from_git(bytes: &[u8]) -> Result<PathBuf, GitError> {
@@ -107,5 +124,24 @@ pub(crate) fn path_from_git(bytes: &[u8]) -> Result<PathBuf, GitError> {
         String::from_utf8(bytes.to_vec())
             .map(|text| PathBuf::from(OsString::from(text)))
             .map_err(|_| GitError::FolderUnreadable)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::gitlinks;
+    use std::path::PathBuf;
+
+    #[test]
+    fn opened_folders_finds_the_gitlinks_in_the_index() {
+        let listing =
+            b"100644 1111 0\tnotes.md\x00160000 2222 0\tvendor/acme\x00160000 3333 0\twith\ttab\0";
+        assert_eq!(
+            gitlinks(listing),
+            Ok(vec![
+                PathBuf::from("vendor/acme"),
+                PathBuf::from("with\ttab")
+            ])
+        );
     }
 }

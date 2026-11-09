@@ -99,6 +99,107 @@ fn git_hardening_never_runs_a_pager_editor_or_diff_program_in_the_config() {
     assert_eq!(sandbox.marks(), Vec::<String>::new());
 }
 
+#[cfg(unix)]
+#[test]
+fn repo_config_neutralises_a_planted_filter_and_keeps_the_content() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    let filter = sandbox.planted("filter");
+    // A name with `=` in it, which `-c` would split in the wrong place.
+    for name in ["x", "a=b"] {
+        sandbox.append_config(&format!(
+            "[filter \"{name}\"]\n\tclean = {filter}\n\tsmudge = {filter}\n\tprocess = {filter}\n\trequired = true\n"
+        ));
+    }
+    sandbox.write(".git/info/attributes", "*.md filter=x\n*.txt filter=a=b\n");
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.write("todo.txt", "acme todo\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m first-note");
+    std::fs::remove_file(sandbox.acme.join("notes.md")).expect("the file is removed");
+    sandbox.git_ok("checkout -- notes.md");
+    assert_eq!(sandbox.git_ok("diff HEAD --stat"), "");
+    assert_eq!(sandbox.marks(), Vec::<String>::new());
+    // Without the runner, the same repository runs the filter.
+    sandbox.write("notes.md", "changed\n");
+    plain_git(&sandbox.acme, &["add", "-A"]);
+    assert_eq!(sandbox.marks(), ["filter.ran"]);
+}
+
+#[cfg(unix)]
+#[test]
+fn repo_config_follows_includes() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.write(
+        "extra.config",
+        &format!("[filter \"x\"]\n\tclean = {}\n", sandbox.planted("filter")),
+    );
+    sandbox.append_config("[include]\n\tpath = ../extra.config\n");
+    sandbox.write(".git/info/attributes", "* filter=x\n");
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("status");
+    assert_eq!(sandbox.marks(), Vec::<String>::new());
+}
+
+#[cfg(unix)]
+#[test]
+fn repo_config_neutralises_the_filters_of_a_nested_repository() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    let vendor = sandbox.acme.join("vendor");
+    std::fs::create_dir_all(&vendor).expect("vendor is created");
+    plain_git_ok(&vendor, &["init", "-q"]);
+    std::fs::write(vendor.join("lib.md"), "1\n").expect("the file writes");
+    plain_git_ok(&vendor, &["add", "lib.md"]);
+    plain_git_ok(&vendor, &["commit", "-q", "-m", "lib"]);
+    plain_git_ok(
+        &vendor,
+        &["config", "filter.x.clean", &sandbox.planted("nested")],
+    );
+    std::fs::write(vendor.join(".git/info/attributes"), "* filter=x\n")
+        .expect("the attributes write");
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m with-vendor");
+    // The same content written again: git can only tell it is unchanged by
+    // running the filter on it, inside the nested repository.
+    let touch = || std::fs::write(vendor.join("lib.md"), "1\n").expect("the file writes");
+    for call in ["add -A", "status", "diff"] {
+        touch();
+        sandbox.git_ok(call);
+    }
+    assert_eq!(sandbox.marks(), Vec::<String>::new());
+    touch();
+    plain_git(&sandbox.acme, &["status"]);
+    assert_eq!(sandbox.marks(), ["nested.ran"]);
+}
+
+#[cfg(unix)]
+#[test]
+fn repo_config_neutralises_a_planted_ssh_command() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.append_config(&format!(
+        "[core]\n\tsshCommand = {}\n[remote \"origin\"]\n\turl = ssh://git.acme.invalid/acme.git\n",
+        sandbox.planted("ssh")
+    ));
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m first-note");
+    // The remote can't be reached; all that matters is that the planted
+    // command did not stand in for ssh.
+    let push = sandbox
+        .git("push origin main")
+        .expect("push runs and fails");
+    assert_ne!(push.code, Some(0));
+    assert_eq!(sandbox.marks(), Vec::<String>::new());
+    // Without the runner, the push runs the planted command.
+    plain_git(&sandbox.acme, &["push", "origin", "main"]);
+    assert_eq!(sandbox.marks(), ["ssh.ran"]);
+}
+
 #[test]
 fn git_hardening_refuses_an_ext_remote_already_in_the_config() {
     let sandbox = Sandbox::new();

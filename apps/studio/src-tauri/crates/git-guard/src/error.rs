@@ -27,7 +27,8 @@ pub enum GitError {
     FolderNotOpened,
     /// The folder does not exist or cannot be read.
     FolderUnreadable,
-    /// git could not list the config the call would run with.
+    /// git could not list the repository's config or its index, so the
+    /// runner can't know what to neutralise.
     RepositoryUnreadable,
     /// The empty hooks folder has files in it, so it no longer stops hooks.
     HooksFolderNotEmpty,
@@ -103,7 +104,7 @@ impl fmt::Display for GitError {
             GitError::FolderNotOpened => write!(formatter, "the folder is not an opened folder"),
             GitError::FolderUnreadable => write!(formatter, "the folder cannot be read"),
             GitError::RepositoryUnreadable => {
-                write!(formatter, "the repository's config cannot be read")
+                write!(formatter, "the repository's config or index cannot be read")
             }
             GitError::HooksFolderNotEmpty => write!(formatter, "the empty hooks folder has files"),
             GitError::HooksFolderUnreadable => {

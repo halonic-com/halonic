@@ -150,3 +150,25 @@ fn opened_folders_allows_alternates_inside() {
     );
     sandbox.git_ok("status");
 }
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_refuses_a_nested_repository_whose_git_folder_is_outside() {
+    let sandbox = Sandbox::new();
+    let outside = outside_repository(&sandbox);
+    sandbox.init_repository();
+    let vendor = sandbox.temporary.folder("acme/vendor");
+    plain_git_ok(&vendor, &["init", "-q"]);
+    std::fs::write(vendor.join("lib.md"), "1\n").expect("the file writes");
+    plain_git_ok(&vendor, &["add", "lib.md"]);
+    plain_git_ok(&vendor, &["commit", "-q", "-m", "lib"]);
+    sandbox.git_ok("add -A");
+    // Once it is a gitlink, its `.git` is swapped for one that points out.
+    std::fs::remove_dir_all(vendor.join(".git")).expect("the git folder is removed");
+    std::fs::write(
+        vendor.join(".git"),
+        format!("gitdir: {}\n", outside.join(".git").display()),
+    )
+    .expect("the git file writes");
+    assert_eq!(sandbox.git("status"), Err(GitError::FolderNotOpened));
+}

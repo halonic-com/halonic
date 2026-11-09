@@ -7,8 +7,11 @@ use crate::check_args::{CheckedCall, check_args};
 use crate::error::GitError;
 use crate::limited_run::{GitOutput, Limits, run_limited};
 use crate::opened_folders::{OpenedFolders, canonical, for_git};
-use crate::repo_config::{ConfigEntry, check_listing, has_command_entry, parse_listing};
-use crate::repository::{LOCATE_ARGS, Repository, check_located};
+use crate::repo_config::{
+    ConfigEntry, add_repository_filters, blank_filters, check_listing, has_command_entry,
+    neutralise_programs, parse_listing,
+};
+use crate::repository::{LOCATE_ARGS, Repository, check_located, gitlinks};
 
 /// Config the runner gives every call (requirement `git-hardening`), after
 /// `core.hooksPath` and before what neutralises the repository's own config. It is given in the environment (`GIT_CONFIG_COUNT`),
@@ -67,6 +70,14 @@ pub struct GitRunner {
     limits: Limits,
 }
 
+/// What the checks found out about the folder a call runs in.
+struct Checked {
+    /// The repository, or `None` for an `init` outside one.
+    repository: Option<Repository>,
+    /// Config that neutralises what the repository's config names.
+    overrides: Vec<(String, String)>,
+}
+
 impl GitRunner {
     /// A runner for the git program at `git`, an absolute path (see
     /// [`crate::find_git`]). `empty_hooks_folder` is created if it is
@@ -95,8 +106,8 @@ impl GitRunner {
     ///
     /// In order: the arguments against the allow-list, `root` against the
     /// opened folders, the repository's folders against the opened folders,
-    /// and the config listing. Only then does the call run, hardened. One
-    /// time limit covers all of it.
+    /// and the repository's own config, which is then neutralised. Only
+    /// then does the call run, hardened. One time limit covers all of it.
     pub fn run(
         &self,
         folders: &OpenedFolders,
@@ -112,31 +123,31 @@ impl GitRunner {
         let deadline = Instant::now() + timeout;
         let root = folders.check(root)?;
         self.check_hooks_folder_is_empty()?;
-        let repository = match self.check_folder(folders, &root, &call, deadline)? {
-            Ok(repository) => repository,
+        let checked = match self.check_folder(folders, &root, &call, deadline)? {
+            Ok(checked) => checked,
             Err(answer) => return Ok(answer),
         };
         // `init` makes the folder a repository of its own, so git must find
         // it there, not in the folders given by an outer repository.
         let repository = match call.subcommand() {
             "init" => None,
-            _ => repository.as_ref(),
+            _ => checked.repository.as_ref(),
         };
-        let mut command = self.hardened_command(&root, repository, &call, &[]);
+        let mut command = self.hardened_command(&root, repository, &call, &checked.overrides);
         run_limited(&mut command, deadline, self.limits.max_output_bytes)
     }
 
-    /// Checks the folder a call runs in and the repository it belongs to,
-    /// which is `None` for an `init` outside one. Gives git's own answer back
-    /// when the folder is not in a repository: `init` goes ahead, and every
-    /// other call gets that answer, which is what it would have got anyway.
+    /// Checks the folder a call runs in and the repository it belongs to.
+    /// Gives git's own answer back when the folder is not in a repository:
+    /// `init` goes ahead, and every other call gets that answer, which is
+    /// what it would have got anyway.
     fn check_folder(
         &self,
         folders: &OpenedFolders,
         root: &Path,
         call: &CheckedCall,
         deadline: Instant,
-    ) -> Result<Result<Option<Repository>, GitOutput>, GitError> {
+    ) -> Result<Result<Checked, GitOutput>, GitError> {
         let located = self.run_internal(root, None, LOCATE_ARGS, deadline)?;
         if located.code != Some(0) {
             if call.subcommand() != "init" {
@@ -145,11 +156,23 @@ impl GitRunner {
             // Outside a repository only the user's own config applies, but
             // git must still show it took the runner's.
             self.read_config(root, None, deadline)?;
-            return Ok(Ok(None));
+            return Ok(Ok(Checked {
+                repository: None,
+                overrides: Vec::new(),
+            }));
         }
         let repository = check_located(folders, &located.stdout)?;
-        self.read_config(root, Some(&repository), deadline)?;
-        Ok(Ok(Some(repository)))
+        let entries = self.read_config(root, Some(&repository), deadline)?;
+        let mut filters = Vec::new();
+        add_repository_filters(&entries, &mut filters);
+        let mut visited = vec![repository.top.clone()];
+        self.add_nested_filters(folders, &repository, &mut visited, &mut filters, deadline)?;
+        let mut overrides = blank_filters(&filters);
+        overrides.extend(neutralise_programs(&entries));
+        Ok(Ok(Checked {
+            repository: Some(repository),
+            overrides,
+        }))
     }
 
     /// Lists the config git would use, refuses a listing git could not
@@ -168,6 +191,51 @@ impl GitRunner {
             return Err(GitError::GitTooOld);
         }
         Ok(entries)
+    }
+
+    /// Checks every repository nested in `repository` as a gitlink, such as
+    /// a submodule, and adds the filters its own config defines.
+    ///
+    /// git looks into them on its own: `add`, `status` and `diff` run
+    /// `git status` inside each, which reads that repository's config. The
+    /// config the runner gives in the environment goes along, so blanking
+    /// their filters too keeps them from running there.
+    fn add_nested_filters(
+        &self,
+        folders: &OpenedFolders,
+        repository: &Repository,
+        visited: &mut Vec<PathBuf>,
+        filters: &mut Vec<String>,
+        deadline: Instant,
+    ) -> Result<(), GitError> {
+        let index = self.run_internal(
+            &repository.top,
+            Some(repository),
+            &["ls-files", "--stage", "-z"],
+            deadline,
+        )?;
+        check_listing(index.code)?;
+        for path in gitlinks(&index.stdout)? {
+            let folder = repository.top.join(path);
+            // A submodule that isn't checked out has no `.git`, and git
+            // doesn't look into it.
+            if std::fs::symlink_metadata(folder.join(".git")).is_err() {
+                continue;
+            }
+            let located = self.run_internal(&folder, None, LOCATE_ARGS, deadline)?;
+            if located.code != Some(0) {
+                continue;
+            }
+            let nested = check_located(folders, &located.stdout)?;
+            if visited.contains(&nested.top) {
+                continue;
+            }
+            visited.push(nested.top.clone());
+            let entries = self.read_config(&nested.top, Some(&nested), deadline)?;
+            add_repository_filters(&entries, filters);
+            self.add_nested_filters(folders, &nested, visited, filters, deadline)?;
+        }
+        Ok(())
     }
 
     /// Runs a call of the runner's own, which skips the allow-list.

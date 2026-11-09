@@ -93,7 +93,9 @@ export interface VcsCommit {
  * - points `core.hooksPath` at an empty folder and passes
  *   `-c core.fsmonitor=false` (hooks and fsmonitor);
  * - blanks the `clean`, `smudge` and `process` commands of every
- *   `filter.<name>` driver the repository's config has (filters);
+ *   `filter.<name>` driver the repository's config has, and the config of
+ *   every repository nested in it as a gitlink, which `add`, `status` and
+ *   `diff` look into (filters);
  * - diffs and logs with `--no-ext-diff --no-textconv` (`diff.external`,
  *   `diff.<name>.command` and `diff.<name>.textconv`);
  * - passes `-c commit.gpgSign=false -c push.gpgSign=false

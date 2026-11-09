@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-192, HAL-1508, HAL-1930
 
-When the shell runs git, it shall run it only in a folder that, after the same canonicalisation as the opened folders, lies inside a folder the user opened, compared by path part, and only in a repository whose top folder, git folder, common folder and every alternate object folder lie inside an opened folder too. It shall then run git with that git folder and top folder given explicitly. If no folder has been opened, if the folder is missing, or if `..`, a link, a `.git` file, a `commondir` file or an `alternates` file leads outside, then the shell shall refuse the call with `folder_not_opened` or `folder_unreadable`.
+When the shell runs git, it shall run it only in a folder that, after the same canonicalisation as the opened folders, lies inside a folder the user opened, compared by path part, and only in a repository whose top folder, git folder, common folder and every alternate object folder lie inside an opened folder too, as do those of every repository nested in it as a gitlink. It shall then run git with that git folder and top folder given explicitly. If no folder has been opened, if the folder is missing, or if `..`, a link, a `.git` file, a `commondir` file or an `alternates` file leads outside, then the shell shall refuse the call with `folder_not_opened` or `folder_unreadable`.
 
 ## Examples
 

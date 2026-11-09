@@ -7,9 +7,9 @@
 //! git itself runs within a time and an output limit, and is stopped with
 //! every program it started when it passes one (`git-process`).
 //!
-//! [`GitRunner`] runs git hardened every time: no hooks, no pager, editor,
-//! signing or diff program, a clean environment and only https and ssh
-//! (`git-hardening`), and only in folders the user opened,
+//! [`GitRunner`] runs git hardened every time: no hooks, no program the
+//! repository's config names, a clean environment and only https and ssh
+//! (`git-hardening`, `repo-config`), and only in folders the user opened,
 //! with every folder of the repository inside them ([`OpenedFolders`],
 //! `opened-folders`).
 //!
