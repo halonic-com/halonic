@@ -1,7 +1,12 @@
 import type { PartSection } from "../state-table.tsx";
 import { buttonSection } from "./button.tsx";
+import { cardSection } from "./card.tsx";
+import { copyButtonSection } from "./copy-button.tsx";
+import { externalLinkSection } from "./external-link.tsx";
 import { fieldSection } from "./field.tsx";
+import { kbdSection } from "./kbd.tsx";
 import { listSection } from "./list.tsx";
+import { statusChipSection } from "./status-chip.tsx";
 import { tabsSection } from "./tabs.tsx";
 
 /**
@@ -13,4 +18,9 @@ export const SECTIONS: readonly PartSection[] = [
   fieldSection,
   tabsSection,
   listSection,
+  cardSection,
+  statusChipSection,
+  kbdSection,
+  copyButtonSection,
+  externalLinkSection,
 ];
