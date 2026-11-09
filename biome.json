@@ -14,7 +14,9 @@
       "**",
       "!**/generated",
       "!**/fixtures",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!.changeset/**/*.md",
+      ".changeset/README.md"
     ]
   }
 }
