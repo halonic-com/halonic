@@ -29,6 +29,19 @@ verifies("check.guard-golden-files", () => {
     expect(await errorsOf({ base: {}, head, checks })).toHaveLength(1);
   });
 
+  test("treats a public API's spec files as golden", async () => {
+    const head = {
+      "spec/agent.schema.json": "{}\n",
+      "spec/released/0.4.0/agent.schema.json": "{}\n",
+    };
+    expect(await errorsOf({ base: {}, head, checks })).toHaveLength(2);
+  });
+
+  test("leaves other files under a spec folder alone", async () => {
+    const head = { "spec/notes.md": "notes\n", "src/spec/agent.ts": "export {};\n" };
+    expect(await errorsOf({ base: {}, head, checks })).toEqual([]);
+  });
+
   test("fails when an inline snapshot changes", async () => {
     const snapshot = (value: string): Record<string, string> => ({
       "src/timer.test.ts": `test("a", () => { expect(1).toMatchInlineSnapshot(\`${value}\`); });\n`,

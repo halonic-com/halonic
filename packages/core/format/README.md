@@ -66,5 +66,12 @@ don't make the file fail.
 | `integration`  | `integration.yaml`, next to the integration's code (not in a workspace) |
 
 Most kinds can also sit inside a hub folder; `fileKinds[kind].places` has the
-exact places. Each kind's folder in `src/kinds/` holds its schema, its tests and
-a golden JSON Schema. Checks between files belong to the loader, not here.
+exact places. Each kind's folder in `src/kinds/` holds its schema and its tests.
+Checks between files belong to the loader, not here.
+
+## Spec files
+
+`spec/<kind folder>.schema.json` (for example `spec/workflow-test.schema.json`) is each kind's JSON Schema (2020-12), as `jsonSchemaOf` emits it. These
+files are the source of truth for anyone outside this repo who reads or writes workspace files.
+`src/json-schema.test.ts` fails when the code and a spec file disagree. To update the files on
+purpose after a schema change, run the tests with `SPEC_WRITE=1`, then review the diff.

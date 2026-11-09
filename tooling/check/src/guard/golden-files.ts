@@ -5,10 +5,19 @@ import { readTestFileFacts } from "./test-file-facts.ts";
 
 /**
  * Golden files and snapshots (plan 9.3, 9.6): files in a `golden/` or
- * `__snapshots__/` folder, and `.snap` files.
+ * `__snapshots__/` folder, and `.snap` files. A public API's spec files, the
+ * `.schema.json` files under a `spec/` folder, count too (HAL-1664): changing
+ * one changes what outsiders rely on.
  */
 export function isGoldenFile(file: string): boolean {
-  return /(?:^|\/)(?:golden|__snapshots__)\//.test(file) || file.endsWith(".snap");
+  return (
+    /(?:^|\/)(?:golden|__snapshots__)\//.test(file) || file.endsWith(".snap") || isSpecFile(file)
+  );
+}
+
+/** A spec file: a JSON Schema anywhere under a `spec/` folder. */
+function isSpecFile(file: string): boolean {
+  return /(?:^|\/)spec\/(?:[^/]+\/)*[^/]+\.schema\.json$/.test(file);
 }
 
 /**
