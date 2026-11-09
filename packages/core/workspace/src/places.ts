@@ -1,5 +1,8 @@
 import { type FilePlace, fileKinds, type KindName, kindNames } from "@halonicjs/format";
 
+/** Where a workspace's own settings live; every workspace has one. */
+export const settingsPath = "workspace.yaml";
+
 /** What a workspace path is, from where it sits: its kind, its hub and the id its place gives. */
 export interface PlaceMatch {
   readonly kind: KindName;

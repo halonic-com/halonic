@@ -8,7 +8,6 @@ export {
   type InitWorkspaceFile,
   type InitWorkspaceOptions,
   initWorkspace,
-  settingsPath,
 } from "./init-workspace.ts";
 export {
   filesOf,
@@ -18,7 +17,7 @@ export {
   loadWorkspace,
   type WorkspaceIssue,
 } from "./load-workspace.ts";
-export { type PlaceMatch, placeOf } from "./places.ts";
+export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
 export { type ChangedConnector, type TrustChanges, trustChanges } from "./trust-changes.ts";
 export {
   type ConnectorTrustContent,

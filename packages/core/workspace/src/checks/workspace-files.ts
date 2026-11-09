@@ -1,15 +1,13 @@
 import type { LoadedFile, WorkspaceIssue } from "../load-workspace.ts";
+import { settingsPath } from "../places.ts";
 import type { CheckContext } from "./check-context.ts";
-
-/** Where a workspace's own settings live; every workspace has one. */
-const workspaceFile = "workspace.yaml";
 
 /** A workspace without a `workspace.yaml`. A file there that didn't parse has its own issue instead. */
 export function checkWorkspaceFile(context: CheckContext): WorkspaceIssue[] {
   if (context.hasReadKind("workspace")) {
     return [];
   }
-  return [context.error(workspaceFile, [], "missing-workspace-file", `Missing ${workspaceFile}`)];
+  return [context.error(settingsPath, [], "missing-workspace-file", `Missing ${settingsPath}`)];
 }
 
 /** A workflow test must test a workflow of its own hub (or of the root, for a test at the root). */

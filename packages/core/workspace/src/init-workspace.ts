@@ -2,6 +2,7 @@ import { type FileProblem, parseFile } from "@halonicjs/format";
 import type { DefinitionStore } from "@halonicjs/ports";
 import { err, ok, type Result, slugify } from "@halonicjs/std";
 import { writeYamlFile } from "@halonicjs/yaml";
+import { settingsPath } from "./places.ts";
 
 /** What a new workspace is called. */
 export interface InitWorkspaceOptions {
@@ -36,9 +37,6 @@ export type InitWorkspaceError =
   /** The settings the name or id give don't pass the workspace kind's checks, such as an id in capitals. */
   | { readonly kind: "invalid_settings"; readonly problems: readonly FileProblem[] };
 
-/** The settings file of a workspace. */
-export const settingsPath = "workspace.yaml";
-
 /** The file that keeps git from taking in files people keep secrets in. */
 export const gitIgnorePath = ".gitignore";
 
@@ -59,6 +57,12 @@ export const gitIgnoreLines: readonly string[] = [".env", ".env.*"];
  * anything is written. A store that already has a `workspace.yaml` is left
  * alone. The `.gitignore` is written first and `workspace.yaml` last, so if a
  * write fails the store is not yet a workspace and the call can be repeated.
+ *
+ * The check for an existing `workspace.yaml` and the writes that follow are
+ * not one step: if something else writes the store at the same time, such as
+ * a Studio editor on a live store, its `workspace.yaml` can be replaced. The
+ * CLI runs it alone on a new folder; a caller with other writers must keep
+ * them out while it runs.
  *
  * @param store - where the workspace files go, such as an empty folder
  * @param options - the workspace's name, and its id if it isn't to come from the name
