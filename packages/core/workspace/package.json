@@ -2,7 +2,7 @@
   "name": "@halonicjs/workspace",
   "private": true,
   "type": "module",
-  "description": "Loads one workspace through DefinitionSource: each file parsed by the kind its place gives, with every issue's file, key path and line, and its trust content for the trust gate.",
+  "description": "Loads one workspace through DefinitionSource: each file parsed by the kind its place gives, with every issue's file, key path and line, its trust content for the trust gate, and a new workspace laid out through DefinitionStore.",
   "exports": {
     ".": "./src/index.ts"
   },

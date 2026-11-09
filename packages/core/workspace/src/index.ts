@@ -1,6 +1,16 @@
 // The public API of @halonicjs/workspace. Internal code imports by relative path.
 
 export {
+  gitIgnoreLines,
+  gitIgnorePath,
+  type InitializedWorkspace,
+  type InitWorkspaceError,
+  type InitWorkspaceFile,
+  type InitWorkspaceOptions,
+  initWorkspace,
+  settingsPath,
+} from "./init-workspace.ts";
+export {
   filesOf,
   type LoadedFile,
   type LoadedFileOf,

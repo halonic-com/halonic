@@ -4,7 +4,7 @@ Owner: elena · Layer: core · Read the root `AGENTS.md` first; this file adds l
 
 ## Scope
 
-Loads one workspace through DefinitionSource into parsed files and issues with file, key path and line, and builds its trust content: what decides which programs run and where they talk to.
+Loads one workspace through DefinitionSource into parsed files and issues with file, key path and line; builds its trust content, what decides which programs run and where they talk to; and lays out a new workspace through DefinitionStore.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
