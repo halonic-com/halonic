@@ -1,5 +1,9 @@
-import type { DefinitionStore } from "@halonicjs/ports";
-import { checkPublicWorkspacePath, checkWorkspacePath, isPrivatePath } from "./paths.ts";
+import {
+  checkPublicWorkspacePath,
+  checkWorkspacePath,
+  type DefinitionStore,
+  isPrivateWorkspacePath,
+} from "@halonicjs/ports";
 import { sha256Hex } from "./sha256.ts";
 
 /**
@@ -26,7 +30,7 @@ export class MemoryDefinitionStore implements DefinitionStore {
   }
 
   async list(dir?: string): Promise<string[]> {
-    const paths = [...this.#files.keys()].filter((path) => !isPrivatePath(path));
+    const paths = [...this.#files.keys()].filter((path) => !isPrivateWorkspacePath(path));
     if (dir === undefined) {
       return paths.sort();
     }
