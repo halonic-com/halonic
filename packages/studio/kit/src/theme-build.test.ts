@@ -23,6 +23,29 @@ describe("theme.css built by Tailwind: focus", () => {
     expect(rules).toContainEqual([".focus-field:has([data-field-text]:focus)"]);
     expect(rules).toContainEqual([".focus-field-danger:has([data-field-text]:focus)"]);
   });
+
+  it("turns every focus utility's outline Highlight in high contrast (specs 23.5)", async () => {
+    const css = await buildCss([
+      "focus-ring",
+      "focus-ring-inset",
+      "focus-field",
+      "focus-field-danger",
+    ]);
+    for (const head of [
+      ".focus-ring:focus-visible",
+      ".focus-ring-inset:focus-visible",
+      ".focus-field:has([data-field-text]:focus)",
+      ".focus-field-danger:has([data-field-text]:focus)",
+    ]) {
+      const rule = css.slice(
+        css.indexOf(`${head} {`),
+        css.indexOf("\n  }", css.indexOf(`${head} {`)),
+      );
+      expect(rule).toMatch(
+        /@media \(forced-colors: active\) \{\s*outline(-color)?: [^;]*Highlight/,
+      );
+    }
+  });
 });
 
 describe("theme.css built by Tailwind: on a muted fill", () => {

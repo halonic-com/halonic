@@ -33,9 +33,13 @@ export async function buildCss(
   return compiler.build([...classes]);
 }
 
-/** The selectors of every innermost rule, `selectors { declarations }`, in the order written. */
+/**
+ * The selectors of every style rule, in the order written. At-rules (`@media`, `@layer`) are
+ * left out. A rule may hold a nested at-rule, as a focus utility does with its forced-colours
+ * outline; Tailwind leaves that nesting in, so the rule still counts.
+ */
 export function ruleSelectors(css: string): string[][] {
-  return [...css.matchAll(/([^{}@;]+)\{[^{}]*\}/g)].map((match) =>
+  return [...css.matchAll(/(?:^|[{};])\s*([^{}@;]+)\{/g)].map((match) =>
     (match[1] ?? "").split(",").map((selector) => selector.trim()),
   );
 }
