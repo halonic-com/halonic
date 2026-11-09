@@ -312,7 +312,7 @@ jobs:
     # runs pull-request code that could upload an artifact with the same
     # name, but no other job can set this job's outputs.
     outputs:
-      sha: ${{ steps.merge-base.outputs.sha }}
+      sha: ${{ steps.install.outputs.sha }}
       results-id: ${{ steps.upload.outputs.artifact-id }}
       results-sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
@@ -331,8 +331,37 @@ jobs:
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: false
-      - name: Install the merge base's dependencies
-        run: pnpm install --frozen-lockfile
+      # If the merge base's own lockfile is broken, every pull request would
+      # fail here, the one that repairs it included. Only on pnpm's lockfile
+      # errors, walk back along main's first-parent history to the newest
+      # commit that installs and use it as the baseline (at most 20 commits
+      # back, then fail). The baseline is always a commit on main, so no
+      # pull-request code or lockfile runs here, and the guard installs and
+      # compares against exactly this commit. Network and registry errors
+      # still fail the job.
+      - id: install
+        name: Install the merge base's dependencies
+        run: |
+          set +e
+          tried=0
+          for candidate in $(git rev-list --first-parent -n 21 HEAD); do
+            git checkout --quiet --force --detach "$candidate"
+            pnpm install --frozen-lockfile 2>&1 | tee "$RUNNER_TEMP/install.log"
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then
+              if [ "$tried" -gt 0 ]; then
+                echo "::warning title=baseline-walked-back::The merge base's lockfile doesn't install. Using ${candidate}, $tried commit(s) back on main, as the baseline."
+              fi
+              echo "sha=$candidate" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if ! grep -qE 'ERR_PNPM_[A-Z_]*LOCKFILE|OUTDATED_LOCKFILE' "$RUNNER_TEMP/install.log"; then
+              exit "$status"
+            fi
+            tried=$((tried + 1))
+          done
+          echo "::error::No commit within 20 of the merge base on main installs. Fix main first (docs/guides/broken-main.md)."
+          exit 1
       - name: Run the merge base's tests without reading any cache
         run: pnpm exec turbo run test --force --continue --output-logs=errors-only
       # Runs even when a test failed: the guard reports a missing result file.
