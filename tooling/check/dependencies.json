@@ -52,6 +52,18 @@
       ],
       "reason": "Lets Stryker run each package's Vitest tests."
     },
+    "@tailwindcss/vite": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/studio-*",
+        "@halonicjs/app-studio"
+      ],
+      "layers": [
+        "studio",
+        "apps"
+      ],
+      "reason": "Tailwind's Vite plugin: compiles the kit's Tailwind classes and theme.css for the kit's states page now and the Studio app later. Build-time only, never in the kit's dependencies or exports. Approved by Liam on HAL-1571."
+    },
     "@tauri-apps/cli": {
       "category": "dev-tooling",
       "allowedIn": [
@@ -261,12 +273,14 @@
     "vite": {
       "category": "dev-tooling",
       "allowedIn": [
+        "@halonicjs/studio-*",
         "@halonicjs/app-studio"
       ],
       "layers": [
+        "studio",
         "apps"
       ],
-      "reason": "The Studio's build tool (plan 7.2). For now it builds only the Android connect page into its own folder (HAL-1253, HAL-1375). Already in the lockfile through Vitest, at the same version."
+      "reason": "The Studio's build tool (plan 7.2). It builds the Android connect page into its own folder (HAL-1253, HAL-1375) and serves the kit's states page (HAL-1563, approved by Liam on HAL-1571). Already in the lockfile through Vitest, at the same version."
     },
     "vitest": {
       "category": "dev-tooling",

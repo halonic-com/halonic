@@ -19,6 +19,7 @@ catalog:
   "@changesets/cli": ^3.0.3
   "@stryker-mutator/core": ^10.1.1
   "@stryker-mutator/vitest-runner": ^10.1.1
+  "@tailwindcss/vite": ^4.3.4
   "@tauri-apps/cli": 2.12.4
   "@types/node": ^26.6.6
   "@types/react": ^19.3.0

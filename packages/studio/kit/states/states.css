@@ -1,0 +1,30 @@
+/*
+ * The states page's own CSS entry. It builds the kit's real classes from theme.css, the same way
+ * the app does, and adds one thing the app never gets: forced states.
+ *
+ * A cell's wrapper with data-force-state="hover", "active" or "focus" (or an element inside it
+ * that carries the attribute itself) turns on the parts' own hover:, active: and focus utilities.
+ * These variants replace Tailwind's for this page only and keep their place in its output, so a
+ * forced cell gets the same rules, at the same specificity, as a real hover or focus. Tailwind's
+ * hover: is also inside (hover: hover); here it isn't, so the forced row shows on any device.
+ */
+
+@import "tailwindcss";
+@import "../src/theme.css";
+
+@source "../src";
+@source "../states";
+@source not "../**/*.md";
+
+@custom-variant hover (&:hover, [data-force-state="hover"] &, &[data-force-state="hover"]);
+@custom-variant active (&:active, [data-force-state="active"] &, &[data-force-state="active"]);
+@custom-variant focus-visible (
+  &:focus-visible,
+  [data-force-state="focus"] &,
+  &[data-force-state="focus"]
+);
+@custom-variant field-focus (
+  &:has([data-field-text]:focus),
+  [data-force-state="focus"] &,
+  &[data-force-state="focus"]
+);
