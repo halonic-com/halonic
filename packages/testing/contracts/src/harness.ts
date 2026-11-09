@@ -5,6 +5,7 @@ import {
   type HarnessEvent,
   type HarnessRun,
   type HarnessTask,
+  type SandboxFence,
   type SandboxProfile,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -53,15 +54,19 @@ function newBridge(): HarnessBridge {
   return { url: "http://127.0.0.1:4100", token: `contract-token-${crypto.randomUUID()}` };
 }
 
-/** Opens a fake session the way the engine opens a real one: with the harness's variables added. */
+/**
+ * Opens a fake session the way the engine opens a real one: with the
+ * harness's variables added, and `fence` as its fence proof.
+ */
 function openSession(
   harness: Harness,
   bridge: HarnessBridge,
   program: FakeProgram,
+  fence: SandboxFence = { state: "fenced" },
 ): FakeSandboxSession {
   const added = harness.environment?.(bridge, engineProfile) ?? {};
   const profile = { ...engineProfile, env: addHarnessEnvironment(engineProfile.env, added) };
-  return new FakeSandboxSession({ profile, program });
+  return new FakeSandboxSession({ profile, program, fence });
 }
 
 /** How a stream ended: by itself, or with `error`. */
@@ -88,10 +93,25 @@ function taskFinishes(events: HarnessEvent[]): HarnessEvent[] {
 }
 
 /** Everything an error shows: its message, its stack and its causes. */
-function errorText(error: unknown): string {
-  if (!(error instanceof Error)) return String(error);
-  const cause = error.cause === undefined ? "" : `\n${errorText(error.cause)}`;
+function errorText(error: Error): string {
+  const cause = error.cause === undefined ? "" : `\n${shownText(error.cause)}`;
   return `${error.name}: ${error.message}\n${error.stack}${cause}`;
+}
+
+/**
+ * Everything a value shows, walking into its arrays and objects. An `Error`
+ * shows its {@link errorText}: `JSON.stringify` would show it as `{}` and
+ * hide what it holds.
+ */
+function shownText(value: unknown): string {
+  if (value instanceof Error) return errorText(value);
+  if (Array.isArray(value)) return value.map(shownText).join("\n");
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value)
+      .map(([key, item]) => `${key}: ${shownText(item)}`)
+      .join("\n");
+  }
+  return String(value);
 }
 
 /** Checks the stream ended with an `Error`, and without the task agent's `agent.finished`. */
@@ -103,8 +123,43 @@ function expectEndedWithError(end: StreamEnd): void {
 
 /** Checks the bridge token appears in no event and not in the error, if the stream ended with one. */
 function expectNoToken(end: StreamEnd, token: string): void {
-  expect(JSON.stringify(end.events)).not.toContain(token);
-  expect(errorText(end.error)).not.toContain(token);
+  expect(shownText(end.events)).not.toContain(token);
+  expect(shownText(end.error)).not.toContain(token);
+}
+
+/** Checks `subject` started no program in `session`, and its stream ended with an error. */
+async function expectCantStart(
+  subject: Harness,
+  session: FakeSandboxSession,
+  bridge: HarnessBridge,
+): Promise<void> {
+  const end = await readToEnd(subject.start(task, session, bridge));
+  expect(session.started).toEqual([]);
+  expectEndedWithError(end);
+  expectNoToken(end, bridge.token);
+}
+
+/** How a run's stream can end. */
+type RunEnding = "finished" | "failed" | "cancelled";
+
+/** Starts a run of the harness under test, brings it to `ending` and reads its stream to the end. */
+async function endedRun(harness: HarnessContractHarness, ending: RunEnding): Promise<HarnessRun> {
+  const subject = await harness.make();
+  const bridge = newBridge();
+  const programs: Record<RunEnding, FakeProgram> = {
+    finished: harness.finishing,
+    failed: harness.failing("The provider refused the key"),
+    cancelled: idleProgram,
+  };
+  const session = openSession(subject, bridge, programs[ending]);
+  const run = subject.start(task, session, bridge);
+  const reading = readToEnd(run);
+  if (ending === "cancelled") {
+    await session.whenStarted();
+    await run.cancel();
+  }
+  await reading;
+  return run;
 }
 
 /**
@@ -131,15 +186,15 @@ export function harnessContract(name: string, harness: HarnessContractHarness): 
         expectNoToken(end, bridge.token);
       });
 
-      it("refuses an answer once the run has ended, and cancels it without an error", async () => {
-        const subject = await harness.make();
-        const bridge = newBridge();
-        const run = subject.start(task, openSession(subject, bridge, harness.finishing), bridge);
-        await readToEnd(run);
+      it.each<RunEnding>(["finished", "failed", "cancelled"])(
+        "refuses an answer once the run has ended (%s), and cancels it without an error",
+        async (ending) => {
+          const run = await endedRun(harness, ending);
 
-        await expect(run.send({ type: "answer", text: "One more, please." })).rejects.toThrow();
-        await expect(run.cancel()).resolves.toBeUndefined();
-      });
+          await expect(run.send({ type: "answer", text: "One more, please." })).rejects.toThrow();
+          await expect(run.cancel()).resolves.toBeUndefined();
+        },
+      );
 
       it("ends a failed run with an error and no agent.finished, and keeps the token out of it", async () => {
         const subject = await harness.make();
@@ -168,16 +223,22 @@ export function harnessContract(name: string, harness: HarnessContractHarness): 
         expectNoToken(end, bridge.token);
       });
 
-      it("returns at once when its program can't start, and ends the stream with an error", async () => {
+      it("returns at once when its session is closed, and ends the stream with an error", async () => {
         const subject = await harness.make();
         const bridge = newBridge();
         const session = openSession(subject, bridge, harness.finishing);
         await session.close();
 
-        const run = subject.start(task, session, bridge);
-        const end = await readToEnd(run);
-        expectEndedWithError(end);
-        expectNoToken(end, bridge.token);
+        await expectCantStart(subject, session, bridge);
+      });
+
+      it("returns at once when its session's fence isn't proven, and ends the stream with an error", async () => {
+        const subject = await harness.make();
+        const bridge = newBridge();
+        const fence: SandboxFence = { state: "not-fenced", reason: "the canary file was readable" };
+        const session = openSession(subject, bridge, harness.finishing, fence);
+
+        await expectCantStart(subject, session, bridge);
       });
     });
   });

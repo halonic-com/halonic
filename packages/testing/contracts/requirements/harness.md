@@ -17,6 +17,12 @@ Where an adapter implements `Harness`, its run's stream shall end with exactly o
 - Given a harness whose program runs until stopped,
   when `cancel` resolves,
   then the program has stopped and the stream has ended with an error.
-- Given a session that is already closed,
+- Given a session that is already closed, or whose fence isn't proven,
   when the harness starts on it,
-  then `start` returns at once and the stream ends with an error.
+  then `start` returns at once, no program starts and the stream ends with an error.
+- Given a run that has finished, failed or been cancelled,
+  when a person sends an answer,
+  then `send` refuses it, and `cancel` does nothing.
+- Given a harness that puts an `Error` holding the bridge token into an event,
+  when the suite checks the events,
+  then it finds the token, though `JSON.stringify` would show the `Error` as `{}`.
