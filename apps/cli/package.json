@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {

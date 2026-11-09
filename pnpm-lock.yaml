@@ -262,6 +262,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../packages/core/ports
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std

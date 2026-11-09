@@ -1,4 +1,4 @@
-import { errorKindOf } from "@halonicjs/std";
+import { errorKindOf, type SecretScrubber } from "@halonicjs/std";
 import { UsageError } from "./command.ts";
 
 /**
@@ -13,12 +13,20 @@ const internalLines = [
 /** How deep `--debug` follows `cause`, so a cause that points back at itself still ends. */
 const maxCauses = 10;
 
+/** Replaces the secrets the CLI loaded in a whole text. */
+type Scrub = (text: string) => string;
+
 /** What {@link printError} knows besides the error itself. */
 export interface PrintErrorContext {
   /** The command's usage line, shown as the fix of a {@link UsageError}. */
   readonly usage?: string;
   /** `--debug` was given: print the error's own text, causes and stack after its lines. */
   readonly debug?: boolean;
+  /**
+   * Replaces the secrets the CLI loaded in every line printed. Optional for
+   * tests; `runCli` always passes the one its `Secrets` feed.
+   */
+  readonly scrubber?: SecretScrubber;
 }
 
 /**
@@ -35,6 +43,10 @@ export interface PrintErrorContext {
  * With `--debug`, every error, of any kind, is followed by its own message,
  * its `cause` chain and its stack, for a bug report.
  *
+ * Every text is scrubbed of the secrets the CLI loaded, as a whole and
+ * before it is split into lines, so a secret that holds a line break, such
+ * as a PEM key, is still found (cli-output 1.3, rule 5).
+ *
  * @param error - anything a command threw
  * @param print - writes one line, to stderr
  */
@@ -43,32 +55,34 @@ export function printError(
   print: (line: string) => void,
   context: PrintErrorContext = {},
 ): void {
-  for (const line of errorLines(error, context)) {
+  const scrub: Scrub = (text) => context.scrubber?.scrub(text) ?? text;
+  for (const line of errorLines(error, context, scrub)) {
     print(line);
   }
   if (context.debug === true) {
-    for (const line of debugLines(error)) {
+    for (const line of debugLines(error, scrub)) {
       print(line);
     }
   }
 }
 
 /** The ✕ line and, when there is one, the fix line. */
-function errorLines(error: unknown, context: PrintErrorContext): readonly string[] {
+function errorLines(error: unknown, context: PrintErrorContext, scrub: Scrub): readonly string[] {
   if (errorKindOf(error) === "internal") {
     return internalLines;
   }
+  const message = scrub(messageOf(error));
   const fix = fixOf(error) ?? (error instanceof UsageError ? context.usage : undefined);
-  return fix === undefined ? [`✕ ${messageOf(error)}`] : [`✕ ${messageOf(error)}`, `  ${fix}`];
+  return fix === undefined ? [`✕ ${message}`] : [`✕ ${message}`, `  ${scrub(fix)}`];
 }
 
 /**
  * The error's own text for `--debug`: its stack (or its message when it has
  * none), then each error in its `cause` chain, starting with "Caused by:".
  */
-function debugLines(error: unknown): string[] {
+function debugLines(error: unknown, scrub: Scrub): string[] {
   return causeChain(error).flatMap((value, index) => {
-    const [first = "", ...rest] = ownText(value).split(/\r?\n/);
+    const [first = "", ...rest] = scrub(ownText(value)).split(/\r?\n/);
     return [index === 0 ? first : `Caused by: ${first}`, ...rest];
   });
 }

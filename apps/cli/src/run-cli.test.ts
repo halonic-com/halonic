@@ -1,3 +1,5 @@
+import type { Secrets } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type CliCommand, UsageError } from "./command.ts";
@@ -239,5 +241,42 @@ verifies("cli.help-exit-codes", () => {
 
   it("has words for every exit code, in code order", () => {
     expect(exitCodeMeanings.map(({ code }) => code)).toEqual(Object.values(exitCode));
+  });
+});
+
+verifies("cli.print-error", () => {
+  // A made-up value, not shaped like any real key.
+  const apiKey = "made-up-key-\nsecond-line-42";
+
+  /** A command that loads the key and fails with an error quoting it, as a provider call might. */
+  const callCommand: CliCommand = {
+    name: "call",
+    usage: "",
+    summary: "Call a provider with the key.",
+    options: {},
+    async run(_input, _io, context) {
+      const key = await context.secrets.get("provider-key");
+      const failure = new KindedError("unavailable", `The provider refused ${key}.`, {
+        fix: `Check ${encodeURIComponent(key ?? "")}, then run again.`,
+      });
+      failure.stack = `KindedError: The provider refused ${key}.\n    at call (call.ts:1:1)`;
+      throw failure;
+    },
+  };
+
+  it("scrubs a secret a command loaded from every line it prints, with --debug", async () => {
+    const io = captureIo("/work");
+    const secrets: Secrets = {
+      get: async (name) => (name === "provider-key" ? apiKey : null),
+    };
+    expect(await runCli(["call", "--debug"], io, [callCommand], secrets)).toBe(
+      exitCode.unavailable,
+    );
+    expect(io.stderr).toEqual([
+      "✕ The provider refused [secret removed].",
+      "  Check [secret removed], then run again.",
+      "KindedError: The provider refused [secret removed].",
+      "    at call (call.ts:1:1)",
+    ]);
   });
 });

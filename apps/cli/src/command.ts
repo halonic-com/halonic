@@ -1,3 +1,4 @@
+import type { Secrets } from "@halonicjs/ports";
 import type { ExitCode } from "./exit-code.ts";
 
 /** Where a command writes and which folder it works from, passed in so tests can capture both. */
@@ -8,6 +9,17 @@ export interface CliIo {
   out(line: string): void;
   /** Writes one line of error output. */
   err(line: string): void;
+}
+
+/** What `runCli` hands a command besides its input and io. */
+export interface CommandContext {
+  /**
+   * The secrets store, wrapped by `runCli` so every value it hands out is
+   * scrubbed from the errors the CLI prints. Pass this one on to anything
+   * the command builds (the engine, providers, integrations), never a raw
+   * adapter.
+   */
+  readonly secrets: Secrets;
 }
 
 /** One option a command accepts, such as `--hub <id>`. */
@@ -55,7 +67,7 @@ export interface CliCommand {
    *   command with the exit code of its kind (1 when it has none), and
    *   `printError` prints it; the command never prints an error itself.
    */
-  run(input: CommandInput, io: CliIo): Promise<ExitCode>;
+  run(input: CommandInput, io: CliIo, context: CommandContext): Promise<ExitCode>;
 }
 
 /**

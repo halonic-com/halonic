@@ -36,3 +36,7 @@ everything else is internal.
 - Global options such as `--debug` are read once, in `runCli` (`src/global-options.ts`), and
   taken out of the command line before a command sees it. No command reads `--debug`: only
   `printError` uses it, to add the error's own text, causes and stack.
+- Anything the CLI builds that takes `Secrets` (commands, the engine, providers, integrations)
+  gets the instance `runCli` wrapped with `rememberedSecrets`, from the command's
+  `context.secrets`, never a raw adapter. That wrapper tells `printError`'s scrubber every
+  value it hands out; a raw adapter would let its secrets reach the screen unscrubbed.

@@ -1,12 +1,14 @@
-import { errorKindOf } from "@halonicjs/std";
+import type { Secrets } from "@halonicjs/ports";
+import { errorKindOf, SecretScrubber } from "@halonicjs/std";
 import { closestName } from "./closest-name.ts";
-import { type CliCommand, type CliIo, UsageError } from "./command.ts";
+import { type CliCommand, type CliIo, type CommandContext, UsageError } from "./command.ts";
 import { type ExitCode, exitCode } from "./exit-code.ts";
 import { exitCodeFor } from "./exit-code-for.ts";
-import { type GlobalOptions, helpFlags, readGlobalOptions } from "./global-options.ts";
+import { helpFlags, readGlobalOptions } from "./global-options.ts";
 import { commandHelp, overallHelp, usageLine } from "./help.ts";
-import { printError } from "./print-error.ts";
+import { type PrintErrorContext, printError } from "./print-error.ts";
 import { readInput } from "./read-input.ts";
+import { noSecrets, rememberedSecrets } from "./remembered-secrets.ts";
 
 /**
  * Runs one `halonic` command line and returns the exit code. Output goes
@@ -15,11 +17,15 @@ import { readInput } from "./read-input.ts";
  * @param args - the command line after `halonic`, with global options such
  *   as `--debug` anywhere in it
  * @param commands - the commands to choose from; `main.ts` passes the generated list
+ * @param secrets - the raw secrets store. It is wrapped here, once, so every
+ *   value a command loads is scrubbed from the errors the CLI prints; no
+ *   command sees this one.
  */
 export async function runCli(
   args: readonly string[],
   io: CliIo,
   commands: readonly CliCommand[],
+  secrets: Secrets = noSecrets,
 ): Promise<ExitCode> {
   const { options, args: commandLine } = readGlobalOptions(args);
   const [name, ...rest] = commandLine;
@@ -36,20 +42,27 @@ export async function runCli(
     printLines(io.out, commandHelp(command));
     return exitCode.ok;
   }
-  return runCommand(command, rest, io, options);
+  const scrubber = new SecretScrubber();
+  const context: CommandContext = { secrets: rememberedSecrets(secrets, scrubber) };
+  return runCommand(command, rest, io, context, {
+    usage: usageLine(command),
+    debug: options.debug,
+    scrubber,
+  });
 }
 
 async function runCommand(
   command: CliCommand,
   args: readonly string[],
   io: CliIo,
-  options: GlobalOptions,
+  context: CommandContext,
+  printContext: PrintErrorContext,
 ): Promise<ExitCode> {
   try {
-    return await command.run(readInput(command, args), io);
+    return await command.run(readInput(command, args), io, context);
   } catch (error) {
     // The CLI's one top-level catch: every error a command throws ends here.
-    printError(error, io.err, { usage: usageLine(command), debug: options.debug });
+    printError(error, io.err, printContext);
     return exitCodeFor(errorKindOf(error));
   }
 }

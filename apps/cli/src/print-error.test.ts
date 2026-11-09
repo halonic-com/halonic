@@ -1,6 +1,6 @@
-import { KindedError } from "@halonicjs/std";
+import { KindedError, SecretScrubber } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { UsageError } from "./command.ts";
 import { type PrintErrorContext, printError } from "./print-error.ts";
 
@@ -121,5 +121,51 @@ verifies("cli.print-error", () => {
       "✕ The folder isn't empty.",
       "The folder isn't empty.",
     ]);
+  });
+
+  describe("scrubs the secrets the CLI loaded", () => {
+    // Made-up values, not shaped like any real key.
+    const token = "made-up-token-42";
+    const pem = "-----BEGIN KEY-----\nmade-up\n-----END KEY-----";
+    const scrubber = new SecretScrubber();
+    scrubber.remember(token);
+    scrubber.remember(pem);
+
+    it("from the ✕ line and the fix line", () => {
+      const error = new KindedError("unauthenticated", `The key ${token} was refused.`, {
+        fix: `Replace ${token} in your settings.`,
+      });
+      expect(printed(error, { scrubber })).toEqual([
+        "✕ The key [secret removed] was refused.",
+        "  Replace [secret removed] in your settings.",
+      ]);
+    });
+
+    it("from a bug's message, stack and causes with --debug", () => {
+      const cause = withStack(
+        new Error(`GET /v1?key=${token} failed`),
+        "    at fetch (http.ts:1:1)",
+      );
+      const error = withStack(
+        new Error(`could not call with ${token}`, { cause }),
+        "    at call (a.ts:2:3)",
+      );
+      expect(printed(error, { scrubber, debug: true })).toEqual([
+        ...internalLines,
+        "Error: could not call with [secret removed]",
+        "    at call (a.ts:2:3)",
+        "Caused by: Error: GET /v1?key=[secret removed] failed",
+        "    at fetch (http.ts:1:1)",
+      ]);
+    });
+
+    it("whole, when the secret holds a line break, before the text is split into lines", () => {
+      const error = withStack(new Error(`bad key ${pem}`), "    at load (keys.ts:4:1)");
+      expect(printed(error, { scrubber, debug: true })).toEqual([
+        ...internalLines,
+        "Error: bad key [secret removed]",
+        "    at load (keys.ts:4:1)",
+      ]);
+    });
   });
 });
