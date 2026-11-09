@@ -64,6 +64,7 @@ export type {
   Point,
   Registered,
 } from "./points/point-store.ts";
+export { type SaveFailure, type SaveReason, saveFailureFor } from "./save/save-failure.ts";
 export type {
   FeatureServices,
   ServiceFactory,

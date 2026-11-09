@@ -55,40 +55,58 @@ export function findHiddenCharacters(text: string): HiddenCharacter[] {
   return found;
 }
 
+/** The kinds of hidden character, in the order they are tried. */
+const kinds: readonly (readonly [name: string, ranges: readonly (readonly [number, number])[]])[] =
+  [
+    [
+      "a bidi control",
+      [
+        [0x202a, 0x202e],
+        [0x2066, 0x2069],
+        [0x200e, 0x200f],
+        [0x061c, 0x061c],
+      ],
+    ],
+    ["a tag character", [[0xe0000, 0xe007f]]],
+    [
+      "a variation selector",
+      [
+        [0xfe00, 0xfe0f],
+        [0xe0100, Number.POSITIVE_INFINITY],
+      ],
+    ],
+    [
+      "a control character",
+      [
+        [0x00, 0x1f],
+        [0x7f, 0x9f],
+      ],
+    ],
+    [
+      "a zero-width character",
+      [
+        [0x200b, 0x200d],
+        [0x2060, 0x2060],
+        [0xfeff, 0xfeff],
+      ],
+    ],
+    ["a line or paragraph separator", [[0x2028, 0x2029]]],
+    [
+      "a Hangul filler",
+      [
+        [0x115f, 0x1160],
+        [0x3164, 0x3164],
+        [0xffa0, 0xffa0],
+      ],
+    ],
+  ];
+
 /** Names the kind of a hidden character in words, for the message. */
 export function kindOf(codePoint: number): string {
-  if (
-    (codePoint >= 0x202a && codePoint <= 0x202e) ||
-    (codePoint >= 0x2066 && codePoint <= 0x2069) ||
-    codePoint === 0x200e ||
-    codePoint === 0x200f ||
-    codePoint === 0x061c
-  ) {
-    return "a bidi control";
-  }
-  if (codePoint >= 0xe0000 && codePoint <= 0xe007f) {
-    return "a tag character";
-  }
-  if ((codePoint >= 0xfe00 && codePoint <= 0xfe0f) || codePoint >= 0xe0100) {
-    return "a variation selector";
-  }
-  if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) {
-    return "a control character";
-  }
-  if (
-    (codePoint >= 0x200b && codePoint <= 0x200d) ||
-    codePoint === 0x2060 ||
-    codePoint === 0xfeff
-  ) {
-    return "a zero-width character";
-  }
-  if (codePoint === 0x2028 || codePoint === 0x2029) {
-    return "a line or paragraph separator";
-  }
-  if ([0x115f, 0x1160, 0x3164, 0xffa0].includes(codePoint)) {
-    return "a Hangul filler";
-  }
-  return "an invisible format character";
+  const kind = kinds.find(([, ranges]) =>
+    ranges.some(([first, last]) => codePoint >= first && codePoint <= last),
+  );
+  return kind?.[0] ?? "an invisible format character";
 }
 
 /**
