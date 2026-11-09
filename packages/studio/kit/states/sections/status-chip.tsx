@@ -29,7 +29,7 @@ function Chips() {
 }
 
 /**
- * A surface-muted fill, like a Tabs track or a hovered row, that turns on the parts' on-muted:
+ * A surface-muted fill, like an unselected tab or a hovered row, that turns on the parts' on-muted:
  * look. Kbd's section uses it too.
  */
 export function MutedFill({ children }: { readonly children: ReactNode }) {
