@@ -1,16 +1,23 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DependencyList } from "../lib/context.ts";
-import { findSbomProblems, type NoticeEntry, renderNotices, type Sbom } from "../lib/sbom.ts";
+import type { DependencyList } from "../lib/config-files.ts";
+import {
+  findSbomProblems,
+  type NoticeEntry,
+  renderNotices,
+  type Sbom,
+  withProduct,
+} from "../lib/sbom.ts";
 import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
 
 /**
- * pnpm check:sbom --version <v> --out <dir> [--package <name>] [--notices]
+ * pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]
  *
- * Release step. Writes `halonic-<product>-<v>.cdx.json` (CycloneDX, made by
+ * Release step. Writes `<product>-<v>.cdx.json` (CycloneDX, made by
  * `pnpm sbom`, so no extra tool) for the production dependencies of one
- * package, or of the whole workspace when `--package` is left out. Fails when
+ * package, or of the whole workspace when `--package` is left out. The SBOM
+ * names `<product>` at `<v>` as the product it describes. Fails when
  * a library in it is not on `tooling/check/dependencies.json`. With
  * `--notices` it also writes `THIRD-PARTY-NOTICES.txt` for the same set.
  * Needs `pnpm install` first: licence texts are read from the install.
@@ -74,20 +81,21 @@ function noticeEntries(root: string, scope: readonly string[]): NoticeEntry[] {
 function main(argv: readonly string[]): number {
   const version = option(argv, "--version");
   const out = option(argv, "--out");
+  const name = option(argv, "--name");
   const product = option(argv, "--package");
-  if (version === undefined || out === undefined) {
+  if (name === undefined || version === undefined || out === undefined) {
     console.error(
-      "Usage: pnpm check:sbom --version <v> --out <dir> [--package <name>] [--notices]",
+      "Usage: pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices]",
     );
     return 2;
   }
   const root = findRepoRoot();
   const scope = product === undefined ? ["--recursive"] : ["--filter", product];
-  const name = option(argv, "--name") ?? "halonic";
   mkdirSync(out, { recursive: true });
   const sbomPath = join(out, `${name}-${version}.cdx.json`);
   pnpm(root, ["sbom", ...scope, "--sbom-format", "cyclonedx", "--prod", "--out", sbomPath]);
-  const sbom = readJson<Sbom>(sbomPath);
+  const sbom = withProduct(readJson<Sbom>(sbomPath), name, version);
+  writeFileSync(sbomPath, `${JSON.stringify(sbom, null, 2)}\n`);
   const problems = findSbomProblems(
     sbom,
     readJson<DependencyList>(join(root, "tooling/check/dependencies.json")),

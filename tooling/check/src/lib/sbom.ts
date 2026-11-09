@@ -10,10 +10,13 @@ export interface SbomComponent {
   readonly version?: string;
   readonly group?: string;
   readonly purl?: string;
+  readonly type?: string;
+  readonly "bom-ref"?: string;
 }
 
 /** The parts of a CycloneDX document this check reads. */
 export interface Sbom {
+  readonly metadata?: { readonly component?: SbomComponent } & Readonly<Record<string, unknown>>;
   readonly components?: readonly SbomComponent[];
 }
 
@@ -61,6 +64,21 @@ export function findSbomProblems(
     }
   }
   return problems;
+}
+
+/**
+ * Names the product the SBOM describes. `pnpm sbom` takes the name and version
+ * from the root package (`@halonicjs/root@0.0.0`), which is wrong for a
+ * release file, so `metadata.component` is replaced with an application.
+ */
+export function withProduct(sbom: Sbom, name: string, version: string): Sbom {
+  return {
+    ...sbom,
+    metadata: {
+      ...sbom.metadata,
+      component: { type: "application", name, version, "bom-ref": `${name}@${version}` },
+    },
+  };
 }
 
 const rule = "=".repeat(72);

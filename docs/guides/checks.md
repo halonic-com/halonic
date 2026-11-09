@@ -4,19 +4,19 @@ Every pull request runs the same checks as `pnpm verify --full`. Run
 `pnpm verify` before you ask for review: it runs the fast checks and then
 typecheck, lint and test for the packages your change affects.
 
-| Command                                     | What it does                                                                                                                                          |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm verify`                               | everything below, for the affected packages (`--full` for every package, as CI does)                                                                  |
-| `pnpm check [rule …]`                       | our own repo checks (table below) except `trace`; with rule names, only those                                                                         |
-| `pnpm check:leaks`                          | the leak guard over the working tree; see [leak-guard.md](leak-guard.md)                                                                              |
-| `pnpm check:licences`                       | every installed package's licence against `tooling/check/licences.json`                                                                               |
-| `pnpm check:sbom --version <v> --out <dir>` | release only: writes the CycloneDX SBOM and `THIRD-PARTY-NOTICES.txt`, and fails on a library missing from `tooling/check/dependencies.json`          |
-| `pnpm check:audit [options]`                | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
-| `pnpm check:bundle --target <t> <metafile>` | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles))      |
-| `pnpm discover [--fix \| --check]`          | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                           |
-| `pnpm new package <layer>/<name>`           | creates an empty package that passes every check (adapters: add `--runtime <r>`)                                                                      |
-| `pnpm new feature <name>`                   | creates an empty Studio feature and adds it to the Studio's feature list                                                                              |
-| `pnpm who-touches [<package>]`              | the open pull requests that change a package; run it before you start                                                                                 |
+| Command                                                      | What it does                                                                                                                                          |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm verify`                                                | everything below, for the affected packages (`--full` for every package, as CI does)                                                                  |
+| `pnpm check [rule …]`                                        | our own repo checks (table below) except `trace`; with rule names, only those                                                                         |
+| `pnpm check:leaks`                                           | the leak guard over the working tree; see [leak-guard.md](leak-guard.md)                                                                              |
+| `pnpm check:licences`                                        | every installed package's licence against `tooling/check/licences.json`                                                                               |
+| `pnpm check:sbom --name <product> --version <v> --out <dir>` | release only: writes the CycloneDX SBOM and `THIRD-PARTY-NOTICES.txt`, and fails on a library missing from `tooling/check/dependencies.json`          |
+| `pnpm check:audit [options]`                                 | `pnpm audit` with the ignored advisories from `tooling/check/advisories-ignored.json` (see [Ignoring an advisory](#ignoring-an-advisory)); CI runs it |
+| `pnpm check:bundle --target <t> <metafile>`                  | after a cloud runtime build: the bundle holds only our code, the provider's and `zod` ([dependencies.md](dependencies.md#cloud-runtime-bundles))      |
+| `pnpm discover [--fix \| --check]`                           | writes the generated files; `--fix` also rewrites the Studio's feature list                                                                           |
+| `pnpm new package <layer>/<name>`                            | creates an empty package that passes every check (adapters: add `--runtime <r>`)                                                                      |
+| `pnpm new feature <name>`                                    | creates an empty Studio feature and adds it to the Studio's feature list                                                                              |
+| `pnpm who-touches [<package>]`                               | the open pull requests that change a package; run it before you start                                                                                 |
 
 ## `pnpm check` rules
 

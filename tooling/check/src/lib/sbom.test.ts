@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { DependencyList } from "./config-files.ts";
-import { componentName, findSbomProblems, renderNotices } from "./sbom.ts";
+import { componentName, findSbomProblems, renderNotices, withProduct } from "./sbom.ts";
 
 const list = {
   dependencies: { yaml: { category: "core-exception" } },
@@ -62,5 +62,26 @@ describe("renderNotices", () => {
     expect(text).toContain("Author: Eemeli Aro");
     expect(text).toContain("ships no licence file");
     expect(text).toContain("MIT text");
+  });
+});
+
+describe("withProduct", () => {
+  test("replaces the root package with the named product and keeps the rest", () => {
+    const sbom = {
+      metadata: { timestamp: "2026-01-01", component: { name: "root", version: "0.0.0" } },
+      components: [{ name: "yaml", version: "2.9.1" }],
+    };
+    const named = withProduct(sbom, "halonic-cli", "0.0.0-test.1");
+    expect(named.metadata?.component).toMatchObject({
+      type: "application",
+      name: "halonic-cli",
+      version: "0.0.0-test.1",
+    });
+    expect(named.metadata?.["timestamp"]).toBe("2026-01-01");
+    expect(named.components).toEqual(sbom.components);
+  });
+
+  test("adds the product when the SBOM has no metadata", () => {
+    expect(withProduct({}, "halonic-cli", "1.0.0").metadata?.component?.name).toBe("halonic-cli");
   });
 });
