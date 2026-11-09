@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/profile",
+  "private": true,
+  "type": "module",
+  "description": "Where Halonic keeps a person's files: the profile folder, the same for the CLI and the Studio, and inside it each workspace's folders for runs and blobs.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "priya",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}

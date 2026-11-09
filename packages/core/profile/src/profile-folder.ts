@@ -1,0 +1,105 @@
+// The profile folder holds what Halonic keeps for one person on one
+// computer: runs, their blobs, trust records and settings. The CLI and the
+// Studio both find it with `profileFolder`, so they always share one
+// (HAL-2022 G4, applied to the Studio on HAL-2077). The Studio doesn't use
+// Tauri's own app data folder, which would differ from the CLI's.
+
+import {
+  isAbsolutePath,
+  joinPath,
+  type ProfilePlatform,
+  withoutTrailingSeparators,
+} from "./native-path.ts";
+
+/** The name of the folder Halonic adds under the system's user data folder. */
+const folderName = "halonic";
+
+/** What {@link profileFolder} reads from the system; the adapter fills it in. */
+export interface ProfileEnvironment {
+  /** The system Halonic runs on. */
+  readonly platform: ProfilePlatform;
+  /** The person's home folder, absolute. */
+  readonly homeFolder: string;
+  /**
+   * The environment variables. Only `HALONIC_HOME`, `LOCALAPPDATA` (Windows)
+   * and `XDG_DATA_HOME` (Linux) are read. An empty value counts as unset.
+   */
+  readonly variables: Readonly<Record<string, string | undefined>>;
+}
+
+/** The profile folder, with the system its path belongs to. */
+export interface ProfileFolder {
+  /** The system the path belongs to, so paths under it are joined its way. */
+  readonly platform: ProfilePlatform;
+  /** The folder, absolute, without a trailing separator. It may not exist yet. */
+  readonly root: string;
+}
+
+/**
+ * Finds the profile folder: `HALONIC_HOME` when it is set, or else the
+ * `halonic` folder in the system's user data folder:
+ *
+ * - Windows: `%LOCALAPPDATA%\halonic`, or `<home>\AppData\Local\halonic`
+ * - macOS: `<home>/Library/Application Support/halonic`
+ * - Linux: `$XDG_DATA_HOME/halonic`, or `<home>/.local/share/halonic`
+ *
+ * A relative `XDG_DATA_HOME` is ignored, as the XDG rules ask. A relative
+ * `HALONIC_HOME` is refused instead: the person set it on purpose, and
+ * resolving it against whatever folder a command started in would split
+ * their runs across many profiles.
+ *
+ * @param environment - the system, home folder and environment variables
+ * @returns the profile folder; nothing is created
+ * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
+ *
+ * @example
+ * profileFolder({ platform: "linux", homeFolder: "/srv/acme", variables: {} });
+ * // { platform: "linux", root: "/srv/acme/.local/share/halonic" }
+ */
+export function profileFolder(environment: ProfileEnvironment): ProfileFolder {
+  const { platform } = environment;
+  const chosen = variableOf(environment, "HALONIC_HOME");
+  if (chosen !== undefined) {
+    if (!isAbsolutePath(platform, chosen)) {
+      throw new RangeError(
+        `HALONIC_HOME must be an absolute folder, not ${JSON.stringify(chosen)}.`,
+      );
+    }
+    return { platform, root: withoutTrailingSeparators(platform, chosen) };
+  }
+  return { platform, root: joinPath(platform, userDataFolder(environment), folderName) };
+}
+
+/** The system's folder for a person's application data. */
+function userDataFolder(environment: ProfileEnvironment): string {
+  const { platform } = environment;
+  const home = homeFolderOf(environment);
+  if (platform === "windows") {
+    const localAppData = variableOf(environment, "LOCALAPPDATA");
+    if (localAppData !== undefined && isAbsolutePath(platform, localAppData)) {
+      return localAppData;
+    }
+    return joinPath(platform, home, "AppData", "Local");
+  }
+  if (platform === "macos") {
+    return joinPath(platform, home, "Library", "Application Support");
+  }
+  const xdgDataHome = variableOf(environment, "XDG_DATA_HOME");
+  if (xdgDataHome !== undefined && isAbsolutePath(platform, xdgDataHome)) {
+    return xdgDataHome;
+  }
+  return joinPath(platform, home, ".local", "share");
+}
+
+function homeFolderOf(environment: ProfileEnvironment): string {
+  const { platform, homeFolder } = environment;
+  if (!isAbsolutePath(platform, homeFolder)) {
+    throw new RangeError(`The home folder must be absolute, not ${JSON.stringify(homeFolder)}.`);
+  }
+  return homeFolder;
+}
+
+function variableOf(environment: ProfileEnvironment, name: string): string | undefined {
+  const value = environment.variables[name];
+  return value === undefined || value === "" ? undefined : value;
+}
