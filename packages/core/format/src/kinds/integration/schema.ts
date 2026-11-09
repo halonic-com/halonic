@@ -98,6 +98,15 @@ export const GOOGLE_SCOPE_PATTERN =
 export const GOOGLE_API_PATTERN = /^[a-z][a-z0-9-]*\.googleapis\.com$/;
 
 /**
+ * Google's name for an API, such as `Gmail API` or `Cloud Pub/Sub API`: up to
+ * 80 letters, digits, spaces and `( ) & ' / . , -`, starting with a letter or
+ * digit. No `:`, so no link with a scheme fits. The Google setup record keeps
+ * this name with the same rule, so a check result for a name this takes is
+ * never refused when it is saved.
+ */
+export const GOOGLE_API_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ()&'/.,-]{0,79}$/;
+
+/**
  * An `https` URL to a lower-case host without a port, user name, password
  * or `#fragment`. The host is the first group, so the sheet's checks can
  * hold it against `hosts`. The core has no `URL` class (plan 4.1).
@@ -131,7 +140,12 @@ const GoogleApi = s
       .string()
       .regex(GOOGLE_API_PATTERN, "use the API's service name, such as 'drive.googleapis.com'"),
     /** Google's name for the API, shown to the user as it is. */
-    name: s.string().regex(/\S/, "use Google's name for the API, such as 'Google Drive API'"),
+    name: s
+      .string()
+      .regex(
+        GOOGLE_API_NAME_PATTERN,
+        "use Google's name for the API, such as 'Google Drive API', with no ':' and at most 80 characters",
+      ),
   })
   .strict();
 

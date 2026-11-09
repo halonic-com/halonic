@@ -81,6 +81,20 @@ verifies("format.integration-google-fields", () => {
     expect(sheet.googleScopes).toEqual([{ scope: "email", reason: "Shows who is signed in." }]);
   });
 
+  it("takes an API name with a slash, a dot or a comma", () => {
+    const text = yaml(
+      ...google,
+      ...scopes,
+      "googleApis:",
+      "  - { api: pubsub.googleapis.com, name: Cloud Pub/Sub API }",
+      "  - { api: ledger.googleapis.com, name: 'Ledger API v1.2, beta' }",
+    );
+    expect(parsedValue("integration", text).googleApis?.map((entry) => entry.name)).toEqual([
+      "Cloud Pub/Sub API",
+      "Ledger API v1.2, beta",
+    ]);
+  });
+
   it("refuses scope URL strings, as older sheets had", () => {
     const text = yaml(...google, "googleScopes: [https://www.googleapis.com/auth/drive]", ...apis);
     expect(summary(problemsOf("integration", text))).toEqual(["googleScopes.0 invalid_type 11"]);
@@ -110,6 +124,18 @@ verifies("format.integration-google-fields", () => {
   it.each([
     ["  - { api: ledger.example.com, name: Ledger API }", "googleApis.0.api invalid_format 15"],
     ["  - { api: ledger.googleapis.com, name: '' }", "googleApis.0.name invalid_format 15"],
+    [
+      "  - { api: ledger.googleapis.com, name: ' Ledger API' }",
+      "googleApis.0.name invalid_format 15",
+    ],
+    [
+      "  - { api: ledger.googleapis.com, name: 'https://example.com/ledger' }",
+      "googleApis.0.name invalid_format 15",
+    ],
+    [
+      `  - { api: ledger.googleapis.com, name: ${"L".repeat(81)} }`,
+      "googleApis.0.name invalid_format 15",
+    ],
     ["  - { api: ledger.googleapis.com }", "googleApis.0.name invalid_type 15"],
     ["  - { api: ledger.googleapis.com, name: n, id: 1 }", "googleApis.0 unrecognized_keys 15"],
   ])("refuses the API entry %s", (line, expected) => {
