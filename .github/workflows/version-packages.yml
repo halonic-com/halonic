@@ -14,7 +14,11 @@
 #   it runs `pnpm version-packages` (changeset version, then version:sync)
 #   on the branch changeset-release/main and opens or updates the "Version
 #   packages" pull request. That pull request sets the app version in
-#   package.json, tauri.conf.json and Cargo.toml.
+#   package.json, tauri.conf.json and Cargo.toml. It pushes the branch only
+#   when the release change differs from the one already there, so CI on
+#   the pull request is not restarted for nothing.
+# - Nothing is waiting: it closes an open Version packages pull request,
+#   which has nothing left to release.
 #
 # Token: the RELEASE_BOT_TOKEN secret (the halonic-dev account, with
 # contents and pull requests write) when it exists. Without it the default
@@ -152,7 +156,21 @@ jobs:
         run: |
           branch=changeset-release/main
           gh auth setup-git
-          git push --force -q origin "HEAD:refs/heads/$branch"
+          # Push only when the release change itself differs from the one on
+          # the branch. A push restarts CI on the pull request and cancels
+          # the run in progress, and most pushes to main leave the version
+          # bump and changelog as they were. The merge queue tests the pull
+          # request on top of the latest main anyway.
+          new=$(git show HEAD | git patch-id --stable | cut -d' ' -f1)
+          old=""
+          if git fetch -q origin "refs/heads/$branch" 2> /dev/null; then
+            old=$(git show FETCH_HEAD | git patch-id --stable | cut -d' ' -f1)
+          fi
+          if [ -n "$old" ] && [ "$new" = "$old" ]; then
+            echo "The release change on $branch is unchanged; not pushing."
+          else
+            git push --force -q origin "HEAD:refs/heads/$branch"
+          fi
           title="chore(release): Halonic $VERSION"
           number=$(gh pr list --repo "$REPO" --head "$branch" --base main --state open --json number --jq '.[0].number')
           if [ -n "$number" ]; then
@@ -160,3 +178,16 @@ jobs:
           else
             gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body-file "$RUNNER_TEMP/body.md"
           fi
+      - name: Close a Version packages pull request with nothing to release
+        if: steps.plan.outputs.waiting == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          branch=changeset-release/main
+          numbers=$(gh pr list --repo "$REPO" --head "$branch" --base main --state open --json number --jq '.[].number')
+          for number in $numbers; do
+            gh pr close "$number" --repo "$REPO" --delete-branch \
+              --comment "No changesets are waiting on main, so there is nothing to release. Closed by the Version packages workflow; it opens a new pull request when a changeset lands."
+            echo "Closed #$number: nothing to release."
+          done
