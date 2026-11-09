@@ -131,7 +131,8 @@ approval, `internal` ones the maintainer's. The guard asks Paperclip whether the
 approval exists, is approved by the right person and names this branch.
 **That lookup is a stub for now and fails closed**: it needs a Paperclip
 API token as a CI secret, which isn't set up yet. Until then no note
-lets a change through.
+lets a change through, so in CI the guard reports its findings as a
+warning on the pull request and doesn't block the merge.
 
 **CI runs the guard and `trace` from the merge base's copy** of
 `tooling/check`, not the pull request's, so a pull request can't weaken
