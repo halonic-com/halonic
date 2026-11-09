@@ -66,7 +66,7 @@ export function StateTable({ section }: { readonly section: PartSection }) {
   const phone = usePhoneLayout();
   return (
     <section id={section.id} className="flex flex-col gap-3 border-t border-border pt-6">
-      <h2 className="flex gap-3 text-heading">
+      <h2 className="flex gap-3 text-heading phone:px-4">
         <span className="text-fg-muted tabular-nums">{section.number}</span>
         {section.name}
       </h2>

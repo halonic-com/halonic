@@ -71,7 +71,8 @@ const stateClasses: Record<CardState, string> = {
  */
 const fadedClasses = "text-fg-disabled";
 
-const box = "rounded-md border bg-surface text-left";
+/** The card sets its own text style, so its content doesn't take a bigger size from the page. */
+const box = "rounded-md border bg-surface text-left text-body";
 
 /** Only an interactive card reacts: a lifted edge on hover, the hover fill while pressed. */
 const reacts = ["transition", "active:bg-surface-subtle hover:shadow-1"].join(" ");

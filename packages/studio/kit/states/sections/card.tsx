@@ -63,7 +63,7 @@ function InteractiveCard({ state = "default" }: { readonly state?: CardState }) 
   return (
     <div className="w-80 phone:w-full">
       <Card state={state} onClick={() => undefined}>
-        <span className="block text-body-strong">Mail triage</span>
+        <span className="block text-body font-semibold">Mail triage</span>
         {line}
       </Card>
     </div>

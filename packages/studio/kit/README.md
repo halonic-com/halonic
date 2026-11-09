@@ -686,7 +686,7 @@ It copies the text and says "Copied" in place for two seconds (`COPIED_FOR_MS`).
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Ready        | The secondary button at the small size (28px; 48px on a phone), saying "Copy"                                                              |
 | Copied       | "Copied" in place, with no change in width. Screen readers hear "Copied" through a status region next to the button, which is always there |
-| Failed       | The button still says "Copy". A caption next to it says "Couldn't copy. Select the text and copy it yourself."                             |
+| Failed       | The button still says "Copy". A caption under it says "Couldn't copy. Select the text and copy it yourself."                               |
 | Hover, focus | A `surface-subtle` fill on hover; the standard focus ring                                                                                  |
 
 **How it copies.** `navigator.clipboard` first. Without a secure context (a phone on plain http)

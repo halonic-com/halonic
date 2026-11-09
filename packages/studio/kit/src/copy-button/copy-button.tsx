@@ -58,14 +58,18 @@ export function CopyButton({ text, label }: CopyButtonProps) {
   }
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-2">
+    // The hint takes the whole width, so it goes on the line under the button.
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
       <button type="button" aria-label={label} className={buttonClasses} onClick={copy}>
         <span className={state === "copied" ? `${wordClasses} invisible` : wordClasses}>Copy</span>
         <span className={state === "copied" ? wordClasses : `${wordClasses} invisible`}>
           Copied
         </span>
       </button>
-      <span role="status" className={state === "failed" ? "text-caption text-fg-muted" : "sr-only"}>
+      <span
+        role="status"
+        className={state === "failed" ? "basis-full text-caption text-fg-muted" : "sr-only"}
+      >
         <span key={attempt}>{statusText(state)}</span>
       </span>
     </span>

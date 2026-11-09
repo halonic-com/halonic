@@ -25,6 +25,8 @@ verifies("kit.card", () => {
     const card = container.firstElementChild as HTMLElement;
     expect(card.tagName).toBe("DIV");
     expect(card.className).toContain("rounded-md border bg-surface");
+    // Its own text style, so its content doesn't take a bigger size from the page.
+    expect(card.className).toContain("text-body");
     expect(card.className).toContain("border-border");
     expect(card.className).toContain("p-4");
     expect(card.className).not.toContain("shadow");

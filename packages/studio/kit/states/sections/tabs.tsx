@@ -26,7 +26,8 @@ function SampleTabs({ errors = false, runsDisabled = false }: SampleTabsProps) {
   ];
   const ignore = () => undefined;
   return (
-    <div className="flex w-80 flex-col items-start gap-3 phone:w-full">
+    // 384px on desktop, so a fill tab holds "Setup" and its count on one line, as on the sheet.
+    <div className="flex w-96 flex-col items-start gap-3 phone:w-full">
       <Tabs label="Workflow views" tabs={inline} selected="flow" onSelect={ignore} fill={false}>
         {null}
       </Tabs>
