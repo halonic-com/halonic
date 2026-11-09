@@ -127,7 +127,7 @@ verifies("format.integration-file", () => {
     ],
     [
       ["  weather-key:", "    hosts: [api.example.com]", "    as: bearer"],
-      "secrets.weather-key.purpose invalid_type 8",
+      "secrets.weather-key.purpose invalid_type 7",
     ],
     [
       ["  weather-key:", "    purpose: key", "    hosts: []", "    as: bearer"],
@@ -139,7 +139,7 @@ verifies("format.integration-file", () => {
     ],
     [
       ["  weather-key:", "    purpose: key", "    hosts: [api.example.com]", "    as: header"],
-      "secrets.weather-key.header invalid_type 8",
+      "secrets.weather-key.header invalid_type 7",
     ],
     [
       [
@@ -153,7 +153,7 @@ verifies("format.integration-file", () => {
     ],
     [
       ["  weather-key:", "    purpose: key", "    hosts: [api.example.com]", "    as: form"],
-      "secrets.weather-key.field invalid_type 8",
+      "secrets.weather-key.field invalid_type 7",
     ],
   ])("refuses a broken secret: %j", (lines, expected) => {
     const text = yaml(...base, "secrets:", ...lines);

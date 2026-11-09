@@ -110,7 +110,7 @@ verifies("format.agent-file", () => {
   it("refuses a method without instructions", () => {
     const text = yaml("id: clerk", "name: Clerk", "methods:", "  extract:", "    input: [file]");
     expect(summary(problemsOf("agent", text))).toEqual([
-      "methods.extract.instructions invalid_type 5",
+      "methods.extract.instructions invalid_type 4",
     ]);
   });
 });

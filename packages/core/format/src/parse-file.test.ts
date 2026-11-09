@@ -21,7 +21,7 @@ verifies("format.parse-file-positions", () => {
 
   it("points a missing key at the map that should hold it", () => {
     const text = yaml("aliases:", "  fast:", "    provider: mock");
-    expect(summary(problemsOf("models", text))).toEqual(["aliases.fast.model invalid_type 3"]);
+    expect(summary(problemsOf("models", text))).toEqual(["aliases.fast.model invalid_type 2"]);
   });
 
   it("points unknown keys at their map and names them", () => {

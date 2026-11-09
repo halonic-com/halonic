@@ -21,7 +21,7 @@ verifies("format.parse-file-positions", () => {
   it("gives the start of a value, or of its nearest parent", () => {
     const source = read("yaml", yaml("id: acme", "budget:", "  perRun: 2"));
     expect(source.positionOf(["budget", "perRun"])).toEqual({ line: 3, col: 11 });
-    expect(source.positionOf(["budget", "currency"])).toEqual({ line: 3, col: 3 });
+    expect(source.positionOf(["budget", "currency"])).toEqual({ line: 2, col: 1 });
   });
 
   it("reports YAML that doesn't parse at its line, with no path", () => {
