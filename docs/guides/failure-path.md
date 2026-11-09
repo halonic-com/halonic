@@ -35,6 +35,9 @@ held by another process, an approval, a timer.
 - **Inside a run, the report is a run event.** `run.waiting` already does this
   for events, timers and child runs; a new kind of wait gets its own field or
   event in `core/events`, with a requirement, not a free-text string.
+- **Every step that calls out logs its start**: a model call (`llm.request`),
+  a tool call (`tool.called`), and likewise a connector program, a harness and
+  the sandbox. A screen can then say what a step has been waiting for.
 - **Outside a run** (engine start, updater, workspace load), the wait goes
   through the same channel the window already uses for state, such as the
   shell's `engine.connection`, so Studio and the CLI read one source.
@@ -113,17 +116,17 @@ held by another process, an approval, a timer.
 Copy the lines that apply into the pull request description.
 
 - [ ] Every wait longer than 1 second reports what it waits for when it
-      starts, and has a timeout or a cancel.
+  starts, and has a timeout or a cancel.
 - [ ] Retries report the attempt and the last reason.
 - [ ] Waits and timeouts are tested with fake timers.
 - [ ] No update path deletes or rewrites user data; format changes back up
-      first.
+  first.
 - [ ] A failed update or a failed first start leaves the previous version
-      working.
+  working.
 - [ ] New processes, caches and logs are bounded and stopped or cleared.
 - [ ] New resource use shows in the engine's report and in `halonic doctor`.
 - [ ] Every new error has a kind, and each surface translates it in its one
-      function.
+  function.
 - [ ] Nothing shown to the user is a stack trace, raw provider text, an
-      internal path or an internal name.
+  internal path or an internal name.
 - [ ] Wording and placement that users see come from an approved design.
