@@ -6,6 +6,7 @@
   and iOS files it also writes; the desktop shell (HAL-192) adds its own.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Halonic placeholder icon</title>
   <rect x="32" y="32" width="960" height="960" rx="200" fill="#ffffff" stroke="#c6c7dc" stroke-width="16"/>
   <g fill="none" stroke="#5b5b75" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
     <path d="M262 400 V600"/>
