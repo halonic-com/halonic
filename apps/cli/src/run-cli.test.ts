@@ -5,6 +5,12 @@ import { exitCode, exitCodeMeanings } from "./exit-code.ts";
 import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 
+/** An error class with its own kind and fix, as an existing error class gets them. */
+class NotHereError extends Error {
+  readonly kind = "not_found";
+  readonly fix = "Greet someone who is here, such as Ada.";
+}
+
 /** A command that greets, to drive the CLI without touching any files. */
 const greetCommand: CliCommand = {
   name: "greet",
@@ -25,6 +31,9 @@ const greetCommand: CliCommand = {
     if (name === "a ghost") {
       throw "boo";
     }
+    if (name === "the moon") {
+      throw new NotHereError("The moon isn't here.");
+    }
     io.out(input.options["loud"] === true ? `HELLO ${name.toUpperCase()}` : `Hello ${name}`);
     return exitCode.ok;
   },
@@ -39,6 +48,12 @@ const trustCommand: CliCommand = {
 };
 
 const commands = [greetCommand, trustCommand];
+
+/** What the CLI prints for an error without a kind, instead of its text. */
+const internalLines = [
+  "✕ Halonic ran into a problem it can't explain yet.",
+  "  Report it: https://github.com/halonic-com/halonic/issues",
+];
 
 describe("runCli", () => {
   it("runs the named command with its arguments and options", async () => {
@@ -68,7 +83,7 @@ verifies("cli.exit-codes", () => {
   it("prints a usage error with the usage line and exits with 2", async () => {
     const io = captureIo("/work");
     expect(await runCli(["greet"], io, commands)).toBe(exitCode.usage);
-    expect(io.stderr).toEqual(["Say who to greet.", "Usage: halonic greet <name> [--loud]"]);
+    expect(io.stderr).toEqual(["✕ Say who to greet.", "  Usage: halonic greet <name> [--loud]"]);
   });
 
   it("treats an unknown option or a missing value as a usage error", async () => {
@@ -80,13 +95,23 @@ verifies("cli.exit-codes", () => {
     expect(noValue.stderr[0]).toContain("--from");
   });
 
-  it("prints a failure after Error: and exits with 1", async () => {
+  it("ends a failure without a kind with 1, and never shows its text", async () => {
     const io = captureIo("/work");
     expect(await runCli(["greet", "nobody"], io, commands)).toBe(exitCode.failed);
-    expect(io.stderr).toEqual(["Error: nobody is there"]);
+    expect(io.stderr).toEqual(internalLines);
     const thrownText = captureIo("/work");
     expect(await runCli(["greet", "a ghost"], thrownText, commands)).toBe(exitCode.failed);
-    expect(thrownText.stderr).toEqual(["Error: boo"]);
+    expect(thrownText.stderr).toEqual(internalLines);
+  });
+
+  it("ends a failure with the exit code of its kind and prints its fix", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["greet", "the moon"], io, commands)).toBe(exitCode.notFound);
+    expect(io.stdout).toEqual([]);
+    expect(io.stderr).toEqual([
+      "✕ The moon isn't here.",
+      "  Greet someone who is here, such as Ada.",
+    ]);
   });
 
   it("passes on the code a command returns, such as 3 for an untrusted workspace", async () => {

@@ -51,7 +51,9 @@ export interface CliCommand {
   /**
    * Runs the command.
    *
-   * @throws UsageError when the arguments are wrong; any other error ends the command with exit code 1
+   * @throws UsageError when the arguments are wrong. Any other error ends the
+   *   command with the exit code of its kind (1 when it has none), and
+   *   `printError` prints it; the command never prints an error itself.
    */
   run(input: CommandInput, io: CliIo): Promise<ExitCode>;
 }
@@ -62,7 +64,11 @@ export interface CliCommand {
  */
 export type CommandRegistry = Readonly<Record<string, CliCommand>>;
 
-/** The command line was wrong. The CLI prints the message and the command's usage, and exits with code 2. */
+/**
+ * The command line was wrong. The CLI prints the message with the command's
+ * usage line as its fix, and exits with code 2, as for any `invalid_input` error.
+ */
 export class UsageError extends Error {
   override readonly name = "UsageError";
+  readonly kind = "invalid_input";
 }

@@ -256,6 +256,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../packages/core/std
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*

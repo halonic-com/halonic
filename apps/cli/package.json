@@ -15,7 +15,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@halonicjs/format": "workspace:*"
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",

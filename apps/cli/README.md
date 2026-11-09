@@ -46,4 +46,7 @@ never change meaning once released. `halonic --help` lists them too.
    command's `usage`, `summary` and `options`.
 
 A command prints through the `CliIo` it is given, never `console`, and throws `UsageError` for a
-wrong command line. Any other error ends the command with exit code 1 and its message.
+wrong command line. It never prints an error itself: it throws a `KindedError` (with a `fix` when
+there is a next step to suggest), and `printError` prints it and ends the command with the exit code
+of its kind. An error without a kind is a bug: the CLI says so and exits with 1, without showing the
+error's own text.

@@ -47,6 +47,6 @@ verifies("cli.commands.schema.write-every-kind", () => {
   it("refuses more than one folder", async () => {
     const io = captureIo(folder);
     expect(await runCli(["schema", "a", "b"], io, [schemaCommand])).toBe(exitCode.usage);
-    expect(io.stderr).toEqual(["Give at most one folder.", "Usage: halonic schema [outDir]"]);
+    expect(io.stderr).toEqual(["✕ Give at most one folder.", "  Usage: halonic schema [outDir]"]);
   });
 });

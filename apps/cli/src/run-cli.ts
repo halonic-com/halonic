@@ -1,6 +1,9 @@
-import { type CliCommand, type CliIo, UsageError } from "./command.ts";
+import { errorKindOf } from "@halonicjs/std";
+import type { CliCommand, CliIo } from "./command.ts";
 import { type ExitCode, exitCode } from "./exit-code.ts";
+import { exitCodeFor } from "./exit-code-for.ts";
 import { commandHelp, overallHelp, usageLine } from "./help.ts";
+import { printError } from "./print-error.ts";
 import { readInput } from "./read-input.ts";
 
 const helpFlags = new Set(["--help", "-h"]);
@@ -43,13 +46,9 @@ async function runCommand(
   try {
     return await command.run(readInput(command, args), io);
   } catch (error) {
-    if (error instanceof UsageError) {
-      io.err(error.message);
-      io.err(usageLine(command));
-      return exitCode.usage;
-    }
-    io.err(`Error: ${error instanceof Error ? error.message : String(error)}`);
-    return exitCode.failed;
+    // The CLI's one top-level catch: every error a command throws ends here.
+    printError(error, io.err, { usage: usageLine(command) });
+    return exitCodeFor(errorKindOf(error));
   }
 }
 
