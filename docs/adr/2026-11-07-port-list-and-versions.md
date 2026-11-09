@@ -109,6 +109,9 @@ version 1 now rather than as a version 2 later. The versions stay at 1.
   that move the registry or run code first, such as `NODE_OPTIONS` and
   `npm_config_*`. `ConnectorTool.risk` (`read`, `write`, `send`) was
   already added with the Google adapter work.
+
+  Update 2026-11-09 (C188, HAL-2134): in 0.1 an unpinned runner starts
+  once trusted; pinning at trust is Later.
 - **No integrity hash in the pin, on purpose.** An exact version guards
   against a new release, not against a registry that serves other files.
   The registry address comes from the user's profile, so the user already

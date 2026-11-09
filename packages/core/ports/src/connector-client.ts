@@ -109,9 +109,11 @@ export type ConnectorTransport =
        * A package runner is a `command` whose program name, without its
        * folder, any case and any `.cmd`, `.exe`, `.bat` or `.ps1` ending, is
        * `npx`, `bunx` or `uvx`, or one of `npm exec`, `pnpm dlx`,
-       * `yarn dlx`, `pipx run` and `uv tool run`. The adapter refuses to
-       * start a package runner without a `pin`, so leaving the pin out
-       * can't start whatever version is newest.
+       * `yarn dlx`, `pipx run` and `uv tool run`. Without a `pin`, a package
+       * runner starts only with a trust grant, like every stdio program, and
+       * its `command` and `args` are in the fingerprint the person confirmed.
+       * The version it runs is not fixed: the runner may start whatever
+       * version is newest. Pinning at trust comes later.
        *
        * When it is set, the adapter starts exactly `package` at `version`,
        * looks it up only at `registryUrl`, starts in an empty folder of its
