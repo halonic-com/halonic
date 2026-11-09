@@ -2,6 +2,18 @@
 # `ci-ok`: it always runs, waits for every other job and fails if any of
 # them failed. Jobs that only run for some changes can then be skipped
 # without blocking the merge.
+#
+# When main's own install is broken (a bad lockfile, say), the merge base
+# can't be installed, so there are no baseline tests to compare with. That
+# would block every pull request, including the one that repairs main. So,
+# in "Merge base's tests" and in the guard job, a failed
+# `pnpm install --frozen-lockfile` on the merge base (and nothing else: not
+# a failed test, not a failed checkout) reports "no baseline" with a
+# `::warning` instead of failing. The guard job then skips trace and the
+# requirement guard, and only passes if the pull request's own `build` job
+# (its install and all its tasks) passed. Otherwise it fails, and so does
+# `ci-ok`. `ci-ok` and the merge queue need no change: they only look at job
+# results, and "no baseline" is a successful result with a warning.
 
 name: CI
 
@@ -315,6 +327,8 @@ jobs:
       sha: ${{ steps.merge-base.outputs.sha }}
       results-id: ${{ steps.upload.outputs.artifact-id }}
       results-sha256: ${{ steps.pack.outputs.sha256 }}
+      # "true" only when the merge base's install failed.
+      no-baseline: ${{ steps.install.outcome == 'failure' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -331,14 +345,23 @@ jobs:
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: false
-      - name: Install the merge base's dependencies
+      # A failed install is the one failure that doesn't fail this job (see
+      # the header comment). The guard job only lets it pass when the pull
+      # request's own build passed.
+      - id: install
+        name: Install the merge base's dependencies
+        continue-on-error: true
         run: pnpm install --frozen-lockfile
+      - name: No baseline, the merge base can't be installed
+        if: steps.install.outcome == 'failure'
+        run: echo "::warning title=no-baseline::The merge base's install failed, so there are no baseline tests. The guard job passes only if the pull request's own build passed."
       - name: Run the merge base's tests without reading any cache
+        if: steps.install.outcome == 'success'
         run: pnpm exec turbo run test --force --continue --output-logs=errors-only
       # Runs even when a test failed: the guard reports a missing result file.
       - id: pack
         name: Pack the test results
-        if: always()
+        if: always() && steps.install.outcome == 'success'
         run: |
           find . -name node_modules -prune -o -path '*/test-results/vitest.json' -type f -print \
             | sed 's|^\./||' | sort | tar -cf "$RUNNER_TEMP/test-results.tar" -T -
@@ -346,7 +369,7 @@ jobs:
           echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
       - id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
+        if: always() && steps.install.outcome == 'success'
         with:
           name: merge-base-test-results
           path: ${{ runner.temp }}/test-results.tar
@@ -377,6 +400,7 @@ jobs:
       - name: Stop if the merge base or its results are unknown
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
+          NO_BASELINE: ${{ needs.base-tests.outputs.no-baseline }}
           RESULTS_ID: ${{ needs.base-tests.outputs.results-id }}
           RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
         run: |
@@ -384,6 +408,8 @@ jobs:
             echo "::error::The merge base's tests job didn't report which commit it tested."
             exit 1
           fi
+          # No archive exists when the merge base couldn't be installed.
+          [ "$NO_BASELINE" = "true" ] && exit 0
           if ! grep -qE '^[0-9]+$' <<< "$RESULTS_ID" || ! grep -qE '^[0-9a-f]{64}$' <<< "$RESULTS_SHA256"; then
             echo "::error::The merge base's tests job didn't report its result archive's ID and sha256."
             exit 1
@@ -402,20 +428,43 @@ jobs:
         with:
           cache: false
           package_json_file: base/package.json
-      - name: Install the merge base's dependencies
+      - id: install
+        name: Install the merge base's dependencies
+        if: needs.base-tests.outputs.no-baseline != 'true'
+        continue-on-error: true
         working-directory: base
         run: pnpm install --frozen-lockfile
+      # The only state that skips trace and the guard: the merge base's
+      # install failed (in either job). Then the pull request's own build
+      # must have passed, install and tasks, or this job fails.
+      - name: Decide whether there is a baseline
+        env:
+          BASE_JOB_FAILED_INSTALL: ${{ needs.base-tests.outputs.no-baseline }}
+          INSTALL: ${{ steps.install.outcome }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          if [ "$BASE_JOB_FAILED_INSTALL" = "true" ] || [ "$INSTALL" = "failure" ]; then
+            if [ "$BUILD" != "success" ]; then
+              echo "::error::The merge base can't be installed and the pull request's own build didn't pass ($BUILD)."
+              exit 1
+            fi
+            echo "::warning title=no-baseline::The merge base's install failed, so trace and the requirement guard are skipped. The pull request's own install and tasks passed."
+            echo "NO_BASELINE=true" >> "$GITHUB_ENV"
+          fi
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: env.NO_BASELINE != 'true'
         with:
           name: pull-request-test-results
           path: ${{ runner.temp }}/head-results
       # By the ID its own job reported, then checked against its sha256: an
       # artifact a pull request uploads under the same name is never read.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: env.NO_BASELINE != 'true'
         with:
           artifact-ids: ${{ needs.base-tests.outputs.results-id }}
           path: ${{ runner.temp }}/base-results
       - name: Check the merge base's archive is the one its job packed
+        if: env.NO_BASELINE != 'true'
         env:
           RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
         run: |
@@ -424,6 +473,7 @@ jobs:
       # must be a plain result file that lands where its name says: no
       # links, no "..", and no folder in the checkout that links elsewhere.
       - name: Unpack both sides' test results
+        if: env.NO_BASELINE != 'true'
         run: |
           unpack() {
             local archive="$1" into
@@ -448,11 +498,13 @@ jobs:
       # gives a Node that runs TypeScript). Calling pnpm in the pull
       # request's checkout would read its config, so only node runs there.
       - name: Find the merge base's Node
+        if: env.NO_BASELINE != 'true'
         working-directory: base
         run: echo "BASE_NODE=$(pnpm exec node -p process.execPath)" >> "$GITHUB_ENV"
       # Reads the result files the tests wrote. A missing result
       # file fails the check.
       - name: Requirements and their tests (trace, merge base's copy)
+        if: env.NO_BASELINE != 'true'
         working-directory: head
         run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
       # Advisory for now: the Paperclip approval lookup is a stub that fails
@@ -460,7 +512,7 @@ jobs:
       # token exists as a CI secret the guard only reports; then this line
       # goes. Trace above stays blocking.
       - name: Requirement guard (merge base's copy)
-        if: always()
+        if: always() && env.NO_BASELINE != 'true'
         continue-on-error: true
         working-directory: head
         env:
