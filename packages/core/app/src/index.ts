@@ -1,5 +1,16 @@
 // The public API of @halonicjs/app. Everything else in src/ is internal.
 export {
+  type ChatAnswer,
+  type ChatAnswerEnd,
+  type ChatAnswerRequest,
+  ChatService,
+  type ChatSettings,
+  type ChatTool,
+  defaultTurnLimit,
+  maxTurnLimit,
+  minTurnLimit,
+} from "./chat-service.ts";
+export {
   CommandBus,
   CommandError,
   type CommandHandler,
