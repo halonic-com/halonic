@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-620
 
-The token store shall store each token only AES-256-GCM-encrypted, with a new random nonce each time and bound to its canonical name, and shall throw an `UnreadableTokenError` that names the token but never its value when a stored value won't open.
+The token store shall store each token only AES-256-GCM-encrypted, with a new random nonce each time and bound to its canonical name, and shall throw an `UnreadableTokenError` of kind `unauthenticated` that names the token but never its value when a stored value won't open.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The token store shall store each token only AES-256-GCM-encrypted, with a new ra
 - Given a value sealed with another key,
   when it is read,
   then the error says it was sealed with a different token key.
+- Given a value that won't open,
+  when the kind of the error is read with `errorKindOf`,
+  then it is `unauthenticated`, because the user has to connect again.

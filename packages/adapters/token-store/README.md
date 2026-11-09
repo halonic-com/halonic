@@ -80,7 +80,8 @@ turned into `_`), with one value `sealed`: base64url of
 
 The additional data is `halonic-token-v1:` + the canonical name + the version byte and key id, so
 a value copied to another name won't open. A value that won't open throws `UnreadableTokenError`,
-never `null`, so a key mix-up never looks like "not signed in".
+never `null`, so a key mix-up never looks like "not signed in". Its kind is `unauthenticated`:
+the user has to connect again.
 
 ## Limits
 
