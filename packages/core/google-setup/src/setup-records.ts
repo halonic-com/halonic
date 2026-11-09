@@ -170,7 +170,8 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
 
   /**
    * Checks the records the changes make, then writes the checked values only,
-   * every record in one append. Nothing is written when one is refused.
+   * every record in one append. Nothing is written when one is refused, and
+   * an update with no changes writes nothing but still gives its record back.
    */
   const writeAll = async (
     updates: readonly RecordUpdate[],
@@ -186,9 +187,10 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
       );
       return { record: { accountRef, ...updated }, checkedChanges };
     });
-    if (checked.length > 0) {
+    const changed = checked.filter(({ checkedChanges }) => Object.keys(checkedChanges).length > 0);
+    if (changed.length > 0) {
       await records.append(
-        checked.map(({ record, checkedChanges }) => ({
+        changed.map(({ record, checkedChanges }) => ({
           at: now,
           collection: setupCollection,
           id: record.accountRef,
@@ -280,12 +282,11 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
 
     async refreshRefused(accountRef, refusal) {
       const values = await readExisting(accountRef);
-      const reason = refusalReason(values, refusal);
       const clientRef = values.clientSecret?.clientRef;
-      const marked =
-        refusal.kind === "clientRefused" && clientRef !== undefined
-          ? await usingClient(clientRef)
-          : [{ accountRef, ...values }];
+      const sameClient =
+        clientRef === undefined ? [{ accountRef, ...values }] : await usingClient(clientRef);
+      const reason = refusalReason(values, refusal, sameClient);
+      const marked = refusal.kind === "clientRefused" ? sameClient : [{ accountRef, ...values }];
       const now = clock.now().toISOString();
       return writeAll(refusalMarks(marked, reason, now), now);
     },

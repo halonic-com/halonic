@@ -77,6 +77,11 @@ const projectNumberPattern = /^[0-9]{1,30}$/;
  * Gives the connector state for a problem. It holds no token and none of
  * Google's free text, so it is safe to show, to log and to keep.
  *
+ * For `clientRefused` it sees this one record only, but whether the client is
+ * gone depends on every account that uses it. So the host saves the refusal
+ * with `SetupRecords.refreshRefused` and calls `savedConnectorState` on each
+ * record that returns, which also gives every account on the client its badge.
+ *
  * @param record - the account's setup record, as it was before this problem
  * @param problem - the refused refresh, or the API switched off during a run
  * @param now - the time of the refusal, from the caller's `Clock`
@@ -91,7 +96,7 @@ export function connectorState(
     case "signInRefused":
       return needsSignInAgain(record, now);
     case "clientRefused":
-      return needsNewSecret(refusalReason(record, problem) === "client-gone");
+      return needsNewSecret(refusalReason(record, problem, [record]) === "client-gone");
     case "apiDisabled":
       return apiOff(record, problem);
   }

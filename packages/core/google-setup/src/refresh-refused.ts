@@ -32,20 +32,27 @@ export function mayRefresh(record: Pick<SetupValues, "refreshRefused">): boolean
  * The reason to save for a refusal. A second `invalid_client` after a
  * `client` refusal can only come from the staged-secret check, since nothing
  * else may refresh then: Google refused a new secret too, so the client is
- * gone (design 5.2). The record says so; the secret itself is never read.
+ * gone (design 5.2). The records say so; the secret itself is never read.
+ *
+ * The earlier `client` refusal may sit on any account that uses the client,
+ * not only on the one the check ran through: that one may hold `sign-in`
+ * instead. So every account on the client is asked.
  *
  * @param record - the record of the account whose refresh was refused
  * @param refusal - what Google answered
+ * @param sameClient - every record that uses the same client, this one too
  */
 export function refusalReason(
   record: Pick<SetupValues, "refreshRefused">,
   refusal: RefreshRefusal,
+  sameClient: readonly Pick<SetupValues, "refreshRefused">[],
 ): RefreshRefusalReason {
   if (refusal.kind === "signInRefused") {
     return "sign-in";
   }
-  const saved = record.refreshRefused?.reason;
-  return saved === "client" || saved === "client-gone" ? "client-gone" : "client";
+  const secretWasRefused = sameClient.some((other) => other.refreshRefused?.reason === "client");
+  const clientWasGone = record.refreshRefused?.reason === "client-gone";
+  return secretWasRefused || clientWasGone ? "client-gone" : "client";
 }
 
 /**
@@ -65,7 +72,8 @@ export function strictestRefusal(
 
 /**
  * Marks each record with the reason, keeping a stricter saved one. A record
- * that already holds this reason keeps its `at`, so "since when" stays true.
+ * that already holds the reason gets no changes, so its `at` stays and "since
+ * when" stays true.
  *
  * @param now - the time to stamp, as `Date.toISOString` writes it
  */
@@ -75,10 +83,12 @@ export function refusalMarks(
   now: string,
 ): RecordUpdate[] {
   return records.map((record) => {
-    const saved = record.refreshRefused;
-    const strictest = strictestRefusal(saved?.reason, reason);
-    const refreshRefused = saved?.reason === strictest ? saved : { reason: strictest, at: now };
-    return { record, changes: { refreshRefused } };
+    const saved = record.refreshRefused?.reason;
+    const strictest = strictestRefusal(saved, reason);
+    if (saved === strictest) {
+      return { record, changes: {} };
+    }
+    return { record, changes: { refreshRefused: { reason: strictest, at: now } } };
   });
 }
 

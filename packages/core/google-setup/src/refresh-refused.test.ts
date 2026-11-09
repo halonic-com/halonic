@@ -109,15 +109,18 @@ verifies("google-setup.refresh-refused", () => {
   });
 
   it("never moves an account to a reason that needs less, and keeps the time it was first refused", async () => {
-    const { setups } = fixture();
+    const { setups, appendCalls } = fixture();
     const account = await signedIn(setups, "gclient_1");
     const [first] = await setups.refreshRefused(account, clientRefused);
     const [gone] = await setups.refreshRefused(account, clientRefused);
+    const callsBefore = appendCalls();
     const [later] = await setups.refreshRefused(account, clientRefused);
 
     expect(first?.refreshRefused?.reason).toBe("client");
     expect(gone?.refreshRefused?.reason).toBe("client-gone");
     expect(later?.refreshRefused).toEqual(gone?.refreshRefused);
+    // Nothing changed, so nothing was written.
+    expect(appendCalls()).toBe(callsBefore);
 
     const signInAccount = await signedIn(setups, "gclient_2");
     await setups.refreshRefused(signInAccount, signInRefused);
@@ -204,6 +207,26 @@ verifies("google-setup.shared-client-refused", () => {
 
     await setups.update(first, { kind: "signed-in" });
     expect(await reasons(setups, [first, second])).toEqual([null, "client-gone"]);
+  });
+
+  it("marks the client gone when the check runs through an account that holds a refused sign-in", async () => {
+    const { setups } = fixture();
+    const signInAccount = await signedIn(setups, "gclient_1");
+    const clientAccount = await signedIn(setups, "gclient_1");
+    await setups.refreshRefused(signInAccount, signInRefused);
+    await setups.refreshRefused(clientAccount, clientRefused);
+    expect(await reasons(setups, [signInAccount, clientAccount])).toEqual(["sign-in", "client"]);
+
+    // The staged-secret check ran through the account whose own refusal is the sign-in.
+    const marked = await setups.refreshRefused(signInAccount, clientRefused);
+
+    expect(await reasons(setups, [signInAccount, clientAccount])).toEqual([
+      "client-gone",
+      "client-gone",
+    ]);
+    // The host gives each returned account its badge from the record.
+    const gone = { kind: "needs-new-secret", clientGone: true };
+    expect(marked.map((record) => savedConnectorState(record))).toMatchObject([gone, gone]);
   });
 });
 
