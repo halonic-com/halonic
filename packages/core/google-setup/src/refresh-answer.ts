@@ -1,4 +1,5 @@
 import { safeGoogleErrorCode } from "./google-error-code.ts";
+import { textField } from "./json-fields.ts";
 import type { TokenAnswer } from "./token-answer.ts";
 
 /**
@@ -36,12 +37,6 @@ export type RefreshRefusal = Extract<
   RefreshAnswerMeaning,
   { readonly kind: "signInRefused" | "clientRefused" }
 >;
-
-/** A non-empty string field of a JSON object, or `undefined`. */
-function textField(json: Record<string, unknown>, name: string): string | undefined {
-  const value = json[name];
-  return typeof value === "string" && value !== "" ? value : undefined;
-}
 
 /** A positive, finite number field of a JSON object, or `undefined`. */
 function positiveNumberField(json: Record<string, unknown>, name: string): number | undefined {

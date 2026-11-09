@@ -1,4 +1,5 @@
 import { safeGoogleErrorCode } from "./google-error-code.ts";
+import { textField } from "./json-fields.ts";
 
 /** Google's token endpoint. A constant, so the ID token is only ever read from Google's answer. */
 export const googleTokenEndpoint = "https://oauth2.googleapis.com/token";
@@ -29,12 +30,6 @@ export type TokenAnswerMeaning =
   | { readonly kind: "noRefreshToken" }
   | { readonly kind: "googleError"; readonly errorCode: string; readonly status: number }
   | { readonly kind: "unexpectedAnswer"; readonly status: number };
-
-/** A non-empty string field of a JSON object, or `undefined`. */
-function textField(json: Record<string, unknown>, name: string): string | undefined {
-  const value = json[name];
-  return typeof value === "string" && value !== "" ? value : undefined;
-}
 
 /**
  * Classifies Google's answer to the code exchange.
