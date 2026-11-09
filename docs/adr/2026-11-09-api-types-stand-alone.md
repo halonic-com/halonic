@@ -33,7 +33,10 @@ Its tests may still use test tooling. A new package of types or a client for
 outside callers, for example a future API client, joins the list and follows
 the same rule. The integration kit's published entry,
 `@halonicjs/integration-kit`, only re-exports `ports` and its own files. Its
-`entry.test.ts` already holds it to that.
+`entry.test.ts` already holds it to that. The one exception is
+`@halonicjs/std/error-kind`, which the entry imports for the `ErrorKind` type:
+it is a single std file with no imports of its own, and it is built into the
+published package, so the package still has no dependencies.
 
 ## Consequences
 
