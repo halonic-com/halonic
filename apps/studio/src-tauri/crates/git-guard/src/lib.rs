@@ -7,16 +7,28 @@
 //! git itself runs within a time and an output limit, and is stopped with
 //! every program it started when it passes one (`git-process`).
 //!
+//! [`GitRunner`] runs git hardened every time: no hooks, no pager, editor,
+//! signing or diff program, a clean environment and only https and ssh
+//! (`git-hardening`), and only in folders the user opened,
+//! with every folder of the repository inside them ([`OpenedFolders`],
+//! `opened-folders`).
+//!
 //! This crate holds no Tauri types: the shell's `git` command is a thin
-//! wrapper around it.
+//! wrapper around [`GitRunner::run`].
 
 mod allow_list;
 mod check_args;
 mod error;
 mod find_git;
 mod limited_run;
+mod opened_folders;
+mod repo_config;
+mod repository;
+mod runner;
 
 pub use check_args::{CheckedCall, check_args};
 pub use error::GitError;
 pub use find_git::find_git;
 pub use limited_run::{GitOutput, Limits};
+pub use opened_folders::OpenedFolders;
+pub use runner::GitRunner;

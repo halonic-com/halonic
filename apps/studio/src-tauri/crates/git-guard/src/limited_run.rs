@@ -61,8 +61,6 @@ type ReaderResult = std::io::Result<Vec<u8>>;
 /// That program is not stopped: once git has exited and been waited for,
 /// its process id is free again, so signalling it could hit another
 /// program.
-// The runner, in the next part of the stack, is the first caller.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn run_limited(
     command: &mut Command,
     deadline: Instant,

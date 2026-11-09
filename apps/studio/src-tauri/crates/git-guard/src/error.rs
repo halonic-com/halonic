@@ -27,10 +27,14 @@ pub enum GitError {
     FolderNotOpened,
     /// The folder does not exist or cannot be read.
     FolderUnreadable,
-    /// The repository's own config sets a key that makes git run a program.
-    RepoConfigRunsPrograms { key: String },
+    /// git could not list the config the call would run with.
+    RepositoryUnreadable,
     /// The empty hooks folder has files in it, so it no longer stops hooks.
     HooksFolderNotEmpty,
+    /// The empty hooks folder is gone or cannot be read.
+    HooksFolderUnreadable,
+    /// git ignored the runner's config, as git before 2.31 does.
+    GitTooOld,
     /// No `git` program was found on the PATH.
     GitNotFound,
     /// git ran past its time limit and was stopped.
@@ -53,8 +57,10 @@ impl GitError {
             GitError::ArgumentNotAllowed { .. } => "argument_not_allowed",
             GitError::FolderNotOpened => "folder_not_opened",
             GitError::FolderUnreadable => "folder_unreadable",
-            GitError::RepoConfigRunsPrograms { .. } => "repo_config_runs_programs",
+            GitError::RepositoryUnreadable => "repository_unreadable",
             GitError::HooksFolderNotEmpty => "hooks_folder_not_empty",
+            GitError::HooksFolderUnreadable => "hooks_folder_unreadable",
+            GitError::GitTooOld => "git_too_old",
             GitError::GitNotFound => "git_not_found",
             GitError::TimedOut => "timed_out",
             GitError::OutputTooLarge => "output_too_large",
@@ -96,11 +102,17 @@ impl fmt::Display for GitError {
             }
             GitError::FolderNotOpened => write!(formatter, "the folder is not an opened folder"),
             GitError::FolderUnreadable => write!(formatter, "the folder cannot be read"),
-            GitError::RepoConfigRunsPrograms { key } => write!(
-                formatter,
-                "the repository's config sets {key}, which can run a program"
-            ),
+            GitError::RepositoryUnreadable => {
+                write!(formatter, "the repository's config cannot be read")
+            }
             GitError::HooksFolderNotEmpty => write!(formatter, "the empty hooks folder has files"),
+            GitError::HooksFolderUnreadable => {
+                write!(formatter, "the empty hooks folder cannot be read")
+            }
+            GitError::GitTooOld => write!(
+                formatter,
+                "git is too old; the Studio needs git 2.31 or later"
+            ),
             GitError::GitNotFound => write!(formatter, "git was not found"),
             GitError::TimedOut => write!(formatter, "git ran past its time limit"),
             GitError::OutputTooLarge => write!(formatter, "git wrote more than the output limit"),

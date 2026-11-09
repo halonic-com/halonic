@@ -39,6 +39,14 @@ export interface PlantGitCode {
   config(key: string, value?: string): Promise<void>;
   /** Adds `line`, such as `* filter=planted`, to the repository's own `.git/info/attributes`. */
   attributes(line: string): Promise<void>;
+  /**
+   * Creates a repository inside the workspace folder with every hook in
+   * {@link plantedHooks} planted in it, and points remote `origin` at it by
+   * its local path. git runs a local remote's own hooks and config on push
+   * and pull, out of reach of anything the adapter sets, so the port refuses
+   * local remotes.
+   */
+  localRemote(): Promise<void>;
   /** Whether any planted code has run. */
   ran(): Promise<boolean>;
 }
@@ -63,6 +71,8 @@ export interface MakeVcs {
   /**
    * Two clones of one new remote called `origin`. Each is on `main`, tracks
    * `origin/main` and has `files` in one commit, the same commit as the remote.
+   * A git adapter refuses local remotes (see the `Vcs` port), so its harness
+   * serves the remote over `https` or `ssh`, for example with `git http-backend`.
    */
   clones(files: DefinitionFiles): Promise<[VcsHarness, VcsHarness]>;
   /**

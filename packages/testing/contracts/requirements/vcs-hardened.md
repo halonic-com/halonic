@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-181; HAL-9 plan section 11 (the git adapter always runs hardened), decided on HAL-181; `Vcs` port v1
+- Source: HAL-181; HAL-9 plan section 11 (the git adapter always runs hardened), decided on HAL-181; HAL-1930 (local remotes refused); `Vcs` port v1
 
-Where a `Vcs` adapter drives git, it shall run every git command so that no program planted in the repository runs, whether the workspace is trusted or not: no hook, no `core.fsmonitor` command, no filter, external diff, textconv or signing program, no upload-pack, receive-pack, ssh, credential or askpass program named in the repository's config, and no `ext::` URL. The `Vcs` port doc lists how. An adapter that drives git shall give the suite a way to plant them; one that runs no git, such as the memory adapter, declares so and the cases are skipped.
+Where a `Vcs` adapter drives git, it shall run every git command so that no program planted in the repository runs, whether the workspace is trusted or not: no hook, no `core.fsmonitor` command, no filter, external diff, textconv or signing program, no upload-pack, receive-pack, ssh, credential or askpass program named in the repository's config, no `ext::` URL, and no hook of a local remote. The `Vcs` port doc lists how. An adapter that drives git shall give the suite a way to plant them; one that runs no git, such as the memory adapter, declares so and the cases are skipped.
 
 Draft until the first adapter that drives git passes it: the memory adapter runs no programs, so its pass shows only that the cases run. A self-test with a plant that reports it ran shows every case fails then.
 
@@ -22,3 +22,6 @@ Draft until the first adapter that drives git passes it: the memory adapter runs
 - Given one clone whose remote is an `ext::` URL with `protocol.ext.allow` set to `always`, and one whose remote is an ssh URL with a planted `core.sshCommand`,
   when each pulls and pushes,
   then no planted program has run, whether or not the calls fail.
+- Given a clone whose remote `origin` is a local repository in the workspace folder with every hook planted in it,
+  when it pushes and pulls,
+  then no planted hook has run, whether or not the calls fail.

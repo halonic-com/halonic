@@ -97,15 +97,20 @@ export interface VcsCommit {
  * - diffs and logs with `--no-ext-diff --no-textconv` (`diff.external`,
  *   `diff.<name>.command` and `diff.<name>.textconv`);
  * - passes `-c commit.gpgSign=false -c push.gpgSign=false
- *   -c log.showSignature=false` (`gpg.program` and the other signing
- *   programs);
+ *   -c log.showSignature=false` (`gpg.program`, `gpg.ssh.defaultKeyCommand`
+ *   and the other signing programs);
+ * - passes `-c submodule.recurse=false -c fetch.recurseSubmodules=false`, so
+ *   git never fetches, checks out or pushes inside a submodule, where that
+ *   submodule's own config applies;
  * - fetches and pushes with `--upload-pack=git-upload-pack` and
  *   `--receive-pack=git-receive-pack` (`remote.<name>.uploadpack` and
  *   `receivepack`), `-c credential.helper=` followed only by Halonic's own
  *   helper, if any (`credential.helper`), `GIT_SSH_COMMAND=ssh`
  *   (`core.sshCommand`), `GIT_ASKPASS` set (`core.askPass`) and
- *   `GIT_ALLOW_PROTOCOL=https:ssh:file` (`protocol.*.allow`, so no `ext::`
- *   URL runs a command);
+ *   `GIT_ALLOW_PROTOCOL=https:ssh` (`protocol.*.allow`, so no `ext::` URL
+ *   runs a command). No `file`: a local remote such as `./planted.git` runs
+ *   its own hooks and config on push and pull, out of reach of every
+ *   setting here, so local remotes are refused;
  * - starts from an environment with every inherited `GIT_*` variable
  *   removed (such as `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and
  *   `GIT_CONFIG_PARAMETERS`), and sets `GIT_TERMINAL_PROMPT=0`,
@@ -114,8 +119,11 @@ export interface VcsCommit {
  *
  * Out of scope, because no port method reaches them: merge drivers
  * (`pull` is fast-forward only), `submodule.*.update` (no submodule
- * command), and the remote repository's own config, such as
- * `core.alternateRefsCommand` (it isn't the workspace).
+ * command), and a remote server's own config, such as
+ * `core.alternateRefsCommand` (it runs on another machine). Where a
+ * workspace's config would make a program run, the adapter neutralises it
+ * as above rather than refusing the workspace, so a cloned repository that
+ * names one still works.
  */
 export interface Vcs {
   /** The branch, its upstream and the changed files. */

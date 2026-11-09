@@ -24,6 +24,7 @@ export function vcsHardenedCases(make: MakeVcs, test: HardenedTest = it): void {
   hookCases(make, test);
   configCases(make, test);
   remoteCases(make, test);
+  localRemoteCases(make, test);
 }
 
 function hookCases(make: MakeVcs, test: HardenedTest): void {
@@ -148,6 +149,22 @@ function remoteCases(make: MakeVcs, test: HardenedTest): void {
 
     expect(await plantOf(ours).ran()).toBe(false);
     expect(await plantOf(theirs).ran()).toBe(false);
+  });
+}
+
+function localRemoteCases(make: MakeVcs, test: HardenedTest): void {
+  test("never runs a hook planted in a local remote", async () => {
+    const [ours] = await make.clones({ "a.yaml": "1\n" });
+    await plantOf(ours).localRemote();
+    await ours.files.write("a.yaml", "2\n");
+    await ours.vcs.stage(["a.yaml"]);
+    await ours.vcs.commit("Change a");
+
+    // The port refuses a local remote; all that matters is that nothing planted ran.
+    await ours.vcs.push().catch(() => undefined);
+    await ours.vcs.pull().catch(() => undefined);
+
+    expect(await plantOf(ours).ran()).toBe(false);
   });
 }
 

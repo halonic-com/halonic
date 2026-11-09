@@ -94,6 +94,9 @@ function recordedPlant(leaks: boolean): PlantGitCode {
     async attributes(line) {
       planted.push(`attributes ${line}`);
     },
+    async localRemote() {
+      planted.push("local remote");
+    },
     async ran() {
       return leaks && planted.length > 0;
     },
