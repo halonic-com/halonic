@@ -43,15 +43,28 @@ verifies("kit.window", () => {
     );
     const section = container.firstElementChild as HTMLElement;
     expect(section.tagName).toBe("SECTION");
-    expect(section.className).toContain(
-      "overflow-hidden rounded-md border border-border bg-surface",
-    );
+    expect(section.className).toContain("rounded-md border border-border bg-surface");
     const id = section.getAttribute("aria-labelledby") ?? "";
     expect(document.getElementById(id)?.textContent).toBe("workflows/review.yaml");
     expect(section.firstElementChild?.className).toContain("min-h-9");
     // The content sets its own padding.
-    expect(section.lastElementChild?.tagName).toBe("PRE");
+    expect(section.lastElementChild?.firstElementChild?.tagName).toBe("PRE");
     expect(section.className).not.toContain("p-");
+  });
+
+  it("clips its content but not its bar, so an action's focus ring shows in full", () => {
+    const { container } = render(
+      <Window title="workflows/review.yaml" actions={<button type="button">Copy</button>}>
+        <pre>name: review</pre>
+      </Window>,
+    );
+    const section = container.firstElementChild as HTMLElement;
+    expect(section.className).not.toContain("overflow-hidden");
+    const bar = section.firstElementChild as HTMLElement;
+    expect(bar.className).not.toContain("overflow-hidden");
+    expect(bar.className).toContain("rounded-t-[calc(var(--radius-md)-1px)]");
+    const content = section.lastElementChild as HTMLElement;
+    expect(content.className).toContain("overflow-hidden rounded-b-[calc(var(--radius-md)-1px)]");
   });
 
   it("is unnamed with an empty title", () => {

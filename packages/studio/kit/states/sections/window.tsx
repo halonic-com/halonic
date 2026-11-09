@@ -12,19 +12,31 @@ function Copy() {
   );
 }
 
-function FileText() {
+/**
+ * The window clips its content, so a file scrolls itself: `tabIndex` lets a keyboard user focus
+ * and scroll it, and the inset ring stays inside the clip.
+ */
+function FileText({ text }: { text: string }) {
   return (
-    <pre className="p-4 font-mono text-code text-fg">
-      {"name: review\nsteps:\n  - agent: reviewer"}
+    <pre
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be focusable to scroll by keyboard
+      tabIndex={0}
+      className="overflow-x-auto p-4 font-mono text-code text-fg focus-ring-inset"
+    >
+      {text}
     </pre>
   );
 }
 
+const shortFile = "name: review\nsteps:\n  - agent: reviewer";
+const longFile =
+  "name: review\nsteps:\n  - agent: reviewer\n    prompt: Read the incoming mail, sort it by customer and draft a reply for each one";
+
 export const windowSection: PartSection = {
   id: "window",
-  number: "theme",
+  number: "26.1",
   name: "WindowBar and Window",
-  order: "site theme (HAL-1687) · a bar on its own, then the bar in a frame",
+  order: "kit 26.1 · a bar on its own, then the bar in a frame",
   notApplicable: "hover, focus, disabled (not interactive; its buttons have their own)",
   rows: [
     {
@@ -32,8 +44,8 @@ export const windowSection: PartSection = {
       copies: () => (
         <div className="grid w-96 gap-4 phone:w-full">
           <WindowBar title={file} actions={<Copy />} />
-          <Window title={file}>
-            <FileText />
+          <Window title={file} actions={<Copy />}>
+            <FileText text={shortFile} />
           </Window>
         </div>
       ),
@@ -46,6 +58,16 @@ export const windowSection: PartSection = {
             title="workspaces/support/workflows/review-incoming-mail.yaml"
             actions={<Copy />}
           />
+        </div>
+      ),
+    },
+    {
+      name: "Long line",
+      copies: () => (
+        <div className="w-96 phone:w-full">
+          <Window title={file}>
+            <FileText text={longFile} />
+          </Window>
         </div>
       ),
     },

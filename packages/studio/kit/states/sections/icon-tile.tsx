@@ -4,9 +4,9 @@ import type { PartSection } from "../state-table.tsx";
 
 export const iconTileSection: PartSection = {
   id: "icon-tile",
-  number: "theme",
+  number: "26.2",
   name: "IconTile",
-  order: "site theme (HAL-1687) · left to right: flow, list, sliders",
+  order: "kit 26.2 · left to right: flow, list, sliders",
   notApplicable: "hover, focus, disabled (decoration, not interactive)",
   rows: [
     {

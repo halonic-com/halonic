@@ -29,8 +29,13 @@ const titleClasses = "min-w-0 font-mono text-caption text-fg-muted wrap-anywhere
  * <WindowBar title="workflows/review.yaml" actions={copyPath} />
  */
 export function WindowBar({ title, titleId, actions }: WindowBarProps) {
+  return <Bar title={title} titleId={titleId} actions={actions} className={barClasses} />;
+}
+
+/** The bar with its classes given, so `Window` can round its top corners. */
+function Bar({ title, titleId, actions, className }: WindowBarProps & { className: string }) {
   return (
-    <div className={barClasses}>
+    <div className={className}>
       <span id={titleId} className={titleClasses}>
         {title}
       </span>
@@ -41,6 +46,16 @@ export function WindowBar({ title, titleId, actions }: WindowBarProps) {
   );
 }
 
+/**
+ * Inside a `Window`, the bar rounds its own top corners to the frame's inner radius (12px less the
+ * 1px border) instead of the frame clipping it: a clip would cut off the top of a focused action's
+ * ring, which is 5px wide in high-contrast mode and the bar leaves 4px above an `sm` button.
+ */
+const framedBarClasses = `${barClasses} rounded-t-[calc(var(--radius-md)-1px)]`;
+
+/** The content is clipped to the frame's bottom corners. Anything wider scrolls itself. */
+const framedContentClasses = "overflow-hidden rounded-b-[calc(var(--radius-md)-1px)]";
+
 export interface WindowProps extends Omit<WindowBarProps, "titleId"> {
   /** The file or the run's steps. The window adds no padding: what's inside sets its own. */
   readonly children: ReactNode;
@@ -49,10 +64,11 @@ export interface WindowProps extends Omit<WindowBarProps, "titleId"> {
 /**
  * A file or a run shown inside a page, in one plain frame: a bordered `surface` box with a 12px
  * radius, the `WindowBar` on top and the content below. It follows light and dark mode, like the
- * rest of the Studio, and is a region named by its title.
+ * rest of the Studio, and is a region named by its title, so use one or a few per page: each one is
+ * a landmark. Content wider than the window scrolls itself (`overflow-x-auto`); the window clips it.
  *
  * @example
- * <Window title="workflows/review.yaml"><pre>…</pre></Window>
+ * <Window title="workflows/review.yaml"><pre className="overflow-x-auto">…</pre></Window>
  */
 export function Window({ title, actions, children }: WindowProps) {
   const titleId = useId();
@@ -60,10 +76,15 @@ export function Window({ title, actions, children }: WindowProps) {
   return (
     <section
       aria-labelledby={named ? titleId : undefined}
-      className="overflow-hidden rounded-md border border-border bg-surface text-fg"
+      className="rounded-md border border-border bg-surface text-fg"
     >
-      <WindowBar title={title} titleId={named ? titleId : undefined} actions={actions} />
-      {children}
+      <Bar
+        title={title}
+        titleId={named ? titleId : undefined}
+        actions={actions}
+        className={framedBarClasses}
+      />
+      <div className={framedContentClasses}>{children}</div>
     </section>
   );
 }

@@ -850,9 +850,19 @@ a 12px radius, named by its title. It adds no padding, so its content sets its o
 
 ```tsx
 <Window title="workflows/review.yaml">
-  <pre className="p-4 font-mono text-code">…</pre>
+  <pre tabIndex={0} className="overflow-x-auto p-4 font-mono text-code focus-ring-inset">
+    …
+  </pre>
 </Window>;
 ```
+
+The window clips its content to its rounded corners, so content wider than the window scrolls
+itself: give it `overflow-x-auto`, and `tabIndex={0}` so a keyboard user can focus it and scroll
+with the arrow keys. Its focus ring is `focus-ring-inset`, which stays inside the clip. The bar
+isn't clipped, so the focus ring of an action in it shows in full, also in high-contrast mode.
+
+Each `Window` is a region landmark named by its title, so screen-reader users can jump to it. Use
+one or a few per page.
 
 The site's code windows are always dark; the Studio's follow light and dark mode, like the rest of
 the app. A long title wraps instead of being cut off, so the bar grows a line in a narrow pane.
