@@ -575,6 +575,9 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
@@ -584,10 +587,10 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std
-    devDependencies:
-      '@halonicjs/format':
+      '@halonicjs/workspace':
         specifier: workspace:*
-        version: link:../format
+        version: link:../workspace
+    devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

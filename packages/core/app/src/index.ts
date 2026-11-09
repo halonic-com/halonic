@@ -95,6 +95,14 @@ export {
   type ToolListingInput,
   type ToolRefusal,
 } from "./tool-listing.ts";
+export {
+  type PersonTrustOrigin,
+  type TrustCheck,
+  type TrustRefusal,
+  TrustService,
+  type TrustServiceOptions,
+  type TrustSubject,
+} from "./trust-service.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
