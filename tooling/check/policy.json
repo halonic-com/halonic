@@ -9,6 +9,7 @@
     "@halonicjs/format",
     "@halonicjs/workflow",
     "@halonicjs/routines",
+    "@halonicjs/workspace",
     "@halonicjs/app",
     "@halonicjs/google-setup"
   ],
