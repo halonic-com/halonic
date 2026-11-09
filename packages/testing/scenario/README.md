@@ -22,7 +22,11 @@ fails, it writes what `collect` returned as JSON to
 `test-results/scenarios/<test file>/<test name>/<name>.json` (git ignores
 `test-results/`), prints the path and adds it to the test's `keptOnFailure`
 tag in `test-results/vitest.json`. If `collect` throws, the file records
-that error and the test keeps its own.
+that error and the test keeps its own. A test file or test name that isn't
+already a safe folder name, or is longer than 120 characters, gets a short
+hash of the whole name at the end, so two tests never share a folder. Give
+each `keepOnFailure` in a test its own name: a second call with the same
+name throws.
 
 ## Example
 

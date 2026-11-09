@@ -1,10 +1,11 @@
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
-import { onTestFailed, type RunnerTestCase } from "vitest";
+import { onTestFailed, type RunnerTestCase, TestRunner } from "vitest";
 
 declare module "vitest" {
   interface TaskMeta {
-    /** The files `keepOnFailure()` wrote when the test failed, relative to the package. */
+    /** The files `keepOnFailure()` wrote when the test failed, relative to the working directory (`process.cwd()`). */
     keptOnFailure?: string[];
   }
 }
@@ -18,6 +19,9 @@ export interface KeepOnFailureOptions {
 /** A name for a kept file: lowercase words joined by dashes, such as `timer-records`. */
 const keptNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** The names each running test has kept so far in this attempt, so a second call with the same name throws. */
+const namesKept = new WeakMap<object, { attempt: string; names: Set<string> }>();
+
 /**
  * Saves state for the reader when the current test fails, and does nothing
  * when it passes. Call it inside a test, after setting up the world, with a
@@ -27,14 +31,15 @@ const keptNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
  * On failure it writes what `collect` returned as JSON to
  * `<directory>/<test file>/<test name>/<name>.json`, prints the path, and
  * adds it to the test's `keptOnFailure` tag in `test-results/vitest.json`.
- * The file and test names become single, safe path segments. When `collect`
- * throws, the file records that error instead, and the test still fails
- * with its own error.
+ * The file and test names become single, safe path segments; see
+ * {@link pathSegment}. When `collect` throws, the file records that error
+ * instead, and the test still fails with its own error.
  *
  * @param name - the kept file's name, in lowercase words joined by dashes
  * @param collect - reads the state to keep; may be async
  * @param options - where to write
- * @throws when `name` isn't lowercase words joined by dashes, or when called outside a test
+ * @throws when `name` isn't lowercase words joined by dashes, when the test
+ *   already kept a file with that name, or when called outside a test
  *
  * @example
  * it("delivers the timer after a restart", async () => {
@@ -53,6 +58,7 @@ export function keepOnFailure(
       `keepOnFailure: "${name}" isn't a good file name. Use lowercase words joined by dashes, such as "timer-records".`,
     );
   }
+  rejectSecondName(name);
   const directory = options.directory ?? join(process.cwd(), "test-results", "scenarios");
   onTestFailed(async ({ task }) => {
     const file = join(
@@ -67,6 +73,25 @@ export function keepOnFailure(
     task.meta.keptOnFailure = [...(task.meta.keptOnFailure ?? []), shown];
     console.error(`keepOnFailure: kept ${name} at ${shown}`);
   });
+}
+
+/** Throws when the running test already kept a file called `name`, which this call would overwrite. */
+function rejectSecondName(name: string): void {
+  const test = TestRunner.getCurrentTest();
+  if (test === undefined) return; // onTestFailed says it needs a test.
+  // A retry or repeat runs the same test again, and may keep the same names again.
+  const attempt = `${test.result?.repeatCount ?? 0}:${test.result?.retryCount ?? 0}`;
+  let kept = namesKept.get(test);
+  if (kept?.attempt !== attempt) {
+    kept = { attempt, names: new Set() };
+    namesKept.set(test, kept);
+  }
+  if (kept.names.has(name)) {
+    throw new Error(
+      `keepOnFailure: this test already keeps "${name}", and a second one would overwrite it. Give each a different name.`,
+    );
+  }
+  kept.names.add(name);
 }
 
 /** Runs `collect`, and turns its error into data, so it can't hide the test's own error. */
@@ -87,19 +112,27 @@ function testTitle(task: Readonly<RunnerTestCase>): string {
   return names.join(" > ");
 }
 
+/** The longest path segment {@link pathSegment} returns. */
+const segmentLength = 120;
+
 /**
  * Turns a name into one path segment: anything but letters, digits, `.`,
  * `_` and `-` becomes `-`, as does a run of dots, and leading or trailing
- * dots and dashes go, so the result has no `..` and no separator.
+ * dots and dashes go, so the result has no `..` and no separator. When that
+ * changes the name, or it is longer than 120 characters, the segment is cut
+ * to 111 and ends in `-` and 8 characters of the full name's hash, so two
+ * names that only differ in what was changed or cut get different folders.
  */
 export function pathSegment(text: string): string {
-  const segment = text
+  const readable = text
     .replace(/[^A-Za-z0-9._-]+/g, "-")
     .replace(/\.{2,}/g, "-")
     .replace(/-{2,}/g, "-")
-    .replace(/^[.-]+|[.-]+$/g, "")
-    .slice(0, 120);
-  return segment === "" ? "unnamed" : segment;
+    .replace(/^[.-]+|[.-]+$/g, "");
+  if (readable === text && text !== "" && text.length <= segmentLength) return text;
+  const hash = createHash("sha256").update(text).digest("hex").slice(0, 8);
+  const kept = readable.slice(0, segmentLength - hash.length - 1).replace(/[.-]+$/, "");
+  return `${kept === "" ? "unnamed" : kept}-${hash}`;
 }
 
 /**

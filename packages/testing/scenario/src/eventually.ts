@@ -27,14 +27,16 @@ export interface EventuallyOptions {
  * exact time and check once instead, or an off-by-one would pass.
  *
  * The first check runs at once. After each failed check it waits `every`
- * milliseconds and checks again, until `within` milliseconds have been
- * waited: `within` is the sum of the waits, not a wall-clock limit, so the
- * number of checks is always `floor(within / every) + 1`.
+ * milliseconds and checks again, as long as the steps waited stay within
+ * `within` milliseconds: `within` is the sum of the waits, not a wall-clock
+ * limit, so the number of checks is always `floor(within / every) + 1`, also
+ * when `every` is a fraction.
  *
  * @param check - throws (for example with `expect`) until the state is right
  * @param options - the time budget, the step and how to wait
  * @returns what `check` returned on the check that passed
- * @throws a `RangeError` when `every` isn't above 0 or `within` is less than `every`
+ * @throws a `RangeError` when `every` isn't a finite number above 0, or
+ *   `within` isn't a finite number at least `every` (such as `NaN` or `Infinity`)
  * @throws an `Error` naming the intent and the number of checks, with the
  *   last check's error as its `cause`, when no check passed within the budget
  *
@@ -54,14 +56,14 @@ export async function eventually<Result>(
   const { within, every, wait = waitRealTime, intent = "the check" } = options;
   rejectBadBudget(within, every);
 
-  let waited = 0;
-  let checks = 0;
-  for (;;) {
-    checks += 1;
+  // Count the steps rather than add up `every`, so a fraction can't round
+  // the budget into one check more or less than the formula above.
+  const steps = Math.floor(within / every);
+  for (let checks = 1; ; checks += 1) {
     try {
       return await check();
     } catch (error) {
-      if (waited + every > within) {
+      if (checks > steps) {
         throw new Error(
           `${intent} didn't hold within ${within} ms: ${checks} checks, ${every} ms apart. Last failure: ${messageOf(error)}`,
           { cause: error },
@@ -69,7 +71,6 @@ export async function eventually<Result>(
       }
     }
     await wait(every);
-    waited += every;
   }
 }
 

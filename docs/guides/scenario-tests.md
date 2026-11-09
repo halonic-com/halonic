@@ -25,9 +25,11 @@ The helpers are in
 4. **Check real state, not printed text.** Read the store, the files on
    disk or the listener's calls. Text output changes with wording; state
    only changes when behaviour does.
-5. **Fake time where you can.** Use the port fakes (`ManualClock`,
-   `ManualTimers`) or `vi.useFakeTimers()`. A test on fake time runs in
-   milliseconds and gives the same result on every machine.
+5. **Fake time where you can.** Use the port fakes, the fake clock and
+   timers that stand in for the real ones (`ManualClock`, `ManualTimers`),
+   or `vi.useFakeTimers()`. A test on fake time runs in milliseconds and
+   gives the same result on every machine. When a test can't use fake time,
+   say why in a comment in the test.
 6. **No sleeps: an exact wait or `eventually`.** See
    [Waiting](#waiting).
 7. **Shared checks in one reviewed file.** Checks and steps that more than
@@ -38,21 +40,28 @@ The helpers are in
    would want to see. See [When a test fails](#when-a-test-fails).
 9. **No retries.** A test that sometimes fails is a bug in the test or in
    the code. Find out which; don't run it again until it passes.
+10. **Linked to its requirement.** A requirement is one recorded rule of
+    behaviour with a stable ID, in the package's `requirements/` folder.
+    Wrap the tests that prove it in `verifies("<requirement ID>", () => …)`,
+    as the restart test does. `pnpm check trace` then fails when a
+    requirement has no test that ran and passed; see
+    [`trace`](checks.md#trace-requirements-and-their-tests).
 
 ## Waiting
 
 There are two kinds of waiting, and they need different tools.
 
-| The intent is …                  | Use                                          | Example                                         |
-| -------------------------------- | -------------------------------------------- | ----------------------------------------------- |
-| "not before T, and exactly at T" | the exact wait, then one check               | a back-off: still 1 try at 4 s - 1 ms, 2 at 4 s |
-| "at some point within X"         | `eventually(check, { within, every, wait })` | the timer is delivered within a minute          |
+| The intent is …                  | Use                                          | Example                                                       |
+| -------------------------------- | -------------------------------------------- | ------------------------------------------------------------- |
+| "not before T, and exactly at T" | the exact wait, then one check               | a back-off: the next try comes exactly 4 s after the last one |
+| "at some point within X"         | `eventually(check, { within, every, wait })` | the timer is delivered within a minute                        |
 
 Use the exact wait when the time is the behaviour. `eventually` would let an
 off-by-one pass, because it keeps checking until the check holds:
 
 ```ts
-// Exact times: the fourth try comes 4 s after the third.
+// Exact times: the next try comes exactly 4 s after the last one,
+// so the listener has 1 timer at 4 s - 1 ms, and 2 at 4 s.
 await after.wait(4 * second - 1);
 expect(after.listener.timers).toHaveLength(1);
 await after.wait(1);
@@ -91,7 +100,10 @@ test-results/scenarios/<test file>/<test name>/<name>.json
 Git ignores `test-results/`. The test prints the path, and Vitest's result
 file `test-results/vitest.json` lists it under the test's `keptOnFailure`
 tag. If `collect` throws, the file records that error, and the test still
-fails with its own error.
+fails with its own error. A test name that had to change to make a safe
+folder name, or is longer than 120 characters, ends in a short hash, so two
+tests never share a folder. Give each `keepOnFailure` in a test its own
+name: a second call with the same name throws.
 
 Keep what you would read first: the records in the store, the calls the
 listener got, the errors the code reported. The restart test keeps two
@@ -110,7 +122,7 @@ keepOnFailure("deliveries", () =>
 - The world is built in the test, from invented `acme` data.
 - Steps have names; the test reads as a story.
 - Checks read state, not printed text.
-- Time is fake, or the test says why it can't be.
+- Time is fake, or a comment in the test says why it can't be.
 - Each wait is exact or `eventually`, never a sleep.
 - `keepOnFailure` keeps the state you'd want when it fails.
 - The test is linked to its requirement with `verifies()`.

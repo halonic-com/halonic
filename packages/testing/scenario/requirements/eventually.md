@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1666; Docker research point 7 (HAL-1600), approved on HAL-1649
 
-When `eventually(check, options)` is called, the scenario package shall run `check` at once and, while it throws, wait `every` milliseconds with the given `wait` function and run it again, and shall resolve with the value of the first check that doesn't throw. It shall count only the time waited towards `within`, so it runs at most `floor(within / every) + 1` checks. When no check passes within that budget, it shall reject with an error that names the intent and the number of checks and has the last check's error as its `cause`. When `every` isn't a finite number above 0, or `within` is less than `every` or not finite, it shall reject with a `RangeError` without running `check`.
+When `eventually(check, options)` is called, the scenario package shall run `check` at once and, while it throws, wait `every` milliseconds with the given `wait` function and run it again, and shall resolve with the value of the first check that doesn't throw. It shall count only the time waited towards `within`, and count the waits rather than add them up, so it runs at most `floor(within / every) + 1` checks, also when `every` is a fraction. When no check passes within that budget, it shall reject with an error that names the intent and the number of checks and has the last check's error as its `cause`. When `every` isn't a finite number above 0, or `within` is less than `every` or not finite, it shall reject with a `RangeError` without running `check`.
 
 ## Examples
 
@@ -17,6 +17,9 @@ When `eventually(check, options)` is called, the scenario package shall run `che
 - Given a check that always throws, `within` 1000 and `every` 300,
   when `eventually` runs it,
   then it runs the check 4 times and rejects with "4 checks" and the fourth error as its cause.
+- Given a check that always throws, `within` 0.6 and `every` 0.1,
+  when `eventually` runs it,
+  then it runs the check `floor(0.6 / 0.1) + 1` times, which is 6 in floating point.
 - Given `every` of 0,
   when `eventually` is called,
   then it rejects with a `RangeError` and the check never runs.

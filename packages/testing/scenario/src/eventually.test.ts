@@ -131,6 +131,18 @@ verifies("scenario.eventually", () => {
       expect(subject.runs).toBe(2);
     });
 
+    it("counts steps, so a fractional every still runs floor(within / every) + 1 checks", async () => {
+      const time = fakeTime();
+      const subject = passesAfter(Number.POSITIVE_INFINITY, "never");
+      // 0.6 / 0.1 is 5.999… in floating point, so the formula gives 6 checks.
+      // Adding up 0.1 six times stays at or under 0.6, which ran a seventh.
+      await expect(
+        eventually(subject.check, { within: 0.6, every: 0.1, wait: time.wait }),
+      ).rejects.toThrow("6 checks");
+      expect(subject.runs).toBe(Math.floor(0.6 / 0.1) + 1);
+      expect(time.steps).toHaveLength(5);
+    });
+
     it("reports a thrown value that isn't an Error", async () => {
       const time = fakeTime();
       const rejection = eventually(
@@ -150,6 +162,7 @@ verifies("scenario.eventually", () => {
       { within: 1000, every: Number.NaN },
       { within: 100, every: 300 },
       { within: Number.POSITIVE_INFINITY, every: 100 },
+      { within: Number.NaN, every: 100 },
     ];
 
     it.each(badBudgets)("rejects within $within, every $every without checking", async (budget) => {

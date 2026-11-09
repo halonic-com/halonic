@@ -39,6 +39,11 @@ function rememberAfterFailure(): void {
   });
 }
 
+/** The folder of a test in this file, from the names of its describe blocks and its own. */
+function testFolder(...names: string[]): string {
+  return pathSegment(["scenario.keep-on-failure", ...names].join(" > "));
+}
+
 async function readKept(...segments: string[]): Promise<unknown> {
   return JSON.parse(await readFile(join(directory, thisFile, ...segments), "utf8"));
 }
@@ -71,20 +76,20 @@ verifies("scenario.keep-on-failure", () => {
 
     afterAll(async () => {
       const kept = await readKept(
-        "scenario.keep-on-failure-a-failing-test-keeps-what-collect-returned",
+        testFolder("a failing test", "keeps what collect returned"),
         "records.json",
       );
       expect(kept).toEqual({ state: { records: [{ id: "acme-1", size: "10", tags: ["a"] }] } });
       expect(failed.get("keeps what collect returned")?.kept).toEqual([
-        expect.stringMatching(/keeps-what-collect-returned[\\/]records\.json$/),
+        expect.stringMatching(/keeps-what-collect-returned-[0-9a-f]{8}[\\/]records\.json$/),
       ]);
 
-      expect(await readdir(join(directory, thisFile))).toContain(
-        "scenario.keep-on-failure-a-failing-test-escape-me",
-      );
+      const escaped = testFolder("a failing test", "../../escape / me");
+      expect(escaped).toMatch(/^scenario\.keep-on-failure-a-failing-test-escape-me-[0-9a-f]{8}$/);
+      expect(await readdir(join(directory, thisFile))).toContain(escaped);
 
       const keptError = await readKept(
-        "scenario.keep-on-failure-a-failing-test-keeps-its-own-error-when-collect-throws",
+        testFolder("a failing test", "keeps its own error when collect throws"),
         "records.json",
       );
       expect(keptError).toMatchObject({
@@ -93,6 +98,32 @@ verifies("scenario.keep-on-failure", () => {
       expect(failed.get("keeps its own error when collect throws")?.errors).toEqual([
         "expected 'the own failure' to be 'something else' // Object.is equality",
       ]);
+    });
+  });
+
+  describe("two long test names that share their first 120 characters", () => {
+    const shared = "a restart must deliver every timer that was due while it was stopped ".repeat(
+      2,
+    );
+
+    it.fails(`${shared}in order`, () => {
+      keepOnFailure("records", () => "in order", { directory });
+      expect("delivered").toBe("kept");
+    });
+
+    it.fails(`${shared}once`, () => {
+      keepOnFailure("records", () => "once", { directory });
+      expect("delivered").toBe("kept");
+    });
+
+    afterAll(async () => {
+      const describeName = "two long test names that share their first 120 characters";
+      const inOrder = testFolder(describeName, `${shared}in order`);
+      const once = testFolder(describeName, `${shared}once`);
+      expect(inOrder.slice(0, 111)).toBe(once.slice(0, 111));
+      expect(inOrder).not.toBe(once);
+      expect(await readKept(inOrder, "records.json")).toEqual({ state: "in order" });
+      expect(await readKept(once, "records.json")).toEqual({ state: "once" });
     });
   });
 
@@ -120,19 +151,56 @@ verifies("scenario.keep-on-failure", () => {
     );
   });
 
+  describe("a second keep with the same name", () => {
+    it("throws, instead of overwriting the first", () => {
+      keepOnFailure("records", () => "first", { directory });
+      keepOnFailure("deliveries", () => "other", { directory });
+      expect(() => keepOnFailure("records", () => "second", { directory })).toThrow(
+        'this test already keeps "records"',
+      );
+    });
+
+    it("is fine in another test", () => {
+      expect(() => keepOnFailure("records", () => "first", { directory })).not.toThrow();
+    });
+
+    let attempts = 0;
+    // The test's own `expect`, because a retry counts its assertions afresh.
+    it("is fine in a retry of the same test", { retry: 1 }, ({ expect }) => {
+      attempts += 1;
+      keepOnFailure("records", () => attempts, { directory });
+      expect(attempts).toBe(2);
+    });
+  });
+
   describe("a path segment", () => {
+    it.each(["timer-records", "scenario.keep-on-failure", "x".repeat(120)])(
+      "keeps the safe name %j as it is",
+      (text) => {
+        expect(pathSegment(text)).toBe(text);
+      },
+    );
+
     it.each([
       ["..", "unnamed"],
+      ["", "unnamed"],
       ["a/../../b", "a-b"],
       ["acme\\runs\\x", "acme-runs-x"],
       [".hidden", "hidden"],
       ["suite > test name", "suite-test-name"],
-    ])("turns %j into %j", (text, segment) => {
-      expect(pathSegment(text)).toBe(segment);
+    ])("turns %j into %j and a hash of the whole name", (text, readable) => {
+      expect(pathSegment(text)).toMatch(new RegExp(`^${readable}-[0-9a-f]{8}$`));
     });
 
-    it("is at most 120 characters", () => {
-      expect(pathSegment("x".repeat(500))).toHaveLength(120);
+    it("gives names that turn into the same text different segments", () => {
+      expect(pathSegment("a/b")).not.toBe(pathSegment("a b"));
+    });
+
+    it("is at most 120 characters, and ends in a hash when it cuts", () => {
+      const segment = pathSegment("x".repeat(500));
+      expect(segment).toHaveLength(120);
+      expect(segment).toMatch(/^x{111}-[0-9a-f]{8}$/);
+      expect(segment).not.toBe(pathSegment(`${"x".repeat(499)}y`));
     });
   });
 });
