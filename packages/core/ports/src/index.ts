@@ -45,6 +45,7 @@ export {
 } from "./definition-store.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {
+  addHarnessEnvironment,
   type Harness,
   type HarnessBridge,
   type HarnessDetection,
@@ -52,6 +53,7 @@ export {
   type HarnessInput,
   type HarnessRun,
   type HarnessTask,
+  harnessBridgeTokenHeader,
   harnessVersion,
 } from "./harness.ts";
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
@@ -91,6 +93,11 @@ export {
 } from "./llm-provider.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";
 export { type PortName, portVersions } from "./port-versions.ts";
+export {
+  type ProgramProbe,
+  type ProgramProbeResult,
+  programProbeVersion,
+} from "./program-probe.ts";
 export {
   type CurrentRecord,
   compactedChanges,

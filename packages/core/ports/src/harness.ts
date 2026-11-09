@@ -1,5 +1,5 @@
 import type { AgentResume, RunEventBody, RunEventType } from "@halonicjs/events";
-import type { SandboxSession } from "./sandbox.ts";
+import type { SandboxProfile, SandboxSession } from "./sandbox.ts";
 
 /** Version of the {@link Harness} port. A breaking change bumps it and comes with an ADR. */
 export const harnessVersion = 1;
@@ -40,9 +40,18 @@ export interface HarnessTask {
 }
 
 /**
+ * The request header that carries the run's bridge token. The token has a
+ * header of its own because `Authorization` isn't free: with a subscription,
+ * it carries the person's own sign-in, which the bridge passes on unread.
+ * Never put the token in the URL, because paths end up in logs.
+ */
+export const harnessBridgeTokenHeader = "x-halonic-run-token";
+
+/**
  * The Halonic bridge of one run: a loopback address in Halonic that serves
  * the model gateway and Halonic's tools over MCP. The harness points its
- * program at `url` and puts `token` where an API key would go.
+ * program at `url` and has it send `token` in the
+ * {@link harnessBridgeTokenHeader} header on every request.
  *
  * The token is a credential for this run only. A harness never writes it into
  * an event, a log line or an error message.
@@ -137,6 +146,8 @@ export interface HarnessRun extends AsyncIterable<HarnessEvent> {
  *
  * @example
  * if ((await harness.detect()).status !== "ready") return;
+ * const extra = harness.environment?.(bridge, profile) ?? {};
+ * const session = await sandbox.open({ ...profile, env: addHarnessEnvironment(profile.env, extra) });
  * const run = harness.start(task, session, bridge);
  * for await (const event of run) {
  *   if (event.type === "approval.requested") await run.send(await askPerson(event));
@@ -151,9 +162,46 @@ export interface Harness {
   /** Finds the harness's program on this machine and checks its version. Never throws: a problem is a {@link HarnessDetection}. */
   detect(): Promise<HarnessDetection>;
   /**
+   * The environment variables the harness's program needs, such as the
+   * bridge's address, the token header and the program's own settings and
+   * temp folders (requirement `ports.harness-environment`). The engine calls
+   * it before it opens the sandbox and adds the result to the profile's `env`
+   * with {@link addHarnessEnvironment}, so `session.profile` stays exactly
+   * what the program gets.
+   *
+   * Optional: the built-in loop starts no program, so it has none.
+   */
+  environment?(
+    bridge: HarnessBridge,
+    folders: Pick<SandboxProfile, "workingFolder" | "tempFolder" | "settingsFolder">,
+  ): Record<string, string>;
+  /**
    * Starts the agent on `task` inside the sandbox `session`, pointed at the
    * run's `bridge`. Returns at once; a program that can't start ends the
    * stream with an error.
    */
   start(task: HarnessTask, session: SandboxSession, bridge: HarnessBridge): HarnessRun;
+}
+
+/**
+ * The profile's environment with a harness's variables added (requirement
+ * `ports.harness-environment`). A harness may only add: a name the engine
+ * already set is an error, so a harness can't quietly replace `PATH` or
+ * `HOME`. Names are compared without regard to case, because Windows treats
+ * `Path` and `PATH` as one variable.
+ *
+ * @throws Error naming the variables both set, never their values, which may hold the run token
+ */
+export function addHarnessEnvironment(
+  engine: Readonly<Record<string, string>>,
+  harness: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const engineNames = new Set(Object.keys(engine).map((name) => name.toUpperCase()));
+  const clashes = Object.keys(harness).filter((name) => engineNames.has(name.toUpperCase()));
+  if (clashes.length > 0) {
+    throw new Error(
+      `The harness sets environment variables Halonic already sets: ${clashes.join(", ")}`,
+    );
+  }
+  return { ...engine, ...harness };
 }

@@ -13,6 +13,7 @@ import { knowledgeProviderVersion } from "./knowledge-provider.ts";
 import { llmCacheVersion } from "./llm-cache.ts";
 import { llmProviderVersion } from "./llm-provider.ts";
 import { passwordHasherVersion } from "./password-hasher.ts";
+import { programProbeVersion } from "./program-probe.ts";
 import { recordStoreVersion } from "./record-store.ts";
 import { runExecutorVersion } from "./run-executor.ts";
 import { runStoreVersion } from "./run-store.ts";
@@ -48,6 +49,7 @@ export const portVersions = {
   LlmCache: llmCacheVersion,
   LlmProvider: llmProviderVersion,
   PasswordHasher: passwordHasherVersion,
+  ProgramProbe: programProbeVersion,
   RecordStore: recordStoreVersion,
   RunExecutor: runExecutorVersion,
   RunStore: runStoreVersion,

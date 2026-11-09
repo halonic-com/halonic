@@ -1,14 +1,16 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
-import type {
-  Harness,
-  HarnessBridge,
-  HarnessEvent,
-  HarnessInput,
-  HarnessRun,
-  HarnessTask,
+import {
+  addHarnessEnvironment,
+  type Harness,
+  type HarnessBridge,
+  type HarnessEvent,
+  type HarnessInput,
+  type HarnessRun,
+  type HarnessTask,
+  harnessBridgeTokenHeader,
 } from "./harness.ts";
-import type { SandboxSession } from "./sandbox.ts";
+import type { SandboxProfile, SandboxSession } from "./sandbox.ts";
 
 const task: HarnessTask = {
   runId: "run_1",
@@ -153,5 +155,54 @@ verifies("ports.harness-control", () => {
       "tool.result",
       "agent.finished",
     ]);
+  });
+});
+
+verifies("ports.harness-environment", () => {
+  const engineEnv = { HOME: "/data/agents/writer", PATH: "/usr/bin" };
+
+  it("adds the variables a harness's program needs", () => {
+    const claudeCode: Harness = {
+      ...builtInLoop,
+      id: "claude-code",
+      environment: (started, folders) => ({
+        ANTHROPIC_BASE_URL: started.url,
+        CLAUDE_CODE_TMPDIR: folders.tempFolder,
+      }),
+    };
+    const added = claudeCode.environment?.(bridge, session.profile) ?? {};
+    expect(addHarnessEnvironment(engineEnv, added)).toEqual({
+      ...engineEnv,
+      ANTHROPIC_BASE_URL: "http://127.0.0.1:41817",
+      CLAUDE_CODE_TMPDIR: "/data/tmp/run_1",
+    });
+  });
+
+  it("refuses a name the engine set, in any case, and names it without its value", () => {
+    const clashing = { Path: "/agent/bin", RUN_TOKEN: bridge.token };
+    let message = "";
+    try {
+      addHarnessEnvironment({ ...engineEnv, RUN_TOKEN: "set-by-the-engine" }, clashing);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toBe(
+      "The harness sets environment variables Halonic already sets: Path, RUN_TOKEN",
+    );
+    expect(message).not.toContain(bridge.token);
+  });
+
+  typeTest("is optional, so the built-in loop fits without it", () => {
+    expectTypeOf<Pick<Harness, "id" | "name" | "detect" | "start">>().toExtend<Harness>();
+    expectTypeOf<NonNullable<Harness["environment"]>>().parameters.toEqualTypeOf<
+      [
+        bridge: HarnessBridge,
+        folders: Pick<SandboxProfile, "workingFolder" | "tempFolder" | "settingsFolder">,
+      ]
+    >();
+  });
+
+  it("sends the token in its own header", () => {
+    expect(harnessBridgeTokenHeader).toBe("x-halonic-run-token");
   });
 });
