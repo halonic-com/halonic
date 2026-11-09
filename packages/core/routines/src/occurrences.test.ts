@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { CronError } from "./cron-error.ts";
 import { occurrences } from "./occurrences.ts";
 
 const at = (iso: string) => new Date(iso);
@@ -25,6 +26,27 @@ verifies("routines.occurrences", () => {
   it("stops at the limit, keeping the oldest", () => {
     const times = occurrences(hourly, at("2026-11-03T08:30:00Z"), at("2026-11-04T08:30:00Z"), 2);
     expect(times.map(iso)).toEqual(["2026-11-03T09:00:00.000Z", "2026-11-03T10:00:00.000Z"]);
+  });
+
+  it("uses the given zone for a schedule that names none, as due does", () => {
+    const daily = { schedule: "0 9 * * *" };
+    const from = at("2026-11-03T10:00:00Z");
+    const to = at("2026-11-04T10:00:00Z");
+    expect(occurrences(daily, from, to).map(iso)).toEqual(["2026-11-04T09:00:00.000Z"]);
+    expect(occurrences(daily, from, to, 100, "Asia/Tokyo").map(iso)).toEqual([
+      "2026-11-04T00:00:00.000Z",
+    ]);
+  });
+
+  it("throws a CronError for an unknown zone", () => {
+    const from = at("2026-11-03T10:00:00Z");
+    const to = at("2026-11-04T10:00:00Z");
+    expect(() =>
+      occurrences({ schedule: "0 9 * * *", timezone: "Mars/Olympus" }, from, to),
+    ).toThrow(CronError);
+    expect(() => occurrences({ schedule: "0 9 * * *" }, from, to, 100, "Mars/Olympus")).toThrow(
+      CronError,
+    );
   });
 
   it("is empty for a trigger without a schedule", () => {
