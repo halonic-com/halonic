@@ -223,9 +223,66 @@
     "googleScopes": {
       "type": "array",
       "items": {
-        "type": "string",
-        "pattern": "^https:\\/\\/\\S+$"
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "pattern": "^(?:https:\\/\\/www\\.googleapis\\.com\\/auth\\/[a-z][a-z0-9._-]*|openid|email|profile)$"
+          },
+          "reason": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "restricted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "scope",
+          "reason"
+        ],
+        "additionalProperties": false
       }
+    },
+    "googleApis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "api": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*\\.googleapis\\.com$"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "api",
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "googleCheck": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "const": "GET"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https:\\/\\/((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?)(?:[/?][^\\s#]*)?$"
+        }
+      },
+      "required": [
+        "method",
+        "url"
+      ],
+      "additionalProperties": false
     },
     "tokens": {
       "default": [],

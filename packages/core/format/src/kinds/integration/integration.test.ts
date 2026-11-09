@@ -18,7 +18,10 @@ function guideExample(): string {
   return found[1];
 }
 
-/** Sheets from halonic-com/integrations (2eda45e), copied as they are. */
+/**
+ * Sheets from halonic-com/integrations, copied as they are: the Google ones
+ * at ac597f7, the others at 2eda45e.
+ */
 function fixture(name: string): string {
   return readFileSync(join(import.meta.dirname, "fixtures", `${name}.yaml`), "utf8");
 }
@@ -229,7 +232,6 @@ verifies("format.integration-file", () => {
       "  - { name: forecast, description: d, risk: read, untrusted: true }",
       "  - { name: forecast, description: d, risk: read, untrusted: true }",
       "needs: [process, process]",
-      "googleScopes: [https://example.com/a, https://example.com/a]",
       "recording:",
       "  userContent: [request.body, request.body]",
       "  secretFields: [sig, sig]",
@@ -238,13 +240,12 @@ verifies("format.integration-file", () => {
     expect(summary(problemsOf("integration", text))).toEqual([
       "provides.1 duplicate 4",
       "hosts.2 duplicate 5",
-      "googleScopes.1 duplicate 13",
       "tokens.1 duplicate 8",
       "tools.1 duplicate 11",
       "needs.1 duplicate 12",
-      "recording.userContent.1 duplicate 15",
-      "recording.secretFields.1 duplicate 16",
-      "recording.allowContentTypes.1 duplicate 17",
+      "recording.userContent.1 duplicate 14",
+      "recording.secretFields.1 duplicate 15",
+      "recording.allowContentTypes.1 duplicate 16",
     ]);
   });
 

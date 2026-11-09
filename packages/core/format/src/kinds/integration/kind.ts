@@ -1,6 +1,11 @@
 import type { Path } from "@halonicjs/schema-kit";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
-import { type IntegrationHost, IntegrationSheet } from "./schema.ts";
+import {
+  GOOGLE_CHECK_URL_PATTERN,
+  GOOGLE_SECRET,
+  type IntegrationHost,
+  IntegrationSheet,
+} from "./schema.ts";
 
 /**
  * `integration.yaml`, next to an integration's code. It isn't a workspace
@@ -17,8 +22,8 @@ export const integrationKind: FileKind<IntegrationSheet> = {
 };
 
 /**
- * The rules over several fields: no list names a thing twice, and a secret
- * goes only to hosts the sheet declares.
+ * The rules over several fields: no list names a thing twice, a secret goes
+ * only to hosts the sheet declares, and the Google fields fit the sheet.
  *
  * @example
  * checkIntegrationSheet(sheet); // [] for the weather example in the guide
@@ -41,7 +46,8 @@ export function checkIntegrationSheet(sheet: IntegrationSheet): KindCheckProblem
   };
   duplicates(sheet.provides, ["provides"], "provides");
   duplicates(sheet.hosts.map(hostKey), ["hosts"], "host");
-  duplicates(sheet.googleScopes ?? [], ["googleScopes"], "scope");
+  duplicates(sheet.googleScopes?.map((entry) => entry.scope) ?? [], ["googleScopes"], "scope");
+  duplicates(sheet.googleApis?.map((entry) => entry.api) ?? [], ["googleApis"], "API");
   duplicates(
     sheet.tokens.map((token) => token.name),
     ["tokens"],
@@ -71,6 +77,56 @@ export function checkIntegrationSheet(sheet: IntegrationSheet): KindCheckProblem
         });
       }
     });
+  }
+  problems.push(...checkGoogleFields(sheet));
+  return problems;
+}
+
+/** The sheet fields that only an integration using the Google sign-in may have. */
+const googleFields = ["googleScopes", "googleApis", "googleCheck"] as const;
+
+/**
+ * The Google fields belong to a sheet with the `google-account` secret. A
+ * sheet that asks for scopes names the APIs to switch on, and `googleCheck`
+ * carries the token, so it goes to a host of the sheet and of that secret.
+ * The same rules as the `google-sheet` check in halonic-com/integrations.
+ */
+function checkGoogleFields(sheet: IntegrationSheet): KindCheckProblem[] {
+  const secret = Object.hasOwn(sheet.secrets, GOOGLE_SECRET)
+    ? sheet.secrets[GOOGLE_SECRET]
+    : undefined;
+  if (secret === undefined) {
+    return googleFields
+      .filter((field) => sheet[field] !== undefined)
+      .map((field) => ({
+        severity: "error",
+        code: "google-field-without-sign-in",
+        path: [field],
+        message: `Integration "${sheet.id}": ${field} is only for an integration with the ${GOOGLE_SECRET} secret. Remove it, or add the secret`,
+      }));
+  }
+  const problems: KindCheckProblem[] = [];
+  if (sheet.googleScopes !== undefined && (sheet.googleApis ?? []).length === 0) {
+    problems.push({
+      severity: "error",
+      code: "google-apis-missing",
+      path: ["googleScopes"],
+      message: `Integration "${sheet.id}": a sheet with googleScopes also lists googleApis, { api, name } for each API the user switches on, such as { api: gmail.googleapis.com, name: Gmail API }`,
+    });
+  }
+  const url = sheet.googleCheck?.url;
+  const host = url === undefined ? undefined : GOOGLE_CHECK_URL_PATTERN.exec(url)?.[1];
+  if (host !== undefined) {
+    const inSheet = sheet.hosts.some((declared) => declared === host);
+    const inSecret = secret.hosts.some((declared) => declared === host);
+    if (!inSheet || !inSecret) {
+      problems.push({
+        severity: "error",
+        code: "google-check-host-not-declared",
+        path: ["googleCheck", "url"],
+        message: `Integration "${sheet.id}": googleCheck carries the ${GOOGLE_SECRET} token, so ${host} must be in hosts and in that secret's hosts`,
+      });
+    }
   }
   return problems;
 }

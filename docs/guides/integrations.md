@@ -104,8 +104,10 @@ large file export.
 The schema is `IntegrationSheet` in `@halonicjs/format`: its JSON Schema is
 `jsonSchemaOf("integration")`, and `parseFile("integration", text)` checks a
 sheet with a line for each problem. Besides the fields above, a secret may
-be `optional: true`, a tool lists its `arguments`, a Google service lists
-its `googleScopes`, and `recording` tells the recorder what to scrub.
+be `optional: true`, a tool lists its `arguments`, a service using the
+Google sign-in lists its `googleScopes` (each with a `reason`),
+`googleApis` and `googleCheck` for Studio's Google setup, and `recording`
+tells the recorder what to scrub.
 Unknown keys are refused, so a typo fails.
 
 ## The code

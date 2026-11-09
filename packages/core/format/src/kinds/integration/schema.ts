@@ -84,6 +84,73 @@ const Tool = s
 /** A sheet's tool. */
 export type IntegrationTool = Infer<typeof Tool>;
 
+/** The secret of Halonic's own Google sign-in; only a sheet with it may have the Google fields. */
+export const GOOGLE_SECRET = "google-account";
+
+/**
+ * A Google scope: `https://www.googleapis.com/auth/<name>`, or one of the
+ * sign-in scopes Google names without a URL.
+ */
+export const GOOGLE_SCOPE_PATTERN =
+  /^(?:https:\/\/www\.googleapis\.com\/auth\/[a-z][a-z0-9._-]*|openid|email|profile)$/;
+
+/** A Google API's service name, as the Cloud Console uses it, such as `gmail.googleapis.com`. */
+export const GOOGLE_API_PATTERN = /^[a-z][a-z0-9-]*\.googleapis\.com$/;
+
+/**
+ * An `https` URL to a lower-case host without a port, user name, password
+ * or `#fragment`. The host is the first group, so the sheet's checks can
+ * hold it against `hosts`. The core has no `URL` class (plan 4.1).
+ */
+export const GOOGLE_CHECK_URL_PATTERN =
+  /^https:\/\/((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?)(?:[/?][^\s#]*)?$/;
+
+/** One scope the `google-account` token gets, and why, in words the user reads. */
+const GoogleScope = s
+  .object({
+    scope: s
+      .string()
+      .regex(
+        GOOGLE_SCOPE_PATTERN,
+        "use a full Google scope URL, such as 'https://www.googleapis.com/auth/drive', or openid, email or profile",
+      ),
+    /** Shown to the user as it is. */
+    reason: s.string().regex(/\S/, "say why the integration needs the scope"),
+    /**
+     * Only `true`, for a scope Google calls restricted: a scope that isn't
+     * leaves the key out, so a `false` can't hide a typo.
+     */
+    restricted: s.literal(true).optional(),
+  })
+  .strict();
+
+/** One API the user switches on in the Google Cloud Console. */
+const GoogleApi = s
+  .object({
+    api: s
+      .string()
+      .regex(GOOGLE_API_PATTERN, "use the API's service name, such as 'drive.googleapis.com'"),
+    /** Google's name for the API, shown to the user as it is. */
+    name: s.string().regex(/\S/, "use Google's name for the API, such as 'Google Drive API'"),
+  })
+  .strict();
+
+/**
+ * The one read the host sends after sign-in to see that the API is on. It
+ * only looks, so it is a `GET` without a body.
+ */
+const GoogleCheck = s
+  .object({
+    method: s.literal("GET"),
+    url: s
+      .string()
+      .regex(
+        GOOGLE_CHECK_URL_PATTERN,
+        "use an https URL without a port, user name, password or #fragment, such as 'https://gmail.googleapis.com/gmail/v1/users/me/profile'",
+      ),
+  })
+  .strict();
+
 /** One hour, the most a timeout may be. */
 export const MAX_TIMEOUT_MS = 3_600_000;
 /** One GiB, the largest response a sheet may allow. */
@@ -156,8 +223,14 @@ export const IntegrationSheet = s
     hosts: s.array(Host),
     /** Secret name → why, where it may go and how the kit puts it in. */
     secrets: s.record(name, Secret).default({}),
-    /** Google scopes this service's access token gets, for an integration using `google-account`. */
-    googleScopes: s.array(s.string().regex(/^https:\/\/\S+$/, "use the full scope URL")).optional(),
+    // Studio builds the Google setup steps from the three Google fields
+    // (`@halonicjs/google-setup`). Only a sheet with the `google-account`
+    // secret may have them.
+    /** Each scope the `google-account` token gets, and why. */
+    googleScopes: s.array(GoogleScope).optional(),
+    /** The APIs to switch on; at least one whenever `googleScopes` is set. */
+    googleApis: s.array(GoogleApi).optional(),
+    googleCheck: GoogleCheck.optional(),
     /** Values the integration itself writes and reads back later. */
     tokens: s.array(Token).default([]),
     tools: s.array(Tool).default([]),
