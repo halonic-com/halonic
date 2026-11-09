@@ -72,6 +72,7 @@ verifies("format.agent-sandbox-fields", () => {
       "files/models.yaml-notes",
       "Bücher/2026",
       "files/~draft",
+      "files/.notes",
     ])("accepts %s", (path) => {
       expect(workingFolderProblem(path)).toBeNull();
     });
@@ -115,6 +116,23 @@ verifies("format.agent-sandbox-fields", () => {
       ["models.yaml", "the models file"],
       ["Deployments.YAML", "the deployments file in capitals"],
       ["hub.yaml", "the hub file"],
+      [".claude", "Claude Code's folder"],
+      [".claude/commands", "Claude Code's commands"],
+      [".codex", "Codex's folder"],
+      [".vscode", "the editor's tasks"],
+      [".cursor/rules", "Cursor's folder"],
+      [".github/workflows", "GitHub's workflows"],
+      [".env", "a dotfile"],
+      [".Claude", "a dot-folder in capitals"],
+      ["．claude", "a dot-folder with a fullwidth dot"],
+      ["ａｇｅｎｔｓ．/x", "a fullwidth name with a fullwidth trailing dot"],
+      ["files/out．", "a fullwidth trailing dot further down"],
+      ["files/out　", "an ideographic space at the end"],
+      ["agents／x", "the agents folder with a fullwidth '/'"],
+      ["files＼out", "a fullwidth backslash"],
+      ["files/x：s", "a fullwidth ':'"],
+      ["files/．．/..", "fullwidth dots that leave the workspace"],
+      ["GIT～１/hooks", "a fullwidth 8.3 short name"],
     ])("refuses %s (%s)", (path) => {
       expect(workingFolderProblem(path)).not.toBeNull();
     });

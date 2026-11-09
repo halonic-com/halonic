@@ -86,9 +86,11 @@ Three optional agent fields say how an agent runs in another program
   the format**: add its value to `AgentHarness` with a requirement.
 - `workingFolder`: the one workspace folder the agent writes to;
   `defaultWorkingFolder(id)` gives `files/agents/<id>`. Paths that leave the
-  workspace or point into `.git`, `.halonic`, `hubs`, a kind's folder or a
-  kind file in the root fail, in any case. Names Windows would read as
-  another name (a trailing `.` or space, `:`, `GIT~1`) fail too.
+  workspace or point into a top folder starting with `.` (`.git`, `.claude`,
+  `.vscode`: tools run hooks and tasks from there), `hubs`, a kind's folder
+  or a kind file in the root fail, in any case and in fullwidth forms. Names
+  Windows would read as another name (a trailing `.` or space, `:`, `GIT~1`)
+  fail too.
   The sandbox profile builder also resolves symlinks before it uses the path.
 - `allowedSites`: at most 50 host names or `*.` plus a domain of two or more
   labels. Addresses in any notation and local names (`.local`, `.internal`,

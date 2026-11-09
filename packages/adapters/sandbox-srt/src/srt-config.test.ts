@@ -1,4 +1,6 @@
 import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
+// Not in srt's public index: imported here only to test the settings against the guard srt runs.
+import { createResolvedAddressGuard } from "@anthropic-ai/sandbox-runtime/dist/sandbox/resolved-address-guard.js";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -60,6 +62,44 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       profile({ network: { bridge: { host: "::1", port: 4100 }, allowedSites: [] } }),
     );
     expect(config.network?.allowedDomains).toEqual(["[::1]:4100"]);
+  });
+
+  it("refuses an allowed site that resolves to a local or private address, apart from the bridge", () => {
+    const config = buildSrtConfig(
+      profile({
+        network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: ["*.nip.io"] },
+      }),
+    );
+    // srt builds its guard from these network settings when a session starts.
+    const guard = createResolvedAddressGuard({
+      allowedDomains: config.network?.allowedDomains ?? [],
+      deniedDomains: config.network?.deniedDomains ?? [],
+      deniedResolvedAddresses: config.network?.deniedResolvedAddresses ?? [],
+      localAddresses: () => ["203.0.113.7"],
+    });
+    for (const address of [
+      "127.0.0.1",
+      "::1",
+      "0.0.0.0",
+      "169.254.169.254",
+      "fe80::1",
+      "10.0.0.5",
+      "172.16.1.1",
+      "192.168.1.1",
+      "100.64.0.1",
+      "fd00::1",
+      "::ffff:192.168.1.1",
+      "203.0.113.7",
+    ]) {
+      expect(guard.permits("x.nip.io", address, 443), address).toBe(false);
+    }
+    expect(guard.permits("127.0.0.1.nip.io", "127.0.0.1", 4100)).toBe(true);
+    expect(guard.permits("127.0.0.1.nip.io", "127.0.0.1", 4101)).toBe(false);
+    expect(guard.permits("api.nip.io", "93.184.215.14", 443)).toBe(true);
+  });
+
+  it("denies every host that isn't allowed, without asking", () => {
+    expect(buildSrtConfig(profile()).network?.strictAllowlist).toBe(true);
   });
 
   it("produces settings that srt's own schema accepts", () => {

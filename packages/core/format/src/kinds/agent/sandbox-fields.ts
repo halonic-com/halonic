@@ -62,25 +62,31 @@ export function defaultWorkingFolder(agentId: string): string {
 /**
  * Why a working folder can't be used, or `null` when it can. It must be a
  * path relative to the workspace with `/` between its parts, that stays in
- * the workspace and doesn't point into a {@link PROTECTED_TOP_NAMES} entry.
- * Parts that Windows or macOS would read as another name are refused too: a
- * trailing `.` or space, a `:` (a drive or an NTFS stream), an 8.3 short name
- * such as `GIT~1`, control characters and invisible code points. Symlinks are
- * resolved later, when the sandbox profile is built.
+ * the workspace and doesn't point into a {@link PROTECTED_TOP_NAMES} entry
+ * or a top folder whose name starts with `.`: tools such as git, Claude
+ * Code, Codex and editors read hooks, commands and tasks from those
+ * (`.git`, `.claude`, `.codex`, `.vscode`), and would run them outside the
+ * sandbox. Parts that Windows or macOS would read as another name are refused
+ * too: a trailing `.` or space, a `:` (a drive or an NTFS stream), an 8.3
+ * short name such as `GIT~1`, control characters and invisible code points.
+ * The checks run on the path after {@link foldName}, so `ａｇｅｎｔｓ．/x` fails
+ * like `agents./x`. Symlinks are resolved later, when the sandbox profile is
+ * built.
  *
  * @param path - the `workingFolder` value
  * @returns a message, or `null`
  */
 export function workingFolderProblem(path: string): string | null {
-  if (path.includes("\\")) return "Use '/' between folders";
-  if (path.startsWith("/") || /^[a-zA-Z]:/.test(path)) {
-    return "Use a path relative to the workspace";
-  }
-  if (path.includes(":")) return "Don't use ':' in a folder name";
   if (/[\p{Cc}\p{Default_Ignorable_Code_Point}]/u.test(path)) {
     return "Don't use control characters or invisible characters in a folder name";
   }
-  const parts = path.split("/");
+  const folded = foldName(path);
+  if (folded.includes("\\")) return "Use '/' between folders";
+  if (folded.startsWith("/") || /^[a-z]:/.test(folded)) {
+    return "Use a path relative to the workspace";
+  }
+  if (folded.includes(":")) return "Don't use ':' in a folder name";
+  const parts = folded.split("/");
   if (parts.some((part) => part === "" || part === "." || part === "..")) {
     return "Use a path inside the workspace, without '.', '..' or empty parts";
   }
@@ -91,9 +97,12 @@ export function workingFolderProblem(path: string): string | null {
     return "Don't use '~' followed by a digit: Windows reads it as a short name";
   }
   const top = parts[0] ?? "";
-  const folded = foldName(top);
-  if (PROTECTED_TOP_NAMES.includes(folded) || folded.startsWith(".git")) {
-    return `The agent can't write in '${top}': it holds definitions or Halonic's own data`;
+  const shown = path.split("/")[0] ?? "";
+  if (PROTECTED_TOP_NAMES.includes(top)) {
+    return `The agent can't write in '${shown}': it holds definitions or Halonic's own data`;
+  }
+  if (top.startsWith(".")) {
+    return `The agent can't write in '${shown}': tools read settings and hooks from folders that start with '.'`;
   }
   return null;
 }
