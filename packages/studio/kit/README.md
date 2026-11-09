@@ -443,17 +443,18 @@ List draws them.
 />;
 ```
 
-| Prop             | What it is                                                                            |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| `rows`           | The rows, each with a stable `id` (never the index) and the parts below               |
-| `heading`        | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it |
-| `headingLevel`   | 2 by default                                                                          |
-| `label`          | The list's name when it has no heading: "Agents". A list needs one of the two         |
-| `onOpen`         | Called with a row's `id` on Enter or a click                                          |
-| `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click              |
-| `selection`      | `{ selected, onToggle, multiple }`: the screen keeps the set, Space toggles a row     |
-| `dense`          | 32px rows, for menus and pickers                                                      |
-| `flush`          | No outer border or radius, lines from 16px. On by default on a phone                  |
+| Prop             | What it is                                                                               |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| `rows`           | The rows, each with a stable `id` (never the index) and the parts below                  |
+| `heading`        | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it    |
+| `headingLevel`   | 2 by default                                                                             |
+| `label`          | The list's name when it has no heading: "Agents". A list needs one of the two            |
+| `onOpen`         | Called with a row's `id` on Enter or a click                                             |
+| `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click                 |
+| `selection`      | `{ selected, onToggle, multiple }`: the screen keeps the set, Space toggles a row        |
+| `dense`          | 32px rows, for menus and pickers                                                         |
+| `flush`          | No outer border or radius, lines from 16px. On by default on a phone                     |
+| `empty`          | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
 
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
@@ -468,12 +469,25 @@ List draws it in place of the meta line and points `aria-describedby` at it.
 />;
 ```
 
+With `empty`, a list with no rows shows the Empty state in place of its box. The heading stays, so
+the page doesn't jump when a row arrives, and the Empty state's title is a level below it.
+
+```tsx
+<List
+  heading={{ name: "Agents" }}
+  rows={[]}
+  empty={{ title: "No agents yet", description: "Agents do the work.", action: newAgent }}
+/>;
+```
+
 **Keyboard.** The list is one Tab stop. The up and down arrow keys, Home and End move between
 rows; the right arrow key reaches the row's More button and the left one comes back. At the ends
 they do nothing, and don't scroll the page. Enter opens the row, Space selects it when the list
 allows selection. With Ctrl or ⌘ held, Enter and a click call `onOpenInNewTab`, and do nothing
 when there isn't one; with Shift or Alt they do nothing. When the focused row is removed, focus
-goes to the row that took its place, else the one before. It's a `grid`, not a `listbox`, because
+goes to the row that took its place, else the one before. When the last row goes and the list has
+`empty`, focus that was in the list moves to the Empty state's title, and focus elsewhere stays
+put. It's a `grid`, not a `listbox`, because
 rows hold a button.
 
 | State       | What shows                                                                                                                                                                                          |

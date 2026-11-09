@@ -414,4 +414,44 @@ verifies("kit.list", () => {
     rerender(<List label="Agents" rows={[agents[0]] as ListRow[]} />);
     expect(document.activeElement?.textContent).toBe("SorterSorts the inbox");
   });
+
+  it("shows its Empty state in place of the box when there are no rows, a level below the heading", () => {
+    const { container } = render(
+      <List
+        heading={{ name: "Agents" }}
+        rows={[]}
+        empty={{ title: "No agents yet", description: "Agents do the work." }}
+      />,
+    );
+    expect(container.querySelector("h2")?.textContent).toBe("Agents");
+    expect(container.querySelector("h3")?.textContent).toBe("No agents yet");
+    expect(container.querySelector('[role="grid"]')).toBeNull();
+  });
+
+  it("keeps the box, empty, without `empty`, and an Empty state's own level", () => {
+    const { container } = render(<List label="Agents" rows={[]} />);
+    expect(container.querySelector('[role="grid"]')).not.toBeNull();
+    const own = render(
+      <List label="Agents" rows={[]} empty={{ title: "No agents yet", headingLevel: 4 }} />,
+    );
+    expect(own.container.querySelector("h4")?.textContent).toBe("No agents yet");
+  });
+
+  it("moves focus to the Empty state's title when the last row goes, and leaves focus elsewhere", () => {
+    const empty = { title: "No agents yet" };
+    const { container, rerender } = render(
+      <List label="Agents" rows={[agents[0]] as ListRow[]} empty={empty} />,
+    );
+    focus(mainCell(container, 0));
+    rerender(<List label="Agents" rows={[]} empty={empty} />);
+    expect(document.activeElement?.textContent).toBe("No agents yet");
+
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    rerender(<List label="Agents" rows={[agents[0]] as ListRow[]} empty={empty} />);
+    focus(outside);
+    rerender(<List label="Agents" rows={[]} empty={empty} />);
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
 });

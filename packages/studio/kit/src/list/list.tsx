@@ -6,6 +6,7 @@ import { MoreIcon } from "../icons/more-icon.tsx";
 import { ListHeading } from "../list-heading/list-heading.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
+import { EmptyList, type ListEmpty, useFocusOnEmpty } from "./empty-list.tsx";
 import { rowHandlers } from "./row-handlers.ts";
 
 /** One item in a List: an agent, a routine, a run, a file in a picker. */
@@ -71,6 +72,11 @@ interface ListBase<Id extends string> {
   readonly dense?: boolean;
   /** No outer border or radius and lines from 16px. On by default on a phone. */
   readonly flush?: boolean;
+  /**
+   * The Empty state shown in place of the rows when there are none: "No agents yet". The
+   * heading stays. Its title is one level below the List's heading unless it names its own.
+   */
+  readonly empty?: ListEmpty;
 }
 
 /** A list named by the heading above it (18.3). */
@@ -165,6 +171,7 @@ export function List<Id extends string>({
   selection,
   dense = false,
   flush: flushProp,
+  empty,
 }: ListProps<Id>) {
   const phone = usePresentation() === "phone";
   const look = (flushProp ?? phone) ? "flush" : "bordered";
@@ -173,43 +180,61 @@ export function List<Id extends string>({
   const grid = useGridNavigation(
     rows.map((row) => ({ id: row.id, cells: hasMore ? [true, row.more !== undefined] : [true] })),
   );
+  const showEmpty = empty !== undefined && rows.length === 0;
+  const emptyFocus = useFocusOnEmpty(showEmpty);
 
   return (
     <div>
       {heading === undefined ? null : (
         <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
       )}
-      {/* Not overflow-hidden, which would cut the focus rings of the first and last rows. */}
-      <div className={look === "bordered" ? "rounded-md border border-border" : ""}>
-        <table
-          // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table; on a div Biome asks for the table
-          role="grid"
-          aria-labelledby={heading === undefined ? undefined : headingId}
-          aria-label={heading === undefined ? label : undefined}
-          aria-multiselectable={selection?.multiple === true ? true : undefined}
-          className="w-full table-fixed border-separate border-spacing-0"
-          {...grid.gridProps}
-        >
-          <tbody>
-            {rows.map((row, index) => (
-              <Row
-                key={row.id}
-                row={row}
-                first={index === 0}
-                last={index === rows.length - 1}
-                look={look}
-                phone={phone}
-                dense={dense}
-                hasMore={hasMore}
-                grid={grid}
-                onOpen={onOpen}
-                onOpenInNewTab={onOpenInNewTab}
-                selection={selection}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {showEmpty ? (
+        <EmptyList
+          empty={empty}
+          listHeadingLevel={heading === undefined ? undefined : headingLevel}
+          titleRef={emptyFocus.titleRef}
+        />
+      ) : (
+        // Not overflow-hidden, which would cut the focus rings of the first and last rows.
+        <div className={look === "bordered" ? "rounded-md border border-border" : ""}>
+          <table
+            // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table; on a div Biome asks for the table
+            role="grid"
+            aria-labelledby={heading === undefined ? undefined : headingId}
+            aria-label={heading === undefined ? label : undefined}
+            aria-multiselectable={selection?.multiple === true ? true : undefined}
+            className="w-full table-fixed border-separate border-spacing-0"
+            {...grid.gridProps}
+            onFocus={() => {
+              grid.gridProps.onFocus();
+              emptyFocus.onFocus();
+            }}
+            onBlur={(event) => {
+              grid.gridProps.onBlur(event);
+              emptyFocus.onBlur(event);
+            }}
+          >
+            <tbody>
+              {rows.map((row, index) => (
+                <Row
+                  key={row.id}
+                  row={row}
+                  first={index === 0}
+                  last={index === rows.length - 1}
+                  look={look}
+                  phone={phone}
+                  dense={dense}
+                  hasMore={hasMore}
+                  grid={grid}
+                  onOpen={onOpen}
+                  onOpenInNewTab={onOpenInNewTab}
+                  selection={selection}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

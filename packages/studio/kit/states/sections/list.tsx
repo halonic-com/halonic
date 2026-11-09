@@ -81,6 +81,23 @@ function LoadingAgents() {
   );
 }
 
+/** No agents yet: the heading stays and the Empty state takes the box's place. */
+function NoAgents() {
+  return (
+    <div className="w-80 phone:w-full">
+      <List
+        heading={{ name: "Agents" }}
+        rows={[]}
+        empty={{
+          title: "No agents yet",
+          description: "Agents do the work in your workflows.",
+          action: { label: "New agent", onClick: ignore },
+        }}
+      />
+    </div>
+  );
+}
+
 /** Hover goes on the first row; focus on its first cell, where the keyboard puts it. */
 const firstRow = "tr:first-child";
 const firstCell = "tr:first-child > td:first-child";
@@ -95,6 +112,7 @@ export const listSection: PartSection = {
     { name: "Default", copies: () => <Agents heading /> },
     { name: "Selected", copies: () => <Agents selected /> },
     { name: "Loading", copies: () => <LoadingAgents /> },
+    { name: "Empty", copies: () => <NoAgents /> },
     { name: "Hover", force: "hover", target: firstRow, copies: () => <Agents /> },
     { name: "Focus", force: "focus", target: firstCell, copies: () => <Agents /> },
     {

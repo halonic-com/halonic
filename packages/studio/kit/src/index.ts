@@ -54,6 +54,7 @@ export { Input, type InputProps } from "./input/input.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps, keyShortcutsLabel } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
+export type { ListEmpty } from "./list/empty-list.tsx";
 export { List, type ListProps, type ListRow, type ListSelection } from "./list/list.tsx";
 export {
   ListHeading,
