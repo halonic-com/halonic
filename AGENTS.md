@@ -82,6 +82,8 @@ reports for now: it doesn't block until its approval lookup is live. See `docs/g
 - No new dependency without an entry in `tooling/check/dependencies.json` and the maintainer's
   approval ([docs/guides/dependencies.md](docs/guides/dependencies.md)).
 - Never pass a secret as a command-line argument.
+- Waits, updates, resource use and errors follow the failure-path rules
+  ([docs/guides/failure-path.md](docs/guides/failure-path.md)).
 
 ## Runs anywhere
 
