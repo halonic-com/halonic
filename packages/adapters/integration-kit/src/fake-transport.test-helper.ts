@@ -95,6 +95,7 @@ export function client(
   answer?: Parameters<typeof fakeTransport>[0],
   limits?: RequestLimits,
   clientPolicy: IntegrationPolicy = policy,
+  clientSecrets: Secrets = secrets,
 ) {
   const { transport, sent, options } = fakeTransport(answer);
   const log = new RequestLog();
@@ -102,7 +103,7 @@ export function client(
   const http = createLimitedHttpClient({
     policy: clientPolicy,
     transport,
-    secrets,
+    secrets: clientSecrets,
     log,
     now: () => clock++,
     ...(limits ? { limits } : {}),

@@ -95,6 +95,7 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
         const carried = carriedForms(declared.values());
         refuseCarriedSecrets(options.policy, carried, {
           method: own.givenMethod,
+          sentMethod: own.method,
           url: own.url ?? "",
           headers: own.headers,
           body: own.body,

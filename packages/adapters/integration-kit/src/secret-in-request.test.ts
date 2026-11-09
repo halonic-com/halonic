@@ -1,3 +1,4 @@
+import type { IntegrationRequestInit, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,6 +8,7 @@ import {
   policy,
   redirect,
   refusal,
+  secrets,
 } from "./fake-transport.test-helper.ts";
 import { createLimitedHttpClient } from "./limited-http.ts";
 import type { Body } from "./request-body.ts";
@@ -15,9 +17,18 @@ import { RequestLog } from "./request-log.ts";
 const key = canary["example-key"];
 const bearer = { secret: "example-key", as: "bearer" } as const;
 
+/**
+ * An all-upper-case key: the canaries are lower case, and the kit sends the method uppercased.
+ * Derived from the canary so the secret scan sees no new key-shaped literal.
+ */
+const upperKey = key.toUpperCase();
+const upperSecrets: Secrets = {
+  get: async (name) => (name === "example-key" ? upperKey : null),
+};
+
 verifies("integration-kit.secret-in-request", () => {
   describe("attack case A25: the integration carries a key out", () => {
-    it.each([
+    it.each<[where: string, url: string, init: IntegrationRequestInit, store?: Secrets]>([
       ["in the query", `https://api.example.com/v1?k=${key}`, {}],
       [
         "URL-encoded in the query",
@@ -61,17 +72,24 @@ verifies("integration-kit.secret-in-request", () => {
       ],
       ["in the method", "https://api.example.com/", { method: `X${key}` }],
       [
+        "in the method, in lower case, that the kit sends uppercased",
+        "https://api.example.com/",
+        { method: upperKey.toLowerCase() },
+        upperSecrets,
+      ],
+      [
         "in the host and path, with a body the kit refuses",
         `https://${key}.example.net/${key}`,
         { method: `X${key}`, body: new Blob(["x"]) },
       ],
-    ])("refuses the key %s, sends nothing and never shows it", async (_where, url, init) => {
-      const { http, sent, log } = client();
+    ])("refuses the key %s, sends nothing and never shows it", async (_where, url, init, store) => {
+      const { http, sent, log } = client(undefined, undefined, policy, store ?? secrets);
       const error = await http.fetch(url, init).catch((thrown: unknown) => thrown);
       expect(error).toMatchObject({ code: "secret-in-request" });
       expect(sent).toEqual([]);
+      const value = store === upperSecrets ? upperKey : key;
       for (const shown of [String(error), JSON.stringify(log.entries())]) {
-        expect(shown.toLowerCase()).not.toContain(key.toLowerCase());
+        expect(shown.toLowerCase()).not.toContain(value.toLowerCase());
       }
       expect(log.entries()[0]).toMatchObject({ outcome: "refused", refusal: "secret-in-request" });
     });

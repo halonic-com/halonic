@@ -29,7 +29,13 @@ export async function readDeclaredSecrets(
 
 /** The parts of a request the integration wrote, before the kit places any secret. */
 export interface OwnParts {
+  /** The method as the integration gave it. */
   readonly method?: string | undefined;
+  /**
+   * The method the kit sends, uppercased. Matching is case-sensitive, so a
+   * key in capitals given as a lower-case method only shows up here.
+   */
+  readonly sentMethod?: string;
   /** As the integration or a redirect's `Location` wrote it, resolved against `base`. */
   readonly url: string;
   readonly base?: URL;
@@ -39,7 +45,7 @@ export interface OwnParts {
 
 /**
  * Refuses the request as `secret-in-request` when the integration's own
- * method, URL, headers or body hold a secret value in any form the filter
+ * method, as given or as sent, URL, headers or body hold a secret value in any form the filter
  * knows. Runs before placement, so a secret the kit puts in is never counted.
  * Runs on every redirect hop too, because a server can put a value it was
  * sent into the next `Location`.
@@ -52,7 +58,7 @@ export function refuseCarriedSecrets(
   if (forms.longest === 0) return;
   const headerLines = [...(parts.headers ?? [])].map(([name, value]) => `${name}: ${value}`);
   const url = [parts.url, withEscapesDecoded(parts.url), parsed(parts.url, parts.base)];
-  const texts = [parts.method ?? "", ...url, ...headerLines];
+  const texts = [parts.method ?? "", parts.sentMethod ?? "", ...url, ...headerLines];
   if (texts.some((text) => holds(text, forms)) || bodyHolds(parts.body ?? null, forms)) {
     throw new SecretInRequestError(policy, {
       method: shown((parts.method ?? "GET").toUpperCase(), forms),
