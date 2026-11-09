@@ -18,7 +18,24 @@ const task: HarnessTask = {
   prompt: "Tell the team the release is out.",
 };
 const bridge: HarnessBridge = { url: "http://127.0.0.1:41817", token: "not-a-real-token" };
-const session: SandboxSession = { id: "session_1" };
+// A session like a cloud target's: it opens, but can't launch any program.
+const session: SandboxSession = {
+  profile: {
+    workingFolder: "/data/agents/writer",
+    tempFolder: "/data/tmp/run_1",
+    settingsFolder: null,
+    readOnlyPaths: [],
+    deniedPaths: [],
+    env: {},
+    network: { bridge: { host: "127.0.0.1", port: 41817 }, allowedSites: [] },
+    timeLimitMs: 600_000,
+  },
+  start: async () => {
+    throw new Error("This target can't start programs.");
+  },
+  onBlocked: () => () => {},
+  close: async () => {},
+};
 
 /** Holds the run until a person's decision arrives through `send`. */
 class Decision {

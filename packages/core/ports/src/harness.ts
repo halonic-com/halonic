@@ -131,7 +131,9 @@ export interface HarnessRun extends AsyncIterable<HarnessEvent> {
  * only through the bridge, so integrations, secrets and approvals stay in
  * Halonic. The built-in loop starts no program for the agent: it calls the
  * model port and Halonic's tools directly, ignores `bridge`, and uses
- * `session` only to start the stdio connectors a workspace names.
+ * `session` only to start the stdio connectors a workspace names. On a
+ * target that can't start programs, such as a cloud worker, the session's
+ * `start` throws, so the same loop runs there without stdio connectors.
  *
  * @example
  * if ((await harness.detect()).status !== "ready") return;
