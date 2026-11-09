@@ -57,3 +57,5 @@ export {
   fingerprintCoverageContract,
   fingerprintGaps,
 } from "./trust-fingerprint.ts";
+export { vcsContract } from "./vcs.ts";
+export { type MakeVcs, type VcsHarness, validBranchNames } from "./vcs-harness.ts";

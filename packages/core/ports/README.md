@@ -40,7 +40,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `TokenStore`              | `token-store.ts`               | 1       | secrets the server writes itself, such as refresh tokens                                              | `token-store`                                    |
 | `ToolApprovalStore`       | `tool-approval-store.ts`       | 1       | approved listed tools in the user's profile, by workspace, source and name; `gateToolListing` decides | `tool-approval-store` (with first adapter)       |
 | `TrustStore`              | `trust-store.ts`               | 1       | trust records in the user's profile, by location and fingerprint; `TrustService` decides              | `trust-store`                                    |
-| `Vcs`                     | `vcs.ts`                       | 1       | version control of the workspace folder                                                               | `vcs` (with first adapter)                       |
+| `Vcs`                     | `vcs.ts`                       | 1       | version control of the workspace folder                                                               | `vcs`                                            |
 
 Suites marked "with first adapter" come with the first real adapter for
 that port, and "with the engine" with the engine. The others are written

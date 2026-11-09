@@ -11,3 +11,5 @@ export {
   memorySchedulerFactory,
 } from "./scheduler.ts";
 export { MemorySecrets, MemoryTokenStore } from "./secrets.ts";
+export { MemoryVcs, type MemoryVcsOptions } from "./vcs.ts";
+export { MemoryRemote } from "./vcs-repository.ts";
