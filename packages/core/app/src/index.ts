@@ -32,6 +32,18 @@ export {
   type PinRegistry,
 } from "./connector-pin.ts";
 export {
+  type DetectedHarness,
+  type DoctorLine,
+  type DoctorStatus,
+  type DoctorSummary,
+  doctorSummary,
+  type HarnessAgent,
+  type HarnessesLine,
+  type HarnessProblem,
+  harnessesLine,
+  type InstalledHarness,
+} from "./doctor-checks.ts";
+export {
   EventBus,
   type EventListener,
   type EventMap,
