@@ -3,15 +3,15 @@
 Halonic is a community project before version 1.0. There is no paid support
 yet, but there are good places to ask.
 
-| You want to…                                                           | Go to                                                                                  |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| ask a question                                                         | [**Q&A** in GitHub Discussions](https://github.com/halonic-com/halonic/discussions/new?category=q-a) |
-| report a bug                                                           | a new issue, using the **Bug report** form                                             |
-| suggest a feature                                                      | a new issue, using the **Feature request** form, or a discussion in **Ideas** if it's still an idea |
-| ask for an integration with another service                            | a new issue, using the **Integration request** form                                    |
+| You want to…                                                           | Go to                                                                                                      |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| ask a question                                                         | [**Q&A** in GitHub Discussions](https://github.com/halonic-com/halonic/discussions/new?category=q-a)       |
+| report a bug                                                           | a new issue, using the **Bug report** form                                                                 |
+| suggest a feature                                                      | a new issue, using the **Feature request** form, or a discussion in **Ideas** if it's still an idea        |
+| ask for an integration with another service                            | a new issue, using the **Integration request** form                                                        |
 | share an idea or show what you built                                   | **Ideas** or **Show and tell** in [GitHub Discussions](https://github.com/halonic-com/halonic/discussions) |
-| report a security problem                                              | **not** an issue: follow [SECURITY.md](SECURITY.md)                                    |
-| report behaviour that breaks our [code of conduct](CODE_OF_CONDUCT.md) | [conduct@halonic.com](mailto:conduct@halonic.com)                                      |
+| report a security problem                                              | **not** an issue: follow [SECURITY.md](SECURITY.md)                                                        |
+| report behaviour that breaks our [code of conduct](CODE_OF_CONDUCT.md) | [conduct@halonic.com](mailto:conduct@halonic.com)                                                          |
 
 GitHub Discussions is our only community channel for now. When you are not
 sure where a question belongs, start in
