@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { AddressStore, ConnectBridge, ConnectResult } from "../bridge.ts";
 import { startConnectPage } from "../connect-page.ts";
 
-const pageFile = new URL("../../../connect.html", import.meta.url);
+// Under jsdom the global `URL` is jsdom's, which Node's file functions
+// refuse, so the page is read by path.
+const pageFile = fileURLToPath(new URL("../../../connect.html", import.meta.url).href);
 
 /** A shell that answers each Connect from a list, and records what it was asked. */
 export class FakeShell implements ConnectBridge {
