@@ -17,10 +17,10 @@ export type ServiceScopes =
  * Google's long names for the short sign-in scopes a sheet may list. Google
  * asks for `email` and `profile` but reports them back as these URLs.
  */
-const longScopeNames: Readonly<Record<string, string>> = {
-  email: "https://www.googleapis.com/auth/userinfo.email",
-  profile: "https://www.googleapis.com/auth/userinfo.profile",
-};
+const longScopeNames: ReadonlyMap<string, string> = new Map([
+  ["email", "https://www.googleapis.com/auth/userinfo.email"],
+  ["profile", "https://www.googleapis.com/auth/userinfo.profile"],
+]);
 
 /**
  * Compares the scopes Google granted with each service's `googleScopes`, in
@@ -47,7 +47,7 @@ export function serviceScopes(
 
 /** Whether Google granted the scope, under its own name or, for a short sign-in scope, its long one. */
 function wasGranted(scope: string, granted: ReadonlySet<string>): boolean {
-  const longName = longScopeNames[scope];
+  const longName = longScopeNames.get(scope);
   return granted.has(scope) || (longName !== undefined && granted.has(longName));
 }
 

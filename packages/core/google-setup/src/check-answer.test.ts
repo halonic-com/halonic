@@ -173,6 +173,31 @@ verifies("google-setup.check-result", () => {
       }
     });
 
+    it("keeps no single word that isn't a reason code we know", () => {
+      for (const reason of ["fakeSecret0000000000000000000001", "SOMETHING_NEW", "Holiday"]) {
+        const json = googleErrorJson(401, reason);
+
+        expect(readGoogleCheckAnswer({ status: 401, json }, ledgerService)).toEqual({
+          kind: "checkFailed",
+          status: 401,
+        });
+      }
+    });
+
+    it("skips an unknown reason and keeps the next known one", () => {
+      const json = {
+        error: {
+          errors: [{ reason: "fakeSecret0000000000000000000001" }, { reason: "authError" }],
+        },
+      };
+
+      expect(readGoogleCheckAnswer({ status: 401, json }, ledgerService)).toEqual({
+        kind: "checkFailed",
+        status: 401,
+        reason: "authError",
+      });
+    });
+
     it("skips an odd errors entry and reads the next one", () => {
       const json = {
         error: { errors: [{ reason: { message: userContent } }, "odd", { reason: "authError" }] },

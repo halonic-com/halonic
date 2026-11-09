@@ -12,6 +12,11 @@ export const httpClientVersion = 1;
  * address a host name resolves to when it connects, not only the first URL.
  * Otherwise a redirect or a DNS answer that changes between check and
  * connect (DNS rebinding) gets around it.
+ *
+ * Every adapter passes `init.redirect` and `init.signal` through to the
+ * request. Callers rely on both: `redirect: "error"` keeps a bearer token
+ * from following a redirect to another address, and `signal` is how they
+ * put a time limit on a request.
  */
 export interface HttpClient {
   /**

@@ -1,5 +1,6 @@
 import type { ApiOff, ServiceCheckOutcome } from "./check-result.ts";
 import { enableApiUrl, isApiHost, isProjectId } from "./console-links.ts";
+import { isKnownGoogleReason } from "./google-reason.ts";
 import type { GoogleApi, SetupService } from "./setup-input.ts";
 
 /** Google's answer to a sheet's `googleCheck`, as the host received it. */
@@ -36,7 +37,8 @@ const reasonPattern = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
  *   and the newer `error.details` hold an `ErrorInfo` whose reason is
  *   `SERVICE_DISABLED` and whose `metadata` names the API (`service`) and the
  *   project (`consumer`): https://cloud.google.com/apis/design/errors#error_info
- * - anything else is `checkFailed`, with the status and Google's reason code.
+ * - anything else is `checkFailed`, with the status and Google's reason
+ *   code when it is one we know (`google-reason.ts`).
  *
  * The same rules as the integrations' reader (`disabled-api.ts`, A5): only
  * `metadata.service` and `metadata.consumer` are read. Every `message`, the
@@ -71,7 +73,9 @@ export function readGoogleCheckAnswer(
     return apiOff(serviceDisabled?.metadata, service, projectId);
   }
 
-  const reason = infos.find((info) => info.reason !== undefined)?.reason ?? entryReasons[0];
+  // ErrorInfo details first: they are Google's newer, more exact way to say why.
+  const reasons = [...infos.flatMap((info) => info.reason ?? []), ...entryReasons];
+  const reason = reasons.find(isKnownGoogleReason);
   if (reason === undefined) {
     return { kind: "checkFailed", status };
   }

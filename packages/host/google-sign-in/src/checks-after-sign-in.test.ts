@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   fakeAccountRef,
   fakeCode,
@@ -170,14 +170,29 @@ verifies("google-sign-in.check-request", () => {
     expect([...(check?.headers.keys() ?? [])].sort()).toEqual(["accept", "authorization"]);
   });
 
-  it("refuses a check URL that isn't https on googleapis.com before anything goes to Google", async () => {
+  it("waits 10 seconds at most for a check", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    try {
+      await signInOnce(() => tokenSuccess());
+
+      expect(timeout.mock.calls).toEqual([[10_000]]);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
+  it("refuses a check URL that isn't https on the service's APIs before anything goes to Google", async () => {
     const refused = [
-      "https://googleapis.com.example.com/v1/me",
+      "https://gmail.googleapis.com.example.com/v1/me",
       "https://x@evil.example/",
       "https://user:pass@gmail.googleapis.com/v1/me",
       "http://gmail.googleapis.com/v1/me",
       "https://gmail.googleapis.com:8443/v1/me",
       "https://evilgoogleapis.com/v1/me",
+      "https://googleapis.com/v1/me",
+      "https://storage.googleapis.com/some-bucket/me",
+      "https://some-bucket.storage.googleapis.com/me",
+      "https://drive.googleapis.com/drive/v3/about",
       "not a url",
     ];
     for (const url of refused) {
@@ -192,9 +207,9 @@ verifies("google-sign-in.check-request", () => {
     }
   });
 
-  it("allows googleapis.com itself, a subdomain and the default port written out", async () => {
+  it("allows the service's API host, Google's shared API host and the default port written out", async () => {
     const sentTo = {
-      "https://googleapis.com/v1/me": "https://googleapis.com/v1/me",
+      "https://www.googleapis.com/v1/me": "https://www.googleapis.com/v1/me",
       "https://gmail.googleapis.com/v1/me": "https://gmail.googleapis.com/v1/me",
       "https://gmail.googleapis.com:443/v1/me": "https://gmail.googleapis.com/v1/me",
     };

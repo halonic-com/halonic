@@ -74,7 +74,7 @@ export async function startGoogleSignIn(
   clientSecretName(input.clientRef);
   for (const service of input.services) {
     if (service.googleCheck !== undefined) {
-      checkGoogleCheckUrl(service.googleCheck.url);
+      checkGoogleCheckUrl(service.googleCheck.url, service);
     }
   }
   const pkce = await createPkcePair(randomBytes);
