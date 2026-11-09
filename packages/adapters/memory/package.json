@@ -29,7 +29,8 @@
     "owner": "julian",
     "runtime": "any",
     "coverage": {
-      "lines": 80
+      "lines": 100,
+      "branches": 100
     }
   }
 }
