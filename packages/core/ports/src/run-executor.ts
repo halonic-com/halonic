@@ -85,6 +85,14 @@ export interface ChatTurnRequest {
   params?: ChatParams;
   /** Unsaved model settings from the agent editor; they win over the saved ones. */
   agent?: ChatAgentSettings;
+  /**
+   * Aborted when the person stops the chat. An executor that honors it stops
+   * the model call and rejects; a remote one also stops waiting for the host.
+   * It is never sent over the wire. Optional, so an executor that ignores it
+   * still satisfies the port: the caller then drops an answer that comes
+   * after the abort.
+   */
+  signal?: AbortSignal;
 }
 
 /** The model's answer to a {@link ChatTurnRequest}, with the model that gave it. */
@@ -182,9 +190,10 @@ export interface RunExecutor {
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription;
   /**
    * One model turn outside any run. Served mode forwards it to the host,
-   * which has the provider keys, like a run.
+   * which has the provider keys, like a run. `request.signal` may cancel it.
    *
-   * @throws when the model can't be reached or refuses the call
+   * @throws when the model can't be reached or refuses the call, or when
+   *   `request.signal` is aborted and the executor honors it
    */
   chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse>;
   /**
