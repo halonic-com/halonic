@@ -18,6 +18,7 @@ import type {
 } from "@halonicjs/ports";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { runToolCall, type ToolCallContext } from "./run-tool-call.ts";
+import { isToolCallAsText } from "./tool-call-as-text.ts";
 import type { TurnLog } from "./turn-log.ts";
 import { collectTurnTools, type HalonicTool, halonicSource, type TurnTools } from "./turn-tools.ts";
 
@@ -149,6 +150,7 @@ async function askModel(
     latencyMs: input.clock.now().getTime() - started,
     text: response.content,
     ...(response.reasoning === undefined ? {} : { thoughts: response.reasoning }),
+    ...(isToolCallAsText(response, tools.byName) ? { toolCallAsText: true as const } : {}),
   });
   return answer;
 }
