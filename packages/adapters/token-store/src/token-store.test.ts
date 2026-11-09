@@ -233,6 +233,21 @@ verifies("token-store.encrypted-at-rest", () => {
     );
   });
 
+  it.each([
+    ["isn't base64url", () => "not base64url!"],
+    ["was cut short, as a half-written write leaves it", (sealed: string) => sealed.slice(0, 28)],
+  ])("throws for a sealed value that %s, naming the token", async (_, damage) => {
+    const { tokens, records } = setup();
+    await tokens.set("refresh", refreshToken);
+    const sealed = String(records.log[0]?.values?.["sealed"]);
+    records.log.push({ ...fixedChange(), op: "update", values: { sealed: damage(sealed) } });
+    const error = await tokens.get("refresh").catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(UnreadableTokenError);
+    expect((error as Error).message).toBe(
+      'The token "refresh" is damaged or was changed, so it can\'t be opened.',
+    );
+  });
+
   it("throws for a value in an unknown format", async () => {
     const { tokens, records } = setup();
     records.log.push({
