@@ -86,7 +86,8 @@ verifies("app.outside-run-connector-gate", () => {
     expect(result).toEqual({
       kind: "refused",
       reason: 'the settings of the connector "mail" can\'t be read, so sending is off',
-      error: expect.any(Error),
+      // The store's own error, word for word, not just any error.
+      error: new Error(`the settings of ["/workspaces/acme","mail"] can't be read`),
     });
     if (result.kind === "refused") {
       expect(result.reason).not.toContain("/workspaces/acme");
