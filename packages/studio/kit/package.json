@@ -12,7 +12,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "states": "vite"
   },
   "dependencies": {
     "react": "catalog:"
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -27,6 +29,7 @@
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "halonic": {

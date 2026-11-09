@@ -14,6 +14,9 @@ import { describe, expect, it } from "vitest";
 const studioImport =
   /(?:\bfrom|\bimport\s*\(?|@import|@reference)\s*(?:url\()?\s*["']@halonicjs\/studio-(?!kit["'/])/;
 
+/** The states page's attribute for a forced hover, press or focus (states/states.css). */
+const forceStateAttribute = "data-force-state";
+
 /** This file, which holds sample imports for the cases below and would otherwise flag itself. */
 const thisFile = "boundaries.test.ts";
 
@@ -58,6 +61,17 @@ describe("studio-kit boundaries", () => {
     expect(files.length).toBeGreaterThan(0);
     const offenders = files.filter((file) =>
       studioImport.test(readFileSync(new URL(file, sourceFolder), "utf8")),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("leaves forcing a state to the states page, so it never reaches the app", () => {
+    const sourceFolder = new URL("./", import.meta.url);
+    const files = readdirSync(sourceFolder, { recursive: true, encoding: "utf8" }).filter(
+      (file) => /\.(?:ts|tsx|css)$/.test(file) && file !== thisFile,
+    );
+    const offenders = files.filter((file) =>
+      readFileSync(new URL(file, sourceFolder), "utf8").includes(forceStateAttribute),
     );
     expect(offenders).toEqual([]);
   });

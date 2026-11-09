@@ -1,6 +1,6 @@
 {
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
-  "//": "Tests run in Node with jsdom, so they need Node's types and the DOM's, and JSX.",
+  "//": "Tests run in Node with jsdom, so they need Node's types and the DOM's, and JSX. The states page (states/) is checked here too: it runs in a browser and nothing in it ships.",
   "compilerOptions": {
     "lib": [
       "es2024",
@@ -11,6 +11,8 @@
   },
   "include": [
     "src",
-    "vitest.config.ts"
+    "states",
+    "vitest.config.ts",
+    "vite.config.ts"
   ]
 }
