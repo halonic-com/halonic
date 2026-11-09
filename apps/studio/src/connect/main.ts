@@ -1,20 +1,30 @@
 import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { startConnectPage } from "./connect-page.ts";
+import { type TauriInternals, tauriBridge } from "./tauri-bridge.ts";
+
+declare global {
+  interface Window {
+    /** Set by the Android shell; missing when the page opens in a browser. */
+    readonly __TAURI_INTERNALS__?: TauriInternals;
+  }
+}
 
 /**
- * The shell's `connect` command and the opener arrive with the Android
- * project (HAL-229). Until then the page runs, and every Connect ends on
- * "Can't reach", because a failed call into the shell reads as that.
+ * Outside the app, for example while working on the page in a browser,
+ * there's no shell: every Connect ends on "Can't reach", because a failed
+ * call into the shell reads as that.
  */
-const notWiredYet: ConnectBridge = {
-  connect: () => Promise.reject(new Error("The Android shell isn't wired yet (HAL-229).")),
+const outsideTheApp: ConnectBridge = {
+  connect: () => Promise.reject(new Error("The page isn't running in the Android app.")),
   openStudio: () => undefined,
   openReleasePage: () => Promise.resolve(),
 };
 
+const internals = window.__TAURI_INTERNALS__;
+
 void startConnectPage({
   document,
-  bridge: notWiredYet,
+  bridge: internals === undefined ? outsideTheApp : tauriBridge(internals, window),
   store: localAddressStore(localStorage),
   changeAddress: location.hash === "#change-address",
 });

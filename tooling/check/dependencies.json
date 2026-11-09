@@ -246,6 +246,16 @@
       ],
       "reason": "Type-checking with TypeScript 7 (D9)."
     },
+    "vite": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/app-studio"
+      ],
+      "layers": [
+        "apps"
+      ],
+      "reason": "The Studio's build tool (plan 7.2). For now it builds only the Android connect page into its own folder (HAL-1253, HAL-1375). Already in the lockfile through Vitest, at the same version."
+    },
     "vitest": {
       "category": "dev-tooling",
       "allowedIn": [

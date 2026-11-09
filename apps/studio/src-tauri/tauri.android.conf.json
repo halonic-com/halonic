@@ -1,0 +1,15 @@
+{
+  "build": {
+    "beforeBuildCommand": "pnpm run build",
+    "frontendDist": "../dist/connect"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "title": "Halonic",
+        "url": "connect.html"
+      }
+    ]
+  }
+}

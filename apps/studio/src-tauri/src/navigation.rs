@@ -10,13 +10,14 @@ use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime, Url, Webview};
 use tauri_plugin_opener::OpenerExt;
 
-/// The connect page, as the app window loads it. `#change-address` tells
-/// the page to show the connect screen with the remembered address filled
-/// in, instead of connecting straight away.
+/// The connect page, as the Android window loads it
+/// (tauri.android.conf.json). `#change-address` tells the page to show the
+/// connect screen with the remembered address filled in, instead of
+/// connecting straight away.
 const CHANGE_ADDRESS_PAGE: &str = if cfg!(any(windows, target_os = "android")) {
-    "http://tauri.localhost/#change-address"
+    "http://tauri.localhost/connect.html#change-address"
 } else {
-    "tauri://localhost/#change-address"
+    "tauri://localhost/connect.html#change-address"
 };
 
 /// The address the last Connect confirmed: the only one, besides the

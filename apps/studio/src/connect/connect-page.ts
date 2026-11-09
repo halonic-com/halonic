@@ -44,6 +44,14 @@ class ConnectPage {
   private readonly startingStatus: HTMLElement;
   /** True while a hello call runs; presses are ignored, as the kit's busy Button does. */
   private busy = false;
+  /** The button showing the busy state, so Change address can reset it. */
+  private busyButton: HTMLButtonElement | undefined;
+  /**
+   * Counts hello calls and Change address presses. A call whose answer
+   * comes after a newer one of these is out of date, and its answer is
+   * dropped.
+   */
+  private attempt = 0;
 
   constructor(options: ConnectPageOptions) {
     this.document = options.document;
@@ -82,7 +90,7 @@ class ConnectPage {
       button.addEventListener("click", () => void this.connect("elsewhere", button));
     }
     for (const button of this.findAll('[data-action="change-address"]')) {
-      button.addEventListener("click", () => this.showConnectScreen());
+      button.addEventListener("click", () => this.changeAddress());
     }
     this.find('[data-action="open-release-page"]').addEventListener("click", () => {
       // Like a failed hello call, a failed open never shows a raw error.
@@ -97,8 +105,15 @@ class ConnectPage {
     }
     this.clearFieldError();
     const address = this.input.value.trim();
+    this.attempt += 1;
+    const attempt = this.attempt;
     this.setBusy(true, button);
     const result = await this.askShell(address);
+    if (attempt !== this.attempt) {
+      // Change address was pressed while the call ran: the user has moved
+      // on, so a late answer must not take them off the connect screen.
+      return;
+    }
     if (result.kind === "connected") {
       // The window is about to leave this page, so it stays busy.
       this.store.save(address);
@@ -152,6 +167,13 @@ class ConnectPage {
         );
         return;
     }
+  }
+
+  /** Change address: back to the connect screen, even while Try again is busy. */
+  private changeAddress(): void {
+    this.attempt += 1;
+    this.setBusy(false, this.busyButton);
+    this.showConnectScreen();
   }
 
   private showConnectScreen(): void {
@@ -237,6 +259,7 @@ class ConnectPage {
   /** The kit's busy state: keeps focus, `aria-busy`, and Connect says "Connecting…". */
   private setBusy(busy: boolean, button: HTMLButtonElement | undefined): void {
     this.busy = busy;
+    this.busyButton = busy ? button : undefined;
     if (button === undefined) {
       return;
     }

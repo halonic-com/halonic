@@ -296,6 +296,22 @@ verifies("studio.connect.remembered-address", () => {
     expect(document.activeElement).toBe(page.field);
   });
 
+  it("drops a late answer when Change address is pressed while Try again is busy", async () => {
+    const shell = new FakeShell().answer(notAnswering);
+    const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
+    const tryAgain = page.button("try-again");
+    const answer = shell.answerLater();
+
+    await page.press(tryAgain);
+    await page.press(page.button("change-address"));
+    await answer(connected);
+
+    expect(shell.opened).toEqual([]);
+    expect(page.screen).toBe("connect");
+    expect(document.activeElement).toBe(page.field);
+    expect(tryAgain.getAttribute("aria-busy")).toBe("false");
+  });
+
   it("sends nothing when the shell opens the page to change the address", async () => {
     const shell = new FakeShell();
     const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"), {
