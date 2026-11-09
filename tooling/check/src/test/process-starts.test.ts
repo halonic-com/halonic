@@ -91,6 +91,21 @@ describe("tooling/check: process-starts", () => {
     );
   });
 
+  it("stops shipped code reaching a test file's process start through a config file", () => {
+    const chain = adapter({
+      "src/go.ts": 'export { run } from "../vitest.config.ts";\n',
+      "vitest.config.ts": 'export { run } from "./src/sneak.test.ts";\n',
+      "src/sneak.test.ts": startsChild,
+    });
+    const found = runChecks([chain], { rules: ["layers"] }).map(
+      (problem) => `${problem.file}: ${problem.message}`,
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain(
+      'packages/adapters/launcher/src/go.ts: "../vitest.config.ts" is a tool config file',
+    );
+  });
+
   it("lets a listed file start processes", () => {
     const pkg = adapter({ "src/launch.ts": startsChild, "src/launch.test.ts": scriptsTest });
     expect(problems([pkg], starters({ [launcher]: validEntry }))).toEqual([]);

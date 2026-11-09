@@ -47,6 +47,22 @@ describe("tooling/check: what counts as test and config code", () => {
     expect(errors[0]).toContain("only tests may import tests");
   });
 
+  it("fails when non-test code imports a tool config file", () => {
+    const errors = layerErrors([
+      core({
+        "src/index.ts": 'export { x } from "../vitest.config.ts";\n',
+        "src/bare.ts": 'export { x } from "../vitest.config";\n',
+        "src/x.test.ts": 'import { x } from "../vitest.config.ts";\nexport const y = x;\n',
+        "vitest.config.ts": 'export { x } from "./src/helpers.test.ts";\n',
+        "src/helpers.test.ts": "export const x = 1;\n",
+      }),
+    ]);
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toContain("src/bare.ts:1:");
+    expect(errors[1]).toContain("src/index.ts:1:");
+    expect(errors.every((error) => error.includes("is a tool config file"))).toBe(true);
+  });
+
   it("refuses an export that points at a test file", () => {
     const pkg = core({ "src/index.test.ts": "export const x = 1;\n" });
     const exported = { ...pkg, manifest: { ...pkg.manifest, exports: "./src/index.test.ts" } };

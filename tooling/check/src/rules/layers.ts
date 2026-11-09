@@ -66,8 +66,17 @@ export function isDevFile(file: string, pkg: WorkspacePackage, layer: Layer | un
   if (isTestFile(file) || layer === "testing") {
     return true;
   }
-  const inPackage = pkg.directory === "." ? file : file.slice(pkg.directory.length + 1);
-  return /^[^/]+\.config\.[cm]?[jt]s$/.test(inPackage);
+  return /^[^/]+\.config\.[cm]?[jt]s$/.test(inPackagePath(file, pkg));
+}
+
+/** The path of `file` relative to its package's folder. */
+function inPackagePath(file: string, pkg: WorkspacePackage): string {
+  return pkg.directory === "." ? file : file.slice(pkg.directory.length + 1);
+}
+
+/** True when a resolved import path names a tool config file, with or without its extension. */
+function namesToolConfig(resolved: string, pkg: WorkspacePackage): boolean {
+  return /^[^/]+\.config(?:\.[cm]?[jt]s)?$/.test(inPackagePath(resolved, pkg));
 }
 
 /** The layers whose code must stay free of loads the check can't follow. */
@@ -150,6 +159,11 @@ function relativeImportProblem(site: ImportSite, specifier: string): string | un
   }
   if (!site.dev && namesTestFile(resolved)) {
     return `"${specifier}" is a test file, and only tests may import tests. Move shared helpers into a non-test file or a testing package.`;
+  }
+  // Config files are dev code: they may import tests and dev tooling, so shipped code
+  // that imports one would reach both past this check and process-starts.
+  if (!site.dev && namesToolConfig(resolved, site.pkg)) {
+    return `"${specifier}" is a tool config file, and only tests and other config files may import it. Move shared values into a source file.`;
   }
   return undefined;
 }
