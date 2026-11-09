@@ -4,7 +4,8 @@ The Studio's design tokens: every colour, text style, size, radius, shadow and m
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
 by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Tabs`](#tabs),
 [`List`](#list), [`Kbd`](#kbd), [`Field`](#field), [`Input`](#input), [`TextArea`](#textarea),
-[`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
+[`CopyButton`](#copybutton), [`ExternalLink`](#externallink),
+[`WindowBar` and `Window`](#windowbar-and-window) and [`IconTile`](#icontile).
 
 - **Layer:** studio
 - **Owner:** noah
@@ -819,6 +820,43 @@ The promise `openExternal` returns rejects only when a pending address fails; th
 | Hover   | Underlined                                                          |
 | Focus   | The standard focus ring                                             |
 | Phone   | At least 48px high (`min-h-touch`), so the whole line is the target |
+
+## WindowBar and Window
+
+The thin header bar of a file view, shared with the `window` on halonic.dev so the site and the
+Studio look like one product (theme proposal, HAL-1687). It shows the file name or the run in small
+mono text, with optional `sm` ghost buttons on the right. There are no window dots.
+
+```tsx
+<WindowBar title="workflows/review.yaml" actions={copyPath} />;
+```
+
+At the top of a pane, use `WindowBar` on its own: the pane already has its border lines. For a
+file or a run's steps inside a page, `Window` puts the same bar in a bordered `surface` frame with
+a 12px radius, named by its title. It adds no padding, so its content sets its own.
+
+```tsx
+<Window title="workflows/review.yaml">
+  <pre className="p-4 font-mono text-code">…</pre>
+</Window>;
+```
+
+The site's code windows are always dark; the Studio's follow light and dark mode, like the rest of
+the app. A long title wraps instead of being cut off, so the bar grows a line in a narrow pane.
+
+## IconTile
+
+One of our 20px line icons on a 40px halo tile, the same tile halonic.dev puts next to a feature
+or a product. It's decoration, hidden from screen readers: the words next to it say the same.
+
+```tsx
+<IconTile>
+  <FileIcon />
+</IconTile>;
+```
+
+The Empty state keeps its own tile, a `surface` one with a shadow, because it sits on the halo
+wash, where a halo-tinted tile would disappear.
 
 ## Testing a component
 

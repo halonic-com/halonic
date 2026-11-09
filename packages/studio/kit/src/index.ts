@@ -54,6 +54,7 @@ export {
   type GridRow,
   useGridNavigation,
 } from "./grid-navigation/use-grid-navigation.ts";
+export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
@@ -91,6 +92,7 @@ export {
   type StatusChipTone,
 } from "./status-chip/status-chip.tsx";
 export { type Tab, type TabCount, Tabs, type TabsProps } from "./tabs/tabs.tsx";
+export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";
 
 /** The npm name of this package. */
 export const packageName = "@halonicjs/studio-kit";
