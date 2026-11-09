@@ -69,7 +69,8 @@ export interface SandboxOpenedOptions {
  * Makes the display copy of a sandbox profile that a `sandbox.opened` event
  * carries (requirement `events.sandbox-opened`). It copies a fixed list of
  * fields and nothing else, so the profile's `env` and any field added later
- * never reach the run log. A group is named when all of its paths are denied;
+ * never reach the run log. A group is named when it has paths and all of them
+ * are denied, so a group with no paths never claims something was blocked;
  * the denied paths outside the named groups are listed one by one. Paths in
  * the person's home folder start with `~`.
  *
@@ -91,8 +92,8 @@ export function sandboxOpenedView(
 ): SandboxOpenedView {
   const shorten = (path: string): string => shortenHome(path, options.home);
   const denied = new Set(profile.deniedPaths);
-  const named = options.deniedGroups.filter((group) =>
-    group.paths.every((path) => denied.has(path)),
+  const named = options.deniedGroups.filter(
+    (group) => group.paths.length > 0 && group.paths.every((path) => denied.has(path)),
   );
   const inNamedGroup = new Set(named.flatMap((group) => group.paths));
   return {

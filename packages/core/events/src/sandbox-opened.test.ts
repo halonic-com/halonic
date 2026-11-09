@@ -89,6 +89,14 @@ verifies("events.sandbox-opened", () => {
     expect(view.deniedPaths).toEqual(["~/.ssh", "~/.aws", "~/.halonic/data", "/srv/private"]);
   });
 
+  it("never names a group that has no paths", () => {
+    const empty: SandboxOpenedOptions = {
+      ...options,
+      deniedGroups: [{ code: "x", paths: [] }],
+    };
+    expect(sandboxOpenedView(profile, empty).deniedGroups).toEqual([]);
+  });
+
   it("lists a denied path once even when the profile repeats it", () => {
     const twice = { ...profile, deniedPaths: ["/srv/private", "/srv/private"] };
     expect(sandboxOpenedView(twice, options).deniedPaths).toEqual(["/srv/private"]);

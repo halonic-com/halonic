@@ -21,7 +21,9 @@ so it has to be in the log. Julian's conditions are built in and tested:
   field added to the profile later can't reach the log. A test passes a profile with `env` and
   unknown fields and checks that neither they nor their values appear.
 - Denied paths are logged as group codes when all of a group's paths are denied, plus the other
-  paths one by one (the person's own). Home paths start with `~`. Both are tested.
+  paths one by one (the person's own). A group with no paths is never named, so the screen can't
+  claim something was blocked when nothing was (Liam's review). Home paths start with `~`. All
+  are tested.
 
 The package keeps no dependency on `@halonicjs/ports`: the view takes the parts of a profile it
 reads (`ShownSandboxProfile`), which the port's `SandboxProfile` fits, and repeats the three
