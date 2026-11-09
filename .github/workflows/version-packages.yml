@@ -8,7 +8,8 @@
 #   this workflow opens, or a hand-made one such as the first release,
 #   0.1.0, where the version is already set and no changeset is waiting.
 #   Changing the version in another pull request never makes a tag. A
-#   manual run never tags; re-run the failed push run instead.
+#   manual run never tags; re-run the failed push run instead. If the
+#   pull request lookup fails, the run warns and tags nothing; re-run it.
 # - Changesets are waiting, or pre mode was exited (pre.json says "exit"):
 #   it runs `pnpm version-packages` (changeset version, then version:sync)
 #   on the branch changeset-release/main and opens or updates the "Version
@@ -75,9 +76,12 @@ jobs:
           # GitHub which pull request it came from and compare its title.
           release=false
           if [ "$EVENT" = push ]; then
-            titles=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[].title' 2> /dev/null) || titles=""
-            if printf '%s\n' "$titles" | grep -Fxq "chore(release): Halonic $version"; then
-              release=true
+            if titles=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[].title' 2> /dev/null); then
+              if printf '%s\n' "$titles" | grep -Fxq "chore(release): Halonic $version"; then
+                release=true
+              fi
+            else
+              echo "::warning::The release check could not run: GitHub did not answer the pull request lookup for $SHA. Nothing was tagged. If this push merged a release pull request, re-run this failed push run to tag it."
             fi
           fi
           echo "waiting=$waiting" >> "$GITHUB_OUTPUT"
