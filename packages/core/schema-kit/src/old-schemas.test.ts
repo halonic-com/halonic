@@ -29,6 +29,13 @@ verifies("schema-kit.old-schema-parity", () => {
       });
     }
   }
+
+  // Low noise is there so parsed values get compared, which needs valid inputs.
+  it("gives mostly valid workflows at low noise", () => {
+    const inputs = fc.sample(inputFor(zod.fileSchemas.workflow, "low"), { seed, numRuns: 300 });
+    const valid = inputs.filter((input) => zod.fileSchemas.workflow.safeParse(input).success);
+    expect(valid.length).toBeGreaterThan(200);
+  });
 });
 
 verifies("schema-kit.json-schema-input-mode", () => {
