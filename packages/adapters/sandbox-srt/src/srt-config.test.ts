@@ -1,3 +1,4 @@
+import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -52,5 +53,28 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       }),
     );
     expect(config.network?.allowedDomains).toEqual(["127.0.0.1:4100", "*.npmjs.org"]);
+  });
+
+  it("writes an IPv6 bridge host in brackets", () => {
+    const config = buildSrtConfig(
+      profile({ network: { bridge: { host: "::1", port: 4100 }, allowedSites: [] } }),
+    );
+    expect(config.network?.allowedDomains).toEqual(["[::1]:4100"]);
+  });
+
+  it("produces settings that srt's own schema accepts", () => {
+    const profiles = [
+      profile(),
+      profile({
+        settingsFolder: "/data/agents/ada",
+        readOnlyPaths: ["/work/acme/halonic.yaml"],
+        deniedPaths: ["/keys/ada*"],
+        network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: ["*.npmjs.org"] },
+      }),
+      profile({ network: { bridge: { host: "::1", port: 4100 }, allowedSites: ["*.npmjs.org"] } }),
+    ];
+    for (const p of profiles) {
+      expect(() => SandboxRuntimeConfigSchema.parse(buildSrtConfig(p))).not.toThrow();
+    }
   });
 });
