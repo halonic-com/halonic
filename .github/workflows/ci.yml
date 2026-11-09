@@ -566,7 +566,9 @@ jobs:
           CARGO_DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
         run: |
           name="cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/cargo-deny.tar.gz" \
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-all-errors --retry-delay 10 \
+            --output "$RUNNER_TEMP/cargo-deny.tar.gz" \
             "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/${name}.tar.gz"
           echo "${CARGO_DENY_SHA256}  $RUNNER_TEMP/cargo-deny.tar.gz" | sha256sum --check
           tar --extract --gzip --file "$RUNNER_TEMP/cargo-deny.tar.gz" --directory "$RUNNER_TEMP"
@@ -596,7 +598,11 @@ jobs:
       # The Gradle download and its dependencies, so a network blip on
       # services.gradle.org does not turn main red. Keyed on the files that
       # pin them; scoped per branch like the Turbo cache above.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore and save are separate so the save can run after a failed
+      # build: what was downloaded before the failure is kept.
+      - name: Restore the Gradle cache
+        id: gradle-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.gradle/wrapper/dists
@@ -633,6 +639,15 @@ jobs:
           path: apps/studio/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
           if-no-files-found: error
           retention-days: 7
+      # Even when the build failed, but not on an exact key hit (nothing new).
+      - name: Save the Gradle cache
+        if: ${{ always() && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/wrapper/dists
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
 
   e2e:
     name: Studio end-to-end (Playwright)
