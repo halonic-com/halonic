@@ -4,6 +4,7 @@ import {
   coordinationContract,
   definitionStoreContract,
   idGeneratorContract,
+  type PlantGitCode,
   recordStoreContract,
   runStoreContract,
   schedulerContract,
@@ -67,19 +68,45 @@ async function memoryFolder(files: Readonly<Record<string, string>>): Promise<Vc
   return { vcs: new MemoryVcs(store), files: store };
 }
 
-vcsContract("memory", {
-  folder: memoryFolder,
-  nested: memoryFolder,
-  repo: memoryRepo,
-  async clones(files) {
-    const remote = new MemoryRemote();
-    const seed = await memoryRepo(files);
-    seed.vcs.addRemote("origin", remote);
-    await seed.vcs.push();
-    const cloneOf = async (): Promise<VcsHarness> => {
-      const store = new MemoryDefinitionStore();
-      return { vcs: await MemoryVcs.clone(remote, store), files: store };
-    };
-    return [await cloneOf(), await cloneOf()];
-  },
-});
+/**
+ * Planted code for a Vcs that runs no programs: it is only recorded, and so
+ * never runs. Binding it lets CI run the hardened cases' own code before an
+ * adapter that drives real git exists.
+ */
+function recordedPlant(): PlantGitCode {
+  const planted: string[] = [];
+  return {
+    async hook(name) {
+      planted.push(`hook ${name}`);
+    },
+    async fsmonitor() {
+      planted.push("fsmonitor");
+    },
+    async ran() {
+      return false;
+    },
+  };
+}
+
+for (const drivesGit of [false, true]) {
+  // The memory Vcs runs no programs, so nothing planted could run.
+  const withPlant = (harness: VcsHarness): VcsHarness =>
+    drivesGit ? { ...harness, plant: recordedPlant() } : harness;
+  vcsContract(drivesGit ? "memory, with planted code recorded" : "memory", {
+    drivesGit,
+    folder: async (files) => withPlant(await memoryFolder(files)),
+    nested: async (files) => withPlant(await memoryFolder(files)),
+    repo: async (files) => withPlant(await memoryRepo(files)),
+    async clones(files) {
+      const remote = new MemoryRemote();
+      const seed = await memoryRepo(files);
+      seed.vcs.addRemote("origin", remote);
+      await seed.vcs.push();
+      const cloneOf = async (): Promise<VcsHarness> => {
+        const store = new MemoryDefinitionStore();
+        return withPlant({ vcs: await MemoryVcs.clone(remote, store), files: store });
+      };
+      return [await cloneOf(), await cloneOf()];
+    },
+  });
+}

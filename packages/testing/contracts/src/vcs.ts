@@ -1,6 +1,7 @@
 import type { Vcs } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { vcsHardenedCases } from "./vcs-hardened.ts";
 import type { MakeVcs } from "./vcs-harness.ts";
 import { changesOf, lines } from "./vcs-helpers.ts";
 import { vcsHistoryCases } from "./vcs-history.ts";
@@ -28,6 +29,12 @@ export function vcsContract(name: string, make: MakeVcs): void {
   verifies("contracts.vcs-safety", () => {
     describe(`Vcs safety contract: ${name}`, () => {
       vcsSafetyCases(make);
+    });
+  });
+
+  verifies("contracts.vcs-hardened", () => {
+    describe(`Vcs hardened contract: ${name}`, () => {
+      vcsHardenedCases(make);
     });
   });
 }

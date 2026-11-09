@@ -10,6 +10,30 @@ import { privateDefinitionPaths, unsafeDefinitionPaths } from "./definition-stor
 export interface VcsHarness {
   vcs: Vcs;
   files: DefinitionStore;
+  /**
+   * Plants code that git would run on its own in this folder's repository.
+   * An adapter that drives git must give it for every repository and clone,
+   * so the hardened cases can check none of it ever runs.
+   */
+  plant?: PlantGitCode;
+}
+
+/**
+ * Code planted in a repository the way an attacker who can write to the
+ * workspace folder would plant it. Each planted program, if it ever runs,
+ * leaves a mark that `ran` sees.
+ */
+export interface PlantGitCode {
+  /**
+   * An executable hook called `name` (such as `pre-commit`) in the
+   * repository's own hooks folder, and a copy in a folder that a
+   * `core.hooksPath` in the repository's own config points to.
+   */
+  hook(name: string): Promise<void>;
+  /** A `core.fsmonitor` command in the repository's own config. */
+  fsmonitor(): Promise<void>;
+  /** Whether any planted code has run. */
+  ran(): Promise<boolean>;
 }
 
 /** Creates the folders the {@link Vcs} suite needs. Every folder is new and shares nothing with the others. */
@@ -34,6 +58,13 @@ export interface MakeVcs {
    * `origin/main` and has `files` in one commit, the same commit as the remote.
    */
   clones(files: DefinitionFiles): Promise<[VcsHarness, VcsHarness]>;
+  /**
+   * Whether the adapter drives git. Required, so no adapter can leave the
+   * hardened cases out by accident: when `true`, every repository and clone
+   * must come with `plant`; when `false` (an adapter such as the memory one,
+   * which runs no programs at all), the hardened cases are skipped.
+   */
+  drivesGit: boolean;
 }
 
 /**
@@ -64,6 +95,20 @@ export const unsafeVcsPaths: readonly string[] = [
   ...unsafeDefinitionPaths,
   ...privateDefinitionPaths,
   ...gitInternalPaths,
+];
+
+/** Hooks git runs on its own during the commands the `Vcs` port uses. */
+export const plantedHooks: readonly string[] = [
+  "pre-commit",
+  "prepare-commit-msg",
+  "commit-msg",
+  "post-commit",
+  "post-checkout",
+  "post-index-change",
+  "reference-transaction",
+  "pre-push",
+  "post-merge",
+  "pre-auto-gc",
 ];
 
 /**

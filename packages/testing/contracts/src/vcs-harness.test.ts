@@ -3,6 +3,7 @@ import {
   gitInternalPaths,
   invalidBranchNames,
   optionLikePaths,
+  plantedHooks,
   unsafeVcsPaths,
 } from "./vcs-harness.ts";
 
@@ -32,6 +33,12 @@ describe("Vcs safety lists (contracts.vcs-safety)", () => {
   it("refuses every private path a definition store refuses, not only .git", () => {
     expect(unsafeVcsPaths).toEqual(
       expect.arrayContaining([".env", ".env.local", ".studio/trust.json", ".g\u200Cit/config"]),
+    );
+  });
+
+  it("plants the hooks that commit, checkout, push and pull would run", () => {
+    expect(plantedHooks).toEqual(
+      expect.arrayContaining(["pre-commit", "post-checkout", "pre-push", "post-merge"]),
     );
   });
 

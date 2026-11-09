@@ -84,6 +84,12 @@ export interface VcsCommit {
  * - commits a message as the message, whatever it starts with.
  *
  * Remotes and upstreams come from the repository, never from a caller.
+ *
+ * **An adapter that drives git always runs it hardened**, whether the
+ * workspace is trusted or not (plan section 11): every call passes
+ * `-c core.fsmonitor=false` and points `core.hooksPath` at an empty
+ * folder, so a hook or an fsmonitor command planted in the repository
+ * never runs.
  */
 export interface Vcs {
   /** The branch, its upstream and the changed files. */
