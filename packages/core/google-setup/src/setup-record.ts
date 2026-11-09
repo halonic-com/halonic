@@ -51,10 +51,12 @@ const scopePattern =
   /^(?:https:\/\/www\.googleapis\.com\/auth\/[a-z][a-z0-9._-]*|openid|email|profile)$/;
 
 /**
- * Google's name for an API, from the service's sheet, such as `Gmail API`.
- * Short and plain, so no URL, address or token-shaped text fits.
+ * Google's name for an API, from the service's sheet, such as `Gmail API` or
+ * `Cloud Pub/Sub API`. Short and plain, with no `:`, so no link with a scheme
+ * fits. The same rule as the sheet check (`GOOGLE_API_NAME_PATTERN` in
+ * `@halonicjs/format`), so a name the sheet check takes is never refused here.
  */
-const apiNamePattern = /^[A-Za-z0-9][A-Za-z0-9 ()&'-]{0,79}$/;
+const apiNamePattern = /^[A-Za-z0-9][A-Za-z0-9 ()&'/.,-]{0,79}$/;
 
 /** A project number, as Google's answer names the project. */
 const projectNumberPattern = /^\d{1,20}$/;
@@ -68,6 +70,11 @@ function isProject(text: string): boolean {
  * Whether an `apiOff` result is whole: the API, its name and the link come
  * together, and the link is the one `enableApiUrl` makes from the API and the
  * project, so the record can't hold any other URL.
+ *
+ * The object check runs even when a field check has already failed, so it
+ * checks the API host again before it makes a link: `enableApiUrl` throws
+ * for anything else, and a throw would turn a refused edit or a damaged
+ * record into a crash.
  */
 function isWholeApiOff(apiOff: {
   api?: string;
@@ -78,6 +85,9 @@ function isWholeApiOff(apiOff: {
   const { api, apiName, project, enableUrl } = apiOff;
   if (api === undefined) {
     return apiName === undefined && enableUrl === undefined;
+  }
+  if (!isApiHost(api)) {
+    return false;
   }
   return apiName !== undefined && enableUrl === enableApiUrl(api, project);
 }

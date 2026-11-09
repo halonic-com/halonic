@@ -19,10 +19,14 @@
 ## What the record may still hold
 
 Nothing either requirement promised is taken away. Every object is strict and every text has a
-tight shape: a scope as the sheet check allows it, an API host, a short API name, a project ID or
-project number, a single-word Google reason code, and a status from 100 to 599. An `apiOff` link
-must be exactly the Console page `enableApiUrl` makes from the API and the project, so the record
-can't hold any other URL. Google's `message` and any other free text still have no place.
+tight shape: a scope as the sheet check allows it, an API host, a short API name without a `:`, a
+project ID or project number, a single-word Google reason code, and a status from 100 to 599. An
+`apiOff` link must be exactly the Console page `enableApiUrl` makes from the API and the project, so
+the record can't hold any other URL. Google's `message` and any other free text still have no place.
+
+The API name follows the same rule as `GoogleApi.name` in the sheet check, so a check result for a
+name the sheet check took is never refused when it is saved. A `/`, `.` and `,` are allowed, as in
+"Cloud Pub/Sub API".
 
 ## Why
 
@@ -38,5 +42,7 @@ the old shape. One that did would now read as damaged.
 ## Tests
 
 The `service-checked` round trip now saves an `apiOff` result. New tests save one result of each
-kind and read it back, and refuse free text, an extra key, a foreign link, a part-there `apiOff`, an
-empty scope list and a bad status. No test was dropped or weakened.
+kind and read it back, and refuse free text, an extra key, a foreign link, another API host, a
+part-there `apiOff`, an empty scope list and a bad status. A stored `apiOff` result with another API
+host reads as damaged and is left out of the list, rather than making `read` and `list` throw. No
+test was dropped or weakened.

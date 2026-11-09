@@ -27,6 +27,16 @@ const ledgerApiOff: ApiOff = {
   enableUrl: ledgerEnableUrl,
 };
 
+/** An `apiOff` result for a real API whose name has a `/` in it. */
+const pubSubApiOff: ApiOff = {
+  kind: "apiOff",
+  api: "pubsub.googleapis.com",
+  apiName: "Cloud Pub/Sub API",
+  project: "halonic-x1",
+  enableUrl:
+    "https://console.cloud.google.com/apis/library/pubsub.googleapis.com?project=halonic-x1",
+};
+
 /** One result of each of B3's six kinds, with every field each kind can have. */
 const everyKind: readonly ServiceCheckOutcome[] = [
   { kind: "works" },
@@ -36,6 +46,7 @@ const everyKind: readonly ServiceCheckOutcome[] = [
     missingScopes: ["https://www.googleapis.com/auth/ledger.readonly", "email"],
   },
   ledgerApiOff,
+  pubSubApiOff,
   { kind: "apiOff", project: "123456789012" },
   { kind: "apiOff" },
   { kind: "checkFailed", status: 429, reason: "rateLimitExceeded" },
@@ -255,6 +266,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
       { kind: "scopeNotGranted", missingScopes: [`https://example.com/${fakeSecret}`] },
       { ...ledgerApiOff, enableUrl: `https://example.com/?token=${fakeSecret}` },
       { ...ledgerApiOff, apiName: `https://example.com/${fakeSecret}` },
+      { ...ledgerApiOff, api: `${fakeSecret}.example.com` },
       { ...ledgerApiOff, project: fakeSecret },
       { kind: "works", token: fakeSecret },
     ];
@@ -305,6 +317,27 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
     expect((await errorOf(setups.update(accountRef, { kind: "signed-in" }))).reason).toBe(
       "damaged",
     );
+    expect((await setups.list()).map((setup) => setup.accountRef)).toEqual(["gaccount_2"]);
+  });
+
+  it("reports a stored apiOff result with another host as damaged and leaves it out of the list", async () => {
+    const setups = newSetups();
+    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    await setups.start({ route, accountType: "workspace" });
+    const otherHost = { ...ledgerApiOff, api: `${fakeSecret}.example.com` };
+    records.log.push({
+      at: "2026-01-01T00:01:00.000Z",
+      collection: "_google_setups",
+      id: accountRef,
+      op: "update",
+      values: {
+        services: { ledger: { result: otherHost, checkedAt: "2026-01-01T00:01:00.000Z" } },
+      },
+    });
+
+    const damaged = await errorOf(setups.read(accountRef));
+    expect(damaged.reason).toBe("damaged");
+    expect(damaged.message).not.toContain(fakeSecret);
     expect((await setups.list()).map((setup) => setup.accountRef)).toEqual(["gaccount_2"]);
   });
 });
