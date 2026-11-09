@@ -135,6 +135,6 @@ verifies("ports.harness-bridge-server", () => {
   it("prices a keyed call per million tokens", () => {
     const usage = { inputTokens: 1_000, outputTokens: 200 };
     const anthropicKey: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
-    expect(bridgeCallCost(anthropicKey, { input: 3, output: 15 }, usage)).toBeCloseTo(0.006, 10);
+    expect(bridgeCallCost(anthropicKey, { input: 3, output: 15 }, usage)).toBe(0.006);
   });
 });

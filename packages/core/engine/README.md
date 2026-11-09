@@ -45,7 +45,8 @@ When no model is left, the turn fails with a `ModelCallError` whose reason is th
 through a `RunStoreTurnLog`.
 
 Each `llm.response` gets its `cost` from the model that answered: its tokens at its price per
-million, in the workspace's budget currency and not rounded. A local model without a price
+million, in the workspace's budget currency and not rounded. It uses `priceOf` from
+`@halonicjs/ports`, as the bridge does, so a call costs the same on either path. A local model without a price
 (Ollama, LM Studio, the mock model) costs 0. Any other model gets no `cost`, so the run's summary
 counts the call in `unpricedCalls`.
 

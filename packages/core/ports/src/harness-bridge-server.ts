@@ -1,6 +1,7 @@
 import type { ToolOutcome, Usage } from "@halonicjs/events";
 import type { ToolDefinition } from "./chat.ts";
 import type { HarnessBridge, HarnessEvent } from "./harness.ts";
+import { type ModelPrice, priceOf } from "./model-price.ts";
 
 /** Version of the {@link HarnessBridgeServer} port. A breaking change bumps it and comes with an ADR. */
 export const harnessBridgeServerVersion = 1;
@@ -25,12 +26,6 @@ export type BridgeProviderAccess =
    * which would hide a keyed model that really lacks a price.
    */
   | { kind: "sign-in" };
-
-/** A model's price per million tokens, in the workspace's budget currency, as `models.yaml` gives it. */
-export interface BridgeModelPrice {
-  input: number;
-  output: number;
-}
 
 /** What the bridge records itself: the model calls and Halonic tool calls that go through it. */
 export type BridgeEvent = Extract<
@@ -126,7 +121,7 @@ export interface HarnessBridgeOptions {
    * without a cost (unpriced), and a sign-in call always costs 0. See
    * {@link bridgeCallCost}.
    */
-  price(provider: BridgeProvider, model: string): BridgeModelPrice | null;
+  price(provider: BridgeProvider, model: string): ModelPrice | null;
   recorder: BridgeRecorder;
   tools: BridgeTools;
   approvals: BridgeApprovals;
@@ -138,18 +133,17 @@ export interface HarnessBridgeOptions {
  * The `cost` the bridge records on a model call's `llm.response`, in the
  * workspace's budget currency (requirement `ports.harness-bridge-server`).
  * A sign-in call costs 0, because the person's subscription pays. A keyed call
- * costs its tokens at the model's price, or is `undefined` (unpriced) when the
+ * costs its tokens at the model's price ({@link priceOf}), or is `undefined` (unpriced) when the
  * model has no price.
  */
 export function bridgeCallCost(
   access: BridgeProviderAccess,
-  price: BridgeModelPrice | null,
+  price: ModelPrice | null,
   usage: Usage,
 ): number | undefined {
   if (access.kind === "sign-in") return 0;
   if (price === null) return undefined;
-  const tokensPerPrice = 1_000_000;
-  return (usage.inputTokens * price.input + usage.outputTokens * price.output) / tokensPerPrice;
+  return priceOf(price, usage);
 }
 
 /** A bridge that is serving one run. */

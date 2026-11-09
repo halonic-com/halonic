@@ -13,15 +13,10 @@ import {
   type LlmProvider,
   ModelCallError,
   type ModelCallErrorReason,
+  type ModelPrice,
   type Secrets,
 } from "@halonicjs/ports";
 import type { TurnLog } from "./turn-log.ts";
-
-/** A model's price per million tokens, in the workspace's budget currency. */
-export interface ModelPrice {
-  readonly input: number;
-  readonly output: number;
-}
 
 /** The provider and model a turn goes to, with the models it falls back to. */
 export interface ResolvedModel {

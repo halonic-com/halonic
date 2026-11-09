@@ -8,7 +8,7 @@ const sourceFolder = fileURLToPath(new URL(".", import.meta.url));
 const readme = readFileSync(fileURLToPath(new URL("../README.md", import.meta.url)), "utf8");
 
 /** Source files that hold shared types or the package's lists, not a port. */
-const notPorts = new Set(["chat.ts", "index.ts", "port-versions.ts"]);
+const notPorts = new Set(["chat.ts", "index.ts", "model-price.ts", "port-versions.ts"]);
 
 const portFiles = readdirSync(sourceFolder)
   .filter((file) => file.endsWith(".ts") && !file.endsWith(".test.ts") && !notPorts.has(file))

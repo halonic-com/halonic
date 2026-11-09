@@ -1,5 +1,10 @@
 import { type RunEvent, type RunEventBody, summarize } from "@halonicjs/events";
-import { type ChatResponse, ModelCallError } from "@halonicjs/ports";
+import {
+  type BridgeProviderAccess,
+  bridgeCallCost,
+  type ChatResponse,
+  ModelCallError,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { call, callAnswer, ScriptedModel, textAnswer } from "../testing/scripted-model.ts";
@@ -54,7 +59,17 @@ verifies("engine.turn-prices-calls", () => {
   it("doesn't round the cost", () => {
     const usage = { inputTokens: 1, outputTokens: 3 };
     const cost = callCost({ provider: new ScriptedModel([]), model: "m", price }, usage);
-    expect(cost).toBe((1 / 1e6) * 2 + (3 / 1e6) * 8);
+    expect(cost).toBe(0.000026);
+  });
+
+  it("gives a call exactly the cost the bridge gives it", () => {
+    const usage = { inputTokens: 1_000, outputTokens: 500 };
+    const price = { input: 3, output: 15 };
+    const keyed: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
+    const cost = callCost({ provider: new ScriptedModel([]), model: "m", price }, usage);
+
+    expect(cost).toBe(bridgeCallCost(keyed, price, usage));
+    expect(cost).toBe(0.0105);
   });
 
   it("gives a local model without a price a cost of 0", async () => {

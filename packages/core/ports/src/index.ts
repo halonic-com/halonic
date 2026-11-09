@@ -61,7 +61,6 @@ export {
   type BridgeApprovalRequest,
   type BridgeApprovals,
   type BridgeEvent,
-  type BridgeModelPrice,
   type BridgeProvider,
   type BridgeProviderAccess,
   type BridgeRecorder,
@@ -109,6 +108,7 @@ export {
   type ProviderConfig,
   type ProviderFactoryContext,
 } from "./llm-provider.ts";
+export { type ModelPrice, priceOf } from "./model-price.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";
 export { type PortName, portVersions } from "./port-versions.ts";
 export {

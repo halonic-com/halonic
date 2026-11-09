@@ -1,4 +1,4 @@
-export { type ModelPrice, type ResolvedModel, runFailureReasonOf } from "./agent/model-chain.ts";
+export { type ResolvedModel, runFailureReasonOf } from "./agent/model-chain.ts";
 export {
   type ModelTurnInput,
   type ModelTurnResult,
