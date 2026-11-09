@@ -22,7 +22,10 @@ export interface StyleInputs {
 export interface OutputStyle {
   /** Whether the stream gets colour, bold and dim. Never needed to read the output. */
   readonly colour: boolean;
-  /** Whether a live ◌ line may be shown and replaced, and a question asked. */
+  /**
+   * Whether a live ◌ line may be shown and replaced. Whether a question may be
+   * asked isn't decided here: that follows stdin and `CI` (cli-output 1.7).
+   */
   readonly live: boolean;
   /** Whether the marks are ✓ ✕ ! ◌ · ›, or their plain-text stand-ins. */
   readonly unicode: boolean;

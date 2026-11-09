@@ -23,7 +23,9 @@ const marks: Readonly<Record<Mark, MarkLook>> = {
   studioPath: { unicode: "›", ascii: ">", colour: "default" },
 };
 
-// SGR codes. Each style ends with its own reset, so a dim word inside a bold line stays bold.
+// SGR codes, each with the code that ends it. A colour's 39 leaves bold and dim alone, but bold
+// and dim share 22, which ends both: a dim word inside a bold text ends the bold too, so the
+// two are never nested.
 const sgr = {
   green: ["32", "39"],
   red: ["31", "39"],
