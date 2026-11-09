@@ -51,11 +51,11 @@ export function refuseCarriedSecrets(
 ): void {
   if (forms.longest === 0) return;
   const headerLines = [...(parts.headers ?? [])].map(([name, value]) => `${name}: ${value}`);
-  const url = [parts.url, decoded(parts.url), parsed(parts.url, parts.base)];
+  const url = [parts.url, withEscapesDecoded(parts.url), parsed(parts.url, parts.base)];
   const texts = [parts.method ?? "", ...url, ...headerLines];
   if (texts.some((text) => holds(text, forms)) || bodyHolds(parts.body ?? null, forms)) {
     throw new SecretInRequestError(policy, {
-      method: shown(parts.method ?? "GET", forms),
+      method: shown((parts.method ?? "GET").toUpperCase(), forms),
       host: shown(hostOf(parts.url, parts.base), forms),
     });
   }
@@ -80,7 +80,7 @@ export class SecretInRequestError extends IntegrationRefusedError {
       "secret-in-request",
       `${policy.name}: a request to ${shown.host} carries the value of a secret the kit didn't put there, so nothing was sent`,
     );
-    this.logged = { method: shown.method.toUpperCase(), host: shown.host, path: "" };
+    this.logged = { method: shown.method, host: shown.host, path: "" };
   }
 }
 
@@ -89,7 +89,7 @@ function holds(text: string, forms: SecretForms): boolean {
 }
 
 function bodyHolds(body: Body, forms: SecretForms): boolean {
-  if (typeof body === "string") return holds(body, forms);
+  if (typeof body === "string") return holds(body, forms) || holds(withEscapesDecoded(body), forms);
   if (body instanceof URLSearchParams) return holds(body.toString(), forms);
   let bytes: Uint8Array;
   if (body instanceof ArrayBuffer) bytes = new Uint8Array(body);
@@ -102,12 +102,29 @@ function bodyHolds(body: Body, forms: SecretForms): boolean {
   return remover.removed > 0;
 }
 
-/** The URL with percent-escapes undone, so a value encoded only in part is still found. */
-function decoded(url: string): string {
+const escapeRun = /(?:%[0-9A-Fa-f]{2})+/g;
+const oneEscape = /%[0-9A-Fa-f]{2}/g;
+
+/**
+ * The text with its percent-escapes undone, so a value encoded only in part
+ * is still found. `decodeURIComponent` throws on the whole text for one bad
+ * escape, so each run of escapes is decoded on its own: a malformed `%ZZ`
+ * stays as it is. A run that isn't valid UTF-8, such as `%2D%FF`, is decoded
+ * one escape at a time, so its `%2D` still becomes `-`.
+ */
+function withEscapesDecoded(text: string): string {
+  return text.replace(
+    escapeRun,
+    (run) =>
+      decodedOrNull(run) ?? run.replace(oneEscape, (single) => decodedOrNull(single) ?? single),
+  );
+}
+
+function decodedOrNull(escapes: string): string | null {
   try {
-    return decodeURIComponent(url);
+    return decodeURIComponent(escapes);
   } catch {
-    return url;
+    return null;
   }
 }
 

@@ -17,7 +17,7 @@ import {
 } from "./request-body.ts";
 import type { RequestLog } from "./request-log.ts";
 import { type BodyGuard, guardBody, untilAborted } from "./response-body.ts";
-import { removeSecretsFromError, secretForms } from "./secret-filter.ts";
+import { removeSecretsFromError, type SecretForms, secretForms } from "./secret-filter.ts";
 import {
   carriedForms,
   readDeclaredSecrets,
@@ -83,9 +83,20 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
     async fetch(rawUrl: string, init: IntegrationRequestInit = {}): Promise<Response> {
       const started = now();
       const method = (init.method ?? "GET").toUpperCase();
-      const where = logPlace(rawUrl);
+      // Until the secret check has passed, the method, host and path may hold a key,
+      // so the check runs first: before the URL is parsed and before any other refusal.
+      let logged = unchecked;
       try {
-        const response = await send(options, rawUrl, init, method);
+        const declared = await readDeclaredSecrets(options.policy, options.secrets);
+        const carried = carriedForms(declared.values());
+        refuseCarriedSecrets(options.policy, carried, {
+          method: init.method,
+          url: String(rawUrl),
+          headers: new Headers(init.headers),
+          body: init.body ?? null,
+        });
+        logged = { method, ...logPlace(rawUrl) };
+        const response = await send(options, rawUrl, init, method, { declared, carried });
         options.log.add({
           method,
           ...logPlace(response.url),
@@ -97,8 +108,7 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
       } catch (error) {
         const refused = error instanceof IntegrationRefusedError;
         options.log.add({
-          method,
-          ...(error instanceof SecretInRequestError ? error.logged : where),
+          ...(error instanceof SecretInRequestError ? error.logged : logged),
           durationMs: now() - started,
           outcome: refused ? "refused" : "failed",
           ...(refused ? { refusal: error.code } : {}),
@@ -107,6 +117,15 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
       }
     },
   };
+}
+
+/** What the log shows of a request that failed before the secret check passed. */
+const unchecked = { method: "", host: "", path: "" };
+
+/** The declared secret values, read once per request, and their forms for the carried check. */
+interface DeclaredSecrets {
+  readonly declared: ReadonlyMap<string, string>;
+  readonly carried: SecretForms;
 }
 
 /** The parts of a request that change from one redirect hop to the next. */
@@ -124,22 +143,15 @@ async function send(
   rawUrl: string,
   init: IntegrationRequestInit,
   method: string,
+  { declared, carried }: DeclaredSecrets,
 ): Promise<Response> {
   const { policy, limits = {} } = options;
   const { auth, signal, redirect: _redirect, ...rest } = init;
   // From here on only the frozen copies are read, never the code's `auth`.
   const placements = copyPlacements(policy, auth === undefined ? [] : [auth].flat());
   const body = rest.body ?? null;
+  // After the secret check, which skips a body it can't read, so this refusal logs no key.
   checkBody(policy, body);
-  const declared = await readDeclaredSecrets(policy, options.secrets);
-  const carried = carriedForms(declared.values());
-  // Before the URL is parsed, so no refusal message or log entry names a host that holds one.
-  refuseCarriedSecrets(policy, carried, {
-    method: init.method,
-    url: String(rawUrl),
-    headers: new Headers(rest.headers),
-    body,
-  });
   const url = allowedUrl(policy, rawUrl);
   checkPlacements(policy, placements, url);
   const maxBodyBytes = requestBodyLimit(limits.maxRequestBodyBytes);

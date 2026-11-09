@@ -1,6 +1,15 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { canary, client, redirect, refusal } from "./fake-transport.test-helper.ts";
+import {
+  canary,
+  client,
+  fakeTransport,
+  policy,
+  redirect,
+  refusal,
+} from "./fake-transport.test-helper.ts";
+import { createLimitedHttpClient } from "./limited-http.ts";
+import { RequestLog } from "./request-log.ts";
 
 const key = canary["example-key"];
 const bearer = { secret: "example-key", as: "bearer" } as const;
@@ -15,6 +24,16 @@ verifies("integration-kit.secret-in-request", () => {
         {},
       ],
       ["percent-encoded in part", `https://api.example.com/v1?k=${key.replace("-", "%2D")}`, {}],
+      [
+        "percent-encoded in part, next to a malformed escape",
+        `https://api.example.com/v1?k=${key.replace("-", "%2D")}&x=%ZZ`,
+        {},
+      ],
+      [
+        "percent-encoded in part, in a run that isn't valid UTF-8",
+        `https://api.example.com/v1?k=${key.slice(0, -1)}%${key.charCodeAt(key.length - 1).toString(16)}%FF`,
+        {},
+      ],
       ["in the path", `https://api.example.com/${key}`, {}],
       ["in the host", `https://${key}.example.net/`, {}],
       ["in a header of its own", "https://api.example.com/", { headers: { "x-note": key } }],
@@ -24,6 +43,11 @@ verifies("integration-kit.secret-in-request", () => {
         { headers: { authorization: `Bearer ${key}` } },
       ],
       ["in a text body", "https://api.example.com/", { method: "POST", body: `{"k":"${key}"}` }],
+      [
+        "percent-encoded in part in a form string body",
+        "https://api.example.com/",
+        { method: "POST", body: `k=${key.replace("-", "%2D")}&x=%ZZ` },
+      ],
       [
         "in a form body",
         "https://api.example.com/",
@@ -35,6 +59,11 @@ verifies("integration-kit.secret-in-request", () => {
         { method: "POST", body: new TextEncoder().encode(`xx${key}xx`) },
       ],
       ["in the method", "https://api.example.com/", { method: `X${key}` }],
+      [
+        "in the host and path, with a body the kit refuses",
+        `https://${key}.example.net/${key}`,
+        { method: `X${key}`, body: new Blob(["x"]) },
+      ],
     ])("refuses the key %s, sends nothing and never shows it", async (_where, url, init) => {
       const { http, sent, log } = client();
       const error = await http.fetch(url, init).catch((thrown: unknown) => thrown);
@@ -44,6 +73,20 @@ verifies("integration-kit.secret-in-request", () => {
         expect(shown.toLowerCase()).not.toContain(key.toLowerCase());
       }
       expect(log.entries()[0]).toMatchObject({ outcome: "refused", refusal: "secret-in-request" });
+    });
+
+    it("logs nothing of the request when reading the secrets fails", async () => {
+      const log = new RequestLog();
+      const http = createLimitedHttpClient({
+        policy,
+        transport: fakeTransport().transport,
+        secrets: { get: async () => Promise.reject(new Error("store offline")) },
+        log,
+      });
+      await expect(http.fetch(`https://${key}.example.net/${key}`)).rejects.toThrow(
+        "store offline",
+      );
+      expect(log.entries()[0]).toMatchObject({ method: "", host: "", path: "", outcome: "failed" });
     });
 
     it.each([

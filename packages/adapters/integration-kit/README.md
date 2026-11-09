@@ -60,8 +60,12 @@ Node, in the Worker and in the browser. Published as
 - **Secrets can't be carried out.** A request whose method, URL, headers or
   body holds a secret value the kit didn't place there itself, in any of
   those forms, is refused as `secret-in-request`, to every host, including
-  the one the secret is declared for, and on every redirect hop. The message
-  and the log name the host only, never the value.
+  the one the secret is declared for, and on every redirect hop. The URL and
+  a text body are also read with their percent-escapes undone, so a value
+  encoded only in part is found. The message and the log name the host
+  only, never the value. This catches a value carried as it is or in those
+  forms, nothing more: an integration that can read a key can base64 it,
+  change its case or split it, and the check won't see that.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name
