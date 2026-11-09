@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1994, decided on HAL-1984; the wording follows the CLI output draft on HAL-1981 (section 1.9)
 
-`halonic --help` shall list every exit code with a few words for what it means, in code order: the CLI's own codes 0 to 3 on one line and the error kinds' codes 4 to 9 on the next. The CLI shall print an exit code nowhere else.
+The help that `halonic --help` prints shall list every exit code with a few words for what it means, in code order: the CLI's own codes 0 to 3 on one line and the error kinds' codes 4 to 9 on the next. The CLI shall print an exit code nowhere else.
 
 ## Examples
 
