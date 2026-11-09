@@ -640,6 +640,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       # Even when the build failed, but not on an exact key hit (nothing new).
+      # Reuses the restore step's key: the build generates more *.gradle* files,
+      # so hashing again here would give a different key.
       - name: Save the Gradle cache
         if: ${{ always() && steps.gradle-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -647,7 +649,7 @@ jobs:
           path: |
             ~/.gradle/wrapper/dists
             ~/.gradle/caches
-          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
 
   e2e:
     name: Studio end-to-end (Playwright)
