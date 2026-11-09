@@ -35,7 +35,7 @@ export {
   savedConnectorState,
   testingHintWindowMs,
 } from "./connector-state.ts";
-export type { ConsolePage } from "./console-links.ts";
+export { type ConsolePage, isApiHost } from "./console-links.ts";
 export { looksLikeGoogleClientSecret } from "./looks-like-google-client-secret.ts";
 export { type LoopbackRedirect, loopbackRedirectUri } from "./loopback-redirect.ts";
 export {

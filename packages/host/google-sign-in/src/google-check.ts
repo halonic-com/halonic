@@ -1,5 +1,6 @@
 import {
   type GoogleCheckAnswer,
+  isApiHost,
   readGoogleCheckAnswer,
   type ServiceCheckOutcome,
   type ServiceResult,
@@ -20,17 +21,31 @@ export const googleCheckTimeoutMs = 10_000;
 const sharedApiHost = "www.googleapis.com";
 
 /**
+ * Hosts that never count as a service's own API, even when its sheet lists
+ * them: Cloud Storage's, where anyone can have a bucket (HAL-1226), and the
+ * shared host, which serves many APIs and so needs the path rule.
+ */
+const neverServiceApiHosts: ReadonlySet<string> = new Set([
+  "storage.googleapis.com",
+  sharedApiHost,
+]);
+
+/**
  * Refuses a `googleCheck` URL the access token must not go to. Only the
  * parsed URL is checked, so `https://gmail.googleapis.com.example.com` or
  * `https://x@example.com/` can't pass as Google:
  * - the protocol is `https:`;
- * - the host is one of the service's own `googleApis` hosts, or
- *   `www.googleapis.com`. Any other `*.googleapis.com` host is refused, such
- *   as Cloud Storage's, where anyone can have a bucket (HAL-1226);
+ * - the host is one of the service's own API hosts: a `googleApis` entry
+ *   that is a Google API host (`<name>.googleapis.com`), other than Cloud
+ *   Storage's. A sheet that lists `evil.example.com` or `googleapis.com`
+ *   gives it nothing (HAL-1351);
+ * - or the host is `www.googleapis.com` and the path starts with the name
+ *   of one of those APIs, such as `/drive/` for `drive.googleapis.com`, so
+ *   the shared host can't reach another API, such as `/storage/v1/…`;
  * - there is no user name or password and no port other than the default.
  *
  * The sheet check in the integrations repo already limits the URL to the
- * sheet's `hosts`; this also keeps it on Google's API hosts.
+ * sheet's `hosts`; this also keeps it on the service's Google APIs.
  *
  * @param url - the service's `googleCheck` URL
  * @param service - the service whose check it is
@@ -41,7 +56,7 @@ export function checkGoogleCheckUrl(url: string, service: SetupService): URL {
   const isServiceApi =
     parsed !== null &&
     parsed.protocol === "https:" &&
-    isServiceApiHost(parsed.hostname, service) &&
+    isOnServiceApi(parsed, service) &&
     parsed.username === "" &&
     parsed.password === "" &&
     parsed.port === "";
@@ -54,21 +69,28 @@ export function checkGoogleCheckUrl(url: string, service: SetupService): URL {
 }
 
 /**
- * Whether the host is one of the service's `googleApis` hosts, or Google's
- * shared API host. A listed host counts only when it is itself a Google API
- * host: the format schema refuses a sheet that lists another, but this
- * package takes a `SetupService` from its caller and holds on its own.
+ * Whether the URL is on one of the service's own APIs: on its host, or on
+ * the shared host under the API's name.
  */
-function isServiceApiHost(hostname: string, service: SetupService): boolean {
-  if (hostname === sharedApiHost) {
-    return true;
+function isOnServiceApi(url: URL, service: SetupService): boolean {
+  const apiHosts = serviceApiHosts(service);
+  if (url.hostname === sharedApiHost) {
+    const firstPathSegment = url.pathname.split("/")[1];
+    return apiHosts.some((api) => apiName(api) === firstPathSegment);
   }
-  return service.googleApis.some(({ api }) => api === hostname && isGoogleApiHost(api));
+  return apiHosts.includes(url.hostname);
 }
 
-/** Whether the host is a name under `googleapis.com`, such as `gmail.googleapis.com`. */
-function isGoogleApiHost(hostname: string): boolean {
-  return hostname.endsWith(".googleapis.com");
+/** The service's `googleApis` hosts that are Google API hosts and may get a check. */
+function serviceApiHosts(service: SetupService): string[] {
+  return service.googleApis
+    .map(({ api }) => api)
+    .filter((api) => isApiHost(api) && !neverServiceApiHosts.has(api));
+}
+
+/** An API host's first label, such as `drive` for `drive.googleapis.com`. */
+function apiName(apiHost: string): string {
+  return apiHost.slice(0, apiHost.indexOf("."));
 }
 
 /** What the checks after sign-in need. */
