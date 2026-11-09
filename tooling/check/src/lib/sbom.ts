@@ -18,6 +18,13 @@ export interface SbomComponent {
 export interface Sbom {
   readonly metadata?: { readonly component?: SbomComponent } & Readonly<Record<string, unknown>>;
   readonly components?: readonly SbomComponent[];
+  readonly dependencies?: readonly SbomDependency[];
+}
+
+/** One entry of the CycloneDX dependency graph. */
+export interface SbomDependency {
+  readonly ref: string;
+  readonly dependsOn?: readonly string[];
 }
 
 /** One installed package with its licence, as `pnpm licenses list --long --json` reports it. */
@@ -69,15 +76,29 @@ export function findSbomProblems(
 /**
  * Names the product the SBOM describes. `pnpm sbom` takes the name and version
  * from the root package (`@halonicjs/root@0.0.0`), which is wrong for a
- * release file, so `metadata.component` is replaced with an application.
+ * release file, so `metadata.component` is replaced with an application and the
+ * dependency graph is pointed at it.
  */
 export function withProduct(sbom: Sbom, name: string, version: string): Sbom {
+  const ref = `${name}@${version}`;
+  const oldRef = sbom.metadata?.component?.["bom-ref"];
+  const rename = (value: string): string => (value === oldRef ? ref : value);
   return {
     ...sbom,
     metadata: {
       ...sbom.metadata,
-      component: { type: "application", name, version, "bom-ref": `${name}@${version}` },
+      component: { type: "application", name, version, "bom-ref": ref },
     },
+    // The dependency graph still points at the old root, so it follows the rename.
+    ...(sbom.dependencies === undefined
+      ? {}
+      : {
+          dependencies: sbom.dependencies.map((entry) => ({
+            ...entry,
+            ref: rename(entry.ref),
+            ...(entry.dependsOn === undefined ? {} : { dependsOn: entry.dependsOn.map(rename) }),
+          })),
+        }),
   };
 }
 

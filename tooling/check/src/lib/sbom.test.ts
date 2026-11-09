@@ -81,6 +81,23 @@ describe("withProduct", () => {
     expect(named.components).toEqual(sbom.components);
   });
 
+  test("points the dependency graph at the renamed product", () => {
+    const sbom = {
+      metadata: {
+        component: { name: "root", version: "0.0.0", "bom-ref": "@halonicjs/root@0.0.0" },
+      },
+      dependencies: [
+        { ref: "@halonicjs/root@0.0.0", dependsOn: ["yaml@2.9.1"] },
+        { ref: "yaml@2.9.1", dependsOn: [] },
+      ],
+    };
+    const named = withProduct(sbom, "halonic-cli", "1.0.0");
+    expect(named.dependencies).toEqual([
+      { ref: "halonic-cli@1.0.0", dependsOn: ["yaml@2.9.1"] },
+      { ref: "yaml@2.9.1", dependsOn: [] },
+    ]);
+  });
+
   test("adds the product when the SBOM has no metadata", () => {
     expect(withProduct({}, "halonic-cli", "1.0.0").metadata?.component?.name).toBe("halonic-cli");
   });
