@@ -7,7 +7,6 @@ import { checkDco } from "./dco.ts";
 import { checkDependencies } from "./dependencies.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
-import { inactiveChecks, inactiveRule } from "./inactive-checks.ts";
 import { checkInvisibleCharacters } from "./invisible-characters.ts";
 import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
@@ -32,7 +31,6 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "readme-examples": checkReadmeExamples,
   dco: (context) => checkDco(context),
   trace: checkTrace,
-  ...Object.fromEntries(Object.keys(inactiveChecks).map((name) => [name, inactiveRule(name)])),
 };
 
 /**
