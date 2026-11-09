@@ -30,6 +30,7 @@ code is built the way it is, before you change something they describe.
 | [One interface codebase](2026-11-08-one-interface-codebase.md)                         | One React codebase for the Studio on desktop, Android and in the browser         |
 | [Port list and versions](2026-11-07-port-list-and-versions.md)                         | The first set of ports, one file each with a version, frozen once adapters start |
 | [Record store compaction](2026-11-08-record-store-compaction.md)                       | `RecordStore.compact` drops overwritten and removed values from storage (v2)     |
+| [Sandbox fence proof](2026-11-09-sandbox-fence-proof.md)                               | A sandbox session proves its fence before `open` returns (v2)                    |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

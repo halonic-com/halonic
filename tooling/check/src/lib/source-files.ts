@@ -128,21 +128,22 @@ function moduleSpecifierOf(node: ts.Node): ts.StringLiteralLike | undefined {
     return node.moduleSpecifier;
   }
   if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-    const expression = node.moduleReference.expression;
-    return ts.isStringLiteralLike(expression) ? expression : undefined;
+    return stringLiteralOrUndefined(node.moduleReference.expression);
   }
   if (ts.isImportTypeNode(node)) {
-    const argument = node.argument;
-    if (ts.isLiteralTypeNode(argument) && ts.isStringLiteralLike(argument.literal)) {
-      return argument.literal;
-    }
-    return undefined;
+    return ts.isLiteralTypeNode(node.argument)
+      ? stringLiteralOrUndefined(node.argument.literal)
+      : undefined;
   }
   if (ts.isCallExpression(node) && isImportOrRequire(node)) {
     const first = node.arguments[0];
-    return first !== undefined && ts.isStringLiteralLike(first) ? first : undefined;
+    return first === undefined ? undefined : stringLiteralOrUndefined(first);
   }
   return undefined;
+}
+
+function stringLiteralOrUndefined(node: ts.Node): ts.StringLiteralLike | undefined {
+  return ts.isStringLiteralLike(node) ? node : undefined;
 }
 
 /** Names the hidden load a node is, or returns `undefined` for anything else. */

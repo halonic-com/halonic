@@ -99,6 +99,9 @@ const contrastPairs: ContrastPair[] = [
   // The switch's off track and a checkbox in a hovered menu item sit on surface-muted.
   ...onSurfaces("border-control", control, ["surface-muted"]),
   ...onSurfaces("accent", control),
+  // A neutral chip, count or Kbd on a muted fill steps up to border (the on-muted: variant).
+  onFill("fg", "border"),
+  { ...onFill("fg", "border"), name: "fg on border over surface-muted", beneath: "surface-muted" },
 ];
 
 describe("theme.css colours", () => {
@@ -161,18 +164,13 @@ describe("theme.css selection and high contrast", () => {
 
 describe("theme.css field focus", () => {
   it("rings a text field's box while its text has focus, and keeps the outline", () => {
-    const accent = blockBody(
-      blockBody(css, "@utility focus-field"),
-      "&:has([data-field-text]:focus)",
-    );
+    expect(css).toContain("@custom-variant field-focus (&:has([data-field-text]:focus));");
+    const accent = blockBody(blockBody(css, "@utility focus-field"), "@variant field-focus");
     expect(accent).toContain("outline: 2px solid transparent;");
     expect(accent).toContain("border-color: var(--color-accent);");
     expect(accent).toContain("box-shadow: 0 0 0 3px var(--color-accent-soft);");
 
-    const danger = blockBody(
-      blockBody(css, "@utility focus-field-danger"),
-      "&:has([data-field-text]:focus)",
-    );
+    const danger = blockBody(blockBody(css, "@utility focus-field-danger"), "@variant field-focus");
     expect(danger).toContain("outline: 2px solid transparent;");
     expect(danger).toContain("border-color: var(--color-danger);");
     expect(danger).toContain("box-shadow: 0 0 0 3px var(--color-danger-soft);");

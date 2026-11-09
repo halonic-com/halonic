@@ -40,6 +40,11 @@ export {
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export {
+  checkOutsideRunCall,
+  type OutsideRunCall,
+  type OutsideRunCheck,
+} from "./outside-run-gate.ts";
+export {
   checkPackageRunnerLaunch,
   isPackageRunner,
   programName,

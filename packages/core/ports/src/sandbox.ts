@@ -1,5 +1,5 @@
 /** Version of the {@link Sandbox} port. A breaking change bumps it and comes with an ADR. */
-export const sandboxVersion = 1;
+export const sandboxVersion = 2;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -129,14 +129,35 @@ export type SandboxBlock =
 /** Hears the session's blocked accesses. */
 export type SandboxBlockListener = (block: SandboxBlock) => void;
 
+/**
+ * Whether the fence is really around the session. Before a session starts any
+ * program, the adapter runs its own probes (a file the fence hides, and a
+ * loopback port the fence blocks) and reports what it found.
+ *
+ * `fenced`: the probes were refused, so programs run inside the fence.
+ * `not-fenced`: a probe got through, or could not run; `reason` says which, in
+ * one plain sentence, and {@link SandboxSession.start} throws.
+ * `stopped`: the session is closed.
+ */
+export type SandboxFence =
+  | { state: "fenced" }
+  | { state: "not-fenced"; reason: string }
+  | { state: "stopped" };
+
 /** One run's sandbox: the programs it started, the fence they are in and the time limit. */
 export interface SandboxSession {
   /** The profile the session was opened with. */
   readonly profile: SandboxProfile;
   /**
+   * The fence proof. It is settled before {@link Sandbox.open} returns, so no
+   * untrusted code has loaded when it is read, and it becomes `stopped` after
+   * {@link SandboxSession.close}.
+   */
+  readonly fence: SandboxFence;
+  /**
    * Starts a program inside the fence.
    *
-   * @throws when the session is closed, or the sandbox can't launch anything.
+   * @throws when the session is closed, the fence proof is `not-fenced`, or the sandbox can't launch anything.
    * A program that is missing inside the fence doesn't throw: it ends with a
    * non-zero {@link SandboxExit.code}.
    */

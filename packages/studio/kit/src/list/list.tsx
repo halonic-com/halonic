@@ -72,9 +72,10 @@ const lineClasses = {
   },
 } as const;
 
-const rowStateClasses = {
-  default: "bg-surface hover:bg-surface-subtle active:bg-surface-subtle",
-  selected: "bg-accent-soft",
+/** Selected: the accent fill, the 2px accent bar on the main cell and a high-contrast outline. */
+const stateClasses = {
+  default: { row: "bg-surface hover:bg-surface-subtle active:bg-surface-subtle", main: "" },
+  selected: { row: "bg-accent-soft selected-forced", main: "selected-bar" },
 } as const;
 
 /** The row's height, from the presentation, the density and whether it has a meta line. */
@@ -197,6 +198,7 @@ function Row<Id extends string>({
   selection,
 }: RowProps<Id>) {
   const isSelected = selection?.selected.has(row.id) === true;
+  const state = stateClasses[isSelected ? "selected" : "default"];
   const isDisabled = row.disabled === true;
   const meta = row.error?.reason ?? row.meta;
   const trailing =
@@ -237,14 +239,14 @@ function Row<Id extends string>({
     <tr
       aria-selected={selection === undefined ? undefined : isSelected}
       aria-disabled={isDisabled ? true : undefined}
-      className={`group ${rowStateClasses[isSelected ? "selected" : "default"]}`}
+      className={`group ${state.row}`}
     >
       {/* biome-ignore lint/a11y/useFocusableInteractive: its tabIndex comes from grid.cell(), which Biome can't see */}
       <td
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
         role="gridcell"
         {...grid.cell(row.id, 0)}
-        className={`p-0 focus-ring-inset ${lines.main} ${isDisabled ? "cursor-default" : "cursor-pointer"}`}
+        className={`p-0 focus-ring-inset ${lines.main} ${state.main} ${isDisabled ? "cursor-default" : "cursor-pointer"}`}
         onClick={onClick}
         onKeyDown={onKeyDown}
       >

@@ -24,6 +24,7 @@ look up services its feature lists in `needs`.
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
+| `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
@@ -66,6 +67,14 @@ At start-up the app hands its `RunExecutor` to `shell.engine.watch(executor)`. A
 has none and counts as always connected. Each change is sent once as `engine.connection { state }`
 to listeners added with `shell.engine.on("engine.connection", listener)`, and announced once: the
 loss assertively, the return politely. `shell.engine.connection` is the state now.
+
+## Save reasons
+
+A screen that saves a file passes the error to `saveFailureFor`, the one place that reads write
+error codes, and words its message from the reason: `disk-full` (`ENOSPC`, `EDQUOT`),
+`not-writable` (`EACCES`, `EPERM`, `EROFS`), `in-use` (`EBUSY`, which includes the Windows sharing
+violation) or `failed` for anything else. The code and the original message stay in the result for
+Copy details; they never go on screen (rule 4 of the failure-path guide).
 
 ## Example
 

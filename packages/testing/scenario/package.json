@@ -1,0 +1,32 @@
+{
+  "name": "@halonicjs/testing-scenario",
+  "private": true,
+  "type": "module",
+  "description": "Helpers for scenario-style tests: eventually() waits on a fake or real clock, and keepOnFailure() saves state when a test fails.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "vitest": "catalog:"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "julian",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
