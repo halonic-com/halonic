@@ -43,6 +43,8 @@ jobs:
     outputs:
       tag: ${{ steps.plan.outputs.tag }}
       dry_run: ${{ steps.plan.outputs.dry_run }}
+      version: ${{ steps.plan.outputs.version }}
+      installer: ${{ steps.plan.outputs.installer }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -72,8 +74,8 @@ jobs:
           esac
           case "$tag" in *-test*) dry_run=true ;; esac
           version="${tag#v}"
-          # The release file names live here and nowhere else. Keep them in
-          # step with the names agreed in HAL-1119.
+          # The release file names live here and nowhere else. They are the
+          # names agreed in HAL-1119.
           {
             echo "tag=$tag"
             echo "version=$version"
@@ -91,19 +93,20 @@ jobs:
           VERSION: ${{ steps.plan.outputs.version }}
           CLI_TARBALL: ${{ steps.plan.outputs.cli_tarball }}
         run: |
-          mkdir -p dist cli-stub
+          mkdir -p cli-package cli-stub
           cat > cli-stub/package.json <<JSON
           {"name": "halonic-cli-stub", "version": "$VERSION", "private": true,
            "description": "Placeholder for the CLI package in release dry runs."}
           JSON
           echo "console.log('placeholder')" > cli-stub/index.js
-          (cd cli-stub && npm pack --pack-destination ../dist --silent)
-          mv dist/halonic-cli-stub-*.tgz "dist/$CLI_TARBALL"
+          (cd cli-stub && npm pack --pack-destination ../cli-package --silent)
+          mv cli-package/halonic-cli-stub-*.tgz "cli-package/$CLI_TARBALL"
       - name: Make the placeholder installer
         env:
           VERSION: ${{ steps.plan.outputs.version }}
           INSTALLER: ${{ steps.plan.outputs.installer }}
         run: |
+          mkdir -p dist
           printf 'Placeholder installer for release dry run %s. Not an installer.\n' "$VERSION" \
             > "dist/$INSTALLER"
       - name: Write the checksums
@@ -111,6 +114,14 @@ jobs:
           cd dist
           sha256sum -- * > SHA256SUMS
           cat SHA256SUMS
+      # The CLI ships on npm, not on the release. Keep the exact bytes as
+      # their own artifact so the later npm publish step uses them.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cli-package
+          path: cli-package/
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-files
@@ -135,15 +146,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+          INSTALLER: ${{ needs.build.outputs.installer }}
           DRY_RUN: ${{ needs.build.outputs.dry_run }}
           TARGET: ${{ github.sha }}
         run: |
-          title="$TAG"
-          notes="Draft created by the release workflow."
+          title="Halonic $VERSION"
+          link="[Download for Windows](https://github.com/$GH_REPO/releases/download/$TAG/$INSTALLER)"
+          notes="$link"
           flags=()
           if [ "$DRY_RUN" = "true" ]; then
-            title="DRY RUN $TAG"
-            notes="Dry run with placeholder files. Do not publish. Delete this draft."
+            title="DRY RUN Halonic $VERSION"
+            notes="**Dry run with placeholder files. Do not publish. Delete this draft.**"$'\n\n'"$link"
             flags+=(--prerelease)
           fi
           gh release create "$TAG" dist/* --draft \
