@@ -24,10 +24,13 @@ export interface FieldProps {
   readonly label: string;
   /** Hides the label from sight but not from screen readers. Only for a search in a toolbar. */
   readonly hideLabel?: boolean;
-  /** A short line under the control. An error takes its place. */
+  /** A short line under the control. An error takes its place. Empty counts as none. */
   readonly hint?: ReactNode;
-  /** A sentence that says what to do: "Give the agent a name." Shown under the control. */
-  readonly error?: string;
+  /**
+   * A sentence that says what to do: "Give the agent a name." Shown under the control. Empty
+   * counts as none, so a screen can start its error state at `""`.
+   */
+  readonly error?: string | null;
   /** Adds the word "Required" after the label. No asterisk. */
   readonly required?: boolean;
   /** One kit control: an Input, a TextArea or a Select. */
@@ -54,8 +57,8 @@ export function Field({
   const id = useId();
   const controlId = `${id}-control`;
   const lineId = `${id}-line`;
-  const invalid = error !== undefined;
-  const hasLine = invalid || hint !== undefined;
+  const invalid = isShown(error);
+  const hasLine = invalid || isShown(hint);
 
   const control: FieldControl = {
     id: controlId,
@@ -84,9 +87,9 @@ function FieldLine({
 }: {
   id: string;
   hint: ReactNode;
-  error: string | undefined;
+  error: string | null | undefined;
 }) {
-  if (error !== undefined) {
+  if (isShown(error)) {
     return (
       <p id={id} className="flex items-start gap-1 text-caption text-danger">
         <span className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full">
@@ -96,7 +99,7 @@ function FieldLine({
       </p>
     );
   }
-  if (hint !== undefined) {
+  if (isShown(hint)) {
     return (
       <p id={id} className="text-caption text-fg-subtle">
         {hint}
@@ -104,4 +107,9 @@ function FieldLine({
     );
   }
   return null;
+}
+
+/** Whether a hint or an error has something to show: not absent, `null`, `false` or `""`. */
+function isShown(value: ReactNode): boolean {
+  return value !== undefined && value !== null && value !== false && value !== "";
 }

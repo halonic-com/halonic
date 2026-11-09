@@ -66,6 +66,29 @@ verifies("kit.field", () => {
     expect(input.getAttribute("aria-invalid")).toBe("true");
   });
 
+  it("treats an empty error or hint as none", () => {
+    for (const empty of [
+      { error: "" },
+      { error: null },
+      { hint: "" },
+      { hint: null },
+      { hint: false },
+    ]) {
+      const { container, input } = renderField({ label: "Name", ...empty });
+      expect(input.hasAttribute("aria-invalid")).toBe(false);
+      expect(input.hasAttribute("aria-describedby")).toBe(false);
+      expect(container.querySelector("p")).toBeNull();
+      unmountAll();
+    }
+    const { input, line } = renderField({
+      label: "Name",
+      hint: "Shown in the sidebar.",
+      error: "",
+    });
+    expect(line()?.textContent).toBe("Shown in the sidebar.");
+    expect(input.hasAttribute("aria-invalid")).toBe(false);
+  });
+
   it("writes Required after the label, with no asterisk, and tells the control", () => {
     const { label, input } = renderField({ label: "Name", required: true });
     expect(label.textContent).toBe("Name Required");
