@@ -85,8 +85,19 @@ export class CheckContext {
    * there, or of its nearest parent that exists.
    */
   error(file: string, path: Path, code: string, message: string): WorkspaceIssue {
+    return this.issue("error", file, path, code, message);
+  }
+
+  /** An error or a warning at a key path of a file, placed like {@link CheckContext.error}. */
+  issue(
+    severity: WorkspaceIssue["severity"],
+    file: string,
+    path: Path,
+    code: string,
+    message: string,
+  ): WorkspaceIssue {
     return {
-      severity: "error",
+      severity,
       source: "check",
       code,
       path,

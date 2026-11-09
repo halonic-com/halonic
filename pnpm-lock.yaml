@@ -800,6 +800,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std
+      '@halonicjs/workflow':
+        specifier: workspace:*
+        version: link:../workflow
       '@halonicjs/yaml':
         specifier: workspace:*
         version: link:../yaml
