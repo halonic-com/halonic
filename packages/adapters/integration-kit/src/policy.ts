@@ -1,5 +1,5 @@
+import { IntegrationRefusedError } from "./integration/index.ts";
 import { isLocalAddress } from "./local-address.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 
 /**
  * What one integration may do, taken from its permission sheet after any

@@ -6,8 +6,9 @@ Owner: liam · Layer: adapters · Read the root `AGENTS.md` first; this file add
 
 The integration interface: the IntegrationHost an integration gets, with an HttpClient limited to the hosts and secrets of its permission sheet. Web types only.
 
-This package may change only through tasks that name it. Its public API is `src/index.ts`;
-everything else is internal.
+This package may change only through tasks that name it. Its public API is the `exports` map in `package.json`:
+`src/index.ts` (the host side) and `src/integration/index.ts` (the integration entry, published as
+`@halonicjs/integration-kit`); everything else is internal.
 
 ## Commands
 
@@ -18,4 +19,6 @@ everything else is internal.
 
 ## Local rules
 
-- (none yet; the owner adds rules here when a mistake repeats)
+- The integration entry (`src/integration/`) imports no outside code and nothing of the host side: it ends up in
+  every integration's cloud bundle. The host side takes the error classes from
+  `src/integration/index.ts` only, never from the files behind it, so there is one copy of each.

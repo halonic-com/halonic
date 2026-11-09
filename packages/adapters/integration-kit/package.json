@@ -5,7 +5,8 @@
   "type": "module",
   "description": "The integration interface: the IntegrationHost an integration gets, with an HttpClient limited to the hosts and secrets of its permission sheet. Published as @halonicjs/integration-kit.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./integration": "./src/integration/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

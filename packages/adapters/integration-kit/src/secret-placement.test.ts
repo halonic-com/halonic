@@ -12,9 +12,9 @@ import {
   refusal,
 } from "./fake-transport.test-helper.ts";
 import { createIntegrationHost } from "./host.ts";
+import { IntegrationRefusedError } from "./integration/index.ts";
 import { createLimitedHttpClient } from "./limited-http.ts";
 import type { DeclaredPlacement } from "./policy.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 import { RequestLog } from "./request-log.ts";
 
 const inHeader = policyPlacing({ as: "header", header: "x-api-key" });

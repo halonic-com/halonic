@@ -9,8 +9,8 @@ import {
   redirect,
   secrets,
 } from "./fake-transport.test-helper.ts";
+import { IntegrationRefusedError } from "./integration/index.ts";
 import { createLimitedHttpClient } from "./limited-http.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 import { RequestLog } from "./request-log.ts";
 import {
   removeSecrets,

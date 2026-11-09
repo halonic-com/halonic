@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { fakeTransport, memoryTokens, policy, secrets } from "./fake-transport.test-helper.ts";
 import { createIntegrationHost } from "./host.ts";
-import { IntegrationRefusedError } from "./refused.ts";
+import { IntegrationRefusedError } from "./integration/index.ts";
 import { storedTokenName } from "./scoped-tokens.ts";
 
 verifies("integration-kit.scoped-tokens", () => {

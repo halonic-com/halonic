@@ -5,9 +5,9 @@ import type {
   SecretPlacement,
   Secrets,
 } from "@halonicjs/ports";
+import { IntegrationRefusedError, IntegrationTimeoutError } from "./integration/index.ts";
 import { copyRequest, type OwnRequest } from "./own-request.ts";
 import { allowedUrl, type IntegrationPolicy } from "./policy.ts";
-import { IntegrationRefusedError, IntegrationTimeoutError } from "./refused.ts";
 import {
   type Body,
   bodyBytes,

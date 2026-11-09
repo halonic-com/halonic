@@ -1,5 +1,10 @@
-// The public API of @halonicjs/adapter-integration-kit, published as
-// @halonicjs/integration-kit. Internal code imports by relative path.
+// The host side of @halonicjs/adapter-integration-kit: the loader, the host
+// and its limited client, for Halonic itself. It isn't published; the
+// integration entry (`./integration`) is, as @halonicjs/integration-kit.
+// The host side takes the error classes from the integration entry, so there
+// is one copy of each; the npm build keeps that entry outside the conformance
+// suite's bundle and points it at the published kit. Internal code imports
+// by relative path.
 
 export { declarationProblems } from "./declaration.ts";
 export {
@@ -7,6 +12,12 @@ export {
   createIntegrationHost,
   type IntegrationHostOptions,
 } from "./host.ts";
+export {
+  IntegrationRefusedError,
+  IntegrationTimeoutError,
+  type RefusalCode,
+} from "./integration/index.ts";
+export { leakAttemptCodes } from "./integration/refused.ts";
 export {
   createLimitedHttpClient,
   type LimitedHttpOptions,
@@ -28,12 +39,6 @@ export {
   type IntegrationPolicy,
   namePattern,
 } from "./policy.ts";
-export {
-  IntegrationRefusedError,
-  IntegrationTimeoutError,
-  leakAttemptCodes,
-  type RefusalCode,
-} from "./refused.ts";
 export { maxRequestBodyBytes } from "./request-body.ts";
 export { RequestLog, type RequestLogEntry } from "./request-log.ts";
 export { scopedTokens, storedTokenName } from "./scoped-tokens.ts";

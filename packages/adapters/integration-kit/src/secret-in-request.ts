@@ -1,6 +1,6 @@
 import type { Secrets } from "@halonicjs/ports";
+import { IntegrationRefusedError } from "./integration/index.ts";
 import type { IntegrationPolicy } from "./policy.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 import type { Body } from "./request-body.ts";
 import {
   removeSecrets,

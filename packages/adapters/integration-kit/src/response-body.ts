@@ -1,5 +1,5 @@
+import { IntegrationRefusedError } from "./integration/index.ts";
 import type { IntegrationPolicy } from "./policy.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 import {
   removeSecrets,
   removeSecretsFromError,

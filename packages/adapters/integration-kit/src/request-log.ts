@@ -1,4 +1,4 @@
-import type { RefusalCode } from "./refused.ts";
+import type { RefusalCode } from "./integration/index.ts";
 
 /**
  * One request an integration made. Method, host, path, status and time only:

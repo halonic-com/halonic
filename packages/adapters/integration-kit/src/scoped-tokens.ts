@@ -1,6 +1,6 @@
 import type { TokenStore } from "@halonicjs/ports";
+import { IntegrationRefusedError } from "./integration/index.ts";
 import type { IntegrationPolicy } from "./policy.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 
 /**
  * The name a token is kept under in the shared store: `i<length>_<name>_<token>`.

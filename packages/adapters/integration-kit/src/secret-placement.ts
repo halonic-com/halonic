@@ -1,4 +1,5 @@
 import type { SecretPlacement, Secrets } from "@halonicjs/ports";
+import { IntegrationRefusedError } from "./integration/index.ts";
 import { isLoopback } from "./local-address.ts";
 import {
   type DeclaredPlacement,
@@ -6,7 +7,6 @@ import {
   hostIn,
   type IntegrationPolicy,
 } from "./policy.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 
 /**
  * Copies the placements the integration's code gave into frozen objects of

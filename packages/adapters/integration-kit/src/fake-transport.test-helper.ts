@@ -1,7 +1,7 @@
 import type { HttpClient, Secrets, TokenStore } from "@halonicjs/ports";
+import { IntegrationRefusedError, type RefusalCode } from "./integration/index.ts";
 import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
 import type { DeclaredPlacement, IntegrationPolicy } from "./policy.ts";
-import { IntegrationRefusedError, type RefusalCode } from "./refused.ts";
 import { RequestLog } from "./request-log.ts";
 
 /** A request as the fake transport saw it, with the headers and body the kit actually sent. */

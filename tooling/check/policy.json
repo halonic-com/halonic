@@ -19,6 +19,9 @@
     "@halonicjs/studio-services"
   ],
   "extraExports": {
+    "@halonicjs/adapter-integration-kit": [
+      "./integration"
+    ],
     "@halonicjs/format": [
       "./integration",
       "./recording"

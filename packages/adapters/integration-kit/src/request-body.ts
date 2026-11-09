@@ -1,5 +1,5 @@
+import { IntegrationRefusedError } from "./integration/index.ts";
 import type { IntegrationPolicy } from "./policy.ts";
-import { IntegrationRefusedError } from "./refused.ts";
 
 /** A request body as `fetch` takes it, or `null` for none. */
 export type Body = NonNullable<RequestInit["body"]> | null;

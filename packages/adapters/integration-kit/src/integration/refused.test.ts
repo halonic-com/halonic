@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { canary, client, refusal } from "./fake-transport.test-helper.ts";
+import { canary, client, refusal } from "../fake-transport.test-helper.ts";
 import { leakAttemptCodes, type RefusalCode } from "./refused.ts";
 
 const key = canary["example-key"];

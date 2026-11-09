@@ -9,7 +9,41 @@ Node, in the Worker and in the browser. Published as
 
 - **Layer:** adapters
 - **Owner:** liam
-- **Public API:** `@halonicjs/adapter-integration-kit`
+- **Public API:** `@halonicjs/adapter-integration-kit` (the host side) and
+  `@halonicjs/adapter-integration-kit/integration` (the integration entry)
+
+## Two entries
+
+- **The integration entry** (`./integration`, published as
+  `@halonicjs/integration-kit`) is all that integration code imports: the
+  port types (`Integration`, `IntegrationHost`, `IntegrationTool`, the model
+  and knowledge provider types), `maxIntegrationWaitMs`,
+  `ToolImplementation` and `runTool`, and the two error classes. It ends up
+  in every integration's cloud bundle, so it imports no outside code, not
+  even Zod: `runTool` uses only a schema's `safeParse`, which every Zod
+  schema has.
+- **The host side** (`.`) is the loader, `createIntegrationHost`, the limited
+  client and the secret filter. Halonic and the conformance suite use it;
+  it isn't published on its own. It takes the error classes from the
+  integration entry, so an `instanceof IntegrationRefusedError` in an
+  integration matches what the host throws.
+
+```ts
+import { type Integration, runTool } from "@halonicjs/integration-kit";
+
+export const gmail: Integration = {
+  name: "tool-google-gmail",
+  version: "1.0.0",
+  tools: tools.map((tool) => tool.declaration),
+  connect: (host) => {
+    const client = new GmailClient(host);
+    return {
+      callTool: (name, args, signal) => runTool(tools, client, { name, args, signal }, gmailError),
+      close: async () => {},
+    };
+  },
+};
+```
 
 ## What the limited client enforces
 
@@ -87,8 +121,8 @@ Node, in the Worker and in the browser. Published as
 
 A refusal throws an `IntegrationRefusedError` with a `code`. Its message
 names the host and path only, never a query or a secret. The codes in
-`leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`) mean
-the integration tried to get a secret out; the bridge should pause the
+`leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`, host
+side only) mean the integration tried to get a secret out; the bridge should pause the
 connector on any of them. Every other code is an ordinary mistake.
 
 ## Example
