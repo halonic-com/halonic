@@ -15,7 +15,9 @@ interface RoutineProblem {
 /**
  * What a routine names and when it starts: the hub, workflow or agent it
  * runs, the connector whose mailbox it watches, and its cron, time zone and
- * intervals. Each message is the old loader's, after `Routine "<id>": `.
+ * intervals. Each message follows `Routine "<id>": `. The target and mailbox
+ * messages are the old loader's; a trigger's message is the one the routines
+ * package's parser gives.
  *
  * A routine in a hub runs that hub's workflows and agents. One at the root
  * names its hub in `run.hub`, unless the root has agents or workflows of its

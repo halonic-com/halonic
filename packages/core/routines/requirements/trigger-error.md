@@ -8,6 +8,6 @@ When a trigger can't be used, the routines package shall return the message of t
 
 ## Examples
 
-- Given a schedule with the zone "Mars/Olympus", when it is checked, then the message says `Unknown time zone "Mars/Olympus"`.
+- Given a schedule with the zone "Mars/Olympus", when it is checked, then the message says `Unknown time zone "Mars/Olympus".`
 - Given `{ every: "0m" }`, when it is checked, then the message says it is not an interval.
 - Given a mail trigger with `every: "15m"`, when it is checked, then the result is null.

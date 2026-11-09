@@ -9,7 +9,7 @@ import { checkTimeZone } from "./time-zone.ts";
  * a count and a unit. The message is the one the parser gives.
  *
  * @example
- * triggerError({ schedule: "0 8 * * 1-5", timezone: "Mars/Olympus" }); // 'Unknown time zone "Mars/Olympus"'
+ * triggerError({ schedule: "0 8 * * 1-5", timezone: "Mars/Olympus" }); // 'Unknown time zone "Mars/Olympus".'
  * triggerError({ every: "15m" }); // null
  */
 export function triggerError(trigger: RoutineTrigger): string | null {
