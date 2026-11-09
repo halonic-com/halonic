@@ -626,17 +626,6 @@ jobs:
         run: |
           rustup toolchain install
           rustup target add aarch64-linux-android x86_64-linux-android
-      # Keeps the Gradle distribution and the Maven downloads between runs,
-      # so a slow or failing services.gradle.org or Maven Central doesn't
-      # turn main red. Keyed on the wrapper version and the Gradle files; an
-      # older cache is still a good start when they change.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.gradle/wrapper
-            ~/.gradle/caches
-          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'apps/studio/src-tauri/gen/android/**/*.gradle', 'apps/studio/src-tauri/gen/android/**/*.gradle.kts', 'apps/studio/src-tauri/gen/android/gradle.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
       # A backstop for a download that still fails. Retries are cheap once
       # the cache holds most of the files.
       - name: Build the debug APK
