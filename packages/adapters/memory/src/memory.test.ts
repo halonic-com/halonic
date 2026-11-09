@@ -11,6 +11,7 @@ import {
   schedulerContract,
   secretsContract,
   tokenStoreContract,
+  trustStoreContract,
   type VcsHarness,
   vcsContract,
   vcsHardenedCases,
@@ -28,6 +29,7 @@ import {
   MemoryScheduler,
   MemorySecrets,
   MemoryTokenStore,
+  MemoryTrustStore,
   MemoryVcs,
 } from "./index.ts";
 
@@ -38,6 +40,10 @@ blobStoreContract("memory", async () => new MemoryBlobStore());
 recordStoreContract("memory", async () => new MemoryRecordStore());
 secretsContract("memory", async (values) => new MemorySecrets(values));
 tokenStoreContract("memory", async () => new MemoryTokenStore());
+trustStoreContract("memory", async () => {
+  const store = new MemoryTrustStore();
+  return { store, damage: async (location) => store.damage(location) };
+});
 clockContract("memory", async () => new ManualClock());
 idGeneratorContract("memory", async () => fixedIds());
 for (const duplicateDeliveries of [false, true]) {

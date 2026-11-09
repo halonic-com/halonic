@@ -57,6 +57,12 @@ export {
   fingerprintCoverageContract,
   fingerprintGaps,
 } from "./trust-fingerprint.ts";
+export {
+  type MakeTrustStore,
+  type TrustStoreHarness,
+  trustRecord,
+  trustStoreContract,
+} from "./trust-store.ts";
 export { vcsContract } from "./vcs.ts";
 export { type HardenedTest, vcsHardenedCases } from "./vcs-hardened.ts";
 export {
