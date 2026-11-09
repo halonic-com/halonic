@@ -1,6 +1,7 @@
 import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config";
 import { coverageSettings } from "./coverage.ts";
 import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
+import { UnrunTestFilesReporter } from "./unrun-files-reporter.ts";
 
 /** Where each package's test run writes its result file, relative to the package. */
 export const testResultsFile = "test-results/vitest.json";
@@ -55,6 +56,9 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
         ["json", { outputFile: testResultsFile }],
         // A skipped or todo test fails the run, however it was written.
         new NoSkippedTestsReporter(),
+        // A test file whose worker never started fails the run, and the
+        // failure says so instead of showing up only as low coverage.
+        new UnrunTestFilesReporter(),
       ],
       coverage: {
         enabled: true,

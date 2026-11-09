@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
+import { UnrunTestFilesReporter } from "./unrun-files-reporter.ts";
 import { definePackageTestConfig, testResultsFile } from "./vitest-preset.ts";
 
 describe("definePackageTestConfig", () => {
@@ -25,6 +26,13 @@ describe("definePackageTestConfig", () => {
     const reporters = definePackageTestConfig().test?.reporters;
     expect(
       Array.isArray(reporters) && reporters.some((r) => r instanceof NoSkippedTestsReporter),
+    ).toBe(true);
+  });
+
+  it("fails the run when a test file never ran", () => {
+    const reporters = definePackageTestConfig().test?.reporters;
+    expect(
+      Array.isArray(reporters) && reporters.some((r) => r instanceof UnrunTestFilesReporter),
     ).toBe(true);
   });
 });

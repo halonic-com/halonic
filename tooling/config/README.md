@@ -36,5 +36,9 @@ Shared settings every package extends.
   - A skipped or todo test fails the run, however it is written (`it.skip`,
     `it.todo`, `skipIf`, `ctx.skip()`). Biome's `noSkippedTests` catches the
     common spellings at lint time; the reporter catches the rest.
+  - A test file that never ran fails the run, and the failure names it.
+    On a busy machine a worker can miss Vitest's 60 seconds to start (jsdom
+    files first); without this the run would fail only on coverage, with a
+    different number each time.
   - Tests end in `.test.ts(x)`. A `.spec.ts` file is a helper that tests
     import; the preset doesn't run it, so it must hold no tests.

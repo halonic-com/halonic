@@ -137,6 +137,12 @@ to the pull request and the check passes.
 
 To run one test file without the floor: `pnpm exec vitest run <file> --coverage.enabled=false`.
 
+If a run says test files "never ran", the coverage it prints leaves those
+files out and is not the code's real coverage. Vitest gives each worker 60
+seconds to start and set up its test environment, and on a busy machine a
+worker can miss that, jsdom ones first. Run the tests again when the machine
+is less busy; don't change the tests or the floor.
+
 ## Licences
 
 `pnpm check:licences` reads the installed packages' licences. Production
