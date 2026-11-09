@@ -297,9 +297,9 @@
     "requirement": "routines.due",
     "area": "routines tick: every triggers",
     "old": "An every trigger ran when now - lastRun was at least the interval, at the time of the check. With every: 30m and a last run at 09:45, the next run came at 10:15.",
-    "new": "due gives the multiples of the interval counted from the Unix epoch in UTC that fall after the last tick, up to now. With every: 30m the runs are at :00 and :30 of every hour, whenever the last one ran. Slots are always in UTC, so every: 1d runs at 00:00 UTC, not at local midnight. nextRun gives the same slot, so the Studio shows the time the tick starts.",
+    "new": "due gives the multiples of the interval counted from the Unix epoch in UTC that fall after the last tick, up to now. With every: 30m the runs are at :00 and :30 of every hour, whenever the last one ran. Slots are always in UTC, so long intervals land at fixed UTC times, not at the time the routine was saved: every: 1d runs at 00:00 UTC (01:00 or 02:00 in Amsterdam), and every: 7d runs on Thursdays, because 1970-01-01 was a Thursday. Intervals that don't divide a day, such as 5h, land at different hours each day. Anyone who wants a fixed local time should use schedule. nextRun gives the same slot, so the Studio shows the time the tick starts.",
     "why": "A slot that comes from the clock alone is the same on every tick and every host, so a repeated or late tick, or a second host, asks for the same run with the same run id and it starts once (routines.due-exactly-once). A time counted from the last run moves whenever a run starts late, and two hosts can disagree on it.",
-    "status": "proposed"
+    "status": "signed-off"
   },
   {
     "id": "routines-due-first-slot",
@@ -317,16 +317,16 @@
     "old": "A scheduled time counted as on time, for catchUp: none, while now was no more than 2 minutes after it.",
     "new": "The grace is 60 seconds (DEFAULT_TICK_POLICY.graceMs). A host can pass another value in its TickPolicy.",
     "why": "The old scheduler checked every 30 seconds, so 60 seconds still covers one late or lost check at that rate. With 2 minutes, a laptop waking from sleep could still start a catchUp: none run up to 2 minutes late, which that setting is meant to prevent.",
-    "status": "proposed"
+    "status": "signed-off"
   },
   {
     "id": "routines-due-catch-up-cap",
     "requirement": "routines.due",
     "area": "routines tick: catchUp all cap",
     "old": "catchUp: all returned at most the 20 newest missed times of a schedule; older ones were reported as skipped and dropped.",
-    "new": "As in the old app, catchUp: all keeps the newest missed times and drops the older ones past the cap, but the cap is 100 instead of 20 (DEFAULT_TICK_POLICY.maxCatchUp). due returns up to 100 of the newest missed times per routine and starts them oldest first. A host can pass another cap in its TickPolicy.",
+    "new": "As in the old app, catchUp: all keeps the newest missed times and drops the older ones past the cap, but the cap is 100 instead of 20 (DEFAULT_TICK_POLICY.maxCatchUp). due returns at most the 100 newest missed times per routine, started oldest first. A host can pass another cap in its TickPolicy.",
     "why": "catchUp: all is for routines whose every run counts, such as hourly totals, so a weekend asleep (about 60 hourly times) should not lose any. 100 still bounds one tick. When the cap does cut, the newest times are the ones still worth running, and starting them oldest first lets the runs see their times in order.",
-    "status": "proposed"
+    "status": "signed-off"
   },
   {
     "id": "routines-due-catch-up-one-tick",
@@ -344,6 +344,6 @@
     "old": "dueRoutines returned, per routine, a skipped list: due times dropped by catchUp or because a run was still busy (overlap: skip).",
     "new": "due returns only the runs to start. Times that catchUp drops are left out without a list. Overlap is applied by the app's RoutineScheduler, which reports the times it skips because a run is busy (HAL-1007).",
     "why": "Nothing in the old app read the skipped list for catch-up; the old Studio only started what was in start. Keeping due a plain list of runs keeps it simple to check for exactly-once, and the skips a person may want to see, those caused by a busy run, are still reported by the scheduler.",
-    "status": "proposed"
+    "status": "signed-off"
   }
 ]
