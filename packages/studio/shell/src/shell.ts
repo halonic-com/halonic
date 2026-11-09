@@ -1,3 +1,5 @@
+import { type Announcer, createAnnouncer } from "./announcer/announcer.ts";
+import type { AnnouncerTimers } from "./announcer/timers.ts";
 import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
 import { type CommandContributions, CommandStores } from "./points/command-points.ts";
@@ -21,6 +23,8 @@ export interface ShellOptions {
    * on `"macos"` and `Ctrl` elsewhere. Leave it out and `Mod` means `Ctrl`.
    */
   readonly platform?: KeyboardPlatform;
+  /** The timers the window's announcer uses; tests pass fake ones. Defaults to the system's. */
+  readonly timers?: AnnouncerTimers;
 }
 
 /** The registered features and everything they contributed. */
@@ -44,6 +48,8 @@ export interface Shell {
      */
     contextFor(featureId: string, target: ServiceTarget): WorkspaceContext;
   };
+  /** The window's screen reader announcements, shared by every workspace in it. */
+  readonly announcer: Announcer;
   /** Everything the features contributed, for the shell's layout. */
   readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
 }
@@ -69,12 +75,16 @@ export function createShell(options: ShellOptions): Shell {
   }
   layout.check();
   commands.check();
+  const announcer =
+    options.timers === undefined ? createAnnouncer() : createAnnouncer({ timers: options.timers });
   return {
     features,
+    announcer,
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),
       contextFor: (featureId, target) => ({
         services: lookupFor(findFeature(features, featureId), target),
+        announcer,
       }),
     },
     contributions: {

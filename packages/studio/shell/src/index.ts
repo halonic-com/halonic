@@ -1,4 +1,15 @@
 // The public API of @halonicjs/studio-shell. Everything else in src/ is internal.
+export {
+  type AnnounceOptions,
+  type Announcer,
+  type AnnouncerOptions,
+  announceQuietMs,
+  createAnnouncer,
+  type LiveRegion,
+  type LiveRegions,
+  type Politeness,
+} from "./announcer/announcer.ts";
+export type { AnnouncerTimers } from "./announcer/timers.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
