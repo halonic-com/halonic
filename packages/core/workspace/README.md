@@ -84,11 +84,13 @@ data, so `halonic init` and the Studio can each say it their own way:
 
 - a `workspace.yaml` with the name and an id, made from the name unless one is given
   (`Acme Billing` gives `acme-billing`), checked with the workspace kind's own schema first;
-- a `.gitignore` that lists `.env` and `.env.*`. One that is already there keeps its lines and gets
-  only the missing ones, so a git repository can become a workspace.
+- a `.gitignore` that lists `.env` and `.env.*`.
 
-A store that already has a `workspace.yaml` is left alone. `workspace.yaml` is written last, so if
-a write fails the store is not yet a workspace and `initWorkspace` can simply run again.
+It writes only into an empty store, meaning one whose `list()` returns no file. The port never lists
+private entries such as `.git`, `.studio` and `.env`, so a folder fresh from `git init` counts as
+empty. Any other store is left alone and `initWorkspace` returns `{ kind: "not_empty" }`.
+`workspace.yaml` is written last; if that write fails, the `.gitignore` is removed again, so the
+store is empty once more and `initWorkspace` can simply run again.
 
 Checking a workspace needs no service of its own: `loadWorkspace` gives every issue with its
 severity, file and line, and the caller counts the errors.
