@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { jsonSchemaOf, type KindName, kindNames } from "./index.ts";
-import { expectSpecFile } from "./test/spec-file.ts";
+import { expectSpecFile } from "./test/spec-file.spec.ts";
 
 /** Each kind's spec file sits in the package's `spec/` folder: `spec/<kind folder>.schema.json`. */
 function specPath(kind: KindName): string {
