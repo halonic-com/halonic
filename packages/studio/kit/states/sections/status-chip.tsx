@@ -20,7 +20,7 @@ function Chips() {
       <StatusChip tone="success" dot>
         Done
       </StatusChip>
-      <StatusChip tone="neutral" shape="count">
+      <StatusChip tone="neutral" shape="count" name="3 waiting">
         3
       </StatusChip>
       <StatusChip tone="outline">Test</StatusChip>
