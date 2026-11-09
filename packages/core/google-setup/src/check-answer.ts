@@ -168,7 +168,8 @@ function textMatching(value: unknown, test: (text: string) => boolean): string |
   return typeof value === "string" && test(value) ? value : undefined;
 }
 
-function isReasonCode(text: string): boolean {
+/** Whether the text is a plain Google reason code, the only kind of reason a result keeps. */
+export function isReasonCode(text: string): boolean {
   return reasonPattern.test(text);
 }
 

@@ -1,8 +1,10 @@
 import { fixedClock, fixedIds } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import type { ApiOff, ServiceCheckOutcome } from "./check-result.ts";
 import { type MemoryRecords, memoryRecords } from "./memory-records.test-helper.ts";
 import type { SetupRoute } from "./setup-input.ts";
+import type { SetupRecord } from "./setup-record.ts";
 import { SetupRecordError } from "./setup-record-error.ts";
 import { setupRecords } from "./setup-records.ts";
 
@@ -12,6 +14,37 @@ const fakeClientId = "1234-abc123.apps.googleusercontent.com";
 const fakeSecret = "fake-client-secret-one";
 
 const route: SetupRoute = { app: "own", runsOn: "this-computer" };
+
+const ledgerEnableUrl =
+  "https://console.cloud.google.com/apis/library/ledger.googleapis.com?project=halonic-x1";
+
+/** An `apiOff` result as B3 makes it for an invented API the sheet lists. */
+const ledgerApiOff: ApiOff = {
+  kind: "apiOff",
+  api: "ledger.googleapis.com",
+  apiName: "Ledger API",
+  project: "halonic-x1",
+  enableUrl: ledgerEnableUrl,
+};
+
+/** One result of each of B3's six kinds, with every field each kind can have. */
+const everyKind: readonly ServiceCheckOutcome[] = [
+  { kind: "works" },
+  { kind: "allowed" },
+  {
+    kind: "scopeNotGranted",
+    missingScopes: ["https://www.googleapis.com/auth/ledger.readonly", "email"],
+  },
+  ledgerApiOff,
+  { kind: "apiOff", project: "123456789012" },
+  { kind: "apiOff" },
+  { kind: "checkFailed", status: 429, reason: "rateLimitExceeded" },
+  { kind: "checkFailed", status: 502 },
+  { kind: "unreachable" },
+];
+
+/** The type of one stored check result, as a reader of the record gets it. */
+type StoredOutcome = SetupRecord["services"][string]["result"];
 
 let records: MemoryRecords;
 
@@ -78,8 +111,7 @@ verifies("google-setup.setup-record", () => {
     await setups.update(accountRef, {
       kind: "service-checked",
       service: "ledger",
-      scopeGranted: true,
-      check: "api-off",
+      result: ledgerApiOff,
     });
 
     const reopened = setupRecords({ records, clock: fixedClock(), ids: fixedIds() });
@@ -89,7 +121,7 @@ verifies("google-setup.setup-record", () => {
       inProductionTickedAt: expect.any(String),
       clientId: fakeClientId,
       clientSecret: { clientRef: "gclient_1", savedAt: expect.any(String) },
-      services: { ledger: { scopeGranted: true, check: "api-off", checkedAt: expect.any(String) } },
+      services: { ledger: { result: ledgerApiOff, checkedAt: expect.any(String) } },
     });
 
     await setups.update(accountRef, { kind: "in-production", ticked: false });
@@ -98,6 +130,26 @@ verifies("google-setup.setup-record", () => {
       inProductionTickedAt: null,
       projectId: null,
     });
+  });
+
+  it("keeps each of B3's check kinds with its fields and reads it back the same", async () => {
+    const setups = newSetups();
+    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    for (const [index, result] of everyKind.entries()) {
+      await setups.update(accountRef, {
+        kind: "service-checked",
+        service: `service-${index}`,
+        result,
+      });
+    }
+
+    const reopened = setupRecords({ records, clock: fixedClock(), ids: fixedIds() });
+    const stored = (await reopened.read(accountRef))?.services ?? {};
+    expect(everyKind.map((_, index) => stored[`service-${index}`]?.result)).toEqual(everyKind);
+    expect(stored["service-0"]?.checkedAt).toBe("2026-01-01T00:00:01.000Z");
+    // The stored type and B3's type fit both ways, so the two can't drift apart.
+    expectTypeOf<ServiceCheckOutcome>().toExtend<StoredOutcome>();
+    expectTypeOf<StoredOutcome>().toExtend<ServiceCheckOutcome>();
   });
 
   it("keeps the last sign-in when one comes back, and only clears the wait when one is dropped", async () => {
@@ -183,14 +235,56 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
       setups.update(accountRef, {
         kind: "service-checked",
         service: "__proto__",
-        scopeGranted: true,
-        check: "works",
+        result: { kind: "works" },
       }),
     ];
     for (const call of refused) {
       expect((await errorOf(call)).reason).toBe("refused");
     }
     expect(records.log).toHaveLength(written);
+  });
+
+  it("refuses a check result with free text, another link or an extra key, and writes nothing", async () => {
+    const setups = newSetups();
+    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const written = records.log.length;
+    // Each holds the fake secret, so the test also shows no message repeats it.
+    const refused = [
+      { kind: "checkFailed", status: 403, reason: `The caller ${fakeSecret} has no access.` },
+      { kind: "checkFailed", status: 403, message: fakeSecret },
+      { kind: "scopeNotGranted", missingScopes: [`https://example.com/${fakeSecret}`] },
+      { ...ledgerApiOff, enableUrl: `https://example.com/?token=${fakeSecret}` },
+      { ...ledgerApiOff, apiName: `https://example.com/${fakeSecret}` },
+      { ...ledgerApiOff, project: fakeSecret },
+      { kind: "works", token: fakeSecret },
+    ];
+    for (const result of refused) {
+      const edit = { kind: "service-checked", service: "ledger", result } as const;
+      const error = await errorOf(setups.update(accountRef, edit as never));
+      expect(error.reason).toBe("refused");
+      expect(error.message).not.toContain(fakeSecret);
+    }
+    expect(records.log).toHaveLength(written);
+  });
+
+  it("refuses an apiOff result that is only part there or a scope list that is empty", async () => {
+    const setups = newSetups();
+    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { enableUrl: _link, ...withoutLink } = ledgerApiOff;
+    const refused: readonly ServiceCheckOutcome[] = [
+      withoutLink,
+      { kind: "apiOff", project: "halonic-x1", enableUrl: ledgerEnableUrl },
+      { kind: "scopeNotGranted", missingScopes: [] },
+      { kind: "checkFailed", status: 4290 },
+    ];
+    for (const result of refused) {
+      const call = setups.update(accountRef, {
+        kind: "service-checked",
+        service: "ledger",
+        result,
+      });
+      expect((await errorOf(call)).reason).toBe("refused");
+    }
   });
 
   it("reports a stored record with an extra value as damaged and leaves it out of the list", async () => {

@@ -1,5 +1,6 @@
 import type { AccountType } from "./account-type.ts";
-import type { ServiceCheckResult, SetupValues } from "./setup-record.ts";
+import type { ServiceCheckOutcome } from "./check-result.ts";
+import type { SetupValues } from "./setup-record.ts";
 import type { StepId } from "./setup-step.ts";
 
 /**
@@ -29,12 +30,11 @@ export type SetupEdit =
   | { readonly kind: "sign-in-dropped" }
   /** Google answered the sign-in. It clears a saved refresh refusal. */
   | { readonly kind: "signed-in" }
-  /** The check after sign-in for one service (design 3.5, plan D5 rev. 4). */
+  /** The check after sign-in for one service (design 3.5, plan D5 rev. 5). */
   | {
       readonly kind: "service-checked";
       readonly service: string;
-      readonly scopeGranted: boolean;
-      readonly check: ServiceCheckResult;
+      readonly result: ServiceCheckOutcome;
     };
 
 /**
@@ -79,7 +79,7 @@ export function editedValues(
       return {
         services: {
           ...values.services,
-          [edit.service]: { scopeGranted: edit.scopeGranted, check: edit.check, checkedAt: now },
+          [edit.service]: { result: edit.result, checkedAt: now },
         },
       };
   }

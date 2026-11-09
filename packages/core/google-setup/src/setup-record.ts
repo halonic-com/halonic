@@ -1,5 +1,6 @@
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
-import { isProjectId } from "./console-links.ts";
+import { isReasonCode } from "./check-answer.ts";
+import { enableApiUrl, isApiHost, isProjectId } from "./console-links.ts";
 import type { StepId } from "./setup-step.ts";
 import { isSetupRef } from "./store-names.ts";
 
@@ -42,19 +43,81 @@ const clientIdPattern = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
 const serviceIdPattern = /^[a-z][a-z0-9-]{0,63}$/;
 
 /**
- * What the last check after sign-in found for one service (design 3.5):
- * its API answered, its API is off, or its sheet has no `googleCheck`.
+ * A Google scope as a sheet may list it: `https://www.googleapis.com/auth/<name>`
+ * or a sign-in scope without a URL. The same rule as the sheet check
+ * (`GOOGLE_SCOPE_PATTERN` in `@halonicjs/format`).
  */
-export type ServiceCheckResult = "works" | "api-off" | "not-checked";
+const scopePattern =
+  /^(?:https:\/\/www\.googleapis\.com\/auth\/[a-z][a-z0-9._-]*|openid|email|profile)$/;
 
-const serviceResult = s
-  .object({
-    /** Whether Google granted every scope the service needs. */
-    scopeGranted: s.boolean(),
-    check: s.enum(["works", "api-off", "not-checked"]),
-    checkedAt: time,
-  })
-  .strict();
+/**
+ * Google's name for an API, from the service's sheet, such as `Gmail API`.
+ * Short and plain, so no URL, address or token-shaped text fits.
+ */
+const apiNamePattern = /^[A-Za-z0-9][A-Za-z0-9 ()&'-]{0,79}$/;
+
+/** A project number, as Google's answer names the project. */
+const projectNumberPattern = /^\d{1,20}$/;
+
+/** A project ID from the setup, or else a project number from Google's answer. */
+function isProject(text: string): boolean {
+  return isProjectId(text) || projectNumberPattern.test(text);
+}
+
+/**
+ * Whether an `apiOff` result is whole: the API, its name and the link come
+ * together, and the link is the one `enableApiUrl` makes from the API and the
+ * project, so the record can't hold any other URL.
+ */
+function isWholeApiOff(apiOff: {
+  api?: string;
+  apiName?: string;
+  project?: string;
+  enableUrl?: string;
+}): boolean {
+  const { api, apiName, project, enableUrl } = apiOff;
+  if (api === undefined) {
+    return apiName === undefined && enableUrl === undefined;
+  }
+  return apiName !== undefined && enableUrl === enableApiUrl(api, project);
+}
+
+/**
+ * B3's `ServiceCheckOutcome` as the record keeps it (plan D5 rev. 5). Every
+ * text has a tight shape and every object is strict, so no token, secret or
+ * free text from Google's answer can be stored here.
+ */
+const checkOutcome = s.discriminatedUnion("kind", [
+  s.object({ kind: s.literal("works") }).strict(),
+  s.object({ kind: s.literal("allowed") }).strict(),
+  s
+    .object({
+      kind: s.literal("scopeNotGranted"),
+      missingScopes: s.array(s.string().regex(scopePattern)).min(1).max(50).readonly(),
+    })
+    .strict(),
+  s
+    .object({
+      kind: s.literal("apiOff"),
+      api: s.string().refine(isApiHost).exactOptional(),
+      apiName: s.string().regex(apiNamePattern).exactOptional(),
+      project: s.string().refine(isProject).exactOptional(),
+      enableUrl: s.string().exactOptional(),
+    })
+    .strict()
+    .refine(isWholeApiOff),
+  s
+    .object({
+      kind: s.literal("checkFailed"),
+      status: s.number().int().min(100).max(599),
+      reason: s.string().refine(isReasonCode).exactOptional(),
+    })
+    .strict(),
+  s.object({ kind: s.literal("unreachable") }).strict(),
+]);
+
+/** The last check after sign-in for one service, and when it ran. */
+const serviceResult = s.object({ result: checkOutcome, checkedAt: time }).strict();
 
 /**
  * Why Google refused the last token refresh (design 5.2). The order is from

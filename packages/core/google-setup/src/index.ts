@@ -63,7 +63,6 @@ export type {
 } from "./setup-input.ts";
 export type {
   RefreshRefusalReason,
-  ServiceCheckResult,
   SetupRecord,
   SetupValues,
 } from "./setup-record.ts";

@@ -167,5 +167,5 @@ before it saves anything and while it still holds the fresh access token.
 is on. `apiOff` keeps the API host only in the `<name>.googleapis.com` shape, its name only from the
 service's sheet, and the project ID from the setup or else Google's project number. No result keeps
 Google's `message` or any other free text, so every result can be shown, logged and saved. The
-setup record still keeps the coarser `ServiceCheckResult` (`works`, `api-off`, `not-checked`); plan
-D5 revision 5 moves it to `ServiceCheckOutcome` in a later change.
+setup record keeps each service's last `ServiceCheckOutcome` and its time (plan D5 revision 5); its
+strict schema checks every field again, and an `apiOff` link must be the one `enableApiUrl` makes.
