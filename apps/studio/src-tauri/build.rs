@@ -24,8 +24,7 @@ fn embed_windows_manifest() {
     if target_os != "windows" || target_env != "msvc" {
         return;
     }
-    let manifest_dir =
-        std::env::var("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR");
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR");
     let manifest = std::path::Path::new(&manifest_dir).join("windows-app-manifest.xml");
     println!("cargo:rerun-if-changed={}", manifest.display());
     println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
