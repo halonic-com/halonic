@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { loadContext } from "@halonicjs/tooling-check";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type FolderDiscovery, generatedFolderFile } from "./folder-discovery.ts";
 import {
   camelCase,
@@ -25,6 +25,18 @@ const states: FolderDiscovery = {
   suffix: "State",
   satisfies: { type: "StateRegistry", from: "src/kernel/registry.ts" },
 };
+
+/** Gives a scratch repo the files loadContext reads. */
+function copyRepoFiles(write: (path: string, text: string) => void): void {
+  for (const file of [
+    "pnpm-workspace.yaml",
+    "tooling/check/policy.json",
+    "tooling/check/dependencies.json",
+  ]) {
+    write(file, readFileSync(join(realRoot, file), "utf8"));
+  }
+  write("package.json", JSON.stringify({ name: "@halonicjs/root" }));
+}
 
 describe("camelCase", () => {
   it("joins hyphenated words", () => {
@@ -66,14 +78,7 @@ describe("folder discovery in a repo", () => {
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), "halonic-discover-folders-"));
-    for (const file of [
-      "pnpm-workspace.yaml",
-      "tooling/check/policy.json",
-      "tooling/check/dependencies.json",
-    ]) {
-      write(file, readFileSync(join(realRoot, file), "utf8"));
-    }
-    write("package.json", JSON.stringify({ name: "@halonicjs/root" }));
+    copyRepoFiles(write);
     execFileSync("git", ["init", "-q"], { cwd: root });
   });
 
@@ -115,52 +120,92 @@ describe("folder discovery in a repo", () => {
 
   describe("typed against a union", () => {
     // TypeScript 7 has no compiler API, so the test runs its tsc as CI would.
+    // One tsc run takes seconds on the shared runner, so every case gets its
+    // own discovery in one package and a single run checks them all.
     const tsc = join(
       dirname(createRequire(import.meta.url).resolve("typescript/package.json")),
       "bin",
       "tsc",
     );
-    const typeErrors = (): string => {
-      writeFolderFiles(loadContext(root), [states]);
-      const compilerOptions = {
-        strict: true,
-        noEmit: true,
-        allowImportingTsExtensions: true,
-        module: "esnext",
-        moduleResolution: "bundler",
-        target: "es2022",
-        types: [],
-      };
-      write(`${engine}/tsconfig.json`, JSON.stringify({ compilerOptions, include: ["src"] }));
-      try {
-        execFileSync(process.execPath, [tsc, "-p", join(root, engine)], { encoding: "utf8" });
-        return "";
-      } catch (error) {
-        return String((error as { stdout?: unknown }).stdout);
-      }
+    const cases = {
+      matching: ["task", "final"],
+      missing: ["task"],
+      extra: ["task", "final", "loop"],
     };
+    const discoveries = Object.keys(cases).map((name) => ({
+      ...states,
+      name,
+      folder: `src/${name}`,
+    }));
+    let output = "";
+    // tsc prints each error on an unindented line, followed by indented details.
+    const typeErrors = (name: string): string =>
+      output
+        .split(/\n(?=\S)/)
+        .filter((error) => error.includes(`src/generated/${name}.ts`))
+        .join("\n");
 
-    beforeEach(() => {
-      write(
-        `${engine}/src/kernel/registry.ts`,
-        'export type StateRegistry = { readonly [Type in "task" | "final"]: Type };\n',
-      );
-      addState("task");
-    });
+    beforeAll(() => {
+      const unionRoot = mkdtempSync(join(tmpdir(), "halonic-discover-union-"));
+      const writeIn = (path: string, text: string): void => {
+        mkdirSync(dirname(join(unionRoot, path)), { recursive: true });
+        writeFileSync(join(unionRoot, path), text);
+      };
+      try {
+        copyRepoFiles(writeIn);
+        writeIn(
+          `${engine}/src/kernel/registry.ts`,
+          'export type StateRegistry = { readonly [Type in "task" | "final"]: Type };\n',
+        );
+        for (const [name, entries] of Object.entries(cases)) {
+          for (const entry of entries) {
+            const exportName = `${camelCase(entry)}State`;
+            writeIn(
+              `${engine}/src/${name}/${entry}/state.ts`,
+              `export const ${exportName} = "${entry}";\n`,
+            );
+          }
+        }
+        execFileSync("git", ["init", "-q"], { cwd: unionRoot });
+        writeFolderFiles(loadContext(unionRoot), discoveries);
+        const compilerOptions = {
+          strict: true,
+          noEmit: true,
+          allowImportingTsExtensions: true,
+          module: "esnext",
+          moduleResolution: "bundler",
+          target: "es2022",
+          types: [],
+        };
+        writeIn(`${engine}/tsconfig.json`, JSON.stringify({ compilerOptions, include: ["src"] }));
+        try {
+          execFileSync(
+            process.execPath,
+            [tsc, "--pretty", "false", "-p", join(unionRoot, engine)],
+            {
+              encoding: "utf8",
+            },
+          );
+        } catch (error) {
+          output = String((error as { stdout?: unknown }).stdout);
+        }
+      } finally {
+        rmSync(unionRoot, { recursive: true, force: true });
+      }
+    }, 60_000);
 
     it("passes when the folders match the union", () => {
-      addState("final");
-      expect(typeErrors()).toBe("");
+      // The other cases must fail, so an empty output means tsc never checked anything.
+      expect(output).not.toBe("");
+      expect(typeErrors("matching")).toBe("");
     });
 
     it("fails when a folder is missing", () => {
-      expect(typeErrors()).toContain("final");
+      expect(typeErrors("missing")).toContain("final");
     });
 
     it("fails when there is an extra folder", () => {
-      addState("final");
-      addState("loop");
-      expect(typeErrors()).toContain("loop");
+      expect(typeErrors("extra")).toContain("loop");
     });
   });
 });
