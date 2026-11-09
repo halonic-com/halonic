@@ -22,6 +22,7 @@ import type {
   SchedulerFactory,
   SchedulerListener,
   Secrets,
+  SendOptions,
   StartAgentRequest,
   StartRunRequest,
   TokenStore,
@@ -132,6 +133,26 @@ verifies("ports.frozen-inputs", () => {
 
   typeTest("deletes a coordination value by setting it to null", () => {
     expectTypeOf<Coordination["compareAndSet"]>().toBeCallableWith("k", "old", null);
+  });
+});
+
+verifies("ports.send-call-id", () => {
+  typeTest("names the call an event is meant for", () => {
+    expectTypeOf<RunExecutor["send"]>().toBeCallableWith("run_1", "approve", undefined, {
+      callId: "call-1",
+    });
+    expectTypeOf<Parameters<RunExecutor["send"]>[3]>().toEqualTypeOf<SendOptions | undefined>();
+  });
+
+  typeTest("keeps the call optional", () => {
+    expectTypeOf<RunExecutor["send"]>().toBeCallableWith("run_1", "approve", { ok: true });
+    expectTypeOf<RunExecutor["send"]>().toBeCallableWith("run_1", "approve", undefined, {});
+  });
+
+  it("takes only a string as the call id", () => {
+    // @ts-expect-error: a call id is the engine's string, never a number
+    const options: SendOptions = { callId: 1 };
+    expect(options).toBeDefined();
   });
 });
 

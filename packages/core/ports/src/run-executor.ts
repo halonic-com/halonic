@@ -44,6 +44,18 @@ export interface StartAgentRequest {
   runId?: string;
 }
 
+/** Options for {@link RunExecutor.send}. */
+export interface SendOptions {
+  /**
+   * The tool call the event is meant for, such as the one a person approves,
+   * as the run's summary names it. When it is given and the run doesn't wait
+   * on that call, `send` is refused before anything is recorded: a person
+   * who answered an approval that has since moved on must not approve the
+   * next one by accident. Absent: no check.
+   */
+  readonly callId?: string;
+}
+
 /** An agent's model settings for a chat turn that aren't saved in a file yet. */
 export interface ChatAgentSettings {
   /** The provider adapter type, such as "openai". */
@@ -151,9 +163,10 @@ export interface RunExecutor {
   /**
    * Delivers an event to a waiting run, such as "approve".
    *
-   * @throws when the run doesn't exist or doesn't accept the event now
+   * @throws when the run doesn't exist, doesn't accept the event now, or
+   *   doesn't wait on the call that `options.callId` names
    */
-  send(runId: string, event: string, payload?: unknown): Promise<RunSummary>;
+  send(runId: string, event: string, payload?: unknown, options?: SendOptions): Promise<RunSummary>;
   /**
    * Streams a run's durable events: first the stored ones after `afterSeq`,
    * then new ones as they are appended, until the run ends or the stream

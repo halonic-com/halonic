@@ -86,6 +86,7 @@ export {
   type RunExecutor,
   type RunSubscription,
   runExecutorVersion,
+  type SendOptions,
   type StartAgentRequest,
   type StartRunRequest,
 } from "./run-executor.ts";

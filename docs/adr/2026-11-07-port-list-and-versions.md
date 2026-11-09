@@ -144,6 +144,22 @@ version at 1:
 - **`Digest`:** `sha256` over bytes, from the platform's WebCrypto. The
   core needs SHA-256 for the approval hash and can't call WebCrypto itself.
 
+_2026-11-09, decided on HAL-1515, built in HAL-1521._ Approvals are routed
+by `callId` (HAL-186, E5). An executor must honor it, so it goes into
+version 1 now. `RunExecutor` stays at 1:
+
+- **`RunExecutor.send(runId, event, payload?, options?)`:** a fourth
+  argument, the named `SendOptions`, with an optional `callId` that names
+  the tool call the event is meant for. The engine gives every call its own
+  id (`call-<n>`, unique in the run), so the id never comes from the
+  model. When `callId` is given and the run doesn't wait on that call, the
+  executor refuses the event before it records anything. A person who
+  answers an approval that has moved on can't approve the next call by
+  mistake. Without `callId` nothing is checked, as before. The contract
+  suite checks this (`contracts.run-executor-send`). The type is named so
+  later options have a place, but a new option an executor must honor is
+  still a breaking change (see "The freeze").
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

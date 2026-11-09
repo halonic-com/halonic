@@ -27,6 +27,12 @@ export {
   started,
   waiting,
 } from "./run-events.ts";
+export {
+  type MakeRunExecutor,
+  type RunExecutorHarness,
+  runExecutorContract,
+  type WaitingApproval,
+} from "./run-executor.ts";
 export { type MakeRunStore, type RunStoreContractOptions, runStoreContract } from "./run-store.ts";
 export { schedulerContract } from "./scheduler.ts";
 export {
