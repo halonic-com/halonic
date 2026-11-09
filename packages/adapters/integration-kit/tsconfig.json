@@ -2,7 +2,8 @@
   "//": "The host preset: Web globals only, no Node types, because the kit runs anywhere (\"runtime\": \"any\"), including workerd.",
   "extends": "@halonicjs/tooling-config/tsconfig/host.json",
   "include": [
-    "src"
+    "src",
+    "examples"
   ],
   "exclude": [
     "src/**/*.test.ts",
