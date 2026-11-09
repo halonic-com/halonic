@@ -453,7 +453,7 @@ jobs:
   guard:
     name: Requirements and the requirement guard (merge base's copy)
     needs: [build, base-tests]
-    if: always() && github.event_name != 'push'
+    if: ${{ !cancelled() && github.event_name != 'push' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -552,7 +552,7 @@ jobs:
       # token exists as a CI secret the guard only reports; then this line
       # goes. Trace above stays blocking.
       - name: Requirement guard (merge base's copy)
-        if: always()
+        if: ${{ !cancelled() }}
         continue-on-error: true
         working-directory: head
         env:
@@ -807,7 +807,10 @@ jobs:
 
   ci-ok:
     name: ci-ok
-    if: always()
+    # Not always(): in a run that was itself cancelled (a newer push
+    # replaced it) ci-ok is skipped, so the newer run's result is the one
+    # that shows. In any other run a cancelled or failed job still fails it.
+    if: ${{ !cancelled() }}
     needs:
       [
         changes,
