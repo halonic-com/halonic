@@ -120,6 +120,70 @@ verifies("google-sign-in.exchange", () => {
     expect(result).toEqual({ kind: "unreachable", accountRef: fakeAccountRef });
   });
 
+  it("gives unreachable when the connection drops while Google's answer is read", async () => {
+    const droppedBody = new ReadableStream({
+      start(controller) {
+        controller.error(new Error(`connection reset while reading ${fakeRefreshToken}`));
+      },
+    });
+
+    const { result, tokens } = await signInOnce(() => new Response(droppedBody, { status: 200 }));
+
+    expect(result).toEqual({ kind: "unreachable", accountRef: fakeAccountRef });
+    expect(tokens.values.size).toBe(0);
+  });
+
+  it("ends a damaged callback without sending anything to Google", async () => {
+    const server = testServer(() => tokenSuccess());
+
+    expect(await server.finish({ code: fakeCode })).toEqual({ kind: "linkNoLongerValid" });
+    expect(await server.finish({ code: fakeCode, state: "" })).toEqual({
+      kind: "linkNoLongerValid",
+    });
+
+    const first = await server.start();
+    expect(await server.finish({ state: first.state })).toEqual({
+      kind: "incompleteCallback",
+      accountRef: fakeAccountRef,
+    });
+    // The damaged callback used up the pending sign-in, so the code can't follow it.
+    expect(await server.finish({ code: fakeCode, state: first.state })).toEqual({
+      kind: "linkNoLongerValid",
+    });
+
+    const second = await server.start();
+    expect(await server.finish({ code: "", state: second.state })).toEqual({
+      kind: "incompleteCallback",
+      accountRef: fakeAccountRef,
+    });
+    expect(server.google.requests).toHaveLength(0);
+    expect(server.tokens.values.size).toBe(0);
+  });
+
+  it("passes on each way Google refuses the sign-in, and saves nothing", async () => {
+    const server = testServer(() => tokenSuccess());
+    const refusal = async (error: string) => {
+      const { state } = await server.start();
+      return server.finish({ error, state });
+    };
+
+    expect(await refusal("admin_policy_enforced")).toEqual({
+      kind: "adminBlocked",
+      accountRef: fakeAccountRef,
+    });
+    expect(await refusal("org_internal")).toEqual({
+      kind: "outsideOrganisation",
+      accountRef: fakeAccountRef,
+    });
+    expect(await refusal("temporarily_unavailable")).toEqual({
+      kind: "googleError",
+      accountRef: fakeAccountRef,
+      errorCode: "temporarily_unavailable",
+    });
+    expect(server.google.requests).toHaveLength(0);
+    expect(server.tokens.values.size).toBe(0);
+  });
+
   it("saves nothing when the ID token is refused or the client secret is missing", async () => {
     const refused = await signInOnce(() =>
       tokenSuccess({ id_token: fakeIdToken({ aud: "other-client.apps.example.com" }) }),
