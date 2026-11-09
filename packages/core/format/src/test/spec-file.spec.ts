@@ -7,7 +7,7 @@ import { expect } from "vitest";
 // outsiders, reviewers and editors read, so the code must emit exactly it.
 // To write spec files on purpose, run with SPEC_WRITE=1. Never in CI: there
 // a missing or different spec file fails (plan 9.3).
-const writeSpec = process.env["SPEC_WRITE"] === "1" && process.env["CI"] === undefined;
+const writeSpecFiles = process.env["SPEC_WRITE"] === "1" && process.env["CI"] === undefined;
 
 /** The text of a spec file: pretty-printed JSON with a final newline. */
 function specText(schema: JsonSchema): string {
@@ -16,14 +16,18 @@ function specText(schema: JsonSchema): string {
 
 /**
  * Expects the spec file at `path` to hold exactly `schema`. With
- * SPEC_WRITE=1, outside CI, it writes the file first.
+ * SPEC_WRITE=1, outside CI, it writes the file first; `write` overrides that.
  *
  * @example
  * expectSpecFile(join(specFolder, "agent.schema.json"), jsonSchemaOf("agent"));
  */
-export function expectSpecFile(path: string, schema: JsonSchema): void {
+export function expectSpecFile(
+  path: string,
+  schema: JsonSchema,
+  { write = writeSpecFiles }: { readonly write?: boolean } = {},
+): void {
   const expected = specText(schema);
-  if (writeSpec) {
+  if (write) {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, expected);
   }

@@ -17,16 +17,13 @@ verifies("format.json-schema-goldens", () => {
     expectSpecFile(specPath(kind), jsonSchemaOf(kind));
   });
 
-  // With SPEC_WRITE=1 the helper writes the file instead of failing.
-  it.skipIf(process.env["SPEC_WRITE"] === "1")(
-    "fails when a spec file is missing or differs from the code",
-    () => {
-      const path = join(mkdtempSync(join(tmpdir(), "format-spec-")), "agent.schema.json");
-      expect(() => expectSpecFile(path, jsonSchemaOf("agent"))).toThrow(/missing spec file/);
-      writeFileSync(path, "{}\n");
-      expect(() => expectSpecFile(path, jsonSchemaOf("agent"))).toThrow(/differs from the code/);
-    },
-  );
+  it("fails when a spec file is missing or differs from the code", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "format-spec-")), "agent.schema.json");
+    const check = (): void => expectSpecFile(path, jsonSchemaOf("agent"), { write: false });
+    expect(check).toThrow(/missing spec file/);
+    writeFileSync(path, "{}\n");
+    expect(check).toThrow(/differs from the code/);
+  });
 
   it("describes the input: keys with a default aren't required", () => {
     expect(jsonSchemaOf("agent")["required"]).toEqual(["id", "name"]);
