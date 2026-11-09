@@ -35,10 +35,13 @@ function blockAfter(css: string, start: string): string {
   throw new Error(`No block after "${start}".`);
 }
 
-/** The kit's colours, each split into its light and dark value. */
+/**
+ * The kit's colours, each split into its light and dark value. Only its `@theme` block: the page
+ * copies the base values, not the ones the kit raises under more contrast.
+ */
 function kitColours(): Map<string, { light: string; dark: string }> {
   const pairs = new Map<string, { light: string; dark: string }>();
-  for (const [name, value] of colours(readCss(kitTheme))) {
+  for (const [name, value] of colours(blockAfter(readCss(kitTheme), "@theme static"))) {
     const match = /^light-dark\((.+), (.+)\)$/.exec(value);
     if (match) {
       pairs.set(name, { light: match[1] as string, dark: match[2] as string });
