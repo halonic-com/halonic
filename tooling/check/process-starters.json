@@ -1,0 +1,4 @@
+{
+  "//": "Files that may start processes or run code in a new thread. See docs/guides/checks.md (process-starts).",
+  "starters": {}
+}

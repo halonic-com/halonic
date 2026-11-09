@@ -106,6 +106,10 @@ export function writeFixtureRepo(
       readFileSync(join(realRoot, "tooling/check/overrides-allowed.json"), "utf8"),
   );
   write(
+    "tooling/check/process-starters.json",
+    readFileSync(join(realRoot, "tooling/check/process-starters.json"), "utf8"),
+  );
+  write(
     "package.json",
     JSON.stringify(manifestFor("@halonicjs/root", "tooling", { exports: undefined })),
   );
