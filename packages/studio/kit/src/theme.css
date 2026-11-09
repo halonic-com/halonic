@@ -202,6 +202,13 @@
 @custom-variant phone (@media (width < 600px));
 
 /*
+ * touch: follows the pointer, not the width (component specs 23.5): a tablet in the compact
+ * layout reports a coarse pointer, a laptop with a touchscreen and a trackpad a fine one. Under
+ * it, controls get the phone's 48px hit area and sm and md controls render at lg.
+ */
+@custom-variant touch (@media (pointer: coarse));
+
+/*
  * Values that must not become classes. Plain variables, used only inside the kit: in the halo
  * utilities below, the focus ring, duration-(--duration-base) and z-(--layer-dialog).
  */
@@ -300,6 +307,22 @@
     outline: 2px solid transparent;
     outline-offset: -2px;
     box-shadow: var(--focus-ring-inset);
+  }
+}
+
+/*
+ * A tap target of at least 48px (--spacing-touch) round a control that looks smaller, centred
+ * on it, drawn by a pseudo-element so the control's own size and padding don't change. Use it
+ * under phone: or touch:, as phone:hit-touch.
+ */
+@utility hit-touch {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: min(0px, calc((100% - var(--spacing-touch)) / 2));
+    inset-inline: min(0px, calc((100% - var(--spacing-touch)) / 2));
   }
 }
 

@@ -245,3 +245,20 @@ describe("theme.css on a phone", () => {
     );
   });
 });
+
+describe("theme.css on a touch screen", () => {
+  it("has a touch: variant that follows the pointer, not the width", () => {
+    expect(css).toContain("@custom-variant touch (@media (pointer: coarse));");
+  });
+
+  it("draws the 48px hit area outside the control, never smaller than the control", () => {
+    const hitArea = blockBody(css, "@utility hit-touch");
+    expect(hitArea).toContain("position: relative;");
+    expect(blockBody(hitArea, "&::after")).toContain(
+      "inset-block: min(0px, calc((100% - var(--spacing-touch)) / 2));",
+    );
+    expect(blockBody(hitArea, "&::after")).toContain(
+      "inset-inline: min(0px, calc((100% - var(--spacing-touch)) / 2));",
+    );
+  });
+});

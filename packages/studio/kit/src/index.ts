@@ -4,6 +4,13 @@
  * components arrive here one by one, each with its own named export.
  */
 
+export {
+  Button,
+  type ButtonProps,
+  type ButtonSize,
+  type ButtonUnavailable,
+  type ButtonVariant,
+} from "./button/button.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export { ExternalLink, type ExternalLinkProps } from "./external-link/external-link.tsx";
 export {
