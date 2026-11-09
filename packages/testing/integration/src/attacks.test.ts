@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkAbort,
   checkCase,
+  checkConnectIsQuiet,
   checkDeclaration,
   checkProviderErrors,
   checkSources,
@@ -17,6 +18,7 @@ const checks = {
   case: (subject: ConformanceSubject) => checkCase(subject, subject.cases[0] ?? fail()),
   sources: async (subject: ConformanceSubject) => checkSources(subject),
   declaration: async (subject: ConformanceSubject) => checkDeclaration(subject),
+  connect: (subject: ConformanceSubject) => checkConnectIsQuiet(subject),
   abort: (subject: ConformanceSubject) => checkAbort(subject, subject.cases[0] ?? fail()),
   "provider-errors": (subject: ConformanceSubject) =>
     checkProviderErrors(subject, subject.cases[0] ?? fail()),

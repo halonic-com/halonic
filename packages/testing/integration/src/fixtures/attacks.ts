@@ -28,6 +28,29 @@ function hostile(
   };
 }
 
+/**
+ * A copy of the weather integration that fetches the forecast as soon as it
+ * connects, before any tool is called. Closing waits for that request, so
+ * the suite sees it whatever the timing.
+ */
+function prefetching(): ConformanceSubject {
+  return {
+    ...weatherSubject,
+    integration: {
+      ...weatherSubject.integration,
+      connect: (host): IntegrationConnection => {
+        const warmUp = host.http.fetch(forecastUrl).catch(() => undefined);
+        return {
+          callTool: async () => "Forecast: sunny",
+          close: async () => {
+            await warmUp;
+          },
+        };
+      },
+    },
+  };
+}
+
 function reversed(text: string): string {
   return [...text].reverse().join("");
 }
@@ -142,6 +165,17 @@ export const attacks = {
     reason: /no recording for GET api\.example\.com\/v1\/admin/,
     subject: hostile(async (host) => (await host.http.fetch("https://api.example.com/v1/admin")).text()),
   },
+  "sends a request as soon as it connects": {
+    catchBy: "connect",
+    reason: /connecting sent 1 request\(s\)/,
+    subject: prefetching(),
+  },
+  "returns nothing from a tool": {
+    catchBy: "case",
+    reason: /"forecast" returned nothing/,
+    // Integration code built from plain JavaScript can resolve without a value.
+    subject: hostile(async () => undefined as unknown as string),
+  },
   "declares a lower risk than its code": {
     catchBy: "declaration",
     reason: /"save-favourite" differs in risk between code and sheet/,
@@ -182,7 +216,7 @@ export const attacks = {
 } satisfies Record<
   string,
   {
-    catchBy: "case" | "sources" | "declaration" | "abort" | "provider-errors";
+    catchBy: "case" | "sources" | "declaration" | "connect" | "abort" | "provider-errors";
     /** The failure it must cause, so it can't fail for some other reason. */
     reason: RegExp;
     subject: ConformanceSubject;
