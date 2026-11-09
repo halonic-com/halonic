@@ -82,11 +82,7 @@ This example is [`examples/start-sign-in.ts`](examples/start-sign-in.ts),
 which `src/example.test.ts` runs and checks.
 
 ```ts
-import {
-  createPendingSignIns,
-  startGoogleSignIn,
-  stateMatches,
-} from "@halonicjs/host-google-sign-in";
+import * as signIn from "@halonicjs/host-google-sign-in";
 
 /** The parameters whose value is random on every sign-in, so the example prints only their length. */
 const randomParameters = new Set(["state", "code_challenge"]);
@@ -94,9 +90,9 @@ const randomParameters = new Set(["state", "code_challenge"]);
 /** Starts a sign-in for a made-up client and prints the auth URL's parameters. No network, no real IDs. */
 export async function runExample(): Promise<string[]> {
   // Once per server. It holds the state and the PKCE verifier of each sign-in in memory.
-  const pendingSignIns = createPendingSignIns({ now: () => new Date() });
+  const pendingSignIns = signIn.createPendingSignIns({ now: () => new Date() });
 
-  const authUrl = await startGoogleSignIn(
+  const authUrl = await signIn.startGoogleSignIn(
     {
       accountRef: "acme_clerk",
       clientId: "123456789-acme.apps.example.test",
@@ -129,12 +125,14 @@ export async function runExample(): Promise<string[]> {
   // The callback must carry the state from the URL. Anything else, or none, is refused.
   const state = url.searchParams.get("state") ?? "";
   lines.push(
-    `callback with the URL's state: ${stateMatches(state, state) ? "accepted" : "refused"}`,
+    `callback with the URL's state: ${signIn.stateMatches(state, state) ? "accepted" : "refused"}`,
   );
   lines.push(
-    `callback with another state: ${stateMatches(state, "forged-state") ? "accepted" : "refused"}`,
+    `callback with another state: ${signIn.stateMatches(state, "forged-state") ? "accepted" : "refused"}`,
   );
-  lines.push(`callback with no state: ${stateMatches(state, null) ? "accepted" : "refused"}`);
+  lines.push(
+    `callback with no state: ${signIn.stateMatches(state, null) ? "accepted" : "refused"}`,
+  );
   return lines;
 }
 ```
