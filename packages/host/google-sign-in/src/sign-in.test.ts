@@ -39,6 +39,8 @@ verifies("google-sign-in.exchange", () => {
     const [request] = google.requests;
     expect(request?.url).toBe(tokenEndpoint);
     expect(request?.method).toBe("POST");
+    // A 307 or 308 would send the same form, secrets and all, somewhere else.
+    expect(request?.redirect).toBe("error");
     expect(Object.fromEntries(request?.form ?? [])).toEqual({
       grant_type: "authorization_code",
       code: fakeCode,

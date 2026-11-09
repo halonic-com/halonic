@@ -4,7 +4,6 @@ import {
   classifyTokenAnswer,
   clientSecretName,
   googleAuthUrl,
-  googleTokenEndpoint,
   type LoopbackRedirect,
   loopbackRedirectUri,
   type PendingSignIn,
@@ -22,10 +21,10 @@ import type { Clock, HttpClient, TokenStore } from "@halonicjs/ports";
 import type { RandomBytes } from "@halonicjs/std";
 import { checkGoogleCheckUrl, checkServices } from "./google-check.ts";
 import { readIdTokenAccount } from "./id-token.ts";
-import { parseJson } from "./json.ts";
 import { createPkcePair } from "./pkce.ts";
 import { webRandomBytes } from "./random.ts";
 import { createState } from "./state.ts";
+import { postTokenForm } from "./token-request.ts";
 
 /** What a sign-in starts from. Nothing here is a secret. */
 export interface StartGoogleSignInInput {
@@ -229,21 +228,14 @@ function accessTokenIn(json: unknown): string | undefined {
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
-/**
- * Sends the code to Google's token endpoint. The secrets go in the form body
- * only, never in the URL.
- *
- * @returns the status and parsed body, or `undefined` when Google couldn't be
- *   reached. The `HttpClient`'s error is dropped, never passed on: it can
- *   carry the request.
- */
-async function exchangeCode(
+/** Sends the code to Google's token endpoint (see `postTokenForm`). */
+function exchangeCode(
   http: HttpClient,
   code: string,
   clientSecret: string,
   pending: PendingSignIn,
 ): Promise<TokenAnswer | undefined> {
-  const body = new URLSearchParams({
+  return postTokenForm(http, {
     grant_type: "authorization_code",
     code,
     client_id: pending.clientId,
@@ -251,14 +243,4 @@ async function exchangeCode(
     redirect_uri: pending.redirectUri,
     code_verifier: pending.codeVerifier,
   });
-  try {
-    const response = await http.fetch(googleTokenEndpoint, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-      body: body.toString(),
-    });
-    return { status: response.status, json: parseJson(await response.text()) };
-  } catch {
-    return undefined;
-  }
 }
