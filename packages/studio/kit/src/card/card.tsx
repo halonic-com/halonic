@@ -101,9 +101,9 @@ export function Card(props: CardProps) {
     <section className={classes} aria-labelledby={headerId}>
       <div className={headerClasses}>
         {header}
-        {props.actions === undefined ? null : (
+        {isShown(props.actions) ? (
           <div className="ml-auto flex shrink-0 items-center gap-2">{props.actions}</div>
-        )}
+        ) : null}
       </div>
       <div className="p-4">{props.children}</div>
     </section>
@@ -112,7 +112,7 @@ export function Card(props: CardProps) {
 
 /** The header's name: a title heading, a caption label, or nothing. */
 function cardHeader(props: StaticCard, id: string): ReactNode {
-  if (props.title !== undefined) {
+  if (isShown(props.title)) {
     const Heading = `h${props.headingLevel ?? 3}` as const;
     return (
       <Heading id={id} className="min-w-0 text-section">
@@ -120,7 +120,7 @@ function cardHeader(props: StaticCard, id: string): ReactNode {
       </Heading>
     );
   }
-  if (props.label !== undefined) {
+  if (isShown(props.label)) {
     return (
       <p
         id={id}
@@ -131,4 +131,12 @@ function cardHeader(props: StaticCard, id: string): ReactNode {
     );
   }
   return null;
+}
+
+/**
+ * True when there's something to show. A screen often writes `title={name && …}` or starts a
+ * label as "", and an empty header would still name the section and draw its divider.
+ */
+function isShown(node: ReactNode): boolean {
+  return node !== undefined && node !== null && node !== false && node !== "";
 }

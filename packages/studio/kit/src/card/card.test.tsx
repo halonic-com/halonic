@@ -80,6 +80,19 @@ verifies("kit.card", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("has no header for an empty title, label or actions", () => {
+    const { container } = render(
+      <>
+        <Card title="">One</Card>
+        <Card label="" actions={false}>
+          Two
+        </Card>
+      </>,
+    );
+    expect(container.querySelector("section")).toBeNull();
+    expect(container.querySelectorAll("div.p-4")).toHaveLength(2);
+  });
+
   it("shows an error with a danger edge", () => {
     const { container } = render(<Card state="error">Last run failed</Card>);
     expect((container.firstElementChild as HTMLElement).className).toContain("border-danger");
