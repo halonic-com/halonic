@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useId } from "react";
 import { Button } from "../button/button.tsx";
 import { type GridNavigation, useGridNavigation } from "../grid-navigation/use-grid-navigation.ts";
@@ -6,104 +6,12 @@ import { MoreIcon } from "../icons/more-icon.tsx";
 import { ListHeading } from "../list-heading/list-heading.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
-import { EmptyList, type ListEmpty, useFocusOnEmpty } from "./empty-list.tsx";
+import { EmptyList, useFocusOnEmpty } from "./empty-list.tsx";
+import { boxClasses, type ListLook, lineClasses } from "./list-lines.ts";
+import type { ListProps, ListRow, ListSelection } from "./list-props.ts";
+import { ListSkeleton, useFocusAfterLoading } from "./list-skeleton.tsx";
 import { rowHandlers } from "./row-handlers.ts";
 import { Leading, MetaLine } from "./row-parts.tsx";
-
-/** One item in a List: an agent, a routine, a run, a file in a picker. */
-export interface ListRow<Id extends string = string> {
-  /** Stable, never the index: focus and selection follow it. */
-  readonly id: Id;
-  readonly title: string;
-  /** One line under the title, cut with an ellipsis. */
-  readonly meta?: string;
-  /**
-   * A 20px icon before the text, 16px in a `dense` row as in a Menu item. Hidden from screen
-   * readers: the title names the row.
-   */
-  readonly icon?: ReactNode;
-  /** A 28px avatar before the text, in place of the icon. Hidden from screen readers too. */
-  readonly avatar?: ReactNode;
-  /** On the right: a status chip or a value. */
-  readonly trailing?: ReactNode;
-  /** The "More" icon button. Its label names the row: "More actions for Sorter". */
-  readonly more?: {
-    readonly label: string;
-    readonly onClick: (event: MouseEvent<HTMLButtonElement>) => void;
-  };
-  /**
-   * The row can't be used now: still readable and focusable, but it can't be opened or selected.
-   * The reason takes the meta line's place and screen readers hear it with the row.
-   */
-  readonly unavailable?: ListRowUnavailable;
-  /**
-   * The row has a problem: the reason takes the meta line's place in `danger`, and a `danger`
-   * chip takes the trailing slot. The row stays openable, so it can be fixed.
-   */
-  readonly error?: { readonly reason: string; readonly chip: string };
-}
-
-/** Why a row can't be used right now: "Waiting for the model to download". */
-export interface ListRowUnavailable {
-  /** The visible text. Unlike the Button's, the List draws it, so it's the text and not an `id`. */
-  readonly reason: string;
-}
-
-/** The rows the user has picked. The screen keeps the set; Space toggles a row. */
-export interface ListSelection<Id extends string = string> {
-  readonly selected: ReadonlySet<Id>;
-  readonly onToggle: (id: Id) => void;
-  /** More than one row at a time, as staging files in Changes. */
-  readonly multiple?: boolean;
-}
-
-interface ListBase<Id extends string> {
-  readonly rows: readonly ListRow<Id>[];
-  /** Default 2. */
-  readonly headingLevel?: 2 | 3 | 4;
-  /** Enter or a click on a row. Without it, a click toggles the selection. */
-  readonly onOpen?: (id: Id) => void;
-  /**
-   * Ctrl Enter (⌘ Enter on a Mac), a Ctrl-click (⌘-click) or a middle click, as the Runs list
-   * opens a run in a new tab. Without it those do nothing, as in the Changes file list.
-   */
-  readonly onOpenInNewTab?: (id: Id) => void;
-  readonly selection?: ListSelection<Id>;
-  /** 32px rows, for menus and pickers; 48px on a phone. */
-  readonly dense?: boolean;
-  /** No outer border or radius and lines from 16px. On by default on a phone. */
-  readonly flush?: boolean;
-  /**
-   * The Empty state shown in place of the rows when there are none: "No agents yet". The
-   * heading stays. Its title is one level below the List's heading unless it names its own.
-   */
-  readonly empty?: ListEmpty;
-}
-
-/** A list named by its heading, the box's first line (18.3). */
-interface ListWithHeading<Id extends string> extends ListBase<Id> {
-  readonly heading: { readonly name: string; readonly detail?: string };
-  readonly label?: never;
-}
-
-/** A list without a heading, named by a label: "Agents". */
-interface ListWithLabel<Id extends string> extends ListBase<Id> {
-  readonly label: string;
-  readonly heading?: never;
-}
-
-/** A list always has a name: a `heading` or a `label`, never both. */
-export type ListProps<Id extends string = string> = ListWithHeading<Id> | ListWithLabel<Id>;
-
-/** The 1px line above every row but the first. In a flush list it starts at 16px, with the text. */
-const lineClasses = {
-  bordered: { main: "border-t border-border", more: "border-t border-border" },
-  flush: {
-    // A border, not a fill, so forced colours keep it.
-    main: "relative before:absolute before:top-0 before:right-0 before:left-4 before:h-0 before:border-t before:border-border",
-    more: "border-t border-border",
-  },
-} as const;
 
 /**
  * `fill` goes on the cells, not the row, so the corner cells' radius keeps it inside the box.
@@ -181,9 +89,13 @@ export function List<Id extends string>({
   dense = false,
   flush: flushProp,
   empty,
+  loading = false,
+  skeleton = {},
+  loadingLabel,
+  onRetry,
 }: ListProps<Id>) {
   const phone = usePresentation() === "phone";
-  const look = (flushProp ?? phone) ? "flush" : "bordered";
+  const look: ListLook = (flushProp ?? phone) ? "flush" : "bordered";
   const headingId = useId();
   const hasMore = rows.some((row) => row.more !== undefined);
   const grid = useGridNavigation(
@@ -197,6 +109,28 @@ export function List<Id extends string>({
     );
   const labelProps =
     heading === undefined ? { "aria-label": label } : { "aria-labelledby": headingId };
+  const loadedFocus = useFocusAfterLoading(loading, () => {
+    if (showEmpty) {
+      emptyFocus.titleRef.current?.focus();
+    } else {
+      grid.focusActive();
+    }
+  });
+
+  if (loading) {
+    return (
+      <ListSkeleton
+        look={look}
+        phone={phone}
+        heading={heading === undefined ? undefined : { ...heading, headingLevel }}
+        shape={skeleton}
+        label={loadingLabel ?? ""}
+        onRetry={onRetry}
+        onFocus={loadedFocus.onFocus}
+        onBlur={loadedFocus.onBlur}
+      />
+    );
+  }
 
   // With rows, the heading is the box's first line, so the first row's top corners are square
   // under it. With none, the Empty state takes the box's place below the heading.
@@ -213,7 +147,7 @@ export function List<Id extends string>({
         </>
       ) : (
         // Not overflow-hidden, which would cut the focus rings of the first and last rows.
-        <div className={look === "bordered" ? "rounded-md border border-border" : ""}>
+        <div className={boxClasses[look]}>
           {headingNode}
           <table
             // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table; on a div Biome asks for the table
@@ -264,7 +198,7 @@ interface RowProps<Id extends string> {
   /** The first row with no heading above it, so it sits in the box's top corners. */
   readonly top: boolean;
   readonly last: boolean;
-  readonly look: "bordered" | "flush";
+  readonly look: ListLook;
   readonly phone: boolean;
   readonly dense: boolean;
   readonly hasMore: boolean;
@@ -276,7 +210,7 @@ interface RowProps<Id extends string> {
 
 /** The radius of the box's corners, on the cells that sit in them, so their fills stay inside. */
 function cornerClasses(
-  look: "bordered" | "flush",
+  look: ListLook,
   top: boolean,
   last: boolean,
   side: "left" | "right",
@@ -293,7 +227,7 @@ function cornerClasses(
  * A selected corner row's bar starts 8px from the box's edge, not 6px, so it stays inside the
  * border's 11px inner curve.
  */
-function cornerBarClasses(look: "bordered" | "flush", top: boolean, last: boolean): string {
+function cornerBarClasses(look: ListLook, top: boolean, last: boolean): string {
   if (look === "flush") {
     return "";
   }

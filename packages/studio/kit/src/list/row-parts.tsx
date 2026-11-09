@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ListRow } from "./list.tsx";
+import type { ListRow } from "./list-props.ts";
 
 /*
  * The parts of a List row's main cell besides its title: the icon or avatar, and the line under

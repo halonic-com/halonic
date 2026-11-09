@@ -470,6 +470,10 @@ List draws them.
 | `dense`          | 32px rows, for menus and pickers                                                         |
 | `flush`          | No outer border or radius, lines from 16px. On by default on a phone                     |
 | `empty`          | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
+| `loading`        | Skeleton rows in place of the rows; see **Loading** below                                |
+| `skeleton`       | `{ leading: "icon" \| "avatar", trailing }`: the shape of the rows that are coming       |
+| `loadingLabel`   | What screen readers hear while it loads: "Loading skills". Needed with `loading`         |
+| `onRetry`        | Try again, offered once it has loaded for 10 seconds                                     |
 
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
@@ -521,6 +525,29 @@ before the text. **On a touch screen** at desktop width the More button is alway
 rows are at least 48px, a `dense` row's icon 20px again. A `dense` list's More button is 28px, so
 the button stays clear of the row's lines; its ring overlaps them and isn't clipped.
 
+**Loading.** While `loading` is set, the List shows the shape of the rows that are coming, so the
+page doesn't jump when they arrive. For the first 300ms nothing shows, so a fast load doesn't
+flash. Then three still skeleton rows show in the real rows' height (56px, at least 64px on a
+phone), with a leading block and a right bar when `skeleton` asks for them, and a 48px bar in the
+heading's place; the heading itself stays for screen readers. The rows are hidden from screen
+readers: they're `aria-busy`, and a hidden status line next to them says `loadingLabel`, which a
+loading List needs. After 10 seconds "Still loading" and Try again show under the rows; the
+skeleton stays. A list with `empty` and no rows still shows the skeleton while it loads. When
+loading ends with focus on Try again, focus goes to the first row, or to the Empty state's title.
+When loading fails, show the [EmptyState](#emptystate)'s `error` tone in place of the List, never a
+skeleton and an error together, and the screen focuses its title.
+
+```tsx
+<List
+  heading={{ name: "Skills" }}
+  rows={skills}
+  loading={skills === undefined}
+  skeleton={{ leading: "icon" }}
+  loadingLabel="Loading skills"
+  onRetry={reload}
+/>;
+```
+
 ## useGridNavigation
 
 The roving focus behind the List, for a `grid` the kit doesn't draw (the Inbox list). Pass each
@@ -539,7 +566,8 @@ const grid = useGridNavigation(
 One cell is in the Tab order. ↑ ↓ move between rows in the same column, ← → between a row's
 cells, Home and End to the first and last row. Only ← → (or a click) choose the column: ↓ through a
 row without it lands on the nearest cell to its left, and the next row that has it gets it back. Heading rows (no focusable cells) and empty cells
-are passed over. Keys from a field inside a cell are left alone.
+are passed over. Keys from a field inside a cell are left alone. `focusActive()` focuses the cell
+in the Tab order, for when the grid takes the place of what had focus.
 
 ## SkeletonBar
 

@@ -60,7 +60,13 @@ export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps, keyShortcutsLabel } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
 export type { ListEmpty } from "./list/empty-list.tsx";
-export { List, type ListProps, type ListRow, type ListSelection } from "./list/list.tsx";
+export { List } from "./list/list.tsx";
+export type { ListProps, ListRow, ListSelection } from "./list/list-props.ts";
+export {
+  type ListSkeletonShape,
+  SKELETON_AFTER_MS,
+  STILL_LOADING_AFTER_MS,
+} from "./list/list-skeleton.tsx";
 export {
   ListHeading,
   type ListHeadingLayout,

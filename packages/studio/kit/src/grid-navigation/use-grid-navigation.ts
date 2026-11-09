@@ -36,6 +36,8 @@ export interface GridNavigation {
   cell(row: string, column: number): GridCellProps;
   /** The cell in the Tab order, or none when no row has a focusable cell. */
   readonly active: GridPosition | undefined;
+  /** Focuses the cell in the Tab order, as when the grid takes the place of what had focus. */
+  focusActive(): void;
 }
 
 interface Remembered extends GridPosition {
@@ -148,6 +150,11 @@ export function useGridNavigation(rows: readonly GridRow[]): GridNavigation {
       },
     }),
     active,
+    focusActive: () => {
+      if (active !== undefined) {
+        focusCell(active, true);
+      }
+    },
   };
 }
 

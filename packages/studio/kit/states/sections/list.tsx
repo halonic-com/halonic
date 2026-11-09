@@ -1,4 +1,5 @@
-import { List, type ListRow } from "../../src/list/list.tsx";
+import { List } from "../../src/list/list.tsx";
+import type { ListRow } from "../../src/list/list-props.ts";
 import { ListHeading } from "../../src/list-heading/list-heading.tsx";
 import { SkeletonBar } from "../../src/skeleton-bar/skeleton-bar.tsx";
 import type { PartSection } from "../state-table.tsx";

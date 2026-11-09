@@ -4,7 +4,8 @@ import { act, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PresentationProvider } from "../presentation/presentation.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
-import { List, type ListProps, type ListRow } from "./list.tsx";
+import { List } from "./list.tsx";
+import type { ListProps, ListRow } from "./list-props.ts";
 
 afterEach(() => {
   unmountAll();
@@ -47,7 +48,9 @@ async function clickWith(element: Element, init: MouseEventInit): Promise<void> 
 
 /** A screen that keeps its own selection, as a real screen does. */
 function Selectable(
-  props: Partial<Omit<ListProps, "heading" | "label">> & { readonly multiple?: boolean },
+  props: Partial<Omit<ListProps, "heading" | "label" | "loading" | "loadingLabel">> & {
+    readonly multiple?: boolean;
+  },
 ) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   return (
