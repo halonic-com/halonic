@@ -122,8 +122,9 @@ input[aria-invalid="true"] {
   font-size: 0.875rem;
 }
 
+/* The mark is seen, not read: TalkBack would say "exclamation mark". */
 .field-error::before {
-  content: "!";
+  content: "!" / "";
   display: inline-grid;
   place-items: center;
   width: 1rem;
@@ -166,13 +167,13 @@ button.primary {
   color: var(--on-primary);
 }
 
-button.primary[aria-busy="true"] {
+button[aria-busy="true"] {
   opacity: 0.8;
   cursor: progress;
 }
 
-/* The spinner in front of "Connecting…" (mockup G2). */
-button.primary[aria-busy="true"]::before {
+/* The spinner in front of every busy button's words (mockup G2). */
+button[aria-busy="true"]::before {
   content: "";
   display: inline-block;
   width: 1em;
@@ -192,7 +193,7 @@ button.primary[aria-busy="true"]::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  button.primary[aria-busy="true"]::before {
+  button[aria-busy="true"]::before {
     animation: none;
   }
 }
@@ -230,6 +231,13 @@ button.link {
 
 .tile.warning .icon {
   stroke: var(--warning);
+}
+
+.status {
+  margin: 0;
+  min-height: 1.5em;
+  text-align: center;
+  color: var(--muted);
 }
 
 .message {

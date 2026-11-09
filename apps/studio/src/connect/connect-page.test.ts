@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { localAddressStore } from "./bridge.ts";
 import { ConnectPageView, FakeShell, MemoryStore, openPage } from "./test/connect-page-harness.ts";
 
 const connected = { kind: "connected", url: "http://192.168.1.20:4280" } as const;
+const notAnswering = { kind: "notAnswering", address: "192.168.1.20:4280" } as const;
 
 afterEach(() => {
+  vi.useRealTimers();
   document.body.replaceChildren();
   localStorage.clear();
 });
@@ -112,6 +114,8 @@ verifies("studio.connect.field-errors", () => {
     expect(page.fieldError.getAttribute("role")).toBe("alert");
     expect(page.field.getAttribute("aria-invalid")).toBe("true");
     expect(page.field.getAttribute("aria-describedby")).toContain("address-error");
+    // The connect screen was already showing, so the focus stays on Connect.
+    expect(document.activeElement).toBe(page.connectButton);
   });
 
   it("sits between the field and the hint, so the hint stays visible", async () => {
@@ -122,7 +126,7 @@ verifies("studio.connect.field-errors", () => {
   });
 
   it("sets the command in the code font in Can't reach", async () => {
-    const shell = new FakeShell().answer({ kind: "notAnswering", address: "192.168.1.20:4280" });
+    const shell = new FakeShell().answer(notAnswering);
     const page = await openPage(shell, new MemoryStore());
 
     await page.press(page.connectButton);
@@ -201,18 +205,38 @@ verifies("studio.connect.remembered-address", () => {
     expect(page.screen).toBe("starting");
   });
 
+  it("shows only the logo for a second, then says Connecting… while it waits", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const shell = new FakeShell();
+    const answer = shell.answerLater();
+    const opening = openPage(shell, new MemoryStore("192.168.1.20:4280"));
+    const page = new ConnectPageView();
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(page.startingStatus.textContent).toBe("");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(page.startingStatus.textContent).toBe("Connecting…");
+    expect(page.startingStatus.getAttribute("role")).toBe("status");
+
+    vi.useRealTimers();
+    await answer(connected);
+    await opening;
+    expect(shell.opened).toEqual(["http://192.168.1.20:4280"]);
+  });
+
   it("shows its own isn't answering screen when the remembered address doesn't answer", async () => {
-    const shell = new FakeShell().answer({ kind: "notAnswering", address: "192.168.1.20:4280" });
+    const shell = new FakeShell().answer(notAnswering);
     const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
 
     expect(page.screen).toBe("not-answering");
     expect(page.message.textContent).toBe("Halonic on your computer isn't answering.");
+    expect(document.activeElement).toBe(page.message);
     expect(page.button("try-again").textContent).toBe("Try again");
     expect(page.button("change-address").textContent).toBe("Change address");
   });
 
   it("keeps the focus on a busy Try again, and opens the workspace when the computer answers", async () => {
-    const shell = new FakeShell().answer({ kind: "notAnswering", address: "192.168.1.20:4280" });
+    const shell = new FakeShell().answer(notAnswering);
     const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
     const tryAgain = page.button("try-again");
     const answer = shell.answerLater();
@@ -226,7 +250,6 @@ verifies("studio.connect.remembered-address", () => {
   });
 
   it("stays on isn't answering, with the focus on Try again, when it still doesn't answer", async () => {
-    const notAnswering = { kind: "notAnswering", address: "192.168.1.20:4280" } as const;
     const shell = new FakeShell().answer(notAnswering, notAnswering);
     const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
     const tryAgain = page.button("try-again");
@@ -245,10 +268,25 @@ verifies("studio.connect.remembered-address", () => {
     expect(page.screen).toBe("connect");
     expect(page.field.value).toBe("192.168.1.20:4280");
     expect(page.fieldError.textContent).toContain("but it isn't Halonic");
+    expect(document.activeElement).toBe(page.field);
+  });
+
+  it("moves the focus to the field when Try again gets a field error", async () => {
+    const shell = new FakeShell().answer(notAnswering, {
+      kind: "notHalonic",
+      address: "192.168.1.20:4280",
+    });
+    const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
+
+    await page.press(page.button("try-again"));
+
+    expect(page.screen).toBe("connect");
+    expect(page.fieldError.textContent).toContain("but it isn't Halonic");
+    expect(document.activeElement).toBe(page.field);
   });
 
   it("opens the connect screen with the address filled in on Change address", async () => {
-    const shell = new FakeShell().answer({ kind: "notAnswering", address: "192.168.1.20:4280" });
+    const shell = new FakeShell().answer(notAnswering);
     const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
 
     await page.press(page.button("change-address"));
@@ -300,6 +338,17 @@ verifies("studio.connect.version-screens", () => {
     expect(shell.opened).toEqual([]);
   });
 
+  it("stays quiet when the shell can't open the release page", async () => {
+    const shell = new FakeShell().answer({ kind: "appTooOld", computerVersion: "0.2.0" });
+    shell.releasePageFails = true;
+    const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
+
+    // An unhandled rejection here would fail the run.
+    await page.press(page.button("open-release-page"));
+
+    expect(page.screen).toBe("app-too-old");
+  });
+
   it("shows computer too old with the computer's version, the focus on the message", async () => {
     const shell = new FakeShell().answer({ kind: "computerTooOld", computerVersion: "0.1.0" });
     const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
@@ -324,6 +373,31 @@ verifies("studio.connect.version-screens", () => {
 
     expect(shell.asked).toEqual(["192.168.1.20:4280", "192.168.1.20:4280"]);
     expect(shell.opened).toEqual(["http://192.168.1.20:4280"]);
+  });
+
+  it("moves the focus to the message when Try again ends on isn't answering", async () => {
+    const shell = new FakeShell().answer(
+      { kind: "computerTooOld", computerVersion: "0.1.0" },
+      notAnswering,
+    );
+    const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
+
+    await page.press(page.button("try-again"));
+
+    expect(page.screen).toBe("not-answering");
+    expect(document.activeElement).toBe(page.message);
+  });
+
+  it("keeps the focus on Try again when the computer is still too old", async () => {
+    const tooOld = { kind: "computerTooOld", computerVersion: "0.1.0" } as const;
+    const shell = new FakeShell().answer(tooOld, tooOld);
+    const page = await openPage(shell, new MemoryStore("192.168.1.20:4280"));
+    const tryAgain = page.button("try-again");
+
+    await page.press(tryAgain);
+
+    expect(page.screen).toBe("computer-too-old");
+    expect(document.activeElement).toBe(tryAgain);
   });
 
   it("puts the primary button right after the message, then Change address", async () => {

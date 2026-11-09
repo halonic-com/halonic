@@ -12,6 +12,8 @@ export class FakeShell implements ConnectBridge {
   readonly asked: string[] = [];
   readonly opened: string[] = [];
   releasePageOpened = 0;
+  /** Makes opening the release page fail, as a shell without a browser would. */
+  releasePageFails = false;
   private readonly answers: (ConnectResult | Error | Promise<ConnectResult>)[] = [];
 
   /** The answers to give, in order. An `Error` makes the call fail. */
@@ -48,7 +50,9 @@ export class FakeShell implements ConnectBridge {
 
   openReleasePage(): Promise<void> {
     this.releasePageOpened += 1;
-    return Promise.resolve();
+    return this.releasePageFails
+      ? Promise.reject(new Error("No browser to open the release page."))
+      : Promise.resolve();
   }
 }
 
@@ -117,6 +121,11 @@ export class ConnectPageView {
       throw new Error(`Expected one screen, found ${shown.length}.`);
     }
     return shown[0]?.dataset["screen"] ?? "";
+  }
+
+  /** The line under the logo while the remembered address is checked. */
+  get startingStatus(): HTMLElement {
+    return this.find('[data-screen="starting"] [role="status"]');
   }
 
   /** The shown screen's message, for the shell's own screens. */

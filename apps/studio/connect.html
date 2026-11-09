@@ -16,9 +16,13 @@
   </head>
   <body>
     <main>
-      <!-- While the remembered address is checked, only the logo shows. -->
+      <!--
+        While the remembered address is checked, only the logo shows. After
+        a second the status line says "Connecting…".
+      -->
       <section data-screen="starting">
         <div class="logo" aria-hidden="true">logo</div>
+        <p class="status" role="status"></p>
       </section>
 
       <section data-screen="connect" hidden>

@@ -19,6 +19,13 @@ type ScreenName = "starting" | "connect" | "not-answering" | "app-too-old" | "co
 type Origin = "connect-screen" | "elsewhere";
 
 /**
+ * How long the starting screen shows only the logo. A quick answer never
+ * shows a word; a slow one says "Connecting…" so screen readers have
+ * something to read (checklist section 0).
+ */
+const quietStartMs = 1000;
+
+/**
  * Runs the connect page: the connect screen, "isn't answering" and the two
  * version screens (flow-install-update 5.3, 5.4 and 7.3).
  */
@@ -34,6 +41,7 @@ class ConnectPage {
   private readonly input: HTMLInputElement;
   private readonly fieldError: HTMLElement;
   private readonly connectButton: HTMLButtonElement;
+  private readonly startingStatus: HTMLElement;
   /** True while a hello call runs; presses are ignored, as the kit's busy Button does. */
   private busy = false;
 
@@ -44,6 +52,7 @@ class ConnectPage {
     this.input = this.find("#address");
     this.fieldError = this.find("#address-error");
     this.connectButton = this.find('[data-action="connect"]');
+    this.startingStatus = this.find('[data-screen="starting"] [role="status"]');
     this.listen();
   }
 
@@ -56,7 +65,11 @@ class ConnectPage {
       this.showConnectScreen();
       return;
     }
+    const sayConnecting = setTimeout(() => {
+      this.startingStatus.textContent = words.connecting;
+    }, quietStartMs);
     await this.connect("elsewhere");
+    clearTimeout(sayConnecting);
   }
 
   private listen(): void {
@@ -72,7 +85,8 @@ class ConnectPage {
       button.addEventListener("click", () => this.showConnectScreen());
     }
     this.find('[data-action="open-release-page"]').addEventListener("click", () => {
-      void this.bridge.openReleasePage();
+      // Like a failed hello call, a failed open never shows a raw error.
+      this.bridge.openReleasePage().catch(() => undefined);
     });
   }
 
@@ -123,16 +137,19 @@ class ConnectPage {
         if (origin === "connect-screen") {
           this.showFieldError(words.notAnswering(result.address));
         } else {
-          this.showScreen("not-answering");
+          this.showFullScreenMessage("not-answering");
         }
         return;
       case "appTooOld":
         this.store.save(address);
-        this.showVersionScreen("app-too-old", words.appTooOld(result.computerVersion));
+        this.showFullScreenMessage("app-too-old", words.appTooOld(result.computerVersion));
         return;
       case "computerTooOld":
         this.store.save(address);
-        this.showVersionScreen("computer-too-old", words.computerTooOld(result.computerVersion));
+        this.showFullScreenMessage(
+          "computer-too-old",
+          words.computerTooOld(result.computerVersion),
+        );
         return;
     }
   }
@@ -142,22 +159,39 @@ class ConnectPage {
     this.input.focus();
   }
 
-  /** Focus goes to the message first, then the primary button (flow 7.3). */
-  private showVersionScreen(name: "app-too-old" | "computer-too-old", message: string): void {
-    const screen = this.showScreen(name);
+  /**
+   * Shows "isn't answering" or a version screen, with `message` when the
+   * screen's words depend on a value. When the screen is new, focus goes to
+   * its message first, then the primary button (flow 7.3).
+   */
+  private showFullScreenMessage(
+    name: Exclude<ScreenName, "starting" | "connect">,
+    message?: string,
+  ): void {
+    const { screen, changed } = this.showScreen(name);
     const messageElement = this.find(".message", screen);
-    messageElement.textContent = message;
-    messageElement.focus();
+    if (message !== undefined) {
+      messageElement.textContent = message;
+    }
+    if (changed) {
+      messageElement.focus();
+    }
   }
 
   /**
-   * Shows one screen. When the screen is already showing, focus stays where
-   * it is, so a Try again that fails again keeps its focus.
+   * Shows one screen and says whether it replaced another. Callers move the
+   * focus only when it did: on the same screen again the focus stays where
+   * it is, so a Try again that fails again keeps its focus. On a new screen
+   * the pressed button is hidden, so the focus must move or it is lost.
    */
-  private showScreen(name: ScreenName): HTMLElement {
+  private showScreen(name: ScreenName): { screen: HTMLElement; changed: boolean } {
     let shown: HTMLElement | undefined;
+    let changed = false;
     for (const screen of this.findAll("[data-screen]")) {
       const isShown = screen.dataset["screen"] === name;
+      if (isShown && screen.hidden) {
+        changed = true;
+      }
       screen.hidden = !isShown;
       if (isShown) {
         shown = screen;
@@ -166,12 +200,19 @@ class ConnectPage {
     if (shown === undefined) {
       throw new Error(`connect.html has no "${name}" screen.`);
     }
-    return shown;
+    return { screen: shown, changed };
   }
 
-  /** A field error between the field and the hint, read out when it appears. */
+  /**
+   * A field error between the field and the hint, read out when it appears.
+   * When it brings the connect screen back from another one, the focus goes
+   * to the field, as on every other way into the connect screen.
+   */
   private showFieldError(pieces: readonly Piece[]): void {
-    this.showScreen("connect");
+    const { changed } = this.showScreen("connect");
+    if (changed) {
+      this.input.focus();
+    }
     this.fieldError.replaceChildren(...pieces.map((piece) => this.render(piece)));
     this.fieldError.hidden = false;
     this.input.setAttribute("aria-invalid", "true");
