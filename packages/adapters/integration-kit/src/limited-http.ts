@@ -18,7 +18,7 @@ import {
 import type { RequestLog } from "./request-log.ts";
 import { type BodyGuard, guardBody, untilAborted } from "./response-body.ts";
 import { removeSecretsFromError, secretForms } from "./secret-filter.ts";
-import { checkPlacements, place, readSecrets } from "./secret-placement.ts";
+import { checkPlacements, copyPlacements, place, readSecrets } from "./secret-placement.ts";
 
 /**
  * Limits on one request. Every field has a default; the loader sets them
@@ -121,7 +121,8 @@ async function send(
 ): Promise<Response> {
   const { policy, limits = {} } = options;
   const { auth, signal, redirect: _redirect, ...rest } = init;
-  const placements: readonly SecretPlacement[] = auth === undefined ? [] : [auth].flat();
+  // From here on only the frozen copies are read, never the code's `auth`.
+  const placements = copyPlacements(policy, auth === undefined ? [] : [auth].flat());
   const url = allowedUrl(policy, rawUrl);
   checkPlacements(policy, placements, url);
   const body = rest.body ?? null;

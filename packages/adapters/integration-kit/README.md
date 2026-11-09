@@ -31,7 +31,9 @@ Node, in the Worker and in the browser. Published as
   case, the same `prefix` (none and `""` are the same) and the same form
   `field`, with case. Anything else is refused as `placement-not-in-sheet`
   before a secret is read, so a key can't be put in a field the service
-  stores and read back from there.
+  stores and read back from there. The kit first copies each placement, and
+  checks and places only that copy, so changing `auth` after `fetch` (or a
+  getter) changes nothing. A placement field that isn't text is refused.
 - **Limits:** 30 s per request with its redirects, 10 MiB per response, 5
   redirects. All three can be changed.
 - **Request bodies** are at most 720 KiB (`maxRequestBodyBytes`), counted in

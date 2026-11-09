@@ -3,7 +3,61 @@ import { isLoopback } from "./local-address.ts";
 import { type DeclaredPlacement, hostIn, type IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError } from "./refused.ts";
 
-/** Checks every placement against the sheet before anything is sent. */
+/**
+ * Copies the placements the integration's code gave into frozen objects of
+ * text fields, reading each field once. The kit checks and places only
+ * these copies: the code keeps its own objects and could change them, or
+ * give a getter, after the check and before the secret is placed. A field
+ * that isn't text is refused here, because an object could turn into other
+ * text each time it is read.
+ */
+export function copyPlacements(
+  policy: IntegrationPolicy,
+  placements: readonly unknown[],
+): readonly SecretPlacement[] {
+  return Object.freeze(placements.map((placement) => copyPlacement(policy, placement)));
+}
+
+/** A placement as the integration's code may give it, with nothing trusted. */
+interface GivenPlacement {
+  readonly secret?: unknown;
+  readonly as?: unknown;
+  readonly header?: unknown;
+  readonly prefix?: unknown;
+  readonly field?: unknown;
+}
+
+function copyPlacement(policy: IntegrationPolicy, placement: unknown): SecretPlacement {
+  if (typeof placement !== "object" || placement === null) {
+    throw notText(policy, "a secret placement");
+  }
+  const given: GivenPlacement = placement;
+  const secret = given.secret;
+  const as = given.as;
+  if (typeof secret !== "string") throw notText(policy, "the secret's name");
+  if (typeof as !== "string") throw notText(policy, `the "as" of the secret "${secret}"`);
+  const copy: Record<string, string> = { secret, as };
+  for (const key of ["header", "prefix", "field"] as const) {
+    const value = given[key];
+    if (value === undefined) continue;
+    if (typeof value !== "string") throw notText(policy, `the "${key}" of the secret "${secret}"`);
+    copy[key] = value;
+  }
+  // Whether the fields fit together is for `checkPlacements` to say.
+  return Object.freeze(copy) as unknown as SecretPlacement;
+}
+
+function notText(policy: IntegrationPolicy, what: string): IntegrationRefusedError {
+  return new IntegrationRefusedError(
+    "placement-not-in-sheet",
+    `${policy.name}: ${what} in a secret placement is not text`,
+  );
+}
+
+/**
+ * Checks every placement against the sheet before anything is sent. Give
+ * it the copies from {@link copyPlacements}, never the code's own objects.
+ */
 export function checkPlacements(
   policy: IntegrationPolicy,
   placements: readonly SecretPlacement[],

@@ -195,6 +195,94 @@ verifies("integration-kit.placement-from-sheet", () => {
       );
     });
 
+    describe("the code changes its placement after the check", () => {
+      /** Every header sent, to show the key went only where the sheet says. */
+      const sentHeaders = (sent: { headers: Record<string, string> }[]) =>
+        sent.map((hop) => hop.headers);
+
+      it("places the key where the sheet says when the code changes the header right after fetch", async () => {
+        const { http, sent } = client(undefined, undefined, inHeader);
+        const auth = { secret: "example-key", as: "header" as const, header: "x-api-key" };
+        const request = http.fetch("https://api.example.com/v1/notes", { auth });
+        auth.header = "x-note-title";
+        await request;
+        expect(sentHeaders(sent)).toEqual([{ "x-api-key": canary["example-key"] }]);
+      });
+
+      it("places the key where the sheet says when the code changes the header before a redirect hop", async () => {
+        const auth = { secret: "example-key", as: "header" as const, header: "x-api-key" };
+        const { http, sent } = client(
+          (url) => {
+            if (url.pathname !== "/start") return new Response("ok");
+            auth.header = "x-note-title";
+            return redirect(302, "https://api.example.com/final");
+          },
+          undefined,
+          inHeader,
+        );
+        await http.fetch("https://api.example.com/start", { auth });
+        expect(sentHeaders(sent)).toEqual([
+          { "x-api-key": canary["example-key"] },
+          { "x-api-key": canary["example-key"] },
+        ]);
+      });
+
+      it("reads a getter once, so it can't give the check one header and the request another", async () => {
+        const { http, sent } = client(undefined, undefined, inHeader);
+        let reads = 0;
+        const auth = {
+          secret: "example-key",
+          as: "header" as const,
+          get header() {
+            reads++;
+            return reads === 1 ? "x-api-key" : "x-note-title";
+          },
+        };
+        await http.fetch("https://api.example.com/v1/notes", { auth });
+        expect(reads).toBe(1);
+        expect(sentHeaders(sent)).toEqual([{ "x-api-key": canary["example-key"] }]);
+      });
+
+      it("places the checked secret when the code swaps the secret's name after fetch", async () => {
+        const bothForApi = {
+          ...inHeader,
+          secrets: {
+            ...inHeader.secrets,
+            "client-secret": {
+              hosts: ["api.example.com"],
+              placement: { as: "bearer" as const },
+            },
+          },
+        };
+        const { http, sent } = client(undefined, undefined, bothForApi);
+        const auth = { secret: "example-key", as: "header" as const, header: "x-api-key" };
+        const request = http.fetch("https://api.example.com/v1/notes", { auth });
+        auth.secret = "client-secret";
+        await request;
+        expect(sentHeaders(sent)).toEqual([{ "x-api-key": canary["example-key"] }]);
+      });
+
+      it("refuses a field that isn't text, since an object could turn into other text on each read", async () => {
+        const { http, sent, reads } = countingClient({ as: "header", header: "x-api-key" });
+        let calls = 0;
+        const shifting = { toString: () => (++calls === 1 ? "x-api-key" : "x-note-title") };
+        const odd = [
+          { secret: "example-key", as: "header", header: shifting },
+          { secret: shifting, as: "header", header: "x-api-key" },
+          { secret: "example-key", as: shifting, header: "x-api-key" },
+          null,
+        ] as unknown as SecretPlacement[];
+        for (const auth of odd) {
+          expect(await refusal(http.fetch("https://api.example.com/v1", { auth }))).toBe(
+            "placement-not-in-sheet",
+          );
+        }
+        expect(calls).toBe(0);
+        expect(reads).toEqual([]);
+        expect(sent).toEqual([]);
+      });
+    });
+
     it("holds for the host an integration gets, as in the fenced runner", async () => {
       const { transport, sent } = fakeTransport();
       const { host } = createIntegrationHost({
