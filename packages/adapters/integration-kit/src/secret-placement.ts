@@ -144,10 +144,16 @@ function describe(placement: DeclaredPlacement | SecretPlacement): string {
   }
 }
 
-/** Text from the integration's code, quoted and cut short, so it can't break the message. */
+/**
+ * Text from the integration's code, cut short and quoted, so it can't break
+ * the message. It is cut by characters before quoting, so the cut never
+ * falls inside an escape or a surrogate pair.
+ */
 function quoted(text: unknown): string {
-  const json = JSON.stringify(String(text));
-  return json.length <= 60 ? json : `${json.slice(0, 56)}…"`;
+  const characters = Array.from(String(text));
+  const shown =
+    characters.length <= 50 ? characters.join("") : `${characters.slice(0, 50).join("")}…`;
+  return JSON.stringify(shown);
 }
 
 /** A secret goes over `https`, or over plain `http` only to this machine. */

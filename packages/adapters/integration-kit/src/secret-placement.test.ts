@@ -191,8 +191,24 @@ verifies("integration-kit.placement-from-sheet", () => {
         })
         .catch((thrown: unknown) => thrown);
       expect((error as Error).message).toBe(
-        `weather: the secret "client-secret" goes in the form field "client_secret" in its permission sheet, not in the form field "a\\"\\n${"b".repeat(50)}…"`,
+        `weather: the secret "client-secret" goes in the form field "client_secret" in its permission sheet, not in the form field "a\\"\\n${"b".repeat(47)}…"`,
       );
+    });
+
+    it("cuts what the code gave by characters, never through a surrogate pair", async () => {
+      const { http } = client();
+      const error = await http
+        .fetch("https://oauth.example.com/token", {
+          method: "POST",
+          body: new URLSearchParams(),
+          auth: {
+            secret: "client-secret",
+            as: "form",
+            field: `${"b".repeat(49)}😀${"c".repeat(20)}`,
+          },
+        })
+        .catch((thrown: unknown) => thrown);
+      expect((error as Error).message).toContain(`"${"b".repeat(49)}😀…"`);
     });
 
     describe("the code changes its placement after the check", () => {
@@ -205,6 +221,19 @@ verifies("integration-kit.placement-from-sheet", () => {
         const auth = { secret: "example-key", as: "header" as const, header: "x-api-key" };
         const request = http.fetch("https://api.example.com/v1/notes", { auth });
         auth.header = "x-note-title";
+        await request;
+        expect(sentHeaders(sent)).toEqual([{ "x-api-key": canary["example-key"] }]);
+      });
+
+      it("places the key where the sheet says when the code changes `as` right after fetch", async () => {
+        const { http, sent } = client(undefined, undefined, inHeader);
+        const auth: { secret: string; as: "header" | "bearer"; header: string } = {
+          secret: "example-key",
+          as: "header",
+          header: "x-api-key",
+        };
+        const request = http.fetch("https://api.example.com/v1/notes", { auth });
+        auth.as = "bearer";
         await request;
         expect(sentHeaders(sent)).toEqual([{ "x-api-key": canary["example-key"] }]);
       });
