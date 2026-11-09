@@ -139,6 +139,25 @@ verifies("integration-kit.secret-in-request", () => {
     expect(JSON.stringify(sent)).not.toContain(`/${key}`);
   });
 
+  it.each([
+    ["the method", "method", "GET", key],
+    ["its headers", "headers", {}, { "x-note": key }],
+    ["the body", "body", "clean", key],
+  ])(
+    "reads %s once, so a getter can't swap in the value after the check",
+    async (_, part, clean, carried) => {
+      const { http, sent } = client();
+      let reads = 0;
+      const init = Object.defineProperty({ method: "POST" }, part, {
+        get: () => (reads++ === 0 ? clean : carried),
+        enumerable: true,
+      });
+      await http.fetch("https://api.example.com/v1", init).catch(() => undefined);
+      expect(reads).toBe(1);
+      expect(JSON.stringify(sent)).not.toContain(key);
+    },
+  );
+
   it("removes a secret the request didn't place from the response", async () => {
     const { http } = client(() => new Response(`other: ${canary["client-secret"]}`));
     const response = await http.fetch("https://api.example.com/", { auth: bearer });

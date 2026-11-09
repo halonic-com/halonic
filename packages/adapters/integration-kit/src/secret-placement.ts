@@ -1,6 +1,11 @@
 import type { SecretPlacement, Secrets } from "@halonicjs/ports";
 import { isLoopback } from "./local-address.ts";
-import { type DeclaredPlacement, hostIn, type IntegrationPolicy } from "./policy.ts";
+import {
+  type DeclaredPlacement,
+  type DeclaredSecret,
+  hostIn,
+  type IntegrationPolicy,
+} from "./policy.ts";
 import { IntegrationRefusedError } from "./refused.ts";
 
 /**
@@ -55,18 +60,16 @@ function notText(policy: IntegrationPolicy, what: string): IntegrationRefusedErr
 }
 
 /**
- * Checks every placement against the sheet before anything is sent. Give
- * it the copies from {@link copyPlacements}, never the code's own objects.
+ * Checks every placement against the sheet before a secret value is read.
+ * Give it the copies from {@link copyPlacements}, never the code's own
+ * objects. Where the secret may go is for {@link checkPlacementHosts}.
  */
 export function checkPlacements(
   policy: IntegrationPolicy,
   placements: readonly SecretPlacement[],
-  url: URL,
 ): void {
   for (const placement of placements) {
-    const declared = Object.hasOwn(policy.secrets, placement.secret)
-      ? policy.secrets[placement.secret]
-      : undefined;
+    const declared = declaredSecret(policy, placement.secret);
     if (declared === undefined) {
       throw new IntegrationRefusedError(
         "secret-not-declared",
@@ -79,7 +82,22 @@ export function checkPlacements(
         `${policy.name}: the secret "${placement.secret}" goes ${describe(declared.placement)} in its permission sheet, not ${describe(placement)}`,
       );
     }
-    if (!hostIn(declared.hosts, url)) {
+  }
+}
+
+/**
+ * Checks that every placed secret may go to the request's first host, once
+ * the URL is parsed. {@link checkPlacements} has already run, so every
+ * secret is declared.
+ */
+export function checkPlacementHosts(
+  policy: IntegrationPolicy,
+  placements: readonly SecretPlacement[],
+  url: URL,
+): void {
+  for (const placement of placements) {
+    const declared = declaredSecret(policy, placement.secret);
+    if (declared === undefined || !hostIn(declared.hosts, url)) {
       throw new IntegrationRefusedError(
         "secret-not-allowed-for-host",
         `${policy.name}: the secret "${placement.secret}" may not go to ${url.host}`,
@@ -92,6 +110,11 @@ export function checkPlacements(
       );
     }
   }
+}
+
+/** The sheet's entry for a secret, looked up by own key only, so `toString` is never a secret. */
+function declaredSecret(policy: IntegrationPolicy, secret: string): DeclaredSecret | undefined {
+  return Object.hasOwn(policy.secrets, secret) ? policy.secrets[secret] : undefined;
 }
 
 /**
