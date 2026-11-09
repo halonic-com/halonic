@@ -88,6 +88,7 @@ export async function checkGoogleServicesAgain(
   ports: CheckGoogleServicesAgainPorts,
 ): Promise<GoogleCheckAgainResult> {
   const { accountRef } = input;
+  // Both throw a RangeError for a bad ref, before anything is read or sent.
   const tokenName = refreshTokenName(accountRef);
   clientSecretName(input.clientRef);
   for (const service of input.services) {
@@ -120,6 +121,8 @@ export async function checkGoogleServicesAgain(
   if (meaning.kind !== "refreshed") {
     return { ...meaning, accountRef };
   }
+  // Saved before anything else is read from the answer: once Google has
+  // issued a new refresh token, the old one may no longer work.
   if (meaning.refreshToken !== undefined) {
     await ports.tokens.set(tokenName, meaning.refreshToken);
   }

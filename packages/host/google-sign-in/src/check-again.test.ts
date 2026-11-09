@@ -132,6 +132,16 @@ verifies("google-sign-in.check-again", () => {
     expect([...tokens.values]).toEqual([[refreshName, rotatedRefreshToken]]);
   });
 
+  it("saves a new refresh token even when the refresh has no granted scopes", async () => {
+    const { result, http, tokens } = await checkAgain(
+      google(() => refreshSuccess({ scope: undefined, refresh_token: rotatedRefreshToken })),
+    );
+
+    expect(result).toEqual({ kind: "unexpectedAnswer", status: 200, accountRef: fakeAccountRef });
+    expect(http.requests.map((request) => request.url)).toEqual([tokenEndpoint]);
+    expect([...tokens.values]).toEqual([[refreshName, rotatedRefreshToken]]);
+  });
+
   it("sends nothing while a refused refresh is saved on the record", async () => {
     const refreshRefused = { reason: "sign-in", at: "2026-11-08T11:00:00.000Z" } as const;
     const { result, http } = await checkAgain(google(refreshSuccess), {
@@ -147,21 +157,40 @@ verifies("google-sign-in.check-again", () => {
       ...gmailService,
       googleCheck: { method: "GET" as const, url: "https://storage.googleapis.com/some-bucket/me" },
     };
+    // A host the service lists is still refused when it isn't Google's.
+    const listedNonGoogleHost = {
+      ...gmailService,
+      googleApis: [{ api: "evil.example", name: "Not Google" }],
+      googleCheck: { method: "GET" as const, url: "https://evil.example/me" },
+    };
     for (const bad of [
       { ...input, services: [badCheck] },
+      { ...input, services: [listedNonGoogleHost] },
       { ...input, accountRef: "not a ref" },
       { ...input, clientRef: "not a ref" },
     ]) {
       const http = fakeGoogle(google(refreshSuccess));
+      const tokens = fakeTokenStore();
+      const reads: string[] = [];
       const ports = {
         http,
-        tokens: fakeTokenStore(),
+        tokens: {
+          ...tokens,
+          get: async (name: string) => {
+            reads.push(name);
+            return tokens.get(name);
+          },
+        },
         clock: { now: () => new Date(testStart) },
-        readClientSecret: async () => fakeClient.clientSecret,
+        readClientSecret: async (clientRef: string) => {
+          reads.push(clientRef);
+          return fakeClient.clientSecret;
+        },
       };
 
       await expect(checkGoogleServicesAgain(bad, ports)).rejects.toThrow(RangeError);
       expect(http.requests).toEqual([]);
+      expect(reads).toEqual([]);
     }
   });
 
