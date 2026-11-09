@@ -15,10 +15,7 @@ verifies("workspace.init", () => {
           location: "memory:acme",
           id: "acme-billing",
           name: "Acme Billing",
-          files: [
-            { path: ".gitignore", change: "created" },
-            { path: "workspace.yaml", change: "created" },
-          ],
+          files: [".gitignore", "workspace.yaml"],
         },
       });
       expect(store.files.get(".gitignore")).toBe(".env\n.env.*\n");
@@ -43,42 +40,21 @@ verifies("workspace.init", () => {
     });
   });
 
-  describe("a .gitignore already there", () => {
-    it("keeps its lines and gains the missing ones on a line of their own", async () => {
-      const store = new MemoryStore({ ".gitignore": "node_modules/" });
-      const result = await initWorkspace(store, { name: "Acme" });
-
-      expect(store.files.get(".gitignore")).toBe("node_modules/\n.env\n.env.*\n");
-      expect(result.ok && result.value.files[0]).toEqual({ path: ".gitignore", change: "updated" });
-    });
-
-    it("adds only the line that is missing", async () => {
-      const store = new MemoryStore({ ".gitignore": "  .env\r\ndist/\r\n" });
-      await initWorkspace(store, { name: "Acme" });
-
-      expect(store.files.get(".gitignore")).toBe("  .env\r\ndist/\r\n.env.*\n");
-    });
-
-    it("is not written when it lists both lines", async () => {
-      const store = new MemoryStore({ ".gitignore": ".env.*\n.env\n" });
-      const result = await initWorkspace(store, { name: "Acme" });
-
-      expect(store.written).toEqual(["workspace.yaml"]);
-      expect(result.ok && result.value.files).toEqual([
-        { path: "workspace.yaml", change: "created" },
-      ]);
-    });
-  });
-
   describe("writing nothing", () => {
     it("leaves a store that is already a workspace alone", async () => {
       const store = new MemoryStore({ "workspace.yaml": "id: old\nname: Old\n" });
       const result = await initWorkspace(store, { name: "Acme" });
 
-      expect(result).toEqual({
-        ok: false,
-        error: { kind: "already_a_workspace", location: "memory:acme" },
-      });
+      expect(result).toEqual({ ok: false, error: { kind: "not_empty", location: "memory:acme" } });
+      expect(store.written).toEqual([]);
+    });
+
+    it("leaves a store with any other file alone, even only a .gitignore", async () => {
+      const store = new MemoryStore({ ".gitignore": "node_modules/\n" });
+      const result = await initWorkspace(store, { name: "Acme" });
+
+      expect(result).toEqual({ ok: false, error: { kind: "not_empty", location: "memory:acme" } });
+      expect(store.files.get(".gitignore")).toBe("node_modules/\n");
       expect(store.written).toEqual([]);
     });
 
@@ -96,16 +72,24 @@ verifies("workspace.init", () => {
     });
   });
 
-  it("can be repeated after a write fails", async () => {
+  it("leaves the store empty when a write fails, so it can be repeated", async () => {
     const store = new MemoryStore();
     store.failOn = "workspace.yaml";
     await expect(initWorkspace(store, { name: "Acme" })).rejects.toThrow("cannot write");
+    expect(store.files.size).toBe(0);
 
     store.failOn = null;
     const result = await initWorkspace(store, { name: "Acme" });
-    expect(result.ok && result.value.files).toEqual([
-      { path: "workspace.yaml", change: "created" },
-    ]);
-    expect(store.files.get(".gitignore")).toBe(".env\n.env.*\n");
+    expect(result.ok && result.value.files).toEqual([".gitignore", "workspace.yaml"]);
+  });
+
+  it("reports the write's own error when removing the .gitignore fails too", async () => {
+    const store = new MemoryStore();
+    store.failOn = "workspace.yaml";
+    store.remove = () => Promise.reject(new Error("cannot remove .gitignore"));
+
+    await expect(initWorkspace(store, { name: "Acme" })).rejects.toThrow(
+      "cannot write workspace.yaml",
+    );
   });
 });

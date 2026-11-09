@@ -12,28 +12,20 @@ export interface InitWorkspaceOptions {
   readonly id?: string;
 }
 
-/** One file `initWorkspace` wrote, and whether it was new. */
-export interface InitWorkspaceFile {
-  /** The workspace-relative path, with `/` separators. */
-  readonly path: string;
-  /** `created` for a new file, `updated` for a file that was there and got lines added. */
-  readonly change: "created" | "updated";
-}
-
 /** A workspace `initWorkspace` laid out. */
 export interface InitializedWorkspace {
   /** The store's location, such as "memory:demo". */
   readonly location: string;
   readonly id: string;
   readonly name: string;
-  /** The files written, in the order they were written. Files already right are left out. */
-  readonly files: readonly InitWorkspaceFile[];
+  /** The workspace-relative paths written, with `/` separators, in the order they were written. */
+  readonly files: readonly string[];
 }
 
 /** Why `initWorkspace` wrote nothing. */
 export type InitWorkspaceError =
-  /** The store already has a `workspace.yaml`; it is left as it is. */
-  | { readonly kind: "already_a_workspace"; readonly location: string }
+  /** The store already has files, such as a workspace or a project of another kind; it is left as it is. */
+  | { readonly kind: "not_empty"; readonly location: string }
   /** The settings the name or id give don't pass the workspace kind's checks, such as an id in capitals. */
   | { readonly kind: "invalid_settings"; readonly problems: readonly FileProblem[] };
 
@@ -47,24 +39,28 @@ export const gitIgnorePath = ".gitignore";
 export const gitIgnoreLines: readonly string[] = [".env", ".env.*"];
 
 /**
- * Lays out a new workspace through a {@link DefinitionStore}: a
+ * Lays out a new workspace in an empty {@link DefinitionStore}: a
  * `workspace.yaml` with its id and name, and a `.gitignore` that keeps
- * `.env` files out of git. An existing `.gitignore` keeps its lines and gets
- * only the missing ones added, so a folder that is already a git repository
- * can become a workspace.
+ * `.env` files out of git.
  *
  * The settings are checked with the workspace kind's own schema before
- * anything is written. A store that already has a `workspace.yaml` is left
- * alone. The `.gitignore` is written first and `workspace.yaml` last, so if a
- * write fails the store is not yet a workspace and the call can be repeated.
+ * anything is written. A store that has any file is left alone, so nothing a
+ * person made is ever overwritten or mixed into (cli-output 3.1: "the folder
+ * isn't empty"). Empty means what the store lists: entries the port keeps
+ * private, such as `.git` and `.env`, don't count, so a folder fresh from
+ * `git init` can become a workspace.
  *
- * The check for an existing `workspace.yaml` and the writes that follow are
- * not one step: if something else writes the store at the same time, such as
- * a Studio editor on a live store, its `workspace.yaml` can be replaced. The
- * CLI runs it alone on a new folder; a caller with other writers must keep
- * them out while it runs.
+ * The `.gitignore` is written first and `workspace.yaml` last. If writing
+ * `workspace.yaml` fails, the `.gitignore` is removed again, so the store is
+ * empty once more and the call can be repeated.
  *
- * @param store - where the workspace files go, such as an empty folder
+ * The check that the store is empty and the writes that follow are not one
+ * step: if something else writes the store at the same time, such as a
+ * Studio editor on a live store, its files can be replaced. The CLI runs it
+ * alone on a new folder; a caller with other writers must keep them out while
+ * it runs.
+ *
+ * @param store - where the workspace files go: an empty folder, or one that doesn't exist yet
  * @param options - the workspace's name, and its id if it isn't to come from the name
  * @returns the files written, or why nothing was
  *
@@ -82,34 +78,33 @@ export async function initWorkspace(
   if (!parsed.ok) {
     return err({ kind: "invalid_settings", problems: parsed.error });
   }
-  if ((await store.read(settingsPath)) !== null) {
-    return err({ kind: "already_a_workspace", location: store.location });
+  if ((await store.list()).length > 0) {
+    return err({ kind: "not_empty", location: store.location });
   }
 
-  const files: InitWorkspaceFile[] = [];
-  const gitIgnore = await store.read(gitIgnorePath);
-  const newGitIgnore = withLines(gitIgnore, gitIgnoreLines);
-  if (newGitIgnore !== gitIgnore) {
-    await store.write(gitIgnorePath, newGitIgnore);
-    files.push({ path: gitIgnorePath, change: gitIgnore === null ? "created" : "updated" });
+  await store.write(gitIgnorePath, `${gitIgnoreLines.join("\n")}\n`);
+  try {
+    await store.write(settingsPath, settings);
+  } catch (error) {
+    await removeQuietly(store, gitIgnorePath);
+    throw error;
   }
-  await store.write(settingsPath, settings);
-  files.push({ path: settingsPath, change: "created" });
-  return ok({ location: store.location, id, name: options.name, files });
+  return ok({
+    location: store.location,
+    id,
+    name: options.name,
+    files: [gitIgnorePath, settingsPath],
+  });
 }
 
 /**
- * The text with each missing line added at the end, or the text unchanged
- * when it has them all. A line counts as there when a line of the text is
- * the same once trimmed.
+ * Removes a file after a failed write. If removing fails as well, the first
+ * error is the one worth reporting, so this one is dropped.
  */
-function withLines(text: string | null, lines: readonly string[]): string {
-  const current = text ?? "";
-  const present = new Set(current.split(/\r?\n/).map((line) => line.trim()));
-  const missing = lines.filter((line) => !present.has(line));
-  if (missing.length === 0) {
-    return current;
+async function removeQuietly(store: DefinitionStore, path: string): Promise<void> {
+  try {
+    await store.remove(path);
+  } catch {
+    // The caller rethrows the write's own error.
   }
-  const separator = current === "" || current.endsWith("\n") ? "" : "\n";
-  return `${current}${separator}${missing.join("\n")}\n`;
 }

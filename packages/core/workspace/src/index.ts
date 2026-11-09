@@ -5,7 +5,6 @@ export {
   gitIgnorePath,
   type InitializedWorkspace,
   type InitWorkspaceError,
-  type InitWorkspaceFile,
   type InitWorkspaceOptions,
   initWorkspace,
 } from "./init-workspace.ts";
