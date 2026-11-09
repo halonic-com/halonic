@@ -52,6 +52,14 @@ verifies("scheduler-node.delivery", () => {
       ]);
       expect(await s.scheduler.pending("run_2")).toEqual([]);
     });
+
+    it("lists timers set for the same time by timer id", async () => {
+      const s = startScheduler();
+      const at = s.inMs(second);
+      for (const timerId of ["c", "a", "b"]) await s.scheduler.schedule("run_1", timerId, at);
+      const pending = await s.scheduler.pending("run_1");
+      expect(pending.map((timer) => timer.timerId)).toEqual(["a", "b", "c"]);
+    });
   });
 
   describe("retries", () => {
