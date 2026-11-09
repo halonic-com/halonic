@@ -259,7 +259,15 @@ verifies("kit.tabs", () => {
         <Page fill={false} />
       </PresentationProvider>,
     );
-    expect(tabsIn(container)[0]?.className).toContain("whitespace-nowrap px-3");
+    expect(tabsIn(container)[0]?.className).toContain("min-w-0 items-center gap-1.5 px-3");
+  });
+
+  it("wraps an inline label inside its tab when the tabs are wider than their column", () => {
+    const { container } = render(<Page fill={false} />);
+    const tab = tabsIn(container)[0];
+    expect(tab?.className).toContain("min-w-0");
+    expect(tab?.className).toContain("text-center hyphens-auto wrap-break-word");
+    expect(tab?.className).not.toContain("whitespace-nowrap");
   });
 
   it("sticks to the top of the scroll area on a surface fill when sticky", () => {

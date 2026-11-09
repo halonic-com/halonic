@@ -136,6 +136,24 @@ describe("theme.css focus rings", () => {
       "outline: 2px solid transparent;",
     );
   });
+
+  it("paints every focus ring in the system's Highlight colour in high-contrast mode", () => {
+    for (const ring of ["focus-ring", "focus-ring-inset"]) {
+      const forced = blockBody(
+        blockBody(blockBody(css, `@utility ${ring}`), "@variant focus-visible"),
+        "@media (forced-colors: active)",
+      );
+      expect(forced).toContain("outline-color: Highlight;");
+    }
+    for (const field of ["focus-field", "focus-field-danger"]) {
+      const forced = blockBody(
+        blockBody(blockBody(css, `@utility ${field}`), "@variant field-focus"),
+        "@media (forced-colors: active)",
+      );
+      expect(forced).toContain("outline: 2px solid Highlight;");
+      expect(forced).toContain("outline-offset: 2px;");
+    }
+  });
 });
 
 describe("theme.css selection and high contrast", () => {
@@ -327,8 +345,12 @@ describe("theme.css in older engines", () => {
     const inLines = "max-height: calc(var(--max-rows) * 1lh);";
     expect(utility.indexOf(fallback)).toBeGreaterThanOrEqual(0);
     expect(utility.indexOf(inLines)).toBeGreaterThan(utility.indexOf(fallback));
-    expect(blockBody(utility, "@variant phone")).toContain(
-      "max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));",
-    );
+    for (const variant of ["@variant touch", "@variant phone"]) {
+      expect(blockBody(utility, variant)).toContain(
+        "max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));",
+      );
+    }
+    // The phone's block comes last, so it wins where both match.
+    expect(utility.indexOf("@variant phone")).toBeGreaterThan(utility.indexOf("@variant touch"));
   });
 });

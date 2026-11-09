@@ -75,6 +75,12 @@ verifies("kit.input", () => {
     expect(input.className).toContain("phone:text-input-touch");
   });
 
+  it("has 16px text under a touch pointer, not only on a phone", () => {
+    const { container } = render(<Input aria-label="Name" />);
+    const input = container.querySelector("input") as HTMLInputElement;
+    expect(input.className).toContain("touch:text-input-touch");
+  });
+
   it("shows an error with the danger edge and the danger focus ring", () => {
     const { container } = render(
       <Field label="Name" error="Give the agent a name.">

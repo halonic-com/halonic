@@ -296,7 +296,7 @@
     var(--color-canvas);
 }
 
-/* "You are here": the active sidebar item, the active segment of a page's own tabs. */
+/* "You are here": the active sidebar item. */
 @utility bg-halo-tint {
   background: linear-gradient(90deg, var(--halo-tint-blue), var(--halo-tint-violet));
 }
@@ -319,7 +319,8 @@
 /*
  * Every interactive element gets the same focus ring, on keyboard focus only. The outline is
  * transparent rather than removed: in Windows high-contrast mode the browser drops box shadows
- * and paints outlines in the system colour, so the outline becomes the visible ring there.
+ * and paints outlines in the system colour, so the outline becomes the visible ring there. It
+ * takes Highlight in that mode, the system's colour for focus (specs 23.5).
  *
  * The focus utilities go through variants (@variant focus-visible, field-focus) rather than a
  * raw selector. The CSS is the same, and the kit's states page can force them on through its own
@@ -330,6 +331,10 @@
     outline: 2px solid transparent;
     outline-offset: 2px;
     box-shadow: var(--focus-ring);
+
+    @media (forced-colors: active) {
+      outline-color: Highlight;
+    }
   }
 }
 
@@ -340,6 +345,10 @@
     outline: 2px solid transparent;
     outline-offset: -2px;
     box-shadow: var(--focus-ring-inset);
+
+    @media (forced-colors: active) {
+      outline-color: Highlight;
+    }
   }
 }
 
@@ -363,7 +372,8 @@
  * The focus of a text field's box (Input, TextArea, Select): an accent edge and a 3px soft ring,
  * because the general ring would hide the edge. It shows while the text inside has focus, on any
  * focus, not only from the keyboard. A button inside the box (clear, show) keeps the general
- * ring, so you can tell the two apart. The outline is for Windows high-contrast mode.
+ * ring, so you can tell the two apart. The outline is for Windows high-contrast mode, where it
+ * turns Highlight and stands 2px off the box (specs 23.5).
  */
 @custom-variant field-focus (&:has([data-field-text]:focus));
 
@@ -372,6 +382,11 @@
     outline: 2px solid transparent;
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px var(--color-accent-soft);
+
+    @media (forced-colors: active) {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -381,6 +396,11 @@
     outline: 2px solid transparent;
     border-color: var(--color-danger);
     box-shadow: 0 0 0 3px var(--color-danger-soft);
+
+    @media (forced-colors: active) {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -440,11 +460,16 @@
 /*
  * A TextArea's height limit: --max-rows lines of its text. The px line is a fallback built from
  * the line-height token, for an engine without the lh unit (an older WebKitGTK), which drops the
- * line after it. The phone's text is 16px on 24px lines.
+ * line after it. Under a touch pointer and on a phone the text is 16px on 24px lines.
  */
 @utility max-h-rows {
   max-height: calc(var(--max-rows) * var(--text-body--line-height));
   max-height: calc(var(--max-rows) * 1lh);
+
+  @variant touch {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
+  }
 
   @variant phone {
     max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));

@@ -16,8 +16,8 @@ const shared = [
   "flex w-full gap-2 rounded-sm border px-2.5 transition-colors",
   "phone:min-h-touch phone:px-3",
   // A tablet's coarse pointer gets lg, like the Buttons beside it (component specs 23.5). The box
-  // takes the whole tap, so it needs no hit area of its own. A phone is a touch screen too, and
-  // touch comes later in the CSS, so not-phone keeps its 40px from beating the phone's 48px.
+  // takes the whole tap, so it needs no hit area of its own. A phone is also coarse; not-phone:
+  // keeps the 40px off it, so the phone's 48px holds whatever order the variants are written in.
   "touch:not-phone:min-h-control-lg",
 ].join(" ");
 
@@ -34,9 +34,13 @@ const sizeClasses: Record<FieldSize, string> = {
   md: "min-h-control-md",
 };
 
-/** The text inside the box: the value, the placeholder, and 16px on a phone so it doesn't zoom. */
+/**
+ * The text inside the box: the value, the placeholder, and 16px on a phone or under a touch
+ * pointer, so it doesn't zoom and stays in step with the taller box.
+ */
 export const fieldTextClasses = [
   "min-w-0 flex-1 bg-transparent text-body outline-none phone:text-input-touch",
+  "touch:text-input-touch",
   "placeholder:text-fg-subtle disabled:text-fg-disabled disabled:placeholder:text-fg-disabled",
   // The browser draws the cursor of the element under the pointer, so the text needs it too.
   "disabled:cursor-not-allowed",

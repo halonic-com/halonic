@@ -84,6 +84,7 @@ verifies("kit.text-area", () => {
     const box = (textarea.parentElement as HTMLElement).className;
     expect(box).toContain("border-border-control bg-surface hover:border-fg-muted focus-field");
     expect(box).toContain("phone:min-h-touch");
+    expect(textarea.className).toContain("touch:text-input-touch");
     expect(textarea.hasAttribute("data-field-text")).toBe(true);
   });
 

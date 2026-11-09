@@ -55,8 +55,11 @@ const tabClasses = "rounded-segment text-small transition-colors focus-ring";
  * area, like a small button.
  */
 const sizeClasses = {
+  // On one line at normal text. When the track is wider than its column (200% text), the labels
+  // wrap inside their tabs rather than overflow; the track keeps the tabs one height.
   inline: [
-    "inline-flex min-h-control-sm items-center gap-1.5 whitespace-nowrap px-3",
+    "inline-flex min-h-control-sm min-w-0 items-center gap-1.5 px-3",
+    "text-center hyphens-auto wrap-break-word",
     "touch:min-h-control-lg touch:hit-touch",
   ].join(" "),
   // The label wraps between words and the counter follows it like one more word. A word longer

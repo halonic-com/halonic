@@ -259,6 +259,9 @@ A `count` is `{ value, tone, name }`: an `accent` chip, or `danger` when it coun
 number is hidden from screen readers, which hear its `name` instead: "Configuration, 2 errors".
 The tab itself never turns red.
 
+Without `fill`, the labels sit on one line. When the tabs are wider than their column, as at
+200% text, each label wraps inside its tab instead of running out of it.
+
 **Keyboard.** Only the selected tab is in the Tab order. The left and right arrow keys move to
 the next tab and select it, wrapping round; Home and End jump to the ends. Disabled tabs are
 skipped. Switching is instant, with no sliding indicator, and never adds to Back.
@@ -495,7 +498,7 @@ false.
 **On a phone** the box is at least 48px high, with 12px padding and 16px text
 (`text-input-touch`), so the browser doesn't zoom in. The trailing button keeps its `sm` look with
 a 48px hit area, so the box stays 48px. **On a touch screen** at desktop width the box is 40px,
-like the Buttons beside it.
+like the Buttons beside it, and the text is 16px too.
 
 ## TextArea
 
