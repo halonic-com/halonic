@@ -27,7 +27,7 @@ export type SetupEdit =
   | { readonly kind: "sign-in-started" }
   /** The sign-in was cancelled, timed out or failed: nothing is waiting any more. */
   | { readonly kind: "sign-in-dropped" }
-  /** Google answered the sign-in. */
+  /** Google answered the sign-in. It clears a saved refresh refusal. */
   | { readonly kind: "signed-in" }
   /** The check after sign-in for one service (design 3.5, plan D5 rev. 4). */
   | {
@@ -72,7 +72,9 @@ export function editedValues(
     case "sign-in-dropped":
       return { signInStartedAt: null };
     case "signed-in":
-      return { signInStartedAt: null, lastSignInAt: now };
+      // A new refresh token, so a refused refresh no longer applies to this
+      // account. Other accounts on the same client sign in themselves.
+      return { signInStartedAt: null, lastSignInAt: now, refreshRefused: null };
     case "service-checked":
       return {
         services: {

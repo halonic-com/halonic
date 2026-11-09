@@ -17,6 +17,7 @@ const personalInTesting: ConnectorStateRecord = {
   inProductionTickedAt: null,
   lastSignInAt,
   projectId: "acme-mail",
+  refreshRefused: null,
 };
 
 const signInRefused = { kind: "signInRefused" } as const;
@@ -85,6 +86,7 @@ verifies("google-setup.connector-state", () => {
   it("needs a new secret at step 6 for a refused client (invalid_client)", () => {
     expect(connectorState(personalInTesting, { kind: "clientRefused" }, afterSignIn(day))).toEqual({
       kind: "needs-new-secret",
+      clientGone: false,
       reopenAt: ["credentials"],
     });
   });

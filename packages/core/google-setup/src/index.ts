@@ -25,6 +25,7 @@ export {
   type ConnectorState,
   type ConnectorStateRecord,
   connectorState,
+  savedConnectorState,
   testingHintWindowMs,
 } from "./connector-state.ts";
 export type { ConsolePage } from "./console-links.ts";
@@ -42,6 +43,7 @@ export {
   type RefreshRefusal,
   readRefreshAnswer,
 } from "./refresh-answer.ts";
+export { mayRefresh } from "./refresh-refused.ts";
 export type { SetupEdit } from "./setup-edit.ts";
 export type {
   GoogleApi,
@@ -51,7 +53,12 @@ export type {
   SetupRoute,
   SetupService,
 } from "./setup-input.ts";
-export type { ServiceCheckResult, SetupRecord, SetupValues } from "./setup-record.ts";
+export type {
+  RefreshRefusalReason,
+  ServiceCheckResult,
+  SetupRecord,
+  SetupValues,
+} from "./setup-record.ts";
 export { SetupRecordError, type SetupRecordErrorReason } from "./setup-record-error.ts";
 export {
   type NewSetup,

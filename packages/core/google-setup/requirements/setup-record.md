@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-706 (build plan B1, D5; design 3.6)
+- Source: HAL-706 (build plan B1, D5; design 3.6); HAL-709 added the refused refresh
 
-The setup records shall keep one record per Google account in the record store collection `_google_setups`, under a random account ref from the `IdGenerator`. A new record shall hold the route, the account type and the time it was started, with every other value unset. Each edit shall change only its own values, stamped with the clock's time: the account type, the project ID, a step done or reopened, the "In production" tick, the client ID, the client secret's ref, a sign-in started, dropped or finished, and one service's check result. The records shall read back the same after the store is opened again.
+The setup records shall keep one record per Google account in the record store collection `_google_setups`, under a random account ref from the `IdGenerator`. A new record shall hold the route, the account type and the time it was started, with every other value unset. Each edit shall change only its own values, stamped with the clock's time: the account type, the project ID, a step done or reopened, the "In production" tick, the client ID, the client secret's ref, a sign-in started, dropped or finished (a finished one also clears a refused refresh), and one service's check result. The records shall read back the same after the store is opened again.
 
 ## Examples
 

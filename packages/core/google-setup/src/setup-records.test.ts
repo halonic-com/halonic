@@ -47,6 +47,7 @@ verifies("google-setup.setup-record", () => {
       signInStartedAt: null,
       lastSignInAt: null,
       services: {},
+      refreshRefused: null,
     });
     expect(records.log).toMatchObject([
       { collection: "_google_setups", id: "gaccount_1", op: "add" },
@@ -150,6 +151,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
       "inProductionTickedAt",
       "lastSignInAt",
       "projectId",
+      "refreshRefused",
       "route",
       "services",
       "signInStartedAt",

@@ -1,5 +1,6 @@
 import { enableApiUrl, isApiHost, isProjectId } from "./console-links.ts";
 import type { RefreshRefusal } from "./refresh-answer.ts";
+import { refusalReason } from "./refresh-refused.ts";
 import type { SetupRecord } from "./setup-record.ts";
 import type { StepId } from "./setup-step.ts";
 
@@ -34,7 +35,15 @@ export type ConnectorState =
       readonly testingHint: boolean;
       readonly reopenAt: readonly StepId[];
     }
-  | { readonly kind: "needs-new-secret"; readonly reopenAt: readonly StepId[] }
+  | {
+      readonly kind: "needs-new-secret";
+      /**
+       * True when Google refused a new secret too, so the client is gone: the
+       * item reopens at steps 5 to 7 for a new client and a new sign-in.
+       */
+      readonly clientGone: boolean;
+      readonly reopenAt: readonly StepId[];
+    }
   | {
       readonly kind: "api-off";
       /** The API's host, when Google named it in the `<name>.googleapis.com` shape. */
@@ -49,7 +58,7 @@ export type ConnectorState =
 /** The parts of a setup record the connector state reads. */
 export type ConnectorStateRecord = Pick<
   SetupRecord,
-  "accountType" | "inProductionTickedAt" | "lastSignInAt" | "projectId"
+  "accountType" | "inProductionTickedAt" | "lastSignInAt" | "projectId" | "refreshRefused"
 >;
 
 const hourMs = 60 * 60 * 1000;
@@ -68,7 +77,7 @@ const projectNumberPattern = /^[0-9]{1,30}$/;
  * Gives the connector state for a problem. It holds no token and none of
  * Google's free text, so it is safe to show, to log and to keep.
  *
- * @param record - the account's setup record
+ * @param record - the account's setup record, as it was before this problem
  * @param problem - the refused refresh, or the API switched off during a run
  * @param now - the time of the refusal, from the caller's `Clock`
  * @returns the state, with the steps the setup item reopens at
@@ -82,11 +91,40 @@ export function connectorState(
     case "signInRefused":
       return needsSignInAgain(record, now);
     case "clientRefused":
-      // Only the secret is replaced: the client ID and the sign-in are kept (design 4.3).
-      return { kind: "needs-new-secret", reopenAt: ["credentials"] };
+      return needsNewSecret(refusalReason(record, problem) === "client-gone");
     case "apiDisabled":
       return apiOff(record, problem);
   }
+}
+
+/**
+ * The state a saved refusal stands for, so the badge comes back after Studio
+ * restarts. `null` when no refusal is saved. The Testing hint is judged at
+ * the time of the refusal.
+ *
+ * @param record - the account's setup record
+ */
+export function savedConnectorState(record: ConnectorStateRecord): ConnectorState | null {
+  const saved = record.refreshRefused;
+  if (saved === null) {
+    return null;
+  }
+  switch (saved.reason) {
+    case "sign-in":
+      return needsSignInAgain(record, new Date(saved.at));
+    case "client":
+      return needsNewSecret(false);
+    case "client-gone":
+      return needsNewSecret(true);
+  }
+}
+
+function needsNewSecret(clientGone: boolean): ConnectorState {
+  if (clientGone) {
+    return { kind: "needs-new-secret", clientGone, reopenAt: ["client", "credentials", "sign-in"] };
+  }
+  // Only the secret is replaced: the client ID and the sign-in are kept (design 4.3).
+  return { kind: "needs-new-secret", clientGone, reopenAt: ["credentials"] };
 }
 
 function needsSignInAgain(record: ConnectorStateRecord, now: Date): ConnectorState {

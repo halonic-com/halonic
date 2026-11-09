@@ -57,6 +57,34 @@ const serviceResult = s
   .strict();
 
 /**
+ * Why Google refused the last token refresh (design 5.2). The order is from
+ * the least to the most a fix needs; a later refusal never moves an account
+ * down it (see `strictestRefusal`).
+ * - `client`: the client secret was refused; a new secret fixes it.
+ * - `sign-in`: the refresh token was refused; only a new sign-in fixes it.
+ * - `client-gone`: a new secret was refused too, so the client is gone; only
+ *   a new client and a new sign-in fix it.
+ */
+export const refreshRefusalReasons = ["client", "sign-in", "client-gone"] as const;
+
+/** One of `refreshRefusalReasons`. */
+export type RefreshRefusalReason = (typeof refreshRefusalReasons)[number];
+
+/**
+ * A refused refresh, so no run refreshes again until it is fixed: no retry
+ * loop. It holds a fixed word and a time, never a token, a secret or text
+ * from Google. `at` is for "since when" only; no code may use it to decide
+ * whether to refresh again.
+ */
+const refreshRefused = s
+  .object({ reason: s.enum(refreshRefusalReasons), at: time })
+  .strict()
+  .nullable()
+  // Records written before HAL-709 have no such key: they read as not refused.
+  // A key that is there but malformed fails the record, so it can't refresh.
+  .default(null);
+
+/**
  * The values of a setup record as stored. Every key is always there, `null`
  * when it isn't set yet, so an update can clear a value by writing `null`.
  *
@@ -88,6 +116,8 @@ const setupValues = s
     lastSignInAt: time.nullable(),
     /** The last check after sign-in per ticked service, by service id. */
     services: s.record(s.string().regex(serviceIdPattern), serviceResult),
+    /** The last refused token refresh, until a sign-in or an accepted secret clears it. */
+    refreshRefused,
   })
   .strict();
 

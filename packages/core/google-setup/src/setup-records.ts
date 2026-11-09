@@ -1,5 +1,12 @@
 import { type Clock, foldRecords, type IdGenerator, type RecordStore } from "@halonicjs/ports";
 import type { AccountType } from "./account-type.ts";
+import type { RefreshRefusal } from "./refresh-answer.ts";
+import {
+  newSecretClears,
+  type RecordUpdate,
+  refusalMarks,
+  refusalReason,
+} from "./refresh-refused.ts";
 import { editedValues, type SetupEdit } from "./setup-edit.ts";
 import type { SetupRoute } from "./setup-input.ts";
 import {
@@ -60,6 +67,27 @@ export interface SetupRecords {
 
   /** The records whose client secret is the one under this ref: "Used by x and y". */
   usingClient(clientRef: string): Promise<SetupRecord[]>;
+
+  /**
+   * Saves a refused token refresh, so no run refreshes again (design 5.2).
+   * `signInRefused` marks this account. `clientRefused` marks every account
+   * that uses the same client, in one write, so a crash can't leave some of
+   * them free to refresh. An account never moves to a reason that needs less
+   * to fix (`strictestRefusal`).
+   *
+   * @returns the marked records, so the host can set each connector's badge
+   * @throws SetupRecordError `not-found` or `damaged`
+   */
+  refreshRefused(accountRef: string, refusal: RefreshRefusal): Promise<SetupRecord[]>;
+
+  /**
+   * Clears a `client` refusal on every account that uses this client, in one
+   * write, after Google accepted a new secret ("one new secret fixes them
+   * all", design 4.3). A `sign-in` or `client-gone` refusal stays.
+   *
+   * @returns the cleared records
+   */
+  clientSecretAccepted(clientRef: string): Promise<SetupRecord[]>;
 
   /**
    * Lets a personal account use the working app of another personal account
@@ -140,6 +168,38 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
     return values;
   };
 
+  /**
+   * Checks the records the changes make, then writes the checked values only,
+   * every record in one append. Nothing is written when one is refused.
+   */
+  const writeAll = async (
+    updates: readonly RecordUpdate[],
+    now: string,
+  ): Promise<SetupRecord[]> => {
+    const checked = updates.map(({ record: { accountRef, ...values }, changes }) => {
+      const updated = parseSetupValues({ ...values, ...changes });
+      if (updated === undefined) {
+        throw new SetupRecordError("refused");
+      }
+      const checkedChanges = Object.fromEntries(
+        Object.keys(changes).map((key) => [key, updated[key as keyof SetupValues]]),
+      );
+      return { record: { accountRef, ...updated }, checkedChanges };
+    });
+    if (checked.length > 0) {
+      await records.append(
+        checked.map(({ record, checkedChanges }) => ({
+          at: now,
+          collection: setupCollection,
+          id: record.accountRef,
+          op: "update" as const,
+          values: checkedChanges,
+        })),
+      );
+    }
+    return checked.map(({ record }) => record);
+  };
+
   /** Checks the record the changes make, then writes the checked values only. */
   const write = async (
     accountRef: string,
@@ -147,16 +207,16 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
     changes: Partial<SetupValues>,
     now: string,
   ): Promise<SetupRecord> => {
-    const updated = parseSetupValues({ ...values, ...changes });
-    if (updated === undefined) {
+    const [written] = await writeAll([{ record: { accountRef, ...values }, changes }], now);
+    // writeAll gives one record per update, so this is only for the type checker.
+    if (written === undefined) {
       throw new SetupRecordError("refused");
     }
-    const checkedChanges = Object.fromEntries(
-      Object.keys(changes).map((key) => [key, updated[key as keyof SetupValues]]),
-    );
-    await append("update", accountRef, checkedChanges, now);
-    return { accountRef, ...updated };
+    return written;
   };
+
+  const usingClient = async (clientRef: string): Promise<SetupRecord[]> =>
+    (await listValid()).filter((setup) => setup.clientSecret?.clientRef === clientRef);
 
   const listValid = async (): Promise<SetupRecord[]> => {
     const valid: SetupRecord[] = [];
@@ -191,6 +251,7 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
         signInStartedAt: null,
         lastSignInAt: null,
         services: {},
+        refreshRefused: null,
       };
       const accountRef = ids.next(accountRefPrefix);
       await append("add", accountRef, values, now);
@@ -215,8 +276,23 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
       return write(accountRef, values, editedValues(values, edit, now), now);
     },
 
-    async usingClient(clientRef) {
-      return (await listValid()).filter((setup) => setup.clientSecret?.clientRef === clientRef);
+    usingClient,
+
+    async refreshRefused(accountRef, refusal) {
+      const values = await readExisting(accountRef);
+      const reason = refusalReason(values, refusal);
+      const clientRef = values.clientSecret?.clientRef;
+      const marked =
+        refusal.kind === "clientRefused" && clientRef !== undefined
+          ? await usingClient(clientRef)
+          : [{ accountRef, ...values }];
+      const now = clock.now().toISOString();
+      return writeAll(refusalMarks(marked, reason, now), now);
+    },
+
+    async clientSecretAccepted(clientRef) {
+      const now = clock.now().toISOString();
+      return writeAll(newSecretClears(await usingClient(clientRef)), now);
     },
 
     async shareClient(accountRef, fromAccountRef) {
