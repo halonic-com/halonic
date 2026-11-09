@@ -146,8 +146,10 @@ Halonic has one firm rule: **nothing that works may break.**
   `fix(routines): fire interval triggers at the right time`.
 - **Fill in the template:** what and why, the requirement IDs, how you tested
   it, docs, a changeset sentence and AI assistance.
-- **Add a changeset** (`pnpm changeset`) if users will notice the change. Write one sentence a
-  user would understand. See [`.changeset/README.md`](.changeset/README.md).
+- **Write the changeset sentence** in the template's Changeset section if users
+  will notice the change. Write one sentence a user would understand. Don't run
+  `pnpm changeset` yet: it fails until the CLI and the Studio app are
+  versioned. See [`.changeset/README.md`](.changeset/README.md).
 - **`pnpm verify` is green** before you ask for review. All checks must pass in
   CI before anything is merged.
 - **Rebase on `main`** rather than merging `main` into your branch.

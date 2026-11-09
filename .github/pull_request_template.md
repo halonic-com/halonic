@@ -26,7 +26,7 @@ needs a decision note (see CONTRIBUTING.md).
 
 <!--
 One sentence a user would understand, or "None (no user-visible change)".
-If users will notice the change, also add it with `pnpm changeset`.
+(Don't run `pnpm changeset` yet: no package is versioned. See .changeset/README.md.)
 -->
 
 ## AI assistance used
