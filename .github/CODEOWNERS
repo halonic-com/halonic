@@ -35,3 +35,8 @@
 /packages/testing/parity/src/compare/ @halonic-com/maintainers
 /packages/testing/parity/src/allowed-differences.ts @halonic-com/maintainers
 /packages/testing/parity/allowed-differences.json @halonic-com/maintainers
+
+# A merged change to either manifest publishes to npm (publish-kit.yml), so
+# it is a release and needs the board's yes.
+/packages/adapters/integration-kit/package.json @halonic-com/maintainers
+/packages/testing/integration/package.json @halonic-com/maintainers

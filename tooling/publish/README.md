@@ -54,6 +54,14 @@ A package opts in with `halonic.publish` in its `package.json` and a `build` scr
 Staging also fails unless every aliased package of ours has the same version as this one and is pinned
 to exactly that version, so the kit and the suite always ship together.
 
+## Releasing
+
+[`publish-kit.yml`](../../.github/workflows/publish-kit.yml) publishes every version that isn't on npm
+yet, whenever a push to `main` changes `packages/adapters/integration-kit/package.json` or
+`packages/testing/integration/package.json`. So a pull request that changes either file is a release,
+and so is a run by hand with `dry_run` off. Releases need the board's yes: ask through a task for
+Chief, and merge or run only once the user has approved.
+
 ## Tests
 
 `src/pack.test.ts` packs both packages, installs the tarballs into a folder outside the workspace,

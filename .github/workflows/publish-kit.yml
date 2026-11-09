@@ -17,6 +17,11 @@
 # runs on pull requests. A version already on npm is skipped, so a run can be
 # repeated after a partial failure, and a push that changes no version
 # publishes nothing.
+#
+# So merging a pull request that changes either package's `package.json` is
+# a release, and so is a run by hand with `dry_run` off. Releases need the
+# board's yes: ask through a task for Chief, and merge or run only once the
+# user has approved.
 
 name: Publish kit
 
