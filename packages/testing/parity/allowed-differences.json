@@ -541,9 +541,9 @@
     "requirement": "routines.cron-rejects-bad-expressions",
     "area": "workspace loader: a routine's cron and time zone",
     "old": "A bad cron field gave the bare problem, such as Routine \"month-end\": \"61\" is outside 0-59, and an unknown zone Routine \"month-end\": Unknown time zone \"Mars/Olympus\", without a full stop.",
-    "new": "The routines package's own messages: a bad field is named, as in Minute: \"61\" is outside 0-59., and each message is a full sentence with a full stop (routines.check-time-zone for the zone).",
+    "new": "The routines package's own messages: a bad field is named, as in Minute: \"61\" is outside 0-59., and each message ends with a full stop (routines.check-time-zone for the zone).",
     "why": "The routines package already words these messages this way, and the loader passes them on rather than keep a second wording. Naming the field tells a person which of the five values to fix.",
-    "status": "proposed",
+    "status": "signed-off",
     "checks": [
       {
         "case": "routine/bad-cron",
