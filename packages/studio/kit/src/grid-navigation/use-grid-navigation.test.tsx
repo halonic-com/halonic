@@ -48,12 +48,12 @@ function Grid({ rows }: { readonly rows: readonly GridRow[] }) {
   );
 }
 
-function press(key: string): void {
+function press(key: string): KeyboardEvent {
+  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
   act(() => {
-    document.activeElement?.dispatchEvent(
-      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
-    );
+    document.activeElement?.dispatchEvent(event);
   });
+  return event;
 }
 
 function focused(): string | undefined {
@@ -84,10 +84,44 @@ verifies("kit.grid-navigation", () => {
     expect(focused()).toBe("reply 1");
     press("ArrowRight");
     expect(focused()).toBe("reply 1");
+    // Home goes back to the × column the user chose on the notice.
     press("Home");
-    expect(focused()).toBe("invoice 1");
+    expect(focused()).toBe("invoice 2");
     press("End");
     expect(focused()).toBe("reply 1");
+  });
+
+  it("keeps the column the user chose with ← →, past a row that doesn't have it", () => {
+    const rows: GridRow[] = [
+      { id: "invoice", cells: [true, true, true] },
+      { id: "reply", cells: [true, true, false] },
+      { id: "receipt", cells: [true, true, true] },
+    ];
+    const { container } = render(<Grid rows={rows} />);
+    act(() => container.querySelector("button")?.focus());
+    press("ArrowRight");
+    press("ArrowRight");
+    expect(focused()).toBe("invoice 2");
+    press("ArrowDown");
+    // The reply has no ×: its link, without forgetting the × column.
+    expect(focused()).toBe("reply 1");
+    press("ArrowDown");
+    expect(focused()).toBe("receipt 2");
+    press("ArrowUp");
+    press("ArrowLeft");
+    // ← chooses the name column.
+    expect(focused()).toBe("reply 0");
+    press("ArrowDown");
+    expect(focused()).toBe("receipt 0");
+  });
+
+  it("keeps the page still at the ends, where focus can't move", () => {
+    const { container } = render(<Grid rows={inbox} />);
+    act(() => container.querySelector("button")?.focus());
+    expect(press("ArrowUp").defaultPrevented).toBe(true);
+    expect(press("ArrowLeft").defaultPrevented).toBe(true);
+    expect(focused()).toBe("invoice 0");
+    expect(press("Tab").defaultPrevented).toBe(false);
   });
 
   it("leaves keys alone that come from inside a cell or with Alt", () => {

@@ -1,12 +1,12 @@
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useId } from "react";
 import { Button } from "../button/button.tsx";
 import { type GridNavigation, useGridNavigation } from "../grid-navigation/use-grid-navigation.ts";
 import { MoreIcon } from "../icons/more-icon.tsx";
-import { isComposing } from "../keyboard/is-composing.ts";
 import { ListHeading } from "../list-heading/list-heading.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
+import { rowHandlers } from "./row-handlers.ts";
 
 /** One item in a List: an agent, a routine, a run, a file in a picker. */
 export interface ListRow<Id extends string = string> {
@@ -29,13 +29,22 @@ export interface ListRow<Id extends string = string> {
     readonly label: string;
     readonly onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   };
-  /** Still readable and focusable, but it can't be opened or selected. */
-  readonly disabled?: boolean;
+  /**
+   * The row can't be used now: still readable and focusable, but it can't be opened or selected.
+   * The reason takes the meta line's place and screen readers hear it with the row.
+   */
+  readonly unavailable?: ListRowUnavailable;
   /**
    * The row has a problem: the reason takes the meta line's place in `danger`, and a `danger`
    * chip takes the trailing slot. The row stays openable, so it can be fixed.
    */
   readonly error?: { readonly reason: string; readonly chip: string };
+}
+
+/** Why a row can't be used right now: "Waiting for the model to download". */
+export interface ListRowUnavailable {
+  /** The visible text. Unlike the Button's, the List draws it, so it's the text and not an `id`. */
+  readonly reason: string;
 }
 
 /** The rows the user has picked. The screen keeps the set; Space toggles a row. */
@@ -46,16 +55,17 @@ export interface ListSelection<Id extends string = string> {
   readonly multiple?: boolean;
 }
 
-export interface ListProps<Id extends string = string> {
+interface ListBase<Id extends string> {
   readonly rows: readonly ListRow<Id>[];
-  /** The heading above the list (18.3), which also names it. */
-  readonly heading?: { readonly name: string; readonly detail?: string };
   /** Default 2. */
   readonly headingLevel?: 2 | 3 | 4;
-  /** The list's name when it has no heading: "Agents". */
-  readonly label?: string;
   /** Enter or a click on a row. Without it, a click toggles the selection. */
   readonly onOpen?: (id: Id) => void;
+  /**
+   * Ctrl Enter (⌘ Enter on a Mac), a Ctrl-click (⌘-click) or a middle click, as the Runs list
+   * opens a run in a new tab. Without it those do nothing, as in the Changes file list.
+   */
+  readonly onOpenInNewTab?: (id: Id) => void;
   readonly selection?: ListSelection<Id>;
   /** 32px rows, for menus and pickers; 48px on a phone. */
   readonly dense?: boolean;
@@ -63,19 +73,45 @@ export interface ListProps<Id extends string = string> {
   readonly flush?: boolean;
 }
 
+/** A list named by the heading above it (18.3). */
+interface ListWithHeading<Id extends string> extends ListBase<Id> {
+  readonly heading: { readonly name: string; readonly detail?: string };
+  readonly label?: never;
+}
+
+/** A list without a heading, named by a label: "Agents". */
+interface ListWithLabel<Id extends string> extends ListBase<Id> {
+  readonly label: string;
+  readonly heading?: never;
+}
+
+/** A list always has a name: a `heading` or a `label`, never both. */
+export type ListProps<Id extends string = string> = ListWithHeading<Id> | ListWithLabel<Id>;
+
 /** The 1px line above every row but the first. In a flush list it starts at 16px, with the text. */
 const lineClasses = {
   bordered: { main: "border-t border-border", more: "border-t border-border" },
   flush: {
-    main: "relative before:absolute before:top-0 before:right-0 before:left-4 before:h-px before:bg-border",
+    // A border, not a fill, so forced colours keep it.
+    main: "relative before:absolute before:top-0 before:right-0 before:left-4 before:h-0 before:border-t before:border-border",
     more: "border-t border-border",
   },
 } as const;
 
-/** Selected: the accent fill, the 2px accent bar on the main cell and a high-contrast outline. */
-const stateClasses = {
-  default: { row: "bg-surface hover:bg-surface-subtle active:bg-surface-subtle", main: "" },
-  selected: { row: "bg-accent-soft selected-forced", main: "selected-bar" },
+/**
+ * `fill` goes on the cells, not the row, so the corner cells' radius keeps it inside the box.
+ * Selected also has the 2px accent bar on the main cell and, on the row, a high-contrast outline:
+ * on the cells it would draw a line between the main cell and the More cell.
+ */
+const rowStateClasses = {
+  default: {
+    fill: "bg-surface transition-colors group-hover:bg-surface-subtle group-active:bg-surface-subtle",
+    row: "",
+    main: "",
+  },
+  selected: { fill: "bg-accent-soft", row: "selected-forced", main: "selected-bar" },
+  // No hover or press: it can't be opened.
+  unavailable: { fill: "bg-surface", row: "", main: "" },
 } as const;
 
 /** The row's height, from the presentation, the density and whether it has a meta line. */
@@ -84,9 +120,9 @@ function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean): string
     return dense ? "min-h-touch py-2" : "min-h-14 py-3";
   }
   if (dense) {
-    return "min-h-control-md";
+    return "min-h-control-md touch:min-h-touch";
   }
-  return hasMeta ? "min-h-14" : "min-h-control-lg";
+  return hasMeta ? "min-h-14" : "min-h-control-lg touch:min-h-touch";
 }
 
 /**
@@ -95,7 +131,7 @@ function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean): string
  */
 const moreClasses = {
   desktop:
-    "w-10 pr-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 touch:w-13 touch:opacity-100",
+    "w-10 pr-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 touch:w-13 touch:pr-1 touch:opacity-100",
   phone: "w-13 pr-1",
 } as const;
 
@@ -125,6 +161,7 @@ export function List<Id extends string>({
   headingLevel = 2,
   label,
   onOpen,
+  onOpenInNewTab,
   selection,
   dense = false,
   flush: flushProp,
@@ -142,7 +179,8 @@ export function List<Id extends string>({
       {heading === undefined ? null : (
         <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
       )}
-      <div className={look === "bordered" ? "overflow-hidden rounded-md border border-border" : ""}>
+      {/* Not overflow-hidden, which would cut the focus rings of the first and last rows. */}
+      <div className={look === "bordered" ? "rounded-md border border-border" : ""}>
         <table
           // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table; on a div Biome asks for the table
           role="grid"
@@ -158,12 +196,14 @@ export function List<Id extends string>({
                 key={row.id}
                 row={row}
                 first={index === 0}
+                last={index === rows.length - 1}
                 look={look}
                 phone={phone}
                 dense={dense}
                 hasMore={hasMore}
                 grid={grid}
                 onOpen={onOpen}
+                onOpenInNewTab={onOpenInNewTab}
                 selection={selection}
               />
             ))}
@@ -177,36 +217,90 @@ export function List<Id extends string>({
 interface RowProps<Id extends string> {
   readonly row: ListRow<Id>;
   readonly first: boolean;
+  readonly last: boolean;
   readonly look: "bordered" | "flush";
   readonly phone: boolean;
   readonly dense: boolean;
   readonly hasMore: boolean;
   readonly grid: GridNavigation;
   readonly onOpen: ((id: Id) => void) | undefined;
+  readonly onOpenInNewTab: ((id: Id) => void) | undefined;
   readonly selection: ListSelection<Id> | undefined;
+}
+
+/** The radius of the box's corners, on the cells that sit in them, so their fills stay inside. */
+function cornerClasses(
+  look: "bordered" | "flush",
+  first: boolean,
+  last: boolean,
+  side: "left" | "right",
+): string {
+  if (look === "flush") {
+    return "";
+  }
+  const top = side === "left" ? "rounded-tl-md" : "rounded-tr-md";
+  const bottom = side === "left" ? "rounded-bl-md" : "rounded-br-md";
+  return `${first ? top : ""} ${last ? bottom : ""}`;
+}
+
+/**
+ * A selected corner row's bar starts 8px from the box's edge, not 6px, so it stays inside the
+ * border's 11px inner curve.
+ */
+function cornerBarClasses(look: "bordered" | "flush", first: boolean, last: boolean): string {
+  if (look === "flush") {
+    return "";
+  }
+  return `${first ? "after:top-2" : ""} ${last ? "after:bottom-2" : ""}`;
+}
+
+/** The row's chip or value, or an error's `danger` chip in its place. */
+function trailingOf(row: ListRow): ReactNode {
+  return row.error === undefined ? (
+    row.trailing
+  ) : (
+    <StatusChip tone="danger">{row.error.chip}</StatusChip>
+  );
+}
+
+function rowState(isUnavailable: boolean, isSelected: boolean): keyof typeof rowStateClasses {
+  if (isUnavailable) {
+    return "unavailable";
+  }
+  return isSelected ? "selected" : "default";
 }
 
 function Row<Id extends string>({
   row,
   first,
+  last,
   look,
   phone,
   dense,
   hasMore,
   grid,
   onOpen,
+  onOpenInNewTab,
   selection,
 }: RowProps<Id>) {
   const isSelected = selection?.selected.has(row.id) === true;
-  const state = stateClasses[isSelected ? "selected" : "default"];
-  const isDisabled = row.disabled === true;
+  const isUnavailable = row.unavailable !== undefined;
+  const reasonId = useId();
   const lines = first ? { main: "", more: "" } : lineClasses[look];
-  const actions: RowActions<Id> = { row, onOpen, selection };
+  const state = rowStateClasses[rowState(isUnavailable, isSelected)];
+  const bar = state.main === "" ? "" : `${state.main} ${cornerBarClasses(look, first, last)}`;
+  const { onClick, onAuxClick, onKeyDown } = rowHandlers({
+    id: row.id,
+    isUnavailable,
+    onOpen,
+    onOpenInNewTab,
+    onToggle: selection?.onToggle,
+  });
 
   return (
     <tr
       aria-selected={selection === undefined ? undefined : isSelected}
-      aria-disabled={isDisabled ? true : undefined}
+      aria-disabled={isUnavailable ? true : undefined}
       className={`group ${state.row}`}
     >
       {/* biome-ignore lint/a11y/useFocusableInteractive: its tabIndex comes from grid.cell(), which Biome can't see */}
@@ -214,78 +308,40 @@ function Row<Id extends string>({
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
         role="gridcell"
         {...grid.cell(row.id, 0)}
-        className={`p-0 focus-ring-inset ${lines.main} ${state.main} ${isDisabled ? "cursor-default" : "cursor-pointer"}`}
-        onClick={() => clickRow(actions)}
-        onKeyDown={(event) => pressKeyOnRow(event, actions)}
+        aria-describedby={isUnavailable ? reasonId : undefined}
+        className={`p-0 focus-ring-inset ${state.fill} ${bar} ${lines.main} ${cornerClasses(look, first, last, "left")} ${hasMore ? "" : cornerClasses(look, first, last, "right")} ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
+        onClick={onClick}
+        onAuxClick={onAuxClick}
+        onKeyDown={onKeyDown}
       >
-        <RowContent row={row} phone={phone} dense={dense} />
+        <RowContent row={row} phone={phone} dense={dense} reasonId={reasonId} />
       </td>
-      {hasMore ? <MoreCell row={row} phone={phone} line={lines.more} grid={grid} /> : null}
+      {hasMore ? (
+        <MoreCell
+          row={row}
+          dense={dense}
+          grid={grid}
+          className={`${state.fill} ${moreClasses[phone ? "phone" : "desktop"]} ${lines.more} ${cornerClasses(look, first, last, "right")}`}
+        />
+      ) : null}
     </tr>
   );
 }
 
-/** What a row needs to answer a click or a key. */
-interface RowActions<Id extends string> {
-  readonly row: ListRow<Id>;
-  readonly onOpen: ((id: Id) => void) | undefined;
-  readonly selection: ListSelection<Id> | undefined;
-}
-
-/** A click opens the row, or toggles its selection when the list has no `onOpen`. */
-function clickRow<Id extends string>({ row, onOpen, selection }: RowActions<Id>) {
-  if (row.disabled === true) {
-    return;
-  }
-  if (onOpen !== undefined) {
-    onOpen(row.id);
-    return;
-  }
-  selection?.onToggle(row.id);
-}
-
-/** Enter opens the row and Space toggles its selection, but only on the row cell itself. */
-function pressKeyOnRow<Id extends string>(
-  event: KeyboardEvent<HTMLTableCellElement>,
-  { row, onOpen, selection }: RowActions<Id>,
-) {
-  if (event.target !== event.currentTarget || isComposing(event) || row.disabled === true) {
-    return;
-  }
-  if (event.key === "Enter" && onOpen !== undefined) {
-    event.preventDefault();
-    onOpen(row.id);
-    return;
-  }
-  if (event.key === " " && selection !== undefined) {
-    event.preventDefault();
-    selection.onToggle(row.id);
-  }
-}
-
-/** The row's right side: an error's `danger` chip takes the place of the row's own trailing. */
-function trailingOf(row: ListRow): ReactNode {
-  if (row.error === undefined) {
-    return row.trailing;
-  }
-  return <StatusChip tone="danger">{row.error.chip}</StatusChip>;
-}
-
-/** The main cell's inside: the icon or avatar, the title, the meta line and the trailing. */
-function RowContent({
-  row,
-  phone,
-  dense,
-}: {
+interface RowContentProps {
   readonly row: ListRow;
   readonly phone: boolean;
   readonly dense: boolean;
-}) {
-  const meta = row.error?.reason ?? row.meta;
+  /** The id of the meta line, which an unavailable row's cell names with `aria-describedby`. */
+  readonly reasonId: string;
+}
+
+/** The main cell's inside: the icon or avatar, the title, the meta line and the trailing part. */
+function RowContent({ row, phone, dense, reasonId }: RowContentProps) {
+  const meta = row.unavailable?.reason ?? row.error?.reason ?? row.meta;
   const trailing = trailingOf(row);
-  // On a phone the right edge has one job: next to a More button, the chip goes under the text.
+  // On a phone the right edge has one job: next to a More button, the chip starts the meta line.
   const trailingBelow = phone && row.more !== undefined;
-  const showTrailingBelow = trailingBelow && trailing !== undefined;
   const showTrailingRight = !trailingBelow && trailing !== undefined;
 
   return (
@@ -295,35 +351,34 @@ function RowContent({
       <Leading row={row} small={dense && !phone} />
       <div className="flex min-w-0 flex-1 flex-col">
         <span
-          className={`truncate text-body-strong ${row.disabled === true ? "text-fg-disabled" : "text-fg"}`}
+          className={`truncate text-body-strong ${row.unavailable === undefined ? "text-fg" : "text-fg-disabled text-forced-disabled"}`}
         >
           {row.title}
         </span>
-        {meta === undefined ? null : <Meta row={row} text={meta} />}
-        {showTrailingBelow ? <span className="mt-1 flex">{trailing}</span> : null}
+        <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
       </div>
       {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}
     </div>
   );
 }
 
-/** The More buttons' column. A row without a More button still gets the cell, left empty. */
-function MoreCell({
-  row,
-  phone,
-  line,
-  grid,
-}: {
-  readonly row: ListRow;
-  readonly phone: boolean;
-  readonly line: string;
+interface MoreCellProps<Id extends string> {
+  readonly row: ListRow<Id>;
+  readonly dense: boolean;
   readonly grid: GridNavigation;
-}) {
+  readonly className: string;
+}
+
+/** The row's More button, or an empty cell when another row has one and this row doesn't. */
+function MoreCell<Id extends string>({ row, dense, grid, className }: MoreCellProps<Id>) {
   return (
-    <td className={`p-0 text-right ${moreClasses[phone ? "phone" : "desktop"]} ${line}`}>
+    <td className={`p-0 text-right ${className}`}>
       {row.more === undefined ? null : (
         <Button
           variant="ghost"
+          // 28px, so the button stays clear of a 32px row's lines; its 36px ring overlaps them
+          // and isn't clipped.
+          size={dense ? "sm" : "md"}
           icon={<MoreIcon />}
           label={row.more.label}
           onClick={row.more.onClick}
@@ -334,9 +389,12 @@ function MoreCell({
   );
 }
 
-/** The row's icon or avatar. `small` is a 32px `dense` row; a dense row 48px high keeps 20px. */
+/**
+ * The row's icon or avatar. `small` is a 32px `dense` row; a dense row 48px high, on a phone or
+ * under a coarse pointer, keeps 20px.
+ */
 function Leading({ row, small }: { readonly row: ListRow; readonly small: boolean }) {
-  const dim = row.disabled === true;
+  const dim = row.unavailable !== undefined;
   if (row.avatar !== undefined) {
     return (
       <span aria-hidden="true" className={`size-7 shrink-0 ${dim ? "opacity-45" : ""}`}>
@@ -348,7 +406,7 @@ function Leading({ row, small }: { readonly row: ListRow; readonly small: boolea
     return (
       <span
         aria-hidden="true"
-        className={`inline-grid ${small ? "size-icon-sm" : "size-icon-md"} shrink-0 place-items-center *:size-full ${dim ? "text-fg-disabled" : "text-fg-muted"}`}
+        className={`inline-grid ${small ? "size-icon-sm touch:size-icon-md" : "size-icon-md"} shrink-0 place-items-center *:size-full ${dim ? "text-fg-disabled text-forced-disabled" : "text-fg-muted"}`}
       >
         {row.icon}
       </span>
@@ -357,12 +415,43 @@ function Leading({ row, small }: { readonly row: ListRow; readonly small: boolea
   return null;
 }
 
-function Meta({ row, text }: { readonly row: ListRow; readonly text: string }) {
+interface MetaLineProps {
+  readonly row: ListRow;
+  readonly text: string | undefined;
+  readonly id: string;
+  /** On a phone next to a More button, the chip starts the last line (kit 6). */
+  readonly chip: ReactNode;
+}
+
+/**
+ * The line under the title: the meta text, an error's reason or why the row is unavailable. With
+ * a chip, the chip comes first and only the text is cut; without text, the chip has the line alone.
+ */
+function MetaLine({ row, text, id, chip }: MetaLineProps) {
+  if (text === undefined && chip === undefined) {
+    return null;
+  }
+  // An unavailable row's reason stays at full strength, so it can be read (VRK 0.6).
   let colour = "text-fg-muted";
-  if (row.disabled === true) {
-    colour = "text-fg-disabled";
-  } else if (row.error !== undefined) {
+  if (row.error !== undefined && row.unavailable === undefined) {
     colour = "text-danger";
   }
-  return <span className={`truncate text-small ${colour}`}>{text}</span>;
+  const line =
+    text === undefined ? null : (
+      <span
+        id={row.unavailable === undefined ? undefined : id}
+        className={`truncate text-small ${colour}`}
+      >
+        {text}
+      </span>
+    );
+  if (chip === undefined) {
+    return line;
+  }
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className="flex shrink-0">{chip}</span>
+      {line === null ? null : <span className="flex min-w-0">{line}</span>}
+    </span>
+  );
 }

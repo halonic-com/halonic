@@ -48,6 +48,16 @@ describe("theme.css built by Tailwind: focus", () => {
   });
 });
 
+describe("theme.css built by Tailwind: the selected bar", () => {
+  it("comes before after:top-2 and after:bottom-2, so a List's corner rows can inset it 8px", async () => {
+    const css = await buildCss(["selected-bar", "after:top-2", "after:bottom-2"]);
+    const bar = css.indexOf(".selected-bar");
+    expect(bar).toBeGreaterThan(-1);
+    expect(css.indexOf(".after\\:top-2::after")).toBeGreaterThan(bar);
+    expect(css.indexOf(".after\\:bottom-2::after")).toBeGreaterThan(bar);
+  });
+});
+
 describe("theme.css built by Tailwind: on a muted fill", () => {
   it("matches inside a muted fill, and inside a hovered or pressed one, without more specificity", async () => {
     const css = await buildCss(["on-muted:bg-border"]);

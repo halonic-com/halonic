@@ -396,40 +396,54 @@ List draws them.
 />;
 ```
 
-| Prop           | What it is                                                                            |
-| -------------- | ------------------------------------------------------------------------------------- |
-| `rows`         | The rows, each with a stable `id` (never the index) and the parts below               |
-| `heading`      | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it |
-| `headingLevel` | 2 by default                                                                          |
-| `label`        | The list's name when it has no heading: "Agents"                                      |
-| `onOpen`       | Called with a row's `id` on Enter or a click                                          |
-| `selection`    | `{ selected, onToggle, multiple }`: the screen keeps the set, Space toggles a row     |
-| `dense`        | 32px rows, for menus and pickers                                                      |
-| `flush`        | No outer border or radius, lines from 16px. On by default on a phone                  |
+| Prop             | What it is                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `rows`           | The rows, each with a stable `id` (never the index) and the parts below               |
+| `heading`        | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it |
+| `headingLevel`   | 2 by default                                                                          |
+| `label`          | The list's name when it has no heading: "Agents". A list needs one of the two         |
+| `onOpen`         | Called with a row's `id` on Enter or a click                                          |
+| `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click              |
+| `selection`      | `{ selected, onToggle, multiple }`: the screen keeps the set, Space toggles a row     |
+| `dense`          | 32px rows, for menus and pickers                                                      |
+| `flush`          | No outer border or radius, lines from 16px. On by default on a phone                  |
 
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
-32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a `trailing` chip or value, a `more` button
-(`{ label, onClick }`, its label naming the row), `disabled` and `error` (`{ reason, chip }`).
+32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
+`trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
+`unavailable` (`{ reason }`) and `error` (`{ reason, chip }`). Unlike the Button's, an unavailable row's `reason` is the text itself: the
+List draws it in place of the meta line and points `aria-describedby` at it.
+
+```tsx
+<List
+  label="Models"
+  rows={[{ id: "llama", title: "Llama 3", unavailable: { reason: "Still downloading" } }]}
+/>;
+```
 
 **Keyboard.** The list is one Tab stop. The up and down arrow keys, Home and End move between
-rows; the right arrow key reaches the row's More button and the left one comes back. Enter opens
-the row, Space selects it when the list allows selection. When the focused row is removed, focus
+rows; the right arrow key reaches the row's More button and the left one comes back. At the ends
+they do nothing, and don't scroll the page. Enter opens the row, Space selects it when the list
+allows selection. With Ctrl or ⌘ held, Enter and a click call `onOpenInNewTab`, and do nothing
+when there isn't one; with Shift or Alt they do nothing. When the focused row is removed, focus
 goes to the row that took its place, else the one before. It's a `grid`, not a `listbox`, because
 rows hold a button.
 
-| State    | What shows                                                                                 |
-| -------- | ------------------------------------------------------------------------------------------ |
-| Default  | A `surface` fill; 56px with a meta line, 40px without, 32px `dense`; padded 16px           |
-| Hover    | `surface-subtle`, and the More button appears                                              |
-| Focus    | An inset 2px `accent` ring, which the list's edge can't clip                               |
-| Disabled | Title, meta and icon `fg-disabled`, avatar at 45%. Still focusable, but doesn't open       |
-| Error    | The reason in `danger` in place of the meta line, and a `danger` chip. It still opens      |
-| Selected | `accent-soft`, `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
+| State       | What shows                                                                                                                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default     | A `surface` fill; 56px with a meta line, 40px without, 32px `dense`; padded 16px                                                                                                                    |
+| Hover       | `surface-subtle`, faded in over 120ms, and the More button appears                                                                                                                                  |
+| Focus       | An inset 2px `accent` ring, which the list's edge can't clip                                                                                                                                        |
+| Unavailable | Title and icon `fg-disabled` (`GrayText` in high contrast), avatar at 45%, the reason in `fg-muted`. No hover, a `not-allowed` cursor. Still focusable, but doesn't open                            |
+| Error       | The reason in `danger` in place of the meta line, and a `danger` chip. It still opens                                                                                                               |
+| Selected    | `accent-soft` and a 2px `accent` bar at the start (8px from a bordered box's corners), and an outline in high contrast; `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
 
 **On a phone** the list is `flush` and rows are at least 56px (64px with a meta line), padded
-12px 16px; `dense` rows are 48px, with a 20px icon. The More button is always there at 48px, and the right edge has
-one job: a row with a More button puts its chip under the text. **On a touch screen** at desktop
-width the More button is always shown too.
+12px 16px; `dense` rows are 48px, with a 20px icon. The More button is always there at 48px, and
+the right edge has one job: a row with a More button puts its chip at the start of the meta line,
+before the text. **On a touch screen** at desktop width the More button is always shown too, and
+rows are at least 48px, a `dense` row's icon 20px again. A `dense` list's More button is 28px, so
+the button stays clear of the row's lines; its ring overlaps them and isn't clipped.
 
 ## useGridNavigation
 
@@ -447,7 +461,8 @@ const grid = useGridNavigation(
 ```
 
 One cell is in the Tab order. ↑ ↓ move between rows in the same column, ← → between a row's
-cells, Home and End to the first and last row. Heading rows (no focusable cells) and empty cells
+cells, Home and End to the first and last row. Only ← → (or a click) choose the column: ↓ through a
+row without it lands on the nearest cell to its left, and the next row that has it gets it back. Heading rows (no focusable cells) and empty cells
 are passed over. Keys from a field inside a cell are left alone.
 
 ## SkeletonBar

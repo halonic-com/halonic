@@ -41,12 +41,23 @@ export interface GridNavigation {
 interface Remembered extends GridPosition {
   /** Where the row was, so a removed row's place can be found again. */
   readonly index: number;
+  /**
+   * The column the user chose with ← → or a click. ↑ ↓ Home End go back to it, even after passing
+   * a row that doesn't have it, and don't change it.
+   */
+  readonly chosen: number;
 }
+
+/** The keys the grid uses. From a cell they never scroll the page, even where focus can't move. */
+const gridKeys = new Set(["ArrowDown", "ArrowUp", "Home", "End", "ArrowRight", "ArrowLeft"]);
+const keepsColumn = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
 
 /**
  * Roving focus for a `role="grid"`: the grid is one Tab stop, ↑ ↓ move between rows in the same
  * column, ← → between a row's cells, Home and End go to the first and last row. Rows and cells
- * that can't take focus are passed over (component specs 23.3, L3).
+ * that can't take focus are passed over (component specs 23.3, L3). Only ← → change the column:
+ * ↑ ↓ through a row without it land on the nearest cell to its left, and the next row that has it
+ * gets it back.
  *
  * When the focused row goes away, focus goes to the row that took its place, else the one before
  * it (23 A2), never to `body`.
@@ -59,10 +70,15 @@ export function useGridNavigation(rows: readonly GridRow[]): GridNavigation {
   const [remembered, setRemembered] = useState<Remembered | undefined>(undefined);
   const elements = useRef(new Map<string, HTMLElement>());
   const focusInside = useRef(false);
+  // Set while ↑ ↓ Home End move focus, so the cell's focus keeps the chosen column.
+  const movingInColumn = useRef(false);
   const active = resolve(rows, remembered);
 
-  const focusCell = (position: GridPosition) => {
+  /** With `keepColumn`, the cell's focus doesn't change the column the user chose. */
+  const focusCell = (position: GridPosition, keepColumn: boolean) => {
+    movingInColumn.current = keepColumn;
     elements.current.get(key(position.row, position.column))?.focus();
+    movingInColumn.current = false;
   };
 
   // The focused row was removed: its element is gone and the browser put focus on `body`.
@@ -73,7 +89,7 @@ export function useGridNavigation(rows: readonly GridRow[]): GridNavigation {
     }
     const focused = document.activeElement;
     if (focused === null || focused === document.body) {
-      focusCell(active);
+      focusCell(active, true);
     }
   });
 
@@ -85,12 +101,16 @@ export function useGridNavigation(rows: readonly GridRow[]): GridNavigation {
     if (event.target !== elements.current.get(key(active.row, active.column))) {
       return;
     }
-    const next = move(rows, active, event.key);
+    if (!gridKeys.has(event.key)) {
+      return;
+    }
+    // At the ends too, so holding ↓ on the last row doesn't scroll the page.
+    event.preventDefault();
+    const next = move(rows, active, remembered?.chosen ?? active.column, event.key);
     if (next === undefined) {
       return;
     }
-    event.preventDefault();
-    focusCell(next);
+    focusCell(next, keepsColumn.has(event.key));
   };
 
   return {
@@ -118,7 +138,13 @@ export function useGridNavigation(rows: readonly GridRow[]): GridNavigation {
       },
       onFocus: () => {
         const index = rows.findIndex((candidate) => candidate.id === row);
-        setRemembered({ row, column, index });
+        const keep = movingInColumn.current;
+        setRemembered((before) => ({
+          row,
+          column,
+          index,
+          chosen: keep && before !== undefined ? before.chosen : column,
+        }));
       },
     }),
     active,
@@ -160,13 +186,18 @@ function resolve(
   const after = rows.slice(from).find(focusable);
   const before = rows.slice(0, from).findLast(focusable);
   const row = after ?? before;
-  return row === undefined ? undefined : { row: row.id, column: nearestCell(row, column) };
+  const chosen = remembered?.chosen ?? column;
+  return row === undefined ? undefined : { row: row.id, column: nearestCell(row, chosen) };
 }
 
-/** Where a key moves focus to, or nothing when the key isn't a grid key or there's nowhere to go. */
+/**
+ * Where a key moves focus to, or nothing when the key isn't a grid key or there's nowhere to go.
+ * ↑ ↓ Home End aim for the `chosen` column.
+ */
 function move(
   rows: readonly GridRow[],
   active: GridPosition,
+  chosen: number,
   pressed: string,
 ): GridPosition | undefined {
   const at = rows.findIndex((row) => row.id === active.row);
@@ -175,9 +206,7 @@ function move(
     return undefined;
   }
   const inRow = (target: GridRow | undefined) =>
-    target === undefined
-      ? undefined
-      : { row: target.id, column: nearestCell(target, active.column) };
+    target === undefined ? undefined : { row: target.id, column: nearestCell(target, chosen) };
 
   switch (pressed) {
     case "ArrowDown":
