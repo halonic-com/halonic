@@ -1,8 +1,10 @@
 import { findRepoRoot, formatProblem, loadContext, rules } from "@halonicjs/tooling-check";
+import { generatedCommandsFile, writeCommandsFile } from "../cli-commands.ts";
 import { fixFeatureList, generatedFeaturesFile, writeFeaturesFile } from "../features.ts";
 
 /**
- * pnpm discover            write the generated registration files (gitignored)
+ * pnpm discover            write the generated registration files (gitignored): the Studio's
+ *                          features and the CLI's commands
  * pnpm discover --fix      also rewrite the Studio's feature list in apps/studio/package.json
  * pnpm discover --check    change nothing; fail if the feature list is out of date (CI)
  *
@@ -25,6 +27,9 @@ function main(argv: readonly string[]): number {
   }
   if (writeFeaturesFile(loadContext(root))) {
     console.log(`discover: wrote ${generatedFeaturesFile}.`);
+  }
+  if (writeCommandsFile(root)) {
+    console.log(`discover: wrote ${generatedCommandsFile}.`);
   }
   return 0;
 }

@@ -17,11 +17,13 @@
         "apps/*/package.json",
         "packages/studio/features/*/package.json",
         "packages/studio/features/*/src/feature.ts",
+        "apps/cli/src/commands/*/command.ts",
         "tooling/discover/src/**",
         "tooling/check/src/**"
       ],
       "outputs": [
-        "apps/studio/src/generated/**"
+        "apps/studio/src/generated/**",
+        "apps/cli/src/generated/**"
       ]
     },
     "transit": {
