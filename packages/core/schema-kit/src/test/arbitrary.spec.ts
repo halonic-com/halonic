@@ -125,9 +125,11 @@ class InputGenerator {
       case "optional":
       case "default":
         return fc.oneof(fc.constant(undefined), this.input(def.innerType as Schema, depth));
+      // The depth limit ends the recursion, so the generator is built once
+      // here. Building it again for every sample made Guard the slowest case.
       case "lazy":
         if (depth >= MAX_GENERATED_DEPTH) return anyValue;
-        return fc.constant(null).chain(() => this.input(def.getter() as Schema, depth + 1));
+        return this.input(def.getter() as Schema, depth + 1);
       case "string":
         return this.#text;
       case "number":

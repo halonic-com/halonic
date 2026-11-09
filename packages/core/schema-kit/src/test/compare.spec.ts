@@ -32,9 +32,11 @@ export function kitOutcome(schema: Schema, input: unknown): Outcome {
 export function expectSameOutcome(zod: ZodType, kit: Schema, input: unknown): void {
   const expected = zodOutcome(zod, input);
   const actual = kitOutcome(kit, input);
-  expect(actual.ok, describeInput(input)).toBe(expected.ok);
-  expect(actual.paths, describeInput(input)).toEqual(expected.paths);
-  if (expected.ok) expect(actual.value, describeInput(input)).toEqual(expected.value);
+  // Describing the input means writing it out as JSON, so it is done once.
+  const inputDescription = describeInput(input);
+  expect(actual.ok, inputDescription).toBe(expected.ok);
+  expect(actual.paths, inputDescription).toEqual(expected.paths);
+  if (expected.ok) expect(actual.value, inputDescription).toEqual(expected.value);
 }
 
 // String keys and number indexes stay apart: ["0"] and [0] are different paths.
