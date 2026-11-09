@@ -117,6 +117,9 @@ Halonic has one firm rule: **nothing that works may break.**
   or if a test names a requirement that doesn't exist.
 - **A bug fix starts with a failing test.** Write the test first, show that it
   fails without your fix, then fix it.
+- **If code is hard to unit test, refactor it.** Split the logic out so it can
+  be tested on its own, rather than skipping the test or covering it only end
+  to end.
 - **Tests that guard a requirement can't be weakened quietly.** Deleting or
   skipping a test, removing assertions, changing a golden file or editing an
   active requirement needs an approved decision note in the pull request. The
