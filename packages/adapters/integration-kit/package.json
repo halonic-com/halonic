@@ -36,10 +36,10 @@
     },
     "publish": {
       "name": "@halonicjs/integration-kit",
+      "entry": "./integration",
+      "description": "What an integration for Halonic imports: the port types, runTool and the errors the host raises. No dependencies.",
       "aliases": {},
-      "dependencies": {
-        "zod": "^4.6.7"
-      },
+      "dependencies": {},
       "peerDependencies": {}
     }
   }

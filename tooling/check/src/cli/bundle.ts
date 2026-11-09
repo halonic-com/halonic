@@ -31,8 +31,14 @@ function main(argv: readonly string[]): number {
     target,
     runtime,
     dependencyList: readJson<DependencyList>(join(root, "tooling/check/dependencies.json")),
+    // Our own code under its workspace name or, installed from npm, under
+    // the name it is published as.
     workspacePackages: new Set(
-      listWorkspacePackages(root).flatMap((pkg) => pkg.manifest.name ?? []),
+      listWorkspacePackages(root).flatMap((pkg) =>
+        [pkg.manifest.name, pkg.manifest.halonic?.publish?.name].filter(
+          (name): name is string => name !== undefined,
+        ),
+      ),
     ),
   };
   const annotate = process.env["GITHUB_ACTIONS"] === "true";

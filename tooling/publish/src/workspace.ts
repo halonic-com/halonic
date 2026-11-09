@@ -7,15 +7,26 @@ export type WorkspacePackage = {
   directory: string;
   /** Subpath (`.` or `./integration`) to the TypeScript source file it points at. */
   entries: Map<string, string>;
+  version: string;
+  /** The npm name from `halonic.publish`, for a package we publish. */
+  publishedName: string | undefined;
 };
 
 /** The published form of a workspace package, set in its `halonic.publish`. */
 export type PublishConfig = {
   /** The npm name, which may differ from the workspace name. */
   name: string;
-  /** Workspace names that stay imports of a published package instead of being bundled. */
+  /** The subpath of the package's `exports` that becomes the published package (default `.`). */
+  entry: string;
+  /** The npm description, when the workspace package's own one doesn't fit the published entry. */
+  description: string | undefined;
+  /**
+   * Workspace entries (`@halonicjs/name` or `@halonicjs/name/subpath`) that
+   * stay imports of a published package instead of being bundled, with that
+   * package's npm name.
+   */
   aliases: Record<string, string>;
-  /** Outside packages the tarball depends on, with their version ranges. */
+  /** Packages the tarball depends on, each pinned to one exact version. */
   dependencies: Record<string, string>;
   /** Packages the consumer brings, with their version ranges. */
   peerDependencies: Record<string, string>;
@@ -43,7 +54,8 @@ export function findWorkspacePackages(root: string): WorkspacePackage[] {
   return found;
 }
 
-function describePackage(directory: string): WorkspacePackage {
+/** Reads the name and the exported entries of the package in `directory`. */
+export function describePackage(directory: string): WorkspacePackage {
   const manifest = readJson(join(directory, "package.json"));
   const entries = new Map<string, string>();
   const exported = manifest["exports"];
@@ -52,7 +64,15 @@ function describePackage(directory: string): WorkspacePackage {
       if (typeof target === "string") entries.set(subpath, resolve(directory, target));
     }
   }
-  return { name: String(manifest["name"]), directory, entries };
+  const halonic = manifest["halonic"] as { publish?: { name?: unknown } } | undefined;
+  const publishedName = halonic?.publish?.name;
+  return {
+    name: String(manifest["name"]),
+    directory,
+    entries,
+    version: String(manifest["version"] ?? ""),
+    publishedName: typeof publishedName === "string" ? publishedName : undefined,
+  };
 }
 
 /** Reads and checks `halonic.publish` from a package manifest. */
@@ -66,6 +86,8 @@ export function readPublishConfig(manifest: Record<string, unknown>): PublishCon
   }
   return {
     name: publish["name"],
+    entry: typeof publish["entry"] === "string" ? publish["entry"] : ".",
+    description: typeof publish["description"] === "string" ? publish["description"] : undefined,
     aliases: (publish["aliases"] ?? {}) as Record<string, string>,
     dependencies: (publish["dependencies"] ?? {}) as Record<string, string>,
     peerDependencies: (publish["peerDependencies"] ?? {}) as Record<string, string>,

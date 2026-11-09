@@ -119,6 +119,16 @@
       ],
       "reason": "Measures test coverage for the shared Vitest preset, which fails a package below the floor in its package.json. Vitest finds it as its own optional peer, so packages don't list it."
     },
+    "esbuild": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/tooling-publish"
+      ],
+      "layers": [
+        "tooling"
+      ],
+      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. No dependencies beyond its own platform binaries. Tests only."
+    },
     "fast-check": {
       "category": "dev-tooling",
       "allowedIn": [

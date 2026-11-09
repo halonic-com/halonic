@@ -20,7 +20,12 @@ verifies("publish.staged-package", () => {
     );
     const manifest = JSON.parse(readFileSync(join(staged.directory, "package.json"), "utf8"));
     expect(manifest.name).toBe("@halonicjs/integration-kit");
-    expect(Object.keys(manifest.dependencies)).toEqual(["zod"]);
+    expect(manifest.dependencies).toEqual({});
+    expect(manifest.description).toContain("runTool");
+    expect(manifest.repository.directory).toBe("packages/adapters/integration-kit");
+    expect(manifest.exports["."].default).toBe(
+      "./dist/adapters/integration-kit/src/integration/index.js",
+    );
 
     const imported = new Set<string>();
     for (const file of readdirSync(join(staged.directory, "dist"), {
@@ -34,6 +39,9 @@ verifies("publish.staged-package", () => {
       });
     }
     expect([...imported].filter((name) => name.startsWith("@halonicjs/"))).toEqual([]);
+    expect(readdirSync(join(staged.directory, "dist/adapters/integration-kit/src")).sort()).toEqual(
+      ["integration"],
+    );
   }, 120_000);
 
   it("names the published kit in the conformance suite, which depends on it", () => {
@@ -43,13 +51,17 @@ verifies("publish.staged-package", () => {
       join(scratch, "suite"),
     );
     const manifest = JSON.parse(readFileSync(join(staged.directory, "package.json"), "utf8"));
-    expect(manifest.dependencies["@halonicjs/integration-kit"]).toBe("^0.1.0");
-    const entry = readFileSync(
+    expect(manifest.dependencies["@halonicjs/integration-kit"]).toBe(manifest.version);
+    const hostSide = join(staged.directory, "dist/adapters/integration-kit/src");
+    const limitedHttp = readFileSync(join(hostSide, "limited-http.js"), "utf8");
+    expect(limitedHttp).toContain('from "@halonicjs/integration-kit"');
+    expect(readdirSync(hostSide)).not.toContain("integration");
+    const checks = readFileSync(
       join(staged.directory, "dist/testing/integration/src/checks.js"),
       "utf8",
     );
-    expect(entry).toContain('"@halonicjs/integration-kit"');
-    expect(entry).not.toContain("adapter-integration-kit");
+    expect(checks).toContain('from "../../../adapters/integration-kit/src/index.js"');
+    expect(checks).not.toContain("adapter-integration-kit");
   }, 120_000);
 });
 
@@ -58,7 +70,14 @@ verifies("publish.staged-package", () => {
     const distribution = mkdtempSync(join(tmpdir(), "stage-test-"));
     try {
       writeFileSync(join(distribution, "a.js"), 'import { pad } from "left-pad";\n');
-      const config = { name: "@acme/thing", aliases: {}, dependencies: {}, peerDependencies: {} };
+      const config = {
+        name: "@acme/thing",
+        entry: ".",
+        description: undefined,
+        aliases: {},
+        dependencies: {},
+        peerDependencies: {},
+      };
       expect(() => requireDeclaredImports(distribution, config)).toThrow(
         /a\.js imports "left-pad"/,
       );
@@ -69,7 +88,7 @@ verifies("publish.staged-package", () => {
 });
 
 verifies("publish.staged-package", () => {
-  it("takes the outside dependency ranges from the catalog", () => {
+  it("takes the outside dependency versions from the catalog", () => {
     const catalog = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8");
     for (const folder of ["adapters/integration-kit", "testing/integration"]) {
       const manifest = JSON.parse(
@@ -78,7 +97,7 @@ verifies("publish.staged-package", () => {
       for (const [name, range] of Object.entries(manifest.halonic.publish.dependencies)) {
         if (name.startsWith("@halonicjs/")) continue;
         const pinned = new RegExp(`^  ${name}: (\\S+)$`, "m").exec(catalog)?.[1];
-        expect(range, `${folder}: ${name}`).toBe(`^${pinned}`);
+        expect(range, `${folder}: ${name}`).toBe(pinned);
       }
     }
   });

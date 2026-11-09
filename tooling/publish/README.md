@@ -18,21 +18,41 @@ A package opts in with `halonic.publish` in its `package.json` and a `build` scr
   },
   "halonic": {
     "publish": {
-      "name": "@halonicjs/integration-kit",
-      "aliases": {},
-      "dependencies": {
-        "zod": "^4.6.7"
+      "name": "@halonicjs/testing-integration",
+      "entry": ".",
+      "aliases": {
+        "@halonicjs/adapter-integration-kit/integration": "@halonicjs/integration-kit"
       },
-      "peerDependencies": {}
+      "dependencies": {
+        "@halonicjs/integration-kit": "0.1.0",
+        "zod": "4.6.7"
+      },
+      "peerDependencies": {
+        "vitest": "^5.1.0"
+      }
     }
   }
 }
 ```
 
-`pnpm --filter @halonicjs/adapter-integration-kit build` writes the publishable copy to
-`packages/adapters/integration-kit/dist/package`. Publish that folder, never the source package.
+`pnpm --filter @halonicjs/testing-integration build` writes the publishable copy to
+`packages/testing/integration/dist/package`. Publish that folder, never the source package.
 
 - `name`: the npm name, which may differ from the workspace name.
-- `aliases`: workspace packages that are imports of another published package instead of bundled code
-  (the conformance suite imports the published kit, so both share one set of error classes).
-- `dependencies` and `peerDependencies`: the only outside packages the tarball may import. Staging fails on any other.
+- `entry`: the subpath of the package's `exports` that is published (default `.`). The kit publishes
+  only `./integration`, so integrations carry none of the host side.
+- `description`: the npm description, when the workspace one doesn't fit the published entry.
+- `aliases`: workspace entries that stay imports of another published package instead of bundled code.
+  The conformance suite bundles the kit's host side but imports `./integration` from the published kit,
+  so both share one set of error classes. The aliased entry's files are left out of the tarball.
+- `dependencies` and `peerDependencies`: the only outside packages the tarball may import. Staging fails on
+  any other. Dependencies are exact versions.
+
+Staging also fails unless every aliased package of ours has the same version as this one and is pinned
+to exactly that version, so the kit and the suite always ship together.
+
+## Tests
+
+`src/pack.test.ts` packs both packages, installs the tarballs into a folder outside the workspace,
+imports and type-checks them there, and bundles a small integration against the kit with esbuild so
+`check:bundle` can check it. It needs no network: `zod` and `vitest` are linked from the workspace.
