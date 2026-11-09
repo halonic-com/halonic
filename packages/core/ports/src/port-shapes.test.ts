@@ -15,6 +15,7 @@ import type {
   Sandbox,
   SandboxBlock,
   SandboxCapabilities,
+  SandboxFence,
   SandboxProcess,
   SandboxProfile,
   SandboxSession,
@@ -246,5 +247,23 @@ verifies("ports.sandbox-session", () => {
     expectTypeOf<SandboxSession["close"]>().returns.toEqualTypeOf<Promise<void>>();
     expectTypeOf<SandboxProcess["kill"]>().returns.toEqualTypeOf<Promise<void>>();
     expectTypeOf<SandboxProcess["exited"]>().resolves.toHaveProperty("reason");
+  });
+});
+
+verifies("ports.sandbox-fence-proof", () => {
+  typeTest("a session carries a fence proof that is one of three states", () => {
+    expectTypeOf<SandboxSession["fence"]>().toEqualTypeOf<SandboxFence>();
+    expectTypeOf<SandboxFence["state"]>().toEqualTypeOf<"fenced" | "not-fenced" | "stopped">();
+  });
+
+  it("gives a reason only when the session is not fenced", () => {
+    const notFenced: SandboxFence = { state: "not-fenced", reason: "the canary file was readable" };
+    expect(notFenced.state).toBe("not-fenced");
+    // @ts-expect-error: a session that is not fenced says why
+    const noReason: SandboxFence = { state: "not-fenced" };
+    expect(noReason).toBeDefined();
+    // @ts-expect-error: a fenced session has no reason
+    const fencedWithReason: SandboxFence = { state: "fenced", reason: "x" };
+    expect(fencedWithReason).toBeDefined();
   });
 });

@@ -112,6 +112,7 @@ export {
   type SandboxCheck,
   type SandboxCommand,
   type SandboxExit,
+  type SandboxFence,
   type SandboxFileAccess,
   type SandboxNetwork,
   type SandboxProcess,
