@@ -33,7 +33,7 @@ Each package declares its layer and owner in `package.json` (`"halonic": { "laye
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | `pnpm install`                                                           | install dependencies (Node and pnpm versions are pinned; don't override them)          |
 | `pnpm verify`                                                            | repo checks, then typecheck, lint, test and build for the packages your change affects |
-| `pnpm verify --full`                                                     | the same for every package, as CI runs it                                              |
+| `pnpm verify --full`                                                     | every package, plus the trace check, as CI runs it; only when the task needs it        |
 | `pnpm check [rule …]`                                                    | only the repo checks; takes seconds                                                    |
 | `pnpm new package <layer>/<name> --owner <agent> --purpose "<one line>"` | create a package, with its own `AGENTS.md`, that passes every check                    |
 | `pnpm new feature <name> --owner <agent> --purpose "<one line>"`         | create a Studio feature and add it to the Studio's feature list                        |
@@ -107,7 +107,10 @@ you spot become a new task.
 
 - Under about 400 changed lines (generated files, the lockfile and fixtures don't count).
 - Title in the form `type(scope): summary`; CI checks it.
-- Rebase on `main` before review. `pnpm verify` is green before you ask for review.
+- Rebase on `main` before review. Locally, run the targeted checks for what you changed (a single
+  package's tests, `pnpm check`). Then push and let CI (`ci-ok`) give the verdict. Run
+  `pnpm verify --full` only when the task needs it. Local tests use two workers; set
+  `HALONIC_TEST_WORKERS` to change that.
 - Fill in the template: requirements, how you tested, docs, changeset (or "None"), and the AI tool
   and model you used. Agents leave the sign-off box unticked (see Review).
 - Docs change in the same pull request as the behaviour.

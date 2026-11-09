@@ -6,9 +6,12 @@ import { findRepoRoot } from "../lib/workspace.ts";
  *
  * The agent's local check before asking for review: our own
  * checks, formatting, the feature list, then typecheck, lint and test for
- * the packages the change affects, and last the trace check, which reads
- * the test result files. CI runs every task through the cache. Pass --full
- * to run every package, as CI does.
+ * the packages the change affects. Outside CI the Turbo steps run at most
+ * two tasks at once, so several runs don't overload the machine (set
+ * `CI` to lift that). Pass --full to run every package and finish with the
+ * trace check, which reads every package's test result files, as CI does.
+ * Plain verify leaves trace out: in a fresh worktree it would run every
+ * package's tests.
  */
 interface Step {
   readonly label: string;
@@ -19,6 +22,7 @@ interface Step {
 function main(argv: readonly string[]): number {
   const full = argv.includes("--full");
   const turboScope = full ? [] : ["--affected"];
+  const turboLimit = process.env["CI"] ? [] : ["--concurrency=2"];
   const steps: Step[] = [
     {
       label: "repo checks",
@@ -50,24 +54,18 @@ function main(argv: readonly string[]): number {
         "test",
         "build",
         ...turboScope,
+        ...turboLimit,
         "--output-logs=errors-only",
       ],
     },
   ];
-  if (!full) {
-    // The trace check needs every package's result file. Unaffected
-    // packages come from Turbo's cache, so this is quick after the first run.
+  if (full) {
     steps.push({
-      label: "test results of the other packages",
+      label: "requirements and their tests (trace)",
       command: "pnpm",
-      args: ["exec", "turbo", "run", "test", "--output-logs=errors-only"],
+      args: ["run", "--silent", "check", "trace", "--report"],
     });
   }
-  steps.push({
-    label: "requirements and their tests (trace)",
-    command: "pnpm",
-    args: ["run", "--silent", "check", "trace", "--report"],
-  });
   const root = findRepoRoot();
   const started = performance.now();
   for (const step of steps) {

@@ -53,6 +53,10 @@
       "env": [
         "FAST_CHECK_SEED"
       ],
+      "passThroughEnv": [
+        "CI",
+        "HALONIC_TEST_WORKERS"
+      ],
       "outputs": [
         "test-results/**"
       ]

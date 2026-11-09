@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
 import { UnrunTestFilesReporter } from "./unrun-files-reporter.ts";
-import { definePackageTestConfig, fastCheckSetupFile, testResultsFile } from "./vitest-preset.ts";
+import {
+  definePackageTestConfig,
+  fastCheckSetupFile,
+  testResultsFile,
+  testWorkerLimit,
+} from "./vitest-preset.ts";
 
 describe("definePackageTestConfig", () => {
   it("writes the result file with the JSON reporter", () => {
@@ -56,5 +61,22 @@ describe("definePackageTestConfig", () => {
     } finally {
       rmSync(other, { recursive: true, force: true });
     }
+  });
+});
+
+describe("testWorkerLimit", () => {
+  it("keeps Vitest's defaults in CI, whatever the override says", () => {
+    expect(testWorkerLimit({ CI: "true" })).toBeUndefined();
+    expect(testWorkerLimit({ CI: "true", HALONIC_TEST_WORKERS: "4" })).toBeUndefined();
+  });
+
+  it("caps the workers at 2 outside CI", () => {
+    expect(testWorkerLimit({})).toBe(2);
+  });
+
+  it("takes a whole number of 1 or more from HALONIC_TEST_WORKERS", () => {
+    expect(testWorkerLimit({ HALONIC_TEST_WORKERS: "6" })).toBe(6);
+    expect(testWorkerLimit({ HALONIC_TEST_WORKERS: "0" })).toBe(2);
+    expect(testWorkerLimit({ HALONIC_TEST_WORKERS: "many" })).toBe(2);
   });
 });

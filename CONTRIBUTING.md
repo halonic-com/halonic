@@ -44,7 +44,11 @@ pnpm verify
 
 `pnpm verify` runs the checks, type checks, lint and tests
 for the packages your change affects. Run it before every push.
-`pnpm verify --full` runs everything. `pnpm check` runs
+`pnpm verify --full` runs everything, including the trace check, as CI does;
+use it only when you need it. For a quick loop, run the checks for the
+package you changed and push: CI gives the full verdict. Outside CI, tests use
+two workers and Turbo runs two tasks at once; set `HALONIC_TEST_WORKERS` to
+change the first. `pnpm check` runs
 only the repo checks; the rules are listed in [docs/guides/checks.md](docs/guides/checks.md).
 
 `pnpm install` also installs a git hook that refuses secrets, private keys,
@@ -154,8 +158,8 @@ Halonic has one firm rule: **nothing that works may break.**
   will notice the change. Write one sentence a user would understand. Don't run
   `pnpm changeset` yet: it fails until the CLI and the Studio app are
   versioned. See [`.changeset/README.md`](.changeset/README.md).
-- **`pnpm verify` is green** before you ask for review. All checks must pass in
-  CI before anything is merged.
+- **Your targeted checks pass locally** before you ask for review. All checks
+  (`ci-ok`) must pass in CI before anything is merged.
 - **Rebase on `main`** rather than merging `main` into your branch.
 - **Two pull requests adding features at once?** After rebasing, run
   `pnpm discover --fix`.

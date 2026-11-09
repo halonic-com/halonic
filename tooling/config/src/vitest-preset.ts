@@ -11,6 +11,27 @@ export const testResultsFile = "test-results/vitest.json";
 /** The setup file that gives fast-check a fixed seed (see `fastCheckSeed`). */
 export const fastCheckSetupFile = fileURLToPath(new URL("./fast-check-setup.ts", import.meta.url));
 
+/** How many test workers a run uses outside CI, unless `HALONIC_TEST_WORKERS` says otherwise. */
+const localTestWorkers = 2;
+
+/**
+ * The most test workers Vitest may start, or `undefined` to keep its defaults.
+ * In CI that is always `undefined`. On a developer machine or agent runner
+ * it is {@link localTestWorkers}, because many runs at once overload the
+ * machine. `HALONIC_TEST_WORKERS` picks another count when it holds a whole
+ * number of 1 or more.
+ *
+ * @param env - the process environment
+ * @returns the worker cap, or `undefined` for no cap
+ */
+export function testWorkerLimit(env: NodeJS.ProcessEnv): number | undefined {
+  if (env["CI"]) {
+    return undefined;
+  }
+  const requested = Number(env["HALONIC_TEST_WORKERS"]);
+  return Number.isInteger(requested) && requested >= 1 ? requested : localTestWorkers;
+}
+
 /**
  * The shared Vitest settings for every package. Each package's
  * `vitest.config.ts` calls this so test runs behave the same everywhere.
@@ -30,6 +51,10 @@ export const fastCheckSetupFile = fileURLToPath(new URL("./fast-check-setup.ts",
  * so each run makes the same `expect` calls. `FAST_CHECK_SEED` picks another
  * seed, or `random` (see `fastCheckSeed`).
  *
+ * Outside CI, tests run on at most 2 workers so that several runs at once
+ * don't overload the machine (see `testWorkerLimit`). Set
+ * `HALONIC_TEST_WORKERS` to change that. CI keeps Vitest's defaults.
+ *
  * @param overrides - settings for this one package, merged over the preset
  * @returns the Vitest config for the package
  *
@@ -43,10 +68,12 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
     );
   }
   const coverage = coverageSettings(process.cwd());
+  const maxWorkers = testWorkerLimit(process.env);
   const preset = defineConfig({
     test: {
       include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
       environment: "node",
+      ...(maxWorkers === undefined ? {} : { maxWorkers }),
       // Property tests check the same inputs on every run, so the requirement
       // guard sees the same expect counts on both sides.
       setupFiles: usesFastCheck(process.cwd()) ? [fastCheckSetupFile] : [],
