@@ -81,6 +81,11 @@ Plain `pnpm check` leaves it out for that reason; it runs only when named.
   can't be read
 - an active requirement has no test that ran and passed
 
+`pnpm check trace --report` also writes each package's requirement report
+to `test-results/requirements.md`: every requirement, its status, its
+tests and whether they passed. `pnpm verify` writes it too. The docs site
+will publish it later.
+
 The ID of `packages/core/workflow/requirements/timer-fires.md` is
 `workflow.timer-fires`; in a Studio feature,
 `packages/studio/features/agents/src/explorer/requirements/filter-by-hub.md`

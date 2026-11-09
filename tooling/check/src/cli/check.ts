@@ -1,18 +1,27 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { type CheckContext, loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem, type Problem } from "../lib/problems.ts";
+import {
+  groupByPackage,
+  renderRequirementReport,
+  requirementReportFile,
+} from "../lib/requirement-report.ts";
+import { buildTraceModel } from "../lib/trace-model.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules, rulesAfterTests, selectRules } from "../rules/all.ts";
 import { dcoRange } from "../rules/dco.ts";
 import { inactiveChecks } from "../rules/inactive-checks.ts";
 
 /**
- * pnpm check [rule ...]
+ * pnpm check [rule ...] [--report]
  *
  * Runs our own repo checks. With rule names it
  * runs only those. Without, it runs every rule except `trace`, which reads
  * the test result files and so runs after the tests: `pnpm check trace`.
- * The personal-terms guard has its own command,
- * `pnpm check:leaks`, because CI runs it with a secret.
+ * With --report it also writes each package's requirement report to
+ * test-results/requirements.md. The personal-terms guard has its own
+ * command, `pnpm check:leaks`, because CI runs it with a secret.
  */
 function main(argv: readonly string[]): number {
   const selected = argv.filter((argument) => !argument.startsWith("-"));
@@ -52,6 +61,9 @@ function main(argv: readonly string[]): number {
     const names = rulesAfterTests.join(" ");
     console.log(`${names}: runs after the tests, with pnpm check ${names}.`);
   }
+  if (argv.includes("--report")) {
+    writeRequirementReports(context);
+  }
   const errors = problems.filter((problem) => problem.severity === "error").length;
   const warnings = problems.length - errors;
   const seconds = ((performance.now() - started) / 1000).toFixed(1);
@@ -59,6 +71,16 @@ function main(argv: readonly string[]): number {
     `check: ${errors} error(s), ${warnings} warning(s) in ${context.packages.length} packages and ${context.files.length} files (${seconds}s).`,
   );
   return errors === 0 ? 0 : 1;
+}
+
+function writeRequirementReports(context: CheckContext): void {
+  const groups = groupByPackage(buildTraceModel(context).requirements);
+  for (const group of groups) {
+    const path = join(context.root, group.pkg.directory, requirementReportFile);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, renderRequirementReport(group));
+  }
+  console.log(`check: wrote the requirement report of ${groups.length} package(s).`);
 }
 
 process.exitCode = main(process.argv.slice(2));

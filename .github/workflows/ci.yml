@@ -265,7 +265,7 @@ jobs:
       # a task failed: a missing result file fails the check anyway.
       - name: Requirements and their tests (trace)
         if: always()
-        run: pnpm check trace
+        run: pnpm check trace --report
       - name: Task timings
         if: always()
         run: |
