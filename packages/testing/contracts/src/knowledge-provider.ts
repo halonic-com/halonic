@@ -48,7 +48,10 @@ export const outsideFiles: readonly OutsideFile[] = [
   { path: "../other-hub/notes/zanzibar.md", content: "zanzibar again" },
 ];
 
-/** Refs that name no document, including ones that try to leave the source. */
+/**
+ * Refs that name no document, including ones that try to leave the source. A
+ * ref names a document exactly, so another spelling of a held one names none.
+ */
 export const unknownKnowledgeRefs: readonly string[] = [
   "guides/missing.md",
   "",
@@ -56,6 +59,12 @@ export const unknownKnowledgeRefs: readonly string[] = [
   "../private.md",
   "guides/../../private.md",
   "guides/../guides/setup.md",
+  "./guides/setup.md",
+  "guides//setup.md",
+  "guides/setup.md/",
+  "guides/setup.md\u0000",
+  "..\\private.md",
+  "guides\\..\\..\\private.md",
   "../other-hub/notes/zanzibar.md",
   "/etc/passwd",
   "C:\\private.md", // leak-guard: allow absolute-path a made-up Windows ref the source must refuse
@@ -163,6 +172,12 @@ function searchCases(
     expect(all.length).toBeGreaterThan(1);
     const one = await provider.search("invoice Studio Monday", { limit: 1 });
     expect(one).toHaveLength(1);
+  });
+
+  it("gives no hits for a limit below 1", async () => {
+    const provider = await makeSeeded();
+    expect(await provider.search("invoice Studio Monday", { limit: 0 })).toEqual([]);
+    expect(await provider.search("invoice Studio Monday", { limit: -1 })).toEqual([]);
   });
 
   it("finds nothing outside the source, or in an empty one", async () => {

@@ -49,7 +49,7 @@ export class MemoryKnowledgeProvider implements KnowledgeProvider {
     }
     // Best first; equal scores by ref, so the order never depends on insertion.
     hits.sort((a, b) => b.score - a.score || (a.ref < b.ref ? -1 : 1));
-    return hits.slice(0, options.limit ?? defaultLimit);
+    return hits.slice(0, Math.max(0, options.limit ?? defaultLimit));
   }
 
   async get(ref: string): Promise<KnowledgeDoc | null> {
