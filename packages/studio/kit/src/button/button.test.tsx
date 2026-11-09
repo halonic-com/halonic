@@ -24,6 +24,20 @@ verifies("kit.button", () => {
     expect(button.className).toContain("min-h-control-md");
   });
 
+  it.each([
+    ["primary", "border-transparent"],
+    ["secondary", "border-border-strong"],
+    ["ghost", "border-transparent"],
+    ["danger", "border-transparent"],
+  ] as const)("gives %s a 1px edge high contrast can draw, %s", (variant, edge) => {
+    const classes = renderButton({ variant, children: "Save" }).className.split(" ");
+    expect(classes).toContain("border");
+    expect(classes).toContain(edge);
+    // One edge colour per button, so the stylesheet's order never decides which one shows.
+    const edges = classes.filter((name) => /^border-(?:transparent|border-strong)$/.test(name));
+    expect(edges).toEqual([edge]);
+  });
+
   it("submits a form only when it says so", () => {
     expect(renderButton({ children: "Create", type: "submit" }).type).toBe("submit");
   });
@@ -152,6 +166,13 @@ verifies("kit.button-unavailable", () => {
     const { className } = renderUnavailable(() => {});
     expect(className).toContain("aria-disabled:opacity-45");
     expect(className).toContain("aria-disabled:cursor-not-allowed");
+  });
+
+  it("looks unavailable at 60% with more contrast, and in GrayText at full strength in high contrast", () => {
+    const { className } = renderUnavailable(() => {});
+    expect(className).toContain("contrast-more:aria-disabled:opacity-60");
+    expect(className).toContain("aria-disabled:text-forced-disabled");
+    expect(className).toContain("forced-colors:aria-disabled:opacity-100");
   });
 
   it("doesn't submit its form", async () => {

@@ -56,32 +56,39 @@ interface IconButton extends ButtonBase {
 
 export type ButtonProps = ButtonWithLabel | IconButton;
 
+/**
+ * Every button has a 1px edge, so Windows high-contrast mode, which drops fills, still draws its
+ * shape (component specs 23.5). An unavailable button is 45%, 60% when more contrast is asked
+ * for, and `GrayText` at full strength in high contrast.
+ */
 const shared = [
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm text-body-strong",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm border text-body-strong",
   "transition-colors focus-ring",
-  "aria-disabled:cursor-not-allowed aria-disabled:opacity-45",
+  "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 contrast-more:aria-disabled:opacity-60",
+  "aria-disabled:text-forced-disabled forced-colors:aria-disabled:opacity-100",
 ].join(" ");
 
 /**
  * Hover changes only a fill or a text colour, and a press shows the hover fill at once. Neither
- * applies while the button is unavailable.
+ * applies while the button is unavailable. Only `secondary` shows its edge; the others keep it
+ * see-through, each in its own variant so two edge colours never meet on one button.
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary: [
-    "bg-primary text-on-primary",
+    "border-transparent bg-primary text-on-primary",
     "not-aria-disabled:hover:bg-primary-hover not-aria-disabled:active:bg-primary-hover",
   ].join(" "),
   secondary: [
-    "border border-border-strong bg-surface text-fg",
+    "border-border-strong bg-surface text-fg",
     "not-aria-disabled:hover:bg-surface-subtle not-aria-disabled:active:bg-surface-subtle",
   ].join(" "),
   ghost: [
-    "text-fg-muted",
+    "border-transparent text-fg-muted",
     "not-aria-disabled:hover:bg-surface-muted not-aria-disabled:hover:text-fg",
     "not-aria-disabled:active:bg-surface-muted not-aria-disabled:active:text-fg",
   ].join(" "),
   danger: [
-    "bg-danger text-on-danger",
+    "border-transparent bg-danger text-on-danger",
     "not-aria-disabled:hover:bg-danger-hover not-aria-disabled:active:bg-danger-hover",
   ].join(" "),
 };

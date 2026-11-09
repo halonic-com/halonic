@@ -252,6 +252,8 @@
   :root {
     --duration-base: 120ms;
     --duration-slow: 120ms;
+    /* Colour changes are instant; fades name --duration-base or --duration-slow and stay. */
+    --default-transition-duration: 0ms;
   }
 }
 

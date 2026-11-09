@@ -68,7 +68,7 @@ export function StatusChip({
   shape = "chip",
 }: StatusChipProps) {
   const classes = [
-    "inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap text-caption",
+    "inline-flex min-h-5 shrink-0 items-center gap-1 whitespace-nowrap text-caption",
     toneClasses[tone],
     edgeClasses(tone),
     shapeClasses[shape],
@@ -77,7 +77,11 @@ export function StatusChip({
   return (
     <span className={classes}>
       {dot ? (
-        <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+        // High contrast drops fills; the dot keeps its fill in the chip's text colour.
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-current forced-color-adjust-none"
+          aria-hidden="true"
+        />
       ) : null}
       {children}
     </span>

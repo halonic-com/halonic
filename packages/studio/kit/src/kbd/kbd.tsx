@@ -6,9 +6,10 @@ export interface KbdProps {
   readonly keys: readonly string[];
 }
 
+/** The see-through edge keeps each box's shape in Windows high-contrast mode (component specs 23.5). */
 const keyClasses = [
-  "inline-flex h-5 min-w-5 items-center justify-center rounded-xs bg-surface-muted px-1",
-  "font-mono text-caption text-fg-muted",
+  "inline-flex min-h-5 min-w-5 items-center justify-center rounded-xs border border-transparent",
+  "bg-surface-muted px-1 font-mono text-caption text-fg-muted",
 ].join(" ");
 
 /**

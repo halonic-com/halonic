@@ -67,10 +67,7 @@ const stateClasses: Record<CardState, string> = {
 const box = "rounded-md border bg-surface text-left";
 
 /** Only an interactive card reacts: a lifted edge on hover, the hover fill while pressed. */
-const reacts = [
-  "transition-[color,background-color,border-color,box-shadow]",
-  "active:bg-surface-subtle hover:shadow-1",
-].join(" ");
+const reacts = ["transition", "active:bg-surface-subtle hover:shadow-1"].join(" ");
 
 /**
  * An interactive card's classes by state. A disabled card still opens (to say why it's paused),

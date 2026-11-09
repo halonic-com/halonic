@@ -79,6 +79,9 @@ verifies("kit.card", () => {
     expect(button.className).toContain("hover:border-border-strong");
     expect(button.className).toContain("focus-ring");
     expect(button.className).toContain("active:bg-surface-subtle");
+    // Tailwind's default list already holds the colours and the shadow: no bracket value.
+    expect(button.className.split(" ")).toContain("transition");
+    expect(button.className).not.toContain("transition-[");
     await click(button);
     expect(onClick).toHaveBeenCalledTimes(1);
   });
