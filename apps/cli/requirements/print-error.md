@@ -10,13 +10,13 @@ When a command fails, the `halonic` command shall print the error to stderr in o
 
 - Given an `unavailable` error "Halonic couldn't reach Ollama at localhost:11434." with the fix "Start Ollama, then run again.",
   when it is printed,
-  then the lines are "✕ Halonic couldn't reach Ollama at localhost:11434." and " Start Ollama, then run again.".
+  then the lines are "✕ Halonic couldn't reach Ollama at localhost:11434." and, indented by two spaces, "Start Ollama, then run again.".
 - Given a `not_found` error with no fix, or a fix that is only spaces,
   when it is printed,
   then only the ✕ line is printed.
 - Given the usage error "Give at most one folder." from `halonic schema`,
   when it is printed,
-  then the lines are "✕ Give at most one folder." and " Usage: halonic schema [outDir]".
+  then the lines are "✕ Give at most one folder." and, indented by two spaces, "Usage: halonic schema [outDir]".
 - Given a plain `Error` whose message holds a file path, the thrown string "boom", or an `internal` error,
   when it is printed,
-  then the lines are "✕ Halonic ran into a problem it can't explain yet." and " Report it: https://github.com/halonic-com/halonic/issues", and none of the error's own text.
+  then the lines are "✕ Halonic ran into a problem it can't explain yet." and, indented by two spaces, "Report it: https://github.com/halonic-com/halonic/issues", and none of the error's own text.
