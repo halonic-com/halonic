@@ -199,6 +199,29 @@ verifies("app.trust-service", () => {
     expect(missing).toBeDefined();
   });
 
+  it("lists package runners as unpinned, also behind a shell, and keeps the flag out of the fingerprint", async () => {
+    const { service } = setup();
+    const runner = (id: string, command: string, args: string[]): Connector => ({
+      version: 1,
+      id,
+      transport: { stdio: { command, args, env: {} } },
+      tools: { approve: [] },
+    });
+    const connectors = [
+      runner("mail", "npx", ["-y", "@acme/mail-mcp"]),
+      program("files"),
+      runner("crm", "cmd", ["/c", "uvx", "crm-mcp"]),
+    ];
+
+    const check = await service.check({ location, connectors, commandPaths });
+
+    expectStatus(check, "new");
+    expect(check.unpinned).toEqual(["crm", "mail"]);
+    expect(JSON.stringify(check.content)).not.toContain("unpinned");
+    const filesOnly = await service.check(subject(program("files")));
+    expect(filesOnly.unpinned).toEqual([]);
+  });
+
   it("offers no way to save a record without the fingerprint a person was shown", () => {
     expectTypeOf<keyof TrustService>().toEqualTypeOf<"check" | "grant" | "revoke" | "list">();
     const methods = Object.getOwnPropertyNames(TrustService.prototype).filter(

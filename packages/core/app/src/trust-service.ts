@@ -20,6 +20,7 @@ import {
   trustContent,
   trustFingerprint,
 } from "@halonicjs/workspace";
+import { isPackageRunner } from "./package-runner.ts";
 
 /** The workspace a trust check is about. */
 export interface TrustSubject {
@@ -40,6 +41,15 @@ interface CurrentTrust {
   readonly content: TrustContent;
   /** The full fingerprint, such as "hfp1:9f86d081…". Never shortened. */
   readonly fingerprint: string;
+  /**
+   * The connectors whose program is a package runner (`npx`, `uvx` and the
+   * like) without a pinned version, by id and sorted. They fetch code each
+   * time they start, so the prompt asks a second question for them (build
+   * plan item 10c). Not part of the fingerprint: the command and args are.
+   * A person's trust saves no pins in 0.1 (pinning at trust is Later,
+   * HAL-2114), so every package runner is listed.
+   */
+  readonly unpinned: readonly string[];
 }
 
 /** Whether a workspace is trusted, and if not, why. */
@@ -188,7 +198,11 @@ export class TrustService {
       connectors: subject.connectors,
       commandPaths: subject.commandPaths,
     });
-    return { content, fingerprint: await trustFingerprint(content, this.digest) };
+    return {
+      content,
+      fingerprint: await trustFingerprint(content, this.digest),
+      unpinned: unpinnedConnectors(subject.connectors),
+    };
   }
 
   /**
@@ -227,6 +241,21 @@ export class TrustService {
 
 function grantOf(record: TrustRecord): TrustGrant {
   return { location: record.location, fingerprint: record.fingerprint };
+}
+
+/**
+ * The ids of the connectors that start a package runner, found the same way
+ * the launcher finds them (`app.package-runner-launch`), so the two agree.
+ */
+function unpinnedConnectors(connectors: readonly Connector[]): string[] {
+  const ids: string[] = [];
+  for (const connector of connectors) {
+    const { transport } = connector;
+    if ("stdio" in transport && isPackageRunner(transport.stdio.command, transport.stdio.args)) {
+      ids.push(connector.id);
+    }
+  }
+  return ids.sort();
 }
 
 function idsOf(changes: TrustChanges): string[] {
