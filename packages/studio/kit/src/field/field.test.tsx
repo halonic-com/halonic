@@ -97,6 +97,17 @@ verifies("kit.field", () => {
     expect(input.getAttribute("aria-required")).toBe("true");
   });
 
+  it("names the control without the visible Required, so it isn't heard twice", () => {
+    const { label } = renderField({ label: "Name", required: true });
+    const required = label.querySelector("span") as HTMLElement;
+    expect(required.getAttribute("aria-hidden")).toBe("true");
+    const spoken = Array.from(label.childNodes)
+      .filter((node) => !(node instanceof Element && node.getAttribute("aria-hidden") === "true"))
+      .map((node) => node.textContent)
+      .join("");
+    expect(spoken).toBe("Name");
+  });
+
   it("hides the label from sight only, for a search in a toolbar", () => {
     const { label } = renderField({ label: "Search agents", hideLabel: true });
     expect(label.className).toBe("sr-only");

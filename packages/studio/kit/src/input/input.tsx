@@ -1,7 +1,14 @@
 import type { InputHTMLAttributes, KeyboardEvent, ReactNode, Ref } from "react";
+import { InFieldBoxContext } from "../button/button.tsx";
 import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
-import { type FieldSize, fieldBoxClasses, fieldBoxState, fieldTextClasses } from "./field-box.ts";
+import {
+  type FieldSize,
+  fieldBoxClasses,
+  fieldBoxState,
+  fieldTextClasses,
+  focusTextOnPress,
+} from "./field-box.ts";
 
 /** What the kit sets itself, from the Field and its own look, and a screen can't override. */
 type OwnedAttributes =
@@ -18,7 +25,10 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   readonly size?: FieldSize;
   /** A 16px icon at the start of the box, in `fg-muted`: the search glass. */
   readonly leadingIcon?: ReactNode;
-  /** A button at the end of the box (clear, show): a `sm` ghost icon `Button`. */
+  /**
+   * A button at the end of the box (clear, show): a ghost icon `Button`. It keeps the `sm` look on
+   * a phone, with a 48px hit area, so the box stays 48px.
+   */
   readonly trailing?: ReactNode;
   readonly ref?: Ref<HTMLInputElement>;
 }
@@ -54,7 +64,8 @@ export function Input({
   }
 
   return (
-    <div className={fieldBoxClasses(state, size)}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.
+    <div className={fieldBoxClasses(state, size)} onMouseDown={focusTextOnPress}>
       {leadingIcon === undefined ? null : (
         <span
           className="inline-grid size-icon-sm shrink-0 place-items-center text-fg-muted *:size-full"
@@ -68,13 +79,14 @@ export function Input({
         ref={ref}
         id={field?.id}
         data-field-text=""
-        className={fieldTextClasses}
+        // As tall as the box, so a press above or below the line of text lands on it.
+        className={`${fieldTextClasses} self-stretch`}
         aria-describedby={field?.describedBy}
         aria-invalid={invalid || undefined}
         aria-required={field?.required || undefined}
         onKeyDown={handleKeyDown}
       />
-      {trailing}
+      <InFieldBoxContext value={true}>{trailing}</InFieldBoxContext>
     </div>
   );
 }

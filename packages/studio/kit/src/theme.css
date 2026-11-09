@@ -437,6 +437,21 @@
   }
 }
 
+/*
+ * A TextArea's height limit: --max-rows lines of its text. The px line is a fallback built from
+ * the line-height token, for an engine without the lh unit (an older WebKitGTK), which drops the
+ * line after it. The phone's text is 16px on 24px lines.
+ */
+@utility max-h-rows {
+  max-height: calc(var(--max-rows) * var(--text-body--line-height));
+  max-height: calc(var(--max-rows) * 1lh);
+
+  @variant phone {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
+  }
+}
+
 /* ---------------------------------------------------------------- Safe areas on a phone */
 
 /* The top bar: clears the notch or status bar. */

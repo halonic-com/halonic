@@ -319,3 +319,16 @@ describe("theme.css on a touch screen", () => {
     );
   });
 });
+
+describe("theme.css in older engines", () => {
+  it("limits a TextArea in lines, with a px fallback from the line-height tokens before lh", () => {
+    const utility = blockBody(css, "@utility max-h-rows");
+    const fallback = "max-height: calc(var(--max-rows) * var(--text-body--line-height));";
+    const inLines = "max-height: calc(var(--max-rows) * 1lh);";
+    expect(utility.indexOf(fallback)).toBeGreaterThanOrEqual(0);
+    expect(utility.indexOf(inLines)).toBeGreaterThan(utility.indexOf(fallback));
+    expect(blockBody(utility, "@variant phone")).toContain(
+      "max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));",
+    );
+  });
+});

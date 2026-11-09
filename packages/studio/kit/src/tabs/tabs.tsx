@@ -65,9 +65,11 @@ const sizeClasses = {
 } as const;
 
 const stateClasses = {
-  selected: "bg-surface font-medium text-fg shadow-1",
+  // selected-forced is the selected tab's edge in high contrast, which drops the fill and the
+  // shadow (component specs 23 A11, 23.5). The focus ring's own outline wins on focus.
+  selected: "bg-surface font-medium text-fg shadow-1 selected-forced",
   default: "text-fg-muted hover:text-fg",
-  disabled: "cursor-not-allowed text-fg-disabled",
+  disabled: "cursor-not-allowed text-fg-disabled text-forced-disabled",
 } as const;
 
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";

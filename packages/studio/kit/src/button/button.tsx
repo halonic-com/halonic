@@ -1,4 +1,11 @@
-import type { FocusEvent, MouseEvent, ReactNode, Ref } from "react";
+import {
+  createContext,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  useContext,
+} from "react";
 import { Spinner } from "./spinner.tsx";
 
 /** What the button does: `primary` once per view, `ghost` for Cancel, `danger` only to confirm. */
@@ -117,6 +124,14 @@ const iconButtonClasses: Record<ButtonSize, string> = {
   touch: "size-touch",
 };
 
+/**
+ * Set by the Input round its trailing button. On a phone the field box is 48px, and a 48px button
+ * inside its 1px border would make it 50px; so there an icon button keeps its `sm` look and gets
+ * only the 48px hit area (component specs 3).
+ */
+export const InFieldBoxContext = createContext(false);
+const inFieldBoxIconButton = `size-control-sm ${hitArea}`;
+
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
 const largeIconSlot = "phone:size-icon-md";
 
@@ -135,6 +150,7 @@ const largeIconSlot = "phone:size-icon-md";
 export function Button(props: ButtonProps) {
   const { variant = "secondary", size = "md", block = false, busy = false, unavailable } = props;
   const isIconButton = props.label !== undefined;
+  const inFieldBox = useContext(InFieldBoxContext) && isIconButton;
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     if (busy || unavailable !== undefined) {
@@ -148,12 +164,12 @@ export function Button(props: ButtonProps) {
   const classes = [
     shared,
     variantClasses[variant],
-    isIconButton ? iconButtonClasses[size] : sizeClasses[size],
+    buttonSizeClasses(size, isIconButton, inFieldBox),
     block ? "w-full" : "",
   ].join(" ");
 
   const icon = busy ? <Spinner /> : props.icon;
-  const iconClasses = isIconButton ? `${iconSlot} ${largeIconSlot}` : iconSlot;
+  const iconClasses = isIconButton && !inFieldBox ? `${iconSlot} ${largeIconSlot}` : iconSlot;
 
   return (
     <button
@@ -176,4 +192,11 @@ export function Button(props: ButtonProps) {
       {props.children}
     </button>
   );
+}
+
+function buttonSizeClasses(size: ButtonSize, isIconButton: boolean, inFieldBox: boolean): string {
+  if (inFieldBox) {
+    return inFieldBoxIconButton;
+  }
+  return isIconButton ? iconButtonClasses[size] : sizeClasses[size];
 }

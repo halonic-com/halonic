@@ -78,6 +78,8 @@ verifies("kit.tabs", () => {
     expect(flow?.className).toContain("min-h-control-sm");
     expect(flow?.className).toContain("px-3");
     expect(flow?.className).toContain("bg-surface font-medium text-fg shadow-1");
+    // High contrast drops the fill and the shadow and paints this outline instead.
+    expect(flow?.className).toContain("selected-forced");
     expect(configuration?.className).toContain("text-fg-muted hover:text-fg");
     expect(configuration?.className).not.toContain("bg-surface");
     expect(flow?.className).toContain("focus-ring");
@@ -168,7 +170,7 @@ verifies("kit.tabs", () => {
     const [flow, configuration] = tabsIn(container);
     expect(configuration?.getAttribute("aria-disabled")).toBe("true");
     expect(configuration?.hasAttribute("disabled")).toBe(false);
-    expect(configuration?.className).toContain("text-fg-disabled");
+    expect(configuration?.className).toContain("text-fg-disabled text-forced-disabled");
     expect(configuration?.className).not.toContain("hover:text-fg");
     await click(configuration as HTMLButtonElement);
     expect(onSelect).not.toHaveBeenCalled();

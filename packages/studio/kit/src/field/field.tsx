@@ -71,7 +71,13 @@ export function Field({
     <div className="flex flex-col gap-1">
       <label htmlFor={controlId} className={hideLabel ? "sr-only" : "text-caption text-fg-muted"}>
         {label}
-        {required ? <span className="text-fg-subtle"> Required</span> : null}
+        {/* Hidden from screen readers, which already hear "required" from aria-required. */}
+        {required ? (
+          <span className="text-fg-subtle" aria-hidden="true">
+            {" "}
+            Required
+          </span>
+        ) : null}
       </label>
       <FieldControlContext value={control}>{children}</FieldControlContext>
       <FieldLine id={lineId} hint={hint} error={error} />
