@@ -29,3 +29,15 @@ export interface RunParent {
   state: string;
   depth: number;
 }
+
+/**
+ * How a tool call ended: it answered (`ok`), it failed (`error`), or it broke
+ * off without an answer, so it may or may not have done its work (`unknown`).
+ */
+export type ToolOutcome = "ok" | "error" | "unknown";
+
+/** Why a run failed: a budget stopped it, someone cancelled it, or something went wrong. */
+export type RunFailureReason = "budget" | "cancelled" | "error";
+
+/** Who resolved an approval: a person, or a rule that answers without asking anyone. */
+export type ApprovalResolver = "person" | "rule";

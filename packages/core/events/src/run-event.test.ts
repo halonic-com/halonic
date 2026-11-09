@@ -1,7 +1,15 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
-import type { RunKind, RunParent, RunTrigger, Usage } from "./run-basics.ts";
+import type {
+  ApprovalResolver,
+  RunFailureReason,
+  RunKind,
+  RunParent,
+  RunTrigger,
+  ToolOutcome,
+  Usage,
+} from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
 
 // These are type tests: `tsc -p tsconfig.test.json` fails if a run log event
@@ -101,11 +109,12 @@ verifies("events.run-log-contract", () => {
       state: string;
       context: Record<string, unknown>;
     }>();
-    // `reason` is added with the engine and must not be here yet.
     expectTypeOf<EventOf<"run.failed">>().toEqualTypeOf<{
       type: "run.failed";
       state: string | null;
       error: string;
+      // Added after the reference by events.run-failed-reason (HAL-1525).
+      reason?: RunFailureReason;
     }>();
   });
 
@@ -166,12 +175,13 @@ verifies("events.run-log-contract", () => {
       query: string;
       refs: string[];
     }>();
-    // `outcome` is added with the engine and must not be here yet.
     expectTypeOf<EventOf<"tool.result">>().toEqualTypeOf<{
       type: "tool.result";
       agent: string;
       tool: string;
       result: string;
+      // Added after the reference by events.tool-result-outcome (HAL-1525).
+      outcome?: ToolOutcome;
     }>();
     expectTypeOf<EventOf<"approval.requested">>().toEqualTypeOf<{
       type: "approval.requested";
@@ -182,7 +192,6 @@ verifies("events.run-log-contract", () => {
       callId: string;
       resume: AgentResume;
     }>();
-    // `by` is added with the engine and must not be here yet.
     expectTypeOf<EventOf<"approval.resolved">>().toEqualTypeOf<{
       type: "approval.resolved";
       state: string;
@@ -191,6 +200,8 @@ verifies("events.run-log-contract", () => {
       callId: string;
       approved: boolean;
       comment?: string;
+      // Added after the reference by events.approval-resolved-by (HAL-1525).
+      by?: ApprovalResolver;
     }>();
   });
 
@@ -241,5 +252,28 @@ verifies("events.run-log-contract", () => {
       calls: { id: string; name: string; arguments: Record<string, unknown> }[];
       step: number;
     }>();
+  });
+});
+
+verifies("events.tool-result-outcome", () => {
+  typeTest("says how a tool call ended: ok, error or unknown", () => {
+    expectTypeOf<ToolOutcome>().toEqualTypeOf<"ok" | "error" | "unknown">();
+    expectTypeOf<EventOf<"tool.result">["outcome"]>().toEqualTypeOf<ToolOutcome | undefined>();
+  });
+});
+
+verifies("events.run-failed-reason", () => {
+  typeTest("says why a run failed: budget, cancelled or error", () => {
+    expectTypeOf<RunFailureReason>().toEqualTypeOf<"budget" | "cancelled" | "error">();
+    expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
+  });
+});
+
+verifies("events.approval-resolved-by", () => {
+  typeTest("says who resolved an approval: a person or a rule", () => {
+    expectTypeOf<ApprovalResolver>().toEqualTypeOf<"person" | "rule">();
+    expectTypeOf<EventOf<"approval.resolved">["by"]>().toEqualTypeOf<
+      ApprovalResolver | undefined
+    >();
   });
 });

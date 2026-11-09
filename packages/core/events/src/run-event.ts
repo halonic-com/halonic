@@ -1,5 +1,13 @@
 import type { AgentResume } from "./agent-resume.ts";
-import type { RunKind, RunParent, RunTrigger, Usage } from "./run-basics.ts";
+import type {
+  ApprovalResolver,
+  RunFailureReason,
+  RunKind,
+  RunParent,
+  RunTrigger,
+  ToolOutcome,
+  Usage,
+} from "./run-basics.ts";
 
 // Every event name and field here is part of the run log, which users keep on
 // disk and read with their own tools. Rename or remove nothing; new fields are
@@ -61,7 +69,8 @@ export type RunEventBody =
   | { type: "tool.called"; agent: string; tool: string; args: unknown }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
-  | { type: "tool.result"; agent: string; tool: string; result: string }
+  /** `outcome`: how the call ended (requirement `events.tool-result-outcome`); absent in older logs. */
+  | { type: "tool.result"; agent: string; tool: string; result: string; outcome?: ToolOutcome }
   /** A connector tool call that needs a person's OK; the run waits for "approve" or "reject". */
   | {
       type: "approval.requested";
@@ -80,6 +89,8 @@ export type RunEventBody =
       callId: string;
       approved: boolean;
       comment?: string;
+      /** Who resolved it (requirement `events.approval-resolved-by`); absent in older logs. */
+      by?: ApprovalResolver;
     }
   | { type: "agent.finished"; state: string; agent: string; output: unknown; parent?: string }
   | {
@@ -116,7 +127,8 @@ export type RunEventBody =
   | { type: "timer.fired"; state: string; after: string }
   | { type: "event.received"; event: string; payload?: unknown }
   | { type: "run.completed"; state: string; context: Record<string, unknown> }
-  | { type: "run.failed"; state: string | null; error: string };
+  /** `reason`: why the run failed (requirement `events.run-failed-reason`); absent in older logs. */
+  | { type: "run.failed"; state: string | null; error: string; reason?: RunFailureReason };
 
 /**
  * One entry of a run log. Every run is an append-only stream of these; the

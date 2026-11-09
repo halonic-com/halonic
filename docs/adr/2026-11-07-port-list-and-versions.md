@@ -56,7 +56,8 @@ milliseconds as numbers, so every runtime can keep them as they are.
 - Run log additions come with the engine and are not in
   `@halonicjs/events` yet. All of them are additive. They are:
   - three optional fields (`tool.result.outcome`,
-    `run.failed.reason`, `approval.resolved.by`)
+    `run.failed.reason`, `approval.resolved.by`), which are now in
+    `@halonicjs/events` (HAL-1525) so the engine can write them
   - the definitions embedded in `run.started`, so a run keeps the
     definitions it started with
   - the "effect requested" record that marks an outcome as unknown after a

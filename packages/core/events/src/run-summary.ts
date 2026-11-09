@@ -1,11 +1,19 @@
 import type { RunKind, RunStatus, RunTrigger, Usage } from "./run-basics.ts";
 
-/** The tool call a run is waiting on a person's OK for. */
+/** A tool call a run is waiting on a person's OK for, from its `approval.requested` event. */
 export interface PendingApproval {
   agent: string;
   tool: string;
   args: unknown;
   callId: string;
+  /** ISO time the approval was asked for. */
+  at: string;
+  /** The state whose agent asked. */
+  state: string;
+  /** The parallel branch that asked, or `null` outside a parallel state. */
+  branch: string | null;
+  /** The for-each item that asked (0-based), or `null` outside a for-each state. */
+  item: number | null;
 }
 
 /** A signal a run sent. `id` is "<runId>:<seq>" of its `signal.sent` event. */
@@ -44,8 +52,13 @@ export interface RunSummary {
   accepts: string[];
   /** While waiting: when the next timer is due (ISO), if the state has timers. */
   nextTimer: string | null;
-  /** The tool call waiting for approval, when the run waits for one. */
-  approval: PendingApproval | null;
+  /** ISO time of the last `run.waiting`, kept after the run goes on; `null` if it never waited. */
+  lastWaitingAt: string | null;
+  /**
+   * The tool calls waiting for approval, oldest first. Parallel branches can
+   * each wait for one, so there can be more than one.
+   */
+  approvals: PendingApproval[];
   /** Signals the run sent, in order (for signal triggers). */
   signals: SentSignal[];
   /**

@@ -1,6 +1,6 @@
 import type { Usage } from "./run-basics.ts";
 import type { RunEvent } from "./run-event.ts";
-import type { RunSummary } from "./run-summary.ts";
+import type { PendingApproval, RunSummary } from "./run-summary.ts";
 import { upgradeEvent } from "./upgrade.ts";
 
 /**
@@ -41,7 +41,8 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
     waitingOn: null,
     accepts: [],
     nextTimer: null,
-    approval: null,
+    lastWaitingAt: null,
+    approvals: [],
     signals: [],
     lastSeq: first.seq,
     updatedAt: first.at,
@@ -73,6 +74,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.waitingOn = event.child ?? null;
       summary.accepts = event.events;
       summary.nextTimer = earliestTimer(event.timers);
+      summary.lastWaitingAt = event.at;
       return;
     case "signal.sent":
       summary.signals.push({
@@ -83,15 +85,19 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       });
       return;
     case "approval.requested":
-      summary.approval = {
+      summary.approvals.push({
         agent: event.agent,
         tool: event.tool,
         args: event.args,
         callId: event.callId,
-      };
+        at: event.at,
+        state: event.state,
+        branch: event.branch ?? null,
+        item: event.item ?? null,
+      });
       return;
     case "approval.resolved":
-      summary.approval = null;
+      removeApproval(summary.approvals, event.callId);
       return;
     case "event.received":
     case "workflow.finished":
@@ -114,6 +120,16 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
     default:
       return;
   }
+}
+
+/**
+ * Remove the waiting approval with this call id. The engine makes call ids
+ * unique in a run; older logs asked for one approval at a time, so the first
+ * match is the one being resolved.
+ */
+function removeApproval(approvals: PendingApproval[], callId: string): void {
+  const index = approvals.findIndex((approval) => approval.callId === callId);
+  if (index !== -1) approvals.splice(index, 1);
 }
 
 /** Add one model call's tokens, and its cost when it has a price. */

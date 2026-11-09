@@ -65,7 +65,8 @@ verifies("events.summary-start", () => {
       waitingOn: null,
       accepts: [],
       nextTimer: null,
-      approval: null,
+      lastWaitingAt: null,
+      approvals: [],
       signals: [],
       lastSeq: 1,
       updatedAt: startedAt,
@@ -181,6 +182,16 @@ verifies("events.summary-waiting", () => {
     });
   });
 
+  it("keeps the time of the last run.waiting after the run goes on", () => {
+    const summary = summaryOf(
+      waiting,
+      { type: "event.received", event: "approve" },
+      { type: "run.waiting", state: "w2", events: ["go"] },
+      { type: "event.received", event: "go" },
+    );
+    expect(summary).toMatchObject({ status: "running", lastWaitingAt: "T4" });
+  });
+
   it("has no next timer and no child when the wait has neither", () => {
     expect(summaryOf({ type: "run.waiting", state: "w", events: ["go"] })).toMatchObject({
       waitingOn: null,
@@ -237,25 +248,52 @@ verifies("events.summary-approvals-and-signals", () => {
     resume: { messages: [], calls: [], step: 0 },
   };
 
-  it("shows the tool call waiting for approval", () => {
-    expect(summaryOf(requested).approval).toEqual({
-      agent: "a",
-      tool: "send",
-      args: { to: "x" },
-      callId: "c1",
-    });
+  const resolved: RunEventBody = {
+    type: "approval.resolved",
+    state: "s",
+    agent: "a",
+    tool: "send",
+    callId: "c1",
+    approved: true,
+  };
+
+  it("lists the tool call waiting for approval, with when and where it was asked", () => {
+    expect(summaryOf(requested).approvals).toEqual([
+      {
+        agent: "a",
+        tool: "send",
+        args: { to: "x" },
+        callId: "c1",
+        at: "T2",
+        state: "s",
+        branch: null,
+        item: null,
+      },
+    ]);
   });
 
-  it("clears the approval once it is resolved", () => {
-    const resolved: RunEventBody = {
-      type: "approval.resolved",
-      state: "s",
-      agent: "a",
-      tool: "send",
-      callId: "c1",
-      approved: true,
-    };
-    expect(summaryOf(requested, resolved).approval).toBeNull();
+  it("removes the approval once it is resolved", () => {
+    expect(summaryOf(requested, resolved).approvals).toEqual([]);
+  });
+
+  it("lists one approval per parallel branch and removes only the resolved one", () => {
+    const log: RunEvent[] = [
+      ...runLog(),
+      { runId: "r", seq: 2, at: "T2", branch: "left", ...requested, callId: "c1" },
+      { runId: "r", seq: 3, at: "T3", branch: "right", ...requested, callId: "c2" },
+      { runId: "r", seq: 4, at: "T4", item: 1, ...requested, callId: "c3" },
+      { runId: "r", seq: 5, at: "T5", branch: "right", ...resolved, callId: "c2" },
+    ];
+    const approvals = summarize(log)?.approvals ?? [];
+    const where = approvals.map(({ callId, branch, item, at }) => ({ callId, branch, item, at }));
+    expect(where).toEqual([
+      { callId: "c1", branch: "left", item: null, at: "T2" },
+      { callId: "c3", branch: null, item: 1, at: "T4" },
+    ]);
+  });
+
+  it("leaves the approvals alone when a resolved call id isn't waiting", () => {
+    expect(summaryOf(requested, { ...resolved, callId: "other" }).approvals).toHaveLength(1);
   });
 
   it("lists the signals in order, each with its run and sequence number", () => {

@@ -16,4 +16,4 @@ The events package shall describe every run log event with the same type name an
   then it has the same required fields (`agent`, `provider`, `model`, `usage`, `latencyMs`, `text`) and the same optional ones (`thoughts`, `cost`, `cached`).
 - Given the three fields that come with the engine, `tool.result.outcome`, `run.failed.reason` and `approval.resolved.by`,
   when the events package is checked,
-  then none of them exists yet.
+  then each is optional and has its own requirement (`events.tool-result-outcome`, `events.run-failed-reason`, `events.approval-resolved-by`), and no reference field changes.

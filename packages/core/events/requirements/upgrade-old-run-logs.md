@@ -20,3 +20,6 @@ When a stored `run.started` event has `projectId` or `flowId` and not the new na
 - Given a `state.entered` event,
   when it is upgraded,
   then it is returned unchanged.
+- Given a run log written before `tool.result.outcome`, `run.failed.reason` and `approval.resolved.by` existed,
+  when each line is parsed and the log is summarized,
+  then every event is read exactly as written, none of the three fields is added, and the summary gives the same facts as before (its one waiting approval, while it waited, as a list of one).
