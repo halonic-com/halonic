@@ -1,5 +1,12 @@
+import type { StdioTransport } from "@halonicjs/app";
 import type { ConnectorConfig } from "@halonicjs/ports";
-import { contractGrant, contractServerTools } from "@halonicjs/testing-contracts";
+import {
+  contractGrant,
+  contractServerTools,
+  npmPackage,
+  npmRegistryUrl,
+  RecordedRegistryClient,
+} from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { MemoryConnectorFactory } from "./connector-client.ts";
@@ -66,4 +73,79 @@ verifies("memory.connector-client", () => {
       'Connector "notes" starts a program, so it starts only once the workspace is trusted.',
     );
   });
+
+  it("starts a stdio program once when two calls arrive while its pin is looked up", async () => {
+    const factory = new MemoryConnectorFactory("stdio", server);
+    const client = factory.create(pinnedConfig(), {
+      ...context(true),
+      http: new RecordedRegistryClient(),
+    });
+    await Promise.all([client.listTools(), client.callTool("read_note", {})]);
+    expect(factory.programs()).toEqual({ started: 1, running: 1 });
+    await client.close();
+    await client.listTools();
+    expect(factory.programs()).toEqual({ started: 2, running: 1 });
+  });
+
+  it("tries the start again on the next call after a refused one", async () => {
+    const factory = new MemoryConnectorFactory("stdio", server);
+    const client = factory.create(pinnedConfig(), {
+      ...context(true),
+      http: new RecordedRegistryClient({ down: true }),
+    });
+    await expect(client.listTools()).rejects.toThrow(
+      `Halonic didn't start connector "mail": ${npmRegistryUrl} can't be reached to look up @acme/mail-mcp 2.3.1.`,
+    );
+    await expect(client.listTools()).rejects.toThrow("can't be reached");
+    expect(factory.programs()).toEqual({ started: 0, running: 0 });
+  });
+
+  it("starts an unpinned program in its cwd, or else in the workspace", async () => {
+    const factory = new MemoryConnectorFactory("stdio", server);
+    const plain: ConnectorConfig = {
+      id: "notes",
+      transport: { kind: "stdio", command: "notes-mcp", args: [], env: {} },
+      secretEnv: {},
+    };
+    const inCwd: ConnectorConfig = {
+      ...plain,
+      transport: { ...plain.transport, cwd: "/srv/notes" } as StdioTransport,
+    };
+    for (const [config, workspaceRoot] of [
+      [inCwd, "/workspaces/acme"],
+      [plain, "/workspaces/acme"],
+      [plain, undefined],
+    ] as const) {
+      const client = factory.create(config, {
+        ...context(true),
+        ...(workspaceRoot ? { workspaceRoot } : {}),
+      });
+      await client.listTools();
+      await client.close();
+    }
+    expect(factory.launches().map((launch) => launch.folder)).toEqual([
+      "/srv/notes",
+      "/workspaces/acme",
+      "",
+    ]);
+  });
 });
+
+function pinnedConfig(): ConnectorConfig {
+  return {
+    id: "mail",
+    transport: {
+      kind: "stdio",
+      command: "npx",
+      args: ["-y", npmPackage.name],
+      env: {},
+      pin: {
+        registry: "npm",
+        registryUrl: npmRegistryUrl,
+        package: npmPackage.name,
+        version: "2.3.1",
+      },
+    },
+    secretEnv: {},
+  };
+}

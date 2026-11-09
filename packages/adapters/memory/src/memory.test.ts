@@ -6,6 +6,7 @@ import {
   type ConnectorKind,
   clockContract,
   connectorClientContract,
+  connectorPinContract,
   contractServerAnswer,
   contractServerTools,
   coordinationContract,
@@ -272,4 +273,16 @@ function connectorContracts(): void {
       };
     });
   }
+  connectorPinContract("memory", async () => {
+    const factory = new MemoryConnectorFactory("stdio", contractServer);
+    return {
+      factory,
+      context: {
+        secrets: new MemorySecrets({}),
+        tokens: new MemoryTokenStore(),
+        workspaceRoot: "/workspaces/acme",
+      },
+      launches: () => factory.launches(),
+    };
+  });
 }

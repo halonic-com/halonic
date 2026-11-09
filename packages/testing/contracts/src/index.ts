@@ -17,6 +17,12 @@ export {
   type MakeConnector,
   type ReachedCall,
 } from "./connector-client.ts";
+export {
+  type ConnectorLaunch,
+  connectorPinContract,
+  type MakePinnedConnector,
+  type PinnedConnectorHarness,
+} from "./connector-pin.ts";
 export { coordinationContract } from "./coordination.ts";
 export {
   type CoordinationHarness,
@@ -68,6 +74,19 @@ export {
   type MakeLlmProvider,
 } from "./llm-provider.ts";
 export { type MakeRecordStore, recordStoreContract } from "./record-store.ts";
+export {
+  npmMirrorUrl,
+  npmPackage,
+  npmRegistryUrl,
+  npmTamperedUrl,
+  pypiPackage,
+  pypiRegistryUrl,
+  pypiTamperedUrl,
+  type RecordedPackage,
+  type RecordedRegistry,
+  RecordedRegistryClient,
+  recordedRegistries,
+} from "./recorded-registry.ts";
 export {
   type MakeResourceProbe,
   type ResourceProbeHarness,

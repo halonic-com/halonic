@@ -463,6 +463,9 @@ importers:
 
   packages/adapters/memory:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events
