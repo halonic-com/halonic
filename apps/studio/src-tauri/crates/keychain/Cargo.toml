@@ -1,0 +1,30 @@
+[package]
+name = "halonic-keychain"
+description = "The Studio shell's desktop keychain: the macOS Keychain, the Windows Credential Manager or the Linux Secret Service behind the shared secrets backend trait."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+halonic-secrets = { path = "../secrets" }
+
+# keyring talks to the OS keychains, an integration plan section 7 allows.
+# Pinned exactly, with one platform feature per target and no defaults
+# (HAL-1508). Built without a platform feature, keyring 3 quietly keeps
+# secrets in memory; on any other target this crate doesn't depend on it at
+# all, and every call is `unavailable`.
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "=3.6.3", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "=3.6.3", default-features = false, features = ["windows-native"] }
+
+# The Secret Service (GNOME Keyring, KWallet) over D-Bus, with Rust crypto
+# for the session. It links the system's libdbus.
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "=3.6.3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+
+[lints]
+workspace = true

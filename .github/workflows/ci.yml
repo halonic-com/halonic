@@ -573,11 +573,12 @@ jobs:
       # version and components named in rust-toolchain.toml.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
-      # Tauri builds against the system web view: WebKitGTK on Linux.
+      # Tauri builds against the system web view: WebKitGTK on Linux. The
+      # keychain crate links libdbus for the Secret Service.
       - name: Install the Linux libraries Tauri needs
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libwebkit2gtk-4.1-dev libxdo-dev
+          sudo apt-get install --yes --no-install-recommends libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev
       - name: Formatting (rustfmt)
         run: cargo fmt --all --check
       # --workspace: the shell is the root package, so without it Cargo
