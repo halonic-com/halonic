@@ -13,6 +13,7 @@ import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
 import { checkNames } from "./names.ts";
 import { checkPackages } from "./packages.ts";
+import { checkReadmeExamples } from "./readme-examples.ts";
 import { checkTrace } from "./trace.ts";
 
 /** Every rule `pnpm check` runs, by name. */
@@ -28,6 +29,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   lockfile: checkLockfile,
   "absolute-paths": checkAbsolutePaths,
   "invisible-characters": checkInvisibleCharacters,
+  "readme-examples": checkReadmeExamples,
   dco: (context) => checkDco(context),
   trace: checkTrace,
   ...Object.fromEntries(Object.keys(inactiveChecks).map((name) => [name, inactiveRule(name)])),
