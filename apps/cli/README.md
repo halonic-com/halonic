@@ -49,4 +49,5 @@ A command prints through the `CliIo` it is given, never `console`, and throws `U
 wrong command line. It never prints an error itself: it throws a `KindedError` (with a `fix` when
 there is a next step to suggest), and `printError` prints it and ends the command with the exit code
 of its kind. An error without a kind is a bug: the CLI says so and exits with 1, without showing the
-error's own text.
+error's own text. Run it again with `--debug` (before or after the command) to see that text, its
+causes and its stack, for a bug report.

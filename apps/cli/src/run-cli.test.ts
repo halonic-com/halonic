@@ -52,7 +52,7 @@ const commands = [greetCommand, trustCommand];
 /** What the CLI prints for an error without a kind, instead of its text. */
 const internalLines = [
   "✕ Halonic ran into a problem it can't explain yet.",
-  "  Report it: https://github.com/halonic-com/halonic/issues",
+  "  Run it again with --debug to see the details, and report it: https://github.com/halonic-com/halonic/issues",
 ];
 
 describe("runCli", () => {
@@ -112,6 +112,23 @@ verifies("cli.exit-codes", () => {
       "✕ The moon isn't here.",
       "  Greet someone who is here, such as Ada.",
     ]);
+  });
+
+  it("adds the error's own text after its lines with --debug, before or after the command", async () => {
+    for (const args of [
+      ["--debug", "greet", "nobody"],
+      ["greet", "nobody", "--debug"],
+    ]) {
+      const io = captureIo("/work");
+      expect(await runCli(args, io, commands)).toBe(exitCode.failed);
+      expect(io.stderr.slice(0, 3)).toEqual([...internalLines, "Error: nobody is there"]);
+    }
+  });
+
+  it("gives a command --debug as an argument after --", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["greet", "--", "--debug"], io, commands)).toBe(exitCode.ok);
+    expect(io.stdout).toEqual(["Hello --debug"]);
   });
 
   it("passes on the code a command returns, such as 3 for an untrusted workspace", async () => {

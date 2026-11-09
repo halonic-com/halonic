@@ -33,3 +33,6 @@ everything else is internal.
 - Only `printError` (`src/print-error.ts`) writes an error: the ✕ line, the fix line, `More:` and
   the code. Commands throw or return errors and never print them. The fix comes from the error's
   own `fix` field; with no `fix` there is no fix line, and a command never makes one up.
+- Global options such as `--debug` are read once, in `runCli` (`src/global-options.ts`), and
+  taken out of the command line before a command sees it. No command reads `--debug`: only
+  `printError` uses it, to add the error's own text, causes and stack.
