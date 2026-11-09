@@ -11,7 +11,6 @@ import { buildTraceModel } from "../lib/trace-model.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 import { rules, rulesAfterTests, selectRules } from "../rules/all.ts";
 import { dcoRange } from "../rules/dco.ts";
-import { inactiveChecks } from "../rules/inactive-checks.ts";
 
 /**
  * pnpm check [rule ...] [--report]
@@ -48,11 +47,6 @@ function main(argv: readonly string[]): number {
   const annotate = process.env["GITHUB_ACTIONS"] === "true";
   for (const problem of problems) {
     console.log(annotate ? formatAnnotation(problem) : formatProblem(problem));
-  }
-  for (const [name, purpose] of Object.entries(inactiveChecks)) {
-    if (toRun.includes(name)) {
-      console.log(`${name}: not active yet. It will check that ${purpose}.`);
-    }
   }
   if ((selected.length === 0 || selected.includes("dco")) && dcoRange() === undefined) {
     console.log("dco: no commits to check; CI sets DCO_RANGE=BASE..HEAD for each pull request.");
