@@ -35,7 +35,7 @@ cases:
     mocks:
       writer:
         - Sam wants a refund for order 1042, which arrived damaged.
-        - Sorry your order arrived damaged, Sam. We are looking into a refund.
+        - Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
       sorter: [refund]
     expect:
       status: waiting

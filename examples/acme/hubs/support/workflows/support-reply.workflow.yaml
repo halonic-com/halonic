@@ -45,10 +45,10 @@ states:
         label: Reject
   replied:
     type: final
-    description: Finished with the reply approved.
+    description: Finished with the reply approved
   not-replied:
     type: final
-    description: Finished without the reply.
+    description: Finished without the reply
   ignored:
     type: final
-    description: Finished without a reply, because nobody needs to answer spam.
+    description: Finished without a reply, because nobody needs to answer spam

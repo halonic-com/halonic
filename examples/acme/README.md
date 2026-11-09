@@ -19,10 +19,11 @@ network and no key. No file in it points at a real service.
 | Reports | Workflow **Weekly report** | The Reporter's one step                                                  | `hubs/reports/workflows/weekly-report.workflow.yaml`         |
 | Reports | Routine                    | Runs the Weekly report every Monday at 9:00                              | `hubs/reports/workflows/routines/weekly-report.routine.yaml` |
 
-In the Support reply workflow, the review step waits for a person. `approve`
-finishes the workflow with the reply approved. `reject` finishes it without a
-reply. Nothing is actually sent: this is an example. Spam ends right after the
-Sorter, with no draft to review.
+In the Support reply workflow, the step **Approve this reply?** (`review`)
+waits for a person and shows the draft. `approve` finishes the workflow with
+the reply approved. `reject` finishes it without a reply. Nothing is actually
+sent: this is an example. Spam ends right after the Sorter, with no draft to
+review.
 
 `examples/refund-question.json` is an input for the workflow: Sam's email
 about a damaged order. The test model's script answers that one run: the
