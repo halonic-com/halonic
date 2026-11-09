@@ -38,6 +38,7 @@
       "name": "@halonicjs/integration-kit",
       "entry": "./integration",
       "description": "What an integration for Halonic imports: the port types, runTool and the errors the host raises. No dependencies.",
+      "readme": "README.npm.md",
       "aliases": {},
       "dependencies": {},
       "peerDependencies": {}

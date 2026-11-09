@@ -26,6 +26,7 @@ function suiteConfig(kitRange: string): PublishConfig {
     name: "@halonicjs/testing-integration",
     entry: ".",
     description: undefined,
+    readme: "README.md",
     aliases: { "@halonicjs/adapter-integration-kit/integration": "@halonicjs/integration-kit" },
     dependencies: { "@halonicjs/integration-kit": kitRange, zod: "4.6.7" },
     peerDependencies: { vitest: "^5.1.0" },

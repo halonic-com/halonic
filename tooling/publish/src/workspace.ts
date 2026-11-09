@@ -20,6 +20,8 @@ export type PublishConfig = {
   entry: string;
   /** The npm description, when the workspace package's own one doesn't fit the published entry. */
   description: string | undefined;
+  /** The README shipped to npm, relative to the package (default `README.md`). */
+  readme: string;
   /**
    * Workspace entries (`@halonicjs/name` or `@halonicjs/name/subpath`) that
    * stay imports of a published package instead of being bundled, with that
@@ -88,6 +90,7 @@ export function readPublishConfig(manifest: Record<string, unknown>): PublishCon
     name: publish["name"],
     entry: typeof publish["entry"] === "string" ? publish["entry"] : ".",
     description: typeof publish["description"] === "string" ? publish["description"] : undefined,
+    readme: typeof publish["readme"] === "string" ? publish["readme"] : "README.md",
     aliases: (publish["aliases"] ?? {}) as Record<string, string>,
     dependencies: (publish["dependencies"] ?? {}) as Record<string, string>,
     peerDependencies: (publish["peerDependencies"] ?? {}) as Record<string, string>,
