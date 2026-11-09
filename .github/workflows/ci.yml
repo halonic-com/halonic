@@ -322,11 +322,13 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      # The walk-back below looks up main's push CI runs.
+      actions: read
     # The guard downloads the archive by these, not by name: the build job
     # runs pull-request code that could upload an artifact with the same
     # name, but no other job can set this job's outputs.
     outputs:
-      sha: ${{ steps.install.outputs.sha }}
+      sha: ${{ steps.walk-back.outputs.sha || steps.install.outputs.sha }}
       results-id: ${{ steps.upload.outputs.artifact-id }}
       results-sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
@@ -377,16 +379,54 @@ jobs:
           echo "::error::No commit within 20 of the merge base on main installs. Fix main first (docs/guides/broken-main.md)."
           exit 1
       # A failing test here means main itself is red, and that would fail
-      # every pull request, the one that repairs main included. Push CI on
-      # main already reports it, so here it only warns. The results are still
-      # packed below and stay the guard's baseline.
+      # every pull request, the one that repairs main included.
       - id: base-test-run
         name: Run the merge base's tests without reading any cache
         continue-on-error: true
         run: pnpm exec turbo run test --force --continue --output-logs=errors-only
-      - name: Warn when the merge base's tests fail
+      # Then walk back along main's first-parent history to the newest commit
+      # whose push CI run passed (at most 20 commits back from the merge base,
+      # then fail) and use its tests as the baseline. As with the lockfile, the
+      # baseline is always a commit on main, and the guard installs and
+      # compares against exactly this commit. API and network errors fail.
+      - id: walk-back
+        name: Walk back to main's newest green commit
         if: steps.base-test-run.outcome == 'failure'
-        run: echo "::warning title=merge-base-red::The merge base's own tests fail, so main is red. Fix main first (docs/guides/broken-main.md)."
+        env:
+          MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+          TESTED: ${{ steps.install.outputs.sha }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          back=-1
+          past=""
+          green=""
+          for candidate in $(git rev-list --first-parent -n 21 "$MERGE_BASE"); do
+            back=$((back + 1))
+            if [ -z "$past" ]; then
+              [ "$candidate" = "$TESTED" ] && past=1
+              continue
+            fi
+            runs=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$candidate&event=push&branch=main&status=success&per_page=1" --jq .total_count)
+            if ! grep -qE '^[0-9]+$' <<< "$runs"; then
+              echo "::error::Couldn't read the push CI runs of $candidate."
+              exit 1
+            fi
+            if [ "$runs" -gt 0 ]; then
+              green="$candidate"
+              break
+            fi
+          done
+          if [ -z "$green" ]; then
+            echo "::error::The merge base's tests fail and no commit within 20 of it on main has a green push CI run. Fix main first (docs/guides/broken-main.md)."
+            exit 1
+          fi
+          echo "::warning title=baseline-walked-back::The merge base's tests fail, so main is red. Using ${green}, $back commit(s) back on main and the newest with a green push CI run, as the baseline. Fix main (docs/guides/broken-main.md)."
+          git checkout --quiet --force --detach "$green"
+          git clean -fdxq
+          pnpm install --frozen-lockfile
+          echo "sha=$green" >> "$GITHUB_OUTPUT"
+          pnpm exec turbo run test --force --continue --output-logs=errors-only
       # Runs even when a test failed: the guard reports a missing result file.
       - id: pack
         name: Pack the test results

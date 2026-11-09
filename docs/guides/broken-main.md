@@ -3,10 +3,10 @@
 Two CI jobs run on the merge base (the commit on `main` a pull request
 branched from): `Merge base's tests` and the merge-base `guard`. Both install
 with `pnpm install --frozen-lockfile`. If `main`'s own lockfile doesn't
-install, every pull request would fail there, including the one that repairs
-it.
+install, or its own tests fail, every pull request would fail there,
+including the one that repairs it.
 
-## What CI does
+## When main's lockfile doesn't install
 
 Only when the install fails with a pnpm lockfile error
 (`ERR_PNPM_*LOCKFILE*` or `OUTDATED_LOCKFILE`), `Merge base's tests` walks back
@@ -21,7 +21,7 @@ that commit. A `baseline-walked-back` warning names it.
 - The guard keeps running against a real baseline, and `ci-ok` needs no
   exception.
 
-## Repairing main
+## Repairing the lockfile
 
 Open a normal pull request that fixes `pnpm-lock.yaml` (usually
 `pnpm install --fix-lockfile`). Its own build job installs the repaired
@@ -35,10 +35,24 @@ repair.
 
 If the merge base installs but its own tests fail, `main` is red. CI on the
 push to `main` already fails and reports it. In a pull request,
-`Merge base's tests` then passes with a `merge-base-red` warning instead of
-failing, so the pull request that repairs `main` can still pass `ci-ok`. The
-results are packed and compared as usual. Every other job still runs the pull
-request's own code, so a pull request that doesn't fix the break stays red in
-`Typecheck, lint, test, build`.
+`Merge base's tests` then walks back along `main`'s first-parent history to
+the newest commit whose `push` CI run passed, at most 20 commits back from the
+merge base. That commit is the baseline: it's installed and its tests run
+without a cache, and the guard installs and compares against exactly that
+commit. A `baseline-walked-back` warning names it.
+
+- The baseline is still a commit on `main`, found with
+  `git rev-list --first-parent` and checked against the `push` runs of
+  `ci.yml` on `main`. The lookup only reads, so the trust boundary is
+  unchanged.
+- The pull request that repairs `main` can pass `ci-ok`, and the guard
+  compares it against a green baseline, not against `main`'s red results.
+- Every other job still runs the pull request's own code, so a pull request
+  that doesn't fix the break stays red in `Typecheck, lint, test, build`.
+
+If no commit within 20 has a green `push` run, or the green commit's tests
+fail when they run again here, the job fails with a message pointing here.
+Rerun the job once in case a test was flaky. If it still fails, the board has
+to decide on an admin merge of the repair.
 
 Repair `main` with a normal pull request, reviewed and merged like any other.
