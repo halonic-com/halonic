@@ -157,6 +157,7 @@ describe("theme.css scales", () => {
     expect(namesStartingWith(themeTokens, "--radius-")).toEqual([
       "--radius-xs",
       "--radius-sm",
+      "--radius-segment",
       "--radius-md",
       "--radius-lg",
       "--radius-full",

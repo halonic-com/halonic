@@ -217,6 +217,63 @@ edge is always `border-strong`.
 There's no hover, focus or disabled state, and the `danger` tone is the error state. On a phone the
 chip keeps its size; when it doesn't fit beside a row's title, the row puts it under the title.
 
+## Tabs
+
+A page's own views: Flow / Configuration / Runs. Not the window tabs in the title bar, which
+belong to the shell.
+
+```tsx
+<Tabs
+  label="Workflow views"
+  tabs={[
+    { id: "flow", label: "Flow" },
+    {
+      id: "configuration",
+      label: "Configuration",
+      count: { value: 2, tone: "danger", name: "2 errors" },
+    },
+    { id: "runs", label: "Runs" },
+  ]}
+  selected={view}
+  onSelect={setView}
+>
+  {viewContent}
+</Tabs>;
+```
+
+| Prop       | What it is                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------ |
+| `label`    | The tab list's name: "Workflow views"                                                            |
+| `tabs`     | Each tab's `id`, full `label`, optional 16px `icon`, `count` and `disabled`                      |
+| `selected` | The selected tab's `id`. The page keeps it, so it remembers its tab while it's on the stack      |
+| `onSelect` | Called with the tab's `id` when another tab is picked                                            |
+| `fill`     | Equal parts across the column, at least 48px high. On by default on a phone, off on desktop      |
+| `sticky`   | The tabs stay at the top of the scroll area, on a `surface` fill, so their counters stay in view |
+| `children` | The selected tab's view, inside the one `tabpanel`                                               |
+
+A `count` is `{ value, tone, name }`: an `accent` chip, or `danger` when it counts errors. The
+number is hidden from screen readers, which hear its `name` instead: "Configuration, 2 errors".
+The tab itself never turns red.
+
+**Keyboard.** Only the selected tab is in the Tab order. The left and right arrow keys move to
+the next tab and select it, wrapping round; Home and End jump to the ends. Disabled tabs are
+skipped. Switching is instant, with no sliding indicator, and never adds to Back.
+
+| State    | What shows                                                                 |
+| -------- | -------------------------------------------------------------------------- |
+| Default  | `fg-muted` text on the `surface-muted` track, 28px high                    |
+| Selected | A `surface` fill, `fg` text at weight 500, `shadow-1`                      |
+| Hover    | Text `fg`, no fill change                                                  |
+| Focus    | The standard focus ring                                                    |
+| Disabled | `fg-disabled`, clicks ignored, skipped by the arrow keys (`aria-disabled`) |
+| Error    | A `danger` counter on the tab whose view has errors                        |
+
+**On a phone** (`fill`, from the presentation context) the track spans the page column and the
+tabs share it equally, each at least 48px high with 4px 8px padding. A label wraps between words
+and the counter follows it like one more word; a word longer than its tab breaks with a hyphen.
+Labels are never shortened and the tabs never scroll sideways. **On a touch screen** at desktop
+width a tab renders at 40px with a 48px hit area.
+
 ## Presentation
 
 How the Studio is laid out: `desktop` or `phone`. The shell reads the width once, with

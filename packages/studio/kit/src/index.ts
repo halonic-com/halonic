@@ -42,6 +42,7 @@ export {
   type StatusChipProps,
   type StatusChipTone,
 } from "./status-chip/status-chip.tsx";
+export { type Tab, type TabCount, Tabs, type TabsProps } from "./tabs/tabs.tsx";
 
 /** The npm name of this package. */
 export const packageName = "@halonicjs/studio-kit";

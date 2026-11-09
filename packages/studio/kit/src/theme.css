@@ -162,6 +162,7 @@
   /* ---------------------------------------------------------------- Radius (rounded-*) */
   --radius-xs: 4px; /* badges, checkboxes, kbd, tooltips */
   --radius-sm: 8px; /* buttons, inputs, selects, nav items, menu items */
+  --radius-segment: 6px; /* a tab inside the Tabs track: radius-sm less the track's 2px padding */
   --radius-md: 12px; /* cards, panels, menus, toasts */
   --radius-lg: 16px; /* dialogs, the chat composer */
   --radius-full: 9999px; /* avatars, toggles, counters */
