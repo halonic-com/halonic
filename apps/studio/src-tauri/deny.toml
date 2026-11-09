@@ -1,0 +1,69 @@
+# cargo-deny policy for the Studio shell's crates (HAL-1486).
+#
+# The licence list mirrors `shipped` in tooling/check/licences.json: a change
+# to either needs Julian's review, and the two lists must stay the same.
+# Advisories: an ignore needs a reason and an expiry of at most 90 days, as in
+# tooling/check/advisories-ignored.json (see docs/guides/checks.md).
+
+[graph]
+# The shell's own targets: desktop and Android.
+targets = [
+  "x86_64-pc-windows-msvc",
+  "x86_64-unknown-linux-gnu",
+  "aarch64-linux-android",
+  "x86_64-linux-android",
+]
+
+[licenses]
+confidence-threshold = 0.93
+unused-allowed-license = "allow"
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "0BSD",
+  "Unlicense",
+  "CC0-1.0",
+  "BlueOak-1.0.0",
+  "Python-2.0",
+  "Unicode-3.0",
+  "OFL-1.1",
+  "CDLA-Permissive-2.0",
+]
+
+# Crates under a licence that is not on the list above. Each one is a
+# per-crate decision, not a list change, and Julian reviews each.
+# MPL-2.0 is on `devOnly` in licences.json, not `shipped`, yet Tauri's web view
+# stack (dom_query, selectors, cssparser) and `dirs` bring it into the app.
+# The shell uses them unmodified, which MPL-2.0 permits.
+exceptions = [
+  { allow = ["MPL-2.0"], crate = "cssparser" },
+  { allow = ["MPL-2.0"], crate = "cssparser-macros" },
+  { allow = ["MPL-2.0"], crate = "dtoa-short" },
+  { allow = ["MPL-2.0"], crate = "option-ext" },
+  { allow = ["MPL-2.0"], crate = "selectors" },
+  # Apache-2.0 plus the LLVM exception, which only widens what Apache-2.0 allows.
+  { allow = ["Apache-2.0 WITH LLVM-exception"], crate = "target-lexicon" },
+]
+
+[advisories]
+# An ignore needs a reason and an expiry of at most 90 days, like the entries in
+# tooling/check/advisories-ignored.json. Put the expiry date in the reason; at
+# that date, remove the ignore or renew it with a new reason in a new pull request.
+ignore = [
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error is only a build-time macro dependency of glib-macros (GTK, Linux desktop). Nothing of it ships in the app. Waiting for a gtk-rs release without it. Expires 2027-02-05." },
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

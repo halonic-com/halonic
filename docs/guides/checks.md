@@ -313,9 +313,16 @@ until the dependency is fixed (remove the entry) or someone renews it in a new
 pull request with a fresh reason and date. A renewal is a new decision, not
 an edit of the date alone.
 
-`cargo-deny` has an ignore list too. It follows the same rule (reason,
-expiry, guard) once the Tauri shell brings Rust into the repo; until then
-there is no `deny.toml` and nothing to ignore.
+`cargo-deny` has an ignore list too, in `apps/studio/src-tauri/deny.toml`.
+It follows the same rule: each `ignore` entry under `[advisories]` has a
+plain-language reason with the expiry date in it, at most 90 days out, and
+Liam reviews the pull request. `pnpm check` does not read this file yet, so
+the reviewer checks the date. The "Tauri shell (Rust checks)" job runs
+`cargo-deny` on every pull request that touches `apps/studio/src-tauri/`.
+
+Its licence list is the `shipped` list in `tooling/check/licences.json`, and
+the two must stay the same. A Rust crate under another licence gets its own
+`exceptions` entry in `deny.toml`, which Julian reviews.
 
 ## What the TypeScript presets allow
 
