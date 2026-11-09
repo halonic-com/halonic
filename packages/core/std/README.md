@@ -1,6 +1,6 @@
 # @halonicjs/std
 
-In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison and a typed event emitter.
+In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter and error kinds.
 
 - **Layer:** core
 - **Owner:** maya
@@ -27,6 +27,14 @@ about data that isn't plain, so they say what and where. `slugify` and `uniqueNa
 turn display names into file-safe ids, as the old Studio did. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, and `Emitter` is a
 small typed event emitter.
+
+Errors a person can see carry one of eight kinds (`ErrorKind`): `invalid_input`,
+`not_found`, `conflict`, `unauthenticated`, `denied`, `limit_reached`,
+`unavailable` and `internal`. Throw a `KindedError`, or give an existing error
+class a `kind` property. Each surface (HTTP, CLI, Studio, MCP) reads the kind
+with `errorKindOf` and turns it into its response in one exhaustive `switch`.
+Anything without a kind is `internal`, so an unexpected error never shows
+its own text to the user.
 
 Each behaviour has a requirement in [`requirements/`](requirements/).
 

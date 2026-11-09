@@ -2,7 +2,7 @@
   "name": "@halonicjs/std",
   "private": true,
   "type": "module",
-  "description": "In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison and a typed event emitter.",
+  "description": "In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter and error kinds.",
   "exports": {
     ".": "./src/index.ts"
   },
