@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1137, HAL-1375, HAL-1576 (flow-install-update 5.4)
 
-While the app window navigates, the navigation guard shall let only the app's own connect page and the address the last Connect confirmed (same scheme, host and port) load in the window. When the target is `halonic-app://connect`, the guard shall cancel it and open the connect screen with the address filled in. If the target is any other `http://` or `https://` page, then the guard shall cancel it and open it in the phone's browser; if it is anything else, then the guard shall cancel it.
+While the app window navigates, the navigation guard shall let only the app's own connect page and the address the last Connect confirmed (same scheme, host and port) load in the window. When the target is `halonic-app://connect`, the guard shall cancel it and open the connect screen with the address filled in. If the target is any other `http://` or `https://` page, then the guard shall cancel it and open it in the phone's browser; if it is anything else, then the guard shall cancel it. When the user presses Back on the connect page, the app shall close, so a Studio whose address the guard has forgotten never shows again.
 
 ## Examples
 
@@ -20,6 +20,9 @@ While the app window navigates, the navigation guard shall let only the app's ow
 - Given the confirmed address `192.168.1.20:4280`,
   when a form sent with POST loads `http://192.168.1.21:4280/` in the window,
   then the window goes back to the connect screen.
+- Given Change address was pressed,
+  when the user presses Back on the connect screen,
+  then the app closes.
 
 ## Limits
 
