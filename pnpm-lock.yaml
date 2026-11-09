@@ -4818,3 +4818,4 @@ snapshots:
   yoctocolors@2.2.0: {}
 
   zod@4.6.7: {}
+# HAL-1807 scan test, made-up value: tarball: https://registry.example.invalid/foo/-/foo-1.0.0.tgz?token=6d4c137e9a702c85b0a98e56
