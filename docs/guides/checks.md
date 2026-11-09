@@ -35,7 +35,7 @@ typecheck, lint and test for the packages your change affects.
 | `versions`             | the Studio app's version in `apps/studio/src-tauri/tauri.conf.json`, the `[workspace.package]` table of its `Cargo.toml` or a workspace crate in `Cargo.lock` differs from `apps/studio/package.json`, or a crate sets its own version instead of `version.workspace = true`. Fix with `pnpm version:sync`                                                                                                                                                                                                                                                                 |
 | `invisible-characters` | docs, code, config or tests hold a character nobody can see: a format character (zero-width, bidi control, tag letter, byte order mark), a variation selector, or a control character other than tab, line feed and carriage return. Emoji with their joiners and selectors, and other visible non-ASCII such as umlauts or CJK, are fine. Write such a character as an escape (`\u202E`) in code; name it in words in docs                                                                                                                                                |
 | `readme-examples`      | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block                                                                                                                                                                                                                                                                                         |
-| `process-starts`       | a product file imports `child_process`, `worker_threads` or `cluster` (with or without `node:`) without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts)                                                                                                                                                                                                                                                                                                            |
+| `process-starts`       | a product file imports `child_process`, `worker_threads` or `cluster` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts)                                                                                                                                                                                                                                                                 |
 
 ### The DCO sign-off
 
@@ -89,8 +89,12 @@ code that can start a process could break that, so every such file is
 listed and reviewed. `process-starts` fails when a source file imports
 `child_process`, `worker_threads` or `cluster` (with or without `node:`)
 and isn't listed under `starters` in `tooling/check/process-starters.json`.
-Tests, tool config files and the testing and tooling packages are exempt:
-they never ship.
+A load the check can't follow counts too, in every layer: `import(x)` or
+`require(x)` with a computed name, `createRequire` and
+`process.getBuiltinModule` could load these modules under any name.
+Tests and the testing and tooling packages are exempt: they never ship.
+Tool config files such as `vitest.config.ts` aren't, because shipped code
+could import one.
 
 To let a file start processes, add an entry with its repo-relative path:
 
@@ -109,7 +113,8 @@ To let a file start processes, add an entry with its repo-relative path:
 an existing test file that shows it refuses to start a file under a
 skill's `scripts/` folder. An entry needs Liam's review. The rule also
 fails when an entry's file no longer exists or no longer imports any of
-these modules, so remove the entry with the code.
+these modules (or loads one the check can't follow), so remove the entry
+with the code.
 
 ## `trace`: requirements and their tests
 

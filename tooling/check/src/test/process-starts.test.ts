@@ -62,6 +62,35 @@ describe("tooling/check: process-starts", () => {
     expect(found.some((line) => line.includes('imports "node:cluster"'))).toBe(true);
   });
 
+  it("counts a load the check can't follow as a process start, outside the followed layers too", () => {
+    const found = problems([
+      adapter({
+        "src/builtin.ts":
+          'export const run = () =>\n  process.getBuiltinModule("node:child_process").spawnSync("sh");\n',
+        "src/computed.ts":
+          'const name = ["child", "process"].join("_");\nexport const load = () => import(name);\n',
+        "src/types.ts": '/// <reference types="node" />\nexport const t = 1;\n',
+      }),
+    ]);
+    expect(found).toHaveLength(2);
+    expect(found[0]).toContain(
+      "packages/adapters/launcher/src/builtin.ts: uses getBuiltinModule, which can start a process",
+    );
+    expect(found[1]).toContain(
+      "packages/adapters/launcher/src/computed.ts: uses import() with a computed module name",
+    );
+  });
+
+  it("doesn't exempt tool config files, which shipped code could import", () => {
+    const found = problems([
+      adapter({ "vitest.config.ts": 'export { spawnSync } from "node:child_process";\n' }),
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain(
+      'packages/adapters/launcher/vitest.config.ts: imports "node:child_process"',
+    );
+  });
+
   it("lets a listed file start processes", () => {
     const pkg = adapter({ "src/launch.ts": startsChild, "src/launch.test.ts": scriptsTest });
     expect(problems([pkg], starters({ [launcher]: validEntry }))).toEqual([]);

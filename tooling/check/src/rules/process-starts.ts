@@ -3,7 +3,6 @@ import { Report } from "../lib/problems.ts";
 import { isSourceFile, isTestFile } from "../lib/source-files.ts";
 import { owningPackage } from "../lib/workspace.ts";
 import { layerOf } from "./layer-table.ts";
-import { isDevFile } from "./layers.ts";
 
 const guide = "See docs/guides/checks.md (process-starts).";
 
@@ -30,31 +29,39 @@ interface Starter {
   readonly scriptsTest: string;
 }
 
+/** A place in a file that can start a process: an import or a load the check can't follow. */
+interface StartSite {
+  /** What the file does there, such as `imports "node:child_process"`. */
+  readonly what: string;
+  readonly line: number;
+}
+
 /**
  * Only the files listed in `tooling/check/process-starters.json` may import
- * `child_process`, `worker_threads` or `cluster`. Each entry gives a reason
- * and names a test that shows the file never starts a file under a skill's
- * `scripts/` folder. Tests, tool config files and testing and tooling
- * packages are exempt: they never ship.
+ * `child_process`, `worker_threads` or `cluster`, or load a module the check
+ * can't follow (`import(x)`, `createRequire`, `process.getBuiltinModule`).
+ * Each entry gives a reason and names a test that shows the file never
+ * starts a file under a skill's `scripts/` folder. Tests and testing and
+ * tooling packages are exempt: they never ship.
  */
 export function checkProcessStarts(context: CheckContext): Report {
   const report = new Report("process-starts");
   const starters = readStarters(context, report);
   const starting = new Set<string>();
   for (const file of context.files) {
-    const imported = starterImports(context, file);
-    if (imported.length === 0) {
+    const sites = startSites(context, file);
+    if (sites.length === 0) {
       continue;
     }
     starting.add(file);
     if (Object.hasOwn(starters, file)) {
       continue;
     }
-    for (const reference of imported) {
+    for (const site of sites) {
       report.error(
         file,
-        `imports "${reference.specifier}", which can start a process. Only files listed in ${startersPath} may. Add an entry for this file with a "reason" and a "scriptsTest" that shows it never starts a file under a skill's scripts/ folder; the entry needs Liam's review. ${guide}`,
-        reference.line,
+        `${site.what}, which can start a process. Only files listed in ${startersPath} may. Add an entry for this file with a "reason" and a "scriptsTest" that shows it never starts a file under a skill's scripts/ folder; the entry needs Liam's review. ${guide}`,
+        site.line,
       );
     }
   }
@@ -64,12 +71,15 @@ export function checkProcessStarts(context: CheckContext): Report {
   return report;
 }
 
-/** The imports of process-starting modules in a shipped source file; none for exempt files. */
-function starterImports(
-  context: CheckContext,
-  file: string,
-): { specifier: string; line: number }[] {
-  if (!isSourceFile(file)) {
+/**
+ * The places in a shipped source file that can start a process; none for
+ * exempt files. A hidden load counts because it could load any of the
+ * modules above under a name the check can't see. Tool config files
+ * (`vitest.config.ts`) aren't exempt: shipped code could import one and
+ * re-export what it imports.
+ */
+function startSites(context: CheckContext, file: string): StartSite[] {
+  if (!isSourceFile(file) || isTestFile(file)) {
     return [];
   }
   const pkg = owningPackage(file, context.packages);
@@ -77,12 +87,18 @@ function starterImports(
     return [];
   }
   const layer = layerOf(context, pkg);
-  if (layer === "tooling" || isDevFile(file, pkg, layer)) {
+  if (layer === "tooling" || layer === "testing") {
     return [];
   }
-  return context
-    .sourceFacts(file)
-    .imports.filter((reference) => starterModules.includes(reference.specifier));
+  const facts = context.sourceFacts(file);
+  const imports = facts.imports
+    .filter((reference) => starterModules.includes(reference.specifier))
+    .map((reference) => ({ what: `imports "${reference.specifier}"`, line: reference.line }));
+  // `/// <reference>` directives only load types, so they can't start anything.
+  const hidden = facts.hiddenLoads
+    .filter((load) => !load.what.startsWith("/// <reference"))
+    .map((load) => ({ what: `uses ${load.what}`, line: load.line }));
+  return [...imports, ...hidden];
 }
 
 function checkEntry(
@@ -95,7 +111,7 @@ function checkEntry(
   const at = `starters["${file}"]`;
   if (!starts) {
     const why = context.files.includes(file)
-      ? "no longer imports child_process, worker_threads or cluster (or is exempt)"
+      ? "no longer imports child_process, worker_threads or cluster or loads a module the check can't follow (or is exempt)"
       : "doesn't exist";
     report.error(startersPath, `${at}: the file ${why}. Remove the entry. ${guide}`);
   }
