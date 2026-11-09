@@ -1,6 +1,7 @@
 import { type RunEvent, type RunEventBody, summarize } from "@halonicjs/events";
 import {
   type BridgeProviderAccess,
+  bridgeCallCharge,
   bridgeCallCost,
   type ChatResponse,
   ModelCallError,
@@ -127,6 +128,37 @@ verifies("engine.turn-prices-calls", () => {
       usage: { inputTokens: 20, outputTokens: 10 },
       cost: 0,
       unpricedCalls: 0,
+    });
+  });
+
+  it("counts a subscription call apart from priced, unpriced and local calls in one run", async () => {
+    const log = new MemoryTurnLog();
+    await runTestTurn({ answers: [textAnswer("Done")], pricing: { local: true }, log });
+    const usage = { inputTokens: 1_000, outputTokens: 200 };
+    const anthropicKey: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
+    const bridgeCalls = [
+      bridgeCallCharge({ kind: "sign-in" }, null, usage),
+      bridgeCallCharge(anthropicKey, { input: 3, output: 15 }, usage),
+      bridgeCallCharge(anthropicKey, null, usage),
+    ];
+    for (const charge of bridgeCalls) {
+      await log.append({
+        type: "llm.response",
+        agent: "clerk",
+        provider: "anthropic",
+        model: "m",
+        usage,
+        latencyMs: 1,
+        text: "",
+        ...charge,
+      });
+    }
+
+    expect(summaryOf(log)).toMatchObject({
+      usage: { inputTokens: 3_010, outputTokens: 605 },
+      cost: 0.006,
+      unpricedCalls: 1,
+      subscriptionCalls: 1,
     });
   });
 });

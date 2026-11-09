@@ -1,5 +1,5 @@
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import type { RunEvent, RunEventBody } from "./run-event.ts";
 import { summarize } from "./summarize.ts";
 
@@ -56,6 +56,7 @@ verifies("events.summary-start", () => {
       usage: { inputTokens: 0, outputTokens: 0 },
       cost: 0,
       unpricedCalls: 0,
+      subscriptionCalls: 0,
       statesVisited: [],
       context: {},
       error: null,
@@ -174,6 +175,28 @@ verifies("events.summary-cost", () => {
     );
     expect(summary.cost).toBe(0);
     expect(summary.unpricedCalls).toBe(1);
+  });
+
+  typeTest("marks a subscription call, and is absent otherwise", () => {
+    type Response = Extract<RunEventBody, { type: "llm.response" }>;
+    expectTypeOf<Response["paidBy"]>().toEqualTypeOf<"subscription" | undefined>();
+  });
+
+  it("counts subscription calls on their own, with their tokens but never their cost", () => {
+    const usage = { inputTokens: 1_000, outputTokens: 200 };
+    const summary = summaryOf(
+      { ...response, usage, cost: 0, paidBy: "subscription" },
+      { ...response, usage, paidBy: "subscription" },
+      { ...response, usage, cost: 0.006 },
+      { ...response, usage },
+      { ...response, usage, cost: 0 },
+    );
+    expect(summary).toMatchObject({
+      usage: { inputTokens: 5_000, outputTokens: 1_000 },
+      cost: 0.006,
+      unpricedCalls: 1,
+      subscriptionCalls: 2,
+    });
   });
 });
 

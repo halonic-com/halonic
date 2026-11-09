@@ -161,6 +161,7 @@ function testSummary(
     usage: { inputTokens: 0, outputTokens: 0 },
     cost: 0,
     unpricedCalls: 0,
+    subscriptionCalls: 0,
     statesVisited: [],
     context: {},
     error: null,

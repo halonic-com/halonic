@@ -5,6 +5,7 @@ import {
   type BridgeEvent,
   type BridgeProviderAccess,
   type BridgeTools,
+  bridgeCallCharge,
   bridgeCallCost,
   type HarnessBridgeOptions,
   type HarnessBridgeServer,
@@ -130,6 +131,19 @@ verifies("ports.harness-bridge-server", () => {
     expect(bridgeCallCost({ kind: "sign-in" }, null, usage)).toBe(0);
     expect(bridgeCallCost({ kind: "sign-in" }, { input: 3, output: 15 }, usage)).toBe(0);
     expect(bridgeCallCost(anthropicKey, null, usage)).toBeUndefined();
+  });
+
+  it("marks a subscription call as paid by the subscription, and no keyed call", () => {
+    const usage = { inputTokens: 1_000, outputTokens: 200 };
+    const anthropicKey: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
+    expect(bridgeCallCharge({ kind: "sign-in" }, { input: 3, output: 15 }, usage)).toEqual({
+      cost: 0,
+      paidBy: "subscription",
+    });
+    expect(bridgeCallCharge(anthropicKey, { input: 3, output: 15 }, usage)).toEqual({
+      cost: 0.006,
+    });
+    expect(bridgeCallCharge(anthropicKey, null, usage)).toEqual({});
   });
 
   it("prices a keyed call per million tokens", () => {

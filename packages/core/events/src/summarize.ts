@@ -32,6 +32,7 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
     usage: { inputTokens: 0, outputTokens: 0 },
     cost: 0,
     unpricedCalls: 0,
+    subscriptionCalls: 0,
     statesVisited: [],
     context: {},
     error: null,
@@ -65,7 +66,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       if (summary.status === "waiting") summary.status = "running";
       return;
     case "llm.response":
-      addModelCall(summary, event.usage, event.cost);
+      addModelCall(summary, event);
       return;
     case "context.updated":
       summary.context[event.key] = event.value;
@@ -134,12 +135,19 @@ function removeApproval(approvals: PendingApproval[], callId: string): void {
   if (index !== -1) approvals.splice(index, 1);
 }
 
-/** Add one model call's tokens, and its cost when it has a price. */
-function addModelCall(summary: RunSummary, usage: Usage, cost: number | undefined): void {
-  summary.usage.inputTokens += usage.inputTokens;
-  summary.usage.outputTokens += usage.outputTokens;
-  if (cost === undefined) summary.unpricedCalls++;
-  else summary.cost += cost;
+/**
+ * Add one model call's tokens, and its cost when it has a price. A call the
+ * person's subscription paid for is counted on its own, never priced.
+ */
+function addModelCall(
+  summary: RunSummary,
+  call: { usage: Usage; cost?: number; paidBy?: "subscription" },
+): void {
+  summary.usage.inputTokens += call.usage.inputTokens;
+  summary.usage.outputTokens += call.usage.outputTokens;
+  if (call.paidBy === "subscription") summary.subscriptionCalls++;
+  else if (call.cost === undefined) summary.unpricedCalls++;
+  else summary.cost += call.cost;
 }
 
 /**

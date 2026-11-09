@@ -159,6 +159,8 @@ verifies("events.run-log-contract", () => {
       text: string;
       thoughts?: string;
       cost?: number;
+      // Added after the reference by events.summary-cost (HAL-2311).
+      paidBy?: "subscription";
       cached?: boolean;
       // Added after the reference by events.tool-call-as-text (HAL-1880).
       toolCallAsText?: true;

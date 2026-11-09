@@ -45,6 +45,7 @@ verifies("events.upgrade-old-run-logs", () => {
       usage: { inputTokens: 120, outputTokens: 30 },
       cost: 0.01,
       unpricedCalls: 0,
+      subscriptionCalls: 0,
       statesVisited: ["pay"],
       context: {},
       error: "the bank is offline",

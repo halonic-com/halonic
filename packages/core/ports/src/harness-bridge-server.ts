@@ -22,8 +22,9 @@ export type BridgeProviderAccess =
    * With the person's own subscription: the bridge passes the program's own
    * sign-in to the provider unchanged and never reads, logs or stores it.
    * The subscription pays and Halonic spends nothing, so the bridge records
-   * the call with its tokens and `cost: 0`. It is never counted as unpriced,
-   * which would hide a keyed model that really lacks a price.
+   * the call with its tokens, `cost: 0` and `paidBy: "subscription"`. The
+   * run counts it in `subscriptionCalls`, never as unpriced (which would hide
+   * a keyed model that really lacks a price) and never towards a budget.
    */
   | { kind: "sign-in" };
 
@@ -144,6 +145,32 @@ export function bridgeCallCost(
   if (access.kind === "sign-in") return 0;
   if (price === null) return undefined;
   return priceOf(price, usage);
+}
+
+/** What the bridge puts on a model call's `llm.response` about its price: see {@link bridgeCallCharge}. */
+export type BridgeCallCharge = Pick<
+  Extract<BridgeEvent, { type: "llm.response" }>,
+  "cost" | "paidBy"
+>;
+
+/**
+ * The `cost` and `paidBy` the bridge records on a model call's
+ * `llm.response` (requirement `ports.harness-bridge-server`). A sign-in call
+ * gets `cost: 0` and `paidBy: "subscription"`, so the run counts it in
+ * `subscriptionCalls`. A keyed call gets the cost from {@link bridgeCallCost},
+ * or nothing when its model has no price.
+ *
+ * @example
+ * recorder.record({ type: "llm.response", ...call, ...bridgeCallCharge(access, price, usage) });
+ */
+export function bridgeCallCharge(
+  access: BridgeProviderAccess,
+  price: ModelPrice | null,
+  usage: Usage,
+): BridgeCallCharge {
+  if (access.kind === "sign-in") return { cost: 0, paidBy: "subscription" };
+  const cost = bridgeCallCost(access, price, usage);
+  return cost === undefined ? {} : { cost };
 }
 
 /** A bridge that is serving one run. */

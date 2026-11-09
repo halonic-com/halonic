@@ -35,10 +35,16 @@ export interface RunSummary {
   startedAt: string;
   endedAt: string | null;
   usage: Usage;
-  /** Sum of the priced model calls, in the budget currency. */
+  /** Sum of the priced model calls, in the budget currency. Subscription calls aren't in it. */
   cost: number;
-  /** Model calls without a price (their cost is unknown). */
+  /** Model calls without a price (their cost is unknown). Subscription calls aren't counted here. */
   unpricedCalls: number;
+  /**
+   * Model calls the person's own subscription paid for (`paidBy:
+   * "subscription"`). Their tokens are in `usage`; they have no price and
+   * are in neither `cost` nor `unpricedCalls`.
+   */
+  subscriptionCalls: number;
   statesVisited: string[];
   context: Record<string, unknown>;
   error: string | null;

@@ -69,6 +69,14 @@ export type RunEventBody =
       thoughts?: string;
       /** In the budget currency, when the model has a price. */
       cost?: number;
+      /**
+       * Who paid for the call when it wasn't Halonic: `"subscription"` when
+       * the person's own subscription did, through the harness bridge's
+       * sign-in. Such a call has its tokens but no price, counts in the run's
+       * `subscriptionCalls` and never towards `cost` or a budget (requirement
+       * `events.summary-cost`). Absent otherwise.
+       */
+      paidBy?: "subscription";
       /** Answered from the cache (a simulation re-run), not by the model. */
       cached?: boolean;
       /**
