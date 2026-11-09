@@ -65,10 +65,18 @@ export interface CliCommand {
 export type CommandRegistry = Readonly<Record<string, CliCommand>>;
 
 /**
- * The command line was wrong. The CLI prints the message with the command's
- * usage line as its fix, and exits with code 2, as for any `invalid_input` error.
+ * The command line was wrong. The CLI prints the message with its own `fix`,
+ * or else the command's usage line, as its fix, and exits with code 2, as for
+ * any `invalid_input` error.
  */
 export class UsageError extends Error {
   override readonly name = "UsageError";
   readonly kind = "invalid_input";
+  /** The next step, when the usage line isn't it, such as "Run halonic --help to see every command." */
+  readonly fix: string | undefined;
+
+  constructor(message: string, options: { readonly fix?: string } = {}) {
+    super(message);
+    this.fix = options.fix;
+  }
 }

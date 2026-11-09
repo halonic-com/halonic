@@ -27,8 +27,8 @@ export interface PrintErrorContext {
  * the only code that writes that shape; commands throw or return errors and
  * never print them.
  *
- * The fix comes from the error's own `fix` (or the usage line for a wrong
- * command line). An error without one gets no fix line: nothing here makes
+ * The fix comes from the error's own `fix` (or else the usage line for a
+ * wrong command line). An error without one gets no fix line: nothing here makes
  * one up. An error without a kind is a bug, so its text is never shown,
  * unless `--debug` asks for it.
  *
@@ -58,7 +58,7 @@ function errorLines(error: unknown, context: PrintErrorContext): readonly string
   if (errorKindOf(error) === "internal") {
     return internalLines;
   }
-  const fix = error instanceof UsageError ? context.usage : fixOf(error);
+  const fix = fixOf(error) ?? (error instanceof UsageError ? context.usage : undefined);
   return fix === undefined ? [`✕ ${messageOf(error)}`] : [`✕ ${messageOf(error)}`, `  ${fix}`];
 }
 

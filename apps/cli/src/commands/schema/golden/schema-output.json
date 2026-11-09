@@ -1,6 +1,6 @@
 {
   "stdout": [
-    "Wrote 15 JSON Schemas to schemas."
+    "✓ Wrote 15 JSON Schemas to ./schemas."
   ],
   "stderr": [],
   "files": [

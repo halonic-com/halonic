@@ -141,6 +141,8 @@ verifies("cli.help", () => {
     const io = captureIo("/work");
     expect(await runCli(["--help"], io, commands)).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
+      "Run and check Halonic workspaces from the command line.",
+      "",
       "Usage: halonic <command> [arguments]",
       "",
       "Commands:",
@@ -149,8 +151,10 @@ verifies("cli.help", () => {
       "",
       "Options for every command: --debug, --help",
       "",
-      "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input · 3 not trusted ·",
-      "4 not found · 5 conflict · 6 signed out · 7 not allowed · 8 limit reached · 9 unavailable",
+      "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input ·",
+      "3 not trusted · 4 not found · 5 conflict · 6 signed out · 7 not allowed ·",
+      "8 limit reached · 9 didn't answer or the sandbox can't start ·",
+      "130 or 143 stopped",
       "",
       "Run halonic <command> --help for a command's arguments and options.",
     ]);
@@ -160,7 +164,7 @@ verifies("cli.help", () => {
     for (const flag of ["help", "-h"]) {
       const io = captureIo("/work");
       expect(await runCli([flag], io, commands)).toBe(exitCode.ok);
-      expect(io.stdout[0]).toBe("Usage: halonic <command> [arguments]");
+      expect(io.stdout[2]).toBe("Usage: halonic <command> [arguments]");
     }
   });
 
@@ -191,14 +195,34 @@ verifies("cli.help", () => {
   it("prints the list and exits with 2 without a command", async () => {
     const io = captureIo("/work");
     expect(await runCli([], io, commands)).toBe(exitCode.usage);
-    expect(io.stdout[2]).toBe("Commands:");
+    expect(io.stdout[4]).toBe("Commands:");
   });
 
-  it("names an unknown command, prints the list and exits with 2", async () => {
+  it("names an unknown command, points to --help and exits with 2", async () => {
     const io = captureIo("/work");
     expect(await runCli(["deploy"], io, commands)).toBe(exitCode.usage);
-    expect(io.stderr[0]).toBe('Unknown command "deploy".');
-    expect(io.stderr).toContain("  greet     Say hello.");
+    expect(io.stdout).toEqual([]);
+    expect(io.stderr).toEqual([
+      '✕ There\'s no command "deploy".',
+      "  Run halonic --help to see every command.",
+    ]);
+  });
+
+  it("asks about the one command an unknown name is close to", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["gret", "Ada"], io, commands)).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      '✕ There\'s no command "gret". Did you mean greet?',
+      "  Run halonic --help to see every command.",
+    ]);
+  });
+
+  it("keeps every help line within 80 columns", async () => {
+    const io = captureIo("/work");
+    await runCli(["--help"], io, commands);
+    for (const line of io.stdout) {
+      expect(line.length).toBeLessThanOrEqual(80);
+    }
   });
 });
 
@@ -210,6 +234,7 @@ verifies("cli.help-exit-codes", () => {
     for (const { code, meaning } of exitCodeMeanings) {
       expect(help).toContain(`${code} ${meaning}`);
     }
+    expect(io.stdout).toContain("130 or 143 stopped");
   });
 
   it("has words for every exit code, in code order", () => {

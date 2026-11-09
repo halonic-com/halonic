@@ -1,5 +1,6 @@
 import { errorKindOf } from "@halonicjs/std";
-import type { CliCommand, CliIo } from "./command.ts";
+import { closestName } from "./closest-name.ts";
+import { type CliCommand, type CliIo, UsageError } from "./command.ts";
 import { type ExitCode, exitCode } from "./exit-code.ts";
 import { exitCodeFor } from "./exit-code-for.ts";
 import { type GlobalOptions, helpFlags, readGlobalOptions } from "./global-options.ts";
@@ -28,8 +29,7 @@ export async function runCli(
   }
   const command = commands.find((candidate) => candidate.name === name);
   if (command === undefined) {
-    io.err(`Unknown command "${name}".`);
-    printLines(io.err, overallHelp(commands));
+    printError(unknownCommand(name, commands), io.err, { debug: options.debug });
     return exitCode.usage;
   }
   if (rest.some((arg) => helpFlags.has(arg))) {
@@ -52,6 +52,18 @@ async function runCommand(
     printError(error, io.err, { usage: usageLine(command), debug: options.debug });
     return exitCodeFor(errorKindOf(error));
   }
+}
+
+/** The usage error for a command that doesn't exist, with "Did you mean" when one name is close. */
+function unknownCommand(name: string, commands: readonly CliCommand[]): UsageError {
+  const close = closestName(
+    name,
+    commands.map((command) => command.name),
+  );
+  const guess = close === undefined ? "" : ` Did you mean ${close}?`;
+  return new UsageError(`There's no command "${name}".${guess}`, {
+    fix: "Run halonic --help to see every command.",
+  });
 }
 
 function printLines(print: (line: string) => void, lines: readonly string[]): void {

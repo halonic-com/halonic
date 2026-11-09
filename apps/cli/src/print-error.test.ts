@@ -47,10 +47,22 @@ verifies("cli.print-error", () => {
   });
 
   it("shows the usage line as the fix of a wrong command line", () => {
-    const error = new UsageError("Give at most one folder.");
+    const error = new UsageError(
+      "halonic schema takes at most one folder, and you gave two: a, b.",
+    );
     expect(printed(error, { usage: "Usage: halonic schema [outDir]" })).toEqual([
-      "✕ Give at most one folder.",
+      "✕ halonic schema takes at most one folder, and you gave two: a, b.",
       "  Usage: halonic schema [outDir]",
+    ]);
+  });
+
+  it("shows a wrong command line's own fix instead of the usage line", () => {
+    const error = new UsageError('There\'s no command "deploy".', {
+      fix: "Run halonic --help to see every command.",
+    });
+    expect(printed(error, { usage: "Usage: halonic schema [outDir]" })).toEqual([
+      '✕ There\'s no command "deploy".',
+      "  Run halonic --help to see every command.",
     ]);
   });
 

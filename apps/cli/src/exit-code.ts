@@ -47,5 +47,11 @@ export const exitCodeMeanings: readonly { readonly code: ExitCode; readonly mean
   { code: exitCode.unauthenticated, meaning: "signed out" },
   { code: exitCode.denied, meaning: "not allowed" },
   { code: exitCode.limitReached, meaning: "limit reached" },
-  { code: exitCode.unavailable, meaning: "unavailable" },
+  { code: exitCode.unavailable, meaning: "didn't answer or the sandbox can't start" },
 ];
+
+/**
+ * The last entry `halonic --help` lists: not a code the CLI returns, but the
+ * one the shell reports when Ctrl C (130) or SIGTERM (143) stops it.
+ */
+export const stoppedMeaning = "130 or 143 stopped";

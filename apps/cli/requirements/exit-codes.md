@@ -10,7 +10,7 @@ The `halonic` command shall exit with 0 when it worked, 1 when it ran and found 
 
 - Given `halonic schema a b`,
   when it runs,
-  then it prints "✕ Give at most one folder." and, indented by two spaces, "Usage: halonic schema [outDir]", and exits with 2.
+  then it prints "✕ halonic schema takes at most one folder, and you gave two: a, b." and, indented by two spaces, "Usage: halonic schema [outDir]", and exits with 2.
 - Given `halonic schema --colour`,
   when it runs,
   then it names the unknown option and exits with 2.

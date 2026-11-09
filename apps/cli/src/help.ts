@@ -1,14 +1,19 @@
 import type { CliCommand, CliOption } from "./command.ts";
-import { exitCode, exitCodeMeanings } from "./exit-code.ts";
+import { exitCodeMeanings, stoppedMeaning } from "./exit-code.ts";
 import { globalOptionFlags } from "./global-options.ts";
 
+/** Every help line fits a terminal this wide (cli-output 1.9). */
+const helpWidth = 80;
+
 /**
- * The help for `halonic` on its own: every command with its summary, the
- * options every command takes, then the exit codes.
+ * The help for `halonic` on its own: what it's for, every command with its
+ * summary, the options every command takes, then the exit codes.
  */
 export function overallHelp(commands: readonly CliCommand[]): string[] {
   const width = Math.max(0, ...commands.map((command) => command.name.length));
   return [
+    "Run and check Halonic workspaces from the command line.",
+    "",
     "Usage: halonic <command> [arguments]",
     "",
     "Commands:",
@@ -46,15 +51,28 @@ export function usageLine(command: CliCommand): string {
 }
 
 /**
- * The exit codes on two lines: the CLI's own codes (0 to 3), then the error
- * kinds (4 to 9), so a script writer finds both groups at a glance.
+ * The exit codes in code order, ending with the codes for a stopped command,
+ * on as many lines as it takes to keep each within {@link helpWidth} columns.
+ * A line breaks only after a "·", never inside one code's words.
  */
 function exitCodeHelp(): string[] {
-  const listed = (codes: typeof exitCodeMeanings) =>
-    codes.map(({ code, meaning }) => `${code} ${meaning}`).join(" · ");
-  const own = exitCodeMeanings.filter(({ code }) => code <= exitCode.notTrusted);
-  const kinds = exitCodeMeanings.filter(({ code }) => code > exitCode.notTrusted);
-  return [`Exit codes: ${listed(own)} ·`, listed(kinds)];
+  const entries = [
+    ...exitCodeMeanings.map(({ code, meaning }) => `${code} ${meaning}`),
+    stoppedMeaning,
+  ];
+  const lines: string[] = [];
+  let line = "Exit codes:";
+  for (const [index, entry] of entries.entries()) {
+    const text = index === entries.length - 1 ? entry : `${entry} ·`;
+    if (line.length + 1 + text.length > helpWidth) {
+      lines.push(line);
+      line = text;
+    } else {
+      line = `${line} ${text}`;
+    }
+  }
+  lines.push(line);
+  return lines;
 }
 
 function optionLabel(name: string, option: CliOption): string {
