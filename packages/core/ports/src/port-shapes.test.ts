@@ -164,7 +164,7 @@ verifies("ports.sandbox-profile", () => {
     tempFolder: "/data/tmp/run_1",
     settingsFolder: null,
     readOnlyPaths: ["/data/workspace/workspace.yaml"],
-    deniedPaths: ["<home>/.ssh"],
+    deniedPaths: ["/data/home/.ssh"],
     env: { HOME: "/data/tmp/run_1" },
     network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
     timeLimitMs: 600_000,
@@ -212,7 +212,7 @@ verifies("ports.sandbox-session", () => {
 
   it("reports a blocked file or network access", () => {
     const seen: SandboxBlock[] = [
-      { kind: "file", path: "<home>/.ssh/key", access: "read" },
+      { kind: "file", path: "/data/home/.ssh/key", access: "read" },
       { kind: "network", host: "example.com", port: 443 },
     ];
     expect(seen.map((block) => block.kind)).toEqual(["file", "network"]);

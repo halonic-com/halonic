@@ -14,6 +14,12 @@ The `Sandbox` port shall report whether it works and how files reach it and how 
 - Given a session,
   when it starts a program,
   then it gets the program's three streams and a promise of how it ended that never rejects.
+- Given a session whose sandbox can't launch anything,
+  when it starts a program,
+  then `start` throws.
+- Given a program that is missing inside the fence,
+  when the session starts it,
+  then `start` doesn't throw and the program ends with a non-zero exit code.
 - Given a blocked access,
   when the session reports it,
   then it says whether a file (with its path and read or write) or a network address (with host and port) was refused.

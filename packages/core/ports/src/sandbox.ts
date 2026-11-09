@@ -71,7 +71,11 @@ export interface SandboxProfile {
 
 /** The network a {@link SandboxProfile} allows. */
 export interface SandboxNetwork {
-  /** The Halonic bridge: the one loopback address the program can reach. */
+  /**
+   * The Halonic bridge: the one loopback address the program can reach. An
+   * adapter rejects a host that is not a loopback address (`127.0.0.1`, `::1`
+   * or `localhost`) when {@link Sandbox.open} is called.
+   */
   bridge: { host: string; port: number };
   /**
    * Further sites, by host name such as "registry.npmjs.org" or with a
@@ -92,7 +96,10 @@ export interface SandboxCommand {
 
 /** How a started program ended. */
 export interface SandboxExit {
-  /** The exit code, or `null` when a signal ended it or the sandbox could not start it. */
+  /**
+   * The exit code, or `null` when a signal ended it. A program the fence can't
+   * find or run ends with a non-zero code, not `null`.
+   */
   code: number | null;
   /** The signal that ended it, such as "SIGKILL", or `null`. */
   signal: string | null;
@@ -129,7 +136,9 @@ export interface SandboxSession {
   /**
    * Starts a program inside the fence.
    *
-   * @throws when the session is closed, or the program can't be started
+   * @throws when the session is closed, or the sandbox can't launch anything.
+   * A program that is missing inside the fence doesn't throw: it ends with a
+   * non-zero {@link SandboxExit.code}.
    */
   start(command: SandboxCommand): Promise<SandboxProcess>;
   /** Reports each blocked access from now on. Returns a function that stops the reports. */
@@ -153,7 +162,7 @@ export interface Sandbox {
    * Opens a session for one run. Cancelling the run, by aborting `signal`,
    * closes the session.
    *
-   * @throws when the sandbox doesn't work here (see {@link Sandbox.check}) or the profile can't be applied
+   * @throws when the sandbox doesn't work here (see {@link Sandbox.check}) or the profile can't be applied, including a bridge that is not a loopback address
    */
   open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession>;
 }
