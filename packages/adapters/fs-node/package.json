@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/adapter-fs-node",
+  "private": true,
+  "type": "module",
+  "description": "The DefinitionStore and RunStore ports on the local file system with Node: plain files for definitions, one JSONL log per run.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/adapter-memory": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "tomas",
+    "runtime": "node",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
