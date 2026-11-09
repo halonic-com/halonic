@@ -302,8 +302,8 @@ jobs:
       - name: pnpm verify --full
         run: pnpm verify --full
 
-  # Conditional jobs. Stubs until the code they check exists;
-  # each runs only when its area changes, and ci-ok accepts "skipped".
+  # Conditional jobs. Each runs only when its area changes, and ci-ok
+  # accepts "skipped". e2e and docs are stubs until the code they check exists.
   tauri:
     # The Rust crates under apps/studio/src-tauri. The dependency audit
     # (cargo-deny) and the Windows smoke build arrive with the desktop
