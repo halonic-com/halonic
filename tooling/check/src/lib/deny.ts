@@ -9,6 +9,8 @@
 export interface DenyIgnore {
   readonly id: string;
   readonly reason: string;
+  /** Written as a plain string (`"RUSTSEC-…"`), which has no place for a reason or expiry. */
+  readonly plain?: true;
 }
 
 /** The lists, or `undefined` for one that is missing or not in the expected shape. */
@@ -90,6 +92,35 @@ function tables(text: string): string[] {
   return found;
 }
 
+/** The strings of an array body that sit outside any `{ ... }` table. */
+function plainStrings(text: string): string[] {
+  let rest = "";
+  let quoted = false;
+  let depth = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index] as string;
+    if (quoted) {
+      if (char === "\\") {
+        rest += depth === 0 ? char + (text[index + 1] ?? "") : "";
+        index += 1;
+        continue;
+      }
+      quoted = char !== '"';
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}" && depth > 0) {
+      depth -= 1;
+      continue;
+    }
+    if (depth === 0 && char !== "}") {
+      rest += char;
+    }
+  }
+  return strings(rest);
+}
+
 function field(table: string, key: string): string {
   const match = new RegExp(`(?:^|[,\\s])${key}\\s*=\\s*${string.source}`).exec(table);
   return match?.[1] === undefined ? "" : (JSON.parse(`"${match[1]}"`) as string);
@@ -104,9 +135,12 @@ export function readDeny(text: string): DenyReading {
     ignore:
       ignore === undefined
         ? undefined
-        : tables(ignore).map((table) => ({
-            id: field(table, "id"),
-            reason: field(table, "reason"),
-          })),
+        : [
+            ...plainStrings(ignore).map((id) => ({ id, reason: "", plain: true as const })),
+            ...tables(ignore).map((table) => ({
+              id: field(table, "id"),
+              reason: field(table, "reason"),
+            })),
+          ],
   };
 }

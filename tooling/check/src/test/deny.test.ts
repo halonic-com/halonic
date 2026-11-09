@@ -20,12 +20,12 @@ function ignoring(id: string, reason: string): string {
   return `\n  { id = "${id}", reason = "${reason}" },\n`;
 }
 
-function problems(text: string, files: Record<string, string> = {}): string[] {
+function problems(text: string, files: Record<string, string> = {}, now = today): string[] {
   const root = writeFixtureRepo([], {
     extraFiles: { [denyPath]: text, "tooling/check/licences.json": licences, ...files },
   });
   try {
-    return checkDeny(loadContext(root), today).problems.map((problem) => problem.message);
+    return checkDeny(loadContext(root), now).problems.map((problem) => problem.message);
   } finally {
     removeFixtureRepo(root);
   }
@@ -40,6 +40,15 @@ describe("tooling/check: deny.toml reader", () => {
       allow: ["MIT", "Apache-2.0"],
       ignore: [{ id: "RUSTSEC-2026-0001", reason: "Only {build} time [x]. Expires 2027-01-01." }],
     });
+  });
+
+  it("reads a plain-string ignore, and keeps braces in tables out of it", () => {
+    expect(
+      readDeny(deny({ ignore: '"RUSTSEC-2026-0002", { id = "a}", reason = "x" }' })).ignore,
+    ).toEqual([
+      { id: "RUSTSEC-2026-0002", reason: "", plain: true },
+      { id: "a}", reason: "x" },
+    ]);
   });
 
   it("reports a missing list as undefined", () => {
@@ -66,9 +75,13 @@ describe("tooling/check: deny-toml rule", () => {
   it("passes for the real deny.toml against the real licences.json", () => {
     const real = (path: string): string => readFileSync(join(realRoot, path), "utf8");
     expect(
-      problems(real(denyPath), {
-        "tooling/check/licences.json": real("tooling/check/licences.json"),
-      }),
+      problems(
+        real(denyPath),
+        {
+          "tooling/check/licences.json": real("tooling/check/licences.json"),
+        },
+        new Date(),
+      ),
     ).toEqual([]);
   });
 
@@ -95,6 +108,19 @@ describe("tooling/check: deny-toml rule", () => {
     expect(problems(deny({ ignore: ignoring("RUSTSEC-2026-0001", "") }))[0]).toContain(
       "needs a reason",
     );
+  });
+
+  it("fails on a plain-string ignore, which has no reason or expiry", () => {
+    const messages = problems(deny({ ignore: '"RUSTSEC-2026-0001"' }));
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain("RUSTSEC-2026-0001 is a plain string");
+    expect(
+      problems(
+        deny({
+          ignore: `"RUSTSEC-2026-0002", ${ignoring("RUSTSEC-2026-0001", "Expires 2027-01-01.")}`,
+        }),
+      ),
+    ).toHaveLength(1);
   });
 
   it("fails on an expired ignore but not on its last day", () => {

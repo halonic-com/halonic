@@ -1,12 +1,41 @@
 import { checkExpiry } from "../lib/advisories.ts";
 import type { CheckContext } from "../lib/context.ts";
-import { readDeny } from "../lib/deny.ts";
+import { type DenyIgnore, readDeny } from "../lib/deny.ts";
 import { Report } from "../lib/problems.ts";
 
 const guide = "See docs/guides/checks.md.";
 export const denyPath = "apps/studio/src-tauri/deny.toml";
 const licencesPath = "tooling/check/licences.json";
 const isoDate = /\b\d{4}-\d{2}-\d{2}\b/g;
+
+/** What is wrong with one ignore entry, in the order a reader fixes it. Records its id in `seen`. */
+function ignoreProblems(entry: DenyIgnore, seen: Set<string>, today: Date): string[] {
+  const at = `[advisories] ignore ${entry.id || "(entry without an id)"}`;
+  const problems: string[] = [];
+  const repeated = seen.has(entry.id);
+  seen.add(entry.id);
+  if (entry.plain === true) {
+    return [
+      `${at} is a plain string, which has no reason or expiry. Write it as { id = "…", reason = "… Expires YYYY-MM-DD" }`,
+    ];
+  }
+  if (entry.id === "") {
+    problems.push(`${at} needs an id`);
+  } else if (repeated) {
+    problems.push(`${at} is repeated`);
+  }
+  const dates = entry.reason.match(isoDate) ?? [];
+  if (entry.reason.trim() === "") {
+    problems.push(`${at} needs a reason`);
+  } else if (dates.length !== 1) {
+    problems.push(
+      `${at} must name exactly one expiry date (YYYY-MM-DD) in its reason, for example "Expires 2027-02-05"`,
+    );
+  } else {
+    checkExpiry(at, entry.id, dates[0] as string, today, problems);
+  }
+  return problems;
+}
 
 /**
  * Keeps the Studio shell's `deny.toml` (cargo-deny) in line with the rest of
@@ -50,25 +79,7 @@ export function checkDeny(context: CheckContext, today = new Date()): Report {
   }
   const seen = new Set<string>();
   for (const entry of ignore) {
-    const at = `[advisories] ignore ${entry.id || "(entry without an id)"}`;
-    const problems: string[] = [];
-    if (entry.id === "") {
-      problems.push(`${at} needs an id`);
-    } else if (seen.has(entry.id)) {
-      problems.push(`${at} is repeated`);
-    }
-    seen.add(entry.id);
-    const dates = entry.reason.match(isoDate) ?? [];
-    if (entry.reason.trim() === "") {
-      problems.push(`${at} needs a reason`);
-    } else if (dates.length !== 1) {
-      problems.push(
-        `${at} must name exactly one expiry date (YYYY-MM-DD) in its reason, for example "Expires 2027-02-05"`,
-      );
-    } else {
-      checkExpiry(at, entry.id, dates[0] as string, today, problems);
-    }
-    for (const problem of problems) {
+    for (const problem of ignoreProblems(entry, seen, today)) {
       report.error(denyPath, `${problem}. ${guide}`);
     }
   }
