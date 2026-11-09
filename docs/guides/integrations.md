@@ -41,7 +41,9 @@ The interface is decided in
 4. **Give every tool a `risk`.** `read` changes nothing; `write` changes data
    (mail, files, records); `send` reaches people outside. When in doubt,
    pick the higher one: the conformance suite fails a sheet that declares
-   less than the code. Set `untrusted: true` on a tool whose result carries
+   less than the code. Once the engine checks tool calls (HAL-998), every
+   risk above `read` needs a person's OK before the tool runs; only `read`
+   runs at once. Set `untrusted: true` on a tool whose result carries
    outside content, such as mail or web pages.
 5. **Don't pass a provider's error body on.** Throw an error with the status
    and what failed; the body may hold personal data or echo a key. You may
