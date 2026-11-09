@@ -308,7 +308,7 @@
     "old": "An every routine that had never run started right away, on the first check after it was saved.",
     "new": "A new every routine waits for its first slot after the scheduler's last tick. With every: 1h, a routine saved at 10:20 first runs at 11:00.",
     "why": "due knows only the window since the last tick, not when each routine last ran, which keeps it the same on every host. Starting at once also meant every new or renamed every routine fired the moment it was saved, often while it was still being edited. A person who wants a run now can start it by hand.",
-    "status": "proposed"
+    "status": "signed-off"
   },
   {
     "id": "routines-due-grace",
@@ -335,7 +335,7 @@
     "old": "dueRoutines applied the routine's overlap setting in the same call, so with the default overlap: skip a catch-up started one run and reported the other missed times as skipped.",
     "new": "due returns every missed time a catchUp: all routine allows, up to the cap, in one tick. Whether they all start at once is up to the app's RoutineScheduler, which applies overlap (app.routine-overlap): allow starts them all, queue starts them one after another, skip starts one.",
     "why": "due can't know which runs are still going, so it can't apply overlap. Returning every allowed time keeps due a pure function of the window and lets the scheduler, which can ask the run store, decide.",
-    "status": "proposed"
+    "status": "signed-off"
   },
   {
     "id": "routines-due-no-skipped-list",
