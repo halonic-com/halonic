@@ -43,3 +43,11 @@ export {
   secretsContract,
   tokenStoreContract,
 } from "./secrets.ts";
+export {
+  type FingerprintCase,
+  type FingerprintConnectors,
+  fingerprintAttacks,
+  fingerprintControls,
+  fingerprintCoverageContract,
+  fingerprintGaps,
+} from "./trust-fingerprint.ts";
