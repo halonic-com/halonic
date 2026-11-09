@@ -206,6 +206,22 @@ seconds to start and set up its test environment, and on a busy machine a
 worker can miss that, jsdom ones first. Run the tests again when the machine
 is less busy; don't change the tests or the floor.
 
+If the same jsdom files never run, even in a package tested on its own, the
+disk is probably too slow. Vitest can't give a worker more than 60 seconds,
+and a worker loads jsdom's thousand modules from the pnpm store before it
+starts. pnpm puts its store on the same drive as the repo, so a repo on a
+Windows drive shared into WSL, or on a network drive, reads every module
+through that slow link. Check how long jsdom takes to load from a package
+that uses it:
+
+```sh
+node -e "const t = performance.now(); require('jsdom'); console.log(Math.round(performance.now() - t), 'ms')"
+```
+
+A healthy disk takes under a second. If it takes tens of seconds, put the
+store on a local disk and install again:
+`pnpm install --store-dir <a folder on a local disk>`.
+
 ## Licences
 
 `pnpm check:licences` reads the installed packages' licences. Production

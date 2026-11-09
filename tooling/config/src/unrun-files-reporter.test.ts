@@ -85,6 +85,7 @@ describe("UnrunTestFilesReporter", () => {
     const message = String(error.mock.calls[0]?.[0]);
     expect(message).toMatch(/^1 of 2 test file\(s\) never ran/);
     expect(message).toContain("Run the tests again when the machine is less busy");
+    expect(message).toContain("pnpm install --store-dir <a folder on a local disk>");
     expect(message.endsWith(`\n  - ${join("src", "b.test.ts")}`)).toBe(true);
   });
 });
