@@ -132,6 +132,17 @@ const iconButtonClasses: Record<ButtonSize, string> = {
 export const InFieldBoxContext = createContext(false);
 const inFieldBoxIconButton = `size-control-sm ${hitArea}`;
 
+/**
+ * Set by a box with a tinted fill round its action (a Callout, and later a Toast). There a ghost
+ * button's label is `accent-text`, and its hover and press fill is `surface`, so it lifts out of
+ * the tint instead of greying it (component specs 17.1).
+ */
+export const OnTintContext = createContext(false);
+const ghostOnTint = [
+  "border-transparent text-accent-text",
+  "not-aria-disabled:hover:bg-surface not-aria-disabled:active:bg-surface",
+].join(" ");
+
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
 const largeIconSlot = "phone:size-icon-md";
 
@@ -151,6 +162,7 @@ export function Button(props: ButtonProps) {
   const { variant = "secondary", size = "md", block = false, busy = false, unavailable } = props;
   const isIconButton = props.label !== undefined;
   const inFieldBox = useContext(InFieldBoxContext) && isIconButton;
+  const onTint = useContext(OnTintContext) && variant === "ghost";
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     if (busy || unavailable !== undefined) {
@@ -163,7 +175,7 @@ export function Button(props: ButtonProps) {
 
   const classes = [
     shared,
-    variantClasses[variant],
+    onTint ? ghostOnTint : variantClasses[variant],
     buttonSizeClasses(size, isIconButton, inFieldBox),
     block ? "w-full" : "",
   ].join(" ");

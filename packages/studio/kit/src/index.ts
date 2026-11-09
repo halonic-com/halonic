@@ -11,6 +11,14 @@ export {
   type ButtonUnavailable,
   type ButtonVariant,
 } from "./button/button.tsx";
+export {
+  CALLOUT_FILES_SHOWN,
+  Callout,
+  type CalloutAction,
+  type CalloutHandle,
+  type CalloutProps,
+  type CalloutTone,
+} from "./callout/callout.tsx";
 export { Card, type CardProps, type CardState } from "./card/card.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export {

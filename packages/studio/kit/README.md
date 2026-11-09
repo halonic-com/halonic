@@ -234,6 +234,53 @@ Never show it together with a skeleton.
 **On a phone** the column fits the page's 328px, and the `md` buttons draw at 40px, as every
 `md` button does there. An empty section inside a page is one line of text, not an Empty state.
 
+## Callout
+
+A message that belongs to one place on a page and stays there until what it's about is dealt
+with: the key notice, "problems first", a partial undo, a failed save in a dialog. Not a toast
+(a toast reports a result and goes), and not the Empty state's error (which replaces content that
+didn't load: a Callout sits above content that's there). It has no close button.
+
+```tsx
+<Callout tone="info" icon={<ShieldIcon />}>
+  This workspace isn't trusted yet.
+</Callout>;
+<Callout
+  tone="warning"
+  title="Couldn't change 3 files"
+  files={failed}
+  action={{ label: "Try again", onClick: retryFailed }}
+  announce="focus"
+  ref={callout}
+>
+  Halonic kept a copy of each.
+</Callout>;
+```
+
+| Prop       | What it is                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| `tone`     | `info` (also the "neutral" notices), `warning` (nothing was lost), `danger` (wasn't kept)   |
+| `title`    | Optional, in `text-body-strong`                                                             |
+| `children` | The text, in `text-small` `fg`. Links in it use the normal inline link                      |
+| `files`    | File names or paths in mono, which wrap anywhere: three, then "and N more"                  |
+| `icon`     | A 16px icon in place of the tone's own, in the tone's colour. The fill never changes        |
+| `action`   | One `{ label, onClick }`, a ghost button under the text, busy while a returned promise runs |
+| `announce` | `focus` for a Callout that appears because of something you did (below)                     |
+
+The text is `fg`, not the tone's colour: the icon and the fill carry the tone. It wraps and is
+never cut, on both sizes. The box has a transparent 1px border, so Windows high contrast, which
+drops the fill, still draws it.
+
+**Focus and screen readers.** A Callout that's always there is plain page content: no role, no
+focus. One that appears because of something you did, maybe out of sight, takes
+`announce="focus"`: it's a `role="group"` named by its title (or its text) and described by its
+text and list, with `tabindex="-1"`. The screen scrolls its page to the top, then calls the ref's
+`focus()`, which doesn't scroll again. There's no `role="alert"`: a failure that must leave focus
+where it is goes through the alert slot that the Dialog and the text sheet own.
+
+**On a phone** it sits inside the 16px page inset, never flush. Its action's `sm` button draws at
+`lg` with a 48px hit area, as every `sm` button does there, and stays under the text.
+
 ## StatusChip
 
 The state of an item, in a row, a card header or a panel. It isn't interactive: something you can
