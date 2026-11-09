@@ -105,11 +105,23 @@ checked JSON. Passwords are checked with WebCrypto, not `@noble/hashes`.
   its trusted-publisher status, a common sign of a hijack.
 - **`registries`**: the `@halonicjs` scope always comes from npm.
 
-`overrides`, `packageExtensions`, `patchedDependencies` and named
-`catalogs:` in `pnpm-workspace.yaml`, and `overrides`, `resolutions` or
-`pnpm` in a `package.json`, fail the check: they change the tree around
-the catalog and this list. If a security fix needs an override, propose
-an allow-list for the check in its own pull request.
+`packageExtensions`, `patchedDependencies` and named `catalogs:` in
+`pnpm-workspace.yaml`, and `overrides`, `resolutions` or `pnpm` in a
+`package.json`, fail the check: they change the tree around the catalog
+and this list.
+
+`overrides:` in `pnpm-workspace.yaml` is allowed for one case: a security
+fix for one parent's copy of a package. List it in
+`tooling/check/overrides-allowed.json` in its own pull request, with the
+advisory, a reason and a `remove-when` condition. The check holds each
+entry to these rules:
+
+- The key is `parent>child`. A bare `zod:` would rewrite every copy in the
+  tree and fails.
+- The value is the catalog version of the child (or `catalog:`), so the
+  catalog stays the one place for versions.
+- An entry with no matching override fails, so a fix that is no longer
+  needed gets removed.
 
 Internal dependencies always use `"workspace:*"`. A version range would let
 pnpm look the name up on the registry. Add one with

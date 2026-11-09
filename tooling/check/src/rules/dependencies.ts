@@ -1,4 +1,4 @@
-import { plainVersion, readWorkspaceVersions } from "../lib/catalog.ts";
+import { type CatalogEntry, plainVersion, readWorkspaceVersions } from "../lib/catalog.ts";
 import type { ApprovedDependency } from "../lib/config-files.ts";
 import {
   approvedDependency,
@@ -8,12 +8,14 @@ import {
   notAllowedMessage,
 } from "../lib/context.ts";
 import type { Layer } from "../lib/layout.ts";
+import { overrideProblems, readAllowedOverrides } from "../lib/overrides.ts";
 import { Report } from "../lib/problems.ts";
 import type { DependencyField, WorkspacePackage } from "../lib/workspace.ts";
 
 const guide = "See docs/guides/dependencies.md.";
 const cloudRuntimeCategories = new Set(["core-exception", "outside-world"]);
 const workspaceFile = "pnpm-workspace.yaml";
+export const overridesAllowedPath = "tooling/check/overrides-allowed.json";
 
 /** `package.json` fields that rewrite the dependency tree, like `overrides:` in the workspace file. */
 const manifestTreeRewrites = ["overrides", "resolutions", "pnpm"];
@@ -172,7 +174,7 @@ function checkList(context: CheckContext, used: ReadonlySet<string>, report: Rep
  * name, and no setting rewrites the tree around the catalog.
  */
 function checkWorkspaceVersions(context: CheckContext, report: Report): void {
-  const { catalog, treeRewrites, unreadableLines } = readWorkspaceVersions(
+  const { catalog, overrides, treeRewrites, unreadableLines } = readWorkspaceVersions(
     context.read(workspaceFile),
   );
   for (const line of unreadableLines) {
@@ -204,5 +206,33 @@ function checkWorkspaceVersions(context: CheckContext, report: Report): void {
       `"${setting}" rewrites the dependency tree around the catalog and dependencies.json, so it isn't allowed. If a security fix needs one, propose an allow-list for this check in its own pull request.`,
       line,
     );
+  }
+  checkOverrides(context, catalog, overrides, report);
+}
+
+/** `overrides:` pass only as a parent-scoped selector in `overrides-allowed.json`, at the catalog version. */
+function checkOverrides(
+  context: CheckContext,
+  catalog: readonly CatalogEntry[],
+  overrides: readonly CatalogEntry[],
+  report: Report,
+): void {
+  if (!context.files.includes(overridesAllowedPath)) {
+    report.error(
+      overridesAllowedPath,
+      `The file is missing. Keep it, with an empty list when nothing is allowed. ${guide}`,
+    );
+    return;
+  }
+  const reading = readAllowedOverrides(context.read(overridesAllowedPath));
+  for (const problem of reading.problems) {
+    report.error(overridesAllowedPath, `${problem}. ${guide}`);
+  }
+  const found = overrideProblems(overrides, reading.entries, catalog);
+  for (const { message, line } of found.problems) {
+    report.error(workspaceFile, message, line);
+  }
+  for (const message of found.stale) {
+    report.error(overridesAllowedPath, `${message} ${guide}`);
   }
 }

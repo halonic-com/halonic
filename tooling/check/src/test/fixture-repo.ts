@@ -57,6 +57,8 @@ export interface FixtureOptions {
   readonly policy?: (policy: Record<string, unknown>) => unknown;
   /** Changes the real pnpm-workspace.yaml before it is written. */
   readonly workspaceYaml?: (yaml: string) => string;
+  /** The text of `overrides-allowed.json`; the real file when absent. */
+  readonly overridesAllowed?: string;
   /** The rules to run. Without it, the ones a plain `pnpm check` runs, so not `trace`. */
   readonly rules?: readonly string[];
 }
@@ -97,6 +99,11 @@ export function writeFixtureRepo(
   write(
     "tooling/check/advisories-ignored.json",
     readFileSync(join(realRoot, "tooling/check/advisories-ignored.json"), "utf8"),
+  );
+  write(
+    "tooling/check/overrides-allowed.json",
+    options.overridesAllowed ??
+      readFileSync(join(realRoot, "tooling/check/overrides-allowed.json"), "utf8"),
   );
   write(
     "package.json",

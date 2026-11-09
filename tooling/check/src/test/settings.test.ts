@@ -97,19 +97,20 @@ describe("tooling/check: catalog and overrides", () => {
     );
   });
 
-  it("refuses overrides in the workspace file and in package.json", () => {
+  it("refuses overrides in package.json, and in the workspace file unless allowed", () => {
     const workspaceYaml = (yaml: string) => `${yaml}\noverrides:\n  vitest: npm:other@1\n`;
     const resolutions: FixturePackage = {
       directory: "tooling/x",
       manifest: manifestFor("@halonicjs/tooling-x", "tooling", { resolutions: { a: "1.0.0" } }),
     };
     const found = messages([resolutions], { workspaceYaml });
-    expect(found.some((m) => m.startsWith('"overrides" rewrites the dependency tree'))).toBe(true);
+    expect(
+      found.some((m) => m.startsWith('"overrides: vitest" rewrites the dependency tree')),
+    ).toBe(true);
     expect(found.some((m) => m.startsWith('"resolutions" rewrites the dependency tree'))).toBe(
       true,
     );
   });
-
   it("reports a top-level line it can't read, such as a space before the colon", () => {
     const unreadable = (found: string[]) =>
       found.filter((m) => m.startsWith("The check can't read"));
@@ -124,6 +125,84 @@ describe("tooling/check: catalog and overrides", () => {
     expect(found.some((m) => m.includes('"vitest": "catalog:other" must be "catalog:"'))).toBe(
       true,
     );
+  });
+});
+
+const allowedSelector = "@anthropic-ai/sandbox-runtime>zod";
+
+function allowing(selector = allowedSelector): string {
+  return JSON.stringify({
+    allowed: [
+      {
+        selector,
+        advisory: "GHSA-mrhx-c7xc-m3w5",
+        reason: "srt pins a zod with a high advisory.",
+        "remove-when": "srt depends on zod 4.6.6 or later",
+      },
+    ],
+  });
+}
+
+function overriding(key: string, value: string): (yaml: string) => string {
+  return (yaml) => `${yaml}\noverrides:\n  "${key}": ${value}\n`;
+}
+
+describe("tooling/check: allowed overrides", () => {
+  const problemsOf = (found: string[]) =>
+    found.filter((m) => m.includes("overrides") || m.includes("is allowed but"));
+
+  it("passes a listed parent-scoped override at the catalog version", () => {
+    for (const value of ["4.6.7", "catalog:"]) {
+      const workspaceYaml = overriding(allowedSelector, value);
+      expect(problemsOf(messages([], { workspaceYaml, overridesAllowed: allowing() }))).toEqual([]);
+    }
+  });
+
+  it("refuses an override that isn't listed", () => {
+    const workspaceYaml = overriding("other>zod", "4.6.7");
+    const found = messages([], { workspaceYaml, overridesAllowed: allowing() });
+    expect(found.some((m) => m.startsWith('"overrides: other>zod" rewrites'))).toBe(true);
+  });
+
+  it("refuses a bare name, even when listed", () => {
+    const workspaceYaml = overriding("zod", "4.6.7");
+    const found = messages([], { workspaceYaml, overridesAllowed: allowing("zod") });
+    expect(found.some((m) => m.includes("must be parent>child"))).toBe(true);
+  });
+
+  it("refuses a value other than the catalog version", () => {
+    const workspaceYaml = overriding(allowedSelector, "3.25.0");
+    const found = messages([], { workspaceYaml, overridesAllowed: allowing() });
+    expect(found.some((m) => m.includes('must match the catalog version of "zod" (4.6.7)'))).toBe(
+      true,
+    );
+  });
+
+  it("refuses a listed entry with no override, so a stale one can't stay", () => {
+    const found = messages([], { overridesAllowed: allowing() });
+    expect(found.some((m) => m.includes(`"${allowedSelector}" is allowed but`))).toBe(true);
+  });
+
+  it("reads overrides-allowed.json strictly", () => {
+    const entry = JSON.parse(allowing()).allowed[0];
+    const bad = (value: unknown) =>
+      messages([], { overridesAllowed: JSON.stringify(value) }).some(
+        (m) => m.includes("allowed[") || m.includes('"allowed" list'),
+      );
+    expect(bad({ allowed: [{ ...entry, extra: 1 }] })).toBe(true);
+    expect(bad({ allowed: [{ ...entry, advisory: "nope" }] })).toBe(true);
+    expect(bad({ allowed: [{ ...entry, reason: "short" }] })).toBe(true);
+    expect(bad({ allowed: [{ ...entry, "remove-when": "" }] })).toBe(true);
+    expect(bad({ allowed: [entry, entry] })).toBe(true);
+    expect(bad({ nope: [] })).toBe(true);
+  });
+
+  it("still refuses the other tree rewrites", () => {
+    for (const setting of ["packageExtensions", "patchedDependencies", "catalogs"]) {
+      const workspaceYaml = (yaml: string) => `${yaml}\n${setting}:\n  a: b\n`;
+      const found = messages([], { workspaceYaml, overridesAllowed: allowing() });
+      expect(found.some((m) => m.startsWith(`"${setting}" rewrites`))).toBe(true);
+    }
   });
 });
 
