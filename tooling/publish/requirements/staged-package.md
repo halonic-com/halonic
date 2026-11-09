@@ -1,4 +1,4 @@
-# tooling-publish.staged-package
+# publish.staged-package
 
 - Status: active
 - Since: 0.1.0
