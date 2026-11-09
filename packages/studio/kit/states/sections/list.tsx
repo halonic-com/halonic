@@ -99,7 +99,14 @@ export const listSection: PartSection = {
     { name: "Focus", force: "focus", target: firstCell, copies: () => <Agents /> },
     {
       name: "Disabled",
-      copies: () => <Agents first={{ ...customerSupport, disabled: true }} />,
+      copies: () => (
+        <Agents
+          first={{
+            ...customerSupport,
+            unavailable: { reason: "Waiting for the model to download" },
+          }}
+        />
+      ),
     },
     { name: "Error", copies: () => <Agents first={invoices} /> },
   ],

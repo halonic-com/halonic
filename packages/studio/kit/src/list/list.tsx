@@ -251,7 +251,7 @@ function cornerBarClasses(look: "bordered" | "flush", first: boolean, last: bool
   if (look === "flush") {
     return "";
   }
-  return `${first ? "after:top-2" : ""} ${last ? "after:bottom-2" : ""}`;
+  return [first ? "after:top-2" : "", last ? "after:bottom-2" : ""].filter(Boolean).join(" ");
 }
 
 /** The row's chip or value, or an error's `danger` chip in its place. */

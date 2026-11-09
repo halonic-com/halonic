@@ -189,7 +189,8 @@ verifies("kit.list", () => {
     expect(mainCell(container, 0).className).not.toContain("after:bottom-2");
     press(mainCell(container, 0), "End");
     press(mainCell(container, 2), " ");
-    expect(mainCell(container, 2).className).toContain("selected-bar after:bottom-2");
+    expect(mainCell(container, 2).className).toContain("selected-bar");
+    expect(mainCell(container, 2).className).toContain("after:bottom-2");
     expect(mainCell(container, 0).className).not.toContain("after:top-2");
     // A flush list has no corners, so its bar keeps the 6px inset.
     const flush = render(<Selectable flush />);
