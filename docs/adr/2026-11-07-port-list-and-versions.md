@@ -160,6 +160,20 @@ version 1 now. `RunExecutor` stays at 1:
   later options have a place, but a new option an executor must honor is
   still a breaking change (see "The freeze").
 
+_2026-11-09, decided on HAL-1616, built in HAL-1531 (HAL-186 step 7b)._
+One new port, at version 1:
+
+- **`ConnectionSettingsStore`:** `get`, `save` and `remove` a connector's
+  settings (`ports.connection-settings-store`), keyed by workspace location
+  and connector id. For now the settings hold only "allow sending" (HAL-9
+  decision 5). They live in the user's profile, never in a workspace, so an
+  agent that edits the workspace can't switch sending on. The port only
+  stores: `ConnectionSettings` in `core/app` treats missing settings as
+  sending off, and the engine and the outside-a-run gate ask it. This is
+  not the new port that `RunHost.connectorTools` and `callConnectorTool`
+  come back as (see above): those stay out, and the outside-a-run gate is
+  a check in `core/app` that reads this port.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

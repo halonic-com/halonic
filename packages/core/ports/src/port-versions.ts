@@ -1,5 +1,6 @@
 import { blobStoreVersion } from "./blob-store.ts";
 import { clockVersion } from "./clock.ts";
+import { connectionSettingsStoreVersion } from "./connection-settings-store.ts";
 import { connectorClientVersion } from "./connector-client.ts";
 import { coordinationVersion } from "./coordination.ts";
 import { definitionStoreVersion } from "./definition-store.ts";
@@ -33,6 +34,7 @@ import { vcsVersion } from "./vcs.ts";
 export const portVersions = {
   BlobStore: blobStoreVersion,
   Clock: clockVersion,
+  ConnectionSettingsStore: connectionSettingsStoreVersion,
   ConnectorClient: connectorClientVersion,
   Coordination: coordinationVersion,
   DefinitionStore: definitionStoreVersion,

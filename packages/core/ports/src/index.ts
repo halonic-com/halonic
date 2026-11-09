@@ -11,6 +11,12 @@ export type {
 } from "./chat.ts";
 export { type Clock, clockVersion } from "./clock.ts";
 export {
+  type ConnectionKey,
+  type ConnectionSettingsRecord,
+  type ConnectionSettingsStore,
+  connectionSettingsStoreVersion,
+} from "./connection-settings-store.ts";
+export {
   type ConnectorClient,
   type ConnectorConfig,
   type ConnectorFactory,
