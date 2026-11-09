@@ -17,24 +17,14 @@ const routineCases = [
   "routine/other-hub",
   "routine/mail-unknown-connector",
   "routine/mail-not-google",
+  "routine/no-hub",
 ];
 
 verifies("workspace.routines", () => {
   it.each(routineCases)(
-    "gives %s the old loader's error, at the key path and line of the name",
+    "gives %s the old loader's error, at the key path and line the case file names",
     async (caseId) => {
       expect(await errorsOf(caseId)).toEqual([expectedError(caseId)]);
-    },
-    parityLoadLimitMs,
-  );
-
-  it(
-    "points a missing run.hub at the run map, a line below where routine/no-hub expects it",
-    async () => {
-      // The case file names the line of the `run:` key (5). A missing key
-      // points at its map in every file (the yaml package's rule), so line 6.
-      const { file, path, message } = expectedError("routine/no-hub");
-      expect(await errorsOf("routine/no-hub")).toEqual([{ file, path, line: 6, message }]);
     },
     parityLoadLimitMs,
   );
