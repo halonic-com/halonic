@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Recording } from "../recording.ts";
 import { fakeOldRepo } from "../test/fake-old-repo.ts";
 import { TestFolders } from "../test-folders.ts";
-import { main } from "./record.ts";
+import { main, type StartRunner } from "./record.ts";
 
 const folders = new TestFolders();
 afterEach(() => folders.cleanUp());
@@ -134,12 +134,22 @@ describe("parity.record-only-from-reference", () => {
     expect(existsSync(join(fixtureFolder, "base/recorded.json"))).toBe(false);
   });
 
+  // The runner itself failing on old code is covered in old-runner.test.ts;
+  // here a runner that fails at once keeps the test free of a Node start.
   it("fails without writing when the old runner fails", () => {
-    const { clone, head } = fakeOldRepo(folders, ["Hub"]);
+    const { clone, head } = fakeOldRepo(folders);
     const fixtureFolder = fixtures();
-    expect(() => main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toThrow(
-      /^The old runner failed \(exit 1\)$/,
-    );
+    const startRunner = vi.fn<StartRunner>(() => 1);
+    const setup = { fixtures: fixtureFolder, reference: head, startRunner };
+    expect(() => main(["--old", clone], setup)).toThrow(/^The old runner failed \(exit 1\)$/);
+    expect(startRunner).toHaveBeenCalledOnce();
     expect(existsSync(join(fixtureFolder, "base/recorded.json"))).toBe(false);
+    expect(existsSync(join(fixtureFolder, "old-line-notes.json"))).toBe(false);
+  });
+
+  it("says when the old runner was killed", () => {
+    const { clone, head } = fakeOldRepo(folders);
+    const setup = { fixtures: fixtures(), reference: head, startRunner: () => null };
+    expect(() => main(["--old", clone], setup)).toThrow(/^The old runner failed \(exit none\)$/);
   });
 });

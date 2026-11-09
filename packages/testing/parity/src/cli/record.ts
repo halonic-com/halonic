@@ -24,10 +24,35 @@ interface Options {
   readonly only: readonly string[];
 }
 
-/** Where the fixtures are and which commit the clone must be at; tests pass their own. */
+/** The files one run of old-runner.ts reads and writes, all in the scratch folder. */
+export interface RunnerFiles {
+  readonly jobs: string;
+  readonly results: string;
+  readonly home: string;
+}
+
+/** Runs old-runner.ts on a clone and returns its exit status (null if it was killed). */
+export type StartRunner = (clone: string, files: RunnerFiles) => number | null;
+
+/** Starts old-runner.ts with the clone's own tsx, in the clone, with a clean environment. */
+const startOldRunner: StartRunner = (clone, files) => {
+  const runner = fileURLToPath(new URL("../old-runner.ts", import.meta.url));
+  const run = spawnSync(oldTsx(clone), [runner, clone, files.jobs, files.results, files.home], {
+    cwd: clone,
+    stdio: "inherit",
+    env: oldEnvironment(files.home),
+  });
+  return run.status;
+};
+
+/**
+ * Where the fixtures are, which commit the clone must be at and how the old
+ * runner starts; tests pass their own.
+ */
 export interface Setup {
   readonly fixtures: string;
   readonly reference: string;
+  readonly startRunner?: StartRunner;
 }
 
 const defaultSetup: Setup = {
@@ -63,22 +88,19 @@ function lineNotes(
   return `${JSON.stringify(notes, null, 2)}\n`;
 }
 
-function runOld(clone: string, jobs: unknown, scratch: string): OldResult[] {
-  const jobsPath = join(scratch, "jobs.json");
-  const outPath = join(scratch, "results.json");
-  const home = join(scratch, "home");
-  mkdirSync(home);
-  writeFileSync(jobsPath, JSON.stringify(jobs));
-  const runner = fileURLToPath(new URL("../old-runner.ts", import.meta.url));
-  const run = spawnSync(oldTsx(clone), [runner, clone, jobsPath, outPath, home], {
-    cwd: clone,
-    stdio: "inherit",
-    env: oldEnvironment(home),
-  });
-  if (run.status !== 0) {
-    throw new Error(`The old runner failed (exit ${run.status ?? "none"})`);
+function runOld(start: StartRunner, clone: string, jobs: unknown, scratch: string): OldResult[] {
+  const files: RunnerFiles = {
+    jobs: join(scratch, "jobs.json"),
+    results: join(scratch, "results.json"),
+    home: join(scratch, "home"),
+  };
+  mkdirSync(files.home);
+  writeFileSync(files.jobs, JSON.stringify(jobs));
+  const status = start(clone, files);
+  if (status !== 0) {
+    throw new Error(`The old runner failed (exit ${status ?? "none"})`);
   }
-  return JSON.parse(readFileSync(outPath, "utf8")) as OldResult[];
+  return JSON.parse(readFileSync(files.results, "utf8")) as OldResult[];
 }
 
 /** Records every case (or only the --case ones) and returns the exit code. */
@@ -103,7 +125,8 @@ export function main(argv: readonly string[], setup: Setup = defaultSetup): numb
       const dir = join(scratch, `workspace-${index}`);
       return { id: parityCase.id, dir, files: composeWorkspace(fixtures, parityCase, dir) };
     });
-    const results = runOld(options.clone, jobs, scratch);
+    const start = setup.startRunner ?? startOldRunner;
+    const results = runOld(start, options.clone, jobs, scratch);
     const recordings = cases.map((parityCase, index) => {
       const result = results[index];
       const dir = jobs[index]?.dir ?? "";
