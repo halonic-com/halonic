@@ -1,0 +1,60 @@
+import { type CliCommand, type CliIo, UsageError } from "./command.ts";
+import { type ExitCode, exitCode } from "./exit-code.ts";
+import { commandHelp, overallHelp, usageLine } from "./help.ts";
+import { readInput } from "./read-input.ts";
+
+const helpFlags = new Set(["--help", "-h"]);
+
+/**
+ * Runs one `halonic` command line and returns the exit code. Output goes
+ * through `io`, so tests run the CLI in-process and read what it printed.
+ *
+ * @param args - the command line after `halonic`
+ * @param commands - the commands to choose from; `main.ts` passes the generated list
+ */
+export async function runCli(
+  args: readonly string[],
+  io: CliIo,
+  commands: readonly CliCommand[],
+): Promise<ExitCode> {
+  const [name, ...rest] = args;
+  if (name === undefined || helpFlags.has(name) || name === "help") {
+    printLines(io.out, overallHelp(commands));
+    return name === undefined ? exitCode.usage : exitCode.ok;
+  }
+  const command = commands.find((candidate) => candidate.name === name);
+  if (command === undefined) {
+    io.err(`Unknown command "${name}".`);
+    printLines(io.err, overallHelp(commands));
+    return exitCode.usage;
+  }
+  if (rest.some((arg) => helpFlags.has(arg))) {
+    printLines(io.out, commandHelp(command));
+    return exitCode.ok;
+  }
+  return runCommand(command, rest, io);
+}
+
+async function runCommand(
+  command: CliCommand,
+  args: readonly string[],
+  io: CliIo,
+): Promise<ExitCode> {
+  try {
+    return await command.run(readInput(command, args), io);
+  } catch (error) {
+    if (error instanceof UsageError) {
+      io.err(error.message);
+      io.err(usageLine(command));
+      return exitCode.usage;
+    }
+    io.err(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    return exitCode.failed;
+  }
+}
+
+function printLines(print: (line: string) => void, lines: readonly string[]): void {
+  for (const line of lines) {
+    print(line);
+  }
+}

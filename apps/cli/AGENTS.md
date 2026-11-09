@@ -1,0 +1,28 @@
+# halonic
+
+Owner: liam · Layer: apps · Read the root `AGENTS.md` first; this file adds local rules.
+
+## Scope
+
+The `halonic` command-line tool: one folder per command under `src/commands`, help made from the commands.
+
+This package may change only through tasks that name it. Its public API is `src/index.ts`;
+everything else is internal.
+
+## Commands
+
+| Command                                | What it does                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `pnpm verify`                          | checks every package your change affects, including the ones that depend on this one |
+| `pnpm turbo run test --filter=halonic` | runs only this package's tests (and the codegen they need)                           |
+
+## Local rules
+
+- A command is thin: it parses its input, calls one app service and formats the result. Rules
+  such as "only while the run is waiting" or "refuse an untrusted workspace" live in the service,
+  which returns them as a result; the command only maps that result to output and an exit code
+  ([details](../../docs/guides/code-style.md#thin-commands-and-screens)).
+- A new command is a new folder `src/commands/<name>/` with `command.ts` exporting `<name>Command`.
+  Never edit a shared list; `pnpm discover` writes `src/generated/commands.ts`.
+- Exit codes: 0 ok, 1 errors found or the command failed, 2 wrong usage, 3 the workspace isn't
+  trusted. Commands write through `CliIo`, never to `process.stdout` directly.

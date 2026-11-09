@@ -1,0 +1,46 @@
+{
+  "name": "halonic",
+  "private": true,
+  "type": "module",
+  "description": "The halonic command-line tool. Each command lives in its own folder under src/commands and the help is made from them.",
+  "bin": {
+    "halonic": "./src/main.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/format": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "apps",
+    "owner": "liam",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "discover": {
+      "commands": {
+        "folder": "src/commands",
+        "file": "command.ts",
+        "suffix": "Command",
+        "satisfies": {
+          "type": "CommandRegistry",
+          "from": "src/command.ts"
+        }
+      }
+    }
+  }
+}

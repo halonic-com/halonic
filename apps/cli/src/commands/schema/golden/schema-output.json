@@ -1,0 +1,23 @@
+{
+  "stdout": [
+    "Wrote 15 JSON Schemas to schemas."
+  ],
+  "stderr": [],
+  "files": [
+    "agent.schema.json",
+    "collection.schema.json",
+    "connector.schema.json",
+    "deployments.schema.json",
+    "hub.schema.json",
+    "integration.schema.json",
+    "knowledge.schema.json",
+    "models.schema.json",
+    "provider.schema.json",
+    "routine.schema.json",
+    "runtime.schema.json",
+    "skill.schema.json",
+    "workflow.schema.json",
+    "workflowTest.schema.json",
+    "workspace.schema.json"
+  ]
+}
