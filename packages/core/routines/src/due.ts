@@ -24,8 +24,8 @@ export interface TickPolicy {
   graceMs: number;
   /**
    * The most missed times a routine with `catchUp: "all"` returns for one
-   * tick, the oldest first. Missed times past the cap are dropped, not caught
-   * up next tick.
+   * tick: the newest ones, started oldest first. Older missed times past the
+   * cap are dropped, not caught up next tick.
    */
   maxCatchUp: number;
 }
@@ -59,7 +59,7 @@ export function routineKey(placed: PlacedRoutine): string {
  * The runs to start for a tick: for each enabled routine with a clock trigger,
  * the times in `(lastTick, now]` its `catchUp` setting lets it run, oldest
  * first (ties by key). `none` keeps only times within `policy.graceMs` of now,
- * `last` the newest, `all` the oldest `policy.maxCatchUp`. With no last tick
+ * `last` the newest, `all` the newest `policy.maxCatchUp`. With no last tick
  * nothing is due. A routine whose trigger doesn't parse, or whose schedule
  * is in a zone this runtime doesn't know, is skipped; the others still run.
  */
@@ -126,7 +126,7 @@ function allowedTimes(
   policy: TickPolicy,
 ): Date[] {
   if (catchUp === "all") {
-    return clock.times(lastTick, now, Math.min(policy.maxCatchUp, WINDOW_LIMIT));
+    return newestTimes(clock, lastTick, now, Math.min(policy.maxCatchUp, WINDOW_LIMIT));
   }
   if (catchUp === "last") {
     const newest = clock.newest(lastTick, now);
@@ -136,6 +136,23 @@ function allowedTimes(
   const graceStart = new Date(now.getTime() - policy.graceMs - 1);
   const from = graceStart > lastTick ? graceStart : lastTick;
   return clock.times(from, now, WINDOW_LIMIT);
+}
+
+/**
+ * The newest times in the window, at most `limit` of them, oldest first. Each
+ * one is the newest time before the one found last, so the older part of a
+ * long window is never walked.
+ */
+function newestTimes(clock: Clock, from: Date, to: Date, limit: number): Date[] {
+  const times: Date[] = [];
+  let end = to;
+  while (times.length < limit) {
+    const time = clock.newest(from, end);
+    if (!time) break;
+    times.push(time);
+    end = new Date(time.getTime() - 1);
+  }
+  return times.reverse();
 }
 
 /** @throws {CronError} when the cron or interval doesn't parse, or the zone is unknown */

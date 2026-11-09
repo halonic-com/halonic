@@ -53,7 +53,17 @@ verifies("routines.due", () => {
       ...DEFAULT_TICK_POLICY,
       maxCatchUp: 2,
     });
-    expect(times(capped)).toEqual(["2026-11-03T09:00:00.000Z", "2026-11-03T10:00:00.000Z"]);
+    expect(times(capped)).toEqual(["2026-11-03T10:00:00.000Z", "2026-11-03T11:00:00.000Z"]);
+  });
+
+  it("keeps the newest times past the cap for catchUp all, oldest first, on an interval", () => {
+    const runs = due(
+      [placed({ every: "15m" }, "all")],
+      at("2026-11-03T08:01:00Z"),
+      at("2026-11-03T09:10:00Z"),
+      { ...DEFAULT_TICK_POLICY, maxCatchUp: 2 },
+    );
+    expect(times(runs)).toEqual(["2026-11-03T08:45:00.000Z", "2026-11-03T09:00:00.000Z"]);
   });
 
   it("gives only on-time times for catchUp none", () => {
@@ -142,16 +152,41 @@ verifies("routines.due", () => {
       ]);
     });
 
-    it("gives the oldest times up to the cap for catchUp all", () => {
-      const runs = due([placed(everyMinute, "all")], lastTick, now);
+    it.each([
+      ["a schedule", everyMinute],
+      ["an interval", { every: "1m" }],
+    ])("gives the newest times up to the cap for catchUp all on %s", (_name, trigger) => {
+      const runs = due([placed(trigger, "all")], lastTick, now);
       expect(runs).toHaveLength(DEFAULT_TICK_POLICY.maxCatchUp);
-      expect(runs[0]?.at.toISOString()).toBe("2026-11-01T00:01:00.000Z");
+      expect(runs[0]?.at.toISOString()).toBe("2026-11-09T22:21:00.000Z");
+      expect(runs.at(-1)?.at.toISOString()).toBe("2026-11-10T00:00:00.000Z");
     });
 
     it("finds a schedule's newest time long before now", () => {
       const runs = due([placed({ schedule: "30 6 2 11 *", timezone: "UTC" })], lastTick, now);
       expect(times(runs)).toEqual(["2026-11-02T06:30:00.000Z"]);
     });
+  });
+
+  it("gives the same newest schedule times as walking the window for catchUp all", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("*/7 * * * *", "0 9 * * 1-5", "15 2,14 * * *"),
+        fc.constantFrom("UTC", "America/New_York"),
+        fc.integer({ min: 0, max: 40 * 86_400_000 }),
+        fc.integer({ min: 1, max: 3 * 86_400_000 }),
+        fc.integer({ min: 1, max: 20 }),
+        (schedule, timezone, offset, length, maxCatchUp) => {
+          const lastTick = new Date(at("2026-10-01T00:00:00Z").getTime() + offset);
+          const now = new Date(lastTick.getTime() + length);
+          const trigger = { schedule, timezone };
+          const walked = occurrences(trigger, lastTick, now, 1_000).map(iso).slice(-maxCatchUp);
+          const policy = { ...DEFAULT_TICK_POLICY, maxCatchUp };
+          expect(times(due([placed(trigger, "all")], lastTick, now, policy))).toEqual(walked);
+        },
+      ),
+      { numRuns: 30 },
+    );
   });
 
   it("gives the same newest schedule time as walking the window", () => {
