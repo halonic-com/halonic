@@ -4,6 +4,7 @@ import {
   coordinationContract,
   definitionStoreContract,
   idGeneratorContract,
+  knowledgeProviderContract,
   llmProviderContract,
   type MakeVcs,
   type PlantGitCode,
@@ -24,6 +25,7 @@ import {
   MemoryBlobStore,
   MemoryCoordination,
   MemoryDefinitionStore,
+  MemoryKnowledgeProvider,
   MemoryRecordStore,
   MemoryRemote,
   MemoryRunStore,
@@ -48,6 +50,24 @@ trustStoreContract("memory", async () => {
 });
 clockContract("memory", async () => new ManualClock());
 idGeneratorContract("memory", async () => fixedIds());
+knowledgeProviderContract("memory", async ({ docs }) => new MemoryKnowledgeProvider(docs), {
+  search: true,
+  list: true,
+});
+// A source that can neither search nor list, as a remote one might be: only get is left.
+knowledgeProviderContract(
+  "memory, with get only",
+  async ({ docs }) => {
+    const provider = new MemoryKnowledgeProvider(docs, { search: false });
+    return {
+      id: provider.id,
+      capabilities: provider.capabilities,
+      search: (query, options) => provider.search(query, options),
+      get: (ref) => provider.get(ref),
+    };
+  },
+  { search: false, list: false },
+);
 for (const duplicateDeliveries of [false, true]) {
   const name = duplicateDeliveries ? "memory, delivering every timer twice" : "memory";
   schedulerContract(name, async (listener) => {

@@ -18,6 +18,16 @@ export {
 } from "./definition-store.ts";
 export { idGeneratorContract, type MakeIdGenerator } from "./id-generator.ts";
 export {
+  type KnowledgeProviderContractOptions,
+  type KnowledgeSeed,
+  knowledgeDocs,
+  knowledgeProviderContract,
+  type MakeKnowledgeProvider,
+  type OutsideFile,
+  outsideFiles,
+  unknownKnowledgeRefs,
+} from "./knowledge-provider.ts";
+export {
   chatRequest,
   cutOffAnswer,
   reasonedAnswer,
