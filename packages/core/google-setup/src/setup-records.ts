@@ -1,24 +1,19 @@
-import { type Clock, foldRecords, type IdGenerator, type RecordStore } from "@halonicjs/ports";
+import type { Clock, IdGenerator, RecordStore } from "@halonicjs/ports";
 import type { AccountType } from "./account-type.ts";
 import type { RefreshRefusal } from "./refresh-answer.ts";
-import {
-  newSecretClears,
-  type RecordUpdate,
-  refusalMarks,
-  refusalReason,
-} from "./refresh-refused.ts";
 import { editedValues, type SetupEdit } from "./setup-edit.ts";
 import type { SetupRoute } from "./setup-input.ts";
 import {
   isServiceId,
-  parseSetupValues,
   type SetupRecord,
   type SetupValues,
   setupCollection,
 } from "./setup-record.ts";
 import { SetupRecordError } from "./setup-record-error.ts";
-import type { StepId } from "./setup-step.ts";
+import { clearClientRefusals, saveRefreshRefused } from "./setup-refusals.ts";
+import { shareClient } from "./share-client.ts";
 import { accountRefPrefix, isSetupRef } from "./store-names.ts";
+import { storedSetups } from "./stored-setups.ts";
 
 export interface SetupRecordsOptions {
   /**
@@ -109,26 +104,6 @@ export interface SetupRecords {
   remove(accountRef: string): Promise<void>;
 }
 
-/** The steps another account's app has already done for a shared client: 1 to 6. */
-const stepsDoneBySharedApp = [
-  "project",
-  "apis",
-  "consent",
-  "scopes",
-  "client",
-  "credentials",
-] as const satisfies readonly StepId[];
-
-/**
- * Whether the setup already has a client of its own. Sharing would replace
- * its client secret ref, so no record would point to that secret any more,
- * and keep a sign-in whose refresh token belongs to the old client. The user
- * starts the setup over first instead.
- */
-function hasOwnClient(values: SetupValues): boolean {
-  return values.clientId !== null || values.clientSecret !== null || values.lastSignInAt !== null;
-}
-
 /**
  * The setup records over a `RecordStore`.
  *
@@ -139,104 +114,7 @@ function hasOwnClient(values: SetupValues): boolean {
  */
 export function setupRecords(options: SetupRecordsOptions): SetupRecords {
   const { records, clock, ids } = options;
-
-  const storedValues = async (): Promise<Map<string, unknown>> => {
-    const current = foldRecords(await records.changes(setupCollection));
-    return new Map([...current].map(([id, record]) => [id, record.values]));
-  };
-
-  const readValid = async (accountRef: string): Promise<SetupValues | null> => {
-    if (!isSetupRef(accountRef)) {
-      throw new SetupRecordError("not-found");
-    }
-    const stored = (await storedValues()).get(accountRef);
-    if (stored === undefined) {
-      return null;
-    }
-    const values = parseSetupValues(stored);
-    if (values === undefined) {
-      throw new SetupRecordError("damaged");
-    }
-    return values;
-  };
-
-  const readExisting = async (accountRef: string): Promise<SetupValues> => {
-    const values = await readValid(accountRef);
-    if (values === null) {
-      throw new SetupRecordError("not-found");
-    }
-    return values;
-  };
-
-  /**
-   * Checks the records the changes make, then writes the checked values only,
-   * every record in one append. Nothing is written when one is refused, and
-   * an update with no changes writes nothing but still gives its record back.
-   */
-  const writeAll = async (
-    updates: readonly RecordUpdate[],
-    now: string,
-  ): Promise<SetupRecord[]> => {
-    const checked = updates.map(({ record: { accountRef, ...values }, changes }) => {
-      const updated = parseSetupValues({ ...values, ...changes });
-      if (updated === undefined) {
-        throw new SetupRecordError("refused");
-      }
-      const checkedChanges = Object.fromEntries(
-        Object.keys(changes).map((key) => [key, updated[key as keyof SetupValues]]),
-      );
-      return { record: { accountRef, ...updated }, checkedChanges };
-    });
-    const changed = checked.filter(({ checkedChanges }) => Object.keys(checkedChanges).length > 0);
-    if (changed.length > 0) {
-      await records.append(
-        changed.map(({ record, checkedChanges }) => ({
-          at: now,
-          collection: setupCollection,
-          id: record.accountRef,
-          op: "update" as const,
-          values: checkedChanges,
-        })),
-      );
-    }
-    return checked.map(({ record }) => record);
-  };
-
-  /** Checks the record the changes make, then writes the checked values only. */
-  const write = async (
-    accountRef: string,
-    values: SetupValues,
-    changes: Partial<SetupValues>,
-    now: string,
-  ): Promise<SetupRecord> => {
-    const [written] = await writeAll([{ record: { accountRef, ...values }, changes }], now);
-    // writeAll gives one record per update, so this is only for the type checker.
-    if (written === undefined) {
-      throw new SetupRecordError("refused");
-    }
-    return written;
-  };
-
-  const usingClient = async (clientRef: string): Promise<SetupRecord[]> =>
-    (await listValid()).filter((setup) => setup.clientSecret?.clientRef === clientRef);
-
-  const listValid = async (): Promise<SetupRecord[]> => {
-    const valid: SetupRecord[] = [];
-    for (const [accountRef, stored] of await storedValues()) {
-      const values = parseSetupValues(stored);
-      if (values !== undefined) {
-        valid.push({ accountRef, ...values });
-      }
-    }
-    return valid;
-  };
-
-  const append = (
-    op: "add" | "update",
-    accountRef: string,
-    values: Partial<SetupValues>,
-    at: string,
-  ) => records.append([{ at, collection: setupCollection, id: accountRef, op, values }]);
+  const stored = storedSetups(records);
 
   return {
     async start(setup) {
@@ -256,86 +134,44 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
         refreshRefused: null,
       };
       const accountRef = ids.next(accountRefPrefix);
-      await append("add", accountRef, values, now);
+      await records.append([
+        { at: now, collection: setupCollection, id: accountRef, op: "add", values },
+      ]);
       return { accountRef, ...values };
     },
 
     async read(accountRef) {
-      const values = await readValid(accountRef);
+      const values = await stored.readValid(accountRef);
       return values === null ? null : { accountRef, ...values };
     },
 
-    list: listValid,
+    list: () => stored.listValid(),
 
     async update(accountRef, edit) {
-      const values = await readExisting(accountRef);
+      const values = await stored.readExisting(accountRef);
       // The schema drops a `__proto__` key instead of refusing it, so the
       // service id is checked here first.
       if (edit.kind === "service-checked" && !isServiceId(edit.service)) {
         throw new SetupRecordError("refused");
       }
       const now = clock.now().toISOString();
-      return write(accountRef, values, editedValues(values, edit, now), now);
+      return stored.write(accountRef, values, editedValues(values, edit, now), now);
     },
 
-    usingClient,
+    usingClient: (clientRef) => stored.usingClient(clientRef),
 
-    async refreshRefused(accountRef, refusal) {
-      const values = await readExisting(accountRef);
-      const clientRef = values.clientSecret?.clientRef;
-      const sameClient =
-        clientRef === undefined ? [{ accountRef, ...values }] : await usingClient(clientRef);
-      const reason = refusalReason(values, refusal, sameClient);
-      const marked = refusal.kind === "clientRefused" ? sameClient : [{ accountRef, ...values }];
-      const now = clock.now().toISOString();
-      return writeAll(refusalMarks(marked, reason, now), now);
-    },
+    refreshRefused: (accountRef, refusal) => saveRefreshRefused(stored, clock, accountRef, refusal),
 
-    async clientSecretAccepted(clientRef) {
-      const now = clock.now().toISOString();
-      return writeAll(newSecretClears(await usingClient(clientRef)), now);
-    },
+    clientSecretAccepted: (clientRef) => clearClientRefusals(stored, clock, clientRef),
 
-    async shareClient(accountRef, fromAccountRef) {
-      const values = await readExisting(accountRef);
-      const from = await readExisting(fromAccountRef);
-      // Only a personal account's External app can be shared: a Workspace
-      // Internal app doesn't work across organisations (design 3.6).
-      const canShare =
-        accountRef !== fromAccountRef &&
-        values.accountType === "personal" &&
-        from.accountType === "personal" &&
-        from.inProductionTickedAt !== null &&
-        from.clientId !== null &&
-        from.clientSecret !== null &&
-        from.lastSignInAt !== null &&
-        !hasOwnClient(values);
-      if (!canShare) {
-        throw new SetupRecordError("cannot-share");
-      }
-      const now = clock.now().toISOString();
-      return write(
-        accountRef,
-        values,
-        {
-          projectId: from.projectId,
-          inProductionTickedAt: from.inProductionTickedAt,
-          clientId: from.clientId,
-          clientSecret: from.clientSecret,
-          stepsDone: {
-            ...values.stepsDone,
-            ...Object.fromEntries(stepsDoneBySharedApp.map((step) => [step, now])),
-          },
-        },
-        now,
-      );
-    },
+    shareClient: (accountRef, fromAccountRef) =>
+      shareClient(stored, clock, accountRef, fromAccountRef),
 
     async remove(accountRef) {
       if (!isSetupRef(accountRef)) {
         throw new SetupRecordError("not-found");
       }
-      if (!(await storedValues()).has(accountRef)) {
+      if (!(await stored.has(accountRef))) {
         return;
       }
       await records.append([
