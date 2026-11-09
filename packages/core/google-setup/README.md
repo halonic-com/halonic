@@ -142,7 +142,6 @@ link to switch the API on, `checkFailed` and `unreachable`.
 
 ## The client secret store
 
-
 ```ts
 import { clientSecretStore, looksLikeGoogleClientSecret } from "@halonicjs/google-setup";
 
