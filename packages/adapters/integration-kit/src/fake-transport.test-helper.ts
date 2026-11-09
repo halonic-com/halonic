@@ -1,6 +1,6 @@
 import type { HttpClient, Secrets, TokenStore } from "@halonicjs/ports";
 import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
-import type { IntegrationPolicy } from "./policy.ts";
+import type { DeclaredPlacement, IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError, type RefusalCode } from "./refused.ts";
 import { RequestLog } from "./request-log.ts";
 
@@ -64,23 +64,38 @@ export const policy: IntegrationPolicy = {
   name: "weather",
   hosts: ["api.example.com", "oauth.example.com", "cdn.example.com", "local.example.com:8443"],
   secrets: {
-    "example-key": { hosts: ["api.example.com"] },
-    "client-secret": { hosts: ["oauth.example.com"] },
+    "example-key": { hosts: ["api.example.com"], placement: { as: "bearer" } },
+    "client-secret": {
+      hosts: ["oauth.example.com"],
+      placement: { as: "form", field: "client_secret" },
+    },
   },
   tokens: ["refresh"],
 };
+
+/** The test policy, with a sheet that puts `example-key` in another place. */
+export function policyPlacing(placement: DeclaredPlacement): IntegrationPolicy {
+  return {
+    ...policy,
+    secrets: { ...policy.secrets, "example-key": { hosts: ["api.example.com"], placement } },
+  };
+}
 
 export function redirect(status: number, location: string): Response {
   return new Response(null, { status, headers: { location } });
 }
 
 /** The limited client over a fake transport, with a clock that ticks once per reading. */
-export function client(answer?: Parameters<typeof fakeTransport>[0], limits?: RequestLimits) {
+export function client(
+  answer?: Parameters<typeof fakeTransport>[0],
+  limits?: RequestLimits,
+  clientPolicy: IntegrationPolicy = policy,
+) {
   const { transport, sent } = fakeTransport(answer);
   const log = new RequestLog();
   let clock = 0;
   const http = createLimitedHttpClient({
-    policy,
+    policy: clientPolicy,
     transport,
     secrets,
     log,

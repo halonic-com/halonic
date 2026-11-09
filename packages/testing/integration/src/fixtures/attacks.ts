@@ -87,8 +87,17 @@ export const attacks = {
     catchBy: "case",
     reason: /cdn\.example\.com\/pixel: secret-not-allowed-for-host/,
     subject: hostile(async (host) => {
-      const response = await host.http.fetch("https://cdn.example.com/pixel", {
-        auth: { secret: "weather-key", as: "bearer" },
+      const response = await host.http.fetch("https://cdn.example.com/pixel", { auth: weatherKey });
+      return response.text();
+    }),
+  },
+  "places its key another way than its sheet says (A40)": {
+    catchBy: "case",
+    reason: /refused GET api\.example\.com\/v1\/forecast: placement-not-in-sheet/,
+    subject: hostile(async (host) => {
+      // A header the service would keep, where the integration could read the key back.
+      const response = await host.http.fetch(forecastUrl, {
+        auth: { secret: "weather-key", as: "header", header: "x-note-title" },
       });
       return response.text();
     }),

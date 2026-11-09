@@ -1,6 +1,6 @@
 import type { Path } from "@halonicjs/schema-kit";
 import { err, ok, type Result } from "@halonicjs/std";
-import type { IntegrationHost, IntegrationSheet } from "./schema.ts";
+import type { IntegrationHost, IntegrationSecret, IntegrationSheet } from "./schema.ts";
 
 /**
  * What one integration may do, in the shape of the kit's `IntegrationPolicy`
@@ -13,12 +13,24 @@ export interface IntegrationPolicy {
   readonly hosts: readonly string[];
   /** Hosts the user chose that it may call over plain `http`: on this machine or a private network. */
   readonly localHosts?: readonly string[];
-  /** Each secret, the hosts it may go to, and whether a request may go without it. */
-  readonly secrets: Readonly<
-    Record<string, { readonly hosts: readonly string[]; readonly optional?: boolean }>
-  >;
+  /** Each secret, the hosts it may go to, whether a request may go without it, and where it goes. */
+  readonly secrets: Readonly<Record<string, DeclaredSecret>>;
   readonly tokens: readonly string[];
 }
+
+/** One secret as the kit takes it. */
+export interface DeclaredSecret {
+  readonly hosts: readonly string[];
+  readonly optional?: boolean;
+  /** Where the sheet puts it. The kit refuses any other placement. */
+  readonly placement: DeclaredPlacement;
+}
+
+/** Where the sheet puts a secret, as the kit's `DeclaredPlacement` says. */
+export type DeclaredPlacement =
+  | { readonly as: "bearer" }
+  | { readonly as: "header"; readonly header: string; readonly prefix?: string }
+  | { readonly as: "form"; readonly field: string };
 
 /** The kit's request limits, as the sheet gives them. */
 export type IntegrationLimits = NonNullable<IntegrationSheet["limits"]>;
@@ -69,7 +81,7 @@ export function integrationPolicy(
     }
   });
 
-  const secrets: Record<string, { hosts: string[]; optional?: boolean }> = {};
+  const secrets: Record<string, DeclaredSecret> = {};
   for (const [name, secret] of Object.entries(sheet.secrets)) {
     const secretHosts: string[] = [];
     secret.hosts.forEach((host, index) => {
@@ -89,7 +101,10 @@ export function integrationPolicy(
       secretHosts.push(found.host);
     });
     const resolved = unique(secretHosts);
-    secrets[name] = secret.optional ? { hosts: resolved, optional: true } : { hosts: resolved };
+    const placement = placementOf(secret);
+    secrets[name] = secret.optional
+      ? { hosts: resolved, optional: true, placement }
+      : { hosts: resolved, placement };
   }
   if (problems.length > 0) {
     return err(problems);
@@ -103,6 +118,20 @@ export function integrationPolicy(
     tokens: sheet.tokens.map((token) => token.name),
   };
   return ok(sheet.limits === undefined ? { policy } : { policy, limits: sheet.limits });
+}
+
+/** The placement part of a sheet's secret, without its purpose and hosts. */
+function placementOf(secret: IntegrationSecret): DeclaredPlacement {
+  switch (secret.as) {
+    case "bearer":
+      return { as: "bearer" };
+    case "header":
+      return secret.prefix === undefined
+        ? { as: "header", header: secret.header }
+        : { as: "header", header: secret.header, prefix: secret.prefix };
+    case "form":
+      return { as: "form", field: secret.field };
+  }
 }
 
 interface FoundHost {

@@ -18,7 +18,7 @@ import type { ConformanceSubject } from "./run.ts";
  * @example
  * describeIntegrationConformance({
  *   integration: weather,
- *   policy: { name: "weather", hosts: ["api.example.com"], secrets: { "weather-key": { hosts: ["api.example.com"] } }, tokens: [] },
+ *   policy: { name: "weather", hosts: ["api.example.com"], secrets: { "weather-key": { hosts: ["api.example.com"], placement: { as: "header", header: "x-api-key" } } }, tokens: [] },
  *   declaredTools: [{ name: "forecast", risk: "read", untrusted: true }],
  *   recordings: [forecastGhent],
  *   cases: [{ tool: "forecast", scenario: "forecast-ghent", args: { city: "Ghent" } }],

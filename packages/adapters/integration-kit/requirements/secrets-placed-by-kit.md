@@ -9,7 +9,7 @@ The kit shall place a secret in a request only when the policy declares the secr
 ## Examples
 
 - Given `example-key` allowed for `api.example.com`,
-  when the integration asks for it as a bearer token, a named header or a form field,
+  when the integration asks for it as a bearer token, a named header or a form field, as its sheet says,
   then the transport sees the value in that place.
 - Given the same policy,
   when the integration asks for an undeclared secret, or for `example-key` on another declared host,

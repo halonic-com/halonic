@@ -21,7 +21,13 @@ export {
   providerChoices,
   type WorkspaceChoices,
 } from "./loader.ts";
-export { allowedUrl, type IntegrationPolicy, namePattern } from "./policy.ts";
+export {
+  allowedUrl,
+  type DeclaredPlacement,
+  type DeclaredSecret,
+  type IntegrationPolicy,
+  namePattern,
+} from "./policy.ts";
 export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } from "./refused.ts";
 export { maxRequestBodyBytes } from "./request-body.ts";
 export { RequestLog, type RequestLogEntry } from "./request-log.ts";

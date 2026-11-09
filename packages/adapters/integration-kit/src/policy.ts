@@ -20,17 +20,29 @@ export interface IntegrationPolicy {
    */
   readonly localHosts?: readonly string[];
   /**
-   * Each secret it may use, and the hosts that secret may go to. An
-   * `optional` secret, such as the key of a server that may need none, is
-   * left out of the request when the workspace hasn't set it up, instead of
-   * refusing the request.
+   * Each secret it may use, the hosts that secret may go to, and where the
+   * sheet puts it. An `optional` secret, such as the key of a server that
+   * may need none, is left out of the request when the workspace hasn't set
+   * it up, instead of refusing the request.
    */
-  readonly secrets: Readonly<
-    Record<string, { readonly hosts: readonly string[]; readonly optional?: boolean }>
-  >;
+  readonly secrets: Readonly<Record<string, DeclaredSecret>>;
   /** The token names it may read and write. */
   readonly tokens: readonly string[];
 }
+
+/** One secret in the permission sheet. */
+export interface DeclaredSecret {
+  readonly hosts: readonly string[];
+  readonly optional?: boolean;
+  /** The only way the kit may place it; any other placement is refused. */
+  readonly placement: DeclaredPlacement;
+}
+
+/** Where the sheet puts a secret: a `SecretPlacement` without the secret's name. */
+export type DeclaredPlacement =
+  | { readonly as: "bearer" }
+  | { readonly as: "header"; readonly header: string; readonly prefix?: string }
+  | { readonly as: "form"; readonly field: string };
 
 /** Lower-case words joined by `-`: integration, secret-reference and token names. */
 export const namePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;

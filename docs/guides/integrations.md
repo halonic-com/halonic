@@ -37,7 +37,11 @@ The interface is decided in
    ```
 
    `as` is `"bearer"`, `"header"` (with `header` and an optional `prefix`)
-   or `"form"` (with `field`, for a form body).
+   or `"form"` (with `field`, for a form body). It must match the secret's
+   placement in the sheet: the same `as`, `header` (case doesn't matter),
+   `prefix` and `field` (case matters). The kit refuses anything else as
+   `placement-not-in-sheet`, so a key can't end up in a field the service
+   stores, such as a note title.
 4. **Give every tool a `risk`.** `read` changes nothing; `write` changes data
    (mail, files, records); `send` reaches people outside. When in doubt,
    pick the higher one: the conformance suite fails a sheet that declares

@@ -53,7 +53,12 @@ describe("format.integration-policy", () => {
       policy: {
         name: "model-gemini",
         hosts: ["generativelanguage.googleapis.com"],
-        secrets: { "gemini-key": { hosts: ["generativelanguage.googleapis.com"] } },
+        secrets: {
+          "gemini-key": {
+            hosts: ["generativelanguage.googleapis.com"],
+            placement: { as: "header", header: "x-goog-api-key" },
+          },
+        },
         tokens: [],
       },
       limits: { headersTimeoutMs: 600000 },
@@ -72,6 +77,38 @@ describe("format.integration-policy", () => {
     expect(resolve(tokens, {}).policy.tokens).toEqual(["refresh"]);
   });
 
+  it("gives each secret's placement as the sheet says, for the kit to hold the code to", () => {
+    const sheet = parsedValue(
+      "integration",
+      yaml(
+        "id: notes",
+        "version: 1.0.0",
+        "kit: 1",
+        "provides: [connector]",
+        "hosts: [api.example.com, oauth.example.com]",
+        "secrets:",
+        "  example-key:",
+        "    purpose: key",
+        "    hosts: [api.example.com]",
+        "    as: header",
+        "    header: Authorization",
+        '    prefix: "Token "',
+        "  client-secret:",
+        "    purpose: secret",
+        "    hosts: [oauth.example.com]",
+        "    as: form",
+        "    field: client_secret",
+      ),
+    );
+    const { secrets } = resolve(sheet, {}).policy;
+    expect(secrets["example-key"]?.placement).toEqual({
+      as: "header",
+      header: "Authorization",
+      prefix: "Token ",
+    });
+    expect(secrets["client-secret"]?.placement).toEqual({ as: "form", field: "client_secret" });
+  });
+
   it("resolves a host from an https setting, with the optional secret", () => {
     expect(
       resolve(fixture("knowledge-mcp"), { url: "https://MCP.example.com:443/sse?x=1" }),
@@ -79,7 +116,13 @@ describe("format.integration-policy", () => {
       policy: {
         name: "knowledge-mcp",
         hosts: ["mcp.example.com"],
-        secrets: { "mcp-server-key": { hosts: ["mcp.example.com"], optional: true } },
+        secrets: {
+          "mcp-server-key": {
+            hosts: ["mcp.example.com"],
+            optional: true,
+            placement: { as: "bearer" },
+          },
+        },
         tokens: [],
       },
     });
@@ -89,7 +132,9 @@ describe("format.integration-policy", () => {
     const { policy } = resolve(fromSetting(false), { url: "http://localhost:11434" });
     expect(policy.hosts).toEqual([]);
     expect(policy.localHosts).toEqual(["localhost:11434"]);
-    expect(policy.secrets).toEqual({ "mcp-key": { hosts: ["localhost:11434"] } });
+    expect(policy.secrets).toEqual({
+      "mcp-key": { hosts: ["localhost:11434"], placement: { as: "bearer" } },
+    });
   });
 
   it("allows plain http to a private network, but a secret only when it's optional", () => {
@@ -98,7 +143,9 @@ describe("format.integration-policy", () => {
     ]);
     const { policy } = resolve(fromSetting(true), { url: "http://192.168.1.5:8080/mcp" });
     expect(policy.localHosts).toEqual(["192.168.1.5:8080"]);
-    expect(policy.secrets).toEqual({ "mcp-key": { hosts: ["192.168.1.5:8080"], optional: true } });
+    expect(policy.secrets).toEqual({
+      "mcp-key": { hosts: ["192.168.1.5:8080"], optional: true, placement: { as: "bearer" } },
+    });
   });
 
   it.each([
@@ -149,7 +196,9 @@ describe("format.integration-policy", () => {
 
   it("lets a secret go over plain http only to a whole loopback address", () => {
     const { policy } = resolve(fromSetting(false), { url: "http://127.8.9.10:8080" });
-    expect(policy.secrets).toEqual({ "mcp-key": { hosts: ["127.8.9.10:8080"] } });
+    expect(policy.secrets).toEqual({
+      "mcp-key": { hosts: ["127.8.9.10:8080"], placement: { as: "bearer" } },
+    });
     expect(problems(fromSetting(false), { url: "http://10.0.0.7" })).toEqual([
       "secrets.mcp-key.hosts.0 secret-over-plain-http",
     ]);

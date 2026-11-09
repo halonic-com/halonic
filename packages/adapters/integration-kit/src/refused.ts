@@ -4,6 +4,7 @@ export type RefusalCode =
   | "scheme-not-allowed"
   | "host-not-allowed"
   | "secret-not-declared"
+  | "placement-not-in-sheet"
   | "secret-not-allowed-for-host"
   | "secret-over-plain-http"
   | "secret-not-configured"

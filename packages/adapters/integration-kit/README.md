@@ -26,6 +26,12 @@ Node, in the Worker and in the browser. Published as
   marks `optional`, such as the key of a server that may need none, is left
   out when the workspace hasn't set it up; any other missing secret is
   refused as `secret-not-configured`.
+- **The sheet says where a secret goes.** The code's placement must match
+  the one in the policy: the same `as`, the same `header` ignoring ASCII
+  case, the same `prefix` (none and `""` are the same) and the same form
+  `field`, with case. Anything else is refused as `placement-not-in-sheet`
+  before a secret is read, so a key can't be put in a field the service
+  stores and read back from there.
 - **Limits:** 30 s per request with its redirects, 10 MiB per response, 5
   redirects. All three can be changed.
 - **Request bodies** are at most 720 KiB (`maxRequestBodyBytes`), counted in
@@ -68,7 +74,9 @@ import { createIntegrationHost, type IntegrationPolicy } from "@halonicjs/adapte
 const policy: IntegrationPolicy = {
   name: "weather",
   hosts: ["api.example.com"],
-  secrets: { "example-key": { hosts: ["api.example.com"] } },
+  secrets: {
+    "example-key": { hosts: ["api.example.com"], placement: { as: "header", header: "x-api-key" } },
+  },
   tokens: [],
 };
 const { host, log } = createIntegrationHost({ policy, transport: { fetch }, secrets, tokens });

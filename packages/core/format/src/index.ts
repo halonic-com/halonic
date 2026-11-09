@@ -13,6 +13,8 @@ export type { Hub, HubUses } from "./kinds/hub/schema.ts";
 export { checkIntegrationSheet } from "./kinds/integration/kind.ts";
 export { parseIntegrationSheet, type SheetProblem } from "./kinds/integration/parse-sheet.ts";
 export {
+  type DeclaredPlacement,
+  type DeclaredSecret,
   type IntegrationLimits,
   type IntegrationPolicy,
   integrationPolicy,

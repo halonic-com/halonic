@@ -5,6 +5,7 @@ import {
   client,
   fakeTransport,
   policy,
+  policyPlacing,
   redirect,
   refusal,
   secrets,
@@ -55,7 +56,9 @@ verifies("integration-kit.local-http-hosts", () => {
   const local: IntegrationPolicy = {
     ...policy,
     localHosts: ["localhost:3000", "192.168.1.5:8080", "api.example.com", "169.254.169.254"],
-    secrets: { "example-key": { hosts: ["localhost:3000", "192.168.1.5:8080"] } },
+    secrets: {
+      "example-key": { hosts: ["localhost:3000", "192.168.1.5:8080"], placement: { as: "bearer" } },
+    },
   };
   function localClient() {
     const { transport, sent } = fakeTransport();
@@ -108,7 +111,8 @@ verifies("integration-kit.secrets-placed-by-kit", () => {
   });
 
   it("puts a secret in a named header with a prefix", async () => {
-    const { http, sent } = client();
+    const sheet = policyPlacing({ as: "header", header: "x-api-key", prefix: "Key " });
+    const { http, sent } = client(undefined, undefined, sheet);
     await http.fetch("https://api.example.com/v1", {
       auth: { secret: "example-key", as: "header", header: "x-api-key", prefix: "Key " },
     });
@@ -165,7 +169,10 @@ verifies("integration-kit.secrets-placed-by-kit", () => {
   describe("an optional secret", () => {
     const optionalPolicy: IntegrationPolicy = {
       ...policy,
-      secrets: { ...policy.secrets, "example-key": { hosts: ["api.example.com"], optional: true } },
+      secrets: {
+        ...policy.secrets,
+        "example-key": { hosts: ["api.example.com"], optional: true, placement: { as: "bearer" } },
+      },
     };
     const bearer = { secret: "example-key", as: "bearer" } as const;
 
@@ -230,10 +237,13 @@ verifies("integration-kit.secrets-placed-by-kit", () => {
 
 verifies("integration-kit.redirects-checked", () => {
   it("follows a redirect to a declared host and drops a secret that may not go there", async () => {
-    const { http, sent } = client((url) =>
-      url.host === "api.example.com"
-        ? redirect(302, "https://cdn.example.com/file")
-        : new Response("file"),
+    const { http, sent } = client(
+      (url) =>
+        url.host === "api.example.com"
+          ? redirect(302, "https://cdn.example.com/file")
+          : new Response("file"),
+      undefined,
+      policyPlacing({ as: "header", header: "x-api-key" }),
     );
     const response = await http.fetch("https://api.example.com/download", {
       headers: { authorization: "Bearer own-token", accept: "text/plain" },

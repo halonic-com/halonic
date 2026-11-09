@@ -1,6 +1,6 @@
 import type { SecretPlacement, Secrets } from "@halonicjs/ports";
 import { isLoopback } from "./local-address.ts";
-import { hostIn, type IntegrationPolicy } from "./policy.ts";
+import { type DeclaredPlacement, hostIn, type IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError } from "./refused.ts";
 
 /** Checks every placement against the sheet before anything is sent. */
@@ -19,6 +19,12 @@ export function checkPlacements(
         `${policy.name}: the secret "${placement.secret}" is not in its permission sheet`,
       );
     }
+    if (!matchesSheet(placement, declared.placement)) {
+      throw new IntegrationRefusedError(
+        "placement-not-in-sheet",
+        `${policy.name}: the secret "${placement.secret}" goes ${describe(declared.placement)} in its permission sheet, not ${describe(placement)}`,
+      );
+    }
     if (!hostIn(declared.hosts, url)) {
       throw new IntegrationRefusedError(
         "secret-not-allowed-for-host",
@@ -32,6 +38,62 @@ export function checkPlacements(
       );
     }
   }
+}
+
+/**
+ * Whether the code places the secret the way the sheet says. Otherwise it
+ * could put a key in a field the service stores, such as a note title,
+ * where the integration could read it back. Header names match ignoring
+ * ASCII case, as HTTP does; a missing prefix and `""` send the same bytes;
+ * form field names are case-sensitive. The placement comes from the
+ * integration's code, so nothing in it is trusted to have the right type.
+ */
+function matchesSheet(placement: SecretPlacement, sheet: DeclaredPlacement): boolean {
+  switch (sheet.as) {
+    case "bearer":
+      return placement.as === "bearer";
+    case "header":
+      return (
+        placement.as === "header" &&
+        typeof placement.header === "string" &&
+        asciiLowerCase(placement.header) === asciiLowerCase(sheet.header) &&
+        (placement.prefix ?? "") === (sheet.prefix ?? "")
+      );
+    case "form":
+      return placement.as === "form" && placement.field === sheet.field;
+  }
+}
+
+/**
+ * Lower-cases `A` to `Z` only. `toLowerCase` would also turn the Kelvin
+ * sign into `k`, so a header no service reads would pass as `x-api-key`.
+ */
+function asciiLowerCase(text: string): string {
+  return text.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+}
+
+/** A placement in words, for a refusal message. It never holds a value. */
+function describe(placement: DeclaredPlacement | SecretPlacement): string {
+  switch (placement.as) {
+    case "bearer":
+      return "as a bearer token";
+    case "header": {
+      const prefix = placement.prefix ?? "";
+      return prefix === ""
+        ? `in the header ${quoted(placement.header)}`
+        : `in the header ${quoted(placement.header)} after ${quoted(prefix)}`;
+    }
+    case "form":
+      return `in the form field ${quoted(placement.field)}`;
+    default:
+      return `as ${quoted((placement as { as: unknown }).as)}`;
+  }
+}
+
+/** Text from the integration's code, quoted and cut short, so it can't break the message. */
+function quoted(text: unknown): string {
+  const json = JSON.stringify(String(text));
+  return json.length <= 60 ? json : `${json.slice(0, 56)}…"`;
 }
 
 /** A secret goes over `https`, or over plain `http` only to this machine. */

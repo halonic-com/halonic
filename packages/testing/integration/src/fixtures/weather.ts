@@ -23,7 +23,7 @@ async function saveFavourite(host: IntegrationHost, args: Record<string, unknown
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ city: String(args["city"]) }),
-    auth: { secret: "weather-key", as: "bearer" },
+    auth: { secret: "weather-key", as: "header", header: "x-api-key" },
     ...(signal ? { signal } : {}),
   });
   if (!response.ok) throw new Error(`weather: saving the favourite failed with ${response.status}`);
@@ -87,7 +87,7 @@ export const weatherSubject: ConformanceSubject = {
         request: {
           method: "POST",
           url: `${api}/favourites`,
-          headers: { authorization: "Bearer <scrubbed:secret>", "content-type": "application/json" },
+          headers: { "x-api-key": "<scrubbed:secret>", "content-type": "application/json" },
           // The city is the user's own content, so the recorder replaced it.
           body: { kind: "json", value: { city: "<scrubbed:content>" } },
         },
