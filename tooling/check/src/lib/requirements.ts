@@ -163,28 +163,12 @@ function readFields(
     }
     const name = match[1] ?? "";
     const value = match[2] ?? "";
-    const lineNumber = index + 1;
-    if (!isFieldName(name)) {
-      fail(lineNumber, `Unknown field "${name}". Use ${fieldNames.join(", ")}.`);
-      continue;
+    const problem = fieldProblem(fields, name, value);
+    if (problem === undefined) {
+      fields.set(name as FieldName, value);
+    } else {
+      fail(index + 1, problem);
     }
-    if (fields.has(name)) {
-      fail(lineNumber, `"${name}" appears twice.`);
-      continue;
-    }
-    if (value === "") {
-      fail(lineNumber, `"${name}" is empty.`);
-      continue;
-    }
-    if (name === "Status" && !statuses.includes(value as RequirementStatus)) {
-      fail(lineNumber, `Status "${value}" is not one of ${statuses.join(", ")}.`);
-      continue;
-    }
-    if (name === "Since" && !versionPattern.test(value)) {
-      fail(lineNumber, `Since "${value}" is not a version such as 0.1.0.`);
-      continue;
-    }
-    fields.set(name, value);
   }
   for (const name of fieldNames) {
     if (!fields.has(name) && !hasFieldLine(lines, headerEnd, name)) {
@@ -192,6 +176,30 @@ function readFields(
     }
   }
   return fields;
+}
+
+/** What is wrong with a `- Name: value` line, or `undefined` when it is fine. */
+function fieldProblem(
+  fields: ReadonlyMap<FieldName, string>,
+  name: string,
+  value: string,
+): string | undefined {
+  if (!isFieldName(name)) {
+    return `Unknown field "${name}". Use ${fieldNames.join(", ")}.`;
+  }
+  if (fields.has(name)) {
+    return `"${name}" appears twice.`;
+  }
+  if (value === "") {
+    return `"${name}" is empty.`;
+  }
+  if (name === "Status" && !statuses.includes(value as RequirementStatus)) {
+    return `Status "${value}" is not one of ${statuses.join(", ")}.`;
+  }
+  if (name === "Since" && !versionPattern.test(value)) {
+    return `Since "${value}" is not a version such as 0.1.0.`;
+  }
+  return undefined;
 }
 
 function isFieldName(name: string): name is FieldName {

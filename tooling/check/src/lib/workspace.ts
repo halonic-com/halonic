@@ -138,24 +138,26 @@ export function expandWorkspaceGlob(root: string, glob: string): string[] {
   }
   let matches = [""];
   for (const segment of segments) {
-    const next: string[] = [];
-    for (const parent of matches) {
-      if (segment !== "*") {
-        next.push(parent === "" ? segment : `${parent}/${segment}`);
-        continue;
-      }
-      if (!existsSync(join(root, parent))) {
-        continue;
-      }
-      for (const entry of readdirSync(join(root, parent), { withFileTypes: true })) {
-        if (entry.isDirectory() && !entry.name.startsWith(".")) {
-          next.push(parent === "" ? entry.name : `${parent}/${entry.name}`);
-        }
-      }
-    }
-    matches = next;
+    matches = matches.flatMap((parent) => expandSegment(root, parent, segment));
   }
   return matches;
+}
+
+/** The folders one glob segment matches under `parent`. */
+function expandSegment(root: string, parent: string, segment: string): string[] {
+  if (segment !== "*") {
+    return [joinFolder(parent, segment)];
+  }
+  if (!existsSync(join(root, parent))) {
+    return [];
+  }
+  return readdirSync(join(root, parent), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+    .map((entry) => joinFolder(parent, entry.name));
+}
+
+function joinFolder(parent: string, name: string): string {
+  return parent === "" ? name : `${parent}/${name}`;
 }
 
 function byRootFirst(left: string, right: string): number {
