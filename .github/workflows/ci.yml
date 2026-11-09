@@ -1,5 +1,5 @@
 # Checks on every pull request. The only required check is
-# `ci-ok`: it always runs, waits for every other job and fails if any of
+# `ci-ok`: it runs unless the run was cancelled, waits for every other job and fails if any of
 # them failed. Jobs that only run for some changes can then be skipped
 # without blocking the merge.
 
@@ -808,8 +808,10 @@ jobs:
   ci-ok:
     name: ci-ok
     # Not always(): in a run that was itself cancelled (a newer push
-    # replaced it) ci-ok is skipped, so the newer run's result is the one
-    # that shows. In any other run a cancelled or failed job still fails it.
+    # replaced it) ci-ok ends as cancelled, not failed, so the newer run's
+    # result is the one that shows. Cancelled never satisfies the required
+    # check, unlike skipped. In any other run a cancelled or failed job
+    # still fails it.
     if: ${{ !cancelled() }}
     needs:
       [
