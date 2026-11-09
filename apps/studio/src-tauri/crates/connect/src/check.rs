@@ -6,6 +6,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::address::{Address, Host, NotAnAddress, Scheme, parse_address};
+use crate::hello::NotHalonic;
 use crate::home_network::{Reach, reach};
 
 /// How long the hello call waits for an answer before "Can't reach Halonic".
@@ -28,6 +29,12 @@ pub enum ConnectError {
 impl From<NotAnAddress> for ConnectError {
     fn from(_: NotAnAddress) -> Self {
         ConnectError::NotAnAddress
+    }
+}
+
+impl From<NotHalonic> for ConnectError {
+    fn from(_: NotHalonic) -> Self {
+        ConnectError::NotHalonic
     }
 }
 
