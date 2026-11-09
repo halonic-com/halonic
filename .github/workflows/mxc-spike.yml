@@ -29,7 +29,8 @@ jobs:
       - name: Host facts
         run: |
           [System.Environment]::OSVersion.VersionString
-          (Get-ComputerInfo | Select-Object WindowsProductName, WindowsEditionId, OsBuildNumber, OsHardwareAbstractionLayer | Format-List | Out-String)
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber, OperatingSystemSKU | Format-List | Out-String
+          Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' | Select-Object EditionID, ProductName, UBR | Format-List | Out-String
           whoami /groups | Select-String "Mandatory Label"
           node --version
       # No pnpm: the spike is a standalone folder, so no lockfile change.
