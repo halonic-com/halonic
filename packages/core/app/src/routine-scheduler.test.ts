@@ -363,6 +363,33 @@ verifies("app.routine-overlap", () => {
     expect(skipped.every((time) => Date.parse(time.at) >= newestQueued)).toBe(true);
   });
 
+  it("asks for a queued time again when another host changed the queue first", async () => {
+    const { scheduler, coordination, executor, at } = setUp([
+      { key: "p/hourly", minute: 0, overlap: "queue" },
+    ]);
+    await scheduler.tick();
+    at("2026-11-03T08:00:20Z");
+    await scheduler.tick();
+    // Another host stores its own queue between this tick's read and its write, so this tick
+    // loses the queue write; the last-tick write would still win, as the other host is slower.
+    const write = coordination.compareAndSet.bind(coordination);
+    coordination.compareAndSet = async (key, expected, next) => {
+      if (key === queueKey(workspace)) {
+        await write(key, expected, "{}");
+      }
+      return write(key, expected, next);
+    };
+    at("2026-11-03T09:00:20Z");
+    expect((await scheduler.tick()).queued).toHaveLength(1);
+    coordination.compareAndSet = write;
+    expect(await coordination.read(tickKey)).toBe("2026-11-03T08:00:20.000Z");
+    executor.end(routineRunId(workspace, "p/hourly", new Date("2026-11-03T08:00:00Z")));
+    at("2026-11-03T09:10:00Z");
+    expect(ids((await scheduler.tick()).started)).toEqual([
+      routineRunId(workspace, "p/hourly", new Date("2026-11-03T09:00:00Z")),
+    ]);
+  });
+
   it("drops a queued time when its routine is removed", async () => {
     const routines: TestRoutine[] = [{ key: "p/hourly", minute: 0, overlap: "queue" }];
     const { scheduler, coordination, executor, at } = setUp(routines);

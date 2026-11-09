@@ -237,14 +237,31 @@ export class RoutineScheduler<
     }
     // Stored after the starts: a crash in between repeats them, and the run ids make that harmless.
     // The queue goes first, so a crash before the last tick asks for the same times again and
-    // they queue once. A lost race means another instance ticked further; its values stay.
-    const nextQueue = writeQueue(plan.queue);
-    if (nextQueue !== storedQueue) {
-      await coordination.compareAndSet(this.queueKey, storedQueue, nextQueue);
+    // they queue once. A lost race means another instance ticked too; its values stay.
+    if (await this.storeQueue(storedQueue, plan.queue)) {
+      await coordination.compareAndSet(this.lastTickKey, stored, now.toISOString());
     }
-    await coordination.compareAndSet(this.lastTickKey, stored, now.toISOString());
     events?.emit("routines.ticked", { at: now.toISOString(), ...result });
     return result;
+  }
+
+  /**
+   * Replaces the stored queue with this tick's, unless another instance
+   * changed it since the tick read it. Then this tick's queued times are not
+   * stored, so it must not store the last tick either: the next tick asks
+   * for its times again, and the run ids keep their starts single.
+   *
+   * @returns whether the queue now holds this tick's times
+   */
+  private async storeQueue(
+    stored: string | null,
+    queue: readonly ScheduledRun[],
+  ): Promise<boolean> {
+    const next = writeQueue(queue);
+    if (next === stored) {
+      return true;
+    }
+    return this.options.coordination.compareAndSet(this.queueKey, stored, next);
   }
 
   /**
