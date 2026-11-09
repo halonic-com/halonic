@@ -20,8 +20,10 @@ Security problems go to [SECURITY.md](SECURITY.md), never to a public issue.
 
 ## Setup
 
-> **Some checks are still being built.** The requirement, test-weakening and DCO
-> checks are not active yet. Until a check is active, this guide says so.
+> **One check only reports for now.** The requirement and DCO checks block a
+> merge. The test-weakening check (the requirement guard) runs on every pull
+> request but only reports until its approval lookup is live. This guide says
+> so where it matters.
 
 You need:
 
@@ -112,15 +114,15 @@ Halonic has one firm rule: **nothing that works may break.**
   });
   ```
 
-  A check (not active yet) fails if a requirement has no test that ran and
-  passed, or if a test names a requirement that doesn't exist.
+  The `trace` check fails if a requirement has no test that ran and passed, or
+  if a test names a requirement that doesn't exist.
 - **A bug fix starts with a failing test.** Write the test first, show that it
   fails without your fix, then fix it.
 - **Tests that guard a requirement can't be weakened quietly.** Deleting or
   skipping a test, removing assertions, changing a golden file or editing an
-  active requirement needs an approved decision note in the pull request. A
-  check (not active yet) will enforce this. If you think a requirement is
-  wrong, open an issue.
+  active requirement needs an approved decision note in the pull request. The
+  requirement guard checks this; for now it only reports. If you think a
+  requirement is wrong, open an issue.
 - **No flaky tests:** no retries, fake timers instead of sleeps, and always
   clean up temporary folders.
 - **Only made-up data.** Fixtures, examples and screenshots use invented

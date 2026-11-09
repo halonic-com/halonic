@@ -57,7 +57,7 @@ The maintainer approves it before you write code. When two features must talk, t
 
 ## Requirements and tests
 
-The `verifies()` helper and the checks that enforce these rules are not active yet. The rules apply now.
+CI enforces these rules. The `trace` check blocks a merge; the requirement guard only reports until its approval lookup is live (see `docs/guides/checks.md`). The rules apply either way.
 
 - No feature without a recorded requirement (`requirements/<name>.md`, EARS form) and tests that name it with `verifies("<id>", …)`.
 - A bug fix starts with a regression test that fails before the fix.
