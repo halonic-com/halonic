@@ -251,8 +251,18 @@ class ConnectPage {
     if (typeof piece === "string") {
       return this.document.createTextNode(piece);
     }
+    // Each word in its own no-break run, so the command breaks only between
+    // words (see `code .word` in connect.css), as in connect.html's hint.
     const code = this.document.createElement("code");
-    code.textContent = piece.code;
+    piece.code.split(" ").forEach((word, index) => {
+      if (index > 0) {
+        code.append(" ");
+      }
+      const run = this.document.createElement("span");
+      run.className = "word";
+      run.textContent = word;
+      code.append(run);
+    });
     return code;
   }
 

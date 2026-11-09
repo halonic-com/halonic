@@ -250,6 +250,9 @@ importers:
 
   apps/studio:
     devDependencies:
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../../packages/studio/kit
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec

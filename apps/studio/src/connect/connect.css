@@ -4,42 +4,55 @@
  * 16px field text so the phone doesn't zoom, 48px touch targets, a
  * full-width primary button.
  */
+
+/*
+ * The kit's colours (packages/studio/kit/src/theme.css), copied under the
+ * kit's names, because theme.css is a Tailwind theme and the page has no
+ * Tailwind. colours.test.ts fails if a value here stops matching the kit.
+ * The dark values sit in a media query rather than light-dark(), so older
+ * Android WebViews still get them.
+ */
 :root {
   color-scheme: light dark;
-  --text: #1c1d22;
-  --muted: #5d606b;
-  --surface: #ffffff;
-  --border: #c9cbd3;
-  --primary: #4a5ee8;
-  --on-primary: #ffffff;
-  --danger: #c4253c;
-  --warning: #b25e09;
-  --warning-tint: #fdf1e3;
-  --tile: #f2f3f7;
-  --code: #eef0f6;
+  --color-surface: #ffffff;
+  --color-surface-muted: #ececf7;
+  --color-border-strong: #c6c7dc;
+  --color-border-control: #8284a3;
+  --color-fg: rgb(16 16 46 / 0.88);
+  --color-fg-muted: rgb(16 16 46 / 0.66);
+  --color-accent: #4a63f0;
+  --color-accent-text: #3f52e0;
+  --color-primary: #4a63f0;
+  --color-on-primary: #ffffff;
+  --color-warning: #a84b05;
+  --color-warning-soft: rgb(168 75 5 / 0.1);
+  --color-danger: #c4143d;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
   font-family: system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #eceef4;
-    --muted: #a5a9b6;
-    --surface: #16171c;
-    --border: #3b3e49;
-    --primary: #7d8cff;
-    --on-primary: #10121a;
-    --danger: #ff7a8a;
-    --warning: #f0a85a;
-    --warning-tint: #3a2a18;
-    --tile: #23252e;
-    --code: #262833;
+    --color-surface: #171723;
+    --color-surface-muted: #272738;
+    --color-border-strong: #3f3f58;
+    --color-border-control: #6e7092;
+    --color-fg: rgb(242 242 255 / 0.9);
+    --color-fg-muted: rgb(242 242 255 / 0.68);
+    --color-accent: #8796fb;
+    --color-accent-text: #9aa6ff;
+    --color-primary: #8796fb;
+    --color-on-primary: #0d0d1f;
+    --color-warning: #fcc24c;
+    --color-warning-soft: rgb(252 194 76 / 0.18);
+    --color-danger: #fc7f92;
   }
 }
 
 body {
   margin: 0;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--color-surface);
+  color: var(--color-fg);
 }
 
 main {
@@ -77,12 +90,12 @@ section[hidden] {
   align-self: center;
   width: 56px;
   height: 56px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border-strong);
   border-radius: 0.75rem;
   display: grid;
   place-items: center;
   font-size: 0.625rem;
-  color: var(--muted);
+  color: var(--color-fg-muted);
 }
 
 h1 {
@@ -104,37 +117,43 @@ form {
 
 label {
   font-size: 0.875rem;
-  color: var(--muted);
+  color: var(--color-fg-muted);
 }
 
 input {
   font-size: 16px;
   min-height: 48px;
   padding: 0 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border-control);
   border-radius: 0.5rem;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--color-surface);
+  color: var(--color-fg);
 }
 
 /* Muted so the example reads as an example, not as a value already typed. */
 input::placeholder {
-  color: var(--muted);
+  color: var(--color-fg-muted);
   opacity: 1;
 }
 
 input:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
 
 input[aria-invalid="true"] {
-  border-color: var(--danger);
+  border-color: var(--color-danger);
+}
+
+/* A long typed address in "Can't reach" breaks anywhere rather than run off. */
+.field-error,
+.hint {
+  overflow-wrap: anywhere;
 }
 
 .field-error {
   margin: 0;
-  color: var(--danger);
+  color: var(--color-danger);
   font-size: 0.875rem;
 }
 
@@ -154,17 +173,24 @@ input[aria-invalid="true"] {
 
 .hint {
   margin: 0;
-  color: var(--muted);
+  color: var(--color-fg-muted);
   font-size: 0.875rem;
 }
 
+/*
+ * At the largest font the command may break between its words, never inside
+ * one (checklist 1.1), so `--network` stays whole. The page wraps each word.
+ */
 code {
-  /* The command reads as one thing to type, so it never breaks. */
-  white-space: nowrap;
-  font-family: ui-monospace, monospace;
-  background: var(--code);
+  white-space: normal;
+  font-family: var(--font-mono);
+  background: var(--color-surface-muted);
   border-radius: 0.25rem;
   padding: 0 0.25rem;
+}
+
+code .word {
+  white-space: nowrap;
 }
 
 button {
@@ -179,8 +205,8 @@ button {
 button.primary {
   margin-top: 0.5rem;
   border: none;
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 button[aria-busy="true"] {
@@ -217,7 +243,7 @@ button[aria-busy="true"]::before {
 button.link {
   border: none;
   background: none;
-  color: var(--primary);
+  color: var(--color-accent-text);
 }
 
 /* The icon on the full-screen states sits in a tile (mockup G6, H1, H2). */
@@ -226,34 +252,34 @@ button.link {
   width: 48px;
   height: 48px;
   border-radius: 0.75rem;
-  background: var(--tile);
+  background: var(--color-surface-muted);
   display: grid;
   place-items: center;
 }
 
 .tile.warning {
-  background: var(--warning-tint);
+  background: var(--color-warning-soft);
 }
 
 .icon {
   width: 1.5rem;
   height: 1.5rem;
   fill: none;
-  stroke: var(--muted);
+  stroke: var(--color-fg-muted);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .tile.warning .icon {
-  stroke: var(--warning);
+  stroke: var(--color-warning);
 }
 
 .status {
   margin: 0;
   min-height: 1.5em;
   text-align: center;
-  color: var(--muted);
+  color: var(--color-fg-muted);
 }
 
 .message {

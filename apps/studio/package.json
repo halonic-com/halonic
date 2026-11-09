@@ -12,6 +12,7 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@tauri-apps/cli": "catalog:",
