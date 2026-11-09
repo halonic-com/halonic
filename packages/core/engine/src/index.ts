@@ -41,3 +41,4 @@ export {
   LocalExecutor,
   type LocalExecutorOptions,
 } from "./local-executor.ts";
+export { endInterruptedRuns, interruptedError } from "./run/end-interrupted-runs.ts";

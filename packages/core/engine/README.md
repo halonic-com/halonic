@@ -63,6 +63,11 @@ fails typecheck. The registry covers `BuiltStateType`, the types built so far (`
 it widens as each state lands, until it is the format's whole `StateType` union. A run that enters
 a type not built yet fails with a clear error.
 
+On start, the engine calls `endInterruptedRuns` once: each run it lost when it stopped (status
+`running`) ends with `run.failed`, reason `interrupted`. Waiting runs stay as they are
+(requirement `engine.end-interrupted-runs`). It assumes one engine per run store, and waking a
+parent that waits on a run it ended is the run kernel's job (HAL-186).
+
 ## Example
 
 Run one chat turn through the local executor, with a model that calls a server's tool once. The
