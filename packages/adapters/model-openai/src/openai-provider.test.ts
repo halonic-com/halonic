@@ -36,13 +36,13 @@ llmProviderContract(
     return {
       provider,
       answerNext: (answer) => vendor.answerNext(answer),
-      hangNext: () => vendor.hangNext(),
+      hangNext: (partialText) => vendor.hangNext(partialText),
       refuseNext: () => vendor.replyNext(401, { error: { message: "Incorrect API key provided" } }),
       calls: () => vendor.calls(),
     };
   },
   // LM Studio and Ollama send the reasoning of thinking models, so the suite checks it.
-  { streams: false, reasoning: true },
+  { streams: true, reasoning: true },
 );
 
 verifies("model-openai.endpoint", () => {
@@ -132,5 +132,44 @@ verifies("model-openai.call-errors", () => {
       { model: "acme-small", messages: [] },
     );
     expect(isModelCallError(error) && error.reason).toBe("refused");
+  });
+});
+
+verifies("model-openai.call-errors", () => {
+  /** The error a stream ends with when the server answers with `body`. */
+  async function streamFailureOf(body: ReadableStream<Uint8Array> | string): Promise<Error> {
+    const http = { fetch: async () => new Response(body) };
+    const provider = new OpenAiCompatibleProvider({
+      id: "acme",
+      type: "openai",
+      baseUrl: "http://acme.test/v1",
+      http,
+    });
+    try {
+      for await (const _event of provider.stream(chatRequest())) {
+        // Read to the end.
+      }
+    } catch (error) {
+      return error as Error;
+    }
+    throw new Error("the stream ended without an error");
+  }
+
+  it("ends a stream with refused on a chunk it can't read", async () => {
+    const error = await streamFailureOf("data: not json\n\n");
+    expect(isModelCallError(error) && error.reason).toBe("refused");
+  });
+
+  it("ends a stream with offline when the connection drops mid-answer", async () => {
+    const dropped = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n'),
+        );
+        controller.error(new TypeError("terminated"));
+      },
+    });
+    const error = await streamFailureOf(dropped);
+    expect(isModelCallError(error) && error.reason).toBe("offline");
   });
 });

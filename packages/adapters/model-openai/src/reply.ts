@@ -66,7 +66,8 @@ export function parseArguments(text: string): Record<string, unknown> {
   return { input: text };
 }
 
-function readUsage(value: unknown): ChatResponse["usage"] {
+/** The token counts in a reply's `usage`; a missing count is 0. */
+export function readUsage(value: unknown): ChatResponse["usage"] {
   const usage = isPlainObject(value) ? value : {};
   return {
     inputTokens: countOf(usage["prompt_tokens"]),
@@ -96,7 +97,8 @@ export function readFinishReason(
   }
 }
 
-function textOf(value: unknown): string {
+/** `value` when it is a string, otherwise "". */
+export function textOf(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 

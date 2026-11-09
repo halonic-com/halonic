@@ -19,6 +19,13 @@ const model = new OpenAiCompatibleProvider({
   http: { fetch },
 });
 const answer = await model.chat({ model: "qwen3", messages: [{ role: "user", content: "Hi" }] });
+
+for await (const event of model.stream({
+  model: "qwen3",
+  messages: [{ role: "user", content: "Hi" }],
+})) {
+  if (event.type === "text") process.stdout.write(event.delta);
+}
 ```
 
 A failed call throws a `ModelCallError` whose reason says why: `refused` (401, 403 and other errors), `model-missing` (404), `model-no-tools`, or `offline`. The message keeps the server's own error text, never after 401 or 403, where OpenAI repeats part of the key.
