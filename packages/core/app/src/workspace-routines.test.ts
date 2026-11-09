@@ -3,7 +3,7 @@ import type { DefinitionStore } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { lastTickKey, routineRunId } from "./routine-ids.ts";
+import { lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
 import { TestCoordination } from "./testing/memory-coordination.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 import { TestExecutor } from "./testing/test-executor.ts";
@@ -35,6 +35,7 @@ const hourly = [
   "name: Hourly totals",
   'trigger: { schedule: "0 * * * *" }',
   "catchUp: all",
+  "overlap: allow",
   'run: { workflow: totals, input: { since: "{{trigger.lastRun}}" } }',
 ].join("\n");
 
@@ -68,6 +69,7 @@ function setUp(files: Record<string, string>, start: string) {
     clock: { now: () => new Date(now) },
     coordination,
     executor,
+    runs: executor,
     routines: () => readRoutines(store),
   });
   const tickAt = (iso: string) => {
@@ -107,6 +109,7 @@ verifies("app.workspace-routines", () => {
       },
     ]);
     executor.requests.length = 0;
+    executor.end(runId("news/morning", "2026-11-03T08:00:00Z"));
     await tickAt("2026-11-04T08:00:20Z");
     expect(executor.requests.at(-1)).toMatchObject({
       workflowId: "digest",
@@ -144,7 +147,8 @@ verifies("app.workspace-routines", () => {
     await tickAt("2026-11-03T07:30:00Z");
     const first = await tickAt("2026-11-03T08:00:20Z");
     expect((await tickAt("2026-11-03T08:00:20Z")).started).toEqual([]);
-    // As if the host stopped before it stored the last tick.
+    // As if the host stopped before it stored the last tick, and the run has ended since.
+    executor.end(runId("news/morning", "2026-11-03T08:00:00Z"));
     const key = lastTickKey(workspace);
     await coordination.compareAndSet(key, "2026-11-03T08:00:20.000Z", "2026-11-03T07:30:00.000Z");
     const again = await tickAt("2026-11-03T08:00:20Z");
@@ -172,5 +176,63 @@ verifies("app.workspace-routines", () => {
         "Routine @workspace/cleanup runs outside a hub, so it must name one in run.hub.",
       ],
     ]);
+  });
+});
+
+/** An hourly routine with the given overlap rule. */
+const hourlyWith = (overlap: "skip" | "queue" | "allow") =>
+  [
+    "id: report",
+    "name: Hourly report",
+    'trigger: { schedule: "0 * * * *" }',
+    `overlap: ${overlap}`,
+    "run: { workflow: report }",
+  ].join("\n");
+
+const reportPath = "hubs/ops/workflows/routines/report.routine.yaml";
+
+/** A workspace whose 09:00 report run is still going at 10:00:10. */
+async function busyAtTen(overlap: "skip" | "queue" | "allow") {
+  const workspace = setUp({ [reportPath]: hourlyWith(overlap) }, "2026-11-03T08:59:40Z");
+  await workspace.tickAt("2026-11-03T08:59:40Z");
+  await workspace.tickAt("2026-11-03T09:00:10Z");
+  await workspace.tickAt("2026-11-03T09:59:40Z");
+  return { ...workspace, result: await workspace.tickAt("2026-11-03T10:00:10Z") };
+}
+
+verifies("app.routine-overlap", () => {
+  // Ported from 784f78d routines.test.ts "applies overlap rules while a run is busy":
+  // busy now means a run of the routine that this scheduler started is running or waiting.
+  it("applies overlap rules while a run is busy", async () => {
+    const ten = { key: "ops/report", at: "2026-11-03T10:00:00.000Z" };
+    const skip = await busyAtTen("skip");
+    expect(skip.result).toMatchObject({ started: [], queued: [], skipped: [ten] });
+    const queue = await busyAtTen("queue");
+    expect(queue.result).toMatchObject({ started: [], queued: [ten], skipped: [] });
+    const allow = await busyAtTen("allow");
+    expect(allow.result.started.map((run) => run.trigger?.at)).toEqual([ten.at]);
+    expect(allow.result).toMatchObject({ queued: [], skipped: [] });
+    // A queued time starts once the routine is free again.
+    queue.executor.end(runId("ops/report", "2026-11-03T09:00:00Z"));
+    const later = await queue.tickAt("2026-11-03T10:20:00Z");
+    expect(later.started.map((run) => run.id)).toEqual([runId("ops/report", ten.at)]);
+    expect(later.queued).toEqual([]);
+    expect(await queue.coordination.read(queueKey(workspace))).toBeNull();
+  });
+
+  it("starts one missed run per tick unless the routine allows overlap", async () => {
+    const queued = hourlyWith("queue").replace("overlap:", "catchUp: all\noverlap:");
+    const { executor, tickAt } = setUp({ [reportPath]: queued }, "2026-11-03T07:59:00Z");
+    await tickAt("2026-11-03T07:59:00Z");
+    const first = await tickAt("2026-11-03T10:40:00Z");
+    expect(first.started.map((run) => run.trigger?.at)).toEqual(["2026-11-03T08:00:00.000Z"]);
+    expect(first.queued.map((time) => time.at)).toEqual([
+      "2026-11-03T09:00:00.000Z",
+      "2026-11-03T10:00:00.000Z",
+    ]);
+    executor.end(runId("ops/report", "2026-11-03T08:00:00Z"));
+    const second = await tickAt("2026-11-03T10:41:00Z");
+    expect(second.started.map((run) => run.trigger?.at)).toEqual(["2026-11-03T09:00:00.000Z"]);
+    expect(second.queued.map((time) => time.at)).toEqual(["2026-11-03T10:00:00.000Z"]);
   });
 });

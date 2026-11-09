@@ -1,13 +1,20 @@
-import type { RunSummary } from "@halonicjs/events";
-import type { RunExecutor, StartAgentRequest, StartRunRequest } from "@halonicjs/ports";
+import type { RunStatus, RunSummary } from "@halonicjs/events";
+import type {
+  RunExecutor,
+  RunFilter,
+  RunStore,
+  StartAgentRequest,
+  StartRunRequest,
+} from "@halonicjs/ports";
 
 /**
  * A `RunExecutor` that records starts and keeps the port's promise that a
- * repeated `runId` starts nothing, with hooks to fail or hold a start. For
- * the kernel's own tests. A deliberate fake: core may not use adapters, not
+ * repeated `runId` starts nothing, with hooks to fail or hold a start. It
+ * also lists its runs by status, as `RunStore.list`; a run stays "running"
+ * until {@link TestExecutor.end} ends it. For the kernel's own tests. A deliberate fake: core may not use adapters, not
  * even in tests. Running the kernel against real adapters is the targets' job.
  */
-export class TestExecutor implements RunExecutor {
+export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
   readonly id = "test";
   /** Every start request, repeated ones included. */
   readonly requests: (StartRunRequest | StartAgentRequest)[] = [];
@@ -26,6 +33,24 @@ export class TestExecutor implements RunExecutor {
   async startAgent(request: StartAgentRequest): Promise<RunSummary> {
     await this.hold;
     return this.record(request, `agent:${request.agentId}`);
+  }
+
+  /** As `RunStore.list`, filtering by status only. */
+  async list(filter: RunFilter = {}): Promise<RunSummary[]> {
+    const { status } = filter;
+    const wanted: readonly RunStatus[] = typeof status === "string" ? [status] : (status ?? []);
+    return [...this.runs.values()].filter(
+      (run) => wanted.length === 0 || wanted.includes(run.status),
+    );
+  }
+
+  /** Ends a run, as if it finished. */
+  end(runId: string, status: RunStatus = "completed"): void {
+    const run = this.runs.get(runId);
+    if (run === undefined) {
+      throw new Error(`no such run: ${runId}`);
+    }
+    this.runs.set(runId, { ...run, status });
   }
 
   send(): Promise<RunSummary> {

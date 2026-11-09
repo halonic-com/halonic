@@ -1,7 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { EventBus } from "./event-bus.ts";
-import { lastTickKey, routineRunId } from "./routine-ids.ts";
+import { lastTickKey, queueKey, routineRunId, utf8Length } from "./routine-ids.ts";
+import { MAX_QUEUED, type RoutineOverlap } from "./routine-overlap.ts";
 import {
   type DueFunction,
   RoutineScheduler,
@@ -18,6 +19,8 @@ interface TestRoutine {
   minute: number;
   hour?: number;
   agent?: string;
+  /** Default "allow", so tests of other rules can start several runs of one routine. */
+  overlap?: RoutineOverlap;
 }
 
 type Policy = "all" | "last";
@@ -97,6 +100,8 @@ function setUp(
     due: testDue,
     policy,
     startOf: start,
+    overlapOf: (run) => run.routine.overlap ?? "allow",
+    runs: executor,
     events,
   });
   const at = (iso: string) => {
@@ -165,9 +170,24 @@ verifies("app.routine-scheduler", () => {
     at("2026-11-03T08:00:20Z");
     const first = await scheduler.tick();
     await coordination.compareAndSet(tickKey, "2026-11-03T08:00:20.000Z", before);
+    executor.end(ids(first.started)[0] ?? "");
     const again = await scheduler.tick();
     expect(ids(again.started)).toEqual(ids(first.started));
     expect([executor.requests.length, executor.runs.size]).toEqual([2, 1]);
+  });
+
+  it("asks for a run again only once it has ended, when the last tick was not stored", async () => {
+    const { scheduler, coordination, executor, at } = setUp([
+      { key: "p/hourly", minute: 0, overlap: "queue" },
+    ]);
+    await scheduler.tick();
+    const before = await coordination.read(tickKey);
+    at("2026-11-03T08:00:20Z");
+    await scheduler.tick();
+    await coordination.compareAndSet(tickKey, "2026-11-03T08:00:20.000Z", before);
+    // Its own run is still going: not started again, and neither queued nor skipped.
+    expect(await scheduler.tick()).toMatchObject({ started: [], queued: [], skipped: [] });
+    expect(executor.requests.length).toBe(1);
   });
 
   it("starts each due run once when two hosts tick the same workspace", async () => {
@@ -300,5 +320,73 @@ verifies("app.routine-scheduler", () => {
     await scheduler.tick();
     at("2026-11-03T08:00:20Z");
     expect((await scheduler.tick()).failed[0]?.error.message).toBe("no hub");
+  });
+});
+
+verifies("app.routine-overlap", () => {
+  it("counts only this workspace's runs as busy", async () => {
+    const executor = new TestExecutor();
+    const shared = { coordination: new TestCoordination(), executor };
+    const routine: TestRoutine = { key: "@workspace/hourly", minute: 0, overlap: "skip" };
+    const mine = setUp([routine], { shared });
+    const theirs = setUp([routine], { shared, workspaceId: "ws-other" });
+    await Promise.all([mine.scheduler.tick(), theirs.scheduler.tick()]);
+    theirs.at("2026-11-03T08:00:20Z");
+    await theirs.scheduler.tick();
+    mine.at("2026-11-03T08:00:20Z");
+    expect((await mine.scheduler.tick()).started).toHaveLength(1);
+  });
+
+  it("queues at most MAX_QUEUED times per routine and skips the rest", async () => {
+    const { scheduler, at } = setUp([{ key: "p/hourly", minute: 0, overlap: "queue" }]);
+    await scheduler.tick();
+    at("2026-11-08T07:00:30Z");
+    const { started, queued, skipped } = await scheduler.tick();
+    expect([started.length, queued.length, skipped.length]).toEqual([1, MAX_QUEUED, 19]);
+    expect(queued.at(-1)?.at).toBe("2026-11-07T12:00:00.000Z");
+  });
+
+  it("keeps the stored queue within a Coordination value, skipping the newest times", async () => {
+    const routines = Array.from({ length: 30 }, (_, index) => ({
+      key: `p/hourly-${index}`,
+      minute: 0,
+      overlap: "queue" as const,
+    }));
+    const { scheduler, coordination, at } = setUp(routines);
+    await scheduler.tick();
+    at("2026-11-08T07:00:30Z");
+    const { queued, skipped } = await scheduler.tick();
+    const stored = (await coordination.read(queueKey(workspace))) ?? "";
+    expect(utf8Length(stored)).toBeLessThanOrEqual(60_000);
+    expect(queued.length + skipped.length).toBe(30 * 119);
+    const newestQueued = Math.max(...queued.map((time) => Date.parse(time.at)));
+    expect(skipped.every((time) => Date.parse(time.at) >= newestQueued)).toBe(true);
+  });
+
+  it("drops a queued time when its routine is removed", async () => {
+    const routines: TestRoutine[] = [{ key: "p/hourly", minute: 0, overlap: "queue" }];
+    const { scheduler, coordination, executor, at } = setUp(routines);
+    await scheduler.tick();
+    at("2026-11-03T08:00:20Z");
+    await scheduler.tick();
+    at("2026-11-03T09:00:20Z");
+    expect((await scheduler.tick()).queued).toHaveLength(1);
+    routines.length = 0;
+    executor.end(routineRunId(workspace, "p/hourly", new Date("2026-11-03T08:00:00Z")));
+    at("2026-11-03T09:10:00Z");
+    expect(await scheduler.tick()).toMatchObject({ started: [], queued: [] });
+    expect(await coordination.read(queueKey(workspace))).toBeNull();
+  });
+
+  it("treats a damaged stored queue as empty", async () => {
+    const { scheduler, coordination, at } = setUp([
+      { key: "p/hourly", minute: 0, overlap: "queue" },
+    ]);
+    await scheduler.tick();
+    await coordination.compareAndSet(queueKey(workspace), null, '{"p/hourly": "soon"');
+    at("2026-11-03T08:00:20Z");
+    const { started, queued } = await scheduler.tick();
+    expect([started.length, queued.length]).toEqual([1, 0]);
+    expect(await coordination.read(queueKey(workspace))).toBeNull();
   });
 });

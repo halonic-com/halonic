@@ -18,13 +18,17 @@ const maxIdBytes = 256;
  * @param workspaceId - names the workspace for as long as it exists, the same on every host (never a path)
  */
 export function routineRunId(workspaceId: string, key: string, at: Date): string {
-  const workspace = shortHash(workspaceId);
   const due = at.toISOString();
-  const readable = `routine:${workspace}/${key}@${due}`;
+  const readable = `${routineRunPrefix(workspaceId)}${key}@${due}`;
   if (utf8Length(readable) <= maxIdBytes) {
     return readable;
   }
-  return `routine:${workspace}/#${shortHash(key)}@${due}`;
+  return `${routineRunPrefix(workspaceId)}#${shortHash(key)}@${due}`;
+}
+
+/** How the id of every routine run of a workspace starts, so runs of other workspaces can be told apart. */
+export function routineRunPrefix(workspaceId: string): string {
+  return `routine:${shortHash(workspaceId)}/`;
 }
 
 /** The `Coordination` key that keeps a workspace's last routine tick. */
@@ -39,6 +43,14 @@ export function lastTickKey(workspaceId: string): string {
  */
 export function lastRunKey(workspaceId: string, key: string): string {
   return `routines/${shortHash(workspaceId)}/last-run/${shortHash(key)}`;
+}
+
+/**
+ * The `Coordination` key that keeps a workspace's queued due times
+ * (`overlap: queue`), for all its routines in one value.
+ */
+export function queueKey(workspaceId: string): string {
+  return `routines/${shortHash(workspaceId)}/queue`;
 }
 
 const fnvOffset = 0xcbf29ce484222325n;

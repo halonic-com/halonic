@@ -3,12 +3,21 @@ import type {
   Clock,
   Coordination,
   RunExecutor,
+  RunStore,
   StartAgentRequest,
   StartRunRequest,
 } from "@halonicjs/ports";
 import type { DueRun, PlacedRoutine, TickPolicy } from "@halonicjs/routines";
 import type { EventBus } from "./event-bus.ts";
-import { lastRunKey, lastTickKey, routineRunId } from "./routine-ids.ts";
+import {
+  lastRunKey,
+  lastTickKey,
+  queueKey,
+  routineRunId,
+  routineRunPrefix,
+  utf8Length,
+} from "./routine-ids.ts";
+import { applyOverlap, type OverlapDecision, type RoutineOverlap } from "./routine-overlap.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
 /**
@@ -47,10 +56,24 @@ export interface RoutineFailure {
   error: Error;
 }
 
+/** A due time of a routine that a tick didn't start. */
+export interface RoutineTime {
+  key: string;
+  /** ISO time the run was due. */
+  at: string;
+}
+
 /** What one tick did. */
 export interface RoutineTickResult {
   started: RunSummary[];
   failed: RoutineFailure[];
+  /** Every due time waiting in the queue after the tick (`overlap: queue`), oldest first per routine. */
+  queued: RoutineTime[];
+  /**
+   * Due times dropped because a run of the routine was going
+   * (`overlap: skip`), or because its queue was full.
+   */
+  skipped: RoutineTime[];
 }
 
 /**
@@ -76,6 +99,12 @@ export interface RoutineSchedulerOptions<
   /** Keeps the time of the last tick, shared by every instance of a deployment. */
   coordination: Coordination;
   executor: RunExecutor;
+  /**
+   * The runs that exist, to tell whether a routine still has a run going
+   * (running or waiting) for its overlap rule. Only runs this scheduler
+   * started for the workspace count, by their run id.
+   */
+  runs: Pick<RunStore, "list">;
   /** The routines of the workspace, read fresh on every tick. */
   routines: () => Promise<readonly Routine[]>;
   due: DueFunction<Routine, Policy, Run>;
@@ -86,12 +115,14 @@ export interface RoutineSchedulerOptions<
    * routine without a hub.
    */
   startOf: (run: Run, lastRun: Date | null) => RoutineStart;
+  /** The overlap rule of a due run's routine. */
+  overlapOf: (run: Run) => RoutineOverlap;
   /** Receives `routines.ticked` after each tick that got as far as asking what is due. */
   events?: EventBus<AppEvents>;
 }
 
 /** A new empty result each time, so no caller can change another's. */
-const nothing = (): RoutineTickResult => ({ started: [], failed: [] });
+const nothing = (): RoutineTickResult => ({ started: [], failed: [], queued: [], skipped: [] });
 
 /**
  * Starts the routine runs that are due, on each tick of the `Scheduler`
@@ -104,6 +135,11 @@ const nothing = (): RoutineTickResult => ({ started: [], failed: [] });
  * - the tick function catches up on missed ticks under its policy
  * - every run gets {@link routineRunId}, so a start that is repeated (a crash
  *   before the last tick was stored, a second host) returns the existing run
+ *
+ * While a run of a routine is still going, its next due times follow the
+ * routine's overlap rule (see {@link applyOverlap}). Queued times are kept in
+ * `Coordination` too, and start on a later tick once the routine is free, if
+ * the routine still exists, is enabled and would still run at that time.
  *
  * A run that fails to start is reported and not retried, as in the old
  * `Studio`, so one broken routine never holds the others back. If reading
@@ -120,12 +156,14 @@ export class RoutineScheduler<
 > {
   private readonly options: RoutineSchedulerOptions<Routine, Policy, Run>;
   private readonly lastTickKey: string;
+  private readonly queueKey: string;
   private current: Promise<RoutineTickResult> | null = null;
   private disposed = false;
 
   constructor(options: RoutineSchedulerOptions<Routine, Policy, Run>) {
     this.options = options;
     this.lastTickKey = lastTickKey(options.workspaceId);
+    this.queueKey = queueKey(options.workspaceId);
   }
 
   /**
@@ -169,15 +207,22 @@ export class RoutineScheduler<
   }
 
   private async tickOnce(): Promise<RoutineTickResult> {
-    const { clock, coordination, due, policy, routines, events } = this.options;
+    const { clock, coordination, routines, events } = this.options;
     const now = clock.now();
     const stored = await coordination.read(this.lastTickKey);
     const lastTick = stored === null ? null : new Date(stored);
     if (lastTick !== null && now.getTime() <= lastTick.getTime()) {
       return nothing();
     }
-    const result = nothing();
-    for (const run of due(await routines(), lastTick, now, policy)) {
+    const storedQueue = await coordination.read(this.queueKey);
+    const plan = await this.plan(await routines(), lastTick, now, readQueue(storedQueue));
+    const result: RoutineTickResult = {
+      started: [],
+      failed: [],
+      queued: plan.queue.map(timeOf),
+      skipped: plan.skip.map(timeOf),
+    };
+    for (const run of plan.start) {
       if (this.disposed) {
         // Not stored and not sent as `routines.ticked`: the workspace is
         // closing, so start failures from earlier in this tick go unreported.
@@ -191,10 +236,97 @@ export class RoutineScheduler<
       }
     }
     // Stored after the starts: a crash in between repeats them, and the run ids make that harmless.
-    // A lost race means another instance ticked further; its value stays.
+    // The queue goes first, so a crash before the last tick asks for the same times again and
+    // they queue once. A lost race means another instance ticked further; its values stay.
+    const nextQueue = writeQueue(plan.queue);
+    if (nextQueue !== storedQueue) {
+      await coordination.compareAndSet(this.queueKey, storedQueue, nextQueue);
+    }
     await coordination.compareAndSet(this.lastTickKey, stored, now.toISOString());
     events?.emit("routines.ticked", { at: now.toISOString(), ...result });
     return result;
+  }
+
+  /**
+   * Which runs to start on this tick, and which to queue or skip: for each
+   * routine, its queued runs and then its newly due ones, under its overlap
+   * rule. The starts come oldest first, ties by key.
+   */
+  private async plan(
+    routineList: readonly Routine[],
+    lastTick: Date | null,
+    now: Date,
+    queue: ReadonlyMap<string, readonly Date[]>,
+  ): Promise<OverlapDecision<Run>> {
+    const { due, policy, overlapOf } = this.options;
+    const waiting = new Map<string, Run[]>();
+    const wait = (run: Run): void => {
+      const runs = waiting.get(run.key) ?? [];
+      if (!runs.some((other) => other.at.getTime() === run.at.getTime())) {
+        runs.push(run);
+      }
+      waiting.set(run.key, runs);
+    };
+    for (const [key, times] of queue) {
+      for (const at of times) {
+        const run = this.requeued(routineList, key, at);
+        if (run !== undefined) {
+          wait(run);
+        }
+      }
+    }
+    for (const run of due(routineList, lastTick, now, policy)) {
+      wait(run);
+    }
+    const plan: OverlapDecision<Run> = { start: [], queue: [], skip: [] };
+    if (waiting.size === 0) {
+      return plan;
+    }
+    const going = await this.goingRuns();
+    const busy = new Set(going.map((run) => run.trigger?.routineId));
+    const goingIds = new Set(going.map((run) => run.id));
+    for (const [key, all] of waiting) {
+      // A time whose run is already going was started before, by a tick that
+      // didn't get to store the last tick; it waits for nothing.
+      const runs = all.filter((run) => !goingIds.has(this.runIdOf(run)));
+      if (runs.length === 0) {
+        continue;
+      }
+      // Every run in the list is of the same routine, so the first has its rule.
+      const decision = applyOverlap(overlapOf(runs[0] as Run), busy.has(key), runs);
+      plan.start.push(...decision.start);
+      plan.queue.push(...decision.queue);
+      plan.skip.push(...decision.skip);
+    }
+    plan.start.sort(oldestFirst);
+    plan.queue.sort(oldestFirst);
+    fitQueue(plan);
+    return plan;
+  }
+
+  /**
+   * A queued due time as a run again: what the tick function says is due at
+   * exactly that time for that routine. Nothing if the routine was removed,
+   * turned off or no longer runs then.
+   */
+  private requeued(routineList: readonly Routine[], key: string, at: Date): Run | undefined {
+    const { due, policy } = this.options;
+    const justBefore = new Date(at.getTime() - 1);
+    return due(routineList, justBefore, at, policy).find(
+      (run) => run.key === key && run.at.getTime() === at.getTime(),
+    );
+  }
+
+  /** The runs this workspace's scheduler started that are still running or waiting. */
+  private async goingRuns(): Promise<RunSummary[]> {
+    const { runs, workspaceId } = this.options;
+    const prefix = routineRunPrefix(workspaceId);
+    const going = await runs.list({ status: ["running", "waiting"] });
+    return going.filter((run) => run.id.startsWith(prefix));
+  }
+
+  private runIdOf(run: ScheduledRun): string {
+    return routineRunId(this.options.workspaceId, run.key, run.at);
   }
 
   private async start(run: Run): Promise<RunSummary> {
@@ -205,7 +337,7 @@ export class RoutineScheduler<
     const what = startOf(run, lastRun);
     const at = run.at.toISOString();
     const trigger = { type: run.trigger, routineId: run.key, at };
-    const runId = routineRunId(workspaceId, run.key, run.at);
+    const runId = this.runIdOf(run);
     const summary = await ("workflow" in what
       ? executor.start({ ...what.workflow, trigger, runId })
       : executor.startAgent({ ...what.agent, trigger, runId }));
@@ -218,4 +350,86 @@ export class RoutineScheduler<
     }
     return summary;
   }
+}
+
+/** The most UTF-8 bytes of the stored queue: under the 64 KiB a `Coordination` value may hold. */
+const maxQueueBytes = 60_000;
+
+/** The least one queued time adds to the stored queue: an ISO time in quotes, and a comma. */
+const minQueuedTimeBytes = 27;
+
+function oldestFirst(a: ScheduledRun, b: ScheduledRun): number {
+  return a.at.getTime() - b.at.getTime() || compare(a.key, b.key);
+}
+
+function compare(a: string, b: string): number {
+  if (a === b) {
+    return 0;
+  }
+  return a < b ? -1 : 1;
+}
+
+/**
+ * Moves the newest queued runs to the skipped ones until the stored queue
+ * fits in a `Coordination` value, so a long queue can never make the ticks
+ * fail. Takes a queue sorted oldest first.
+ */
+function fitQueue<Run extends ScheduledRun>(plan: OverlapDecision<Run>): void {
+  let excess = utf8Length(writeQueue(plan.queue) ?? "") - maxQueueBytes;
+  while (excess > 0) {
+    const dropped = plan.queue.splice(-Math.ceil(excess / minQueuedTimeBytes));
+    plan.skip.push(...dropped);
+    excess = utf8Length(writeQueue(plan.queue) ?? "") - maxQueueBytes;
+  }
+}
+
+function timeOf(run: ScheduledRun): RoutineTime {
+  return { key: run.key, at: run.at.toISOString() };
+}
+
+/**
+ * The queue as kept in `Coordination`: JSON of routine key to ISO due times,
+ * or `null` when nothing is queued.
+ */
+function writeQueue(runs: readonly ScheduledRun[]): string | null {
+  if (runs.length === 0) {
+    return null;
+  }
+  const queue: Record<string, string[]> = {};
+  for (const run of runs) {
+    queue[run.key] = [...(queue[run.key] ?? []), run.at.toISOString()];
+  }
+  return JSON.stringify(queue);
+}
+
+/**
+ * Reads what {@link writeQueue} wrote. Only this scheduler writes the key,
+ * so anything else (a hand edit, a damaged store) counts as no queue rather
+ * than stopping every routine of the workspace.
+ */
+function readQueue(text: string | null): Map<string, Date[]> {
+  const queue = new Map<string, Date[]>();
+  if (text === null) {
+    return queue;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return queue;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return queue;
+  }
+  for (const [key, times] of Object.entries(parsed)) {
+    if (!Array.isArray(times)) {
+      continue;
+    }
+    const dates = times
+      .filter((time): time is string => typeof time === "string")
+      .map((time) => new Date(time))
+      .filter((date) => !Number.isNaN(date.getTime()));
+    queue.set(key, dates);
+  }
+  return queue;
 }

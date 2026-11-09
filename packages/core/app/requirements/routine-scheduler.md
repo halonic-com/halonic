@@ -16,7 +16,7 @@ When the `Scheduler` port ticks, the routine scheduler shall ask the routines ti
   then nothing new starts.
 - Given the last tick was not stored because the host stopped after starting the runs,
   when the next tick asks again,
-  then the starts repeat with the same run ids and the executor returns the runs that exist.
+  then the starts of runs that have ended repeat with the same run ids and the executor returns the runs that exist, and a run that is still going isn't asked for again.
 - Given two hosts ticking the same workspace,
   when both tick at 08:00:20,
   then the 08:00 run exists once.

@@ -16,7 +16,8 @@ export {
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
-export { lastRunKey, lastTickKey, routineRunId } from "./routine-ids.ts";
+export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
+export type { RoutineOverlap } from "./routine-overlap.ts";
 export {
   type DueFunction,
   type RoutineFailure,
@@ -24,6 +25,7 @@ export {
   type RoutineSchedulerOptions,
   type RoutineStart,
   type RoutineTickResult,
+  type RoutineTime,
   type ScheduledRun,
 } from "./routine-scheduler.ts";
 export {

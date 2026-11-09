@@ -14,7 +14,7 @@ import {
 
 /** What {@link workspaceRoutineScheduler} needs: the scheduler's options without the routines logic. */
 export interface WorkspaceRoutineSchedulerOptions
-  extends Omit<RoutineSchedulerOptions, "due" | "startOf" | "policy"> {
+  extends Omit<RoutineSchedulerOptions, "due" | "startOf" | "overlapOf" | "policy"> {
   /**
    * The zone, grace period and catch-up cap. Default: `DEFAULT_TICK_POLICY`,
    * whose zone is UTC; a host passes the machine's zone, which core can't read.
@@ -24,12 +24,13 @@ export interface WorkspaceRoutineSchedulerOptions
 
 /**
  * The routine scheduler of a workspace, with the tick function `due` of
- * `@halonicjs/routines` and {@link startOfDueRun}, which fills in the
- * `{{trigger.at}}` and `{{trigger.lastRun}}` placeholders.
+ * `@halonicjs/routines`, each routine's `overlap` setting, and
+ * {@link startOfDueRun}, which fills in the `{{trigger.at}}` and
+ * `{{trigger.lastRun}}` placeholders.
  *
  * @example
  * const scheduler = workspaceRoutineScheduler({
- *   workspaceId, clock, coordination, executor, events: scope.events,
+ *   workspaceId, clock, coordination, executor, runs: runStore, events: scope.events,
  *   routines: loadRoutines, // the host's: every routine file, each with its hub
  *   policy: { ...DEFAULT_TICK_POLICY, timeZone: "Europe/Amsterdam" },
  * });
@@ -43,6 +44,7 @@ export function workspaceRoutineScheduler(
     policy: options.policy ?? DEFAULT_TICK_POLICY,
     due,
     startOf: startOfDueRun,
+    overlapOf: (run) => run.placed.routine.overlap,
   });
 }
 

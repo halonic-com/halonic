@@ -20,6 +20,7 @@ Device-wide settings such as the theme live outside any scope.
 | `UndoHistory`               | one workspace-wide undo, 200 steps, typing in one file is one step                                                           | `app.workspace-undo`            |
 | `openWorkspace`             | a scope with the files service and `workspace.save`, `undo`, `redo`                                                          | `app.workspace-save`            |
 | `RoutineScheduler`          | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                                                | `app.routine-scheduler`         |
+| `RoutineOverlap`            | what a routine does with a due time while its run is going: skip, queue or allow                                             | `app.routine-overlap`           |
 | `workspaceRoutineScheduler` | a `RoutineScheduler` on the real routines tick, filling `{{trigger.at}}` and `{{trigger.lastRun}}`                           | `app.workspace-routines`        |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
 | `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                | `ports.untrusted-tool-listings` |

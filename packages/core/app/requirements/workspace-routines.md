@@ -14,7 +14,7 @@ When a workspace's routine scheduler ticks, it shall decide what is due with the
 - Given a routine file with `every: "15m"` and `catchUp: "last"`, a last tick at 08:01 and no ticks until 08:40,
   when the scheduler ticks,
   then it starts only the 08:30 run.
-- Given a routine with `catchUp: "all"` and three missed hours,
+- Given a routine with `catchUp: "all"`, `overlap: "allow"` and three missed hours,
   when the scheduler ticks,
   then it starts the three runs oldest first, each with the one before as its `trigger.lastRun`.
 - Given a tick that started the 08:00 run,
