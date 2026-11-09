@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-192, HAL-1508, HAL-1930, HAL-2099
 
-When the shell runs git, it shall run it only in a folder that, after the same canonicalisation as the opened folders, lies inside a folder the user opened, compared by path part, and only in a repository whose top folder, git folder, common folder and every alternate object folder lie inside an opened folder too, as do those of every repository nested in it as a gitlink. Every link at the top of the git folder and the common folder, and every link anywhere under their `objects` and `refs` and under each alternate object folder, shall be followed and lead inside an opened folder too. It shall then run git with that git folder and top folder given explicitly. If no folder has been opened, if the folder is missing, or if `..`, a link, a `.git` file, a `commondir` file or an `alternates` file leads outside or nowhere, then the shell shall refuse the call with `folder_not_opened` or `folder_unreadable`, and with `timed_out` if the check passes the call's time limit. Hard links are not checked: a local clone makes them on purpose, and they can't be told apart.
+When the shell runs git, it shall run it only in a folder that, after the same canonicalisation as the opened folders, lies inside a folder the user opened, compared by path part, and only in a repository whose top folder, git folder, common folder and every alternate object folder lie inside an opened folder too, as do those of every repository nested in it as a gitlink. Every link at the top of the git folder and the common folder, and every link anywhere under their `objects`, `refs` and `logs` and under each alternate object folder, shall be followed and lead inside an opened folder too. It shall then run git with that git folder and top folder given explicitly. If no folder has been opened, if the folder is missing, or if `..`, a link, a `.git` file, a `commondir` file or an `alternates` file leads outside or nowhere, then the shell shall refuse the call with `folder_not_opened` or `folder_unreadable`, and with `timed_out` if the check passes the call's time limit. Hard links are not checked: a local clone makes them on purpose, and they can't be told apart.
 
 ## Examples
 
@@ -23,6 +23,9 @@ When the shell runs git, it shall run it only in a folder that, after the same c
 - Given an opened folder whose `.git/objects/pack` holds a link to another repository's pack file, and whose `.git/packed-refs` links to that repository's,
   when the shell runs `log -p`,
   then the call is refused, and nothing of the other repository is read.
+- Given an opened folder whose `.git/logs/refs` links to another repository's,
+  when the shell runs `branch x`,
+  then the call is refused, and nothing is written in the other repository.
 - Given an opened folder whose `.git/objects` and `.git/refs` link to another repository inside the same opened folder, as `git-new-workdir` makes them,
   when the shell runs `log`,
   then the call runs.

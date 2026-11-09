@@ -4,16 +4,17 @@
 //! git follows a link anywhere in its folder. With `objects`, a pack file
 //! or a loose object folder linked to another repository, and `refs` or
 //! `packed-refs` linked too, `log -p` shows that repository and `push`
-//! sends it out. So every link at the top of the git folder and the common
-//! folder, and every link anywhere under `objects` and `refs`, must lead
-//! inside an opened folder. Links are followed, not refused: tools such as
-//! `repo` and `git-new-workdir` link these folders on purpose.
+//! sends it out. With a folder in `logs` linked, `branch` and `commit`
+//! write that repository's reflogs, and `@{n}` reads them. So every link at
+//! the top of the git folder and the common folder, and every link anywhere
+//! under `objects`, `refs` and `logs`, must lead inside an opened folder.
+//! Links are followed, not refused: tools such as `repo` and
+//! `git-new-workdir` link these folders on purpose.
 //!
 //! Measured on a git folder with 6,700 loose objects, 150 pack files and
 //! 50,000 loose refs, the walk takes about 30 ms on a local disk, less than
-//! starting git once. Logs, hooks and nested repositories are not walked:
-//! no allowed call reads reflogs, hooks never run, and a nested repository
-//! is checked on its own.
+//! starting git once. Hooks and nested repositories are not walked: hooks
+//! never run, and a nested repository is checked on its own.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -23,7 +24,7 @@ use crate::error::GitError;
 use crate::opened_folders::OpenedFolders;
 
 /// The folders, inside a git folder, walked to the bottom.
-const WALKED: &[&str] = &["objects", "refs"];
+const WALKED: &[&str] = &["objects", "refs", "logs"];
 
 /// How many entries are read between two looks at the time limit.
 const ENTRIES_PER_DEADLINE_CHECK: usize = 256;
@@ -48,8 +49,8 @@ impl<'a> Links<'a> {
     }
 
     /// Checks the links at the top of a git folder, and under its
-    /// `objects` and `refs`. A git folder of a linked worktree has no
-    /// `objects`, and may have no `refs`.
+    /// `objects`, `refs` and `logs`. A git folder of a linked worktree has
+    /// no `objects`, and may have no `refs` or `logs`.
     pub fn check_git_folder(&mut self, git_folder: &Path) -> Result<(), GitError> {
         self.check_folder(git_folder, false)?;
         for name in WALKED {

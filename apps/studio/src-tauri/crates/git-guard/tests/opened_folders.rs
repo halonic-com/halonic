@@ -248,6 +248,27 @@ fn opened_folders_refuses_a_link_in_an_alternate_that_leads_outside() {
 
 #[cfg(unix)]
 #[test]
+fn opened_folders_refuses_a_log_folder_linked_outside() {
+    use std::os::unix::fs::symlink;
+    let sandbox = Sandbox::new();
+    let outside = outside_repository(&sandbox);
+    sandbox.init_repository();
+    sandbox.write("notes.md", "1\n");
+    plain_git_ok(&sandbox.acme, &["add", "notes.md"]);
+    plain_git_ok(&sandbox.acme, &["commit", "-q", "-m", "notes"]);
+    let logs = sandbox.acme.join(".git/logs/refs");
+    std::fs::remove_dir_all(&logs).expect("the folder is removed");
+    symlink(outside.join(".git/logs/refs"), &logs).expect("the link is created");
+    let written = outside.join(".git/logs/refs/heads/x");
+    assert_eq!(sandbox.git("branch x"), Err(GitError::FolderNotOpened));
+    assert!(!written.exists());
+    // Plain git writes the new branch's log in the other repository.
+    plain_git_ok(&sandbox.acme, &["branch", "x"]);
+    assert!(written.exists());
+}
+
+#[cfg(unix)]
+#[test]
 fn opened_folders_allows_links_in_the_git_folder_that_stay_inside() {
     use std::os::unix::fs::symlink;
     // The way `git-new-workdir` and `repo` share one repository's objects
