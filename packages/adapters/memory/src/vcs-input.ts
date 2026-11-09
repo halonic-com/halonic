@@ -1,4 +1,4 @@
-import { checkPublicWorkspacePath } from "./paths.ts";
+import { checkPublicWorkspacePath } from "@halonicjs/ports";
 
 /**
  * Refuses a path the `Vcs` port calls unsafe: every path a workspace store
