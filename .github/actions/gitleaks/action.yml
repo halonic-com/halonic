@@ -60,7 +60,10 @@ runs:
       # lockfiles go to gitleaks stdin, which has no path to skip. A token in a
       # tarball URL is the leak this catches. where.txt holds the commit, file
       # and line of each scanned line, so a finding still points at its source.
+      # A +++ line is a file header only between diff --git and the first hunk.
+      # In a hunk it is an added line that starts with ++.
       run: |
+        set -o pipefail
         image=$(sed -n 's/^FROM //p' "$GITHUB_ACTION_PATH/Dockerfile")
         read -ra range <<< "${LOG_OPTS:---all}"
         lockfiles=(':(glob)**/pnpm-lock.yaml' ':(glob)**/package-lock.json' ':(glob)**/npm-shrinkwrap.json' ':(glob)**/yarn.lock' ':(glob)**/deno.lock')
@@ -69,8 +72,9 @@ runs:
         git log -p --text -U0 --full-history --no-color --format='commit %h' "${range[@]}" -- "${lockfiles[@]}" |
           awk -v where="$where" '
             /^commit [0-9a-f]+$/ { commit = $2; next }
-            /^\+\+\+ / { file = substr($0, 7); next }
-            /^@@ / { split($3, start, ","); line = substr(start[1], 2) + 0; next }
+            /^diff --git / { header = 1; next }
+            header && /^\+\+\+ / { file = substr($0, 7); next }
+            /^@@ / { header = 0; split($3, start, ","); line = substr(start[1], 2) + 0; next }
             /^\+/ { print substr($0, 2); print commit ", " file ":" line > where; line++ }
           ' > "$added"
         if ! [ -s "$added" ]; then
