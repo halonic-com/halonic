@@ -65,6 +65,46 @@ function addToCoreOrder(root: string, name: string): void {
   writeFileSync(path, `${JSON.stringify(policy, null, 2)}\n`);
 }
 
+/** Checks every folder name of the directory is kebab-case. */
+function checkFolders(directory: string): string[] {
+  const folders = directory.split("/").slice(directory.startsWith("packages/targets/") ? 2 : -1);
+  const badFolder = folders.find((folder) => !folderNamePattern.test(folder));
+  if (badFolder !== undefined) {
+    throw new Error(`"${badFolder}" must be a kebab-case name such as "schema-kit".`);
+  }
+  return folders;
+}
+
+/** Checks --runtime: adapters need one, other packages must not give one. */
+function runtimeFor(place: { layer: string }, given: string | undefined) {
+  const runtime = adapterRuntimes.find((choice) => choice === given);
+  if (place.layer === "adapters" && runtime === undefined) {
+    throw new Error(`Say where the adapter runs with --runtime <${runtimes}>.`);
+  }
+  if (place.layer !== "adapters" && given !== undefined) {
+    throw new Error("Only adapters take --runtime; the folder decides where other packages run.");
+  }
+  return runtime;
+}
+
+function ownerFrom(given: string | undefined): string {
+  const owner = (given ?? "").trim();
+  if (!/^[a-z][a-z0-9-]*$/.test(owner)) {
+    throw new Error(
+      `Name the owner with --owner <agent>, the agent's lowercase name such as "elena".\n${usage}`,
+    );
+  }
+  return owner;
+}
+
+function purposeFrom(given: string | undefined): string {
+  const purpose = (given ?? "").trim();
+  if ((given !== undefined && purpose === "") || purpose.includes("\n")) {
+    throw new Error('--purpose needs one line of text, such as --purpose "Reads YAML files".');
+  }
+  return purpose;
+}
+
 /** Reads the command line into the package to create. Throws on a usage error. */
 function specFrom(argv: readonly string[]): PackageSpec {
   const { values, positionals } = parseArgs({
@@ -81,32 +121,14 @@ function specFrom(argv: readonly string[]): PackageSpec {
     throw new Error(usage);
   }
   const directory = resolveDirectory(kind, target);
-  const folders = directory.split("/").slice(directory.startsWith("packages/targets/") ? 2 : -1);
-  const badFolder = folders.find((folder) => !folderNamePattern.test(folder));
-  if (badFolder !== undefined) {
-    throw new Error(`"${badFolder}" must be a kebab-case name such as "schema-kit".`);
-  }
+  const folders = checkFolders(directory);
   const place = placeOf(directory);
   if (place === undefined) {
     throw new Error(`${directory} is not a place for a package.\n${usage}`);
   }
-  const runtime = adapterRuntimes.find((choice) => choice === values.runtime);
-  if (place.layer === "adapters" && runtime === undefined) {
-    throw new Error(`Say where the adapter runs with --runtime <${runtimes}>.`);
-  }
-  if (place.layer !== "adapters" && values.runtime !== undefined) {
-    throw new Error("Only adapters take --runtime; the folder decides where other packages run.");
-  }
-  const owner = (values.owner ?? "").trim();
-  if (!/^[a-z][a-z0-9-]*$/.test(owner)) {
-    throw new Error(
-      `Name the owner with --owner <agent>, the agent's lowercase name such as "elena".\n${usage}`,
-    );
-  }
-  const purpose = (values.purpose ?? "").trim();
-  if ((values.purpose !== undefined && purpose === "") || purpose.includes("\n")) {
-    throw new Error('--purpose needs one line of text, such as --purpose "Reads YAML files".');
-  }
+  const runtime = runtimeFor(place, values.runtime);
+  const owner = ownerFrom(values.owner);
+  const purpose = purposeFrom(values.purpose);
   return {
     directory,
     name: place.expectedName,
