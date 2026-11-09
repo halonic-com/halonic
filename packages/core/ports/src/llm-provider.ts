@@ -29,8 +29,8 @@ export interface LlmProvider {
    * Makes one model call.
    *
    * @throws {ModelCallError} when the call fails, with the reason why: no
-   * key, offline, the model is missing, it can't call tools, or the provider
-   * refused. Callers treat any other error as `refused`, except the abort
+   * key, offline, the model is missing, it can't call tools, it ran out of
+   * memory, or the provider refused. Callers treat any other error as `refused`, except the abort
    * error when `request.signal` aborts the call.
    */
   chat(request: ChatRequest): Promise<ChatResponse>;
@@ -54,6 +54,7 @@ export const modelCallErrorReasons = [
   "offline",
   "model-missing",
   "model-no-tools",
+  "out-of-memory",
   "refused",
 ] as const;
 
@@ -62,9 +63,12 @@ export const modelCallErrorReasons = [
  * - `no-key`: the provider needs a key and its secret isn't set. A provider
  *   that has a key and is turned away (HTTP 401 or 403) says `refused`.
  * - `offline`: the provider couldn't be reached, such as no network, a DNS
- *   failure, a refused connection or a timeout.
+ *   failure, a refused connection or a timeout. The error names the `host`
+ *   when the provider knows it.
  * - `model-missing`: the provider doesn't have the model asked for.
  * - `model-no-tools`: the model can't call tools and the request offered some.
+ * - `out-of-memory`: the model doesn't fit in the memory of the machine that
+ *   runs it. Providers find it with {@link isModelOutOfMemory}.
  * - `refused`: anything else the provider turned down or failed on.
  */
 export type ModelCallErrorReason = (typeof modelCallErrorReasons)[number];
@@ -79,14 +83,31 @@ export type ModelCallErrorReason = (typeof modelCallErrorReasons)[number];
  *
  * @example
  * throw new ModelCallError("model-missing", `openai has no model "gpt-9"`);
+ * throw new ModelCallError("offline", "Ollama didn't answer.", { host: "localhost:11434", cause });
  */
 export class ModelCallError extends Error {
   override readonly name = "ModelCallError";
   readonly reason: ModelCallErrorReason;
+  /**
+   * With `offline` only: the host that didn't answer, as its name and port,
+   * such as `localhost:11434`. Never a URL with a path, a query or a key.
+   */
+  readonly host: string | undefined;
 
-  constructor(reason: ModelCallErrorReason, message: string, options?: { cause?: unknown }) {
+  /**
+   * @param reason - why the call failed
+   * @param message - plain text for the run log, never a key
+   * @param options - `cause` keeps the error this one wraps; `host` names the
+   * host that didn't answer, and is kept only with `offline`
+   */
+  constructor(
+    reason: ModelCallErrorReason,
+    message: string,
+    options?: { cause?: unknown; host?: string },
+  ) {
     super(message, options);
     this.reason = reason;
+    this.host = reason === "offline" ? options?.host : undefined;
   }
 }
 
@@ -100,8 +121,36 @@ export class ModelCallError extends Error {
  */
 export function isModelCallError(value: unknown): value is ModelCallError {
   if (!(value instanceof Error) || value.name !== "ModelCallError") return false;
-  const reason: unknown = (value as { reason?: unknown }).reason;
-  return modelCallErrorReasons.some((known) => known === reason);
+  const { reason, host } = value as { reason?: unknown; host?: unknown };
+  const knownReason = modelCallErrorReasons.some((known) => known === reason);
+  return knownReason && (host === undefined || typeof host === "string");
+}
+
+// What model servers say when the model doesn't fit in memory: Ollama's own
+// check, llama.cpp's allocation failures, and the CUDA, ROCm and Metal
+// messages they pass on. Lower case, matched anywhere in the text.
+const outOfMemoryPhrases = [
+  "out of memory",
+  "requires more system memory",
+  "insufficient memory",
+  "not enough memory",
+  "failed to allocate",
+  "unable to allocate",
+  "cudamalloc failed",
+  "hipmalloc failed",
+];
+
+/**
+ * True when a model server's error text says the model ran out of memory.
+ * A provider calls it on an error body, then throws a {@link ModelCallError}
+ * with `out-of-memory` (requirement `ports.model-out-of-memory-text`).
+ *
+ * @example
+ * isModelOutOfMemory("model requires more system memory (12.0 GiB) than is available (7.6 GiB)"); // true
+ */
+export function isModelOutOfMemory(text: string): boolean {
+  const lowered = text.toLowerCase();
+  return outOfMemoryPhrases.some((phrase) => lowered.includes(phrase));
 }
 
 /** A provider as the workspace's YAML configures it. */

@@ -54,12 +54,21 @@ with the memory adapters.
 `portVersions` and the port files disagree.
 
 A model call that fails throws `ModelCallError`, whose `reason` says why:
-`no-key`, `offline`, `model-missing`, `model-no-tools` or `refused`. The
-engine uses it to decide whether to try the next model. Check for it with
+`no-key`, `offline`, `model-missing`, `model-no-tools`, `out-of-memory` or
+`refused`, with the `host` that didn't answer for `offline`. The engine uses
+it to decide whether to try the next model. A provider finds `out-of-memory`
+in a model server's error text with `isModelOutOfMemory` (requirement
+`model-out-of-memory-text`). Check for it with
 `isModelCallError`, not `instanceof`, because an adapter may have its own
 copy of this package (requirement `model-call-error`). A chat turn outside a
 run returns the models it skipped before calling them in
 `ChatTurnResponse.skipped` (requirement `chat-turn-skipped`).
+
+Two files hold shared types, not a port: `chat.ts` (the messages of a model
+call) and `run-failure-error.ts`. The second has `RunFailureError`, which an
+adapter that isn't a model provider throws to tell the engine why a run can't
+go on: the disk is full, or the sandbox or the harness didn't start
+(requirement `run-failure-error`). Check for it with `isRunFailureError`.
 
 ## Example
 

@@ -4,7 +4,6 @@
 // is offline hands the call to the next one at once: retrying would only make
 // the person wait. Any other failure ends the turn with its own reason.
 
-import type { RunFailureReason } from "@halonicjs/events";
 import {
   type ChatRequest,
   type ChatResponse,
@@ -73,6 +72,8 @@ export class ModelChain {
   private usable = false;
   /** Why the last model was given up on, for the error when none is left. */
   private lastCause: ModelCallErrorReason = "offline";
+  /** The host of the last model that was offline, when its provider named it. */
+  private lastHost: string | undefined;
 
   /**
    * @param agent - names the agent in the events the chain writes
@@ -153,6 +154,7 @@ export class ModelChain {
 
   private async moveOn(from: ResolvedModel, error: ModelCallError): Promise<void> {
     this.lastCause = error.reason;
+    this.lastHost = error.host;
     this.index++;
     this.usable = false;
     const to = await this.current();
@@ -168,22 +170,13 @@ export class ModelChain {
   private noneLeft(): ModelCallError {
     const tried = this.models.map(nameOf).join(", ");
     const what = this.lastCause === "no-key" ? "no model has its key set" : "no model reachable";
-    return new ModelCallError(this.lastCause, `${what} (tried ${tried})`);
+    const message = `${what} (tried ${tried})`;
+    return new ModelCallError(
+      this.lastCause,
+      message,
+      this.lastHost === undefined ? {} : { host: this.lastHost },
+    );
   }
-}
-
-/**
- * Why a run fails when its model call threw `error`: the model is missing,
- * it can't call tools, or something else went wrong. When every model was
- * skipped or offline, that is `error` too; the message says which.
- */
-export function runFailureReasonOf(error: unknown): RunFailureReason {
-  if (isModelCallError(error)) {
-    if (error.reason === "model-missing" || error.reason === "model-no-tools") {
-      return error.reason;
-    }
-  }
-  return "error";
 }
 
 /** The name a model goes by in the log: its alias, or `<provider>/<model>`. */

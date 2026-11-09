@@ -1,4 +1,4 @@
-export { type ResolvedModel, runFailureReasonOf } from "./agent/model-chain.ts";
+export type { ResolvedModel } from "./agent/model-chain.ts";
 export {
   type ModelTurnInput,
   type ModelTurnResult,
@@ -51,3 +51,4 @@ export {
   type LocalExecutorOptions,
 } from "./local-executor.ts";
 export { endInterruptedRuns, interruptedError } from "./run/end-interrupted-runs.ts";
+export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";

@@ -2,6 +2,7 @@ import { type Clock, ModelCallError, type Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { LocalExecutor } from "../local-executor.ts";
+import { runFailureReasonOf } from "../run/run-failure-reason-of.ts";
 import {
   call,
   callAnswer,
@@ -10,7 +11,7 @@ import {
   ScriptedModel,
   textAnswer,
 } from "../testing/scripted-model.ts";
-import { type ResolvedModel, runFailureReasonOf } from "./model-chain.ts";
+import type { ResolvedModel } from "./model-chain.ts";
 import { runModelTurn } from "./run-model-turn.ts";
 import { MemoryTurnLog, secretsWith, steppingClock } from "./turn-test-kit.test-helper.ts";
 
@@ -205,7 +206,7 @@ verifies("engine.offline-falls-back", () => {
     expect(smart.requests).toHaveLength(1);
     expect(local.requests).toHaveLength(1);
     expect(other.requests).toEqual([]);
-    expect(runFailureReasonOf(failure)).toBe("error");
+    expect(runFailureReasonOf(failure)).toEqual({ reason: "model-unreachable" });
   });
 
   it("moves on as well when a provider itself says it has no key", async () => {
@@ -242,6 +243,7 @@ verifies("engine.model-failure-stops", () => {
       new ModelCallError("model-missing", 'acme-local has no model "acme-local-1"'),
     ],
     ["refused", new ModelCallError("refused", "acme-local turned the key away (401)")],
+    ["out-of-memory", new ModelCallError("out-of-memory", "acme-local-1 doesn't fit in memory")],
   ])("stops the turn on %s and tries no fallback", async (reason, error) => {
     const local = new ScriptedModel([error], "acme-local");
     const smart = new ScriptedModel([textAnswer("never")], "acme-cloud");
@@ -263,11 +265,29 @@ verifies("engine.model-failure-stops", () => {
   });
 
   it("gives a run the failure reason of a missing model or one without tools, and error otherwise", () => {
-    expect(runFailureReasonOf(new ModelCallError("model-missing", "gone"))).toBe("model-missing");
-    expect(runFailureReasonOf(new ModelCallError("model-no-tools", "no tools"))).toBe(
-      "model-no-tools",
-    );
-    expect(runFailureReasonOf(new ModelCallError("refused", "no"))).toBe("error");
-    expect(runFailureReasonOf(new Error("broke"))).toBe("error");
+    expect(runFailureReasonOf(new ModelCallError("model-missing", "gone"))).toEqual({
+      reason: "model-missing",
+    });
+    expect(runFailureReasonOf(new ModelCallError("model-no-tools", "no tools"))).toEqual({
+      reason: "model-no-tools",
+    });
+    expect(runFailureReasonOf(new ModelCallError("refused", "no"))).toEqual({ reason: "error" });
+    expect(runFailureReasonOf(new Error("broke"))).toEqual({ reason: "error" });
+  });
+
+  it("fails a run whose models were all offline as model-unreachable, naming the last host", async () => {
+    const at = (host: string) => new ModelCallError("offline", "didn't answer", { host });
+    const local = new ScriptedModel([at("localhost:11434")], "acme-local");
+    const smart = new ScriptedModel([at("api.acme.test:443")], "acme-cloud");
+
+    const failure = await runTurnOn(
+      alias("local", local, { fallback: [alias("smart", smart)] }),
+    ).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ reason: "offline", host: "api.acme.test:443" });
+    expect(runFailureReasonOf(failure)).toEqual({
+      reason: "model-unreachable",
+      host: "api.acme.test:443",
+    });
   });
 });
