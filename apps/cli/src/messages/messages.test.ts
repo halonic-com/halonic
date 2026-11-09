@@ -81,11 +81,11 @@ describe("the general sentences", () => {
 
   it("dims the code after the docs link", () => {
     const more = errorMessages.more(
-      "https://docs.halonic.dev/sandbox#bubblewrap",
+      "https://docs.halonic.com/sandbox#bubblewrap",
       "bubblewrap-missing",
     );
     expect(renderPhrase(more.phrase, piped)).toBe(
-      "More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
+      "More: https://docs.halonic.com/sandbox#bubblewrap (bubblewrap-missing)",
     );
     expect(renderPhrase(more.phrase, coloured)).toContain("\u001b[2m(bubblewrap-missing)");
   });
