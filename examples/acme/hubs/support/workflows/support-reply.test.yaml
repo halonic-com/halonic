@@ -29,7 +29,7 @@ cases:
       final: not-replied
       states: [read, classify, draft, review, not-replied]
 
-  - name: a reply nobody has reviewed yet waits
+  - name: A reply nobody has reviewed yet waits
     input:
       mail: "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)"
     mocks:
@@ -41,7 +41,7 @@ cases:
       status: waiting
       states: [read, classify, draft, review]
 
-  - name: a question gets an approved reply
+  - name: A question gets an approved reply
     input:
       mail: "Do you also ship to Belgium? — Robin (invented)"
     mocks:
@@ -54,7 +54,7 @@ cases:
       final: replied
       context: { kind: question }
 
-  - name: spam ends without a draft or a review
+  - name: Spam ends without a draft or a review
     input:
       mail: "You have won a prize! Click here to claim it."
     mocks:

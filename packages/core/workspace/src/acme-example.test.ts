@@ -62,6 +62,17 @@ verifies("workspace.acme-example", () => {
       );
     });
 
+    it("asks the review question on the first line, with the draft below it", () => {
+      const [workflow] = filesOf(workspace, "workflow").filter(
+        (file) => file.value.id === "support-reply",
+      );
+      const lines = workflow?.value.states["review"]?.description?.split("\n");
+
+      // The waiting line shows the first line; the Inbox card shows the rest as its body.
+      expect(lines?.[0]).toBe("Approve this reply?");
+      expect(lines?.[1]).toBe("{{context.reply}}");
+    });
+
     it("tests the Support reply workflow with 5 cases, two of them on Sam's and Alex's emails", () => {
       const [tests] = filesOf(workspace, "workflowTest");
       const mails = tests?.value.cases.map((testCase) => String(testCase.input["mail"]));
@@ -85,6 +96,16 @@ verifies("workspace.acme-example", () => {
       });
       // The Writer answers twice on this path: the summary in `read`, then the draft.
       expect(script["writer"]).toHaveLength(2);
+    });
+
+    it("scripts the same answers as the first test case, so every place shows one draft", () => {
+      const [provider] = filesOf(workspace, "provider");
+      const [tests] = filesOf(workspace, "workflowTest");
+      const script = provider?.value.options["script"] as Record<string, string[]>;
+      const mocks = tests?.value.cases[0]?.mocks;
+
+      expect(script["writer"]).toEqual(mocks?.["writer"]);
+      expect(script["sorter"]).toEqual(mocks?.["sorter"]);
     });
   });
 });

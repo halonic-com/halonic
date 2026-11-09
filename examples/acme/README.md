@@ -17,7 +17,7 @@ network and no key. No file in it points at a real service.
 | Support | Tests                      | The Support reply workflow's five test cases                             | `hubs/support/workflows/support-reply.test.yaml`             |
 | Reports | Agent **Reporter**         | Writes the weekly support report                                         | `hubs/reports/agents/reporter.agent.yaml`                    |
 | Reports | Workflow **Weekly report** | The Reporter's one step                                                  | `hubs/reports/workflows/weekly-report.workflow.yaml`         |
-| Reports | Routine                    | Runs the Weekly report every Monday at 9:00 (Amsterdam time)             | `hubs/reports/workflows/routines/weekly-report.routine.yaml` |
+| Reports | Routine                    | Runs the Weekly report every Monday at 9:00                              | `hubs/reports/workflows/routines/weekly-report.routine.yaml` |
 
 In the Support reply workflow, the review step waits for a person. `approve`
 finishes the workflow with the reply approved. `reject` finishes it without a

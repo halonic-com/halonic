@@ -31,7 +31,11 @@ states:
       - to: review
   review:
     type: wait
-    description: Review the reply, then approve or reject it.
+    description: |-
+      Approve this reply?
+      {{context.reply}}
+
+      Sample: approving finishes the run. Nothing is sent.
     on:
       - to: replied
         event: approve
