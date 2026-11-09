@@ -183,10 +183,16 @@ function checkNoBypass(run: CaseRun): void {
     fail(`the integration used the global ${run.globalCalls.join(", ")}; use host.http`);
   const refused = run.log.filter((entry) => entry.outcome === "refused");
   if (refused.length > 0) {
-    fail(
-      refused.map((e) => `the kit refused ${e.method} ${e.host}${e.path}: ${e.refusal}`).join("\n"),
-    );
+    fail(refused.map((e) => `the kit refused ${refusedRequest(e)}: ${e.refusal}`).join("\n"));
   }
+}
+
+/**
+ * The method, host and path of a refused request. The kit logs none of them
+ * for a refusal that comes before its secret check, since they may hold a key.
+ */
+function refusedRequest(entry: { method: string; host: string; path: string }): string {
+  return entry.host === "" ? "a request" : `${entry.method} ${entry.host}${entry.path}`;
 }
 
 function checkNoLeak(subject: ConformanceSubject, run: CaseRun): void {

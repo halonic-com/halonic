@@ -5,6 +5,7 @@ import type {
   SecretPlacement,
   Secrets,
 } from "@halonicjs/ports";
+import { copyRequest, type OwnRequest } from "./own-request.ts";
 import { allowedUrl, type IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError, IntegrationTimeoutError } from "./refused.ts";
 import {
@@ -24,13 +25,7 @@ import {
   refuseCarriedSecrets,
   SecretInRequestError,
 } from "./secret-in-request.ts";
-import {
-  checkPlacementHosts,
-  checkPlacements,
-  copyPlacements,
-  place,
-  readSecrets,
-} from "./secret-placement.ts";
+import { checkPlacementHosts, checkPlacements, place, readSecrets } from "./secret-placement.ts";
 
 /**
  * Limits on one request. Every field has a default; the loader sets them
@@ -89,25 +84,25 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
     async fetch(rawUrl: string, init: IntegrationRequestInit = {}): Promise<Response> {
       const started = now();
       // Until the secret check has passed, the method, host and path may hold a key,
-      // so no refusal before it names them, and the log holds none of them.
+      // so the check runs first: before the URL is parsed and before any other refusal.
       let logged = unchecked;
       try {
-        // Read before the first await, so the code can't change its request after the checks.
-        const request = readRequest(options.policy, init);
-        checkPlacements(options.policy, request.placements);
+        // Before the first `await`: from here on the kit reads only this copy.
+        const own = copyRequest(options.policy, rawUrl, init);
+        // Needs no secret, so a placement the sheet doesn't allow is refused before any is read.
+        checkPlacements(options.policy, own.placements);
         const declared = await readDeclaredSecrets(options.policy, options.secrets);
         const carried = carriedForms(declared.values());
         refuseCarriedSecrets(options.policy, carried, {
-          method: request.method,
-          url: String(rawUrl),
-          headers: request.headers,
-          body: request.body,
+          method: own.givenMethod,
+          url: String(own.url),
+          headers: own.headers,
+          body: own.body,
         });
-        const method = (request.method ?? "GET").toUpperCase();
-        logged = { method, ...logPlace(rawUrl) };
-        const response = await send(options, rawUrl, request, method, { declared, carried });
+        logged = { method: own.method, ...logPlace(own.url) };
+        const response = await send(options, own, { declared, carried });
         options.log.add({
-          method: logged.method,
+          method: own.method,
           ...logPlace(response.url),
           status: response.status,
           durationMs: now() - started,
@@ -131,33 +126,6 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
 /** What the log shows of a request that failed before the secret check passed. */
 const unchecked = { method: "", host: "", path: "" };
 
-/**
- * The integration's request, each part read once. Only the method, headers
- * and body reach the transport, which the secret check has read. Every
- * other option is dropped: `referrer` goes out as an unchecked `Referer`
- * header, and Node's `dispatcher` would hand the whole request, placed
- * secrets included, to the integration.
- */
-interface OwnRequest {
-  readonly method: string | undefined;
-  readonly headers: Headers;
-  readonly body: Body;
-  readonly signal: AbortSignal | null | undefined;
-  /** Frozen copies: from here on the kit never reads the code's `auth` again. */
-  readonly placements: readonly SecretPlacement[];
-}
-
-function readRequest(policy: IntegrationPolicy, init: IntegrationRequestInit): OwnRequest {
-  const { method, headers, body, signal, auth } = init;
-  return {
-    method,
-    headers: new Headers(headers),
-    body: body ?? null,
-    signal,
-    placements: copyPlacements(policy, auth === undefined ? [] : [auth].flat()),
-  };
-}
-
 /** The declared secret values, read once per request, and their forms for the carried check. */
 interface DeclaredSecrets {
   readonly declared: ReadonlyMap<string, string>;
@@ -176,26 +144,28 @@ interface Hop {
 
 async function send(
   options: LimitedHttpOptions,
-  rawUrl: string,
-  request: OwnRequest,
-  method: string,
+  own: OwnRequest,
   { declared, carried }: DeclaredSecrets,
 ): Promise<Response> {
   const { policy, limits = {} } = options;
-  const { placements, signal, body } = request;
+  // Only the copied method, headers and body reach the transport, which the secret check has
+  // read. Every other option is dropped: `referrer` goes out as an unchecked `Referer` header,
+  // and Node's `dispatcher` would hand the whole request, placed secrets included, to the
+  // integration.
+  const { placements, body, signal } = own;
   // After the secret check, which skips a body it can't read, so this refusal logs no key.
   checkBody(policy, body);
-  const url = allowedUrl(policy, rawUrl);
+  const url = allowedUrl(policy, own.url);
   checkPlacementHosts(policy, placements, url);
   const maxBodyBytes = requestBodyLimit(limits.maxRequestBodyBytes);
   const values = await readSecrets(policy, options.secrets, placements);
   const hop: Hop = {
     url,
-    method,
+    method: own.method,
     body,
     form: placements.some((p) => p.as === "form") ? toForm(policy, body) : undefined,
     placements,
-    headers: new Headers(request.headers),
+    headers: new Headers(own.headers),
   };
   const deadline = new AbortController();
   const stop = (what: string, ms: number) =>

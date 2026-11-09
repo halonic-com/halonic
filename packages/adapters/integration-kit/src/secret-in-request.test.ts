@@ -9,6 +9,7 @@ import {
   refusal,
 } from "./fake-transport.test-helper.ts";
 import { createLimitedHttpClient } from "./limited-http.ts";
+import type { Body } from "./request-body.ts";
 import { RequestLog } from "./request-log.ts";
 
 const key = canary["example-key"];
@@ -121,6 +122,67 @@ verifies("integration-kit.secret-in-request", () => {
       expect(String(error)).not.toContain(key);
       expect(sent).toHaveLength(1);
     });
+
+    describe("the code changes its request after the check", () => {
+      /** Request options whose `name` gives `first` on the first read and `later` after it. */
+      function changing(name: string, first: unknown, later: unknown, init: object = {}) {
+        let reads = 0;
+        const changed = Object.defineProperty({ ...init }, name, {
+          enumerable: true,
+          get: () => (++reads === 1 ? first : later),
+        });
+        return { init: changed, reads: () => reads };
+      }
+
+      it.each([
+        ["headers", {}, { "x-note": key }],
+        ["body", "clean", `{"k":"${key}"}`],
+        ["method", "POST", `X${key}`],
+      ])(
+        "reads a getter on %s once, so the check and the transport see the same value",
+        async (name, first, later) => {
+          const { http, sent } = client();
+          const given = changing(name, first, later, { method: "POST" });
+          await http.fetch("https://api.example.com/", given.init);
+          expect(given.reads()).toBe(1);
+          expect(sent).toHaveLength(1);
+          expect(JSON.stringify(sent)).not.toContain(key);
+        },
+      );
+
+      it("sends the headers it checked when the code changes its Headers object after fetch", async () => {
+        const { http, sent } = client();
+        const headers = new Headers({ "x-note": "clean" });
+        const pending = http.fetch("https://api.example.com/", { headers });
+        headers.set("x-note", key);
+        await pending;
+        expect(sent[0]?.headers["x-note"]).toBe("clean");
+      });
+
+      it.each([
+        ["a byte array", (bytes: Uint8Array<ArrayBuffer>): Body => bytes],
+        ["an ArrayBuffer", (bytes: Uint8Array<ArrayBuffer>): Body => bytes.buffer],
+      ])("sends the bytes it checked when the code changes %s after fetch", async (_kind, give) => {
+        const { http, sent } = client();
+        const bytes = new TextEncoder().encode("x".repeat(key.length));
+        const pending = http.fetch("https://api.example.com/", {
+          method: "POST",
+          body: give(bytes),
+        });
+        bytes.set(new TextEncoder().encode(key));
+        await pending;
+        expect(sent[0]?.body).toBe("x".repeat(key.length));
+      });
+
+      it("sends the form it checked when the code changes its form after fetch", async () => {
+        const { http, sent } = client();
+        const form = new URLSearchParams({ note: "clean" });
+        const pending = http.fetch("https://api.example.com/", { method: "POST", body: form });
+        form.set("note", key);
+        await pending;
+        expect(sent[0]?.body).toBe("note=clean");
+      });
+    });
   });
 
   it("still sends a clean request with a key the kit places", async () => {
@@ -138,25 +200,6 @@ verifies("integration-kit.secret-in-request", () => {
     expect(options[0]).not.toHaveProperty("referrer");
     expect(JSON.stringify(sent)).not.toContain(`/${key}`);
   });
-
-  it.each([
-    ["the method", "method", "GET", key],
-    ["its headers", "headers", {}, { "x-note": key }],
-    ["the body", "body", "clean", key],
-  ])(
-    "reads %s once, so a getter can't swap in the value after the check",
-    async (_, part, clean, carried) => {
-      const { http, sent } = client();
-      let reads = 0;
-      const init = Object.defineProperty({ method: "POST" }, part, {
-        get: () => (reads++ === 0 ? clean : carried),
-        enumerable: true,
-      });
-      await http.fetch("https://api.example.com/v1", init).catch(() => undefined);
-      expect(reads).toBe(1);
-      expect(JSON.stringify(sent)).not.toContain(key);
-    },
-  );
 
   it("removes a secret the request didn't place from the response", async () => {
     const { http } = client(() => new Response(`other: ${canary["client-secret"]}`));

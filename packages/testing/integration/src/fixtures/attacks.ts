@@ -93,7 +93,8 @@ export const attacks = {
   },
   "places its key another way than its sheet says (A40)": {
     catchBy: "case",
-    reason: /refused GET api\.example\.com\/v1\/forecast: placement-not-in-sheet/,
+    // Refused before the secret check, so the kit logs no method, host or path.
+    reason: /refused a request: placement-not-in-sheet/,
     subject: hostile(async (host) => {
       // A header the service would keep, where the integration could read the key back.
       const response = await host.http.fetch(forecastUrl, {

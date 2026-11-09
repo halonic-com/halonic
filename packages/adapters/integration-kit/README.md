@@ -70,6 +70,11 @@ Node, in the Worker and in the browser. Published as
   other `RequestInit` option is dropped: `referrer` would go out as a
   `Referer` header the secret check never read, and Node's `dispatcher`
   would hand the whole request, placed secrets included, to the integration.
+  The kit reads each option once and copies the headers, a form and the
+  bytes of a byte body before it checks anything. It checks and sends only
+  that copy, so the integration can't pass the check with a clean request
+  and change it, through a getter or its own `Headers` or byte array,
+  before it goes out.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name
