@@ -31,7 +31,7 @@ states:
       - to: review
   review:
     type: wait
-    description: Review the reply, then approve or reject it.
+    description: Approve this reply?
     on:
       - to: replied
         event: approve
