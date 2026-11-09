@@ -19,8 +19,8 @@ export type ToolCallCheck =
  * Checks a call to an offered tool. A call with an argument the tool's
  * parameters don't name is refused, so a server can't add a parameter to a
  * declared tool and get it filled in. A tool whose risk isn't `read` needs
- * approval: a listed tool is `write` unless a trusted workspace set a lower
- * risk when the listing was read.
+ * approval: a listed tool is `write` unless a trusted workspace set another
+ * risk for it when the listing was read.
  *
  * Extra names are allowed only when the parameters set
  * `additionalProperties` to `true` or to a schema; leaving it out doesn't
