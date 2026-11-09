@@ -3,7 +3,8 @@
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
 by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Kbd`](#kbd),
-[`Field`](#field), [`Input`](#input), [`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
+[`Field`](#field), [`Input`](#input), [`TextArea`](#textarea), [`CopyButton`](#copybutton) and
+[`ExternalLink`](#externallink).
 
 - **Layer:** studio
 - **Owner:** noah
@@ -351,6 +352,23 @@ false.
 
 **On a phone** the box is at least 48px high, with 12px padding and 16px text
 (`text-input-touch`), so the browser doesn't zoom in.
+
+## TextArea
+
+A text field of several lines, in the Input's box and states. It grows with its text up to
+`maxRows` lines (5 unless you say otherwise), then scrolls inside.
+
+```tsx
+<Field label="Notes">
+  <TextArea value={notes} onChange={(event) => setNotes(event.target.value)} maxRows={8} />
+</Field>;
+```
+
+**Keys.** Enter adds a line. Ctrl Enter (⌘ Enter on macOS) submits its form, except while an
+input method is composing. No key approves, rejects or deletes.
+
+**On a phone** it's at least 48px high, with 16px text. Long text on a phone page (Instructions,
+Description) opens the text sheet instead; that comes with the Sheet.
 
 ## CopyButton
 

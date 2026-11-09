@@ -1,5 +1,5 @@
 /**
- * The box every text field draws (Input, and later TextArea and Select): one look per state,
+ * The box every text field draws (Input, TextArea, and Select later): one look per state,
  * picked in code rather than stacked as competing variants, so an error's edge never loses to a
  * hover.
  */
