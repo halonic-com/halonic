@@ -222,9 +222,13 @@ jobs:
           if (-not $sig.TimeStamperCertificate) { throw "Installer has no timestamp" }
           # Signing changes the installer's bytes, so the checksums from the
           # build job no longer match. Write them again.
-          Get-ChildItem dist -File | Where-Object Name -ne SHA256SUMS | Sort-Object Name | ForEach-Object {
+          # Join with LF and write bytes: Set-Content would add CRLF, which
+          # breaks `sha256sum -c` on Linux and macOS.
+          $lines = Get-ChildItem dist -File | Where-Object Name -ne SHA256SUMS | Sort-Object Name | ForEach-Object {
             "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
-          } | Set-Content -Encoding ascii -Path dist/SHA256SUMS
+          }
+          $text = ($lines -join "`n") + "`n"
+          [System.IO.File]::WriteAllBytes("$PWD/dist/SHA256SUMS", [System.Text.Encoding]::ASCII.GetBytes($text))
           Get-Content dist/SHA256SUMS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -236,8 +240,8 @@ jobs:
   draft-release:
     name: Create draft release
     needs: [build, sign-test, sign-windows]
-    # Exactly one of the two signing jobs runs. Skipped is fine, failed is not.
-    if: ${{ !cancelled() && needs.build.result == 'success' && !contains(needs.*.result, 'failure') }}
+    # Exactly one of the two signing jobs runs. Skipped is fine, failed or cancelled (e.g. timed out) is not.
+    if: ${{ !cancelled() && needs.build.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
