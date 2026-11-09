@@ -266,8 +266,10 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - name: Run every task through the cache
         run: pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize
-      # On main, main checks itself. On a pull request, the guard job runs
-      # trace from the merge base's copy instead.
+      # On main, main checks itself: it reads the result files the tests
+      # just wrote, even when a task failed (a missing result file fails the
+      # check anyway). On a pull request, the guard job runs trace from the
+      # merge base's copy instead.
       - name: Requirements and their tests (trace)
         if: always() && github.event_name == 'push'
         run: pnpm check trace --report

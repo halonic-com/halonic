@@ -110,7 +110,7 @@ A package with tests but no readable result file on either side always
 fails: no note can stand in for a comparison the guard couldn't make.
 
 **The decision note** is `decisions/<branch-name>.md`, so the branch
-`julian/HAL-118-01-x` adds `decisions/julian/HAL-118-01-x.md`:
+`alex/HAL-42-retire-timer-rule` adds `decisions/alex/HAL-42-retire-timer-rule.md`:
 
 ```markdown
 # Decision: retire the old timer rule
@@ -127,10 +127,10 @@ What changes and why.
 ```
 
 `Kind` says who approves: `user-visible` changes need the user's
-approval, `internal` ones Liam's. The guard asks Paperclip whether the
+approval, `internal` ones the maintainer's. The guard asks Paperclip whether the
 approval exists, is approved by the right person and names this branch.
 **That lookup is a stub for now and fails closed**: it needs a Paperclip
-API token as a CI secret, which is parked on HAL-58. Until then no note
+API token as a CI secret, which isn't set up yet. Until then no note
 lets a change through.
 
 **CI runs the guard and `trace` from the merge base's copy** of
