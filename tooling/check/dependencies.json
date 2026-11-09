@@ -219,6 +219,18 @@
       "reason": "Tables, task lists, strikethrough and autolinks for remark. Approved by the user on 8 Nov 2026 (HAL-10).",
       "useInstead": "the Markdown view from @halonicjs/studio-kit"
     },
+    "tailwindcss": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/studio-*",
+        "@halonicjs/app-studio"
+      ],
+      "layers": [
+        "studio",
+        "apps"
+      ],
+      "reason": "Turns the kit's Tailwind classes and theme.css into CSS: the kit's tests check the CSS a class really gets, the kit's states page shows the real parts (HAL-1563), and the Studio app will style them. Build-time only, never in the kit's dependencies or exports. Approved by Liam on HAL-1571."
+    },
     "turbo": {
       "category": "dev-tooling",
       "allowedIn": [
