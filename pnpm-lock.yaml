@@ -383,6 +383,9 @@ importers:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts
+      '@halonicjs/testing-scenario':
+        specifier: workspace:*
+        version: link:../../testing/scenario
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
