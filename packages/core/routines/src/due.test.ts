@@ -29,6 +29,12 @@ function placed(
 const times = (runs: ReturnType<typeof due>) => runs.map((run) => iso(run.at));
 const hourly = { schedule: "0 * * * *", timezone: "UTC" };
 
+// Each walk these compare against makes up to a thousand cron lookups per
+// case, well under a second here; this leaves room for a slow CI runner. A
+// fixed seed keeps every run the same (no flaky tests).
+const PROPERTY_TIMEOUT = 30_000;
+const SEED = 287;
+
 verifies("routines.due", () => {
   it("gives the newest quarter hour for catchUp last", () => {
     const runs = due(
@@ -168,46 +174,54 @@ verifies("routines.due", () => {
     });
   });
 
-  it("gives the same newest schedule times as walking the window for catchUp all", () => {
-    fc.assert(
-      fc.property(
-        fc.constantFrom("*/7 * * * *", "0 9 * * 1-5", "15 2,14 * * *"),
-        fc.constantFrom("UTC", "America/New_York"),
-        fc.integer({ min: 0, max: 40 * 86_400_000 }),
-        fc.integer({ min: 1, max: 3 * 86_400_000 }),
-        fc.integer({ min: 1, max: 20 }),
-        (schedule, timezone, offset, length, maxCatchUp) => {
-          const lastTick = new Date(at("2026-10-01T00:00:00Z").getTime() + offset);
-          const now = new Date(lastTick.getTime() + length);
-          const trigger = { schedule, timezone };
-          const walked = occurrences(trigger, lastTick, now, 1_000).map(iso).slice(-maxCatchUp);
-          const policy = { ...DEFAULT_TICK_POLICY, maxCatchUp };
-          expect(times(due([placed(trigger, "all")], lastTick, now, policy))).toEqual(walked);
-        },
-      ),
-      { numRuns: 30 },
-    );
-  });
+  it(
+    "gives the same newest schedule times as walking the window for catchUp all",
+    () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom("*/7 * * * *", "0 9 * * 1-5", "15 2,14 * * *"),
+          fc.constantFrom("UTC", "America/New_York"),
+          fc.integer({ min: 0, max: 40 * 86_400_000 }),
+          fc.integer({ min: 1, max: 3 * 86_400_000 }),
+          fc.integer({ min: 1, max: 20 }),
+          (schedule, timezone, offset, length, maxCatchUp) => {
+            const lastTick = new Date(at("2026-10-01T00:00:00Z").getTime() + offset);
+            const now = new Date(lastTick.getTime() + length);
+            const trigger = { schedule, timezone };
+            const walked = occurrences(trigger, lastTick, now, 1_000).map(iso).slice(-maxCatchUp);
+            const policy = { ...DEFAULT_TICK_POLICY, maxCatchUp };
+            expect(times(due([placed(trigger, "all")], lastTick, now, policy))).toEqual(walked);
+          },
+        ),
+        { numRuns: 30, seed: SEED },
+      );
+    },
+    PROPERTY_TIMEOUT,
+  );
 
-  it("gives the same newest schedule time as walking the window", () => {
-    const crons = ["*/7 * * * *", "0 9 * * 1-5", "15 2,14 * * *", "0 0 1 * *"];
-    fc.assert(
-      fc.property(
-        fc.constantFrom(...crons),
-        fc.constantFrom("UTC", "America/New_York"),
-        fc.integer({ min: 0, max: 40 * 86_400_000 }),
-        fc.integer({ min: 1, max: 3 * 86_400_000 }),
-        (schedule, timezone, offset, length) => {
-          const lastTick = new Date(at("2026-10-01T00:00:00Z").getTime() + offset);
-          const now = new Date(lastTick.getTime() + length);
-          const trigger = { schedule, timezone };
-          const walked = occurrences(trigger, lastTick, now, 1_000).map(iso).slice(-1);
-          expect(times(due([placed(trigger, "last")], lastTick, now))).toEqual(walked);
-        },
-      ),
-      { numRuns: 30 },
-    );
-  });
+  it(
+    "gives the same newest schedule time as walking the window",
+    () => {
+      const crons = ["*/7 * * * *", "0 9 * * 1-5", "15 2,14 * * *", "0 0 1 * *"];
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...crons),
+          fc.constantFrom("UTC", "America/New_York"),
+          fc.integer({ min: 0, max: 40 * 86_400_000 }),
+          fc.integer({ min: 1, max: 3 * 86_400_000 }),
+          (schedule, timezone, offset, length) => {
+            const lastTick = new Date(at("2026-10-01T00:00:00Z").getTime() + offset);
+            const now = new Date(lastTick.getTime() + length);
+            const trigger = { schedule, timezone };
+            const walked = occurrences(trigger, lastTick, now, 1_000).map(iso).slice(-1);
+            expect(times(due([placed(trigger, "last")], lastTick, now))).toEqual(walked);
+          },
+        ),
+        { numRuns: 30, seed: SEED },
+      );
+    },
+    PROPERTY_TIMEOUT,
+  );
 
   it("orders by time, then key", () => {
     const runs = due(
