@@ -3,6 +3,7 @@ import { usePresentation } from "../presentation/presentation.tsx";
 import { AlertSlot } from "./alert-slot.tsx";
 import { DialogFooter, DialogHeader } from "./dialog-parts.tsx";
 import type { DialogProps, DialogSize } from "./dialog-props.ts";
+import { ModalRegions } from "./modal-regions.tsx";
 import { useCancelEvents } from "./use-cancel-events.ts";
 import { useModal } from "./use-modal.ts";
 
@@ -124,6 +125,7 @@ export function Dialog(props: DialogProps) {
       ) : (
         content
       )}
+      <ModalRegions />
     </dialog>
   );
 }

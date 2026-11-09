@@ -29,6 +29,13 @@ export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/c
 export { Dialog } from "./dialog/dialog.tsx";
 export type { DialogConfirm, DialogProps, DialogSize } from "./dialog/dialog-props.ts";
 export {
+  type ModalLiveRegion,
+  type ModalLiveRegions,
+  ModalRegionsProvider,
+  type ModalRegionsProviderProps,
+  type PushModalRegions,
+} from "./dialog/modal-regions.tsx";
+export {
   EmptyState,
   type EmptyStateAction,
   type EmptyStateProps,

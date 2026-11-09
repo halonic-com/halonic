@@ -271,6 +271,20 @@ words is read again. The Callout inside it has no role.
 row) or is inert, it goes to `returnFocus()`, which runs after the close, so it can name an
 element the same change added; else to the page's `h1`. Never to `body`.
 
+**Live regions.** While a Dialog is open, everything outside it is inert, so a screen reader can't
+hear the shell's own live regions. Each Dialog has a visually hidden `aria-live="polite"` region
+and an `aria-live="assertive"` one (no `role="alert"`), and gives both to the shell's announcer
+while it's mounted, so `announce()` writes there. The newest Dialog is on top; when it closes,
+the one below it takes over again. The shell connects them once, at its root:
+
+```tsx
+<ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>
+  <App />
+</ModalRegionsProvider>;
+```
+
+These regions are separate from the alert slot, which carries only the Dialog's own `error`.
+
 **When the browser closes it anyway** (Chrome lets a second Escape through while busy),
 `onCancel` still runs. The request carries on, and its result goes to a toast.
 
