@@ -49,7 +49,8 @@
     "build": {
       "dependsOn": [
         "//#codegen",
-        "^build"
+        "^build",
+        "transit"
       ],
       "outputs": [
         "dist/**"

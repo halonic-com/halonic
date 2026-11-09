@@ -1,5 +1,4 @@
-const specifierPattern =
-  /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\btypeof\s+import\s*\(\s*)(["'])([^"'\n]+)\2/g;
+const specifierPattern = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])([^"'\n]+)\2/g;
 
 /** Calls `replace` for every import specifier in `code` and swaps in what it returns (or keeps the original on `undefined`). */
 export function rewriteSpecifiers(

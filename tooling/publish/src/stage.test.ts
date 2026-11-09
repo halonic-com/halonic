@@ -67,3 +67,19 @@ verifies("publish.staged-package", () => {
     }
   });
 });
+
+verifies("publish.staged-package", () => {
+  it("takes the outside dependency ranges from the catalog", () => {
+    const catalog = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8");
+    for (const folder of ["adapters/integration-kit", "testing/integration"]) {
+      const manifest = JSON.parse(
+        readFileSync(join(root, "packages", folder, "package.json"), "utf8"),
+      );
+      for (const [name, range] of Object.entries(manifest.halonic.publish.dependencies)) {
+        if (name.startsWith("@halonicjs/")) continue;
+        const pinned = new RegExp(`^  ${name}: (\\S+)$`, "m").exec(catalog)?.[1];
+        expect(range, `${folder}: ${name}`).toBe(`^${pinned}`);
+      }
+    }
+  });
+});
