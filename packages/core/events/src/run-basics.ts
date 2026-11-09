@@ -37,17 +37,33 @@ export interface RunParent {
 export type ToolOutcome = "ok" | "error" | "unknown";
 
 /**
- * Why a run failed: a budget stopped it, someone cancelled it, the model it
- * asked for doesn't exist at its provider (`model-missing`), that model can't
- * call tools and the step offered some (`model-no-tools`), or something else
- * went wrong (`error`).
+ * Why a run failed. Each reason has its own requirement in `requirements/`.
+ *
+ * - `budget`: a run or monthly budget stopped it.
+ * - `cancelled`: someone cancelled it.
+ * - `model-missing`: the model it asked for doesn't exist at its provider.
+ * - `model-no-tools`: that model can't call tools and the step offered some.
+ * - `error`: something else went wrong; the `error` text says what.
+ * - `model-unreachable`: the model's host didn't answer; `run.failed` names it in `host`.
+ * - `model-out-of-memory`: the machine running the model ran out of memory for it.
+ * - `disk-full`: there was no disk space left to write what the run needed.
+ * - `interrupted`: the engine stopped while the run was going, and found it on its next start.
+ * - `sandbox-start-failed`: the sandbox check had passed, but the sandbox didn't start for this run.
+ * - `harness-start-failed`: the harness program failed to start for this run, or didn't send its
+ *   first event within its time limit (60 s by default).
  */
 export type RunFailureReason =
   | "budget"
   | "cancelled"
   | "model-missing"
   | "model-no-tools"
-  | "error";
+  | "error"
+  | "model-unreachable"
+  | "model-out-of-memory"
+  | "disk-full"
+  | "interrupted"
+  | "sandbox-start-failed"
+  | "harness-start-failed";
 
 /** Why a model was skipped before it was called: its provider's key isn't set. */
 export type ModelSkipReason = "no-key";

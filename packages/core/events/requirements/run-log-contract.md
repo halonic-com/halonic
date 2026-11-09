@@ -10,10 +10,10 @@ The events package shall describe every run log event with the same type name an
 
 - Given the reference run log types,
   when the event types of the events package are listed,
-  then they are exactly the 23 reference names, from `run.started` to `run.failed`, plus the events added since, each with its own requirement (`sandbox.opened`, `events.sandbox-opened`; `llm.skipped`, `events.llm-skipped`; `sandbox.started` and `harness.started`, `events.started-events`; `sandbox.blocked`, `events.sandbox-blocked`).
+  then they are exactly the 23 reference names, from `run.started` to `run.failed`, plus the events added since, each with its own requirement (`sandbox.opened`, `events.sandbox-opened`; `llm.skipped`, `events.llm-skipped`; `sandbox.started` and `harness.started`, `events.started-events`; `sandbox.blocked`, `events.sandbox-blocked`; `connector.started`, `events.connector-started`).
 - Given the reference fields of `llm.response`,
   when the events package's `llm.response` event is compared with them,
   then it has the same required fields (`agent`, `provider`, `model`, `usage`, `latencyMs`, `text`) and the same optional ones (`thoughts`, `cost`, `cached`), plus the optional `toolCallAsText` that came with the engine.
-- Given the four fields that come with the engine, `tool.result.outcome`, `run.failed.reason`, `approval.resolved.by` and `llm.response.toolCallAsText`,
+- Given the five fields that come with the engine, `tool.result.outcome`, `run.failed.reason`, `approval.resolved.by`, `llm.response.toolCallAsText` and `run.failed.host`,
   when the events package is checked,
-  then each is optional and has its own requirement (`events.tool-result-outcome`, `events.run-failed-reason`, `events.approval-resolved-by`, `events.tool-call-as-text`), and no reference field changes.
+  then each is optional and has its own requirement (`events.tool-result-outcome`, `events.run-failed-reason`, `events.approval-resolved-by`, `events.tool-call-as-text`, `events.run-failed-model-unreachable`), and no reference field changes.

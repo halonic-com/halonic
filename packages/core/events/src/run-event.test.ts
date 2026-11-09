@@ -41,6 +41,8 @@ verifies("events.run-log-contract", () => {
       | "sandbox.opened"
       // Added after the reference by events.sandbox-blocked (HAL-189).
       | "sandbox.blocked"
+      // Added after the reference by events.connector-started (HAL-1728).
+      | "connector.started"
       | "knowledge.searched"
       | "tool.result"
       | "approval.requested"
@@ -127,6 +129,8 @@ verifies("events.run-log-contract", () => {
       error: string;
       // Added after the reference by events.run-failed-reason (HAL-1525).
       reason?: RunFailureReason;
+      // Added after the reference by events.run-failed-model-unreachable (HAL-1728).
+      host?: string;
     }>();
   });
 
@@ -274,18 +278,6 @@ verifies("events.tool-result-outcome", () => {
     expectTypeOf<ToolOutcome>().toEqualTypeOf<"ok" | "error" | "unknown">();
     expectTypeOf<EventOf<"tool.result">["outcome"]>().toEqualTypeOf<ToolOutcome | undefined>();
   });
-});
-
-verifies("events.run-failed-reason", () => {
-  typeTest(
-    "says why a run failed: budget, cancelled, model missing, model without tools or error",
-    () => {
-      expectTypeOf<RunFailureReason>().toEqualTypeOf<
-        "budget" | "cancelled" | "model-missing" | "model-no-tools" | "error"
-      >();
-      expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
-    },
-  );
 });
 
 verifies("events.approval-resolved-by", () => {

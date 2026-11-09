@@ -122,6 +122,18 @@ export type RunEventBody =
       block: LoggedSandboxBlock;
       count: number;
     }
+  /**
+   * A step is about to call a connector's program (requirement `events.connector-started`).
+   * `connector`: its id in the workspace. `timeoutMs`: how long the engine waits for it; every
+   * wait has a limit. Logged before the call, so a screen can say what the step is waiting for.
+   */
+  | {
+      type: "connector.started";
+      state: string;
+      agent: string;
+      connector: string;
+      timeoutMs: number;
+    }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
   /** `outcome`: how the call ended (requirement `events.tool-result-outcome`); absent in older logs. */
@@ -182,8 +194,18 @@ export type RunEventBody =
   | { type: "timer.fired"; state: string; after: string }
   | { type: "event.received"; event: string; payload?: unknown }
   | { type: "run.completed"; state: string; context: Record<string, unknown> }
-  /** `reason`: why the run failed (requirement `events.run-failed-reason`); absent in older logs. */
-  | { type: "run.failed"; state: string | null; error: string; reason?: RunFailureReason };
+  /**
+   * `reason`: why the run failed (requirement `events.run-failed-reason`); absent in older logs.
+   * `host`: with `model-unreachable` only, the host and port that didn't answer, such as
+   * `localhost:11434` (requirement `events.run-failed-model-unreachable`).
+   */
+  | {
+      type: "run.failed";
+      state: string | null;
+      error: string;
+      reason?: RunFailureReason;
+      host?: string;
+    };
 
 /**
  * One entry of a run log. Every run is an append-only stream of these; the
