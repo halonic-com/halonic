@@ -1,4 +1,4 @@
-# When main's lockfile is broken
+# When main is broken
 
 Two CI jobs run on the merge base (the commit on `main` a pull request
 branched from): `Merge base's tests` and the merge-base `guard`. Both install
@@ -30,3 +30,15 @@ lockfile with `--frozen-lockfile`, so a bad repair still fails.
 If no commit within 20 of the merge base installs, the job fails with a
 message pointing here. Then the board has to decide on an admin merge of the
 repair.
+
+## When main's tests fail
+
+If the merge base installs but its own tests fail, `main` is red. CI on the
+push to `main` already fails and reports it. In a pull request,
+`Merge base's tests` then passes with a `merge-base-red` warning instead of
+failing, so the pull request that repairs `main` can still pass `ci-ok`. The
+results are packed and compared as usual. Every other job still runs the pull
+request's own code, so a pull request that doesn't fix the break stays red in
+`Typecheck, lint, test, build`.
+
+Repair `main` with a normal pull request, reviewed and merged like any other.

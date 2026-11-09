@@ -376,8 +376,17 @@ jobs:
           done
           echo "::error::No commit within 20 of the merge base on main installs. Fix main first (docs/guides/broken-main.md)."
           exit 1
-      - name: Run the merge base's tests without reading any cache
+      # A failing test here means main itself is red, and that would fail
+      # every pull request, the one that repairs main included. Push CI on
+      # main already reports it, so here it only warns. The results are still
+      # packed below and stay the guard's baseline.
+      - id: base-test-run
+        name: Run the merge base's tests without reading any cache
+        continue-on-error: true
         run: pnpm exec turbo run test --force --continue --output-logs=errors-only
+      - name: Warn when the merge base's tests fail
+        if: steps.base-test-run.outcome == 'failure'
+        run: echo "::warning title=merge-base-red::The merge base's own tests fail, so main is red. Fix main first (docs/guides/broken-main.md)."
       # Runs even when a test failed: the guard reports a missing result file.
       - id: pack
         name: Pack the test results
