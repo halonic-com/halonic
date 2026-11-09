@@ -8,8 +8,8 @@ use crate::error::GitError;
 use crate::limited_run::{GitOutput, Limits, run_limited};
 use crate::opened_folders::{OpenedFolders, canonical, for_git};
 use crate::repo_config::{
-    ConfigEntry, add_repository_filters, blank_filters, check_listing, has_command_entry,
-    neutralise_programs, parse_listing,
+    ConfigEntry, add_repository_filters, blank_filters, check_listing, check_refused_keys,
+    has_command_entry, neutralise_programs, parse_listing,
 };
 use crate::repository::{LOCATE_ARGS, Repository, check_located, gitlinks};
 
@@ -177,6 +177,7 @@ impl GitRunner {
         }
         let repository = check_located(folders, &located.stdout)?;
         let entries = self.read_config(root, Some(&repository), deadline)?;
+        check_refused_keys(&entries)?;
         let mut filters = Vec::new();
         add_repository_filters(&entries, &mut filters);
         let mut visited = vec![repository.top.clone()];

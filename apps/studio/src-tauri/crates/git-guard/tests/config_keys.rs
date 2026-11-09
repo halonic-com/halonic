@@ -6,7 +6,7 @@
 mod support;
 
 use halonic_git_guard::GitError;
-use support::{Sandbox, config_path, plain_git, plain_git_ok};
+use support::{Sandbox, config_path, config_value, plain_git, plain_git_ok};
 
 #[test]
 fn git_allow_list_never_takes_a_commit_message_from_a_template() {
@@ -150,4 +150,57 @@ fn git_hardening_runs_no_automatic_maintenance_or_its_hook() {
     // Without the runner, the commit starts maintenance, which runs the hook.
     plain_git_ok(&sandbox.acme, &["commit", "-q", "--allow-empty", "-m", "x"]);
     assert_eq!(sandbox.marks(), ["recent.ran"]);
+}
+
+#[test]
+fn repo_config_refuses_a_repository_that_sets_merge_options() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.git_ok("commit --allow-empty -m first-note");
+    // A second repository the pull merges from, one commit apart.
+    let upstream = sandbox.temporary.folder("upstream");
+    let acme = sandbox.acme.to_string_lossy().into_owned();
+    plain_git_ok(&upstream, &["clone", "-q", &acme, "."]);
+    plain_git_ok(
+        &upstream,
+        &["commit", "-q", "--allow-empty", "-m", "upstream"],
+    );
+    sandbox.git_ok("commit --allow-empty -m second-note");
+    let secret = sandbox.temporary.path().join("secret.txt");
+    std::fs::write(&secret, "outside secret\n").expect("the secret writes");
+    // Single quotes keep a Windows path's backslashes as they are.
+    let options = format!("-F '{}'", secret.to_string_lossy());
+    sandbox.append_config(&format!(
+        "[remote \"origin\"]\n\turl = {}\n[branch \"main\"]\n\tmergeOptions = {}\n",
+        config_path(&upstream),
+        config_value(&options)
+    ));
+    let refused = Err(GitError::ConfigNotAllowed {
+        key: "branch.main.mergeoptions".to_owned(),
+    });
+    assert_eq!(
+        sandbox.git("pull --no-rebase --no-edit origin main"),
+        refused
+    );
+    assert_eq!(sandbox.git("status"), refused);
+    // Without the runner, the pull's merge takes the file outside as its
+    // message.
+    plain_git_ok(
+        &sandbox.acme,
+        &[
+            "-c",
+            "core.editor=true",
+            "pull",
+            "-q",
+            "--no-rebase",
+            "--no-edit",
+            "origin",
+            "main",
+        ],
+    );
+    let output = plain_git(&sandbox.acme, &["log", "-n", "1", "--format=%B"]);
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "outside secret\n\n"
+    );
 }

@@ -10,6 +10,7 @@
 //! the ssh and signing programs go back to the user's own or git's default.
 //! The rest is neutralised on every call (see `runner.rs`): hooks, pagers,
 //! editors, diff drivers, signing, upload-pack, receive-pack and transports.
+//! Only a key no override reaches makes the runner refuse the repository.
 
 use crate::error::GitError;
 
@@ -84,6 +85,25 @@ pub(crate) fn has_command_entry(entries: &[ConfigEntry], key: &str) -> bool {
     entries
         .iter()
         .any(|entry| entry.scope == "command" && entry.key.eq_ignore_ascii_case(key))
+}
+
+/// Refuses a repository whose own config sets `branch.<name>.mergeOptions`.
+/// The `git merge` that `pull` runs reads it as options, so `-F <file>`
+/// would make any file the merge commit's message, ready to be pushed. An
+/// empty value in the runner's config doesn't override it (tested with
+/// 2.47), so the repository is refused rather than neutralised.
+pub(crate) fn check_refused_keys(entries: &[ConfigEntry]) -> Result<(), GitError> {
+    let refused = entries.iter().find(|entry| {
+        entry.is_from_repository()
+            && subsection_key(&entry.key, "branch")
+                .is_some_and(|(_, name)| name.eq_ignore_ascii_case("mergeoptions"))
+    });
+    match refused {
+        Some(entry) => Err(GitError::ConfigNotAllowed {
+            key: entry.key.clone(),
+        }),
+        None => Ok(()),
+    }
 }
 
 /// Adds the names of the filter drivers a repository's own config defines.

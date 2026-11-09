@@ -1,6 +1,6 @@
 use super::{
-    ConfigEntry, add_repository_filters, blank_filters, check_listing, neutralise_programs,
-    parse_listing,
+    ConfigEntry, add_repository_filters, blank_filters, check_listing, check_refused_keys,
+    neutralise_programs, parse_listing,
 };
 use crate::error::GitError;
 
@@ -136,4 +136,24 @@ fn repo_config_leaves_a_clean_repository_as_it_is() {
     let mut names = Vec::new();
     add_repository_filters(&entries, &mut names);
     assert!(names.is_empty());
+}
+
+#[test]
+fn repo_config_refuses_merge_options_from_the_repository_only() {
+    assert_eq!(
+        check_refused_keys(&[entry("local", "branch.Main.mergeOptions", "-F x")]),
+        Err(GitError::ConfigNotAllowed {
+            key: "branch.Main.mergeOptions".to_owned(),
+        })
+    );
+    // Any branch, a name with dots, and an empty value too.
+    assert!(check_refused_keys(&[entry("worktree", "branch.a.b.mergeoptions", "")]).is_err());
+    assert_eq!(
+        check_refused_keys(&[
+            entry("global", "branch.main.mergeoptions", "--no-ff"),
+            entry("local", "branch.main.merge", "refs/heads/main"),
+            entry("local", "branch.mergeoptions.remote", "origin"),
+        ]),
+        Ok(())
+    );
 }
