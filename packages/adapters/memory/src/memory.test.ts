@@ -1,3 +1,4 @@
+import type { Digest } from "@halonicjs/ports";
 import {
   blobStoreContract,
   clockContract,
@@ -14,11 +15,13 @@ import {
   schedulerContract,
   secretsContract,
   tokenStoreContract,
+  trustStoreAttackContract,
   trustStoreContract,
   type VcsHarness,
   vcsContract,
   vcsHardenedCases,
 } from "@halonicjs/testing-contracts";
+import { trustContent, trustFingerprint } from "@halonicjs/workspace";
 import { describe, it } from "vitest";
 import {
   fixedIds,
@@ -46,9 +49,20 @@ blobStoreContract("memory", async () => new MemoryBlobStore());
 recordStoreContract("memory", async () => new MemoryRecordStore());
 secretsContract("memory", async (values) => new MemorySecrets(values));
 tokenStoreContract("memory", async () => new MemoryTokenStore());
-trustStoreContract("memory", async () => {
+const makeTrustStore = async () => {
   const store = new MemoryTrustStore();
-  return { store, damage: async (location) => store.damage(location) };
+  return { store, damage: async (location: string) => store.damage(location) };
+};
+trustStoreContract("memory", makeTrustStore);
+// The attack cases with the real trust content and fingerprint, hashed by Web Crypto.
+const digest: Digest = {
+  async sha256(data) {
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  },
+};
+trustStoreAttackContract("memory", makeTrustStore, async (connectors) => {
+  const content = trustContent({ connectors });
+  return { content, fingerprint: await trustFingerprint(content, digest) };
 });
 clockContract("memory", async () => new ManualClock());
 resourceProbeContract("memory", async () => {

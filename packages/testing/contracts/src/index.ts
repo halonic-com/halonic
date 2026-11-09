@@ -97,6 +97,7 @@ export {
   trustRecord,
   trustStoreContract,
 } from "./trust-store.ts";
+export { type TrustConnectors, trustStoreAttackContract } from "./trust-store-attacks.ts";
 export { vcsContract } from "./vcs.ts";
 export { type HardenedTest, vcsHardenedCases } from "./vcs-hardened.ts";
 export {

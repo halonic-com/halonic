@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import {
   type FingerprintConnectors,
   fingerprintAttacks,
+  fingerprintControls,
   fingerprintCoverageContract,
   fingerprintGaps,
 } from "./trust-fingerprint.ts";
@@ -89,7 +90,7 @@ verifies("contracts.trust-fingerprint", () => {
     let calls = 0;
     const { missed, unstable } = await fingerprintGaps(async () => `${calls++}`);
     expect(missed).toEqual([]);
-    expect(unstable).toHaveLength(7);
+    expect(unstable).toHaveLength(Object.keys(fingerprintControls).length);
   });
 
   it("covers every item of the fingerprint coverage plan", () => {
