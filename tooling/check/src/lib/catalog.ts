@@ -35,9 +35,11 @@ export const treeRewriteSettings = [
 export const plainVersion = /^[\^~]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 export function readWorkspaceVersions(yaml: string): WorkspaceVersions {
-  const catalog: CatalogEntry[] = [];
-  const treeRewrites: { setting: string; line: number }[] = [];
-  const unreadableLines: number[] = [];
+  const versions: WorkspaceVersions & {
+    catalog: CatalogEntry[];
+    treeRewrites: { setting: string; line: number }[];
+    unreadableLines: number[];
+  } = { catalog: [], treeRewrites: [], unreadableLines: [] };
   let inCatalog = false;
   yaml.split("\n").forEach((line, index) => {
     const lineNumber = index + 1;
@@ -45,30 +47,43 @@ export function readWorkspaceVersions(yaml: string): WorkspaceVersions {
       return;
     }
     if (/^\S/.test(line)) {
-      const setting = /^["']?([\w-]+)["']?:(?:\s|$)/.exec(line)?.[1];
-      if (setting === undefined) {
-        inCatalog = false;
-        unreadableLines.push(lineNumber);
-        return;
+      inCatalog = readSettingLine(line, lineNumber, versions);
+    } else if (inCatalog) {
+      const entry = readCatalogEntry(line, lineNumber);
+      if (entry === undefined) {
+        versions.unreadableLines.push(lineNumber);
+      } else {
+        versions.catalog.push(entry);
       }
-      inCatalog = setting === "catalog";
-      if (treeRewriteSettings.includes(setting)) {
-        treeRewrites.push({ setting, line: lineNumber });
-      }
-      if (inCatalog && !/^catalog:\s*(?:#.*)?$/.test(line)) {
-        unreadableLines.push(lineNumber);
-      }
-      return;
     }
-    if (!inCatalog) {
-      return;
-    }
-    const entry = /^ {2}(["']?)([^\s"':]+)\1:\s+(["']?)([^\s"'#]+)\3\s*(?:#.*)?$/.exec(line);
-    if (entry?.[2] === undefined || entry[4] === undefined) {
-      unreadableLines.push(lineNumber);
-      return;
-    }
-    catalog.push({ name: entry[2], version: entry[4], line: lineNumber });
   });
-  return { catalog, treeRewrites, unreadableLines };
+  return versions;
+}
+
+/** Reads a top-level line; true when it opens the `catalog:` block. */
+function readSettingLine(
+  line: string,
+  lineNumber: number,
+  versions: {
+    treeRewrites: { setting: string; line: number }[];
+    unreadableLines: number[];
+  },
+): boolean {
+  const setting = /^["']?([\w-]+)["']?:(?:\s|$)/.exec(line)?.[1];
+  const opensCatalog = setting === "catalog";
+  if (setting === undefined || (opensCatalog && !/^catalog:\s*(?:#.*)?$/.test(line))) {
+    versions.unreadableLines.push(lineNumber);
+  }
+  if (setting !== undefined && treeRewriteSettings.includes(setting)) {
+    versions.treeRewrites.push({ setting, line: lineNumber });
+  }
+  return opensCatalog;
+}
+
+function readCatalogEntry(line: string, lineNumber: number): CatalogEntry | undefined {
+  const entry = /^ {2}(["']?)([^\s"':]+)\1:\s+(["']?)([^\s"'#]+)\3\s*(?:#.*)?$/.exec(line);
+  if (entry?.[2] === undefined || entry[4] === undefined) {
+    return undefined;
+  }
+  return { name: entry[2], version: entry[4], line: lineNumber };
 }

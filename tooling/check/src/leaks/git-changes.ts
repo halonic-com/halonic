@@ -73,34 +73,47 @@ function unquote(path: string): string {
  * mistaken for a file header.
  */
 export function parseDiff(output: string): ChangedFile[] {
-  const files = new Map<string, AddedLine[]>();
-  let current: AddedLine[] | undefined;
-  let columns = 0; // prefix columns in the current hunk; 0 outside a hunk
-  let nextLine = 0;
+  const state: DiffState = { files: new Map(), current: undefined, columns: 0, nextLine: 0 };
   for (const line of output.split("\n")) {
-    if (/^diff --(?:git|cc|combined) /.test(line)) {
-      current = undefined;
-      columns = 0;
-    } else if (line.startsWith("@@")) {
-      columns = (/^@+/.exec(line)?.[0].length ?? 2) - 1;
-      nextLine = hunkStart(line);
-    } else if (columns > 0) {
-      const prefix = line.slice(0, columns);
-      if (prefix.startsWith("\\") || prefix.includes("-")) {
-        continue; // "\ No newline at end of file", or a removed line
-      }
-      if (prefix.includes("+")) {
-        current?.push({ number: nextLine, text: line.slice(columns) });
-      }
-      nextLine += 1;
-    } else if (line.startsWith(":")) {
-      // `:100644 100644 abc def M\tpath`, `R100\told\tnew` for a rename, `::…` for a merge.
-      files.set(unquote(line.split("\t").at(-1) ?? ""), []);
-    } else if (line.startsWith("+++ ")) {
-      current = files.get(newPath(line));
-    }
+    readDiffLine(line, state);
   }
-  return [...files].map(([path, lines]) => ({ path, lines }));
+  return [...state.files].map(([path, lines]) => ({ path, lines }));
+}
+
+interface DiffState {
+  readonly files: Map<string, AddedLine[]>;
+  current: AddedLine[] | undefined;
+  /** Prefix columns in the current hunk; 0 outside a hunk. */
+  columns: number;
+  nextLine: number;
+}
+
+function readDiffLine(line: string, state: DiffState): void {
+  if (/^diff --(?:git|cc|combined) /.test(line)) {
+    state.current = undefined;
+    state.columns = 0;
+  } else if (line.startsWith("@@")) {
+    state.columns = (/^@+/.exec(line)?.[0].length ?? 2) - 1;
+    state.nextLine = hunkStart(line);
+  } else if (state.columns > 0) {
+    readHunkLine(line, state);
+  } else if (line.startsWith(":")) {
+    // `:100644 100644 abc def M\tpath`, `R100\told\tnew` for a rename, `::…` for a merge.
+    state.files.set(unquote(line.split("\t").at(-1) ?? ""), []);
+  } else if (line.startsWith("+++ ")) {
+    state.current = state.files.get(newPath(line));
+  }
+}
+
+function readHunkLine(line: string, state: DiffState): void {
+  const prefix = line.slice(0, state.columns);
+  if (prefix.startsWith("\\") || prefix.includes("-")) {
+    return; // "\ No newline at end of file", or a removed line
+  }
+  if (prefix.includes("+")) {
+    state.current?.push({ number: state.nextLine, text: line.slice(state.columns) });
+  }
+  state.nextLine += 1;
 }
 
 /** The first line number in the new file: `@@ -3,2 +5,4 @@` → 5, also with `@@@ … @@@`. */
