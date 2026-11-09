@@ -1,5 +1,3 @@
-// Imports from ../src/index.ts because a package can't import itself by name.
-// In your own package, import from "@halonicjs/testing-spec".
 import { expect, test } from "vitest";
 import { requirementIdPattern, verifies } from "../src/index.ts";
 

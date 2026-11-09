@@ -20,10 +20,8 @@ The requirement itself lives in a file next to the code, for example
 This is [`examples/link-a-test-to-a-requirement.ts`](examples/link-a-test-to-a-requirement.ts), which `src/example.test.ts` runs. The file imports from `../src/index.ts` because a package can't import itself by name; in your own package, import from `@halonicjs/testing-spec`.
 
 ```ts
-// Imports from ../src/index.ts because a package can't import itself by name.
-// In your own package, import from "@halonicjs/testing-spec".
 import { expect, test } from "vitest";
-import { requirementIdPattern, verifies } from "../src/index.ts";
+import { requirementIdPattern, verifies } from "@halonicjs/testing-spec";
 
 // Call this at the top level of a test file, with the ID from the requirement file.
 export function declareTests(requirementId: string): void {
