@@ -16,16 +16,29 @@ export type SecretShape =
  * at least 16 more key characters, so words such as `sk-learn` or a prefix
  * named in a sentence don't count either.
  *
+ * The run after the prefix must also hold a digit or a capital letter.
+ * Lowercase slugs such as `sk-learn-tutorial-for-beginners` are long enough
+ * to pass the 16-character floor, but real keys are random mixed-case text
+ * and almost never lack both. A digit alone would miss about 1 in 140 Google
+ * client secrets.
+ *
  * `sk-` covers OpenAI and Anthropic keys (`sk-proj-…`, `sk-ant-…`). `GOCSPX-`
  * is a Google OAuth client secret, which Studio sends to the Google setup's
  * secret field instead of the providers page.
  */
+const notAfterKeyCharacter = "(?<![A-Za-z0-9_-])";
+const keyBody = "(?=[a-z_-]*[A-Z0-9])[A-Za-z0-9_-]{16,}";
+
+function keyPattern(prefix: string): RegExp {
+  return new RegExp(notAfterKeyCharacter + prefix + keyBody);
+}
+
 const patterns: ReadonlyArray<readonly [SecretShape, RegExp]> = [
-  ["ai-provider-key", /(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{16,}/],
-  ["google-client-secret", /(?<![A-Za-z0-9_-])GOCSPX-[A-Za-z0-9_-]{16,}/],
-  ["google-api-key", /(?<![A-Za-z0-9_-])AIza[A-Za-z0-9_-]{16,}/],
-  ["github-token", /(?<![A-Za-z0-9_-])(?:ghp_|github_pat_)[A-Za-z0-9_-]{16,}/],
-  ["slack-token", /(?<![A-Za-z0-9_-])xoxb-[A-Za-z0-9_-]{16,}/],
+  ["ai-provider-key", keyPattern("sk-")],
+  ["google-client-secret", keyPattern("GOCSPX-")],
+  ["google-api-key", keyPattern("AIza")],
+  ["github-token", keyPattern("(?:ghp_|github_pat_)")],
+  ["slack-token", keyPattern("xoxb-")],
 ];
 
 /**

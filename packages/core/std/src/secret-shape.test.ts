@@ -48,6 +48,12 @@ verifies("std.secret-shape", () => {
     expect(findSecretShape(`GOCSPX-${body(15)}`)).toBeUndefined();
   });
 
+  it("finds a key with a digit or a capital letter, not one with only lowercase", () => {
+    expect(findSecretShape(`GOCSPX-${"abcdefgh".repeat(3)}Q`)).toBe("google-client-secret");
+    expect(findSecretShape(`GOCSPX-${"abcdefgh".repeat(3)}7`)).toBe("google-client-secret");
+    expect(findSecretShape(`GOCSPX-${"abcdefgh".repeat(3)}`)).toBeUndefined();
+  });
+
   it("answers with the kind that comes first in the text", () => {
     const google = `GOCSPX-${body(28)}`;
     const github = `ghp_${body(36)}`;
@@ -60,6 +66,10 @@ verifies("std.secret-shape", () => {
       ["an empty message", ""],
       ["sk-learn", "sk-learn"],
       ["sk-learn in a sentence", "we use sk-learn and pandas for this"],
+      ["a long slug", "sk-learn-tutorial-for-beginners"],
+      ["a long slug in a sentence", "see sk-video-processing for that"],
+      ["a long slug with underscores", "sk-learn_pipeline_example"],
+      ["a digit after the slug ends", "sk-learn-tutorial-for-beginners 2"],
       ["a prefix named in a sentence", "Google secrets start with GOCSPX- and keys with AIza."],
       ["a prefix inside a longer word", `task-${body(20)}`],
       ["a prefix after a letter", `xGOCSPX-${body(28)}`],
