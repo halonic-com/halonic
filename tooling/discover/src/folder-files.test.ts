@@ -121,7 +121,9 @@ describe("folder discovery in a repo", () => {
   describe("typed against a union", () => {
     // TypeScript 7 has no compiler API, so the test runs its tsc as CI would.
     // One tsc run takes seconds on the shared runner, so every case gets its
-    // own discovery in one package and a single run checks them all.
+    // own discovery in one package and a single run checks them all. Most of
+    // a run went to checking TypeScript's own lib files (DOM included), so
+    // skipLibCheck and a lib without DOM keep it to the files under test.
     const tsc = join(
       dirname(createRequire(import.meta.url).resolve("typescript/package.json")),
       "bin",
@@ -175,7 +177,9 @@ describe("folder discovery in a repo", () => {
           module: "esnext",
           moduleResolution: "bundler",
           target: "es2022",
+          lib: ["es2022"],
           types: [],
+          skipLibCheck: true,
         };
         writeIn(`${engine}/tsconfig.json`, JSON.stringify({ compilerOptions, include: ["src"] }));
         try {
