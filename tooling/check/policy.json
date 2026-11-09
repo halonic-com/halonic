@@ -33,6 +33,9 @@
     "@halonicjs/format": [
       "./integration",
       "./recording"
+    ],
+    "@halonicjs/std": [
+      "./error-kind"
     ]
   },
   "cloudRuntimes": {

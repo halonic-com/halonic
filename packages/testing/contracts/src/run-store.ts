@@ -1,5 +1,6 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { RunStore } from "@halonicjs/ports";
+import type { AppendResult, RunStore } from "@halonicjs/ports";
+import type { ErrorKind } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { completed, entered, eventTime, failed, started, waiting } from "./run-events.ts";
@@ -81,7 +82,21 @@ function appendCases(make: MakeRunStore, settle: (store: RunStore) => Promise<vo
   });
 }
 
+/**
+ * The ports may not import std (docs/adr/2026-11-09-api-types-stand-alone.md),
+ * so `AppendResult` spells its conflict out. This fails to compile if it ever
+ * stops being std's error kind `conflict`.
+ */
+type ConflictReason = Extract<AppendResult, { ok: false }>["reason"];
+const conflictIsAnErrorKind: [ConflictReason] extends [Extract<ErrorKind, "conflict">]
+  ? true
+  : false = true;
+
 function conflictCases(make: MakeRunStore): void {
+  it("reports a conflict as std's error kind conflict", () => {
+    expect(conflictIsAnErrorKind).toBe(true);
+  });
+
   it("reports a conflict when the log has moved on, and changes nothing", async () => {
     const store = await make();
     await store.append("r1", 0, [started("r1"), entered("r1", 2)]);

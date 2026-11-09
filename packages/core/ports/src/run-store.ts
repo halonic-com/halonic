@@ -19,6 +19,12 @@ export interface RunFilter {
  * What {@link RunStore.append} did. `lastSeq` is the sequence number of the
  * run's last stored event afterwards, so a writer that lost the race knows
  * where the log is now.
+ *
+ * A lost race is the error kind `conflict` from `@halonicjs/std`, so a surface
+ * that reports it responds the same way as to any other conflict. The ports
+ * may not import std (docs/adr/2026-11-09-api-types-stand-alone.md), so the
+ * run-store contract in `@halonicjs/testing-contracts` checks that the two
+ * stay the same.
  */
 export type AppendResult =
   | { ok: true; lastSeq: number }
