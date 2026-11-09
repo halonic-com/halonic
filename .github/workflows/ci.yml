@@ -288,6 +288,17 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           overwrite: true
+      # What keepOnFailure kept, so a failed run shows the state without a
+      # local rerun. Invented test data only, but kept for a week at most.
+      # A failure that isn't a scenario test leaves nothing to upload.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: scenario-test-state
+          path: packages/**/test-results/scenarios/**
+          if-no-files-found: ignore
+          retention-days: 7
+          overwrite: true
       - name: Task timings
         if: always()
         run: |

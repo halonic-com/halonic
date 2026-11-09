@@ -93,6 +93,11 @@ file `test-results/vitest.json` lists it under the test's `keptOnFailure`
 tag. If `collect` throws, the file records that error, and the test still
 fails with its own error.
 
+In CI you don't need to run the test again to see these files. When the
+"Typecheck, lint, test, build" job fails, it uploads every
+`packages/**/test-results/scenarios/` folder as the `scenario-test-state`
+artifact. Download it from the run's summary page; GitHub keeps it for 7 days.
+
 Keep what you would read first: the records in the store, the calls the
 listener got, the errors the code reported. The restart test keeps two
 files, `timer-records` and `deliveries`:
