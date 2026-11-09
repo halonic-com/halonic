@@ -593,6 +593,16 @@ jobs:
           persist-credentials: false
       # Installs @tauri-apps/cli with the rest of the workspace.
       - uses: $/.github/actions/setup
+      # The Gradle download and its dependencies, so a network blip on
+      # services.gradle.org does not turn main red. Keyed on the files that
+      # pin them; scoped per branch like the Turbo cache above.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/wrapper/dists
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
       - name: Install the pinned Rust toolchain and the Android targets
         working-directory: apps/studio/src-tauri
         run: |
