@@ -128,7 +128,7 @@ verifies("kit.list", () => {
     expect(icon(phone.container)).toContain("size-icon-md");
   });
 
-  it("has a hover and press fill, an inset focus ring and an accent-soft selected fill", () => {
+  it("has a hover and press fill, an inset focus ring, and an accent-soft fill and bar when selected", () => {
     const { container } = render(<Selectable />);
     expect(rowsIn(container)[0]?.className).toContain("hover:bg-surface-subtle");
     expect(mainCell(container, 0).className).toContain("focus-ring-inset");
@@ -136,7 +136,11 @@ verifies("kit.list", () => {
     press(mainCell(container, 0), " ");
     expect(rowsIn(container)[0]?.getAttribute("aria-selected")).toBe("true");
     expect(rowsIn(container)[0]?.className).toContain("bg-accent-soft");
+    expect(rowsIn(container)[0]?.className).toContain("selected-forced");
+    expect(mainCell(container, 0).className).toContain("selected-bar");
     expect(rowsIn(container)[1]?.getAttribute("aria-selected")).toBe("false");
+    expect(rowsIn(container)[1]?.className).not.toContain("selected-forced");
+    expect(mainCell(container, 1).className).not.toContain("selected-bar");
   });
 
   it("is one Tab stop, and the arrow keys, Home and End move between rows", () => {
