@@ -14,6 +14,8 @@ const keyClasses = [
   "inline-flex min-h-5 min-w-5 items-center justify-center rounded-xs border border-transparent",
   "contrast-more:border-current",
   "bg-surface-muted px-1 font-mono text-caption text-fg-muted",
+  // In the active menu item, on its muted fill, the key's box steps up so it doesn't vanish.
+  "on-muted:bg-border on-muted:text-fg",
 ].join(" ");
 
 /**

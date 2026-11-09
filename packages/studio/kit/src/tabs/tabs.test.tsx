@@ -74,6 +74,8 @@ verifies("kit.tabs", () => {
     const [flow, configuration] = tabsIn(container);
     expect(list.className).toContain("inline-flex");
     expect(list.className).toContain("gap-0.5 rounded-sm bg-surface-muted p-0.5");
+    // A neutral counter on the track takes its on-muted: look.
+    expect(list.getAttribute("data-fill")).toBe("muted");
     expect(flow?.className).toContain("rounded-segment text-small");
     expect(flow?.className).toContain("min-h-control-sm");
     expect(flow?.className).toContain("px-3");

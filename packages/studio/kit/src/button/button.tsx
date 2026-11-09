@@ -106,16 +106,19 @@ const sizeClasses: Record<ButtonSize, string> = {
   touch: "min-h-touch px-4 py-2 text-center",
 };
 
-/** Icon buttons are squares; on a phone and a touch screen, 48px with a 20px icon. */
+/**
+ * Icon buttons are squares. On a touch screen they're 40px, like the text buttons beside them,
+ * with the 48px hit area; on a phone 48px with a 20px icon. phone: wins where both apply.
+ */
 const iconButtonClasses: Record<ButtonSize, string> = {
-  sm: "size-control-sm phone:size-touch touch:size-touch",
-  md: "size-control-md phone:size-touch touch:size-touch",
-  lg: "size-control-lg phone:size-touch touch:size-touch",
+  sm: "size-control-sm touch:size-control-lg touch:hit-touch phone:size-touch",
+  md: "size-control-md touch:size-control-lg touch:hit-touch phone:size-touch",
+  lg: "size-control-lg touch:hit-touch phone:size-touch",
   touch: "size-touch",
 };
 
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
-const largeIconSlot = "phone:size-icon-md touch:size-icon-md";
+const largeIconSlot = "phone:size-icon-md";
 
 /**
  * The kit's button: a native `<button>`, `type="button"` unless it submits a form. With `icon`

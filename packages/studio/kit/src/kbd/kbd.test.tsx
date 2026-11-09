@@ -18,6 +18,8 @@ verifies("kit.kbd", () => {
     expect(keys[0]?.className).toContain("rounded-xs border border-transparent");
     expect(keys[0]?.className).toContain("contrast-more:border-current");
     expect(keys[0]?.className).toContain("bg-surface-muted px-1");
+    // In the active menu item, on its muted fill, the box steps up to border.
+    expect(keys[0]?.className).toContain("on-muted:bg-border on-muted:text-fg");
   });
 
   it("keeps a key that appears twice", () => {

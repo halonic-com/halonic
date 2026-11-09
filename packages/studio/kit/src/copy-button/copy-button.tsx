@@ -21,8 +21,9 @@ type CopyState = "ready" | "copied" | "failed";
 const buttonClasses = [
   "grid h-control-sm items-center rounded-sm border border-border-strong bg-surface px-2.5",
   "text-body-strong text-fg transition-colors duration-(--duration-fast) ease-standard",
-  "hover:bg-surface-subtle focus-ring",
-  "phone:h-touch phone:px-4",
+  "hover:bg-surface-subtle active:bg-surface-subtle focus-ring",
+  // Like a Button: 40px with a 48px hit area on a touch screen, 48px on a phone.
+  "touch:min-h-control-lg touch:px-4 touch:hit-touch phone:h-touch phone:px-4",
 ].join(" ");
 
 /** "Copy" and "Copied" share one grid cell, so the button keeps the width of the longer word. */

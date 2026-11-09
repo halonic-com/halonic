@@ -104,6 +104,21 @@ verifies("kit.button", () => {
     expect(button.querySelector('[aria-hidden="true"]')?.className).toContain("phone:size-icon-md");
   });
 
+  it.each(["sm", "md", "lg"] as const)(
+    "is a 40px %s icon button with a 48px hit area on a touch screen, and 48px on a phone",
+    (size) => {
+      const button = renderButton({ icon: closeIcon, label: "Close", size });
+      const { className } = button;
+      expect(size === "lg" || className.includes("touch:size-control-lg")).toBe(true);
+      expect(className).toContain("touch:hit-touch");
+      expect(className).not.toContain("touch:size-touch");
+      // Declared after touch: in theme.css, so it wins on a phone with a coarse pointer.
+      expect(className).toContain("phone:size-touch");
+      const icon = button.querySelector('[aria-hidden="true"]') as HTMLElement;
+      expect(icon.className).not.toContain("touch:size-icon-md");
+    },
+  );
+
   it("calls onClick", async () => {
     const onClick = vi.fn();
     await click(renderButton({ onClick, children: "Save" }));

@@ -14,6 +14,11 @@ function nameOf(section: Element): string | null | undefined {
   return id === null ? null : document.getElementById(id)?.textContent;
 }
 
+/** The element that names a section: its title heading or caption label. */
+function nameElement(section: Element): HTMLElement {
+  return document.getElementById(section.getAttribute("aria-labelledby") ?? "") as HTMLElement;
+}
+
 verifies("kit.card", () => {
   it("is a bordered surface box with a 12px radius and no shadow at rest", () => {
     const { container } = render(<Card>12 runs this week</Card>);
@@ -142,9 +147,38 @@ verifies("kit.card", () => {
       </Card>,
     );
     const button = container.querySelector("button") as HTMLButtonElement;
+    // It has no header, so the box itself fades.
     expect(button.className).toContain("text-fg-disabled");
     expect(button.className).not.toContain("hover:");
     await click(button);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("fades only the name of a disabled card, so the reason and the header's switch keep their look", () => {
+    const { container } = render(
+      <Card title="Mail triage" state="disabled" actions={<button type="button">Turn on</button>}>
+        <span className="text-fg-muted">Paused</span>
+      </Card>,
+    );
+    const section = container.querySelector("section") as HTMLElement;
+    expect(section.className).not.toContain("text-fg-disabled");
+    expect(nameElement(section).className).toContain("text-fg-disabled");
+    expect(section.querySelector("button")?.closest(".text-fg-disabled")).toBeNull();
+  });
+
+  it("fades a disabled card's caption label in place of its fg-muted", () => {
+    const { container } = render(
+      <Card label="When" state="disabled">
+        Every weekday at 9:00
+      </Card>,
+    );
+    const label = nameElement(container.querySelector("section") as HTMLElement);
+    expect(label.className).toContain("text-fg-disabled");
+    expect(label.className).not.toContain("text-fg-muted");
+  });
+
+  it("fades the box of a disabled card without a header", () => {
+    const { container } = render(<Card state="disabled">Not connected</Card>);
+    expect((container.firstElementChild as HTMLElement).className).toContain("text-fg-disabled");
   });
 });

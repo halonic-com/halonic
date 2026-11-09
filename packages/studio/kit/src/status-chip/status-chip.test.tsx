@@ -24,8 +24,16 @@ verifies("kit.status-chip", () => {
     expect(chip.className).toContain("rounded-xs px-1.5");
     expect(chip.className).toContain("text-caption");
     expect(chip.className).toContain("bg-surface-muted text-fg-muted");
+    // On a muted fill it steps up to border, or its box would disappear.
+    expect(chip.className).toContain("on-muted:bg-border on-muted:text-fg");
     expect(chip.hasAttribute("tabindex")).toBe(false);
     expect(chip.hasAttribute("role")).toBe(false);
+  });
+
+  it("keeps the coloured tones and the tag as they are on a muted fill", () => {
+    for (const tone of ["accent", "running", "warning", "danger", "success", "outline"] as const) {
+      expect(renderChip({ tone, children: "State" }).className).not.toContain("on-muted:");
+    }
   });
 
   it.each([
