@@ -125,6 +125,12 @@ export {
   recordStoreVersion,
 } from "./record-store.ts";
 export {
+  type FolderSize,
+  type ProcessUsage,
+  type ResourceProbe,
+  resourceProbeVersion,
+} from "./resource-probe.ts";
+export {
   type ChatAgentSettings,
   type ChatTurnRefusal,
   type ChatTurnRequest,

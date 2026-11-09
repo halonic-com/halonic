@@ -16,6 +16,7 @@ import { llmProviderVersion } from "./llm-provider.ts";
 import { passwordHasherVersion } from "./password-hasher.ts";
 import { programProbeVersion } from "./program-probe.ts";
 import { recordStoreVersion } from "./record-store.ts";
+import { resourceProbeVersion } from "./resource-probe.ts";
 import { runExecutorVersion } from "./run-executor.ts";
 import { runStoreVersion } from "./run-store.ts";
 import { sandboxVersion } from "./sandbox.ts";
@@ -53,6 +54,7 @@ export const portVersions = {
   PasswordHasher: passwordHasherVersion,
   ProgramProbe: programProbeVersion,
   RecordStore: recordStoreVersion,
+  ResourceProbe: resourceProbeVersion,
   RunExecutor: runExecutorVersion,
   RunStore: runStoreVersion,
   Sandbox: sandboxVersion,

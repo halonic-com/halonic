@@ -33,6 +33,11 @@ export {
 } from "./llm-provider.ts";
 export { type MakeRecordStore, recordStoreContract } from "./record-store.ts";
 export {
+  type MakeResourceProbe,
+  type ResourceProbeHarness,
+  resourceProbeContract,
+} from "./resource-probe.ts";
+export {
   completed,
   entered,
   eventTime,

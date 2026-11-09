@@ -8,6 +8,7 @@ import {
   type MakeVcs,
   type PlantGitCode,
   recordStoreContract,
+  resourceProbeContract,
   runStoreContract,
   schedulerContract,
   secretsContract,
@@ -26,6 +27,7 @@ import {
   MemoryDefinitionStore,
   MemoryRecordStore,
   MemoryRemote,
+  MemoryResourceProbe,
   MemoryRunStore,
   MemoryScheduler,
   MemorySecrets,
@@ -47,6 +49,17 @@ trustStoreContract("memory", async () => {
   return { store, damage: async (location) => store.damage(location) };
 });
 clockContract("memory", async () => new ManualClock());
+resourceProbeContract("memory", async () => {
+  const probe = new MemoryResourceProbe({
+    childProcesses: [{ pid: 4242, name: "claude", memoryBytes: 180 * 1024 ** 2 }],
+  });
+  let folders = 0;
+  return {
+    probe,
+    folder: async () => `/memory/folder-${++folders}`,
+    writeFile: async (path, bytes) => probe.writeFile(path, bytes),
+  };
+});
 idGeneratorContract("memory", async () => fixedIds());
 for (const duplicateDeliveries of [false, true]) {
   const name = duplicateDeliveries ? "memory, delivering every timer twice" : "memory";
