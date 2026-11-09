@@ -30,9 +30,12 @@ export {
   type WindowCount,
 } from "./coordination.ts";
 export {
+  checkPublicWorkspacePath,
+  checkWorkspacePath,
   type DefinitionSource,
   type DefinitionStore,
   definitionStoreVersion,
+  isPrivateWorkspacePath,
 } from "./definition-store.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
