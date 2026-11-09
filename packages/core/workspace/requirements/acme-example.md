@@ -10,5 +10,6 @@ When the repository's `examples/acme` workspace is loaded with `loadWorkspace`, 
 
 - Given `examples/acme`, when it is loaded, then it has no issue and the only files no kind places are its README and the input file `examples/refund-question.json`.
 - Given `examples/acme`, when it is loaded, then it has 2 hubs, 3 agents, 2 workflows and 1 routine.
-- Given `examples/acme`, when it is loaded, then the Support reply workflow's test file has 5 cases, and two of them take Sam's and Alex's mails as their input.
-- Given `examples/acme`, when it is loaded, then the Support reply workflow's description reads `A customer's mail, for example: "Hi, my order #1042 arrived damaged. Can I get a refund?"` in full, because the request form shows it as the Message placeholder.
+- Given `examples/acme`, when it is loaded, then the Support reply workflow's test file has 5 cases, and two of them take Sam's and Alex's emails as their input.
+- Given `examples/acme`, when it is loaded, then the Support reply workflow's description reads `A customer's email, for example: "Hi, my order #1042 arrived damaged. Can I get a refund?"` in full, because the request form shows it as the Message placeholder.
+- Given `examples/acme`, when it is loaded, then its test model scripts the Sorter's reply as `refund`, one of the Sorter's options, and two Writer replies, so a run on Sam's email takes the refund path instead of an echo.

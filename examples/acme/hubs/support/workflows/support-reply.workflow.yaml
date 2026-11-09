@@ -1,11 +1,11 @@
 id: support-reply
 name: Support reply
-description: 'A customer''s mail, for example: "Hi, my order #1042 arrived damaged. Can I get a refund?"'
+description: 'A customer''s email, for example: "Hi, my order #1042 arrived damaged. Can I get a refund?"'
 initial: read
-start: { label: Answer a customer's mail, field: mail }
+start: { label: Answer a customer's email, field: mail }
 states:
   read:
-    description: Read the mail
+    description: Read the email
     agent: writer
     input: Say in one sentence what the customer asks for.
     gets: [input.mail]
@@ -24,7 +24,7 @@ states:
   draft:
     description: Draft a reply
     agent: writer
-    input: Draft a reply to the customer's mail.
+    input: Draft a reply to the customer's email.
     gets: [input.mail, context.request]
     output: reply
     on:

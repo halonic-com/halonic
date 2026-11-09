@@ -1,6 +1,6 @@
 id: weekly-report
 name: Weekly report
-description: Write the weekly report on the support mail.
+description: Write the weekly report on the support email.
 initial: write
 states:
   write:

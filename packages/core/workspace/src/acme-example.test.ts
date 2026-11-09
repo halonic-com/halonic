@@ -58,11 +58,11 @@ verifies("workspace.acme-example", () => {
 
       // The request form shows this text as the Message placeholder (HAL-2372).
       expect(workflow?.value.description).toBe(
-        'A customer\'s mail, for example: "Hi, my order #1042 arrived damaged. Can I get a refund?"',
+        'A customer\'s email, for example: "Hi, my order #1042 arrived damaged. Can I get a refund?"',
       );
     });
 
-    it("tests the Support reply workflow with 5 cases, two of them on Sam's and Alex's mails", () => {
+    it("tests the Support reply workflow with 5 cases, two of them on Sam's and Alex's emails", () => {
       const [tests] = filesOf(workspace, "workflowTest");
       const mails = tests?.value.cases.map((testCase) => String(testCase.input["mail"]));
 
@@ -70,6 +70,21 @@ verifies("workspace.acme-example", () => {
       expect(mails).toHaveLength(5);
       expect(mails?.filter((mail) => mail.endsWith("— Sam (invented)"))).not.toEqual([]);
       expect(mails?.filter((mail) => mail.endsWith("— Alex (invented)"))).not.toEqual([]);
+    });
+
+    it("scripts the test model so Sam's email takes the refund path", () => {
+      const [provider] = filesOf(workspace, "provider");
+      const [sorter] = filesOf(workspace, "agent").filter((file) => file.value.id === "sorter");
+      const script = provider?.value.options["script"] as Record<string, string[]>;
+
+      // Without a script the test model echoes the prompt, which is none of the Sorter's options.
+      expect(script["sorter"]).toEqual(["refund"]);
+      expect(sorter?.value.output).toMatchObject({
+        type: "choice",
+        options: expect.arrayContaining(["refund"]),
+      });
+      // The Writer answers twice on this path: the summary in `read`, then the draft.
+      expect(script["writer"]).toHaveLength(2);
     });
   });
 });

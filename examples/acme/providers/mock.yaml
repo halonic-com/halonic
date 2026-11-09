@@ -2,3 +2,14 @@ id: mock
 name: Test model
 type: mock
 local: true
+# Scripted replies for one run of Support reply on Sam's email
+# (examples/refund-question.json), so it takes the refund path instead of
+# echoing the prompt back. Each agent's replies are used in order.
+options:
+  script:
+    sorter: [refund]
+    writer:
+      - Sam wants a refund for order 1042, which arrived damaged.
+      - Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+    reporter:
+      - "This week: 12 emails. Most asked about refunds for damaged orders. 2 replies are waiting for review."
