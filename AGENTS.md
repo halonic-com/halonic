@@ -57,7 +57,8 @@ The maintainer approves it before you write code. When two features must talk, t
 
 ## Requirements and tests
 
-The `verifies()` helper and the checks that enforce these rules are not active yet. The rules apply now.
+`trace` is active and blocks a pull request. The requirement guard runs on every pull request but only
+reports for now: it doesn't block until its approval lookup is live. See `docs/guides/checks.md`.
 
 - No feature without a recorded requirement (`requirements/<name>.md`, EARS form) and tests that name it with `verifies("<id>", …)`.
 - A bug fix starts with a regression test that fails before the fix.

@@ -20,8 +20,9 @@ Security problems go to [SECURITY.md](SECURITY.md), never to a public issue.
 
 ## Setup
 
-> **Some checks are still being built.** The requirement, test-weakening and DCO
-> checks are not active yet. Until a check is active, this guide says so.
+> **One check doesn't block yet.** The requirement guard (the test-weakening
+> check) runs on every pull request but only reports, until its approval lookup
+> is live. See [docs/guides/checks.md](docs/guides/checks.md).
 
 You need:
 
@@ -112,15 +113,15 @@ Halonic has one firm rule: **nothing that works may break.**
   });
   ```
 
-  A check (not active yet) fails if a requirement has no test that ran and
-  passed, or if a test names a requirement that doesn't exist.
+  The `trace` check fails if a requirement has no test that ran and passed,
+  or if a test names a requirement that doesn't exist.
 - **A bug fix starts with a failing test.** Write the test first, show that it
   fails without your fix, then fix it.
 - **Tests that guard a requirement can't be weakened quietly.** Deleting or
   skipping a test, removing assertions, changing a golden file or editing an
-  active requirement needs an approved decision note in the pull request. A
-  check (not active yet) will enforce this. If you think a requirement is
-  wrong, open an issue.
+  active requirement needs an approved decision note in the pull request. The
+  requirement guard checks this; for now it reports without blocking. If you
+  think a requirement is wrong, open an issue.
 - **No flaky tests:** no retries, fake timers instead of sleeps, and always
   clean up temporary folders.
 - **Only made-up data.** Fixtures, examples and screenshots use invented
@@ -179,7 +180,7 @@ Signed-off-by: Your Name <you@example.com>
   one add the line for you.
 - Forgot it? `git commit --amend -s` fixes the last commit;
   `git rebase --signoff main` fixes all the commits on your branch.
-- Once the DCO check is active (it is not yet), pull requests with a
+- The DCO check runs on every pull request: pull requests with a
   commit that isn't signed off can't be merged.
 
 Your contribution is licensed under the [Apache License 2.0](LICENSE), the same
