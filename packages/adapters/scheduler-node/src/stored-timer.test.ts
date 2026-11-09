@@ -39,18 +39,22 @@ verifies("scheduler-node.restart", () => {
 
     it("rejects an update whose add was never written, as after a half-written log", async () => {
       const world = newWorld();
-      await world.store.append([
+      const changes = [
         {
           at,
           collection: defaultTimerCollection,
           id: '["run_1","wait"]',
-          op: "update",
+          op: "update" as const,
           values: { failures: 1, dueAt: at },
         },
-      ]);
+      ];
+      await world.store.append(changes);
       const s = startScheduler(world);
 
       await expect(s.scheduler.pending("run_1")).rejects.toThrow('["run_1","wait"]');
+      await expect(s.scheduler.deliverDue()).rejects.toThrow('["run_1","wait"]');
+      expect(s.listener.timers).toEqual([]);
+      expect(await world.store.changes(defaultTimerCollection)).toEqual(changes);
     });
   });
 });
