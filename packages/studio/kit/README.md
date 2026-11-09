@@ -292,6 +292,53 @@ Parts that become a different element or layout on a phone (Select, Dialog, Tabs
 read it with `usePresentation()`. A size change is a `phone:` class instead: no kit part reads the
 window width. Tests set the provider directly.
 
+## ListHeading
+
+The heading over a group of rows. The List will draw it for its own `heading`; it's exported
+alone for a list the kit doesn't draw, such as the shell's Settings nav.
+
+```tsx
+<ListHeading name="Acme" detail="Workspace settings" />;
+<ListHeading name="Acme" detail="Workspace settings" id="settings-acme" layout="stacked" />;
+```
+
+| Prop           | What it is                                                                 |
+| -------------- | -------------------------------------------------------------------------- |
+| `name`         | The group's name, in sentence case: CSS draws the capitals. It may be cut  |
+| `detail`       | Says which group: "Workspace settings". Never cut                          |
+| `headingLevel` | 2 by default; lower where the list sits under a panel's own headings       |
+| `id`           | So the list it names can point `aria-labelledby` at it                     |
+| `layout`       | `inline` (the default): name · detail. `stacked`: the name over the detail |
+
+`text-caption` in capitals, `tracking-label`, `fg-muted`, padded 16px 16px 4px so its text starts
+where the rows' text does. The "·" is hidden from screen readers, which hear a comma instead:
+"Acme, Workspace settings". When the detail doesn't fit after the name (at 320px and 200% text),
+it wraps onto its own line. Use `stacked` in a narrow column, such as the 208px Settings nav.
+
+## SkeletonBar
+
+A still grey bar in the shape of text that is still loading: the List's skeleton rows and the
+Side panel's loading lines. No shimmer and no pulse. Hidden from screen readers; the list or
+panel says it's loading.
+
+```tsx
+<SkeletonBar kind="avatar" />;
+<SkeletonBar kind="title" width="2/5" />;
+<SkeletonBar kind="meta" width="7/10" />;
+```
+
+| `kind`     | Size                                   |
+| ---------- | -------------------------------------- |
+| `title`    | 10px high, at `width` of its column    |
+| `meta`     | 8px high, at `width` of its column     |
+| `trailing` | 10px by 80px, for a value or a chip    |
+| `heading`  | 8px by 48px, in a List heading's place |
+| `icon`     | 20px square                            |
+| `avatar`   | 28px square with an 8px radius         |
+
+`width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
+so tests and screenshots stay the same.
+
 ## Kbd
 
 A keyboard shortcut in a menu, the command palette or a tooltip: one box per key.

@@ -34,12 +34,23 @@ export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
 export {
+  ListHeading,
+  type ListHeadingLayout,
+  type ListHeadingProps,
+} from "./list-heading/list-heading.tsx";
+export {
   type Presentation,
   PresentationProvider,
   type PresentationProviderProps,
   usePresentation,
 } from "./presentation/presentation.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
+export {
+  SkeletonBar,
+  type SkeletonBarKind,
+  type SkeletonBarProps,
+  type SkeletonBarWidth,
+} from "./skeleton-bar/skeleton-bar.tsx";
 
 export {
   StatusChip,
