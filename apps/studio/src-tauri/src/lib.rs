@@ -23,7 +23,16 @@ pub fn run() {
 fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     builder
         .manage(navigation::ConfirmedAddress::default())
-        .plugin(tauri_plugin_opener::init())
+        // The opener is used only from Rust: the navigation guard hands
+        // outside links to the browser with it. Its click script stays off.
+        // That script would run in every page, the served Studio too, and
+        // only make the page call `plugin:opener|open_url`, which no page
+        // is granted.
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .plugin(navigation::guard())
         .invoke_handler(tauri::generate_handler![connect::connect])
 }

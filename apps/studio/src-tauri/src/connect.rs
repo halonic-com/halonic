@@ -121,6 +121,20 @@ mod tests {
     }
 
     #[test]
+    fn shell_versions_parse() {
+        // `app_versions` expects both versions to parse. This test fails on
+        // a bad package version, so Connect never panics on one.
+        let app = crate::shell(tauri::test::mock_builder())
+            .build(tauri::generate_context!())
+            .expect("the shell builds on the mock runtime");
+        let versions = app_versions(app.handle());
+        assert!(
+            versions.oldest_computer <= versions.app,
+            "OLDEST_COMPUTER is newer than the app: {versions:?}"
+        );
+    }
+
+    #[test]
     fn hello_call_reaches_only_the_checked_addresses() {
         let port =
             serve_once("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
