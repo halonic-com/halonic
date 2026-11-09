@@ -24,6 +24,10 @@ loop of one model turn, which the local chat turn runs.
 | `RunState`           | what the kernel knows about a run: a fold of its events by `evolve` (or `foldRun`), stored as the run's snapshot             | `engine.run-state-fold`                                                             |
 | `DecideInput`        | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`), each with its time; `decide` returns a `Decision`   | (types only)                                                                        |
 | `Effect`             | what `decide` asks `step` to do after appending: call a model or a tool, start a child run, tell the parent, set a timer     | (types only)                                                                        |
+| `decide`             | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take                           | `engine.decide-refusals`                                                            |
+| `StateHandler`       | one state type's `enter` and `onInput`, found by `pnpm discover` in `src/states`                                             | `engine.state-registry`                                                             |
+| `task` state         | runs its agent with one model call, writes `output` and takes the `done` transition                                          | `engine.task-state`                                                                 |
+| `final` state        | completes the run with its context                                                                                           | `engine.final-state`                                                                |
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
@@ -38,6 +42,20 @@ offline model hands the call to the next one at once, and the turn stays on that
 model, a model that can't call tools, or a refused call stops the turn with that `ModelCallError`.
 When no model is left, the turn fails with a `ModelCallError` whose reason is the last cause. Runs of agents will log their turns
 through a `RunStoreTurnLog`.
+
+## Kernel
+
+`decide(state, input, definitions)` is pure: the time comes in with every input, a new run id
+with `start`, and call ids (`call-<n>`) are counted in the `RunState`. It returns the events to
+append and the effects to carry out; `step` (3b) appends them and runs the effects through the
+ports. Every event `decide` emits is folded into the state as it goes, so a guard after a step
+already sees the context that step wrote.
+
+Each folder in `src/states` exports `<folder>State` from its `state.ts`. `pnpm discover` lists
+them in `src/generated/states.ts`, typed against `StateRegistry`, so a missing or extra folder
+fails typecheck. The registry covers `BuiltStateType`, the types built so far (`task`, `final`);
+it widens as each state lands, until it is the format's whole `StateType` union. A run that enters
+a type not built yet fails with a clear error.
 
 ## Example
 

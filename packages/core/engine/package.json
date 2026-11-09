@@ -14,7 +14,8 @@
   "dependencies": {
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
-    "@halonicjs/ports": "workspace:*"
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/workflow": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
@@ -29,6 +30,17 @@
     "coverage": {
       "lines": 90,
       "branches": 85
+    },
+    "discover": {
+      "states": {
+        "folder": "src/states",
+        "file": "state.ts",
+        "suffix": "State",
+        "satisfies": {
+          "type": "StateRegistry",
+          "from": "src/kernel/registry.ts"
+        }
+      }
     }
   }
 }

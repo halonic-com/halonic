@@ -562,6 +562,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
+      '@halonicjs/workflow':
+        specifier: workspace:*
+        version: link:../workflow
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*

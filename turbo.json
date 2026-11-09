@@ -20,11 +20,14 @@
         "tooling/discover/src/**",
         "tooling/check/src/**",
         "apps/cli/package.json",
-        "apps/cli/src/commands/*/command.ts"
+        "apps/cli/src/commands/*/command.ts",
+        "packages/core/engine/package.json",
+        "packages/core/engine/src/states/*/state.ts"
       ],
       "outputs": [
         "apps/studio/src/generated/**",
-        "apps/cli/src/generated/commands.ts"
+        "apps/cli/src/generated/commands.ts",
+        "packages/core/engine/src/generated/states.ts"
       ]
     },
     "transit": {
