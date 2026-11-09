@@ -1,7 +1,40 @@
-# The Cargo workspace for the Studio shell's Rust code. Plain library crates
-# live under crates/ and stay free of Tauri types, so they build and test
-# anywhere. The Tauri shell joins this file as its root package when it is
-# generated (HAL-192); it is then the only thing that pulls Tauri in.
+# The Studio shell (a Tauri app) and the Cargo workspace for its Rust code.
+#
+# The shell is this file's root package and the only thing that pulls Tauri
+# in. Plain library crates live under crates/ and stay free of Tauri types,
+# so they build and test anywhere.
+#
+# Today the shell is the minimal Android connect shell (HAL-229): it loads
+# the connect page and has no plugins, commands or capabilities. Those
+# arrive with HAL-1140. The desktop shell (HAL-192) extends this package
+# rather than adding a second one.
+[package]
+name = "halonic-studio"
+description = "The Studio shell: the Tauri app that hosts the Studio on desktop and Android."
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Android loads the app as a shared library (cdylib); the desktop binary in
+# main.rs links the same code as a Rust library (rlib).
+[lib]
+name = "halonic_studio"
+crate-type = ["cdylib", "rlib"]
+
+# Pinned exactly, because they are released together: tauri 2.12.5 builds
+# with tauri-build 2.7.4, and @tauri-apps/cli 2.12.4 in apps/studio matches
+# them. Update all three in one pull request.
+[build-dependencies]
+tauri-build = { version = "=2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.5", features = [] }
+
+[lints]
+workspace = true
+
 [workspace]
 resolver = "3"
 members = ["crates/*"]

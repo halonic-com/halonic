@@ -34,6 +34,7 @@ jobs:
     outputs:
       tooling: ${{ steps.diff.outputs.tooling }}
       tauri: ${{ steps.diff.outputs.tauri }}
+      android: ${{ steps.diff.outputs.android }}
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
     steps:
@@ -51,6 +52,7 @@ jobs:
           areas=(
             "tooling=^(tooling/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|turbo\.json$|biome\.json$)"
             "tauri=^apps/studio/src-tauri/"
+            "android=^(apps/studio/src-tauri/|apps/studio/connect/|apps/studio/package\.json$)"
             "studio=^(apps/studio/|packages/studio/)"
             "docs=^(apps/docs/|docs/)"
           )
@@ -305,14 +307,14 @@ jobs:
   # Conditional jobs. Each runs only when its area changes, and ci-ok
   # accepts "skipped". e2e and docs are stubs until the code they check exists.
   tauri:
-    # The Rust crates under apps/studio/src-tauri. The dependency audit
-    # (cargo-deny) and the Windows smoke build arrive with the desktop
+    # The shell and the crates under apps/studio/src-tauri. The dependency
+    # audit (cargo-deny) and the Windows smoke build arrive with the desktop
     # shell (HAL-192).
     name: Tauri shell (Rust checks)
     needs: changes
     if: needs.changes.outputs.tauri == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
     defaults:
@@ -329,12 +331,59 @@ jobs:
       # version and components named in rust-toolchain.toml.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
+      # Tauri builds against the system web view: WebKitGTK on Linux.
+      - name: Install the Linux libraries Tauri needs
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libwebkit2gtk-4.1-dev libxdo-dev
       - name: Formatting (rustfmt)
         run: cargo fmt --all --check
+      # --workspace: the shell is the root package, so without it Cargo
+      # would check only the shell and skip the crates.
       - name: Lints (clippy)
-        run: cargo clippy --locked --all-targets -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Tests
-        run: cargo test --locked
+        run: cargo test --locked --workspace
+
+  android:
+    # The Android connect shell's debug APK, for arm64 phones and x86_64
+    # emulators. Its own job, so the slow Android build never holds up the
+    # Rust checks. The runner image brings the Android SDK, the NDK and
+    # Java 17. The signed release build is HAL-1203.
+    name: Android shell (debug APK)
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs @tauri-apps/cli with the rest of the workspace.
+      - uses: $/.github/actions/setup
+      - name: Install the pinned Rust toolchain and the Android targets
+        working-directory: apps/studio/src-tauri
+        run: |
+          rustup toolchain install
+          rustup target add aarch64-linux-android x86_64-linux-android
+      - name: Build the debug APK
+        working-directory: apps/studio
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64
+      # For trying a pull request's build on a phone or an emulator.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-debug-apk
+          path: apps/studio/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+          if-no-files-found: error
+          retention-days: 7
 
   e2e:
     name: Studio end-to-end (Playwright)
@@ -360,7 +409,7 @@ jobs:
     name: ci-ok
     if: always()
     needs:
-      [changes, fast, leaks, coverage-floors, gitleaks, zizmor, build, scaffold, tauri, e2e, docs]
+      [changes, fast, leaks, coverage-floors, gitleaks, zizmor, build, scaffold, tauri, android, e2e, docs]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions: {}

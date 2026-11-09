@@ -52,6 +52,16 @@
       ],
       "reason": "Lets Stryker run each package's Vitest tests."
     },
+    "@tauri-apps/cli": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/app-studio"
+      ],
+      "layers": [
+        "apps"
+      ],
+      "reason": "Tauri's command-line tool: generates the Android project and builds the shell (plan 7.2). Pinned to match the Rust tauri crate. Approved by Liam on HAL-1222."
+    },
     "@types/node": {
       "category": "dev-tooling",
       "allowedIn": [

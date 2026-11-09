@@ -1,7 +1,8 @@
 # The Rust version for the Studio shell's crates. It sits here, not at the
 # repo root, so a change to it runs the `tauri` CI job. It must stay at or
-# above Tauri 2's minimum Rust version. The Android targets are added with
-# the shell (HAL-192).
+# above Tauri 2's minimum Rust version. The Android targets are not listed
+# here: only the `android` CI job and Android builds need them, and they add
+# them with `rustup target add`.
 [toolchain]
 channel = "1.99.1"
 components = ["rustfmt", "clippy"]

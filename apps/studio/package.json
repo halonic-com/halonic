@@ -2,7 +2,7 @@
   "name": "@halonicjs/app-studio",
   "private": true,
   "type": "module",
-  "description": "The Studio app: wires the Studio packages and features together. Vite, Tauri and Android come later.",
+  "description": "The Studio app: wires the Studio packages and features together. The Tauri shell and its Android project live in src-tauri; Vite comes later.",
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
     "lint": "biome check .",
@@ -11,6 +11,7 @@
   "dependencies": {},
   "devDependencies": {
     "@halonicjs/tooling-config": "workspace:*",
+    "@tauri-apps/cli": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

@@ -4,7 +4,7 @@ Owner: elena · Layer: apps · Read the root `AGENTS.md` first; this file adds l
 
 ## Scope
 
-The Studio app: wires the Studio packages and features together. Vite, Tauri and Android come later.
+The Studio app: wires the Studio packages and features together. The Tauri shell and its Android project live in src-tauri; Vite comes later.
 
 This package may change only through tasks that name it. It is an application, so nothing imports it;
 its packages and features are listed in `package.json`.
