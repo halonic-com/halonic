@@ -19,10 +19,17 @@ sites it may reach. These decide what a program on the person's computer can tou
 
 - `harness` is a closed list; a new harness changes the format (noted in the README).
 - `workingFolder` is refused when it leaves the workspace or points into `.git`, `.halonic`,
-  `hubs` or any kind's folder. A test ties the protected list to every kind's place. Symlinks
+  `hubs`, any kind's folder or a kind file in the workspace root. A test ties the protected
+  list to every kind's place. The first part is compared after NFKC and case folding, since
+  macOS and Windows file systems ignore case. Names Windows reads as another name are refused
+  outright rather than cleaned up: a trailing `.` or space, `:` (drives and NTFS streams),
+  `~` and a digit (8.3 short names), control characters and invisible code points. A first
+  part starting with `.git` is refused (Liam, HAL-2228; Julian, HAL-2221). Symlinks
   can't be checked here (the format has no file system); the 4b profile builder resolves them.
 - `allowedSites` follows Liam's review: a bare `*` and `*.` over one label are refused, every
-  entry needs two labels, addresses, ports, schemes, paths and `localhost` names are refused, and
+  entry needs two labels, addresses (a last label starting with a digit, so hex forms such as `127.0x1` too), ports,
+  schemes, paths, fullwidth forms, ideographic dots, invisible code points and `localhost`,
+  `local`, `localdomain`, `internal` and `arpa` names are refused (Julian, HAL-2221), and
   `asciiAllowedSites` gives the stored form (lowercase, Punycode via std's `asciiHost`, each once).
   At most 50 entries (Julian, HAL-1708).
 

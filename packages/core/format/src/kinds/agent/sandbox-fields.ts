@@ -19,19 +19,35 @@ export const MAX_ALLOWED_SITES = 50;
 /**
  * The first parts of a workspace path that hold definition files or data
  * that isn't the agent's to write: git's own folder, Halonic's reserved
- * folder, every kind's folder and the hubs. A test checks that every kind's
- * place is covered, so a new kind can't be missed.
+ * folder, every kind's folder, the hubs and the kind files in the workspace
+ * root. A test checks that every kind's place is covered, so a new kind
+ * can't be missed. They are compared after {@link foldName}.
  */
-export const PROTECTED_TOP_FOLDERS: readonly string[] = [
+export const PROTECTED_TOP_NAMES: readonly string[] = [
   ".git",
   ".halonic",
   "agents",
+  "deployments.yaml",
+  "hub.yaml",
   "hubs",
   "library",
+  "models.yaml",
   "providers",
   "runtimes",
   "workflows",
+  "workspace.yaml",
 ];
+
+/**
+ * A name as a case-insensitive file system sees it: compatibility forms
+ * folded (`ｈｕｂｓ` is `hubs`) and case folded (`ſ` and `S` are `s`).
+ *
+ * @example
+ * foldName(".GIT"); // ".git"
+ */
+export function foldName(name: string): string {
+  return name.normalize("NFKC").toUpperCase().toLowerCase();
+}
 
 /**
  * The working folder an agent gets when its file names none.
@@ -46,8 +62,11 @@ export function defaultWorkingFolder(agentId: string): string {
 /**
  * Why a working folder can't be used, or `null` when it can. It must be a
  * path relative to the workspace with `/` between its parts, that stays in
- * the workspace and doesn't point into a {@link PROTECTED_TOP_FOLDERS} folder.
- * Symlinks are resolved later, when the sandbox profile is built.
+ * the workspace and doesn't point into a {@link PROTECTED_TOP_NAMES} entry.
+ * Parts that Windows or macOS would read as another name are refused too: a
+ * trailing `.` or space, a `:` (a drive or an NTFS stream), an 8.3 short name
+ * such as `GIT~1`, control characters and invisible code points. Symlinks are
+ * resolved later, when the sandbox profile is built.
  *
  * @param path - the `workingFolder` value
  * @returns a message, or `null`
@@ -57,28 +76,61 @@ export function workingFolderProblem(path: string): string | null {
   if (path.startsWith("/") || /^[a-zA-Z]:/.test(path)) {
     return "Use a path relative to the workspace";
   }
+  if (path.includes(":")) return "Don't use ':' in a folder name";
+  if (/[\p{Cc}\p{Default_Ignorable_Code_Point}]/u.test(path)) {
+    return "Don't use control characters or invisible characters in a folder name";
+  }
   const parts = path.split("/");
   if (parts.some((part) => part === "" || part === "." || part === "..")) {
     return "Use a path inside the workspace, without '.', '..' or empty parts";
   }
+  if (parts.some((part) => /[. ]$/.test(part))) {
+    return "Don't end a folder name with '.' or a space";
+  }
+  if (parts.some((part) => /~\d/.test(part))) {
+    return "Don't use '~' followed by a digit: Windows reads it as a short name";
+  }
   const top = parts[0] ?? "";
-  if (PROTECTED_TOP_FOLDERS.includes(top)) {
+  const folded = foldName(top);
+  if (PROTECTED_TOP_NAMES.includes(folded) || folded.startsWith(".git")) {
     return `The agent can't write in '${top}': it holds definitions or Halonic's own data`;
   }
   return null;
 }
 
 /**
+ * The last labels that name this computer or the local network, not a site
+ * on the internet.
+ */
+const LOCAL_TOP_LABELS: readonly string[] = [
+  "arpa",
+  "internal",
+  "local",
+  "localdomain",
+  "localhost",
+];
+
+/**
  * Why an allowed site can't be used, or `null` when it can. A site is a host
  * name with at least two labels, such as `api.example.com`, or `*.` and a
- * domain with at least two labels, such as `*.example.com`. No address,
- * port, scheme or path, no bare `*`, and no `localhost` names, which would
- * reach this computer.
+ * domain with at least two labels, such as `*.example.com`. No address in any
+ * notation (a last label starting with a digit, so `127.0x1` too), port,
+ * scheme or path, no bare `*`, and no `localhost`, `local`, `localdomain`,
+ * `internal` or `arpa` names, which would reach this computer or the local
+ * network. Fullwidth forms, ideographic dots, control characters and
+ * invisible code points are refused, since a URL parser would map them to
+ * another name.
  *
  * @param site - an `allowedSites` entry, in any case and in Unicode or ASCII
  * @returns a message, or `null`
  */
 export function allowedSiteProblem(site: string): string | null {
+  if (
+    /[\p{Cc}\p{Default_Ignorable_Code_Point}\u3002]/u.test(site) ||
+    site.normalize("NFKC") !== site.normalize("NFC")
+  ) {
+    return "Write the host name in plain characters, without fullwidth forms or invisible characters";
+  }
   const host = asciiHost(site);
   const wildcard = host.startsWith("*.");
   const name = wildcard ? host.slice(2) : host;
@@ -91,13 +143,16 @@ export function allowedSiteProblem(site: string): string | null {
     return "Use a host name of letters, digits, '-' and '.'";
   }
   if (name.length > 253) return "Use a host name of at most 253 characters";
-  if (/^\d+$/.test(labels.at(-1) ?? "")) return "Use a host name, not an address";
+  const last = labels.at(-1) ?? "";
+  if (/^\d/.test(last)) return "Use a host name, not an address";
   if (labels.length < 2) {
     return wildcard
       ? "Name at least two labels after '*.', such as '*.example.com'"
       : "Use a full host name, such as 'api.example.com'";
   }
-  if (labels.at(-1) === "localhost") return "A localhost name would reach this computer";
+  if (LOCAL_TOP_LABELS.includes(last)) {
+    return `A '.${last}' name would reach this computer or the local network`;
+  }
   return null;
 }
 

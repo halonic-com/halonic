@@ -2,13 +2,13 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: stack 2a of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), with Liam's changes from HAL-1967; Julian's site cap from HAL-1708; task HAL-189
+- Source: stack 2a of the [HAL-189 implementation plan](/HAL/issues/HAL-189#document-implementation-plan), with Liam's changes from HAL-1967; Julian's site cap from HAL-1708; Liam's and Julian's review fixes from HAL-2228 and HAL-2221; task HAL-189
 
 When `parseFile` reads an agent file, the format shall accept three optional fields that say how a harness agent runs, and leave each out when the file does, so older files read as before:
 
 - `harness`: `halonic`, `claude-code` or `codex`. Any other value fails.
-- `workingFolder`: a path relative to the workspace, with `/` between its parts. It fails when it is absolute, has a drive, a `\`, or a `.`, `..` or empty part, or starts in `.git`, `.halonic`, `hubs` or the folder of any file kind. `defaultWorkingFolder(id)` gives `files/agents/<id>` for a file that leaves it out.
-- `allowedSites`: at most 50 entries, each a host name with at least two labels, or `*.` and a domain with at least two labels. An entry fails when it is a bare `*`, has a wildcard anywhere else, is an address, has a scheme, port, path or user part, is a `localhost` name, or isn't a valid host name. Entries may be in any case and in Unicode; `asciiAllowedSites(sites)` gives them lowercase, in Punycode and each once, which is the form the sandbox and the trust prompt use.
+- `workingFolder`: a path relative to the workspace, with `/` between its parts. It fails when it is absolute, has a drive, a `\`, a `:` anywhere, a control character or an invisible (default-ignorable) code point, a `.`, `..` or empty part, a part that ends in `.` or a space, or a part with `~` and a digit (an 8.3 short name). It also fails when its first part, compared without regard to case or compatibility forms, starts with `.git`, or is `.halonic`, `hubs`, the folder of any file kind or the file of a kind that lives in the workspace root (`workspace.yaml`, `models.yaml`, `deployments.yaml`, `hub.yaml`). `defaultWorkingFolder(id)` gives `files/agents/<id>` for a file that leaves it out.
+- `allowedSites`: at most 50 entries, each a host name with at least two labels, or `*.` and a domain with at least two labels. An entry fails when it is a bare `*`, has a wildcard anywhere else, is an address (its last label starts with a digit), has a scheme, port, path or user part, has fullwidth forms, an ideographic dot, a control character or an invisible code point, ends in `localhost`, `local`, `localdomain`, `internal` or `arpa`, or isn't a valid host name. Entries may be in any case and in Unicode; `asciiAllowedSites(sites)` gives them lowercase, in Punycode and each once, which is the form the sandbox and the trust prompt use.
 
 ## Examples
 
@@ -16,6 +16,10 @@ When `parseFile` reads an agent file, the format shall accept three optional fie
 - Given `harness: claude`, when it is parsed, then it fails with `invalid_value` at `harness`.
 - Given 51 allowed sites, when it is parsed, then it fails with `too_big` at `allowedSites`.
 - Given `workingFolder: ../outside`, `.git/hooks`, `agents` or `hubs/billing/files`, when it is checked, then it fails.
-- Given the folder of any file kind, when the protected folders are listed, then its first part is among them.
-- Given `*`, `*.com`, `10.0.0.1`, `[::1]`, `localhost`, `https://api.example.com` or `api.example.com:8443`, when it is checked as a site, then it fails.
+- Given `.GIT/hooks`, `Agents` or `HUBS/x`, when it is checked, then it fails.
+- Given `agents./x`, `files/x:s`, `GIT~1/hooks` or a path with a zero-width code point, when it is checked, then it fails.
+- Given `workspace.yaml` or `models.yaml`, when it is checked, then it fails.
+- Given the place of any file kind, when the protected names are listed, then its folder's first part, or its file name when the folder is the root, is among them.
+- Given `*`, `*.com`, `10.0.0.1`, `127.0x1`, `[::1]`, `localhost`, `printer.local`, `https://api.example.com` or `api.example.com:8443`, when it is checked as a site, then it fails.
+- Given a site in fullwidth characters or with an ideographic dot, when it is checked, then it fails.
 - Given `API.Example.com`, `bücher.example` and `api.example.com`, when they are stored, then they are `api.example.com` and `xn--bcher-kva.example`.

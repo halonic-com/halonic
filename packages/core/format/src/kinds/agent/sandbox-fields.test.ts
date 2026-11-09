@@ -6,7 +6,8 @@ import {
   allowedSiteProblem,
   asciiAllowedSites,
   defaultWorkingFolder,
-  PROTECTED_TOP_FOLDERS,
+  foldName,
+  PROTECTED_TOP_NAMES,
   workingFolderProblem,
 } from "./sandbox-fields.ts";
 
@@ -62,7 +63,16 @@ verifies("format.agent-sandbox-fields", () => {
 
 verifies("format.agent-sandbox-fields", () => {
   describe("working folder", () => {
-    it.each(["files/reports", "files/agents/writer", "out", "notes/2026"])("accepts %s", (path) => {
+    it.each([
+      "files/reports",
+      "files/agents/writer",
+      "out",
+      "notes/2026",
+      "files/.gitkeep-dir",
+      "files/models.yaml-notes",
+      "Bücher/2026",
+      "files/~draft",
+    ])("accepts %s", (path) => {
       expect(workingFolderProblem(path)).toBeNull();
     });
 
@@ -81,18 +91,47 @@ verifies("format.agent-sandbox-fields", () => {
       ["workflows/routines", "a kind's folder"],
       ["hubs/billing/files", "a hub"],
       ["library/skills/x", "the library"],
+      [".GIT/hooks", "git's folder in capitals"],
+      ["Agents", "the agents folder in capitals"],
+      ["HUBS/x", "a hub in capitals"],
+      ["ｈｕｂｓ/x", "a hub in fullwidth letters"],
+      ["hubſ/x", "a hub spelled with a long s"],
+      ["agents./x", "a trailing dot"],
+      [".git./hooks", "git's folder with a trailing dot"],
+      ["agents /x", "a trailing space"],
+      ["files/out.", "a trailing dot further down"],
+      ["files/out ", "a trailing space further down"],
+      ["files/x:s", "an NTFS stream"],
+      [".git::$INDEX_ALLOCATION/hooks", "git's folder as an NTFS stream"],
+      ["GIT~1/hooks", "an 8.3 short name"],
+      ["files/REPORT~2", "an 8.3 short name further down"],
+      [".gitmodules", "a name starting with .git"],
+      [".git-x/hooks", "a folder starting with .git"],
+      [".g\u200Cit/hooks", "a zero-width code point"],
+      ["files/\u00ADout", "a soft hyphen"],
+      ["files\u0000/out", "NUL"],
+      ["files/\nout", "a control character"],
+      ["workspace.yaml", "the workspace file"],
+      ["models.yaml", "the models file"],
+      ["Deployments.YAML", "the deployments file in capitals"],
+      ["hub.yaml", "the hub file"],
     ])("refuses %s (%s)", (path) => {
       expect(workingFolderProblem(path)).not.toBeNull();
     });
 
-    it("protects the folder of every file kind", () => {
-      const places: { folder: string }[] = Object.values(fileKinds).flatMap((kind) => [
-        ...kind.places,
-      ]);
-      const tops = places
-        .map((place) => place.folder.split("/")[0] ?? "")
-        .filter((top) => top !== "");
-      for (const top of tops) expect(PROTECTED_TOP_FOLDERS).toContain(top);
+    it("protects the folder of every file kind, and the file of a kind in the root", () => {
+      const places: { folder: string; name: string }[] = Object.values(fileKinds).flatMap(
+        (kind) => [...kind.places],
+      );
+      for (const place of places) {
+        const top = place.folder === "" ? place.name : (place.folder.split("/")[0] ?? "");
+        expect(PROTECTED_TOP_NAMES).toContain(top);
+        expect(workingFolderProblem(top)).not.toBeNull();
+      }
+    });
+
+    it("lists the protected names already folded, so the comparison can match", () => {
+      for (const name of PROTECTED_TOP_NAMES) expect(foldName(name)).toBe(name);
     });
   });
 
@@ -129,6 +168,22 @@ verifies("format.agent-sandbox-fields", () => {
       ["api.example.com.", "a trailing dot"],
       [`${"a".repeat(64)}.example.com`, "a label over 63 characters"],
       [`${"abcdefghij.".repeat(25)}com`, "a name over 253 characters"],
+      ["127.0x1", "a hex address"],
+      ["127.0.0.0x1", "a hex address with four parts"],
+      ["0x7f.0x1", "an all-hex address"],
+      ["api.example.1com", "a last label starting with a digit"],
+      ["１２７.０.０.１", "a fullwidth address"],
+      ["ａｐｉ.example.com", "fullwidth letters"],
+      ["api。example.com", "an ideographic dot"],
+      ["api．example.com", "a fullwidth dot"],
+      ["api\u200B.example.com", "a zero-width space"],
+      ["ap\u00ADi.example.com", "a soft hyphen"],
+      ["api\u0085.example.com", "a control character"],
+      ["printer.local", "a .local name"],
+      ["box.localdomain", "a .localdomain name"],
+      ["db.internal", "a .internal name"],
+      ["1.0.0.127.in-addr.arpa", "an .arpa name"],
+      ["*.internal", "a wildcard over .internal"],
     ])("refuses %s (%s)", (site) => {
       expect(allowedSiteProblem(site)).not.toBeNull();
     });
