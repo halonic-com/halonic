@@ -193,6 +193,8 @@ fn git_allow_list_refuses_urls_whose_host_or_user_reads_as_an_option() {
     let refused = [
         "remote add origin ssh://-oProxyCommand=touch%20owned/acme.git",
         "remote add origin ssh://git@-oProxyCommand=x/acme.git",
+        "remote add origin ssh://%2DoProxyCommand=x/acme.git",
+        "remote add origin ssh://git@%2Dx/acme.git",
         "remote add origin ssh://-git@git.acme.example/acme.git",
         "remote add origin https://-x/acme.git",
         "remote add origin https:///acme.git",

@@ -265,9 +265,11 @@ fn is_remote_url(value: &str) -> bool {
 }
 
 /// The `user@host:port` part of a URL. ssh reads a host or user that starts
-/// with `-` as an option (`-oProxyCommand=`), so that is refused.
+/// with `-` as an option (`-oProxyCommand=`), so that is refused. git decodes
+/// `%2D` to `-` before it hands the host to ssh, so `%` is refused as well.
 fn is_authority(value: &str) -> bool {
     !value.is_empty()
+        && !value.contains('%')
         && value
             .split('@')
             .all(|part| !part.is_empty() && !part.starts_with('-'))
