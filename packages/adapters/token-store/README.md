@@ -9,13 +9,49 @@ refresh tokens, kept AES-256-GCM-encrypted with Web Crypto only, so it runs in N
 
 ## Example
 
-```ts
-import { createTokenStore } from "@halonicjs/adapter-token-store";
+Set a token, read it back under another spelling, remove it. The code lives in
+[`examples/set-get-remove.ts`](examples/set-get-remove.ts), where it is typechecked and run by
+`src/example.test.ts`; keep this copy in step with it. The file imports `../src/index.ts`, because a
+package may not import itself by name; outside this package, import
+`@halonicjs/adapter-token-store` as below. The example builds its records, key and clock from the
+memory adapter; on a server, `records` is a store agents can't write to, `secrets` reads the
+configured `token-key` and `clock` is `{ now: () => new Date() }`. It never prints a token or a key.
 
-const tokens = createTokenStore({ records, secrets, clock });
-await tokens.set("google-refresh", refreshToken);
-await tokens.get("Google_Refresh"); // the same token: case and - versus _ don't matter
-await tokens.remove("google-refresh");
+```ts
+import { ManualClock, MemoryRecordStore, MemorySecrets } from "@halonicjs/adapter-memory";
+import { encodeBase64url } from "@halonicjs/std";
+import { createTokenStore, tokenCollection, tokenKeySecret } from "@halonicjs/adapter-token-store";
+
+/** Sets a token, reads it back under another spelling, removes it, and never returns the token. */
+export async function runExample(): Promise<{
+  readBack: boolean;
+  storedAsPlainText: boolean;
+  afterRemove: string | null;
+}> {
+  // The records, the key and the clock are all passed in. Here they are in memory; on a server
+  // `records` is a store agents can't write to and `secrets` reads the configured `token-key`.
+  const records = new MemoryRecordStore();
+  const key = encodeBase64url(crypto.getRandomValues(new Uint8Array(32))); // 32 random bytes
+  const secrets = new MemorySecrets({ [tokenKeySecret]: key });
+  const clock = new ManualClock("2026-11-09T07:00:00.000Z");
+
+  const tokens = createTokenStore({ records, secrets, clock });
+  const refreshToken = "example-refresh-token"; // a made-up value; never print a real one
+
+  await tokens.set("google-refresh", refreshToken);
+
+  // Case and `-` versus `_` don't matter: both spellings name the same token.
+  const readBack = (await tokens.get("Google_Refresh")) === refreshToken; // true
+
+  // The record store holds the sealed value, not the token.
+  const stored = JSON.stringify(await records.changes(tokenCollection));
+  const storedAsPlainText = stored.includes(refreshToken); // false
+
+  await tokens.remove("google-refresh");
+  const afterRemove = await tokens.get("google-refresh"); // null
+
+  return { readBack, storedAsPlainText, afterRemove };
+}
 ```
 
 ## The key

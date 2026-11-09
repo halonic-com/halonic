@@ -375,6 +375,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/std
     devDependencies:
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../memory
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
