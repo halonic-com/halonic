@@ -119,6 +119,7 @@ if (mode === "native") {
   };
   const variants = [
     { name: "A: node dir, git root, pnpm dir", read: [nodeDir, gitRoot, pnpmDir] },
+    { name: "A+: A plus the system-drive root folder itself", read: [nodeDir, gitRoot, pnpmDir, drive] },
     { name: "B: A plus Program Files and Windows", read: [nodeDir, gitRoot, pnpmDir, pf, pfx, sys] },
     ...(process.env.SPIKE_BIG === "1" ? [{ name: "C: B plus tool cache and system-drive root", read: [nodeDir, gitRoot, pnpmDir, pf, pfx, sys, toolcache, drive] }] : []),
   ].map((v) => ({ ...v, read: [...new Set(v.read.filter(Boolean))] }));
@@ -167,7 +168,7 @@ await new Promise((done) => {
 });
 console.log(JSON.stringify(r));
 `);
-  const r = await runIn(`${q(process.execPath)} ${q(child)}`, { work, read: [nodeDir, allowed] });
+  const r = await runIn(`${q(process.execPath)} ${q(child)}`, { work, read: [nodeDir, allowed, ...(process.env.SPIKE_ROOTREAD === "1" ? [drive] : [])] });
   report.result = { run: r, connectionsSeen: connections };
   server.close();
 }

@@ -24,6 +24,7 @@ jobs:
     env:
       # Round 2 finding: Node, git and pnpm only start in the container with the UI policy enabled.
       SPIKE_UI: "1"
+      SPIKE_ROOTREAD: "1"
     defaults:
       run:
         shell: pwsh
@@ -49,6 +50,14 @@ jobs:
       - name: Install the MXC SDK
         working-directory: spikes/mxc
         run: npm install --no-audit --no-fund
+      - name: 0. Host prep (admin step, windows-2025 only; the DACL tier asks for it)
+        if: matrix.os == 'windows-2025'
+        working-directory: spikes/mxc
+        run: |
+          $prep = Resolve-Path "node_modules\@microsoft\mxc-sdk\bin\x64\wxc-host-prep.exe"
+          & $prep prepare-system-drive; "system-drive exit $LASTEXITCODE"
+          & $prep prepare-null-device; "null-device exit $LASTEXITCODE"
+        continue-on-error: true
       - name: 1. Native canaries (cmd.exe and curl.exe inside), elevated
         working-directory: spikes/mxc
         run: node probe2.mjs native
