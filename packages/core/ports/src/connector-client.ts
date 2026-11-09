@@ -8,7 +8,7 @@ export const connectorClientVersion = 1;
 /**
  * What calling a tool can do. `read` changes nothing; `write` changes data,
  * such as mail, files or records; `send` reaches people outside, such as
- * sending a mail. Approvals and shadow runs use it.
+ * sending a mail. Approvals use it.
  */
 export type ToolRisk = "read" | "write" | "send";
 
