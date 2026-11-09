@@ -1,6 +1,7 @@
 import {
   type ChangeEvent,
   type FocusEvent,
+  type MouseEvent,
   type ReactNode,
   type Ref,
   useLayoutEffect,
@@ -66,7 +67,8 @@ const boxStateClasses = {
   hoverable: "border-border-control hover:border-fg-muted group-hover/checkbox:border-fg-muted",
   invalid: "border-danger",
   // 45%, and GrayText at full strength in high contrast, as an unavailable Button.
-  unavailable: "cursor-not-allowed border-fg-disabled opacity-45 forced-colors:opacity-100",
+  unavailable:
+    "cursor-not-allowed border-fg-disabled opacity-45 contrast-more:opacity-60 forced-colors:opacity-100",
 } as const;
 
 /** The check or the dash, on top of the box. It shows only while the box is checked or mixed. */
@@ -103,12 +105,13 @@ export function Checkbox(props: CheckboxProps) {
   const input = useRef<HTMLInputElement | null>(null);
   const isUnavailable = unavailable !== undefined;
 
-  // `indeterminate` is a property only: there's no attribute for it.
+  // `indeterminate` is a property only: there's no attribute for it. A click or Space clears it,
+  // and React only puts `checked` back, so it's set again on every render, not only on a change.
   useLayoutEffect(() => {
     if (input.current !== null) {
       input.current.indeterminate = indeterminate;
     }
-  }, [indeterminate]);
+  });
 
   const box = (
     <span className="relative inline-grid size-4 shrink-0">
@@ -118,7 +121,8 @@ export function Checkbox(props: CheckboxProps) {
           input.current = element;
           assignRef(ref, element);
         }}
-        id={field?.id}
+        // With words of its own the box is named by them, not by the Field's label as well.
+        id={props.children === undefined ? field?.id : undefined}
         checked={checked}
         aria-label={props.label}
         aria-disabled={isUnavailable ? true : undefined}
@@ -126,12 +130,21 @@ export function Checkbox(props: CheckboxProps) {
         aria-describedby={describedBy(unavailable?.reason, field?.describedBy)}
         tabIndex={tabIndex}
         className={`${boxShared} ${boxStateClasses[boxState(isUnavailable, field?.invalid === true, checked || indeterminate)]}`}
-        // Space and a click both arrive here. While unavailable the value isn't reported, so React
-        // puts the controlled box back as it was.
-        onChange={(event: ChangeEvent<HTMLInputElement>) => {
-          if (!isUnavailable) {
-            onChange(event.target.checked);
+        // Space and a click on the box or its words both arrive here. While unavailable the click is
+        // cancelled, so the browser puts the box back as it was, mixed included. React reports the
+        // change from that same click, so onChange still has to skip it.
+        onClick={(event: MouseEvent<HTMLInputElement>) => {
+          if (isUnavailable) {
+            event.preventDefault();
           }
+        }}
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          if (isUnavailable) {
+            return;
+          }
+          onChange(event.target.checked);
+          // The screen may keep the box mixed without rendering again, so the dash comes back now.
+          event.target.indeterminate = indeterminate;
         }}
         onFocus={onFocus}
       />
@@ -147,7 +160,7 @@ export function Checkbox(props: CheckboxProps) {
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: the input is inside `box`, which Biome can't see
     <label
-      className={`group/checkbox inline-flex items-center gap-2 text-body phone:min-h-touch ${isUnavailable ? "cursor-not-allowed text-fg-disabled text-forced-disabled" : "cursor-pointer text-fg"}`}
+      className={`group/checkbox inline-flex items-center gap-2 text-body phone:min-h-touch touch:min-h-touch ${isUnavailable ? "cursor-not-allowed text-fg-disabled text-forced-disabled" : "cursor-pointer text-fg"}`}
     >
       {box}
       {props.children}

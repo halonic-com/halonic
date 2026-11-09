@@ -70,6 +70,7 @@ verifies("kit.checkbox", () => {
     );
     const label = container.querySelector("label") as HTMLElement;
     expect(label.className).toContain("phone:min-h-touch");
+    expect(label.className).toContain("touch:min-h-touch");
     expect(label.className).toContain("group/checkbox");
     await click(label.lastChild?.parentElement as HTMLElement);
     expect(onChange).toHaveBeenLastCalledWith(true);
@@ -95,12 +96,39 @@ verifies("kit.checkbox", () => {
     expect(box.getAttribute("aria-disabled")).toBe("true");
     expect(box.getAttribute("aria-describedby")).toBe("why");
     expect(box.className).toContain("opacity-45");
+    expect(box.className).toContain("contrast-more:opacity-60");
     expect(box.className).toContain("border-fg-disabled");
     act(() => box.focus());
     expect(document.activeElement).toBe(box);
     await click(box);
     expect(onChange).not.toHaveBeenCalled();
     expect(box.checked).toBe(true);
+  });
+
+  it("keeps a mixed box mixed and as it was on a click or Space while unavailable", async () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Checkbox checked indeterminate onChange={onChange} unavailable={{ reason: "why" }}>
+        Some rows
+      </Checkbox>,
+    );
+    const box = boxIn(container);
+    await click(box);
+    // Space on a focused checkbox arrives as a click too.
+    await click(container.querySelector("label") as HTMLElement);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(box.checked).toBe(true);
+    expect(box.indeterminate).toBe(true);
+  });
+
+  it("stays mixed after a click when the screen keeps it mixed", async () => {
+    const { container } = render(
+      <Checkbox label="All" checked={false} indeterminate onChange={vi.fn()} />,
+    );
+    const box = boxIn(container);
+    await click(box);
+    expect(box.checked).toBe(false);
+    expect(box.indeterminate).toBe(true);
   });
 
   it("takes a Field's error: a danger edge, aria-invalid and the error line", () => {
@@ -116,6 +144,28 @@ verifies("kit.checkbox", () => {
     expect(box.getAttribute("aria-invalid")).toBe("true");
     const line = document.getElementById(box.getAttribute("aria-describedby") ?? "");
     expect(line?.textContent).toContain("Agree to the terms to go on.");
+  });
+
+  it("is named by its own words in a Field, and by the Field's label without them", () => {
+    const { container } = render(
+      <>
+        <Field label="Terms">
+          <Checkbox checked={false} onChange={vi.fn()}>
+            I agree
+          </Checkbox>
+        </Field>
+        <Field label="Sorter">
+          <Checkbox label="Select Sorter" checked={false} onChange={vi.fn()} />
+        </Field>
+      </>,
+    );
+    const [withWords, withoutWords] = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    );
+    expect(withWords?.id).toBe("");
+    expect(withWords?.labels).toHaveLength(1);
+    expect(withWords?.labels?.[0]?.textContent).toBe("I agree");
+    expect(withoutWords?.labels?.[0]?.textContent).toBe("Sorter");
   });
 
   it("fills Highlight when checked in high contrast", () => {
