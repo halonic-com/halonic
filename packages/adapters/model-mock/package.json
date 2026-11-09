@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-model-mock",
+  "private": true,
+  "type": "module",
+  "description": "The scripted mock model: answers from a test's script and never touches the network.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "liam",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "runtime": "any"
+  }
+}
