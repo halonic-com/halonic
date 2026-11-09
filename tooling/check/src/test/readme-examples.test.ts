@@ -131,6 +131,21 @@ describe("tooling/check: readme-examples", () => {
     });
   });
 
+  it("shows the package's own entry under the published name when publish has no entry", () => {
+    const published: FixturePackage = {
+      ...withFiles({ "examples/y.ts": example }),
+      manifest: manifestFor("@halonicjs/std", "core", {
+        halonic: { layer: "core", owner: "mateo", publish: { name: "@halonicjs/extra" } },
+      }),
+    };
+    const withReadme = (name: string): FixturePackage => ({
+      ...published,
+      files: { ...published.files, "README.md": readmeWith(copy.replace("@halonicjs/std", name)) },
+    });
+    expect(messages(withReadme("@halonicjs/extra"))).toEqual([]);
+    expect(messages(withReadme("@halonicjs/std"))).toHaveLength(1);
+  });
+
   it("passes a package with no examples folder", () => {
     expect(messages(withFiles({ "README.md": "# std\n" }))).toEqual([]);
   });

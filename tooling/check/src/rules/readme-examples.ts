@@ -7,19 +7,21 @@ import type { WorkspacePackage } from "../lib/workspace.ts";
  * import by name: each `exports` entry as the quoted `../src/...` path the
  * example imports, with the name the README shows instead. The `.` entry is
  * the package name; another entry is the name with its subpath, or the
- * published name when `halonic.publish.entry` is that entry.
+ * published name when `halonic.publish.entry` is that entry. A missing
+ * `entry` means `.`, as `tooling/publish` reads it.
  */
 function ownImports(pkg: WorkspacePackage): Map<string, string> {
   const imports = new Map<string, string>();
   const name = pkg.manifest.name ?? pkg.directory;
   const exported = pkg.manifest.exports;
+  const publish = pkg.manifest.halonic?.publish;
+  const publishedEntry = publish?.entry ?? ".";
   const entries = typeof exported === "object" && exported !== null ? Object.entries(exported) : [];
   for (const [subpath, target] of entries) {
     if (typeof target !== "string" || !target.startsWith("./src/")) {
       continue;
     }
-    const publish = pkg.manifest.halonic?.publish;
-    const published = publish?.entry === subpath ? publish.name : undefined;
+    const published = publishedEntry === subpath ? publish?.name : undefined;
     imports.set(JSON.stringify(`.${target}`), published ?? name + subpath.slice(1));
   }
   if (!imports.has('"../src/index.ts"')) {
