@@ -5,6 +5,7 @@ import type { MakeVcs } from "./vcs-harness.ts";
 import { changesOf, lines } from "./vcs-helpers.ts";
 import { vcsHistoryCases } from "./vcs-history.ts";
 import { vcsRemoteCases } from "./vcs-remote.ts";
+import { vcsSafetyCases } from "./vcs-safety.ts";
 
 /**
  * The contract every {@link Vcs} adapter passes. The harness builds each
@@ -21,6 +22,12 @@ export function vcsContract(name: string, make: MakeVcs): void {
       discardCases(make);
       vcsHistoryCases(make);
       vcsRemoteCases(make);
+    });
+  });
+
+  verifies("contracts.vcs-safety", () => {
+    describe(`Vcs safety contract: ${name}`, () => {
+      vcsSafetyCases(make);
     });
   });
 }

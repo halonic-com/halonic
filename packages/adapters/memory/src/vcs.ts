@@ -9,6 +9,7 @@ import type {
 import { ManualClock } from "./clock.ts";
 import { unifiedDiff } from "./line-diff.ts";
 import { sha256Hex } from "./sha256.ts";
+import { checkBranchName, checkVcsPath } from "./vcs-input.ts";
 import {
   clashingBranch,
   commitOf,
@@ -40,8 +41,9 @@ export interface MemoryVcsOptions {
 /**
  * Version control in memory, over any {@link DefinitionStore} as the working
  * tree: for tests and the browser demo. It models what the `Vcs` port
- * promises: branches, an index, and fast-forward pulls and pushes without
- * force. It keeps no runtime folder, so `init` ignores nothing.
+ * promises: branches, an index, fast-forward pulls and pushes without force,
+ * and the same refusals of unsafe paths and branch names. It keeps no runtime
+ * folder, so `init` ignores nothing.
  */
 export class MemoryVcs implements Vcs {
   readonly #files: DefinitionStore;
@@ -110,6 +112,7 @@ export class MemoryVcs implements Vcs {
   }
 
   async diff(path: string, staged: boolean): Promise<string> {
+    checkVcsPath(path);
     const repo = this.#requireRepo();
     const indexed = repo.index.get(path) ?? null;
     if (staged) return unifiedDiff(path, headTree(repo).get(path) ?? null, indexed);
@@ -119,6 +122,7 @@ export class MemoryVcs implements Vcs {
   }
 
   async stage(paths: string[]): Promise<void> {
+    paths.forEach(checkVcsPath);
     const repo = this.#requireRepo();
     const contents = await this.#readAll(paths);
     for (const [path, content] of contents) {
@@ -133,6 +137,7 @@ export class MemoryVcs implements Vcs {
   }
 
   async unstage(paths: string[]): Promise<void> {
+    paths.forEach(checkVcsPath);
     const repo = this.#requireRepo();
     const head = headTree(repo);
     for (const path of paths) {
@@ -143,6 +148,7 @@ export class MemoryVcs implements Vcs {
   }
 
   async discard(paths: string[]): Promise<void> {
+    paths.forEach(checkVcsPath);
     const repo = this.#requireRepo();
     for (const path of paths) {
       const indexed = repo.index.get(path);
@@ -192,6 +198,7 @@ export class MemoryVcs implements Vcs {
   }
 
   async checkout(branch: string): Promise<void> {
+    checkBranchName(branch);
     const repo = this.#requireRepo();
     const target = repo.branches.get(branch);
     if (target === undefined) throw new Error(`There is no branch ${branch}.`);
@@ -201,6 +208,7 @@ export class MemoryVcs implements Vcs {
   }
 
   async createBranch(name: string): Promise<void> {
+    checkBranchName(name);
     const repo = this.#requireRepo();
     if (repo.branches.has(name)) throw new Error(`The branch ${name} already exists.`);
     const other = clashingBranch(repo.branches.keys(), name);

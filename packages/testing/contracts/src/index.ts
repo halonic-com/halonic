@@ -58,4 +58,13 @@ export {
   fingerprintGaps,
 } from "./trust-fingerprint.ts";
 export { vcsContract } from "./vcs.ts";
-export { type MakeVcs, type VcsHarness, validBranchNames } from "./vcs-harness.ts";
+export {
+  gitInternalPaths,
+  invalidBranchNames,
+  type MakeVcs,
+  optionLikeMessages,
+  optionLikePaths,
+  unsafeVcsPaths,
+  type VcsHarness,
+  validBranchNames,
+} from "./vcs-harness.ts";

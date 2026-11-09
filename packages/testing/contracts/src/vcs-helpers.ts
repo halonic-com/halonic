@@ -16,6 +16,18 @@ export async function commitFile(
   return vcs.commit(message);
 }
 
+/** Everything a refused call must leave as it was: status, every file and the history. */
+export async function stateOf({ vcs, files }: VcsHarness) {
+  const status = await vcs.status();
+  const paths = (await files.list()).sort();
+  const contents = await Promise.all(paths.map(async (path) => [path, await files.read(path)]));
+  return {
+    status: { ...status, changes: sortChanges(status.changes) },
+    files: Object.fromEntries(contents),
+    log: await vcs.log(10),
+  };
+}
+
 /** The changes in a fixed order, because the port doesn't promise one. */
 export async function changesOf(status: Promise<VcsStatus>): Promise<VcsChange[]> {
   return sortChanges((await status).changes);
