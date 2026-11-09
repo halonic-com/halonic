@@ -52,6 +52,7 @@ export class MemoryDefinitionStore implements DefinitionStore {
   /** `sha256:` and the first 16 hex characters of a hash over every path and its text, as in the old adapter. */
   async version(): Promise<string> {
     const paths = [...this.#files.keys()].sort();
+    // Kept as in the old adapter: a file whose text contains "\n\0" can make two different workspaces share a version.
     const listing = paths.map((path) => `${path}\n${this.#files.get(path)}`).join("\n\0");
     return `sha256:${(await sha256Hex(listing)).slice(0, 16)}`;
   }
