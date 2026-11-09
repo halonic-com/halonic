@@ -4,6 +4,7 @@ import {
   coordinationContract,
   definitionStoreContract,
   idGeneratorContract,
+  type MakeVcs,
   type PlantGitCode,
   recordStoreContract,
   runStoreContract,
@@ -12,7 +13,9 @@ import {
   tokenStoreContract,
   type VcsHarness,
   vcsContract,
+  vcsHardenedCases,
 } from "@halonicjs/testing-contracts";
+import { describe, it } from "vitest";
 import {
   fixedIds,
   ManualClock,
@@ -69,31 +72,34 @@ async function memoryFolder(files: Readonly<Record<string, string>>): Promise<Vc
 }
 
 /**
- * Planted code for a Vcs that runs no programs: it is only recorded, and so
- * never runs. Binding it lets CI run the hardened cases' own code before an
- * adapter that drives real git exists.
+ * Planted code for a Vcs that runs no programs: it is only recorded. With
+ * `leaks`, `ran` says it ran once anything is planted, as if the adapter had
+ * run it; the self-test below shows every hardened case then fails.
  */
-function recordedPlant(): PlantGitCode {
+function recordedPlant(leaks: boolean): PlantGitCode {
   const planted: string[] = [];
   return {
     async hook(name) {
       planted.push(`hook ${name}`);
     },
-    async fsmonitor() {
-      planted.push("fsmonitor");
+    async config(key) {
+      planted.push(`config ${key}`);
+    },
+    async attributes(line) {
+      planted.push(`attributes ${line}`);
     },
     async ran() {
-      return false;
+      return leaks && planted.length > 0;
     },
   };
 }
 
-for (const drivesGit of [false, true]) {
-  // The memory Vcs runs no programs, so nothing planted could run.
+/** The memory Vcs for the suite; with `plant`, as if it drove git and every folder came with that plant. */
+function memoryVcs(plant?: () => PlantGitCode): MakeVcs {
   const withPlant = (harness: VcsHarness): VcsHarness =>
-    drivesGit ? { ...harness, plant: recordedPlant() } : harness;
-  vcsContract(drivesGit ? "memory, with planted code recorded" : "memory", {
-    drivesGit,
+    plant === undefined ? harness : { ...harness, plant: plant() };
+  return {
+    drivesGit: plant !== undefined,
     folder: async (files) => withPlant(await memoryFolder(files)),
     nested: async (files) => withPlant(await memoryFolder(files)),
     repo: async (files) => withPlant(await memoryRepo(files)),
@@ -108,5 +114,18 @@ for (const drivesGit of [false, true]) {
       };
       return [await cloneOf(), await cloneOf()];
     },
-  });
+  };
 }
+
+vcsContract("memory", memoryVcs());
+// The memory Vcs runs no programs, so nothing planted can run: this only runs the hardened cases' own code.
+vcsContract(
+  "memory, with planted code recorded",
+  memoryVcs(() => recordedPlant(false)),
+);
+describe("Vcs hardened contract: fails when planted code runs", () => {
+  vcsHardenedCases(
+    memoryVcs(() => recordedPlant(true)),
+    it.fails,
+  );
+});

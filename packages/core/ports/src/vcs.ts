@@ -86,10 +86,36 @@ export interface VcsCommit {
  * Remotes and upstreams come from the repository, never from a caller.
  *
  * **An adapter that drives git always runs it hardened**, whether the
- * workspace is trusted or not (plan section 11): every call passes
- * `-c core.fsmonitor=false` and points `core.hooksPath` at an empty
- * folder, so a hook or an fsmonitor command planted in the repository
- * never runs.
+ * workspace is trusted or not (plan section 11). Anyone who can write the
+ * workspace folder can write `.git/config` and `.git/info/attributes`, so
+ * no program named there ever runs. Every call:
+ *
+ * - points `core.hooksPath` at an empty folder and passes
+ *   `-c core.fsmonitor=false` (hooks and fsmonitor);
+ * - blanks the `clean`, `smudge` and `process` commands of every
+ *   `filter.<name>` driver the repository's config has (filters);
+ * - diffs and logs with `--no-ext-diff --no-textconv` (`diff.external`,
+ *   `diff.<name>.command` and `diff.<name>.textconv`);
+ * - passes `-c commit.gpgSign=false -c push.gpgSign=false
+ *   -c log.showSignature=false` (`gpg.program` and the other signing
+ *   programs);
+ * - fetches and pushes with `--upload-pack=git-upload-pack` and
+ *   `--receive-pack=git-receive-pack` (`remote.<name>.uploadpack` and
+ *   `receivepack`), `-c credential.helper=` followed only by Halonic's own
+ *   helper, if any (`credential.helper`), `GIT_SSH_COMMAND=ssh`
+ *   (`core.sshCommand`), `GIT_ASKPASS` set (`core.askPass`) and
+ *   `GIT_ALLOW_PROTOCOL=https:ssh:file` (`protocol.*.allow`, so no `ext::`
+ *   URL runs a command);
+ * - starts from an environment with every inherited `GIT_*` variable
+ *   removed (such as `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and
+ *   `GIT_CONFIG_PARAMETERS`), and sets `GIT_TERMINAL_PROMPT=0`,
+ *   `GIT_EDITOR=true` and `GIT_PAGER=cat`, so nothing waits on a prompt;
+ * - never sets `safe.directory=*`.
+ *
+ * Out of scope, because no port method reaches them: merge drivers
+ * (`pull` is fast-forward only), `submodule.*.update` (no submodule
+ * command), and the remote repository's own config, such as
+ * `core.alternateRefsCommand` (it isn't the workspace).
  */
 export interface Vcs {
   /** The branch, its upstream and the changed files. */

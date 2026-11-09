@@ -30,8 +30,15 @@ export interface PlantGitCode {
    * `core.hooksPath` in the repository's own config points to.
    */
   hook(name: string): Promise<void>;
-  /** A `core.fsmonitor` command in the repository's own config. */
-  fsmonitor(): Promise<void>;
+  /**
+   * Sets `key` in the repository's own config to `value`, or, without one,
+   * to a program that leaves the mark, in the form git takes for that key:
+   * a path for `core.fsmonitor`, `!…` for `credential.helper`, an `ext::`
+   * URL for `remote.<name>.url`, and a shell command otherwise.
+   */
+  config(key: string, value?: string): Promise<void>;
+  /** Adds `line`, such as `* filter=planted`, to the repository's own `.git/info/attributes`. */
+  attributes(line: string): Promise<void>;
   /** Whether any planted code has run. */
   ran(): Promise<boolean>;
 }
