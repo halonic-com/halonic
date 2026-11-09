@@ -62,6 +62,7 @@ reports for now: it doesn't block until its approval lookup is live. See `docs/g
 
 - No feature without a recorded requirement (`requirements/<name>.md`, EARS form) and tests that name it with `verifies("<id>", …)`.
 - A bug fix starts with a regression test that fails before the fix.
+- If code is hard to unit test, refactor it until it isn't; don't skip the test or reach for an end-to-end test instead.
 - Never edit, retire or delete a requirement, and never weaken, skip or delete a test or golden file, without an approved decision note in `decisions/<branch-name>.md`.
 - No flaky tests: no retries, fake timers instead of sleeps, always clean up temporary folders.
 - Never use real or private workspaces as fixtures; invent them, `acme`-style.
