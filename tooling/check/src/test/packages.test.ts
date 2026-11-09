@@ -71,10 +71,10 @@ describe("tooling/check: packages", () => {
         publish: { name: "@halonicjs/std" },
       },
     });
-    const notListed = messages([staged], { coreOrder });
+    const notListed = messages([staged], { coreOrder: ["@halonicjs/std"] });
     expect(notListed.some((message) => message.includes('It has "halonic.publish"'))).toBe(true);
     const listed = messages([staged], {
-      coreOrder,
+      coreOrder: ["@halonicjs/std"],
       policy: (policy) => ({ ...policy, published: ["@halonicjs/std"] }),
     });
     expect(listed).toEqual([]);
