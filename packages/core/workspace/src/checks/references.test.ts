@@ -58,10 +58,16 @@ verifies("workspace.references", () => {
     "leaves out the agents of a hub whose hub.yaml failed, in %s",
     async (caseId) => {
       // The old loader then reports only hub.yaml and the routines that name
-      // the hub; the routine checks come later.
+      // the hub, never its agents.
       const workspace = await loadWorkspace(readParityCase(caseId).source);
       const errors = workspace.issues.filter((issue) => issue.source === "check");
-      expect(errors).toEqual([]);
+      expect(errors.map((issue) => [issue.file, issue.message])).toEqual([
+        [
+          "workflows/routines/hourly-check.routine.yaml",
+          'Routine "hourly-check": unknown hub "billing"',
+        ],
+        ["workflows/routines/on-paid.routine.yaml", 'Routine "on-paid": unknown hub "billing"'],
+      ]);
     },
     parityLoadLimitMs,
   );

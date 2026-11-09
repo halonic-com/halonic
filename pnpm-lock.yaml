@@ -763,6 +763,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../routines
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std

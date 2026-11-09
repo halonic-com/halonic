@@ -3,6 +3,7 @@ import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
 import { checkDelegationLoops } from "./delegation-loops.ts";
 import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
+import { checkRoutines } from "./routines.ts";
 import { checkDuplicateIds, checkTestTargets, checkWorkspaceFile } from "./workspace-files.ts";
 
 /** One rule across files: the errors it finds. */
@@ -17,12 +18,14 @@ const checks: readonly WorkspaceCheck[] = [
   checkAgents,
   checkDelegationLoops,
   checkTestTargets,
+  checkRoutines,
 ];
 
 /**
  * The checks across files: what one file names in another (an agent's
  * model alias, a test's workflow) and rules over several files (agents that
- * delegate in a loop, two files with one id).
+ * delegate in a loop, two files with one id), and what a routine runs and
+ * when it starts.
  *
  * @param files - the files that parsed
  * @param read - every file the loader read, with its kind and text, also
