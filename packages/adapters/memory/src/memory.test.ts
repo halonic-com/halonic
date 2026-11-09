@@ -1,4 +1,5 @@
 import {
+  agentPlacementStoreContract,
   blobStoreContract,
   clockContract,
   coordinationContract,
@@ -23,6 +24,7 @@ import { describe, it } from "vitest";
 import {
   fixedIds,
   ManualClock,
+  MemoryAgentPlacementStore,
   MemoryBlobStore,
   MemoryCoordination,
   MemoryDefinitionStore,
@@ -49,6 +51,10 @@ tokenStoreContract("memory", async () => new MemoryTokenStore());
 trustStoreContract("memory", async () => {
   const store = new MemoryTrustStore();
   return { store, damage: async (location) => store.damage(location) };
+});
+agentPlacementStoreContract("memory", async () => {
+  const store = new MemoryAgentPlacementStore();
+  return { store, damage: async (key) => store.damage(key) };
 });
 clockContract("memory", async () => new ManualClock());
 resourceProbeContract("memory", async () => {

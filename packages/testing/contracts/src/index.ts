@@ -1,3 +1,9 @@
+export {
+  type AgentPlacementStoreHarness,
+  agentPlacement,
+  agentPlacementStoreContract,
+  type MakeAgentPlacementStore,
+} from "./agent-placement-store.ts";
 export { blobStoreContract, type MakeBlobStore } from "./blob-store.ts";
 export { type ControlledClock, clockContract, type MakeClock } from "./clock.ts";
 export { coordinationContract } from "./coordination.ts";

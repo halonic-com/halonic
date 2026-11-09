@@ -1,3 +1,9 @@
+export {
+  type AgentPlacementKey,
+  type AgentPlacementRecord,
+  type AgentPlacementStore,
+  agentPlacementStoreVersion,
+} from "./agent-placement-store.ts";
 export { type BlobRef, type BlobStore, blobStoreVersion } from "./blob-store.ts";
 export type {
   ChatMessage,

@@ -1,3 +1,4 @@
+import { agentPlacementStoreVersion } from "./agent-placement-store.ts";
 import { blobStoreVersion } from "./blob-store.ts";
 import { clockVersion } from "./clock.ts";
 import { connectionSettingsStoreVersion } from "./connection-settings-store.ts";
@@ -36,6 +37,7 @@ import { vcsVersion } from "./vcs.ts";
  * if (portVersions.RunStore !== 1) throw new Error("this adapter implements RunStore 1");
  */
 export const portVersions = {
+  AgentPlacementStore: agentPlacementStoreVersion,
   BlobStore: blobStoreVersion,
   Clock: clockVersion,
   ConnectionSettingsStore: connectionSettingsStoreVersion,

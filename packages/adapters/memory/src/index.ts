@@ -1,3 +1,4 @@
+export { MemoryAgentPlacementStore } from "./agent-placement-store.ts";
 export { MemoryBlobStore } from "./blob-store.ts";
 export { ManualClock, manualClockStart } from "./clock.ts";
 export { MemoryCoordination } from "./coordination.ts";

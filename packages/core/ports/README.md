@@ -17,6 +17,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 
 | Port                      | File                           | Version | What it does                                                                                          | Contract suite                                           |
 | ------------------------- | ------------------------------ | ------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `AgentPlacementStore`     | `agent-placement-store.ts`     | 1       | each agent's "this computer" choice in the user's profile; `AgentPlacement` decides                   | `agent-placement-store`                                  |
 | `BlobStore`               | `blob-store.ts`                | 1       | content-addressed bytes: attachments, large payloads, exports                                         | `blob-store`                                             |
 | `Clock`                   | `clock.ts`                     | 1       | the current time                                                                                      | `clock`                                                  |
 | `ConnectionSettingsStore` | `connection-settings-store.ts` | 1       | each connector's "allow sending" setting in the user's profile; `ConnectionSettings` decides          | `connection-settings-store` (with first adapter)         |
