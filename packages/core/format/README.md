@@ -8,21 +8,42 @@ The workspace file format: one folder per file kind with its schema, defaults, c
 
 ## Example
 
-```ts
-import { parseFile } from "@halonicjs/format";
+Parse a good and a bad agent file, and drop empty values before saving. The code lives in
+[`examples/parse-an-agent.ts`](examples/parse-an-agent.ts), where it is typechecked and run by
+`src/example.test.ts`; keep this copy in step with it. The file imports `../src/index.ts`, because a
+package may not import itself by name; outside this package, import `@halonicjs/format` as below.
 
-// The id is the file name without its suffix: agents/clerk.agent.yaml.
-const parsed = parseFile("agent", text, { id: "clerk" });
-if (!parsed.ok) {
-  // every problem, each with { severity, source, code, path, message, line, col }
-  for (const problem of parsed.error) report(problem);
-  return;
+```ts
+import { compact, parseFile } from "@halonicjs/format";
+
+/** Parses a good and a bad agent file, and drops empty values before saving. */
+export function runExample(): {
+  name: string | undefined;
+  warnings: number;
+  problems: string[];
+  saved: unknown;
+} {
+  // The id is the file name without its suffix: agents/clerk.agent.yaml.
+  const good = parseFile("agent", "name: Clerk\n", { id: "clerk" });
+  const name = good.ok ? good.value.value.name : undefined; // "Clerk"
+  const warnings = good.ok ? good.value.warnings.length : 0; // 0
+
+  // A bad file gives every problem, each with a path, a line and a column.
+  const bad = parseFile("agent", "name: Clerk\noutput:\n  type: xml\n", { id: "clerk" });
+  const problems = bad.ok
+    ? []
+    : bad.error.map(
+        (problem) => `${problem.source} ${problem.code} at ${problem.line}:${problem.col}`,
+      );
+
+  // compact drops empty values before a file is written, as the old app did.
+  const saved = compact({ name: "Clerk", tools: [], notes: undefined, output: { type: "text" } }); // { name: "Clerk", output: { type: "text" } }
+  return { name, warnings, problems, saved };
 }
-parsed.value.value; // the agent, with the old app's defaults filled in
-parsed.value.warnings; // problems that don't make the file fail
 ```
 
-`compact(value)` drops empty values before a file is written, as the old app did.
+A problem is `{ severity, source, code, path, message, line, col }`. `warnings` are problems that
+don't make the file fail.
 
 ## Kinds
 
