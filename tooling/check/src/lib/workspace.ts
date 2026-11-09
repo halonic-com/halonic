@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 /** The parts of a `package.json` the checks read. */
 export interface PackageJson {
   readonly name?: string;
+  readonly version?: string;
   readonly private?: boolean;
   readonly exports?: unknown;
   readonly bin?: unknown;

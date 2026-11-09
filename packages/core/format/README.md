@@ -71,10 +71,17 @@ Checks between files belong to the loader, not here.
 
 ## Spec files
 
-`spec/<kind folder>.schema.json` (for example `spec/workflow-test.schema.json`) is each kind's JSON Schema (2020-12), as `jsonSchemaOf` emits it. These
-files are the source of truth for anyone outside this repo who reads or writes workspace files.
+`spec/<kind>.schema.json` (for example `spec/workflow-test.schema.json`) is each kind's JSON
+Schema (2020-12), as `jsonSchemaOf` emits it. These files are the source of truth for anyone
+outside this repo who reads or writes workspace files. Each one's `$id`, for example
+`https://halonic.com/spec/format/workflow/v1.schema.json`, names the file format version it
+describes; nothing is hosted at that address yet.
 `src/json-schema.test.ts` fails when the code and a spec file disagree. To update the files on
 purpose after a schema change, run the tests with `SPEC_WRITE=1`, then review the diff.
+
+When a release changes a spec file, `pnpm version:sync` keeps a frozen copy in
+`spec/released/<version>/`, named after the app version because this package has none of its own.
+A released copy never changes.
 
 ## Harness agents
 

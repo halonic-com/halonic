@@ -1,5 +1,26 @@
-import { type JsonSchema, toJsonSchema } from "@halonicjs/schema-kit";
+import { JSON_SCHEMA_DRAFT, type JsonSchema, toJsonSchema } from "@halonicjs/schema-kit";
 import { fileKinds, type KindName } from "./registry.ts";
+import { SCHEMA_VERSION } from "./shared/fields.ts";
+
+/** Where the `$id` of every file kind's JSON Schema starts. Nothing is hosted there yet. */
+export const SPEC_ID_BASE = "https://halonic.com/spec/format";
+
+/**
+ * A kind's name in its spec file and `$id`: the kind name in kebab case,
+ * so `workflowTest` becomes `workflow-test`.
+ */
+export function specName(kind: KindName): string {
+  return kind.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+/**
+ * The `$id` of a kind's JSON Schema. It names the schema and the file format
+ * version it describes, for example
+ * `https://halonic.com/spec/format/workflow/v1.schema.json`.
+ */
+export function specId(kind: KindName): string {
+  return `${SPEC_ID_BASE}/${specName(kind)}/v${SCHEMA_VERSION}.schema.json`;
+}
 
 /**
  * The JSON Schema (2020-12) of a file kind, for editors, docs and other
@@ -9,7 +30,10 @@ import { fileKinds, type KindName } from "./registry.ts";
  * @example
  * const schema = jsonSchemaOf("agent");
  * schema["required"]; // ["id", "name"]
+ * schema["$id"]; // "https://halonic.com/spec/format/agent/v1.schema.json"
  */
 export function jsonSchemaOf(kind: KindName): JsonSchema {
-  return toJsonSchema(fileKinds[kind].schema);
+  // `$schema` and `$id` come first, where readers of the spec file look for
+  // them; the spread keeps a key where it was first set.
+  return { $schema: JSON_SCHEMA_DRAFT, $id: specId(kind), ...toJsonSchema(fileKinds[kind].schema) };
 }
