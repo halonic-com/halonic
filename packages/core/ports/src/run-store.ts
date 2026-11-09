@@ -85,3 +85,49 @@ export interface RunStore {
    */
   list(filter?: RunFilter): Promise<RunSummary[]>;
 }
+
+// The rules above, as code, so every adapter checks appends and filters runs the same way.
+
+/**
+ * Refuses an append that is the caller's bug, as {@link RunStore.append}
+ * says: `expectedSeq` that isn't a whole number of 0 or more, no events,
+ * an event of another run, or events not numbered from `expectedSeq + 1`.
+ *
+ * @throws RangeError naming what is wrong
+ */
+export function checkRunAppend(
+  runId: string,
+  expectedSeq: number,
+  events: readonly RunEvent[],
+): void {
+  if (!Number.isSafeInteger(expectedSeq) || expectedSeq < 0) {
+    throw new RangeError(`expectedSeq must be a whole number of 0 or more, not ${expectedSeq}.`);
+  }
+  if (events.length === 0) {
+    throw new RangeError("append needs at least one event.");
+  }
+  events.forEach((event, index) => {
+    if (event.runId !== runId) {
+      throw new RangeError(`Event ${event.seq} belongs to run ${event.runId}, not ${runId}.`);
+    }
+    if (event.seq !== expectedSeq + index + 1) {
+      throw new RangeError(`Event ${index} has seq ${event.seq}, not ${expectedSeq + index + 1}.`);
+    }
+  });
+}
+
+/** Whether a summary matches every field of a {@link RunFilter}. An empty status list is no status filter. */
+export function matchesRunFilter(summary: RunSummary, filter: RunFilter): boolean {
+  const statuses = filter.status === undefined ? [] : [filter.status].flat();
+  return (
+    (filter.hubId === undefined || summary.hubId === filter.hubId) &&
+    (filter.workflowId === undefined || summary.workflowId === filter.workflowId) &&
+    (filter.kind === undefined || summary.kind === filter.kind) &&
+    (statuses.length === 0 || statuses.includes(summary.status))
+  );
+}
+
+/** Orders summaries as {@link RunStore.list} returns them: newest start time first, then by run id. */
+export function compareRunSummaries(a: RunSummary, b: RunSummary): number {
+  return b.startedAt.localeCompare(a.startedAt) || a.id.localeCompare(b.id);
+}

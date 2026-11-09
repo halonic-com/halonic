@@ -1,10 +1,13 @@
 import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
-import type {
-  AppendOptions,
-  AppendResult,
-  RunFilter,
-  RunSnapshot,
-  RunStore,
+import {
+  type AppendOptions,
+  type AppendResult,
+  checkRunAppend,
+  compareRunSummaries,
+  matchesRunFilter,
+  type RunFilter,
+  type RunSnapshot,
+  type RunStore,
 } from "@halonicjs/ports";
 import { copyJson } from "./copy.ts";
 
@@ -27,7 +30,7 @@ export class MemoryRunStore implements RunStore {
     events: readonly RunEvent[],
     options: AppendOptions = {},
   ): Promise<AppendResult> {
-    checkAppend(runId, expectedSeq, events);
+    checkRunAppend(runId, expectedSeq, events);
     const run = this.#runs.get(runId) ?? { events: [], snapshot: null };
     const lastSeq = run.events.length;
     if (lastSeq !== expectedSeq) {
@@ -58,41 +61,10 @@ export class MemoryRunStore implements RunStore {
     const summaries: RunSummary[] = [];
     for (const run of this.#runs.values()) {
       const summary = summarize(run.events);
-      if (summary !== null && matches(summary, filter)) {
+      if (summary !== null && matchesRunFilter(summary, filter)) {
         summaries.push(summary);
       }
     }
-    return summaries.sort(
-      (a, b) => b.startedAt.localeCompare(a.startedAt) || a.id.localeCompare(b.id),
-    );
+    return summaries.sort(compareRunSummaries);
   }
-}
-
-/** The caller's bugs the port turns into a `RangeError`, never a conflict. */
-function checkAppend(runId: string, expectedSeq: number, events: readonly RunEvent[]): void {
-  if (!Number.isSafeInteger(expectedSeq) || expectedSeq < 0) {
-    throw new RangeError(`expectedSeq must be a whole number of 0 or more, not ${expectedSeq}.`);
-  }
-  if (events.length === 0) {
-    throw new RangeError("append needs at least one event.");
-  }
-  events.forEach((event, index) => {
-    if (event.runId !== runId) {
-      throw new RangeError(`Event ${event.seq} belongs to run ${event.runId}, not ${runId}.`);
-    }
-    if (event.seq !== expectedSeq + index + 1) {
-      throw new RangeError(`Event ${index} has seq ${event.seq}, not ${expectedSeq + index + 1}.`);
-    }
-  });
-}
-
-function matches(summary: RunSummary, filter: RunFilter): boolean {
-  // An empty list is no status filter, as the port says.
-  const statuses = filter.status === undefined ? [] : [filter.status].flat();
-  return (
-    (filter.hubId === undefined || summary.hubId === filter.hubId) &&
-    (filter.workflowId === undefined || summary.workflowId === filter.workflowId) &&
-    (filter.kind === undefined || summary.kind === filter.kind) &&
-    (statuses.length === 0 || statuses.includes(summary.status))
-  );
 }

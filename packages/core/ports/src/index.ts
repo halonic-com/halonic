@@ -143,6 +143,9 @@ export {
 export {
   type AppendOptions,
   type AppendResult,
+  checkRunAppend,
+  compareRunSummaries,
+  matchesRunFilter,
   type RunFilter,
   type RunSnapshot,
   type RunStore,
