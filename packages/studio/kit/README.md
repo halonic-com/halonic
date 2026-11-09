@@ -2,7 +2,7 @@
 
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
-by one. So far: [`Button`](#button), [`StatusChip`](#statuschip), [`Kbd`](#kbd),
+by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Kbd`](#kbd),
 [`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
 
 - **Layer:** studio
@@ -145,6 +145,43 @@ only in a tooltip.
 and every size gets a 48px hit area (`hit-touch`), drawn round the button so its look doesn't
 change. Icon buttons become 48px squares with a 20px icon. A `touch` button's label wraps between
 words, so at large text it grows taller, never wider than its column.
+
+## Card
+
+A self-contained summary on a page: a routine, a model provider, a stat. Never a card inside a
+card.
+
+```tsx
+<Card title="Model providers" actions={addButton}>
+  …
+</Card>;
+<Card label="When" actions={onSwitch}>
+  Every weekday at 9:00
+</Card>;
+<Card onClick={openRoutine}>…</Card>;
+```
+
+| Prop      | What it is                                                                                   |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `title`   | The header's title in `text-section`, a heading (`headingLevel`, 3 by default)               |
+| `label`   | Instead of a title: a small caption label in capitals, such as the routine's When and Starts |
+| `actions` | On the right of the header: `sm` ghost buttons or a switch                                   |
+| `onClick` | The whole card is one button. It then has no header and nothing clickable inside             |
+| `state`   | `disabled` for a Paused or Not connected card, which still says why; `error`                 |
+
+A card with a title or a label is a `<section>` named by it. Write the label in sentence case
+("When"): CSS draws the capitals, so a screen reader says the word, not the letters.
+
+| State    | What shows                                                                  |
+| -------- | --------------------------------------------------------------------------- |
+| Default  | `surface`, a 1px `border` edge, a 12px radius, no shadow                    |
+| Hover    | Only an interactive card: a `border-strong` edge and `shadow-1`             |
+| Focus    | Only an interactive card: the standard focus ring                           |
+| Disabled | Text in `fg-disabled`, no hover. An interactive one still opens, to say why |
+| Error    | A `danger` edge. The card's content says what failed, with a way to open it |
+
+**On a phone** cards are rare: lists are flush instead. An interactive card shows the
+`surface-subtle` fill while pressed and has no hover.
 
 ## StatusChip
 

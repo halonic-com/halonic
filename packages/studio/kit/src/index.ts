@@ -11,6 +11,7 @@ export {
   type ButtonUnavailable,
   type ButtonVariant,
 } from "./button/button.tsx";
+export { Card, type CardProps, type CardState } from "./card/card.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export { ExternalLink, type ExternalLinkProps } from "./external-link/external-link.tsx";
 export {
