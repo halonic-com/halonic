@@ -45,9 +45,10 @@ its own text to the user.
 `findSecretShape` spots text shaped like an API key or other secret (`sk-`, `GOCSPX-`, `AIza`,
 `ghp_`, `github_pat_`, `xoxb-`), so Studio can hold a message before it is sent, saved or logged.
 It answers with the kind of secret only, never the text it found.
-`SecretScrubber` is the other half: once told a secret value with `remember`, `scrub` replaces it
-in any text, raw or URL-, form- or JSON-encoded, with `[secret removed]`. The CLI is meant to pass every
-error it prints through one. `secretTextForms` lists those forms for code that matches bytes instead.
+`SecretScrubber` is the other half: once told a secret value with `remember`, `scrub` replaces
+it in any text, raw or URL-, form- or JSON-encoded, with `[secret removed]`. The CLI is meant to
+pass every error it prints through one. `secretTextForms` lists those forms for code that matches
+bytes instead.
 
 Each behaviour has a requirement in [`requirements/`](requirements/).
 

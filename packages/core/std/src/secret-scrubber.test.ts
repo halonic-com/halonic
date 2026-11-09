@@ -56,7 +56,20 @@ verifies("std.secret-scrubber", () => {
   });
 
   it("removes both of two secrets that overlap without one containing the other", () => {
-    expect(scrubberFor("xab1", "ab1cd").scrub("-xab1cd-")).toBe(`-x${secretRemoved}-`);
+    for (const scrubber of [scrubberFor("xab1", "ab1cd"), scrubberFor("ab1cd", "xab1")]) {
+      expect(scrubber.scrub("-xab1cd-")).toBe(`-${secretRemoved}-`);
+    }
+    expect(scrubberFor("AAAA-BBBB", "BBBB-CCCC").scrub("AAAA-BBBB-CCCC")).toBe(secretRemoved);
+  });
+
+  it("makes copies that touch or overlap one marker", () => {
+    expect(scrubberFor("ab").scrub("-abab-")).toBe(`-${secretRemoved}-`);
+    expect(scrubberFor("aa").scrub("-aaa-")).toBe(`-${secretRemoved}-`);
+  });
+
+  it("never finds a secret inside a marker it wrote", () => {
+    const scrubber = scrubberFor("made-up-token", "e");
+    expect(scrubber.scrub("made-up-token e")).toBe(`${secretRemoved} ${secretRemoved}`);
   });
 
   it("ignores an empty secret, and scrubs a one-letter one", () => {
@@ -73,7 +86,7 @@ verifies("std.secret-scrubber", () => {
 });
 
 describe("secretTextForms", () => {
-  it("lists the value, its URL, form and JSON forms", () => {
+  it("lists the value, its URL, form and JSON forms, in that order", () => {
     expect(secretTextForms("a b")).toEqual(["a b", "a%20b", "a%20b", "a+b", "a b", "a b"]);
   });
 

@@ -7,8 +7,13 @@ export const secretRemoved = "[secret removed]";
  * as it is and as `\/`). Base64, reversed, split or otherwise transformed
  * copies are not here: those can't be found by matching text.
  *
- * The forms can repeat, for example when the value has nothing to encode.
- * An empty value has no forms, because an empty match is everywhere.
+ * Not covered either: JSON that escapes non-ASCII as `\uXXXX` (Python's
+ * default `json.dumps`), form-encoding with lowercase escapes, and
+ * URL-encoding that mixes upper- and lowercase escapes (`%2f%2F`).
+ *
+ * The forms come in the order shown, which stays the same. They can
+ * repeat, for example when the value has nothing to encode. An empty value
+ * has no forms, because an empty match is everywhere.
  *
  * @example
  * secretTextForms("a b"); // ["a b", "a%20b", "a%20b", "a+b", "a b", "a b"]
@@ -42,8 +47,10 @@ function formEncoded(urlEncoded: string): string {
 
 /**
  * Replaces every secret it has been told about with `[secret removed]`, in
- * each form {@link secretTextForms} lists. Longer forms go first, so when
- * one secret contains another, the longer one is removed whole.
+ * each form {@link secretTextForms} lists. It finds every copy of every form
+ * in the text as given, so copies that touch or overlap become one
+ * `[secret removed]` and no part of either secret is left, and a short
+ * secret is never found inside a marker the scrubber wrote itself.
  *
  * Every non-empty secret is matched, however short: a one-letter secret
  * mangles the text, but leaking it would be worse. Scrub a whole text
@@ -57,26 +64,41 @@ function formEncoded(urlEncoded: string): string {
  */
 export class SecretScrubber {
   readonly #forms = new Set<string>();
-  /**
-   * The forms, longest first, rebuilt only when a secret is added. Each is
-   * replaced in a pass of its own, so when two secrets overlap without one
-   * containing the other, the longer is removed whole and the shorter is
-   * still found in what is left.
-   */
-  #longestFirst: readonly string[] = [];
 
   /** Adds a secret to scrub from now on. An empty value is ignored. */
   remember(value: string): void {
-    const sizeBefore = this.#forms.size;
     for (const form of secretTextForms(value)) this.#forms.add(form);
-    if (this.#forms.size === sizeBefore) return;
-    this.#longestFirst = [...this.#forms].sort((a, b) => b.length - a.length);
   }
 
   /** The text with every form of every remembered secret replaced. */
   scrub(text: string): string {
-    let scrubbed = text;
-    for (const form of this.#longestFirst) scrubbed = scrubbed.replaceAll(form, secretRemoved);
+    const hidden = this.#hiddenCharacters(text);
+    let scrubbed = "";
+    let at = 0;
+    while (at < text.length) {
+      if (!hidden[at]) {
+        scrubbed += text[at];
+        at += 1;
+        continue;
+      }
+      scrubbed += secretRemoved;
+      while (at < text.length && hidden[at]) at += 1;
+    }
     return scrubbed;
+  }
+
+  /**
+   * One flag per UTF-16 code unit of the text, set where any copy of any
+   * form covers it. Copies of one form may overlap (`aa` in `aaa`), so the
+   * search moves on one code unit at a time, not past the whole copy.
+   */
+  #hiddenCharacters(text: string): Uint8Array {
+    const hidden = new Uint8Array(text.length);
+    for (const form of this.#forms) {
+      for (let at = text.indexOf(form); at !== -1; at = text.indexOf(form, at + 1)) {
+        hidden.fill(1, at, at + form.length);
+      }
+    }
+    return hidden;
   }
 }
