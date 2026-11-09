@@ -64,6 +64,21 @@ export {
 } from "./package-runner.ts";
 export { readPackageSpec } from "./package-spec.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
+export {
+  type DataFolder,
+  type DataKind,
+  type DataUsage,
+  type DiskSpace,
+  type LoadedModel,
+  type LoadedModelSource,
+  lowDiskBytes,
+  type MemoryUsage,
+  type ProviderModels,
+  type Reading,
+  ResourceReport,
+  type ResourceReportOptions,
+  type Resources,
+} from "./resource-report.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
 export type { RoutineOverlap } from "./routine-overlap.ts";
 export {
@@ -105,6 +120,7 @@ export {
 } from "./trust-service.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
+export { type ActiveRun, type Wait, waitsInProgress } from "./waits-in-progress.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
 export {
   startOfDueRun,
