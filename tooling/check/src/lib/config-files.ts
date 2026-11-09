@@ -49,6 +49,7 @@ export interface Policy {
   /**
    * The API types packages: core packages that use only each other, so
    * Studio, the CLI and outside callers can use them without the engine.
+   * Empty when `policy.json` has none.
    */
   readonly apiTypes: readonly string[];
   readonly published: readonly string[];
@@ -77,8 +78,8 @@ export function parsePolicy(path: string, value: unknown): Policy {
   const policy = at.object(
     value,
     "",
-    ["coreOrder", "apiTypes", "published", "adapterGateways", "cloudRuntimes", "fileSize"],
-    ["extraExports"],
+    ["coreOrder", "published", "adapterGateways", "cloudRuntimes", "fileSize"],
+    ["apiTypes", "extraExports"],
   );
   const fileSize = at.object(policy["fileSize"], "fileSize", [
     "warnLines",
@@ -87,7 +88,7 @@ export function parsePolicy(path: string, value: unknown): Policy {
   ]);
   return {
     coreOrder: at.strings(policy["coreOrder"], "coreOrder"),
-    apiTypes: at.strings(policy["apiTypes"], "apiTypes"),
+    apiTypes: policy["apiTypes"] === undefined ? [] : at.strings(policy["apiTypes"], "apiTypes"),
     published: at.strings(policy["published"], "published"),
     adapterGateways: at.strings(policy["adapterGateways"], "adapterGateways"),
     extraExports:

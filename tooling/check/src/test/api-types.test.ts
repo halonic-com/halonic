@@ -75,6 +75,14 @@ describe("tooling/check: API types packages", () => {
     expect(layers[0]?.[2]).toContain("and no third-party code");
   });
 
+  it("treats a policy without apiTypes as an empty list", () => {
+    const found = runChecks([events, ports], {
+      coreOrder: ["@halonicjs/events", "@halonicjs/ports"],
+      policy: ({ apiTypes: _left, ...policy }) => policy,
+    });
+    expect(found).toEqual([]);
+  });
+
   it("reports an API types entry that is not a core package", () => {
     const found = checkWithApiTypes([std], ["@halonicjs/std"], ["@halonicjs/client"]);
     expect(found).toEqual([
