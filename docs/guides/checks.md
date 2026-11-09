@@ -248,7 +248,7 @@ invent a name:
 | `packages/studio/<name>`          | studio   | `@halonicjs/studio-<name>`            |
 | `packages/studio/features/<name>` | studio   | `@halonicjs/studio-feature-<name>`    |
 | `packages/testing/<name>`         | testing  | `@halonicjs/testing-<name>`           |
-| `apps/cli`                        | apps     | `halonic` (the one published package) |
+| `apps/cli`                        | apps     | `halonic` (published without staging) |
 | `apps/<name>`                     | apps     | `@halonicjs/app-<name>`               |
 | `tooling/<name>`                  | tooling  | `@halonicjs/tooling-<name>`           |
 
@@ -291,6 +291,13 @@ lower-case words joined by `-`, never a wildcard, a nested path or
 `./api`. A malformed entry stops `pnpm check`; a name that is not a
 package here is a `packages` error. Adding an entry is a public interface
 change, so it needs Liam's review.
+
+`published` in `policy.json` lists every package that reaches npm. The CLI
+`halonic` is published as it is. A package with `halonic.publish` in its
+`package.json` stays `private` in the workspace, and
+[tooling/publish](../../tooling/publish/README.md) stages the copy that
+goes to npm; such a package must be listed too, or `packages` fails. Adding
+a name needs Liam's review.
 
 ## Ignoring an advisory
 

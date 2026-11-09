@@ -76,6 +76,14 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
       `Add "private": true. Only the packages listed under "published" in ${context.policyPath} may be published.`,
     );
   }
+  // A package staged for npm stays private in the workspace, so this is
+  // where the list of what reaches npm is enforced for it.
+  if (!published && halonic?.publish !== undefined) {
+    report.error(
+      file,
+      `It has "halonic.publish", but only the packages listed under "published" in ${context.policyPath} may be published. Add it there or remove "halonic.publish".`,
+    );
+  }
   if (halonic?.layer !== place.layer) {
     report.error(
       file,

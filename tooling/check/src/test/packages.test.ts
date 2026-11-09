@@ -61,6 +61,25 @@ describe("tooling/check: packages", () => {
     expect(messages.some((message) => message.includes("owner"))).toBe(true);
   });
 
+  it("flags a package staged for npm that isn't listed as published", () => {
+    const staged = stdWith({
+      private: true,
+      halonic: {
+        layer: "core",
+        owner: "liam",
+        coverage: defaultCoverageFloors.core,
+        publish: { name: "@halonicjs/std" },
+      },
+    });
+    const notListed = messages([staged], { coreOrder });
+    expect(notListed.some((message) => message.includes('It has "halonic.publish"'))).toBe(true);
+    const listed = messages([staged], {
+      coreOrder,
+      policy: (policy) => ({ ...policy, published: ["@halonicjs/std"] }),
+    });
+    expect(listed).toEqual([]);
+  });
+
   it("flags a package outside the package folders", () => {
     const stray: FixturePackage = {
       directory: "packages/misc/x",

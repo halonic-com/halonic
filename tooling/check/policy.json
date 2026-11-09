@@ -14,7 +14,9 @@
     "@halonicjs/google-setup"
   ],
   "published": [
-    "halonic"
+    "halonic",
+    "@halonicjs/adapter-integration-kit",
+    "@halonicjs/testing-integration"
   ],
   "adapterGateways": [
     "@halonicjs/studio-services"

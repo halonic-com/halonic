@@ -10,14 +10,22 @@
 # checks out nothing and runs no repo code, only the tarballs the `pack` job
 # made, so a dependency in the build can never reach the identity.
 #
-# Run it by hand from the Actions tab, on `main`. It never runs on pull
-# requests. `dry_run` is on by default: it builds and checks the tarballs and
-# stops short of `npm publish`. A version already on npm is skipped, so a run
-# can be repeated after a partial failure.
+# It runs on every push to `main` that changes either package's
+# `package.json`, so merging a version bump publishes it. It can also be run
+# by hand from the Actions tab, on `main`, where `dry_run` is on by default:
+# it builds and checks the tarballs and stops short of `npm publish`. It never
+# runs on pull requests. A version already on npm is skipped, so a run can be
+# repeated after a partial failure, and a push that changes no version
+# publishes nothing.
 
 name: Publish kit
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - packages/adapters/integration-kit/package.json
+      - packages/testing/integration/package.json
   workflow_dispatch:
     inputs:
       dry_run:
@@ -128,7 +136,8 @@ jobs:
           path: tarballs
       - name: Publish, kit first
         env:
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          # Only a run by hand can be a dry run; a push publishes.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |
           # Alphabetical order would put the suite before the kit it needs.
           for tarball in ./tarballs/halonicjs-integration-kit-*.tgz ./tarballs/halonicjs-testing-integration-*.tgz; do
