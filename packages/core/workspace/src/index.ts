@@ -1,5 +1,6 @@
 // The public API of @halonicjs/workspace. Internal code imports by relative path.
 
+export { definitionsOf, definitionsVersion, type HubDefinitions } from "./definitions.ts";
 export {
   gitIgnoreLines,
   gitIgnorePath,
@@ -17,6 +18,12 @@ export {
   type WorkspaceIssue,
 } from "./load-workspace.ts";
 export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
+export {
+  type ModelTarget,
+  modelAliases,
+  type ResolvedModelTarget,
+  resolveModel,
+} from "./resolve-model.ts";
 export { type ChangedConnector, type TrustChanges, trustChanges } from "./trust-changes.ts";
 export {
   type ConnectorTrustContent,

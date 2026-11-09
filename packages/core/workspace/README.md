@@ -76,8 +76,23 @@ export async function runExample(): Promise<{
   the same hub, and so do a workflow's agents and the workflows it runs. A routine runs its own
   hub's workflows and agents; one at the root names its hub in `run.hub`, unless the root has agents
   or workflows of its own.
-- **Not yet:** resolving model aliases to a provider and model, and the definitions a run keeps.
-  They come in the next steps of the HAL-186 plan.
+
+## Model aliases and the definitions a run keeps
+
+`resolveModel(workspace, hubId, name)` turns a model setting into a provider and a model. A name
+with a `/` names them directly (`ollama/llama3`); any other name is an alias, the hub's own in its
+`hub.yaml` over the one in `models.yaml`. The result has the alias's params and price and the
+targets of its `fallback` entries, one level deep, as the engine tries them. An alias the hub
+doesn't have gives `undefined`.
+
+`definitionsOf(workspace, hubId)` gives everything a run in that hub reads, as plain data: the
+workspace settings, `hub.yaml`, the default model, the hub's own workflows and agents, every alias
+it can use resolved, the providers and runtimes, and the library items it may use.
+`definitionsVersion(definitions, digest)` is the SHA-256 of their canonical JSON, through the
+`Digest` port. That is the hash the `BlobStore` gives the same JSON, so the engine keeps the
+definitions under the run's `definitionsVersion` and a waiting run goes on with the definitions it
+started with, whatever happens to the files
+([ADR](../../../docs/adr/2026-11-08-runs-are-stored-separately.md)).
 
 ## A new workspace
 

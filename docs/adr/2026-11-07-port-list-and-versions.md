@@ -58,8 +58,10 @@ milliseconds as numbers, so every runtime can keep them as they are.
   - three optional fields (`tool.result.outcome`,
     `run.failed.reason`, `approval.resolved.by`), which are now in
     `@halonicjs/events` (HAL-1525) so the engine can write them
-  - the definitions embedded in `run.started`, so a run keeps the
-    definitions it started with
+  - the definitions a run started with, so it keeps them: not embedded in
+    `run.started`, but kept as canonical JSON in the `BlobStore` under their
+    SHA-256, which the existing `run.started.definitionsVersion` names, so
+    the run log doesn't change (HAL-186 decision 5)
   - the "effect requested" record that marks an outcome as unknown after a
     crash
   - the blob hash reference for payloads over 256 KB

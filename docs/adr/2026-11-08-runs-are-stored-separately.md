@@ -13,8 +13,10 @@ into the definitions would fill git history and risk publishing it.
 
 A run is an append-only event log, kept outside the tracked definition files and
 ignored by git. Each run records the version of the definitions it started with:
-a git commit, or a content hash when the workspace isn't in git. The event types
-and the summaries built from them are in `@halonicjs/events`.
+the SHA-256 of the definitions its hub needs, written as canonical JSON. The
+engine keeps that JSON in the `BlobStore` under the hash, so a run never reads
+today's files to go on, and nothing deletes it while a run points to it. The
+event types and the summaries built from them are in `@halonicjs/events`.
 
 The log is the only source of truth. A run's position and context are rebuilt
 from it, and nothing else is stored.
@@ -33,3 +35,8 @@ from it, and nothing else is stored.
 
 The Studio used to read run logs again every 10 seconds. It now subscribes to
 events pushed by the run executor.
+
+The version of the definitions used to be a git commit, or a content hash when
+the workspace isn't in git. A commit says nothing about files that aren't
+committed yet and can't give the definitions back without git, so it is now
+always the hash of the kept definitions (HAL-186 decision 5).
