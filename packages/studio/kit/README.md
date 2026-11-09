@@ -146,7 +146,8 @@ only in a tooltip.
 
 **On a phone and on a touch screen** (`phone:` and `touch:`), `sm` and `md` render at `lg` (40px),
 and every size gets a 48px hit area (`hit-touch`), drawn round the button so its look doesn't
-change. Icon buttons become 48px squares with a 20px icon. A `touch` button's label wraps between
+change. Icon buttons become 40px squares on a touch screen, beside the 40px text buttons, and
+48px squares with a 20px icon on a phone. A `touch` button's label wraps between
 words, so at large text it grows taller, never wider than its column.
 
 ## Card
@@ -185,7 +186,7 @@ Inside an interactive card put only phrasing content: text, `<span>`s and icons,
 | Default  | `surface`, a 1px `border` edge, a 12px radius, no shadow                                                |
 | Hover    | Only an interactive card: a `border-strong` edge (an error card keeps its `danger` edge) and `shadow-1` |
 | Focus    | Only an interactive card: the standard focus ring                                                       |
-| Disabled | Text in `fg-disabled`, no hover. An interactive one still opens, to say why                             |
+| Disabled | Title or label in `fg-disabled` (no header: the whole box), no hover. Still opens, to say why           |
 | Error    | A `danger` edge. The card's content says what failed, with a way to open it                             |
 
 **On a phone** cards are rare: lists are flush instead. An interactive card shows the

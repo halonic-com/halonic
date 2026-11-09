@@ -36,6 +36,14 @@ verifies("kit.copy-button", () => {
     expect(status.textContent).toBe("");
   });
 
+  it("is 40px with a 48px hit area on a touch screen and 48px on a phone, like a Button", () => {
+    fakeClipboard("works");
+    const { className } = renderButton().button;
+    expect(className).toContain("touch:min-h-control-lg touch:px-4 touch:hit-touch");
+    expect(className).toContain("phone:h-touch phone:px-4");
+    expect(className).toContain("hover:bg-surface-subtle active:bg-surface-subtle");
+  });
+
   it("copies its text, says Copied in place and tells screen readers", async () => {
     const clipboard = fakeClipboard("works");
     const { button, status, shownWord } = renderButton();

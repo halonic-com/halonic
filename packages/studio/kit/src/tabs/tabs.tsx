@@ -129,7 +129,14 @@ export function Tabs<Id extends string>({
   };
 
   const list = (
-    <div role="tablist" aria-label={label} className={trackClasses[layout]} onKeyDown={onKeyDown}>
+    // The track is surface-muted, so a counter on an unselected tab uses its on-muted: look.
+    <div
+      role="tablist"
+      aria-label={label}
+      data-fill="muted"
+      className={trackClasses[layout]}
+      onKeyDown={onKeyDown}
+    >
       {tabs.map((tab) => {
         const isSelected = tab.id === selected;
         const isDisabled = tab.disabled === true;
