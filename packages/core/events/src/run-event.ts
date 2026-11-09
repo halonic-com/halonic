@@ -9,6 +9,7 @@ import type {
   ToolOutcome,
   Usage,
 } from "./run-basics.ts";
+import type { LoggedSandboxBlock } from "./sandbox-blocked.ts";
 import type { SandboxOpenedView } from "./sandbox-opened.ts";
 
 // Every event name and field here is part of the run log, which users keep on
@@ -106,6 +107,21 @@ export type RunEventBody =
    * is a display copy of its profile, never its environment variables.
    */
   | { type: "sandbox.opened"; state: string; agent: string; sandbox: SandboxOpenedView }
+  /**
+   * A step's sandbox refused an access (requirement `events.sandbox-blocked`).
+   * `count` is the running total of refused accesses to this target (or to
+   * `others`) in the step so far: the engine logs a target's first block at
+   * once and the total at the end of the step. A later event replaces an
+   * earlier count, it doesn't add to it: events with 1 and then 7 for one
+   * target mean 7 refused accesses.
+   */
+  | {
+      type: "sandbox.blocked";
+      state: string;
+      agent: string;
+      block: LoggedSandboxBlock;
+      count: number;
+    }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
   /** `outcome`: how the call ended (requirement `events.tool-result-outcome`); absent in older logs. */

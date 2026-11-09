@@ -32,6 +32,11 @@ optional and come with a requirement.
 - `sandbox.started` and `harness.started`: written before the engine opens a
   step's sandbox or starts its harness program, with how long it waits, so a
   screen can say what the step is waiting for (requirement `started-events`).
+- `sandbox.blocked` and `sandboxBlockedView(block, home)`: an access a step's
+  sandbox refused, with `count`, the running total for that target in the step
+  so far (a later event replaces an earlier count). A step's log
+  names at most `maxBlockedTargetsPerStep` (100) targets; the rest are counted
+  as `others` (requirement `sandbox-blocked`).
 
 ## Example
 

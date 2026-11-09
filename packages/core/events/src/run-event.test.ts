@@ -12,6 +12,7 @@ import type {
   Usage,
 } from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
+import type { LoggedSandboxBlock } from "./sandbox-blocked.ts";
 import type { SandboxOpenedView, SandboxStrength } from "./sandbox-opened.ts";
 
 // These are type tests: `tsc -p tsconfig.test.json` fails if a run log event
@@ -38,6 +39,8 @@ verifies("events.run-log-contract", () => {
       | "harness.started"
       // Added after the reference by events.sandbox-opened (HAL-1707).
       | "sandbox.opened"
+      // Added after the reference by events.sandbox-blocked (HAL-189).
+      | "sandbox.blocked"
       | "knowledge.searched"
       | "tool.result"
       | "approval.requested"
@@ -369,6 +372,18 @@ verifies("events.started-events", () => {
       agent: string;
       harness: string;
       timeoutMs: number;
+    }>();
+  });
+});
+
+verifies("events.sandbox-blocked", () => {
+  typeTest("records a refused access and how many accesses it stands for", () => {
+    expectTypeOf<EventOf<"sandbox.blocked">>().toEqualTypeOf<{
+      type: "sandbox.blocked";
+      state: string;
+      agent: string;
+      block: LoggedSandboxBlock;
+      count: number;
     }>();
   });
 });

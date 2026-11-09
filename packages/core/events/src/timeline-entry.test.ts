@@ -259,3 +259,14 @@ verifies("events.started-events", () => {
     expect(entryOf(events)).toEqual([1, 2, 3]);
   });
 });
+
+verifies("events.sandbox-blocked", () => {
+  it("gives each sandbox.blocked event an entry of its own, also for the same target", () => {
+    const block = { kind: "network", host: "api.example.com", port: 443 } as const;
+    const events = log(
+      { type: "sandbox.blocked", state: "s", agent: "w", block, count: 1 },
+      { type: "sandbox.blocked", state: "s", agent: "w", block, count: 7 },
+    );
+    expect(entryOf(events)).toEqual([1, 2]);
+  });
+});
