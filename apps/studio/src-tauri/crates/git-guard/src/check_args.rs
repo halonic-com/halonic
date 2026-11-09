@@ -40,7 +40,8 @@ impl CheckedCall {
 /// such as `-c` or `--git-dir` can come first. Every option must match an
 /// entry on that subcommand's list exactly: git accepts shortened long
 /// options (`--upload-pac` for `--upload-pack`), so anything else is
-/// refused. After `--`, every argument is a path.
+/// refused. After `--`, every argument is a path. Revisions and paths, on
+/// either side of `--`, must stay inside the repository.
 pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
     let Some((first, rest)) = args.split_first() else {
         return Err(GitError::NoSubcommand);
@@ -55,6 +56,7 @@ pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
     let mut remaining = rest.iter();
     while let Some(arg) = remaining.next() {
         if only_paths {
+            arguments.push(arg.as_str());
             continue;
         }
         if arg == "--" {
@@ -138,7 +140,15 @@ fn check_value(
 
 fn check_arguments(subcommand: &AllowedSubcommand, arguments: &[&str]) -> Result<(), GitError> {
     match subcommand.arguments {
-        Arguments::RevisionsAndPaths => Ok(()),
+        Arguments::RevisionsAndPaths => {
+            match arguments
+                .iter()
+                .find(|argument| !is_inside_repository(argument))
+            {
+                Some(argument) => Err(argument_not_allowed(subcommand, argument)),
+                None => Ok(()),
+            }
+        }
         Arguments::None => match arguments.first() {
             Some(argument) => Err(argument_not_allowed(subcommand, argument)),
             None => Ok(()),
@@ -200,9 +210,22 @@ fn is_branch_name(value: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || b"._/-".contains(&byte))
 }
 
+/// A revision or path that cannot reach outside the repository. `diff`
+/// switches to `--no-index` by itself when a path lies outside, which would
+/// print any file on the machine, so absolute paths (`/`, `\`, `C:`,
+/// `\\server`) and `..` components are refused.
+fn is_inside_repository(value: &str) -> bool {
+    let has_drive = matches!(value.as_bytes(), [letter, b':', ..] if letter.is_ascii_alphabetic());
+    !value.starts_with(['/', '\\'])
+        && !has_drive
+        && !value.split(['/', '\\']).any(|component| component == "..")
+}
+
+/// A leading `.` is refused because git reads `.`, `..` and `.git` as local
+/// paths, not remote names.
 fn is_remote_name(value: &str) -> bool {
     !value.is_empty()
-        && !value.starts_with('-')
+        && !value.starts_with(['-', '.'])
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || b"._-".contains(&byte))
@@ -233,10 +256,21 @@ fn is_remote_url(value: &str) -> bool {
     if !has_no_odd_characters {
         return false;
     }
-    if value.starts_with("https://") || value.starts_with("ssh://") {
-        return true;
+    for scheme in ["https://", "ssh://"] {
+        if let Some(rest) = value.strip_prefix(scheme) {
+            return is_authority(rest.split('/').next().unwrap_or_default());
+        }
     }
     is_short_ssh_url(value)
+}
+
+/// The `user@host:port` part of a URL. ssh reads a host or user that starts
+/// with `-` as an option (`-oProxyCommand=`), so that is refused.
+fn is_authority(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .split('@')
+            .all(|part| !part.is_empty() && !part.starts_with('-'))
 }
 
 fn is_short_ssh_url(value: &str) -> bool {
@@ -248,6 +282,7 @@ fn is_short_ssh_url(value: &str) -> bool {
     };
     let is_plain = |part: &str| {
         !part.is_empty()
+            && !part.starts_with('-')
             && part
                 .bytes()
                 .all(|byte| byte.is_ascii_alphanumeric() || b"._-".contains(&byte))

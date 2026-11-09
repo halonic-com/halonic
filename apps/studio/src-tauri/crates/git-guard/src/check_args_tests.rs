@@ -170,6 +170,84 @@ fn git_allow_list_takes_urls_only_through_remote() {
 }
 
 #[test]
+fn git_allow_list_refuses_remote_names_git_reads_as_paths() {
+    let refused = [
+        "push . main",
+        "pull .. main",
+        "push .git main",
+        "remote add .hidden https://git.acme.example/acme/notes.git",
+        "remote rename origin ..",
+    ];
+    for call in refused {
+        let result = check(call);
+        assert!(
+            matches!(result, Err(GitError::ArgumentNotAllowed { .. })),
+            "{call}: {result:?}"
+        );
+    }
+    assert_eq!(check("push acme.mirror main"), Ok(()));
+}
+
+#[test]
+fn git_allow_list_refuses_urls_whose_host_or_user_reads_as_an_option() {
+    let refused = [
+        "remote add origin ssh://-oProxyCommand=touch%20owned/acme.git",
+        "remote add origin ssh://git@-oProxyCommand=x/acme.git",
+        "remote add origin ssh://-git@git.acme.example/acme.git",
+        "remote add origin https://-x/acme.git",
+        "remote add origin https:///acme.git",
+        "remote set-url origin -oProxyCommand=x@git.acme.example:acme.git",
+        "remote set-url origin git@-oProxyCommand=x:acme.git",
+    ];
+    for call in refused {
+        let result = check(call);
+        assert!(
+            matches!(
+                result,
+                Err(GitError::ArgumentNotAllowed { .. } | GitError::OptionNotAllowed { .. })
+            ),
+            "{call}: {result:?}"
+        );
+    }
+    assert_eq!(
+        check("remote add origin ssh://git@git.acme.example:22/acme/notes.git"),
+        Ok(())
+    );
+}
+
+#[test]
+fn git_allow_list_keeps_revisions_and_paths_inside_the_repository() {
+    let refused = [
+        "diff /dev/null notes/plan.md",
+        "diff -- /dev/null notes/plan.md",
+        "diff HEAD -- ../../.ssh/id_ed25519",
+        "diff -- notes/../../outside.txt",
+        "diff -- notes\\..\\..\\outside.txt",
+        "log -- \\etc\\passwd",
+        "add -- \\\\server\\share\\notes.md",
+        "add C:/acme/notes.md",
+        "checkout -- c:notes.md",
+        "rm --cached -- /srv/acme/notes.md",
+    ];
+    for call in refused {
+        let result = check(call);
+        assert!(
+            matches!(result, Err(GitError::ArgumentNotAllowed { .. })),
+            "{call}: {result:?}"
+        );
+    }
+    let allowed = [
+        "diff main..feature -- notes/plan.md",
+        "diff HEAD~1 HEAD -- notes/..plan.md",
+        "log HEAD:notes/plan.md",
+        "add -- ./notes/plan.md",
+    ];
+    for call in allowed {
+        assert_eq!(check(call), Ok(()), "{call}");
+    }
+}
+
+#[test]
 fn git_allow_list_reads_everything_after_the_separator_as_paths() {
     assert_eq!(check("add -- --upload-pack=x -c"), Ok(()));
     assert_eq!(check("checkout -- -b"), Ok(()));
