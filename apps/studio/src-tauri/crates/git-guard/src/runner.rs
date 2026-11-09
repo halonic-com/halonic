@@ -175,7 +175,7 @@ impl GitRunner {
                 overrides: Vec::new(),
             }));
         }
-        let repository = check_located(folders, &located.stdout)?;
+        let repository = check_located(folders, &located.stdout, deadline)?;
         let entries = self.read_config(root, Some(&repository), deadline)?;
         check_refused_keys(&entries)?;
         let mut filters = Vec::new();
@@ -241,7 +241,7 @@ impl GitRunner {
             // later, so it is refused rather than skipped.
             let located = self.run_internal(&folder, None, LOCATE_ARGS, deadline)?;
             check_listing(located.code)?;
-            let nested = check_located(folders, &located.stdout)?;
+            let nested = check_located(folders, &located.stdout, deadline)?;
             if visited.contains(&nested.top) {
                 continue;
             }

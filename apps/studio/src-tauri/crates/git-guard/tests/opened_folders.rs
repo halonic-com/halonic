@@ -172,3 +172,99 @@ fn opened_folders_refuses_a_nested_repository_whose_git_folder_is_outside() {
     .expect("the git file writes");
     assert_eq!(sandbox.git("status"), Err(GitError::FolderNotOpened));
 }
+
+/// [`outside_repository`] with its objects in one pack and its refs in
+/// `packed-refs`.
+#[cfg(unix)]
+fn packed_outside_repository(sandbox: &Sandbox) -> std::path::PathBuf {
+    let outside = outside_repository(sandbox);
+    plain_git_ok(&outside, &["repack", "-q", "-a", "-d"]);
+    plain_git_ok(&outside, &["pack-refs", "--all"]);
+    outside
+}
+
+/// Whether plain git, not the runner, shows the outside repository's
+/// commit in `acme`.
+#[cfg(unix)]
+fn plain_git_shows_the_secret(sandbox: &Sandbox) -> bool {
+    let output = support::plain_git(&sandbox.acme, &["log", "-p"]);
+    String::from_utf8_lossy(&output.stdout).contains("+outside")
+}
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_refuses_objects_and_refs_linked_outside() {
+    use std::os::unix::fs::symlink;
+    let sandbox = Sandbox::new();
+    let outside = outside_repository(&sandbox);
+    sandbox.init_repository();
+    let git = sandbox.acme.join(".git");
+    for name in ["objects", "refs"] {
+        std::fs::remove_dir_all(git.join(name)).expect("the folder is removed");
+        symlink(outside.join(".git").join(name), git.join(name)).expect("the link is created");
+    }
+    assert_eq!(sandbox.git("log -p"), Err(GitError::FolderNotOpened));
+    assert!(plain_git_shows_the_secret(&sandbox));
+}
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_refuses_a_pack_file_linked_outside() {
+    use std::os::unix::fs::symlink;
+    let sandbox = Sandbox::new();
+    let outside = packed_outside_repository(&sandbox);
+    sandbox.init_repository();
+    let git = sandbox.acme.join(".git");
+    let packs = std::fs::read_dir(outside.join(".git/objects/pack")).expect("pack reads");
+    for pack in packs {
+        let pack = pack.expect("the entry reads").path();
+        let name = pack.file_name().expect("the pack has a name");
+        symlink(&pack, git.join("objects/pack").join(name)).expect("the link is created");
+    }
+    symlink(outside.join(".git/packed-refs"), git.join("packed-refs"))
+        .expect("the link is created");
+    assert_eq!(sandbox.git("log -p"), Err(GitError::FolderNotOpened));
+    assert!(plain_git_shows_the_secret(&sandbox));
+}
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_refuses_a_link_in_an_alternate_that_leads_outside() {
+    use std::os::unix::fs::symlink;
+    let sandbox = Sandbox::new();
+    let outside = packed_outside_repository(&sandbox);
+    sandbox.init_repository();
+    let shared = sandbox.temporary.folder("acme/shared");
+    plain_git_ok(&shared, &["init", "-q"]);
+    let packs = shared.join(".git/objects/pack");
+    std::fs::remove_dir_all(&packs).expect("pack is removed");
+    symlink(outside.join(".git/objects/pack"), &packs).expect("the link is created");
+    sandbox.write(
+        ".git/objects/info/alternates",
+        "../../shared/.git/objects\n",
+    );
+    assert_eq!(sandbox.git("status"), Err(GitError::FolderNotOpened));
+}
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_allows_links_in_the_git_folder_that_stay_inside() {
+    use std::os::unix::fs::symlink;
+    // The way `git-new-workdir` and `repo` share one repository's objects
+    // and refs.
+    let sandbox = Sandbox::new();
+    let shared = sandbox.temporary.folder("acme/shared");
+    plain_git_ok(&shared, &["init", "-q"]);
+    std::fs::write(shared.join("notes.md"), "shared\n").expect("the file writes");
+    plain_git_ok(&shared, &["add", "notes.md"]);
+    plain_git_ok(&shared, &["commit", "-q", "-m", "shared"]);
+    let work = sandbox.temporary.folder("acme/work");
+    plain_git_ok(&work, &["init", "-q"]);
+    for name in ["objects", "refs"] {
+        let linked = work.join(".git").join(name);
+        std::fs::remove_dir_all(&linked).expect("the folder is removed");
+        symlink(shared.join(".git").join(name), &linked).expect("the link is created");
+    }
+    let log = sandbox.git_ok_in(&work, "log --format=%s");
+    assert_eq!(log, "shared\n");
+}

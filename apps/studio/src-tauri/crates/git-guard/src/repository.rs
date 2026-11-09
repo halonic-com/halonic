@@ -6,11 +6,14 @@
 //! another repository's objects and refs, and `objects/info/alternates` at
 //! more objects. Each of them must be inside an opened folder too, or
 //! `log -p`, `reset --hard` and `push` would work on another repository.
+//! The links inside those folders are checked in [`crate::git_folder_links`].
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use crate::error::GitError;
+use crate::git_folder_links::Links;
 use crate::opened_folders::{OpenedFolders, canonical};
 
 /// git reads alternates five deep; so does the check.
@@ -34,11 +37,13 @@ pub(crate) const LOCATE_ARGS: &[&str] = &[
     "--git-common-dir",
 ];
 
-/// Reads the answer to [`LOCATE_ARGS`] and checks every folder in it, and
-/// the alternates, against the opened folders.
+/// Reads the answer to [`LOCATE_ARGS`] and checks every folder in it, the
+/// links inside the git folders, and the alternates, against the opened
+/// folders.
 pub(crate) fn check_located(
     folders: &OpenedFolders,
     stdout: &[u8],
+    deadline: Instant,
 ) -> Result<Repository, GitError> {
     // git ends each path with a newline, and on Windows writes it with `/`.
     let mut lines = stdout
@@ -63,13 +68,25 @@ pub(crate) fn check_located(
         git_dir: next_folder()?,
         common_dir: next_folder()?,
     };
-    check_alternates(folders, &repository.common_dir.join("objects"), 0)?;
+    let mut links = Links::new(folders, deadline);
+    links.check_git_folder(&repository.git_dir)?;
+    if repository.common_dir != repository.git_dir {
+        links.check_git_folder(&repository.common_dir)?;
+    }
+    let objects = repository.common_dir.join("objects");
+    check_alternates(folders, &mut links, &objects, 0)?;
     Ok(repository)
 }
 
 /// Checks every folder an `objects/info/alternates` file names, and theirs
-/// in turn. Relative entries are relative to the objects folder.
-fn check_alternates(folders: &OpenedFolders, objects: &Path, depth: usize) -> Result<(), GitError> {
+/// in turn, with the links inside them. Relative entries are relative to
+/// the objects folder.
+fn check_alternates(
+    folders: &OpenedFolders,
+    links: &mut Links<'_>,
+    objects: &Path,
+    depth: usize,
+) -> Result<(), GitError> {
     let file = objects.join("info").join("alternates");
     let contents = match std::fs::read(&file) {
         Ok(contents) => contents,
@@ -87,8 +104,9 @@ fn check_alternates(folders: &OpenedFolders, objects: &Path, depth: usize) -> Re
         if !folders.contains_canonical(&alternate) {
             return Err(GitError::FolderNotOpened);
         }
+        links.check_canonical_folder(alternate.clone())?;
         if depth < MAX_ALTERNATE_DEPTH {
-            check_alternates(folders, &alternate, depth + 1)?;
+            check_alternates(folders, links, &alternate, depth + 1)?;
         }
     }
     Ok(())

@@ -20,6 +20,7 @@ mod allow_list;
 mod check_args;
 mod error;
 mod find_git;
+mod git_folder_links;
 mod limited_run;
 mod opened_folders;
 mod repo_config;
