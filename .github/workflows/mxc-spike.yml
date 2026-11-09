@@ -1,4 +1,4 @@
-# THROWAWAY (HAL-2396, HAL-2444): MXC process-container spike on a Windows runner.
+# THROWAWAY (HAL-2396, HAL-2444, HAL-2545): MXC process-container spike on a Windows runner.
 # Draft pull request only; closed once the result is written up.
 name: MXC spike
 
@@ -114,3 +114,29 @@ jobs:
             Get-Content $out -ErrorAction SilentlyContinue
             Get-Content $err -ErrorAction SilentlyContinue
           }
+      # Round 3 (HAL-2545)
+      - name: 5. pnpm install --offline, pnpm -v and a small build inside BaseContainer (symlink flags, no drive-root grant)
+        if: matrix.os == 'windows-11-arm'
+        working-directory: spikes/mxc
+        run: node probe3.mjs
+        continue-on-error: true
+        timeout-minutes: 20
+      - name: 6. Real-PC check script, as this (elevated) runner user
+        working-directory: spikes/mxc/realpc
+        run: cmd /c "mxc-check.cmd < NUL"
+        continue-on-error: true
+        timeout-minutes: 15
+      - name: 6b. Real-PC check script, as the plain local user (no admin)
+        if: matrix.os == 'windows-11-arm'
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          Copy-Item spikes\mxc\realpc\mxc-check.cmd $env:SystemDrive\mxc-spike\
+          $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
+          $out = "$env:SystemDrive\mxc-spike\out-realpc.txt"; $err = "$env:SystemDrive\mxc-spike\err-realpc.txt"
+          $p = Start-Process -FilePath cmd.exe -ArgumentList '/c', 'mxc-check.cmd < NUL' -WorkingDirectory $env:SystemDrive\mxc-spike `
+            -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+          Write-Host "=== real-PC script as normal user, exit $($p.ExitCode)"
+          Get-Content $out -ErrorAction SilentlyContinue
+          Get-Content $err -ErrorAction SilentlyContinue
