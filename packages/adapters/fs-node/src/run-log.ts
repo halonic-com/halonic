@@ -25,7 +25,7 @@ const lineBreak = 0x0a;
  */
 export function parseRunLog(bytes: Uint8Array, runId: string, file: string): RunLog {
   const intactBytes = bytes.lastIndexOf(lineBreak) + 1;
-  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, intactBytes));
+  const text = decodeLines(bytes.subarray(0, intactBytes), file);
   const lines = text === "" ? [] : text.slice(0, -1).split("\n");
   const events = lines.map((line, index) => parseLine(line, index + 1, runId, file));
   return { events, intactBytes, torn: intactBytes < bytes.length };
@@ -34,6 +34,15 @@ export function parseRunLog(bytes: Uint8Array, runId: string, file: string): Run
 /** Writes events as log lines, each ending in a line break. */
 export function formatLogLines(events: readonly RunEvent[]): string {
   return events.map((event) => `${JSON.stringify(event)}\n`).join("");
+}
+
+/** The whole lines of a log as text, or an error naming the file when they aren't UTF-8. */
+function decodeLines(bytes: Uint8Array, file: string): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error(`Broken run log ${file}: it is not valid UTF-8 text.`);
+  }
 }
 
 function parseLine(line: string, seq: number, runId: string, file: string): RunEvent {

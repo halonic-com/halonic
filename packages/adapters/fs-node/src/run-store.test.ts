@@ -3,11 +3,33 @@ import { join } from "node:path";
 import type { RunEvent } from "@halonicjs/events";
 import { runStoreContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, expect, it } from "vitest";
+import { afterAll, afterEach, expect, it, vi } from "vitest";
 import { FolderRunStore } from "./run-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
+/** When set, the next log write gets only this many bytes out, then fails as a full disk would. */
+const failingWrite = vi.hoisted(() => ({ bytesOut: undefined as number | undefined }));
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...fs,
+    appendFile: async (file: string, text: string, encoding: BufferEncoding) => {
+      const bytesOut = failingWrite.bytesOut;
+      if (bytesOut === undefined) {
+        return await fs.appendFile(file, text, encoding);
+      }
+      failingWrite.bytesOut = undefined;
+      await fs.appendFile(file, Buffer.from(text, encoding).subarray(0, bytesOut));
+      throw Object.assign(new Error("ENOSPC: no space left on device"), { code: "ENOSPC" });
+    },
+  };
+});
+
 afterAll(removeTempFolders);
+afterEach(() => {
+  failingWrite.bytesOut = undefined;
+});
 
 runStoreContract("folder", async () => new FolderRunStore(await tempFolder()));
 
@@ -131,6 +153,30 @@ verifies("fs-node.run-store-recovery", () => {
     expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
   });
 
+  it("stores none of an append's events when the write fails part-way", async () => {
+    const { root, store } = await storeWithRun();
+    const log = join(root, "r1.jsonl");
+    const before = await readFile(log, "utf8");
+    const batch = [entered("r1", 4), entered("r1", 5), entered("r1", 6)];
+    // The first new line and part of the second get out before the disk is full.
+    failingWrite.bytesOut = JSON.stringify(batch[0]).length + 10;
+    await expect(store.append("r1", 3, batch)).rejects.toThrow("ENOSPC");
+    expect(await readFile(log, "utf8")).toBe(before);
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
+    expect(await store.append("r1", 3, batch)).toEqual({ ok: true, lastSeq: 6 });
+  });
+
+  it("stores nothing for a new run whose first write fails part-way", async () => {
+    const root = await tempFolder();
+    const store = new FolderRunStore(root);
+    failingWrite.bytesOut = JSON.stringify(started("r1")).length + 1;
+    await expect(store.append("r1", 0, [started("r1"), entered("r1", 2)])).rejects.toThrow(
+      "ENOSPC",
+    );
+    expect(await store.events("r1")).toEqual([]);
+    expect(await store.list()).toEqual([]);
+  });
+
   it("fails on a broken line in the middle of a log, naming the file and line", async () => {
     const { root, store } = await storeWithRun();
     const log = join(root, "r1.jsonl");
@@ -139,6 +185,14 @@ verifies("fs-node.run-store-recovery", () => {
     await expect(store.events("r1")).rejects.toThrow("Broken run log r1.jsonl, line 2");
     await writeFile(log, [lines[0], lines[2], ""].join("\n"));
     await expect(store.events("r1")).rejects.toThrow("line 2: it holds event 3 of run r1");
+  });
+
+  it("fails on a log that isn't UTF-8, naming the file", async () => {
+    const { root, store } = await storeWithRun();
+    await writeFile(join(root, "r1.jsonl"), Buffer.from([0xff, 0x0a]), { flag: "a" });
+    await expect(store.events("r1")).rejects.toThrow(
+      "Broken run log r1.jsonl: it is not valid UTF-8",
+    );
   });
 
   it("gives a stale snapshot, so the engine replays the events after it", async () => {

@@ -39,16 +39,23 @@ and passes the shared `DefinitionStore` contract suite.
   then replays the log.
 - **List:** worked out from the logs on every call, with no cache. Deleting
   a `.jsonl` removes the run.
+- **Failed appends:** an append that fails, for example on a full disk,
+  cuts the log back to where it was and stores nothing.
 - **Crashes:** an event counts once its line break is written. A torn last
   line is skipped and cut off before the next append. A broken line in the
   middle of a log is an error naming the file and line. A snapshot that is
   missing, unreadable or ahead of the log gives `null`.
 - **Run ids:** 1 to 128 letters, digits, `_`, `-` or `.`, not starting with
   a dot and not a Windows device name such as `NUL`. Anything else is a
-  `RangeError`, so a run id can't leave the root.
+  `RangeError`, so a run id can't leave the root. On macOS and Windows,
+  `Run_1` and `run_1` are the same file, and reading one after writing the
+  other is a "Broken run log" error; the engine's run ids are lower case.
 - **Limits:** appends to one run go one at a time inside one process, so
   `expectedSeq` holds there. Two processes must not write to the same run
-  folder.
+  folder. A log survives a crash of the program, not of the machine: there
+  is no `fsync`, so after a power cut the last appends may be gone. If the
+  program crashes in the middle of an append of several events, the first
+  of them may be stored without the rest.
 
 ## Example
 

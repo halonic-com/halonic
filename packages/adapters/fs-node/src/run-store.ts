@@ -39,7 +39,9 @@ const windowsDeviceName = /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/iu;
  * from the logs on every call, so deleting a log removes the run.
  *
  * Appends to one run go one at a time, so `expectedSeq` holds within this
- * process. Two processes must not write to the same folder.
+ * process. Two processes must not write to the same folder. An append that
+ * fails stores nothing, but one cut off by a crash of the program may leave
+ * the first events of its batch stored.
  */
 export class FolderRunStore implements RunStore {
   readonly #root: string;
@@ -79,7 +81,7 @@ export class FolderRunStore implements RunStore {
         // A new run: a snapshot left from a deleted log of the same id isn't this run's.
         await rm(this.#file(runId, snapshotSuffix), { force: true });
       }
-      await appendFile(this.#file(runId, logSuffix), lines, "utf8");
+      await this.#appendLines(runId, lines, log.intactBytes);
       if (snapshot !== undefined) {
         await this.#writeSnapshot(runId, snapshot);
       }
@@ -160,6 +162,22 @@ export class FolderRunStore implements RunStore {
   }
 
   /**
+   * Adds the lines to the log, all of them or none. A write can fail part-way
+   * (a full disk, an I/O error) after some whole lines are out, and those
+   * would count as stored; so on a failure the log is cut back to
+   * `intactBytes`, its size before this append, and the error is passed on.
+   */
+  async #appendLines(runId: string, lines: string, intactBytes: number): Promise<void> {
+    const file = this.#file(runId, logSuffix);
+    try {
+      await appendFile(file, lines, "utf8");
+    } catch (error) {
+      await cutBack(file, intactBytes);
+      throw error;
+    }
+  }
+
+  /**
    * Replaces the snapshot through a temporary file and a rename, so a reader
    * sees the old snapshot or the new one, never half of one. The events are
    * already stored by then, and the log is the truth: when this fails, the
@@ -198,6 +216,19 @@ export function checkRunId(runId: string): void {
 
 function isRunId(runId: string): boolean {
   return runIdPattern.test(runId) && !windowsDeviceName.test(runId);
+}
+
+/**
+ * Cuts a log back to `size` bytes after a failed append. When that fails as
+ * well, the failed append's error is the one worth reporting, so this one is
+ * dropped; the lines left behind then count as stored, as after a crash.
+ */
+async function cutBack(file: string, size: number): Promise<void> {
+  try {
+    await truncate(file, size);
+  } catch {
+    // Missing (the write failed before creating it) or not writable.
+  }
 }
 
 /** A stored snapshot, or `null` when the text isn't one. */

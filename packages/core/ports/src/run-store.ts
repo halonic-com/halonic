@@ -33,9 +33,10 @@ export type AppendResult =
 /** Options for {@link RunStore.append}. */
 export interface AppendOptions {
   /**
-   * The engine's state after these events, as plain JSON data. It is stored
-   * in the same write as the events, or not at all, so the next step starts
-   * from it instead of replaying the whole log.
+   * The engine's state after these events, as plain JSON data, so the next
+   * step starts from it instead of replaying the whole log. It is a cache:
+   * an adapter may store the events and drop the snapshot, and `snapshot()`
+   * then gives an older one or `null`.
    */
   snapshot?: unknown;
 }
@@ -55,8 +56,10 @@ export interface RunStore {
   /**
    * Appends events to a run's log, but only if its last stored event is
    * `expectedSeq` (0 for a new run), so two writers can never both win.
-   * The events, and the snapshot when given, are stored together or not at
-   * all.
+   * The events are stored together or not at all: an append that fails or
+   * gives a conflict stores none of them. Only a crash of the program in the
+   * middle of an append may leave the first events stored, in an adapter
+   * that writes to disk; its readme says so.
    *
    * @param runId - the run the events belong to; every event carries it too
    * @param expectedSeq - the sequence number of the last event the writer saw
