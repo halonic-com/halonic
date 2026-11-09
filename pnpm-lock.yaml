@@ -630,6 +630,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../format
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../std
       '@halonicjs/workflow':
         specifier: workspace:*
         version: link:../workflow

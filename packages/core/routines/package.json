@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@halonicjs/format": "workspace:*",
+    "@halonicjs/std": "workspace:*",
     "@halonicjs/workflow": "workspace:*"
   },
   "devDependencies": {
