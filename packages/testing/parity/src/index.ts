@@ -16,7 +16,7 @@ export {
   readCase,
 } from "./cases.ts";
 export { baseCliCalls, type CliCall } from "./cli-calls.ts";
-export type { AllowedFixture } from "./compare/allowed-fixtures.ts";
+export type { AllowedCheck, AllowedFixture } from "./compare/allowed-fixtures.ts";
 export {
   type Comparison,
   compareFile,
@@ -34,10 +34,18 @@ export {
 export {
   type Judged,
   judge,
+  judgeChecks,
   type ParityReport,
   type StaleFixture,
   type Verdict,
 } from "./compare/judge.ts";
+export {
+  type CheckCase,
+  type CheckComparison,
+  checkCases,
+  checksByFile,
+  compareChecks,
+} from "./compare/loader-checks.ts";
 export { composeWorkspace } from "./compose.ts";
 export {
   cloneProblems,

@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { type AllowedFixture, readAllowedFixtures } from "./compare/allowed-fixtures.ts";
+import {
+  type AllowedCheck,
+  type AllowedFixture,
+  readAllowedChecks,
+  readAllowedFixtures,
+} from "./compare/allowed-fixtures.ts";
 
 /** The statuses an allowed difference can have, in order. */
 export const differenceStatuses = ["proposed", "signed-off"] as const;
@@ -27,6 +32,12 @@ export interface AllowedDifference {
    * new result in full. Left out when the fixtures don't reach it.
    */
   readonly fixtures?: readonly AllowedFixture[];
+  /**
+   * The parity fixture files whose messages from checks between files this
+   * difference changes, each with its old and new messages in full. Left out
+   * when those checks don't show it.
+   */
+  readonly checks?: readonly AllowedCheck[];
 }
 
 /** The package's own allowed-differences file. */
@@ -37,7 +48,17 @@ export const allowedDifferencesFile = fileURLToPath(
 const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** A requirement ID: the package's short name, a dot, and the requirement's kebab-case name. */
 const requirementPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const fields = ["id", "requirement", "area", "old", "new", "why", "status", "fixtures"] as const;
+const fields = [
+  "id",
+  "requirement",
+  "area",
+  "old",
+  "new",
+  "why",
+  "status",
+  "fixtures",
+  "checks",
+] as const;
 
 function text(entry: Record<string, unknown>, field: string, where: string): string {
   const value = entry[field];
@@ -79,9 +100,28 @@ function readEntry(raw: unknown, where: string): AllowedDifference {
     why: text(entry, "why", where),
     status: status as DifferenceStatus,
   };
-  return entry["fixtures"] === undefined
-    ? difference
-    : { ...difference, fixtures: readAllowedFixtures(entry["fixtures"], where) };
+  return {
+    ...difference,
+    ...(entry["fixtures"] === undefined
+      ? {}
+      : { fixtures: readAllowedFixtures(entry["fixtures"], where) }),
+    ...(entry["checks"] === undefined ? {} : { checks: readAllowedChecks(entry["checks"], where) }),
+  };
+}
+
+/** Throws when two fixtures, of one entry or of two, name one fixture file. */
+function noFileTwice(
+  fixtures: readonly { readonly case: string; readonly file: string }[],
+  seen: Set<string>,
+  where: string,
+): void {
+  for (const fixture of fixtures) {
+    const name = `${fixture.case}: ${fixture.file}`;
+    if (seen.has(name)) {
+      throw new Error(`${where}: fixture "${name}" is listed twice`);
+    }
+    seen.add(name);
+  }
 }
 
 /**
@@ -95,19 +135,16 @@ export function parseAllowedDifferences(raw: unknown): AllowedDifference[] {
   }
   const seen = new Set<string>();
   const seenFixtures = new Set<string>();
+  const seenChecks = new Set<string>();
   return raw.map((item, index) => {
-    const difference = readEntry(item, `allowed difference ${index + 1}`);
+    const where = `allowed difference ${index + 1}`;
+    const difference = readEntry(item, where);
     if (seen.has(difference.id)) {
-      throw new Error(`allowed difference ${index + 1}: id "${difference.id}" is used twice`);
+      throw new Error(`${where}: id "${difference.id}" is used twice`);
     }
     seen.add(difference.id);
-    for (const fixture of difference.fixtures ?? []) {
-      const name = `${fixture.case}: ${fixture.file}`;
-      if (seenFixtures.has(name)) {
-        throw new Error(`allowed difference ${index + 1}: fixture "${name}" is listed twice`);
-      }
-      seenFixtures.add(name);
-    }
+    noFileTwice(difference.fixtures ?? [], seenFixtures, where);
+    noFileTwice(difference.checks ?? [], seenChecks, `${where}: checks`);
     return difference;
   });
 }

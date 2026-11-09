@@ -168,8 +168,7 @@ compare takes the old result from `recorded.json` and the new one from
 path, code, line and column, in order. Nothing is dropped or rounded. A YAML
 syntax error is compared by its line and column, with the code `syntax`.
 Errors the old loader found between files (an unknown agent, a workflow rule)
-are kept with the file for the report; the new loader checks those in
-phase 2, so only the file's own result is compared now.
+are kept with the file for the report and compared on their own, below.
 
 `format`'s `parity.test.ts` runs it, because this package can't depend on
 `format` (`format` already uses the fixtures):
@@ -180,6 +179,30 @@ const report = judge(
   readAllowedDifferences(allowedDifferencesFile),
 );
 // Passes only when report.unexplained and report.stale are both empty.
+```
+
+### Checks between files
+
+For every fixture, the compare also takes each message the old loader gave
+from a check between files: an unknown name, a workflow rule, a routine's
+trigger, an old layout. It groups them by the file on disk they are about,
+each file's in the order `recorded.json` lists them, and compares them with
+the new loader's, file by file in path order: the same severity and words, in
+the same order. Files the old recording shows failed on their own are left
+out on both sides, as the compare above checks those. The old
+loader named some files by an older path (a hub's routines under
+`hubs/<hub>/routines/`); the base's recording maps each to its path on disk.
+
+`workspace`'s `parity.test.ts` runs it with `loadWorkspace`:
+
+```ts
+const comparisons = [];
+for (const checkCase of checkCases(fixtures)) {
+  const workspace = await loadWorkspace(sourceOf(checkCase.parityCase));
+  const fresh = checksByFile(workspace.issues.filter((issue) => issue.source === "check"));
+  comparisons.push(...compareChecks(checkCase, fresh));
+}
+const report = judgeChecks(comparisons, readAllowedDifferences(allowedDifferencesFile));
 ```
 
 ## Allowed differences
@@ -198,6 +221,10 @@ behave differently from the old one. Each entry has:
   in full, as the compare sees them. The compare allows exactly that
   difference. An entry whose file no longer differs, or differs in another
   way, is stale and fails the compare
+- `checks`, only where the difference shows in the checks between files: each
+  fixture file (`case` and `file`, or a folder for an old layout) with its
+  `old` and `new` messages (`severity` and `message`) written out in full and
+  in order. It is judged the same way as `fixtures`
 
 The compare code, `src/allowed-differences.ts` and `allowed-differences.json`
 are guarded: a change could make parity pass by comparing less.

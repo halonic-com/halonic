@@ -1,6 +1,6 @@
 import type { AllowedDifference } from "../allowed-differences.ts";
-import type { AllowedFixture } from "./allowed-fixtures.ts";
 import { type Comparison, deepEqual } from "./compare.ts";
+import type { CheckComparison } from "./loader-checks.ts";
 
 /**
  * `same`: old and new are equal. `allowed`: they differ exactly as an entry
@@ -8,11 +8,20 @@ import { type Comparison, deepEqual } from "./compare.ts";
  */
 export type Verdict = "same" | "allowed" | "different";
 
-export interface Judged extends Comparison {
+/** What judging needs of a comparison: which file, both results, and whether they are equal. */
+export interface Compared {
+  readonly caseId: string;
+  readonly file: string;
+  readonly old: unknown;
+  readonly new: unknown;
+  readonly same: boolean;
+}
+
+export type Judged<C extends Compared = Comparison> = C & {
   readonly verdict: Verdict;
   /** The entry that allows the difference, for `allowed`. */
   readonly entry?: string;
-}
+};
 
 /** An entry's fixture that no longer describes a real difference. */
 export interface StaleFixture {
@@ -22,52 +31,59 @@ export interface StaleFixture {
   readonly reason: string;
 }
 
-export interface ParityReport {
-  readonly results: readonly Judged[];
+export interface ParityReport<C extends Compared = Comparison> {
+  readonly results: readonly Judged<C>[];
   /** Differences no entry allows. The compare passes only when this is empty. */
-  readonly unexplained: readonly Judged[];
+  readonly unexplained: readonly Judged<C>[];
   /** Entries' fixtures that don't match a difference. The compare passes only when this is empty too. */
   readonly stale: readonly StaleFixture[];
 }
 
+/** One fixture file an entry lets differ, with both results written out. */
+interface Allowance {
+  readonly entry: string;
+  readonly case: string;
+  readonly file: string;
+  readonly old: unknown;
+  readonly new: unknown;
+}
+
 const key = (caseId: string, file: string): string => `${caseId}: ${file}`;
 
-function staleReason(fixture: AllowedFixture, found: Comparison | undefined): string | undefined {
+function staleReason(allowance: Allowance, found: Compared | undefined): string | undefined {
   if (found === undefined) {
     return "no such fixture file";
   }
   if (found.same) {
     return "old and new are the same now: remove it";
   }
-  if (!deepEqual(fixture.old, found.old) || !deepEqual(fixture.new, found.new)) {
+  if (!deepEqual(allowance.old, found.old) || !deepEqual(allowance.new, found.new)) {
     return "the results differ from the ones the entry writes out";
   }
   return undefined;
 }
 
 /**
- * Judges every comparison against the allowed differences. A difference is
- * allowed only by an entry that names the fixture file and writes out exactly
+ * Judges every comparison against the allowances. A difference is allowed
+ * only by an allowance that names the fixture file and writes out exactly
  * its old and its new result.
  */
-export function judge(
-  comparisons: readonly Comparison[],
-  entries: readonly AllowedDifference[],
-): ParityReport {
+function judgeAgainst<C extends Compared>(
+  comparisons: readonly C[],
+  allowances: readonly Allowance[],
+): ParityReport<C> {
   const byFile = new Map(comparisons.map((c) => [key(c.caseId, c.file), c]));
   const allowedBy = new Map<string, string>();
   const stale: StaleFixture[] = [];
-  for (const entry of entries) {
-    for (const fixture of entry.fixtures ?? []) {
-      const reason = staleReason(fixture, byFile.get(key(fixture.case, fixture.file)));
-      if (reason !== undefined) {
-        stale.push({ entry: entry.id, case: fixture.case, file: fixture.file, reason });
-      } else {
-        allowedBy.set(key(fixture.case, fixture.file), entry.id);
-      }
+  for (const allowance of allowances) {
+    const reason = staleReason(allowance, byFile.get(key(allowance.case, allowance.file)));
+    if (reason !== undefined) {
+      stale.push({ entry: allowance.entry, case: allowance.case, file: allowance.file, reason });
+    } else {
+      allowedBy.set(key(allowance.case, allowance.file), allowance.entry);
     }
   }
-  const results = comparisons.map((comparison): Judged => {
+  const results = comparisons.map((comparison): Judged<C> => {
     if (comparison.same) {
       return { ...comparison, verdict: "same" };
     }
@@ -81,4 +97,26 @@ export function judge(
     unexplained: results.filter((result) => result.verdict === "different"),
     stale,
   };
+}
+
+/** Judges each file's own result against the entries' `fixtures`. */
+export function judge(
+  comparisons: readonly Comparison[],
+  entries: readonly AllowedDifference[],
+): ParityReport {
+  const allowances = entries.flatMap((entry) =>
+    (entry.fixtures ?? []).map((fixture) => ({ entry: entry.id, ...fixture })),
+  );
+  return judgeAgainst(comparisons, allowances);
+}
+
+/** Judges each file's messages from checks between files against the entries' `checks`. */
+export function judgeChecks(
+  comparisons: readonly CheckComparison[],
+  entries: readonly AllowedDifference[],
+): ParityReport<CheckComparison> {
+  const allowances = entries.flatMap((entry) =>
+    (entry.checks ?? []).map((check) => ({ entry: entry.id, ...check })),
+  );
+  return judgeAgainst(comparisons, allowances);
 }
