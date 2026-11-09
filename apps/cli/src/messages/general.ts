@@ -18,8 +18,8 @@ export const errorMessages = defineMessages("error", {
   /** Line 2 of a bug: the approved step (F16, microcopy L4), with `--debug` from HAL-2147. */
   internalFix: () =>
     phrase`Run it again with --debug to see the details, and report it: ${issuesLink}`,
-  /** Optional line 3: the docs page and the detailed code, for searching and bug reports. */
-  more: (link: string, code: string) => [...phrase`More: ${link} `, dim(`(${code})`)],
+  /** Optional line 3, dimmed as a whole: the docs page and the detailed code, for searching and bug reports. */
+  more: (link: string, code: string) => [dim(`More: ${link} (${code})`)],
 });
 
 /** The sentences for a wrong command line (cli-output 1.3, "Wrong usage"). */

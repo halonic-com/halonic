@@ -20,8 +20,9 @@ verifies("cli.messages", () => {
   });
 
   it("keeps the same words with colour, through a pipe and as JSON text", () => {
-    const sentence = phrase`Replace the key in Studio (Settings ${markPart("studioPath")} Models), then ${bold("run")} again. ${dim("(key-refused)")}`;
-    const words = "Replace the key in Studio (Settings › Models), then run again. (key-refused)";
+    const sentence = phrase`Replace the key in Studio (Settings ${markPart("studioPath")} Models ${markPart("studioPath")} ${bold("OpenAI")}), or set HALONIC_SECRET_OPENAI_KEY, then run again. ${dim("(key-refused)")}`;
+    const words =
+      "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again. (key-refused)";
     expect(plainText(sentence)).toBe(words);
     expect(renderPhrase(sentence, piped)).toBe(words);
     const inTerminal = renderPhrase(sentence, coloured);
@@ -30,15 +31,17 @@ verifies("cli.messages", () => {
     expect(inTerminal.replaceAll(escapeCode, "")).toBe(words);
   });
 
-  it("makes the exit codes of the help as the design's three lines", () => {
-    const lines = ([0, 1, 2] as const).map((line) =>
+  it("makes the exit codes of the help as the design's four lines, each under 80 columns", () => {
+    const lines = ([0, 1, 2, 3] as const).map((line) =>
       plainText(helpMessages.exitCodes(line).phrase),
     );
     expect(lines).toEqual([
-      "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input · 3 not trusted ·",
-      "4 not found · 5 conflict · 6 signed out · 7 not allowed · 8 limit reached ·",
-      "9 didn't answer or the sandbox can't start · 130 or 143 stopped",
+      "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input ·",
+      "3 not trusted · 4 not found · 5 conflict · 6 signed out · 7 not allowed ·",
+      "8 limit reached · 9 didn't answer or the sandbox can't start ·",
+      "130 or 143 stopped",
     ]);
+    for (const line of lines) expect(line.length).toBeLessThan(80);
   });
 });
 
@@ -79,7 +82,7 @@ describe("the general sentences", () => {
     );
   });
 
-  it("dims the code after the docs link", () => {
+  it("dims the whole line with the docs link and the code", () => {
     const more = errorMessages.more(
       "https://docs.halonic.com/sandbox#bubblewrap",
       "bubblewrap-missing",
@@ -87,7 +90,9 @@ describe("the general sentences", () => {
     expect(renderPhrase(more.phrase, piped)).toBe(
       "More: https://docs.halonic.com/sandbox#bubblewrap (bubblewrap-missing)",
     );
-    expect(renderPhrase(more.phrase, coloured)).toContain("\u001b[2m(bubblewrap-missing)");
+    expect(renderPhrase(more.phrase, coloured)).toBe(
+      "\u001b[2mMore: https://docs.halonic.com/sandbox#bubblewrap (bubblewrap-missing)\u001b[22m",
+    );
   });
 
   it("offers a near command or option only through its own sentence", () => {
@@ -115,8 +120,8 @@ describe("the general sentences", () => {
       "Options for every command: --json, --no-color, --verbose, --debug, --help",
       "Run halonic <command> --help for a command's arguments and options.",
     ]);
-    expect(words(helpMessages.commandUsage("schema", "[outDir]"))).toBe(
-      "Usage: halonic schema [outDir]",
+    expect(words(helpMessages.commandUsage("schema", "[folder]"))).toBe(
+      "Usage: halonic schema [folder]",
     );
     expect(words(helpMessages.commandUsage("doctor", ""))).toBe("Usage: halonic doctor");
     expect(words(helpMessages.optionsHeading())).toBe("Options:");

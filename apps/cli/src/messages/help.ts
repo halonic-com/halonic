@@ -8,8 +8,8 @@ export const helpMessages = defineMessages("help", {
   commandsHeading: () => phrase`Commands:`,
   globalOptions: (options: readonly string[]) =>
     phrase`Options for every command: ${options.join(", ")}`,
-  /** The exit codes, on three lines as the design sets them, so each fits an 80-column terminal. */
-  exitCodes: (line: 0 | 1 | 2) => exitCodeLine(line),
+  /** The exit codes, on four lines as the design sets them, so each fits an 80-column terminal. */
+  exitCodes: (line: ExitCodeLine) => exitCodeLine(line),
   commandHelpHint: () =>
     phrase`Run halonic <command> --help for a command's arguments and options.`,
   commandUsage: (command: string, usage: string) =>
@@ -18,13 +18,17 @@ export const helpMessages = defineMessages("help", {
 });
 
 const exitCodeMeanings: readonly (readonly string[])[] = [
-  ["0 worked", "1 failed or found errors", "2 wrong usage or input", "3 not trusted"],
-  ["4 not found", "5 conflict", "6 signed out", "7 not allowed", "8 limit reached"],
-  ["9 didn't answer or the sandbox can't start", "130 or 143 stopped"],
+  ["0 worked", "1 failed or found errors", "2 wrong usage or input"],
+  ["3 not trusted", "4 not found", "5 conflict", "6 signed out", "7 not allowed"],
+  ["8 limit reached", "9 didn't answer or the sandbox can't start"],
+  ["130 or 143 stopped"],
 ];
 
+/** Which of the help's exit-code lines, from the first. */
+export type ExitCodeLine = 0 | 1 | 2 | 3;
+
 /** One line of exit codes, joined by the · mark, with a trailing · when more lines follow. */
-function exitCodeLine(line: 0 | 1 | 2): Phrase {
+function exitCodeLine(line: ExitCodeLine): Phrase {
   const separator = markPart("separator");
   const meanings = exitCodeMeanings[line] ?? [];
   const joined = meanings.flatMap((meaning, index) =>

@@ -16,4 +16,4 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
   then the words are the same each time, and only the terminal gets escape codes.
 - Given `halonic --help`'s exit codes,
   when they are made,
-  then they are the three lines of cli-output 1.9, joined by ·.
+  then they are the four lines of cli-output 1.9, joined by ·, each under 80 columns.
