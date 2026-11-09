@@ -2,6 +2,10 @@
   "identifier": "connect-page",
   "description": "The app's own connect page may call the connect command. It is local only: no capability names a remote address, so the Studio the computer serves gets no command at all.",
   "local": true,
-  "windows": ["main"],
-  "permissions": ["allow-connect"]
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-connect"
+  ]
 }

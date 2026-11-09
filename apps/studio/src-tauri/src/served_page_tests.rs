@@ -4,10 +4,10 @@
 //! may still call `connect`.
 
 use serde_json::{Value, json};
-use tauri::Manager;
+use tauri::WebviewUrl;
 use tauri::ipc::{CallbackFn, InvokeBody};
 use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
-use tauri::webview::{InvokeRequest, WebviewWindow};
+use tauri::webview::{InvokeRequest, WebviewWindow, WebviewWindowBuilder};
 
 use crate::shell;
 
@@ -52,12 +52,16 @@ fn every_command() -> Vec<String> {
     commands
 }
 
+/// The shell on Tauri's mock runtime, with the window that
+/// tauri.conf.json opens. The mock opens configured windows only when the
+/// app runs, so the test opens it under the same label.
 fn app_window() -> WebviewWindow<MockRuntime> {
     let app = shell(mock_builder())
         .build(tauri::generate_context!())
         .expect("the shell builds on the mock runtime");
-    app.get_webview_window("main")
-        .expect("tauri.conf.json opens the main window")
+    WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
+        .build()
+        .expect("the main window opens")
 }
 
 fn invoke(
