@@ -1,5 +1,5 @@
 import { defineMessages } from "./define.ts";
-import { dim, type Phrase, phrase } from "./phrase.ts";
+import { dim, type Phrase, type PhraseValue, phrase } from "./phrase.ts";
 
 /** Where a bug is reported; the `internal` fix line links to it. */
 export const issuesLink = "https://github.com/halonic-com/halonic/issues";
@@ -12,14 +12,18 @@ export const issuesLink = "https://github.com/halonic-com/halonic/issues";
  */
 export const errorMessages = defineMessages("error", {
   /** Line 1 when the command knows what it was doing: "Couldn't run support-reply: …". */
-  couldnt: (action: Phrase, reason: string) => phrase`Couldn't ${action}: ${reason}`,
+  couldnt: (action: Phrase, reason: PhraseValue) => phrase`Couldn't ${action}: ${reason}`,
   /** Line 1 of a bug, instead of its own text. */
   internal: () => phrase`Halonic ran into a problem it can't explain yet.`,
   /** Line 2 of a bug: the approved step (F16, microcopy L4), with `--debug` from HAL-2147. */
   internalFix: () =>
     phrase`Run it again with --debug to see the details, and report it: ${issuesLink}`,
+  /** With `--debug`, the first line of each error a bug wraps, after its own stack. */
+  causedBy: (text: string) => phrase`Caused by: ${text}`,
   /** Optional line 3, dimmed as a whole: the docs page and the detailed code, for searching and bug reports. */
-  more: (link: string, code: string) => [dim(`More: ${link} (${code})`)],
+  more: (link: string, code?: string) => [
+    dim(code === undefined ? `More: ${link}` : `More: ${link} (${code})`),
+  ],
 });
 
 /** The sentences for a wrong command line (cli-output 1.3, "Wrong usage"). */

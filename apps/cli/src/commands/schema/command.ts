@@ -3,6 +3,8 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { jsonSchemaOf, kindNames } from "@halonicjs/format";
 import { type CliCommand, UsageError } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
+import { markPart, phrase, plainText } from "../../messages/phrase.ts";
+import { schemaMessages } from "../../messages/schema.ts";
 
 /** The folder `halonic schema` writes to when none is given. */
 export const defaultSchemaFolder = "schemas";
@@ -11,13 +13,12 @@ export const defaultSchemaFolder = "schemas";
 export const schemaCommand: CliCommand = {
   name: "schema",
   usage: "[outDir]",
-  summary: "Write the JSON Schema of every file kind, for editors",
+  summary: schemaMessages.summary(),
+  action: () => schemaMessages.action(),
   options: {},
   async run(input, io) {
     if (input.positionals.length > 1) {
-      throw new UsageError(
-        `halonic schema takes at most one folder, and you gave ${countWord(input.positionals.length)}: ${input.positionals.map(shownName).join(", ")}.`,
-      );
+      throw new UsageError(schemaMessages.tooManyFolders(input.positionals.map(shownName)));
     }
     const folder = input.positionals[0] ?? defaultSchemaFolder;
     const target = resolve(io.cwd, folder);
@@ -29,7 +30,8 @@ export const schemaCommand: CliCommand = {
         `${JSON.stringify(jsonSchemaOf(kind), null, 2)}\n`,
       );
     }
-    io.out(`✓ Wrote ${kinds.length} JSON Schemas to ${shownPath(io.cwd, target)}.`);
+    const wrote = schemaMessages.wrote(kinds.length, shownPath(io.cwd, target));
+    io.out(plainText(phrase`${markPart("done")} ${wrote.phrase}`));
     return exitCode.ok;
   },
 };
@@ -59,11 +61,4 @@ export function shownPath(cwd: string, target: string): string {
     return path;
   }
   return `.${sep}${path}`;
-}
-
-const countWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
-
-/** 2 → "two": a small count as a word, a larger one as digits. */
-function countWord(count: number): string {
-  return countWords[count] ?? String(count);
 }

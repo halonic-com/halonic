@@ -2,14 +2,23 @@ import { KindedError, SecretScrubber } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { UsageError } from "./command.ts";
+import { defineMessages } from "./messages/define.ts";
+import { usageMessages } from "./messages/general.ts";
+import { helpMessages } from "./messages/help.ts";
+import { bold, phrase, plainText } from "./messages/phrase.ts";
 import { type PrintErrorContext, printError } from "./print-error.ts";
 
-/** Prints `error` and returns the lines written. */
+/** Prints `error` and returns the lines as plain text. */
 function printed(error: unknown, context: PrintErrorContext = {}): string[] {
   const lines: string[] = [];
-  printError(error, (line) => lines.push(line), context);
+  printError(error, (line) => lines.push(plainText(line)), context);
   return lines;
 }
+
+const actions = defineMessages("test", {
+  runSupportReply: () => phrase`run ${bold("support-reply")}`,
+});
+const run = { action: actions.runSupportReply() };
 
 /** An `Error` with a fixed stack, so a test can check every line `--debug` prints. */
 function withStack<T extends Error>(error: T, ...frames: string[]): T {
@@ -23,16 +32,17 @@ const internalLines = [
 ];
 
 verifies("cli.print-error", () => {
-  it("prints the message after ✕ and the error's fix on its own indented line", () => {
+  it("prints Couldn't, the action and the reason after ✕, and the fix on its own indented line", () => {
     const error = {
       kind: "unavailable",
       message: "Halonic couldn't reach Ollama at localhost:11434.",
       fix: "Start Ollama, then run again.",
     };
-    expect(printed(error)).toEqual([
-      "✕ Halonic couldn't reach Ollama at localhost:11434.",
+    expect(printed(error, run)).toEqual([
+      "✕ Couldn't run support-reply: Halonic couldn't reach Ollama at localhost:11434.",
       "  Start Ollama, then run again.",
     ]);
+    expect(printed(error)[0]).toBe("✕ Halonic couldn't reach Ollama at localhost:11434.");
   });
 
   it("prints no fix line when the error has no fix, or an empty one", () => {
@@ -40,30 +50,41 @@ verifies("cli.print-error", () => {
       "not_found",
       'There\'s no workflow called "supprt-reply" in acme.',
     );
-    expect(printed(noFix)).toEqual(['✕ There\'s no workflow called "supprt-reply" in acme.']);
+    expect(printed(noFix, run)).toEqual([
+      "✕ Couldn't run support-reply: there's no workflow called \"supprt-reply\" in acme.",
+    ]);
     expect(printed({ kind: "conflict", message: "The folder isn't empty.", fix: " " })).toEqual([
       "✕ The folder isn't empty.",
     ]);
   });
 
-  it("shows the usage line as the fix of a wrong command line", () => {
-    const error = new UsageError(
-      "halonic schema takes at most one folder, and you gave two: a, b.",
-    );
-    expect(printed(error, { usage: "Usage: halonic schema [outDir]" })).toEqual([
-      "✕ halonic schema takes at most one folder, and you gave two: a, b.",
-      "  Usage: halonic schema [outDir]",
+  it("adds More:, the docs link and the code as line 3 when the error has a docs link", () => {
+    const error = {
+      kind: "unavailable",
+      message: "the sandbox can't start on this computer. Nothing ran.",
+      fix: "bubblewrap isn't installed. Install it, then run it again.",
+      docs: "https://docs.halonic.dev/sandbox#bubblewrap",
+      code: "bubblewrap-missing",
+    };
+    expect(printed(error, run)).toEqual([
+      "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
+      "  bubblewrap isn't installed. Install it, then run it again.",
+      "  More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
     ]);
   });
 
-  it("shows a wrong command line's own fix instead of the usage line", () => {
-    const error = new UsageError('There\'s no command "deploy".', {
-      fix: "Run halonic --help to see every command.",
-    });
-    expect(printed(error, { usage: "Usage: halonic schema [outDir]" })).toEqual([
-      '✕ There\'s no command "deploy".',
-      "  Run halonic --help to see every command.",
+  it("shows the usage line as the fix of a wrong command line without its own fix", () => {
+    const usage = helpMessages.commandUsage("schema", "[outDir]");
+    const error = new UsageError(usageMessages.unknownOption("--colour"));
+    expect(printed(error, { usage, ...run })).toEqual([
+      "✕ There's no option --colour.",
+      "  Usage: halonic schema [outDir]",
     ]);
+    const withFix = new UsageError(
+      usageMessages.unknownCommand("deploy"),
+      usageMessages.seeEveryCommand(),
+    );
+    expect(printed(withFix, { usage })[1]).toBe("  Run halonic --help to see every command.");
   });
 
   it("never shows the text of an error without a kind", () => {
@@ -74,6 +95,10 @@ verifies("cli.print-error", () => {
     expect(
       printed(new KindedError("internal", "The run store returned a damaged record.")),
     ).toEqual(internalLines);
+    expect(printed(new Error("disk full"), run)).toEqual([
+      "✕ Couldn't run support-reply: Halonic ran into a problem it can't explain yet.",
+      internalLines[1],
+    ]);
   });
 
   it("adds a bug's own text and stack after its lines with --debug", () => {
@@ -141,6 +166,11 @@ verifies("cli.print-error", () => {
       ]);
     });
 
+    it("from the lines of a wrong command line", () => {
+      const error = new UsageError(usageMessages.unknownOption(`--key=${token}`));
+      expect(printed(error, { scrubber })).toEqual(["✕ There's no option --key=[secret removed]."]);
+    });
+
     it("from a bug's message, stack and causes with --debug", () => {
       const cause = withStack(
         new Error(`GET /v1?key=${token} failed`),
@@ -167,5 +197,25 @@ verifies("cli.print-error", () => {
         "    at load (keys.ts:4:1)",
       ]);
     });
+  });
+});
+
+describe("printError", () => {
+  it("keeps a name at the start of the reason in capitals, and lowers only a sentence's opening word", () => {
+    expect(printed({ kind: "denied", message: "Acme is local only.", fix: "" }, run)[0]).toBe(
+      "✕ Couldn't run support-reply: Acme is local only.",
+    );
+    expect(printed({ kind: "denied", message: "No key in the secret openai-key." }, run)[0]).toBe(
+      "✕ Couldn't run support-reply: no key in the secret openai-key.",
+    );
+  });
+
+  it("prints More: without brackets when there's a link and no code", () => {
+    const error = {
+      kind: "unavailable",
+      message: "Ollama didn't answer.",
+      docs: "https://docs.halonic.dev/models",
+    };
+    expect(printed(error)[1]).toBe("  More: https://docs.halonic.dev/models");
   });
 });

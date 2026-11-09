@@ -10,4 +10,12 @@ process.exitCode = await runCli(
     err: (line) => process.stderr.write(`${line}\n`),
   },
   Object.values(commands),
+  {
+    terminal: {
+      env: process.env,
+      platform: process.platform,
+      stdoutIsTerminal: process.stdout.isTTY === true,
+      stderrIsTerminal: process.stderr.isTTY === true,
+    },
+  },
 );

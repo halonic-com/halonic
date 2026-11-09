@@ -13,7 +13,7 @@ The `halonic` command shall make its help from the commands themselves: `halonic
   then it lists `schema` with its summary and exits with 0.
 - Given `halonic --help`,
   when it runs,
-  then after the commands it prints "Options for every command: --debug, --help".
+  then after the commands it prints "Options for every command: --json, --no-color, --verbose, --debug, --help".
 - Given `halonic deploy` where there is no deploy command,
   when it runs,
   then it prints '✕ There\'s no command "deploy".' and, indented by two spaces, "Run halonic --help to see every command.", and exits with 2.

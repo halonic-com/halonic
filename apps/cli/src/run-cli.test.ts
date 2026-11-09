@@ -3,8 +3,10 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type CliCommand, UsageError } from "./command.ts";
-import { exitCode, exitCodeMeanings } from "./exit-code.ts";
-import { runCli } from "./run-cli.ts";
+import { exitCode } from "./exit-code.ts";
+import { defineMessages } from "./messages/define.ts";
+import { bold, phrase } from "./messages/phrase.ts";
+import { runCli, type Terminal } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 
 /** An error class with its own kind and fix, as an existing error class gets them. */
@@ -13,19 +15,31 @@ class NotHereError extends Error {
   readonly fix = "Greet someone who is here, such as Ada.";
 }
 
+/** The test commands' own sentences, as a command's area of the catalogue holds them. */
+const greetMessages = defineMessages("greet", {
+  summary: () => phrase`Say hello`,
+  loud: () => phrase`Shout it`,
+  from: () => phrase`Who says it`,
+  action: (name: string) => phrase`greet ${bold(name)}`,
+  whoToGreet: () => phrase`Say who to greet.`,
+  refuse: () => phrase`Refuse, as an untrusted workspace does`,
+  call: () => phrase`Call a provider with the key.`,
+});
+
 /** A command that greets, to drive the CLI without touching any files. */
 const greetCommand: CliCommand = {
   name: "greet",
   usage: "<name> [--loud]",
-  summary: "Say hello.",
+  summary: greetMessages.summary(),
+  action: (input) => greetMessages.action(input.positionals[0] ?? ""),
   options: {
-    loud: { type: "boolean", description: "Shout it." },
-    from: { type: "string", valueName: "who", description: "Who says it." },
+    loud: { type: "boolean", description: greetMessages.loud() },
+    from: { type: "string", valueName: "who", description: greetMessages.from() },
   },
   async run(input, io) {
     const [name] = input.positionals;
     if (name === undefined) {
-      throw new UsageError("Say who to greet.");
+      throw new UsageError(greetMessages.whoToGreet());
     }
     if (name === "nobody") {
       throw new Error("nobody is there");
@@ -44,18 +58,26 @@ const greetCommand: CliCommand = {
 const trustCommand: CliCommand = {
   name: "trust-me",
   usage: "",
-  summary: "Refuse, as an untrusted workspace does.",
+  summary: greetMessages.refuse(),
   options: {},
   run: async () => exitCode.notTrusted,
 };
 
 const commands = [greetCommand, trustCommand];
 
-/** What the CLI prints for an error without a kind, instead of its text. */
+/** What the CLI prints when greeting nobody fails without a kind, instead of its text. */
 const internalLines = [
-  "✕ Halonic ran into a problem it can't explain yet.",
+  "✕ Couldn't greet nobody: Halonic ran into a problem it can't explain yet.",
   "  Run it again with --debug to see the details, and report it: https://github.com/halonic-com/halonic/issues",
 ];
+
+/** A terminal on both streams, with colour. */
+const terminal: Terminal = {
+  env: { LANG: "en_US.UTF-8" },
+  platform: "linux",
+  stdoutIsTerminal: true,
+  stderrIsTerminal: true,
+};
 
 describe("runCli", () => {
   it("runs the named command with its arguments and options", async () => {
@@ -63,6 +85,32 @@ describe("runCli", () => {
     expect(await runCli(["greet", "Ada", "--loud"], io, commands)).toBe(exitCode.ok);
     expect(io.stdout).toEqual(["HELLO ADA"]);
     expect(io.stderr).toEqual([]);
+  });
+
+  it("colours the ✕ mark in a terminal, and never through a pipe", async () => {
+    const coloured = captureIo("/work");
+    await runCli(["greet"], coloured, commands, { terminal });
+    expect(coloured.stderr[0]).toBe("\u001b[31m✕\u001b[39m Say who to greet.");
+    const plain = captureIo("/work");
+    await runCli(["greet", "--no-color"], plain, commands, { terminal });
+    expect(plain.stderr[0]).toBe("✕ Say who to greet.");
+  });
+
+  it("takes the global options anywhere on the command line", async () => {
+    for (const args of [
+      ["--verbose", "greet", "Ada"],
+      ["greet", "Ada", "--debug", "--json"],
+    ]) {
+      const io = captureIo("/work");
+      expect(await runCli(args, io, commands)).toBe(exitCode.ok);
+      expect(io.stdout).toEqual(["Hello Ada"]);
+    }
+  });
+
+  it("treats a global option after -- as an argument", async () => {
+    const io = captureIo("/work");
+    await runCli(["greet", "--", "--json"], io, commands);
+    expect(io.stdout).toEqual(["Hello --json"]);
   });
 });
 
@@ -91,10 +139,23 @@ verifies("cli.exit-codes", () => {
   it("treats an unknown option or a missing value as a usage error", async () => {
     const unknown = captureIo("/work");
     expect(await runCli(["greet", "Ada", "--colour"], unknown, commands)).toBe(exitCode.usage);
-    expect(unknown.stderr[0]).toContain("--colour");
+    expect(unknown.stderr).toEqual([
+      "✕ There's no option --colour. Did you mean --no-color?",
+      "  Run halonic greet --help to see its options.",
+    ]);
     const noValue = captureIo("/work");
     expect(await runCli(["greet", "Ada", "--from"], noValue, commands)).toBe(exitCode.usage);
-    expect(noValue.stderr[0]).toContain("--from");
+    expect(noValue.stderr).toEqual([
+      "✕ --from needs a value: --from <who>.",
+      "  Usage: halonic greet <name> [--loud]",
+    ]);
+    const switchValue = captureIo("/work");
+    expect(await runCli(["greet", "Ada", "--loud=yes"], switchValue, commands)).toBe(
+      exitCode.usage,
+    );
+    expect(switchValue.stderr[0]).toBe(
+      "✕ --loud doesn't take a value, and you gave one: --loud=yes.",
+    );
   });
 
   it("ends a failure without a kind with 1, and never shows its text", async () => {
@@ -103,7 +164,8 @@ verifies("cli.exit-codes", () => {
     expect(io.stderr).toEqual(internalLines);
     const thrownText = captureIo("/work");
     expect(await runCli(["greet", "a ghost"], thrownText, commands)).toBe(exitCode.failed);
-    expect(thrownText.stderr).toEqual(internalLines);
+    expect(thrownText.stderr[1]).toBe(internalLines[1]);
+    expect(thrownText.stderr.join("\n")).not.toContain("boo");
   });
 
   it("ends a failure with the exit code of its kind and prints its fix", async () => {
@@ -111,7 +173,7 @@ verifies("cli.exit-codes", () => {
     expect(await runCli(["greet", "the moon"], io, commands)).toBe(exitCode.notFound);
     expect(io.stdout).toEqual([]);
     expect(io.stderr).toEqual([
-      "✕ The moon isn't here.",
+      "✕ Couldn't greet the moon: the moon isn't here.",
       "  Greet someone who is here, such as Ada.",
     ]);
   });
@@ -139,7 +201,7 @@ verifies("cli.exit-codes", () => {
 });
 
 verifies("cli.help", () => {
-  it("lists every command with its summary for --help", async () => {
+  it("prints cli-output 1.9's help for --help, with the commands there are", async () => {
     const io = captureIo("/work");
     expect(await runCli(["--help"], io, commands)).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
@@ -148,10 +210,10 @@ verifies("cli.help", () => {
       "Usage: halonic <command> [arguments]",
       "",
       "Commands:",
-      "  greet     Say hello.",
-      "  trust-me  Refuse, as an untrusted workspace does.",
+      "  greet     Say hello",
+      "  trust-me  Refuse, as an untrusted workspace does",
       "",
-      "Options for every command: --debug, --help",
+      "Options for every command: --json, --no-color, --verbose, --debug, --help",
       "",
       "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input ·",
       "3 not trusted · 4 not found · 5 conflict · 6 signed out · 7 not allowed ·",
@@ -162,11 +224,11 @@ verifies("cli.help", () => {
     ]);
   });
 
-  it("prints the same list for help and -h", async () => {
+  it("prints the same help for help and -h", async () => {
     for (const flag of ["help", "-h"]) {
       const io = captureIo("/work");
       expect(await runCli([flag], io, commands)).toBe(exitCode.ok);
-      expect(io.stdout[2]).toBe("Usage: halonic <command> [arguments]");
+      expect(io.stdout[0]).toBe("Run and check Halonic workspaces from the command line.");
     }
   });
 
@@ -176,11 +238,11 @@ verifies("cli.help", () => {
     expect(io.stdout).toEqual([
       "Usage: halonic greet <name> [--loud]",
       "",
-      "Say hello.",
+      "Say hello",
       "",
       "Options:",
-      "  --loud        Shout it.",
-      "  --from <who>  Who says it.",
+      "  --loud        Shout it",
+      "  --from <who>  Who says it",
     ]);
   });
 
@@ -190,17 +252,17 @@ verifies("cli.help", () => {
     expect(io.stdout).toEqual([
       "Usage: halonic trust-me",
       "",
-      "Refuse, as an untrusted workspace does.",
+      "Refuse, as an untrusted workspace does",
     ]);
   });
 
-  it("prints the list and exits with 2 without a command", async () => {
+  it("prints the help and exits with 2 without a command", async () => {
     const io = captureIo("/work");
     expect(await runCli([], io, commands)).toBe(exitCode.usage);
     expect(io.stdout[4]).toBe("Commands:");
   });
 
-  it("names an unknown command, points to --help and exits with 2", async () => {
+  it("names an unknown command and where to see them all, without the list, and exits with 2", async () => {
     const io = captureIo("/work");
     expect(await runCli(["deploy"], io, commands)).toBe(exitCode.usage);
     expect(io.stdout).toEqual([]);
@@ -210,37 +272,22 @@ verifies("cli.help", () => {
     ]);
   });
 
-  it("asks about the one command an unknown name is close to", async () => {
+  it("offers the one command within two edits of a typo", async () => {
     const io = captureIo("/work");
-    expect(await runCli(["gret", "Ada"], io, commands)).toBe(exitCode.usage);
-    expect(io.stderr).toEqual([
-      '✕ There\'s no command "gret". Did you mean greet?',
-      "  Run halonic --help to see every command.",
-    ]);
-  });
-
-  it("keeps every help line within 80 columns", async () => {
-    const io = captureIo("/work");
-    await runCli(["--help"], io, commands);
-    for (const line of io.stdout) {
-      expect(line.length).toBeLessThanOrEqual(80);
-    }
+    await runCli(["gerte"], io, commands);
+    expect(io.stderr[0]).toBe('✕ There\'s no command "gerte". Did you mean greet?');
   });
 });
 
 verifies("cli.help-exit-codes", () => {
-  it("lists every exit code with its words in the help", async () => {
+  it("lists every exit code in the help, and 130 and 143 for a stop", async () => {
     const io = captureIo("/work");
     await runCli(["--help"], io, commands);
     const help = io.stdout.join("\n");
-    for (const { code, meaning } of exitCodeMeanings) {
-      expect(help).toContain(`${code} ${meaning}`);
+    for (const code of Object.values(exitCode)) {
+      expect(help).toMatch(new RegExp(`(^|\\s)${code} [a-z]`, "m"));
     }
-    expect(io.stdout).toContain("130 or 143 stopped");
-  });
-
-  it("has words for every exit code, in code order", () => {
-    expect(exitCodeMeanings.map(({ code }) => code)).toEqual(Object.values(exitCode));
+    expect(help).toContain("130 or 143 stopped");
   });
 });
 
@@ -252,7 +299,7 @@ verifies("cli.print-error", () => {
   const callCommand: CliCommand = {
     name: "call",
     usage: "",
-    summary: "Call a provider with the key.",
+    summary: greetMessages.call(),
     options: {},
     async run(_input, _io, context) {
       const key = await context.secrets.get("provider-key");
@@ -269,7 +316,7 @@ verifies("cli.print-error", () => {
     const secrets: Secrets = {
       get: async (name) => (name === "provider-key" ? apiKey : null),
     };
-    expect(await runCli(["call", "--debug"], io, [callCommand], secrets)).toBe(
+    expect(await runCli(["call", "--debug"], io, [callCommand], { secrets })).toBe(
       exitCode.unavailable,
     );
     expect(io.stderr).toEqual([

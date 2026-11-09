@@ -1,5 +1,7 @@
 import type { Secrets } from "@halonicjs/ports";
 import type { ExitCode } from "./exit-code.ts";
+import type { Message } from "./messages/define.ts";
+import { plainText } from "./messages/phrase.ts";
 
 /** Where a command writes and which folder it works from, passed in so tests can capture both. */
 export interface CliIo {
@@ -30,8 +32,8 @@ export interface CliOption {
   readonly multiple?: boolean;
   /** The value's name in the help, such as `id` in `--hub <id>`. */
   readonly valueName?: string;
-  /** One line for the help. */
-  readonly description: string;
+  /** One line for the help, from the command's area of the catalogue. */
+  readonly description: Message;
 }
 
 /** The value of one option: text for a string option, true for a switch. */
@@ -56,8 +58,14 @@ export interface CliCommand {
   readonly name: string;
   /** The arguments after the name, for the help, such as `<dir> [--hub <id>]`. */
   readonly usage: string;
-  /** One line for the command list. */
-  readonly summary: string;
+  /** One line for the command list, from the command's area of the catalogue (cli-output 1.9). */
+  readonly summary: Message;
+  /**
+   * What the command does to what, for line 1 of its errors: "write the
+   * schemas" makes "✕ Couldn't write the schemas: the disk is full.". Without
+   * it, line 1 is the error's own message.
+   */
+  action?(input: CommandInput): Message;
   /** The options it accepts, by name without the dashes. */
   readonly options: Readonly<Record<string, CliOption>>;
   /**
@@ -77,18 +85,21 @@ export interface CliCommand {
 export type CommandRegistry = Readonly<Record<string, CliCommand>>;
 
 /**
- * The command line was wrong. The CLI prints the message with its own `fix`,
- * or else the command's usage line, as its fix, and exits with code 2, as for
- * any `invalid_input` error.
+ * The command line was wrong. The CLI prints the problem, then the fix: the
+ * one given here, or else the command's usage line. It exits with code 2, as
+ * for any `invalid_input` error.
  */
 export class UsageError extends Error {
   override readonly name = "UsageError";
   readonly kind = "invalid_input";
-  /** The next step, when the usage line isn't it, such as "Run halonic --help to see every command." */
-  readonly fix: string | undefined;
+  /** The problem, as the catalogue words it. */
+  readonly problem: Message;
+  /** The one next step; when it's missing the CLI shows the command's usage line. */
+  readonly fixMessage: Message | undefined;
 
-  constructor(message: string, options: { readonly fix?: string } = {}) {
-    super(message);
-    this.fix = options.fix;
+  constructor(problem: Message, fix?: Message) {
+    super(plainText(problem.phrase));
+    this.problem = problem;
+    this.fixMessage = fix;
   }
 }

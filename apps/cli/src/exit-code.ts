@@ -32,26 +32,3 @@ export const exitCode = {
 
 /** One of the {@link exitCode} values. */
 export type ExitCode = (typeof exitCode)[keyof typeof exitCode];
-
-/**
- * Each exit code with the few words `halonic --help` lists it with, in code
- * order. The CLI never prints an exit code anywhere else.
- */
-export const exitCodeMeanings: readonly { readonly code: ExitCode; readonly meaning: string }[] = [
-  { code: exitCode.ok, meaning: "worked" },
-  { code: exitCode.failed, meaning: "failed or found errors" },
-  { code: exitCode.usage, meaning: "wrong usage or input" },
-  { code: exitCode.notTrusted, meaning: "not trusted" },
-  { code: exitCode.notFound, meaning: "not found" },
-  { code: exitCode.conflict, meaning: "conflict" },
-  { code: exitCode.unauthenticated, meaning: "signed out" },
-  { code: exitCode.denied, meaning: "not allowed" },
-  { code: exitCode.limitReached, meaning: "limit reached" },
-  { code: exitCode.unavailable, meaning: "didn't answer or the sandbox can't start" },
-];
-
-/**
- * The last entry `halonic --help` lists: not a code the CLI returns, but the
- * one the shell reports when Ctrl C (130) or SIGTERM (143) stops it.
- */
-export const stoppedMeaning = "130 or 143 stopped";
