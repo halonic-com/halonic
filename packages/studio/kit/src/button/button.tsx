@@ -193,12 +193,6 @@ export function Button(props: ButtonProps) {
   ].join(" ");
 
   const iconClasses = isIconButton && !inFieldBox ? `${iconSlot} ${largeIconSlot}` : iconSlot;
-  const iconBox = (icon: ReactNode) =>
-    icon === undefined ? null : (
-      <span className={iconClasses} aria-hidden="true">
-        {icon}
-      </span>
-    );
 
   return (
     <button
@@ -213,26 +207,42 @@ export function Button(props: ButtonProps) {
       onClick={handleClick}
       onFocus={props.onFocus}
     >
-      {props.busyLabel === undefined ? (
-        <>
-          {iconBox(busy ? <Spinner /> : props.icon)}
-          {props.children}
-        </>
-      ) : (
-        // Both copies always take up room; the one not in use is `invisible`, so it only sets the
-        // width and screen readers skip it.
-        <span className={busyCell}>
-          <span className={`${busyCopy} ${busy ? "invisible" : ""}`.trim()}>
-            {iconBox(props.icon)}
-            {props.children}
-          </span>
-          <span className={`${busyCopy} ${busy ? "" : "invisible"}`.trim()}>
-            {iconBox(<Spinner />)}
-            {props.busyLabel}
-          </span>
-        </span>
-      )}
+      <ButtonBody props={props} busy={busy} iconClasses={iconClasses} />
     </button>
+  );
+}
+
+type ButtonBodyProps = { props: ButtonProps; busy: boolean; iconClasses: string };
+
+function ButtonBody({ props, busy, iconClasses }: ButtonBodyProps) {
+  const iconBox = (icon: ReactNode) =>
+    icon === undefined ? null : (
+      <span className={iconClasses} aria-hidden="true">
+        {icon}
+      </span>
+    );
+
+  if (props.busyLabel === undefined) {
+    return (
+      <>
+        {iconBox(busy ? <Spinner /> : props.icon)}
+        {props.children}
+      </>
+    );
+  }
+  // Both copies always take up room; the one not in use is `invisible`, so it only sets the
+  // width and screen readers skip it.
+  return (
+    <span className={busyCell}>
+      <span className={`${busyCopy} ${busy ? "invisible" : ""}`.trim()}>
+        {iconBox(props.icon)}
+        {props.children}
+      </span>
+      <span className={`${busyCopy} ${busy ? "" : "invisible"}`.trim()}>
+        {iconBox(<Spinner />)}
+        {props.busyLabel}
+      </span>
+    </span>
   );
 }
 
