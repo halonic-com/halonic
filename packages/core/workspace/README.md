@@ -68,6 +68,8 @@ export async function runExample(): Promise<{
   it names, workflows that run each other in a loop, and a routine whose hub, workflow, agent, mail
   connector, cron, time zone or interval is wrong. Each issue has the file, key path and line of the
   name. A file that failed its own checks counts as missing, so whatever names it is unknown.
+  `src/parity.test.ts` compares these messages, file by file, with the old loader's on every
+  parity fixture; the parity package's `allowed-differences.json` lists where they differ.
 - **Where names are looked up:** an agent's skills, knowledge, collections and connectors are its
   hub's own or shared at the root; a hub with `uses` may use only the shared items it lists. Model
   aliases come from `models.yaml` and the hub's `models`. Subagents and a test's workflow come from

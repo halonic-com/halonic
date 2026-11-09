@@ -480,5 +480,103 @@
         }
       }
     ]
+  },
+  {
+    "id": "workspace-old-layouts-not-read",
+    "requirement": "workspace.file-places",
+    "area": "workspace loader: old folder layouts",
+    "old": "784f78d read three old layouts and noted each with an info message that pointed to `studio migrate`: a projects/ folder for hubs, a flows/ folder in a hub, and org.yaml for workspace.yaml.",
+    "new": "Files are read only from the places the file kinds declare, so files in those old layouts are listed as ignored and give no message. Without workspace.yaml, the workspace gets the old loader's own error \"Missing workspace.yaml\".",
+    "why": "One place per kind keeps the loader free of special cases, and a new kind is read without a change to it (HAL-1522). The board decided on HAL-2299 (9 Nov) that old layouts stay quietly ignored: no note and no migrate step, and any help moving off them would be a new ask for the board.",
+    "status": "signed-off",
+    "checks": [
+      {
+        "case": "hub/legacy-project",
+        "file": "projects",
+        "old": [
+          {
+            "severity": "info",
+            "message": "Hubs used to be called projects: run `studio migrate` to move projects/ to hubs/"
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/legacy-flows-folder",
+        "file": "hubs/billing/flows",
+        "old": [
+          {
+            "severity": "info",
+            "message": "Legacy flows/ folder: run `studio migrate` to move it to workflows/"
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workspace/legacy-org-yaml",
+        "file": "org.yaml",
+        "old": [
+          {
+            "severity": "info",
+            "message": "org.yaml is now called workspace.yaml; run studio migrate to rename it"
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workspace/legacy-org-yaml",
+        "file": "workspace.yaml",
+        "old": [],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Missing workspace.yaml"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "routine-trigger-messages-are-sentences",
+    "requirement": "routines.cron-rejects-bad-expressions",
+    "area": "workspace loader: a routine's cron and time zone",
+    "old": "A bad cron field gave the bare problem, such as Routine \"month-end\": \"61\" is outside 0-59, and an unknown zone Routine \"month-end\": Unknown time zone \"Mars/Olympus\", without a full stop.",
+    "new": "The routines package's own messages: a bad field is named, as in Minute: \"61\" is outside 0-59., and each message is a full sentence with a full stop (routines.check-time-zone for the zone).",
+    "why": "The routines package already words these messages this way, and the loader passes them on rather than keep a second wording. Naming the field tells a person which of the five values to fix.",
+    "status": "proposed",
+    "checks": [
+      {
+        "case": "routine/bad-cron",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": \"61\" is outside 0-59"
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": Minute: \"61\" is outside 0-59."
+          }
+        ]
+      },
+      {
+        "case": "routine/bad-timezone",
+        "file": "hubs/billing/workflows/routines/month-end.routine.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": Unknown time zone \"Mars/Olympus\""
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Routine \"month-end\": Unknown time zone \"Mars/Olympus\"."
+          }
+        ]
+      }
+    ]
   }
 ]

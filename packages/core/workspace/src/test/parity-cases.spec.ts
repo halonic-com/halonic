@@ -24,6 +24,30 @@ function readFiles(folder: string): Record<string, string> {
   return files;
 }
 
+let baseFiles: Record<string, string> | undefined;
+
+/** The base workspace's files, read once: every case starts from them, and a slow disk reads 32 files slowly. */
+function readBaseFiles(): Record<string, string> {
+  baseFiles ??= readFiles(join(parityFixtures, "base", "files"));
+  return baseFiles;
+}
+
+/**
+ * A parity case's workspace in memory, the way the parity package's
+ * `composeWorkspace` builds it on disk: the base files, the case's own on
+ * top (same path replaces), minus the files it removes. The base is `base`.
+ */
+export function caseSource(parityCase: ParityCase): MemorySource {
+  const files =
+    parityCase.id === "base"
+      ? { ...readBaseFiles() }
+      : { ...readBaseFiles(), ...readFiles(join(parityCase.folder, "files")) };
+  for (const path of parityCase.remove) {
+    delete files[path];
+  }
+  return new MemorySource(files);
+}
+
 /** A parity case, its workspace in memory, and what the old loader recorded for it. */
 export interface LoadedCase {
   readonly parityCase: ParityCase;
@@ -39,17 +63,10 @@ export interface LoadedCase {
  */
 export function readParityCase(id: string): LoadedCase {
   const parityCase = readCase(id, join(parityFixtures, "cases", id));
-  const files = {
-    ...readFiles(join(parityFixtures, "base", "files")),
-    ...readFiles(join(parityCase.folder, "files")),
-  };
-  for (const path of parityCase.remove) {
-    delete files[path];
-  }
   const recording = JSON.parse(
     readFileSync(join(parityCase.folder, "recorded.json"), "utf8"),
   ) as Recording;
-  return { parityCase, source: new MemorySource(files), recording };
+  return { parityCase, source: caseSource(parityCase), recording };
 }
 
 /** An error as the tests compare it: where it is, and the old loader's words. */
