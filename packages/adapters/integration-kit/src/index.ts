@@ -28,7 +28,12 @@ export {
   type IntegrationPolicy,
   namePattern,
 } from "./policy.ts";
-export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } from "./refused.ts";
+export {
+  IntegrationRefusedError,
+  IntegrationTimeoutError,
+  leakAttemptCodes,
+  type RefusalCode,
+} from "./refused.ts";
 export { maxRequestBodyBytes } from "./request-body.ts";
 export { RequestLog, type RequestLogEntry } from "./request-log.ts";
 export { scopedTokens, storedTokenName } from "./scoped-tokens.ts";

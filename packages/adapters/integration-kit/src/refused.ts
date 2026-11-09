@@ -17,6 +17,22 @@ export type RefusalCode =
   | "token-not-declared";
 
 /**
+ * The refusal codes that mean the integration tried to get a secret out:
+ * it carried a secret value in its own request, or it asked the kit to
+ * place a secret somewhere its permission sheet doesn't say. A connector
+ * that gets one of these should be paused, not just shown the error. Every
+ * other code is an ordinary mistake, such as a host the sheet doesn't list
+ * or a body that is too large.
+ *
+ * @example
+ * if (leakAttemptCodes.includes(error.code)) pauseConnector(); // "secret-in-request"
+ */
+export const leakAttemptCodes: readonly RefusalCode[] = Object.freeze([
+  "secret-in-request",
+  "placement-not-in-sheet",
+]);
+
+/**
  * The kit refused something the permission sheet doesn't allow. The message
  * names the integration, the host and the path, never a query, a header or a
  * secret value, so it is safe to show and to log.
