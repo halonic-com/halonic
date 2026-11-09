@@ -10,6 +10,12 @@ import type { Fetch } from "./pass-through.ts";
 /** The value the fake secrets hold for the agent's key. Not a real key. */
 const agentKey = "anthropic-test-value";
 
+/** The fake secrets: the agent's key, and one that holds a line break. */
+const secretValues = new Map([
+  ["anthropic-key", agentKey],
+  ["broken-key", "anthropic-test\r\nvalue"],
+]);
+
 const closers: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
@@ -20,7 +26,7 @@ const keyed: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
 
 /** Opens a bridge that serves only the Anthropic route, for an agent with the given access (`null`: none). */
 async function open(fetch: Fetch, anthropic: BridgeProviderAccess | null = keyed) {
-  const secrets = { get: async (name: string) => (name === "anthropic-key" ? agentKey : null) };
+  const secrets = { get: async (name: string) => secretValues.get(name) ?? null };
   const route = anthropicRoute({
     secrets,
     fetch,
@@ -150,6 +156,14 @@ verifies("harness-bridge.anthropic", () => {
     expect(forwarded.messages).toEqual(withPdfAndImage.messages);
   });
 
+  it("removes the MCP connector's servers, and keeps the rest of the request", async () => {
+    const anthropic = fakeProvider(() => new Response("{}"));
+    const mcp_servers = [{ type: "url", url: "https://mcp.example.test/sse", name: "outside" }];
+    await programRequest(await open(anthropic.fetch), { ...withPdfAndImage, mcp_servers });
+
+    expect(JSON.parse(anthropic.calls[0]?.body ?? "")).toEqual(withPdfAndImage);
+  });
+
   describe("refusing", () => {
     const cases: [string, BridgeProviderAccess | null, string, number][] = [
       ["an agent that doesn't use Anthropic", null, "denied", 403],
@@ -162,6 +176,51 @@ verifies("harness-bridge.anthropic", () => {
         const reply = await programRequest(await open(anthropic.fetch, access), withPdfAndImage);
         expect(reply.status).toBe(status);
         expect(await reply.json()).toMatchObject({ error: { type: kind } });
+        expect(anthropic.calls).toHaveLength(0);
+      });
+    }
+
+    it("refuses a key that holds a line break, and names only its secret", async () => {
+      const anthropic = fakeProvider(() => new Response("{}"));
+      const broken: BridgeProviderAccess = { kind: "key", secret: "broken-key" };
+      const reply = await programRequest(await open(anthropic.fetch, broken), withPdfAndImage);
+      expect(reply.status).toBe(401);
+      const text = await reply.text();
+      expect(JSON.parse(text).error.message).toContain('The secret "broken-key"');
+      expect(text).not.toContain("anthropic-test");
+      expect(anthropic.calls).toHaveLength(0);
+    });
+
+    const urlSources: [string, unknown[], string][] = [
+      [
+        "an image",
+        [{ type: "image", source: { type: "url", url: "https://example.test/a.png" } }],
+        "The image block at messages[0].content[0]",
+      ],
+      [
+        "a PDF in a tool result",
+        [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_1",
+            content: [
+              { type: "text", text: "Here it is." },
+              { type: "document", source: { type: "url", url: "https://example.test/a.pdf" } },
+            ],
+          },
+        ],
+        "The document block at messages[0].content[0].content[1]",
+      ],
+    ];
+    for (const [what, content, named] of urlSources) {
+      it(`refuses ${what} that Anthropic would fetch from a URL, naming the block`, async () => {
+        const anthropic = fakeProvider(() => new Response("{}"));
+        const request = { ...withPdfAndImage, messages: [{ role: "user", content }] };
+        const reply = await programRequest(await open(anthropic.fetch), request);
+        expect(reply.status).toBe(403);
+        expect(await reply.json()).toMatchObject({
+          error: { type: "denied", message: expect.stringContaining(named) },
+        });
         expect(anthropic.calls).toHaveLength(0);
       });
     }
