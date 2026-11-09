@@ -59,6 +59,10 @@ export type RunEventBody =
       provider: string;
       model: string;
       usage: Usage;
+      /**
+       * From the request to the answer, including the time spent on any model
+       * that failed before the call fell back to the one that answered.
+       */
       latencyMs: number;
       text: string;
       /** The model's summary of its reasoning, when it gives one. */

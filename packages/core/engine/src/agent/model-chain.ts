@@ -173,14 +173,14 @@ export class ModelChain {
   private noneLeft(): ModelCallError {
     const tried = this.models.map(nameOf).join(", ");
     const what = this.lastCause === "no-key" ? "no model has its key set" : "no model reachable";
-    return new ModelCallError(this.lastCause, `${this.lastCause}: ${what} (tried ${tried})`);
+    return new ModelCallError(this.lastCause, `${what} (tried ${tried})`);
   }
 }
 
 /**
  * Why a run fails when its model call threw `error`: the model is missing,
  * it can't call tools, or something else went wrong. When every model was
- * skipped or offline, that is `error` too; the message names the cause.
+ * skipped or offline, that is `error` too; the message says which.
  */
 export function runFailureReasonOf(error: unknown): RunFailureReason {
   if (isModelCallError(error)) {

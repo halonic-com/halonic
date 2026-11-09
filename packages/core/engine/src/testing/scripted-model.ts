@@ -9,10 +9,11 @@ import type {
 
 /**
  * An `LlmProvider` that gives scripted answers in order, throws the scripted
- * errors in their place, and records every request, for the engine's own tests. A deliberate fake, like `TestExecutor`
- * in `core/app`: core may not use adapters, not even in tests. The parity
- * mock model in `packages/testing` replaces it once it exists. Not exported
- * from the package, so nothing outside its tests can depend on it.
+ * errors in their place, and records every request, for the engine's own
+ * tests. A deliberate fake, like `TestExecutor` in `core/app`: core may not
+ * use adapters, not even in tests. The parity mock model in `packages/testing`
+ * replaces it once it exists. Not exported from the package, so nothing
+ * outside its tests can depend on it.
  */
 export class ScriptedModel implements LlmProvider {
   readonly id: string;

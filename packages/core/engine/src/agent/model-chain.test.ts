@@ -126,8 +126,10 @@ verifies("engine.skip-model-without-key", () => {
     const failure = await runTurnOn(model, { log }).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(ModelCallError);
-    expect(failure).toMatchObject({ reason: "no-key" });
-    expect(String(failure)).toContain("no-key: no model has its key set (tried smart, backup)");
+    expect(failure).toMatchObject({
+      reason: "no-key",
+      message: "no model has its key set (tried smart, backup)",
+    });
     expect(smart.requests.length + backup.requests.length).toBe(0);
     expect(log.events.map((event) => event.type)).toEqual(["llm.skipped", "llm.skipped"]);
     expect(log.events[1]).not.toHaveProperty("next");
@@ -196,8 +198,10 @@ verifies("engine.offline-falls-back", () => {
     const failure = await runTurnOn(model).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(ModelCallError);
-    expect(failure).toMatchObject({ reason: "offline" });
-    expect(String(failure)).toContain("offline: no model reachable (tried smart, local)");
+    expect(failure).toMatchObject({
+      reason: "offline",
+      message: "no model reachable (tried smart, local)",
+    });
     expect(smart.requests).toHaveLength(1);
     expect(local.requests).toHaveLength(1);
     expect(other.requests).toEqual([]);

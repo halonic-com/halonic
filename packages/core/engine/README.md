@@ -36,13 +36,13 @@ For now they pass values through unchanged.
 
 A chat turn belongs to no run, so `LocalExecutor.chatTurn` keeps no run log; it returns the
 turn's messages in `turn`, what it refused in `refusals` and the models it skipped in `skipped`.
+Runs of agents will log their turns through a `RunStoreTurnLog`.
 
 A turn's models are the alias its request resolved to, then that alias's own `fallback` entries,
 one level deep and each alias once. A model whose key isn't set is skipped before any call. An
 offline model hands the call to the next one at once, and the turn stays on that model. A missing
 model, a model that can't call tools, or a refused call stops the turn with that `ModelCallError`.
-When no model is left, the turn fails with a `ModelCallError` whose reason is the last cause. Runs of agents will log their turns
-through a `RunStoreTurnLog`.
+When no model is left, the turn fails with a `ModelCallError` whose reason is the last cause.
 
 Each `llm.response` gets its `cost` from the model that answered: its tokens at its price per
 million, in the workspace's budget currency and not rounded. A local model without a price
