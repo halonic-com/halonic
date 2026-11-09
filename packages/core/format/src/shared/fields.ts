@@ -12,6 +12,32 @@ export const id = s
   .regex(/^[a-z0-9][a-z0-9-_]*$/, "use lowercase letters, digits, '-' or '_'");
 
 /**
+ * The most characters a deployment id may have. Each deployment's runs live
+ * in a folder named after it (`deployments/<id>/runs` in the profile), and
+ * 64 keeps that path well under Windows' 260-character limit.
+ */
+const DEPLOYMENT_ID_MAX_LENGTH = 64;
+
+/** Names Windows keeps for devices, as pattern alternatives; no file or folder can have them. */
+const WINDOWS_DEVICE_NAMES = "con|prn|aux|nul|com[0-9]|lpt[0-9]";
+
+/**
+ * A deployment's id: an {@link id} of at most 64 characters that isn't a
+ * Windows device name, because it names the deployment's runs folder.
+ * The device names are refused through a pattern, not a refinement, so the
+ * JSON Schema carries the rule too.
+ */
+export const deploymentId = id
+  .max(
+    DEPLOYMENT_ID_MAX_LENGTH,
+    `use at most ${DEPLOYMENT_ID_MAX_LENGTH} characters, so the deployment's folder fits in a Windows path`,
+  )
+  .regex(
+    new RegExp(`^(?!(?:${WINDOWS_DEVICE_NAMES})$)`),
+    "use a name Windows doesn't keep for a device (con, prn, aux, nul, com0-com9, lpt0-lpt9)",
+  );
+
+/**
  * A workspace collection's id: lowercase letters, digits and `-`, starting
  * with a letter or digit. Halonic's own collections (`_tokens`,
  * `_google_setups`) start with `_`, so no workspace file can name them.
