@@ -15,6 +15,8 @@ runs:
       # The container runs as root but the checkout belongs to the runner user.
       # Without safe.directory git refuses the repo, and gitleaks scans 0 commits
       # and still reports no leaks, so the commit count is checked as well.
+      # gitleaks also skips some files (pnpm-lock.yaml), so a lockfile-only
+      # commit counts as 0 too. check-scanned.sh tells the two cases apart.
       # The log only says how many leaks there are. The report also holds the
       # author, email and commit message, which may be personal, so only the
       # commit, file, line and rule are printed from it. A pull request author
@@ -39,9 +41,6 @@ runs:
             .[] | "::error title=gitleaks::commit \(.Commit[0:7] | escape), \(.File | escape):\(.StartLine) [\(.RuleID | escape)]"' "$RUNNER_TEMP/gitleaks.json"
         fi
         rm -f "$RUNNER_TEMP/gitleaks.json"
-        scanned=$(grep -oE '[0-9]+ commits scanned' "$log" | grep -oE '^[0-9]+' || true)
-        if ! [[ "$scanned" =~ ^[1-9][0-9]*$ ]]; then
-          echo "::error title=gitleaks::No commits were scanned, so the scan proves nothing. See the log above."
-          exit 1
-        fi
-        exit "$status"
+        LOG="$log" STATUS="$status" \
+          CONTAINER_GIT="docker run --rm -v $GITHUB_WORKSPACE:/repo -w /repo -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo --entrypoint git $image" \
+          bash "$GITHUB_ACTION_PATH/check-scanned.sh"
