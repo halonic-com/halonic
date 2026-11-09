@@ -204,26 +204,25 @@ verifies("yaml.edit-preserve", () => {
 });
 
 verifies("yaml.edit-preserve", () => {
-  const tricky = fc
-    .oneof(
-      fc.constantFrom(
-        ..."yes,no,null,Null,1.0,0x1,0o7,~,true,.inf,-.nan,a: b,#x,- x,[a],{a},*a,&a,!t,%x,@x,`x,'q',\"q\"".split(
-          ",",
-        ),
-        "",
-        " lead",
-        "trail ",
-        "\n",
-        "a\nb",
-        "a\n",
-      ),
-      fc.string({ maxLength: 20 }),
-    )
+  /** Texts YAML reads as something else unless they are quoted: always tried, never sampled. */
+  const trickyTexts = [
+    ..."yes,no,null,Null,1.0,0x1,0o7,~,true,.inf,-.nan,a: b,#x,- x,[a],{a},*a,&a,!t,%x,@x,`x,'q',\"q\"".split(
+      ",",
+    ),
+    "",
+    " lead",
+    "trail ",
+    "\n",
+    "a\nb",
+    "a\n",
+  ];
+  const randomText = fc
+    .string({ maxLength: 20 })
     .filter((text) => text !== "first" && text !== "list");
 
   it("reads every new text value and key back as the same string", () => {
     fc.assert(
-      fc.property(tricky, (text) => {
+      fc.property(randomText, (text) => {
         const file = "# keep\nfirst: 1\nlist:\n  - a\n";
         const edits: YamlEdit[] = [
           { kind: "set", path: ["first"], value: text },
@@ -240,7 +239,7 @@ verifies("yaml.edit-preserve", () => {
         expect(all.layout).toBe("kept");
         expect(unwrap(readYaml(all.text)).data).toEqual(expected);
       }),
-      { numRuns: 130 },
+      { numRuns: 60, examples: trickyTexts.map((text) => [text]) },
     );
   });
 });
