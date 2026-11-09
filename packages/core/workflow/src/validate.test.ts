@@ -52,8 +52,9 @@ verifies("workflow.validate", () => {
         severity: "error",
         code: "missing-initial",
         message: 'Initial state "start" does not exist',
+        path: ["initial"],
       },
-      { severity: "warning", code: "no-final", message: "Workflow has no final state" },
+      { severity: "warning", code: "no-final", message: "Workflow has no final state", path: [] },
     ]);
   });
 
@@ -83,6 +84,7 @@ verifies("workflow.validate", () => {
         code: "timer-outside-wait",
         state: "s",
         message: '"s" has a timer (after 1h); timers only work on wait states',
+        path: ["states", "s", "on", 0, "after"],
       },
       {
         severity: "warning",
@@ -90,6 +92,7 @@ verifies("workflow.validate", () => {
         state: "s",
         message:
           'In "s", the transition to "end" can never fire: an earlier one on "done" has no condition',
+        path: ["states", "s", "on", 2],
       },
     ]);
   });
@@ -139,6 +142,7 @@ verifies("workflow.validate", () => {
         code: "unknown-agent",
         state: "s",
         message: 'Branch "two" of "s" uses unknown agent "ghost"',
+        path: ["states", "s", "branches", "two", "agent"],
       },
     ]);
   });

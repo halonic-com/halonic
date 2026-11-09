@@ -1,7 +1,7 @@
 import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { contextBefore } from "./inputs.ts";
 import { hasState } from "./machine.ts";
-import { issue, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
+import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
 // The checks validateWorkflow runs on each state, one function per rule, in
 // the order the old checks reported them.
@@ -18,11 +18,13 @@ export interface StateToCheck {
 export type StateCheck = (target: StateToCheck) => WorkflowIssue[];
 
 const unknownTargets: StateCheck = ({ workflow, id, state }) =>
-  state.on
-    .filter((transition) => !hasState(workflow, transition.to))
-    .map((transition) =>
-      issue("error", "unknown-target", `"${id}" goes to unknown state "${transition.to}"`, id),
-    );
+  state.on.flatMap((transition, index) => {
+    if (hasState(workflow, transition.to)) {
+      return [];
+    }
+    const message = `"${id}" goes to unknown state "${transition.to}"`;
+    return [issue("error", "unknown-target", message, stateKey(id, "on", index, "to"), id)];
+  });
 
 const finalWithTransitions: StateCheck = ({ id, state }) =>
   state.type === "final" && state.on.length > 0
@@ -31,6 +33,7 @@ const finalWithTransitions: StateCheck = ({ id, state }) =>
           "warning",
           "final-has-transitions",
           `Final state "${id}" has transitions that never fire`,
+          stateKey(id, "on"),
           id,
         ),
       ]
@@ -38,7 +41,15 @@ const finalWithTransitions: StateCheck = ({ id, state }) =>
 
 const deadEnd: StateCheck = ({ id, state }) =>
   state.type !== "final" && state.on.length === 0
-    ? [issue("error", "dead-end", `"${id}" has no way out; add a transition or make it final`, id)]
+    ? [
+        issue(
+          "error",
+          "dead-end",
+          `"${id}" has no way out; add a transition or make it final`,
+          stateKey(id),
+          id,
+        ),
+      ]
     : [];
 
 /** A picked `context.<key>` must be in the initial context or written by a state that runs earlier. */
@@ -47,13 +58,13 @@ const unknownGets: StateCheck = ({ workflow, id, state }) => {
     return [];
   }
   const known = contextBefore(workflow, id);
-  return state.gets.flatMap((path) => {
+  return state.gets.flatMap((path, index) => {
     const key = contextKey(path);
     if (key === null || known.includes(key)) {
       return [];
     }
     const message = `"${id}" gets ${path}, but no earlier step writes context.${key}`;
-    return [issue("error", "unknown-gets", message, id)];
+    return [issue("error", "unknown-gets", message, stateKey(id, "gets", index), id)];
   });
 };
 
@@ -64,6 +75,7 @@ const taskWithoutAgent: StateCheck = ({ id, state }) =>
           "warning",
           "task-without-agent",
           `Task "${id}" has no agent; it passes straight through`,
+          stateKey(id),
           id,
         ),
       ]
@@ -72,13 +84,14 @@ const taskWithoutAgent: StateCheck = ({ id, state }) =>
 const timersOutsideWait: StateCheck = ({ id, state }) =>
   state.type === "wait"
     ? []
-    : state.on.flatMap((transition) =>
+    : state.on.flatMap((transition, index) =>
         transition.after
           ? [
               issue(
                 "error",
                 "timer-outside-wait",
                 `"${id}" has a timer (after ${transition.after}); timers only work on wait states`,
+                stateKey(id, "on", index, "after"),
                 id,
               ),
             ]
@@ -91,7 +104,7 @@ const waitWithoutEvents: StateCheck = ({ id, state }) => {
     return [];
   }
   const message = `Wait state "${id}" only listens to "done"; give it named events like "approve"`;
-  return [issue("warning", "wait-without-events", message, id)];
+  return [issue("warning", "wait-without-events", message, stateKey(id), id)];
 };
 
 const foreachShape: StateCheck = ({ id, state }) => {
@@ -101,12 +114,12 @@ const foreachShape: StateCheck = ({ id, state }) => {
   const issues: WorkflowIssue[] = [];
   if (!state.items) {
     const message = `For-each step "${id}" needs items, e.g. "{{context.list}}"`;
-    issues.push(issue("error", "foreach-without-items", message, id));
+    issues.push(issue("error", "foreach-without-items", message, stateKey(id), id));
   }
   // Exactly one of the two: both, or neither, is wrong.
   if (!state.agent === !state.workflow) {
     const message = `For-each step "${id}" needs either an agent or a workflow (one of them)`;
-    issues.push(issue("error", "foreach-without-work", message, id));
+    issues.push(issue("error", "foreach-without-work", message, stateKey(id), id));
   }
   return issues;
 };
@@ -116,11 +129,12 @@ const subflowTarget: StateCheck = ({ workflow, id, state, options }) => {
     return [];
   }
   if (state.workflow === workflow.id) {
-    return [issue("error", "self-subflow", `"${id}" runs its own workflow`, id)];
+    const message = `"${id}" runs its own workflow`;
+    return [issue("error", "self-subflow", message, stateKey(id, "workflow"), id)];
   }
   if (options.workflows && !options.workflows.includes(state.workflow)) {
     const message = `"${id}" runs unknown workflow "${state.workflow}"`;
-    return [issue("error", "unknown-workflow", message, id)];
+    return [issue("error", "unknown-workflow", message, stateKey(id, "workflow"), id)];
   }
   return [];
 };
@@ -132,6 +146,7 @@ const workflowWithoutTarget: StateCheck = ({ id, state }) =>
           "error",
           "workflow-without-target",
           `"${id}" runs a workflow but does not say which`,
+          stateKey(id),
           id,
         ),
       ]
@@ -144,35 +159,38 @@ const parallelShape: StateCheck = ({ id, state, options }) => {
   const branches = Object.entries(state.branches ?? {});
   const issues: WorkflowIssue[] = [];
   if (branches.length === 0) {
-    issues.push(
-      issue("error", "parallel-without-branches", `Parallel step "${id}" has no branches`, id),
-    );
+    const message = `Parallel step "${id}" has no branches`;
+    issues.push(issue("error", "parallel-without-branches", message, stateKey(id), id));
   }
   for (const [name, branch] of branches) {
     if (options.agents && !options.agents.includes(branch.agent)) {
       const message = `Branch "${name}" of "${id}" uses unknown agent "${branch.agent}"`;
-      issues.push(issue("error", "unknown-agent", message, id));
+      const path = stateKey(id, "branches", name, "agent");
+      issues.push(issue("error", "unknown-agent", message, path, id));
     }
   }
   return issues;
 };
 
-const unknownAgent: StateCheck = ({ id, state, options }) =>
-  state.agent && options.agents && !options.agents.includes(state.agent)
-    ? [issue("error", "unknown-agent", `"${id}" uses unknown agent "${state.agent}"`, id)]
-    : [];
+const unknownAgent: StateCheck = ({ id, state, options }) => {
+  if (!state.agent || !options.agents || options.agents.includes(state.agent)) {
+    return [];
+  }
+  const message = `"${id}" uses unknown agent "${state.agent}"`;
+  return [issue("error", "unknown-agent", message, stateKey(id, "agent"), id)];
+};
 
 /** A transition after an unguarded one on the same event is hidden by it. */
 const unguardedShadow: StateCheck = ({ id, state }) => {
   const unguarded = new Set<string>();
   const issues: WorkflowIssue[] = [];
-  for (const transition of state.on) {
+  for (const [index, transition] of state.on.entries()) {
     if (transition.after) {
       continue;
     }
     if (unguarded.has(transition.event)) {
       const message = `In "${id}", the transition to "${transition.to}" can never fire: an earlier one on "${transition.event}" has no condition`;
-      issues.push(issue("warning", "unguarded-shadow", message, id));
+      issues.push(issue("warning", "unguarded-shadow", message, stateKey(id, "on", index), id));
     }
     if (!transition.when) {
       unguarded.add(transition.event);

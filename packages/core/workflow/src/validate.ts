@@ -1,7 +1,7 @@
 import type { Workflow } from "@halonicjs/format";
 import { hasState } from "./machine.ts";
 import { STATE_CHECKS } from "./state-checks.ts";
-import { issue, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
+import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
 /**
  * The static checks a workflow gets before anything runs, as the Studio's
@@ -16,9 +16,8 @@ export function validateWorkflow(
 ): WorkflowIssue[] {
   const issues: WorkflowIssue[] = [];
   if (!hasState(workflow, workflow.initial)) {
-    issues.push(
-      issue("error", "missing-initial", `Initial state "${workflow.initial}" does not exist`),
-    );
+    const message = `Initial state "${workflow.initial}" does not exist`;
+    issues.push(issue("error", "missing-initial", message, ["initial"]));
   }
   for (const [id, state] of Object.entries(workflow.states)) {
     for (const check of STATE_CHECKS) {
@@ -27,7 +26,7 @@ export function validateWorkflow(
   }
   issues.push(...unreachableStates(workflow));
   if (!Object.values(workflow.states).some((state) => state.type === "final")) {
-    issues.push(issue("warning", "no-final", "Workflow has no final state"));
+    issues.push(issue("warning", "no-final", "Workflow has no final state", []));
   }
   return issues;
 }
@@ -49,5 +48,5 @@ function unreachableStates(workflow: Workflow): WorkflowIssue[] {
   }
   return Object.keys(workflow.states)
     .filter((id) => !reached.has(id))
-    .map((id) => issue("warning", "unreachable", `"${id}" can never be reached`, id));
+    .map((id) => issue("warning", "unreachable", `"${id}" can never be reached`, stateKey(id), id));
 }

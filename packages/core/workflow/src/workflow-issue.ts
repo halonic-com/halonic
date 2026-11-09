@@ -1,3 +1,5 @@
+import type { FileProblem } from "@halonicjs/format";
+
 /** An `error` stops the workflow from running; a `warning` only points something out. */
 export type Severity = "error" | "warning";
 
@@ -22,11 +24,19 @@ export type WorkflowIssueCode =
   | "unguarded-shadow"
   | "unknown-gets";
 
-/** One problem the static checks found, with the state it is in when it is in one. */
+/** The keys and list indexes to a value in a workflow file; `[]` for the whole file. */
+export type WorkflowPath = FileProblem["path"];
+
+/**
+ * One problem the static checks found: the key path in the workflow file of
+ * what it is about, and the state it is in when it is in one.
+ */
 export interface WorkflowIssue {
   severity: Severity;
   code: WorkflowIssueCode;
   message: string;
+  /** Such as `["states", "start", "on", 0, "to"]` for a transition to an unknown state. */
+  path: WorkflowPath;
   state?: string;
 }
 
@@ -43,7 +53,14 @@ export function issue(
   severity: Severity,
   code: WorkflowIssueCode,
   message: string,
+  path: WorkflowPath,
   state?: string,
 ): WorkflowIssue {
-  return state === undefined ? { severity, code, message } : { severity, code, message, state };
+  const found = { severity, code, message, path };
+  return state === undefined ? found : { ...found, state };
+}
+
+/** The key path of a state, or of a key in it: `stateKey("start", "on", 0)`. */
+export function stateKey(id: string, ...keys: (string | number)[]): WorkflowPath {
+  return ["states", id, ...keys];
 }

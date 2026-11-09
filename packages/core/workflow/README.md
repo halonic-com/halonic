@@ -22,7 +22,8 @@ comparisons, `contains`, `exists`, number comparisons and `not`, `all` and
 `promptFor`, `childInput` and `withGets` build what an agent or a child run
 gets, with the data a step picks (`gets`), and `contextBefore` tells which
 context keys a step can pick. `validateWorkflow` runs the static checks the
-canvas shows before anything runs. The rules are written out in the
+canvas shows before anything runs; each issue gives the key path in the
+workflow file of what it is about, such as `states.start.on.0.to`. The rules are written out in the
 [workflow semantics spec](../../../docs/specs/workflow-semantics.md).
 
 `parseDuration` reads the delay of a timer transition (`after: 30m`, `4h`,
