@@ -113,6 +113,21 @@ verifies("kit.list", () => {
     expect(trailing?.textContent).toBe("Running");
   });
 
+  it("draws the icon 16px in a 32px dense row, and 20px again when a phone makes it 48px", () => {
+    const rows = [{ ...agents[0], icon: <svg /> }] as ListRow[];
+    const icon = (container: HTMLElement) =>
+      mainCell(container, 0).firstElementChild?.firstElementChild?.className;
+    expect(icon(render(<List label="Models" rows={rows} dense />).container)).toContain(
+      "size-icon-sm",
+    );
+    const phone = render(
+      <PresentationProvider presentation="phone">
+        <List label="Models" rows={rows} dense />
+      </PresentationProvider>,
+    );
+    expect(icon(phone.container)).toContain("size-icon-md");
+  });
+
   it("has a hover and press fill, an inset focus ring and an accent-soft selected fill", () => {
     const { container } = render(<Selectable />);
     expect(rowsIn(container)[0]?.className).toContain("hover:bg-surface-subtle");
