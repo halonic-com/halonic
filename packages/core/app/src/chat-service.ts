@@ -25,12 +25,18 @@ export interface ChatTool {
   /**
    * Runs one call and returns the text the model reads as the result. A
    * refusal is a result too. Throwing gives the model "Error: <message>".
+   *
+   * `signal` is aborted when the person stops the chat, so a long tool can
+   * stop early. A tool that ignores it runs to the end, and its result is kept.
    */
-  call(toolCall: ToolCall): Promise<string>;
+  call(toolCall: ToolCall, signal?: AbortSignal): Promise<string>;
 }
 
-/** The model settings of one answer: everything of a `ChatTurnRequest` but the messages and tools. */
-export type ChatSettings = Omit<ChatTurnRequest, "messages" | "tools">;
+/**
+ * The model settings of one answer: everything of a `ChatTurnRequest` but the
+ * messages, the tools and the signal, which the answer sets itself.
+ */
+export type ChatSettings = Omit<ChatTurnRequest, "messages" | "tools" | "signal">;
 
 /** One answer to the person's latest message. */
 export interface ChatAnswerRequest {
@@ -40,7 +46,7 @@ export interface ChatAnswerRequest {
   tools: readonly ChatTool[];
   /** The most model turns this answer makes, from 1 to 64; {@link defaultTurnLimit} when absent. */
   turnLimit?: number;
-  /** Aborted when the person clicks Stop. */
+  /** Aborted when the person clicks Stop. It is passed on to each model turn and tool call. */
   signal?: AbortSignal;
   /** Told how the answer goes, for the chat's status line and transcript. */
   listener?: ChatAnswerListener;
@@ -136,7 +142,7 @@ export class ChatService {
       }
       answer.startTurn(turn);
       const response = await this.askModel(answer);
-      // The port can't cancel a model call, so an answer that comes after Stop is dropped.
+      // An executor may ignore the signal and answer after Stop anyway, so that answer is dropped.
       if (answer.stopped) {
         return answer.end({ reason: "stopped" });
       }

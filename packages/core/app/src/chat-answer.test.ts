@@ -2,7 +2,12 @@ import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { notRunAfterStop } from "./chat-answer.ts";
-import { type ChatAnswerListener, ChatService, type ChatSettings } from "./chat-service.ts";
+import {
+  type ChatAnswerListener,
+  ChatService,
+  type ChatSettings,
+  type ChatTool,
+} from "./chat-service.ts";
 import { call, ScriptedChat, textTurn, tool, toolTurn } from "./testing/scripted-chat.ts";
 
 const settings: ChatSettings = { hubId: "acme", alias: "default" };
@@ -115,6 +120,58 @@ verifies("app.chat-stop", () => {
     });
 
     expect(answer.end).toEqual({ reason: "stopped" });
+  });
+
+  it("passes the stop signal on to every model turn and tool call", async () => {
+    const stop = new AbortController();
+    const toolSignals: (AbortSignal | undefined)[] = [];
+    const readFile: ChatTool = {
+      ...tool("read_file").chatTool,
+      async call(_toolCall, signal) {
+        toolSignals.push(signal);
+        return "ok";
+      },
+    };
+    const model = new ScriptedChat([toolTurn(call("c1", "read_file")), textTurn("Done.")]);
+
+    await new ChatService(model).answer({
+      settings,
+      messages: question,
+      tools: [readFile],
+      signal: stop.signal,
+    });
+
+    expect(model.requests.map((request) => request.signal)).toEqual([stop.signal, stop.signal]);
+    expect(toolSignals).toEqual([stop.signal]);
+  });
+
+  it("leaves the signal out of the model turn when the answer has none", async () => {
+    const model = new ScriptedChat([textTurn("Done.")]);
+
+    await new ChatService(model).answer({ settings, messages: question, tools: [] });
+
+    expect(model.requests[0]).not.toHaveProperty("signal");
+  });
+
+  it("drops an answer that comes after Stop from an executor that ignores the signal", async () => {
+    const stop = new AbortController();
+    const readFile = tool("read_file");
+    const model = new ScriptedChat([
+      () => {
+        stop.abort();
+        return toolTurn(call("c1", "read_file"));
+      },
+    ]);
+
+    const answer = await new ChatService(model).answer({
+      settings,
+      messages: question,
+      tools: [readFile.chatTool],
+      signal: stop.signal,
+    });
+
+    expect(answer).toEqual({ messages: [], end: { reason: "stopped" } });
+    expect(readFile.calls).toEqual([]);
   });
 });
 

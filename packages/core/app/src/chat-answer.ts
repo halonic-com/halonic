@@ -56,11 +56,15 @@ export class AnswerInProgress {
 
   /** The request for the next model turn: the conversation with everything added so far. */
   turnRequest(): ChatTurnRequest {
-    return {
+    const request: ChatTurnRequest = {
       ...this.request.settings,
       messages: [...this.request.messages, ...this.added],
       tools: this.request.tools.map((tool) => tool.definition),
     };
+    if (this.request.signal !== undefined) {
+      request.signal = this.request.signal;
+    }
+    return request;
   }
 
   /** Adds the assistant message of a model turn. */
@@ -123,7 +127,7 @@ export class AnswerInProgress {
     }
     this.toolsRan = true;
     try {
-      return await tool.call(toolCall);
+      return await tool.call(toolCall, this.request.signal);
     } catch (error) {
       return `Error: ${asError(error).message}`;
     }
