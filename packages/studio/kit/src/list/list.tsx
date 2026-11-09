@@ -200,40 +200,8 @@ function Row<Id extends string>({
   const isSelected = selection?.selected.has(row.id) === true;
   const state = stateClasses[isSelected ? "selected" : "default"];
   const isDisabled = row.disabled === true;
-  const meta = row.error?.reason ?? row.meta;
-  const trailing =
-    row.error === undefined ? (
-      row.trailing
-    ) : (
-      <StatusChip tone="danger">{row.error.chip}</StatusChip>
-    );
-  // On a phone the right edge has one job: next to a More button, the chip goes under the text.
-  const trailingBelow = phone && row.more !== undefined;
   const lines = first ? { main: "", more: "" } : lineClasses[look];
-
-  const onClick = () => {
-    if (isDisabled) {
-      return;
-    }
-    if (onOpen !== undefined) {
-      onOpen(row.id);
-    } else {
-      selection?.onToggle(row.id);
-    }
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTableCellElement>) => {
-    if (event.target !== event.currentTarget || isComposing(event) || isDisabled) {
-      return;
-    }
-    if (event.key === "Enter" && onOpen !== undefined) {
-      event.preventDefault();
-      onOpen(row.id);
-    } else if (event.key === " " && selection !== undefined) {
-      event.preventDefault();
-      selection.onToggle(row.id);
-    }
-  };
+  const actions: RowActions<Id> = { row, onOpen, selection };
 
   return (
     <tr
@@ -247,43 +215,122 @@ function Row<Id extends string>({
         role="gridcell"
         {...grid.cell(row.id, 0)}
         className={`p-0 focus-ring-inset ${lines.main} ${state.main} ${isDisabled ? "cursor-default" : "cursor-pointer"}`}
-        onClick={onClick}
-        onKeyDown={onKeyDown}
+        onClick={() => clickRow(actions)}
+        onKeyDown={(event) => pressKeyOnRow(event, actions)}
       >
-        <div
-          className={`flex items-center gap-3 px-4 ${heightClasses(phone, dense, meta !== undefined)}`}
-        >
-          <Leading row={row} small={dense && !phone} />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <span
-              className={`truncate text-body-strong ${isDisabled ? "text-fg-disabled" : "text-fg"}`}
-            >
-              {row.title}
-            </span>
-            {meta === undefined ? null : <Meta row={row} text={meta} />}
-            {trailingBelow && trailing !== undefined ? (
-              <span className="mt-1 flex">{trailing}</span>
-            ) : null}
-          </div>
-          {!trailingBelow && trailing !== undefined ? (
-            <span className="flex shrink-0 items-center">{trailing}</span>
-          ) : null}
-        </div>
+        <RowContent row={row} phone={phone} dense={dense} />
       </td>
-      {hasMore ? (
-        <td className={`p-0 text-right ${moreClasses[phone ? "phone" : "desktop"]} ${lines.more}`}>
-          {row.more === undefined ? null : (
-            <Button
-              variant="ghost"
-              icon={<MoreIcon />}
-              label={row.more.label}
-              onClick={row.more.onClick}
-              {...grid.cell(row.id, 1)}
-            />
-          )}
-        </td>
-      ) : null}
+      {hasMore ? <MoreCell row={row} phone={phone} line={lines.more} grid={grid} /> : null}
     </tr>
+  );
+}
+
+/** What a row needs to answer a click or a key. */
+interface RowActions<Id extends string> {
+  readonly row: ListRow<Id>;
+  readonly onOpen: ((id: Id) => void) | undefined;
+  readonly selection: ListSelection<Id> | undefined;
+}
+
+/** A click opens the row, or toggles its selection when the list has no `onOpen`. */
+function clickRow<Id extends string>({ row, onOpen, selection }: RowActions<Id>) {
+  if (row.disabled === true) {
+    return;
+  }
+  if (onOpen !== undefined) {
+    onOpen(row.id);
+    return;
+  }
+  selection?.onToggle(row.id);
+}
+
+/** Enter opens the row and Space toggles its selection, but only on the row cell itself. */
+function pressKeyOnRow<Id extends string>(
+  event: KeyboardEvent<HTMLTableCellElement>,
+  { row, onOpen, selection }: RowActions<Id>,
+) {
+  if (event.target !== event.currentTarget || isComposing(event) || row.disabled === true) {
+    return;
+  }
+  if (event.key === "Enter" && onOpen !== undefined) {
+    event.preventDefault();
+    onOpen(row.id);
+    return;
+  }
+  if (event.key === " " && selection !== undefined) {
+    event.preventDefault();
+    selection.onToggle(row.id);
+  }
+}
+
+/** The row's right side: an error's `danger` chip takes the place of the row's own trailing. */
+function trailingOf(row: ListRow): ReactNode {
+  if (row.error === undefined) {
+    return row.trailing;
+  }
+  return <StatusChip tone="danger">{row.error.chip}</StatusChip>;
+}
+
+/** The main cell's inside: the icon or avatar, the title, the meta line and the trailing. */
+function RowContent({
+  row,
+  phone,
+  dense,
+}: {
+  readonly row: ListRow;
+  readonly phone: boolean;
+  readonly dense: boolean;
+}) {
+  const meta = row.error?.reason ?? row.meta;
+  const trailing = trailingOf(row);
+  // On a phone the right edge has one job: next to a More button, the chip goes under the text.
+  const trailingBelow = phone && row.more !== undefined;
+  const showTrailingBelow = trailingBelow && trailing !== undefined;
+  const showTrailingRight = !trailingBelow && trailing !== undefined;
+
+  return (
+    <div
+      className={`flex items-center gap-3 px-4 ${heightClasses(phone, dense, meta !== undefined)}`}
+    >
+      <Leading row={row} small={dense && !phone} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span
+          className={`truncate text-body-strong ${row.disabled === true ? "text-fg-disabled" : "text-fg"}`}
+        >
+          {row.title}
+        </span>
+        {meta === undefined ? null : <Meta row={row} text={meta} />}
+        {showTrailingBelow ? <span className="mt-1 flex">{trailing}</span> : null}
+      </div>
+      {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}
+    </div>
+  );
+}
+
+/** The More buttons' column. A row without a More button still gets the cell, left empty. */
+function MoreCell({
+  row,
+  phone,
+  line,
+  grid,
+}: {
+  readonly row: ListRow;
+  readonly phone: boolean;
+  readonly line: string;
+  readonly grid: GridNavigation;
+}) {
+  return (
+    <td className={`p-0 text-right ${moreClasses[phone ? "phone" : "desktop"]} ${line}`}>
+      {row.more === undefined ? null : (
+        <Button
+          variant="ghost"
+          icon={<MoreIcon />}
+          label={row.more.label}
+          onClick={row.more.onClick}
+          {...grid.cell(row.id, 1)}
+        />
+      )}
+    </td>
   );
 }
 
