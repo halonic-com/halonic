@@ -11,6 +11,16 @@
       ],
       "reason": "Formatter and linter in one fast tool."
     },
+    "@changesets/cli": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/root"
+      ],
+      "layers": [
+        "tooling"
+      ],
+      "reason": "Versions and changelogs for what we ship, the CLI and the Studio app (D9)."
+    },
     "@noble/hashes": {
       "category": "outside-world",
       "allowedIn": [

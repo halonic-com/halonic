@@ -29,10 +29,12 @@
     "codegen": "node tooling/discover/src/cli/discover.ts",
     "new": "node tooling/discover/src/cli/new.ts",
     "who-touches": "node tooling/discover/src/cli/who-touches.ts",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "changeset": "changeset"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@changesets/cli": "catalog:",
     "turbo": "catalog:"
   },
   "halonic": {
