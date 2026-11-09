@@ -268,7 +268,7 @@ verifies("ports.untrusted-tool-listings", () => {
   });
 
   it("cuts a dropped keyword to 64 characters in the reason and escapes its bidi character", () => {
-    const keyword = `x-‮${"a".repeat(200)}`;
+    const keyword = `x-\u202E${"a".repeat(200)}`;
     const { refusals } = read([tool("lookup", { parameters: { [keyword]: 1 } })]);
     expect(refusals.map(({ reason }) => reason)).toEqual([
       `dropped the keyword at /x-\\u{202e}${"a".repeat(61)}`,
@@ -283,7 +283,7 @@ verifies("ports.untrusted-tool-listings", () => {
   });
 
   it("cuts a refused name to 64 characters and escapes its bidi and control characters", () => {
-    const name = `a‮"\n${"b".repeat(200)}`;
+    const name = `a\u202E"\n${"b".repeat(200)}`;
     const { refusals } = read([tool(name)]);
     expect(refusals).toEqual([
       {

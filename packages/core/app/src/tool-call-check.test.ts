@@ -140,7 +140,7 @@ describe("checkToolCall", () => {
   });
 
   it("escapes quotes, line breaks and bidi characters in a refused name", () => {
-    const hostile = 'x", "y\n‮txt';
+    const hostile = 'x", "y\n\u202Etxt';
     expect(checkToolCall(declared({ type: "object" }), { [hostile]: 1 })).toEqual({
       kind: "refused",
       reason: 'forecast has no parameter "x\\", \\"y\\u{a}\\u{202e}txt"',

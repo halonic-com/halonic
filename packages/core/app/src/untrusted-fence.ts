@@ -61,8 +61,9 @@ function continuesMarker(after: string): boolean {
  *
  * "Something like a marker" is judged as a model would read it, so invisible
  * characters, spaces, case and lookalikes don't help: `</untrusted>`,
- * `< /UNTRUSTED >`, `<​/untrusted>`, `</unt­rusted>` and
- * `＜/untrusted>` all count.
+ * `< /UNTRUSTED >`, `＜/untrusted>`, and `</untrusted>` with a
+ * zero-width space (U+200B) after the `<` or a soft hyphen (U+00AD) inside
+ * the name all count.
  *
  * Only those `<` change, so code and markup in a tool's result stay
  * readable.
