@@ -18,7 +18,9 @@ npm install --save-exact @halonicjs/integration-kit
   (anything with a `safeParse`, such as a Zod schema) and runs the matching
   implementation.
 - **The errors the host raises:** `IntegrationRefusedError`, with a `code`
-  that says why a request was refused, and `IntegrationTimeoutError`.
+  that says why a request was refused, and `IntegrationTimeoutError`. Both
+  have a `kind`, such as `denied` or `unavailable`, that says how Halonic
+  responds to them.
 - **`maxIntegrationWaitMs`**, the longest pause `host.wait` allows.
 
 An integration gets everything else from the host it is connected to: an

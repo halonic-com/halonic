@@ -1,4 +1,5 @@
 import type { IntegrationTool } from "@halonicjs/ports";
+import type { ErrorKind } from "@halonicjs/std/error-kind";
 
 /** One problem in a tool's arguments: where it is, never what the value was. */
 export interface ArgumentIssue {
@@ -51,8 +52,19 @@ export interface ToolImplementation<Client, Arguments extends ArgumentSchema = A
 /** Why {@link runTool} refused a call. */
 export type ToolCallRefusal = "bad-arguments" | "not-found";
 
-/** Builds the integration's own error for a refused call (the integrations guide, section 7). */
-export type MakeError = (code: ToolCallRefusal, message: string) => Error;
+/** How a surface should respond to each {@link ToolCallRefusal}. */
+const toolCallRefusalKinds: Readonly<Record<ToolCallRefusal, ErrorKind>> = {
+  "bad-arguments": "invalid_input",
+  "not-found": "not_found",
+};
+
+/**
+ * Builds the integration's own error for a refused call (the integrations
+ * guide, section 7). `kind` is how a surface should respond; an error that
+ * keeps it as its `kind` property is reported that way, and anything else
+ * as an internal error.
+ */
+export type MakeError = (code: ToolCallRefusal, message: string, kind: ErrorKind) => Error;
 
 /** One tool call as the connection receives it. */
 export interface RunToolCall {
@@ -71,8 +83,9 @@ const maxEchoedNameLength = 64;
  * @example
  * callTool: (name, args, signal) => runTool(tools, client, { name, args, signal }, gmailError),
  *
- * @throws `makeError("not-found", …)` for a tool that isn't in `tools`, and
- *   `makeError("bad-arguments", …)` naming each bad field, never its value
+ * @throws `makeError("not-found", …, "not_found")` for a tool that isn't in
+ *   `tools`, and `makeError("bad-arguments", …, "invalid_input")` naming each
+ *   bad field, never its value
  */
 export async function runTool<Client>(
   tools: readonly ToolImplementation<Client>[],
@@ -82,18 +95,23 @@ export async function runTool<Client>(
 ): Promise<string> {
   const tool = tools.find((candidate) => candidate.declaration.name === call.name);
   if (tool === undefined) {
-    throw makeError("not-found", `There is no tool named ${shortened(call.name)}.`);
+    throw refusal("not-found", `There is no tool named ${shortened(call.name)}.`, makeError);
   }
   const parsed = tool.arguments.safeParse(call.args);
   if (!parsed.success) {
     // Name the bad fields, never their values: they may hold the user's content.
     const fields = parsed.error.issues.map(fieldName);
-    throw makeError("bad-arguments", `Check these arguments: ${[...new Set(fields)].join(", ")}.`);
+    const message = `Check these arguments: ${[...new Set(fields)].join(", ")}.`;
+    throw refusal("bad-arguments", message, makeError);
   }
   const result = await tool.run(client, parsed.data, call.signal);
   // The type rules out nothing, but plain JavaScript can still give it, and
   // JSON.stringify(undefined) isn't a string.
   return JSON.stringify(result ?? null);
+}
+
+function refusal(code: ToolCallRefusal, message: string, makeError: MakeError): Error {
+  return makeError(code, message, toolCallRefusalKinds[code]);
 }
 
 /**

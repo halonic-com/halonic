@@ -1,3 +1,4 @@
+import { type ErrorKind, errorKindOf } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
@@ -58,12 +59,14 @@ const echoTool = {
 
 class TestError extends Error {
   readonly code: string;
-  constructor(code: string, message: string) {
+  readonly kind: ErrorKind;
+  constructor(code: string, message: string, kind: ErrorKind) {
     super(message);
     this.code = code;
+    this.kind = kind;
   }
 }
-const makeError: MakeError = (code, message) => new TestError(code, message);
+const makeError: MakeError = (code, message, kind) => new TestError(code, message, kind);
 
 verifies("integration-kit.run-tool", () => {
   it("runs the named tool with the parsed arguments and returns its result as JSON", async () => {
@@ -90,6 +93,7 @@ verifies("integration-kit.run-tool", () => {
     const call = runTool([echoTool], "", { name: "x".repeat(200), args: {} }, makeError);
     await expect(call).rejects.toMatchObject({
       code: "not-found",
+      kind: "not_found",
       message: `There is no tool named ${"x".repeat(64)}.`,
     });
   });
@@ -103,9 +107,22 @@ verifies("integration-kit.run-tool", () => {
     );
     await expect(call).rejects.toMatchObject({
       code: "bad-arguments",
+      kind: "invalid_input",
       message: "Check these arguments: text, times, (arguments).",
     });
     await expect(call).rejects.not.toThrow(/secret sentence/);
+  });
+
+  it("gives makeError a kind that a surface reads with errorKindOf", async () => {
+    const call = runTool([echoTool], "", { name: "test_echo", args: {} }, makeError);
+    const error = await call.catch((caught: unknown) => caught);
+    expect(errorKindOf(error)).toBe("invalid_input");
+  });
+
+  it("still accepts a makeError written before kinds, which ignores the kind", async () => {
+    const before: MakeError = (code, message) => new Error(`${code}: ${message}`);
+    const call = runTool([echoTool], "", { name: "nope", args: {} }, before);
+    await expect(call).rejects.toThrow("not-found: There is no tool named nope.");
   });
 
   it("gives null as JSON for a tool that returns nothing, so the result is always a string", async () => {

@@ -19,9 +19,10 @@ function entryImports(): string[] {
 }
 
 verifies("integration-kit.integration-entry", () => {
-  it("imports only its own files and the ports, so it brings no outside code into an integration", () => {
+  it("imports only its own files, the ports and std's error kinds, so it brings no outside code into an integration", () => {
+    const allowed = ["@halonicjs/ports", "@halonicjs/std/error-kind"];
     const outside = entryImports().filter(
-      (specifier) => !specifier.startsWith("./") && specifier !== "@halonicjs/ports",
+      (specifier) => !specifier.startsWith("./") && !allowed.includes(specifier),
     );
     expect(outside).toEqual([]);
   });
