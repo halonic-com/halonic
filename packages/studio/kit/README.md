@@ -2,9 +2,9 @@
 
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
-by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Kbd`](#kbd),
-[`Field`](#field), [`Input`](#input), [`TextArea`](#textarea), [`CopyButton`](#copybutton) and
-[`ExternalLink`](#externallink).
+by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Tabs`](#tabs),
+[`List`](#list), [`Kbd`](#kbd), [`Field`](#field), [`Input`](#input), [`TextArea`](#textarea),
+[`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
 
 - **Layer:** studio
 - **Owner:** noah
@@ -294,7 +294,7 @@ window width. Tests set the provider directly.
 
 ## ListHeading
 
-The heading over a group of rows. The List will draw it for its own `heading`; it's exported
+The heading over a group of rows. The List draws it for its own `heading`; it's exported
 alone for a list the kit doesn't draw, such as the shell's Settings nav.
 
 ```tsx
@@ -315,6 +315,79 @@ where the rows' text does. The "·" is hidden from screen readers, which hear a 
 "Acme, Workspace settings". When the detail doesn't fit after the name (at 320px and 200% text),
 it moves onto its own line, and a detail too long even for that wraps. Use `stacked` in a narrow
 column, such as the 208px Settings nav.
+
+## List
+
+A group of rows: agents, routines, runs, files in a picker. The screen gives the rows as data; the
+List draws them.
+
+```tsx
+<List
+  heading={{ name: "Agents" }}
+  rows={agents.map((agent) => ({
+    id: agent.id,
+    title: agent.name,
+    meta: agent.model,
+    trailing: <StatusChip tone="running">Running</StatusChip>,
+    more: { label: `More actions for ${agent.name}`, onClick: openMenu },
+  }))}
+  onOpen={openAgent}
+/>;
+```
+
+| Prop           | What it is                                                                            |
+| -------------- | ------------------------------------------------------------------------------------- |
+| `rows`         | The rows, each with a stable `id` (never the index) and the parts below               |
+| `heading`      | `{ name, detail }`, drawn above the list with [`ListHeading`](#listheading); names it |
+| `headingLevel` | 2 by default                                                                          |
+| `label`        | The list's name when it has no heading: "Agents"                                      |
+| `onOpen`       | Called with a row's `id` on Enter or a click                                          |
+| `selection`    | `{ selected, onToggle, multiple }`: the screen keeps the set, Space toggles a row     |
+| `dense`        | 32px rows, for menus and pickers                                                      |
+| `flush`        | No outer border or radius, lines from 16px. On by default on a phone                  |
+
+A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` or a 28px
+`avatar` (both hidden from screen readers), a `trailing` chip or value, a `more` button
+(`{ label, onClick }`, its label naming the row), `disabled` and `error` (`{ reason, chip }`).
+
+**Keyboard.** The list is one Tab stop. The up and down arrow keys, Home and End move between
+rows; the right arrow key reaches the row's More button and the left one comes back. Enter opens
+the row, Space selects it when the list allows selection. When the focused row is removed, focus
+goes to the row that took its place, else the one before. It's a `grid`, not a `listbox`, because
+rows hold a button.
+
+| State    | What shows                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Default  | A `surface` fill; 56px with a meta line, 40px without, 32px `dense`; padded 16px           |
+| Hover    | `surface-subtle`, and the More button appears                                              |
+| Focus    | An inset 2px `accent` ring, which the list's edge can't clip                               |
+| Disabled | Title, meta and icon `fg-disabled`, avatar at 45%. Still focusable, but doesn't open       |
+| Error    | The reason in `danger` in place of the meta line, and a `danger` chip. It still opens      |
+| Selected | `accent-soft`, `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
+
+**On a phone** the list is `flush` and rows are at least 56px (64px with a meta line), padded
+12px 16px; `dense` rows are 48px. The More button is always there at 48px, and the right edge has
+one job: a row with a More button puts its chip under the text. **On a touch screen** at desktop
+width the More button is always shown too.
+
+## useGridNavigation
+
+The roving focus behind the List, for a `grid` the kit doesn't draw (the Inbox list). Pass each
+row's `id` and which of its cells can take focus; spread `gridProps` on the grid and
+`cell(row, column)` on each focusable element.
+
+```tsx
+const grid = useGridNavigation(
+  rows.map((row) => ({
+    id: row.id,
+    cells: row.heading ? [] : [true, row.link !== undefined, true],
+  })),
+);
+```
+
+One cell is in the Tab order. ↑ ↓ move between rows in the same column, ← → between a row's
+cells, Home and End to the first and last row. Heading rows (no focusable cells) and empty cells
+are passed over. Keys from a field inside a cell are left alone.
 
 ## SkeletonBar
 

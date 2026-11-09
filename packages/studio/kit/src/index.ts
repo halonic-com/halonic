@@ -28,11 +28,19 @@ export {
   type FieldProps,
   useFieldControl,
 } from "./field/field.tsx";
+export {
+  type GridCellProps,
+  type GridNavigation,
+  type GridPosition,
+  type GridRow,
+  useGridNavigation,
+} from "./grid-navigation/use-grid-navigation.ts";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
+export { List, type ListProps, type ListRow, type ListSelection } from "./list/list.tsx";
 export {
   ListHeading,
   type ListHeadingLayout,
@@ -51,7 +59,6 @@ export {
   type SkeletonBarProps,
   type SkeletonBarWidth,
 } from "./skeleton-bar/skeleton-bar.tsx";
-
 export {
   StatusChip,
   type StatusChipProps,

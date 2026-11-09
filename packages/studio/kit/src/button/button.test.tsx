@@ -96,6 +96,19 @@ verifies("kit.button", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("leaves the Tab order with tabIndex -1 inside a grid, and reports focus", () => {
+    const onFocus = vi.fn();
+    const button = renderButton({
+      icon: closeIcon,
+      label: "More actions for Sorter",
+      tabIndex: -1,
+      onFocus,
+    });
+    expect(button.tabIndex).toBe(-1);
+    button.focus();
+    expect(onFocus).toHaveBeenCalledTimes(1);
+  });
+
   it("can't take a label and children together, and an icon button must have a name", () => {
     // @ts-expect-error An icon button has a label instead of children.
     const both = <Button icon={closeIcon} label="Close" children="Close" />;
