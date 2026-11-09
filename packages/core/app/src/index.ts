@@ -21,6 +21,12 @@ export {
 } from "./event-bus.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
+export {
+  checkPackageRunnerLaunch,
+  isPackageRunner,
+  programName,
+  type StdioTransport,
+} from "./package-runner.ts";
 export { readPackageSpec } from "./package-spec.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
