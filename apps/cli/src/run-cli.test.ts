@@ -143,12 +143,22 @@ verifies("cli.exit-codes", () => {
       "✕ There's no option --colour. Did you mean --no-color?",
       "  Run halonic greet --help to see its options.",
     ]);
+    const short = captureIo("/work");
+    expect(await runCli(["greet", "Ada", "-v"], short, commands)).toBe(exitCode.usage);
+    expect(short.stderr[0]).toBe("✕ There's no option -v.");
     const noValue = captureIo("/work");
     expect(await runCli(["greet", "Ada", "--from"], noValue, commands)).toBe(exitCode.usage);
     expect(noValue.stderr).toEqual([
       "✕ --from needs a value: --from <who>.",
       "  Usage: halonic greet <name> [--loud]",
     ]);
+    const optionAsValue = captureIo("/work");
+    expect(await runCli(["greet", "Ada", "--from", "--loud"], optionAsValue, commands)).toBe(
+      exitCode.usage,
+    );
+    expect(optionAsValue.stderr[0]).toBe("✕ --from needs a value: --from <who>.");
+    const inlineValue = captureIo("/work");
+    expect(await runCli(["greet", "Ada", "--from=-x"], inlineValue, commands)).toBe(exitCode.ok);
     const switchValue = captureIo("/work");
     expect(await runCli(["greet", "Ada", "--loud=yes"], switchValue, commands)).toBe(
       exitCode.usage,

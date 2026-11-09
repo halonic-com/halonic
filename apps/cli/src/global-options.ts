@@ -36,8 +36,8 @@ export const globalOptionFlags: readonly string[] = Object.values(spellings).map
   ([long = ""]) => long,
 );
 
-/** Every spelling of a global option, for "Did you mean" next to a command's own options. */
-export const globalOptionSpellings: readonly string[] = Object.values(spellings).flat();
+/** Every spelling of a global option, to take them all out of the command line. */
+const globalOptionSpellings: readonly string[] = Object.values(spellings).flat();
 
 /** `--help` and its short form `-h`: print the help instead of running the command. */
 export const helpFlags: ReadonlySet<string> = new Set(spellings.help);

@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { type CliCommand, type CommandInput, UsageError } from "./command.ts";
-import { globalOptionSpellings } from "./global-options.ts";
+import { globalOptionFlags } from "./global-options.ts";
 import { usageMessages } from "./messages/general.ts";
 import { nearMatch } from "./near-match.ts";
 
@@ -29,10 +29,25 @@ export function readInput(command: CliCommand, args: readonly string[]): Command
   });
   for (const token of parsed.tokens) {
     if (token.kind === "option") {
-      checkOption(command, token.name, token.rawName, token.value);
+      checkOption(command, token.name, token.rawName, givenValue(token));
     }
   }
   return { positionals: parsed.positionals, options: parsed.values };
+}
+
+/**
+ * The option's value, or `undefined` when it has none. Not being strict,
+ * `parseArgs` takes the next argument as the value even when it is another
+ * option: in `--from --loud` that is no value, while `--from=--loud` is one.
+ */
+function givenValue(token: {
+  value?: string | undefined;
+  inlineValue?: boolean | undefined;
+}): string | undefined {
+  if (token.value === undefined) {
+    return undefined;
+  }
+  return token.inlineValue !== true && token.value.startsWith("-") ? undefined : token.value;
 }
 
 function checkOption(
@@ -43,9 +58,10 @@ function checkOption(
 ): void {
   const option = Object.hasOwn(command.options, name) ? command.options[name] : undefined;
   if (option === undefined) {
+    // Long spellings only: a short one such as -h is one edit from any other.
     const known = [
       ...Object.keys(command.options).map((known) => `--${known}`),
-      ...globalOptionSpellings,
+      ...globalOptionFlags,
     ];
     const near = nearMatch(rawName, known);
     throw new UsageError(
