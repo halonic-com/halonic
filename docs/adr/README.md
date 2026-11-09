@@ -34,6 +34,7 @@ code is built the way it is, before you change something they describe.
 | [Sandbox fence proof](2026-11-09-sandbox-fence-proof.md)                               | A sandbox session proves its fence before `open` returns (v2)                    |
 | [API types stand alone](2026-11-09-api-types-stand-alone.md)                           | `events` and `ports` use only each other, so callers get them without the engine |
 | [Sandbox check reason codes](2026-11-09-sandbox-check-reason-codes.md)                 | `SandboxCheck.reason` is a listed code; Studio words it; no fallback (v3)        |
+| [Run snapshot is a cache](2026-11-09-run-snapshot-is-a-cache.md)                       | `RunStore` may drop a snapshot; only a crash can store part of an append         |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).
