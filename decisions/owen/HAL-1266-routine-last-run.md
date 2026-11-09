@@ -20,5 +20,5 @@ The requirement gains two sentences and two examples. Nothing it promised before
 ## Tests
 
 No test was weakened or removed. The tests that build a `RoutineScheduler` by hand now pass the new
-`keyOf` option. New tests cover both changes in `routine-scheduler.test.ts` and
+`keyOf` option. New tests cover both changes in `routine-last-runs.test.ts` and
 `workspace-routines.test.ts`.
