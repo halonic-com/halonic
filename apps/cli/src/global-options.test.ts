@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { readGlobalOptions } from "./global-options.ts";
+import { globalOptionFlags, helpFlags, readGlobalOptions } from "./global-options.ts";
+
+describe("globalOptionFlags", () => {
+  it("lists only options the CLI reads, so the help never names one that does nothing", () => {
+    for (const flag of globalOptionFlags) {
+      const takenOut = readGlobalOptions([flag]).args.length === 0;
+      expect(takenOut || helpFlags.has(flag), flag).toBe(true);
+    }
+  });
+});
 
 describe("readGlobalOptions", () => {
   it("takes --debug out wherever it stands", () => {

@@ -2,12 +2,10 @@ import { errorKindOf } from "@halonicjs/std";
 import type { CliCommand, CliIo } from "./command.ts";
 import { type ExitCode, exitCode } from "./exit-code.ts";
 import { exitCodeFor } from "./exit-code-for.ts";
-import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
+import { type GlobalOptions, helpFlags, readGlobalOptions } from "./global-options.ts";
 import { commandHelp, overallHelp, usageLine } from "./help.ts";
 import { printError } from "./print-error.ts";
 import { readInput } from "./read-input.ts";
-
-const helpFlags = new Set(["--help", "-h"]);
 
 /**
  * Runs one `halonic` command line and returns the exit code. Output goes

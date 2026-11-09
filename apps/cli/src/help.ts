@@ -1,7 +1,11 @@
 import type { CliCommand, CliOption } from "./command.ts";
 import { exitCode, exitCodeMeanings } from "./exit-code.ts";
+import { globalOptionFlags } from "./global-options.ts";
 
-/** The help for `halonic` on its own: every command with its summary, then the exit codes. */
+/**
+ * The help for `halonic` on its own: every command with its summary, the
+ * options every command takes, then the exit codes.
+ */
 export function overallHelp(commands: readonly CliCommand[]): string[] {
   const width = Math.max(0, ...commands.map((command) => command.name.length));
   return [
@@ -9,6 +13,8 @@ export function overallHelp(commands: readonly CliCommand[]): string[] {
     "",
     "Commands:",
     ...commands.map((command) => `  ${command.name.padEnd(width)}  ${command.summary}`),
+    "",
+    `Options for every command: ${globalOptionFlags.join(", ")}`,
     "",
     ...exitCodeHelp(),
     "",

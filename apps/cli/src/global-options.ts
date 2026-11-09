@@ -13,6 +13,17 @@ export interface ReadGlobalOptions {
 
 const debugFlag = "--debug";
 
+const helpFlag = "--help";
+
+/** `--help` and its short form `-h`: print the help instead of running the command. */
+export const helpFlags: ReadonlySet<string> = new Set([helpFlag, "-h"]);
+
+/**
+ * Every option that every command takes, in the order `halonic --help` lists
+ * them. A new global option is added here, so the help names it by itself.
+ */
+export const globalOptionFlags: readonly string[] = [debugFlag, helpFlag];
+
 /** Ends the options: everything after it is an argument, even `--debug`. */
 const endOfOptions = "--";
 
