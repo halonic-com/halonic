@@ -15,8 +15,8 @@ by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip
 
 The app's entry CSS sets up Tailwind once and then imports the tokens. Plain CSS `@import` of the
 package name resolves to `theme.css` through the `style` export condition. `theme.css` imports
-`theme-selection.css` (the selection and high-contrast utilities) itself, so the app imports one
-file.
+`theme-selection.css` (the selection, row focus and high-contrast utilities) itself, so the app
+imports one file.
 
 ```css
 /* apps/studio/src/app.css */

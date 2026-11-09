@@ -375,37 +375,6 @@
 }
 
 /*
- * A List row with a More column, while its first cell has keyboard focus. The inset ring then
- * goes round the whole row: the first cell draws it without its end edge, the last cell without
- * its start edge. In high contrast, which drops shadows, the first cell's outline is the ring.
- */
-@custom-variant row-focus (tr:has(> td:first-child:focus-visible) > &);
-
-@utility focus-ring-row-start {
-  @variant row-focus {
-    outline: 2px solid transparent;
-    outline-offset: -2px;
-    box-shadow:
-      inset 2px 0 0 0 var(--color-accent),
-      inset 0 2px 0 0 var(--color-accent),
-      inset 0 -2px 0 0 var(--color-accent);
-
-    @media (forced-colors: active) {
-      outline-color: Highlight;
-    }
-  }
-}
-
-@utility focus-ring-row-end {
-  @variant row-focus {
-    box-shadow:
-      inset -2px 0 0 0 var(--color-accent),
-      inset 0 2px 0 0 var(--color-accent),
-      inset 0 -2px 0 0 var(--color-accent);
-  }
-}
-
-/*
  * A tap target of at least 48px (--spacing-touch) round a control that looks smaller, centred
  * on it, drawn by a pseudo-element so the control's own size and padding don't change. Use it
  * under phone: or touch:, as phone:hit-touch.

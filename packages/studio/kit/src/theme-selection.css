@@ -1,6 +1,7 @@
 /*
- * The selection and high-contrast utilities, split out of theme.css by concept. theme.css imports
- * this file, so the app still imports one file. It holds no tokens, only utilities that read them.
+ * The selection, row focus and high-contrast utilities, split out of theme.css by concept.
+ * theme.css imports this file, so the app still imports one file. It holds no tokens, only
+ * utilities that read them.
  */
 
 /* ---------------------------------------------------------------- Selection and high contrast */
@@ -46,6 +47,37 @@
   @media (forced-colors: active) {
     outline: 1px solid CanvasText;
     outline-offset: -1px;
+  }
+}
+
+/*
+ * A List row with a More column, while its first cell has keyboard focus. The inset ring then
+ * goes round the whole row: the first cell draws it without its end edge, the last cell without
+ * its start edge. In high contrast, which drops shadows, the first cell's outline is the ring.
+ */
+@custom-variant row-focus (tr:has(> td:first-child:focus-visible) > &);
+
+@utility focus-ring-row-start {
+  @variant row-focus {
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+    box-shadow:
+      inset 2px 0 0 0 var(--color-accent),
+      inset 0 2px 0 0 var(--color-accent),
+      inset 0 -2px 0 0 var(--color-accent);
+
+    @media (forced-colors: active) {
+      outline-color: Highlight;
+    }
+  }
+}
+
+@utility focus-ring-row-end {
+  @variant row-focus {
+    box-shadow:
+      inset -2px 0 0 0 var(--color-accent),
+      inset 0 2px 0 0 var(--color-accent),
+      inset 0 -2px 0 0 var(--color-accent);
   }
 }
 
