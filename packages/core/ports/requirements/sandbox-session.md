@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: plan section 4.5 (the two ports): a session starts programs with their standard streams, reports blocked accesses and stops everything when the run ends
 
-A `Sandbox` shall report whether it works and how files reach it and how strong its fence is, and `open` shall return a session that starts programs with standard input, output and error as Web streams, reports each blocked file or network access, and stops every program it started on `close`, on the time limit and when the signal given to `open` aborts.
+The `Sandbox` port shall report whether it works and how files reach it and how strong its fence is, and `open` shall return a session that starts programs with standard input, output and error as Web streams, reports each blocked file or network access, and stops every program it started on `close`, on the time limit and when the signal given to `open` aborts.
 
 ## Examples
 
