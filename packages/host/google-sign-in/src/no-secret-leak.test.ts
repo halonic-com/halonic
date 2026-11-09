@@ -48,6 +48,30 @@ function echoingCheckAnswer(status: number): Response {
   );
 }
 
+/**
+ * A check answer that says the API is off and puts one secret, on its own,
+ * into each field the reader looks at: the reason, the API host and the
+ * project. Each has the shape the field expects, so only the reader's rules
+ * keep it out, not the token's format.
+ */
+function echoingApiOffAnswer(secret: string): Response {
+  return Response.json(
+    {
+      error: {
+        errors: [{ reason: "accessNotConfigured" }, { reason: secret }],
+        details: [
+          {
+            "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+            reason: "SERVICE_DISABLED",
+            metadata: { service: `${secret}.googleapis.com`, consumer: `projects/${secret}` },
+          },
+        ],
+      },
+    },
+    { status: 403 },
+  );
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -72,6 +96,22 @@ verifies("google-sign-in.no-secret-leak", () => {
         request.url === tokenEndpoint ? tokenSuccess() : echoingCheckAnswer(status),
       );
 
+      expect(findLeakedSecrets(secrets, { results: [result] })).toEqual([]);
+    });
+  }
+
+  for (const [name, secret] of Object.entries(secrets)) {
+    it(`keeps a secret out of an apiOff result that echoes it as the API and project: ${name}`, async () => {
+      const { result } = await signInOnce((request) =>
+        request.url === tokenEndpoint ? tokenSuccess() : echoingApiOffAnswer(secret),
+      );
+
+      expect(result).toMatchObject({
+        kind: "signedIn",
+        services: expect.arrayContaining([
+          expect.objectContaining({ result: expect.objectContaining({ kind: "apiOff" }) }),
+        ]),
+      });
       expect(findLeakedSecrets(secrets, { results: [result] })).toEqual([]);
     });
   }
