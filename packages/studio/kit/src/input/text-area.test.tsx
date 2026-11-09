@@ -8,7 +8,46 @@ import { TextArea } from "./text-area.tsx";
 
 afterEach(() => {
   unmountAll();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
+
+/** Makes every textarea measure `height` pixels of text, as a laid-out browser would. */
+function textHeight(height: number): void {
+  vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockReturnValue(height);
+}
+
+/** Stands in for the browser's ResizeObserver; `resize` reports a new width to every observer. */
+function stubResizeObserver() {
+  const callbacks = new Set<ResizeObserverCallback>();
+  class FakeResizeObserver {
+    private readonly callback: ResizeObserverCallback;
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback;
+    }
+    observe() {
+      callbacks.add(this.callback);
+    }
+    unobserve() {}
+    disconnect() {
+      callbacks.delete(this.callback);
+    }
+  }
+  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+  return {
+    get observers() {
+      return callbacks.size;
+    },
+    resize(width: number) {
+      const entry = { contentRect: { width } } as ResizeObserverEntry;
+      act(() => {
+        for (const callback of callbacks) {
+          callback([entry], {} as ResizeObserver);
+        }
+      });
+    },
+  };
+}
 
 /** Presses a key in an element, the way a browser sends it. */
 function press(element: Element, init: KeyboardEventInit & { keyCode?: number }): void {
@@ -66,7 +105,41 @@ verifies("kit.text-area", () => {
     expect(textarea.rows).toBe(1);
     expect(textarea.style.maxHeight).toBe("5lh");
     expect(textarea.className).toContain("overflow-y-auto");
-    expect(textarea.style.height).not.toBe("");
+  });
+
+  it("takes the height of its text", () => {
+    textHeight(60);
+    const { container } = render(<TextArea aria-label="Notes" />);
+    expect(container.querySelector("textarea")?.style.height).toBe("60px");
+  });
+
+  it("isn't 0px tall after it mounts hidden, and fits its text once it's shown", () => {
+    const resizes = stubResizeObserver();
+    textHeight(0);
+    const { container } = render(<TextArea aria-label="Notes" />);
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    expect(textarea.style.height).toBe("");
+
+    textHeight(40);
+    resizes.resize(300);
+    expect(textarea.style.height).toBe("40px");
+  });
+
+  it("fits its text again when its width changes, not when only its height does", () => {
+    const resizes = stubResizeObserver();
+    textHeight(40);
+    const { container } = render(<TextArea aria-label="Notes" />);
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    resizes.resize(300);
+
+    textHeight(80);
+    resizes.resize(300);
+    expect(textarea.style.height).toBe("40px");
+    resizes.resize(150);
+    expect(textarea.style.height).toBe("80px");
+
+    unmountAll();
+    expect(resizes.observers).toBe(0);
   });
 
   it("takes another line limit", () => {
@@ -91,6 +164,26 @@ verifies("kit.text-area", () => {
     press(textarea, { key: "Enter", ctrlKey: true, isComposing: true });
     press(textarea, { key: "Enter", ctrlKey: true, keyCode: 229 });
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Enter that ends a composition from the screen's handler, as the Input does", () => {
+    const onKeyDown = vi.fn();
+    const { container } = render(<TextArea aria-label="Message" onKeyDown={onKeyDown} />);
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    press(textarea, { key: "Enter", isComposing: true });
+    press(textarea, { key: "Enter", keyCode: 229 });
+    expect(onKeyDown).not.toHaveBeenCalled();
+  });
+
+  it("leaves Ctrl Enter to the screen when it has no form", () => {
+    const onKeyDown = vi.fn((event: { defaultPrevented: boolean }) => event.defaultPrevented);
+    const { container } = render(<TextArea aria-label="Message" onKeyDown={onKeyDown} />);
+    press(container.querySelector("textarea") as HTMLTextAreaElement, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+    expect(onKeyDown).toHaveReturnedWith(false);
   });
 
   it("passes other keys on to the screen's own handler", () => {

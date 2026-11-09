@@ -11,7 +11,7 @@ export type FieldBoxState = "default" | "invalid" | "read-only" | "disabled";
 export type FieldSize = "sm" | "md";
 
 const shared = [
-  "flex w-full items-center gap-2 rounded-sm border px-2.5 transition-colors",
+  "flex w-full gap-2 rounded-sm border px-2.5 transition-colors",
   "phone:min-h-touch phone:px-3",
 ].join(" ");
 
@@ -34,9 +34,21 @@ export const fieldTextClasses = [
   "placeholder:text-fg-subtle disabled:text-fg-disabled disabled:placeholder:text-fg-disabled",
 ].join(" ");
 
-/** The box's classes for a state and a size. */
-export function fieldBoxClasses(state: FieldBoxState, size: FieldSize): string {
-  return `${shared} ${stateClasses[state]} ${sizeClasses[size]}`;
+/** How the box lines up its content: `center` for one line, `start` for a TextArea's lines. */
+export type FieldBoxAlign = "center" | "start";
+
+const alignClasses: Record<FieldBoxAlign, string> = {
+  center: "items-center",
+  start: "items-start",
+};
+
+/** The box's classes for a state, a size and an alignment. */
+export function fieldBoxClasses(
+  state: FieldBoxState,
+  size: FieldSize,
+  align: FieldBoxAlign = "center",
+): string {
+  return `${shared} ${alignClasses[align]} ${stateClasses[state]} ${sizeClasses[size]}`;
 }
 
 /** Which look a field has, from its props and its Field. Disabled wins, then an error. */

@@ -2,6 +2,7 @@ import {
   type KeyboardEvent,
   type Ref,
   type TextareaHTMLAttributes,
+  useEffect,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -57,18 +58,43 @@ export function TextArea({
     fitToText(element.current);
   }, [native.value]);
 
+  // A new width rewraps the text, and a TextArea that mounted hidden gets its first width when
+  // it's shown: either way the height is fitted again. Only the width counts, so setting the
+  // height never calls this again.
+  useEffect(() => {
+    const textarea = element.current;
+    if (textarea === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    let width: number | undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      const next = entry?.contentRect.width;
+      if (next !== width) {
+        width = next;
+        fitToText(textarea);
+      }
+    });
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, []);
+
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    const submits = event.key === "Enter" && (event.ctrlKey || event.metaKey);
-    if (submits && !isComposing(event)) {
+    if (event.key === "Enter" && isComposing(event)) {
+      // The Enter that picks a word belongs to the input method, as in the Input: it neither
+      // submits nor reaches the screen's handler. A TextArea has no default Enter to prevent.
+      return;
+    }
+    const form = event.currentTarget.form;
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && form !== null) {
       event.preventDefault();
-      event.currentTarget.form?.requestSubmit();
+      form.requestSubmit();
       return;
     }
     onKeyDown?.(event);
   }
 
   return (
-    <div className={`${fieldBoxClasses(state, "md")} items-start py-2 phone:py-3`}>
+    <div className={`${fieldBoxClasses(state, "md", "start")} py-2 phone:py-3`}>
       <textarea
         {...native}
         ref={element}
@@ -91,11 +117,15 @@ export function TextArea({
   );
 }
 
-/** Sets the height to the text's, so the box grows line by line; max-height stops it. */
+/**
+ * Sets the height to the text's, so the box grows line by line; max-height stops it. A hidden
+ * TextArea measures 0: it gets no height then, so it isn't 0px tall when it's shown.
+ */
 function fitToText(textarea: HTMLTextAreaElement | null): void {
   if (textarea === null) {
     return;
   }
   textarea.style.height = "auto";
-  textarea.style.height = `${textarea.scrollHeight}px`;
+  const height = textarea.scrollHeight;
+  textarea.style.height = height === 0 ? "" : `${height}px`;
 }
