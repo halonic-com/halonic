@@ -28,6 +28,7 @@ export async function runExample(): Promise<{
 }> {
   // Any DefinitionSource will do: a folder, git or, here, a few files in memory.
   const files = new Map([
+    ["workspace.yaml", "id: acme\nname: Acme\n"],
     ["hubs/billing/hub.yaml", "name: Billing\n"],
     ["hubs/billing/agents/clerk.agent.yaml", "name: Clerk\n"],
     ["hubs/billing/agents/checker.agent.yaml", "name: Checker\noutput:\n  type: xml\n"],
@@ -60,8 +61,12 @@ export async function runExample(): Promise<{
   error is left out of `files`; its warnings, and those of the files that parsed, are in `issues`.
 - **Ignored files** are those no kind places, such as a README or a file in an older layout. The
   reserved `.halonic/` folders are skipped without being listed.
-- **Not yet:** checks across files (an agent naming a provider that doesn't exist), model aliases
-  and the definitions a run keeps. They come in the next steps of the HAL-186 plan.
+- **Checks across files** run after every file is parsed. They report, with the old loader's
+  messages, agents that delegate in a loop, two files with one id, and a missing `workspace.yaml`.
+  Each issue has the file, key path and line.
+- **Not yet:** a name one file gives that no other file has (an agent naming a model alias that
+  doesn't exist), workflow and routine checks across files, resolving model aliases to a provider
+  and model, and the definitions a run keeps. They come in the next steps of the HAL-186 plan.
 
 ## Trust content
 

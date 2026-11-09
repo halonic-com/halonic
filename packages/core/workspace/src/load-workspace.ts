@@ -6,6 +6,8 @@ import {
   parseFile,
 } from "@halonicjs/format";
 import type { DefinitionSource } from "@halonicjs/ports";
+import type { ReadFile } from "./checks/check-context.ts";
+import { checkWorkspace } from "./checks/check-workspace.ts";
 import { placeOf } from "./places.ts";
 
 /**
@@ -41,7 +43,10 @@ export interface LoadedWorkspace {
   readonly version: string;
   /** Every file that parsed, sorted by path. A file with an error is not among them. */
   readonly files: readonly LoadedFile[];
-  /** Every error and warning, in the order of the files' paths. */
+  /**
+   * Every error and warning, in the order of the files' paths: first each
+   * file's own, then those of the checks across files.
+   */
   readonly issues: readonly WorkspaceIssue[];
   /**
    * The files no kind places, such as a README or a file in an older
@@ -52,7 +57,11 @@ export interface LoadedWorkspace {
 
 /** What one file gave: its parsed value, its issues, or nothing because no kind places it. */
 type FileOutcome =
-  | { readonly loaded: LoadedFile | null; readonly issues: readonly WorkspaceIssue[] }
+  | {
+      readonly read: ReadFile;
+      readonly loaded: LoadedFile | null;
+      readonly issues: readonly WorkspaceIssue[];
+    }
   | { readonly ignored: string };
 
 /**
@@ -60,8 +69,9 @@ type FileOutcome =
  * it sits (the registered kinds' places drive it), and parses it with that
  * kind. Files in the reserved `.halonic/` folders are skipped.
  *
- * Checks across files, such as an agent naming a provider that doesn't
- * exist, are not part of this step.
+ * Then it checks across files: what one file names in another, such as an
+ * agent's model alias, and rules over several files, such as agents that
+ * delegate in a loop. A file that didn't parse counts as missing there.
  *
  * @param source - where the workspace files live
  * @returns the parsed files, every issue with its file, key path and line,
@@ -77,6 +87,7 @@ export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWor
   const paths = (await source.list()).filter((path) => !isReservedPath(path));
   const outcomes = await Promise.all(paths.map((path) => loadFile(source, path)));
   const files: LoadedFile[] = [];
+  const read: ReadFile[] = [];
   const issues: WorkspaceIssue[] = [];
   const ignored: string[] = [];
   for (const outcome of outcomes) {
@@ -87,12 +98,14 @@ export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWor
       ignored.push(outcome.ignored);
       continue;
     }
+    read.push(outcome.read);
     if (outcome.loaded !== null) {
       files.push(outcome.loaded);
     }
     issues.push(...outcome.issues);
   }
-  return { location: source.location, version, files, issues, ignored };
+  issues.push(...checkWorkspace(files, read));
+  return { location: source.location, version, files, issues: byFile(issues), ignored };
 }
 
 async function loadFile(source: DefinitionSource, path: string): Promise<FileOutcome | null> {
@@ -105,10 +118,12 @@ async function loadFile(source: DefinitionSource, path: string): Promise<FileOut
     // Removed between list and read: the workspace no longer has the file.
     return null;
   }
+  const read: ReadFile = { path, kind: place.kind, text };
   const options = place.placeId === undefined ? {} : { id: place.placeId };
   const parsed = parseFile(place.kind, text, options);
   if (!parsed.ok) {
-    return { loaded: null, issues: parsed.error.map((problem) => ({ ...problem, file: path })) };
+    const issues = parsed.error.map((problem) => ({ ...problem, file: path }));
+    return { read, loaded: null, issues };
   }
   // The registry types each kind's value by its name; parseFile keeps that
   // link, but a union over every kind can't follow it, hence the cast.
@@ -119,7 +134,18 @@ async function loadFile(source: DefinitionSource, path: string): Promise<FileOut
     value: parsed.value.value,
   } as LoadedFile;
   const issues = parsed.value.warnings.map((problem) => ({ ...problem, file: path }));
-  return { loaded, issues };
+  return { read, loaded, issues };
+}
+
+/** The issues sorted by their file's path; those of one file keep their order. */
+function byFile(issues: readonly WorkspaceIssue[]): WorkspaceIssue[] {
+  // Sorting is stable, and paths compare by code unit, as the source lists them.
+  return [...issues].sort((a, b) => {
+    if (a.file === b.file) {
+      return 0;
+    }
+    return a.file < b.file ? -1 : 1;
+  });
 }
 
 /**

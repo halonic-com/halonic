@@ -29,6 +29,9 @@ function baseWorkspace(): Record<string, string> {
   return files;
 }
 
+/** A workspace always has its settings file; the tests below add theirs to it. */
+const settings = { "workspace.yaml": "id: acme\nname: Acme\n" };
+
 verifies("workspace.load", () => {
   describe("the parity fixtures' base workspace", () => {
     let paths: string[];
@@ -68,11 +71,15 @@ verifies("workspace.load", () => {
 
   it("leaves a file with an error out and gives the issue its file, key path and line", async () => {
     const source = new MemorySource({
+      ...settings,
       "agents/clerk.agent.yaml": "name: Clerk\noutput:\n  type: xml\n",
       "agents/notifier.agent.yaml": "name: Notifier\n",
     });
     const workspace = await loadWorkspace(source);
-    expect(workspace.files.map((file) => file.path)).toEqual(["agents/notifier.agent.yaml"]);
+    expect(workspace.files.map((file) => file.path)).toEqual([
+      "agents/notifier.agent.yaml",
+      "workspace.yaml",
+    ]);
     expect(workspace.issues).toHaveLength(1);
     expect(workspace.issues[0]).toMatchObject({
       file: "agents/clerk.agent.yaml",
@@ -86,7 +93,7 @@ verifies("workspace.load", () => {
 
   it("says when a failing id comes from the file name", async () => {
     const workspace = await loadWorkspace(
-      new MemorySource({ "providers/Spare.yaml": "type: mock\n" }),
+      new MemorySource({ ...settings, "providers/Spare.yaml": "type: mock\n" }),
     );
     expect(workspace.issues.map((issue) => [issue.file, issue.path, issue.message])).toEqual([
       [
@@ -109,7 +116,7 @@ verifies("workspace.load", () => {
       "",
     ].join("\n");
     const workspace = await loadWorkspace(
-      new MemorySource({ "library/connectors/files.connector.yaml": connector }),
+      new MemorySource({ ...settings, "library/connectors/files.connector.yaml": connector }),
     );
     expect(filesOf(workspace, "connector").map((file) => file.value.id)).toEqual(["files"]);
     expect(workspace.issues).toEqual([
@@ -126,21 +133,27 @@ verifies("workspace.load", () => {
   it("skips the reserved folders and lists the files no kind places", async () => {
     const workspace = await loadWorkspace(
       new MemorySource({
+        ...settings,
         "hubs/billing/.halonic/source.json": "{}",
         ".halonic/staging/agents/a.agent.yaml": "name: [",
         "notes/README.md": "# Notes\n",
       }),
     );
     expect(workspace.ignored).toEqual(["notes/README.md"]);
-    expect(workspace.files).toEqual([]);
+    expect(workspace.files.map((file) => file.path)).toEqual(["workspace.yaml"]);
     expect(workspace.issues).toEqual([]);
   });
 
   it("leaves out a file removed between listing and reading", async () => {
     const workspace = await loadWorkspace(
-      new MemorySource({ "agents/clerk.agent.yaml": "name: Clerk\n" }, ["agents/gone.agent.yaml"]),
+      new MemorySource({ ...settings, "agents/clerk.agent.yaml": "name: Clerk\n" }, [
+        "agents/gone.agent.yaml",
+      ]),
     );
-    expect(workspace.files.map((file) => file.path)).toEqual(["agents/clerk.agent.yaml"]);
+    expect(workspace.files.map((file) => file.path)).toEqual([
+      "agents/clerk.agent.yaml",
+      "workspace.yaml",
+    ]);
     expect(workspace.issues).toEqual([]);
   });
 

@@ -9,6 +9,7 @@ export async function runExample(): Promise<{
 }> {
   // Any DefinitionSource will do: a folder, git or, here, a few files in memory.
   const files = new Map([
+    ["workspace.yaml", "id: acme\nname: Acme\n"],
     ["hubs/billing/hub.yaml", "name: Billing\n"],
     ["hubs/billing/agents/clerk.agent.yaml", "name: Clerk\n"],
     ["hubs/billing/agents/checker.agent.yaml", "name: Checker\noutput:\n  type: xml\n"],
