@@ -76,31 +76,75 @@ leaves it either.
 
 ## Example
 
+Starts a sign-in for a made-up client, prints the auth URL's parameters and
+shows `stateMatches` refusing a wrong `state`. Nothing goes over the network.
+This example is [`examples/start-sign-in.ts`](examples/start-sign-in.ts),
+which `src/example.test.ts` runs and checks.
+
 ```ts
 import {
   createPendingSignIns,
-  finishGoogleSignIn,
   startGoogleSignIn,
+  stateMatches,
 } from "@halonicjs/host-google-sign-in";
 
-// Once per server, when the routes are wired:
-const pendingSignIns = createPendingSignIns(clock);
+/** The parameters whose value is random on every sign-in, so the example prints only their length. */
+const randomParameters = new Set(["state", "code_challenge"]);
 
-// Start (Open again uses pendingSignIns.authUrlFor(accountRef)):
-const authUrl = await startGoogleSignIn(
-  {
-    accountRef,
-    clientId,
-    clientRef,
-    redirect: { port, path: "/google/callback" },
-    account, // the connector's address
-    services, // the ticked services, with their sheets' Google fields
-    projectId, // from the setup record, if known
-  },
-  pendingSignIns,
-);
+/** Starts a sign-in for a made-up client and prints the auth URL's parameters. No network, no real IDs. */
+export async function runExample(): Promise<string[]> {
+  // Once per server. It holds the state and the PKCE verifier of each sign-in in memory.
+  const pendingSignIns = createPendingSignIns({ now: () => new Date() });
 
-// In the callback route:
+  const authUrl = await startGoogleSignIn(
+    {
+      accountRef: "acme_clerk",
+      clientId: "123456789-acme.apps.example.test",
+      clientRef: "acme_client",
+      redirect: { port: 8787, path: "/google/callback" },
+      account: "clerk@acme.example", // the connector's address, used as the login hint
+      services: [
+        {
+          id: "gmail",
+          label: "Gmail",
+          googleApis: [{ api: "gmail.googleapis.com", name: "Gmail API" }],
+          googleScopes: [
+            { scope: "https://www.googleapis.com/auth/gmail.readonly", reason: "Reads your mail" },
+          ],
+        },
+      ],
+    },
+    pendingSignIns,
+  );
+
+  // Nothing was sent: the URL is what the browser opens. Print its parameters, hiding the random ones.
+  const url = new URL(authUrl);
+  const lines = [`${url.origin}${url.pathname}`];
+  for (const [name, value] of url.searchParams) {
+    lines.push(
+      `  ${name}: ${randomParameters.has(name) ? `<${value.length} random characters>` : value}`,
+    );
+  }
+
+  // The callback must carry the state from the URL. Anything else, or none, is refused.
+  const state = url.searchParams.get("state") ?? "";
+  lines.push(
+    `callback with the URL's state: ${stateMatches(state, state) ? "accepted" : "refused"}`,
+  );
+  lines.push(
+    `callback with another state: ${stateMatches(state, "forged-state") ? "accepted" : "refused"}`,
+  );
+  lines.push(`callback with no state: ${stateMatches(state, null) ? "accepted" : "refused"}`);
+  return lines;
+}
+```
+
+`finishGoogleSignIn` is the other half, called from the callback route:
+
+```ts
+import { finishGoogleSignIn } from "@halonicjs/host-google-sign-in";
+
+// In the callback route, with the same `pendingSignIns` as at the start:
 const result = await finishGoogleSignIn(callbackUrl.searchParams, {
   pendingSignIns,
   http,
