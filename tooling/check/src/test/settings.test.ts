@@ -179,8 +179,10 @@ describe("tooling/check: allowed overrides", () => {
   });
 
   it("refuses a listed entry with no override, so a stale one can't stay", () => {
-    const found = messages([], { overridesAllowed: allowing() });
-    expect(found.some((m) => m.includes(`"${allowedSelector}" is allowed but`))).toBe(true);
+    // The real workspace file overrides allowedSelector, so list one it does not override.
+    const stale = "stale-parent>zod";
+    const found = messages([], { overridesAllowed: allowing(stale) });
+    expect(found.some((m) => m.includes(`"${stale}" is allowed but`))).toBe(true);
   });
 
   it("reads overrides-allowed.json strictly", () => {
