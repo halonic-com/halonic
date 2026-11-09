@@ -642,10 +642,10 @@ importers:
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../schema-kit
-    devDependencies:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std
+    devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

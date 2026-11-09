@@ -1,3 +1,5 @@
+import type { ErrorKind } from "@halonicjs/std";
+
 /** Why a client secret call was refused. */
 export type ClientSecretErrorReason =
   /** The value was empty or only spaces. */
@@ -6,6 +8,12 @@ export type ClientSecretErrorReason =
   | "not-saved"
   /** `promote` was called with no staged secret for the ref. */
   | "nothing-staged";
+
+const kinds: Record<ClientSecretErrorReason, ErrorKind> = {
+  empty: "invalid_input",
+  "not-saved": "not_found",
+  "nothing-staged": "conflict",
+};
 
 const messages: Record<ClientSecretErrorReason, string> = {
   empty: "The client secret is empty. Paste it from your client's page in Google Cloud.",
@@ -25,5 +33,10 @@ export class ClientSecretError extends Error {
     super(messages[reason]);
     this.name = "ClientSecretError";
     this.reason = reason;
+  }
+
+  /** The coarse kind of the refusal; `reason` keeps the detail. */
+  get kind(): ErrorKind {
+    return kinds[this.reason];
   }
 }

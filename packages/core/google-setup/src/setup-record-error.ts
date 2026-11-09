@@ -1,3 +1,5 @@
+import type { ErrorKind } from "@halonicjs/std";
+
 /** Why a setup record call was refused. */
 export type SetupRecordErrorReason =
   /** No record is saved under the account ref. */
@@ -8,6 +10,13 @@ export type SetupRecordErrorReason =
   | "refused"
   /** The other account's app can't be shared with this account. */
   | "cannot-share";
+
+const kinds: Record<SetupRecordErrorReason, ErrorKind> = {
+  "not-found": "not_found",
+  damaged: "internal",
+  refused: "invalid_input",
+  "cannot-share": "conflict",
+};
 
 const messages: Record<SetupRecordErrorReason, string> = {
   "not-found": "No Google setup is saved for this account. Start the setup again.",
@@ -29,5 +38,10 @@ export class SetupRecordError extends Error {
     super(messages[reason]);
     this.name = "SetupRecordError";
     this.reason = reason;
+  }
+
+  /** The coarse kind of the refusal; `reason` keeps the detail. */
+  get kind(): ErrorKind {
+    return kinds[this.reason];
   }
 }

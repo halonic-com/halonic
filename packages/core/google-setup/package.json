@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "@halonicjs/ports": "workspace:*",
-    "@halonicjs/schema-kit": "workspace:*"
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
-    "@halonicjs/std": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
