@@ -1,0 +1,13 @@
+{
+  "stdout": [
+    "Created acme-billing/.gitignore",
+    "Created acme-billing/workspace.yaml",
+    "Workspace \"acme-billing\" (acme-billing) is ready.",
+    "Check it with: halonic validate acme-billing"
+  ],
+  "stderr": [],
+  "files": {
+    ".gitignore": ".env\n.env.*\n",
+    "workspace.yaml": "id: acme-billing\nname: acme-billing\n"
+  }
+}

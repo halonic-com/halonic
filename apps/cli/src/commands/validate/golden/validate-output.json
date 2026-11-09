@@ -1,0 +1,34 @@
+{
+  "base": {
+    "exitCode": 0,
+    "stdout": "OK: Acme, 1 hub(s), 0 warning(s)\n"
+  },
+  "agent/bad-colour": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/clerk.agent.yaml: character.colors.0: Invalid string: must match pattern /^#[0-9a-fA-F]{6}$/\n1 error(s)\n"
+  },
+  "agent/delegation-loop": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/checker.agent.yaml: Agents delegate in a loop: checker → reviewer → checker\n1 error(s)\n"
+  },
+  "agent/unknown-skill": {
+    "exitCode": 1,
+    "stdout": "error hubs/billing/agents/clerk.agent.yaml: Agent \"clerk\" uses unknown skill \"poetry\"\n1 error(s)\n"
+  },
+  "connector/approve-not-allowed": {
+    "exitCode": 0,
+    "stdout": "warn  library/connectors/files.connector.yaml: Connector \"files\": \"delete_file\" needs approval but is not in tools.allow, so agents never see it\nOK: Acme, 1 hub(s), 1 warning(s)\n"
+  },
+  "workflow/no-final": {
+    "exitCode": 0,
+    "stdout": "OK: Acme, 1 hub(s), 0 warning(s)\n"
+  },
+  "workspace/missing-file": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: Missing workspace.yaml\n1 error(s)\n"
+  },
+  "workspace/yaml-syntax": {
+    "exitCode": 1,
+    "stdout": "error workspace.yaml: YAML: Missing closing \"quote\n1 error(s)\n"
+  }
+}

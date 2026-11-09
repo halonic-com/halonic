@@ -10,11 +10,13 @@ lives in its own folder.
 
 ## Commands
 
-| Command                   | What it does                                                              |
-| ------------------------- | ------------------------------------------------------------------------- |
-| `halonic schema [outDir]` | writes the JSON Schema of every file kind to `outDir` (default `schemas`) |
+| Command                                       | What it does                                                                                                         |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `halonic init <dir> [--name <n>] [--id <id>]` | makes `dir` a new workspace: a `workspace.yaml` and a `.gitignore` that keeps `.env` files out of git                |
+| `halonic schema [outDir]`                     | writes the JSON Schema of every file kind to `outDir` (default `schemas`)                                            |
+| `halonic validate <dir>`                      | checks every file of the workspace in `dir` and prints each error and warning, in the old `studio validate`'s format |
 
-`validate`, `test`, `run`, `init`, `extract` and `routines` follow in HAL-187 as the workspace
+`test`, `run`, `extract` and `routines` follow in HAL-187 as the workspace
 loader and the engine land. `halonic --help` lists the commands; `halonic <command> --help` shows
 one command's arguments and options.
 
