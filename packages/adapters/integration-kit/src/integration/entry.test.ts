@@ -4,12 +4,17 @@ import { expect, it } from "vitest";
 import * as host from "../index.ts";
 import * as integration from "./index.ts";
 
-/** Every `from "…"` in the integration entry's own source files. */
+/**
+ * Every module the integration entry's own source files import: `from "…"`,
+ * a bare `import "…"` and a dynamic `import("…")`.
+ */
 function entryImports(): string[] {
   const folder = new URL("./", import.meta.url);
   return readdirSync(folder)
     .filter((file) => file.endsWith(".ts") && !file.includes(".test"))
-    .flatMap((file) => [...readFileSync(new URL(file, folder), "utf8").matchAll(/from "([^"]+)"/g)])
+    .flatMap((file) => [
+      ...readFileSync(new URL(file, folder), "utf8").matchAll(/(?:from|import)\s*\(?\s*"([^"]+)"/g),
+    ])
     .map((match) => match[1] ?? "");
 }
 

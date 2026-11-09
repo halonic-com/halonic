@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "The integration interface: the IntegrationHost an integration gets, with an HttpClient limited to the hosts and secrets of its permission sheet. Published as @halonicjs/integration-kit.",
+  "description": "The integration interface: the IntegrationHost an integration gets, with an HttpClient limited to the hosts and secrets of its permission sheet. Only its ./integration entry is published, as @halonicjs/integration-kit.",
   "exports": {
     ".": "./src/index.ts",
     "./integration": "./src/integration/index.ts"

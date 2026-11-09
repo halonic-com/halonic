@@ -108,6 +108,38 @@ verifies("integration-kit.run-tool", () => {
     await expect(call).rejects.not.toThrow(/secret sentence/);
   });
 
+  it("gives null as JSON for a tool that returns nothing, so the result is always a string", async () => {
+    // Plain JavaScript, or a cast like this one, can still hand back nothing.
+    const silent = { ...echoTool, run: async () => undefined as unknown as null };
+    const result = await runTool(
+      [silent],
+      "",
+      { name: "test_echo", args: { text: "ab" } },
+      makeError,
+    );
+    expect(result).toBe("null");
+  });
+
+  it("doesn't type-check a tool whose run returns nothing", () => {
+    const silent = {
+      ...echoTool,
+      // @ts-expect-error: a tool says what happened, even when it only changes something
+      async run() {},
+    } satisfies ToolImplementation<string, typeof echoArguments>;
+    expect(silent.declaration.name).toBe("test_echo");
+  });
+
+  it("shortens each field name it repeats, as a record key may be made up", async () => {
+    const record: ArgumentSchema = {
+      safeParse: () => failure([{ path: ["labels", "k".repeat(200)] }]),
+    };
+    const tool = { ...echoTool, arguments: record, run: async () => "never" };
+    const call = runTool([tool], "", { name: "test_echo", args: {} }, makeError);
+    await expect(call).rejects.toMatchObject({
+      message: `Check these arguments: ${`labels.${"k".repeat(200)}`.slice(0, 64)}.`,
+    });
+  });
+
   it("names a field whose path holds a number or a symbol", async () => {
     const nested: ArgumentSchema = {
       safeParse: () => failure([{ path: ["to", 0] }, { path: [Symbol("key")] }]),

@@ -43,4 +43,5 @@ export {
   runTool,
   type ToolCallRefusal,
   type ToolImplementation,
+  type ToolResult,
 } from "./run-tool.ts";

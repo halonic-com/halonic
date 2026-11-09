@@ -2,9 +2,9 @@
 // and its limited client, for Halonic itself. It isn't published; the
 // integration entry (`./integration`) is, as @halonicjs/integration-kit.
 // The host side takes the error classes from the integration entry, so there
-// is one copy of each; the npm build keeps that entry outside the conformance
-// suite's bundle and points it at the published kit. Internal code imports
-// by relative path.
+// is one copy of each. (The npm build that keeps that entry outside the
+// conformance suite's bundle and points it at the published kit comes in
+// HAL-1216's second pull request.) Internal code imports by relative path.
 
 export { declarationProblems } from "./declaration.ts";
 export {

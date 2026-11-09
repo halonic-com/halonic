@@ -24,6 +24,14 @@ export type ArgumentsOf<Schema extends ArgumentSchema> =
   Schema extends ArgumentSchema<infer Output> ? Output : never;
 
 /**
+ * What a tool's `run` gives: a small value that becomes the call's JSON
+ * result. A tool that only changes something still says what happened,
+ * for example `{ deleted: true }`, so the model never gets an empty answer.
+ * `object` and not a JSON type, so a tool can return its own interfaces.
+ */
+export type ToolResult = object | string | number | boolean | null;
+
+/**
  * One tool: what the model sees, how its arguments are checked, and what runs.
  *
  * @example
@@ -37,7 +45,7 @@ export interface ToolImplementation<Client, Arguments extends ArgumentSchema = A
   readonly declaration: IntegrationTool;
   readonly arguments: Arguments;
   // Method syntax on purpose: it lets a list hold tools with different arguments.
-  run(client: Client, args: ArgumentsOf<Arguments>, signal?: AbortSignal): Promise<unknown>;
+  run(client: Client, args: ArgumentsOf<Arguments>, signal?: AbortSignal): Promise<ToolResult>;
 }
 
 /** Why {@link runTool} refused a call. */
@@ -53,7 +61,7 @@ export interface RunToolCall {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** A tool name the model made up is repeated only this far. */
+/** A tool or field name the model made up is repeated only this far. */
 const maxEchoedNameLength = 64;
 
 /**
@@ -74,8 +82,7 @@ export async function runTool<Client>(
 ): Promise<string> {
   const tool = tools.find((candidate) => candidate.declaration.name === call.name);
   if (tool === undefined) {
-    const name = call.name.slice(0, maxEchoedNameLength);
-    throw makeError("not-found", `There is no tool named ${name}.`);
+    throw makeError("not-found", `There is no tool named ${shortened(call.name)}.`);
   }
   const parsed = tool.arguments.safeParse(call.args);
   if (!parsed.success) {
@@ -83,11 +90,21 @@ export async function runTool<Client>(
     const fields = parsed.error.issues.map(fieldName);
     throw makeError("bad-arguments", `Check these arguments: ${[...new Set(fields)].join(", ")}.`);
   }
-  return JSON.stringify(await tool.run(client, parsed.data, call.signal));
+  const result = await tool.run(client, parsed.data, call.signal);
+  // The type rules out nothing, but plain JavaScript can still give it, and
+  // JSON.stringify(undefined) isn't a string.
+  return JSON.stringify(result ?? null);
 }
 
-/** `maxResults`, `to.0`, or `(arguments)` for a problem with the whole object. */
+/**
+ * `maxResults`, `to.0`, or `(arguments)` for a problem with the whole object.
+ * Shortened, because a key of a `z.record(...)` is whatever the model made up.
+ */
 function fieldName(issue: ArgumentIssue): string {
   // String() and not join(): a path may hold a symbol, which join() can't convert.
-  return issue.path.map((part) => String(part)).join(".") || "(arguments)";
+  return shortened(issue.path.map((part) => String(part)).join(".")) || "(arguments)";
+}
+
+function shortened(name: string): string {
+  return name.slice(0, maxEchoedNameLength);
 }
