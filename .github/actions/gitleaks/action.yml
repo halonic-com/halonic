@@ -1,5 +1,5 @@
 name: gitleaks
-description: Scans the checked-out history with the gitleaks image pinned in the Dockerfile next to this file. Fails on a leak, and also when no commits were scanned.
+description: Scans the checked-out history with the gitleaks image pinned in the Dockerfile next to this file. Fails on a leak, and also when no commits were scanned although some had text changes.
 inputs:
   log-opts:
     description: git log options, for example BASE..HEAD. Empty scans the whole history.
@@ -15,6 +15,10 @@ runs:
       # The container runs as root but the checkout belongs to the runner user.
       # Without safe.directory git refuses the repo, and gitleaks scans 0 commits
       # and still reports no leaks, so the commit count is checked as well.
+      # gitleaks only counts commits that change a text file it can read: a
+      # commit that only touches binary or -diff files (such as pnpm-lock.yaml)
+      # or only deletes files counts as 0. So the runner's own git counts those
+      # commits in the same range, and 0 scanned is an error only if it found any.
       # The log only says how many leaks there are. The report also holds the
       # author, email and commit message, which may be personal, so only the
       # commit, file, line and rule are printed from it. A pull request author
@@ -40,8 +44,22 @@ runs:
         fi
         rm -f "$RUNNER_TEMP/gitleaks.json"
         scanned=$(grep -oE '[0-9]+ commits scanned' "$log" | grep -oE '^[0-9]+' || true)
-        if ! [[ "$scanned" =~ ^[1-9][0-9]*$ ]]; then
-          echo "::error title=gitleaks::No commits were scanned, so the scan proves nothing. See the log above."
+        if ! [[ "$scanned" =~ ^[0-9]+$ ]]; then
+          echo "::error title=gitleaks::The log does not say how many commits were scanned, so the scan proves nothing. See the log above."
           exit 1
+        fi
+        if [ "$scanned" -eq 0 ]; then
+          if [ -n "$LOG_OPTS" ]; then
+            read -ra range <<< "$LOG_OPTS"
+          else
+            range=(--all)
+          fi
+          scannable=$(git log --format=%x01 --numstat --diff-filter=d "${range[@]}" -- |
+            awk '/^\x01/ { counted = 0; next } !counted && /^[0-9]+\t/ { counted = 1; n++ } END { print n + 0 }')
+          if [ "$scannable" -gt 0 ]; then
+            echo "::error title=gitleaks::No commits were scanned, but $scannable commits change text files, so the scan proves nothing. See the log above."
+            exit 1
+          fi
+          echo "::notice title=gitleaks::No commit in the range changes a text file (only binary, -diff or deleted files), so there was nothing to scan."
         fi
         exit "$status"
