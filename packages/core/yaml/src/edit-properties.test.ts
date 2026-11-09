@@ -108,8 +108,10 @@ function commentEveryLine(text: string): string {
 }
 
 verifies("yaml.edit", () => {
+  // Two tests rather than one, so each check has the whole timeout to itself on a busy runner.
+  const fileAndEdit = fileData.chain((data) => fc.tuple(fc.constant(data), editFor(data)));
+
   it("splices any fitting edit into text that reads back as the edited data", () => {
-    const fileAndEdit = fileData.chain((data) => fc.tuple(fc.constant(data), editFor(data)));
     fc.assert(
       fc.property(fileAndEdit, ([data, edit]) => {
         const text = writeYamlFile(data);
@@ -118,7 +120,15 @@ verifies("yaml.edit", () => {
         const spliced = spliceEdit(text, edit);
         expect(spliced).toBeDefined();
         expect(unwrap(readYaml(spliced ?? "")).data).toEqual(expected);
-        expect(unwrap(editYaml(text, [edit])).layout).toBe("kept");
+      }),
+      { numRuns: 300 },
+    );
+  });
+
+  it("keeps the layout of the text for any fitting edit", () => {
+    fc.assert(
+      fc.property(fileAndEdit, ([data, edit]) => {
+        expect(unwrap(editYaml(writeYamlFile(data), [edit])).layout).toBe("kept");
       }),
       { numRuns: 300 },
     );
