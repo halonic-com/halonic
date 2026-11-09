@@ -4,7 +4,7 @@
 # Today it is a dry-run skeleton. The CLI is packed from a stub and the
 # installer is a placeholder text file, so the whole path (tag, build,
 # checksums, draft release) is tested before the real app exists. The
-# updater files, the APK and the SBOM are added by their own tasks.
+# updater files, the APK and the app SBOM are added by their own tasks.
 #
 # Windows signing has two jobs:
 # - sign-test (dry runs): signs a tiny test program with a throwaway
@@ -117,6 +117,18 @@ jobs:
           mkdir -p dist
           printf 'Placeholder installer for release dry run %s. Not an installer.\n' "$VERSION" \
             > "dist/$INSTALLER"
+      - uses: $/.github/actions/setup
+      # The SBOM tool is `pnpm sbom` (pinned by packageManager), so no new
+      # tool is added. Until the CLI package exists, both files cover every
+      # production dependency of the workspace. The check fails the run when
+      # a library is not on tooling/check/dependencies.json. The app SBOM
+      # is added with the real Studio build.
+      - name: Write the CLI SBOM and the third-party notices
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          mkdir -p dist
+          pnpm check:sbom --name halonic-cli --version "$VERSION" --out dist --notices
       - name: Write the checksums
         run: |
           cd dist

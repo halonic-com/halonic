@@ -1,0 +1,111 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { DependencyList } from "../lib/context.ts";
+import { findSbomProblems, type NoticeEntry, renderNotices, type Sbom } from "../lib/sbom.ts";
+import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
+
+/**
+ * pnpm check:sbom --version <v> --out <dir> [--package <name>] [--notices]
+ *
+ * Release step. Writes `halonic-<product>-<v>.cdx.json` (CycloneDX, made by
+ * `pnpm sbom`, so no extra tool) for the production dependencies of one
+ * package, or of the whole workspace when `--package` is left out. Fails when
+ * a library in it is not on `tooling/check/dependencies.json`. With
+ * `--notices` it also writes `THIRD-PARTY-NOTICES.txt` for the same set.
+ * Needs `pnpm install` first: licence texts are read from the install.
+ */
+
+interface LicenceListEntry {
+  readonly name: string;
+  readonly versions: readonly string[];
+  readonly paths?: readonly string[];
+  readonly author?: string;
+  readonly homepage?: string;
+}
+
+const licenceFile = /^(licen[cs]e|copying|notice)(\.|$)/i;
+
+function option(argv: readonly string[], flag: string): string | undefined {
+  const at = argv.indexOf(flag);
+  return at === -1 ? undefined : argv[at + 1];
+}
+
+function pnpm(root: string, args: readonly string[]): string {
+  return execFileSync("pnpm", args, { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+}
+
+function licenceText(paths: readonly string[] | undefined): string | undefined {
+  for (const directory of paths ?? []) {
+    if (!existsSync(directory)) {
+      continue;
+    }
+    const files = readdirSync(directory)
+      .filter((file) => licenceFile.test(file))
+      .sort();
+    if (files.length > 0) {
+      return files.map((file) => readFileSync(join(directory, file), "utf8")).join("\n\n");
+    }
+  }
+  return undefined;
+}
+
+function noticeEntries(root: string, scope: readonly string[]): NoticeEntry[] {
+  const output = pnpm(root, [...scope, "licenses", "list", "--json", "--long", "--prod"]);
+  const byLicence = JSON.parse(output.trim() === "" ? "{}" : output) as Record<
+    string,
+    LicenceListEntry[]
+  >;
+  return Object.entries(byLicence).flatMap(([licence, entries]) =>
+    entries.map((entry) => {
+      const text = licenceText(entry.paths);
+      return {
+        name: entry.name,
+        versions: entry.versions,
+        licence,
+        ...(entry.author === undefined ? {} : { author: entry.author }),
+        ...(entry.homepage === undefined ? {} : { homepage: entry.homepage }),
+        ...(text === undefined ? {} : { text }),
+      };
+    }),
+  );
+}
+
+function main(argv: readonly string[]): number {
+  const version = option(argv, "--version");
+  const out = option(argv, "--out");
+  const product = option(argv, "--package");
+  if (version === undefined || out === undefined) {
+    console.error(
+      "Usage: pnpm check:sbom --version <v> --out <dir> [--package <name>] [--notices]",
+    );
+    return 2;
+  }
+  const root = findRepoRoot();
+  const scope = product === undefined ? ["--recursive"] : ["--filter", product];
+  const name = option(argv, "--name") ?? "halonic";
+  mkdirSync(out, { recursive: true });
+  const sbomPath = join(out, `${name}-${version}.cdx.json`);
+  pnpm(root, ["sbom", ...scope, "--sbom-format", "cyclonedx", "--prod", "--out", sbomPath]);
+  const sbom = readJson<Sbom>(sbomPath);
+  const problems = findSbomProblems(
+    sbom,
+    readJson<DependencyList>(join(root, "tooling/check/dependencies.json")),
+    new Set(listWorkspacePackages(root).flatMap((pkg) => pkg.manifest.name ?? [])),
+  );
+  const annotate = process.env["GITHUB_ACTIONS"] === "true";
+  for (const problem of problems) {
+    console.log(annotate ? `::error title=sbom::${problem}` : `error [sbom] ${problem}`);
+  }
+  console.log(
+    `check:sbom: ${problems.length} problem(s) in ${sbom.components?.length ?? 0} component(s), written to ${sbomPath}.`,
+  );
+  if (argv.includes("--notices")) {
+    const entries = noticeEntries(root, scope);
+    writeFileSync(join(out, "THIRD-PARTY-NOTICES.txt"), renderNotices("Halonic", entries));
+    console.log(`check:sbom: notices for ${entries.length} package(s).`);
+  }
+  return problems.length === 0 ? 0 : 1;
+}
+
+process.exitCode = main(process.argv.slice(2));
