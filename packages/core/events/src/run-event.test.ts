@@ -33,6 +33,9 @@ verifies("events.run-log-contract", () => {
       // Added after the reference by events.llm-skipped (HAL-1880).
       | "llm.skipped"
       | "tool.called"
+      // Added after the reference by events.started-events (HAL-189).
+      | "sandbox.started"
+      | "harness.started"
       // Added after the reference by events.sandbox-opened (HAL-1707).
       | "sandbox.opened"
       | "knowledge.searched"
@@ -346,5 +349,26 @@ verifies("events.tool-call-as-text", () => {
     expectTypeOf<EventOf<"llm.response">["toolCallAsText"]>().toEqualTypeOf<true | undefined>();
     // @ts-expect-error: the mark is set or absent, never false
     expectTypeOf<false>().toMatchTypeOf<EventOf<"llm.response">["toolCallAsText"]>();
+  });
+});
+
+verifies("events.started-events", () => {
+  typeTest("records that a step's sandbox is being opened, and how long the engine waits", () => {
+    expectTypeOf<EventOf<"sandbox.started">>().toEqualTypeOf<{
+      type: "sandbox.started";
+      state: string;
+      agent: string;
+      timeoutMs: number;
+    }>();
+  });
+
+  typeTest("records that a step's harness is being started, and how long the engine waits", () => {
+    expectTypeOf<EventOf<"harness.started">>().toEqualTypeOf<{
+      type: "harness.started";
+      state: string;
+      agent: string;
+      harness: string;
+      timeoutMs: number;
+    }>();
   });
 });

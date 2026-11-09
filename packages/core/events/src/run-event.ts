@@ -90,6 +90,18 @@ export type RunEventBody =
     }
   | { type: "tool.called"; agent: string; tool: string; args: unknown }
   /**
+   * A step's sandbox is being opened (requirement `events.started-events`).
+   * Written before the call, so a screen can say what the step waits for;
+   * `timeoutMs` is how long the engine waits before the step fails.
+   */
+  | { type: "sandbox.started"; state: string; agent: string; timeoutMs: number }
+  /**
+   * A step's harness program is being started (requirement
+   * `events.started-events`). `harness` is the agent's harness id, such as
+   * `"claude-code"`; `timeoutMs` is how long the engine waits for its first event.
+   */
+  | { type: "harness.started"; state: string; agent: string; harness: string; timeoutMs: number }
+  /**
    * A step's sandbox opened (requirement `events.sandbox-opened`). `sandbox`
    * is a display copy of its profile, never its environment variables.
    */

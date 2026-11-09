@@ -29,6 +29,9 @@ optional and come with a requirement.
   profile that a `sandbox.opened` event carries. It copies a fixed list of
   fields, never `env`, logs denied paths as group codes plus the paths the
   person added, and shortens home paths to `~` (requirement `sandbox-opened`).
+- `sandbox.started` and `harness.started`: written before the engine opens a
+  step's sandbox or starts its harness program, with how long it waits, so a
+  screen can say what the step is waiting for (requirement `started-events`).
 
 ## Example
 

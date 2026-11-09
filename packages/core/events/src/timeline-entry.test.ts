@@ -231,3 +231,31 @@ verifies("events.timeline-entry-id", () => {
     expect(entryOf(events)).toEqual([1, 2, 1, 2]);
   });
 });
+
+verifies("events.started-events", () => {
+  it("gives sandbox.started and harness.started an entry of their own", () => {
+    const sandbox = {
+      strength: "os" as const,
+      workingFolder: "~/acme/files/agents/w",
+      tempFolder: "<temp>/r",
+      settingsFolder: null,
+      readOnlyPaths: [],
+      deniedGroups: [],
+      deniedPaths: [],
+      allowedSites: [],
+      timeLimitMs: 600_000,
+    };
+    const events = log(
+      { type: "sandbox.started", state: "s", agent: "w", timeoutMs: 30_000 },
+      { type: "sandbox.opened", state: "s", agent: "w", sandbox },
+      {
+        type: "harness.started",
+        state: "s",
+        agent: "w",
+        harness: "claude-code",
+        timeoutMs: 60_000,
+      },
+    );
+    expect(entryOf(events)).toEqual([1, 2, 3]);
+  });
+});
