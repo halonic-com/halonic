@@ -7,6 +7,26 @@ export {
 export { RunStoreTurnLog } from "./agent/run-store-turn-log.ts";
 export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
+export type {
+  CallModelEffect,
+  CallToolEffect,
+  Decide,
+  DecidedEvent,
+  DecideInput,
+  Decision,
+  Effect,
+  EffectDoneInput,
+  ModelResult,
+  RunDefinitions,
+  SendInput,
+  SetTimerEffect,
+  StartChildEffect,
+  StartInput,
+  TellParentEffect,
+  TimerInput,
+  ToolResult,
+} from "./kernel/decide-types.ts";
+export { evolve, foldRun, type PendingCall, type RunState } from "./kernel/run-state.ts";
 export {
   defaultMaxRounds,
   LocalExecutor,

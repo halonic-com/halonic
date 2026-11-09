@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {

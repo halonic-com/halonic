@@ -522,6 +522,9 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
