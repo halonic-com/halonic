@@ -26,6 +26,7 @@ look up services its feature lists in `needs`.
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
 | `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
+| `watchResources`                | read the engine's resource numbers, flag a low disk        | `shell.resource-numbers`  |
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
@@ -94,6 +95,19 @@ error codes, and words its message from the reason: `disk-full` (`ENOSPC`, `EDQU
 `not-writable` (`EACCES`, `EPERM`, `EROFS`), `in-use` (`EBUSY`, which includes the Windows sharing
 violation) or `failed` for anything else. The code and the original message stay in the result for
 Copy details; they never go on screen (rule 4 of the failure-path guide).
+
+## Resource numbers
+
+`watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the
+memory of each process it started, the disk space Halonic's data uses, the free space on the data
+drive, and the local models Ollama has loaded (`loadedModels` is left out when Ollama didn't
+answer, which is not the same as none loaded). `readResourceReport` checks what crossed the bridge
+and throws a `ShellError` rather than pass on a number it can't trust.
+
+It reads at once, then once a minute, timed from the end of the last read. A run, a download or a
+model pull calls `check("run" | "download" | "model-pull")` before it starts; a check joins a read
+that is already under way. Each reading has `lowDisk`, true below 1 GB free (`lowDiskBytes`).
+Where Studio shows these numbers waits on the board (HAL-1720), so this is the data only.
 
 ## Example
 

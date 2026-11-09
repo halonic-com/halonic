@@ -77,6 +77,22 @@ export type {
   Point,
   Registered,
 } from "./points/point-store.ts";
+export {
+  type ChildProcessUsage,
+  type EngineResourceReport,
+  type LoadedModel,
+  readResourceReport,
+} from "./resources/resource-report.ts";
+export {
+  lowDiskBytes,
+  type ResourceCheckReason,
+  type ResourceListener,
+  type ResourceReading,
+  type ResourceWatch,
+  type ResourceWatchOptions,
+  resourceCheckIntervalMs,
+  watchResources,
+} from "./resources/resource-watch.ts";
 export { type SaveFailure, type SaveReason, saveFailureFor } from "./save/save-failure.ts";
 export type {
   FeatureServices,
