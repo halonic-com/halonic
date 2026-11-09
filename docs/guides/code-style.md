@@ -104,6 +104,45 @@ for (const transition of state.transitions) { … }
 - Keep outside-world code in adapters and behind a port. See
   [dependencies](dependencies.md) and the [layer rules](checks.md).
 
+## Thin commands and screens
+
+A CLI command (`apps/cli`) and a Studio screen do three things, in this order:
+
+1. **Parse** the input: arguments and flags, or what the user typed and clicked.
+2. **Call one app service**: a function or service from a core package or from
+   `@halonicjs/app` that does the work and returns its result as data.
+3. **Format** the result: printed text and an exit code, or what the screen shows.
+
+Everything else, such as validation rules, decisions, loops over runs or
+files, and reading or writing the workspace, belongs in the service, behind its
+interface. That way the CLI and the Studio do the same thing in the same way,
+and the logic is tested once, without a terminal or a browser.
+
+```ts
+// Good: parse, call one service, format
+export async function runValidate(args: ValidateArgs, out: Writer): Promise<ExitCode> {
+  const report = await validateWorkspace(args.directory);
+  out.write(formatReport(report));
+  return report.errors.length === 0 ? 0 : 1;
+}
+
+// Bad: the command decides what counts as an error
+export async function runValidate(args: ValidateArgs, out: Writer): Promise<ExitCode> {
+  const workspace = await loadWorkspace(args.directory);
+  for (const workflow of workspace.workflows) {
+    if (workflow.states.length === 0) {
+      out.write(`${workflow.name}: no states\n`);
+    }
+  }
+  …
+}
+```
+
+When no service does what a command or screen needs, add or extend the service
+first, then call it. If you need two services, that is usually a sign one service
+is missing: the work that combines them goes into a new one. Reviewers check
+every new command and screen against this rule.
+
 ## Documentation
 
 - **Every exported function, type and class has a doc comment.** Say what it

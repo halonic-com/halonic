@@ -71,6 +71,9 @@ reports for now: it doesn't block until its approval lookup is live. See `docs/g
 - Readable over short: full names, early returns, no nested ternaries. Comments explain _why_.
 - Named exports only. No barrels and no `export *`; each package has one explicit `src/index.ts`.
 - No central lists: register through `feature.ts` and folder discovery, never by editing a shared `switch`.
+- Thin commands and screens: a CLI command or Studio screen parses its input, calls one app
+  service, and formats the result. No business logic in commands or screens
+  ([details](docs/guides/code-style.md#thin-commands-and-screens)).
 - Relative imports carry the `.ts` extension.
 - No `any`, no `@ts-ignore`, no `!` without a comment. Errors are never swallowed.
 - Keep files under 300 lines (the check fails at 500) and functions under 60.
