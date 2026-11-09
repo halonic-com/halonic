@@ -1,10 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Recording, RunLogs } from "../recording.ts";
+import type { CliRecording, Recording, RunLogs } from "../recording.ts";
 import { fakeOldRepo } from "../test/fake-old-repo.ts";
 import { TestFolders } from "../test-folders.ts";
 import { main, type StartRunner } from "./record.ts";
+
+// The tests start git and Node processes, which can take longer than 5 s on a busy machine.
+vi.setConfig({ testTimeout: 30_000 });
 
 const folders = new TestFolders();
 afterEach(() => folders.cleanUp());
@@ -101,6 +104,35 @@ describe("parity.runner-records-test-run-logs", () => {
       ["plain", true, ["test_1"]],
     ]);
     expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/run-logs.json"))).toBe(false);
+  });
+});
+
+describe("parity.runner-records-cli-output", () => {
+  it("writes the old CLI calls on the base, with the IDs renamed, and on no case", () => {
+    const { clone, head } = fakeOldRepo(folders);
+    const fixtureFolder = fixtures();
+    const cliCalls = [{ name: "nested run", args: ["run", "<workspace>", "nested"] }];
+    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head, cliCalls })).toBe(0);
+    const text = readFileSync(join(fixtureFolder, "base/cli.json"), "utf8");
+    const cli = JSON.parse(text) as CliRecording;
+    expect(text).toBe(`${JSON.stringify(cli, null, 2)}\n`);
+    expect(cli.clock).toBe("2026-01-01T00:00:00.000Z");
+    expect(cli.calls.map((c) => [c.name, c.exitCode, c.stdout, c.stored])).toEqual([
+      [
+        "nested run",
+        0,
+        "Run run_1: completed  (saved in <workspace>/.studio/runs)\n",
+        ["runs/run_1.jsonl", "runs/run_2.jsonl"],
+      ],
+    ]);
+    expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/cli.json"))).toBe(false);
+  });
+
+  it("writes no CLI recording when no calls are given", () => {
+    const { clone, head } = fakeOldRepo(folders);
+    const fixtureFolder = fixtures();
+    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+    expect(existsSync(join(fixtureFolder, "base/cli.json"))).toBe(false);
   });
 });
 

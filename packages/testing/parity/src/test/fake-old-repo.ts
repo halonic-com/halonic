@@ -186,8 +186,50 @@ export class FsDefinitionStore {
 }
 `;
 
-/** The old tsx: the old validate prints the folder and fails; anything else runs in Node. */
+/**
+ * A stand-in for the old CLI, for the calls the runner makes with a preload.
+ * `run <dir>` stores a run with an ID made the old way (time and random
+ * bytes), and a nested one with "nested"; "flaky" prints a time no preload
+ * fixes; anything else fails with a usage line.
+ */
+const cliModule = `import { appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+
+const [command, dir, flag] = process.argv.slice(2);
+const newId = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  return "run_" + Date.now().toString(36) + "_" + [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+};
+const store = (runId, extra) => {
+  mkdirSync(join(dir, ".studio", "runs"), { recursive: true });
+  const event = { type: "run.started", runId, at: new Date().toISOString(), dir, ...extra };
+  appendFileSync(join(dir, ".studio", "runs", runId + ".jsonl"), JSON.stringify(event) + "\\n");
+};
+if (command === "run") {
+  const runId = newId();
+  store(runId, {});
+  if (flag === "nested") {
+    store(newId(), { parent: runId });
+  }
+  console.log("Run " + runId + ": completed  (saved in " + join(dir, ".studio/runs") + ")");
+  process.exit(0);
+}
+if (command === "flaky") {
+  console.log(String(performance.now()));
+  process.exit(0);
+}
+console.error("usage: studio run <dir>");
+process.exit(1);
+`;
+
+/**
+ * The old tsx: the old validate prints the folder and fails; a call with a
+ * preload runs the stand-in CLI in Node; anything else runs in Node.
+ */
 const tsxScript = `#!/bin/sh
+if [ "$1" = "--import" ]; then
+  exec node "$@"
+fi
 if [ "$1" = "apps/cli/src/main.ts" ]; then
   echo "checked $3"
   echo "1 problem" >&2
@@ -218,6 +260,7 @@ export function fakeOldRepo(folders: TestFolders, omit: readonly string[] = []):
     "packages/core/util/src/index.ts": utilModule,
     "packages/store/memory/src/index.ts": memoryModule,
     "packages/testing/test-runner/src/index.ts": testRunnerModule,
+    "apps/cli/src/main.ts": cliModule,
     "node_modules/.bin/tsx": tsxScript,
   });
   chmodSync(oldTsx(clone), 0o755);

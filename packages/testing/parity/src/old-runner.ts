@@ -9,13 +9,16 @@
  * diagnostics, the schema issues per file with their key paths, and the output
  * and exit code of the old `validate` command. For a job that asks for them,
  * it also runs the workspace's workflow tests with the old test runner and
- * records each test's run logs. Its types are loose on purpose: the old modules
- * are loaded by path and have no types here.
+ * records each test's run logs, and for a job with CLI calls it runs each one
+ * with the old CLI. Its types are loose on purpose: the old modules are loaded
+ * by path and have no types here.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { CliCall } from "./cli-calls.ts";
+import { runOldCli } from "./old-cli.ts";
 import { fixedTestTime, oldEnvironment } from "./old-repo.ts";
 import type {
   OldDiagnostic,
@@ -32,6 +35,8 @@ interface Job {
   readonly files: readonly string[];
   /** Whether to run the workspace's workflow tests too. */
   readonly tests?: boolean;
+  /** Calls of the old CLI to run on the workspace. */
+  readonly cli?: readonly CliCall[];
 }
 
 interface OldRunStore {
@@ -284,10 +289,14 @@ async function record(job: Job): Promise<OldResult> {
     };
   });
   const validate = runValidate(realpathSync(job.dir));
-  if (job.tests !== true) {
-    return { id: job.id, diagnostics, files, validate };
-  }
-  return { id: job.id, diagnostics, files, validate, tests: await runTests(workspace, store) };
+  return {
+    id: job.id,
+    diagnostics,
+    files,
+    validate,
+    ...(job.tests === true ? { tests: await runTests(workspace, store) } : {}),
+    ...(job.cli === undefined ? {} : { cli: runOldCli(oldRoot, home, job.dir, job.cli) }),
+  };
 }
 
 const jobs = JSON.parse(readFileSync(jobsPath, "utf8")) as Job[];

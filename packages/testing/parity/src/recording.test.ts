@@ -5,8 +5,10 @@ import {
   goldenText,
   lineVerdict,
   normalise,
+  type OldCliRun,
   type OldResult,
   type OldTestRun,
+  toCliRecording,
   toRecording,
   toRunLogs,
 } from "./recording.ts";
@@ -158,6 +160,73 @@ verifies("parity.runner-records-test-run-logs", () => {
     const event = { childRunId: "test_mw6zmn5u_8202b972" };
     expect(() => toRunLogs(parityCase("base", undefined), [test(event)], [])).toThrow(
       "A run log carries a random run ID; fix the IDs first",
+    );
+  });
+});
+
+verifies("parity.runner-records-cli-output", () => {
+  const at = "2026-01-01T00:00:00.000Z";
+  const made = (prefix: string, n: number): string =>
+    `${prefix}_${Date.parse(at).toString(36)}_${n.toString(16).padStart(8, "0")}`;
+  const call = (stdout: string, runs: OldCliRun["runs"]): OldCliRun => ({
+    name: "run",
+    args: ["run", "<workspace>"],
+    exitCode: 0,
+    stdout,
+    stderr: "",
+    runs,
+    stored: runs.map((run) => `runs/${run.id}.jsonl`),
+  });
+
+  it("renames the IDs per call and prefix, in the order the counter made them", () => {
+    // The counter skipped 2 (another random value); the child run was made after its parent.
+    const [parent, child, test] = [made("run", 1), made("run", 12), made("test", 3)];
+    const first = call(`Run ${parent}: child ${child}, test ${test}\n`, [
+      { id: child, events: [{ runId: child, at, parent }] },
+      { id: parent, events: [{ runId: parent, at }] },
+      { id: test, events: [] },
+    ]);
+    const second = call(`Run ${child}\n`, [{ id: child, events: [] }]);
+    const cli = toCliRecording(parityCase("base", undefined), [first, second]);
+    expect(cli).toEqual({
+      reference: "784f78d",
+      case: "base",
+      clock: at,
+      calls: [
+        {
+          ...call("Run run_1: child run_2, test test_1\n", [
+            { id: "run_1", events: [{ runId: "run_1", at }] },
+            { id: "run_2", events: [{ runId: "run_2", at, parent: "run_1" }] },
+            { id: "test_1", events: [] },
+          ]),
+          stored: ["runs/run_2.jsonl", "runs/run_1.jsonl", "runs/test_1.jsonl"],
+        },
+        call("Run run_1\n", [{ id: "run_1", events: [] }]),
+      ],
+    });
+    expect(goldenText(cli)).toBe(`${JSON.stringify(cli, null, 2)}\n`);
+  });
+
+  it("keeps a timer's time a few days on from the fixed clock", () => {
+    const event = { at: "2026-01-03T00:00:00.000Z" };
+    const cli = toCliRecording(parityCase("base", undefined), [
+      call("", [{ id: made("run", 1), events: [event] }]),
+    ]);
+    expect(cli.calls[0]?.runs[0]?.events).toEqual([event]);
+  });
+
+  it("refuses a random old run ID", () => {
+    expect(() =>
+      toCliRecording(parityCase("base", undefined), [call("Run run_mw6zmn5u_8202b972\n", [])]),
+    ).toThrow("The old CLI's output carries a random run ID; fix the IDs first");
+  });
+
+  it("refuses a time from the real clock", () => {
+    const event = { at: "2026-11-09T15:07:34.841Z" };
+    expect(() =>
+      toCliRecording(parityCase("base", undefined), [call("", [{ id: "x", events: [event] }])]),
+    ).toThrow(
+      "The old CLI's output carries 2026-11-09T15:07:34.841Z, not the fixed clock; fix the clock first",
     );
   });
 });

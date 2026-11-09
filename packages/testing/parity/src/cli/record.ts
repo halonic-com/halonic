@@ -4,12 +4,14 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCases, type ParityCase } from "../cases.ts";
+import { baseCliCalls, type CliCall } from "../cli-calls.ts";
 import { composeWorkspace } from "../compose.ts";
 import { cloneProblems, oldEnvironment, oldTsx, referenceHash } from "../old-repo.ts";
 import {
   goldenText,
   type OldResult,
   type Recording,
+  toCliRecording,
   toRecording,
   toRunLogs,
 } from "../recording.ts";
@@ -19,8 +21,10 @@ import {
  *
  * Records the old repo's behaviour on every fixture: composes each case's
  * workspace in a temporary folder, runs the old loader and `validate` there
- * through old-runner.ts, and writes recorded.json next to each case. See the
- * package README for how to make the scratch clone.
+ * through old-runner.ts, and writes recorded.json next to each case. For the
+ * base it also writes the old test runner's run logs (run-logs.json) and the
+ * old CLI's `test` and `run` output (cli.json). See the package README for how
+ * to make the scratch clone.
  */
 
 const usage = "Usage: record --old <scratch clone of the old repo at 784f78d> [--case <id>]...";
@@ -59,11 +63,14 @@ export interface Setup {
   readonly fixtures: string;
   readonly reference: string;
   readonly startRunner?: StartRunner;
+  /** The old CLI calls to record on the base. */
+  readonly cliCalls?: readonly CliCall[];
 }
 
 const defaultSetup: Setup = {
   fixtures: fileURLToPath(new URL("../../fixtures/", import.meta.url)),
   reference: referenceHash,
+  cliCalls: baseCliCalls,
 };
 
 function parseOptions(argv: readonly string[]): Options | null {
@@ -130,8 +137,15 @@ export function main(argv: readonly string[], setup: Setup = defaultSetup): numb
     const jobs = cases.map((parityCase, index) => {
       const dir = join(scratch, `workspace-${index}`);
       const files = composeWorkspace(fixtures, parityCase, dir);
-      // Only the base's workflow tests get run logs: a case breaks the workspace on purpose.
-      return { id: parityCase.id, dir, files, tests: parityCase.id === "base" };
+      // Only the base gets run logs and CLI calls: a case breaks the workspace on purpose.
+      const base = parityCase.id === "base";
+      return {
+        id: parityCase.id,
+        dir,
+        files,
+        tests: base,
+        ...(base && setup.cliCalls !== undefined ? { cli: setup.cliCalls } : {}),
+      };
     });
     const start = setup.startRunner ?? startOldRunner;
     const results = runOld(start, options.clone, jobs, scratch);
@@ -147,6 +161,10 @@ export function main(argv: readonly string[], setup: Setup = defaultSetup): numb
       if (result.tests !== undefined) {
         const runLogs = toRunLogs(parityCase, result.tests, dirs);
         writeFileSync(join(parityCase.folder, "run-logs.json"), goldenText(runLogs));
+      }
+      if (result.cli !== undefined) {
+        const cli = toCliRecording(parityCase, result.cli);
+        writeFileSync(join(parityCase.folder, "cli.json"), goldenText(cli));
       }
       return { parityCase, recording };
     });

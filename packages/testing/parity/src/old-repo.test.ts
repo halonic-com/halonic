@@ -4,6 +4,9 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cloneProblems, oldEnvironment } from "./old-repo.ts";
 import { TestFolders } from "./test-folders.ts";
 
+// The tests start git and Node processes, which can take longer than 5 s on a busy machine.
+vi.setConfig({ testTimeout: 30_000 });
+
 const folders = new TestFolders();
 afterEach(() => folders.cleanUp());
 

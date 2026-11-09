@@ -2,9 +2,13 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
+import type { CliCall } from "./cli-calls.ts";
 import type { OldResult } from "./recording.ts";
 import { fakeOldRepo } from "./test/fake-old-repo.ts";
 import { TestFolders } from "./test-folders.ts";
+
+// The tests start git and Node processes, which can take longer than 5 s on a busy machine.
+vi.setConfig({ testTimeout: 30_000 });
 
 const folders = new TestFolders();
 afterEach(() => folders.cleanUp());
@@ -13,6 +17,7 @@ interface Job {
   readonly id: string;
   readonly files: Readonly<Record<string, string>>;
   readonly tests?: boolean;
+  readonly cli?: readonly CliCall[];
 }
 
 /**
@@ -26,7 +31,13 @@ async function runOld(clone: string, jobs: readonly Job[]): Promise<OldResult[]>
     const dir = join(scratch, job.id);
     mkdirSync(dir);
     folders.write(dir, job.files);
-    return { id: job.id, dir, files: Object.keys(job.files).sort(), tests: job.tests };
+    return {
+      id: job.id,
+      dir,
+      files: Object.keys(job.files).sort(),
+      tests: job.tests,
+      cli: job.cli,
+    };
   });
   const jobsPath = join(scratch, "jobs.json");
   const outPath = join(scratch, "results.json");
@@ -223,6 +234,7 @@ verifies("parity.runner-records-test-run-logs", () => {
     const { clone } = fakeOldRepo(folders);
     const [result] = await runOld(clone, [{ id: "case", files: { "tests.yaml": "plain\n" } }]);
     expect(result).not.toHaveProperty("tests");
+    expect(result).not.toHaveProperty("cli");
   });
 
   it("stops, naming the test, when a run log changes between two runs", async () => {
@@ -241,5 +253,21 @@ verifies("parity.runner-records-test-run-logs", () => {
     await expect(
       runOld(clone, [{ id: "base", files: { "workspace.yaml": "id: acme\n" }, tests: true }]),
     ).rejects.toThrow("The old loader gave no workspace, so its workflow tests can't run");
+  });
+});
+
+verifies("parity.runner-records-cli-output", () => {
+  it("runs the old CLI calls a job asks for", async () => {
+    const { clone } = fakeOldRepo(folders);
+    const [result] = await runOld(clone, [
+      {
+        id: "base",
+        files: { "workspace.yaml": "id: acme\n" },
+        cli: [{ name: "run", args: ["run", "<workspace>"] }],
+      },
+    ]);
+    expect(result?.cli?.map((call) => [call.name, call.exitCode, call.runs.length])).toEqual([
+      ["run", 0, 1],
+    ]);
   });
 });

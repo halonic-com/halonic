@@ -15,6 +15,7 @@ export {
   type ParityCase,
   readCase,
 } from "./cases.ts";
+export { baseCliCalls, type CliCall } from "./cli-calls.ts";
 export type { AllowedFixture } from "./compare/allowed-fixtures.ts";
 export {
   type Comparison,
@@ -46,12 +47,14 @@ export {
   referenceHash,
 } from "./old-repo.ts";
 export {
+  type CliRecording,
   type FileRecording,
   type FileStatus,
   goldenText,
   type LineVerdict,
   lineVerdict,
   normalise,
+  type OldCliRun,
   type OldDiagnostic,
   type OldFile,
   type OldIssue,
@@ -61,6 +64,7 @@ export {
   type Recording,
   type RunLogs,
   referenceCommit,
+  toCliRecording,
   toRecording,
   toRunLogs,
 } from "./recording.ts";

@@ -59,6 +59,20 @@ export interface OldTestRun {
   readonly runs: readonly OldRun[];
 }
 
+/** One call of the old CLI, as it ran on a fresh copy of the workspace. */
+export interface OldCliRun {
+  readonly name: string;
+  /** The arguments, with `<workspace>` for the workspace folder. */
+  readonly args: readonly string[];
+  readonly exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+  /** Every run the call stored, by ID, each with all its events in order. */
+  readonly runs: readonly { readonly id: string; readonly events: readonly unknown[] }[];
+  /** Every file the call wrote under `.studio`, relative to it. */
+  readonly stored: readonly string[];
+}
+
 /** What the old runner reports for one composed workspace. */
 export interface OldResult {
   readonly id: string;
@@ -71,6 +85,8 @@ export interface OldResult {
   };
   /** The workspace's workflow tests, only for a job that asked for them. */
   readonly tests?: readonly OldTestRun[];
+  /** The old CLI calls, only for a job that asked for them. */
+  readonly cli?: readonly OldCliRun[];
 }
 
 export type FileStatus = "pass" | "fail" | "not-read";
@@ -177,6 +193,69 @@ export function toRecording(
   };
 }
 
+/** An old run ID: `<prefix>_<time in base 36>_<4 random bytes in hex>`. */
+const randomId = /\b(?:run|test)_[a-z0-9]{6,}_[0-9a-f]{8}\b/;
+
+/** The golden file of the old CLI calls on a case: cli.json. */
+export interface CliRecording {
+  readonly reference: string;
+  readonly case: string;
+  /** The time the old clock stood at; nothing in the CLI moves it. */
+  readonly clock: string;
+  readonly calls: readonly OldCliRun[];
+}
+
+/** How far from the fixed clock a recorded time may be: the base's longest timer is 2 days. */
+const clockReach = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Renames the IDs the old CLI made from the fixed clock and counting random
+ * source (`run_mjuohs00_00000002`) to `run_1`, `run_2`, ... in the order the
+ * counter made them, counted per prefix. Each call is its own process, so
+ * each call counts from 1.
+ */
+function renameIds(call: OldCliRun): OldCliRun {
+  const time = Date.parse(fixedTestTime).toString(36);
+  const made = new RegExp(`\\b[a-z]+_${time}_[0-9a-f]{8}\\b`, "g");
+  const text = JSON.stringify(call);
+  const found = [...new Set([...text.matchAll(made)].map((match) => match[0]))].sort(
+    (a, b) => Number.parseInt(a.slice(-8), 16) - Number.parseInt(b.slice(-8), 16),
+  );
+  const counts = new Map<string, number>();
+  const names = new Map<string, string>();
+  for (const id of found) {
+    const prefix = id.slice(0, id.indexOf("_"));
+    const n = (counts.get(prefix) ?? 0) + 1;
+    counts.set(prefix, n);
+    names.set(id, `${prefix}_${n}`);
+  }
+  const renamed = JSON.parse(text.replace(made, (id) => names.get(id) ?? id)) as OldCliRun;
+  const runs = [...renamed.runs].sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
+  return { ...renamed, runs };
+}
+
+/**
+ * Turns the old CLI calls into the golden file, with the IDs renamed. A
+ * random old run ID, or a time more than 30 days from the fixed clock, means
+ * the clock or IDs weren't fixed, so it is refused.
+ */
+export function toCliRecording(parityCase: ParityCase, calls: readonly OldCliRun[]): CliRecording {
+  const renamed = calls.map(renameIds);
+  const text = JSON.stringify(renamed);
+  if (randomId.test(text)) {
+    throw new Error("The old CLI's output carries a random run ID; fix the IDs first");
+  }
+  const fixed = Date.parse(fixedTestTime);
+  const times = text.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g) ?? [];
+  const real = times.find((time) => Math.abs(Date.parse(time) - fixed) > clockReach);
+  if (real !== undefined) {
+    throw new Error(
+      `The old CLI's output carries ${real}, not the fixed clock; fix the clock first`,
+    );
+  }
+  return { reference: referenceCommit, case: parityCase.id, clock: fixedTestTime, calls: renamed };
+}
+
 /** The golden run logs of a case's workflow tests: run-logs.json. */
 export interface RunLogs {
   readonly reference: string;
@@ -201,7 +280,6 @@ export function toRunLogs(
   for (const dir of workspaceDirs) {
     text = text.split(JSON.stringify(dir).slice(1, -1)).join("<workspace>");
   }
-  const randomId = /\b(?:run|test)_[a-z0-9]{6,}_[0-9a-f]{8}\b/;
   if (randomId.test(text)) {
     throw new Error("A run log carries a random run ID; fix the IDs first");
   }
@@ -214,6 +292,6 @@ export function toRunLogs(
 }
 
 /** The golden file's text: two-space JSON with a final newline, keys in insertion order. */
-export function goldenText(golden: Recording | RunLogs): string {
+export function goldenText(golden: Recording | RunLogs | CliRecording): string {
   return `${JSON.stringify(golden, null, 2)}\n`;
 }
