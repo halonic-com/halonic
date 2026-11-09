@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/tooling-publish",
+  "private": true,
+  "type": "module",
+  "description": "Builds the npm tarballs of the packages we publish: bundles our own workspace code and keeps only the approved outside dependencies.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "stage": "node src/cli/stage.ts"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
