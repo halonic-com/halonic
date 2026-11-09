@@ -22,6 +22,7 @@ const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 async function runIn(command, { work, read = [], denied = [], loopback = "deny", timeoutMs = 60_000, ui, containment }) {
   const t0 = performance.now();
+  if (!ui && process.env.SPIKE_UI === "1") ui = { disable: false, clipboard: "none", allowInputInjection: false };
   try {
     const out = await run({
       command,
@@ -119,7 +120,7 @@ if (mode === "native") {
   const variants = [
     { name: "A: node dir, git root, pnpm dir", read: [nodeDir, gitRoot, pnpmDir] },
     { name: "B: A plus Program Files and Windows", read: [nodeDir, gitRoot, pnpmDir, pf, pfx, sys] },
-    { name: "C: B plus tool cache and system-drive root", read: [nodeDir, gitRoot, pnpmDir, pf, pfx, sys, toolcache, drive] },
+    ...(process.env.SPIKE_BIG === "1" ? [{ name: "C: B plus tool cache and system-drive root", read: [nodeDir, gitRoot, pnpmDir, pf, pfx, sys, toolcache, drive] }] : []),
   ].map((v) => ({ ...v, read: [...new Set(v.read.filter(Boolean))] }));
   const out = { paths: { nodeExe, gitExe, pnpmExe }, variants: [] };
   for (const v of variants) {
@@ -139,6 +140,36 @@ if (mode === "native") {
   // What can the container see of the Node folder? (separates "path not readable" from "DLL init fails".)
   out.dirFromInside = await runIn(`cmd.exe /c dir /b ${q(nodeDir)}`, { work, read: [nodeDir] });
   report.result = out;
+}
+if (mode === "nodefence") {
+  // The original three canaries, run by Node inside the container (needs SPIKE_UI=1 to start at all).
+  const nodeDir = dirname(process.execPath);
+  const allowed = mkdtempSync(join(base, "allowed-"));
+  const hidden = mkdtempSync(join(base, "hidden-"));
+  writeFileSync(join(allowed, "control.txt"), "control");
+  writeFileSync(join(hidden, "canary.txt"), "canary");
+  let connections = 0;
+  const server = createServer((s) => { connections += 1; s.destroy(); });
+  await new Promise((d) => server.listen(0, "127.0.0.1", d));
+  const port = server.address().port;
+  const child = join(work, "child.mjs");
+  writeFileSync(child, `import { readFileSync } from "node:fs";
+import { connect } from "node:net";
+const r = { control: "no", file: "unknown", port: "unknown" };
+try { readFileSync(${JSON.stringify(join(allowed, "control.txt"))}); r.control = "read"; } catch {}
+try { readFileSync(${JSON.stringify(join(hidden, "canary.txt"))}); r.file = "read"; } catch { r.file = "blocked"; }
+await new Promise((done) => {
+  const s = connect({ host: "127.0.0.1", port: ${port} });
+  const fin = (o) => { r.port = o; s.destroy(); done(); };
+  s.setTimeout(5000, () => fin("blocked"));
+  s.on("connect", () => fin("reached"));
+  s.on("error", () => fin("blocked"));
+});
+console.log(JSON.stringify(r));
+`);
+  const r = await runIn(`${q(process.execPath)} ${q(child)}`, { work, read: [nodeDir, allowed] });
+  report.result = { run: r, connectionsSeen: connections };
+  server.close();
 }
 if (mode === "node2") {
   // Hypothesis: 0xC0000142 is user32/shell32 failing to initialise because the container has no desktop (ui.disable defaults to true).

@@ -21,6 +21,9 @@ jobs:
         # windows-2025 is Windows Server; windows-11-arm is the only hosted Windows 11 image.
         os: [windows-2025, windows-11-arm]
     timeout-minutes: 45
+    env:
+      # Round 2 finding: Node, git and pnpm only start in the container with the UI policy enabled.
+      SPIKE_UI: "1"
     defaults:
       run:
         shell: pwsh
@@ -56,11 +59,11 @@ jobs:
         run: node probe2.mjs node
         continue-on-error: true
         timeout-minutes: 20
-      - name: 2a. Node with the UI policy on, denial capture, other native exes
+      - name: 2a. Original canaries run BY NODE inside the container
         working-directory: spikes/mxc
-        run: node probe2.mjs node2
+        run: node probe2.mjs nodefence
         continue-on-error: true
-        timeout-minutes: 15
+        timeout-minutes: 10
       - name: 2b. Why did the start fail (event log, sxstrace)
         run: |
           Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-30) } -MaxEvents 40 -ErrorAction SilentlyContinue |
@@ -68,22 +71,6 @@ jobs:
             Select-Object -First 8 | ForEach-Object { $_.TimeCreated; $_.Message.Substring(0, [Math]::Min(500, $_.Message.Length)) }
           Get-Command sxstrace -ErrorAction SilentlyContinue | Select-Object Source
         continue-on-error: true
-      # windows-2025 only: the DACL tier cost 158 s per start with the runner's whole tool list.
-      # Minimal read-only list: first 3 runs; if the median is under 5 s, 20 warm and 20 cold.
-      - name: 3. Timing with a minimal read-only list (windows-2025)
-        if: matrix.os == 'windows-2025'
-        working-directory: spikes/mxc
-        run: |
-          $first = node probe2.mjs time 3 | Select-Object -Last 1 | ConvertFrom-Json
-          "first 3: " + ($first.result.ms -join ", ") + " ms, median " + $first.result.median
-          if ($first.result.median -lt 5000) {
-            "--- warm, 20 in one node process"
-            node probe2.mjs time 20 | Select-Object -Last 1
-            "--- cold, 20 in new node processes"
-            1..20 | ForEach-Object { (node probe2.mjs time 1 | Select-Object -Last 1 | ConvertFrom-Json).result.median } | Sort-Object | Out-String
-          } else { "median >= 5 s, stopping after 3 runs" }
-        continue-on-error: true
-        timeout-minutes: 25
       # A plain local user, no admin group. Everything lives under the system drive so that user can read it.
       - name: 4. Normal user, create account and copy the spike
         if: matrix.os == 'windows-11-arm'
@@ -109,11 +96,11 @@ jobs:
           $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
           $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
           $node = (Get-Command node).Source
-          foreach ($m in "native", "node") {
+          foreach ($m in "native", "node", "nodefence") {
             $out = "$env:SystemDrive\mxc-spike\out-$m.txt"; $err = "$env:SystemDrive\mxc-spike\err-$m.txt"
             $p = Start-Process -FilePath $node -ArgumentList "probe2.mjs", $m -WorkingDirectory $env:SystemDrive\mxc-spike `
               -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
-              -Environment @{ SPIKE_ROOT = "$env:SystemDrive\mxc-spike\data" } 2>&1
+              -Environment @{ SPIKE_ROOT = "$env:SystemDrive\mxc-spike\data"; SPIKE_UI = "1" } 2>&1
             Write-Host "=== normal user, $m, exit $($p.ExitCode)"
             Get-Content $out -ErrorAction SilentlyContinue
             Get-Content $err -ErrorAction SilentlyContinue
