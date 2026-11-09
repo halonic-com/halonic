@@ -1,8 +1,8 @@
 # @halonicjs/adapter-fs-node
 
-The `DefinitionStore` and `RunStore` ports on the local file system with
-Node: workspace files are plain files under a root folder, and each run is a
-JSONL log. The CLI (`halonic validate`, `test`, `run`) and the parity run use
+The `DefinitionStore`, `RunStore` and `TrustStore` ports on the local file
+system with Node: workspace files are plain files under a root folder, each
+run is a JSONL log, and each trust record is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
 it.
 
 - **Layer:** adapters
@@ -129,3 +129,24 @@ export async function runExample(folder: string): Promise<{
   };
 }
 ```
+
+## Trust records in the profile
+
+`new FileTrustStore(root)` keeps each trust record as one JSON file in
+`root`, a folder in the user's profile such as `<profile>/trust`, never
+inside a workspace. It passes the shared `TrustStore` contract suite.
+
+- **File names** are the SHA-256 of the location in hex, then `.json`. The
+  name never holds the location itself, so a file system that folds case or
+  normalises Unicode (macOS, Windows) still keeps `/Workspaces/acme` and
+  `/workspaces/acme`, or the two spellings of `café`, apart, and a long
+  path still fits in a name.
+- **Writes** go to a temporary file that is renamed over the record, so a
+  reader sees the old record or the new one. The folder is created with
+  mode `700` and each file with `600`.
+- **Damage:** each file starts with its location. When a record can't be
+  read, `get` and `list` throw with that location, and `revoke` deletes the
+  file without reading it. When not even the location can be read, `list`
+  names the file instead; deleting it removes the record.
+- `list` sorts by location in code-unit order and leaves other files in the
+  folder alone.
