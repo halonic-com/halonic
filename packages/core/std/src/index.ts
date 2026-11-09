@@ -21,6 +21,7 @@ export { KeyedQueue } from "./keyed-queue.ts";
 export { describeObject, isPlainObject, keyPath } from "./plain-data.ts";
 export { posixPath } from "./posix-path.ts";
 export { type Err, err, mapResult, type Ok, ok, type Result, unwrap } from "./result.ts";
+export { SecretScrubber, secretRemoved, secretTextForms } from "./secret-scrubber.ts";
 export { findSecretShape, type SecretShape } from "./secret-shape.ts";
 export { slugify, uniqueName } from "./text.ts";
 export { decodeUtf8, encodeUtf8 } from "./utf8.ts";
