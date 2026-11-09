@@ -24,6 +24,7 @@ look up services its feature lists in `needs`.
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
+| `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
@@ -66,7 +67,25 @@ At start-up the app hands its `RunExecutor` to `shell.engine.watch(executor)`. A
 (served mode, or a phone connected to a host) has a `connection` that can be `lost`; the local one
 has none and counts as always connected. Each change is sent once as `engine.connection { state }`
 to listeners added with `shell.engine.on("engine.connection", listener)`, and announced once: the
-loss assertively, the return politely. `shell.engine.connection` is the state now.
+loss assertively, the return politely. `shell.engine.connection` is the state now, and
+`shell.engine.status` the last event with its details.
+
+On the desktop the app starts the engine process instead: it hands an `EngineLauncher` to
+`shell.engine.supervise(launcher)`. The shell sends `starting { attempt, since }` at once, then
+`connected` when the engine answers. A start that fails sends `failed { failure }` with one of
+three reasons, and the shell doesn't try again by itself:
+
+| Reason                     | When                                          |
+| -------------------------- | --------------------------------------------- |
+| `stopped-while-starting`   | the process ended first; `exitCode` is kept   |
+| `no-answer`                | no answer within 30 s; the process is stopped |
+| `data-folder-not-writable` | the engine reported it can't write its data   |
+
+The engine's last log lines go to the log, not into the event. A running engine that stops sends
+`lost` and is started again once, 2 s later, as attempt 2 with `lastExitCode`. If it stops again
+within 60 s of that restart, the shell sends `failed` instead of looping. `retry()` (a Try again
+button) starts from attempt 1; `stop()` stops the engine and its timers. Only the loss and the
+return are announced; the start and failure texts wait for the approved wording (HAL-1720).
 
 ## Save reasons
 

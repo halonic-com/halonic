@@ -24,7 +24,20 @@ export {
   type EngineConnectionListener,
   engineConnectionAnnouncements,
   type ShellEngine,
+  type ShellEngineState,
 } from "./engine/engine-connection.ts";
+export {
+  type EngineLauncher,
+  type EngineProcess,
+  type EngineProcessEvents,
+  type EngineStartEvent,
+  type EngineStartFailure,
+  type EngineStartFailureReason,
+  type EngineSupervisor,
+  engineAnswerTimeoutMs,
+  engineRestartDelayMs,
+  engineRestartWindowMs,
+} from "./engine/engine-start.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
