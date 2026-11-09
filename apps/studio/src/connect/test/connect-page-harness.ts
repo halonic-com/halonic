@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import type { AddressStore, ConnectBridge, ConnectResult } from "../bridge.ts";
 import { startConnectPage } from "../connect-page.ts";
 
-// Under jsdom the global `URL` is jsdom's, which Node's file functions
-// refuse, so the page is read by path.
-const pageFile = fileURLToPath(new URL("../../../connect.html", import.meta.url).href);
+// Under jsdom `import.meta.url` isn't a file URL, so the page is found from
+// the package folder, where Vitest runs each package's tests.
+const pageFile = join(process.cwd(), "connect.html");
 
 /** A shell that answers each Connect from a list, and records what it was asked. */
 export class FakeShell implements ConnectBridge {
