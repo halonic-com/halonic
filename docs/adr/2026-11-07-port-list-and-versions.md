@@ -130,6 +130,19 @@ version 1 now rather than as a version 2 later. The versions stay at 1.
   adapters a contract. Nothing in the engine reads it yet: `RunExecutor`
   still has no live-progress channel (see above).
 
+_2026-11-09, planned on HAL-520._ Two new ports, which keep every
+version at 1:
+
+- **`ToolApprovalStore`:** `get`, `approve`, `revoke` and `list` the listed
+  tools a person approved (`ports.listed-tool-approval`), keyed by
+  workspace location, source id and listed name. It lives in the user's
+  profile next to the trust records, never in a workspace, and is separate
+  from `TrustRecord`, so an edit to the workspace doesn't throw every
+  approval away. The port only stores: `gateToolListing` in `core/app`
+  decides.
+- **`Digest`:** `sha256` over bytes, from the platform's WebCrypto. The
+  core needs SHA-256 for the approval hash and can't call WebCrypto itself.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

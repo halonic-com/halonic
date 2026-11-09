@@ -3,6 +3,7 @@ import { clockVersion } from "./clock.ts";
 import { connectorClientVersion } from "./connector-client.ts";
 import { coordinationVersion } from "./coordination.ts";
 import { definitionStoreVersion } from "./definition-store.ts";
+import { digestVersion } from "./digest.ts";
 import { httpClientVersion } from "./http-client.ts";
 import { idGeneratorVersion } from "./id-generator.ts";
 import { integrationVersion } from "./integration.ts";
@@ -16,6 +17,7 @@ import { runStoreVersion } from "./run-store.ts";
 import { schedulerVersion } from "./scheduler.ts";
 import { secretsVersion } from "./secrets.ts";
 import { tokenStoreVersion } from "./token-store.ts";
+import { toolApprovalStoreVersion } from "./tool-approval-store.ts";
 import { trustStoreVersion } from "./trust-store.ts";
 import { vcsVersion } from "./vcs.ts";
 
@@ -33,6 +35,7 @@ export const portVersions = {
   ConnectorClient: connectorClientVersion,
   Coordination: coordinationVersion,
   DefinitionStore: definitionStoreVersion,
+  Digest: digestVersion,
   HttpClient: httpClientVersion,
   IdGenerator: idGeneratorVersion,
   Integration: integrationVersion,
@@ -46,6 +49,7 @@ export const portVersions = {
   Scheduler: schedulerVersion,
   Secrets: secretsVersion,
   TokenStore: tokenStoreVersion,
+  ToolApprovalStore: toolApprovalStoreVersion,
   TrustStore: trustStoreVersion,
   Vcs: vcsVersion,
 } as const;

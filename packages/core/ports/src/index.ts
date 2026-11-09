@@ -34,6 +34,7 @@ export {
   type DefinitionStore,
   definitionStoreVersion,
 } from "./definition-store.ts";
+export { type Digest, digestVersion } from "./digest.ts";
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
 export { type IdGenerator, idGeneratorVersion } from "./id-generator.ts";
 export {
@@ -105,6 +106,13 @@ export {
 } from "./scheduler.ts";
 export { type Secrets, secretsVersion } from "./secrets.ts";
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
+export {
+  type ToolApproval,
+  type ToolApprovalKey,
+  type ToolApprovalStore,
+  type ToolServer,
+  toolApprovalStoreVersion,
+} from "./tool-approval-store.ts";
 export {
   type TrustOrigin,
   type TrustRecord,
