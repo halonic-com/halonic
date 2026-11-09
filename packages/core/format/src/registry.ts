@@ -15,6 +15,8 @@ import { knowledgeKind } from "./kinds/knowledge/kind.ts";
 import type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
 import { modelsKind } from "./kinds/models/kind.ts";
 import type { Models } from "./kinds/models/schema.ts";
+import { pluginKind } from "./kinds/plugin/kind.ts";
+import type { Plugin } from "./kinds/plugin/schema.ts";
 import { providerKind } from "./kinds/provider/kind.ts";
 import type { Provider } from "./kinds/provider/schema.ts";
 import { routineKind } from "./kinds/routine/kind.ts";
@@ -47,6 +49,7 @@ export interface KindValues {
   workflowTest: WorkflowTest;
   routine: Routine;
   integration: IntegrationSheet;
+  plugin: Plugin;
 }
 
 /** The name of a file kind: `workspace`, `agent`, `workflowTest`, … */
@@ -73,11 +76,13 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   workflowTest: workflowTestKind,
   routine: routineKind,
   integration: integrationKind,
+  plugin: pluginKind,
 };
 
 /**
  * The names of every file kind, workspace-level kinds first and the
- * integration sheet, which sits outside workspaces, last, in a fixed order.
+ * integration sheet and the plugin manifest, which sit outside workspaces,
+ * last, in a fixed order.
  *
  * @example
  * for (const name of kindNames()) console.log(name, fileKinds[name].about);

@@ -1,0 +1,59 @@
+# The weather plugin from the plugins ADR (docs/adr/2026-11-09-plugins.md), with every part.
+id: weather
+version: 1.2.0
+sdk: 1
+name: Weather
+description: Forecasts for the places you name.
+backend:
+  hosts: [api.example.com]
+  secrets:
+    example-key:
+      purpose: The forecast service's API key
+      hosts: [api.example.com]
+      as: header
+      header: x-api-key
+  tools:
+    - name: forecast
+      description: The forecast for one place.
+      risk: read
+      untrusted: true
+      arguments: { place: "The place, such as Ghent." }
+    - name: today
+      description: Today's weather for one place.
+      risk: read
+      untrusted: true
+localTools:
+  - id: files
+    start:
+      package: { runner: npx, name: "@acme/files-mcp", version: 3.1.4 }
+    args: ["--read-only"]
+    env:
+      ACME_ROOT: { setting: root }
+      ACME_KEY: { secret: acme-key }
+    secrets:
+      acme-key: { purpose: Reads your Acme account, hosts: [api.acme.com] }
+    network: [api.acme.com]
+    tools:
+      - name: list-files
+        description: Lists the files in a folder.
+        risk: read
+        untrusted: true
+ui:
+  settings:
+    units: { label: Units, type: choice, choices: [metric, imperial], default: metric }
+    root: { label: Folder, type: text, required: true }
+    acme-key: { label: Acme key, type: secret, secret: acme-key }
+  commands:
+    - id: forecast
+      title: Show the forecast
+      tool: forecast
+      form:
+        place: { label: Place, type: text, required: true }
+      show: table
+  cards:
+    - id: today
+      title: Today
+      tool: today
+      args: { place: home }
+      show: markdown
+  panel: { title: Weather }

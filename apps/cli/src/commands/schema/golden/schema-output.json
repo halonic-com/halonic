@@ -1,6 +1,6 @@
 {
   "stdout": [
-    "✓ Wrote 15 JSON Schemas to ./schemas."
+    "✓ Wrote 16 JSON Schemas to ./schemas."
   ],
   "stderr": [],
   "files": [
@@ -12,6 +12,7 @@
     "integration.schema.json",
     "knowledge.schema.json",
     "models.schema.json",
+    "plugin.schema.json",
     "provider.schema.json",
     "routine.schema.json",
     "runtime.schema.json",

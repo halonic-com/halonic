@@ -35,8 +35,11 @@ const Host = s.union([
 /** A host as the sheet writes it. */
 export type IntegrationHost = Infer<typeof Host>;
 
-/** What every secret says, wherever the kit puts it. */
-const secretFields = {
+/**
+ * What every secret says, wherever the kit puts it. A plugin's local tool
+ * declares its secrets with these fields, without `as`.
+ */
+export const secretFields = {
   /** Why the integration needs it, in words the user understands. */
   purpose: s.string().min(1),
   /** The hosts it may go to. Each must be in the sheet's `hosts`. */
@@ -67,7 +70,8 @@ export type IntegrationSecret = Infer<typeof Secret>;
 
 const Token = s.object({ name, purpose: s.string().min(1) }).strict();
 
-const Tool = s
+/** A tool as a sheet declares it; a plugin's local tools declare theirs the same way. */
+export const IntegrationTool = s
   .object({
     name: s.string().min(1),
     /** Word for word the code's text: it is what the user approves and the model reads. */
@@ -82,7 +86,7 @@ const Tool = s
   .strict();
 
 /** A sheet's tool. */
-export type IntegrationTool = Infer<typeof Tool>;
+export type IntegrationTool = Infer<typeof IntegrationTool>;
 
 /** The secret of Halonic's own Google sign-in; only a sheet with it may have the Google fields. */
 export const GOOGLE_SECRET = "google-account";
@@ -247,7 +251,7 @@ export const IntegrationSheet = s
     googleCheck: GoogleCheck.optional(),
     /** Values the integration itself writes and reads back later. */
     tokens: s.array(Token).default([]),
-    tools: s.array(Tool).default([]),
+    tools: s.array(IntegrationTool).default([]),
     /** Capabilities beyond HTTP. `process` starts a local program. */
     needs: s.array(s.enum(["process"])).default([]),
     limits: Limits.optional(),
