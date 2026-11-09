@@ -69,7 +69,7 @@ function refuseDeclaredSize(
 /** What {@link pump} carries from one pull to the next. */
 interface Pump {
   /** The next piece from the transport, within the idle time. */
-  readonly read: () => Promise<ReadableStreamReadResult<Uint8Array>>;
+  readonly read: ReadableStreamDefaultReader<Uint8Array>["read"];
   readonly remover: SecretRemover;
   readonly guard: BodyGuard;
   readonly tooLarge: () => IntegrationRefusedError;
