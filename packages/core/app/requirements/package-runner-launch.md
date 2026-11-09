@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1132 (release check C93), the package-runner and environment rules of `ports.connector-trust-enforcement`
+- Source: HAL-1132 (release check C93), the package-runner and environment rules of `ports.connector-trust-enforcement`; HAL-2134 (release check C188: an unpinned package runner starts once a person has trusted it)
 
-The app shall treat a stdio `command` as a package runner when its program name, without its folder, in any case and without a `.cmd`, `.exe`, `.bat` or `.ps1` ending, is `npx`, `bunx`, `uvx` or `pnpx`, or is one of `npm exec`, `npm x`, `pnpm dlx`, `yarn dlx`, `bun x`, `pipx run` and `uv tool run`, or when it is `cmd`, `sh`, `bash`, `zsh`, `powershell` or `pwsh` and any word of its arguments, split on spaces, quotes and `;`, `&`, `|`, `(`, `)`, starts a package runner. It shall refuse a package runner without a `pin`, a `pin` whose version isn't one exact version as `app.connector-pin-version` defines it, and a transport with a `pin` whose `env` sets, in any case, `NODE_OPTIONS`, `NODE_PATH`, `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONHOME`, or a name starting with `npm_config_`, `YARN_`, `PNPM_`, `BUN_`, `COREPACK_`, `UV_`, `PIP_` or `PIPX_`.
+The app shall treat a stdio `command` as a package runner when its program name, without its folder, in any case and without a `.cmd`, `.exe`, `.bat` or `.ps1` ending, is `npx`, `bunx`, `uvx` or `pnpx`, or is one of `npm exec`, `npm x`, `pnpm dlx`, `yarn dlx`, `bun x`, `pipx run` and `uv tool run`, or when it is `cmd`, `sh`, `bash`, `zsh`, `powershell` or `pwsh` and any word of its arguments, split on spaces, quotes and `;`, `&`, `|`, `(`, `)`, starts a package runner. It shall refuse a `pin` whose version isn't one exact version as `app.connector-pin-version` defines it, and a transport with a `pin` whose `env` sets, in any case, `NODE_OPTIONS`, `NODE_PATH`, `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONHOME`, or a name starting with `npm_config_`, `YARN_`, `PNPM_`, `BUN_`, `COREPACK_`, `UV_`, `PIP_` or `PIPX_`. A package runner without a `pin` passes this check: like every stdio program it starts only with a trust grant, and its command and args are in the fingerprint the person confirmed. The trust check marks it as not pinned with the same detection (build plan item 10c), so the two can't disagree.
 
 For a pinned package runner, the app shall read the package each word names: the value of `-p`, `--package`, `--from`, `--with` (split on commas) or `--spec`, and any other word that starts with the pin's package name. It shall refuse the launch when no word names the pin's package, when a named package isn't the pin's (PyPI names compared the way PyPI compares them), and when a named version isn't the pin's version or isn't one exact version as `app.connector-pin-spec` reads it. The pin's package without a version passes, because the launcher adds the pin. For PyPI, `name@1.2.3` is read as `name==1.2.3`, the form `uvx` also accepts.
 
@@ -14,13 +14,13 @@ For a pinned package runner, the app shall read the package each word names: the
 
 - Given a stdio transport with `command: "NPX.CMD"`, `args: ["-y", "@acme/mail-mcp"]` and no `pin`,
   when it is checked,
-  then it is refused because a package runner needs a pin.
+  then it passes without a pin, and `isPackageRunner` is still true for it.
 - Given the command `C:/tools/uvx.exe`, `bunx`, `pnpx`, `npm` with `--yes exec`, `npm` with `x`, `pnpm dlx`, `yarn dlx`, `bun x`, `pipx run` or `uv tool run`,
   when it is checked,
   then it is a package runner.
 - Given the command `cmd` with `/c`, `npx`, `-y`, `@acme/mail-mcp`, or `sh` with `-c` and `exec uvx mail-mcp`, or `powershell` with `-Command` and `& 'npx.cmd' -y @acme/mail-mcp`, and no `pin`,
   when it is checked,
-  then it is refused because a package runner needs a pin.
+  then it is a package runner and passes without a pin.
 - Given the command `node` with `server.js`, `python` with `-m mail_mcp`, `npm` with `start`, or `uv` with `run server.py`,
   when it is checked without a pin,
   then it isn't a package runner and passes.

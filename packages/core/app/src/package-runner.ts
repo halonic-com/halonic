@@ -79,7 +79,10 @@ export function programName(command: string): string {
  * wherever it appears in the arguments, so an option before it, such as
  * `npm --yes exec`, doesn't hide it. A shell counts when any word of its
  * arguments starts a runner, so `cmd /c npx …` does. A command that only
- * looks like one then needs a pin, which is the safe side to be wrong on.
+ * looks like one is then shown as not pinned when a person trusts it, which
+ * is the safe side to be wrong on.
+ * The trust check's `unpinned` flag (build plan item 10c) uses this, so the
+ * launcher and the trust prompt agree on what a package runner is.
  */
 export function isPackageRunner(command: string, args: readonly string[]): boolean {
   return runnerWords(command, args) !== undefined;
@@ -111,16 +114,17 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
 }
 
 /**
- * Checks a stdio transport before its program starts. A package runner needs
- * a `pin` with one exact version, and no transport with a pin may set a
- * variable, in any case, that could move the registry or run code before the
- * package. A pinned runner must name the pin's package, and every package it
- * names, as an argument or as the value of a package option, must be the
- * pin's package at no version or the pin's version. A command that isn't a
- * package runner and has no pin passes as it is.
+ * Checks a stdio transport before its program starts. A transport without a
+ * `pin` passes as it is, package runner or not: the trust grant, whose
+ * fingerprint holds the command and args, is what lets it start. A `pin`
+ * needs one exact version, and no transport with a pin may set a variable,
+ * in any case, that could move the registry or run code before the package.
+ * A pinned runner must name the pin's package, and every package it names,
+ * as an argument or as the value of a package option, must be the pin's
+ * package at no version or the pin's version.
  *
- * @returns the pin to start, `null` for a command that isn't a package
- *   runner, or the reason to refuse
+ * @returns the pin to start, `null` for a transport without one, or the
+ *   reason to refuse
  *
  * @example
  * const check = checkPackageRunnerLaunch(transport);
@@ -130,13 +134,7 @@ export function checkPackageRunnerLaunch(
   transport: StdioTransport,
 ): Result<ConnectorPin | null, string> {
   const { command, args, env, pin } = transport;
-  const words = runnerWords(command, args);
   if (pin === undefined) {
-    if (words !== undefined) {
-      return err(
-        `"${programName(command)}" starts a package runner, so it needs a pin to one exact version, which this connector doesn't have`,
-      );
-    }
     return ok(null);
   }
   const blocked = Object.keys(env).filter(isBlockedVariable);
@@ -146,6 +144,7 @@ export function checkPackageRunnerLaunch(
     );
   }
   const pinned = checkPinVersion(pin);
+  const words = runnerWords(command, args);
   if (!pinned.ok || words === undefined) {
     return pinned;
   }

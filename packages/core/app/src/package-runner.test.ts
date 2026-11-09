@@ -35,10 +35,10 @@ function refused(transport: StdioTransport): string {
 }
 
 verifies("app.package-runner-launch", () => {
-  it("refuses a package runner without a pin", () => {
-    expect(refused(stdio({ command: "NPX.CMD", args: ["-y", "@acme/mail-mcp"] }))).toBe(
-      '"npx" starts a package runner, so it needs a pin to one exact version, which this connector doesn\'t have',
-    );
+  it("lets a package runner without a pin pass, still known as a package runner", () => {
+    const transport = stdio({ command: "NPX.CMD", args: ["-y", "@acme/mail-mcp"] });
+    expect(checkPackageRunnerLaunch(transport)).toEqual({ ok: true, value: null });
+    expect(isPackageRunner(transport.command, transport.args)).toBe(true);
   });
 
   it("knows every package runner, with any folder, case and ending", () => {
@@ -57,7 +57,6 @@ verifies("app.package-runner-launch", () => {
     ];
     for (const [command, args] of runners) {
       expect(isPackageRunner(command, args), `${command} ${args.join(" ")}`).toBe(true);
-      expect(refused(stdio({ command, args })), command).toContain("needs a pin");
     }
   });
 
@@ -119,7 +118,10 @@ verifies("app.package-runner-launch", () => {
     ];
     for (const [command, args] of wrapped) {
       expect(isPackageRunner(command, args), `${command} ${args.join(" ")}`).toBe(true);
-      expect(refused(stdio({ command, args })), command).toContain("needs a pin");
+      expect(checkPackageRunnerLaunch(stdio({ command, args })), command).toEqual({
+        ok: true,
+        value: null,
+      });
     }
     expect(isPackageRunner("cmd", ["/c", "node", "server.js"])).toBe(false);
   });
