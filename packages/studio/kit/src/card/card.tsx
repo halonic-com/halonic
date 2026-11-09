@@ -72,7 +72,7 @@ const reacts = ["transition", "active:bg-surface-subtle hover:shadow-1"].join(" 
 /**
  * An interactive card's classes by state. A disabled card still opens (to say why it's paused),
  * but it doesn't light up; an error card lifts but keeps its `danger` edge. With more contrast
- * `border-strong` is the same as the resting edge, so the hover edge goes to `fg-muted` there.
+ * `border-strong` barely differs from the resting edge, so the hover edge goes to `fg-muted` there.
  */
 const interactiveClasses: Record<CardState, string> = {
   default: `block w-full focus-ring ${reacts} hover:border-border-strong contrast-more:hover:border-fg-muted`,
