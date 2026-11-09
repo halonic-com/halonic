@@ -168,25 +168,13 @@ async function send(
     placements,
     headers: new Headers(own.headers),
   };
-  const deadline = new AbortController();
-  const stop = (what: string, ms: number) =>
-    deadline.abort(
-      new IntegrationTimeoutError(
-        `${policy.name}: ${what} from ${hop.url.host}${hop.url.pathname} within ${ms} ms`,
-      ),
-    );
-  const totalMs = limits.timeoutMs ?? 600_000;
-  const headersMs = limits.headersTimeoutMs ?? 30_000;
-  const total = setTimeout(() => stop("no complete response", totalMs), totalMs);
-  const headersTimer = setTimeout(() => stop("no response headers", headersMs), headersMs);
-  const combined = signal ? AbortSignal.any([signal, deadline.signal]) : deadline.signal;
-  const maxRedirects = limits.maxRedirects ?? 5;
+  const timers = startTimers(policy, hop, limits, signal);
   const guard: BodyGuard = {
-    signal: combined,
+    signal: timers.combined,
     idleMs: limits.idleTimeoutMs ?? 60_000,
     maxBytes: limits.maxResponseBytes ?? 10 * 1024 * 1024,
-    onIdle: () => stop("no data", limits.idleTimeoutMs ?? 60_000),
-    done: () => clearTimeout(total),
+    onIdle: () => timers.stop("no data", limits.idleTimeoutMs ?? 60_000),
+    done: () => clearTimeout(timers.total),
     // Every declared secret, not only the placed ones: the bridge filters the same way.
     secrets: secretForms(
       [...declared].map(([secret, value]) => ({
@@ -197,41 +185,90 @@ async function send(
   };
 
   try {
-    for (let count = 0; ; count++) {
-      const headers = new Headers(hop.headers);
-      const placedForm = place(policy, hop.placements, values, hop.url, headers, hop.form);
-      const body = placedForm ?? hop.body;
-      if (bodyBytes(body) > maxBodyBytes) throw requestTooLarge(policy, hop.url, maxBodyBytes);
-      const response = await untilAborted(
-        options.transport.fetch(hop.url.href, {
-          method: hop.method,
-          headers,
-          body,
-          redirect: "manual",
-          signal: combined,
-        }),
-        combined,
-      );
-      const location = response.headers.get("location");
-      if (!redirectStatuses.has(response.status) || location === null) {
-        clearTimeout(headersTimer);
-        return guardBody(policy, response, hop.url, guard);
-      }
-      await response.body?.cancel();
-      if (count >= maxRedirects) {
-        throw new IntegrationRefusedError(
-          "too-many-redirects",
-          `${policy.name}: ${hop.url.host}${hop.url.pathname} redirected more than ${maxRedirects} times`,
-        );
-      }
-      refuseCarriedSecrets(policy, carried, { url: location, base: hop.url });
-      follow(hop, response.status, allowedUrl(policy, location, hop.url));
-    }
+    return await followHops(options, { hop, values, carried, guard, maxBodyBytes, timers });
   } catch (error) {
-    clearTimeout(headersTimer);
-    clearTimeout(total);
+    clearTimeout(timers.headers);
+    clearTimeout(timers.total);
     // Refusals and timeouts name the URL of the hop, which a redirect may have chosen.
     throw removeSecretsFromError(error, guard.secrets);
+  }
+}
+
+/** The request's deadlines: one signal for both, and the timers to clear. */
+interface Timers {
+  readonly combined: AbortSignal;
+  readonly total: ReturnType<typeof setTimeout>;
+  readonly headers: ReturnType<typeof setTimeout>;
+  readonly stop: (what: string, ms: number) => void;
+}
+
+function startTimers(
+  policy: IntegrationPolicy,
+  hop: Hop,
+  limits: RequestLimits,
+  signal: AbortSignal | undefined,
+): Timers {
+  const deadline = new AbortController();
+  const stop = (what: string, ms: number) =>
+    deadline.abort(
+      new IntegrationTimeoutError(
+        `${policy.name}: ${what} from ${hop.url.host}${hop.url.pathname} within ${ms} ms`,
+      ),
+    );
+  const totalMs = limits.timeoutMs ?? 600_000;
+  const headersMs = limits.headersTimeoutMs ?? 30_000;
+  return {
+    combined: signal ? AbortSignal.any([signal, deadline.signal]) : deadline.signal,
+    total: setTimeout(() => stop("no complete response", totalMs), totalMs),
+    headers: setTimeout(() => stop("no response headers", headersMs), headersMs),
+    stop,
+  };
+}
+
+/** What {@link followHops} needs besides the request itself. */
+interface HopContext {
+  readonly hop: Hop;
+  readonly values: Awaited<ReturnType<typeof readSecrets>>;
+  readonly carried: SecretForms;
+  readonly guard: BodyGuard;
+  readonly maxBodyBytes: number;
+  readonly timers: Timers;
+}
+
+/** Sends the request, then each redirect hop, until an answer that isn't one. */
+async function followHops(options: LimitedHttpOptions, context: HopContext): Promise<Response> {
+  const { policy, limits = {} } = options;
+  const { hop, values, carried, guard, maxBodyBytes, timers } = context;
+  const maxRedirects = limits.maxRedirects ?? 5;
+  for (let count = 0; ; count++) {
+    const headers = new Headers(hop.headers);
+    const placedForm = place(policy, hop.placements, values, hop.url, headers, hop.form);
+    const body = placedForm ?? hop.body;
+    if (bodyBytes(body) > maxBodyBytes) throw requestTooLarge(policy, hop.url, maxBodyBytes);
+    const response = await untilAborted(
+      options.transport.fetch(hop.url.href, {
+        method: hop.method,
+        headers,
+        body,
+        redirect: "manual",
+        signal: timers.combined,
+      }),
+      timers.combined,
+    );
+    const location = response.headers.get("location");
+    if (!redirectStatuses.has(response.status) || location === null) {
+      clearTimeout(timers.headers);
+      return guardBody(policy, response, hop.url, guard);
+    }
+    await response.body?.cancel();
+    if (count >= maxRedirects) {
+      throw new IntegrationRefusedError(
+        "too-many-redirects",
+        `${policy.name}: ${hop.url.host}${hop.url.pathname} redirected more than ${maxRedirects} times`,
+      );
+    }
+    refuseCarriedSecrets(policy, carried, { url: location, base: hop.url });
+    follow(hop, response.status, allowedUrl(policy, location, hop.url));
   }
 }
 

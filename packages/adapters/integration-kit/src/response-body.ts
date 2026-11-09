@@ -38,12 +38,7 @@ export function guardBody(
       "response-too-large",
       `${policy.name}: the response from ${url.host}${url.pathname} is larger than ${guard.maxBytes} bytes`,
     );
-  const declared = Number(response.headers.get("content-length") ?? Number.NaN);
-  if (Number.isFinite(declared) && declared > guard.maxBytes) {
-    guard.done();
-    void response.body?.cancel();
-    throw removeSecretsFromError(tooLarge(), guard.secrets);
-  }
+  refuseDeclaredSize(response, guard, tooLarge);
   const status = statusOf(response, guard.secrets);
   const headers = removeSecretsFromHeaders(response.headers, guard.secrets);
   const finalUrl = removeSecrets(url.href, guard.secrets);
@@ -54,49 +49,64 @@ export function guardBody(
   // Removing a secret changes the length. The body is filtered as the
   // transport hands it over: `fetch` has already undone the content coding.
   if (guard.secrets.longest > 0) headers.delete("content-length");
+  const guarded = guardedStream(response.body, guard, tooLarge);
+  return withUrl(new Response(guarded, { ...status, headers }), finalUrl);
+}
 
-  const reader = response.body.getReader();
-  const remover = new SecretRemover(guard.secrets);
-  let seen = 0;
-  const fail = (error: unknown) => {
-    guard.done();
-    reader.cancel(error).catch(() => {});
-    throw error;
-  };
+/** Refuses a response whose declared length is over the limit, before any of it is read. */
+function refuseDeclaredSize(
+  response: Response,
+  guard: BodyGuard,
+  tooLarge: () => IntegrationRefusedError,
+): void {
+  const declared = Number(response.headers.get("content-length") ?? Number.NaN);
+  if (!Number.isFinite(declared) || declared <= guard.maxBytes) return;
+  guard.done();
+  void response.body?.cancel();
+  throw removeSecretsFromError(tooLarge(), guard.secrets);
+}
+
+/** What {@link pump} carries from one pull to the next. */
+interface Pump {
   /** The next piece from the transport, within the idle time. */
-  const read = async () => {
-    const idle = setTimeout(guard.onIdle, guard.idleMs);
-    try {
-      return await untilAborted(reader.read(), guard.signal);
-    } finally {
-      clearTimeout(idle);
-    }
+  readonly read: () => Promise<ReadableStreamReadResult<Uint8Array>>;
+  readonly remover: SecretRemover;
+  readonly guard: BodyGuard;
+  readonly tooLarge: () => IntegrationRefusedError;
+  seen: number;
+}
+
+/** The body, filtered and limited, as the stream the integration reads. */
+function guardedStream(
+  body: ReadableStream<Uint8Array>,
+  guard: BodyGuard,
+  tooLarge: () => IntegrationRefusedError,
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  const state: Pump = {
+    read: async () => {
+      const idle = setTimeout(guard.onIdle, guard.idleMs);
+      try {
+        return await untilAborted(reader.read(), guard.signal);
+      } finally {
+        clearTimeout(idle);
+      }
+    },
+    remover: new SecretRemover(guard.secrets),
+    guard,
+    tooLarge,
+    seen: 0,
   };
-  const guarded = new ReadableStream<Uint8Array>({
+  return new ReadableStream<Uint8Array>({
     async pull(controller) {
       try {
-        // A piece can be held back whole while the filter waits for the
-        // rest of a possible secret, so read until there is something to pass on.
-        for (;;) {
-          const next = await read();
-          if (next.done) {
-            guard.done();
-            const rest = remover.flush();
-            if (rest.length > 0) controller.enqueue(rest);
-            controller.close();
-            return;
-          }
-          seen += next.value.byteLength;
-          if (seen > guard.maxBytes) throw tooLarge();
-          const filtered = remover.push(next.value);
-          if (filtered.length > 0) {
-            controller.enqueue(filtered);
-            return;
-          }
-        }
+        await pump(state, controller);
       } catch (error) {
         // The size limit and the deadlines name the URL, which a redirect may have chosen.
-        fail(removeSecretsFromError(error, guard.secrets));
+        const failure = removeSecretsFromError(error, guard.secrets);
+        guard.done();
+        reader.cancel(failure).catch(() => {});
+        throw failure;
       }
     },
     cancel(reason) {
@@ -104,7 +114,33 @@ export function guardBody(
       return reader.cancel(reason);
     },
   });
-  return withUrl(new Response(guarded, { ...status, headers }), finalUrl);
+}
+
+/**
+ * Passes on one filtered piece. A piece can be held back whole while the filter waits for the
+ * rest of a possible secret, so it reads until there is something to pass on.
+ */
+async function pump(
+  state: Pump,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+): Promise<void> {
+  for (;;) {
+    const next = await state.read();
+    if (next.done) {
+      state.guard.done();
+      const rest = state.remover.flush();
+      if (rest.length > 0) controller.enqueue(rest);
+      controller.close();
+      return;
+    }
+    state.seen += next.value.byteLength;
+    if (state.seen > state.guard.maxBytes) throw state.tooLarge();
+    const filtered = state.remover.push(next.value);
+    if (filtered.length > 0) {
+      controller.enqueue(filtered);
+      return;
+    }
+  }
 }
 
 /** The status, with the secrets removed from the reason phrase, which the server writes. */
