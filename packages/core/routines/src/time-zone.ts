@@ -3,6 +3,9 @@ import { CronError } from "./cron-error.ts";
 /** One minute in milliseconds. */
 export const MINUTE = 60_000;
 
+/** The zone for a schedule that names none. Core can't read this machine's zone. */
+export const DEFAULT_TIME_ZONE = "UTC";
+
 /** The time on a wall clock in some time zone, to the minute. */
 export interface WallTime {
   year: number;

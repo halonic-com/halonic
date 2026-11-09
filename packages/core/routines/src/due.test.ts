@@ -98,6 +98,26 @@ verifies("routines.due", () => {
     expect(runs[0]?.at.toISOString()).toBe("2026-11-03T00:00:00.000Z");
   });
 
+  it("skips a schedule in an unknown zone and still starts the others", () => {
+    const routines = [
+      placed({ schedule: "0 * * * *", timezone: "Mars/Olympus" }, "last", true, "mars"),
+      placed(hourly, "last", true, "earth"),
+    ];
+    const runs = due(routines, at("2026-11-03T08:30:00Z"), at("2026-11-03T09:10:00Z"));
+    expect(runs.map((run) => run.key)).toEqual(["h/earth"]);
+  });
+
+  it("skips only the zoneless schedules when the policy zone is unknown", () => {
+    const routines = [
+      placed({ schedule: "0 * * * *" }, "last", true, "zoneless"),
+      placed(hourly, "last", true, "zoned"),
+      placed({ every: "1h" }, "last", true, "interval"),
+    ];
+    const policy = { ...DEFAULT_TICK_POLICY, timeZone: "Mars/Olympus" };
+    const runs = due(routines, at("2026-11-03T08:30:00Z"), at("2026-11-03T09:10:00Z"), policy);
+    expect(runs.map((run) => run.key)).toEqual(["h/interval", "h/zoned"]);
+  });
+
   describe("after a nine-day window", () => {
     // 12,960 minutes: more than one walk through the window lists.
     const lastTick = at("2026-11-01T00:00:00Z");

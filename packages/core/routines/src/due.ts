@@ -1,10 +1,11 @@
 import type { Routine, RoutineTrigger } from "@halonicjs/format";
 import { CronError } from "./cron-error.ts";
+import { slotAfter, slotAtOrBefore } from "./interval-slots.ts";
 import { nextCronTime } from "./next-cron-time.ts";
 import { occurrences } from "./occurrences.ts";
 import { type Cron, parseCron } from "./parse-cron.ts";
 import { parseEvery } from "./parse-every.ts";
-import { MINUTE } from "./time-zone.ts";
+import { checkTimeZone, DEFAULT_TIME_ZONE, MINUTE } from "./time-zone.ts";
 
 /** A routine together with the hub its file lives in; `null` is the workspace itself. */
 export interface PlacedRoutine {
@@ -14,7 +15,10 @@ export interface PlacedRoutine {
 
 /** The settings every routine shares when deciding what is due. */
 export interface TickPolicy {
-  /** The zone for `schedule` triggers that name none. Core can't read this machine's zone. */
+  /**
+   * The zone for `schedule` triggers that name none. Core can't read this
+   * machine's zone. When it is unknown, only those triggers are skipped.
+   */
   timeZone: string;
   /** A due time still counts as on time while `now - at` is no more than this. */
   graceMs: number;
@@ -27,7 +31,7 @@ export interface TickPolicy {
 }
 
 export const DEFAULT_TICK_POLICY: TickPolicy = {
-  timeZone: "UTC",
+  timeZone: DEFAULT_TIME_ZONE,
   graceMs: 60_000,
   maxCatchUp: 100,
 };
@@ -56,7 +60,8 @@ export function routineKey(placed: PlacedRoutine): string {
  * the times in `(lastTick, now]` its `catchUp` setting lets it run, oldest
  * first (ties by key). `none` keeps only times within `policy.graceMs` of now,
  * `last` the newest, `all` the oldest `policy.maxCatchUp`. With no last tick
- * nothing is due. A routine whose trigger doesn't parse is skipped.
+ * nothing is due. A routine whose trigger doesn't parse, or whose schedule
+ * is in a zone this runtime doesn't know, is skipped; the others still run.
  */
 export function due(
   routines: readonly PlacedRoutine[],
@@ -133,7 +138,7 @@ function allowedTimes(
   return clock.times(from, now, WINDOW_LIMIT);
 }
 
-/** @throws {CronError} when the cron or interval doesn't parse */
+/** @throws {CronError} when the cron or interval doesn't parse, or the zone is unknown */
 function clockFor(trigger: RoutineTrigger, policy: TickPolicy): Clock | null {
   if ("schedule" in trigger) {
     return scheduleClock({ ...trigger, timezone: trigger.timezone ?? policy.timeZone });
@@ -142,9 +147,12 @@ function clockFor(trigger: RoutineTrigger, policy: TickPolicy): Clock | null {
   return null;
 }
 
-/** @throws {CronError} when the cron doesn't parse */
+/** @throws {CronError} when the cron doesn't parse or the zone is unknown */
 function scheduleClock(trigger: ScheduleTrigger & { timezone: string }): Clock {
   const cron = parseCron(trigger.schedule);
+  // Checked here, so an unknown zone skips this routine instead of throwing a
+  // RangeError out of the tick and stopping every routine.
+  checkTimeZone(trigger.timezone);
   return {
     kind: "schedule",
     times: (from, to, limit) => occurrences(trigger, from, to, limit),
@@ -152,13 +160,13 @@ function scheduleClock(trigger: ScheduleTrigger & { timezone: string }): Clock {
   };
 }
 
-/** Multiples of the interval counted from the Unix epoch. */
+/** Multiples of the interval counted from the Unix epoch; see `interval-slots.ts`. */
 function intervalClock(intervalMs: number): Clock {
   return {
     kind: "every",
     times(from, to, limit) {
       const times: Date[] = [];
-      let slot = (Math.floor(from.getTime() / intervalMs) + 1) * intervalMs;
+      let slot = slotAfter(intervalMs, from.getTime());
       while (slot <= to.getTime() && times.length < limit) {
         times.push(new Date(slot));
         slot += intervalMs;
@@ -166,7 +174,7 @@ function intervalClock(intervalMs: number): Clock {
       return times;
     },
     newest(from, to) {
-      const newest = Math.floor(to.getTime() / intervalMs) * intervalMs;
+      const newest = slotAtOrBefore(intervalMs, to.getTime());
       return newest > from.getTime() ? new Date(newest) : null;
     },
   };
