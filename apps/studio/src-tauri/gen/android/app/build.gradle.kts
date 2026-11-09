@@ -18,7 +18,13 @@ android {
     compileSdk = 37
     namespace = "com.halonic.studio"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        // Plain http:// in every build, release included: the app talks to
+        // the user's own computer at an address like 192.168.1.20:4280,
+        // which has no certificate. Android can't limit cleartext to the
+        // home network, so the shell's connect check does (http:// only to
+        // home-network addresses, after DNS), and the navigation guard lets
+        // no other address load as a page in the window (HAL-1140, HAL-1375).
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "com.halonic.studio"
         minSdk = 24
         targetSdk = 37
@@ -27,7 +33,6 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false

@@ -1,0 +1,16 @@
+# studio.src-tauri.served-page
+
+- Status: draft
+- Since: 0.1.0
+- Source: HAL-196 section 3, HAL-1375
+
+The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect`. The Studio the computer serves shall get no native access.
+
+## Examples
+
+- Given a request from `http://192.168.1.20:4280/`,
+  when it invokes `connect`, `plugin:opener|open_url` or any other command the shell knows,
+  then it is refused as "not allowed".
+- Given a request from the connect page,
+  when it invokes `connect` with `not an address`,
+  then the answer is `{"kind":"notAnAddress"}`.

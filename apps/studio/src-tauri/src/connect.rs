@@ -9,8 +9,10 @@ use halonic_connect::{
     AppVersions, CheckedAddress, ConnectError, ConnectResult, HELLO_TIMEOUT, HelloBody, HelloReply,
     Host, SystemResolver, TimedResolver, Version, check_address,
 };
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_http::reqwest;
+
+use crate::navigation::ConfirmedAddress;
 
 /// The oldest Halonic on a computer that this app works with. A computer
 /// older than this gets "Halonic on your computer (…) is too old for this
@@ -19,9 +21,12 @@ const OLDEST_COMPUTER: &str = "0.1.0";
 
 /// Checks the address as typed, makes the hello call and returns what the
 /// page shows. The whole press, name lookup and hello call together, ends
-/// within [`HELLO_TIMEOUT`].
+/// within [`HELLO_TIMEOUT`]. Only a press that ends connected lets the
+/// navigation guard keep that address in the window.
 #[tauri::command]
 pub async fn connect<R: Runtime>(app: AppHandle<R>, address: String) -> ConnectResult {
+    let confirmed = app.state::<ConfirmedAddress>();
+    confirmed.set(None);
     let deadline = Instant::now() + HELLO_TIMEOUT;
     let input = address.clone();
     // The lookup blocks, so it runs on a worker thread, never the UI's.
@@ -36,7 +41,11 @@ pub async fn connect<R: Runtime>(app: AppHandle<R>, address: String) -> ConnectR
         Err(error) => return ConnectResult::refused(error, &address),
     };
     let reply = call_hello(&checked, deadline).await;
-    ConnectResult::after_hello(&checked, &reply, &app_versions(&app))
+    let result = ConnectResult::after_hello(&checked, &reply, &app_versions(&app));
+    if matches!(result, ConnectResult::Connected { .. }) {
+        confirmed.set(Some(checked.address));
+    }
+    result
 }
 
 /// `GET /api/hello` on exactly the checked IP addresses: no proxy, no

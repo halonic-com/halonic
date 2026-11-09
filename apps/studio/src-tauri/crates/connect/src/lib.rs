@@ -12,6 +12,7 @@ mod check;
 mod connect_result;
 mod hello;
 mod home_network;
+mod navigation;
 mod timed_resolver;
 mod version;
 
@@ -22,5 +23,6 @@ pub use check::{
 pub use connect_result::{ConnectResult, HelloBody, HelloReply, MAX_HELLO_BYTES};
 pub use hello::{AppVersions, Hello, HelloOutcome, NotHalonic, compare_versions, read_hello};
 pub use home_network::{Reach, reach};
+pub use navigation::{Destination, NavigationTarget, navigation_destination};
 pub use timed_resolver::TimedResolver;
 pub use version::Version;
