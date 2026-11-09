@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2234 and HAL-2233; the rule moved from three adapters so every adapter and the workspace checks share it
 
-The ports package shall export the name rule of the `Secrets` port, so every adapter refuses the same names. `isSecretName` shall say whether a name is a letter, then letters, digits, `-` or `_`, at most 128 characters. `secretKey` shall give the form names are matched in (upper case, `-` as `_`) and throw a `RangeError` for a name that breaks the rule. `describeSecretName` shall quote a name only when it is at most 128 printable ASCII characters, and otherwise give only its length, and the `RangeError` shall use it.
+The ports package shall export the name rule of the `Secrets` port, so every adapter refuses the same names. `isSecretName` shall say whether a name is a letter, then letters, digits, `-` or `_`, at most 128 characters. `secretKey` shall give the form names are matched in (upper case, `-` as `_`) and throw a `RangeError` for a name that breaks the rule. `isQuotableSecretName` shall say whether a message may repeat a name: only when it is at most 128 printable ASCII characters. `describeSecretName` shall quote a name only when that allows it, and otherwise give only its length, and the `RangeError` shall use it.
 
 ## Examples
 

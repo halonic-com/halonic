@@ -68,17 +68,28 @@ export function secretKey(name: string): string {
 }
 
 /**
- * How a message may refer to a secret name. The name is quoted only when it
- * is at most 128 printable ASCII characters. Anything else is more likely a
- * value passed as a name by mistake, so only its length is given and the
- * value never reaches a log or an error report.
+ * Whether a message may repeat a secret name: only when it is at most 128
+ * printable ASCII characters. Anything else is more likely a value passed as
+ * a name by mistake, so it must never reach a log or an error report.
+ *
+ * @example
+ * isQuotableSecretName("openai key"); // true
+ * isQuotableSecretName("x".repeat(300)); // false
+ */
+export function isQuotableSecretName(name: string): boolean {
+  return name.length <= maxSecretNameLength && printableAscii.test(name);
+}
+
+/**
+ * How a message may refer to a secret name: quoted when
+ * {@link isQuotableSecretName} allows it, otherwise by its length only.
  *
  * @example
  * describeSecretName("openai key"); // 'Secret name "openai key"'
  * describeSecretName("x".repeat(300)); // "A secret name of 300 characters"
  */
 export function describeSecretName(name: string): string {
-  if (name.length <= maxSecretNameLength && printableAscii.test(name)) {
+  if (isQuotableSecretName(name)) {
     return `Secret name ${JSON.stringify(name)}`;
   }
   return `A secret name of ${name.length} characters`;

@@ -698,6 +698,9 @@ importers:
 
   packages/core/format:
     dependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../ports
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../schema-kit

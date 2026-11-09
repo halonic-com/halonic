@@ -1,6 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { describeSecretName, isSecretName, maxSecretNameLength, secretKey } from "./index.ts";
+import {
+  describeSecretName,
+  isQuotableSecretName,
+  isSecretName,
+  maxSecretNameLength,
+  secretKey,
+} from "./index.ts";
 
 // The contract suite runs the rule through every adapter; this checks the shared helpers on their own.
 verifies("ports.secret-name-rule", () => {
@@ -35,6 +41,7 @@ verifies("ports.secret-name-rule", () => {
 
   describe("describeSecretName", () => {
     it("quotes a name of at most 128 printable ASCII characters", () => {
+      expect(isQuotableSecretName("openai key")).toBe(true);
       expect(describeSecretName("openai key")).toBe('Secret name "openai key"');
       expect(() => secretKey("openai key")).toThrow('Secret name "openai key" must be');
     });
@@ -48,6 +55,7 @@ verifies("ports.secret-name-rule", () => {
 
     it("gives only the length of a name with characters that aren't printable ASCII", () => {
       for (const name of ["sérve-password", "serve\npassword", "serve\u0000password"]) {
+        expect(isQuotableSecretName(name), JSON.stringify(name)).toBe(false);
         expect(describeSecretName(name), JSON.stringify(name)).toBe(
           `A secret name of ${name.length} characters`,
         );
