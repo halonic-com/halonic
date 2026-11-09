@@ -50,9 +50,14 @@ and passes the shared `DefinitionStore` contract suite.
   `RangeError`, so a run id can't leave the root. On macOS and Windows,
   `Run_1` and `run_1` are the same file, and reading one after writing the
   other is a "Broken run log" error; the engine's run ids are lower case.
-- **Limits:** appends to one run go one at a time inside one process, so
-  `expectedSeq` holds there. Two processes must not write to the same run
-  folder. A log survives a crash of the program, not of the machine: there
+- **Two processes:** an append holds `<runId>.lock` while it checks
+  `expectedSeq` and writes, so a CLI and a desktop app writing to one run
+  folder can't both win; one gets `conflict`. The lock file's format and
+  rules are `RunLockRecord` in `@halonicjs/ports`, which the Tauri adapter
+  follows too. An append waits while another writer holds the lock, and
+  removes a lock left by a crash: one whose process no longer runs on this
+  computer, or one older than `runLockStaleAfterMs` (10 seconds).
+- **Limits:** a log survives a crash of the program, not of the machine: there
   is no `fsync`, so after a power cut the last appends may be gone. If the
   program crashes in the middle of an append of several events, the first
   of them may be stored without the rest.

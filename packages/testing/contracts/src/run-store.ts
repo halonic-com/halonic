@@ -16,6 +16,26 @@ export interface RunStoreContractOptions {
    * whose list never lags leaves this out.
    */
   settleList?: (store: RunStore) => Promise<void>;
+  /**
+   * Gives a new, empty shared storage, for an adapter whose stores in
+   * different processes can share one, such as a run folder that a CLI and
+   * a desktop app both write to. The contract then checks that `conflict`
+   * holds across stores, and that a stale lock doesn't block a run.
+   */
+  makeShared?: () => Promise<SharedRunStorage>;
+}
+
+/** A storage that several stores share, as several processes would. */
+export interface SharedRunStorage {
+  /** Opens one more store on this storage, as another process would. */
+  open(): RunStore;
+  /**
+   * Leaves the lock of `runId` behind as a writer that crashed while
+   * appending would: `process-gone` from a process on this computer that
+   * no longer runs, `too-old` from one taken longer ago than the port's
+   * `runLockStaleAfterMs`.
+   */
+  plantStaleLock(runId: string, why: "process-gone" | "too-old"): Promise<void>;
 }
 
 /** The contract every {@link RunStore} adapter passes. */
@@ -40,6 +60,14 @@ export function runStoreContract(
       emptyStatusCases(make, settle);
     });
   });
+  const makeShared = options.makeShared;
+  if (makeShared !== undefined) {
+    verifies("contracts.run-store-shared", () => {
+      describe(`RunStore shared storage: ${name}`, () => {
+        sharedCases(makeShared);
+      });
+    });
+  }
 }
 
 function appendCases(make: MakeRunStore, settle: (store: RunStore) => Promise<void>): void {
@@ -229,4 +257,44 @@ function emptyStatusCases(make: MakeRunStore, settle: (store: RunStore) => Promi
     expect(await ids({ status: [] })).toEqual(["test", "ran"]);
     expect(await ids({ status: [], kind: "run" })).toEqual(["ran"]);
   });
+}
+
+function sharedCases(makeShared: () => Promise<SharedRunStorage>): void {
+  it("lets exactly one of two stores on one storage win, round after round", async () => {
+    const storage = await makeShared();
+    const [first, second] = [storage.open(), storage.open()];
+    await first.append("r1", 0, [started("r1")]);
+    for (let seq = 1; seq <= 10; seq += 1) {
+      const results = await Promise.all([
+        first.append("r1", seq, [entered("r1", seq + 1, "first")]),
+        second.append("r1", seq, [entered("r1", seq + 1, "second")]),
+      ]);
+      expect(
+        results.filter((result) => result.ok),
+        `round ${seq}`,
+      ).toHaveLength(1);
+      expect(
+        results.filter((result) => !result.ok),
+        `round ${seq}`,
+      ).toEqual([{ ok: false, reason: "conflict", lastSeq: seq + 1 }]);
+    }
+    expect((await second.events("r1")).map((event) => event.seq)).toEqual(
+      Array.from({ length: 11 }, (_, index) => index + 1),
+    );
+  });
+
+  for (const why of ["process-gone", "too-old"] as const) {
+    it(`appends past a stale lock left by a crashed writer (${why})`, async () => {
+      const storage = await makeShared();
+      const store = storage.open();
+      await store.append("r1", 0, [started("r1")]);
+      await storage.plantStaleLock("r1", why);
+      expect(await store.append("r1", 1, [entered("r1", 2)])).toEqual({ ok: true, lastSeq: 2 });
+      // The lock is released again, so the next writer isn't held up either.
+      expect(await storage.open().append("r1", 2, [entered("r1", 3)])).toEqual({
+        ok: true,
+        lastSeq: 3,
+      });
+    });
+  }
 }

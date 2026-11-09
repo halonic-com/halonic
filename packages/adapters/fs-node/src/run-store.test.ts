@@ -1,6 +1,9 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdir, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import type { RunEvent } from "@halonicjs/events";
+import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
 import { runStoreContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, expect, it, vi } from "vitest";
@@ -14,6 +17,8 @@ const failingWrite = vi.hoisted(() => ({
   hold: undefined as Promise<void> | undefined,
   /** Called once the failing write's bytes are out. */
   onBytesOut: undefined as (() => void) | undefined,
+  /** When set, runs before the next log write, while the store holds the run's lock. */
+  onWrite: undefined as (() => Promise<void>) | undefined,
 }));
 
 /** How many times a run log has been read whole. */
@@ -30,6 +35,8 @@ vi.mock("node:fs/promises", async (importOriginal) => {
       return await fs.readFile(file, ...rest);
     }) as typeof fs.readFile,
     appendFile: async (file: string, text: string, encoding: BufferEncoding) => {
+      await failingWrite.onWrite?.();
+      failingWrite.onWrite = undefined;
       const bytesOut = failingWrite.bytesOut;
       if (bytesOut === undefined) {
         return await fs.appendFile(file, text, encoding);
@@ -48,9 +55,36 @@ afterEach(() => {
   failingWrite.bytesOut = undefined;
   failingWrite.hold = undefined;
   failingWrite.onBytesOut = undefined;
+  failingWrite.onWrite = undefined;
 });
 
-runStoreContract("folder", async () => new FolderRunStore(await tempFolder()));
+runStoreContract("folder", async () => new FolderRunStore(await tempFolder()), {
+  makeShared: async () => {
+    const root = await tempFolder();
+    return {
+      open: () => new FolderRunStore(root),
+      plantStaleLock: (runId, why) => plantLock(root, runId, staleLock(why)),
+    };
+  },
+});
+
+/** A lock record a crashed writer could have left: from a process that has exited, or too old. */
+function staleLock(why: "process-gone" | "too-old"): RunLockRecord {
+  const now = Date.now();
+  if (why === "process-gone") {
+    const exited = spawnSync(process.execPath, ["--eval", ""]);
+    return { version: runLockFormat, pid: exited.pid, host: hostname(), takenAt: iso(now) };
+  }
+  const takenAt = iso(now - runLockStaleAfterMs - 60_000);
+  return { version: runLockFormat, pid: process.pid, host: hostname(), takenAt };
+}
+
+async function plantLock(root: string, runId: string, lock: RunLockRecord | string): Promise<void> {
+  const text = typeof lock === "string" ? lock : JSON.stringify(lock);
+  await writeFile(join(root, `${runId}.lock`), text, "utf8");
+}
+
+const iso = (time: number) => new Date(time).toISOString();
 
 function started(runId: string): RunEvent {
   return {
@@ -308,5 +342,41 @@ verifies("fs-node.run-store-recovery", () => {
     expect(failures).toEqual([["r1", expect.any(Error)]]);
     expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4]);
     expect(await store.snapshot("r1")).toBeNull();
+  });
+});
+
+verifies("fs-node.run-store-lock", () => {
+  it("waits on a lock file without a record until it is too old", async () => {
+    const { root, store } = await storeWithRun();
+    // A writer that crashed between creating its lock and writing the record.
+    await plantLock(root, "r1", "");
+    const lock = join(root, "r1.lock");
+    const old = new Date(Date.now() - runLockStaleAfterMs - 60_000);
+    await utimes(lock, old, old);
+    expect(await store.append("r1", 3, [entered("r1", 4)])).toEqual({ ok: true, lastSeq: 4 });
+  });
+
+  it("leaves no lock behind after an append, a conflict or a failed write", async () => {
+    const { root, store } = await storeWithRun();
+    await store.append("r1", 3, [entered("r1", 4)]);
+    await store.append("r1", 1, [entered("r1", 2)]);
+    failingWrite.bytesOut = 5;
+    await expect(store.append("r1", 4, [entered("r1", 5)])).rejects.toThrow("ENOSPC");
+    expect((await readdir(root)).sort()).toEqual(["r1.jsonl"]);
+  });
+
+  it("keeps the record of the lock it writes to the port's format", async () => {
+    const { root, store } = await storeWithRun();
+    let seen: unknown;
+    failingWrite.onWrite = async () => {
+      seen = JSON.parse(await readFile(join(root, "r1.lock"), "utf8"));
+    };
+    await store.append("r1", 3, [entered("r1", 4)]);
+    expect(seen).toEqual({
+      version: runLockFormat,
+      pid: process.pid,
+      host: hostname(),
+      takenAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u),
+    });
   });
 });

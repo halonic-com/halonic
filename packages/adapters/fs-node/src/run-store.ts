@@ -23,10 +23,12 @@ import {
 } from "@halonicjs/ports";
 import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
+import { withRunLock } from "./run-lock.ts";
 import { formatLogLines, parseRunLog, type RunLog } from "./run-log.ts";
 
 const logSuffix = ".jsonl";
 const snapshotSuffix = ".snapshot.json";
+const lockSuffix = ".lock";
 
 /** Letters, digits, `_`, `-` and `.`, not starting with a dot, at most 128 characters: a safe file name everywhere. */
 const runIdPattern = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,127}$/u;
@@ -58,11 +60,13 @@ interface LogEnd {
  * engine's state and may be deleted at any time. The list is worked out
  * from the logs on every call, so deleting a log removes the run.
  *
- * Appends and reads of one run go one at a time, so `expectedSeq` holds
- * within this process and a reader never sees an append that is still being
- * written or cut back. Two processes must not write to the same folder. An
- * append that fails stores nothing, but one cut off by a crash of the
- * program may leave the first events of its batch stored.
+ * Appends and reads of one run go one at a time, so a reader in this
+ * process never sees an append that is still being written or cut back.
+ * Appends also go one at a time across processes: each holds `<runId>.lock`
+ * while it checks `expectedSeq` and writes, following the port's
+ * `RunLockRecord` rules, so a CLI and a desktop app on one folder can't both
+ * win. An append that fails stores nothing, but one cut off by a crash of
+ * the program may leave the first events of its batch stored.
  */
 export class FolderRunStore implements RunStore {
   readonly #root: string;
@@ -101,28 +105,45 @@ export class FolderRunStore implements RunStore {
         ? undefined
         : JSON.stringify({ seq: lastSeq, state: options.snapshot } satisfies RunSnapshot);
     return await this.#queue.run(runId, async () => {
-      try {
-        const end = await this.#logEnd(runId);
-        if (end.lastSeq !== expectedSeq) {
-          return { ok: false, reason: "conflict", lastSeq: end.lastSeq };
-        }
-        await mkdir(this.#root, { recursive: true });
-        if (expectedSeq === 0) {
-          // A new run: a snapshot left from a deleted log of the same id isn't this run's.
-          await rm(this.#file(runId, snapshotSuffix), { force: true });
-        }
-        await this.#appendLines(runId, lines, end.bytes);
-        this.#logEnds.set(runId, { lastSeq, bytes: end.bytes + Buffer.byteLength(lines) });
-      } catch (error) {
-        // The log may have been cut back, or not: read it again next time.
-        this.#logEnds.delete(runId);
-        throw error;
-      }
-      if (snapshot !== undefined) {
-        await this.#writeSnapshot(runId, snapshot);
-      }
-      return { ok: true, lastSeq };
+      await mkdir(this.#root, { recursive: true });
+      return await withRunLock(this.#file(runId, lockSuffix), () =>
+        this.#appendLocked(runId, expectedSeq, lastSeq, lines, snapshot),
+      );
     });
+  }
+
+  /**
+   * Checks `expectedSeq` and writes an append, with the run's lock held. The
+   * cached log end still counts here: another process's append changes the
+   * log's size, so it is read again.
+   */
+  async #appendLocked(
+    runId: string,
+    expectedSeq: number,
+    lastSeq: number,
+    lines: string,
+    snapshot: string | undefined,
+  ): Promise<AppendResult> {
+    try {
+      const end = await this.#logEnd(runId);
+      if (end.lastSeq !== expectedSeq) {
+        return { ok: false, reason: "conflict", lastSeq: end.lastSeq };
+      }
+      if (expectedSeq === 0) {
+        // A new run: a snapshot left from a deleted log of the same id isn't this run's.
+        await rm(this.#file(runId, snapshotSuffix), { force: true });
+      }
+      await this.#appendLines(runId, lines, end.bytes);
+      this.#logEnds.set(runId, { lastSeq, bytes: end.bytes + Buffer.byteLength(lines) });
+    } catch (error) {
+      // The log may have been cut back, or not: read it again next time.
+      this.#logEnds.delete(runId);
+      throw error;
+    }
+    if (snapshot !== undefined) {
+      await this.#writeSnapshot(runId, snapshot);
+    }
+    return { ok: true, lastSeq };
   }
 
   async events(runId: string, afterSeq = 0): Promise<RunEvent[]> {

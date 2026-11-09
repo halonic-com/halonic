@@ -153,8 +153,11 @@ export {
   compareRunSummaries,
   matchesRunFilter,
   type RunFilter,
+  type RunLockRecord,
   type RunSnapshot,
   type RunStore,
+  runLockFormat,
+  runLockStaleAfterMs,
   runStoreVersion,
 } from "./run-store.ts";
 export {

@@ -89,6 +89,52 @@ export interface RunStore {
   list(filter?: RunFilter): Promise<RunSummary[]>;
 }
 
+/**
+ * What a file-system adapter writes into `<runId>.lock`, next to the run's
+ * log, while it appends to the run. The Node and Tauri adapters share this
+ * format and these rules, so a CLI and a desktop app writing to one
+ * workspace exclude each other, and one of them gets `conflict` instead of
+ * both winning.
+ *
+ * - **Taking the lock:** create `<runId>.lock` with an exclusive create that
+ *   fails when the file is already there (`wx` in Node, `create_new` in
+ *   Rust), and write this record into it as JSON.
+ * - **Appending:** with the lock held, read the log, return `conflict` when
+ *   its last event isn't `expectedSeq`, otherwise write the events.
+ * - **Releasing:** remove the lock file, but only while it still holds the
+ *   record this writer wrote.
+ * - **Waiting:** when the lock is held, try again a few milliseconds later.
+ * - **Stale locks:** a crashed writer leaves its lock behind. Another writer
+ *   may remove it when the lock's `host` is this computer and no process
+ *   `pid` runs here any more, or when `takenAt` is more than
+ *   {@link runLockStaleAfterMs} ago. The age limit also covers a process id
+ *   that was reused, and a lock taken on another computer of a shared
+ *   folder. A lock file that can't be read as a record (a crash between
+ *   creating and writing it) counts its age from the file's change time.
+ * - **Removing a stale lock:** rename it to a name of its own first, then
+ *   check that the renamed file still holds the stale record. When another
+ *   writer took the lock in between, put its lock back.
+ */
+export interface RunLockRecord {
+  /** The format version, {@link runLockFormat}. */
+  version: number;
+  /** The process id of the writer holding the lock. */
+  pid: number;
+  /** The host name of the computer the writer runs on. */
+  host: string;
+  /** When the lock was taken, as an ISO 8601 time in UTC. */
+  takenAt: string;
+}
+
+/** The format version of {@link RunLockRecord} that adapters write today. */
+export const runLockFormat = 1;
+
+/**
+ * How old a run lock may get before any writer may remove it. An append holds
+ * the lock for milliseconds, so this is far longer than any append takes.
+ */
+export const runLockStaleAfterMs = 10_000;
+
 // The rules above, as code, so every adapter checks appends and filters runs the same way.
 
 /**
