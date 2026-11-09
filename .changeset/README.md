@@ -40,6 +40,13 @@ The Version packages workflow (`.github/workflows/version-packages.yml`)
 runs on every push to `main`. While changesets are waiting, it keeps one
 pull request open, "chore(release): Halonic <version>", on the branch
 `changeset-release/main`, made with `pnpm version-packages`. Merging it is
-the release decision: that push changes the app version, so the run tags
-the merge commit `v<version>`. A push that leaves the version as it was
-never makes a tag.
+the release decision: the run finds that the merged pull request is titled
+"chore(release): Halonic <version>", with the version the app has now, and
+tags the merge commit `v<version>`. Changing the version in any other pull
+request never makes a tag.
+
+The first release, 0.1.0, has no Version packages pull request: the app
+already has 0.1.0 and no changeset is waiting. It goes out as a hand-made
+pull request titled "chore(release): Halonic 0.1.0" that writes the 0.1.0
+section of `apps/studio/CHANGELOG.md`. Until it is merged, don't add a
+changeset for the app: the bot would open a pull request for 0.1.1 or 0.2.0.

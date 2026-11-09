@@ -1,12 +1,14 @@
 # Version packages: the release bot. On every push to main it does up to
 # two things.
 #
-# - The push changed the app version in apps/studio/package.json: this is
-#   the merged Version packages pull request, so it tags the pushed commit
-#   v<version>, unless that tag exists already. It compares the version at
-#   the commit before the push with the one at the pushed commit, so an
-#   ordinary push never makes a tag. A manual run never tags; re-run the
-#   failed push run instead.
+# - The pushed commit is a merged release pull request: one titled
+#   "chore(release): Halonic <version>" where <version> is the app version
+#   in apps/studio/package.json at that commit. It tags the commit
+#   v<version>, unless that tag exists already. This is the pull request
+#   this workflow opens, or a hand-made one such as the first release,
+#   0.1.0, where the version is already set and no changeset is waiting.
+#   Changing the version in another pull request never makes a tag. A
+#   manual run never tags; re-run the failed push run instead.
 # - Changesets are waiting, or pre mode was exited (pre.json says "exit"):
 #   it runs `pnpm version-packages` (changeset version, then version:sync)
 #   on the branch changeset-release/main and opens or updates the "Version
@@ -50,9 +52,12 @@ jobs:
           filter: blob:none
       - uses: $/.github/actions/setup
       - id: plan
-        name: Count waiting changesets and compare the app version
+        name: Count waiting changesets and find a merged release pull request
         env:
-          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
         run: |
           pending=$(find .changeset -maxdepth 1 -name '*.md' ! -name README.md | wc -l)
           # After `changeset pre exit` the consumed changesets wait in
@@ -66,23 +71,24 @@ jobs:
             waiting=true
           fi
           version=$(node -p 'require("./apps/studio/package.json").version')
-          before=""
-          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2> /dev/null; then
-            before=$(git show "$BEFORE:apps/studio/package.json" 2> /dev/null | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version ?? ""') || before=""
-          fi
-          changed=false
-          if [ -n "$before" ] && [ "$before" != "$version" ]; then
-            changed=true
+          # Is the pushed commit the merge of a release pull request? Ask
+          # GitHub which pull request it came from and compare its title.
+          release=false
+          if [ "$EVENT" = push ]; then
+            titles=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[].title' 2> /dev/null) || titles=""
+            if printf '%s\n' "$titles" | grep -Fxq "chore(release): Halonic $version"; then
+              release=true
+            fi
           fi
           echo "waiting=$waiting" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
-          echo "Waiting changesets: $pending. Pre mode: ${mode:-off}. App version: ${before:-unknown} before, $version now."
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "Waiting changesets: $pending. Pre mode: ${mode:-off}. App version: $version. Release pull request merged: $release."
       - name: Check that the app versions agree
-        if: steps.plan.outputs.changed == 'true'
+        if: steps.plan.outputs.release == 'true'
         run: pnpm check versions
       - name: Tag the release
-        if: steps.plan.outputs.changed == 'true'
+        if: steps.plan.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
           REPO: ${{ github.repository }}

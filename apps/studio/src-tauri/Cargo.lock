@@ -1482,7 +1482,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-connect"
-version = "0.2.0-test.0"
+version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1490,11 +1490,11 @@ dependencies = [
 
 [[package]]
 name = "halonic-git-guard"
-version = "0.2.0-test.0"
+version = "0.1.0"
 
 [[package]]
 name = "halonic-keychain"
-version = "0.2.0-test.0"
+version = "0.1.0"
 dependencies = [
  "halonic-secrets",
  "keyring",
@@ -1502,11 +1502,11 @@ dependencies = [
 
 [[package]]
 name = "halonic-secrets"
-version = "0.2.0-test.0"
+version = "0.1.0"
 
 [[package]]
 name = "halonic-studio"
-version = "0.2.0-test.0"
+version = "0.1.0"
 dependencies = [
  "halonic-connect",
  "serde_json",
