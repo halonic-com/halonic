@@ -72,6 +72,8 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 | `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter`            |
 | the halo                                                 | `bg-halo-frame`, `-tint`, `-wash`, `-line`        |
 | the focus ring (keyboard focus only)                     | `focus-ring`, `focus-ring-inset` for list rows    |
+| a selected row's mark                                    | `selected-bar`, `selected-forced`                 |
+| Windows high-contrast mode only                          | `text-forced-disabled`                            |
 | `--breakpoint-wide`                                      | `wide:`, `max-wide:` (compact)                    |
 | `--duration-*`, `--layer-*` (plain variables)            | `duration-(--duration-base)`, `z-(--layer-toast)` |
 

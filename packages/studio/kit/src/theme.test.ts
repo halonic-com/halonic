@@ -135,6 +135,30 @@ describe("theme.css focus rings", () => {
   });
 });
 
+describe("theme.css selection and high contrast", () => {
+  it("marks a selected row with an accent bar that turns Highlight in high-contrast mode", () => {
+    const bar = blockBody(css, "@utility selected-bar");
+    expect(blockBody(bar, "&::after")).toContain("width: 2px;");
+    expect(blockBody(bar, "&::after")).toContain("background: var(--color-accent);");
+    const forced = blockBody(bar, "@media (forced-colors: active)");
+    expect(forced).toContain("forced-color-adjust: none;");
+    expect(forced).toContain("background: Highlight;");
+  });
+
+  it("adds the outline and the disabled colour only in high-contrast mode", () => {
+    const outline = blockBody(
+      blockBody(css, "@utility selected-forced"),
+      "@media (forced-colors: active)",
+    );
+    expect(outline).toContain("outline: 1px solid CanvasText;");
+    const disabled = blockBody(
+      blockBody(css, "@utility text-forced-disabled"),
+      "@media (forced-colors: active)",
+    );
+    expect(disabled).toContain("color: GrayText;");
+  });
+});
+
 describe("theme.css field focus", () => {
   it("rings a text field's box while its text has focus, and keeps the outline", () => {
     const accent = blockBody(
