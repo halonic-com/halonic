@@ -74,8 +74,6 @@ verifies("kit.tabs", () => {
     const [flow, configuration] = tabsIn(container);
     expect(list.className).toContain("inline-flex");
     expect(list.className).toContain("gap-0.5 rounded-sm bg-surface-muted p-0.5");
-    // A neutral counter on the track takes its on-muted: look.
-    expect(list.getAttribute("data-fill")).toBe("muted");
     expect(flow?.className).toContain("rounded-segment text-small");
     expect(flow?.className).toContain("min-h-control-sm");
     expect(flow?.className).toContain("px-3");
@@ -83,6 +81,26 @@ verifies("kit.tabs", () => {
     expect(configuration?.className).toContain("text-fg-muted hover:text-fg");
     expect(configuration?.className).not.toContain("bg-surface");
     expect(flow?.className).toContain("focus-ring");
+  });
+
+  it("marks each unselected tab as a muted fill, and not the selected tab or the track", async () => {
+    const tabs: readonly Tab<View>[] = [
+      { id: "flow", label: "Flow" },
+      { id: "configuration", label: "Configuration" },
+      { id: "runs", label: "Runs", disabled: true },
+    ];
+    const { container } = render(<Page tabs={tabs} />);
+    const list = container.querySelector('[role="tablist"]') as HTMLElement;
+    const [flow, configuration, runs] = tabsIn(container);
+    // The selected tab is a raised surface segment, so a counter on it keeps its normal look.
+    expect(flow?.hasAttribute("data-fill")).toBe(false);
+    expect(configuration?.getAttribute("data-fill")).toBe("muted");
+    expect(runs?.getAttribute("data-fill")).toBe("muted");
+    expect(list.hasAttribute("data-fill")).toBe(false);
+
+    await click(configuration as HTMLElement);
+    expect(flow?.getAttribute("data-fill")).toBe("muted");
+    expect(configuration?.hasAttribute("data-fill")).toBe(false);
   });
 
   it("renders at 40px with a 48px hit area on a touch screen", () => {

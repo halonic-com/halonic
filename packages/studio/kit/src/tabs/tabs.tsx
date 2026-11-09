@@ -129,14 +129,7 @@ export function Tabs<Id extends string>({
   };
 
   const list = (
-    // The track is surface-muted, so a counter on an unselected tab uses its on-muted: look.
-    <div
-      role="tablist"
-      aria-label={label}
-      data-fill="muted"
-      className={trackClasses[layout]}
-      onKeyDown={onKeyDown}
-    >
+    <div role="tablist" aria-label={label} className={trackClasses[layout]} onKeyDown={onKeyDown}>
       {tabs.map((tab) => {
         const isSelected = tab.id === selected;
         const isDisabled = tab.disabled === true;
@@ -158,6 +151,9 @@ export function Tabs<Id extends string>({
             aria-controls={isSelected ? panelId : undefined}
             aria-disabled={isDisabled ? true : undefined}
             tabIndex={tab.id === focusable ? 0 : -1}
+            // An unselected tab shows the muted track, so its counter takes the on-muted: look.
+            // The selected tab is a raised surface segment, so its counter keeps the normal look.
+            data-fill={isSelected ? undefined : "muted"}
             className={`${tabClasses} ${sizeClasses[layout]} ${stateClasses[state]}`}
             onClick={() => {
               if (!isDisabled) {

@@ -300,7 +300,7 @@ window width. Tests set the provider directly.
 
 A neutral fill on a `surface-muted` fill disappears, so it steps up with `on-muted:`
 (`on-muted:bg-border on-muted:text-fg`). The muted fill marks itself: `data-fill="muted"` while it
-is muted (a Tabs track, the active menu item), or `data-hover-fill="muted"` when it's muted only on
+is muted (an unselected tab, the active menu item), or `data-hover-fill="muted"` when it's muted only on
 hover and press (a sidebar row).
 
 ## ListHeading
