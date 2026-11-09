@@ -5,13 +5,15 @@ import { isTextFile } from "../lib/source-files.ts";
 /**
  * Characters that change what a text means or does without showing up in an
  * editor or a review diff: format characters (zero-width, bidi controls, tag
- * letters, the byte order mark), variation selectors, and control characters
- * other than tab, line feed and carriage return.
+ * letters, the byte order mark), variation selectors, control characters
+ * other than tab, line feed and carriage return, the line and paragraph
+ * separators, and the Hangul fillers, which are letters that draw nothing and
+ * so can make an invisible name.
  */
 const hidden =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: finding control characters is the point
   // biome-ignore lint/suspicious/noMisleadingCharacterClass: each listed character is matched on its own
-  /[\p{Cf}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/gu;
+  /[\p{Cf}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2028\u2029\u115F\u1160\u3164\uFFA0]/gu;
 
 /**
  * An emoji with the joiners and presentation selectors that belong to it,
@@ -80,20 +82,30 @@ export function kindOf(codePoint: number): string {
   ) {
     return "a zero-width character";
   }
+  if (codePoint === 0x2028 || codePoint === 0x2029) {
+    return "a line or paragraph separator";
+  }
+  if ([0x115f, 0x1160, 0x3164, 0xffa0].includes(codePoint)) {
+    return "a Hangul filler";
+  }
   return "an invisible format character";
 }
 
-/** The escape for a character in TypeScript and JSON, such as `\u202E` or `\u{E0041}`. */
-export function escapeFor(codePoint: number): string {
+/**
+ * The escape for a character in the language of a file, such as `\u202E` or
+ * `\u{E0041}` in TypeScript and JSON. Rust only knows the form with braces.
+ */
+export function escapeFor(codePoint: number, file = ""): string {
   const hex = codePoint.toString(16).toUpperCase().padStart(4, "0");
-  return codePoint > 0xffff ? `\\u{${hex}}` : `\\u${hex}`;
+  const braces = codePoint > 0xffff || file.endsWith(".rs");
+  return braces ? `\\u{${hex}}` : `\\u${hex}`;
 }
 
 /**
  * Fails on characters nobody can see in code, docs and config: zero-width
- * and bidi characters, tag letters, variation selectors and stray control
- * characters. They can hide text from a reviewer or make code read
- * differently from what it does. Visible non-ASCII, such as umlauts, CJK and
+ * and bidi characters, tag letters, variation selectors, stray control
+ * characters, line and paragraph separators and Hangul fillers. They can
+ * hide text from a reviewer or make code read differently from what it does. Visible non-ASCII, such as umlauts, CJK and
  * emoji, stays allowed. Tests are not exempt: a test that needs such a
  * character writes it as an escape.
  */
@@ -110,7 +122,7 @@ export function checkInvisibleCharacters(context: CheckContext): Report {
       const others = more.length === 0 ? "" : ` (and ${more.length} more on this line)`;
       report.error(
         file,
-        `Column ${first.column} holds U+${hex}, ${kindOf(first.codePoint)} that can't be seen in an editor or a review${others}. In code, write it as an escape such as "${escapeFor(first.codePoint)}"; in docs, name it in words.`,
+        `Column ${first.column} holds U+${hex}, ${kindOf(first.codePoint)} that can't be seen in an editor or a review${others}. In code, write it as an escape such as "${escapeFor(first.codePoint, file)}"; in docs, name it in words.`,
         line,
       );
     }

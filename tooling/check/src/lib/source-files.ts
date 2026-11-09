@@ -40,7 +40,7 @@ export function isSourceFile(file: string): boolean {
 
 /** True when the file is code, docs or config that people read and review as text. */
 export function isTextFile(file: string): boolean {
-  return /\.(?:[cm]?[jt]sx?|md|mdx|json|jsonc|ya?ml|toml|astro|css|html)$/.test(file);
+  return /\.(?:[cm]?[jt]sx?|md|mdx|json|jsonc|ya?ml|toml|astro|css|html|svg|rs|sh|txt)$/.test(file);
 }
 
 /**

@@ -21,6 +21,12 @@ describe("tooling/check: invisible characters", () => {
     ["an escape", "\u001B[31m", 0x1b],
     ["a delete", "a\u007F", 0x7f],
     ["a C1 next line", "a\u0085b", 0x85],
+    ["a line separator", "a\u2028b", 0x2028],
+    ["a paragraph separator", "a\u2029b", 0x2029],
+    ["a Hangul choseong filler", "let \u115F = 1;", 0x115f],
+    ["a Hangul jungseong filler", "let \u1160 = 1;", 0x1160],
+    ["a Hangul filler as a name", "const \u3164 = 1;", 0x3164],
+    ["a halfwidth Hangul filler", "if (\uFFA0) {}", 0xffa0],
   ])("finds %s", (_, text, codePoint) => {
     expect(hiddenIn(text)).toEqual([codePoint]);
   });
@@ -55,17 +61,27 @@ describe("tooling/check: invisible characters", () => {
   });
 
   it("names the kind and the escape of a character", () => {
-    expect([0x202e, 0xe0041, 0xfe0f, 0x07, 0x200b, 0x00ad].map(kindOf)).toEqual([
+    expect(
+      [0x202e, 0xe0041, 0xfe0f, 0x07, 0x200b, 0x2028, 0x2029, 0x115f, 0x3164, 0xffa0, 0x00ad].map(
+        kindOf,
+      ),
+    ).toEqual([
       "a bidi control",
       "a tag character",
       "a variation selector",
       "a control character",
       "a zero-width character",
+      "a line or paragraph separator",
+      "a line or paragraph separator",
+      "a Hangul filler",
+      "a Hangul filler",
+      "a Hangul filler",
       "an invisible format character",
     ]);
     expect(escapeFor(0x202e)).toBe("\\u202E");
     expect(escapeFor(0xad)).toBe("\\u00AD");
     expect(escapeFor(0xe0041)).toBe("\\u{E0041}");
+    expect(escapeFor(0x202e, "crates/a/src/lib.rs")).toBe("\\u{202E}");
   });
 
   it("fails on code, tests and docs, one finding per line", () => {
@@ -84,6 +100,24 @@ describe("tooling/check: invisible characters", () => {
     expect(problems.find(({ file }) => file === "tooling/a.ts")?.message).toBe(
       'Column 16 holds U+202E, a bidi control that can\'t be seen in an editor or a review (and 1 more on this line). In code, write it as an escape such as "\\u202E"; in docs, name it in words.',
     );
+  });
+
+  it("checks Rust, shell, SVG and plain text files", () => {
+    const problems = runChecks([], {
+      extraFiles: {
+        "apps/a/src/lib.rs": 'let name = "a\u202Eb";\n',
+        "tooling/b.sh": "echo \u200Bhi\n",
+        "apps/c/icon.svg": "<svg><title>x\u3164</title></svg>\n",
+        "tooling/d.txt": "one\u2028two\n",
+      },
+    }).filter((problem) => problem.rule === "invisible-characters");
+    expect(problems.map(({ file }) => file).sort()).toEqual([
+      "apps/a/src/lib.rs",
+      "apps/c/icon.svg",
+      "tooling/b.sh",
+      "tooling/d.txt",
+    ]);
+    expect(problems.find(({ file }) => file.endsWith(".rs"))?.message).toContain('"\\u{202E}"');
   });
 
   it("leaves files that aren't text alone", () => {
