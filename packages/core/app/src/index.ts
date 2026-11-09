@@ -20,6 +20,12 @@ export {
   type CommandSpec,
 } from "./command-bus.ts";
 export {
+  ConnectionSettings,
+  type ConnectionSettingsOptions,
+  type SendingCheck,
+  type SendingSettings,
+} from "./connection-settings.ts";
+export {
   checkPinVersion,
   checkResolvedVersion,
   type PinnedPackage,
