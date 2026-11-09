@@ -17,6 +17,7 @@ import {
   splitBareSpecifier,
 } from "../lib/source-files.ts";
 import { owningPackage, type WorkspacePackage } from "../lib/workspace.ts";
+import { apiTypesProblem, isApiTypes } from "./api-types.ts";
 import { type EdgeKind, layerOf, layerProblem } from "./layer-table.ts";
 import { exportKeys } from "./packages.ts";
 
@@ -235,7 +236,11 @@ function externalImportProblem(
 ): string | undefined {
   const approved = approvedDependency(context, name);
   if (site.layer === "core" && !site.dev) {
-    return coreExternalProblem(site.pkg.manifest.name ?? site.pkg.directory, name, approved);
+    const packageName = site.pkg.manifest.name ?? site.pkg.directory;
+    if (isApiTypes(context, packageName)) {
+      return apiTypesProblem(context, packageName);
+    }
+    return coreExternalProblem(packageName, name, approved);
   }
   if (site.layer === "host" && !site.dev) {
     return `the host may not use third-party code ("${name}"). Move this code into an adapter or a target.`;

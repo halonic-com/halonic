@@ -319,4 +319,12 @@ function checkCoreOrder(context: CheckContext, report: Report): void {
       );
     }
   }
+  for (const name of context.policy.apiTypes) {
+    if (!coreNames.includes(name)) {
+      report.error(
+        context.policyPath,
+        `"apiTypes" lists "${name}", which is not a core package. API types packages are core packages; remove it or move the package into packages/core.`,
+      );
+    }
+  }
 }

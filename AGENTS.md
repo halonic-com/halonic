@@ -20,6 +20,9 @@ workflows. Workspaces are plain files in git. The engine records every run as an
 | testing  | `packages/testing/*`  | anything                                                                                | being a runtime dependency                                                           |
 | tooling  | `tooling/*`           | other tooling packages                                                                  | being a runtime dependency                                                           |
 
+The API types packages (`core/events`, `core/ports`) use only each other, so Studio, the CLI and
+outside callers get them without the engine ([ADR](docs/adr/2026-11-09-api-types-stand-alone.md)).
+
 Each package declares its layer and owner in `package.json` (`"halonic": { "layer", "owner" }`).
 `pnpm check` enforces the table and tells you how to fix a violation. Details:
 [docs/guides/checks.md](docs/guides/checks.md).

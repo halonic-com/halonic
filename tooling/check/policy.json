@@ -13,6 +13,10 @@
     "@halonicjs/app",
     "@halonicjs/google-setup"
   ],
+  "apiTypes": [
+    "@halonicjs/events",
+    "@halonicjs/ports"
+  ],
   "published": [
     "halonic",
     "@halonicjs/adapter-integration-kit",

@@ -53,7 +53,7 @@ export interface FixtureOptions {
   readonly extraDependencies?: Record<string, unknown>;
   /** Changes the real dependencies.json (the whole parsed file) before it is written. */
   readonly editDependencyList?: (list: { dependencies: Record<string, unknown> }) => unknown;
-  /** Changes the real policy.json (with `coreOrder` set and `extraExports` empty) before it is written. */
+  /** Changes the real policy.json (with `coreOrder` set, `apiTypes` and `extraExports` empty) before it is written. */
   readonly policy?: (policy: Record<string, unknown>) => unknown;
   /** Changes the real pnpm-workspace.yaml before it is written. */
   readonly workspaceYaml?: (yaml: string) => string;
@@ -80,9 +80,7 @@ export function writeFixtureRepo(
     "pnpm-lock.yaml",
     "lockfileVersion: '9.0'\n\npackages:\n\n  a@1.0.0:\n    resolution: {integrity: sha512-AAAA, tarball: https://registry.npmjs.org/a/-/a-1.0.0.tgz}\n",
   );
-  const realPolicy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
-  // The real extraExports name real packages, which a fixture may not have.
-  const policy = { ...realPolicy, coreOrder: options.coreOrder ?? [], extraExports: {} };
+  const policy = fixturePolicy(options.coreOrder ?? []);
   write("tooling/check/policy.json", JSON.stringify(options.policy?.(policy) ?? policy));
   const dependencyList = JSON.parse(readFileSync(realDependencyListPath, "utf8"));
   const list = {
@@ -120,6 +118,13 @@ export function writeFixtureRepo(
   }
   execFileSync("git", ["init", "-q"], { cwd: root });
   return root;
+}
+
+/** The real policy.json with `coreOrder` set, for a fixture repo. */
+function fixturePolicy(coreOrder: string[]): Record<string, unknown> {
+  const realPolicy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
+  // The real apiTypes and extraExports name real packages, which a fixture may not have.
+  return { ...realPolicy, coreOrder, apiTypes: [], extraExports: {} };
 }
 
 /** Removes a repo from `writeFixtureRepo`. */

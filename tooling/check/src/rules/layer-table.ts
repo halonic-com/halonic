@@ -1,6 +1,7 @@
 import type { CheckContext } from "../lib/context.ts";
 import type { Layer } from "../lib/layout.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
+import { apiTypesProblem, isApiTypes } from "./api-types.ts";
 
 /**
  * The layer table as code: which package may depend on which.
@@ -80,6 +81,9 @@ function coreRule(
 ): string | undefined {
   if (toLayer !== "core") {
     return "core packages may use only other core packages. Move this code into an adapter, or use a port.";
+  }
+  if (isApiTypes(context, fromName) && !isApiTypes(context, toName)) {
+    return apiTypesProblem(context, fromName);
   }
   const order = context.policy.coreOrder;
   if (order.indexOf(toName) >= order.indexOf(fromName)) {
