@@ -305,14 +305,36 @@ jobs:
   # Conditional jobs. Stubs until the code they check exists;
   # each runs only when its area changes, and ci-ok accepts "skipped".
   tauri:
-    name: Tauri shell (Rust checks, Windows smoke build)
+    # The Rust crates under apps/studio/src-tauri. The dependency audit
+    # (cargo-deny) and the Windows smoke build arrive with the desktop
+    # shell (HAL-192).
+    name: Tauri shell (Rust checks)
     needs: changes
     if: needs.changes.outputs.tauri == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    permissions: {}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: apps/studio/src-tauri
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
     steps:
-      - run: echo "::notice title=tauri::Not set up yet; arrives with the desktop shell."
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # rustup is part of the runner image. With no arguments it installs the
+      # version and components named in rust-toolchain.toml.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: Formatting (rustfmt)
+        run: cargo fmt --all --check
+      - name: Lints (clippy)
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --locked
 
   e2e:
     name: Studio end-to-end (Playwright)

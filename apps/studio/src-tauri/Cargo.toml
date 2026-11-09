@@ -1,0 +1,19 @@
+# The Cargo workspace for the Studio shell's Rust code. Plain library crates
+# live under crates/ and stay free of Tauri types, so they build and test
+# anywhere. The Tauri shell joins this file as its root package when it is
+# generated (HAL-192); it is then the only thing that pulls Tauri in.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "Apache-2.0"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

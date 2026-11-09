@@ -30,7 +30,7 @@ You need:
   any recent pnpm is enough.
 - **Git.**
 - **Rust**, only if you work on the desktop shell (`apps/studio/src-tauri`).
-  The toolchain is pinned in `rust-toolchain.toml`.
+  The toolchain is pinned in `apps/studio/src-tauri/rust-toolchain.toml`.
 
 Then:
 
