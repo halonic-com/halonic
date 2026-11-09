@@ -138,6 +138,10 @@ export async function runValidate(args: ValidateArgs, out: Writer): Promise<Exit
 }
 ```
 
+Connecting services to their adapters (file stores, the clock, model providers)
+happens once, where the app starts, and the command or screen receives the
+services ready to use. A command doesn't build its own stores.
+
 When no service does what a command or screen needs, add or extend the service
 first, then call it. If you need two services, that is usually a sign one service
 is missing: the work that combines them goes into a new one. Reviewers check
