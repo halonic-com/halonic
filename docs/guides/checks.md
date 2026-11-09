@@ -409,7 +409,9 @@ produces packages that pass) are then skipped without blocking the merge.
 | Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                              |
 | Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results   |
 | Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                        |
-| Tauri, end-to-end, docs      | stubs that run only when their area changes; real once the desktop shell, the Studio and `apps/docs` exist                                                |
+| Tauri shell (Rust checks)    | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny`                        |
+| Tauri shell on Windows       | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths                                              |
+| End-to-end, docs             | stubs that run only when their area changes; real once the Studio and `apps/docs` exist                                                                   |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full leak guard and secret scan over the whole history

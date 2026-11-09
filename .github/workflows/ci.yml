@@ -550,8 +550,8 @@ jobs:
   # accepts "skipped". e2e and docs are stubs until the code they check exists.
   tauri:
     # The shell and the crates under apps/studio/src-tauri, with the
-    # dependency audit (cargo-deny). The Windows smoke build arrives with the
-    # desktop shell (HAL-192).
+    # dependency audit (cargo-deny). The same code builds on Windows in
+    # tauri-windows.
     name: Tauri shell (Rust checks)
     needs: changes
     if: needs.changes.outputs.tauri == 'true'
@@ -603,6 +603,39 @@ jobs:
           echo "${CARGO_DENY_SHA256}  $RUNNER_TEMP/cargo-deny.tar.gz" | sha256sum --check
           tar --extract --gzip --file "$RUNNER_TEMP/cargo-deny.tar.gz" --directory "$RUNNER_TEMP"
           "$RUNNER_TEMP/${name}/cargo-deny" --locked --log-level warn check
+
+  tauri-windows:
+    # The Windows smoke build (HAL-192): the shell and the crates pass
+    # clippy and their tests on Windows too, so a Windows-only path (the
+    # Credential Manager, git found by absolute path, \\?\ paths) can't
+    # break unseen. Formatting and cargo-deny don't depend on the platform,
+    # so they run only in the Linux job.
+    name: Tauri shell on Windows (build and tests)
+    needs: changes
+    if: needs.changes.outputs.tauri == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: apps/studio/src-tauri
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs the version named in rust-toolchain.toml for the runner's
+      # own target, x86_64-pc-windows-msvc. WebView2 is part of the image.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: Lints (clippy)
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --locked --workspace
 
   android:
     # The Android connect shell's debug APK, for arm64 phones and x86_64
@@ -725,6 +758,7 @@ jobs:
         guard,
         scaffold,
         tauri,
+        tauri-windows,
         android,
         e2e,
         docs,
