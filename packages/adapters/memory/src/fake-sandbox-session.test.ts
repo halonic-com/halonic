@@ -72,6 +72,24 @@ verifies("contracts.harness", () => {
       expect(await first.exited).toEqual({ code: null, signal: "SIGKILL", reason: "stopped" });
     });
 
+    it("keeps a killed program running until kill resolves, as a real one takes a moment to die", async () => {
+      const session = new FakeSandboxSession({ profile, program: idleProgram });
+      const process = await session.start(command);
+
+      const killing = process.kill();
+      // A harness that doesn't wait for kill would look here, after the
+      // program has seen the stop and returned.
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(session.running).toBe(1);
+
+      const again = process.kill();
+      await killing;
+      expect(session.running).toBe(0);
+      await again;
+      expect(await process.exited).toEqual({ code: null, signal: "SIGKILL", reason: "stopped" });
+    });
+
     it("refuses input once the program has ended, as a closed pipe does", async () => {
       const session = new FakeSandboxSession({ profile, program: async () => 0 });
       const process = await session.start(command);

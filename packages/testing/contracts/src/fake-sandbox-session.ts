@@ -189,6 +189,11 @@ class LineInput {
   }
 }
 
+/** Resolves after the work already queued, timers included, has had its turn. */
+function nextMacrotask(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 /** How much unread input a program's standard input holds, as much as a Linux pipe. */
 const pipeBufferBytes = 65_536;
 
@@ -203,6 +208,7 @@ class FakeProcess implements SandboxProcess {
   readonly #errorOutput = new TextOutput();
   readonly #input: LineInput;
   readonly #stop = new AbortController();
+  #killing: Promise<void> | null = null;
   #settle: (exit: SandboxExit) => void = () => {};
 
   constructor(run: Pick<FakeProgramIo, "command" | "profile">, program: FakeProgram) {
@@ -222,9 +228,19 @@ class FakeProcess implements SandboxProcess {
     void this.#run(run, program);
   }
 
-  async kill(): Promise<void> {
+  kill(): Promise<void> {
+    // Every call waits for the same ending, so a second `kill` doesn't resolve
+    // before the program has stopped.
+    this.#killing ??= this.#stopProgram();
+    return this.#killing;
+  }
+
+  async #stopProgram(): Promise<void> {
     if (this.ended) return;
     this.#stop.abort();
+    // A real program takes a moment to die, so a harness that doesn't wait
+    // for `kill` sees it still running.
+    await nextMacrotask();
     await this.#end({ code: null, signal: "SIGKILL", reason: "stopped" });
   }
 
@@ -244,6 +260,8 @@ class FakeProcess implements SandboxProcess {
       this.#errorOutput.write(String(error));
       code = 1;
     }
+    // A stopped program's ending belongs to `kill`, which reports it as stopped.
+    if (this.#stop.signal.aborted) return;
     await this.#end({ code, signal: null, reason: "exited" });
   }
 
