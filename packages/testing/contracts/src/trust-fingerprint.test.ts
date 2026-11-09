@@ -31,7 +31,10 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function normalised(connector: Connector): Connector {
+function normalised(written: Connector): Connector {
+  const { allow, approve } = written.tools;
+  const tools = { approve: [...approve].sort(), ...(allow ? { allow: [...allow].sort() } : {}) };
+  const connector = { ...written, tools };
   const { transport } = connector;
   if ("stdio" in transport) {
     const cwd = folder(transport.stdio.cwd ?? ".");
@@ -44,14 +47,19 @@ function normalised(connector: Connector): Connector {
   return connector;
 }
 
-/** A stand-in for the `core/workspace` fingerprint: everything, normalised. */
+/** Orders connectors by id, as their files may be listed in any order. */
+function byId(left: Connector, right: Connector): number {
+  return left.id.localeCompare(right.id);
+}
+
+/** A stand-in for the `core/workspace` fingerprint: everything, normalised, sets sorted. */
 const reference: FingerprintConnectors = async (connectors) =>
-  canonical(connectors.map(normalised));
+  canonical(connectors.map(normalised).sort(byId));
 
 /** The port's short example: only the command, its arguments and the host. */
 const weak: FingerprintConnectors = async (connectors) =>
   canonical(
-    connectors.map(({ id, transport }) => {
+    [...connectors].sort(byId).map(({ id, transport }) => {
       if ("stdio" in transport) {
         return { id, command: transport.stdio.command, args: transport.stdio.args };
       }
@@ -81,7 +89,7 @@ verifies("contracts.trust-fingerprint", () => {
     let calls = 0;
     const { missed, unstable } = await fingerprintGaps(async () => `${calls++}`);
     expect(missed).toEqual([]);
-    expect(unstable).toHaveLength(5);
+    expect(unstable).toHaveLength(7);
   });
 
   it("covers every item of the fingerprint coverage plan", () => {

@@ -175,6 +175,24 @@ export const fingerprintControls = {
     http("https://xn--bcher-kva.acme.test/v1/mcp"),
   ),
   "writes the host in capitals": edit("c", http(), http("https://MCP.Acme.test/v1/mcp")),
+  // Connectors can come from separate files, so their order can follow the
+  // folder listing; tool lists are sets. Neither order decides anything.
+  "lists the connectors in another order": {
+    item: "program",
+    before: [stdio(), { ...http(), id: "web" }],
+    after: [{ ...http(), id: "web" }, stdio()],
+  },
+  "lists the tools in another order": edit(
+    "e",
+    stdio(
+      {},
+      { tools: { allow: ["read_file", "list_files"], approve: ["move_file", "delete_file"] } },
+    ),
+    stdio(
+      {},
+      { tools: { allow: ["list_files", "read_file"], approve: ["delete_file", "move_file"] } },
+    ),
+  ),
 } satisfies Record<string, FingerprintCase>;
 
 /**
