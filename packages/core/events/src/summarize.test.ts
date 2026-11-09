@@ -198,6 +198,15 @@ verifies("events.summary-cost", () => {
       subscriptionCalls: 2,
     });
   });
+
+  it("leaves a subscription call out of the cost whatever its cost", () => {
+    const usage = { inputTokens: 1, outputTokens: 1 };
+    const summary = summaryOf(
+      { ...response, usage, cost: 0.25 },
+      { ...response, usage, cost: 0.5, paidBy: "subscription" },
+    );
+    expect(summary).toMatchObject({ cost: 0.25, unpricedCalls: 0, subscriptionCalls: 1 });
+  });
 });
 
 verifies("events.summary-waiting", () => {

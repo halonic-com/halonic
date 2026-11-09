@@ -67,7 +67,11 @@ export type RunEventBody =
       text: string;
       /** The model's summary of its reasoning, when it gives one. */
       thoughts?: string;
-      /** In the budget currency, when the model has a price. */
+      /**
+       * In the budget currency, when the model has a price. On a call marked
+       * with `paidBy`, `0` means Halonic paid nothing for it, not that the
+       * model is free.
+       */
       cost?: number;
       /**
        * Who paid for the call when it wasn't Halonic: `"subscription"` when

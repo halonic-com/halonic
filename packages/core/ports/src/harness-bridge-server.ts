@@ -120,7 +120,7 @@ export interface HarnessBridgeOptions {
    * A model's price, or `null` when `models.yaml` gives none. Only asked for
    * a provider reached with a key: a keyed call without a price is recorded
    * without a cost (unpriced), and a sign-in call always costs 0. See
-   * {@link bridgeCallCost}.
+   * {@link bridgeCallCharge}.
    */
   price(provider: BridgeProvider, model: string): ModelPrice | null;
   recorder: BridgeRecorder;
@@ -136,6 +136,10 @@ export interface HarnessBridgeOptions {
  * A sign-in call costs 0, because the person's subscription pays. A keyed call
  * costs its tokens at the model's price ({@link priceOf}), or is `undefined` (unpriced) when the
  * model has no price.
+ *
+ * @deprecated Use {@link bridgeCallCharge}, which also marks a sign-in call
+ * `paidBy: "subscription"`. Recording this cost alone writes a sign-in call
+ * as a free call, so the run never counts it in `subscriptionCalls`.
  */
 export function bridgeCallCost(
   access: BridgeProviderAccess,
