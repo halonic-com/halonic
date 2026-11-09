@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { loadCases } from "./cases.ts";
-import type { Recording, RunLogs } from "./recording.ts";
+import { baseCliCalls } from "./cli-calls.ts";
+import type { CliRecording, Recording, RunLogs } from "./recording.ts";
 
 const fixtures = fileURLToPath(new URL("../fixtures/", import.meta.url));
 const cases = loadCases(fixtures);
@@ -111,5 +112,41 @@ verifies("parity.runner-records-test-run-logs", () => {
     const events = (timer?.runs[0]?.events ?? []) as { type: string; at: string }[];
     expect(events.find((e) => e.type === "run.started")?.at).toBe("2026-01-01T00:00:00.000Z");
     expect(events.find((e) => e.type === "timer.fired")?.at).toBe("2026-01-03T00:00:00.000Z");
+  });
+});
+
+verifies("parity.runner-records-cli-output", () => {
+  const cli = JSON.parse(readFileSync(join(fixtures, "base", "cli.json"), "utf8")) as CliRecording;
+  const byName = new Map(cli.calls.map((call) => [call.name, call]));
+
+  it("has every old CLI call on the base, recorded from the reference with a fixed clock", () => {
+    expect(cli.reference).toBe("784f78d");
+    expect(cli.case).toBe("base");
+    expect(cli.clock).toBe("2026-01-01T00:00:00.000Z");
+    expect(cli.calls.map((call) => [call.name, call.args])).toEqual(
+      baseCliCalls.map((call) => [call.name, call.args]),
+    );
+  });
+
+  it("passes the base's 8 workflow tests through the old studio test", () => {
+    const test = byName.get("test");
+    expect(test?.exitCode).toBe(0);
+    expect(test?.stdout.endsWith("8 passed\n")).toBe(true);
+    expect(test?.runs.map((run) => run.id)).toEqual(
+      Array.from({ length: 15 }, (_, i) => `test_${i + 1}`),
+    );
+  });
+
+  it("stores each run with fixed IDs, at the fixed time", () => {
+    const run = byName.get("run and approve");
+    expect(run?.stdout).toContain("Run run_1: completed  (saved in <workspace>/.studio/runs)");
+    expect(run?.runs.map((r) => r.id)).toEqual(["run_1"]);
+    for (const event of (run?.runs[0]?.events ?? []) as { at: string }[]) {
+      expect(event.at).toBe("2026-01-01T00:00:00.000Z");
+    }
+    expect(byName.get("run a foreach over a nested workflow")?.runs.map((r) => r.id)).toEqual([
+      "run_1",
+      "run_2",
+    ]);
   });
 });

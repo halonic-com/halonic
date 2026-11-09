@@ -4,7 +4,7 @@ Owner: julian · Layer: testing · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-Made-up fixture workspaces and golden recordings of the old repo's validation, for the parity check.
+Made-up fixture workspaces and golden recordings of the old repo's validation, tests and runs, for the parity check.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

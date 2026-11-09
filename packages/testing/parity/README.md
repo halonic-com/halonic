@@ -2,7 +2,8 @@
 
 Made-up fixture workspaces and golden recordings of how the old repo (commit
 `784f78d`) treats them: which files pass or fail, the error's key path and
-line, and the output of the old `validate` command. The compare in
+line, the output of the old `validate` command, and on the base the old
+`test` and `run` commands with their full event logs. The compare in
 `src/compare/` checks the new code against these recordings.
 
 - **Layer:** testing
@@ -21,6 +22,7 @@ fixtures/
     files/            a valid workspace with every file kind
     recorded.json     the old repo's behaviour on it (golden)
     run-logs.json     the old runner's run logs of its 8 workflow tests (golden)
+    cli.json          the old CLI's test and run calls: output and event logs (golden)
   cases/<kind>/<name>/
     case.json         the kind, the fault, and where the fault is
     files/            only the files that differ from the base
@@ -92,6 +94,72 @@ Times and IDs are fixed, so the logs are the same on every machine:
 The runner runs every test twice and stops, naming the test, if the two logs
 differ. The recorder refuses a log with a random old run ID.
 
+## CLI output
+
+For the base only, the recorder also runs the old CLI (`studio test` and
+`studio run`, as `apps/cli/src/main.ts`) with the calls in
+[`src/cli-calls.ts`](src/cli-calls.ts), and writes `cli.json`. `studio
+validate` isn't repeated there: every case's `recorded.json` already holds its
+output. For each call `cli.json` holds the arguments, the exit code, stdout,
+stderr, every run the call stored (`.studio/runs/<id>.jsonl`) with all its
+events in order, and every file it wrote under `.studio`.
+
+The old CLI reads the system clock and makes its run IDs from the clock and
+random bytes; nothing can be passed in. So each call runs in its own process
+with [`src/old-cli-preload.ts`](src/old-cli-preload.ts) loaded first:
+
+- The clock stands still at `2026-01-01T00:00:00.000Z` for the whole call, so
+  every event is at that time, a 2-day timer waits until
+  `2026-01-03T00:00:00.000Z`, and a model reply takes `0 ms`.
+- The random source counts up, so the old IDs come out as
+  `run_<fixed time>_00000001` and so on. The recorder renames them to
+  `run_1`, `run_2`, ... (`test_1`, ... for test runs) in the order they were
+  made, starting again for each call.
+
+Each call runs on a fresh copy of the workspace, twice. The runner stops,
+naming the call, if the two differ; the recorder refuses a random run ID or a
+time more than 30 days from the fixed clock.
+
+What the calls show:
+
+- `studio test` passes all 8 tests. Unlike `run-logs.json`, where each test
+  counts from `test_1`, the CLI keeps one run store for the whole command, so
+  its 15 runs are `test_1` to `test_15`.
+- `studio run` has no model script, so the mock model echoes the input, and
+  the `checker` agent fails because the echo isn't JSON.
+- A run with an event its state doesn't accept fails after the run started:
+  the run is stored, stdout is empty, and the error is on stderr.
+- The `invoice` workflow doesn't start: its mailbox connector isn't signed in
+  (`Not started: Sign in billing@example.com first (Inbox).`, exit 1).
+- The old CLI exits 1 for every error, a usage error included.
+- **A foreach with more than one item and `concurrency: 2` isn't recorded
+  through the CLI.** With the file run store, the order of its child runs and
+  events changes from run to run, so `run a foreach over a nested workflow`
+  uses one line. `run-logs.json` has the 3-line batch, in the memory store,
+  where the order is stable.
+
+### Where the old CLI output meets an allowed difference
+
+The new `halonic test` and `halonic run` are compared against `cli.json`
+later (HAL-187 item 9). Where the old output depends on something already
+listed as a difference:
+
+- **Trust (`not-trusted`, exit code 3).** The old CLI has no trust gate: every
+  recorded run starts without a trust check. The parity run trusts the
+  fixture through the memory `TrustStore`, so no recorded call should meet
+  exit code 3 or a `not-trusted` step.
+- **Approvals routed by `callId` (E5).** None of the recorded calls approves a
+  tool call, so no `callId` and no approval list appear in `cli.json`.
+- **The three optional event fields.** The 3 `run.failed` events have no
+  `reason`; the new engine adds `run.failed.reason`. No tool results or
+  resolved approvals appear.
+- **Exit codes.** The old CLI exits 1 for a usage error (`run without a
+  workflow`); the new one exits 2.
+
+Other differences the compare will likely need to list: `definitionsVersion`
+in `run.started` (a hash of the old definitions), the run and test IDs (the
+renamed old IDs above), and the wording of stdout and stderr.
+
 ## The compare
 
 For every file the old loader read, in the base and in every case, the
@@ -151,7 +219,8 @@ git -C <scratch>/halonic-old checkout 784f78d
 #   git clone <scratch>/old.bundle <scratch>/halonic-old
 (cd <scratch>/halonic-old && pnpm install --frozen-lockfile)
 
-# 2. Record (about 2 minutes: the old validate runs once per case).
+# 2. Record (about 3 minutes: the old validate runs once per case, and each
+#    of the base's CLI calls twice).
 pnpm --filter @halonicjs/testing-parity record --old <scratch>/halonic-old
 
 # 3. One case only:
@@ -162,6 +231,9 @@ pnpm --filter @halonicjs/testing-parity record --old <scratch>/halonic-old --cas
 The recorder refuses a clone at another commit, with changed files, or without
 `pnpm install`. It builds each case's workspace in a temporary folder, runs
 `src/old-runner.ts` with the old repo's own `tsx`, and deletes the folder after.
+Make the clone on a fast local disk: on a slow network drive, cloning and
+installing take many minutes. `--case base` re-records only the base, with
+its run logs and CLI output (about 1 minute).
 The 3 uncommitted changes in the user's copy of the old repo are documents and
 aren't part of the reference; a clean clone at `784f78d` leaves them out.
 
