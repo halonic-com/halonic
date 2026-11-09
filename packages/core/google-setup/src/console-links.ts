@@ -44,6 +44,11 @@ export function isProjectId(text: string): boolean {
   return projectIdPattern.test(text);
 }
 
+/** Whether the text is a Google API host, such as `example.googleapis.com`. */
+export function isApiHost(text: string): boolean {
+  return apiHostPattern.test(text);
+}
+
 /**
  * Checks an API name from a sheet before it becomes part of a URL. The sheet
  * check in the integrations repo already refuses anything else, so this only

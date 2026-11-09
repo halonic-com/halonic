@@ -19,6 +19,14 @@ export {
   type StepRow,
   ticksToKeep,
 } from "./compare-setups.ts";
+export {
+  type ApiDisabled,
+  type ConnectorProblem,
+  type ConnectorState,
+  type ConnectorStateRecord,
+  connectorState,
+  testingHintWindowMs,
+} from "./connector-state.ts";
 export type { ConsolePage } from "./console-links.ts";
 export { looksLikeGoogleClientSecret } from "./looks-like-google-client-secret.ts";
 export { type LoopbackRedirect, loopbackRedirectUri } from "./loopback-redirect.ts";
@@ -29,6 +37,11 @@ export {
   type PendingSignIns,
   pendingSignInLifetimeMs,
 } from "./pending-sign-in.ts";
+export {
+  type RefreshAnswerMeaning,
+  type RefreshRefusal,
+  readRefreshAnswer,
+} from "./refresh-answer.ts";
 export type { SetupEdit } from "./setup-edit.ts";
 export type {
   GoogleApi,
