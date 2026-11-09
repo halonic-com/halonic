@@ -56,7 +56,7 @@
         // record["key"] for index signatures; this rule would undo that.
         "useLiteralKeys": "off",
         "noExcessiveCognitiveComplexity": {
-          "level": "warn",
+          "level": "error",
           "options": {
             "maxAllowedComplexity": 15
           }
@@ -106,25 +106,29 @@
                 "patterns": [
                   {
                     "group": [
-                      "node:*"
+                      "node:*",
+                      "node:*/**"
                     ],
                     "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
                   },
                   {
                     "group": [
-                      "@halonicjs/adapter-*"
+                      "@halonicjs/adapter-*",
+                      "@halonicjs/adapter-*/**"
                     ],
                     "message": "Adapters are for adapters and apps. Use a port from core."
                   },
                   {
                     "group": [
-                      "@halonicjs/studio-*"
+                      "@halonicjs/studio-*",
+                      "@halonicjs/studio-*/**"
                     ],
                     "message": "Only Studio packages and apps may use Studio packages."
                   },
                   {
                     "group": [
-                      "@halonicjs/host"
+                      "@halonicjs/host",
+                      "@halonicjs/host-*"
                     ],
                     "message": "Core never uses the host."
                   }
@@ -155,34 +159,40 @@
                 "patterns": [
                   {
                     "group": [
-                      "node:*"
+                      "node:*",
+                      "node:*/**"
                     ],
                     "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
                   },
                   {
                     "group": [
-                      "@halonicjs/adapter-*"
+                      "@halonicjs/adapter-*",
+                      "@halonicjs/adapter-*/**"
                     ],
                     "message": "Adapters are for adapters and apps. Use a port from core."
                   },
                   {
                     "group": [
-                      "@halonicjs/studio-*"
+                      "@halonicjs/studio-*",
+                      "@halonicjs/studio-*/**"
                     ],
                     "message": "Only Studio packages and apps may use Studio packages."
                   },
                   {
                     "group": [
-                      "@halonicjs/host"
+                      "@halonicjs/host",
+                      "@halonicjs/host-*"
                     ],
                     "message": "Core never uses the host."
                   },
                   {
                     "group": [
-                      "*",
-                      "!@halonicjs/*",
-                      "!.*",
-                      "!node:*"
+                      "**",
+                      "!@halonicjs/**",
+                      "!./**",
+                      "!../**",
+                      "!node:*",
+                      "!node:*/**"
                     ],
                     "message": "No outside libraries here. Only code that talks to the outside world may use one (tooling/check/dependencies.json)."
                   }
@@ -210,28 +220,33 @@
                 "patterns": [
                   {
                     "group": [
-                      "node:*"
+                      "node:*",
+                      "node:*/**"
                     ],
                     "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
                   },
                   {
                     "group": [
-                      "@halonicjs/adapter-*"
+                      "@halonicjs/adapter-*",
+                      "@halonicjs/adapter-*/**"
                     ],
                     "message": "Adapters are for adapters and apps. Use a port from core."
                   },
                   {
                     "group": [
-                      "@halonicjs/studio-*"
+                      "@halonicjs/studio-*",
+                      "@halonicjs/studio-*/**"
                     ],
                     "message": "Only Studio packages and apps may use Studio packages."
                   },
                   {
                     "group": [
-                      "*",
-                      "!@halonicjs/*",
-                      "!.*",
-                      "!node:*"
+                      "**",
+                      "!@halonicjs/**",
+                      "!./**",
+                      "!../**",
+                      "!node:*",
+                      "!node:*/**"
                     ],
                     "message": "No outside libraries here. Only code that talks to the outside world may use one (tooling/check/dependencies.json)."
                   }
@@ -259,7 +274,8 @@
                 "patterns": [
                   {
                     "group": [
-                      "@halonicjs/studio-*"
+                      "@halonicjs/studio-*",
+                      "@halonicjs/studio-*/**"
                     ],
                     "message": "Only Studio packages and apps may use Studio packages."
                   }
@@ -287,13 +303,15 @@
                 "patterns": [
                   {
                     "group": [
-                      "node:*"
+                      "node:*",
+                      "node:*/**"
                     ],
                     "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
                   },
                   {
                     "group": [
-                      "@halonicjs/adapter-*"
+                      "@halonicjs/adapter-*",
+                      "@halonicjs/adapter-*/**"
                     ],
                     "message": "Adapters are for adapters and apps. Use a port from core."
                   }
@@ -321,7 +339,8 @@
                 "patterns": [
                   {
                     "group": [
-                      "node:*"
+                      "node:*",
+                      "node:*/**"
                     ],
                     "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
                   }
@@ -361,7 +380,7 @@
         "rules": {
           "complexity": {
             "noExcessiveCognitiveComplexity": {
-              "level": "warn",
+              "level": "error",
               "options": {
                 "maxAllowedComplexity": 30
               }
