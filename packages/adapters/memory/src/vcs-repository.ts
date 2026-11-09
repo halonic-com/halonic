@@ -116,20 +116,53 @@ export function unstagedChanges(
   return changes;
 }
 
+/** A branch that can't sit next to `name`, because git keeps a branch as a file: `x` and `x/y` clash. */
+export function clashingBranch(branches: Iterable<string>, name: string): string | undefined {
+  for (const other of branches) {
+    if (name.startsWith(`${other}/`) || other.startsWith(`${name}/`)) return other;
+  }
+  return undefined;
+}
+
+/**
+ * Why switching from `head` and `index`, with the working tree's `unstaged`
+ * changes, to the tree `to` would lose work, or `null` when it wouldn't: any
+ * change to a tracked file (the port lets an adapter refuse more than git,
+ * which refuses only on overlap), or an untracked file `to` would overwrite.
+ */
+export function switchProblem(
+  head: Tree,
+  index: Tree,
+  unstaged: VcsChange[],
+  to: Tree,
+): string | null {
+  const untracked = unstaged.filter((change) => change.status === "untracked");
+  if (untracked.length < unstaged.length || !sameTree(head, index)) {
+    return "Commit or discard the changes first.";
+  }
+  const overwritten = untracked.filter((change) => to.has(change.path));
+  if (overwritten.length === 0) return null;
+  return `Untracked files would be overwritten: ${overwritten.map((change) => change.path).join(", ")}.`;
+}
+
+/** Whether two trees hold the same files with the same content. */
 export function sameTree(a: Tree, b: Tree): boolean {
   return a.size === b.size && [...a].every(([path, content]) => b.get(path) === content);
 }
 
+/** The commit with that hash; throws when it isn't there. */
 export function commitOf(commits: ReadonlyMap<string, Commit>, hash: string): Commit {
   const commit = commits.get(hash);
   if (commit === undefined) throw new Error(`Missing commit ${hash}.`);
   return commit;
 }
 
+/** The files of the commit with that hash; none for no commit (`null`). */
 export function treeOf(commits: ReadonlyMap<string, Commit>, hash: string | null): Tree {
   return hash === null ? new Map() : commitOf(commits, hash).tree;
 }
 
+/** Adds the commits `to` doesn't have yet; commits never change, so they are shared, not copied deeply. */
 export function copyCommits(from: ReadonlyMap<string, Commit>, to: Map<string, Commit>): void {
   for (const [hash, commit] of from) {
     if (!to.has(hash)) to.set(hash, commit);

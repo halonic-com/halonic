@@ -46,7 +46,20 @@ function pushPullCases(make: MakeVcs): void {
     await expect(second.vcs.pull()).rejects.toThrow();
     expect((await second.vcs.log(1))[0]?.hash).toBe(own);
     expect(await second.files.read("a.yaml")).toBe("1\n");
-    expect((await second.vcs.status()).changes).toEqual([]);
+    // The refused pull still fetched, so the branch is one commit ahead and one behind.
+    expect(await second.vcs.status()).toMatchObject({ ahead: 1, behind: 1, changes: [] });
+  });
+
+  it("refuses to pull over an untracked file the upstream would overwrite, and keeps it", async () => {
+    const [first, second] = await make.clones({ "a.yaml": "1\n" });
+    await commitFile(first, "b.yaml", "theirs\n", "Add b");
+    await first.vcs.push();
+    const [own] = await second.vcs.log(1);
+    await second.files.write("b.yaml", "mine\n");
+
+    await expect(second.vcs.pull()).rejects.toThrow();
+    expect(await second.files.read("b.yaml")).toBe("mine\n");
+    expect(await second.vcs.log(1)).toEqual([own]);
   });
 
   it("refuses to push over commits the branch doesn't have", async () => {

@@ -17,22 +17,29 @@ export function unifiedDiff(path: string, before: string | null, after: string |
     after === null ? "+++ /dev/null" : `+++ b/${path}`,
     `@@ -${range(oldLines.length)} +${range(newLines.length)} @@`,
   ];
-  return `${[...header, ...diffLines(oldLines, newLines)].join("\n")}\n`;
+  const body = diffLines(oldLines, newLines).flatMap((line) =>
+    line.endsWith("\n") ? [line.slice(0, -1)] : [line, "\\ No newline at end of file"],
+  );
+  return `${[...header, ...body].join("\n")}\n`;
 }
 
+/**
+ * The lines of `text`, each with its newline, so a last line without one
+ * differs from the same line with one, as it does for git.
+ */
 function splitLines(text: string): string[] {
-  if (text === "") return [];
-  const lines = text.split("\n");
-  if (lines.at(-1) === "") lines.pop();
-  return lines;
+  return text.match(/[^\n]*\n|[^\n]+$/gu) ?? [];
 }
 
+/** A hunk's range of the whole file; like git, a range of one line has no count. */
 function range(count: number): string {
+  if (count === 1) return "1";
   return count === 0 ? "0,0" : `1,${count}`;
 }
 
 /**
- * Every line of both sides, marked " " (kept), "-" (removed) or "+" (added),
+ * Every line of both sides, with its newline when it has one, marked " "
+ * (kept), "-" (removed) or "+" (added),
  * from a longest common subsequence. Quadratic, which is fine for workspace
  * files.
  */

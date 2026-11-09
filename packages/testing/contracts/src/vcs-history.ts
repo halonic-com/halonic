@@ -7,6 +7,7 @@ export function vcsHistoryCases(make: MakeVcs): void {
   commitCases(make);
   logCases(make);
   branchCases(make);
+  checkoutCases(make);
 }
 
 function commitCases(make: MakeVcs): void {
@@ -41,6 +42,18 @@ function commitCases(make: MakeVcs): void {
     const before = await vcs.log(10);
     await expect(vcs.commit("Nothing staged")).rejects.toThrow();
     expect(await vcs.log(10)).toEqual(before);
+  });
+
+  it("refuses an empty commit message, and keeps the change staged", async () => {
+    const { vcs, files } = await make.repo({ "a.yaml": "1\n" });
+    await files.write("a.yaml", "2\n");
+    await vcs.stage(["a.yaml"]);
+    const before = await vcs.log(10);
+    await expect(vcs.commit("")).rejects.toThrow();
+    expect(await vcs.log(10)).toEqual(before);
+    expect(await changesOf(vcs.status())).toEqual([
+      { path: "a.yaml", status: "modified", staged: true },
+    ]);
   });
 }
 
@@ -104,10 +117,13 @@ function branchCases(make: MakeVcs): void {
     expect((await vcs.branches()).sort()).toEqual(["feature", "main"]);
   });
 
-  it("refuses to check out a branch that doesn't exist", async () => {
+  it("refuses a branch inside another branch's name, as git does", async () => {
     const { vcs } = await make.repo({ "a.yaml": "1\n" });
-    await expect(vcs.checkout("missing")).rejects.toThrow();
-    expect((await vcs.status()).branch).toBe("main");
+    await vcs.createBranch("feature");
+    await expect(vcs.createBranch("feature/x")).rejects.toThrow();
+    await vcs.createBranch("fix/a");
+    await expect(vcs.createBranch("fix")).rejects.toThrow();
+    expect((await vcs.branches()).sort()).toEqual(["feature", "fix/a", "main"]);
   });
 
   it("accepts branch names that git accepts, however odd", async () => {
@@ -117,5 +133,30 @@ function branchCases(make: MakeVcs): void {
       expect((await vcs.status()).branch, branch).toBe(branch);
     }
     expect((await vcs.branches()).sort()).toEqual(["main", ...validBranchNames].sort());
+  });
+}
+
+function checkoutCases(make: MakeVcs): void {
+  it("refuses to check out over an untracked file the branch would overwrite, and keeps it", async () => {
+    const { vcs, files } = await make.repo({ "a.yaml": "1\n" });
+    await vcs.createBranch("feature");
+    await files.write("b.yaml", "theirs\n");
+    await vcs.stage(["b.yaml"]);
+    await vcs.commit("Add b on feature");
+    await vcs.checkout("main");
+    await files.write("b.yaml", "mine\n");
+
+    await expect(vcs.checkout("feature")).rejects.toThrow();
+    expect(await files.read("b.yaml")).toBe("mine\n");
+    expect(await changesOf(vcs.status())).toEqual([
+      { path: "b.yaml", status: "untracked", staged: false },
+    ]);
+    expect((await vcs.status()).branch).toBe("main");
+  });
+
+  it("refuses to check out a branch that doesn't exist", async () => {
+    const { vcs } = await make.repo({ "a.yaml": "1\n" });
+    await expect(vcs.checkout("missing")).rejects.toThrow();
+    expect((await vcs.status()).branch).toBe("main");
   });
 }

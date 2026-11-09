@@ -13,8 +13,19 @@ export interface VcsHarness {
 
 /** Creates the folders the {@link Vcs} suite needs. Every folder is new and shares nothing with the others. */
 export interface MakeVcs {
-  /** A folder holding `files` that is not a repository. */
+  /**
+   * A folder holding `files` that is not a repository. Where the adapter
+   * keeps runtime data, the folder also holds a file in `.studio`, which
+   * `init` must ignore.
+   */
   folder(files: DefinitionFiles): Promise<VcsHarness>;
+  /**
+   * A folder holding `files` inside a repository that is not the folder:
+   * the repository's root is the folder's parent, and has `files` committed
+   * in the folder. An adapter with no parent folders, such as the memory
+   * one, gives a folder that is not a repository.
+   */
+  nested(files: DefinitionFiles): Promise<VcsHarness>;
   /** A repository on branch `main`, with `files` in one commit and no remote. */
   repo(files: DefinitionFiles): Promise<VcsHarness>;
   /**

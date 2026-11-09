@@ -61,11 +61,15 @@ async function memoryRepo(
   return { vcs, files: store };
 }
 
+/** A folder that is not a repository; memory has no parent folders, so this is also the nested one. */
+async function memoryFolder(files: Readonly<Record<string, string>>): Promise<VcsHarness> {
+  const store = new MemoryDefinitionStore(files);
+  return { vcs: new MemoryVcs(store), files: store };
+}
+
 vcsContract("memory", {
-  async folder(files) {
-    const store = new MemoryDefinitionStore(files);
-    return { vcs: new MemoryVcs(store), files: store };
-  },
+  folder: memoryFolder,
+  nested: memoryFolder,
   repo: memoryRepo,
   async clones(files) {
     const remote = new MemoryRemote();

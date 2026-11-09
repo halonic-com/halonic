@@ -82,6 +82,18 @@ verifies("memory.vcs", () => {
       await expect(vcs.checkout("main")).rejects.toThrow("Commit or discard");
     });
 
+    it("refuses over an untracked file the target commit would overwrite, and keeps it", async () => {
+      const { vcs, files } = await repoWith({ "a.yaml": "1\n" });
+      await vcs.createBranch("feature");
+      await files.write("b.yaml", "theirs\n");
+      await vcs.stage(["b.yaml"]);
+      await vcs.commit("Add b");
+      await vcs.checkout("main");
+      await files.write("b.yaml", "mine\n");
+      await expect(vcs.checkout("feature")).rejects.toThrow("would be overwritten: b.yaml");
+      expect(await files.read("b.yaml")).toBe("mine\n");
+    });
+
     it("removes files the target commit doesn't have", async () => {
       const { vcs, files } = await repoWith({ "a.yaml": "1\n" });
       await vcs.createBranch("feature");
@@ -107,18 +119,37 @@ verifies("memory.vcs", () => {
     });
   });
 
-  it("diffs a last line without a newline like any other line", () => {
-    expect(unifiedDiff("a.yaml", "one\ntwo", "one\nthree")).toBe(
-      [
-        "diff --git a/a.yaml b/a.yaml",
-        "--- a/a.yaml",
-        "+++ b/a.yaml",
-        "@@ -1,2 +1,2 @@",
-        " one",
-        "-two",
-        "+three",
-        "",
-      ].join("\n"),
-    );
+  describe("diffs in git's format", () => {
+    it("marks a last line without a newline", () => {
+      expect(unifiedDiff("a.yaml", "one\ntwo", "one\nthree")).toBe(
+        [
+          "diff --git a/a.yaml b/a.yaml",
+          "--- a/a.yaml",
+          "+++ b/a.yaml",
+          "@@ -1,2 +1,2 @@",
+          " one",
+          "-two",
+          "\\ No newline at end of file",
+          "+three",
+          "\\ No newline at end of file",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    it("shows a change to only the final newline", () => {
+      expect(unifiedDiff("a.yaml", "one\n", "one")).toBe(
+        [
+          "diff --git a/a.yaml b/a.yaml",
+          "--- a/a.yaml",
+          "+++ b/a.yaml",
+          "@@ -1 +1 @@",
+          "-one",
+          "+one",
+          "\\ No newline at end of file",
+          "",
+        ].join("\n"),
+      );
+    });
   });
 });

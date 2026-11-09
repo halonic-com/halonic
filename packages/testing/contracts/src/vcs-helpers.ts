@@ -21,6 +21,7 @@ export async function changesOf(status: Promise<VcsStatus>): Promise<VcsChange[]
   return sortChanges((await status).changes);
 }
 
+/** The changes sorted by path, unstaged before staged. */
 export function sortChanges(changes: VcsChange[]): VcsChange[] {
   return [...changes].sort(
     (a, b) => compare(a.path, b.path) || Number(a.staged) - Number(b.staged),
@@ -32,6 +33,7 @@ function compare(a: string, b: string): number {
   return a < b ? -1 : 1;
 }
 
+/** A diff's lines, to look for some without depending on the rest. */
 export function lines(diff: string): string[] {
   return diff.split("\n");
 }

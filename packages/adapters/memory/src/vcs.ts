@@ -10,6 +10,7 @@ import { ManualClock } from "./clock.ts";
 import { unifiedDiff } from "./line-diff.ts";
 import { sha256Hex } from "./sha256.ts";
 import {
+  clashingBranch,
   commitOf,
   copyCommits,
   countMissing,
@@ -22,6 +23,7 @@ import {
   remoteOf,
   sameTree,
   stagedChanges,
+  switchProblem,
   type Tree,
   trackedCommit,
   treeOf,
@@ -151,6 +153,8 @@ export class MemoryVcs implements Vcs {
 
   async commit(message: string): Promise<string> {
     const repo = this.#requireRepo();
+    // Like git, which aborts on an empty message.
+    if (message.trim() === "") throw new Error("The commit message is empty.");
     const parent = headCommit(repo);
     if (sameTree(headTree(repo), repo.index)) throw new Error("Nothing is staged.");
     const tree: Tree = new Map(repo.index);
@@ -181,14 +185,17 @@ export class MemoryVcs implements Vcs {
   }
 
   async branches(): Promise<string[]> {
-    return [...this.#requireRepo().branches.keys()];
+    // Like `git branch`, a branch with no commits yet isn't listed.
+    return [...this.#requireRepo().branches].flatMap(([name, hash]) =>
+      hash === null ? [] : [name],
+    );
   }
 
   async checkout(branch: string): Promise<void> {
     const repo = this.#requireRepo();
     const target = repo.branches.get(branch);
     if (target === undefined) throw new Error(`There is no branch ${branch}.`);
-    await this.#requireClean(repo);
+    await this.#requireClean(repo, treeOf(repo.commits, target));
     await this.#switchTree(headTree(repo), treeOf(repo.commits, target));
     repo.head = branch;
   }
@@ -196,6 +203,9 @@ export class MemoryVcs implements Vcs {
   async createBranch(name: string): Promise<void> {
     const repo = this.#requireRepo();
     if (repo.branches.has(name)) throw new Error(`The branch ${name} already exists.`);
+    const other = clashingBranch(repo.branches.keys(), name);
+    if (other !== undefined)
+      throw new Error(`The branch ${name} clashes with the branch ${other}.`);
     repo.branches.set(name, headCommit(repo));
     repo.head = name;
   }
@@ -223,7 +233,7 @@ export class MemoryVcs implements Vcs {
     if (!isAncestor(repo.commits, ours, theirs)) {
       throw new Error("The branch and its upstream have both moved on; nothing was merged.");
     }
-    await this.#requireClean(repo);
+    await this.#requireClean(repo, treeOf(repo.commits, theirs));
     await this.#switchTree(headTree(repo), treeOf(repo.commits, theirs));
     repo.branches.set(repo.head, theirs);
   }
@@ -268,13 +278,10 @@ export class MemoryVcs implements Vcs {
     return unstagedChanges(repo.index, await this.#readAll(await this.#files.list()));
   }
 
-  /** Refuses to switch commits over changes it would lose; git refuses only on overlap, which is enough here. */
-  async #requireClean(repo: Repository): Promise<void> {
-    const changes = await this.#unstaged(repo);
-    const tracked = changes.filter((change) => change.status !== "untracked");
-    if (tracked.length > 0 || !sameTree(headTree(repo), repo.index)) {
-      throw new Error("Commit or discard the changes first.");
-    }
+  /** Refuses to switch to the tree `to` over changes it would lose; see {@link switchProblem}. */
+  async #requireClean(repo: Repository, to: Tree): Promise<void> {
+    const problem = switchProblem(headTree(repo), repo.index, await this.#unstaged(repo), to);
+    if (problem !== null) throw new Error(problem);
   }
 
   /** Makes the working tree and the index hold `to` instead of `from`, leaving untracked files. */

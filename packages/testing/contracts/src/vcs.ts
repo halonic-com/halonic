@@ -1,3 +1,4 @@
+import type { Vcs } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { MakeVcs } from "./vcs-harness.ts";
@@ -38,21 +39,32 @@ function repositoryCases(make: MakeVcs): void {
   });
 
   it("refuses to work on a folder that isn't a repository", async () => {
-    const { vcs } = await make.folder({ "a.yaml": "1\n" });
-    await expect(vcs.diff("a.yaml", false)).rejects.toThrow();
-    await expect(vcs.stage(["a.yaml"])).rejects.toThrow();
-    await expect(vcs.commit("Change a")).rejects.toThrow();
-    await expect(vcs.log(1)).rejects.toThrow();
-    await expect(vcs.createBranch("feature")).rejects.toThrow();
-    expect((await vcs.status()).isRepo).toBe(false);
+    const { vcs, files } = await make.folder({ "a.yaml": "1\n" });
+    await expectNoRepository(vcs);
+    expect(await files.read("a.yaml")).toBe("1\n");
   });
 
-  it("makes a folder a repository, with its files untracked", async () => {
+  it("makes a folder a repository, with its files untracked and the runtime folder ignored", async () => {
     const { vcs } = await make.folder({ "a.yaml": "1\n" });
     await vcs.init();
     const status = await vcs.status();
     expect(status.isRepo).toBe(true);
     expect(status.changes).toContainEqual({ path: "a.yaml", status: "untracked", staged: false });
+    const runtime = status.changes.filter((change) => /^\.studio(?:\/|$)/iu.test(change.path));
+    expect(runtime).toEqual([]);
+    expect(await vcs.branches()).toEqual([]);
+  });
+
+  it("treats a folder inside another repository as no repository, until it is made one", async () => {
+    const { vcs, files } = await make.nested({ "a.yaml": "1\n" });
+    await expectNoRepository(vcs);
+    expect(await files.read("a.yaml")).toBe("1\n");
+
+    // Committed in the parent, the file is untracked in the folder's own repository.
+    await vcs.init();
+    expect(await changesOf(vcs.status())).toEqual(
+      expect.arrayContaining([{ path: "a.yaml", status: "untracked", staged: false }]),
+    );
   });
 
   it("reports a clean repository on its branch", async () => {
@@ -66,6 +78,26 @@ function repositoryCases(make: MakeVcs): void {
       changes: [],
     });
   });
+}
+
+/** Every method but `status` and `init` rejects, and `status` reports no repository. */
+async function expectNoRepository(vcs: Vcs): Promise<void> {
+  const calls: [string, () => Promise<unknown>][] = [
+    ["diff", () => vcs.diff("a.yaml", false)],
+    ["stage", () => vcs.stage(["a.yaml"])],
+    ["unstage", () => vcs.unstage(["a.yaml"])],
+    ["discard", () => vcs.discard(["a.yaml"])],
+    ["commit", () => vcs.commit("Change a")],
+    ["log", () => vcs.log(1)],
+    ["branches", () => vcs.branches()],
+    ["checkout", () => vcs.checkout("main")],
+    ["createBranch", () => vcs.createBranch("feature")],
+    ["remotes", () => vcs.remotes()],
+    ["pull", () => vcs.pull()],
+    ["push", () => vcs.push()],
+  ];
+  for (const [method, call] of calls) await expect(call(), method).rejects.toThrow();
+  expect((await vcs.status()).isRepo).toBe(false);
 }
 
 function statusCases(make: MakeVcs): void {

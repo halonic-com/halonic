@@ -50,7 +50,15 @@ export interface VcsCommit {
   message: string;
 }
 
-/** Version control of one workspace folder (git today). Paths are relative to that folder. */
+/**
+ * Version control of one workspace folder (git today). Paths are relative to that folder.
+ *
+ * The folder is a repository only when it is a repository's root. A folder
+ * inside another repository is not one: its status says so, and `init`
+ * makes it a repository of its own. So no method ever reads or changes a
+ * file outside the folder, such as a parent repository's staged changes or
+ * the files a checkout there would rewrite.
+ */
 export interface Vcs {
   /** The branch, its upstream and the changed files. */
   status(): Promise<VcsStatus>;
@@ -62,22 +70,28 @@ export interface Vcs {
   unstage(paths: string[]): Promise<void>;
   /** Throw away working-tree changes: tracked files go back to the index, untracked files are deleted. */
   discard(paths: string[]): Promise<void>;
-  /** Commits what is staged; returns the new commit hash. */
+  /** Commits what is staged; returns the new commit hash. Refuses an empty message and an empty commit. */
   commit(message: string): Promise<string>;
-  /** At most `limit` (at least 1) commits that touch the folder, newest first. */
+  /** At most `limit` (at least 1) commits on the current branch, newest first. */
   log(limit: number): Promise<VcsCommit[]>;
-  /** The local branch names. */
+  /** The local branch names; a branch with no commits yet isn't listed. */
   branches(): Promise<string[]>;
-  /** Switches to a local branch. */
+  /**
+   * Switches to a local branch. Refuses, and changes nothing, when that would
+   * overwrite an untracked file, or while a tracked file has changes: an
+   * adapter may refuse any such change, as the memory one does, though git
+   * refuses only those the branch would touch.
+   */
   checkout(branch: string): Promise<void>;
-  /** Creates a branch from the current commit and switches to it. */
+  /** Creates a branch from the current commit and switches to it. Refuses `x/y` next to `x`, as git does. */
   createBranch(name: string): Promise<void>;
-  /** Make the folder a repository (and ignore the folder Halonic keeps its runtime data in). */
+  /** Make the folder a repository, ignoring `.studio`, the folder Halonic keeps its runtime data in. */
   init(): Promise<void>;
   /** The remote names, such as "origin". */
   remotes(): Promise<string[]>;
   /**
-   * Brings in the upstream's commits, fast-forward only.
+   * Brings in the upstream's commits, fast-forward only. Like `checkout`, it
+   * refuses to overwrite an untracked file or to switch over changes.
    *
    * @throws when the branch and its upstream have both moved on; nothing is merged
    */
