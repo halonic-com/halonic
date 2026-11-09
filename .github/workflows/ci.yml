@@ -603,6 +603,18 @@ jobs:
             ~/.gradle/caches
           key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
+      # Fetches the Gradle distribution with retries, so a 5xx from
+      # services.gradle.org on a cold cache does not fail the build.
+      - name: Download the Gradle distribution (with retries)
+        working-directory: apps/studio/src-tauri/gen/android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          for attempt in 1 2 3 4; do
+            ./gradlew --version && exit 0
+            echo "Gradle download failed (attempt $attempt), retrying"
+            sleep $((attempt * 20))
+          done
+          exit 1
       - name: Install the pinned Rust toolchain and the Android targets
         working-directory: apps/studio/src-tauri
         run: |
