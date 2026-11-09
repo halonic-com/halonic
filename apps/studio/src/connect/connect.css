@@ -44,7 +44,7 @@ body {
 
 main {
   max-width: 28rem;
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
   padding: 0 1.5rem;
   display: flex;
@@ -56,6 +56,16 @@ section {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/*
+ * The connect screen sits in the upper part of the window, as on the sheet
+ * (G1 to G5), so the keyboard it opens doesn't cover Connect or the error.
+ * The full-screen states have no field and stay centred.
+ */
+section[data-screen="connect"] {
+  margin-bottom: auto;
+  padding-top: max(15vh, 2rem);
 }
 
 /* `display: flex` above would otherwise show hidden screens. */
