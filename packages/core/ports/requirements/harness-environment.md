@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-194 build plan, decision 1; approved on HAL-1961
 
-A harness may name the environment variables its program needs through the optional `Harness.environment(bridge, folders)`. The engine shall call it before it opens the sandbox and add its result to the profile's `env`, so the session's profile is exactly what the program gets. If the harness names a variable the engine already set, compared without regard to case, then adding them shall fail with an error that names the variable and not its value. The bridge token shall travel in the `x-halonic-run-token` header, never in a URL.
+The `Harness` port shall let a harness name the environment variables its program needs through the optional `environment(bridge, folders)`, which the engine adds to the profile's `env` before it opens the sandbox, so the session's profile is exactly what the program gets. If the harness names a variable the engine already set, compared without regard to case, then adding them shall fail with an error that names the variable and not its value. The bridge token shall travel in the `x-halonic-run-token` header, never in a URL.
 
 ## Examples
 
