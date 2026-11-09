@@ -1,5 +1,16 @@
 export { blobStoreContract, type MakeBlobStore } from "./blob-store.ts";
 export { type ControlledClock, clockContract, type MakeClock } from "./clock.ts";
+export {
+  brokenToolName,
+  type ConnectorHarness,
+  type ConnectorKind,
+  connectorClientContract,
+  contractGrant,
+  contractServerAnswer,
+  contractServerTools,
+  type MakeConnector,
+  type ReachedCall,
+} from "./connector-client.ts";
 export { coordinationContract } from "./coordination.ts";
 export {
   type CoordinationHarness,

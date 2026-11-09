@@ -1,7 +1,12 @@
-import type { Digest } from "@halonicjs/ports";
+import type { ConnectorTool, ConnectorTransport, Digest, HttpClient } from "@halonicjs/ports";
 import {
   blobStoreContract,
+  brokenToolName,
+  type ConnectorKind,
   clockContract,
+  connectorClientContract,
+  contractServerAnswer,
+  contractServerTools,
   coordinationContract,
   definitionStoreContract,
   idGeneratorContract,
@@ -27,6 +32,8 @@ import {
   fixedIds,
   ManualClock,
   MemoryBlobStore,
+  MemoryConnectorFactory,
+  type MemoryConnectorServer,
   MemoryCoordination,
   MemoryDefinitionStore,
   MemoryKnowledgeProvider,
@@ -76,6 +83,7 @@ resourceProbeContract("memory", async () => {
     writeFile: async (path, bytes) => probe.writeFile(path, bytes),
   };
 });
+connectorContracts();
 idGeneratorContract("memory", async () => fixedIds());
 knowledgeProviderContract("memory", async ({ docs }) => new MemoryKnowledgeProvider(docs), {
   search: true,
@@ -206,4 +214,56 @@ for (const streams of [false, true]) {
     // The plain binding leaves reasoning out, so the suite runs both ways.
     { streams, reasoning: streams },
   );
+}
+
+/** The contract's test server, as the memory connector serves it. */
+const contractServer: MemoryConnectorServer = {
+  tools: contractServerTools,
+  answer(name, args) {
+    if (name === brokenToolName) throw new Error("The tool failed.");
+    return contractServerAnswer(name, args);
+  },
+};
+
+/** Built-in Google tools, in short: one per risk, as the Google adapter marks them. */
+const googleTools: readonly ConnectorTool[] = [
+  { name: "gmail_search", description: "Finds mail.", parameters: {}, risk: "read" },
+  { name: "gmail_create_draft", description: "Writes a draft.", parameters: {}, risk: "write" },
+  { name: "gmail_send_draft", description: "Sends a draft.", parameters: {}, risk: "send" },
+];
+
+/** Memory connectors reach no network; a request is a bug in the test. */
+const noNetwork: HttpClient = {
+  fetch: async (url) => {
+    throw new Error(`The memory connector tests reach no network, but asked for ${url}.`);
+  },
+};
+
+function connectorContracts(): void {
+  const transports: Record<ConnectorKind, ConnectorTransport> = {
+    http: { kind: "http", url: "https://notes.acme.test/mcp", headers: {} },
+    stdio: { kind: "stdio", command: "notes-mcp", args: [], env: {} },
+    google: { kind: "google", account: "ana@acme.test", client: "google-client" },
+  };
+  for (const kind of ["http", "stdio", "google"] satisfies ConnectorKind[]) {
+    connectorClientContract("memory", kind, async () => {
+      const server =
+        kind === "google"
+          ? { tools: googleTools, answer: () => "No mail matches." }
+          : contractServer;
+      const factory = new MemoryConnectorFactory(kind, server);
+      return {
+        factory,
+        config: { id: "notes", transport: { ...transports[kind] }, secretEnv: {} },
+        context: {
+          secrets: new MemorySecrets({}),
+          tokens: new MemoryTokenStore(),
+          http: noNetwork,
+        },
+        reached: () => factory.reached(),
+        programs: () => factory.programs(),
+        readCall: { name: "gmail_search", args: { query: "invoice" } },
+      };
+    });
+  }
 }
