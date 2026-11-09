@@ -1,0 +1,179 @@
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { RunEvent } from "@halonicjs/events";
+import { runStoreContract } from "@halonicjs/testing-contracts";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterAll, expect, it } from "vitest";
+import { FolderRunStore } from "./run-store.ts";
+import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
+
+afterAll(removeTempFolders);
+
+runStoreContract("folder", async () => new FolderRunStore(await tempFolder()));
+
+function started(runId: string): RunEvent {
+  return {
+    runId,
+    seq: 1,
+    at: "2026-01-01T00:00:01.000Z",
+    type: "run.started",
+    hubId: "hub",
+    workflowId: "flow",
+    input: {},
+    kind: "run",
+    definitionsVersion: "v1",
+  };
+}
+
+function entered(runId: string, seq: number): RunEvent {
+  return { runId, seq, at: "2026-01-01T00:00:02.000Z", type: "state.entered", state: `s${seq}` };
+}
+
+/** A store in a new folder that already holds run `r1` with three events. */
+async function storeWithRun(): Promise<{ root: string; store: FolderRunStore }> {
+  const root = await tempFolder();
+  const store = new FolderRunStore(root);
+  await store.append("r1", 0, [started("r1"), entered("r1", 2), entered("r1", 3)]);
+  return { root, store };
+}
+
+const seqs = (events: RunEvent[]) => events.map((event) => event.seq);
+
+verifies("fs-node.run-store-files", () => {
+  it("keeps one log per run, one event per line, and the snapshot beside it", async () => {
+    const { root, store } = await storeWithRun();
+    await store.append("r1", 3, [entered("r1", 4)], { snapshot: { step: 4 } });
+    const lines = (await readFile(join(root, "r1.jsonl"), "utf8")).split("\n");
+    expect(lines.map((line) => (line === "" ? null : JSON.parse(line).seq))).toEqual([
+      1,
+      2,
+      3,
+      4,
+      null,
+    ]);
+    expect(JSON.parse(await readFile(join(root, "r1.snapshot.json"), "utf8"))).toEqual({
+      seq: 4,
+      state: { step: 4 },
+    });
+  });
+
+  it("forgets a run whose log is deleted, and lists nothing for a missing folder", async () => {
+    const { root, store } = await storeWithRun();
+    await store.append("r2", 0, [started("r2")], { snapshot: { step: 1 } });
+    await rm(join(root, "r2.jsonl"));
+    expect((await store.list()).map((run) => run.id)).toEqual(["r1"]);
+    expect(await store.get("r2")).toBeNull();
+    expect(await store.snapshot("r2")).toBeNull();
+    // A new run with the same id doesn't inherit the old snapshot.
+    await store.append("r2", 0, [started("r2")]);
+    expect(await store.snapshot("r2")).toBeNull();
+    expect(await new FolderRunStore(join(root, "missing")).list()).toEqual([]);
+  });
+
+  it("keeps the order of appends to one run made one after another without waiting", async () => {
+    const { store } = await storeWithRun();
+    const results = await Promise.all([
+      store.append("r1", 3, [entered("r1", 4)]),
+      store.append("r1", 4, [entered("r1", 5)]),
+      store.append("r1", 5, [entered("r1", 6)]),
+    ]);
+    expect(results).toEqual([
+      { ok: true, lastSeq: 4 },
+      { ok: true, lastSeq: 5 },
+      { ok: true, lastSeq: 6 },
+    ]);
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it("refuses an unsafe run id in every method, and leaves other files out of the list", async () => {
+    const { root, store } = await storeWithRun();
+    const unsafe = [
+      "",
+      "..",
+      "../r1",
+      "a/b",
+      "a\\b",
+      "/r1",
+      ".r1",
+      "NUL",
+      "con.1",
+      "x".repeat(129),
+    ];
+    for (const runId of unsafe) {
+      await expect(store.append(runId, 0, [started(runId)]), runId).rejects.toThrow(RangeError);
+      await expect(store.events(runId), runId).rejects.toThrow(RangeError);
+      await expect(store.snapshot(runId), runId).rejects.toThrow(RangeError);
+      await expect(store.get(runId), runId).rejects.toThrow(RangeError);
+    }
+    await writeFile(join(root, ".hidden.jsonl"), "");
+    await writeFile(join(root, "notes.txt"), "");
+    expect((await store.list()).map((run) => run.id)).toEqual(["r1"]);
+  });
+});
+
+verifies("fs-node.run-store-recovery", () => {
+  it("skips a torn last line, and cuts it off before the next append", async () => {
+    const { root, store } = await storeWithRun();
+    const log = join(root, "r1.jsonl");
+    await writeFile(log, `${JSON.stringify(entered("r1", 4)).slice(0, 20)}`, { flag: "a" });
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
+    expect((await store.get("r1"))?.lastSeq).toBe(3);
+    expect(await store.append("r1", 3, [entered("r1", 4)])).toEqual({ ok: true, lastSeq: 4 });
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4]);
+    expect((await readFile(log, "utf8")).endsWith(`${JSON.stringify(entered("r1", 4))}\n`)).toBe(
+      true,
+    );
+  });
+
+  it("counts a last line without its line break as torn, even when it is whole", async () => {
+    const { root, store } = await storeWithRun();
+    await writeFile(join(root, "r1.jsonl"), JSON.stringify(entered("r1", 4)), { flag: "a" });
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
+  });
+
+  it("fails on a broken line in the middle of a log, naming the file and line", async () => {
+    const { root, store } = await storeWithRun();
+    const log = join(root, "r1.jsonl");
+    const lines = (await readFile(log, "utf8")).split("\n");
+    await writeFile(log, [lines[0], "{not json", lines[2], ""].join("\n"));
+    await expect(store.events("r1")).rejects.toThrow("Broken run log r1.jsonl, line 2");
+    await writeFile(log, [lines[0], lines[2], ""].join("\n"));
+    await expect(store.events("r1")).rejects.toThrow("line 2: it holds event 3 of run r1");
+  });
+
+  it("gives a stale snapshot, so the engine replays the events after it", async () => {
+    const { store } = await storeWithRun();
+    await store.append("r1", 3, [entered("r1", 4)], { snapshot: { step: 4 } });
+    await store.append("r1", 4, [entered("r1", 5), entered("r1", 6)]);
+    const snapshot = await store.snapshot("r1");
+    expect(snapshot).toEqual({ seq: 4, state: { step: 4 } });
+    expect(seqs(await store.events("r1", snapshot?.seq))).toEqual([5, 6]);
+  });
+
+  it("gives no snapshot when it is missing, unreadable or ahead of the log", async () => {
+    const { root, store } = await storeWithRun();
+    const file = join(root, "r1.snapshot.json");
+    expect(await store.snapshot("r1")).toBeNull();
+    for (const text of [
+      "{torn",
+      "[]",
+      '{"seq":0,"state":{}}',
+      '{"seq":2}',
+      '{"seq":4,"state":{}}',
+    ]) {
+      await writeFile(file, text);
+      expect(await store.snapshot("r1"), text).toBeNull();
+    }
+    await writeFile(file, '{"seq":3,"state":null}');
+    expect(await store.snapshot("r1")).toEqual({ seq: 3, state: null });
+  });
+
+  it("still stores the events when the snapshot can't be written", async () => {
+    const { root, store } = await storeWithRun();
+    await mkdir(join(root, "r1.snapshot.json"));
+    const result = await store.append("r1", 3, [entered("r1", 4)], { snapshot: { step: 4 } });
+    expect(result).toEqual({ ok: true, lastSeq: 4 });
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4]);
+    expect(await store.snapshot("r1")).toBeNull();
+  });
+});

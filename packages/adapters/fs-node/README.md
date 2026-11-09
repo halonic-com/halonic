@@ -1,8 +1,9 @@
 # @halonicjs/adapter-fs-node
 
-The `DefinitionStore` port on the local file system with Node: workspace
-files are plain files under a root folder. The CLI (`halonic validate`,
-`test`, `run`) and the parity run use it. A JSONL `RunStore` follows.
+The `DefinitionStore` and `RunStore` ports on the local file system with
+Node: workspace files are plain files under a root folder, and each run is a
+JSONL log. The CLI (`halonic validate`, `test`, `run`) and the parity run use
+it.
 
 - **Layer:** adapters
 - **Owner:** tomas
@@ -28,6 +29,96 @@ and passes the shared `DefinitionStore` contract suite.
   callers, not against other programs writing into its root. A write
   replaces the file in place, without a temporary file.
 
+## Runs in a folder
+
+`new FolderRunStore(root)` passes the shared `RunStore` contract suite.
+
+- **Files:** `<runId>.jsonl` holds the run's events, one per line, and only
+  ever grows. `<runId>.snapshot.json` caches the engine's state, written
+  through a temporary file and a rename. Delete it at any time; the engine
+  then replays the log.
+- **List:** worked out from the logs on every call, with no cache. Deleting
+  a `.jsonl` removes the run.
+- **Crashes:** an event counts once its line break is written. A torn last
+  line is skipped and cut off before the next append. A broken line in the
+  middle of a log is an error naming the file and line. A snapshot that is
+  missing, unreadable or ahead of the log gives `null`.
+- **Run ids:** 1 to 128 letters, digits, `_`, `-` or `.`, not starting with
+  a dot and not a Windows device name such as `NUL`. Anything else is a
+  `RangeError`, so a run id can't leave the root.
+- **Limits:** appends to one run go one at a time inside one process, so
+  `expectedSeq` holds there. Two processes must not write to the same run
+  folder.
+
 ## Example
 
-Added together with the run store.
+[`examples/workspace-and-runs.ts`](examples/workspace-and-runs.ts) saves a
+workflow, logs a run of it, and reads both back as the CLI would. A test runs
+it.
+
+```ts
+import { join } from "node:path";
+import { FolderDefinitionStore, FolderRunStore } from "@halonicjs/adapter-fs-node";
+
+/** Saves a workflow in a workspace folder, logs a run of it, then reads both back as the CLI would. */
+export async function runExample(folder: string): Promise<{
+  files: string[];
+  version: string;
+  appended: boolean;
+  conflict: boolean;
+  status: string | undefined;
+  snapshotSeq: number | undefined;
+  eventsToReplay: number[];
+}> {
+  // Definitions are plain files under the workspace folder.
+  const definitions = new FolderDefinitionStore(join(folder, "workspace"));
+  await definitions.write("workflows/greet.yaml", "id: greet\n");
+  const files = await definitions.list(); // ["workflows/greet.yaml"]
+  const version = await definitions.version(); // "sha256:" and 16 hex characters
+
+  // Each run is a <runId>.jsonl log in the runs folder, one event per line.
+  const runs = new FolderRunStore(join(folder, "runs"));
+  const at = "2026-11-09T09:00:00.000Z";
+  const first = await runs.append("run_1", 0, [
+    {
+      runId: "run_1",
+      seq: 1,
+      at,
+      type: "run.started",
+      hubId: "demo",
+      workflowId: "greet",
+      input: {},
+      kind: "run",
+      definitionsVersion: version,
+    },
+  ]);
+  // The engine caches its state in <runId>.snapshot.json with the events.
+  await runs.append(
+    "run_1",
+    1,
+    [{ runId: "run_1", seq: 2, at, type: "state.entered", state: "hello" }],
+    { snapshot: { state: "hello" } },
+  );
+  await runs.append("run_1", 2, [
+    { runId: "run_1", seq: 3, at, type: "run.waiting", state: "hello", events: ["approve"] },
+  ]);
+  // A writer that saw an older log loses: nothing is written twice.
+  const late = await runs.append("run_1", 1, [
+    { runId: "run_1", seq: 2, at, type: "state.entered", state: "late" },
+  ]);
+
+  // On the next step the engine starts from the snapshot and replays only what came after it.
+  const snapshot = await runs.snapshot("run_1"); // { seq: 2, state: { state: "hello" } }
+  const eventsToReplay = await runs.events("run_1", snapshot?.seq); // event 3
+  const [summary] = await runs.list({ workflowId: "greet" });
+  return {
+    files,
+    version,
+    appended: first.ok,
+    conflict: !late.ok,
+    status: summary?.status, // "waiting"
+    snapshotSeq: snapshot?.seq,
+    eventsToReplay: eventsToReplay.map((event) => event.seq),
+  };
+}
+```
