@@ -190,10 +190,8 @@ function duringCallCases(make: MakeScheduler): void {
     const first = s.inMs(0);
     const next = s.inMs(10 * minute);
     s.listener.behaviour = async (timer) => {
-      if (timer.at === first) {
-        await s.scheduler.schedule(timer.key, timer.timerId, next);
-        await fail();
-      }
+      await s.scheduler.schedule(timer.key, timer.timerId, next);
+      await fail();
     };
     await s.scheduler.schedule("run_1", "retry", first);
     await s.wait(0);

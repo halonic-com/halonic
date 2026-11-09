@@ -1,6 +1,6 @@
 import type { BlobStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 
 /** Creates an empty store under test. */
 export type MakeBlobStore = () => Promise<BlobStore>;
@@ -11,8 +11,11 @@ const xHash = "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
 const emptyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 const bytes = (text: string): Uint8Array => new TextEncoder().encode(text);
-const text = (data: Uint8Array | null): string | null =>
-  data === null ? null : new TextDecoder().decode(data);
+/** Decodes bytes the store must have returned; a missing blob fails the case. */
+const text = (data: Uint8Array | null): string => {
+  assert(data !== null, "no blob under this hash");
+  return new TextDecoder().decode(data);
+};
 
 /** Media types `put` must refuse: not `type/subtype` of HTTP token characters. */
 const badMediaTypes: readonly string[] = [
@@ -89,10 +92,9 @@ function storingCases(make: MakeBlobStore): void {
     await store.put(data, "text/plain");
     data[0] = 0;
     const read = await store.get(helloHash);
+    assert(read !== null, "no blob under this hash");
     expect(text(read)).toBe("hello");
-    if (read !== null) {
-      read[0] = 0;
-    }
+    read[0] = 0;
     expect(text(await store.get(helloHash))).toBe("hello");
   });
 }

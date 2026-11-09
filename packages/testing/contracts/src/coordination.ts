@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import {
   invalidAmounts,
   invalidCoordinationKeys,
@@ -42,7 +42,7 @@ function leaseCases(make: MakeCoordination): void {
   it("renews a lease still held, keeping its token", async () => {
     const { coordination, clock } = await make();
     const lease = await coordination.tryAcquire("run:r1", 10_000);
-    if (lease === null) throw new Error("no lease");
+    assert(lease !== null, "no lease");
     clock.advance(9_000);
     const renewed = await coordination.renew(lease, 10_000);
     expect(renewed).toEqual({ ...lease, expiresAt: iso(clock.now().getTime() + 10_000) });
@@ -53,7 +53,7 @@ function leaseCases(make: MakeCoordination): void {
   it("frees a released lease, and releasing twice does nothing", async () => {
     const { coordination } = await make();
     const lease = await coordination.tryAcquire("run:r1", 10_000);
-    if (lease === null) throw new Error("no lease");
+    assert(lease !== null, "no lease");
     await coordination.release(lease);
     await coordination.release(lease);
     expect(await coordination.tryAcquire("run:r1", 10_000)).not.toBeNull();
@@ -73,7 +73,7 @@ function leaseExpiryCases(make: MakeCoordination): void {
   it("does nothing for an old holder once the lease ran out or was taken over", async () => {
     const { coordination, clock } = await make();
     const old = await coordination.tryAcquire("run:r1", 10_000);
-    if (old === null) throw new Error("no lease");
+    assert(old !== null, "no lease");
     clock.advance(10_000);
     expect(await coordination.renew(old, 10_000)).toBeNull();
     const current = await coordination.tryAcquire("run:r1", 10_000);
@@ -178,7 +178,7 @@ function inputCases(make: MakeCoordination): void {
     const { coordination } = await make();
     await coordination.increment("budget", 1);
     const held = await coordination.tryAcquire("held", 1000);
-    if (held === null) throw new Error("no lease");
+    assert(held !== null, "no lease");
     for (const key of invalidCoordinationKeys) {
       await expect(coordination.tryAcquire(key, 1000)).rejects.toThrow(RangeError);
       await expect(coordination.read(key)).rejects.toThrow(RangeError);
