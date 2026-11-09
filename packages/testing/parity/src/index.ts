@@ -24,7 +24,12 @@ export {
   type Problem,
   type Side,
 } from "./compare/compare.ts";
-export { type FileCheck, fileChecks, placeIdOf } from "./compare/file-checks.ts";
+export {
+  caseFileChecks,
+  type FileCheck,
+  fileChecks,
+  placeIdOf,
+} from "./compare/file-checks.ts";
 export {
   type Judged,
   judge,

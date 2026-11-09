@@ -50,30 +50,33 @@ function recordingOf(parityCase: ParityCase): Recording {
 }
 
 /**
- * Every file the old loader read, in every fixture: the base's files and
- * each case's own files, in the fixtures' order. Files the old loader
- * skipped are left out: there is nothing of the old code's to compare.
+ * Every file the old loader read in one fixture: the base's files and the
+ * case's own files, in the recording's order. Files the old loader skipped
+ * are left out: there is nothing of the old code's to compare.
  */
-export function fileChecks(fixtures: string): FileCheck[] {
+export function caseFileChecks(fixtures: string, parityCase: ParityCase): FileCheck[] {
+  const recording = recordingOf(parityCase);
   const found: FileCheck[] = [];
-  for (const parityCase of loadCases(fixtures)) {
-    const recording = recordingOf(parityCase);
-    for (const recorded of recording.files) {
-      if (!recorded.read) {
-        continue;
-      }
-      const kind = recorded.schema ?? parityCase.kind;
-      found.push({
-        name: `${parityCase.id}: ${recorded.file}`,
-        caseId: parityCase.id,
-        file: recorded.file,
-        kind,
-        text: textOf(fixtures, parityCase, recorded.file),
-        id: placeIdOf(kind, recorded.file),
-        recorded,
-        diagnostics: recording.diagnostics,
-      });
+  for (const recorded of recording.files) {
+    if (!recorded.read) {
+      continue;
     }
+    const kind = recorded.schema ?? parityCase.kind;
+    found.push({
+      name: `${parityCase.id}: ${recorded.file}`,
+      caseId: parityCase.id,
+      file: recorded.file,
+      kind,
+      text: textOf(fixtures, parityCase, recorded.file),
+      id: placeIdOf(kind, recorded.file),
+      recorded,
+      diagnostics: recording.diagnostics,
+    });
   }
   return found;
+}
+
+/** Every file the old loader read, in every fixture, in the fixtures' order. */
+export function fileChecks(fixtures: string): FileCheck[] {
+  return loadCases(fixtures).flatMap((parityCase) => caseFileChecks(fixtures, parityCase));
 }

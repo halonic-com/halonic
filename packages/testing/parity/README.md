@@ -153,7 +153,7 @@ which `src/example.test.ts` runs and checks.
 
 ```ts
 import { join } from "node:path";
-import { compareFile, fileChecks, type NewResult } from "@halonicjs/testing-parity";
+import { caseFileChecks, compareFile, type NewResult, readCase } from "@halonicjs/testing-parity";
 
 /** The fixtures that ship with this package: a valid base workspace and made-up faulty cases. */
 const fixtures = join(import.meta.dirname, "../fixtures");
@@ -161,7 +161,9 @@ const fixtures = join(import.meta.dirname, "../fixtures");
 /** Compares what new code says about one fixture file against the old repo's golden recording. */
 export function runExample(): string[] {
   // The "agent/unknown-key" case: a method with a key the schema doesn't know.
-  const check = fileChecks(fixtures).find((file) => file.name.startsWith("agent/unknown-key: "));
+  // Reading just this case is quick; `fileChecks(fixtures)` reads every fixture.
+  const unknownKey = readCase("agent/unknown-key", join(fixtures, "cases/agent/unknown-key"));
+  const [check] = caseFileChecks(fixtures, unknownKey);
   if (check === undefined) throw new Error("the fixture is missing");
 
   // What the golden recording holds for the file: the old repo failed it on `methods.extract`, line 13.
