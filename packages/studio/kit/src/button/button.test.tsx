@@ -170,6 +170,25 @@ verifies("kit.button-unavailable", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it("while busy, doesn't submit its form and keeps aria-busy and focus", async () => {
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    const { container } = render(
+      <form>
+        <Button type="submit" busy>
+          Create
+        </Button>
+      </form>,
+    );
+    container.querySelector("form")?.addEventListener("submit", onSubmit);
+    const button = container.querySelector("button") as HTMLButtonElement;
+    button.focus();
+
+    await click(button);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(button);
+  });
+
   it("keeps focus while it turns busy and back", () => {
     const { container, rerender } = render(<Button>Create</Button>);
     const button = container.querySelector("button") as HTMLButtonElement;
