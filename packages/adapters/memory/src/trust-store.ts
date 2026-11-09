@@ -30,8 +30,14 @@ export class MemoryTrustStore implements TrustStore {
   /**
    * For tests: makes the record for `location` unreadable, as a damaged
    * file would be. `get` and `list` then throw, and `revoke` still deletes it.
+   *
+   * @throws when there is no record for `location`, so a test can't create
+   *   a damaged record it never granted
    */
   damage(location: string): void {
+    if (!this.#texts.has(location)) {
+      throw new Error(`There is no trust record for ${JSON.stringify(location)} to damage.`);
+    }
     this.#texts.set(location, "{");
   }
 }

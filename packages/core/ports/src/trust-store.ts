@@ -45,7 +45,9 @@ export interface TrustRecord {
  *
  * The port only stores records. `TrustService` in `core/app` resolves the
  * location, computes the fingerprint and decides whether a source is
- * trusted. Locations are compared exactly as given.
+ * trusted. Locations are compared exactly as given: no case folding and
+ * no Unicode normalisation, so `café` written as one code point and as `e`
+ * plus a combining accent are two locations.
  *
  * A record that exists but can't be read makes `get` and `list` throw,
  * never return `null` or skip it: the service then treats the source as
@@ -64,8 +66,9 @@ export interface TrustStore {
    */
   revoke(location: string): Promise<void>;
   /**
-   * Every record, sorted by location, for `halonic trust --list` and the
-   * trusted-sources list.
+   * Every record, sorted by location in UTF-16 code-unit order (as `<`
+   * compares strings, not `localeCompare`), for `halonic trust --list` and
+   * the trusted-sources list.
    *
    * @throws when any record can't be read, naming its location
    */

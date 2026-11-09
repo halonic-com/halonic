@@ -12,4 +12,12 @@ verifies("memory.trust-store", () => {
       'The trust record for "/workspaces/acme" can\'t be read.',
     );
   });
+
+  it("refuses to damage a location it holds no record for", async () => {
+    const store = new MemoryTrustStore();
+    expect(() => store.damage("/workspaces/never")).toThrow(
+      'There is no trust record for "/workspaces/never" to damage.',
+    );
+    expect(await store.list()).toEqual([]);
+  });
 });

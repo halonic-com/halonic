@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-181 (decided there: the port only stores, `TrustService` decides); `TrustStore` port v1
 
-Where an adapter implements `TrustStore`, it shall give back every field of a granted record, `null` for a location it has no record for, and an empty list when it holds none. Granting a location again shall replace its record, and revoking shall delete it; revoking a location without a record shall not be an error. It shall keep one record per location, compare locations exactly as given, and list records sorted by location. It shall keep what was granted, whatever the caller later does with the objects it passed in or got back. When a stored record can't be read, `get` for that location and `list` shall reject with an error that names the location, while other locations still read; `revoke` shall delete that record, and granting the location again shall replace it.
+Where an adapter implements `TrustStore`, it shall give back every field of a granted record, `null` for a location it has no record for, and an empty list when it holds none. Granting a location again shall replace its record, and revoking shall delete it; revoking a location without a record shall not be an error. It shall keep one record per location, compare locations exactly as given (no case folding and no Unicode normalisation), and list records sorted by location in UTF-16 code-unit order. It shall keep what was granted, whatever the caller later does with the objects it passed in or got back. When a stored record can't be read, `get` for that location and `list` shall reject with an error that names the location, while other locations still read; `revoke` shall delete that record, and granting the location again shall replace it.
 
 ## Examples
 
@@ -14,6 +14,12 @@ Where an adapter implements `TrustStore`, it shall give back every field of a gr
 - Given a record for `/workspaces/acme`,
   when `/workspaces/acme/` or `/Workspaces/acme` is read,
   then it gives `null`.
+- Given records for `/workspaces/acme`, `/Workspaces/Beta` and `/hubs/shared`,
+  when they are listed,
+  then the order is `/Workspaces/Beta`, `/hubs/shared`, `/workspaces/acme`.
+- Given a record for `/workspaces/café` with `é` as one code point,
+  when `/workspaces/café` with `e` and a combining accent is read,
+  then it gives `null`, and granting it keeps both records.
 - Given records for `/workspaces/acme` and `/workspaces/zeta`, and the first can't be read,
   when `get("/workspaces/acme")` or `list()` is called,
   then it rejects with an error naming `/workspaces/acme`, and `get("/workspaces/zeta")` still gives its record.

@@ -7,7 +7,8 @@ export interface TrustStoreHarness {
   store: TrustStore;
   /**
    * Makes the stored record for `location` unreadable, the way a damaged
-   * or hand-edited file would be. The suite only damages records it granted.
+   * or hand-edited file would be. The suite only damages records it
+   * granted; damaging a location without a record should throw.
    */
   damage(location: string): Promise<void>;
 }
@@ -99,16 +100,25 @@ function storageCases(make: MakeTrustStore): void {
 }
 
 function locationCases(make: MakeTrustStore): void {
-  it("keeps one record per location, and lists them sorted by location", async () => {
+  it("keeps one record per location, and lists them sorted by location code unit", async () => {
     const { store } = await make();
-    // Neither the order granted nor its reverse is sorted.
-    const granted = ["/workspaces/acme", "/workspaces/zeta", "/hubs/shared", "/workspaces/beta"];
+    // Neither the order granted nor its reverse is sorted. `localeCompare`
+    // would put "/Workspaces/Beta" after "/workspaces/acme"; by code unit
+    // "W" (0x57) comes before "h" (0x68), so it is first.
+    const granted = [
+      "/workspaces/acme",
+      "/workspaces/zeta",
+      "/Workspaces/Beta",
+      "/hubs/shared",
+      "/workspaces/beta",
+    ];
     for (const location of granted) {
       await store.grant(trustRecord(location, `hfp1:${location}`));
     }
     await store.revoke("/workspaces/zeta");
 
     expect((await store.list()).map((record) => record.location)).toEqual([
+      "/Workspaces/Beta",
       "/hubs/shared",
       "/workspaces/acme",
       "/workspaces/beta",
@@ -127,6 +137,25 @@ function locationCases(make: MakeTrustStore): void {
     }
     await store.revoke("/workspaces/acme/");
     expect(await store.get("/workspaces/acme")).not.toBeNull();
+  });
+
+  it("keeps the composed and decomposed spelling of a location apart", async () => {
+    const { store } = await make();
+    // "café" as one code point (NFC) and as "e" plus a combining accent
+    // (NFD). A file system that normalises names, as macOS does, must not
+    // merge the two records.
+    const composed = "/workspaces/caf\u00e9";
+    const decomposed = "/workspaces/cafe\u0301";
+    await store.grant(trustRecord(composed, "hfp1:composed"));
+    expect(await store.get(decomposed)).toBeNull();
+
+    await store.grant(trustRecord(decomposed, "hfp1:decomposed"));
+    expect(await store.get(composed)).toEqual(trustRecord(composed, "hfp1:composed"));
+    expect(await store.get(decomposed)).toEqual(trustRecord(decomposed, "hfp1:decomposed"));
+    expect(await store.list()).toHaveLength(2);
+
+    await store.revoke(decomposed);
+    expect(await store.get(composed)).toEqual(trustRecord(composed, "hfp1:composed"));
   });
 }
 
