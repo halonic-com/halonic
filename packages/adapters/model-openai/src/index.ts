@@ -1,2 +1,6 @@
-/** The npm name of this package. A placeholder export until the provider lands in the next pull request of HAL-2284. */
-export const packageName = "@halonicjs/adapter-model-openai";
+// The public API of @halonicjs/adapter-model-openai. Everything else in src/ is internal.
+export {
+  OpenAiCompatibleProvider,
+  type OpenAiCompatibleProviderOptions,
+} from "./openai-provider.ts";
+export type { MaxTokensField } from "./request.ts";
