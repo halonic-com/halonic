@@ -30,6 +30,7 @@ const session: SandboxSession = {
     network: { bridge: { host: "127.0.0.1", port: 41817 }, allowedSites: [] },
     timeLimitMs: 600_000,
   },
+  fence: { state: "fenced" },
   start: async () => {
     throw new Error("This target can't start programs.");
   },
