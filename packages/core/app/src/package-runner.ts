@@ -7,6 +7,7 @@ import type { ConnectorPin, ConnectorTransport } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import { checkPinVersion, isSamePackage, type PinRegistry } from "./connector-pin.ts";
 import { readPackageSpec } from "./package-spec.ts";
+import { findBlockedVariables, findRegistryOptions } from "./pin-overrides.ts";
 
 /** The stdio transport, which is the only one that starts a program. */
 export type StdioTransport = Extract<ConnectorTransport, { kind: "stdio" }>;
@@ -43,27 +44,6 @@ const shellSeparators = /[\s"'`;&|()]+/;
  * list several, split by commas.
  */
 const packageOptions = new Set(["-p", "--package", "--from", "--with", "--spec"]);
-
-/** Variables that can run code before the package or load another one. */
-const blockedNames = new Set([
-  "node_options",
-  "node_path",
-  "pythonpath",
-  "pythonstartup",
-  "pythonhome",
-]);
-
-/** Prefixes of variables that can move the registry or change how the runner resolves. */
-const blockedPrefixes = [
-  "npm_config_",
-  "yarn_",
-  "pnpm_",
-  "bun_",
-  "corepack_",
-  "uv_",
-  "pip_",
-  "pipx_",
-];
 
 /**
  * The program a command starts, as the runner rules compare it: without its
@@ -118,8 +98,10 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
  * `pin` passes as it is, package runner or not: the trust grant, whose
  * fingerprint holds the command and args, is what lets it start. A `pin`
  * needs one exact version, and no transport with a pin may set a variable,
- * in any case, that could move the registry or run code before the package.
- * A pinned runner must name the pin's package, and every package it names,
+ * in any case, that could move the registry, send it through a proxy, trust
+ * another certificate or load code before the package. A pinned runner may
+ * not take an option that fetches from another registry, index, folder,
+ * config or cache, must name the pin's package, and every package it names,
  * as an argument or as the value of a package option, must be the pin's
  * package at no version or the pin's version.
  *
@@ -137,16 +119,22 @@ export function checkPackageRunnerLaunch(
   if (pin === undefined) {
     return ok(null);
   }
-  const blocked = Object.keys(env).filter(isBlockedVariable);
-  if (blocked.length > 0) {
+  const variables = findBlockedVariables(env);
+  if (variables !== undefined) {
     return err(
-      `the connector's environment sets ${blocked.join(", ")}, which could move the registry or run code before the pinned package`,
+      `the connector's environment sets ${variables.names.join(", ")}, which ${variables.reason}`,
     );
   }
   const pinned = checkPinVersion(pin);
   const words = runnerWords(command, args);
   if (!pinned.ok || words === undefined) {
     return pinned;
+  }
+  const options = findRegistryOptions(words);
+  if (options.length > 0) {
+    return err(
+      `the command sets ${options.join(", ")}, which could fetch the pinned package from somewhere other than ${pin.registryUrl}`,
+    );
   }
   return checkNamedPackages(pin, words);
 }
@@ -237,11 +225,6 @@ function asRegistrySpec(registry: PinRegistry, spec: string): string {
     return spec.replace(/^([A-Za-z0-9._-]+)@(?=[^:/\\]*$)/, "$1==");
   }
   return spec;
-}
-
-function isBlockedVariable(name: string): boolean {
-  const lower = name.toLowerCase();
-  return blockedNames.has(lower) || blockedPrefixes.some((prefix) => lower.startsWith(prefix));
 }
 
 /** Whether `words` holds `wanted` as a run of neighbours. */
