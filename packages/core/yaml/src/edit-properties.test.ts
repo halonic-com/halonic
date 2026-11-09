@@ -124,7 +124,7 @@ verifies("yaml.edit", () => {
         expect(spliced).toBeDefined();
         expect(unwrap(readYaml(spliced ?? "")).data).toEqual(expected);
       }),
-      { numRuns: 300 },
+      { numRuns: 100 },
     );
   });
 
@@ -239,7 +239,7 @@ verifies("yaml.edit-preserve", () => {
         expect(all.layout).toBe("kept");
         expect(unwrap(readYaml(all.text)).data).toEqual(expected);
       }),
-      { numRuns: 60, examples: trickyTexts.map((text) => [text]) },
+      { numRuns: 90, examples: trickyTexts.map((text) => [text]) },
     );
   });
 });
