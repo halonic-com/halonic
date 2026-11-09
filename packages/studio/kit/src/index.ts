@@ -23,6 +23,12 @@ export {
   useOpenExternal,
 } from "./external-link/open-external.tsx";
 export { Kbd, type KbdProps } from "./kbd/kbd.tsx";
+export {
+  type Presentation,
+  PresentationProvider,
+  type PresentationProviderProps,
+  usePresentation,
+} from "./presentation/presentation.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
 
 export {

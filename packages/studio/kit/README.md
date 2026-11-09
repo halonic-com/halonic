@@ -217,6 +217,21 @@ edge is always `border-strong`.
 There's no hover, focus or disabled state, and the `danger` tone is the error state. On a phone the
 chip keeps its size; when it doesn't fit beside a row's title, the row puts it under the title.
 
+## Presentation
+
+How the Studio is laid out: `desktop` or `phone`. The shell reads the width once, with
+`matchMedia` and `PHONE_MAX_WIDTH`, and sets it at its root; without a provider it's `desktop`.
+
+```tsx
+<PresentationProvider presentation={isPhone ? "phone" : "desktop"}>
+  <App />
+</PresentationProvider>;
+```
+
+Parts that become a different element or layout on a phone (Select, Dialog, Tabs, Side panel)
+read it with `usePresentation()`. A size change is a `phone:` class instead: no kit part reads the
+window width. Tests set the provider directly.
+
 ## Kbd
 
 A keyboard shortcut in a menu, the command palette or a tooltip: one box per key.
