@@ -25,6 +25,7 @@
     "@types/react-dom": "catalog:",
     "jsdom": "catalog:",
     "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
