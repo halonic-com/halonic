@@ -35,6 +35,28 @@ verifies("google-setup.sign-in-scopes-per-service", () => {
     ]);
   });
 
+  it("counts the short sign-in scopes as granted under the long names Google reports", () => {
+    const withSignInScopes: SetupService = {
+      ...ledgerService,
+      googleScopes: [
+        ...ledgerService.googleScopes,
+        { scope: "openid", reason: "Signs the user in." },
+        { scope: "email", reason: "Reads the account's address." },
+        { scope: "profile", reason: "Reads the account's name." },
+      ],
+    };
+    const granted = [
+      ledgerScope,
+      "openid",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile",
+    ];
+
+    expect(serviceScopes([withSignInScopes], granted)).toEqual([
+      { service: "ledger", granted: true },
+    ]);
+  });
+
   it("counts a service that needs no scope as granted", () => {
     const noScopes: SetupService = { ...ledgerService, googleScopes: [] };
 
