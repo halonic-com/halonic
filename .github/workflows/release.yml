@@ -3,9 +3,17 @@
 #
 # Today it is a dry-run skeleton. The CLI is packed from a stub and the
 # installer is a placeholder text file, so the whole path (tag, build,
-# checksums, draft release) is tested before the real app exists. No
-# signing key is used. Windows signing, the `release` environment, the
+# checksums, draft release) is tested before the real app exists. The
 # updater files, the APK and the SBOM are added by their own tasks.
+#
+# Windows signing has two jobs:
+# - sign-test (dry runs): signs a tiny test program with a throwaway
+#   self-signed certificate and a real timestamp, then checks the result.
+#   It proves the signing and timestamping steps work. It holds no secret.
+# - sign-windows (real runs): signs the installer with Azure Artifact
+#   Signing (formerly Trusted Signing). It runs only in the `release`
+#   environment, whose secrets and variables hold the Azure details. No
+#   credential is written in this file.
 #
 # Run it without a tag from the Actions tab (dry_run on), or push a tag
 # that starts with `v`. A tag that contains `-test` is always a dry run.
@@ -86,7 +94,7 @@ jobs:
       - name: Refuse a real release until the real build exists
         if: steps.plan.outputs.dry_run != 'true'
         run: |
-          echo "::error::Only dry runs are supported. The real Studio build, signing and the release environment are not wired in yet."
+          echo "::error::Only dry runs are supported. The real Studio build is not wired in yet."
           exit 1
       - name: Build the CLI package (stub)
         env:
@@ -129,9 +137,107 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sign-test:
+    name: Sign a test file (dry run)
+    needs: build
+    if: needs.build.outputs.dry_run == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Make a test program
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force sign-test | Out-Null
+          Set-Content -Path sign-test/test.cs -Value 'class T { static void Main() { System.Console.WriteLine("test"); } }'
+          & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /out:sign-test/halonic-sign-test.exe sign-test/test.cs
+          if ($LASTEXITCODE -ne 0) { throw "csc failed" }
+      - name: Sign it with a throwaway certificate and a timestamp
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert `
+            -Subject "CN=Halonic release dry run (not trusted)" `
+            -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(1)
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName | Select-Object -Last 1
+          & $signtool.FullName sign /sha1 $cert.Thumbprint /fd SHA256 `
+            /tr http://timestamp.acs.microsoft.com /td SHA256 sign-test/halonic-sign-test.exe
+          if ($LASTEXITCODE -ne 0) { throw "signtool sign failed" }
+          Remove-Item "Cert:\CurrentUser\My\$($cert.Thumbprint)"
+      - name: Check the signature and the timestamp
+        shell: pwsh
+        run: |
+          # The throwaway certificate is not trusted, so the status is
+          # UnknownError or NotTrusted. What matters is that a signature is
+          # present and that a timestamp countersignature is attached.
+          $sig = Get-AuthenticodeSignature sign-test/halonic-sign-test.exe
+          if (-not $sig.SignerCertificate) { throw "No signature on the test file" }
+          if (-not $sig.TimeStamperCertificate) { throw "No timestamp on the test file" }
+          "Signed by: $($sig.SignerCertificate.Subject)"
+          "Timestamped by: $($sig.TimeStamperCertificate.Subject)"
+
+  sign-windows:
+    name: Sign the Windows installer
+    needs: build
+    if: needs.build.outputs.dry_run != 'true'
+    runs-on: windows-2025
+    timeout-minutes: 15
+    # The only job that can reach the signing identity. Required reviewers
+    # and the branch and tag rule are set on this environment, not here.
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: dist
+      # Signs in with the app registration's federated identity (OIDC), so
+      # there is no client secret. The three ids are secrets of the
+      # `release` environment.
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ vars.SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.SIGNING_CERTIFICATE_PROFILE }}
+          files-folder: ${{ github.workspace }}\dist
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - name: Check the signature and rewrite the checksums
+        shell: pwsh
+        env:
+          INSTALLER: ${{ needs.build.outputs.installer }}
+        run: |
+          $sig = Get-AuthenticodeSignature "dist/$env:INSTALLER"
+          if ($sig.Status -ne "Valid") { throw "Installer signature is $($sig.Status)" }
+          if (-not $sig.TimeStamperCertificate) { throw "Installer has no timestamp" }
+          # Signing changes the installer's bytes, so the checksums from the
+          # build job no longer match. Write them again.
+          Get-ChildItem dist -File | Where-Object Name -ne SHA256SUMS | Sort-Object Name | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content -Encoding ascii -Path dist/SHA256SUMS
+          Get-Content dist/SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files-signed
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
   draft-release:
     name: Create draft release
-    needs: build
+    needs: [build, sign-test, sign-windows]
+    # Exactly one of the two signing jobs runs. Skipped is fine, failed is not.
+    if: ${{ !cancelled() && needs.build.result == 'success' && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -139,7 +245,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: release-files
+          # Real runs ship the signed files. Dry runs ship the placeholders.
+          name: ${{ needs.build.outputs.dry_run == 'true' && 'release-files' || 'release-files-signed' }}
           path: dist
       - name: Create the draft release
         env:
