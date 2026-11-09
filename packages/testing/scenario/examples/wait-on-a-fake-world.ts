@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { eventually } from "../src/index.ts";
+import { eventually, keepOnFailure } from "../src/index.ts";
 
 // A fake world: a queue that delivers one message every 1000 ms of fake time.
 function newWorld() {
@@ -16,8 +16,10 @@ function newWorld() {
   };
 }
 
+// Call this inside a test. On failure, the delivered list is kept as JSON.
 export async function runExample() {
   const world = newWorld();
+  keepOnFailure("delivered", () => world.delivered);
 
   // "At some point within a minute, three messages arrive": eventually.
   const third = await eventually(
