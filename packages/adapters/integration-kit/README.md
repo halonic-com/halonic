@@ -88,8 +88,8 @@ Node, in the Worker and in the browser. Published as
 A refusal throws an `IntegrationRefusedError` with a `code`. Its message
 names the host and path only, never a query or a secret. The codes in
 `leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`) mean
-the integration tried to get a secret out; the bridge pauses the connector
-on any of them. Every other code is an ordinary mistake.
+the integration tried to get a secret out; the bridge should pause the
+connector on any of them. Every other code is an ordinary mistake.
 
 ## Example
 

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1180 (asked on HAL-1133: the bridge pauses a connector on any of these codes, not on `secret-in-request` alone)
+- Source: HAL-1180 (asked on HAL-1133: the bridge should pause a connector on any of these codes, not on `secret-in-request` alone)
 
 The kit shall export `leakAttemptCodes`, the refusal codes that mean the integration tried to get a secret out: `secret-in-request` and `placement-not-in-sheet`. Every code in the list shall be a refusal code the kit really throws. Ordinary refusals, where the request is wrong but no secret is going anywhere, such as `host-not-allowed` or `request-too-large`, shall stay out of it. The list can't be changed at run time.
 
