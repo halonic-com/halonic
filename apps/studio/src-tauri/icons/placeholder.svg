@@ -3,7 +3,8 @@
   until the board picks a logo (HAL-796) and T10 brings the real set.
   Regenerate the Android icons from this file in apps/studio with
   `pnpm tauri icon src-tauri/icons/placeholder.svg`, then delete the desktop
-  and iOS files it also writes; the desktop shell (HAL-192) adds its own.
+  and iOS files it also writes, except icon.png and icon.ico. The Windows
+  build needs icon.ico for the app's resource file (HAL-192).
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <title>Halonic placeholder icon</title>
