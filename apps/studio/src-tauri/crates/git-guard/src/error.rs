@@ -3,7 +3,7 @@ use std::fmt;
 /// Why a git call was refused or failed before git could answer.
 ///
 /// A git call that runs and exits with an error is not a `GitError`: it
-/// comes back as git's own output, with its exit code and stderr.
+/// comes back as a [`crate::GitOutput`] with its exit code and stderr.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GitError {
     /// The call had no arguments, so no subcommand.
