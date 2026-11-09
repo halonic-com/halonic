@@ -53,14 +53,12 @@ export function decide(
   input: DecideInput,
   definitions: RunDefinitions,
 ): Decision {
+  checkRunTakes(run, input);
   if (input.type === "start") {
-    return start(run, input, definitions.workflow);
+    return start(input, definitions.workflow);
   }
   if (run === null) {
     throw new InputRefused("engine.run-unknown", "The run has not started.");
-  }
-  if (run.status === "completed" || run.status === "failed") {
-    throw new InputRefused("engine.run-ended", `Run "${run.runId}" has ended (${run.status}).`);
   }
   if (input.type !== "effect-done" || run.state === null) {
     // Sends and timers arrive with the wait state and its checks (3c).
@@ -84,10 +82,30 @@ export function decide(
   return { events: draft.events, effects: draft.effects };
 }
 
-function start(run: RunState | null, input: StartInput, workflow: Workflow): Decision {
-  if (run !== null) {
-    throw new InputRefused("engine.run-exists", `Run "${run.runId}" has already started.`);
+/**
+ * The refusals that depend on the run alone, not on its definitions: a start
+ * for a run that exists, any other input for a run that doesn't, and any
+ * input for a run that has ended. `step` checks these before it reads the
+ * run's definitions.
+ *
+ * @throws InputRefused when the run can't take the input
+ */
+export function checkRunTakes(run: RunState | null, input: DecideInput): void {
+  if (input.type === "start") {
+    if (run !== null) {
+      throw new InputRefused("engine.run-exists", `Run "${run.runId}" has already started.`);
+    }
+    return;
   }
+  if (run === null) {
+    throw new InputRefused("engine.run-unknown", "The run has not started.");
+  }
+  if (run.status === "completed" || run.status === "failed") {
+    throw new InputRefused("engine.run-ended", `Run "${run.runId}" has ended (${run.status}).`);
+  }
+}
+
+function start(input: StartInput, workflow: Workflow): Decision {
   const { type: _type, at, runId, trigger, parent, ...fields } = input;
   const started: DecidedEvent = {
     type: "run.started",

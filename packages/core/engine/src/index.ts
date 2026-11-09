@@ -27,6 +27,7 @@ export type {
   TimerInput,
   ToolResult,
 } from "./kernel/decide-types.ts";
+export { keepDefinitions, readDefinitions } from "./kernel/kept-definitions.ts";
 export type {
   BuiltStateType,
   StateContext,
@@ -36,6 +37,14 @@ export type {
   StateStep,
 } from "./kernel/registry.ts";
 export { evolve, foldRun, type PendingCall, type RunState } from "./kernel/run-state.ts";
+export {
+  maxStepAttempts,
+  readRun,
+  type StepPorts,
+  type StepResult,
+  snapshotVersion,
+  step,
+} from "./kernel/step.ts";
 export {
   defaultMaxRounds,
   LocalExecutor,

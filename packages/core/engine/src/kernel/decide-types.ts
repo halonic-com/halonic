@@ -126,8 +126,8 @@ export type Effect =
   | SetTimerEffect;
 
 /**
- * An event `decide` wants appended. `step` adds `runId`, `seq`, `at` (the
- * input's time) and `entry`.
+ * An event `decide` wants appended. `step` adds `runId`, `seq` and `at` (the
+ * input's time); it leaves `entry` out, because `entryOf` works it out the same.
  */
 export type DecidedEvent = RunEventBody & Pick<RunEventBase, "branch" | "item">;
 

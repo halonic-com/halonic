@@ -15,6 +15,7 @@
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*",
     "@halonicjs/workflow": "workspace:*"
   },
   "devDependencies": {

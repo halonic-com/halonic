@@ -26,6 +26,9 @@ loop of one model turn, which the local chat turn runs.
 | `DecideInput`        | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`), each with its time; `decide` returns a `Decision`   | (types only)                                                                        |
 | `Effect`             | what `decide` asks `step` to do after appending: call a model or a tool, start a child run, tell the parent, set a timer     | (types only)                                                                        |
 | `decide`             | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take                           | `engine.decide-refusals`                                                            |
+| `step`               | moves a run on by one input: reads it, decides and appends once with `expectedSeq`, reading again after a lost race          | `engine.step-appends-once`                                                          |
+| `readRun`            | reads a run from its snapshot and the events after it; a snapshot that doesn't fit is ignored and the log folded             | `engine.snapshot-is-cache`                                                          |
+| `keepDefinitions`    | keeps a run's definitions in the blob store (`readDefinitions` reads them back); a missing blob fails the run                | `engine.kept-definitions`                                                           |
 | `StateHandler`       | one state type's `enter` and `onInput`, found by `pnpm discover` in `src/states`                                             | `engine.state-registry`                                                             |
 | `task` state         | runs its agent with one model call, writes `output` and takes the `done` transition                                          | `engine.task-state`                                                                 |
 | `final` state        | completes the run with its context                                                                                           | `engine.final-state`                                                                |
@@ -54,9 +57,16 @@ counts the call in `unpricedCalls`.
 
 `decide(state, input, definitions)` is pure: the time comes in with every input, a new run id
 with `start`, and call ids (`call-<n>`) are counted in the `RunState`. It returns the events to
-append and the effects to carry out; `step` (3b) appends them and runs the effects through the
-ports. Every event `decide` emits is folded into the state as it goes, so a guard after a step
-already sees the context that step wrote.
+append and the effects to carry out. Every event `decide` emits is folded into the state as it
+goes, so a guard after a step already sees the context that step wrote.
+
+`step(ports, runId, input)` reads the run, calls `decide` and appends the events with the run's
+last `seq` as `expectedSeq`, with the state after them as the snapshot. A lost race stored nothing,
+so it reads the run again and decides afresh; an input is never written twice. It hands the effects
+back to the caller, which carries them out once the events are stored. The snapshot is a cache: it
+carries `snapshotVersion`, and one that doesn't fit the log is ignored. A run reads its definitions
+only from the blob its `definitionsVersion` names; when that blob is missing the run fails, and the
+engine never falls back to the workspace's files.
 
 Each folder in `src/states` exports `<folder>State` from its `state.ts`. `pnpm discover` lists
 them in `src/generated/states.ts`, typed against `StateRegistry`, so a missing or extra folder
