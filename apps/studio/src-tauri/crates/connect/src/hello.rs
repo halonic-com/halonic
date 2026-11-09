@@ -53,8 +53,9 @@ pub enum HelloOutcome {
     /// Open the computer's address. `newer_app` is the computer's version
     /// when it is newer than the app, for "A newer app is available".
     Connected { newer_app: Option<Version> },
-    /// "This app is too old for Halonic on your computer (`min_app_version`)."
-    AppTooOld { min_app_version: Version },
+    /// "This app is too old for Halonic on your computer (`computer_version`)."
+    /// The version in brackets is the computer's, not `minAppVersion`.
+    AppTooOld { computer_version: Version },
     /// "Halonic on your computer (`computer_version`) is too old for this app."
     ComputerTooOld { computer_version: Version },
 }
@@ -65,7 +66,7 @@ pub enum HelloOutcome {
 pub fn compare_versions(hello: &Hello, app: &AppVersions) -> HelloOutcome {
     if hello.min_app_version > app.app {
         HelloOutcome::AppTooOld {
-            min_app_version: hello.min_app_version.clone(),
+            computer_version: hello.version.clone(),
         }
     } else if hello.version < app.oldest_computer {
         HelloOutcome::ComputerTooOld {
@@ -152,18 +153,19 @@ mod tests {
 
     #[test]
     fn hello_versions_app_too_old() {
-        let outcome = compare_versions(&hello("0.2.0", "0.2.0"), &app("0.1.0", "0.1.0"));
+        // The computer's version is shown, not `minAppVersion`.
+        let outcome = compare_versions(&hello("0.2.1", "0.2.0"), &app("0.1.0", "0.1.0"));
         assert_eq!(
             outcome,
             HelloOutcome::AppTooOld {
-                min_app_version: v("0.2.0")
+                computer_version: v("0.2.1")
             }
         );
         let both = compare_versions(&hello("0.1.0", "0.3.0"), &app("0.2.0", "0.2.0"));
         assert_eq!(
             both,
             HelloOutcome::AppTooOld {
-                min_app_version: v("0.3.0")
+                computer_version: v("0.1.0")
             }
         );
     }
