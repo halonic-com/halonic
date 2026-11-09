@@ -28,6 +28,8 @@ Device-wide settings such as the theme live outside any scope.
 | `checkToolCall`             | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs                                | `ports.untrusted-tool-listings` |
 | `refusalStatusLine`         | one line of plain text for a refusal in the integration status, never for the model                                          | `ports.untrusted-tool-listings` |
 | `fenceUntrusted`            | puts outside text inside the untrusted fence, which holds when the text holds its markers                                    | `ports.untrusted-tool-listings` |
+| `checkPinVersion`           | refuses a `ConnectorPin` whose version isn't one exact version, such as a tag (`latest`) or a range (`^2.3.1`)               | `app.connector-pin-version`     |
+| `checkResolvedVersion`      | refuses a resolved package or version other than the pin's                                                                   | `app.connector-pin-version`     |
 
 ## Example
 

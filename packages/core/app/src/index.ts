@@ -8,6 +8,12 @@ export {
   type CommandSpec,
 } from "./command-bus.ts";
 export {
+  checkPinVersion,
+  checkResolvedVersion,
+  type PinnedPackage,
+  type PinRegistry,
+} from "./connector-pin.ts";
+export {
   EventBus,
   type EventListener,
   type EventMap,

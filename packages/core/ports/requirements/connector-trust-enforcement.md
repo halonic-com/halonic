@@ -10,6 +10,8 @@ The connector port's documentation shall state these rules, and the adapters and
 - **A package runner needs a pin.** A stdio `command` whose program name, without its folder, any case and any `.cmd`, `.exe`, `.bat` or `.ps1` ending, is `npx`, `bunx` or `uvx`, or one of `npm exec`, `pnpm dlx`, `yarn dlx`, `pipx run` and `uv tool run`, doesn't start without a `pin`. A pin whose `version` is a tag or a range doesn't start either.
 - **The environment can't override the pin.** With a pin, the adapter doesn't start when `env` sets, in any case, `NODE_OPTIONS`, `NODE_PATH`, `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONHOME`, or a name starting with `npm_config_`, `YARN_`, `PNPM_`, `BUN_`, `COREPACK_`, `UV_`, `PIP_` or `PIPX_`.
 
+The pure checks are built and the launcher isn't (HAL-1132). The exact-version rule, which refuses tags and ranges and checks a resolved version against the pin, is a pure check in `@halonicjs/app`, active as `app.connector-pin-version`. This requirement stays draft until the stdio launcher (HAL-230) exists and calls that check before it starts a program, starts in a clean launch folder of its own, ignores the workspace's package-manager settings, and looks the version up only at `registryUrl`, tested against recorded npm and PyPI responses. The grant rules for the adapters wait on the same launcher and the connector contract suites (HAL-181).
+
 ## Examples
 
 - Given an untrusted workspace whose YAML sets `risk: read` on a tool its `http` connector lists,
