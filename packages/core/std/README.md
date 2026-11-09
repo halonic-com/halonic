@@ -40,6 +40,10 @@ with `errorKindOf` and turns it into its response in one exhaustive `switch`.
 Anything without a kind is `internal`, so an unexpected error never shows
 its own text to the user.
 
+`findSecretShape` spots text shaped like an API key or other secret (`sk-`, `GOCSPX-`, `AIza`,
+`ghp_`, `github_pat_`, `xoxb-`), so Studio can hold a message before it is sent, saved or logged.
+It answers with the kind of secret only, never the text it found.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
