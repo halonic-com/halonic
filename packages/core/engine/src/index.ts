@@ -1,3 +1,4 @@
+export { type ResolvedModel, runFailureReasonOf } from "./agent/model-chain.ts";
 export {
   type ModelTurnInput,
   type ModelTurnResult,
@@ -10,5 +11,4 @@ export {
   defaultMaxRounds,
   LocalExecutor,
   type LocalExecutorOptions,
-  type ResolvedModel,
 } from "./local-executor.ts";

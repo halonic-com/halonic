@@ -1,7 +1,7 @@
 import type { ChatTurnRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { halonicTool, steppingClock } from "./agent/turn-test-kit.test-helper.ts";
+import { halonicTool, secretsWith, steppingClock } from "./agent/turn-test-kit.test-helper.ts";
 import { LocalExecutor, type LocalExecutorOptions } from "./local-executor.ts";
 import {
   call,
@@ -21,6 +21,7 @@ function executorOn(model: ScriptedModel, options: Partial<LocalExecutorOptions>
     },
     halonicTools: [],
     connectors: [],
+    secrets: secretsWith(),
     clock: steppingClock(),
     ...options,
   });
@@ -105,6 +106,7 @@ verifies("engine.local-chat-turn", () => {
       resolveModel: () => Promise.reject(new Error("no model with alias fast")),
       halonicTools: [],
       connectors: [],
+      secrets: secretsWith(),
       clock: steppingClock(),
     });
     await expect(executor.chatTurn(request)).rejects.toThrow("no model with alias fast");

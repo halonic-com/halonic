@@ -3,7 +3,15 @@ import type { RunEventBody } from "@halonicjs/events";
 /** The run log events a model turn writes. */
 export type TurnEvent = Extract<
   RunEventBody,
-  { type: "llm.request" | "llm.response" | "tool.called" | "tool.result" }
+  {
+    type:
+      | "llm.request"
+      | "llm.response"
+      | "llm.skipped"
+      | "llm.fallback"
+      | "tool.called"
+      | "tool.result";
+  }
 >;
 
 /**

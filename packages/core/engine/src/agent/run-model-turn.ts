@@ -9,21 +9,24 @@ import type {
   ChatParams,
   ChatResponse,
   ChatTurnRefusal,
+  ChatTurnSkip,
   Clock,
   ConnectorClient,
-  LlmProvider,
+  Secrets,
   ToolCall,
   ToolDefinition,
 } from "@halonicjs/ports";
+import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { runToolCall, type ToolCallContext } from "./run-tool-call.ts";
 import type { TurnLog } from "./turn-log.ts";
 import { collectTurnTools, type HalonicTool, halonicSource, type TurnTools } from "./turn-tools.ts";
 
 /** What one model turn needs. */
 export interface ModelTurnInput {
-  readonly provider: LlmProvider;
-  /** The model name at that provider. */
-  readonly model: string;
+  /** The model the turn starts on, with the models it falls back to. */
+  readonly model: ResolvedModel;
+  /** Where the turn checks that a model's key is set; it never reads further than that. */
+  readonly secrets: Secrets;
   /** The conversation so far. */
   readonly messages: readonly ChatMessage[];
   /** The caller's tools: offered first, and handed back instead of run. */
@@ -48,6 +51,10 @@ export interface ModelTurnResult extends ChatResponse {
   /** Every assistant and tool message the turn added, ending with the last answer. */
   readonly turn: ChatMessage[];
   readonly refusals: ChatTurnRefusal[];
+  /** The models skipped before any call, in order. */
+  readonly skipped: ChatTurnSkip[];
+  /** The model name that gave the last answer. */
+  readonly model: string;
 }
 
 /**
@@ -57,11 +64,16 @@ export interface ModelTurnResult extends ChatResponse {
  * calls from the same answer); or with `finishReason: "length"` and no
  * calls at the round limit, refusing the calls it dropped.
  *
- * @throws when the model call fails or the log can't be written
+ * A model without its key is skipped, and an offline one hands the call to
+ * the next model at once; see {@link ModelChain}.
+ *
+ * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
+ * @throws when the log can't be written
  */
 export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResult> {
   const tools = await collectTurnTools(input);
   const turn: ChatMessage[] = [];
+  const models = new ModelChain(input.model, input.secrets, input.agent, input.log);
   const context: ToolCallContext = {
     agent: input.agent,
     refusals: [...tools.refusals],
@@ -69,9 +81,19 @@ export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResu
   };
   let usage: Usage = { inputTokens: 0, outputTokens: 0 };
   for (let round = 1; ; round++) {
-    const response = await askModel(input, tools, [...input.messages, ...turn]);
+    const { response, answeredBy } = await askModel(input, models, tools, [
+      ...input.messages,
+      ...turn,
+    ]);
     usage = addUsage(usage, response.usage);
-    const ended = { ...response, usage, turn, refusals: context.refusals };
+    const ended = {
+      ...response,
+      usage,
+      turn,
+      refusals: context.refusals,
+      skipped: models.skipped,
+      model: answeredBy.model,
+    };
     if (response.toolCalls.length === 0) {
       turn.push(assistantMessage(response, response.toolCalls));
       return ended;
@@ -97,36 +119,38 @@ export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResu
 
 async function askModel(
   input: ModelTurnInput,
+  models: ModelChain,
   tools: TurnTools,
   messages: ChatMessage[],
-): Promise<ChatResponse> {
-  const { provider, model, agent } = input;
+) {
+  const { agent } = input;
+  const asked = await models.current();
   await input.log?.append({
     type: "llm.request",
     agent,
-    provider: provider.id,
-    model,
+    provider: asked.provider.id,
+    model: asked.model,
     messages: messages.length,
   });
   const started = input.clock.now().getTime();
-  const response = await provider.chat({
-    model,
+  const answer = await models.chat({
     messages,
     tools: tools.tools.map((tool) => tool.definition),
     ...(input.params === undefined ? {} : { params: input.params }),
     meta: { agentId: agent },
   });
+  const { response, answeredBy } = answer;
   await input.log?.append({
     type: "llm.response",
     agent,
-    provider: provider.id,
-    model,
+    provider: answeredBy.provider.id,
+    model: answeredBy.model,
     usage: response.usage,
     latencyMs: input.clock.now().getTime() - started,
     text: response.content,
     ...(response.reasoning === undefined ? {} : { thoughts: response.reasoning }),
   });
-  return response;
+  return answer;
 }
 
 /**

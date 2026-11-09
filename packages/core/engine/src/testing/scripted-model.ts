@@ -8,22 +8,23 @@ import type {
 } from "@halonicjs/ports";
 
 /**
- * An `LlmProvider` that gives scripted answers in order and records every
- * request, for the engine's own tests. A deliberate fake, like `TestExecutor`
+ * An `LlmProvider` that gives scripted answers in order, throws the scripted
+ * errors in their place, and records every request, for the engine's own tests. A deliberate fake, like `TestExecutor`
  * in `core/app`: core may not use adapters, not even in tests. The parity
  * mock model in `packages/testing` replaces it once it exists. Not exported
  * from the package, so nothing outside its tests can depend on it.
  */
 export class ScriptedModel implements LlmProvider {
-  readonly id = "scripted";
+  readonly id: string;
   readonly type = "scripted";
   readonly capabilities = { tools: true, jsonOutput: false, vision: false, streaming: false };
   /** Every request, in order, with a copy of its messages as they were then. */
   readonly requests: ChatRequest[] = [];
-  private readonly answers: ChatResponse[];
+  private readonly answers: (ChatResponse | Error)[];
 
-  constructor(answers: ChatResponse[]) {
+  constructor(answers: (ChatResponse | Error)[], id = "scripted") {
     this.answers = [...answers];
+    this.id = id;
   }
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
@@ -31,6 +32,9 @@ export class ScriptedModel implements LlmProvider {
     const answer = this.answers.shift();
     if (answer === undefined) {
       throw new Error("the scripted model has no answer left");
+    }
+    if (answer instanceof Error) {
+      throw answer;
     }
     return answer;
   }

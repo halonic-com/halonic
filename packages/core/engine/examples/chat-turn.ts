@@ -35,6 +35,8 @@ export async function runExample(): Promise<{ answer: string; roles: string[]; m
     resolveModel: async () => ({ provider: model, model: "acme-1" }),
     halonicTools: [],
     connectors: [billing],
+    // The stand-in model names no key, so no secret is ever looked up.
+    secrets: { get: async () => null },
     clock: { now: () => new Date("2026-11-09T09:00:00Z") },
   });
   const response = await executor.chatTurn({

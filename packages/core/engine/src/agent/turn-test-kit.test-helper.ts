@@ -1,4 +1,10 @@
-import type { ChatResponse, Clock, ConnectorClient, ToolDefinition } from "@halonicjs/ports";
+import type {
+  ChatResponse,
+  Clock,
+  ConnectorClient,
+  Secrets,
+  ToolDefinition,
+} from "@halonicjs/ports";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import { type ModelTurnInput, runModelTurn } from "./run-model-turn.ts";
 import type { TurnEvent, TurnLog } from "./turn-log.ts";
@@ -14,6 +20,11 @@ export function steppingClock(): Clock {
       return reading;
     },
   };
+}
+
+/** Secrets where only the named ones are set, each to a made-up value. */
+export function secretsWith(...names: string[]): Secrets {
+  return { get: async (name) => (names.includes(name) ? "test-value" : null) };
 }
 
 /** A run log that keeps the events in memory. */
@@ -49,8 +60,8 @@ export interface TestTurn {
 export async function runTestTurn(setup: TestTurn) {
   const model = new ScriptedModel(setup.answers);
   const input: ModelTurnInput = {
-    provider: model,
-    model: "scripted-1",
+    model: { provider: model, model: "scripted-1" },
+    secrets: secretsWith(),
     messages: [{ role: "user", content: "Find the Acme invoice" }],
     callerTools: setup.callerTools ?? [],
     halonicTools: setup.halonicTools ?? [],

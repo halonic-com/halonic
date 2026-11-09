@@ -8,27 +8,21 @@ import type {
   ChatTurnResponse,
   Clock,
   ConnectorClient,
-  LlmProvider,
   RunEventListener,
   RunExecutor,
   RunSubscription,
+  Secrets,
 } from "@halonicjs/ports";
+import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
-
-/** The provider and model a chat turn goes to. */
-export interface ResolvedModel {
-  readonly provider: LlmProvider;
-  /** The model name at that provider. */
-  readonly model: string;
-}
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
 export interface LocalExecutorOptions {
   /**
    * Picks the model of a chat turn from its request: `alias`, `agentId` and
-   * the unsaved `agent` settings. The workspace package plugs in here once
-   * it has model aliases.
+   * the unsaved `agent` settings, with the alias's own fallbacks. The
+   * workspace package plugs in here once it has model aliases.
    *
    * @throws when no model fits; `chatTurn` then rejects with that error
    */
@@ -37,6 +31,8 @@ export interface LocalExecutorOptions {
   readonly halonicTools: readonly HalonicTool[];
   /** The connected servers, whose tools are offered last. */
   readonly connectors: readonly ConnectorClient[];
+  /** Where a turn checks that a model's key is set, to skip the model before calling it when it isn't. */
+  readonly secrets: Secrets;
   readonly clock: Clock;
   /** The most model calls one chat turn makes; 20 when left out. */
   readonly maxRounds?: number;
@@ -98,15 +94,15 @@ export class LocalExecutor implements RunExecutor {
   /**
    * Runs one chat turn with the caller's tools, Halonic's tools and the
    * connected servers' tools. It keeps no run log, because a chat turn
-   * belongs to no run.
+   * belongs to no run: the models it skipped are in `skipped` instead.
    *
-   * @throws when no model fits the request or the model call fails
+   * @throws when no model fits the request
+   * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
    */
   async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
-    const { provider, model } = await this.options.resolveModel(request);
-    const result = await runModelTurn({
-      provider,
-      model,
+    return runModelTurn({
+      model: await this.options.resolveModel(request),
+      secrets: this.options.secrets,
       messages: request.messages,
       callerTools: request.tools,
       halonicTools: this.options.halonicTools,
@@ -116,7 +112,6 @@ export class LocalExecutor implements RunExecutor {
       agent: request.agentId ?? chatAgent,
       clock: this.options.clock,
     });
-    return { ...result, model };
   }
 }
 

@@ -7,22 +7,32 @@ loop of one model turn, which the local chat turn runs.
 - **Owner:** elena
 - **Public API:** `@halonicjs/engine`
 
-| Part              | What it does                                                                                                                 | Requirement                                                                         |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `LocalExecutor`   | the `RunExecutor` that runs the engine in this process; for now it runs chat turns only                                      | `engine.local-chat-turn`                                                            |
-| `runModelTurn`    | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again    | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return`                    |
-|                   | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name         | `engine.turn-round-limit`, `engine.turn-tool-names`                                 |
-|                   | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
-| `TurnLog`         | where a turn writes `llm.request`, `llm.response`, `tool.called` and `tool.result`                                           | `engine.turn-logs-events`                                                           |
-| `RunStoreTurnLog` | a `TurnLog` that appends those events to a run's log in a `RunStore`                                                         | `engine.turn-logs-events`                                                           |
-| `HalonicTool`     | one of Halonic's own tools: its definition and how to run it                                                                 | `engine.turn-runs-tool-calls`                                                       |
+| Part                 | What it does                                                                                                                 | Requirement                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `LocalExecutor`      | the `RunExecutor` that runs the engine in this process; for now it runs chat turns only                                      | `engine.local-chat-turn`                                                            |
+| `runModelTurn`       | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again    | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return`                    |
+|                      | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name         | `engine.turn-round-limit`, `engine.turn-tool-names`                                 |
+|                      | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
+| `ModelChain`         | (internal) skips a model whose key isn't set, and moves on at once from an offline one, with no retries                      | `engine.skip-model-without-key`, `engine.offline-falls-back`                        |
+|                      | stops the turn when the model is missing, can't call tools, or is refused                                                    | `engine.model-failure-stops`                                                        |
+| `ResolvedModel`      | the model a turn starts on, the name of its key's secret, and its alias's own fallbacks                                      | `engine.offline-falls-back`                                                         |
+| `runFailureReasonOf` | the reason a run fails with after its model call threw: `model-missing`, `model-no-tools` or `error`                         | `engine.model-failure-stops`                                                        |
+| `TurnLog`            | where a turn writes `llm.request`, `llm.response`, `llm.skipped`, `llm.fallback`, `tool.called` and `tool.result`            | `engine.turn-logs-events`                                                           |
+| `RunStoreTurnLog`    | a `TurnLog` that appends those events to a run's log in a `RunStore`                                                         | `engine.turn-logs-events`                                                           |
+| `HalonicTool`        | one of Halonic's own tools: its definition and how to run it                                                                 | `engine.turn-runs-tool-calls`                                                       |
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
 For now they pass values through unchanged.
 
 A chat turn belongs to no run, so `LocalExecutor.chatTurn` keeps no run log; it returns the
-turn's messages in `turn` and what it refused in `refusals`. Runs of agents will log their turns
+turn's messages in `turn`, what it refused in `refusals` and the models it skipped in `skipped`.
+
+A turn's models are the alias its request resolved to, then that alias's own `fallback` entries,
+one level deep and each alias once. A model whose key isn't set is skipped before any call. An
+offline model hands the call to the next one at once, and the turn stays on that model. A missing
+model, a model that can't call tools, or a refused call stops the turn with that `ModelCallError`.
+When no model is left, the turn fails with a `ModelCallError` whose reason is the last cause. Runs of agents will log their turns
 through a `RunStoreTurnLog`.
 
 ## Example
@@ -70,6 +80,8 @@ export async function runExample(): Promise<{ answer: string; roles: string[]; m
     resolveModel: async () => ({ provider: model, model: "acme-1" }),
     halonicTools: [],
     connectors: [billing],
+    // The stand-in model names no key, so no secret is ever looked up.
+    secrets: { get: async () => null },
     clock: { now: () => new Date("2026-11-09T09:00:00Z") },
   });
   const response = await executor.chatTurn({
