@@ -14,7 +14,8 @@ import { performance } from "node:perf_hooks";
 
 const drive = `${process.env.SystemDrive ?? "C:"}\\`;
 const mode = process.argv[2] ?? "native";
-const base = process.env.SPIKE_ROOT ?? join(process.env.RUNNER_TEMP ?? join(drive, "mxc-spike"), "mxc-probe2");
+// Probe folders live on the system drive (the one host prep touches), not on the runner temp drive.
+const base = process.env.SPIKE_ROOT ?? join(drive, "mxc-spike-data");
 mkdirSync(base, { recursive: true });
 const { run, getPlatformSupport } = await import("@microsoft/mxc-sdk/v1");
 const q = (p) => `"${p}"`;
@@ -168,8 +169,20 @@ await new Promise((done) => {
 });
 console.log(JSON.stringify(r));
 `);
-  const r = await runIn(`${q(process.execPath)} ${q(child)}`, { work, read: [nodeDir, allowed, ...(process.env.SPIKE_ROOTREAD === "1" ? [drive] : [])] });
-  report.result = { run: r, connectionsSeen: connections };
+  const cmd = (flags) => `${q(process.execPath)} ${flags}${q(child)}`;
+  const cases = {
+    noRoot: { cmd: cmd(""), read: [nodeDir, allowed] },
+    noRootPreserveSymlinks: { cmd: cmd("--preserve-symlinks --preserve-symlinks-main "), read: [nodeDir, allowed] },
+    rootRead: { cmd: cmd(""), read: [nodeDir, allowed, drive] },
+    rootReadHiddenDenied: { cmd: cmd(""), read: [nodeDir, allowed, drive], denied: [join(hidden, "canary.txt")] },
+  };
+  const results = {};
+  for (const [name, c] of Object.entries(cases)) {
+    const before = connections;
+    const r = await runIn(c.cmd, { work, read: c.read, denied: c.denied });
+    results[name] = { exit: r.exitCode, out: r.stdout, err: (r.stderr || r.error || "").split(/\r?\n/).find((l) => /Error/.test(l)), ms: r.ms, connections: connections - before };
+  }
+  report.result = results;
   server.close();
 }
 if (mode === "node2") {

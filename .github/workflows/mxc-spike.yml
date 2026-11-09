@@ -109,7 +109,7 @@ jobs:
             $out = "$env:SystemDrive\mxc-spike\out-$m.txt"; $err = "$env:SystemDrive\mxc-spike\err-$m.txt"
             $p = Start-Process -FilePath $node -ArgumentList "probe2.mjs", $m -WorkingDirectory $env:SystemDrive\mxc-spike `
               -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
-              -Environment @{ SPIKE_ROOT = "$env:SystemDrive\mxc-spike\data"; SPIKE_UI = "1" } 2>&1
+              -Environment @{ SPIKE_ROOT = "$env:SystemDrive\mxc-spike\data"; SPIKE_UI = "1"; SPIKE_ROOTREAD = "1" } 2>&1
             Write-Host "=== normal user, $m, exit $($p.ExitCode)"
             Get-Content $out -ErrorAction SilentlyContinue
             Get-Content $err -ErrorAction SilentlyContinue
