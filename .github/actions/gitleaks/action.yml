@@ -40,6 +40,18 @@ runs:
         fi
         rm -f "$RUNNER_TEMP/gitleaks.json"
         scanned=$(grep -oE '[0-9]+ commits scanned' "$log" | grep -oE '^[0-9]+' || true)
+        # Commits that only change files git doesn't diff (pnpm-lock.yaml is
+        # -diff in .gitattributes, images are binary) give gitleaks no lines,
+        # so it counts 0 commits. That passes only when git outside the
+        # container shows no added lines either.
+        if [ -n "$LOG_OPTS" ] && ! [[ "$scanned" =~ ^[1-9][0-9]*$ ]]; then
+          git log -p --no-ext-diff --no-textconv --format= "$LOG_OPTS" -- > "$RUNNER_TEMP/patch"
+          added=$(grep -v '^+++ ' "$RUNNER_TEMP/patch" | grep -c '^+' || true)
+          if [ "$added" = "0" ]; then
+            echo "::notice title=gitleaks::These commits only change files git doesn't diff, such as pnpm-lock.yaml, so there was nothing to scan."
+            exit "$status"
+          fi
+        fi
         if ! [[ "$scanned" =~ ^[1-9][0-9]*$ ]]; then
           echo "::error title=gitleaks::No commits were scanned, so the scan proves nothing. See the log above."
           exit 1

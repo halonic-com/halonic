@@ -312,7 +312,7 @@ jobs:
     # runs pull-request code that could upload an artifact with the same
     # name, but no other job can set this job's outputs.
     outputs:
-      sha: ${{ steps.merge-base.outputs.sha }}
+      sha: ${{ steps.install.outputs.sha }}
       results-id: ${{ steps.upload.outputs.artifact-id }}
       results-sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
@@ -331,8 +331,34 @@ jobs:
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: false
-      - name: Install the merge base's dependencies
-        run: pnpm install --frozen-lockfile
+      # When two pull requests cross in the lockfile, main itself stops
+      # installing, and then no pull request could pass, not even the repair.
+      # Only for that error the baseline moves back along main's first-parent
+      # history to the newest commit that installs. Only main's own commits are
+      # tried, so a pull request still can't choose its baseline, and any other
+      # install error fails as before.
+      - id: install
+        name: Install the merge base's dependencies
+        env:
+          MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+        run: |
+          log="$RUNNER_TEMP/install.log"
+          for sha in $(git rev-list --first-parent --max-count=10 "$MERGE_BASE"); do
+            git checkout --quiet --detach "$sha"
+            git clean -ffdxq
+            if pnpm install --frozen-lockfile 2>&1 | tee "$log"; then
+              if [ "$sha" != "$MERGE_BASE" ]; then
+                echo "::warning title=merge-base::The merge base ${MERGE_BASE:0:7} doesn't install, so the guard's baseline is ${sha:0:7}, the newest commit before it on main that does."
+              fi
+              echo "sha=$sha" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if ! grep -qE 'ERR_PNPM_(LOCKFILE_[A-Z_]+|OUTDATED_LOCKFILE)' "$log"; then
+              exit 1
+            fi
+          done
+          echo "::error::Neither the merge base nor its last nine commits on main have a lockfile that installs."
+          exit 1
       - name: Run the merge base's tests without reading any cache
         run: pnpm exec turbo run test --force --continue --output-logs=errors-only
       # Runs even when a test failed: the guard reports a missing result file.
