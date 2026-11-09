@@ -102,7 +102,7 @@ verifies("kit.list", () => {
     expect([nameless, twice]).toHaveLength(2);
   });
 
-  it("is named by its heading, drawn above the box", () => {
+  it("is named by its heading, drawn as the box's first line", () => {
     const { container } = render(
       <List heading={{ name: "Acme", detail: "Workspace" }} headingLevel={3} rows={agents} />,
     );
@@ -110,7 +110,11 @@ verifies("kit.list", () => {
     const grid = container.querySelector('[role="grid"]') as HTMLElement;
     expect(grid.getAttribute("aria-labelledby")).toBe(heading.id);
     expect(grid.hasAttribute("aria-label")).toBe(false);
-    expect(heading.nextElementSibling?.contains(grid)).toBe(true);
+    expect(heading.parentElement?.className).toBe("rounded-md border border-border");
+    expect(heading.nextElementSibling).toBe(grid);
+    // The first row sits under the heading, not in the box's top corners.
+    expect(mainCell(container, 0).className).not.toContain("rounded-t");
+    expect(mainCell(container, 2).className).toContain("rounded-bl-md");
   });
 
   it("sizes rows 56px with a meta line, 40px without and 32px dense, padded 16px", () => {
@@ -164,7 +168,12 @@ verifies("kit.list", () => {
     expect(mainCell(container, 0).className).toContain(
       "transition-colors group-hover:bg-surface-subtle group-active:bg-surface-subtle",
     );
-    expect(mainCell(container, 0).className).toContain("focus-ring-inset");
+    // With a More column the ring goes round the whole row, drawn half by each cell.
+    expect(mainCell(container, 0).className).toContain("focus-ring-row-start");
+    expect(mainCell(container, 0).className).not.toContain("focus-ring-inset");
+    expect(rowsIn(container)[0]?.lastElementChild?.className).toContain("focus-ring-row-end");
+    const alone = render(<List label="Agents" rows={agents} />);
+    expect(mainCell(alone.container, 0).className).toContain("focus-ring-inset");
     focus(mainCell(container, 0));
     press(mainCell(container, 0), " ");
     expect(rowsIn(container)[0]?.getAttribute("aria-selected")).toBe("true");
@@ -296,9 +305,10 @@ verifies("kit.list", () => {
     const more = rowsIn(container)[0]?.querySelector("button") as HTMLButtonElement;
     expect(more.getAttribute("aria-label")).toBe("More actions for Sorter");
     expect(more.tabIndex).toBe(-1);
-    expect(more.parentElement?.className).toContain("opacity-0 group-hover:opacity-100");
-    expect(more.parentElement?.className).toContain("group-focus-within:opacity-100");
-    expect(more.parentElement?.className).toContain("touch:opacity-100");
+    // Always shown, dimmed until hovered; the cell is never faded, so its line and fill stay.
+    expect(more.className).toContain("text-fg-muted");
+    expect(more.className).toContain("hover:text-fg");
+    expect(more.parentElement?.className).not.toContain("opacity");
     focus(mainCell(container, 0));
     press(mainCell(container, 0), "ArrowRight");
     expect(document.activeElement).toBe(more);
@@ -376,6 +386,8 @@ verifies("kit.list", () => {
     expect(cell.textContent).toBe("SorterFile has an errorError");
     expect(cell.querySelector(".text-danger")?.textContent).toBe("File has an error");
     expect(cell.querySelector(".bg-danger-soft")?.textContent).toBe("Error");
+    // The dot, so the error doesn't rest on colour alone.
+    expect(cell.querySelector(".bg-danger-soft > .rounded-full")).not.toBeNull();
     await click(cell);
     expect(onOpen).toHaveBeenCalledWith("sorter");
   });

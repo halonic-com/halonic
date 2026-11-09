@@ -23,7 +23,7 @@ const kindClasses: Record<SkeletonBarKind, string> = {
   trailing: "h-2.5 w-20 rounded-xs",
   heading: "h-2 w-12 rounded-xs",
   icon: "size-icon-md shrink-0 rounded-xs",
-  avatar: "size-7 shrink-0 rounded-sm",
+  avatar: "size-7 shrink-0 rounded-full",
 };
 
 const widthClasses: Record<SkeletonBarWidth, string> = {

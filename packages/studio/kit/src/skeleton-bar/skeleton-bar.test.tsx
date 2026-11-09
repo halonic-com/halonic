@@ -36,7 +36,7 @@ verifies("kit.skeleton-bar", () => {
     expect(barClasses("trailing")).toContain("h-2.5 w-20 rounded-xs");
     expect(barClasses("heading")).toContain("h-2 w-12 rounded-xs");
     expect(barClasses("icon")).toContain("size-icon-md shrink-0 rounded-xs");
-    expect(barClasses("avatar")).toContain("size-7 shrink-0 rounded-sm");
+    expect(barClasses("avatar")).toContain("size-7 shrink-0 rounded-full");
     expect(barClasses("avatar", "2/5")).not.toContain("w-2/5");
   });
 });

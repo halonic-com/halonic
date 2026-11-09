@@ -3,10 +3,10 @@ import { ListHeading } from "../../src/list-heading/list-heading.tsx";
 import { SkeletonBar } from "../../src/skeleton-bar/skeleton-bar.tsx";
 import type { PartSection } from "../state-table.tsx";
 
-/** A row's avatar: the agent's initials on a square. Screens bring their own. */
+/** A row's avatar: the agent's initials in a circle. Screens bring their own. */
 function Initials({ children }: { readonly children: string }) {
   return (
-    <span className="grid size-7 place-items-center rounded-sm bg-accent-soft text-caption font-medium text-accent-text">
+    <span className="grid size-7 place-items-center rounded-full bg-accent-soft text-caption font-medium text-accent-text">
       {children}
     </span>
   );
@@ -62,8 +62,8 @@ function Agents({ first = customerSupport, heading = false, selected = false }: 
 function LoadingAgents() {
   return (
     <div className="w-80 phone:w-full">
-      <ListHeading name="Agents" />
       <div className="overflow-hidden rounded-md border border-border phone:rounded-none phone:border-x-0">
+        <ListHeading name="Agents" />
         {(["3/5", "1/2"] as const).map((width, index) => (
           <div
             key={width}

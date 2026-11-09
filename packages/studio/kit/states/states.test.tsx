@@ -82,6 +82,18 @@ describe("the states page's forced states", () => {
     ]);
   });
 
+  it("forces a List row's ring round the whole row from its first cell", async () => {
+    const rules = ruleSelectors(
+      await buildCss(["focus-ring-row-start", "focus-ring-row-end"], statesCss, statesFolder),
+    );
+    for (const edge of ["start", "end"]) {
+      expect(rules).toContainEqual([
+        `tr:has( > td:first-child:focus-visible) > .focus-ring-row-${edge}`,
+        `tr:has( > td:first-child[data-force-state="focus"]) > .focus-ring-row-${edge}`,
+      ]);
+    }
+  });
+
   it("presses instead of hovering below 600px, where there's no hover", () => {
     const row = { name: "Hover", force: "hover", copies: () => null } as const;
     expect(forcedState(row, false)).toBe("hover");

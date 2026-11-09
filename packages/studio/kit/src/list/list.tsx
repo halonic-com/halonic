@@ -79,7 +79,7 @@ interface ListBase<Id extends string> {
   readonly empty?: ListEmpty;
 }
 
-/** A list named by the heading above it (18.3). */
+/** A list named by its heading, the box's first line (18.3). */
 interface ListWithHeading<Id extends string> extends ListBase<Id> {
   readonly heading: { readonly name: string; readonly detail?: string };
   readonly label?: never;
@@ -132,13 +132,21 @@ function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean): string
 }
 
 /**
- * The More button's column. On desktop the button shows on hover and while the row has focus, and
- * it's always reachable by keyboard. On a phone or a touch screen it's always there.
+ * The More button's column. The button is always there, dimmed (`fg-muted`, the ghost button's
+ * colour) until it's hovered. The cell is part of the row: its line and fills reach the box's edge.
  */
 const moreClasses = {
-  desktop:
-    "w-10 pr-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 touch:w-13 touch:pr-1 touch:opacity-100",
+  desktop: "w-10 pr-2 touch:w-13 touch:pr-1",
   phone: "w-13 pr-1",
+} as const;
+
+/**
+ * The keyboard focus ring. With a More column it goes round the whole row: the main cell draws it
+ * without its end edge and the More cell draws the rest, while the main cell has focus.
+ */
+const focusClasses = {
+  alone: "focus-ring-inset",
+  withMore: { main: "focus-ring-row-start", more: "focus-ring-row-end" },
 } as const;
 
 /**
@@ -183,20 +191,27 @@ export function List<Id extends string>({
   const showEmpty = empty !== undefined && rows.length === 0;
   const emptyFocus = useFocusOnEmpty(showEmpty);
 
+  // With rows, the heading is the box's first line, so the first row's top corners are square
+  // under it. With none, the Empty state takes the box's place below the heading.
   return (
     <div>
-      {heading === undefined ? null : (
-        <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
-      )}
       {showEmpty ? (
-        <EmptyList
-          empty={empty}
-          listHeadingLevel={heading === undefined ? undefined : headingLevel}
-          titleRef={emptyFocus.titleRef}
-        />
+        <>
+          {heading === undefined ? null : (
+            <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
+          )}
+          <EmptyList
+            empty={empty}
+            listHeadingLevel={heading === undefined ? undefined : headingLevel}
+            titleRef={emptyFocus.titleRef}
+          />
+        </>
       ) : (
         // Not overflow-hidden, which would cut the focus rings of the first and last rows.
         <div className={look === "bordered" ? "rounded-md border border-border" : ""}>
+          {heading === undefined ? null : (
+            <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
+          )}
           <table
             // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table; on a div Biome asks for the table
             role="grid"
@@ -220,6 +235,7 @@ export function List<Id extends string>({
                   key={row.id}
                   row={row}
                   first={index === 0}
+                  top={index === 0 && heading === undefined}
                   last={index === rows.length - 1}
                   look={look}
                   phone={phone}
@@ -241,7 +257,10 @@ export function List<Id extends string>({
 
 interface RowProps<Id extends string> {
   readonly row: ListRow<Id>;
+  /** The first row: no line above it. */
   readonly first: boolean;
+  /** The first row with no heading above it, so it sits in the box's top corners. */
+  readonly top: boolean;
   readonly last: boolean;
   readonly look: "bordered" | "flush";
   readonly phone: boolean;
@@ -256,35 +275,40 @@ interface RowProps<Id extends string> {
 /** The radius of the box's corners, on the cells that sit in them, so their fills stay inside. */
 function cornerClasses(
   look: "bordered" | "flush",
-  first: boolean,
+  top: boolean,
   last: boolean,
   side: "left" | "right",
 ): string {
   if (look === "flush") {
     return "";
   }
-  const top = side === "left" ? "rounded-tl-md" : "rounded-tr-md";
-  const bottom = side === "left" ? "rounded-bl-md" : "rounded-br-md";
-  return `${first ? top : ""} ${last ? bottom : ""}`;
+  const topCorner = side === "left" ? "rounded-tl-md" : "rounded-tr-md";
+  const bottomCorner = side === "left" ? "rounded-bl-md" : "rounded-br-md";
+  return `${top ? topCorner : ""} ${last ? bottomCorner : ""}`;
 }
 
 /**
  * A selected corner row's bar starts 8px from the box's edge, not 6px, so it stays inside the
  * border's 11px inner curve.
  */
-function cornerBarClasses(look: "bordered" | "flush", first: boolean, last: boolean): string {
+function cornerBarClasses(look: "bordered" | "flush", top: boolean, last: boolean): string {
   if (look === "flush") {
     return "";
   }
-  return [first ? "after:top-2" : "", last ? "after:bottom-2" : ""].filter(Boolean).join(" ");
+  return [top ? "after:top-2" : "", last ? "after:bottom-2" : ""].filter(Boolean).join(" ");
 }
 
-/** The row's chip or value, or an error's `danger` chip in its place. */
+/**
+ * The row's chip or value, or an error's `danger` chip in its place. The error chip has its dot,
+ * so the state doesn't rest on colour alone.
+ */
 function trailingOf(row: ListRow): ReactNode {
   return row.error === undefined ? (
     row.trailing
   ) : (
-    <StatusChip tone="danger">{row.error.chip}</StatusChip>
+    <StatusChip tone="danger" dot>
+      {row.error.chip}
+    </StatusChip>
   );
 }
 
@@ -298,6 +322,7 @@ function rowState(isUnavailable: boolean, isSelected: boolean): keyof typeof row
 function Row<Id extends string>({
   row,
   first,
+  top,
   last,
   look,
   phone,
@@ -313,7 +338,8 @@ function Row<Id extends string>({
   const reasonId = useId();
   const lines = first ? { main: "", more: "" } : lineClasses[look];
   const state = rowStateClasses[rowState(isUnavailable, isSelected)];
-  const bar = state.main === "" ? "" : `${state.main} ${cornerBarClasses(look, first, last)}`;
+  const bar = state.main === "" ? "" : `${state.main} ${cornerBarClasses(look, top, last)}`;
+  const focus = hasMore ? focusClasses.withMore.main : focusClasses.alone;
   const { onClick, onAuxClick, onKeyDown } = rowHandlers({
     id: row.id,
     isUnavailable,
@@ -334,7 +360,7 @@ function Row<Id extends string>({
         role="gridcell"
         {...grid.cell(row.id, 0)}
         aria-describedby={isUnavailable ? reasonId : undefined}
-        className={`p-0 focus-ring-inset ${state.fill} ${bar} ${lines.main} ${cornerClasses(look, first, last, "left")} ${hasMore ? "" : cornerClasses(look, first, last, "right")} ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
+        className={`p-0 ${focus} ${state.fill} ${bar} ${lines.main} ${cornerClasses(look, top, last, "left")} ${hasMore ? "" : cornerClasses(look, top, last, "right")} ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
         onClick={onClick}
         onAuxClick={onAuxClick}
         onKeyDown={onKeyDown}
@@ -346,7 +372,7 @@ function Row<Id extends string>({
           row={row}
           dense={dense}
           grid={grid}
-          className={`${state.fill} ${moreClasses[phone ? "phone" : "desktop"]} ${lines.more} ${cornerClasses(look, first, last, "right")}`}
+          className={`${state.fill} ${focusClasses.withMore.more} ${moreClasses[phone ? "phone" : "desktop"]} ${lines.more} ${cornerClasses(look, top, last, "right")}`}
         />
       ) : null}
     </tr>
