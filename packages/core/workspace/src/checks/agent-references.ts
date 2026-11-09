@@ -24,11 +24,15 @@ const libraryLists: readonly LibraryList[] = [
 /**
  * What an agent names in other files: its model aliases, its skills,
  * knowledge, collections and connectors, and its subagents. The messages
- * are the old loader's.
+ * are the old loader's. An agent in a hub whose `hub.yaml` failed isn't
+ * checked: the old loader left that hub out.
  */
 export function checkAgents(context: CheckContext): WorkspaceIssue[] {
   const issues: WorkspaceIssue[] = [];
   for (const agent of context.filesOf("agent")) {
+    if (context.hubFailed(agent.hub)) {
+      continue;
+    }
     issues.push(...modelIssues(context, agent));
     for (const list of libraryLists) {
       issues.push(...libraryIssues(context, agent, list));

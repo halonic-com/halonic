@@ -1,6 +1,7 @@
 import { type FileProblem, fileKinds, type KindName, type KindValues } from "@halonicjs/format";
 import { readYaml, type SourcePosition } from "@halonicjs/yaml";
 import type { LoadedFile, LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
+import { placeOf } from "../places.ts";
 
 /** One file as the loader read it: its path, its kind and its text. */
 export interface ReadFile {
@@ -55,6 +56,24 @@ export class CheckContext {
   hasReadKind(kind: KindName): boolean {
     for (const file of this.read.values()) {
       if (file.kind === kind) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Whether a hub's `hub.yaml` was read but failed its own checks. The old
+   * loader then left the hub out: what its files name isn't checked, and
+   * whatever names the hub finds it unknown. A hub without a `hub.yaml`
+   * hasn't failed.
+   */
+  hubFailed(hub: string | null): boolean {
+    if (hub === null || this.filesOf("hub", hub).length > 0) {
+      return false;
+    }
+    for (const file of this.read.values()) {
+      if (file.kind === "hub" && placeOf(file.path)?.hub === hub) {
         return true;
       }
     }

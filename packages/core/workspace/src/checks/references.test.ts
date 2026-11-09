@@ -54,6 +54,18 @@ verifies("workspace.references", () => {
     parityLoadLimitMs,
   );
 
+  it.each(["hub/wrong-type", "hub/missing-required", "hub/unknown-key", "hub/deep-nesting"])(
+    "leaves out the agents of a hub whose hub.yaml failed, in %s",
+    async (caseId) => {
+      // The old loader then reports only hub.yaml and the routines that name
+      // the hub; the routine checks come later.
+      const workspace = await loadWorkspace(readParityCase(caseId).source);
+      const errors = workspace.issues.filter((issue) => issue.source === "check");
+      expect(errors).toEqual([]);
+    },
+    parityLoadLimitMs,
+  );
+
   describe("in small workspaces", () => {
     const settings = { "workspace.yaml": "id: acme\nname: Acme\n" };
     const errorsIn = async (files: Record<string, string>): Promise<string[]> => {
