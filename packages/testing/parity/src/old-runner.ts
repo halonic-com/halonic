@@ -7,20 +7,48 @@
  *
  * For each job (a composed fixture workspace) it records the old loader's
  * diagnostics, the schema issues per file with their key paths, and the output
- * and exit code of the old `validate` command. Its types are loose on purpose:
- * the old modules are loaded by path and have no types here.
+ * and exit code of the old `validate` command. For a job that asks for them,
+ * it also runs the workspace's workflow tests with the old test runner and
+ * records each test's run logs. Its types are loose on purpose: the old modules
+ * are loaded by path and have no types here.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { oldEnvironment } from "./old-repo.ts";
-import type { OldDiagnostic, OldFile, OldIssue, OldResult } from "./recording.ts";
+import { fixedTestTime, oldEnvironment } from "./old-repo.ts";
+import type {
+  OldDiagnostic,
+  OldFile,
+  OldIssue,
+  OldResult,
+  OldRun,
+  OldTestRun,
+} from "./recording.ts";
 
 interface Job {
   readonly id: string;
   readonly dir: string;
   readonly files: readonly string[];
+  /** Whether to run the workspace's workflow tests too. */
+  readonly tests?: boolean;
+}
+
+interface OldRunStore {
+  list(): Promise<{ id: string }[]>;
+  get(runId: string): Promise<unknown>;
+  events(runId: string): Promise<unknown[]>;
+}
+
+interface OldCaseResult {
+  readonly name: string;
+  readonly passed: boolean;
+  readonly failures: readonly string[];
+  readonly runId: string | null;
+}
+
+interface OldWorkspace {
+  readonly hubs: Record<string, { tests: Record<string, { value: { cases: unknown[] } }> }>;
 }
 
 interface RawIssue {
@@ -141,13 +169,95 @@ function runValidate(dir: string): OldResult["validate"] {
   return { exitCode: result.status ?? -1, stdout: result.stdout, stderr: result.stderr };
 }
 
+type RunCase = (
+  workspace: OldWorkspace,
+  hub: string,
+  workflow: string,
+  testCase: unknown,
+  deps: Record<string, unknown>,
+) => Promise<OldCaseResult>;
+
+/**
+ * Runs one test case with the old runner, with fresh fixed IDs and a run store
+ * of its own, so each case's log stands alone. The clock stands still at
+ * fixedTestTime, and `Date.now` with it, because the old engine times model
+ * calls (`latencyMs`) with the real clock.
+ */
+async function runOneCase(
+  workspace: OldWorkspace,
+  hub: string,
+  workflow: string,
+  testCase: unknown,
+  store: unknown,
+): Promise<OldTestRun> {
+  const runner = await load("packages/testing/test-runner/src/index.ts");
+  const util = await load("packages/core/util/src/index.ts");
+  const memory = await load("packages/store/memory/src/index.ts");
+  const runCase = member<RunCase>(runner, "runCase");
+  const fixedIds = member<() => unknown>(util, "fixedIds");
+  const MemoryRunStore = member<new () => OldRunStore>(memory, "MemoryRunStore");
+  const runStore = new MemoryRunStore();
+  const at = Date.parse(fixedTestTime);
+  const realNow = Date.now;
+  Date.now = () => at;
+  try {
+    const result = await runCase(workspace, hub, workflow, testCase, {
+      store,
+      runStore,
+      secrets: { get: async () => null },
+      clock: { now: () => new Date(at) },
+      ids: fixedIds(),
+    });
+    const ids = (await runStore.list())
+      .map((run) => run.id)
+      .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+    const runs: OldRun[] = [];
+    for (const id of ids) {
+      runs.push({ id, summary: await runStore.get(id), events: await runStore.events(id) });
+    }
+    const { name, passed, failures, runId } = result;
+    return { hub, workflow, name, passed, failures, runId, runs };
+  } finally {
+    Date.now = realNow;
+  }
+}
+
+/**
+ * Every workflow test of every hub, each case run twice: if the two logs
+ * differ, something in the old code still reads the real clock or makes
+ * random IDs, and the runner stops rather than record it.
+ */
+async function runTests(
+  workspace: OldWorkspace | undefined,
+  store: unknown,
+): Promise<OldTestRun[]> {
+  if (workspace === undefined) {
+    throw new Error("The old loader gave no workspace, so its workflow tests can't run");
+  }
+  const tests: OldTestRun[] = [];
+  for (const [hub, bundle] of Object.entries(workspace.hubs)) {
+    for (const [workflow, test] of Object.entries(bundle.tests)) {
+      for (const testCase of test.value.cases) {
+        const first = await runOneCase(workspace, hub, workflow, testCase, store);
+        const second = await runOneCase(workspace, hub, workflow, testCase, store);
+        if (JSON.stringify(first) !== JSON.stringify(second)) {
+          throw new Error(
+            `The run log of ${hub}/${workflow} "${first.name}" changed between two runs; fix the clock or IDs first`,
+          );
+        }
+        tests.push(first);
+      }
+    }
+  }
+  return tests;
+}
+
 async function record(job: Job): Promise<OldResult> {
   const FsDefinitionStore = member<new (root: string) => unknown>(platform, "FsDefinitionStore");
   const withLayout = member<(store: unknown) => OldStore>(config, "withLayout");
-  const loadWorkspace = member<(store: unknown) => Promise<{ diagnostics: OldDiagnostic[] }>>(
-    config,
-    "loadWorkspace",
-  );
+  const loadWorkspace = member<
+    (store: unknown) => Promise<{ workspace?: OldWorkspace; diagnostics: OldDiagnostic[] }>
+  >(config, "loadWorkspace");
   const store = withLayout(new FsDefinitionStore(job.dir));
   const traced = {
     ...store,
@@ -159,7 +269,7 @@ async function record(job: Job): Promise<OldResult> {
   };
   reads.clear();
   checked.clear();
-  const { diagnostics } = await loadWorkspace(traced);
+  const { workspace, diagnostics } = await loadWorkspace(traced);
   reading = null;
   const flatPath = flatPathOf(await store.layout());
   const files: OldFile[] = job.files.map((file) => {
@@ -173,7 +283,11 @@ async function record(job: Job): Promise<OldResult> {
       issues: withLines(flat, seen?.issues ?? [], diagnostics),
     };
   });
-  return { id: job.id, diagnostics, files, validate: runValidate(realpathSync(job.dir)) };
+  const validate = runValidate(realpathSync(job.dir));
+  if (job.tests !== true) {
+    return { id: job.id, diagnostics, files, validate };
+  }
+  return { id: job.id, diagnostics, files, validate, tests: await runTests(workspace, store) };
 }
 
 const jobs = JSON.parse(readFileSync(jobsPath, "utf8")) as Job[];

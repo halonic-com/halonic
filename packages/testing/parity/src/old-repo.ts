@@ -5,6 +5,13 @@ import { join } from "node:path";
 /** The full hash of the reference commit, so a short-hash clash can't slip through. */
 export const referenceHash = "784f78d317daffa5e5ad0329efb2e9fbb4f79dec";
 
+/**
+ * The time the old clock stands at while workflow tests run. It doesn't tick:
+ * only a test's `advance` steps move it, so the run logs don't depend on how
+ * often the old engine reads the clock.
+ */
+export const fixedTestTime = "2026-01-01T00:00:00.000Z";
+
 /** The old repo's `tsx`, installed in the clone by `pnpm install`. */
 export function oldTsx(clone: string): string {
   return join(clone, "node_modules", ".bin", "tsx");

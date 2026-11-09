@@ -1,0 +1,3458 @@
+{
+  "reference": "784f78d",
+  "case": "base",
+  "clock": "2026-01-01T00:00:00.000Z",
+  "tests": [
+    {
+      "hub": "billing",
+      "workflow": "approval",
+      "name": "approve",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "approval",
+            "kind": "test",
+            "status": "completed",
+            "state": "approved",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "decide",
+              "approved"
+            ],
+            "context": {
+              "outcome": "pending"
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "approval",
+              "input": {},
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "outcome",
+              "value": "pending",
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "decide",
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "decide",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "timers": [
+                {
+                  "after": "2d",
+                  "at": "2026-01-03T00:00:00.000Z"
+                }
+              ],
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "event.received",
+              "event": "approve",
+              "runId": "test_1",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "decide",
+              "to": "approved",
+              "event": "approve",
+              "runId": "test_1",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "approved",
+              "runId": "test_1",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "approved",
+              "context": {
+                "outcome": "pending"
+              },
+              "runId": "test_1",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hub": "billing",
+      "workflow": "approval",
+      "name": "the timer fires after two days",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "approval",
+            "kind": "test",
+            "status": "completed",
+            "state": "expired",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-03T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "decide",
+              "expired"
+            ],
+            "context": {
+              "outcome": "pending"
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "approval",
+              "input": {},
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "outcome",
+              "value": "pending",
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "decide",
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "decide",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "timers": [
+                {
+                  "after": "2d",
+                  "at": "2026-01-03T00:00:00.000Z"
+                }
+              ],
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "timer.fired",
+              "state": "decide",
+              "after": "2d",
+              "runId": "test_1",
+              "seq": 5,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "decide",
+              "to": "expired",
+              "event": "after 2d",
+              "runId": "test_1",
+              "seq": 6,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "expired",
+              "runId": "test_1",
+              "seq": 7,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "expired",
+              "context": {
+                "outcome": "pending"
+              },
+              "runId": "test_1",
+              "seq": 8,
+              "at": "2026-01-03T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hub": "billing",
+      "workflow": "approval",
+      "name": "one day is not enough",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "approval",
+            "kind": "test",
+            "status": "waiting",
+            "state": "decide",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": null,
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "decide"
+            ],
+            "context": {
+              "outcome": "pending"
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": null,
+            "accepts": [
+              "approve",
+              "reject"
+            ],
+            "nextTimer": "2026-01-03T00:00:00.000Z",
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "approval",
+              "input": {},
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "outcome",
+              "value": "pending",
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "decide",
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "decide",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "timers": [
+                {
+                  "after": "2d",
+                  "at": "2026-01-03T00:00:00.000Z"
+                }
+              ],
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hub": "billing",
+      "workflow": "batch",
+      "name": "each line runs the line-check workflow",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "batch",
+            "kind": "test",
+            "status": "completed",
+            "state": "done",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "each",
+              "done"
+            ],
+            "context": {
+              "results": [
+                {
+                  "result": {
+                    "ok": true
+                  }
+                },
+                {
+                  "result": {
+                    "ok": true
+                  }
+                },
+                {
+                  "result": {
+                    "ok": true
+                  }
+                }
+              ]
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "batch",
+              "input": {
+                "lines": [
+                  "paper",
+                  "ink",
+                  "toner"
+                ]
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "each",
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.started",
+              "state": "each",
+              "workflow": "line-check",
+              "childRunId": "test_2",
+              "item": 0,
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.started",
+              "state": "each",
+              "workflow": "line-check",
+              "childRunId": "test_3",
+              "item": 1,
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.finished",
+              "state": "each",
+              "workflow": "line-check",
+              "childRunId": "test_2",
+              "status": "completed",
+              "item": 0,
+              "runId": "test_1",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.finished",
+              "state": "each",
+              "workflow": "line-check",
+              "childRunId": "test_3",
+              "status": "completed",
+              "item": 1,
+              "runId": "test_1",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.started",
+              "state": "each",
+              "workflow": "line-check",
+              "childRunId": "test_4",
+              "item": 2,
+              "runId": "test_1",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.finished",
+              "state": "each",
+              "workflow": "line-check",
+              "childRunId": "test_4",
+              "status": "completed",
+              "item": 2,
+              "runId": "test_1",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "results",
+              "value": [
+                {
+                  "result": {
+                    "ok": true
+                  }
+                },
+                {
+                  "result": {
+                    "ok": true
+                  }
+                },
+                {
+                  "result": {
+                    "ok": true
+                  }
+                }
+              ],
+              "runId": "test_1",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "each",
+              "to": "done",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "done",
+              "runId": "test_1",
+              "seq": 11,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "done",
+              "context": {
+                "results": [
+                  {
+                    "result": {
+                      "ok": true
+                    }
+                  },
+                  {
+                    "result": {
+                      "ok": true
+                    }
+                  },
+                  {
+                    "result": {
+                      "ok": true
+                    }
+                  }
+                ]
+              },
+              "runId": "test_1",
+              "seq": 12,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "test_2",
+          "summary": {
+            "id": "test_2",
+            "hubId": "billing",
+            "workflowId": "line-check",
+            "kind": "test",
+            "status": "completed",
+            "state": "done",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 26,
+              "outputTokens": 3
+            },
+            "cost": 0.0000019000000000000002,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "check",
+              "done"
+            ],
+            "context": {
+              "result": {
+                "ok": true
+              }
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": "test_1",
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "line-check",
+              "input": {
+                "line": "paper"
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "parent": {
+                "runId": "test_1",
+                "state": "each",
+                "depth": 1
+              },
+              "runId": "test_2",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "check",
+              "runId": "test_2",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "check",
+              "agent": "checker",
+              "prompt": "paper",
+              "runId": "test_2",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "runId": "test_2",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 26,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.0000019000000000000002,
+              "runId": "test_2",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "check",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "runId": "test_2",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "result",
+              "value": {
+                "ok": true
+              },
+              "runId": "test_2",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "check",
+              "to": "done",
+              "event": "done",
+              "runId": "test_2",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "done",
+              "runId": "test_2",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "done",
+              "context": {
+                "result": {
+                  "ok": true
+                }
+              },
+              "runId": "test_2",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "test_3",
+          "summary": {
+            "id": "test_3",
+            "hubId": "billing",
+            "workflowId": "line-check",
+            "kind": "test",
+            "status": "completed",
+            "state": "done",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 25,
+              "outputTokens": 3
+            },
+            "cost": 0.00000185,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "check",
+              "done"
+            ],
+            "context": {
+              "result": {
+                "ok": true
+              }
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": "test_1",
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "line-check",
+              "input": {
+                "line": "ink"
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "parent": {
+                "runId": "test_1",
+                "state": "each",
+                "depth": 1
+              },
+              "runId": "test_3",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "check",
+              "runId": "test_3",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "check",
+              "agent": "checker",
+              "prompt": "ink",
+              "runId": "test_3",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "runId": "test_3",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 25,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.00000185,
+              "runId": "test_3",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "check",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "runId": "test_3",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "result",
+              "value": {
+                "ok": true
+              },
+              "runId": "test_3",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "check",
+              "to": "done",
+              "event": "done",
+              "runId": "test_3",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "done",
+              "runId": "test_3",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "done",
+              "context": {
+                "result": {
+                  "ok": true
+                }
+              },
+              "runId": "test_3",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "test_4",
+          "summary": {
+            "id": "test_4",
+            "hubId": "billing",
+            "workflowId": "line-check",
+            "kind": "test",
+            "status": "completed",
+            "state": "done",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 26,
+              "outputTokens": 3
+            },
+            "cost": 0.0000019000000000000002,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "check",
+              "done"
+            ],
+            "context": {
+              "result": {
+                "ok": true
+              }
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": "test_1",
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "line-check",
+              "input": {
+                "line": "toner"
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "parent": {
+                "runId": "test_1",
+                "state": "each",
+                "depth": 1
+              },
+              "runId": "test_4",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "check",
+              "runId": "test_4",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "check",
+              "agent": "checker",
+              "prompt": "toner",
+              "runId": "test_4",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "runId": "test_4",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 26,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.0000019000000000000002,
+              "runId": "test_4",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "check",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "runId": "test_4",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "result",
+              "value": {
+                "ok": true
+              },
+              "runId": "test_4",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "check",
+              "to": "done",
+              "event": "done",
+              "runId": "test_4",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "done",
+              "runId": "test_4",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "done",
+              "context": {
+                "result": {
+                  "ok": true
+                }
+              },
+              "runId": "test_4",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hub": "billing",
+      "workflow": "invoice",
+      "name": "an approved invoice is paid and announced",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "invoice",
+            "kind": "test",
+            "status": "completed",
+            "state": "done",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 398,
+              "outputTokens": 24
+            },
+            "cost": 0.00001695,
+            "unpricedCalls": 1,
+            "statesVisited": [
+              "extract",
+              "checks",
+              "lines",
+              "approval",
+              "notify",
+              "done"
+            ],
+            "context": {
+              "attempts": 0,
+              "fields": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "vendor": "ok",
+              "amount": {
+                "ok": true
+              },
+              "checks": {
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                }
+              },
+              "lineChecks": [
+                {
+                  "ok": true
+                },
+                {
+                  "ok": true
+                }
+              ],
+              "decision": {
+                "outcome": "pending",
+                "lastEvent": {
+                  "outcome": "approved"
+                }
+              },
+              "note": "Paid Acme Paper.",
+              "chat": [
+                {
+                  "role": "user",
+                  "content": "## Data\n\n### input.invoice\nAcme Paper, 120 EUR\n\n### context.fields\n{\n  \"vendor\": \"Acme Paper\",\n  \"amount\": 120\n}"
+                },
+                {
+                  "role": "assistant",
+                  "content": "Paid Acme Paper."
+                }
+              ]
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": [
+              {
+                "id": "test_1:48",
+                "name": "invoice.paid",
+                "data": {
+                  "vendor": "Acme Paper"
+                },
+                "at": "2026-01-01T00:00:00.000Z"
+              }
+            ]
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "invoice",
+              "input": {
+                "invoice": "Acme Paper, 120 EUR",
+                "lines": [
+                  "paper",
+                  "ink"
+                ]
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "attempts",
+              "value": 0,
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "extract",
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "extract",
+              "agent": "clerk",
+              "prompt": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "knowledge.searched",
+              "agent": "clerk",
+              "source": "ledger",
+              "query": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "refs": [],
+              "runId": "test_1",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "messages": 2,
+              "runId": "test_1",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "usage": {
+                "inputTokens": 192,
+                "outputTokens": 10
+              },
+              "latencyMs": 0,
+              "text": "{\"vendor\": \"Acme Paper\", \"amount\": 120}",
+              "runId": "test_1",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "extract",
+              "agent": "clerk",
+              "output": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "fields",
+              "value": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "extract",
+              "to": "checks",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "checks",
+              "runId": "test_1",
+              "seq": 11,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "reviewer",
+              "prompt": "Vendor: Acme Paper",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 12,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "checker",
+              "prompt": "{\"amount\":120}",
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 13,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 14,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 15,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 62,
+                "outputTokens": 1
+              },
+              "latencyMs": 0,
+              "text": "ok",
+              "cost": 0.0000033,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 16,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 28,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.000002,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 17,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "reviewer",
+              "output": "ok",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 18,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 19,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "vendor",
+              "value": "ok",
+              "runId": "test_1",
+              "seq": 20,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "amount",
+              "value": {
+                "ok": true
+              },
+              "runId": "test_1",
+              "seq": 21,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "checks",
+              "value": {
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                }
+              },
+              "runId": "test_1",
+              "seq": 22,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "checks",
+              "to": "lines",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 23,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "lines",
+              "runId": "test_1",
+              "seq": 24,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "lines",
+              "agent": "checker",
+              "prompt": "Line 0: paper",
+              "item": 0,
+              "runId": "test_1",
+              "seq": 25,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "lines",
+              "agent": "checker",
+              "prompt": "Line 1: ink",
+              "item": 1,
+              "runId": "test_1",
+              "seq": 26,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "item": 0,
+              "runId": "test_1",
+              "seq": 27,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "item": 1,
+              "runId": "test_1",
+              "seq": 28,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 28,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.000002,
+              "item": 0,
+              "runId": "test_1",
+              "seq": 29,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 27,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.0000019500000000000004,
+              "item": 1,
+              "runId": "test_1",
+              "seq": 30,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "lines",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "item": 0,
+              "runId": "test_1",
+              "seq": 31,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "lines",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "item": 1,
+              "runId": "test_1",
+              "seq": 32,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "lineChecks",
+              "value": [
+                {
+                  "ok": true
+                },
+                {
+                  "ok": true
+                }
+              ],
+              "runId": "test_1",
+              "seq": 33,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "lines",
+              "to": "approval",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 34,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "approval",
+              "runId": "test_1",
+              "seq": 35,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.started",
+              "state": "approval",
+              "workflow": "approval",
+              "childRunId": "test_2",
+              "runId": "test_1",
+              "seq": 36,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "approval",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "child": "test_2",
+              "runId": "test_1",
+              "seq": 37,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.finished",
+              "state": "approval",
+              "workflow": "approval",
+              "childRunId": "test_2",
+              "status": "completed",
+              "runId": "test_1",
+              "seq": 38,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "decision",
+              "value": {
+                "outcome": "pending",
+                "lastEvent": {
+                  "outcome": "approved"
+                }
+              },
+              "runId": "test_1",
+              "seq": 39,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "approval",
+              "to": "notify",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 40,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "notify",
+              "runId": "test_1",
+              "seq": 41,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "notify",
+              "agent": "notifier",
+              "prompt": "## Data\n\n### input.invoice\nAcme Paper, 120 EUR\n\n### context.fields\n{\n  \"vendor\": \"Acme Paper\",\n  \"amount\": 120\n}",
+              "runId": "test_1",
+              "seq": 42,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "notifier",
+              "provider": "mock",
+              "model": "echo",
+              "messages": 2,
+              "runId": "test_1",
+              "seq": 43,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "notifier",
+              "provider": "mock",
+              "model": "echo",
+              "usage": {
+                "inputTokens": 61,
+                "outputTokens": 4
+              },
+              "latencyMs": 0,
+              "text": "Paid Acme Paper.",
+              "cost": 0.0000077,
+              "runId": "test_1",
+              "seq": 44,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "notify",
+              "agent": "notifier",
+              "output": "Paid Acme Paper.",
+              "runId": "test_1",
+              "seq": 45,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "note",
+              "value": "Paid Acme Paper.",
+              "runId": "test_1",
+              "seq": 46,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "artifact.created",
+              "state": "notify",
+              "name": "note.md",
+              "hash": "df8fe32c3f04d5bb78733ea40a0bda3cc1c621a37141aa4c0aad555e475c9ef4",
+              "mediaType": "text/markdown",
+              "size": 16,
+              "runId": "test_1",
+              "seq": 47,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "signal.sent",
+              "state": "notify",
+              "name": "invoice.paid",
+              "data": {
+                "vendor": "Acme Paper"
+              },
+              "runId": "test_1",
+              "seq": 48,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "chat",
+              "value": [
+                {
+                  "role": "user",
+                  "content": "## Data\n\n### input.invoice\nAcme Paper, 120 EUR\n\n### context.fields\n{\n  \"vendor\": \"Acme Paper\",\n  \"amount\": 120\n}"
+                },
+                {
+                  "role": "assistant",
+                  "content": "Paid Acme Paper."
+                }
+              ],
+              "runId": "test_1",
+              "seq": 49,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "notify",
+              "to": "done",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 50,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "done",
+              "runId": "test_1",
+              "seq": 51,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "done",
+              "context": {
+                "attempts": 0,
+                "fields": {
+                  "vendor": "Acme Paper",
+                  "amount": 120
+                },
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                },
+                "checks": {
+                  "vendor": "ok",
+                  "amount": {
+                    "ok": true
+                  }
+                },
+                "lineChecks": [
+                  {
+                    "ok": true
+                  },
+                  {
+                    "ok": true
+                  }
+                ],
+                "decision": {
+                  "outcome": "pending",
+                  "lastEvent": {
+                    "outcome": "approved"
+                  }
+                },
+                "note": "Paid Acme Paper.",
+                "chat": [
+                  {
+                    "role": "user",
+                    "content": "## Data\n\n### input.invoice\nAcme Paper, 120 EUR\n\n### context.fields\n{\n  \"vendor\": \"Acme Paper\",\n  \"amount\": 120\n}"
+                  },
+                  {
+                    "role": "assistant",
+                    "content": "Paid Acme Paper."
+                  }
+                ]
+              },
+              "runId": "test_1",
+              "seq": 52,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "test_2",
+          "summary": {
+            "id": "test_2",
+            "hubId": "billing",
+            "workflowId": "approval",
+            "kind": "test",
+            "status": "completed",
+            "state": "approved",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "decide",
+              "approved"
+            ],
+            "context": {
+              "outcome": "pending",
+              "lastEvent": {
+                "outcome": "approved"
+              }
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": "test_1",
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "approval",
+              "input": {
+                "summary": {
+                  "vendor": "Acme Paper",
+                  "amount": 120
+                }
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "parent": {
+                "runId": "test_1",
+                "state": "approval",
+                "depth": 1
+              },
+              "runId": "test_2",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "outcome",
+              "value": "pending",
+              "runId": "test_2",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "decide",
+              "runId": "test_2",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "decide",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "timers": [
+                {
+                  "after": "2d",
+                  "at": "2026-01-03T00:00:00.000Z"
+                }
+              ],
+              "runId": "test_2",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "event.received",
+              "event": "approve",
+              "payload": {
+                "outcome": "approved"
+              },
+              "runId": "test_2",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "lastEvent",
+              "value": {
+                "outcome": "approved"
+              },
+              "runId": "test_2",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "decide",
+              "to": "approved",
+              "event": "approve",
+              "runId": "test_2",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "approved",
+              "runId": "test_2",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "approved",
+              "context": {
+                "outcome": "pending",
+                "lastEvent": {
+                  "outcome": "approved"
+                }
+              },
+              "runId": "test_2",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hub": "billing",
+      "workflow": "invoice",
+      "name": "a rejection with a comment ends in rejected",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "invoice",
+            "kind": "test",
+            "status": "completed",
+            "state": "rejected",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 282,
+              "outputTokens": 17
+            },
+            "cost": 0.0000059,
+            "unpricedCalls": 1,
+            "statesVisited": [
+              "extract",
+              "checks",
+              "lines",
+              "approval",
+              "rejected"
+            ],
+            "context": {
+              "attempts": 0,
+              "fields": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "vendor": "suspicious",
+              "amount": {
+                "ok": false
+              },
+              "checks": {
+                "vendor": "suspicious",
+                "amount": {
+                  "ok": false
+                }
+              },
+              "lineChecks": [],
+              "decision": {
+                "outcome": "pending",
+                "lastEvent": {
+                  "comment": "Wrong amount"
+                }
+              }
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "invoice",
+              "input": {
+                "invoice": "Acme Paper, 120 EUR",
+                "lines": []
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "attempts",
+              "value": 0,
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "extract",
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "extract",
+              "agent": "clerk",
+              "prompt": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "knowledge.searched",
+              "agent": "clerk",
+              "source": "ledger",
+              "query": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "refs": [],
+              "runId": "test_1",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "messages": 2,
+              "runId": "test_1",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "usage": {
+                "inputTokens": 192,
+                "outputTokens": 10
+              },
+              "latencyMs": 0,
+              "text": "{\"vendor\": \"Acme Paper\", \"amount\": 120}",
+              "runId": "test_1",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "extract",
+              "agent": "clerk",
+              "output": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "fields",
+              "value": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "extract",
+              "to": "checks",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "checks",
+              "runId": "test_1",
+              "seq": 11,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "reviewer",
+              "prompt": "Vendor: Acme Paper",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 12,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "checker",
+              "prompt": "{\"amount\":120}",
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 13,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 14,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 15,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 62,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "suspicious",
+              "cost": 0.0000037,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 16,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 28,
+                "outputTokens": 4
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": false}",
+              "cost": 0.0000022,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 17,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "reviewer",
+              "output": "suspicious",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 18,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "checker",
+              "output": {
+                "ok": false
+              },
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 19,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "vendor",
+              "value": "suspicious",
+              "runId": "test_1",
+              "seq": 20,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "amount",
+              "value": {
+                "ok": false
+              },
+              "runId": "test_1",
+              "seq": 21,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "checks",
+              "value": {
+                "vendor": "suspicious",
+                "amount": {
+                  "ok": false
+                }
+              },
+              "runId": "test_1",
+              "seq": 22,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "checks",
+              "to": "lines",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 23,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "lines",
+              "runId": "test_1",
+              "seq": 24,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "lineChecks",
+              "value": [],
+              "runId": "test_1",
+              "seq": 25,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "lines",
+              "to": "approval",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 26,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "approval",
+              "runId": "test_1",
+              "seq": 27,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.started",
+              "state": "approval",
+              "workflow": "approval",
+              "childRunId": "test_2",
+              "runId": "test_1",
+              "seq": 28,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "approval",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "child": "test_2",
+              "runId": "test_1",
+              "seq": 29,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.finished",
+              "state": "approval",
+              "workflow": "approval",
+              "childRunId": "test_2",
+              "status": "completed",
+              "runId": "test_1",
+              "seq": 30,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "decision",
+              "value": {
+                "outcome": "pending",
+                "lastEvent": {
+                  "comment": "Wrong amount"
+                }
+              },
+              "runId": "test_1",
+              "seq": 31,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "approval",
+              "to": "rejected",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 32,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "rejected",
+              "runId": "test_1",
+              "seq": 33,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "rejected",
+              "context": {
+                "attempts": 0,
+                "fields": {
+                  "vendor": "Acme Paper",
+                  "amount": 120
+                },
+                "vendor": "suspicious",
+                "amount": {
+                  "ok": false
+                },
+                "checks": {
+                  "vendor": "suspicious",
+                  "amount": {
+                    "ok": false
+                  }
+                },
+                "lineChecks": [],
+                "decision": {
+                  "outcome": "pending",
+                  "lastEvent": {
+                    "comment": "Wrong amount"
+                  }
+                }
+              },
+              "runId": "test_1",
+              "seq": 34,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "test_2",
+          "summary": {
+            "id": "test_2",
+            "hubId": "billing",
+            "workflowId": "approval",
+            "kind": "test",
+            "status": "completed",
+            "state": "rejected",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-01T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "decide",
+              "rejected"
+            ],
+            "context": {
+              "outcome": "pending",
+              "lastEvent": {
+                "comment": "Wrong amount"
+              }
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": "test_1",
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "approval",
+              "input": {
+                "summary": {
+                  "vendor": "Acme Paper",
+                  "amount": 120
+                }
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "parent": {
+                "runId": "test_1",
+                "state": "approval",
+                "depth": 1
+              },
+              "runId": "test_2",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "outcome",
+              "value": "pending",
+              "runId": "test_2",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "decide",
+              "runId": "test_2",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "decide",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "timers": [
+                {
+                  "after": "2d",
+                  "at": "2026-01-03T00:00:00.000Z"
+                }
+              ],
+              "runId": "test_2",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "event.received",
+              "event": "reject",
+              "payload": {
+                "comment": "Wrong amount"
+              },
+              "runId": "test_2",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "lastEvent",
+              "value": {
+                "comment": "Wrong amount"
+              },
+              "runId": "test_2",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "decide",
+              "to": "rejected",
+              "event": "reject",
+              "runId": "test_2",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "rejected",
+              "runId": "test_2",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "rejected",
+              "context": {
+                "outcome": "pending",
+                "lastEvent": {
+                  "comment": "Wrong amount"
+                }
+              },
+              "runId": "test_2",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hub": "billing",
+      "workflow": "invoice",
+      "name": "an approval nobody answers expires after two days",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "invoice",
+            "kind": "test",
+            "status": "completed",
+            "state": "rejected",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-03T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 282,
+              "outputTokens": 14
+            },
+            "cost": 0.0000053,
+            "unpricedCalls": 1,
+            "statesVisited": [
+              "extract",
+              "checks",
+              "lines",
+              "approval",
+              "rejected"
+            ],
+            "context": {
+              "attempts": 0,
+              "fields": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "vendor": "ok",
+              "amount": {
+                "ok": true
+              },
+              "checks": {
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                }
+              },
+              "lineChecks": [],
+              "decision": {
+                "outcome": "pending"
+              }
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "invoice",
+              "input": {
+                "invoice": "Acme Paper, 120 EUR",
+                "lines": []
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "attempts",
+              "value": 0,
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "extract",
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "extract",
+              "agent": "clerk",
+              "prompt": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "knowledge.searched",
+              "agent": "clerk",
+              "source": "ledger",
+              "query": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "refs": [],
+              "runId": "test_1",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "messages": 2,
+              "runId": "test_1",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "usage": {
+                "inputTokens": 192,
+                "outputTokens": 10
+              },
+              "latencyMs": 0,
+              "text": "{\"vendor\": \"Acme Paper\", \"amount\": 120}",
+              "runId": "test_1",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "extract",
+              "agent": "clerk",
+              "output": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "fields",
+              "value": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "extract",
+              "to": "checks",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "checks",
+              "runId": "test_1",
+              "seq": 11,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "reviewer",
+              "prompt": "Vendor: Acme Paper",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 12,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "checker",
+              "prompt": "{\"amount\":120}",
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 13,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 14,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 15,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 62,
+                "outputTokens": 1
+              },
+              "latencyMs": 0,
+              "text": "ok",
+              "cost": 0.0000033,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 16,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 28,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.000002,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 17,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "reviewer",
+              "output": "ok",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 18,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 19,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "vendor",
+              "value": "ok",
+              "runId": "test_1",
+              "seq": 20,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "amount",
+              "value": {
+                "ok": true
+              },
+              "runId": "test_1",
+              "seq": 21,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "checks",
+              "value": {
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                }
+              },
+              "runId": "test_1",
+              "seq": 22,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "checks",
+              "to": "lines",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 23,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "lines",
+              "runId": "test_1",
+              "seq": 24,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "lineChecks",
+              "value": [],
+              "runId": "test_1",
+              "seq": 25,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "lines",
+              "to": "approval",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 26,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "approval",
+              "runId": "test_1",
+              "seq": 27,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.started",
+              "state": "approval",
+              "workflow": "approval",
+              "childRunId": "test_2",
+              "runId": "test_1",
+              "seq": 28,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "approval",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "child": "test_2",
+              "runId": "test_1",
+              "seq": 29,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.finished",
+              "state": "approval",
+              "workflow": "approval",
+              "childRunId": "test_2",
+              "status": "completed",
+              "runId": "test_1",
+              "seq": 30,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "decision",
+              "value": {
+                "outcome": "pending"
+              },
+              "runId": "test_1",
+              "seq": 31,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "approval",
+              "to": "rejected",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 32,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "rejected",
+              "runId": "test_1",
+              "seq": 33,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "rejected",
+              "context": {
+                "attempts": 0,
+                "fields": {
+                  "vendor": "Acme Paper",
+                  "amount": 120
+                },
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                },
+                "checks": {
+                  "vendor": "ok",
+                  "amount": {
+                    "ok": true
+                  }
+                },
+                "lineChecks": [],
+                "decision": {
+                  "outcome": "pending"
+                }
+              },
+              "runId": "test_1",
+              "seq": 34,
+              "at": "2026-01-03T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "test_2",
+          "summary": {
+            "id": "test_2",
+            "hubId": "billing",
+            "workflowId": "approval",
+            "kind": "test",
+            "status": "completed",
+            "state": "expired",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": "2026-01-03T00:00:00.000Z",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "decide",
+              "expired"
+            ],
+            "context": {
+              "outcome": "pending"
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": "test_1",
+            "waitingOn": null,
+            "accepts": [],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "approval",
+              "input": {
+                "summary": {
+                  "vendor": "Acme Paper",
+                  "amount": 120
+                }
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "parent": {
+                "runId": "test_1",
+                "state": "approval",
+                "depth": 1
+              },
+              "runId": "test_2",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "outcome",
+              "value": "pending",
+              "runId": "test_2",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "decide",
+              "runId": "test_2",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "decide",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "timers": [
+                {
+                  "after": "2d",
+                  "at": "2026-01-03T00:00:00.000Z"
+                }
+              ],
+              "runId": "test_2",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "timer.fired",
+              "state": "decide",
+              "after": "2d",
+              "runId": "test_2",
+              "seq": 5,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "decide",
+              "to": "expired",
+              "event": "after 2d",
+              "runId": "test_2",
+              "seq": 6,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "expired",
+              "runId": "test_2",
+              "seq": 7,
+              "at": "2026-01-03T00:00:00.000Z"
+            },
+            {
+              "type": "run.completed",
+              "state": "expired",
+              "context": {
+                "outcome": "pending"
+              },
+              "runId": "test_2",
+              "seq": 8,
+              "at": "2026-01-03T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hub": "billing",
+      "workflow": "invoice",
+      "name": "without a decision the run waits",
+      "passed": true,
+      "failures": [],
+      "runId": "test_1",
+      "runs": [
+        {
+          "id": "test_1",
+          "summary": {
+            "id": "test_1",
+            "hubId": "billing",
+            "workflowId": "invoice",
+            "kind": "test",
+            "status": "waiting",
+            "state": "approval",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": null,
+            "usage": {
+              "inputTokens": 282,
+              "outputTokens": 14
+            },
+            "cost": 0.0000053,
+            "unpricedCalls": 1,
+            "statesVisited": [
+              "extract",
+              "checks",
+              "lines",
+              "approval"
+            ],
+            "context": {
+              "attempts": 0,
+              "fields": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "vendor": "ok",
+              "amount": {
+                "ok": true
+              },
+              "checks": {
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                }
+              },
+              "lineChecks": []
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": null,
+            "waitingOn": "test_2",
+            "accepts": [
+              "approve",
+              "reject"
+            ],
+            "nextTimer": null,
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "invoice",
+              "input": {
+                "invoice": "Acme Paper, 120 EUR",
+                "lines": []
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "runId": "test_1",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "attempts",
+              "value": 0,
+              "runId": "test_1",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "extract",
+              "runId": "test_1",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "extract",
+              "agent": "clerk",
+              "prompt": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "runId": "test_1",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "knowledge.searched",
+              "agent": "clerk",
+              "source": "ledger",
+              "query": "Method \"extract\": Pull the vendor and amount out of an invoice.\n\nExtract the vendor and amount from: Acme Paper, 120 EUR\n\nAnswer with JSON with these fields: vendor (string), amount (number), note (string, may be left out).",
+              "refs": [],
+              "runId": "test_1",
+              "seq": 5,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "messages": 2,
+              "runId": "test_1",
+              "seq": 6,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "clerk",
+              "provider": "mock",
+              "model": "echo-careful",
+              "usage": {
+                "inputTokens": 192,
+                "outputTokens": 10
+              },
+              "latencyMs": 0,
+              "text": "{\"vendor\": \"Acme Paper\", \"amount\": 120}",
+              "runId": "test_1",
+              "seq": 7,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "extract",
+              "agent": "clerk",
+              "output": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 8,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "fields",
+              "value": {
+                "vendor": "Acme Paper",
+                "amount": 120
+              },
+              "runId": "test_1",
+              "seq": 9,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "extract",
+              "to": "checks",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 10,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "checks",
+              "runId": "test_1",
+              "seq": 11,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "reviewer",
+              "prompt": "Vendor: Acme Paper",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 12,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.started",
+              "state": "checks",
+              "agent": "checker",
+              "prompt": "{\"amount\":120}",
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 13,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 14,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.request",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "messages": 2,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 15,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "reviewer",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 62,
+                "outputTokens": 1
+              },
+              "latencyMs": 0,
+              "text": "ok",
+              "cost": 0.0000033,
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 16,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "llm.response",
+              "agent": "checker",
+              "provider": "mock",
+              "model": "echo-fast",
+              "usage": {
+                "inputTokens": 28,
+                "outputTokens": 3
+              },
+              "latencyMs": 0,
+              "text": "{\"ok\": true}",
+              "cost": 0.000002,
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 17,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "reviewer",
+              "output": "ok",
+              "branch": "vendor",
+              "runId": "test_1",
+              "seq": 18,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "agent.finished",
+              "state": "checks",
+              "agent": "checker",
+              "output": {
+                "ok": true
+              },
+              "branch": "amount",
+              "runId": "test_1",
+              "seq": 19,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "vendor",
+              "value": "ok",
+              "runId": "test_1",
+              "seq": 20,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "amount",
+              "value": {
+                "ok": true
+              },
+              "runId": "test_1",
+              "seq": 21,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "checks",
+              "value": {
+                "vendor": "ok",
+                "amount": {
+                  "ok": true
+                }
+              },
+              "runId": "test_1",
+              "seq": 22,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "checks",
+              "to": "lines",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 23,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "lines",
+              "runId": "test_1",
+              "seq": 24,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "lineChecks",
+              "value": [],
+              "runId": "test_1",
+              "seq": 25,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "transition",
+              "from": "lines",
+              "to": "approval",
+              "event": "done",
+              "runId": "test_1",
+              "seq": 26,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "approval",
+              "runId": "test_1",
+              "seq": 27,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "workflow.started",
+              "state": "approval",
+              "workflow": "approval",
+              "childRunId": "test_2",
+              "runId": "test_1",
+              "seq": 28,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "approval",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "child": "test_2",
+              "runId": "test_1",
+              "seq": 29,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "test_2",
+          "summary": {
+            "id": "test_2",
+            "hubId": "billing",
+            "workflowId": "approval",
+            "kind": "test",
+            "status": "waiting",
+            "state": "decide",
+            "startedAt": "2026-01-01T00:00:00.000Z",
+            "endedAt": null,
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0
+            },
+            "cost": 0,
+            "unpricedCalls": 0,
+            "statesVisited": [
+              "decide"
+            ],
+            "context": {
+              "outcome": "pending"
+            },
+            "error": null,
+            "definitionsVersion": "sha256:0bce670a9b41e6ca",
+            "trigger": null,
+            "parentRunId": "test_1",
+            "waitingOn": null,
+            "accepts": [
+              "approve",
+              "reject"
+            ],
+            "nextTimer": "2026-01-03T00:00:00.000Z",
+            "approval": null,
+            "signals": []
+          },
+          "events": [
+            {
+              "type": "run.started",
+              "hubId": "billing",
+              "workflowId": "approval",
+              "input": {
+                "summary": {
+                  "vendor": "Acme Paper",
+                  "amount": 120
+                }
+              },
+              "kind": "test",
+              "definitionsVersion": "sha256:0bce670a9b41e6ca",
+              "parent": {
+                "runId": "test_1",
+                "state": "approval",
+                "depth": 1
+              },
+              "runId": "test_2",
+              "seq": 1,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "context.updated",
+              "key": "outcome",
+              "value": "pending",
+              "runId": "test_2",
+              "seq": 2,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "state.entered",
+              "state": "decide",
+              "runId": "test_2",
+              "seq": 3,
+              "at": "2026-01-01T00:00:00.000Z"
+            },
+            {
+              "type": "run.waiting",
+              "state": "decide",
+              "events": [
+                "approve",
+                "reject"
+              ],
+              "timers": [
+                {
+                  "after": "2d",
+                  "at": "2026-01-03T00:00:00.000Z"
+                }
+              ],
+              "runId": "test_2",
+              "seq": 4,
+              "at": "2026-01-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

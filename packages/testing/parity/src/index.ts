@@ -38,7 +38,13 @@ export {
   type Verdict,
 } from "./compare/judge.ts";
 export { composeWorkspace } from "./compose.ts";
-export { cloneProblems, oldEnvironment, oldTsx, referenceHash } from "./old-repo.ts";
+export {
+  cloneProblems,
+  fixedTestTime,
+  oldEnvironment,
+  oldTsx,
+  referenceHash,
+} from "./old-repo.ts";
 export {
   type FileRecording,
   type FileStatus,
@@ -50,7 +56,11 @@ export {
   type OldFile,
   type OldIssue,
   type OldResult,
+  type OldRun,
+  type OldTestRun,
   type Recording,
+  type RunLogs,
   referenceCommit,
   toRecording,
+  toRunLogs,
 } from "./recording.ts";

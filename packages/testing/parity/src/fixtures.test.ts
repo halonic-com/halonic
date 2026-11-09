@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { loadCases } from "./cases.ts";
-import type { Recording } from "./recording.ts";
+import type { Recording, RunLogs } from "./recording.ts";
 
 const fixtures = fileURLToPath(new URL("../fixtures/", import.meta.url));
 const cases = loadCases(fixtures);
@@ -76,5 +76,40 @@ verifies("parity.fixtures-cover-every-kind", () => {
     expect(read("workspace.yaml")).toMatch(
       /budget:\n {2}currency: EUR\n {2}perRun: 0.5\n {2}monthly: 20/,
     );
+  });
+});
+
+verifies("parity.runner-records-test-run-logs", () => {
+  const runLogs = JSON.parse(
+    readFileSync(join(fixtures, "base", "run-logs.json"), "utf8"),
+  ) as RunLogs;
+
+  it("has the run logs of the base's 8 workflow tests, all passing in the old repo", () => {
+    expect(runLogs.reference).toBe("784f78d");
+    expect(runLogs.case).toBe("base");
+    expect(runLogs.clock).toBe("2026-01-01T00:00:00.000Z");
+    expect(runLogs.tests.map((t) => `${t.workflow}: ${t.name}`)).toEqual([
+      "approval: approve",
+      "approval: the timer fires after two days",
+      "approval: one day is not enough",
+      "batch: each line runs the line-check workflow",
+      "invoice: an approved invoice is paid and announced",
+      "invoice: a rejection with a comment ends in rejected",
+      "invoice: an approval nobody answers expires after two days",
+      "invoice: without a decision the run waits",
+    ]);
+    for (const test of runLogs.tests) {
+      expect(test.passed, test.name).toBe(true);
+      expect(test.failures, test.name).toEqual([]);
+      expect(test.runId, test.name).toBe("test_1");
+      expect(test.runs[0]?.events.length, test.name).toBeGreaterThan(0);
+    }
+  });
+
+  it("moves the clock only on a test's advance steps", () => {
+    const timer = runLogs.tests.find((t) => t.name === "the timer fires after two days");
+    const events = (timer?.runs[0]?.events ?? []) as { type: string; at: string }[];
+    expect(events.find((e) => e.type === "run.started")?.at).toBe("2026-01-01T00:00:00.000Z");
+    expect(events.find((e) => e.type === "timer.fired")?.at).toBe("2026-01-03T00:00:00.000Z");
   });
 });

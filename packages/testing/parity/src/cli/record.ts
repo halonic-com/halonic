@@ -6,7 +6,13 @@ import { fileURLToPath } from "node:url";
 import { loadCases, type ParityCase } from "../cases.ts";
 import { composeWorkspace } from "../compose.ts";
 import { cloneProblems, oldEnvironment, oldTsx, referenceHash } from "../old-repo.ts";
-import { goldenText, type OldResult, type Recording, toRecording } from "../recording.ts";
+import {
+  goldenText,
+  type OldResult,
+  type Recording,
+  toRecording,
+  toRunLogs,
+} from "../recording.ts";
 
 /**
  * pnpm --filter @halonicjs/testing-parity record --old <scratch clone> [--case <id>]...
@@ -123,7 +129,9 @@ export function main(argv: readonly string[], setup: Setup = defaultSetup): numb
   try {
     const jobs = cases.map((parityCase, index) => {
       const dir = join(scratch, `workspace-${index}`);
-      return { id: parityCase.id, dir, files: composeWorkspace(fixtures, parityCase, dir) };
+      const files = composeWorkspace(fixtures, parityCase, dir);
+      // Only the base's workflow tests get run logs: a case breaks the workspace on purpose.
+      return { id: parityCase.id, dir, files, tests: parityCase.id === "base" };
     });
     const start = setup.startRunner ?? startOldRunner;
     const results = runOld(start, options.clone, jobs, scratch);
@@ -133,8 +141,13 @@ export function main(argv: readonly string[], setup: Setup = defaultSetup): numb
       if (result === undefined || result.id !== parityCase.id) {
         throw new Error(`The old runner gave no result for ${parityCase.id}`);
       }
-      const recording = toRecording(parityCase, result, [dir, realpathSync(dir)]);
+      const dirs = [dir, realpathSync(dir)];
+      const recording = toRecording(parityCase, result, dirs);
       writeFileSync(join(parityCase.folder, "recorded.json"), goldenText(recording));
+      if (result.tests !== undefined) {
+        const runLogs = toRunLogs(parityCase, result.tests, dirs);
+        writeFileSync(join(parityCase.folder, "run-logs.json"), goldenText(runLogs));
+      }
       return { parityCase, recording };
     });
     if (options.only.length === 0) {

@@ -99,7 +99,70 @@ export async function loadWorkspace(store) {
       });
     }
   }
-  return { diagnostics };
+  // tests.yaml names the test cases of one workflow, a line each; without it there's no workspace.
+  const tests = await store.read("tests.yaml");
+  if (tests === null) {
+    return { diagnostics };
+  }
+  const cases = tests.split("\\n").filter((line) => line !== "").map((name) => ({ name }));
+  return { workspace: { hubs: { acme: { tests: { greet: { value: { cases } } } } } }, diagnostics };
+}
+`;
+
+/** Deterministic ids, as the old util makes them. */
+const utilModule = `export function fixedIds() {
+  const counters = new Map();
+  return {
+    next(prefix) {
+      const n = (counters.get(prefix) ?? 0) + 1;
+      counters.set(prefix, n);
+      return prefix + "_" + n;
+    },
+  };
+}
+`;
+
+/** A run store that lists the newest run first, so the runner has to put them in order. */
+const memoryModule = `export class MemoryRunStore {
+  runs = new Map();
+  async append(event) {
+    const events = this.runs.get(event.runId) ?? [];
+    events.push(event);
+    this.runs.set(event.runId, events);
+  }
+  async list() {
+    return [...this.runs.keys()].reverse().map((id) => ({ id }));
+  }
+  async get(id) {
+    return { id, events: this.runs.get(id)?.length ?? 0 };
+  }
+  async events(id) {
+    return this.runs.get(id) ?? [];
+  }
+}
+`;
+
+/**
+ * A stand-in for the old test runner. Each case starts a run at the clock's
+ * time and notes what Date.now says; "nested" starts a second run, "random"
+ * logs a random number, and "broken" fails.
+ */
+const testRunnerModule = `export async function runCase(workspace, hub, workflow, testCase, deps) {
+  const start = async (kind) => {
+    const runId = deps.ids.next("test");
+    const at = deps.clock.now().toISOString();
+    await deps.runStore.append({ type: "run.started", kind, runId, at, wall: Date.now() });
+    return runId;
+  };
+  const runId = await start(workflow);
+  if (testCase.name === "nested") {
+    await start("child");
+  }
+  if (testCase.name === "random") {
+    await deps.runStore.append({ type: "note", runId, value: Math.random() });
+  }
+  const broken = testCase.name === "broken";
+  return { name: testCase.name, passed: !broken, failures: broken ? ["expected status completed"] : [], runId };
 }
 `;
 
@@ -152,6 +215,9 @@ export function fakeOldRepo(folders: TestFolders, omit: readonly string[] = []):
     "packages/core/schema/src/index.ts": schemaModule(omit),
     "packages/core/config/src/index.ts": configModule,
     "packages/platform/node/src/index.ts": platformModule,
+    "packages/core/util/src/index.ts": utilModule,
+    "packages/store/memory/src/index.ts": memoryModule,
+    "packages/testing/test-runner/src/index.ts": testRunnerModule,
     "node_modules/.bin/tsx": tsxScript,
   });
   chmodSync(oldTsx(clone), 0o755);

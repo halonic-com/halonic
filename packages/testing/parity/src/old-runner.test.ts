@@ -12,6 +12,7 @@ afterEach(() => folders.cleanUp());
 interface Job {
   readonly id: string;
   readonly files: Readonly<Record<string, string>>;
+  readonly tests?: boolean;
 }
 
 /**
@@ -25,7 +26,7 @@ async function runOld(clone: string, jobs: readonly Job[]): Promise<OldResult[]>
     const dir = join(scratch, job.id);
     mkdirSync(dir);
     folders.write(dir, job.files);
-    return { id: job.id, dir, files: Object.keys(job.files).sort() };
+    return { id: job.id, dir, files: Object.keys(job.files).sort(), tests: job.tests };
   });
   const jobsPath = join(scratch, "jobs.json");
   const outPath = join(scratch, "results.json");
@@ -156,5 +157,89 @@ verifies("parity.runner-traces-old-loader", () => {
     await expect(runOld(clone, [])).rejects.toThrow(
       'The old code has no export "Hub"; is the clone at the reference commit?',
     );
+  });
+});
+
+verifies("parity.runner-records-test-run-logs", () => {
+  const at = "2026-01-01T00:00:00.000Z";
+  const wall = Date.parse(at);
+
+  it("records each test case's runs in order, with fixed IDs and a clock that stands still", async () => {
+    const { clone } = fakeOldRepo(folders);
+    const realNow = Date.now;
+    const [result] = await runOld(clone, [
+      {
+        id: "base",
+        files: { "workspace.yaml": "id: acme\n", "tests.yaml": "plain\nnested\nbroken\n" },
+        tests: true,
+      },
+    ]);
+    expect(Date.now).toBe(realNow);
+    expect(result?.tests).toEqual([
+      {
+        hub: "acme",
+        workflow: "greet",
+        name: "plain",
+        passed: true,
+        failures: [],
+        runId: "test_1",
+        runs: [
+          {
+            id: "test_1",
+            summary: { id: "test_1", events: 1 },
+            events: [{ type: "run.started", kind: "greet", runId: "test_1", at, wall }],
+          },
+        ],
+      },
+      {
+        hub: "acme",
+        workflow: "greet",
+        name: "nested",
+        passed: true,
+        failures: [],
+        runId: "test_1",
+        runs: [
+          {
+            id: "test_1",
+            summary: { id: "test_1", events: 1 },
+            events: [{ type: "run.started", kind: "greet", runId: "test_1", at, wall }],
+          },
+          {
+            id: "test_2",
+            summary: { id: "test_2", events: 1 },
+            events: [{ type: "run.started", kind: "child", runId: "test_2", at, wall }],
+          },
+        ],
+      },
+      expect.objectContaining({
+        name: "broken",
+        passed: false,
+        failures: ["expected status completed"],
+      }),
+    ]);
+  });
+
+  it("runs no workflow tests for a job that doesn't ask for them", async () => {
+    const { clone } = fakeOldRepo(folders);
+    const [result] = await runOld(clone, [{ id: "case", files: { "tests.yaml": "plain\n" } }]);
+    expect(result).not.toHaveProperty("tests");
+  });
+
+  it("stops, naming the test, when a run log changes between two runs", async () => {
+    const { clone } = fakeOldRepo(folders);
+    const realNow = Date.now;
+    await expect(
+      runOld(clone, [{ id: "base", files: { "tests.yaml": "plain\nrandom\n" }, tests: true }]),
+    ).rejects.toThrow(
+      'The run log of acme/greet "random" changed between two runs; fix the clock or IDs first',
+    );
+    expect(Date.now).toBe(realNow);
+  });
+
+  it("stops when the old loader gives no workspace to test", async () => {
+    const { clone } = fakeOldRepo(folders);
+    await expect(
+      runOld(clone, [{ id: "base", files: { "workspace.yaml": "id: acme\n" }, tests: true }]),
+    ).rejects.toThrow("The old loader gave no workspace, so its workflow tests can't run");
   });
 });

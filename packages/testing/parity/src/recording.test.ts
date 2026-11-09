@@ -1,7 +1,15 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { ParityCase } from "./cases.ts";
-import { goldenText, lineVerdict, normalise, type OldResult, toRecording } from "./recording.ts";
+import {
+  goldenText,
+  lineVerdict,
+  normalise,
+  type OldResult,
+  type OldTestRun,
+  toRecording,
+  toRunLogs,
+} from "./recording.ts";
 
 function parityCase(id: string, line: number | null | undefined, files: string[] = []): ParityCase {
   return {
@@ -120,5 +128,36 @@ verifies("parity.line-verdict", () => {
     const own = toRecording(parityCase("agent/x", undefined, ["a.yaml"]), result([], files), []);
     expect(own.files.map((f) => f.file)).toEqual(["a.yaml"]);
     expect(own.valid).toBe(true);
+  });
+});
+
+verifies("parity.runner-records-test-run-logs", () => {
+  const test = (event: unknown): OldTestRun => ({
+    hub: "acme",
+    workflow: "greet",
+    name: "plain",
+    passed: true,
+    failures: [],
+    runId: "test_1",
+    runs: [{ id: "test_1", summary: null, events: [event] }],
+  });
+
+  it("writes the run logs with the fixed clock, and the scratch folder replaced", () => {
+    const event = { runId: "test_1", at: "2026-01-01T00:00:00.000Z", file: "/s/w/a.txt" };
+    const runLogs = toRunLogs(parityCase("base", undefined), [test(event)], ["/s/w"]);
+    expect(runLogs).toEqual({
+      reference: "784f78d",
+      case: "base",
+      clock: "2026-01-01T00:00:00.000Z",
+      tests: [test({ ...event, file: "<workspace>/a.txt" })],
+    });
+    expect(goldenText(runLogs)).toBe(`${JSON.stringify(runLogs, null, 2)}\n`);
+  });
+
+  it("refuses a run log with a random old run ID", () => {
+    const event = { childRunId: "test_mw6zmn5u_8202b972" };
+    expect(() => toRunLogs(parityCase("base", undefined), [test(event)], [])).toThrow(
+      "A run log carries a random run ID; fix the IDs first",
+    );
   });
 });

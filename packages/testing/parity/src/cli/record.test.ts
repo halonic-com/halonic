@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Recording } from "../recording.ts";
+import type { Recording, RunLogs } from "../recording.ts";
 import { fakeOldRepo } from "../test/fake-old-repo.ts";
 import { TestFolders } from "../test-folders.ts";
 import { main, type StartRunner } from "./record.ts";
@@ -29,6 +29,7 @@ function fixtures(): string {
     "base/case.json": JSON.stringify({ about: "base", kind: "workspace", fault: "valid" }),
     "base/files/workspace.yaml": "id: acme\n",
     "base/files/agent.yaml": "name: helper\n",
+    "base/files/tests.yaml": "plain\n",
     "cases/agent/bad-name/case.json": JSON.stringify({
       about: "a name that is no number",
       kind: "agent",
@@ -63,6 +64,7 @@ describe("parity.recording-is-machine-free", () => {
     expect(base.valid).toBe(true);
     expect(base.files.map((f) => [f.file, f.status])).toEqual([
       ["agent.yaml", "pass"],
+      ["tests.yaml", "pass"],
       ["workspace.yaml", "pass"],
     ]);
     expect(base.validate).toEqual({
@@ -83,6 +85,22 @@ describe("parity.recording-is-machine-free", () => {
     expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/recorded.json"))).toBe(true);
     expect(existsSync(join(fixtureFolder, "base/recorded.json"))).toBe(false);
     expect(existsSync(join(fixtureFolder, "old-line-notes.json"))).toBe(false);
+  });
+});
+
+describe("parity.runner-records-test-run-logs", () => {
+  it("writes run logs for the base's workflow tests, and for no case", () => {
+    const { clone, head } = fakeOldRepo(folders);
+    const fixtureFolder = fixtures();
+    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+    const text = readFileSync(join(fixtureFolder, "base/run-logs.json"), "utf8");
+    const runLogs = JSON.parse(text) as RunLogs;
+    expect(text).toBe(`${JSON.stringify(runLogs, null, 2)}\n`);
+    expect(runLogs.clock).toBe("2026-01-01T00:00:00.000Z");
+    expect(runLogs.tests.map((t) => [t.name, t.passed, t.runs.map((r) => r.id)])).toEqual([
+      ["plain", true, ["test_1"]],
+    ]);
+    expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/run-logs.json"))).toBe(false);
   });
 });
 

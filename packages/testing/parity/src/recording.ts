@@ -1,4 +1,5 @@
 import type { ParityCase } from "./cases.ts";
+import { fixedTestTime } from "./old-repo.ts";
 
 /** The commit of the old repo every recording comes from. */
 export const referenceCommit = "784f78d";
@@ -36,6 +37,28 @@ export interface OldFile {
   readonly issues: readonly OldIssue[];
 }
 
+/** One run a workflow test started (the test's own run, or a nested workflow's), as the old run store kept it. */
+export interface OldRun {
+  readonly id: string;
+  /** The old engine's run summary, as it is at the end of the test. */
+  readonly summary: unknown;
+  /** The run log: every event of the run, in order. */
+  readonly events: readonly unknown[];
+}
+
+/** One workflow test case the old test runner ran, with fixed IDs and a fixed clock. */
+export interface OldTestRun {
+  readonly hub: string;
+  readonly workflow: string;
+  readonly name: string;
+  readonly passed: boolean;
+  readonly failures: readonly string[];
+  /** The test's own run, or null when it never started. */
+  readonly runId: string | null;
+  /** Every run the test started, in the order the old IDs count up. */
+  readonly runs: readonly OldRun[];
+}
+
 /** What the old runner reports for one composed workspace. */
 export interface OldResult {
   readonly id: string;
@@ -46,6 +69,8 @@ export interface OldResult {
     readonly stdout: string;
     readonly stderr: string;
   };
+  /** The workspace's workflow tests, only for a job that asked for them. */
+  readonly tests?: readonly OldTestRun[];
 }
 
 export type FileStatus = "pass" | "fail" | "not-read";
@@ -152,7 +177,43 @@ export function toRecording(
   };
 }
 
+/** The golden run logs of a case's workflow tests: run-logs.json. */
+export interface RunLogs {
+  readonly reference: string;
+  readonly case: string;
+  /** The time the old clock stood at; it moves only when a test says `advance`. */
+  readonly clock: string;
+  readonly tests: readonly OldTestRun[];
+}
+
+/**
+ * Turns the old runner's workflow tests into the golden run logs, with the
+ * scratch folder replaced. Unlike validate output, run logs carry times and
+ * run IDs, but from a fixed clock and fixed IDs; a random old run ID means
+ * the IDs weren't fixed, so it is refused.
+ */
+export function toRunLogs(
+  parityCase: ParityCase,
+  tests: readonly OldTestRun[],
+  workspaceDirs: readonly string[],
+): RunLogs {
+  let text = JSON.stringify(tests);
+  for (const dir of workspaceDirs) {
+    text = text.split(JSON.stringify(dir).slice(1, -1)).join("<workspace>");
+  }
+  const randomId = /\b(?:run|test)_[a-z0-9]{6,}_[0-9a-f]{8}\b/;
+  if (randomId.test(text)) {
+    throw new Error("A run log carries a random run ID; fix the IDs first");
+  }
+  return {
+    reference: referenceCommit,
+    case: parityCase.id,
+    clock: fixedTestTime,
+    tests: JSON.parse(text) as OldTestRun[],
+  };
+}
+
 /** The golden file's text: two-space JSON with a final newline, keys in insertion order. */
-export function goldenText(recording: Recording): string {
-  return `${JSON.stringify(recording, null, 2)}\n`;
+export function goldenText(golden: Recording | RunLogs): string {
+  return `${JSON.stringify(golden, null, 2)}\n`;
 }

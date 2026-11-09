@@ -20,6 +20,7 @@ fixtures/
     case.json         what the fixture is
     files/            a valid workspace with every file kind
     recorded.json     the old repo's behaviour on it (golden)
+    run-logs.json     the old runner's run logs of its 8 workflow tests (golden)
   cases/<kind>/<name>/
     case.json         the kind, the fault, and where the fault is
     files/            only the files that differ from the base
@@ -68,6 +69,28 @@ The validate output carries no time and no run IDs. The recorder still checks
 this and refuses to write output that does, so a later change can't slip a
 clock into the goldens. It runs the old code with `TZ=UTC`, `LANG=C` and an
 empty home folder, so nothing from the person's own settings is read.
+
+## Run logs
+
+For the base only, the recorder also runs its 8 workflow tests with the old
+test runner (`runCase`) and writes `run-logs.json`. For each test it holds
+whether the old runner passed it, its failures, and every run the test started
+(its own and those of nested workflows), each with the old run summary and all
+its events in order. These are the goldens for the engine's parity check.
+
+Times and IDs are fixed, so the logs are the same on every machine:
+
+- IDs come from the old `fixedIds`, fresh for each test: the test's own run is
+  `test_1`, nested runs follow as `test_2`, `test_3` and so on.
+- The clock stands still at `2026-01-01T00:00:00.000Z` (`clock` in the file)
+  and moves only on a test's `advance` steps, so a timer of `2d` fires at
+  `2026-01-03T00:00:00.000Z`. The run logs don't depend on how often the old
+  engine reads the clock.
+- `Date.now` reads the same time while a test runs, because the old engine
+  times model calls with it; `latencyMs` is therefore always `0`.
+
+The runner runs every test twice and stops, naming the test, if the two logs
+differ. The recorder refuses a log with a random old run ID.
 
 ## The compare
 
