@@ -3,4 +3,4 @@
 *.ico binary
 *.icns binary
 *.woff2 binary
-pnpm-lock.yaml linguist-generated=true -diff merge=binary
+pnpm-lock.yaml linguist-generated=true -diff
