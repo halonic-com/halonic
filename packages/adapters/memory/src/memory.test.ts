@@ -4,6 +4,7 @@ import {
   coordinationContract,
   definitionStoreContract,
   idGeneratorContract,
+  llmProviderContract,
   type MakeVcs,
   type PlantGitCode,
   recordStoreContract,
@@ -31,6 +32,7 @@ import {
   MemoryTokenStore,
   MemoryTrustStore,
   MemoryVcs,
+  ScriptedLlmProvider,
 } from "./index.ts";
 
 // The old memory.test.ts ran the old contracts against these adapters; this file does the same.
@@ -135,3 +137,23 @@ describe("Vcs hardened contract: fails when planted code runs", () => {
     it.fails,
   );
 });
+
+for (const streams of [false, true]) {
+  llmProviderContract(
+    streams ? "memory, streaming" : "memory",
+    async () => {
+      const provider = new ScriptedLlmProvider({ streaming: streams });
+      // The streaming binding adds a replay, so the suite's replay checks run too.
+      const replay = { type: "scripted", data: { note: "kept as JSON" } };
+      return {
+        provider,
+        answerNext: (answer) => provider.answerNext(streams ? { ...answer, replay } : answer),
+        hangNext: (partialText) => provider.hangNext(partialText),
+        refuseNext: () => provider.refuseNext(),
+        calls: () => provider.calls(),
+      };
+    },
+    // The plain binding leaves reasoning out, so the suite runs both ways.
+    { streams, reasoning: streams },
+  );
+}

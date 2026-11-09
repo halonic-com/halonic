@@ -3,6 +3,7 @@ export { ManualClock, manualClockStart } from "./clock.ts";
 export { MemoryCoordination } from "./coordination.ts";
 export { MemoryDefinitionStore } from "./definition-store.ts";
 export { fixedIds } from "./ids.ts";
+export { ScriptedLlmProvider, type ScriptedLlmProviderOptions } from "./llm-provider.ts";
 export { MemoryRecordStore } from "./record-store.ts";
 export { MemoryRunStore } from "./run-store.ts";
 export {

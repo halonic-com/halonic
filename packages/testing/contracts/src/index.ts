@@ -17,6 +17,20 @@ export {
   unsafeDefinitionPaths,
 } from "./definition-store.ts";
 export { idGeneratorContract, type MakeIdGenerator } from "./id-generator.ts";
+export {
+  chatRequest,
+  cutOffAnswer,
+  reasonedAnswer,
+  type ScriptedAnswer,
+  textAnswer,
+  toolAnswer,
+} from "./llm-answers.ts";
+export {
+  type LlmProviderContractOptions,
+  type LlmProviderHarness,
+  llmProviderContract,
+  type MakeLlmProvider,
+} from "./llm-provider.ts";
 export { type MakeRecordStore, recordStoreContract } from "./record-store.ts";
 export {
   completed,
