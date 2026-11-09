@@ -107,6 +107,12 @@ input {
   color: var(--text);
 }
 
+/* Muted so the example reads as an example, not as a value already typed. */
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
 input:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
