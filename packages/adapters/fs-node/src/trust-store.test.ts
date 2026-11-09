@@ -51,6 +51,7 @@ verifies("fs-node.trust-store-files", () => {
       expect(await readdir(root)).toHaveLength(2);
       expect(await store.get("/a\uD800")).toEqual(trustRecord("/a\uD800"));
       expect(await store.get("/a\uD801")).toEqual(trustRecord("/a\uD801"));
+      expect(await store.list()).toEqual([trustRecord("/a\uD800"), trustRecord("/a\uD801")]);
     });
 
     it.skipIf(process.platform === "win32")(
