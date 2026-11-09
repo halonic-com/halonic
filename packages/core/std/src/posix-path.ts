@@ -22,6 +22,15 @@ function normalize(path: string): string {
   }
   const absolute = path.startsWith("/");
   const trailingSlash = path.endsWith("/");
+  const segments = resolveSegments(path, absolute);
+  if (segments.length === 0) {
+    return emptyResult(absolute, trailingSlash);
+  }
+  const normalized = segments.join("/") + (trailingSlash ? "/" : "");
+  return absolute ? `/${normalized}` : normalized;
+}
+
+function resolveSegments(path: string, absolute: boolean): string[] {
   const segments: string[] = [];
   for (const segment of path.split("/")) {
     if (segment === "" || segment === ".") {
@@ -36,14 +45,14 @@ function normalize(path: string): string {
       segments.push(segment);
     }
   }
-  if (segments.length === 0) {
-    if (absolute) {
-      return "/";
-    }
-    return trailingSlash ? "./" : ".";
+  return segments;
+}
+
+function emptyResult(absolute: boolean, trailingSlash: boolean): string {
+  if (absolute) {
+    return "/";
   }
-  const normalized = segments.join("/") + (trailingSlash ? "/" : "");
-  return absolute ? `/${normalized}` : normalized;
+  return trailingSlash ? "./" : ".";
 }
 
 /**
