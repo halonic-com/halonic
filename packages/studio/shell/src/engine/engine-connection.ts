@@ -78,8 +78,8 @@ export const engineConnectionAnnouncements: Readonly<Record<EngineConnectionStat
  */
 export function createShellEngine(announcer: Announcer, timers: AnnouncerTimers): ShellEngine {
   let status: EngineConnectionEvent = { state: "connected" };
-  let lostSinceConnected = false;
-  let stopFollowing: (() => void) | undefined;
+  const announceChange = connectionAnnouncer(announcer);
+  const slot = new FollowSlot();
   const listeners = new Set<EngineConnectionListener>();
 
   const change = (next: EngineConnectionEvent): void => {
@@ -91,33 +91,6 @@ export function createShellEngine(announcer: Announcer, timers: AnnouncerTimers)
     notify(listeners, next);
   };
 
-  const announceChange = (state: ShellEngineState): void => {
-    if (state === "lost") {
-      lostSinceConnected = true;
-      announcer.announce(engineConnectionAnnouncements.lost, "assertive");
-    } else if (state === "connected" && lostSinceConnected) {
-      lostSinceConnected = false;
-      announcer.announce(engineConnectionAnnouncements.connected, "polite");
-    }
-  };
-
-  /** Takes the one follow slot, so the shell never follows two sources. */
-  const claim = (undo: () => void): (() => void) => {
-    if (stopFollowing !== undefined) {
-      throw new ShellError(
-        "The shell already follows an executor or an engine. Stop the first one before following another.",
-      );
-    }
-    const stop = (): void => {
-      undo();
-      if (stopFollowing === stop) {
-        stopFollowing = undefined;
-      }
-    };
-    stopFollowing = stop;
-    return stop;
-  };
-
   return {
     get connection() {
       return status.state;
@@ -127,29 +100,19 @@ export function createShellEngine(announcer: Announcer, timers: AnnouncerTimers)
     },
     watch(executor) {
       let unsubscribe = (): void => {};
-      const stop = claim(() => unsubscribe());
+      const stop = slot.claim(() => unsubscribe());
       const connection = executor.connection;
       unsubscribe = connection?.onChange((state) => change({ state })) ?? unsubscribe;
-      try {
-        change({ state: connection?.state ?? "connected" });
-      } catch (error) {
-        stop();
-        throw error;
-      }
+      undoIfThrows(stop, () => change({ state: connection?.state ?? "connected" }));
       return stop;
     },
     supervise(launcher) {
       const supervisor = superviseEngine(launcher, timers, change);
-      const stop = claim(() => supervisor.stop());
-      try {
-        supervisor.retry();
-      } catch (error) {
-        stop();
-        throw error;
-      }
+      const stop = slot.claim(() => supervisor.stop());
+      undoIfThrows(stop, supervisor.retry);
       return {
         retry() {
-          if (stopFollowing !== stop) {
+          if (!slot.holds(stop)) {
             throw new ShellError("This engine is no longer supervised. Call supervise again.");
           }
           supervisor.retry();
@@ -164,6 +127,61 @@ export function createShellEngine(announcer: Announcer, timers: AnnouncerTimers)
       };
     },
   };
+}
+
+/** Runs `first`; if it throws, a listener failed on the first state, so `undo` frees the slot. */
+function undoIfThrows(undo: () => void, first: () => void): void {
+  try {
+    first();
+  } catch (error) {
+    undo();
+    throw error;
+  }
+}
+
+/** Announces a loss assertively, and the return after a loss politely. */
+function connectionAnnouncer(announcer: Announcer): (state: ShellEngineState) => void {
+  let lostSinceConnected = false;
+  return (state) => {
+    if (state === "lost") {
+      lostSinceConnected = true;
+      announcer.announce(engineConnectionAnnouncements.lost, "assertive");
+    } else if (state === "connected" && lostSinceConnected) {
+      lostSinceConnected = false;
+      announcer.announce(engineConnectionAnnouncements.connected, "polite");
+    }
+  };
+}
+
+/** The one source the shell follows, so it never follows two. */
+class FollowSlot {
+  private stopFollowing: (() => void) | undefined;
+
+  /**
+   * Takes the slot and returns the function that frees it after `undo`.
+   *
+   * @throws ShellError when the slot is taken
+   */
+  claim(undo: () => void): () => void {
+    if (this.stopFollowing !== undefined) {
+      throw new ShellError(
+        "The shell already follows an executor or an engine. Stop the first one before following another.",
+      );
+    }
+    const stop = (): void => {
+      undo();
+      if (this.stopFollowing === stop) {
+        this.stopFollowing = undefined;
+      }
+    };
+    this.stopFollowing = stop;
+    return stop;
+  }
+
+  /** Whether `stop` is the one that holds the slot now. */
+  holds(stop: () => void): boolean {
+    return this.stopFollowing === stop;
+  }
 }
 
 function notify(

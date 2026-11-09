@@ -99,127 +99,156 @@ export function superviseEngine(
   timers: AnnouncerTimers,
   report: (event: EngineStartEvent) => void,
 ): EngineSupervisor {
-  let current: Attempt | undefined;
-  let restartTimer: unknown;
-  let restartedAt: number | undefined;
-  const errors: unknown[] = [];
-  let depth = 0;
+  const supervision = new Supervision(launcher, timers, new Steps(report));
+  return { retry: () => supervision.retry(), stop: () => supervision.stop() };
+}
 
-  const emit = (event: EngineStartEvent): void => {
+/**
+ * Collects what `report` throws during a step and throws it once the
+ * outermost step is done, since a launcher may call back inside `start`.
+ */
+class Steps {
+  private readonly errors: unknown[] = [];
+  private depth = 0;
+  private readonly report: (event: EngineStartEvent) => void;
+
+  constructor(report: (event: EngineStartEvent) => void) {
+    this.report = report;
+  }
+
+  emit(event: EngineStartEvent): void {
     try {
-      report(event);
+      this.report(event);
     } catch (error) {
-      errors.push(error);
+      this.errors.push(error);
     }
-  };
+  }
 
-  /** Runs one step and throws what `report` threw once the outermost step is done. */
-  const step = <Args extends unknown[]>(work: (...args: Args) => void) => {
-    return (...args: Args): void => {
-      depth += 1;
+  wrap<Args extends unknown[]>(work: (...args: Args) => void): (...args: Args) => void {
+    return (...args) => {
+      this.depth += 1;
       try {
         work(...args);
       } finally {
-        depth -= 1;
+        this.depth -= 1;
       }
-      if (depth === 0 && errors.length > 0) {
-        const thrown = errors.splice(0);
+      if (this.depth === 0 && this.errors.length > 0) {
+        const thrown = this.errors.splice(0);
         throw thrown.length === 1
           ? thrown[0]
           : new AggregateError(thrown, "Several engine.connection listeners failed.");
       }
     };
-  };
+  }
+}
 
-  const end = (attempt: Attempt): void => {
-    attempt.phase = "ended";
-    timers.clearTimeout(attempt.answerTimer);
-    attempt.process?.stop();
-  };
+class Supervision {
+  private current: Attempt | undefined;
+  private restartTimer: unknown;
+  private restartedAt: number | undefined;
+  private readonly launcher: EngineLauncher;
+  private readonly timers: AnnouncerTimers;
+  private readonly steps: Steps;
+  readonly retry: () => void;
 
-  const fail = (attempt: Attempt, failure: EngineStartFailure): void => {
-    end(attempt);
-    emit({ state: "failed", failure });
-  };
+  constructor(launcher: EngineLauncher, timers: AnnouncerTimers, steps: Steps) {
+    this.launcher = launcher;
+    this.timers = timers;
+    this.steps = steps;
+    this.retry = steps.wrap(() => {
+      this.stop();
+      this.restartedAt = undefined;
+      this.launch(1);
+    });
+  }
 
-  const stoppedWhileRunning = (attempt: Attempt, code: number | null): void => {
-    attempt.phase = "ended";
-    if (restartedAt !== undefined && timers.now() - restartedAt < engineRestartWindowMs) {
-      emit({ state: "failed", failure: { reason: "stopped-while-starting", exitCode: code } });
-      return;
+  stop(): void {
+    this.timers.clearTimeout(this.restartTimer);
+    this.restartTimer = undefined;
+    if (this.current !== undefined) {
+      this.end(this.current);
     }
-    restartTimer = timers.setTimeout(
-      step(() => {
-        restartTimer = undefined;
-        restartedAt = timers.now();
-        launch(2, code);
-      }),
-      engineRestartDelayMs,
-    );
-    emit({ state: "lost" });
-  };
+  }
 
-  const launch = (attempt: number, lastExitCode?: number | null): void => {
+  private launch(attempt: number, lastExitCode?: number | null): void {
     const run: Attempt = { phase: "starting" };
-    current = run;
-    const since = timers.now();
-    emit(
+    this.current = run;
+    const since = this.timers.now();
+    this.steps.emit(
       lastExitCode === undefined
         ? { state: "starting", attempt, since }
         : { state: "starting", attempt, since, lastExitCode },
     );
-    run.answerTimer = timers.setTimeout(
-      step(() => {
+    run.answerTimer = this.timers.setTimeout(
+      this.steps.wrap(() => {
         if (run.phase === "starting") {
-          fail(run, { reason: "no-answer" });
+          this.fail(run, { reason: "no-answer" });
         }
       }),
       engineAnswerTimeoutMs,
     );
-    const process = launcher.start({
-      ready: step(() => {
-        if (run.phase !== "starting") {
-          return;
-        }
-        run.phase = "running";
-        timers.clearTimeout(run.answerTimer);
-        emit({ state: "connected" });
-      }),
-      dataFolderNotWritable: step(() => {
-        if (run.phase !== "ended") {
-          fail(run, { reason: "data-folder-not-writable" });
-        }
-      }),
-      exited: step((code: number | null) => {
-        if (run.phase === "starting") {
-          fail(run, { reason: "stopped-while-starting", exitCode: code });
-        } else if (run.phase === "running") {
-          stoppedWhileRunning(run, code);
-        }
-      }),
-    });
+    const process = this.launcher.start(this.eventsFor(run));
     run.process = process;
     // The launcher may report an ending before `start` returns.
     if (run.phase === "ended") {
       process.stop();
     }
-  };
+  }
 
-  const stop = (): void => {
-    timers.clearTimeout(restartTimer);
-    restartTimer = undefined;
-    if (current !== undefined) {
-      end(current);
+  private eventsFor(run: Attempt): EngineProcessEvents {
+    return {
+      ready: this.steps.wrap(() => {
+        if (run.phase !== "starting") {
+          return;
+        }
+        run.phase = "running";
+        this.timers.clearTimeout(run.answerTimer);
+        this.steps.emit({ state: "connected" });
+      }),
+      dataFolderNotWritable: this.steps.wrap(() => {
+        if (run.phase !== "ended") {
+          this.fail(run, { reason: "data-folder-not-writable" });
+        }
+      }),
+      exited: this.steps.wrap((code: number | null) => {
+        if (run.phase === "starting") {
+          this.fail(run, { reason: "stopped-while-starting", exitCode: code });
+        } else if (run.phase === "running") {
+          this.stoppedWhileRunning(run, code);
+        }
+      }),
+    };
+  }
+
+  private stoppedWhileRunning(run: Attempt, code: number | null): void {
+    run.phase = "ended";
+    const restartedAt = this.restartedAt;
+    if (restartedAt !== undefined && this.timers.now() - restartedAt < engineRestartWindowMs) {
+      this.steps.emit({
+        state: "failed",
+        failure: { reason: "stopped-while-starting", exitCode: code },
+      });
+      return;
     }
-  };
+    this.restartTimer = this.timers.setTimeout(
+      this.steps.wrap(() => {
+        this.restartTimer = undefined;
+        this.restartedAt = this.timers.now();
+        this.launch(2, code);
+      }),
+      engineRestartDelayMs,
+    );
+    this.steps.emit({ state: "lost" });
+  }
 
-  const supervisor: EngineSupervisor = {
-    retry: step(() => {
-      stop();
-      restartedAt = undefined;
-      launch(1);
-    }),
-    stop,
-  };
-  return supervisor;
+  private fail(run: Attempt, failure: EngineStartFailure): void {
+    this.end(run);
+    this.steps.emit({ state: "failed", failure });
+  }
+
+  private end(run: Attempt): void {
+    run.phase = "ended";
+    this.timers.clearTimeout(run.answerTimer);
+    run.process?.stop();
+  }
 }
