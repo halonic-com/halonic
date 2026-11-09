@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-133 item 2 (HAL-924); the old `Studio` filled the trigger templates when it started a routine
 
-When a workspace's routine scheduler ticks, it shall decide what is due with the routines tick function `due`, under each routine's `catchUp` setting, and start each due run with its `{{trigger.at}}` and `{{trigger.lastRun}}` placeholders filled in by `routineStart`. `trigger.at` shall be the run's due time, and `trigger.lastRun` the due time of the last run of the same routine that the scheduler started in this workspace, or `null` before the first one. A routine at the workspace level whose target names no hub shall be reported as failing to start.
+When a workspace's routine scheduler ticks, it shall decide what is due with the routines tick function `due`, under each routine's `catchUp` setting, and start each due run with its `{{trigger.at}}` and `{{trigger.lastRun}}` placeholders filled in by `routineStart`. `trigger.at` shall be the run's due time, and `trigger.lastRun` the due time of the last run of the same routine that the scheduler started in this workspace, or `null` before the first one. If storing a run's due time as the routine's last run fails after the run started, then the scheduler shall report the run as started and the failed store separately, in `lastRunNotSaved`, not as a failure to start. When a routine is no longer among the workspace's routines, the scheduler shall delete its last run from `Coordination` on its next tick. A routine at the workspace level whose target names no hub shall be reported as failing to start.
 
 ## Examples
 
@@ -23,3 +23,9 @@ When a workspace's routine scheduler ticks, it shall decide what is due with the
 - Given a workspace routine whose `run` names no hub,
   when it is due,
   then the tick reports it in `failed` and starts the other routines.
+- Given a routine that started its 08:00 run but whose last run could not be stored,
+  when the tick ends,
+  then the run is in `started`, the store's error is in `lastRunNotSaved`, `failed` is empty, and the last tick is stored.
+- Given a routine file that started its 08:00 run and was then deleted,
+  when the scheduler ticks again,
+  then its last run is gone from `Coordination`; a routine added later under the same name starts with `trigger.lastRun` set to `null`.

@@ -42,7 +42,21 @@ export function lastTickKey(workspaceId: string): string {
  * short however long the routine key is.
  */
 export function lastRunKey(workspaceId: string, key: string): string {
-  return `routines/${shortHash(workspaceId)}/last-run/${shortHash(key)}`;
+  return lastRunKeyByHash(workspaceId, shortHash(key));
+}
+
+/** {@link lastRunKey} from the {@link shortHash} of the routine key, as {@link lastRunIndexKey} keeps it. */
+export function lastRunKeyByHash(workspaceId: string, keyHash: string): string {
+  return `routines/${shortHash(workspaceId)}/last-run/${keyHash}`;
+}
+
+/**
+ * The `Coordination` key that lists the hashed routine keys of a workspace
+ * whose last run may be stored, so a removed routine's can be deleted:
+ * `Coordination` can't list its keys.
+ */
+export function lastRunIndexKey(workspaceId: string): string {
+  return `routines/${shortHash(workspaceId)}/last-run-keys`;
 }
 
 /**

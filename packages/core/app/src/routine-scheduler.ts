@@ -10,13 +10,13 @@ import type {
 import type { DueRun, PlacedRoutine, TickPolicy } from "@halonicjs/routines";
 import type { EventBus } from "./event-bus.ts";
 import {
-  lastRunKey,
   lastTickKey,
   queueKey,
   routineRunId,
   routineRunPrefix,
   utf8Length,
 } from "./routine-ids.ts";
+import { LastRuns, type StoredLastRun } from "./routine-last-runs.ts";
 import { applyOverlap, type OverlapDecision, type RoutineOverlap } from "./routine-overlap.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
@@ -48,7 +48,7 @@ export type RoutineStart =
   | { workflow: Omit<StartRunRequest, "runId" | "trigger" | "kind"> }
   | { agent: Omit<StartAgentRequest, "runId" | "trigger"> };
 
-/** A due run that could not be started. */
+/** A due run and what went wrong with it: its start, or storing its due time as the last run. */
 export interface RoutineFailure {
   key: string;
   /** ISO time the run was due. */
@@ -66,7 +66,14 @@ export interface RoutineTime {
 /** What one tick did. */
 export interface RoutineTickResult {
   started: RunSummary[];
+  /** Due runs that did not start. */
   failed: RoutineFailure[];
+  /**
+   * Runs that started (they are in `started` too) whose due time was not
+   * stored as the routine's last run, so its next run may get an older
+   * `{{trigger.lastRun}}`.
+   */
+  lastRunNotSaved: RoutineFailure[];
   /** Every due time waiting in the queue after the tick (`overlap: queue`), oldest first per routine. */
   queued: RoutineTime[];
   /**
@@ -107,6 +114,8 @@ export interface RoutineSchedulerOptions<
   runs: Pick<RunStore, "list">;
   /** The routines of the workspace, read fresh on every tick. */
   routines: () => Promise<readonly Routine[]>;
+  /** The key of a routine, as its due runs carry it (`routineKey` of `@halonicjs/routines`). */
+  keyOf: (routine: Routine) => string;
   due: DueFunction<Routine, Policy, Run>;
   policy: Policy;
   /**
@@ -122,7 +131,13 @@ export interface RoutineSchedulerOptions<
 }
 
 /** A new empty result each time, so no caller can change another's. */
-const nothing = (): RoutineTickResult => ({ started: [], failed: [], queued: [], skipped: [] });
+const nothing = (): RoutineTickResult => ({
+  started: [],
+  failed: [],
+  lastRunNotSaved: [],
+  queued: [],
+  skipped: [],
+});
 
 /**
  * Starts the routine runs that are due, on each tick of the `Scheduler`
@@ -147,7 +162,10 @@ const nothing = (): RoutineTickResult => ({ started: [], failed: [], queued: [],
  * stores anything, so the next tick catches up.
  *
  * It also keeps, per routine, the due time of the last run it started, and
- * gives it to `startOf` for `{{trigger.lastRun}}`.
+ * gives it to `startOf` for `{{trigger.lastRun}}` (see {@link LastRuns}). A
+ * run that started but whose time could not be stored is reported apart, in
+ * `lastRunNotSaved`, not as a failed start. The time of a routine that is no
+ * longer among the workspace's routines is deleted on the next tick.
  */
 export class RoutineScheduler<
   Routine = PlacedRoutine,
@@ -157,6 +175,7 @@ export class RoutineScheduler<
   private readonly options: RoutineSchedulerOptions<Routine, Policy, Run>;
   private readonly lastTickKey: string;
   private readonly queueKey: string;
+  private readonly lastRuns: LastRuns;
   private current: Promise<RoutineTickResult> | null = null;
   private disposed = false;
 
@@ -164,6 +183,7 @@ export class RoutineScheduler<
     this.options = options;
     this.lastTickKey = lastTickKey(options.workspaceId);
     this.queueKey = queueKey(options.workspaceId);
+    this.lastRuns = new LastRuns(options.coordination, options.workspaceId);
   }
 
   /**
@@ -207,18 +227,20 @@ export class RoutineScheduler<
   }
 
   private async tickOnce(): Promise<RoutineTickResult> {
-    const { clock, coordination, routines, events } = this.options;
+    const { clock, coordination, routines, keyOf, events } = this.options;
     const now = clock.now();
     const stored = await coordination.read(this.lastTickKey);
     const lastTick = stored === null ? null : new Date(stored);
     if (lastTick !== null && now.getTime() <= lastTick.getTime()) {
       return nothing();
     }
+    const routineList = await routines();
+    // Before the starts, so each last run they store is of a routine the index names.
+    await this.lastRuns.forgetRemoved(routineList.map(keyOf));
     const storedQueue = await coordination.read(this.queueKey);
-    const plan = await this.plan(await routines(), lastTick, now, readQueue(storedQueue));
+    const plan = await this.plan(routineList, lastTick, now, readQueue(storedQueue));
     const result: RoutineTickResult = {
-      started: [],
-      failed: [],
+      ...nothing(),
       queued: plan.queue.map(timeOf),
       skipped: plan.skip.map(timeOf),
     };
@@ -228,12 +250,7 @@ export class RoutineScheduler<
         // closing, so start failures from earlier in this tick go unreported.
         return result;
       }
-      try {
-        result.started.push(await this.start(run));
-      } catch (error) {
-        const asError = error instanceof Error ? error : new Error(String(error));
-        result.failed.push({ key: run.key, at: run.at.toISOString(), error: asError });
-      }
+      await this.startAndRecord(run, result);
     }
     // Stored after the starts: a crash in between repeats them, and the run ids make that harmless.
     // The queue goes first, so a crash before the last tick asks for the same times again and
@@ -346,27 +363,45 @@ export class RoutineScheduler<
     return routineRunId(this.options.workspaceId, run.key, run.at);
   }
 
-  private async start(run: Run): Promise<RunSummary> {
-    const { coordination, executor, startOf, workspaceId } = this.options;
-    const runKey = lastRunKey(workspaceId, run.key);
-    const stored = await coordination.read(runKey);
-    const lastRun = stored === null ? null : new Date(stored);
-    const what = startOf(run, lastRun);
-    const at = run.at.toISOString();
-    const trigger = { type: run.trigger, routineId: run.key, at };
-    const runId = this.runIdOf(run);
-    const summary = await ("workflow" in what
-      ? executor.start({ ...what.workflow, trigger, runId })
-      : executor.startAgent({ ...what.agent, trigger, runId }));
+  /**
+   * Starts a due run and stores its due time as the routine's last run,
+   * adding the outcome to `result`. A failed store is not a failed start:
+   * the run exists, and reporting it as failed would make a retry look like
+   * a second start.
+   */
+  private async startAndRecord(run: Run, result: RoutineTickResult): Promise<void> {
+    const time = timeOf(run);
+    let lastRun: StoredLastRun;
+    try {
+      lastRun = await this.lastRuns.read(run.key);
+      result.started.push(await this.start(run, lastRun.at));
+    } catch (error) {
+      result.failed.push({ ...time, error: asError(error) });
+      return;
+    }
+    try {
+      await this.lastRuns.save(lastRun, run.at);
+    } catch (error) {
+      result.lastRunNotSaved.push({ ...time, error: asError(error) });
+    }
+  }
+
+  private async start(run: Run, lastRun: Date | null): Promise<RunSummary> {
+    const { executor, startOf } = this.options;
     // A repeated start (see the class notes) finds its own time stored and
     // fills a different `lastRun`, but the executor returns the run that
-    // exists, so the input it started with stays. The time never moves back;
-    // a lost race means another host stored it first.
-    if (lastRun === null || lastRun.getTime() < run.at.getTime()) {
-      await coordination.compareAndSet(runKey, stored, at);
-    }
-    return summary;
+    // exists, so the input it started with stays.
+    const what = startOf(run, lastRun);
+    const trigger = { type: run.trigger, routineId: run.key, at: run.at.toISOString() };
+    const runId = this.runIdOf(run);
+    return "workflow" in what
+      ? executor.start({ ...what.workflow, trigger, runId })
+      : executor.startAgent({ ...what.agent, trigger, runId });
   }
+}
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 /** The most UTF-8 bytes of the stored queue: under the 64 KiB a `Coordination` value may hold. */

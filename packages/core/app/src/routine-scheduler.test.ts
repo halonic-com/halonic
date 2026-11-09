@@ -1,116 +1,16 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { EventBus } from "./event-bus.ts";
-import { lastTickKey, queueKey, routineRunId, utf8Length } from "./routine-ids.ts";
-import { MAX_QUEUED, type RoutineOverlap } from "./routine-overlap.ts";
-import {
-  type DueFunction,
-  RoutineScheduler,
-  type RoutineStart,
-  type ScheduledRun,
-} from "./routine-scheduler.ts";
+import { queueKey, routineRunId, utf8Length } from "./routine-ids.ts";
+import { MAX_QUEUED } from "./routine-overlap.ts";
 import { TestCoordination } from "./testing/memory-coordination.ts";
+import {
+  ids,
+  setUp,
+  type TestRoutine,
+  tickKey,
+  workspace,
+} from "./testing/routine-scheduler-harness.ts";
 import { TestExecutor } from "./testing/test-executor.ts";
-import type { AppEvents } from "./workspace-scope.ts";
-
-/** A routine for these tests: due at a fixed minute of every hour, or of one hour a day. */
-interface TestRoutine {
-  key: string;
-  minute: number;
-  hour?: number;
-  agent?: string;
-  /** Default "allow", so tests of other rules can start several runs of one routine. */
-  overlap?: RoutineOverlap;
-}
-
-type Policy = "all" | "last";
-
-/** A due run of a {@link TestRoutine}. */
-type TestRun = ScheduledRun & { routine: TestRoutine };
-
-const hourMs = 3_600_000;
-
-/**
- * A stand-in for the tick function of `@halonicjs/routines`: every
- * due time in (lastTick, now], all of them or only the last. Nothing on the
- * first tick.
- */
-const testDue: DueFunction<TestRoutine, Policy, TestRun> = (routines, lastTick, now, policy) => {
-  if (lastTick === null) {
-    return [];
-  }
-  const runs: TestRun[] = [];
-  for (const routine of routines) {
-    const times: Date[] = [];
-    let at = Math.floor(lastTick.getTime() / hourMs) * hourMs + routine.minute * 60_000;
-    for (; at <= now.getTime(); at += hourMs) {
-      const hourMatches = routine.hour === undefined || new Date(at).getUTCHours() === routine.hour;
-      if (at > lastTick.getTime() && hourMatches) {
-        times.push(new Date(at));
-      }
-    }
-    const picked = policy === "all" ? times : times.slice(-1);
-    runs.push(
-      ...picked.map((time) => ({
-        key: routine.key,
-        routine,
-        at: time,
-        trigger: "schedule" as const,
-      })),
-    );
-  }
-  return runs;
-};
-
-function startOf(run: TestRun): RoutineStart {
-  const hubId = run.key.split("/")[0] ?? "";
-  if (run.routine.agent !== undefined) {
-    return { agent: { hubId, agentId: run.routine.agent, prompt: "Say hi" } };
-  }
-  return { workflow: { hubId, workflowId: "f", input: { q: `due ${run.at.toISOString()}` } } };
-}
-
-interface SetUpOptions {
-  policy?: Policy;
-  /** Another host of the same workspace. */
-  shared?: { coordination: TestCoordination; executor: TestExecutor };
-  startOf?: (run: TestRun) => RoutineStart;
-  workspaceId?: string;
-}
-
-const workspace = "ws-7f3a2c";
-const tickKey = lastTickKey(workspace);
-
-function setUp(
-  routines: TestRoutine[],
-  { policy = "all", shared, startOf: start = startOf, workspaceId = workspace }: SetUpOptions = {},
-) {
-  let now = Date.parse("2026-11-03T07:00:30Z");
-  const coordination = shared?.coordination ?? new TestCoordination();
-  const executor = shared?.executor ?? new TestExecutor();
-  const events = new EventBus<AppEvents>();
-  const ticks: AppEvents["routines.ticked"][] = [];
-  events.on("routines.ticked", (tick) => ticks.push(tick));
-  const scheduler = new RoutineScheduler<TestRoutine, Policy, TestRun>({
-    workspaceId,
-    clock: { now: () => new Date(now) },
-    coordination,
-    executor,
-    routines: async () => routines,
-    due: testDue,
-    policy,
-    startOf: start,
-    overlapOf: (run) => run.routine.overlap ?? "allow",
-    runs: executor,
-    events,
-  });
-  const at = (iso: string) => {
-    now = Date.parse(iso);
-  };
-  return { scheduler, coordination, executor, ticks, at };
-}
-
-const ids = (runs: { id: string }[]) => runs.map((run) => run.id);
 
 verifies("app.routine-scheduler", () => {
   it("catches up on missed ticks under the policy, once each", async () => {

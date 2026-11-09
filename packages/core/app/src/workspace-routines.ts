@@ -3,6 +3,7 @@ import {
   type DueRun,
   due,
   type PlacedRoutine,
+  routineKey,
   routineStart,
   type TickPolicy,
 } from "@halonicjs/routines";
@@ -14,7 +15,7 @@ import {
 
 /** What {@link workspaceRoutineScheduler} needs: the scheduler's options without the routines logic. */
 export interface WorkspaceRoutineSchedulerOptions
-  extends Omit<RoutineSchedulerOptions, "due" | "startOf" | "overlapOf" | "policy"> {
+  extends Omit<RoutineSchedulerOptions, "due" | "startOf" | "overlapOf" | "keyOf" | "policy"> {
   /**
    * The zone, grace period and catch-up cap. Default: `DEFAULT_TICK_POLICY`,
    * whose zone is UTC; a host passes the machine's zone, which core can't read.
@@ -42,6 +43,7 @@ export function workspaceRoutineScheduler(
   return new RoutineScheduler({
     ...options,
     policy: options.policy ?? DEFAULT_TICK_POLICY,
+    keyOf: routineKey,
     due,
     startOf: startOfDueRun,
     overlapOf: (run) => run.placed.routine.overlap,

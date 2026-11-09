@@ -3,7 +3,7 @@ import type { DefinitionStore } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
+import { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
 import { TestCoordination } from "./testing/memory-coordination.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 import { TestExecutor } from "./testing/test-executor.ts";
@@ -76,7 +76,7 @@ function setUp(files: Record<string, string>, start: string) {
     now = Date.parse(iso);
     return scheduler.tick();
   };
-  return { coordination, executor, tickAt };
+  return { coordination, executor, store, tickAt };
 }
 
 const runId = (key: string, at: string) => routineRunId(workspace, key, new Date(at));
@@ -176,6 +176,25 @@ verifies("app.workspace-routines", () => {
         "Routine @workspace/cleanup runs outside a hub, so it must name one in run.hub.",
       ],
     ]);
+  });
+
+  it("forgets a deleted routine's last run, so a new one by that name starts without it", async () => {
+    const path = "hubs/news/workflows/routines/morning.routine.yaml";
+    const { coordination, executor, store, tickAt } = setUp(
+      { [path]: morning },
+      "2026-11-03T07:30:00Z",
+    );
+    await tickAt("2026-11-03T07:30:00Z");
+    await tickAt("2026-11-03T08:00:20Z");
+    executor.end(runId("news/morning", "2026-11-03T08:00:00Z"));
+    await store.remove(path);
+    await tickAt("2026-11-03T12:00:00Z");
+    expect(await coordination.read(lastRunKey(workspace, "news/morning"))).toBeNull();
+    await store.write(path, morning);
+    await tickAt("2026-11-04T08:00:20Z");
+    expect(executor.requests.at(-1)).toMatchObject({
+      input: { day: "2026-11-04T08:00:00.000Z", since: null },
+    });
   });
 });
 
