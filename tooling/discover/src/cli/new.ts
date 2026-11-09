@@ -76,7 +76,10 @@ function checkFolders(directory: string): string[] {
 }
 
 /** Checks --runtime: adapters need one, other packages must not give one. */
-function runtimeFor(place: { layer: string }, given: string | undefined) {
+function runtimeFor(
+  place: { layer: string },
+  given: string | undefined,
+): (typeof adapterRuntimes)[number] | undefined {
   const runtime = adapterRuntimes.find((choice) => choice === given);
   if (place.layer === "adapters" && runtime === undefined) {
     throw new Error(`Say where the adapter runs with --runtime <${runtimes}>.`);
@@ -87,6 +90,7 @@ function runtimeFor(place: { layer: string }, given: string | undefined) {
   return runtime;
 }
 
+/** Checks --owner: a lowercase agent name. */
 function ownerFrom(given: string | undefined): string {
   const owner = (given ?? "").trim();
   if (!/^[a-z][a-z0-9-]*$/.test(owner)) {
@@ -97,6 +101,7 @@ function ownerFrom(given: string | undefined): string {
   return owner;
 }
 
+/** Checks --purpose: one line of text, or empty when not given. */
 function purposeFrom(given: string | undefined): string {
   const purpose = (given ?? "").trim();
   if ((given !== undefined && purpose === "") || purpose.includes("\n")) {
