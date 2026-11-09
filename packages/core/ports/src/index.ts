@@ -98,6 +98,22 @@ export {
   runStoreVersion,
 } from "./run-store.ts";
 export {
+  type Sandbox,
+  type SandboxBlock,
+  type SandboxBlockListener,
+  type SandboxCapabilities,
+  type SandboxCheck,
+  type SandboxCommand,
+  type SandboxExit,
+  type SandboxFileAccess,
+  type SandboxNetwork,
+  type SandboxProcess,
+  type SandboxProfile,
+  type SandboxSession,
+  type SandboxStrength,
+  sandboxVersion,
+} from "./sandbox.ts";
+export {
   type ScheduledTimer,
   type Scheduler,
   type SchedulerFactory,

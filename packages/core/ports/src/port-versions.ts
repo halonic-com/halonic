@@ -14,6 +14,7 @@ import { passwordHasherVersion } from "./password-hasher.ts";
 import { recordStoreVersion } from "./record-store.ts";
 import { runExecutorVersion } from "./run-executor.ts";
 import { runStoreVersion } from "./run-store.ts";
+import { sandboxVersion } from "./sandbox.ts";
 import { schedulerVersion } from "./scheduler.ts";
 import { secretsVersion } from "./secrets.ts";
 import { tokenStoreVersion } from "./token-store.ts";
@@ -46,6 +47,7 @@ export const portVersions = {
   RecordStore: recordStoreVersion,
   RunExecutor: runExecutorVersion,
   RunStore: runStoreVersion,
+  Sandbox: sandboxVersion,
   Scheduler: schedulerVersion,
   Secrets: secretsVersion,
   TokenStore: tokenStoreVersion,

@@ -33,6 +33,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `RecordStore`       | `record-store.ts`        | 2       | collection records as a change log; `compact` drops overwritten and removed values                    | `record-store`                             |
 | `RunExecutor`       | `run-executor.ts`        | 1       | start runs, send them events, stream their events, chat turns; replaces `Runtime` and `RunHost`       | `run-executor` (with the engine)           |
 | `RunStore`          | `run-store.ts`           | 1       | run event logs (append with a sequence check) and run summaries                                       | `run-store`                                |
+| `Sandbox`           | `sandbox.ts`             | 1       | runs programs in a fence and reports blocked accesses; its profile is Halonic's own format            | `sandbox` (with first adapter)             |
 | `Scheduler`         | `scheduler.ts`           | 1       | run timers and the routine tick; timers may arrive late or twice                                      | `scheduler`                                |
 | `Secrets`           | `secrets.ts`             | 1       | configured secrets, read-only                                                                         | `secrets`                                  |
 | `TokenStore`        | `token-store.ts`         | 1       | secrets the server writes itself, such as refresh tokens                                              | `token-store`                              |

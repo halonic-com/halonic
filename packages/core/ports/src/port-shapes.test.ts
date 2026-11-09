@@ -12,6 +12,12 @@ import type {
   RunFilter,
   RunSnapshot,
   RunStore,
+  Sandbox,
+  SandboxBlock,
+  SandboxCapabilities,
+  SandboxProcess,
+  SandboxProfile,
+  SandboxSession,
   Scheduler,
   SchedulerFactory,
   SchedulerListener,
@@ -149,5 +155,75 @@ verifies("ports.untrusted-knowledge", () => {
   it("leaves it out for a source that doesn't say, which counts as untrusted", () => {
     expectTypeOf<KnowledgeProvider["untrusted"]>().toEqualTypeOf<boolean | undefined>();
     expect(provider.untrusted ?? true).toBe(true);
+  });
+});
+
+verifies("ports.sandbox-profile", () => {
+  const profile: SandboxProfile = {
+    workingFolder: "/data/agents/a",
+    tempFolder: "/data/tmp/run_1",
+    settingsFolder: null,
+    readOnlyPaths: ["/data/workspace/workspace.yaml"],
+    deniedPaths: ["<home>/.ssh"],
+    env: { HOME: "/data/tmp/run_1" },
+    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    timeLimitMs: 600_000,
+  };
+
+  it("takes a profile with a bridge address, no further sites and a time limit", () => {
+    expectTypeOf(profile).toEqualTypeOf<SandboxProfile>();
+    expectTypeOf<Parameters<Sandbox["open"]>[0]>().toEqualTypeOf<SandboxProfile>();
+    expect(profile.network.allowedSites).toEqual([]);
+  });
+
+  it("has no way to leave out the time limit or the bridge", () => {
+    // @ts-expect-error: a run without a time limit is not allowed
+    const noLimit: SandboxProfile = { ...profile, timeLimitMs: undefined };
+    // @ts-expect-error: an absent bridge must never mean the whole network
+    const noBridge: SandboxProfile = { ...profile, network: { allowedSites: [] } };
+    expect([noLimit, noBridge]).toHaveLength(2);
+  });
+
+  typeTest("gives the program only the variables the profile names", () => {
+    expectTypeOf<SandboxProfile["env"]>().toEqualTypeOf<Readonly<Record<string, string>>>();
+    expectTypeOf<SandboxProfile["settingsFolder"]>().toEqualTypeOf<string | null>();
+  });
+});
+
+verifies("ports.sandbox-session", () => {
+  it("says how files reach the sandbox and how strong the fence is", () => {
+    expectTypeOf<SandboxCapabilities["files"]>().toEqualTypeOf<"shared" | "copied">();
+    expectTypeOf<SandboxCapabilities["strength"]>().toEqualTypeOf<"os" | "vm" | "remote">();
+    // @ts-expect-error: only shared and copied are ways for files to reach a sandbox
+    const wrong: SandboxCapabilities = { files: "mounted", strength: "os" };
+    expect(wrong).toBeDefined();
+  });
+
+  typeTest("opens a session that starts programs with Web streams", () => {
+    expectTypeOf<Sandbox["open"]>().returns.toEqualTypeOf<Promise<SandboxSession>>();
+    expectTypeOf<Sandbox["open"]>().toBeCallableWith({} as SandboxProfile, {
+      signal: new AbortController().signal,
+    });
+    expectTypeOf<SandboxSession["start"]>().returns.toEqualTypeOf<Promise<SandboxProcess>>();
+    expectTypeOf<SandboxProcess["stdin"]>().toEqualTypeOf<WritableStream<Uint8Array>>();
+    expectTypeOf<SandboxProcess["stdout"]>().toEqualTypeOf<ReadableStream<Uint8Array>>();
+    expectTypeOf<SandboxProcess["stderr"]>().toEqualTypeOf<ReadableStream<Uint8Array>>();
+  });
+
+  it("reports a blocked file or network access", () => {
+    const seen: SandboxBlock[] = [
+      { kind: "file", path: "<home>/.ssh/key", access: "read" },
+      { kind: "network", host: "example.com", port: 443 },
+    ];
+    expect(seen.map((block) => block.kind)).toEqual(["file", "network"]);
+    // @ts-expect-error: a file block has no host
+    const mixed: SandboxBlock = { kind: "file", host: "example.com", access: "read" };
+    expect(mixed).toBeDefined();
+  });
+
+  typeTest("stops everything on close, and a process never rejects when it ends", () => {
+    expectTypeOf<SandboxSession["close"]>().returns.toEqualTypeOf<Promise<void>>();
+    expectTypeOf<SandboxProcess["kill"]>().returns.toEqualTypeOf<Promise<void>>();
+    expectTypeOf<SandboxProcess["exited"]>().resolves.toHaveProperty("reason");
   });
 });
