@@ -23,6 +23,15 @@
       "semicolons": "always"
     }
   },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        // Sorted imports: `biome check` (every package's lint, and CI) fails on an unsorted block.
+        "organizeImports": "on"
+      }
+    }
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -49,7 +58,7 @@
         "noExcessiveCognitiveComplexity": {
           "level": "warn",
           "options": {
-            "maxAllowedComplexity": 20
+            "maxAllowedComplexity": 15
           }
         }
       },
@@ -62,6 +71,9 @@
       }
     }
   },
+  // Layer rules, from AGENTS.md. Biome reads these globs relative to the package's own
+  // biome.json when it has one, so packages/studio/kit/biome.json repeats the Studio rules.
+  // Approved libraries per package stay in tooling/check/dependencies.json, checked by `pnpm check`.
   "overrides": [
     {
       "includes": [
@@ -73,6 +85,287 @@
         "rules": {
           "style": {
             "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/packages/core/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.spec.ts",
+        "!**/test/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "node:*"
+                    ],
+                    "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/adapter-*"
+                    ],
+                    "message": "Adapters are for adapters and apps. Use a port from core."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/studio-*"
+                    ],
+                    "message": "Only Studio packages and apps may use Studio packages."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/host"
+                    ],
+                    "message": "Core never uses the host."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/packages/core/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.spec.ts",
+        "!**/test/**",
+        "!**/packages/core/yaml/**",
+        "!**/packages/core/schema-kit/**",
+        "!**/packages/core/format/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "node:*"
+                    ],
+                    "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/adapter-*"
+                    ],
+                    "message": "Adapters are for adapters and apps. Use a port from core."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/studio-*"
+                    ],
+                    "message": "Only Studio packages and apps may use Studio packages."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/host"
+                    ],
+                    "message": "Core never uses the host."
+                  },
+                  {
+                    "group": [
+                      "*",
+                      "!@halonicjs/*",
+                      "!.*",
+                      "!node:*"
+                    ],
+                    "message": "No outside libraries here. Only code that talks to the outside world may use one (tooling/check/dependencies.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/packages/host/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.spec.ts",
+        "!**/test/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "node:*"
+                    ],
+                    "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/adapter-*"
+                    ],
+                    "message": "Adapters are for adapters and apps. Use a port from core."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/studio-*"
+                    ],
+                    "message": "Only Studio packages and apps may use Studio packages."
+                  },
+                  {
+                    "group": [
+                      "*",
+                      "!@halonicjs/*",
+                      "!.*",
+                      "!node:*"
+                    ],
+                    "message": "No outside libraries here. Only code that talks to the outside world may use one (tooling/check/dependencies.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/packages/adapters/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.spec.ts",
+        "!**/test/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@halonicjs/studio-*"
+                    ],
+                    "message": "Only Studio packages and apps may use Studio packages."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/packages/studio/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.spec.ts",
+        "!**/test/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "node:*"
+                    ],
+                    "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/adapter-*"
+                    ],
+                    "message": "Adapters are for adapters and apps. Use a port from core."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/packages/studio/services/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.spec.ts",
+        "!**/test/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "node:*"
+                    ],
+                    "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/packages/adapters/integration-kit/src/limited-http.ts",
+        "**/packages/adapters/integration-kit/src/response-body.ts",
+        "**/packages/core/app/src/listed-tool-rules.ts",
+        "**/packages/core/app/src/tool-call-check.ts",
+        "**/packages/core/std/src/posix-path.ts",
+        "**/packages/core/yaml/src/edit.ts",
+        "**/packages/testing/parity/src/allowed-differences.test.ts",
+        "**/tooling/check/src/cli/leaks.ts",
+        "**/tooling/check/src/guard/guard.ts",
+        "**/tooling/check/src/leaks/git-changes.ts",
+        "**/tooling/check/src/lib/catalog.ts",
+        "**/tooling/check/src/lib/requirements.ts",
+        "**/tooling/check/src/lib/source-files.ts",
+        "**/tooling/check/src/lib/trace-model.ts",
+        "**/tooling/check/src/lib/workspace.ts",
+        "**/tooling/check/src/rules/agents-md.ts",
+        "**/tooling/check/src/rules/file-size.ts",
+        "**/tooling/check/src/rules/invisible-characters.ts",
+        "**/tooling/check/src/rules/packages.ts",
+        "**/tooling/check/src/rules/readme-examples.ts",
+        "**/tooling/discover/src/cli/new.ts",
+        "**/tooling/mutation/src/score.ts"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "warn",
+              "options": {
+                "maxAllowedComplexity": 30
+              }
+            }
           }
         }
       }

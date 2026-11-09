@@ -6,5 +6,58 @@
     "parser": {
       "tailwindDirectives": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.spec.ts",
+        "!**/test/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "node:*"
+                    ],
+                    "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
+                  },
+                  {
+                    "group": [
+                      "@halonicjs/adapter-*"
+                    ],
+                    "message": "Adapters are for adapters and apps. Use a port from core."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "src/list/list.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "warn",
+              "options": {
+                "maxAllowedComplexity": 30
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }
