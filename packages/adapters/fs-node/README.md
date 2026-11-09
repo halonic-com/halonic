@@ -136,11 +136,13 @@ export async function runExample(folder: string): Promise<{
 `root`, a folder in the user's profile such as `<profile>/trust`, never
 inside a workspace. It passes the shared `TrustStore` contract suite.
 
-- **File names** are the SHA-256 of the location in hex, then `.json`. The
-  name never holds the location itself, so a file system that folds case or
-  normalises Unicode (macOS, Windows) still keeps `/Workspaces/acme` and
-  `/workspaces/acme`, or the two spellings of `café`, apart, and a long
-  path still fits in a name.
+- **File names** are the SHA-256 of the location's UTF-16 code units
+  (little-endian) in hex, then `.json`. The name never holds the location
+  itself, so a file system that folds case or normalises Unicode (macOS,
+  Windows) still keeps `/Workspaces/acme` and `/workspaces/acme`, or the
+  two spellings of `café`, apart, and a long path still fits in a name.
+  Hashing code units rather than UTF-8 keeps two Windows paths with
+  different lone surrogates apart too.
 - **Writes** go to a temporary file that is renamed over the record, so a
   reader sees the old record or the new one. The folder is created with
   mode `700` and each file with `600`.

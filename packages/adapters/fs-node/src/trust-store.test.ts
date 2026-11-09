@@ -11,14 +11,16 @@ afterAll(removeTempFolders);
 
 /** The file `FileTrustStore` keeps the record for `location` in. */
 function fileFor(root: string, location: string): string {
-  return join(root, `${createHash("sha256").update(location, "utf8").digest("hex")}.json`);
+  return join(root, `${createHash("sha256").update(location, "utf16le").digest("hex")}.json`);
 }
 
 trustStoreContract("file", async () => {
   const root = await tempFolder();
   return {
     store: new FileTrustStore(root),
-    // Cut the file in half, as a crash or a full disk would.
+    // Cut the file in half, as a crash or a full disk would. The contract's
+    // locations are short, so the location line always survives; the tests
+    // below cover a file whose location can't be read.
     damage: async (location) => {
       const file = fileFor(root, location);
       const text = await readFile(file, "utf8");
@@ -38,6 +40,17 @@ verifies("fs-node.trust-store-files", () => {
       expect(text.startsWith('{\n  "location": "/Workspaces/Café",')).toBe(true);
       expect(JSON.parse(text)).toEqual(trustRecord("/Workspaces/Café"));
       expect(await readdir(join(root, "trust"))).toEqual([file.slice(-69)]);
+    });
+
+    it("keeps locations with different lone surrogates in different files", async () => {
+      const root = await tempFolder();
+      const store = new FileTrustStore(root);
+      await store.grant(trustRecord("/a\uD800"));
+      await store.grant(trustRecord("/a\uD801"));
+
+      expect(await readdir(root)).toHaveLength(2);
+      expect(await store.get("/a\uD800")).toEqual(trustRecord("/a\uD800"));
+      expect(await store.get("/a\uD801")).toEqual(trustRecord("/a\uD801"));
     });
 
     it.skipIf(process.platform === "win32")(

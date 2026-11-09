@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import type { TrustRecord, TrustStore } from "@halonicjs/ports";
 import { isMissing } from "./links.ts";
 
-/** A record's file name: the SHA-256 of its location in lower-case hex, then `.json`. */
+/** A record's file name: the SHA-256 of its location's UTF-16 code units in lower-case hex, then `.json`. */
 const recordFile = /^[0-9a-f]{64}\.json$/u;
 
 /** The location at the start of a record file, as `grant` writes it, even when the rest is damaged. */
@@ -95,8 +95,13 @@ export class FileTrustStore implements TrustStore {
   }
 }
 
+/**
+ * The hash of a location's UTF-16 code units, little-endian. UTF-8 would turn
+ * every lone surrogate into U+FFFD, so two locations Windows allows would
+ * share one file.
+ */
 function hashLocation(location: string): string {
-  return createHash("sha256").update(location, "utf8").digest("hex");
+  return createHash("sha256").update(location, "utf16le").digest("hex");
 }
 
 /** A file's text, or `undefined` when it is gone. */
