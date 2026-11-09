@@ -27,6 +27,9 @@ about data that isn't plain, so they say what and where. `slugify` and `uniqueNa
 turn display names into file-safe ids, as the old Studio did. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, and `Emitter` is a
 small typed event emitter.
+`asciiHost` writes a host name the way the trust prompt shows and hashes it:
+lowercase, with non-ASCII labels in Punycode (`xn--…`), so a look-alike host
+never passes for the real one.
 
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
