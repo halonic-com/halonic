@@ -16,7 +16,9 @@ const mode = process.argv[2] ?? "fence";
 const base = process.env.SPIKE_ROOT ?? join(process.env.RUNNER_TEMP ?? join(drive, "mxc-spike"), "mxc-probe");
 mkdirSync(base, { recursive: true });
 const nodeDir = dirname(process.execPath);
-const { run, getPlatformSupport } = await import("@microsoft/mxc-sdk/v1");
+const { run, getPlatformSupport, policy } = await import("@microsoft/mxc-sdk/v1");
+// SPIKE_ROOTREAD=1 also lets the container read the system-drive root folder itself (not its children).
+const rootRead = process.env.SPIKE_ROOTREAD === "1" ? [drive] : [];
 
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const quote = (p) => `"${p}"`;
@@ -26,7 +28,8 @@ async function runIn(command, { work, extraRead = [], denied = [], loopback = "d
   try {
     const out = await run({
       command,
-      filesystem: { readonlyPaths: [nodeDir, ...extraRead], readwritePaths: [work], deniedPaths: denied },
+      filesystem: { readonlyPaths: [nodeDir, ...rootRead, ...extraRead], readwritePaths: [work], deniedPaths: denied },
+      workingDirectory: work,
       network: { egress: { default: "deny" }, ingress: { default: "deny", hostLoopback: loopback } },
       timeoutMs,
     });
@@ -114,6 +117,13 @@ console.log(JSON.stringify(r));
   }
   report.result = out;
 } else if (mode === "tools") {
+  report.toolsPolicy = (() => {
+    try {
+      return policy.filesystem.getAvailableToolsPolicy(process.env, { containerType: "processcontainer" });
+    } catch (error) {
+      return { error: String(error) };
+    }
+  })();
   const tools = ["cmd.exe /c ver", `${quote(process.execPath)} --version`, "where.exe git", "git --version", "powershell.exe -NoProfile -Command $PSVersionTable.PSVersion.ToString()", "pwsh.exe -NoProfile -Command 1", "python.exe --version", "curl.exe --version", "tar.exe --version", "where.exe pnpm", "cargo.exe --version", "whoami.exe /groups"];
   const results = {};
   for (const t of tools) {

@@ -50,35 +50,59 @@ jobs:
           if ($exe) { & $exe.FullName --probe }
         continue-on-error: true
         timeout-minutes: 6
-      - name: Elevated, fence probes
+      - name: Elevated, A - fence and tools, plain policy
         working-directory: spikes/mxc
-        run: node probe.mjs fence
+        run: |
+          node probe.mjs fence
+          node probe.mjs tools
         continue-on-error: true
-        timeout-minutes: 6
-        id: fence
+        timeout-minutes: 8
+      - name: Elevated, B - fence and tools, system-drive root readable
+        working-directory: spikes/mxc
+        env:
+          SPIKE_ROOTREAD: "1"
+        run: |
+          node probe.mjs fence
+          node probe.mjs tools
+        continue-on-error: true
+        timeout-minutes: 8
+      - name: Elevated, host prep (admin step), then C - fence and tools again
+        working-directory: spikes/mxc
+        run: |
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
+          $prep = Resolve-Path "node_modules\@microsoft\mxc-sdk\bin\$arch\wxc-host-prep.exe"
+          & $prep --help
+          & $prep prepare-system-drive
+          "host-prep system-drive exit $LASTEXITCODE"
+          & $prep prepare-null-device
+          "host-prep null-device exit $LASTEXITCODE"
+          node probe.mjs fence
+          node probe.mjs tools
+        continue-on-error: true
+        timeout-minutes: 8
       - name: Elevated, warm starts (20)
         working-directory: spikes/mxc
+        env:
+          SPIKE_ROOTREAD: "1"
         run: node probe.mjs warm
         continue-on-error: true
-        timeout-minutes: 6
+        timeout-minutes: 8
       - name: Elevated, cold starts (20, each in a new node process)
         working-directory: spikes/mxc
+        env:
+          SPIKE_ROOTREAD: "1"
         run: |
           1..20 | ForEach-Object { node probe.mjs cold }
         continue-on-error: true
-        timeout-minutes: 6
-      - name: Elevated, tools
-        working-directory: spikes/mxc
-        run: node probe.mjs tools
-        continue-on-error: true
-        timeout-minutes: 6
+        timeout-minutes: 8
       # A plain local user, no admin group. Everything lives under $env:SystemDrive\mxc-spike
       # so that user can read the node binary and the SDK. The password is
       # random, kept in memory, never printed.
       - name: Normal user, create account and copy the spike
         run: |
-          Add-Type -AssemblyName System.Web
-          $pw = [System.Web.Security.Membership]::GeneratePassword(24, 4) + "aA1!"
+          $bytes = New-Object byte[] 18
+          [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+          $pw = [Convert]::ToBase64String($bytes) + "aA1!"
           Write-Host "::add-mask::$pw"
           $sec = ConvertTo-SecureString $pw -AsPlainText -Force
           New-LocalUser -Name mxcuser -Password $sec -PasswordNeverExpires | Out-Null
@@ -100,7 +124,7 @@ jobs:
             $out = "$env:SystemDrive\mxc-spike\out-$m.txt"; $err = "$env:SystemDrive\mxc-spike\err-$m.txt"
             $p = Start-Process -FilePath $node -ArgumentList "probe.mjs", $m -WorkingDirectory $env:SystemDrive\mxc-spike `
               -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
-              -Environment @{ SPIKE_ROOT = "$env:SystemDrive\mxc-spike\data" } 2>&1
+              -Environment @{ SPIKE_ROOT = "$env:SystemDrive\mxc-spike\data"; SPIKE_ROOTREAD = "1" } 2>&1
             Write-Host "=== normal user, $m, exit $($p.ExitCode)"
             Get-Content $out -ErrorAction SilentlyContinue
             Get-Content $err -ErrorAction SilentlyContinue
