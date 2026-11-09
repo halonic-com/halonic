@@ -1,6 +1,7 @@
 {
   "name": "@halonicjs/adapter-integration-kit",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "The integration interface: the IntegrationHost an integration gets, with an HttpClient limited to the hosts and secrets of its permission sheet. Published as @halonicjs/integration-kit.",
   "exports": {
@@ -9,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "node ../../../tooling/publish/src/cli/stage.ts ."
   },
   "dependencies": {
     "@halonicjs/format": "workspace:*",
@@ -29,6 +31,14 @@
     "runtime": "any",
     "coverage": {
       "lines": 80
+    },
+    "publish": {
+      "name": "@halonicjs/integration-kit",
+      "aliases": {},
+      "dependencies": {
+        "zod": "^4.6.7"
+      },
+      "peerDependencies": {}
     }
   }
 }
