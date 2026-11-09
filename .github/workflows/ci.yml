@@ -84,7 +84,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           filter: blob:none
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       # Reads the title from $GITHUB_EVENT_PATH: an `env:` block is printed in the log.
       - name: Pull request title
         if: github.event_name == 'pull_request'
@@ -221,7 +221,7 @@ jobs:
       # request's branch could turn main red. The weekly full scan covers
       # those branches.
       - name: Scan commits
-        uses: $/.github/actions/gitleaks
+        uses: ./.github/actions/gitleaks
         with:
           log-opts: ${{ github.event_name == 'push' && github.sha || format('{0}..{1}', github.event.pull_request.base.sha || github.event.merge_group.base_sha, github.event.pull_request.head.sha || github.event.merge_group.head_sha) }}
 
@@ -255,7 +255,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       # Every task runs; unchanged packages are cache hits. The
       # cache is GitHub's own, scoped per branch, so a pull request can read
       # main's cache but never write to it.
@@ -503,7 +503,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       - name: Create an empty package and an empty feature
         run: |
           git config user.name "CI"
@@ -594,7 +594,7 @@ jobs:
         with:
           persist-credentials: false
       # Installs @tauri-apps/cli with the rest of the workspace.
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       # The Gradle download and its dependencies, so a network blip on
       # services.gradle.org does not turn main red. Keyed on the files that
       # pin them; scoped per branch like the Turbo cache above.

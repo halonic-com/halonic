@@ -117,7 +117,7 @@ jobs:
           mkdir -p dist
           printf 'Placeholder installer for release dry run %s. Not an installer.\n' "$VERSION" \
             > "dist/$INSTALLER"
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       # The SBOM tool is `pnpm sbom` (pinned by packageManager), so no new
       # tool is added. Until the CLI package exists, both files cover every
       # production dependency of the workspace. The check fails the run when

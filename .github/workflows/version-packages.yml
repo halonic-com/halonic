@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           filter: blob:none
-      - uses: $/.github/actions/setup
+      - uses: ./.github/actions/setup
       - id: plan
         name: Count waiting changesets and compare the app version
         env:
