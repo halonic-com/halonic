@@ -13,8 +13,13 @@ permissions:
 
 jobs:
   mxc:
-    name: MXC on windows-2025
-    runs-on: windows-2025
+    name: MXC on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-2025 is Windows Server; windows-11-arm is the only hosted Windows 11 image.
+        os: [windows-2025, windows-11-arm]
     timeout-minutes: 40
     defaults:
       run:
@@ -37,6 +42,13 @@ jobs:
       - name: Install the MXC SDK
         working-directory: spikes/mxc
         run: npm install --no-audit --no-fund
+      - name: MXC executables and probe
+        working-directory: spikes/mxc
+        run: |
+          Get-ChildItem node_modules\@microsoft -Recurse -Include wxc-*.exe, *.dll | Select-Object FullName | Format-Table -AutoSize | Out-String -Width 200
+          $exe = Get-ChildItem node_modules\@microsoft -Recurse -Filter wxc-exec.exe | Select-Object -First 1
+          if ($exe) { & $exe.FullName --probe }
+        continue-on-error: true
       - name: Elevated, fence probes
         working-directory: spikes/mxc
         run: node probe.mjs fence
