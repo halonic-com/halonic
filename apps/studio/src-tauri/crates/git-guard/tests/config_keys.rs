@@ -6,7 +6,7 @@
 mod support;
 
 use halonic_git_guard::GitError;
-use support::{Sandbox, plain_git, plain_git_ok};
+use support::{Sandbox, config_path, plain_git, plain_git_ok};
 
 #[test]
 fn git_allow_list_never_takes_a_commit_message_from_a_template() {
@@ -14,7 +14,10 @@ fn git_allow_list_never_takes_a_commit_message_from_a_template() {
     sandbox.init_repository();
     let secret = sandbox.temporary.path().join("secret.txt");
     std::fs::write(&secret, "outside secret\n").expect("the secret writes");
-    sandbox.append_config(&format!("[commit]\n\ttemplate = {}\n", secret.display()));
+    sandbox.append_config(&format!(
+        "[commit]\n\ttemplate = {}\n",
+        config_path(&secret)
+    ));
     assert_eq!(
         sandbox.git("commit --allow-empty --allow-empty-message"),
         Err(GitError::MessageRequired)
@@ -53,7 +56,8 @@ fn git_hardening_never_reads_a_bundle_the_config_names() {
     let bundle_path = bundle.to_string_lossy().into_owned();
     plain_git_ok(&private, &["bundle", "create", "-q", &bundle_path, "--all"]);
     sandbox.append_config(&format!(
-        "[fetch]\n\tbundleURI = {bundle_path}\n[remote \"origin\"]\n\turl = https://git.acme.invalid/acme.git\n"
+        "[fetch]\n\tbundleURI = {}\n[remote \"origin\"]\n\turl = https://git.acme.invalid/acme.git\n",
+        config_path(&bundle)
     ));
     // The remote can't be reached; all that matters is what was read
     // before git tried it.

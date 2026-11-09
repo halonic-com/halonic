@@ -182,6 +182,11 @@ pub fn config_value(text: &str) -> String {
     format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+/// A path as a quoted config value.
+pub fn config_path(path: &Path) -> String {
+    config_value(&path.to_string_lossy())
+}
+
 /// Runs git directly, not through the runner, to set a test up: no
 /// hardening, and local remotes allowed.
 pub fn plain_git(folder: &Path, args: &[&str]) -> std::process::Output {
