@@ -24,6 +24,9 @@ Device-wide settings such as the theme live outside any scope.
 | `workspaceRoutineScheduler` | a `RoutineScheduler` on the real routines tick, filling `{{trigger.at}}` and `{{trigger.lastRun}}`                           | `app.workspace-routines`        |
 | `ChatService`               | chat outside a run: model turns through `RunExecutor.chatTurn`, the chat's tools run here, results fed back                  | `app.chat-turn-loop`            |
 | `defaultTurnLimit`          | an answer makes at most 16 model turns unless given 1 to 64, and runs the last turn's tools before it stops                  | `app.chat-turn-limit`           |
+| `ChatAnswerRequest.signal`  | Stop: no further model turn or tool call, a late model answer dropped, the calls left get a "Not run" result                 | `app.chat-stop`                 |
+| `ChatAnswerEnd`             | a failed model turn ends the answer with the error and whether a tool already ran, which decides "Try again"                 | `app.chat-failure`              |
+| `ChatAnswerListener`        | each model turn, tool call and added message as it happens, for the chat's status line                                       | `app.chat-progress`             |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
 | `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                | `ports.untrusted-tool-listings` |
 | `listedToolsNotice`         | the fixed system prompt line saying an outside server wrote the fenced tool texts, when a listed tool is offered             | `ports.untrusted-tool-listings` |

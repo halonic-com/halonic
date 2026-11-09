@@ -6,6 +6,7 @@ import type {
   ToolCall,
   ToolDefinition,
 } from "@halonicjs/ports";
+import { AnswerInProgress, asError } from "./chat-answer.ts";
 
 /** The turn limit of a chat when nothing sets one. */
 export const defaultTurnLimit = 16;
@@ -39,14 +40,40 @@ export interface ChatAnswerRequest {
   tools: readonly ChatTool[];
   /** The most model turns this answer makes, from 1 to 64; {@link defaultTurnLimit} when absent. */
   turnLimit?: number;
+  /** Aborted when the person clicks Stop. */
+  signal?: AbortSignal;
+  /** Told how the answer goes, for the chat's status line and transcript. */
+  listener?: ChatAnswerListener;
+}
+
+/**
+ * Hears how an answer goes, such as "thinking…" or "using read_file…". Each
+ * method is called inside the answer, so one that throws ends it with that
+ * error.
+ */
+export interface ChatAnswerListener {
+  /** A model turn starts; the first turn is 1. */
+  onTurn?(turn: number): void;
+  /** A tool call starts. */
+  onToolCall?(toolCall: ToolCall): void;
+  /** A message was added to the answer. */
+  onMessage?(message: ChatMessage): void;
 }
 
 /**
  * How an answer ended:
  * - `answered`: the model answered without calling a tool
  * - `turn-limit`: the model still called tools after `turns` model turns
+ * - `stopped`: the person stopped it
+ * - `failed`: a model turn failed. `toolsRan` says whether a tool already
+ *   ran in this answer, so it may have changed something and sending the
+ *   message again isn't safe.
  */
-export type ChatAnswerEnd = { reason: "answered" } | { reason: "turn-limit"; turns: number };
+export type ChatAnswerEnd =
+  | { reason: "answered" }
+  | { reason: "turn-limit"; turns: number }
+  | { reason: "stopped" }
+  | { reason: "failed"; error: Error; toolsRan: boolean };
 
 /** The result of {@link ChatService.answer}. */
 export interface ChatAnswer {
@@ -72,32 +99,47 @@ export class ChatService {
   /**
    * Answers the person's latest message: asks the model, runs the tools it
    * calls, gives it their results and asks again, until it answers without
-   * a tool call or reaches the turn limit.
+   * a tool call, reaches the turn limit, is stopped or fails.
+   *
+   * A failed model turn ends the answer instead of throwing, so the caller
+   * keeps the messages added before it, such as the results of tools that
+   * already ran.
    *
    * @throws RangeError when the turn limit isn't a whole number from 1 to 64
-   * @throws when the model can't be reached or refuses the call
    */
   async answer(request: ChatAnswerRequest): Promise<ChatAnswer> {
     const turnLimit = checkedTurnLimit(request.turnLimit);
-    const tools = new Map(request.tools.map((tool) => [tool.definition.name, tool]));
-    const definitions = request.tools.map((tool) => tool.definition);
-    const added: ChatMessage[] = [];
+    const answer = new AnswerInProgress(request);
 
     for (let turn = 1; turn <= turnLimit; turn += 1) {
-      const response = await this.executor.chatTurn({
-        ...request.settings,
-        messages: [...request.messages, ...added],
-        tools: definitions,
-      });
-      added.push(assistantMessage(response));
+      if (answer.stopped) {
+        return answer.end({ reason: "stopped" });
+      }
+      request.listener?.onTurn?.(turn);
+      const response = await this.askModel(answer);
+      // The port can't cancel a model call, so an answer that comes after Stop is dropped.
+      if (answer.stopped) {
+        return answer.end({ reason: "stopped" });
+      }
+      if (response instanceof Error) {
+        return answer.end({ reason: "failed", error: response, toolsRan: answer.toolsRan });
+      }
+      answer.addTurn(response);
       if (response.toolCalls.length === 0) {
-        return { messages: added, end: { reason: "answered" } };
+        return answer.end({ reason: "answered" });
       }
-      for (const toolCall of response.toolCalls) {
-        added.push(await runTool(tools, toolCall));
-      }
+      await answer.runTools(response.toolCalls);
     }
-    return { messages: added, end: { reason: "turn-limit", turns: turnLimit } };
+    return answer.end({ reason: "turn-limit", turns: turnLimit });
+  }
+
+  /** One model turn, or the error it failed with. */
+  private async askModel(answer: AnswerInProgress): Promise<ChatTurnResponse | Error> {
+    try {
+      return await this.executor.chatTurn(answer.turnRequest());
+    } catch (error) {
+      return asError(error);
+    }
   }
 }
 
@@ -108,46 +150,4 @@ function checkedTurnLimit(turnLimit: number = defaultTurnLimit): number {
     );
   }
   return turnLimit;
-}
-
-/** The assistant message for a model turn, keeping the provider's `replay` unchanged. */
-function assistantMessage(response: ChatTurnResponse): ChatMessage {
-  const message: Extract<ChatMessage, { role: "assistant" }> = {
-    role: "assistant",
-    content: response.content,
-  };
-  if (response.toolCalls.length > 0) {
-    message.toolCalls = response.toolCalls;
-  }
-  if (response.replay !== undefined) {
-    message.replay = response.replay;
-  }
-  return message;
-}
-
-/**
- * Runs one tool call and returns its result message. A failure becomes the
- * result, so the model can react to it and every tool call in the history
- * keeps a result, which providers require.
- */
-async function runTool(tools: Map<string, ChatTool>, toolCall: ToolCall): Promise<ChatMessage> {
-  const result = (content: string): ChatMessage => ({
-    role: "tool",
-    content,
-    toolCallId: toolCall.id,
-    name: toolCall.name,
-  });
-  const tool = tools.get(toolCall.name);
-  if (tool === undefined) {
-    return result(`Error: there is no tool named "${toolCall.name}".`);
-  }
-  try {
-    return result(await tool.call(toolCall));
-  } catch (error) {
-    return result(`Error: ${asError(error).message}`);
-  }
-}
-
-function asError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
 }

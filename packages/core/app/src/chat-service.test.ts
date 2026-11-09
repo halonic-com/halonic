@@ -1,30 +1,18 @@
 import type { ChatMessage } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { ChatService, type ChatSettings, type ChatTool } from "./chat-service.ts";
+import { ChatService, type ChatSettings } from "./chat-service.ts";
 import {
   call,
   ScriptedChat,
   type ScriptedTurn,
   textTurn,
+  tool,
   toolTurn,
 } from "./testing/scripted-chat.ts";
 
 const settings: ChatSettings = { hubId: "acme", alias: "default" };
 const question: ChatMessage[] = [{ role: "user", content: "What does triage do?" }];
-
-/** A tool that answers with `answer` and records the calls it gets. */
-function tool(name: string, answer: (args: Record<string, unknown>) => string = () => "ok") {
-  const calls: Record<string, unknown>[] = [];
-  const chatTool: ChatTool = {
-    definition: { name, description: `The ${name} tool.`, parameters: { type: "object" } },
-    async call(toolCall) {
-      calls.push(toolCall.arguments);
-      return answer(toolCall.arguments);
-    },
-  };
-  return { chatTool, calls };
-}
 
 function setUp(turns: ScriptedTurn[]) {
   const model = new ScriptedChat(turns);

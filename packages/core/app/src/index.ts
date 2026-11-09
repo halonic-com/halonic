@@ -2,6 +2,7 @@
 export {
   type ChatAnswer,
   type ChatAnswerEnd,
+  type ChatAnswerListener,
   type ChatAnswerRequest,
   ChatService,
   type ChatSettings,
