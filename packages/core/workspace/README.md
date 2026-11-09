@@ -73,6 +73,22 @@ export async function runExample(): Promise<{
 - **Not yet:** workflow and routine checks across files, resolving model aliases to a provider and
   model, and the definitions a run keeps. They come in the next steps of the HAL-186 plan.
 
+## A new workspace
+
+`initWorkspace` lays out a new workspace through a `DefinitionStore` and returns what it wrote as
+data, so `halonic init` and the Studio can each say it their own way:
+
+- a `workspace.yaml` with the name and an id, made from the name unless one is given
+  (`Acme Billing` gives `acme-billing`), checked with the workspace kind's own schema first;
+- a `.gitignore` that lists `.env` and `.env.*`. One that is already there keeps its lines and gets
+  only the missing ones, so a git repository can become a workspace.
+
+A store that already has a `workspace.yaml` is left alone. `workspace.yaml` is written last, so if
+a write fails the store is not yet a workspace and `initWorkspace` can simply run again.
+
+Checking a workspace needs no service of its own: `loadWorkspace` gives every issue with its
+severity, file and line, and the caller counts the errors.
+
 ## Trust content
 
 The trust prompt shows a workspace's trust content, and `TrustService` in `@halonicjs/app` compares
