@@ -1,0 +1,78 @@
+<!doctype html>
+<!--
+  The Android app's own page (flow-install-update 5.3 and 5.4): the connect
+  screen, "isn't answering" and the two version screens. Everything after
+  Connect is the Studio the computer serves. Words: microcopy 20.4.
+  This page imports none of the Studio's code, so the app doesn't ship it.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'" />
+    <title>Halonic</title>
+    <link rel="stylesheet" href="./src/connect/connect.css" />
+    <script type="module" src="./src/connect/main.ts"></script>
+  </head>
+  <body>
+    <main>
+      <!-- While the remembered address is checked, only the logo shows. -->
+      <section data-screen="starting">
+        <div class="logo" aria-hidden="true">logo</div>
+      </section>
+
+      <section data-screen="connect" hidden>
+        <div class="logo" aria-hidden="true">logo</div>
+        <h1>Connect to Halonic <span class="line">on your computer</span></h1>
+        <form novalidate>
+          <label for="address">Address</label>
+          <input
+            id="address"
+            name="address"
+            type="text"
+            inputmode="url"
+            enterkeyhint="go"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            placeholder="192.168.1.20:4280"
+            aria-describedby="address-error address-hint"
+          />
+          <p id="address-error" class="field-error" role="alert" hidden></p>
+          <p id="address-hint" class="hint">
+            On your computer, run <code>halonic serve --network</code>. It shows this address.
+          </p>
+          <button type="submit" class="primary" data-action="connect">Connect</button>
+        </form>
+      </section>
+
+      <section data-screen="not-answering" hidden>
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M9 17H7a5 5 0 0 1 0-10h2M15 7h2a5 5 0 0 1 1 9.9M8 12h3M3 3l18 18" />
+        </svg>
+        <p class="message" tabindex="-1">Halonic on your computer isn't answering.</p>
+        <button type="button" class="primary" data-action="try-again">Try again</button>
+        <button type="button" class="link" data-action="change-address">Change address</button>
+      </section>
+
+      <section data-screen="app-too-old" hidden>
+        <svg class="icon warning" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M12 3 2 21h20L12 3zM12 10v5M12 18v.01" />
+        </svg>
+        <p class="message" tabindex="-1"></p>
+        <button type="button" class="primary" data-action="open-release-page">Open release page</button>
+        <button type="button" class="link" data-action="change-address">Change address</button>
+      </section>
+
+      <section data-screen="computer-too-old" hidden>
+        <svg class="icon warning" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M12 3 2 21h20L12 3zM12 10v5M12 18v.01" />
+        </svg>
+        <p class="message" tabindex="-1"></p>
+        <button type="button" class="primary" data-action="try-again">Try again</button>
+        <button type="button" class="link" data-action="change-address">Change address</button>
+      </section>
+    </main>
+  </body>
+</html>

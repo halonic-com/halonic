@@ -241,6 +241,9 @@ importers:
 
   apps/studio:
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../packages/testing/spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../tooling/config
@@ -250,6 +253,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

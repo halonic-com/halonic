@@ -137,12 +137,14 @@
     "jsdom": {
       "category": "dev-tooling",
       "allowedIn": [
-        "@halonicjs/studio-kit"
+        "@halonicjs/studio-kit",
+        "@halonicjs/app-studio"
       ],
       "layers": [
-        "studio"
+        "studio",
+        "apps"
       ],
-      "reason": "A DOM for Vitest, so the kit's component tests check rendered markup, ARIA and clicks without a browser (HAL-175 section 13). Tests only."
+      "reason": "A DOM for Vitest, so the kit's component tests check rendered markup, ARIA and clicks without a browser (HAL-175 section 13), and so the Android connect page's tests check its screens, focus and field errors (HAL-1140, approved by Liam on HAL-1253). Tests only."
     },
     "react": {
       "category": "studio-framework",

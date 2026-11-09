@@ -11,9 +11,11 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@tauri-apps/cli": "catalog:",
     "@types/node": "catalog:",
+    "jsdom": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
