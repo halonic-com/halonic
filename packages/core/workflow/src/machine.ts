@@ -23,12 +23,20 @@ export interface StateTimer {
 }
 
 /**
+ * Whether the workflow has a state with this id. Inherited names such as
+ * `constructor` don't count, because `states` is a plain object.
+ */
+export function hasState(workflow: Workflow, stateId: string): boolean {
+  return Object.hasOwn(workflow.states, stateId);
+}
+
+/**
  * The state with this id.
  *
  * @throws when the workflow has no such state
  */
 export function getState(workflow: Workflow, stateId: string): WorkflowState {
-  const state = Object.hasOwn(workflow.states, stateId) ? workflow.states[stateId] : undefined;
+  const state = hasState(workflow, stateId) ? workflow.states[stateId] : undefined;
   if (!state) {
     throw new Error(`Workflow "${workflow.id}" has no state "${stateId}"`);
   }

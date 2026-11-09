@@ -12,7 +12,6 @@ export { evaluateGuard } from "./guards.ts";
 export {
   childInput,
   contextBefore,
-  MAX_SUBFLOW_DEPTH,
   promptFor,
   type StateInput,
   withGets,

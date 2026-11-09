@@ -1,9 +1,6 @@
 import type { Workflow } from "@halonicjs/format";
 import { getPath, render, renderText } from "./template.ts";
 
-/** How deep workflows may start workflows. A run started by a person or a routine is depth 0. */
-export const MAX_SUBFLOW_DEPTH = 5;
-
 /** A state's `input`: one template, or a map of templates. */
 export type StateInput = string | Record<string, unknown> | undefined;
 

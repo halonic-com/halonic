@@ -1,6 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { acceptedEvents, dueTimer, getState, selectTransition, stateTimers } from "./machine.ts";
+import {
+  acceptedEvents,
+  dueTimer,
+  getState,
+  hasState,
+  selectTransition,
+  stateTimers,
+} from "./machine.ts";
 import { triage, workflowOf } from "./test/workflow.spec.ts";
 
 const at = (iso: string) => new Date(iso);
@@ -42,6 +49,12 @@ verifies("workflow.select-transition", () => {
   it("refuses a state the workflow doesn't have, inherited names too", () => {
     expect(() => getState(triage, "nowhere")).toThrow('Workflow "triage" has no state "nowhere"');
     expect(() => getState(triage, "constructor")).toThrow(/no state "constructor"/);
+  });
+
+  it("knows only the workflow's own states", () => {
+    expect(hasState(triage, "classify")).toBe(true);
+    expect(hasState(triage, "nowhere")).toBe(false);
+    expect(hasState(triage, "constructor")).toBe(false);
   });
 });
 

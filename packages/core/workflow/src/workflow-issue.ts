@@ -1,5 +1,3 @@
-import type { Workflow } from "@halonicjs/format";
-
 /** An `error` stops the workflow from running; a `warning` only points something out. */
 export type Severity = "error" | "warning";
 
@@ -38,11 +36,6 @@ export interface ValidateOptions {
   agents?: readonly string[];
   /** The workflow ids of the hub; when given, the workflows states run are checked. */
   workflows?: readonly string[];
-}
-
-/** Whether the workflow has a state with this id. Inherited names such as `constructor` don't count. */
-export function hasState(workflow: Workflow, id: string): boolean {
-  return Object.hasOwn(workflow.states, id);
 }
 
 /** A {@link WorkflowIssue}, with `state` only when it is in one. */

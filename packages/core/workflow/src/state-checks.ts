@@ -1,6 +1,7 @@
 import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { contextBefore } from "./inputs.ts";
-import { hasState, issue, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
+import { hasState } from "./machine.ts";
+import { issue, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
 // The checks validateWorkflow runs on each state, one function per rule, in
 // the order the old checks reported them.

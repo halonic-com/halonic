@@ -1,6 +1,7 @@
 import type { Workflow } from "@halonicjs/format";
+import { hasState } from "./machine.ts";
 import { STATE_CHECKS } from "./state-checks.ts";
-import { hasState, issue, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
+import { issue, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
 /**
  * The static checks a workflow gets before anything runs, as the Studio's
