@@ -1,7 +1,7 @@
 import type { Secrets } from "@halonicjs/ports";
 import { decodeBase64url } from "@halonicjs/std";
 
-/** The configured secret that holds the key. Under the environment adapter it is `STUDIO_SECRET_TOKEN_KEY`. */
+/** The configured secret that holds the key. Under the environment adapter it is `HALONIC_SECRET_TOKEN_KEY`. */
 export const tokenKeySecret = "token-key";
 
 const keyLength = 32;

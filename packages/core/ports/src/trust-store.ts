@@ -51,7 +51,7 @@ export interface TrustRecord {
  * never return `null` or skip it: the service then treats the source as
  * untrusted and tells the user why, instead of asking again as if it were
  * new. The error names the record's location, and `revoke` still deletes
- * that record, so the user can recover with `halonic trust --revoke`.
+ * that record, so the user can recover with `halonic trust --remove`.
  */
 export interface TrustStore {
   /** The record for a location, or `null` when there is none. */

@@ -57,7 +57,7 @@ export async function runExample(): Promise<{
 ## The key
 
 The key is the configured secret `token-key`: 32 random bytes in base64url, without padding. Under
-the environment adapter it is `STUDIO_SECRET_TOKEN_KEY`. One way to make one:
+the environment adapter it is `HALONIC_SECRET_TOKEN_KEY`. One way to make one:
 
 ```sh
 node -e "console.log(crypto.getRandomValues(Buffer.alloc(32)).toString('base64url'))"

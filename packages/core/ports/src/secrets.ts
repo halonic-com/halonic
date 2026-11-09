@@ -14,7 +14,7 @@ export const secretsVersion = 1;
  * **Two names that differ only in upper and lower case, or in `-` versus
  * `_`, are the same secret on every adapter.** The old environment adapter
  * upper-cased names and mapped `-` to `_` (`serve-password` is
- * `STUDIO_SECRET_SERVE_PASSWORD`), so a keychain or file store must match
+ * `HALONIC_SECRET_SERVE_PASSWORD`), so a keychain or file store must match
  * names the same way. A prefix is up to the adapter.
  */
 export interface Secrets {
