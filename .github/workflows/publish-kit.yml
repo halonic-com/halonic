@@ -131,7 +131,7 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           # Alphabetical order would put the suite before the kit it needs.
-          for tarball in tarballs/halonicjs-integration-kit-*.tgz tarballs/halonicjs-testing-integration-*.tgz; do
+          for tarball in ./tarballs/halonicjs-integration-kit-*.tgz ./tarballs/halonicjs-testing-integration-*.tgz; do
             name=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).name')
             version=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version')
             if npm view "$name@$version" version > /dev/null 2>&1; then
