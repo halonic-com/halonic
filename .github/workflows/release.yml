@@ -151,7 +151,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force sign-test | Out-Null
           Set-Content -Path sign-test/test.cs -Value 'class T { static void Main() { System.Console.WriteLine("test"); } }'
-          & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /out:sign-test/halonic-sign-test.exe sign-test/test.cs
+          & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /out:sign-test\halonic-sign-test.exe sign-test\test.cs
           if ($LASTEXITCODE -ne 0) { throw "csc failed" }
       - name: Sign it with a throwaway certificate and a timestamp
         shell: pwsh
