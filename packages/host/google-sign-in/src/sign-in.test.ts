@@ -13,12 +13,13 @@ import {
   tokenSuccess,
 } from "./fake-google.test-helper.ts";
 import {
-  driveScope,
-  gmailScope,
+  gmailCheckUrl,
   knownVerifier,
   signInOnce,
   startInput,
   testServer,
+  tokenEndpoint,
+  tokenRequests,
 } from "./sign-in.test-helper.ts";
 
 const refreshName = `google-account-${fakeAccountRef}`;
@@ -31,13 +32,12 @@ verifies("google-sign-in.exchange", () => {
       kind: "signedIn",
       accountRef: fakeAccountRef,
       email: fakeEmail,
-      grantedScopes: ["openid", "https://www.googleapis.com/auth/userinfo.email", gmailScope],
-      missingScopes: [],
+      services: [{ service: "gmail", result: { kind: "works" }, checkedAt: new Date(testStart) }],
       at: new Date(testStart),
     });
-    expect(google.requests).toHaveLength(1);
+    expect(google.requests.map((request) => request.url)).toEqual([tokenEndpoint, gmailCheckUrl]);
     const [request] = google.requests;
-    expect(request?.url).toBe("https://oauth2.googleapis.com/token");
+    expect(request?.url).toBe(tokenEndpoint);
     expect(request?.method).toBe("POST");
     expect(Object.fromEntries(request?.form ?? [])).toEqual({
       grant_type: "authorization_code",
@@ -79,14 +79,6 @@ verifies("google-sign-in.exchange", () => {
     expect(server.ports.pendingSignIns.authUrlFor(fakeAccountRef)).toBeUndefined();
   });
 
-  it("lists the scopes the user unticked", async () => {
-    const server = testServer(() => tokenSuccess());
-    const { state } = await server.start({ ...startInput, scopes: [gmailScope, driveScope] });
-    const result = await server.finish({ code: fakeCode, state });
-
-    expect(result).toMatchObject({ kind: "signedIn", missingScopes: [driveScope] });
-  });
-
   it("maps Google's errors to results that hold its error code at most", async () => {
     const outcome = async (answer: () => Response) => (await signInOnce(answer)).result;
 
@@ -112,6 +104,11 @@ verifies("google-sign-in.exchange", () => {
     expect(await outcome(() => tokenSuccess({ refresh_token: undefined }))).toEqual({
       kind: "noRefreshToken",
       accountRef: fakeAccountRef,
+    });
+    expect(await outcome(() => tokenSuccess({ access_token: undefined }))).toEqual({
+      kind: "unexpectedAnswer",
+      accountRef: fakeAccountRef,
+      status: 200,
     });
   });
 
@@ -150,8 +147,10 @@ verifies("google-sign-in.exchange", () => {
 
     expect([...server.tokens.values]).toEqual([[refreshName, "fake-refresh-token-second"]]);
     expect(server.google.requests.map((request) => request.url)).toEqual([
-      "https://oauth2.googleapis.com/token",
-      "https://oauth2.googleapis.com/token",
+      tokenEndpoint,
+      gmailCheckUrl,
+      tokenEndpoint,
+      gmailCheckUrl,
     ]);
   });
 
@@ -180,6 +179,6 @@ verifies("google-sign-in.exchange", () => {
     ]);
 
     expect(results.map((result) => result.kind).sort()).toEqual(["linkNoLongerValid", "signedIn"]);
-    expect(server.google.requests).toHaveLength(1);
+    expect(tokenRequests(server.google.requests)).toHaveLength(1);
   });
 });

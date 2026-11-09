@@ -1,3 +1,5 @@
+import type { SetupService } from "./setup-input.ts";
+
 /** How long a sign-in may wait for Google's callback: 10 minutes (plan D5). */
 export const pendingSignInLifetimeMs = 10 * 60 * 1000;
 
@@ -24,6 +26,15 @@ export interface PendingSignInDetails {
   readonly redirectUri: string;
   /** The scopes the auth URL asked for. */
   readonly scopes: readonly string[];
+  /**
+   * The connector's address. Google must confirm this account, or nothing is
+   * saved (design 3.5 point 3). Personal data: never logged.
+   */
+  readonly account: string;
+  /** The ticked services, whose scopes and `googleCheck` are checked after sign-in. */
+  readonly services: readonly SetupService[];
+  /** The project ID from the setup (step 1), for the "Switch it on" link. */
+  readonly projectId?: string;
   /**
    * The auth URL this sign-in sent the browser to. "Open again" sends the
    * browser to the same URL, so the first tab's callback still works (plan

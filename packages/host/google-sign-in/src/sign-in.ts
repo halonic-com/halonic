@@ -1,5 +1,5 @@
 import {
-  baseSignInScopes,
+  accountMatches,
   type CallbackQuery,
   classifyTokenAnswer,
   clientSecretName,
@@ -11,6 +11,8 @@ import {
   type PendingSignIns,
   readSignInCallback,
   refreshTokenName,
+  type ServiceResult,
+  type SetupService,
   type SignInCallback,
   signInScopes,
   type TokenAnswer,
@@ -18,7 +20,9 @@ import {
 } from "@halonicjs/google-setup";
 import type { Clock, HttpClient, TokenStore } from "@halonicjs/ports";
 import type { RandomBytes } from "@halonicjs/std";
+import { checkGoogleCheckUrl, checkServices } from "./google-check.ts";
 import { readIdTokenAccount } from "./id-token.ts";
+import { parseJson } from "./json.ts";
 import { createPkcePair } from "./pkce.ts";
 import { webRandomBytes } from "./random.ts";
 import { createState } from "./state.ts";
@@ -33,10 +37,18 @@ export interface StartGoogleSignInInput {
   readonly clientRef: string;
   /** The local server's port and callback path. */
   readonly redirect: LoopbackRedirect;
-  /** The scopes of the ticked services; `openid` and `email` are always added. */
-  readonly scopes: readonly string[];
-  /** The account's e-mail from the connector settings, when it is known. Only a hint. */
-  readonly loginHint?: string;
+  /**
+   * The connector's address. It is the login hint, and Google must confirm
+   * this account, or nothing is saved. Personal data: never logged.
+   */
+  readonly account: string;
+  /**
+   * The ticked services. Their scopes are asked for (`openid` and `email` are
+   * always added), and each one's scopes and `googleCheck` are checked after sign-in.
+   */
+  readonly services: readonly SetupService[];
+  /** The project ID from the setup (step 1), if known, for the "Switch it on" link. */
+  readonly projectId?: string;
 }
 
 /**
@@ -44,11 +56,12 @@ export interface StartGoogleSignInInput {
  * account's pending sign-in (replacing an earlier one) and returns the URL to
  * open in the browser. The URL holds `state` and the challenge, never the verifier.
  *
- * @param input - the account, client, redirect, scopes and optional hint
+ * @param input - the account, client, redirect and services
  * @param pendingSignIns - the server's pending sign-ins
  * @param randomBytes - where `state` and the verifier come from; tests pass fixed bytes
  * @returns the auth URL
- * @throws RangeError when the account ref, client ref, redirect or a scope is refused
+ * @throws RangeError when the account ref, client ref, redirect, a scope or a
+ *   `googleCheck` URL is refused
  */
 export async function startGoogleSignIn(
   input: StartGoogleSignInInput,
@@ -59,16 +72,23 @@ export async function startGoogleSignIn(
   // A bad ref fails now, not after the user has been through Google's consent screen.
   refreshTokenName(input.accountRef);
   clientSecretName(input.clientRef);
+  for (const service of input.services) {
+    if (service.googleCheck !== undefined) {
+      checkGoogleCheckUrl(service.googleCheck.url);
+    }
+  }
   const pkce = await createPkcePair(randomBytes);
   const state = createState(randomBytes);
-  const scopes = signInScopes(input.scopes);
+  const scopes = signInScopes(
+    input.services.flatMap((service) => service.googleScopes.map(({ scope }) => scope)),
+  );
   const authUrl = googleAuthUrl({
     clientId: input.clientId,
     redirect: input.redirect,
     state,
     codeChallenge: pkce.challenge,
     scopes,
-    ...(input.loginHint === undefined ? {} : { loginHint: input.loginHint }),
+    loginHint: input.account,
   });
   pendingSignIns.start(input.accountRef, {
     state,
@@ -78,6 +98,9 @@ export async function startGoogleSignIn(
     redirectUri: loopbackRedirectUri(input.redirect),
     scopes,
     authUrl,
+    account: input.account,
+    services: input.services,
+    ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
   });
   return authUrl;
 }
@@ -101,19 +124,25 @@ type FailedExchange = Exclude<TokenAnswerMeaning, { kind: "tokens" }> & {
  * How a sign-in ended. No kind holds a secret: not the code, the verifier,
  * the client secret or any token, and an error carries Google's error code at
  * most. So every result is safe to show and return from a route. `signedIn`
- * holds the e-mail, which is personal data: log only `kind` and `accountRef`.
+ * and `wrongAccount` hold an e-mail, which is personal data: log only `kind`
+ * and `accountRef`.
  */
 export type GoogleSignInResult =
   | {
       readonly kind: "signedIn";
       readonly accountRef: string;
-      /** The e-mail Google confirmed. It may differ from the `login_hint`. */
+      /** The e-mail Google confirmed: the connector's address. */
       readonly email: string;
-      /** The scopes Google granted, from its answer. */
-      readonly grantedScopes: readonly string[];
-      /** The scopes asked for but not granted, because the user unticked them. */
-      readonly missingScopes: readonly string[];
+      /** One check result per ticked service, in the services' order. */
+      readonly services: readonly ServiceResult[];
       readonly at: Date;
+    }
+  | {
+      /** Another Google account signed in. Nothing was saved and nothing revoked. */
+      readonly kind: "wrongAccount";
+      readonly accountRef: string;
+      /** The address Google confirmed, for "Use … for this connector instead". */
+      readonly signedInAs: string;
     }
   | Exclude<SignInCallback, { kind: "code" }>
   | FailedExchange
@@ -122,11 +151,18 @@ export type GoogleSignInResult =
   | { readonly kind: "idTokenRefused"; readonly accountRef: string };
 
 /**
- * Finishes a sign-in from Google's callback: finds and removes the pending
- * sign-in by `state`, exchanges the code, checks the ID token and saves the
- * refresh token under `refreshTokenName(accountRef)`, replacing an earlier
- * one. The earlier one is never revoked: Google's revoke ends the whole
- * grant, so it would end the new token too. The access token is dropped.
+ * Finishes a sign-in from Google's callback:
+ * 1. finds and removes the pending sign-in by `state` and exchanges the code;
+ * 2. checks the ID token, then that its verified e-mail is the connector's.
+ *    For another account it returns `wrongAccount` and saves nothing. The
+ *    new grant isn't revoked: that address may be another connector on the
+ *    same client, and Google's revoke would end its whole grant;
+ * 3. saves the refresh token under `refreshTokenName(accountRef)`, replacing
+ *    an earlier one. The earlier one is never revoked either: Google's revoke
+ *    ends the whole grant, so it would end the new token too;
+ * 4. checks each service with the fresh access token, before the result goes
+ *    back, so before any integration code runs. The access token is then
+ *    dropped: it never leaves this function.
  *
  * @param query - the callback's query parameters
  * @param ports - the pending sign-ins, `HttpClient`, `TokenStore`, `Clock` and secret reader
@@ -155,30 +191,42 @@ export async function finishGoogleSignIn(
   if (meaning.kind !== "tokens") {
     return { ...meaning, accountRef };
   }
+  const accessToken = accessTokenIn(answer.json);
+  if (accessToken === undefined) {
+    return { kind: "unexpectedAnswer", status: answer.status, accountRef };
+  }
 
   const at = ports.clock.now();
   const account = readIdTokenAccount(meaning.idToken, pending.clientId, at);
+  // The ID token check accepts only an address Google verified (`email_verified`),
+  // so a matching address can't be claimed by another account.
   if (account === undefined) {
     return { kind: "idTokenRefused", accountRef };
   }
+  if (!accountMatches(pending.account, account.email)) {
+    return { kind: "wrongAccount", accountRef, signedInAs: account.email };
+  }
   await ports.tokens.set(refreshTokenName(accountRef), meaning.refreshToken);
-  return {
-    kind: "signedIn",
-    accountRef,
-    email: account.email,
-    grantedScopes: meaning.grantedScopes,
-    missingScopes: missingServiceScopes(pending.scopes, meaning.grantedScopes),
-    at,
-  };
+  const services = await checkServices(
+    pending.services,
+    meaning.grantedScopes,
+    accessToken,
+    pending.projectId,
+    ports,
+  );
+  return { kind: "signedIn", accountRef, email: account.email, services, at };
 }
 
 /**
- * The services' scopes that were asked for and not granted. `openid` and
- * `email` are left out: Google reports `email` back as `…/userinfo.email`, and
- * the ID token check already proves both were granted.
+ * The access token from a token answer `classifyTokenAnswer` accepted. Core
+ * leaves it out on purpose, so it is read here, where the checks use it.
  */
-function missingServiceScopes(requested: readonly string[], granted: readonly string[]): string[] {
-  return requested.filter((scope) => !baseSignInScopes.includes(scope) && !granted.includes(scope));
+function accessTokenIn(json: unknown): string | undefined {
+  if (typeof json !== "object" || json === null) {
+    return undefined;
+  }
+  const value = (json as Record<string, unknown>)["access_token"];
+  return typeof value === "string" && value !== "" ? value : undefined;
 }
 
 /**
@@ -210,15 +258,6 @@ async function exchangeCode(
       body: body.toString(),
     });
     return { status: response.status, json: parseJson(await response.text()) };
-  } catch {
-    return undefined;
-  }
-}
-
-/** The text as JSON, or `undefined` when it isn't JSON (an HTML error page, say). */
-function parseJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
   } catch {
     return undefined;
   }

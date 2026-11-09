@@ -67,6 +67,10 @@ export interface RecordedRequest {
   readonly url: string;
   readonly method: string;
   readonly form: URLSearchParams;
+  readonly headers: Headers;
+  readonly hasBody: boolean;
+  readonly redirect: RequestInit["redirect"];
+  readonly signal: AbortSignal | undefined;
 }
 
 /**
@@ -84,6 +88,10 @@ export function fakeGoogle(
         url,
         method: init?.method ?? "GET",
         form: new URLSearchParams(typeof init?.body === "string" ? init.body : ""),
+        headers: new Headers(init?.headers),
+        hasBody: init?.body !== undefined && init.body !== null,
+        redirect: init?.redirect,
+        signal: init?.signal ?? undefined,
       };
       requests.push(request);
       return answer(request);

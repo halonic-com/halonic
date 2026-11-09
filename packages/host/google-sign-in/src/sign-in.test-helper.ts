@@ -1,8 +1,10 @@
+import type { SetupService } from "@halonicjs/google-setup";
 import { encodeBase64url, type RandomBytes } from "@halonicjs/std";
 import {
   fakeAccountRef,
   fakeClient,
   fakeCode,
+  fakeEmail,
   fakeGoogle,
   fakeTokenStore,
   type RecordedRequest,
@@ -13,14 +15,33 @@ import { finishGoogleSignIn, type StartGoogleSignInInput, startGoogleSignIn } fr
 
 export const gmailScope = "https://www.googleapis.com/auth/gmail.readonly";
 export const driveScope = "https://www.googleapis.com/auth/drive.file";
+export const gmailCheckUrl = "https://gmail.googleapis.com/gmail/v1/users/me/profile";
+export const tokenEndpoint = "https://oauth2.googleapis.com/token";
+
+/** A service with a check after sign-in, as Gmail's sheet has. */
+export const gmailService: SetupService = {
+  id: "gmail",
+  label: "Gmail",
+  googleApis: [{ api: "gmail.googleapis.com", name: "Gmail API" }],
+  googleScopes: [{ scope: gmailScope, reason: "Reads your mail" }],
+  googleCheck: { method: "GET", url: gmailCheckUrl },
+};
+
+/** A service without a check, so its result can only be `allowed`. */
+export const driveService: SetupService = {
+  id: "drive",
+  label: "Drive",
+  googleApis: [{ api: "drive.googleapis.com", name: "Google Drive API" }],
+  googleScopes: [{ scope: driveScope, reason: "Opens the files you pick" }],
+};
 
 export const startInput: StartGoogleSignInInput = {
   accountRef: fakeAccountRef,
   clientId: fakeClient.clientId,
   clientRef: fakeClient.clientRef,
   redirect: { port: 8787, path: "/google/callback" },
-  scopes: [gmailScope],
-  loginHint: "account@example.com",
+  account: fakeEmail,
+  services: [gmailService],
 };
 
 /**
@@ -37,6 +58,11 @@ function countingRandomBytes(): RandomBytes {
 
 /** The verifier `countingRandomBytes` gives: 32 bytes of 0x01, as base64url. */
 export const knownVerifier = encodeBase64url(new Uint8Array(32).fill(1));
+
+/** The requests to Google's token endpoint, leaving out the checks. */
+export function tokenRequests(requests: readonly RecordedRequest[]): RecordedRequest[] {
+  return requests.filter((request) => request.url === tokenEndpoint);
+}
 
 /** One server with a fake Google, a fake store and a clock at `testStart`. */
 export function testServer(answer: (request: RecordedRequest) => Response) {

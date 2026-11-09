@@ -16,6 +16,8 @@ function details(state = createState()): PendingSignInDetails {
     clientRef: fakeClient.clientRef,
     redirectUri: "http://127.0.0.1:8787/google/callback",
     scopes: ["email", "openid"],
+    account: "account@example.com",
+    services: [],
     authUrl: `https://accounts.google.com/o/oauth2/v2/auth?state=${state}`,
   };
 }
