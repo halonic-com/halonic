@@ -153,7 +153,7 @@ which `src/example.test.ts` runs and checks.
 
 ```ts
 import { join } from "node:path";
-import { compareFile, fileChecks, type NewResult } from "../src/index.ts";
+import { compareFile, fileChecks, type NewResult } from "@halonicjs/testing-parity";
 
 /** The fixtures that ship with this package: a valid base workspace and made-up faulty cases. */
 const fixtures = join(import.meta.dirname, "../fixtures");
