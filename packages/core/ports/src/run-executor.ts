@@ -98,6 +98,26 @@ export interface RunSubscription {
   close(): void;
 }
 
+/** Whether the engine behind a {@link RunExecutor} can be reached. */
+export type EngineConnectionState = "connected" | "lost";
+
+/**
+ * The engine connection of an executor that can lose it, such as the remote
+ * one in served mode or on a phone connected to a host. A broken run stream
+ * only tells its own subscriber; this tells everyone that the engine as a
+ * whole is gone, and when it is back.
+ */
+export interface EngineConnection {
+  /** The state now. */
+  readonly state: EngineConnectionState;
+  /**
+   * Calls `listener` on each change of state: never twice in a row with the
+   * same state, and never before `onChange` returns. Returns a function that
+   * stops it; calling that twice is not an error.
+   */
+  onChange(listener: (state: EngineConnectionState) => void): () => void;
+}
+
 /**
  * Where runs execute. Replaces the old `Runtime` and `RunHost` ports: the
  * local implementation runs the engine in this process, the remote
@@ -150,4 +170,11 @@ export interface RunExecutor {
    * @throws when the model can't be reached or refuses the call
    */
   chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse>;
+  /**
+   * The connection to the engine, for an executor that can lose it. The
+   * remote executor sets it from its streams and retries. Absent means
+   * always connected: the local executor's engine runs in this process.
+   * Optional, so callers check for it and the port keeps version 1.
+   */
+  readonly connection?: EngineConnection;
 }

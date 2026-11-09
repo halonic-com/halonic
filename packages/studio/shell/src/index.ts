@@ -18,6 +18,13 @@ export {
   createCloseStack,
   type EscapePress,
 } from "./close-stack/close-stack.ts";
+export {
+  createShellEngine,
+  type EngineConnectionEvent,
+  type EngineConnectionListener,
+  engineConnectionAnnouncements,
+  type ShellEngine,
+} from "./engine/engine-connection.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
