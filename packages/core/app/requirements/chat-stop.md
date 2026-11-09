@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1539; `assistant.chat.stop` in req-assistant and flow-assistant 5.1 ("Stopped by you."), the agents flow 4.4; HAL-1771 passes the stop on to the model turn and the tools
+- Source: HAL-1539; `assistant.chat.stop` in req-assistant and flow-assistant 5.1 ("Stopped by you."), the agents flow 4.4; HAL-1771 passes the stop on to the model turn and the tools, and says whether a tool ran
 
-When the person stops an answer, the chat service shall start no further model turn and no further tool call, and end the answer as stopped. The chat service shall pass the person's stop signal on to each model turn, as `ChatTurnRequest.signal`, and to each tool call, so an executor or tool that honors it stops early. A model turn that still answers after the stop shall be dropped, because an executor may ignore the signal. Each tool call of the current turn that didn't run shall get the result "Not run: the person stopped the chat.", so every tool call in the history has a result. The messages added before the stop shall be kept.
+When the person stops an answer, the chat service shall start no further model turn and no further tool call, and end the answer as stopped. The chat service shall pass the person's stop signal on to each model turn, as `ChatTurnRequest.signal`, and to each tool call, so an executor or tool that honors it stops early. A model turn that still answers after the stop shall be dropped, because an executor may ignore the signal. Each tool call of the current turn that didn't run shall get the result "Not run: the person stopped the chat.", so every tool call in the history has a result. The messages added before the stop shall be kept, and the stopped answer shall say whether a tool already ran in it, as a failed one does, so the Studio offers "Try again" only when sending the message again is safe.
 
 ## Examples
 
@@ -24,3 +24,6 @@ When the person stops an answer, the chat service shall start no further model t
 - Given an executor that ignores the signal,
   when the person stops the answer while the model is thinking and the model answers anyway,
   then the answer is dropped and the answer ends as stopped.
+- Given a model turn whose tool call `c1` ran,
+  when the person stops the answer during the next model turn,
+  then the answer ends as stopped and says a tool ran.

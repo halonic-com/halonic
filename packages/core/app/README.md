@@ -25,7 +25,7 @@ Device-wide settings such as the theme live outside any scope.
 | `ChatService`               | chat outside a run: model turns through `RunExecutor.chatTurn`, the chat's tools run here, results fed back                  | `app.chat-turn-loop`             |
 | `defaultTurnLimit`          | an answer makes at most 16 model turns unless given 1 to 64, and runs the last turn's tools before it stops                  | `app.chat-turn-limit`            |
 | `ChatAnswerRequest.signal`  | Stop: passed on to the model turn and tools, a late model answer dropped, the calls left get a "Not run" result              | `app.chat-stop`                  |
-| `ChatAnswerEnd`             | a failed model turn ends the answer with the error and whether a tool already ran, which decides "Try again"                 | `app.chat-failure`               |
+| `ChatAnswerEnd`             | a failed or stopped answer says whether a tool already ran, which decides "Try again"                                        | `app.chat-failure`               |
 | `ChatAnswerListener`        | each model turn, tool call and added message as it happens, for the chat's status line                                       | `app.chat-progress`              |
 | `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only          | `app.connection-settings`        |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings`  |

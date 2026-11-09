@@ -71,14 +71,16 @@ export interface ChatAnswerListener {
  * - `answered`: the model answered without calling a tool
  * - `turn-limit`: the model still called tools after `turns` model turns
  * - `stopped`: the person stopped it
- * - `failed`: a model turn or the listener failed. `toolsRan` says whether a tool already
- *   ran in this answer, so it may have changed something and sending the
- *   message again isn't safe.
+ * - `failed`: a model turn or the listener failed
+ *
+ * For `stopped` and `failed`, `toolsRan` says whether a tool already ran in
+ * this answer, so it may have changed something and sending the message
+ * again isn't safe.
  */
 export type ChatAnswerEnd =
   | { reason: "answered" }
   | { reason: "turn-limit"; turns: number }
-  | { reason: "stopped" }
+  | { reason: "stopped"; toolsRan: boolean }
   | { reason: "failed"; error: Error; toolsRan: boolean };
 
 /** The result of {@link ChatService.answer}. */
@@ -138,13 +140,13 @@ export class ChatService {
   private async runTurns(answer: AnswerInProgress, turnLimit: number): Promise<ChatAnswer> {
     for (let turn = 1; turn <= turnLimit; turn += 1) {
       if (answer.stopped) {
-        return answer.end({ reason: "stopped" });
+        return answer.endStopped();
       }
       answer.startTurn(turn);
       const response = await this.askModel(answer);
       // An executor may ignore the signal and answer after Stop anyway, so that answer is dropped.
       if (answer.stopped) {
-        return answer.end({ reason: "stopped" });
+        return answer.endStopped();
       }
       if (response instanceof Error) {
         return answer.end({ reason: "failed", error: response, toolsRan: answer.toolsRan });
@@ -157,7 +159,7 @@ export class ChatService {
     }
     // Stop during the last turn's tools is still a stop, not the turn limit.
     if (answer.stopped) {
-      return answer.end({ reason: "stopped" });
+      return answer.endStopped();
     }
     return answer.end({ reason: "turn-limit", turns: turnLimit });
   }

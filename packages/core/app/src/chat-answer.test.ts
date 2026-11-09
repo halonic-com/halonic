@@ -33,7 +33,7 @@ verifies("app.chat-stop", () => {
       signal: stop.signal,
     });
 
-    expect(answer.end).toEqual({ reason: "stopped" });
+    expect(answer.end).toEqual({ reason: "stopped", toolsRan: true });
     expect(model.requests).toHaveLength(3);
     expect(answer.messages.map((message) => message.role)).toEqual([
       "assistant",
@@ -59,7 +59,7 @@ verifies("app.chat-stop", () => {
       signal: stop.signal,
     });
 
-    expect(answer.end).toEqual({ reason: "stopped" });
+    expect(answer.end).toEqual({ reason: "stopped", toolsRan: true });
     expect(second.calls).toEqual([]);
     expect(answer.messages.slice(1)).toEqual([
       { role: "tool", content: "first done", toolCallId: "c1", name: "first" },
@@ -84,7 +84,7 @@ verifies("app.chat-stop", () => {
       signal: stop.signal,
     });
 
-    expect(answer.end).toEqual({ reason: "stopped" });
+    expect(answer.end).toEqual({ reason: "stopped", toolsRan: true });
     expect(second.calls).toEqual([]);
     expect(answer.messages.at(-1)).toMatchObject({ content: notRunAfterStop, toolCallId: "c2" });
   });
@@ -99,7 +99,7 @@ verifies("app.chat-stop", () => {
       signal: AbortSignal.abort(),
     });
 
-    expect(answer).toEqual({ messages: [], end: { reason: "stopped" } });
+    expect(answer).toEqual({ messages: [], end: { reason: "stopped", toolsRan: false } });
     expect(model.requests).toEqual([]);
   });
 
@@ -119,7 +119,7 @@ verifies("app.chat-stop", () => {
       signal: stop.signal,
     });
 
-    expect(answer.end).toEqual({ reason: "stopped" });
+    expect(answer.end).toEqual({ reason: "stopped", toolsRan: false });
   });
 
   it("passes the stop signal on to every model turn and tool call", async () => {
@@ -170,7 +170,7 @@ verifies("app.chat-stop", () => {
       signal: stop.signal,
     });
 
-    expect(answer).toEqual({ messages: [], end: { reason: "stopped" } });
+    expect(answer).toEqual({ messages: [], end: { reason: "stopped", toolsRan: false } });
     expect(readFile.calls).toEqual([]);
   });
 });

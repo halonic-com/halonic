@@ -93,6 +93,11 @@ export class AnswerInProgress {
     return { messages: this.added, end };
   }
 
+  /** The answer the person stopped, saying whether a tool ran before the stop. */
+  endStopped(): ChatAnswer {
+    return this.end({ reason: "stopped", toolsRan: this.toolsRan });
+  }
+
   private add(message: ChatMessage): void {
     this.added.push(message);
     this.tell((listener) => listener.onMessage?.(message));
