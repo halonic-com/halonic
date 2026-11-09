@@ -51,6 +51,13 @@ describe("tooling/check: deny.toml reader", () => {
     ]);
   });
 
+  it("keeps a closing brace inside a plain string", () => {
+    expect(readDeny(deny({ ignore: '"a}b", { id = "c", reason = "x" }' })).ignore).toEqual([
+      { id: "a}b", reason: "", plain: true },
+      { id: "c", reason: "x" },
+    ]);
+  });
+
   it("reports a missing list as undefined", () => {
     expect(readDeny("[bans]\n")).toEqual({ allow: undefined, ignore: undefined });
   });
