@@ -13,7 +13,8 @@ export interface SecretOnWire {
 /**
  * Every form of a set of secrets the filter looks for, longest first. Build
  * it once with {@link secretForms} and pass it to {@link removeSecrets} or
- * {@link SecretRemover}.
+ * {@link SecretRemover}. Only {@link secretForms} makes one: `texts`, `bytes`
+ * and `longest` must agree, or the filter misses a form.
  */
 export interface SecretForms {
   readonly texts: readonly string[];
@@ -88,6 +89,35 @@ export function removeSecrets(text: string, forms: SecretForms): string {
   let filtered = text;
   for (const form of forms.texts) filtered = filtered.replaceAll(form, secretRemoved);
   return filtered;
+}
+
+/**
+ * The error with every form of the secrets removed from its message, its
+ * stack and its causes. A kit error can repeat a URL a server chose, such as
+ * a redirect target, so every error leaving a request goes through here.
+ * The error is changed in place, so its class and `code` stay; one that
+ * can't be changed is replaced by a plain `Error` with the filtered message.
+ */
+export function removeSecretsFromError(error: unknown, forms: SecretForms): unknown {
+  return withoutSecrets(error, forms, new Set());
+}
+
+function withoutSecrets(error: unknown, forms: SecretForms, seen: Set<unknown>): unknown {
+  if (forms.longest === 0) return error;
+  if (typeof error === "string") return removeSecrets(error, forms);
+  if (!(error instanceof Error) || seen.has(error)) return error;
+  seen.add(error);
+  const message = removeSecrets(error.message, forms);
+  const stack = error.stack;
+  const cause = withoutSecrets(error.cause, forms, seen);
+  try {
+    if (message !== error.message) error.message = message;
+    if (stack !== undefined) error.stack = removeSecrets(stack, forms);
+    if (cause !== error.cause) error.cause = cause;
+    return error;
+  } catch {
+    return new Error(message);
+  }
 }
 
 /**

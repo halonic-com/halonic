@@ -1,8 +1,8 @@
-import { decompressed } from "./content-decoding.ts";
 import type { IntegrationPolicy } from "./policy.ts";
 import { IntegrationRefusedError } from "./refused.ts";
 import {
   removeSecrets,
+  removeSecretsFromError,
   removeSecretsFromHeaders,
   type SecretForms,
   SecretRemover,
@@ -18,13 +18,12 @@ export interface BodyGuard {
   readonly onIdle: () => void;
   /** Called once when the body is finished, failed or cancelled. */
   readonly done: () => void;
-  /** The secrets of this request, removed from the headers, the URL and the body. */
+  /** The secrets of this request, removed from the status text, the headers, the URL, the body and its errors. */
   readonly secrets: SecretForms;
 }
 
 /**
- * Passes the body through, decompressed and with the request's secrets
- * removed, failing it when it grows over the size limit, when no data comes
+ * Passes the body through with the request's secrets removed, failing it when it grows over the size limit, when no data comes
  * for the idle time while the integration is waiting, or when the request
  * is aborted. Time the integration spends between reads doesn't count.
  */
@@ -43,20 +42,20 @@ export function guardBody(
   if (Number.isFinite(declared) && declared > guard.maxBytes) {
     guard.done();
     void response.body?.cancel();
-    throw tooLarge();
+    throw removeSecretsFromError(tooLarge(), guard.secrets);
   }
+  const status = statusOf(response, guard.secrets);
   const headers = removeSecretsFromHeaders(response.headers, guard.secrets);
   const finalUrl = removeSecrets(url.href, guard.secrets);
   if (response.body === null) {
     guard.done();
-    return withUrl(new Response(null, { ...statusOf(response), headers }), finalUrl);
+    return withUrl(new Response(null, { ...status, headers }), finalUrl);
   }
-  const body = decompressed(response.body, headers.get("content-encoding"));
-  if (body.decoded) headers.delete("content-encoding");
-  // Decompressing and removing a secret both change the length.
-  if (body.decoded || guard.secrets.longest > 0) headers.delete("content-length");
+  // Removing a secret changes the length. The body is filtered as the
+  // transport hands it over: `fetch` has already undone the content coding.
+  if (guard.secrets.longest > 0) headers.delete("content-length");
 
-  const reader = body.stream.getReader();
+  const reader = response.body.getReader();
   const remover = new SecretRemover(guard.secrets);
   let seen = 0;
   const fail = (error: unknown) => {
@@ -96,7 +95,8 @@ export function guardBody(
           }
         }
       } catch (error) {
-        fail(error);
+        // The size limit and the deadlines name the URL, which a redirect may have chosen.
+        fail(removeSecretsFromError(error, guard.secrets));
       }
     },
     cancel(reason) {
@@ -104,11 +104,12 @@ export function guardBody(
       return reader.cancel(reason);
     },
   });
-  return withUrl(new Response(guarded, { ...statusOf(response), headers }), finalUrl);
+  return withUrl(new Response(guarded, { ...status, headers }), finalUrl);
 }
 
-function statusOf(response: Response): ResponseInit {
-  return { status: response.status, statusText: response.statusText };
+/** The status, with the secrets removed from the reason phrase, which the server writes. */
+function statusOf(response: Response, secrets: SecretForms): ResponseInit {
+  return { status: response.status, statusText: removeSecrets(response.statusText, secrets) };
 }
 
 /** Settles like the promise, or rejects as soon as the signal aborts, whatever the transport does. */

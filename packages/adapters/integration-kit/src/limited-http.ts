@@ -17,7 +17,7 @@ import {
 } from "./request-body.ts";
 import type { RequestLog } from "./request-log.ts";
 import { type BodyGuard, guardBody, untilAborted } from "./response-body.ts";
-import { secretForms } from "./secret-filter.ts";
+import { removeSecretsFromError, secretForms } from "./secret-filter.ts";
 import { checkPlacements, place, readSecrets } from "./secret-placement.ts";
 
 /**
@@ -197,7 +197,8 @@ async function send(
   } catch (error) {
     clearTimeout(headersTimer);
     clearTimeout(total);
-    throw error;
+    // Refusals and timeouts name the URL of the hop, which a redirect may have chosen.
+    throw removeSecretsFromError(error, guard.secrets);
   }
 }
 

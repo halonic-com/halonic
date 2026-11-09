@@ -1,7 +1,14 @@
-import type { Secrets } from "@halonicjs/ports";
+import type { HttpClient, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { canary, client, fakeTransport, policy, redirect } from "./fake-transport.test-helper.ts";
+import {
+  canary,
+  client,
+  fakeTransport,
+  policy,
+  redirect,
+  secrets,
+} from "./fake-transport.test-helper.ts";
 import { createLimitedHttpClient } from "./limited-http.ts";
 import { RequestLog } from "./request-log.ts";
 import {
@@ -29,10 +36,11 @@ function inPieces(pieces: readonly (string | Uint8Array)[], init?: ResponseInit)
   return new Response(stream, init);
 }
 
-async function compressed(text: string, format: "gzip" | "deflate"): Promise<Uint8Array> {
-  const stream = new Response(text).body?.pipeThrough(new CompressionStream(format));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
+/** A gzip file of "hello", as a `.gz` download holds it after `fetch` undid the transfer coding. */
+const gzipFile = Uint8Array.from([
+  0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xcb, 0x48, 0xcd, 0xc9, 0xc9, 0x07,
+  0x00, 0x86, 0xa6, 0x10, 0x36, 0x05, 0x00, 0x00, 0x00,
+]);
 
 /** A client whose `example-key` has characters every encoding changes. */
 function awkwardClient(answer: (url: URL) => Response) {
@@ -101,22 +109,6 @@ verifies("integration-kit.secret-filter", () => {
       }
     });
 
-    it.each(["gzip", "deflate"] as const)(
-      "decompresses a %s echo before removing the key",
-      async (format) => {
-        const body = await compressed(`echo: ${key}`, format);
-        const { http } = client(() =>
-          inPieces([body.subarray(0, 1), body.subarray(1)], {
-            headers: { "content-encoding": format, "content-length": String(body.length) },
-          }),
-        );
-        const response = await http.fetch("https://api.example.com/echo", { auth: bearer });
-        expect(response.headers.has("content-encoding")).toBe(false);
-        expect(response.headers.has("content-length")).toBe(false);
-        expect(await response.text()).toBe(`echo: ${secretRemoved}`);
-      },
-    );
-
     it("removes the key after a redirect to another declared host", async () => {
       const { http, sent } = client((url) =>
         url.host === "api.example.com"
@@ -129,23 +121,97 @@ verifies("integration-kit.secret-filter", () => {
     });
   });
 
-  it("doesn't decompress a body the transport already decompressed", async () => {
-    const { http } = client(
-      () => new Response("plain text", { headers: { "content-encoding": "gzip" } }),
-    );
-    const response = await http.fetch("https://api.example.com/", { auth: bearer });
-    expect(response.headers.has("content-encoding")).toBe(false);
-    expect(await response.text()).toBe("plain text");
+  describe("a server puts the key in what the kit says about the response", () => {
+    it("removes the key from the status text", async () => {
+      const { http } = client(() => new Response("ok", { statusText: `Bearer ${key}` }));
+      const response = await http.fetch("https://api.example.com/echo", { auth: bearer });
+      expect(response.statusText).toBe(secretRemoved);
+    });
+
+    it.each([
+      [
+        "host-not-allowed, for a redirect to a host that holds the key",
+        () => redirect(302, `https://${key}.attacker.example/`),
+        {},
+      ],
+      [
+        "too-many-redirects, for a redirect loop to a path that holds the key",
+        () => redirect(302, `https://api.example.com/k/${key}`),
+        {},
+      ],
+      [
+        "response-too-large, by its declared length",
+        (url: URL) =>
+          url.pathname === "/start"
+            ? redirect(302, `https://api.example.com/k/${key}`)
+            : new Response("x".repeat(20), { headers: { "content-length": "20" } }),
+        { maxResponseBytes: 10 },
+      ],
+      [
+        "response-too-large, while the body is read",
+        (url: URL) =>
+          url.pathname === "/start"
+            ? redirect(302, `https://api.example.com/k/${key}`)
+            : new Response("x".repeat(20)),
+        { maxResponseBytes: 10 },
+      ],
+      [
+        "the idle timeout, while the body is read",
+        (url: URL) =>
+          url.pathname === "/start"
+            ? redirect(302, `https://api.example.com/k/${key}`)
+            : new Response(new ReadableStream()),
+        { idleTimeoutMs: 5 },
+      ],
+    ])("removes the key from %s", async (_which, answer, limits) => {
+      const { http } = client(answer, limits);
+      const error = await http
+        .fetch("https://api.example.com/start", { auth: bearer })
+        .then((response) => response.text())
+        .catch((thrown: unknown) => thrown);
+      expect(error).toBeInstanceOf(Error);
+      expect(String(error)).toContain(secretRemoved);
+      expect(`${String(error)} ${(error as Error).stack}`).not.toContain(key);
+    });
+
+    it("removes the key from the headers timeout", async () => {
+      const transport: HttpClient = {
+        fetch: async (url, init = {}) =>
+          url.endsWith("/start")
+            ? redirect(302, `https://api.example.com/k/${key}`)
+            : new Promise<Response>((_resolve, reject) =>
+                init.signal?.addEventListener("abort", () => reject(init.signal?.reason)),
+              ),
+      };
+      const http = createLimitedHttpClient({
+        policy,
+        transport,
+        secrets,
+        log: new RequestLog(),
+        limits: { headersTimeoutMs: 5 },
+      });
+      const error = await http
+        .fetch("https://api.example.com/start", { auth: bearer })
+        .catch((thrown: unknown) => thrown);
+      expect(error).toMatchObject({ name: "TimeoutError" });
+      expect(`${String(error)} ${(error as Error).stack}`).not.toContain(key);
+    });
   });
 
-  it("counts the response size after decompressing", async () => {
-    const bomb = await compressed("0".repeat(100_000), "gzip");
-    const { http } = client(() => new Response(bomb, { headers: { "content-encoding": "gzip" } }), {
-      maxResponseBytes: 1_000,
-    });
-    const response = await http.fetch("https://api.example.com/");
-    await expect(response.text()).rejects.toMatchObject({ code: "response-too-large" });
-  });
+  it.each([
+    ["a gzip file", "gzip", gzipFile],
+    ["plain text that looks like a zlib header", "deflate", utf8.encode("80 items")],
+  ])(
+    "leaves %s marked with content-encoding as the transport handed it over",
+    async (_what, coding, bytes) => {
+      const { http } = client(
+        () => new Response(bytes, { headers: { "content-encoding": coding } }),
+      );
+      const response = await http.fetch("https://api.example.com/", { auth: bearer });
+      expect(response.headers.get("content-encoding")).toBe(coding);
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    },
+  );
 
   it("passes a body without placed secrets through unchanged", async () => {
     const { http } = client(() => new Response("hello", { headers: { "content-length": "5" } }));

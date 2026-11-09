@@ -34,14 +34,21 @@ Node, in the Worker and in the browser. Published as
   `FormData` body as `body-not-supported`. The limit can be lowered, never raised, so an
   integration behaves the same in-process and in the fenced runner.
 - **Echoed secrets are removed.** Every value the kit placed in a request
-  becomes `[secret removed]` in the response's headers, final URL and body:
-  the raw value, the placed form (`Bearer …`, the form field) and their
-  URL-encoded, form-encoded and JSON-escaped copies. A gzip or deflate body
-  is decompressed first, and a value split across two pieces is still
-  found. Base64, reversed or otherwise transformed copies are not: a host
-  allowed to receive a key can always send it back in some other form.
-  `secretForms` and `removeSecrets` are exported so the bridge can filter
-  tool results, errors and stderr the same way.
+  becomes `[secret removed]` in the response's status text, headers, final
+  URL and body, and in every error the request ends with, since a refusal
+  or a timeout names a URL a redirect may have chosen. The kit matches the
+  raw value, the placed form (`Bearer …`, the form field) and their
+  URL-encoded, form-encoded and JSON-escaped copies, and finds a value
+  split across two pieces. It filters the body as the transport hands it
+  over, which `fetch` has already decompressed; `content-encoding` is left
+  as it came. Base64, reversed or otherwise transformed copies are not
+  matched: a host allowed to receive a key can always send it back in some
+  other form. Neither are a form-encoded copy in lower-case hex, an encoder
+  that leaves `/` as it is (Python's `quote`), or JSON that escapes `<`,
+  `>` and `&` (Go's default). A very short secret, such as a 4-digit PIN,
+  is replaced everywhere it occurs in a body, even where it is part of
+  unrelated data. `secretForms` and `removeSecrets` are exported so the
+  bridge can filter tool results, errors and stderr the same way.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name
