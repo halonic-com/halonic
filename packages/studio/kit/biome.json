@@ -25,13 +25,15 @@
                 "patterns": [
                   {
                     "group": [
-                      "node:*"
+                      "node:*",
+                      "node:*/**"
                     ],
                     "message": "Node APIs belong in Node adapters, the Node target and deploy packages. Use a port."
                   },
                   {
                     "group": [
-                      "@halonicjs/adapter-*"
+                      "@halonicjs/adapter-*",
+                      "@halonicjs/adapter-*/**"
                     ],
                     "message": "Adapters are for adapters and apps. Use a port from core."
                   }
