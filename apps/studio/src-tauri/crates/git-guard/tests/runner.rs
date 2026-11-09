@@ -5,7 +5,7 @@
 mod support;
 
 use halonic_git_guard::GitError;
-use support::Sandbox;
+use support::{Sandbox, config_value};
 // The tests that plant programs run them through a Unix shell.
 #[cfg(unix)]
 use support::{plain_git, plain_git_ok};
@@ -103,9 +103,10 @@ fn git_hardening_never_runs_a_pager_editor_or_diff_program_in_the_config() {
 fn git_hardening_refuses_an_ext_remote_already_in_the_config() {
     let sandbox = Sandbox::new();
     sandbox.init_repository();
+    let url = format!("ext::sh -c {}", sandbox.planted("ext").replace(' ', "% "));
     sandbox.append_config(&format!(
-        "[protocol \"ext\"]\n\tallow = always\n[remote \"origin\"]\n\turl = ext::sh -c {}\n",
-        sandbox.planted("ext").replace(' ', "% ")
+        "[protocol \"ext\"]\n\tallow = always\n[remote \"origin\"]\n\turl = {}\n",
+        config_value(&url)
     ));
     let pull = sandbox
         .git("pull origin main")
