@@ -30,6 +30,8 @@ tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
 halonic-connect = { path = "crates/connect" }
+halonic-git-guard = { path = "crates/git-guard" }
+serde = { version = "1", features = ["derive"] }
 tauri = { version = "=2.12.5", features = [] }
 # The plugins are pinned with tauri, for the same reason. The http plugin
 # is used only from Rust, for its reqwest client (the hello call); it is

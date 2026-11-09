@@ -1509,6 +1509,8 @@ name = "halonic-studio"
 version = "0.1.0"
 dependencies = [
  "halonic-connect",
+ "halonic-git-guard",
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",

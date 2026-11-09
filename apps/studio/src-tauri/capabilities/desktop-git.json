@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-git",
+  "description": "On desktop, the app's own page may run git through the git command: allowed calls only, hardened, in opened folders only (crates/git-guard). It is local only, so the Studio the computer serves gets no git. Android has no git.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-git"
+  ]
+}

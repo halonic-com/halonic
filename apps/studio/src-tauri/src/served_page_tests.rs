@@ -1,7 +1,7 @@
 //! The served Studio gets no native access (HAL-196 section 3, Julian's
 //! checklist): every app and plugin command the shell knows is refused when
 //! the request comes from the computer's address, while the connect page
-//! may still call `connect`.
+//! may still call `connect` and, on desktop, `git`.
 
 use serde_json::{Value, json};
 use tauri::WebviewUrl;
@@ -90,7 +90,12 @@ fn served_page_is_refused_every_app_and_plugin_command() {
     let window = app_window();
     let commands = every_command();
     // The list must really hold the shell's command and its plugins'.
-    for expected in ["connect", "plugin:opener|open_url", "plugin:event|listen"] {
+    for expected in [
+        "connect",
+        "git",
+        "plugin:opener|open_url",
+        "plugin:event|listen",
+    ] {
         assert!(
             commands.iter().any(|command| command == expected),
             "{expected} missing from {commands:?}"
@@ -118,4 +123,20 @@ fn served_page_test_sees_the_connect_page_allowed_to_connect() {
         json!({"address": "not an address"}),
     );
     assert_eq!(answer, Ok(json!({"kind": "notAnAddress"})));
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_to_run_git_on_desktop() {
+    // The page gets through to the command, and the command refuses the
+    // folder: no folder is opened until the folder picker (HAL-191) lands.
+    let window = app_window();
+    let answer = invoke(
+        &window,
+        CONNECT_PAGE,
+        "git",
+        json!({"root": ".", "args": ["status"]}),
+    );
+    let refusal = answer.expect_err("no folder is opened yet");
+    assert_eq!(refusal["kind"], "folder_not_opened", "{refusal}");
 }

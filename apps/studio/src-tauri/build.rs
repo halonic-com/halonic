@@ -3,9 +3,9 @@
 //
 // Naming the app's commands here makes each one need a permission, like a
 // plugin's: a page may call `connect` only if a capability grants
-// `allow-connect`. Add every new command to this list.
+// `allow-connect`, and `git` only with `allow-git`. Add every new command to this list.
 fn main() {
-    let commands = tauri_build::AppManifest::new().commands(&["connect"]);
+    let commands = tauri_build::AppManifest::new().commands(&["connect", "git"]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)
         .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest());

@@ -1,10 +1,12 @@
 //! The Studio shell. Today it opens one window with the connect page
-//! (tauri.conf.json). The page may call the `connect` command and nothing
-//! else (capabilities/connect-page.json); the Studio it then opens is served
-//! by the computer and gets no command at all. The navigation guard keeps
+//! (tauri.conf.json). The page may call the `connect` command
+//! (capabilities/connect-page.json) and, on desktop, `git`
+//! (capabilities/desktop-git.json); the Studio it then opens is served by
+//! the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
 mod connect;
+mod git;
 mod navigation;
 
 use tauri::{Builder, Runtime};
@@ -18,11 +20,12 @@ pub fn run() {
         .expect("the Studio shell could not start");
 }
 
-/// The shell's state, plugins and command, on any runtime, so the tests
+/// The shell's state, plugins and commands, on any runtime, so the tests
 /// check the same app that ships.
 fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     builder
         .manage(navigation::ConfirmedAddress::default())
+        .manage(git::GitState::default())
         // The opener is used only from Rust: the navigation guard hands
         // outside links to the browser with it. Its click script stays off.
         // That script would run in every page, the served Studio too, and
@@ -34,7 +37,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 .build(),
         )
         .plugin(navigation::guard())
-        .invoke_handler(tauri::generate_handler![connect::connect])
+        .invoke_handler(tauri::generate_handler![connect::connect, git::git])
 }
 
 #[cfg(test)]
