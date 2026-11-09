@@ -192,6 +192,48 @@ Inside an interactive card put only phrasing content: text, `<span>`s and icons,
 **On a phone** cards are rare: lists are flush instead. An interactive card shows the
 `surface-subtle` fill while pressed and has no hover.
 
+## EmptyState
+
+A list, page or panel with nothing in it yet, or a search with no results. With `tone="error"`,
+the same place when it couldn't load, so a screen never confuses "nothing here" with "something
+broke". It's centred in the space it replaces, in a 360px column (`max-w-empty`).
+
+```tsx
+<EmptyState
+  icon={<AgentIcon />}
+  title="No agents yet"
+  description="An agent does one job for you, such as sorting your mail."
+  action={{ label: "New agent", onClick: newAgent }}
+  secondaryAction={{ label: "Start from a template", onClick: pickTemplate }}
+/>;
+<EmptyState plain title="No results for “sorter”" />;
+<EmptyState tone="error" title="Couldn't load agents" description={reason} action={retry} />;
+<EmptyState tone="error" align="start" title="Couldn't load recent runs" action={retry} />;
+```
+
+| Prop              | What it is                                                                        |
+| ----------------- | --------------------------------------------------------------------------------- |
+| `title`           | A heading in `text-section` (`headingLevel`, 2 by default)                        |
+| `description`     | One or two sentences that say what the thing is for; for an error, the reason     |
+| `icon`            | A 20px icon in `accent` on a 40px tile. Without one there's no tile               |
+| `action`          | The one primary button: `{ label, onClick, busy? }`. For an error, Try again      |
+| `secondaryAction` | An optional second way in, a secondary button. Not on an error                    |
+| `plain`           | No wash and no tile: no search results, and inside small panels                   |
+| `tone`            | `error`: the `danger` alert mark in place of the icon, and Try again as secondary |
+| `align`           | `start`, only for an error: one section of a page couldn't load                   |
+| `titleRef`        | The title, which code focuses when the last row of a list goes (23 A2)            |
+
+The title has `tabindex="-1"` and draws no ring: it's where focus goes when what had it goes away,
+not a control. The tile and the alert mark are hidden from screen readers; the title says it all.
+
+`align="start"` is for an error in one section of a page (Home's Recent runs), so the whole page
+doesn't look broken: left-aligned in the 16px inset, the alert mark inline with a
+`text-body-strong` title, the reason in `text-small`, and Try again as a secondary `lg` button.
+Never show it together with a skeleton.
+
+**On a phone** the column fits the page's 328px, and the `md` buttons draw at 40px, as every
+`md` button does there. An empty section inside a page is one line of text, not an Empty state.
+
 ## StatusChip
 
 The state of an item, in a row, a card header or a panel. It isn't interactive: something you can

@@ -155,6 +155,7 @@
   --spacing-nav-pill: 56px; /* width of the "where you are" pill in the bottom navigation */
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
+  --container-empty: 360px; /* the Empty state's text and buttons */
   --breakpoint-wide: 900px; /* wide: is the full layout; max-wide: is compact (sidebar collapsed) */
   /* No --breakpoint-phone: any --breakpoint-* makes Tailwind generate its own phone: (600px and
      up), which would clash with the phone: variant below. */
