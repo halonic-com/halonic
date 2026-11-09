@@ -1,5 +1,5 @@
 import { type Announcer, createAnnouncer } from "./announcer/announcer.ts";
-import type { AnnouncerTimers } from "./announcer/timers.ts";
+import { type AnnouncerTimers, systemTimers } from "./announcer/timers.ts";
 import { type CloseStack, createCloseStack } from "./close-stack/close-stack.ts";
 import { createShellEngine, type ShellEngine } from "./engine/engine-connection.ts";
 import type { Feature } from "./feature.ts";
@@ -25,7 +25,10 @@ export interface ShellOptions {
    * on `"macos"` and `Ctrl` elsewhere. Leave it out and `Mod` means `Ctrl`.
    */
   readonly platform?: KeyboardPlatform;
-  /** The timers the window's announcer uses; tests pass fake ones. Defaults to the system's. */
+  /**
+   * The timers the window's announcer and the engine supervisor use; tests
+   * pass fake ones. Defaults to the system's.
+   */
   readonly timers?: AnnouncerTimers;
 }
 
@@ -54,7 +57,7 @@ export interface Shell {
   readonly announcer: Announcer;
   /** The window's one Esc and Back close stack; layers register here when they open. */
   readonly closeStack: CloseStack;
-  /** The engine connection, sent as `engine.connection` and announced once per change. */
+  /** The engine connection and the engine's start, sent as `engine.connection`. */
   readonly engine: ShellEngine;
   /** Everything the features contributed, for the shell's layout. */
   readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
@@ -87,7 +90,7 @@ export function createShell(options: ShellOptions): Shell {
     features,
     announcer,
     closeStack: createCloseStack(),
-    engine: createShellEngine(announcer),
+    engine: createShellEngine(announcer, options.timers ?? systemTimers),
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),
       contextFor: (featureId, target) => ({

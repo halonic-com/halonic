@@ -1,4 +1,4 @@
-import { encodeBase64url } from "@halonicjs/std";
+import { encodeBase64url, errorKindOf } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
@@ -274,6 +274,14 @@ verifies("token-store.encrypted-at-rest", () => {
     expect(error).toBeInstanceOf(UnreadableTokenError);
     expect((error as Error).message).toContain("sealed with a different token key");
     expect((error as Error).message).not.toContain(refreshToken);
+  });
+
+  it("gives a value that won't open the kind unauthenticated, so the user connects again", async () => {
+    const { tokens, records } = setup();
+    records.log.push({ ...fixedChange(), values: {} });
+    const error = await tokens.get("refresh").catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(UnreadableTokenError);
+    expect(errorKindOf(error)).toBe("unauthenticated");
   });
 });
 

@@ -84,6 +84,7 @@ export {
 } from "./record-store.ts";
 export {
   type ChatAgentSettings,
+  type ChatTurnRefusal,
   type ChatTurnRequest,
   type ChatTurnResponse,
   type EngineConnection,

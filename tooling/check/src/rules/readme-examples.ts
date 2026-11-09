@@ -62,50 +62,58 @@ const withoutTrailingNewline = (text: string): string => text.replace(/(?:\r?\n)
  */
 export function checkReadmeExamples(context: CheckContext): Report {
   const report = new Report("readme-examples");
-  const files = new Set(context.files);
   for (const pkg of context.packages) {
     const prefix = `${pkg.directory}/examples/`;
     const examples = context.files.filter(
       (file) =>
         file.startsWith(prefix) && file.endsWith(".ts") && !file.slice(prefix.length).includes("/"),
     );
-    const readme = `${pkg.directory}/README.md`;
-    const name = pkg.manifest.name ?? pkg.directory;
-    const imports = ownImports(pkg);
     for (const example of examples) {
-      const relative = example.slice(pkg.directory.length + 1);
-      const fix = `Add a \`\`\`ts block with the contents of ${example} to ${readme}, right after a line that links to [\`${relative}\`](${relative}).`;
-      if (!files.has(readme)) {
-        report.error(example, `${name} has ${relative} but no README.md. ${fix}`);
-        continue;
-      }
-      const lines = context.read(readme).split(/\r?\n/);
-      const link = lines.findIndex((line) => line.includes(`](${relative})`));
-      if (link === -1) {
-        report.error(readme, `${name}: ${relative} has no block in ${readme}. ${fix}`);
-        continue;
-      }
-      const block = blockAfter(lines, link);
-      if (block === undefined) {
-        report.error(
-          readme,
-          `${name}: ${readme} links to ${relative} but has no \`\`\`ts block after the link. ${fix}`,
-          link + 1,
-        );
-        continue;
-      }
-      let expected = withoutTrailingNewline(context.read(example));
-      for (const [path, specifier] of imports) {
-        expected = expected.replaceAll(path, JSON.stringify(specifier));
-      }
-      if (withoutTrailingNewline(block.text) !== expected) {
-        report.error(
-          readme,
-          `${name}: the block in ${readme} differs from ${example}. Copy the file into the block again; only the imports of the package's own \`../src/\` files may differ, and they read as the package name in the README, e.g. "${name}".`,
-          block.line,
-        );
-      }
+      checkExample(context, pkg, example, report);
     }
   }
   return report;
+}
+
+/** One example file: its README must hold an up-to-date copy. */
+function checkExample(
+  context: CheckContext,
+  pkg: WorkspacePackage,
+  example: string,
+  report: Report,
+): void {
+  const readme = `${pkg.directory}/README.md`;
+  const name = pkg.manifest.name ?? pkg.directory;
+  const relative = example.slice(pkg.directory.length + 1);
+  const fix = `Add a \`\`\`ts block with the contents of ${example} to ${readme}, right after a line that links to [\`${relative}\`](${relative}).`;
+  if (!context.files.includes(readme)) {
+    report.error(example, `${name} has ${relative} but no README.md. ${fix}`);
+    return;
+  }
+  const lines = context.read(readme).split(/\r?\n/);
+  const link = lines.findIndex((line) => line.includes(`](${relative})`));
+  if (link === -1) {
+    report.error(readme, `${name}: ${relative} has no block in ${readme}. ${fix}`);
+    return;
+  }
+  const block = blockAfter(lines, link);
+  if (block === undefined) {
+    report.error(
+      readme,
+      `${name}: ${readme} links to ${relative} but has no \`\`\`ts block after the link. ${fix}`,
+      link + 1,
+    );
+    return;
+  }
+  let expected = withoutTrailingNewline(context.read(example));
+  for (const [path, specifier] of ownImports(pkg)) {
+    expected = expected.replaceAll(path, JSON.stringify(specifier));
+  }
+  if (withoutTrailingNewline(block.text) !== expected) {
+    report.error(
+      readme,
+      `${name}: the block in ${readme} differs from ${example}. Copy the file into the block again; only the imports of the package's own \`../src/\` files may differ, and they read as the package name in the README, e.g. "${name}".`,
+      block.line,
+    );
+  }
 }

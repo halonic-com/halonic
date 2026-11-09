@@ -85,11 +85,53 @@ export interface ChatTurnRequest {
   params?: ChatParams;
   /** Unsaved model settings from the agent editor; they win over the saved ones. */
   agent?: ChatAgentSettings;
+  /**
+   * Aborted when the person stops the chat. An executor that honors it stops
+   * the model call and rejects; a remote one also stops waiting for the host.
+   * It is never sent over the wire. Optional, so an executor that ignores it
+   * still satisfies the port: the caller then drops an answer that comes
+   * after the abort.
+   */
+  signal?: AbortSignal;
 }
 
-/** The model's answer to a {@link ChatTurnRequest}, with the model that gave it. */
+/**
+ * Something a chat turn refused, as data a status view can read. It mirrors
+ * `ToolRefusal` from `core/app`, which this package can't import, and adds
+ * `call`. `listing`, `tool` and `keyword` are refusals of what a source
+ * listed; they never go to the model. `call` is a tool call that didn't run:
+ * the check refused it, it named a tool nobody offered, or the turn hit its
+ * round limit first.
+ */
+export interface ChatTurnRefusal {
+  /** The id of the tool's source: a connector or integration, or "halonic" for Halonic's own tools. */
+  source: string;
+  /** The tool's name; left out when a whole listing is refused. */
+  name?: string;
+  refused: "listing" | "tool" | "keyword" | "call";
+  /** Why, as plain text. Text a server wrote is cut and escaped before it gets here. */
+  reason: string;
+}
+
+/**
+ * The model's answer to a {@link ChatTurnRequest}, with the model that gave it.
+ * `content`, `toolCalls` and `finishReason` are those of the turn's last
+ * answer; `usage` adds up every model call in the turn.
+ */
 export interface ChatTurnResponse extends ChatResponse {
   model: string;
+  /**
+   * Every assistant and tool message the turn added, in order, so the
+   * caller can keep the conversation by appending them. It ends with the
+   * last answer, or, when the turn ends on the caller's tool calls, with the
+   * results of the calls the executor ran from that answer; the caller then
+   * adds one tool message for each call in `toolCalls`. Absent
+   * from an executor that doesn't report it; the caller then appends the
+   * answer itself.
+   */
+  turn?: ChatMessage[];
+  /** What the turn refused, in the order it happened. Absent or empty when it refused nothing. */
+  refusals?: ChatTurnRefusal[];
 }
 
 /** Receives a run's events from {@link RunExecutor.subscribe}. */
@@ -181,10 +223,31 @@ export interface RunExecutor {
    */
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription;
   /**
-   * One model turn outside any run. Served mode forwards it to the host,
-   * which has the provider keys, like a run.
+   * One chat turn outside any run. Served mode forwards it to the host,
+   * which has the provider keys, like a run. `request.signal` may cancel it.
    *
-   * @throws when the model can't be reached or refuses the call
+   * A turn may take several model calls. The executor offers the model the
+   * caller's `request.tools`, Halonic's own tools and the tools the
+   * connected servers list, in that order; when two have the same name, the
+   * first is kept and the later one refused. It runs the calls to Halonic's
+   * and the servers' tools itself and asks the model again, until the model
+   * answers without such calls or the round limit is hit. The messages
+   * this adds come back in `turn`.
+   *
+   * The caller's tools run on the caller's side: when the model calls one,
+   * the turn ends with `finishReason: "tool_calls"` and only those calls in
+   * `toolCalls`. Calls to the executor's tools in the same answer have
+   * already run, and their results are in `turn`. At the round limit the
+   * turn ends with `finishReason: "length"` and no calls; the calls the
+   * model still asked for are dropped and refused. Anything refused along
+   * the way (a listing, a tool, a call) is in `refusals`; a refused call
+   * also goes back to the model as that call's result. A tool that throws
+   * gives the model an error result, not the caller an error. Nothing
+   * outside a run can wait for a person, so a call that needs approval is
+   * refused here.
+   *
+   * @throws when the model can't be reached or refuses the call, or when
+   *   `request.signal` is aborted and the executor honors it
    */
   chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse>;
   /**

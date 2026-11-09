@@ -99,6 +99,9 @@ const contrastPairs: ContrastPair[] = [
   // The switch's off track and a checkbox in a hovered menu item sit on surface-muted.
   ...onSurfaces("border-control", control, ["surface-muted"]),
   ...onSurfaces("accent", control),
+  // A neutral chip, count or Kbd on a muted fill steps up to border (the on-muted: variant).
+  onFill("fg", "border"),
+  { ...onFill("fg", "border"), name: "fg on border over surface-muted", beneath: "surface-muted" },
 ];
 
 describe("theme.css colours", () => {
@@ -133,6 +136,24 @@ describe("theme.css focus rings", () => {
       "outline: 2px solid transparent;",
     );
   });
+
+  it("paints every focus ring in the system's Highlight colour in high-contrast mode", () => {
+    for (const ring of ["focus-ring", "focus-ring-inset"]) {
+      const forced = blockBody(
+        blockBody(blockBody(css, `@utility ${ring}`), "@variant focus-visible"),
+        "@media (forced-colors: active)",
+      );
+      expect(forced).toContain("outline-color: Highlight;");
+    }
+    for (const field of ["focus-field", "focus-field-danger"]) {
+      const forced = blockBody(
+        blockBody(blockBody(css, `@utility ${field}`), "@variant field-focus"),
+        "@media (forced-colors: active)",
+      );
+      expect(forced).toContain("outline: 2px solid Highlight;");
+      expect(forced).toContain("outline-offset: 2px;");
+    }
+  });
 });
 
 describe("theme.css selection and high contrast", () => {
@@ -156,23 +177,23 @@ describe("theme.css selection and high contrast", () => {
       "@media (forced-colors: active)",
     );
     expect(disabled).toContain("color: GrayText;");
+    const disabledEdge = blockBody(
+      blockBody(css, "@utility border-forced-disabled"),
+      "@media (forced-colors: active)",
+    );
+    expect(disabledEdge).toContain("border-color: GrayText;");
   });
 });
 
 describe("theme.css field focus", () => {
   it("rings a text field's box while its text has focus, and keeps the outline", () => {
-    const accent = blockBody(
-      blockBody(css, "@utility focus-field"),
-      "&:has([data-field-text]:focus)",
-    );
+    expect(css).toContain("@custom-variant field-focus (&:has([data-field-text]:focus));");
+    const accent = blockBody(blockBody(css, "@utility focus-field"), "@variant field-focus");
     expect(accent).toContain("outline: 2px solid transparent;");
     expect(accent).toContain("border-color: var(--color-accent);");
     expect(accent).toContain("box-shadow: 0 0 0 3px var(--color-accent-soft);");
 
-    const danger = blockBody(
-      blockBody(css, "@utility focus-field-danger"),
-      "&:has([data-field-text]:focus)",
-    );
+    const danger = blockBody(blockBody(css, "@utility focus-field-danger"), "@variant field-focus");
     expect(danger).toContain("outline: 2px solid transparent;");
     expect(danger).toContain("border-color: var(--color-danger);");
     expect(danger).toContain("box-shadow: 0 0 0 3px var(--color-danger-soft);");
@@ -255,6 +276,15 @@ describe("theme.css scales", () => {
       "--duration-slow",
     ]);
   });
+
+  it("keeps fades short and makes colour changes instant with reduced motion", () => {
+    const reduced = customProperties(
+      blockBody(blockBody(css, "@media (prefers-reduced-motion: reduce)"), ":root"),
+    );
+    expect(reduced.get("--duration-base")).toBe("120ms");
+    expect(reduced.get("--duration-slow")).toBe("120ms");
+    expect(reduced.get("--default-transition-duration")).toBe("0ms");
+  });
 });
 
 describe("theme.css on a phone", () => {
@@ -305,5 +335,22 @@ describe("theme.css on a touch screen", () => {
     expect(blockBody(hitArea, "&::after")).toContain(
       "inset-inline: min(0px, calc((100% - var(--spacing-touch)) / 2));",
     );
+  });
+});
+
+describe("theme.css in older engines", () => {
+  it("limits a TextArea in lines, with a px fallback from the line-height tokens before lh", () => {
+    const utility = blockBody(css, "@utility max-h-rows");
+    const fallback = "max-height: calc(var(--max-rows) * var(--text-body--line-height));";
+    const inLines = "max-height: calc(var(--max-rows) * 1lh);";
+    expect(utility.indexOf(fallback)).toBeGreaterThanOrEqual(0);
+    expect(utility.indexOf(inLines)).toBeGreaterThan(utility.indexOf(fallback));
+    for (const variant of ["@variant touch", "@variant phone"]) {
+      expect(blockBody(utility, variant)).toContain(
+        "max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));",
+      );
+    }
+    // The phone's block comes last, so it wins where both match.
+    expect(utility.indexOf("@variant phone")).toBeGreaterThan(utility.indexOf("@variant touch"));
   });
 });

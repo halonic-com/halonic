@@ -2,6 +2,7 @@ import type { RunSummary } from "@halonicjs/events";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import type {
+  ChatTurnRequest,
   Coordination,
   DefinitionSource,
   DefinitionStore,
@@ -154,6 +155,27 @@ verifies("ports.send-call-id", () => {
     // @ts-expect-error: a call id is the engine's string, never a number
     const options: SendOptions = { callId: 1 };
     expect(options).toBeDefined();
+  });
+});
+
+verifies("ports.chat-turn-signal", () => {
+  const request: ChatTurnRequest = { hubId: "hub-1", messages: [], tools: [] };
+
+  it("takes an abort signal to cancel the model turn", () => {
+    const stop = new AbortController();
+    const withSignal: ChatTurnRequest = { ...request, signal: stop.signal };
+    expect(withSignal.signal?.aborted).toBe(false);
+    expectTypeOf<ChatTurnRequest["signal"]>().toEqualTypeOf<AbortSignal | undefined>();
+  });
+
+  it("keeps the signal optional", () => {
+    expect(request.signal).toBeUndefined();
+  });
+
+  it("takes only an AbortSignal as the signal", () => {
+    // @ts-expect-error: a signal is an AbortSignal, never a flag
+    const wrong: ChatTurnRequest = { ...request, signal: true };
+    expect(wrong).toBeDefined();
   });
 });
 

@@ -129,6 +129,9 @@ interface SchemaLevel {
   readonly unreadable: boolean;
 }
 
+/** Stands for a `$ref` that can't be followed. */
+const unfollowable = Symbol("unfollowable");
+
 /** Walks one call's arguments next to the tool's parameters, and collects what it refuses. */
 class ArgumentChecker {
   readonly undeclared = new RefusedArguments();
@@ -197,37 +200,56 @@ class ArgumentChecker {
   }
 
   /** Gathers the parts of a level, following `$ref` and `allOf`. Each `$ref` is followed once. */
-  private readLevel(schemas: readonly SchemaObject[]): SchemaLevel {
-    const parts: SchemaObject[] = [];
+  private readLevel(schemas: readonly SchemaObject[]): {
+    parts: SchemaObject[];
+    unreadable: boolean;
+  } {
+    const level = { parts: [] as SchemaObject[], unreadable: false };
     const followed = new Set<string>();
-    let unreadable = false;
     const gather = (schema: SchemaObject): void => {
-      parts.push(schema);
+      level.parts.push(schema);
       if (Object.hasOwn(schema, "anyOf") || Object.hasOwn(schema, "oneOf")) {
-        unreadable = true;
+        level.unreadable = true;
       }
-      const ref = schema["$ref"];
-      // A `$ref` already followed is part of this level, as in a schema that refers to itself.
-      if (typeof ref === "string" && !followed.has(ref)) {
-        followed.add(ref);
-        const target = this.resolve(ref);
-        if (target === undefined) {
-          unreadable = true;
-        } else if (isJsonObject(target)) {
-          gather(target);
-        }
-      } else if (ref !== undefined && typeof ref !== "string") {
-        unreadable = true;
+      const target = this.followRef(schema["$ref"], followed);
+      if (target === unfollowable) {
+        level.unreadable = true;
+      } else if (target !== undefined) {
+        gather(target);
       }
       const allOf = schema["allOf"];
       if (Array.isArray(allOf)) {
         allOf.filter(isJsonObject).forEach(gather);
       } else if (allOf !== undefined) {
-        unreadable = true;
+        level.unreadable = true;
       }
     };
     schemas.forEach(gather);
-    return { parts, unreadable };
+    return level;
+  }
+
+  /**
+   * The schema object a `$ref` points to, `undefined` when there is nothing
+   * to gather (no `$ref`, one already followed, or a target that isn't an
+   * object), or {@link unfollowable} when the `$ref` can't be followed.
+   */
+  private followRef(
+    ref: unknown,
+    followed: Set<string>,
+  ): SchemaObject | typeof unfollowable | undefined {
+    if (typeof ref !== "string") {
+      return ref === undefined ? undefined : unfollowable;
+    }
+    // A `$ref` already followed is part of this level, as in a schema that refers to itself.
+    if (followed.has(ref)) {
+      return undefined;
+    }
+    followed.add(ref);
+    const target = this.resolve(ref);
+    if (target === undefined) {
+      return unfollowable;
+    }
+    return isJsonObject(target) ? target : undefined;
   }
 
   /** The schema a `$ref` inside the parameters points to, or `undefined` if it can't be followed. */

@@ -196,18 +196,44 @@
 }
 
 /*
- * phone: is below 600px, the layout for phones. A media query can't read a CSS variable, so the
- * width is written here and exported as PHONE_MAX_WIDTH (index.ts) for the shell's matchMedia;
- * theme.test.ts checks that both say 600.
- */
-@custom-variant phone (@media (width < 600px));
-
-/*
  * touch: follows the pointer, not the width (component specs 23.5): a tablet in the compact
  * layout reports a coarse pointer, a laptop with a touchscreen and a trackpad a fine one. Under
  * it, controls get the phone's 48px hit area and sm and md controls render at lg.
  */
 @custom-variant touch (@media (pointer: coarse));
+
+/*
+ * phone: is below 600px, the layout for phones. A media query can't read a CSS variable, so the
+ * width is written here and exported as PHONE_MAX_WIDTH (index.ts) for the shell's matchMedia;
+ * theme.test.ts checks that both say 600.
+ *
+ * phone wins over touch: it's the stricter of the two. A phone with a coarse pointer matches both,
+ * and Tailwind writes custom variants out in the order they're declared, so phone comes after
+ * touch. An icon button is then 40px under touch: and still 48px on a phone.
+ */
+@custom-variant phone (@media (width < 600px));
+
+/*
+ * on-muted: a neutral fill placed on a surface-muted fill (a Tabs track, the active menu item, a
+ * hovered sidebar row) steps up to border, or its box disappears (component specs 10, 14). The
+ * fill sets data-fill="muted" while it is muted, or data-hover-fill="muted" when it is only muted
+ * on hover and press. :where() keeps the specificity of the class alone.
+ */
+@custom-variant on-muted {
+  :where([data-fill="muted"]) & {
+    @slot;
+  }
+
+  @media (hover: hover) {
+    :where([data-hover-fill="muted"]:hover) & {
+      @slot;
+    }
+  }
+
+  :where([data-hover-fill="muted"]:active) & {
+    @slot;
+  }
+}
 
 /*
  * Values that must not become classes. Plain variables, used only inside the kit: in the halo
@@ -252,6 +278,8 @@
   :root {
     --duration-base: 120ms;
     --duration-slow: 120ms;
+    /* Colour changes are instant; fades name --duration-base or --duration-slow and stay. */
+    --default-transition-duration: 0ms;
   }
 }
 
@@ -268,7 +296,7 @@
     var(--color-canvas);
 }
 
-/* "You are here": the active sidebar item, the active segment of a page's own tabs. */
+/* "You are here": the active sidebar item. */
 @utility bg-halo-tint {
   background: linear-gradient(90deg, var(--halo-tint-blue), var(--halo-tint-violet));
 }
@@ -291,23 +319,36 @@
 /*
  * Every interactive element gets the same focus ring, on keyboard focus only. The outline is
  * transparent rather than removed: in Windows high-contrast mode the browser drops box shadows
- * and paints outlines in the system colour, so the outline becomes the visible ring there.
+ * and paints outlines in the system colour, so the outline becomes the visible ring there. It
+ * takes Highlight in that mode, the system's colour for focus (specs 23.5).
+ *
+ * The focus utilities go through variants (@variant focus-visible, field-focus) rather than a
+ * raw selector. The CSS is the same, and the kit's states page can force them on through its own
+ * variants, so it shows the real ring.
  */
 @utility focus-ring {
-  &:focus-visible {
+  @variant focus-visible {
     outline: 2px solid transparent;
     outline-offset: 2px;
     box-shadow: var(--focus-ring);
+
+    @media (forced-colors: active) {
+      outline-color: Highlight;
+    }
   }
 }
 
 /* The same ring drawn inside the element, for rows in a scrolling list where an outer ring
    would be clipped: sidebar items, tree rows, list rows. */
 @utility focus-ring-inset {
-  &:focus-visible {
+  @variant focus-visible {
     outline: 2px solid transparent;
     outline-offset: -2px;
     box-shadow: var(--focus-ring-inset);
+
+    @media (forced-colors: active) {
+      outline-color: Highlight;
+    }
   }
 }
 
@@ -331,22 +372,35 @@
  * The focus of a text field's box (Input, TextArea, Select): an accent edge and a 3px soft ring,
  * because the general ring would hide the edge. It shows while the text inside has focus, on any
  * focus, not only from the keyboard. A button inside the box (clear, show) keeps the general
- * ring, so you can tell the two apart. The outline is for Windows high-contrast mode.
+ * ring, so you can tell the two apart. The outline is for Windows high-contrast mode, where it
+ * turns Highlight and stands 2px off the box (specs 23.5).
  */
+@custom-variant field-focus (&:has([data-field-text]:focus));
+
 @utility focus-field {
-  &:has([data-field-text]:focus) {
+  @variant field-focus {
     outline: 2px solid transparent;
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px var(--color-accent-soft);
+
+    @media (forced-colors: active) {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
   }
 }
 
 /* The same for a field with an error: the edge stays danger and the ring is danger-soft. */
 @utility focus-field-danger {
-  &:has([data-field-text]:focus) {
+  @variant field-focus {
     outline: 2px solid transparent;
     border-color: var(--color-danger);
     box-shadow: 0 0 0 3px var(--color-danger-soft);
+
+    @media (forced-colors: active) {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -392,6 +446,34 @@
 @utility text-forced-disabled {
   @media (forced-colors: active) {
     color: GrayText;
+  }
+}
+
+/* In Windows high-contrast mode only: the same system colour for the edge, so an unavailable
+   button's box greys out with its text, like a native disabled button. */
+@utility border-forced-disabled {
+  @media (forced-colors: active) {
+    border-color: GrayText;
+  }
+}
+
+/*
+ * A TextArea's height limit: --max-rows lines of its text. The px line is a fallback built from
+ * the line-height token, for an engine without the lh unit (an older WebKitGTK), which drops the
+ * line after it. Under a touch pointer and on a phone the text is 16px on 24px lines.
+ */
+@utility max-h-rows {
+  max-height: calc(var(--max-rows) * var(--text-body--line-height));
+  max-height: calc(var(--max-rows) * 1lh);
+
+  @variant touch {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
+  }
+
+  @variant phone {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
   }
 }
 

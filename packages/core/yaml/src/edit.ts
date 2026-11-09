@@ -126,39 +126,63 @@ function applyEdit(before: Step, edit: YamlEdit, limits: YamlLimits): Result<Ste
  */
 function renderWithDocument(text: string, edit: YamlEdit, expected: unknown): string | undefined {
   const document = parseDocument(text);
-  const { path } = edit;
   if (edit.kind === "delete") {
-    document.deleteIn(path);
-  } else if (edit.kind === "insert") {
-    const list = document.getIn(path.slice(0, -1), true);
-    if (!isSeq(list)) {
-      return undefined;
-    }
-    list.items.splice(path[path.length - 1] as number, 0, document.createNode(edit.value));
+    document.deleteIn(edit.path);
+    return render(text, document);
+  }
+  if (edit.kind === "insert") {
+    return insertIntoDocument(document, edit) ? render(text, document) : undefined;
+  }
+  return setInDocument(text, document, edit, expected);
+}
+
+function insertIntoDocument(
+  document: ReturnType<typeof parseDocument>,
+  edit: Exclude<YamlEdit, { kind: "delete" }>,
+): boolean {
+  const { path } = edit;
+  const list = document.getIn(path.slice(0, -1), true);
+  if (!isSeq(list)) {
+    return false;
+  }
+  list.items.splice(path[path.length - 1] as number, 0, document.createNode(edit.value));
+  return true;
+}
+
+function setInDocument(
+  text: string,
+  document: ReturnType<typeof parseDocument>,
+  edit: Exclude<YamlEdit, { kind: "delete" }>,
+  expected: unknown,
+): string {
+  const { path } = edit;
+  const existing = document.getIn(path, true);
+  if (isScalar(existing) && (edit.value === null || typeof edit.value !== "object")) {
+    // Change the scalar in place, so a comment on its line stays.
+    existing.value = edit.value;
+    return render(text, document);
+  }
+  // Set from the first key that is missing or empty, so the maps under it are created too.
+  const from = firstEmpty(document, path);
+  const value = document.createNode(valueAt(expected, path.slice(0, from)));
+  if (from === 0) {
+    replaceContents(document, value);
   } else {
-    const existing = document.getIn(path, true);
-    if (isScalar(existing) && (edit.value === null || typeof edit.value !== "object")) {
-      // Change the scalar in place, so a comment on its line stays.
-      existing.value = edit.value;
-      return render(text, document);
-    }
-    // Set from the first key that is missing or empty, so the maps under it are created too.
-    const from = firstEmpty(document, path);
-    const value = document.createNode(valueAt(expected, path.slice(0, from)));
-    if (from === 0) {
-      const top = topCommentNode(document.contents);
-      if (top?.commentBefore) {
-        value.commentBefore = top.commentBefore;
-      }
-      if (top?.spaceBefore) {
-        value.spaceBefore = true;
-      }
-      document.contents = value as typeof document.contents;
-    } else {
-      document.setIn(path.slice(0, from), value);
-    }
+    document.setIn(path.slice(0, from), value);
   }
   return render(text, document);
+}
+
+/** Replace the whole document, carrying over the comment at the top of the file. */
+function replaceContents(document: ReturnType<typeof parseDocument>, value: Node): void {
+  const top = topCommentNode(document.contents);
+  if (top?.commentBefore) {
+    value.commentBefore = top.commentBefore;
+  }
+  if (top?.spaceBefore) {
+    value.spaceBefore = true;
+  }
+  document.contents = value as typeof document.contents;
 }
 
 function render(text: string, document: ReturnType<typeof parseDocument>): string {

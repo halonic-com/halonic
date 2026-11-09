@@ -6,6 +6,7 @@ import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
+import type { ShellEngineState } from "./engine-connection.ts";
 
 /** An executor connection the test moves by hand, like a remote executor's. */
 class FakeConnection implements EngineConnection {
@@ -45,7 +46,7 @@ function setUp() {
     assertive: { say: (text) => said.push(`assertive:${text}`) },
   };
   shell.announcer.mountRegions(regions);
-  const events: EngineConnectionState[] = [];
+  const events: ShellEngineState[] = [];
   shell.engine.on("engine.connection", (event) => events.push(event.state));
   return { timers, shell, said, events };
 }
@@ -105,7 +106,7 @@ verifies("shell.engine-connection", () => {
     const { shell } = setUp();
     const connection = new FakeConnection();
     shell.engine.watch({ connection });
-    const heard: EngineConnectionState[] = [];
+    const heard: ShellEngineState[] = [];
     const stop = shell.engine.on("engine.connection", (event) => heard.push(event.state));
     connection.set("lost");
     stop();
@@ -120,7 +121,7 @@ verifies("shell.engine-connection", () => {
     shell.engine.on("engine.connection", () => {
       throw new Error("faulty feature");
     });
-    const heard: EngineConnectionState[] = [];
+    const heard: ShellEngineState[] = [];
     shell.engine.on("engine.connection", (event) => heard.push(event.state));
     expect(() => connection.set("lost")).toThrow("faulty feature");
     expect(events).toEqual(["lost"]);

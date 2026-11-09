@@ -152,6 +152,17 @@ function parametersSizeProblem(parameters: Record<string, unknown>): string | un
   return undefined;
 }
 
+/** The first of an object's own `description` or `title` that is a too long text. */
+function longTextProblem(value: Record<string, unknown>): string | undefined {
+  for (const keyword of ["description", "title"]) {
+    const text = Object.hasOwn(value, keyword) ? value[keyword] : undefined;
+    if (typeof text === "string" && text.length > maxTextLength) {
+      return `a "${keyword}" in its parameters is longer than ${maxTextLength} characters`;
+    }
+  }
+  return undefined;
+}
+
 /** Walks every object and array, at any key, looking for too deep nesting or a too long text. */
 function schemaTextProblem(value: unknown, depth: number): string | undefined {
   if (typeof value !== "object" || value === null) {
@@ -160,13 +171,9 @@ function schemaTextProblem(value: unknown, depth: number): string | undefined {
   if (depth > maxParametersDepth) {
     return `its parameters nest more than ${maxParametersDepth} levels deep`;
   }
-  if (isJsonObject(value)) {
-    for (const keyword of ["description", "title"]) {
-      const text = Object.hasOwn(value, keyword) ? value[keyword] : undefined;
-      if (typeof text === "string" && text.length > maxTextLength) {
-        return `a "${keyword}" in its parameters is longer than ${maxTextLength} characters`;
-      }
-    }
+  const textProblem = isJsonObject(value) ? longTextProblem(value) : undefined;
+  if (textProblem !== undefined) {
+    return textProblem;
   }
   const children: unknown[] = Array.isArray(value) ? value : Object.values(value);
   for (const child of children) {

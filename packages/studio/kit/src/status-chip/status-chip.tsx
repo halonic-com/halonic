@@ -25,7 +25,8 @@ export interface StatusChipProps {
 
 /** Each coloured tone is its colour on its own `-soft` fill, which passes AA on every surface. */
 const toneClasses: Record<StatusChipTone, string> = {
-  neutral: "bg-surface-muted text-fg-muted",
+  // On a muted fill (a Tabs track, a hovered row) the neutral box steps up so it doesn't vanish.
+  neutral: "bg-surface-muted text-fg-muted on-muted:bg-border on-muted:text-fg",
   accent: "bg-accent-soft text-accent-text",
   running: "bg-running-soft text-running",
   warning: "bg-warning-soft text-warning",
@@ -68,7 +69,7 @@ export function StatusChip({
   shape = "chip",
 }: StatusChipProps) {
   const classes = [
-    "inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap text-caption",
+    "inline-flex min-h-5 shrink-0 items-center gap-1 whitespace-nowrap text-caption",
     toneClasses[tone],
     edgeClasses(tone),
     shapeClasses[shape],
@@ -77,7 +78,11 @@ export function StatusChip({
   return (
     <span className={classes}>
       {dot ? (
-        <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+        // High contrast drops fills; the dot keeps its fill in the chip's text colour.
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-current forced-color-adjust-none"
+          aria-hidden="true"
+        />
       ) : null}
       {children}
     </span>

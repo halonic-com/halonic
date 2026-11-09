@@ -61,7 +61,7 @@ function press(element: Element, init: KeyboardEventInit & { keyCode?: number })
 }
 
 /** Renders a TextArea in a form and records the form's submits. */
-function renderInForm() {
+function renderInForm(props: { submitOnCtrlEnter?: boolean } = { submitOnCtrlEnter: true }) {
   const onSubmit = vi.fn();
   const { container } = render(
     <form
@@ -70,7 +70,7 @@ function renderInForm() {
         onSubmit();
       }}
     >
-      <TextArea aria-label="Message" />
+      <TextArea aria-label="Message" {...props} />
     </form>,
   );
   const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
@@ -84,6 +84,7 @@ verifies("kit.text-area", () => {
     const box = (textarea.parentElement as HTMLElement).className;
     expect(box).toContain("border-border-control bg-surface hover:border-fg-muted focus-field");
     expect(box).toContain("phone:min-h-touch");
+    expect(textarea.className).toContain("touch:text-input-touch");
     expect(textarea.hasAttribute("data-field-text")).toBe(true);
   });
 
@@ -103,7 +104,8 @@ verifies("kit.text-area", () => {
     const { container } = render(<TextArea aria-label="Notes" />);
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
     expect(textarea.rows).toBe(1);
-    expect(textarea.style.maxHeight).toBe("5lh");
+    expect(textarea.className).toContain("max-h-rows");
+    expect(textarea.style.getPropertyValue("--max-rows")).toBe("5");
     expect(textarea.className).toContain("overflow-y-auto");
   });
 
@@ -144,10 +146,43 @@ verifies("kit.text-area", () => {
 
   it("takes another line limit", () => {
     const { container } = render(<TextArea aria-label="Instructions" maxRows={8} />);
-    expect(container.querySelector("textarea")?.style.maxHeight).toBe("8lh");
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    expect(textarea.style.getPropertyValue("--max-rows")).toBe("8");
   });
 
-  it("adds a line on Enter, and submits its form on Ctrl Enter or ⌘ Enter", () => {
+  it("doesn't submit its form on Ctrl Enter unless the screen turns it on", () => {
+    const onKeyDown = vi.fn();
+    const onSubmit = vi.fn();
+    const { container } = render(
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <TextArea aria-label="Reason" onKeyDown={onKeyDown} />
+      </form>,
+    );
+    press(container.querySelector("textarea") as HTMLTextAreaElement, {
+      key: "Enter",
+      ctrlKey: true,
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+  });
+
+  it("puts the caret in the text on a press in the box's padding", () => {
+    const { container } = render(<TextArea aria-label="Notes" />);
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    act(() => {
+      (textarea.parentElement as HTMLElement).dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(textarea);
+  });
+
+  it("with submitOnCtrlEnter, adds a line on Enter and submits on Ctrl Enter or ⌘ Enter", () => {
     const { textarea, onSubmit } = renderInForm();
 
     press(textarea, { key: "Enter" });

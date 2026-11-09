@@ -8,7 +8,7 @@
 // The additional data binds the value to its token name and to the header,
 // so a value copied to another name won't open.
 
-import { decodeBase64url, encodeBase64url } from "@halonicjs/std";
+import { decodeBase64url, type ErrorKind, encodeBase64url } from "@halonicjs/std";
 import type { TokenKey } from "./token-key.ts";
 
 const formatVersion = 1;
@@ -24,6 +24,11 @@ const decoder = new TextDecoder("utf-8", { fatal: true });
 /** A stored token that can't be opened. The message names the token, never its value. */
 export class UnreadableTokenError extends Error {
   override readonly name = "UnreadableTokenError";
+
+  /** The token is lost for good, so the user has to connect again. */
+  get kind(): ErrorKind {
+    return "unauthenticated";
+  }
 }
 
 /** Encrypts a token's value under its canonical name. */

@@ -35,6 +35,12 @@ verifies("kit.external-link", () => {
     expect(link.querySelector(".sr-only")?.textContent).toBe(" (opens in your browser)");
   });
 
+  it("has a 48px hit area on a touch screen and is 48px high on a phone", () => {
+    const { link } = renderLink();
+    expect(link.className).toContain("touch:hit-touch");
+    expect(link.className).toContain("phone:min-h-touch");
+  });
+
   it("keeps the address on the link, opening in a new tab without a handle back", () => {
     const { link } = renderLink();
     expect(link.getAttribute("href")).toBe(audiencePage);

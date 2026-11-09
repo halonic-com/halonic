@@ -53,9 +53,18 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
       needNote.push(finding);
     }
   }
-  if (needNote.length === 0) {
-    return report;
+  if (needNote.length > 0) {
+    await reportNeedingNote(needNote, run, report);
   }
+  return report;
+}
+
+/** Reports the findings that only a decision note can let through. */
+async function reportNeedingNote(
+  needNote: readonly GuardFinding[],
+  run: GuardRun,
+  report: Report,
+): Promise<void> {
   const noteFile = decisionNoteFile(run.branch);
   if (!run.head.files.includes(noteFile)) {
     for (const finding of needNote) {
@@ -65,7 +74,7 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
         finding.line,
       );
     }
-    return report;
+    return;
   }
   const parsed = parseDecisionNote(noteFile, run.head.read(noteFile));
   if (!parsed.ok) {
@@ -75,7 +84,7 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
     for (const finding of needNote) {
       report.error(finding.file, `${finding.message} ${noteFile} can't be read, see its errors.`);
     }
-    return report;
+    return;
   }
   const verdict = await run.approvals.check({
     approval: parsed.note.approval,
@@ -85,7 +94,6 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
   for (const finding of needNote) {
     reportAgainstNote(finding, parsed.note, verdict, report);
   }
-  return report;
 }
 
 function reportAgainstNote(

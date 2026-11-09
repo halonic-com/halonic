@@ -1,4 +1,11 @@
-import type { FocusEvent, MouseEvent, ReactNode, Ref } from "react";
+import {
+  createContext,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  useContext,
+} from "react";
 import { Spinner } from "./spinner.tsx";
 
 /** What the button does: `primary` once per view, `ghost` for Cancel, `danger` only to confirm. */
@@ -56,32 +63,40 @@ interface IconButton extends ButtonBase {
 
 export type ButtonProps = ButtonWithLabel | IconButton;
 
+/**
+ * Every button has a 1px edge, so Windows high-contrast mode, which drops fills, still draws its
+ * shape (component specs 23.5). An unavailable button is 45%, 60% when more contrast is asked
+ * for, and `GrayText` at full strength in high contrast, its edge as well as its text.
+ */
 const shared = [
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm text-body-strong",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm border text-body-strong",
   "transition-colors focus-ring",
-  "aria-disabled:cursor-not-allowed aria-disabled:opacity-45",
+  "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 contrast-more:aria-disabled:opacity-60",
+  "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
+  "forced-colors:aria-disabled:opacity-100",
 ].join(" ");
 
 /**
  * Hover changes only a fill or a text colour, and a press shows the hover fill at once. Neither
- * applies while the button is unavailable.
+ * applies while the button is unavailable. Only `secondary` shows its edge; the others keep it
+ * see-through, each in its own variant so two edge colours never meet on one button.
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary: [
-    "bg-primary text-on-primary",
+    "border-transparent bg-primary text-on-primary",
     "not-aria-disabled:hover:bg-primary-hover not-aria-disabled:active:bg-primary-hover",
   ].join(" "),
   secondary: [
-    "border border-border-strong bg-surface text-fg",
+    "border-border-strong bg-surface text-fg",
     "not-aria-disabled:hover:bg-surface-subtle not-aria-disabled:active:bg-surface-subtle",
   ].join(" "),
   ghost: [
-    "text-fg-muted",
+    "border-transparent text-fg-muted",
     "not-aria-disabled:hover:bg-surface-muted not-aria-disabled:hover:text-fg",
     "not-aria-disabled:active:bg-surface-muted not-aria-disabled:active:text-fg",
   ].join(" "),
   danger: [
-    "bg-danger text-on-danger",
+    "border-transparent bg-danger text-on-danger",
     "not-aria-disabled:hover:bg-danger-hover not-aria-disabled:active:bg-danger-hover",
   ].join(" "),
 };
@@ -98,16 +113,27 @@ const sizeClasses: Record<ButtonSize, string> = {
   touch: "min-h-touch px-4 py-2 text-center",
 };
 
-/** Icon buttons are squares; on a phone and a touch screen, 48px with a 20px icon. */
+/**
+ * Icon buttons are squares. On a touch screen they're 40px, like the text buttons beside them,
+ * with the 48px hit area; on a phone 48px with a 20px icon. phone: wins where both apply.
+ */
 const iconButtonClasses: Record<ButtonSize, string> = {
-  sm: "size-control-sm phone:size-touch touch:size-touch",
-  md: "size-control-md phone:size-touch touch:size-touch",
-  lg: "size-control-lg phone:size-touch touch:size-touch",
+  sm: "size-control-sm touch:size-control-lg touch:hit-touch phone:size-touch",
+  md: "size-control-md touch:size-control-lg touch:hit-touch phone:size-touch",
+  lg: "size-control-lg touch:hit-touch phone:size-touch",
   touch: "size-touch",
 };
 
+/**
+ * Set by the Input round its trailing button. On a phone the field box is 48px, and a 48px button
+ * inside its 1px border would make it 50px; so there an icon button keeps its `sm` look and gets
+ * only the 48px hit area (component specs 3).
+ */
+export const InFieldBoxContext = createContext(false);
+const inFieldBoxIconButton = `size-control-sm ${hitArea}`;
+
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
-const largeIconSlot = "phone:size-icon-md touch:size-icon-md";
+const largeIconSlot = "phone:size-icon-md";
 
 /**
  * The kit's button: a native `<button>`, `type="button"` unless it submits a form. With `icon`
@@ -124,6 +150,7 @@ const largeIconSlot = "phone:size-icon-md touch:size-icon-md";
 export function Button(props: ButtonProps) {
   const { variant = "secondary", size = "md", block = false, busy = false, unavailable } = props;
   const isIconButton = props.label !== undefined;
+  const inFieldBox = useContext(InFieldBoxContext) && isIconButton;
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     if (busy || unavailable !== undefined) {
@@ -137,12 +164,12 @@ export function Button(props: ButtonProps) {
   const classes = [
     shared,
     variantClasses[variant],
-    isIconButton ? iconButtonClasses[size] : sizeClasses[size],
+    buttonSizeClasses(size, isIconButton, inFieldBox),
     block ? "w-full" : "",
   ].join(" ");
 
   const icon = busy ? <Spinner /> : props.icon;
-  const iconClasses = isIconButton ? `${iconSlot} ${largeIconSlot}` : iconSlot;
+  const iconClasses = isIconButton && !inFieldBox ? `${iconSlot} ${largeIconSlot}` : iconSlot;
 
   return (
     <button
@@ -165,4 +192,11 @@ export function Button(props: ButtonProps) {
       {props.children}
     </button>
   );
+}
+
+function buttonSizeClasses(size: ButtonSize, isIconButton: boolean, inFieldBox: boolean): string {
+  if (inFieldBox) {
+    return inFieldBoxIconButton;
+  }
+  return isIconButton ? iconButtonClasses[size] : sizeClasses[size];
 }

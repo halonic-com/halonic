@@ -24,7 +24,20 @@ export {
   type EngineConnectionListener,
   engineConnectionAnnouncements,
   type ShellEngine,
+  type ShellEngineState,
 } from "./engine/engine-connection.ts";
+export {
+  type EngineLauncher,
+  type EngineProcess,
+  type EngineProcessEvents,
+  type EngineStartEvent,
+  type EngineStartFailure,
+  type EngineStartFailureReason,
+  type EngineSupervisor,
+  engineAnswerTimeoutMs,
+  engineRestartDelayMs,
+  engineRestartWindowMs,
+} from "./engine/engine-start.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
@@ -64,6 +77,23 @@ export type {
   Point,
   Registered,
 } from "./points/point-store.ts";
+export {
+  type ChildProcessUsage,
+  type EngineResourceReport,
+  type LoadedModel,
+  readResourceReport,
+} from "./resources/resource-report.ts";
+export {
+  lowDiskBytes,
+  type ResourceCheckReason,
+  type ResourceListener,
+  type ResourceReading,
+  type ResourceWatch,
+  type ResourceWatchOptions,
+  resourceCheckIntervalMs,
+  watchResources,
+} from "./resources/resource-watch.ts";
+export { type SaveFailure, type SaveReason, saveFailureFor } from "./save/save-failure.ts";
 export type {
   FeatureServices,
   ServiceFactory,

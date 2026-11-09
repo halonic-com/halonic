@@ -1,0 +1,18 @@
+<!--
+  The placeholder launcher icon, the same "logo" tile the connect page shows,
+  until the board picks a logo (HAL-796) and T10 brings the real set.
+  Regenerate the Android icons from this file in apps/studio with
+  `pnpm tauri icon src-tauri/icons/placeholder.svg`, then delete the desktop
+  and iOS files it also writes; the desktop shell (HAL-192) adds its own.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Halonic placeholder icon</title>
+  <rect x="32" y="32" width="960" height="960" rx="200" fill="#ffffff" stroke="#c6c7dc" stroke-width="16"/>
+  <g fill="none" stroke="#5b5b75" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M262 400 V600"/>
+    <circle cx="394" cy="545" r="58"/>
+    <circle cx="582" cy="545" r="58"/>
+    <path d="M640 487 V640 Q640 716 568 716 Q536 716 516 700"/>
+    <circle cx="770" cy="545" r="58"/>
+  </g>
+</svg>

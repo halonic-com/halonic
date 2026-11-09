@@ -134,6 +134,20 @@ verifies("studio.connect.field-errors", () => {
     expect(page.fieldError.querySelector("code")?.textContent).toBe("halonic serve --network");
   });
 
+  it("lets the command break only between its words, in the error and in the hint", async () => {
+    const shell = new FakeShell().answer(notAnswering);
+    const page = await openPage(shell, new MemoryStore());
+
+    await page.press(page.connectButton);
+
+    for (const code of [page.fieldError, document.querySelector("#address-hint")].map((place) =>
+      place?.querySelector("code"),
+    )) {
+      const runs = [...(code?.querySelectorAll(".word") ?? [])].map((run) => run.textContent);
+      expect(runs).toEqual(["halonic", "serve", "--network"]);
+    }
+  });
+
   it("stays until the field changes", async () => {
     const page = await openPage(
       new FakeShell().answer({ kind: "notAnAddress" }),

@@ -24,6 +24,9 @@ look up services its feature lists in `needs`.
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
+| `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
+| `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
+| `watchResources`                | read the engine's resource numbers, flag a low disk        | `shell.resource-numbers`  |
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
@@ -65,7 +68,46 @@ At start-up the app hands its `RunExecutor` to `shell.engine.watch(executor)`. A
 (served mode, or a phone connected to a host) has a `connection` that can be `lost`; the local one
 has none and counts as always connected. Each change is sent once as `engine.connection { state }`
 to listeners added with `shell.engine.on("engine.connection", listener)`, and announced once: the
-loss assertively, the return politely. `shell.engine.connection` is the state now.
+loss assertively, the return politely. `shell.engine.connection` is the state now, and
+`shell.engine.status` the last event with its details.
+
+On the desktop the app starts the engine process instead: it hands an `EngineLauncher` to
+`shell.engine.supervise(launcher)`. The shell sends `starting { attempt, since }` at once, then
+`connected` when the engine answers. A start that fails sends `failed { failure }` with one of
+three reasons, and the shell doesn't try again by itself:
+
+| Reason                     | When                                          |
+| -------------------------- | --------------------------------------------- |
+| `stopped-while-starting`   | the process ended first; `exitCode` is kept   |
+| `no-answer`                | no answer within 30 s; the process is stopped |
+| `data-folder-not-writable` | the engine reported it can't write its data   |
+
+The engine's last log lines go to the log, not into the event. A running engine that stops sends
+`lost` and is started again once, 2 s later, as attempt 2 with `lastExitCode`. If it stops again
+within 60 s of that restart, the shell sends `failed` instead of looping. `retry()` (a Try again
+button) starts from attempt 1; `stop()` stops the engine and its timers. Only the loss and the
+return are announced; the start and failure texts wait for the approved wording (HAL-1720).
+
+## Save reasons
+
+A screen that saves a file passes the error to `saveFailureFor`, the one place that reads write
+error codes, and words its message from the reason: `disk-full` (`ENOSPC`, `EDQUOT`),
+`not-writable` (`EACCES`, `EPERM`, `EROFS`), `in-use` (`EBUSY`, which includes the Windows sharing
+violation) or `failed` for anything else. The code and the original message stay in the result for
+Copy details; they never go on screen (rule 4 of the failure-path guide).
+
+## Resource numbers
+
+`watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the
+memory of each process it started, the disk space Halonic's data uses, the free space on the data
+drive, and the local models Ollama has loaded (`loadedModels` is left out when Ollama didn't
+answer, which is not the same as none loaded). `readResourceReport` checks what crossed the bridge
+and throws a `ShellError` rather than pass on a number it can't trust.
+
+It reads at once, then once a minute, timed from the end of the last read. A run, a download or a
+model pull calls `check("run" | "download" | "model-pull")` before it starts; a check joins a read
+that is already under way. Each reading has `lowDisk`, true below 1 GB free (`lowDiskBytes`).
+Where Studio shows these numbers waits on the board (HAL-1720), so this is the data only.
 
 ## Example
 

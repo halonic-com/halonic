@@ -32,27 +32,31 @@ const errorStatuses = new Set(["CompileError", "RuntimeError"]);
  * and ignored mutants are left out.
  */
 export function scoreOf(report: MutationReport): MutationScore {
-  let detected = 0;
-  let survived = 0;
-  let noCoverage = 0;
-  let errors = 0;
+  const counts = { detected: 0, survived: 0, noCoverage: 0, errors: 0 };
   for (const file of Object.values(report.files)) {
     for (const mutant of file.mutants) {
-      if (detectedStatuses.has(mutant.status)) {
-        detected += 1;
-      } else if (survivedStatuses.has(mutant.status)) {
-        survived += 1;
-        if (mutant.status === "NoCoverage") {
-          noCoverage += 1;
-        }
-      } else if (errorStatuses.has(mutant.status)) {
-        errors += 1;
-      }
+      countMutant(counts, mutant.status);
     }
   }
-  const valid = detected + survived;
-  const score = valid === 0 ? null : Math.round((detected / valid) * 1000) / 10;
-  return { detected, survived, noCoverage, errors, score };
+  const valid = counts.detected + counts.survived;
+  const score = valid === 0 ? null : Math.round((counts.detected / valid) * 1000) / 10;
+  return { ...counts, score };
+}
+
+type Counts = { detected: number; survived: number; noCoverage: number; errors: number };
+
+/** Adds one mutant's outcome to the tallies; other statuses are left out. */
+function countMutant(counts: Counts, status: string): void {
+  if (detectedStatuses.has(status)) {
+    counts.detected += 1;
+  } else if (survivedStatuses.has(status)) {
+    counts.survived += 1;
+    if (status === "NoCoverage") {
+      counts.noCoverage += 1;
+    }
+  } else if (errorStatuses.has(status)) {
+    counts.errors += 1;
+  }
 }
 
 /** The outcome for one package in a nightly run. */

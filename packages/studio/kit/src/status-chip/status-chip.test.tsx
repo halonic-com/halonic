@@ -14,16 +14,26 @@ function renderChip(props: StatusChipProps): HTMLElement {
 }
 
 verifies("kit.status-chip", () => {
-  it("is a neutral, 20px, non-interactive span by default", () => {
+  it("is a neutral, at least 20px high, non-interactive span by default", () => {
     const chip = renderChip({ children: "Draft" });
     expect(chip.tagName).toBe("SPAN");
     expect(chip.textContent).toBe("Draft");
-    expect(chip.className).toContain("h-5 ");
+    // A minimum, so the chip grows with large system text instead of spilling its word.
+    expect(chip.className).toContain("min-h-5 ");
+    expect(chip.className).not.toMatch(/(?:^| )h-5 /);
     expect(chip.className).toContain("rounded-xs px-1.5");
     expect(chip.className).toContain("text-caption");
     expect(chip.className).toContain("bg-surface-muted text-fg-muted");
+    // On a muted fill it steps up to border, or its box would disappear.
+    expect(chip.className).toContain("on-muted:bg-border on-muted:text-fg");
     expect(chip.hasAttribute("tabindex")).toBe(false);
     expect(chip.hasAttribute("role")).toBe(false);
+  });
+
+  it("keeps the coloured tones and the tag as they are on a muted fill", () => {
+    for (const tone of ["accent", "running", "warning", "danger", "success", "outline"] as const) {
+      expect(renderChip({ tone, children: "State" }).className).not.toContain("on-muted:");
+    }
   });
 
   it.each([
@@ -54,6 +64,7 @@ verifies("kit.status-chip", () => {
     const dot = chip.firstElementChild as HTMLElement;
     expect(dot.getAttribute("aria-hidden")).toBe("true");
     expect(dot.className).toContain("size-1.5 shrink-0 rounded-full bg-current");
+    expect(dot.className).toContain("forced-color-adjust-none");
     expect(dot.className).not.toContain("animate");
     expect(chip.textContent).toBe("Needs you");
   });

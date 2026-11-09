@@ -11,6 +11,7 @@
     "@halonicjs/routines",
     "@halonicjs/workspace",
     "@halonicjs/app",
+    "@halonicjs/engine",
     "@halonicjs/google-setup"
   ],
   "published": [

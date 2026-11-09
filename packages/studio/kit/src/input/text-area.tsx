@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type Ref,
   type TextareaHTMLAttributes,
@@ -9,7 +10,7 @@ import {
 } from "react";
 import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
-import { fieldBoxClasses, fieldBoxState, fieldTextClasses } from "./field-box.ts";
+import { fieldBoxClasses, fieldBoxState, fieldTextClasses, focusTextOnPress } from "./field-box.ts";
 
 type OwnedAttributes =
   | "className"
@@ -24,6 +25,12 @@ export interface TextAreaProps
   extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, OwnedAttributes> {
   /** It grows with its text up to this many lines, then scrolls inside. Default 5. */
   readonly maxRows?: number;
+  /**
+   * Ctrl Enter (⌘ Enter on macOS) submits its form. Off by default: only the forms component
+   * specs 23 A8 names turn it on (Create version, Start a run, Ask for changes, a request's
+   * message), so no key can confirm an Approve, Reject, Apply or Delete.
+   */
+  readonly submitOnCtrlEnter?: boolean;
   readonly ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -31,17 +38,22 @@ export interface TextAreaProps
 const DEFAULT_MAX_ROWS = 5;
 
 /**
- * A text field of several lines that grows with its text. Enter adds a line; Ctrl Enter (⌘ Enter
- * on macOS) submits its form (component specs 23, A8). Neither does anything while an input
- * method is composing. Put it in a `Field`, like `Input`.
+ * A text field of several lines that grows with its text. Enter adds a line; with
+ * `submitOnCtrlEnter`, Ctrl Enter (⌘ Enter on macOS) submits its form (component specs 23, A8).
+ * Neither does anything while an input method is composing. Put it in a `Field`, like `Input`.
  *
  * @example
  * <Field label="Message">
- *   <TextArea value={message} onChange={(event) => setMessage(event.target.value)} />
+ *   <TextArea
+ *     value={message}
+ *     submitOnCtrlEnter
+ *     onChange={(event) => setMessage(event.target.value)}
+ *   />
  * </Field>
  */
 export function TextArea({
   maxRows = DEFAULT_MAX_ROWS,
+  submitOnCtrlEnter = false,
   ref,
   onKeyDown,
   onInput,
@@ -85,7 +97,8 @@ export function TextArea({
       return;
     }
     const form = event.currentTarget.form;
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && form !== null) {
+    const isCtrlEnter = event.key === "Enter" && (event.ctrlKey || event.metaKey);
+    if (submitOnCtrlEnter && isCtrlEnter && form !== null) {
       event.preventDefault();
       form.requestSubmit();
       return;
@@ -94,16 +107,20 @@ export function TextArea({
   }
 
   return (
-    <div className={`${fieldBoxClasses(state, "md", "start")} py-2 phone:py-3`}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.
+    <div
+      className={`${fieldBoxClasses(state, "md", "start")} py-2 phone:py-3`}
+      onMouseDown={focusTextOnPress}
+    >
       <textarea
         {...native}
         ref={element}
         id={field?.id}
         rows={1}
         data-field-text=""
-        className={`${fieldTextClasses} resize-none overflow-y-auto`}
-        // The limit in lines of the text's own height: it follows the text size.
-        style={{ maxHeight: `${maxRows}lh` }}
+        className={`${fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
+        // The limit in lines of the text's own height, so it follows the text size (theme.css).
+        style={{ "--max-rows": maxRows } as CSSProperties}
         aria-describedby={field?.describedBy}
         aria-invalid={invalid || undefined}
         aria-required={field?.required || undefined}

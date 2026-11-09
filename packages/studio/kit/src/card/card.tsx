@@ -60,24 +60,29 @@ export type CardProps = StaticCard | InteractiveCard;
 
 const stateClasses: Record<CardState, string> = {
   default: "border-border",
-  disabled: "border-border text-fg-disabled",
+  disabled: "border-border",
   error: "border-danger",
 };
+
+/**
+ * A disabled card fades only its name, so the line that says why ("Paused") stays readable and
+ * the header's switch, which turns it back on, keeps its own look. A card with no header has no
+ * name to fade, so its box fades instead (component specs 7).
+ */
+const fadedClasses = "text-fg-disabled";
 
 const box = "rounded-md border bg-surface text-left";
 
 /** Only an interactive card reacts: a lifted edge on hover, the hover fill while pressed. */
-const reacts = [
-  "transition-[color,background-color,border-color,box-shadow]",
-  "active:bg-surface-subtle hover:shadow-1",
-].join(" ");
+const reacts = ["transition", "active:bg-surface-subtle hover:shadow-1"].join(" ");
 
 /**
  * An interactive card's classes by state. A disabled card still opens (to say why it's paused),
- * but it doesn't light up; an error card lifts but keeps its `danger` edge.
+ * but it doesn't light up; an error card lifts but keeps its `danger` edge. With more contrast
+ * `border-strong` barely differs from the resting edge, so the hover edge goes to `fg-muted` there.
  */
 const interactiveClasses: Record<CardState, string> = {
-  default: `block w-full focus-ring ${reacts} hover:border-border-strong`,
+  default: `block w-full focus-ring ${reacts} hover:border-border-strong contrast-more:hover:border-fg-muted`,
   disabled: "block w-full focus-ring",
   error: `block w-full focus-ring ${reacts}`,
 };
@@ -99,7 +104,8 @@ export function Card(props: CardProps) {
   const headerId = useId();
 
   if (props.onClick !== undefined) {
-    const classes = `${box} ${stateClasses[state]} ${interactiveClasses[state]} p-4`;
+    const faded = state === "disabled" ? ` ${fadedClasses}` : "";
+    const classes = `${box} ${stateClasses[state]}${faded} ${interactiveClasses[state]} p-4`;
     return (
       <button type="button" className={classes} onClick={props.onClick}>
         {props.children}
@@ -107,13 +113,14 @@ export function Card(props: CardProps) {
     );
   }
 
-  const header = cardHeader(props, headerId);
+  const header = cardHeader(props, headerId, state === "disabled");
   const actions = isShown(props.actions) ? (
     <div className="ml-auto flex shrink-0 items-center gap-2">{props.actions}</div>
   ) : null;
   const classes = `${box} ${stateClasses[state]}`;
   if (header === null && actions === null) {
-    return <div className={`${classes} p-4`}>{props.children}</div>;
+    const faded = state === "disabled" ? ` ${fadedClasses}` : "";
+    return <div className={`${classes}${faded} p-4`}>{props.children}</div>;
   }
   const body = (
     <>
@@ -137,11 +144,14 @@ export function Card(props: CardProps) {
 }
 
 /** The header's name: a title heading, a caption label, or nothing. */
-function cardHeader(props: StaticCard, id: string): ReactNode {
+function cardHeader(props: StaticCard, id: string, faded: boolean): ReactNode {
   if (isShown(props.title)) {
     const Heading = `h${props.headingLevel ?? 3}` as const;
     return (
-      <Heading id={id} className="min-w-0 text-section">
+      <Heading
+        id={id}
+        className={faded ? `min-w-0 text-section ${fadedClasses}` : "min-w-0 text-section"}
+      >
         {props.title}
       </Heading>
     );
@@ -150,7 +160,7 @@ function cardHeader(props: StaticCard, id: string): ReactNode {
     return (
       <p
         id={id}
-        className="min-w-0 text-caption font-medium uppercase tracking-label text-fg-muted"
+        className={`min-w-0 text-caption font-medium uppercase tracking-label ${faded ? fadedClasses : "text-fg-muted"}`}
       >
         {props.label}
       </p>

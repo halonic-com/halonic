@@ -55,8 +55,11 @@ const tabClasses = "rounded-segment text-small transition-colors focus-ring";
  * area, like a small button.
  */
 const sizeClasses = {
+  // On one line at normal text. When the track is wider than its column (200% text), the labels
+  // wrap inside their tabs rather than overflow; the track keeps the tabs one height.
   inline: [
-    "inline-flex min-h-control-sm items-center gap-1.5 whitespace-nowrap px-3",
+    "inline-flex min-h-control-sm min-w-0 items-center gap-1.5 px-3",
+    "text-center hyphens-auto wrap-break-word",
     "touch:min-h-control-lg touch:hit-touch",
   ].join(" "),
   // The label wraps between words and the counter follows it like one more word. A word longer
@@ -65,9 +68,11 @@ const sizeClasses = {
 } as const;
 
 const stateClasses = {
-  selected: "bg-surface font-medium text-fg shadow-1",
+  // selected-forced is the selected tab's edge in high contrast, which drops the fill and the
+  // shadow (component specs 23 A11, 23.5). The focus ring's own outline wins on focus.
+  selected: "bg-surface font-medium text-fg shadow-1 selected-forced",
   default: "text-fg-muted hover:text-fg",
-  disabled: "cursor-not-allowed text-fg-disabled",
+  disabled: "cursor-not-allowed text-fg-disabled text-forced-disabled",
 } as const;
 
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
@@ -151,6 +156,9 @@ export function Tabs<Id extends string>({
             aria-controls={isSelected ? panelId : undefined}
             aria-disabled={isDisabled ? true : undefined}
             tabIndex={tab.id === focusable ? 0 : -1}
+            // An unselected tab shows the muted track, so its counter takes the on-muted: look.
+            // The selected tab is a raised surface segment, so its counter keeps the normal look.
+            data-fill={isSelected ? undefined : "muted"}
             className={`${tabClasses} ${sizeClasses[layout]} ${stateClasses[state]}`}
             onClick={() => {
               if (!isDisabled) {
