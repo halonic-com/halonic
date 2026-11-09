@@ -1,5 +1,6 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { collectionId, id, ModelParams, version } from "../../shared/fields.ts";
+import { AgentHarness, AllowedSite, MAX_ALLOWED_SITES, WorkingFolder } from "./sandbox-fields.ts";
 
 /** The shape of an agent's reply: free text, one of a list of options, or JSON. */
 export const AgentOutput = s.discriminatedUnion("type", [
@@ -98,6 +99,12 @@ export const Agent = s
     /** Most model calls per invocation (tool loops). */
     maxSteps: s.number().int().min(1).max(200).default(6),
     character: AgentCharacter.optional(),
+    /** The program the agent runs in; Halonic's own loop when left out. */
+    harness: AgentHarness.optional(),
+    /** The one workspace folder a harness agent writes to; `files/agents/<id>` when left out. */
+    workingFolder: WorkingFolder.optional(),
+    /** Sites a harness agent may reach besides Halonic: host names or `*.` and a domain. */
+    allowedSites: s.array(AllowedSite).max(MAX_ALLOWED_SITES).optional(),
   })
   .strict();
 

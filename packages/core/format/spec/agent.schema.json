@@ -299,6 +299,24 @@
         }
       },
       "additionalProperties": false
+    },
+    "harness": {
+      "type": "string",
+      "enum": [
+        "halonic",
+        "claude-code",
+        "codex"
+      ]
+    },
+    "workingFolder": {
+      "type": "string"
+    },
+    "allowedSites": {
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [

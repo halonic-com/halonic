@@ -75,3 +75,19 @@ Checks between files belong to the loader, not here.
 files are the source of truth for anyone outside this repo who reads or writes workspace files.
 `src/json-schema.test.ts` fails when the code and a spec file disagree. To update the files on
 purpose after a schema change, run the tests with `SPEC_WRITE=1`, then review the diff.
+
+## Harness agents
+
+Three optional agent fields say how an agent runs in another program
+(requirement `agent-sandbox-fields`):
+
+- `harness`: `halonic` (the default), `claude-code` or `codex`. The list is
+  closed, so a typo fails `halonic validate`, and **each new harness changes
+  the format**: add its value to `AgentHarness` with a requirement.
+- `workingFolder`: the one workspace folder the agent writes to;
+  `defaultWorkingFolder(id)` gives `files/agents/<id>`. Paths that leave the
+  workspace or point into `.git`, `.halonic`, `hubs` or a kind's folder fail.
+  The sandbox profile builder also resolves symlinks before it uses the path.
+- `allowedSites`: at most 50 host names or `*.` plus a domain of two or more
+  labels. `asciiAllowedSites(sites)` gives the stored form: lowercase,
+  Punycode, each once.
