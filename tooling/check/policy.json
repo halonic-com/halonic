@@ -6,14 +6,14 @@
     "@halonicjs/yaml",
     "@halonicjs/events",
     "@halonicjs/ports",
+    "@halonicjs/profile",
     "@halonicjs/format",
     "@halonicjs/workflow",
     "@halonicjs/routines",
     "@halonicjs/workspace",
     "@halonicjs/app",
     "@halonicjs/engine",
-    "@halonicjs/google-setup",
-    "@halonicjs/profile"
+    "@halonicjs/google-setup"
   ],
   "apiTypes": [
     "@halonicjs/events",

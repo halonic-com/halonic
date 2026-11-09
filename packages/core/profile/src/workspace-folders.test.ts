@@ -53,10 +53,45 @@ verifies("profile.workspace-folders", () => {
     expect(upper.runsFolder("staging")).toMatch(/\\deployments\\staging\\runs$/);
   });
 
-  it("keeps case apart on Linux", async () => {
+  it.each([
+    ["Rust's verbatim form", `\\\\?\\${drive}\\Work\\Acme`],
+    ["forward slashes", `${drive}/Work/Acme`],
+    ["a trailing separator", `${drive}\\Work\\Acme\\`],
+  ])("gives one key on Windows for %s", async (_spelling, path) => {
+    const plain = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
+    const other = await workspaceFolders(windowsProfile, path, digest);
+    expect(other.folder).toBe(plain.folder);
+  });
+
+  it("gives one key on Windows for a share in verbatim form", async () => {
+    const plain = await workspaceFolders(windowsProfile, "\\\\acme-files\\work\\acme", digest);
+    const verbatim = await workspaceFolders(
+      windowsProfile,
+      "\\\\?\\UNC\\acme-files\\work\\acme",
+      digest,
+    );
+    expect(verbatim.folder).toBe(plain.folder);
+  });
+
+  it("keeps a drive's root apart from a folder on it", async () => {
+    const root = await workspaceFolders(windowsProfile, `\\\\?\\${drive}\\`, digest);
+    const folder = await workspaceFolders(windowsProfile, `${drive}\\acme`, digest);
+    expect(root.folder).not.toBe(folder.folder);
+  });
+
+  it("ignores a trailing separator on Linux, and keeps case apart", async () => {
+    const plain = await workspaceFolders(profile, "/srv/acme", digest);
+    const trailing = await workspaceFolders(profile, "/srv/acme/", digest);
     const upper = await workspaceFolders(profile, "/srv/Acme", digest);
-    const lower = await workspaceFolders(profile, "/srv/acme", digest);
-    expect(upper.folder).not.toBe(lower.folder);
+    expect(trailing.folder).toBe(plain.folder);
+    expect(upper.folder).not.toBe(plain.folder);
+  });
+
+  it("ignores case and Unicode form on macOS", async () => {
+    const macProfile: ProfileFolder = { platform: "macos", root: "/srv/acme/halonic" };
+    const composed = await workspaceFolders(macProfile, "/srv/acme/Café", digest);
+    const decomposed = await workspaceFolders(macProfile, "/srv/acme/café/", digest);
+    expect(decomposed.folder).toBe(composed.folder);
   });
 
   it("puts a deployment's runs in their own folder", async () => {

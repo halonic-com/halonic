@@ -6,7 +6,12 @@
 
 import type { Digest } from "@halonicjs/ports";
 import { bytesToHex, encodeUtf8 } from "@halonicjs/std";
-import { isAbsolutePath, joinPath } from "./native-path.ts";
+import {
+  isAbsolutePath,
+  joinPath,
+  type ProfilePlatform,
+  withoutTrailingSeparators,
+} from "./native-path.ts";
 import type { ProfileFolder } from "./profile-folder.ts";
 
 /** The folder in the profile that holds one folder per workspace. */
@@ -47,7 +52,10 @@ export interface WorkspaceFolders {
  *
  * Pass the workspace's real path: absolute, with every link resolved, as
  * the system's own `realpath` gives it. Two paths to one folder then give
- * one key. On Windows the key ignores case, because Windows file names do.
+ * one key. Before hashing, the path is put in one spelling: trailing
+ * separators are dropped everywhere; on Windows `/` becomes `\`, the
+ * verbatim prefix (`\\?\`, `\\?\UNC\`) is dropped and case is ignored; on
+ * macOS case and Unicode form (NFC) are ignored, as its volumes do by default.
  *
  * @param profile - the profile folder, from `profileFolder`
  * @param workspaceRealPath - the workspace's real path
@@ -91,9 +99,39 @@ async function workspaceKey(
   workspaceRealPath: string,
   digest: Digest,
 ): Promise<string> {
-  const path = profile.platform === "windows" ? workspaceRealPath.toLowerCase() : workspaceRealPath;
+  const path = keyedPath(profile.platform, workspaceRealPath);
   const hash = await digest.sha256(encodeUtf8(path));
   return bytesToHex(hash).slice(0, keyLength);
+}
+
+/**
+ * The workspace path in the one spelling that is hashed. The CLI gets its
+ * real path from Node and the Studio from Rust, and they spell one folder
+ * differently: Rust's `canonicalize` puts the verbatim prefix `\\?\` in
+ * front of the drive, and Node doesn't. Without this, the two would keep
+ * separate runs.
+ */
+function keyedPath(platform: ProfilePlatform, realPath: string): string {
+  if (platform === "windows") {
+    const backslashed = withoutVerbatimPrefix(realPath.replaceAll("/", "\\"));
+    return withoutTrailingSeparators(platform, backslashed).toLowerCase();
+  }
+  const trimmed = withoutTrailingSeparators(platform, realPath);
+  if (platform === "macos") {
+    // macOS volumes ignore case and Unicode form by default, and not every
+    // realpath gives back the name as it is stored, so fold both.
+    return trimmed.normalize("NFC").toLowerCase();
+  }
+  return trimmed;
+}
+
+/** A Windows path without the verbatim prefix: `\\?\` before a drive is dropped, and `\\?\UNC\server\share` becomes `\\server\share`. */
+function withoutVerbatimPrefix(path: string): string {
+  const verbatimShare = /^\\\\\?\\UNC\\/i;
+  if (verbatimShare.test(path)) {
+    return path.replace(verbatimShare, "\\\\");
+  }
+  return path.startsWith("\\\\?\\") ? path.slice("\\\\?\\".length) : path;
 }
 
 function checkDeploymentId(deploymentId: string): void {
