@@ -1,0 +1,4 @@
+[package]
+name = "halonic-connect"
+version.workspace = true
+edition.workspace = true

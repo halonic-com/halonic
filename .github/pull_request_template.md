@@ -26,7 +26,7 @@ needs a decision note (see CONTRIBUTING.md).
 
 <!--
 One sentence a user would understand, or "None (no user-visible change)".
-(Don't run `pnpm changeset` yet: no package is versioned. See .changeset/README.md.)
+For a Studio app change, also add it with `pnpm changeset`. See .changeset/README.md.
 -->
 
 ## AI assistance used

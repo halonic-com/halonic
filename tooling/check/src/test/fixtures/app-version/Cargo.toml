@@ -1,0 +1,21 @@
+# The Studio shell: the Tauri package at the root of the Cargo workspace.
+[package]
+name = "halonic-studio"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+halonic-connect = { path = "crates/connect" }
+serde = { version = "1.0.0", features = ["derive"] }
+
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+# Set by pnpm version:sync.
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+serde = { version = "1.0.0" }

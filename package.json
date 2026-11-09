@@ -30,7 +30,9 @@
     "new": "node tooling/discover/src/cli/new.ts",
     "who-touches": "node tooling/discover/src/cli/who-touches.ts",
     "format": "biome format --write .",
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "version:sync": "node tooling/check/src/cli/version-sync.ts",
+    "version-packages": "changeset version && node tooling/check/src/cli/version-sync.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

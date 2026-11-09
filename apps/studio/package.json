@@ -1,5 +1,6 @@
 {
   "name": "@halonicjs/app-studio",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "The Studio app: wires the Studio packages and features together. The Tauri shell and its Android project live in src-tauri; Vite comes later.",

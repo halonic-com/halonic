@@ -11,7 +11,7 @@
 [package]
 name = "halonic-studio"
 description = "The Studio shell: the Tauri app that hosts the Studio on desktop and Android."
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -40,6 +40,9 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
+# The app version. Set from apps/studio/package.json by `pnpm version:sync`;
+# never edit it by hand. Every crate inherits it.
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 license = "Apache-2.0"

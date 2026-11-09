@@ -1,7 +1,7 @@
 [package]
 name = "halonic-connect"
 description = "Checks the address the Android app connects to and reads the computer's hello answer."
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

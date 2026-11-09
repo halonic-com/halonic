@@ -15,6 +15,7 @@ import { checkNames } from "./names.ts";
 import { checkPackages } from "./packages.ts";
 import { checkReadmeExamples } from "./readme-examples.ts";
 import { checkTrace } from "./trace.ts";
+import { checkVersions } from "./versions.ts";
 
 /** Every rule `pnpm check` runs, by name. */
 export const rules: Readonly<Record<string, (context: CheckContext) => Report>> = {
@@ -30,6 +31,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "absolute-paths": checkAbsolutePaths,
   "invisible-characters": checkInvisibleCharacters,
   "readme-examples": checkReadmeExamples,
+  versions: checkVersions,
   dco: (context) => checkDco(context),
   trace: checkTrace,
   ...Object.fromEntries(Object.keys(inactiveChecks).map((name) => [name, inactiveRule(name)])),
