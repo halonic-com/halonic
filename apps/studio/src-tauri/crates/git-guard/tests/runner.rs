@@ -5,10 +5,10 @@
 mod support;
 
 use halonic_git_guard::GitError;
-use support::{Sandbox, config_value};
+use support::{Sandbox, config_value, plain_git_ok};
 // The tests that plant programs run them through a Unix shell.
 #[cfg(unix)]
-use support::{plain_git, plain_git_ok};
+use support::plain_git;
 
 #[test]
 fn git_hardening_commits_in_an_opened_folder() {
@@ -174,6 +174,22 @@ fn repo_config_neutralises_the_filters_of_a_nested_repository() {
     touch();
     plain_git(&sandbox.acme, &["status"]);
     assert_eq!(sandbox.marks(), ["nested.ran"]);
+}
+
+#[test]
+fn repo_config_refuses_a_nested_repository_it_cannot_locate() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    let vendor = sandbox.temporary.folder("acme/vendor");
+    plain_git_ok(&vendor, &["init", "-q"]);
+    std::fs::write(vendor.join("lib.md"), "1\n").expect("the file writes");
+    plain_git_ok(&vendor, &["add", "lib.md"]);
+    plain_git_ok(&vendor, &["commit", "-q", "-m", "lib"]);
+    sandbox.git_ok("add -A");
+    // Once it is a gitlink, its `.git` points at a folder that isn't there.
+    std::fs::remove_dir_all(vendor.join(".git")).expect("the git folder is removed");
+    std::fs::write(vendor.join(".git"), "gitdir: ../missing\n").expect("the git file writes");
+    assert_eq!(sandbox.git("status"), Err(GitError::RepositoryUnreadable));
 }
 
 #[cfg(unix)]

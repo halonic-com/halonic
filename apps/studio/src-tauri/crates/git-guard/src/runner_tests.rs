@@ -93,6 +93,20 @@ fn git_hardening_never_goes_into_submodules() {
         ("fetch.recurseSubmodules", "false"),
         ("push.recurseSubmodules", "no"),
         ("status.submoduleSummary", "false"),
+        ("diff.submodule", "short"),
+    ] {
+        assert!(has_config(&command, key, value), "{key}");
+    }
+}
+
+#[test]
+fn git_hardening_runs_no_alternate_refs_command_maintenance_or_bundle() {
+    let command = command("commit -m first-note");
+    for (key, value) in [
+        ("core.alternateRefsCommand", "true"),
+        ("maintenance.auto", "false"),
+        ("gc.auto", "0"),
+        ("fetch.bundleURI", ""),
     ] {
         assert!(has_config(&command, key, value), "{key}");
     }

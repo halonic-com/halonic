@@ -23,6 +23,8 @@ pub enum GitError {
         subcommand: String,
         argument: String,
     },
+    /// A `commit` without `-m` or `--message`, and not `--amend --no-edit`.
+    MessageRequired,
     /// The folder is not inside a folder the user opened.
     FolderNotOpened,
     /// The folder does not exist or cannot be read.
@@ -56,6 +58,7 @@ impl GitError {
             GitError::ValueNotAllowed { .. } => "value_not_allowed",
             GitError::MissingValue { .. } => "missing_value",
             GitError::ArgumentNotAllowed { .. } => "argument_not_allowed",
+            GitError::MessageRequired => "message_required",
             GitError::FolderNotOpened => "folder_not_opened",
             GitError::FolderUnreadable => "folder_unreadable",
             GitError::RepositoryUnreadable => "repository_unreadable",
@@ -101,6 +104,10 @@ impl fmt::Display for GitError {
                     "git {subcommand}: argument {argument} is not allowed"
                 )
             }
+            GitError::MessageRequired => write!(
+                formatter,
+                "git commit needs -m or --message, or --amend --no-edit"
+            ),
             GitError::FolderNotOpened => write!(formatter, "the folder is not an opened folder"),
             GitError::FolderUnreadable => write!(formatter, "the folder cannot be read"),
             GitError::RepositoryUnreadable => {

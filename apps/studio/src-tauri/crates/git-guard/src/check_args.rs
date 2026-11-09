@@ -41,7 +41,8 @@ impl CheckedCall {
 /// entry on that subcommand's list exactly: git accepts shortened long
 /// options (`--upload-pac` for `--upload-pack`), so anything else is
 /// refused. After `--`, every argument is a path. Revisions and paths, on
-/// either side of `--`, must stay inside the repository.
+/// either side of `--`, must stay inside the repository. `commit` must say
+/// where its message comes from.
 pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
     let Some((first, rest)) = args.split_first() else {
         return Err(GitError::NoSubcommand);
@@ -52,6 +53,7 @@ pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
         });
     };
     let mut arguments = Vec::new();
+    let mut options = Vec::new();
     let mut only_paths = false;
     let mut remaining = rest.iter();
     while let Some(arg) = remaining.next() {
@@ -67,23 +69,25 @@ pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
             continue;
         }
         if arg.starts_with('-') {
-            check_option(subcommand, arg, &mut remaining)?;
+            options.push(check_option(subcommand, arg, &mut remaining)?);
             continue;
         }
         arguments.push(arg.as_str());
     }
     check_arguments(subcommand, &arguments)?;
+    check_message(subcommand, &options)?;
     Ok(CheckedCall {
         subcommand,
         args: args.to_vec(),
     })
 }
 
-fn check_option<'a>(
+/// Checks one option, and its value if it takes one; returns its name.
+fn check_option<'a, 'b>(
     subcommand: &'static AllowedSubcommand,
-    arg: &str,
+    arg: &'b str,
     remaining: &mut impl Iterator<Item = &'a String>,
-) -> Result<(), GitError> {
+) -> Result<&'b str, GitError> {
     let options = subcommand.options.iter().chain(if subcommand.shows_diffs {
         DIFF_OPTIONS
     } else {
@@ -95,9 +99,9 @@ fn check_option<'a>(
     };
     for option in options {
         match (option, joined_value) {
-            (AllowedOption::Flag(flag), None) if *flag == name => return Ok(()),
+            (AllowedOption::Flag(flag), None) if *flag == name => return Ok(name),
             (AllowedOption::Joined(option_name, rule), Some(value)) if *option_name == name => {
-                return check_value(subcommand, name, *rule, value);
+                return check_value(subcommand, name, *rule, value).map(|()| name);
             }
             (AllowedOption::Separate(option_name, rule), None) if *option_name == name => {
                 let Some(value) = remaining.next() else {
@@ -106,7 +110,7 @@ fn check_option<'a>(
                         option: name.to_owned(),
                     });
                 };
-                return check_value(subcommand, name, *rule, value);
+                return check_value(subcommand, name, *rule, value).map(|()| name);
             }
             _ => {}
         }
@@ -136,6 +140,21 @@ fn check_value(
         subcommand: subcommand.name.to_owned(),
         option: option.to_owned(),
     })
+}
+
+/// `commit` takes its message from `-m` or `--message`, or keeps the last
+/// one with `--amend --no-edit`. Otherwise git would take `commit.template`,
+/// a file the repository's config can name anywhere, as the message, and a
+/// push would send that file out.
+fn check_message(subcommand: &AllowedSubcommand, options: &[&str]) -> Result<(), GitError> {
+    if subcommand.name != "commit" {
+        return Ok(());
+    }
+    let has = |name: &str| options.contains(&name);
+    if has("-m") || has("--message") || (has("--amend") && has("--no-edit")) {
+        return Ok(());
+    }
+    Err(GitError::MessageRequired)
 }
 
 fn check_arguments(subcommand: &AllowedSubcommand, arguments: &[&str]) -> Result<(), GitError> {

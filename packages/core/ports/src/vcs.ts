@@ -97,7 +97,15 @@ export interface VcsCommit {
  *   every repository nested in it as a gitlink, which `add`, `status` and
  *   `diff` look into (filters);
  * - diffs and logs with `--no-ext-diff --no-textconv` (`diff.external`,
- *   `diff.<name>.command` and `diff.<name>.textconv`);
+ *   `diff.<name>.command` and `diff.<name>.textconv`), and with
+ *   `-c diff.submodule=short`, so no submodule's own diff programs run;
+ * - commits with the message it is given (`commit.template`, which can name
+ *   any file whose text would otherwise become the message);
+ * - passes `-c core.alternateRefsCommand=true`, since `pull` would run it
+ *   locally for every alternate, and blanks `fetch.bundleURI`, which would
+ *   read objects and refs from any local file;
+ * - passes `-c maintenance.auto=false -c gc.auto=0`, so no automatic `gc`
+ *   runs `gc.recentObjectsHook`;
  * - passes `-c commit.gpgSign=false -c push.gpgSign=false
  *   -c log.showSignature=false` (`gpg.program`, `gpg.ssh.defaultKeyCommand`
  *   and the other signing programs);
@@ -121,8 +129,8 @@ export interface VcsCommit {
  *
  * Out of scope, because no port method reaches them: merge drivers
  * (`pull` is fast-forward only), `submodule.*.update` (no submodule
- * command), and a remote server's own config, such as
- * `core.alternateRefsCommand` (it runs on another machine). Where a
+ * command), and a remote server's own config, which runs on another
+ * machine. Where a
  * workspace's config would make a program run, the adapter neutralises it
  * as above rather than refusing the workspace, so a cloned repository that
  * names one still works.

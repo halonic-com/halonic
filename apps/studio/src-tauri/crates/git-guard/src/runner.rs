@@ -33,6 +33,20 @@ const HARDENING_CONFIG: &[(&str, &str)] = &[
     ("fetch.recurseSubmodules", "false"),
     ("push.recurseSubmodules", "no"),
     ("status.submoduleSummary", "false"),
+    // `diff.submodule=diff` would run `git diff` inside each submodule,
+    // without `--no-ext-diff` and `--no-textconv`.
+    ("diff.submodule", "short"),
+    // Run through the shell for every alternate when fetching; `true`
+    // names no refs, which only loses a shortcut.
+    ("core.alternateRefsCommand", "true"),
+    // No automatic maintenance after `commit` or `pull`: it runs
+    // `gc.recentObjectsHook`, and `gc` detaches from the process group the
+    // time limit stops.
+    ("maintenance.auto", "false"),
+    ("gc.auto", "0"),
+    // A bundle named here is read on `pull`, from any file, and its objects
+    // and refs go into the repository, ready to be pushed. Empty: none.
+    ("fetch.bundleURI", ""),
     // A cookie file the repository names is never written to.
     ("http.saveCookies", "false"),
 ];
@@ -222,10 +236,10 @@ impl GitRunner {
             if std::fs::symlink_metadata(folder.join(".git")).is_err() {
                 continue;
             }
+            // A `.git` git can't follow here could still be one it follows
+            // later, so it is refused rather than skipped.
             let located = self.run_internal(&folder, None, LOCATE_ARGS, deadline)?;
-            if located.code != Some(0) {
-                continue;
-            }
+            check_listing(located.code)?;
             let nested = check_located(folders, &located.stdout)?;
             if visited.contains(&nested.top) {
                 continue;
@@ -362,3 +376,7 @@ fn is_git_variable(name: &std::ffi::OsStr) -> bool {
 #[cfg(test)]
 #[path = "runner_tests.rs"]
 mod tests;
+
+#[cfg(all(test, unix))]
+#[path = "runner_fetch_tests.rs"]
+mod fetch_tests;

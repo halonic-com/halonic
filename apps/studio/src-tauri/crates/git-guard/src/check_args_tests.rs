@@ -140,6 +140,31 @@ fn git_allow_list_checks_option_values() {
 }
 
 #[test]
+fn git_allow_list_makes_commit_say_where_its_message_comes_from() {
+    for call in [
+        "commit -m first-note",
+        "commit --message=first-note",
+        "commit --allow-empty-message -m ",
+        "commit --amend --no-edit",
+        "commit --amend -m second-note",
+    ] {
+        assert_eq!(check(call), Ok(()), "{call}");
+    }
+    // Without a message git takes `commit.template`, which the repository's
+    // config can point at any file.
+    for call in [
+        "commit",
+        "commit --allow-empty-message",
+        "commit --allow-empty --allow-empty-message -q",
+        "commit --amend",
+        "commit --no-edit",
+        "commit -- -m",
+    ] {
+        assert_eq!(check(call), Err(GitError::MessageRequired), "{call}");
+    }
+}
+
+#[test]
 fn git_allow_list_takes_urls_only_through_remote() {
     let refused = [
         "push https://git.acme.example/acme/notes.git main",
