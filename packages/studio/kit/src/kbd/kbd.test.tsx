@@ -16,6 +16,8 @@ verifies("kit.kbd", () => {
     expect(keys[0]?.className).toContain("font-mono text-caption text-fg-muted");
     expect(keys[0]?.className).toContain("h-5 min-w-5");
     expect(keys[0]?.className).toContain("rounded-xs bg-surface-muted px-1");
+    // In the active menu item, on its muted fill, the box steps up to border.
+    expect(keys[0]?.className).toContain("on-muted:bg-border on-muted:text-fg");
   });
 
   it("keeps a key that appears twice", () => {

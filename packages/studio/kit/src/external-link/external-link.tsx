@@ -31,7 +31,7 @@ export type ExternalLinkProps = ExternalLinkToAddress | ExternalLinkToRequestedA
 /** The inline link style: accent text, underlined on hover (base component specs, 17.1). */
 const linkClasses = [
   "rounded-xs text-accent-text underline-offset-2 hover:underline focus-ring",
-  "phone:inline-flex phone:min-h-touch phone:items-center",
+  "touch:hit-touch phone:inline-flex phone:min-h-touch phone:items-center",
 ].join(" ");
 
 /**
