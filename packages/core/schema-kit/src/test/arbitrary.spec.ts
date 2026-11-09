@@ -44,7 +44,7 @@ const INTERESTING_TEXTS = [
   "\u0000",
 ];
 
-export const interestingTexts = fc.constantFrom(...INTERESTING_TEXTS);
+const interestingTexts = fc.constantFrom(...INTERESTING_TEXTS);
 
 const anyText = fc.oneof(
   { weight: 3, arbitrary: interestingTexts },
@@ -349,7 +349,10 @@ function withOneFault(documents: fc.Arbitrary<unknown>): fc.Arbitrary<unknown> {
       const places = placesIn(document);
       if (fault === "wrong type") return replaceAt(document, pick(places) ?? [], value);
       if (fault === "missing key") {
-        const keyPlaces = places.filter((path) => isMap(valueAt(document, path.slice(0, -1))));
+        // The document itself has no key to leave out, so the root is never picked.
+        const keyPlaces = places.filter(
+          (path) => path.length > 0 && isMap(valueAt(document, path.slice(0, -1))),
+        );
         const path = pick(keyPlaces);
         return path === undefined ? document : replaceAt(document, path, OMITTED);
       }
