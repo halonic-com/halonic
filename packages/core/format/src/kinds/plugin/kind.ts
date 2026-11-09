@@ -1,4 +1,5 @@
 import type { FileKind } from "../../kind.ts";
+import { checkPlugin } from "./checks.ts";
 import { Plugin } from "./schema.ts";
 
 /**
@@ -13,4 +14,5 @@ export const pluginKind: FileKind<Plugin> = {
   schema: Plugin,
   places: [],
   idFromPlace: "none",
+  check: checkPlugin,
 };

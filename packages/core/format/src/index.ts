@@ -39,6 +39,8 @@ export {
 } from "./kinds/integration/schema.ts";
 export type { KnowledgeSource } from "./kinds/knowledge/schema.ts";
 export type { ModelAlias, Models } from "./kinds/models/schema.ts";
+export { backendSheet, pluginFromIntegrationSheet } from "./kinds/plugin/backend.ts";
+export { checkPlugin } from "./kinds/plugin/checks.ts";
 export {
   ARGUMENT_NAME_PATTERN,
   DEFAULT_BACKEND_ENTRY,
