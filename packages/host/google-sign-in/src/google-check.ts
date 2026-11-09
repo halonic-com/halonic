@@ -53,9 +53,22 @@ export function checkGoogleCheckUrl(url: string, service: SetupService): URL {
   return parsed;
 }
 
-/** Whether the host is one of the service's `googleApis` hosts, or Google's shared API host. */
+/**
+ * Whether the host is one of the service's `googleApis` hosts, or Google's
+ * shared API host. A listed host counts only when it is itself a Google API
+ * host: the format schema refuses a sheet that lists another, but this
+ * package takes a `SetupService` from its caller and holds on its own.
+ */
 function isServiceApiHost(hostname: string, service: SetupService): boolean {
-  return hostname === sharedApiHost || service.googleApis.some(({ api }) => api === hostname);
+  if (hostname === sharedApiHost) {
+    return true;
+  }
+  return service.googleApis.some(({ api }) => api === hostname && isGoogleApiHost(api));
+}
+
+/** Whether the host is a name under `googleapis.com`, such as `gmail.googleapis.com`. */
+function isGoogleApiHost(hostname: string): boolean {
+  return hostname.endsWith(".googleapis.com");
 }
 
 /** What the checks after sign-in need. */

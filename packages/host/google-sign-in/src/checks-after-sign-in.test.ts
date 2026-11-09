@@ -207,6 +207,24 @@ verifies("google-sign-in.check-request", () => {
     }
   });
 
+  it("refuses a check URL on a host the service lists but that isn't a Google API host", async () => {
+    const listedHosts = ["evil.example", "googleapis.com", "evilgoogleapis.com"];
+    for (const api of listedHosts) {
+      const server = testServer(() => tokenSuccess());
+      const service = {
+        ...gmailService,
+        googleApis: [{ api, name: "Not a Google API" }],
+        googleCheck: { method: "GET" as const, url: `https://${api}/me` },
+      };
+
+      await expect(server.start({ ...startInput, services: [service] })).rejects.toThrow(
+        RangeError,
+      );
+      expect(server.ports.pendingSignIns.authUrlFor(fakeAccountRef)).toBeUndefined();
+      expect(server.google.requests).toEqual([]);
+    }
+  });
+
   it("allows the service's API host, Google's shared API host and the default port written out", async () => {
     const sentTo = {
       "https://www.googleapis.com/v1/me": "https://www.googleapis.com/v1/me",
