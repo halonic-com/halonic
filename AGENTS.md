@@ -72,14 +72,14 @@ reports for now: it doesn't block until its approval lookup is live. See `docs/g
 
 ## Code rules
 
-- Readable over short: full names, early returns, no nested ternaries. Comments explain _why_.
-- Named exports only. No barrels and no `export *`; each package has one explicit `src/index.ts`.
+- Readable over short: full names, early returns. Comments explain _why_.
+- No barrels; each package has one explicit `src/index.ts`.
+- The linter enforces the rest of the style: named exports only, `.ts` on relative imports, no `any`, `@ts-ignore` or `!`, no nested ternaries, sorted imports, complexity of 15 or less per function, and the layer import bans above. See `tooling/config/biome.jsonc`; `pnpm verify` runs it.
 - No central lists: register through `feature.ts` and folder discovery, never by editing a shared `switch`.
 - Thin commands and screens: a CLI command or Studio screen parses its input, calls one app
   service, and formats the result. No business logic in commands or screens
   ([details](docs/guides/code-style.md#thin-commands-and-screens)).
-- Relative imports carry the `.ts` extension.
-- No `any`, no `@ts-ignore`, no `!` without a comment. Errors are never swallowed.
+- Errors are never swallowed.
 - Keep files under 300 lines (the check fails at 500) and functions under 60.
 - Every exported function, type and class has a doc comment.
 - No new dependency without an entry in `tooling/check/dependencies.json` and the maintainer's
@@ -93,7 +93,7 @@ reports for now: it doesn't block until its approval lookup is live. See `docs/g
 The engine and server must run on a laptop and on any cloud. Targets (`packages/targets/*`) and
 deploy packages are planned; the rules that name them apply once they exist.
 
-- No Node-only APIs in ports, core or `host/server`: Web-standard types only. `node:*` belongs only in Node adapters, the Node target and deploy packages.
+- No Node-only APIs in ports, core or `host/server`: Web-standard types only. `node:*` belongs only in Node adapters, the Node target and deploy packages (imports are linted, see `tooling/config/biome.jsonc`).
 - No `setTimeout`/`setInterval` or long-lived memory in core. Timers go through the `Scheduler` port, and the engine advances one step per call.
 - No server state in module-level memory. Sessions, limits and locks go behind ports.
 - Provider SDKs and tools only in `packages/adapters/<provider>-*` and `packages/targets/<target>/*`.
