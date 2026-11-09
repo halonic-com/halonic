@@ -165,20 +165,25 @@ card.
 | --------- | -------------------------------------------------------------------------------------------- |
 | `title`   | The header's title in `text-section`, a heading (`headingLevel`, 3 by default)               |
 | `label`   | Instead of a title: a small caption label in capitals, such as the routine's When and Starts |
-| `actions` | On the right of the header: `sm` ghost buttons or a switch                                   |
-| `onClick` | The whole card is one button. It then has no header and nothing clickable inside             |
+| `actions` | On the right of the header: `sm` ghost buttons or a switch. Only with a `title` or `label`   |
+| `onClick` | The whole card is one `<button>`: no header, nothing clickable, only phrasing content inside |
 | `state`   | `disabled` for a Paused or Not connected card, which still says why; `error`                 |
 
 A card with a title or a label is a `<section>` named by it. Write the label in sentence case
-("When"): CSS draws the capitals, so a screen reader says the word, not the letters.
+("When"): CSS draws the capitals, so a screen reader says the word, not the letters. An empty
+title or label counts as none, but never takes the actions with it: they keep their header row,
+in an unnamed `<div>`.
 
-| State    | What shows                                                                  |
-| -------- | --------------------------------------------------------------------------- |
-| Default  | `surface`, a 1px `border` edge, a 12px radius, no shadow                    |
-| Hover    | Only an interactive card: a `border-strong` edge and `shadow-1`             |
-| Focus    | Only an interactive card: the standard focus ring                           |
-| Disabled | Text in `fg-disabled`, no hover. An interactive one still opens, to say why |
-| Error    | A `danger` edge. The card's content says what failed, with a way to open it |
+Inside an interactive card put only phrasing content: text, `<span>`s and icons, never a `<div>`,
+`<p>` or heading, because it all sits inside a `<button>`.
+
+| State    | What shows                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------- |
+| Default  | `surface`, a 1px `border` edge, a 12px radius, no shadow                                                |
+| Hover    | Only an interactive card: a `border-strong` edge (an error card keeps its `danger` edge) and `shadow-1` |
+| Focus    | Only an interactive card: the standard focus ring                                                       |
+| Disabled | Text in `fg-disabled`, no hover. An interactive one still opens, to say why                             |
+| Error    | A `danger` edge. The card's content says what failed, with a way to open it                             |
 
 **On a phone** cards are rare: lists are flush instead. An interactive card shows the
 `surface-subtle` fill while pressed and has no hover.

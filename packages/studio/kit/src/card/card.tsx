@@ -27,17 +27,23 @@ interface LabelHeader {
   readonly headingLevel?: never;
 }
 
+/** A card with no header: it has nowhere to put actions. */
 interface NoHeader {
   readonly title?: never;
   readonly label?: never;
   readonly headingLevel?: never;
+  readonly actions?: never;
+}
+
+/** Actions belong to a header, so only a card with a title or a label takes them. */
+interface HeaderActions {
+  /** `sm` ghost buttons or a switch, on the right of the header. */
+  readonly actions?: ReactNode;
 }
 
 /** A card that shows things, with optional actions on the right of its header. */
 type StaticCard = CardBase &
-  (TitleHeader | LabelHeader | NoHeader) & {
-    /** `sm` ghost buttons or a switch, on the right of the header. */
-    readonly actions?: ReactNode;
+  ((TitleHeader & HeaderActions) | (LabelHeader & HeaderActions) | NoHeader) & {
     readonly onClick?: never;
   };
 
@@ -61,16 +67,27 @@ const stateClasses: Record<CardState, string> = {
 const box = "rounded-md border bg-surface text-left";
 
 /** Only an interactive card reacts: a lifted edge on hover, the hover fill while pressed. */
-const interactiveClasses = [
-  "block w-full transition-colors focus-ring active:bg-surface-subtle",
-  "hover:border-border-strong hover:shadow-1",
+const reacts = [
+  "transition-[color,background-color,border-color,box-shadow]",
+  "active:bg-surface-subtle hover:shadow-1",
 ].join(" ");
+
+/**
+ * An interactive card's classes by state. A disabled card still opens (to say why it's paused),
+ * but it doesn't light up; an error card lifts but keeps its `danger` edge.
+ */
+const interactiveClasses: Record<CardState, string> = {
+  default: `block w-full focus-ring ${reacts} hover:border-border-strong`,
+  disabled: "block w-full focus-ring",
+  error: `block w-full focus-ring ${reacts}`,
+};
 
 const headerClasses = "flex items-center gap-3 border-b border-border px-4 py-3";
 
 /**
  * A self-contained summary on a page: a routine, a model provider, a stat. Never a card inside a
- * card. With `onClick` the whole card is one button; it then holds no buttons of its own.
+ * card. With `onClick` the whole card is one `<button>`; it then holds no buttons of its own, and
+ * only phrasing content (text, `<span>`, icons), never a `<div>`, `<p>` or heading.
  *
  * @example
  * <Card title="Model providers" actions={<Button size="sm" variant="ghost">Add</Button>}>…</Card>
@@ -82,9 +99,7 @@ export function Card(props: CardProps) {
   const headerId = useId();
 
   if (props.onClick !== undefined) {
-    // A disabled card still opens (to say why it's paused), but it doesn't light up.
-    const reacts = state === "disabled" ? "block w-full focus-ring" : interactiveClasses;
-    const classes = `${box} ${stateClasses[state]} ${reacts} p-4`;
+    const classes = `${box} ${stateClasses[state]} ${interactiveClasses[state]} p-4`;
     return (
       <button type="button" className={classes} onClick={props.onClick}>
         {props.children}
@@ -93,19 +108,30 @@ export function Card(props: CardProps) {
   }
 
   const header = cardHeader(props, headerId);
+  const actions = isShown(props.actions) ? (
+    <div className="ml-auto flex shrink-0 items-center gap-2">{props.actions}</div>
+  ) : null;
   const classes = `${box} ${stateClasses[state]}`;
-  if (header === null) {
+  if (header === null && actions === null) {
     return <div className={`${classes} p-4`}>{props.children}</div>;
+  }
+  const body = (
+    <>
+      <div className={headerClasses}>
+        {header}
+        {actions}
+      </div>
+      <div className="p-4">{props.children}</div>
+    </>
+  );
+  // An empty title must never take the card's controls with it: the actions keep their row, in
+  // an unnamed card.
+  if (header === null) {
+    return <div className={classes}>{body}</div>;
   }
   return (
     <section className={classes} aria-labelledby={headerId}>
-      <div className={headerClasses}>
-        {header}
-        {isShown(props.actions) ? (
-          <div className="ml-auto flex shrink-0 items-center gap-2">{props.actions}</div>
-        ) : null}
-      </div>
-      <div className="p-4">{props.children}</div>
+      {body}
     </section>
   );
 }

@@ -65,7 +65,9 @@ verifies("kit.card", () => {
     const both = <Card title="When" label="When" children="…" />;
     // @ts-expect-error An interactive card is one target, so it has no actions.
     const nested = <Card onClick={() => {}} actions={run} children="…" />;
-    expect([both, nested]).toHaveLength(2);
+    // @ts-expect-error Actions sit in a header, so a card without a title or label has none.
+    const headless = <Card actions={run} children="…" />;
+    expect([both, nested, headless]).toHaveLength(3);
   });
 
   it("is one button as a whole when interactive, lifting its edge on hover", async () => {
@@ -73,7 +75,8 @@ verifies("kit.card", () => {
     const { container } = render(<Card onClick={onClick}>Daily digest</Card>);
     const button = container.querySelector("button") as HTMLButtonElement;
     expect(button.type).toBe("button");
-    expect(button.className).toContain("hover:border-border-strong hover:shadow-1");
+    expect(button.className).toContain("hover:shadow-1");
+    expect(button.className).toContain("hover:border-border-strong");
     expect(button.className).toContain("focus-ring");
     expect(button.className).toContain("active:bg-surface-subtle");
     await click(button);
@@ -93,9 +96,38 @@ verifies("kit.card", () => {
     expect(container.querySelectorAll("div.p-4")).toHaveLength(2);
   });
 
+  it("keeps its actions when the title turns out empty, in an unnamed header row", () => {
+    const name = "";
+    const { container } = render(
+      <Card title={name && `Agents of ${name}`} actions={<button type="button">Add</button>}>
+        No agents yet
+      </Card>,
+    );
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.tagName).toBe("DIV");
+    expect(card.hasAttribute("aria-labelledby")).toBe(false);
+    expect(card.querySelector("h1, h2, h3, h4")).toBeNull();
+    const row = card.firstElementChild as HTMLElement;
+    expect(row.className).toContain("border-b border-border px-4 py-3");
+    expect(row.textContent).toBe("Add");
+    expect(card.lastElementChild?.textContent).toBe("No agents yet");
+  });
+
   it("shows an error with a danger edge", () => {
     const { container } = render(<Card state="error">Last run failed</Card>);
     expect((container.firstElementChild as HTMLElement).className).toContain("border-danger");
+  });
+
+  it("keeps its danger edge on hover when interactive", () => {
+    const { container } = render(
+      <Card state="error" onClick={() => {}}>
+        Last run failed
+      </Card>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.className).toContain("border-danger");
+    expect(button.className).toContain("hover:shadow-1");
+    expect(button.className).not.toContain("hover:border-");
   });
 
   it("is disabled with fg-disabled text and no hover, and still opens", async () => {
