@@ -26,6 +26,8 @@ export {
   type CheckboxUnavailable,
 } from "./checkbox/checkbox.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
+export { Dialog } from "./dialog/dialog.tsx";
+export type { DialogConfirm, DialogProps, DialogSize } from "./dialog/dialog-props.ts";
 export {
   EmptyState,
   type EmptyStateAction,

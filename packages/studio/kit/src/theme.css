@@ -161,6 +161,9 @@
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
   --container-empty: 360px; /* the Empty state's text and buttons */
+  --container-dialog-sm: 440px; /* confirmations and short forms */
+  --container-dialog-md: 560px; /* a form whose options show their own fields or hints */
+  --container-dialog-lg: 720px; /* Settings */
   --breakpoint-wide: 900px; /* wide: is the full layout; max-wide: is compact (sidebar collapsed) */
   /* No --breakpoint-phone: any --breakpoint-* makes Tailwind generate its own phone: (600px and
      up), which would clash with the phone: variant below. */
@@ -218,6 +221,9 @@
  * touch. An icon button is then 40px under touch: and still 48px on a phone.
  */
 @custom-variant phone (@media (width < 600px));
+
+/* short: a window too short for a dialog's fixed header (specs 8). em follows the text size. */
+@custom-variant short (@media (max-height: 36em));
 
 /*
  * on-muted: a neutral fill placed on a surface-muted fill (an unselected tab, the active menu
@@ -454,6 +460,19 @@
     max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
     max-height: calc(var(--max-rows) * 1lh);
   }
+}
+
+/* A Dialog's frame (specs 8) inside the window's edges. The vh line is for an engine without dvh. */
+@utility dialog-frame {
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
+}
+
+/* A Dialog with a fixed --dialog-height (Settings), still inside the frame's limit. */
+@utility dialog-height {
+  height: min(var(--dialog-height), calc(100vh - 64px));
+  height: min(var(--dialog-height), calc(100dvh - 64px));
 }
 
 /* ---------------------------------------------------------------- Safe areas on a phone */

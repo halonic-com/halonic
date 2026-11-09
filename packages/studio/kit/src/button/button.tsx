@@ -34,13 +34,15 @@ interface ButtonBase {
    * The button can't be used now. It stays focusable, ignores clicks and points screen readers
    * at the reason. There's no `disabled` prop on purpose (component specs 23, A1).
    */
-  readonly unavailable?: ButtonUnavailable;
+  readonly unavailable?: ButtonUnavailable | undefined;
   /** `submit` only for a form's confirming button. */
   readonly type?: "button" | "submit";
-  readonly onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  readonly onClick?: ((event: MouseEvent<HTMLButtonElement>) => void) | undefined;
   readonly onFocus?: (event: FocusEvent<HTMLButtonElement>) => void;
   /** `-1` only inside a grid, which moves focus with the arrow keys (a List row's More button). */
   readonly tabIndex?: 0 | -1;
+  /** For a nearby control that points at this one, such as a Dialog's Cancel while it's busy. */
+  readonly id?: string;
   readonly ref?: Ref<HTMLButtonElement>;
 }
 
@@ -54,7 +56,7 @@ interface ButtonWithLabel extends ButtonBase {
    * The label while `busy`: "Creating…". The button keeps the width of the wider of its two
    * labels, before, during and after, so nothing next to it moves.
    */
-  readonly busyLabel?: string;
+  readonly busyLabel?: string | undefined;
   readonly label?: never;
 }
 
@@ -197,6 +199,7 @@ export function Button(props: ButtonProps) {
   return (
     <button
       ref={props.ref}
+      id={props.id}
       type={props.type ?? "button"}
       className={classes.trim()}
       aria-label={props.label}

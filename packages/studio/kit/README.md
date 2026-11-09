@@ -208,6 +208,77 @@ Inside an interactive card put only phrasing content: text, `<span>`s and icons,
 **On a phone** cards are rare: lists are flush instead. An interactive card shows the
 `surface-subtle` fill while pressed and has no hover.
 
+## Dialog
+
+A decision or a short form that must be finished or cancelled. It replaces every native
+`prompt`, `confirm` and `alert`. It's a native `<dialog>` opened with `showModal()`, so the focus
+trap, the inert page behind it and Escape come from the browser. **Mounting it opens it**; the
+screen unmounts it to close it.
+
+```tsx
+{
+  deleting ? (
+    <Dialog
+      title="Delete agent?"
+      confirm={{ label: "Delete agent", variant: "danger", busyLabel: "Deleting…" }}
+      busy={busy}
+      error={error}
+      onConfirm={remove}
+      onCancel={() => setDeleting(false)}
+      returnFocus={() => nextRowOrEmptyTitle()}
+    >
+      Sorter and its history are deleted from this workspace.
+    </Dialog>
+  ) : null;
+}
+```
+
+| Prop          | What it is                                                                             |
+| ------------- | -------------------------------------------------------------------------------------- |
+| `title`       | The dialog's name, in `text-heading`                                                   |
+| `size`        | `sm` 440px (the default), `md` 560px for a form with hints, `lg` 720px for Settings    |
+| `height`      | A fixed height in px instead of one that follows the content (Settings: 640). Desktop  |
+| `flush`       | No body padding, for a body that lays out and scrolls its own columns                  |
+| `form`        | The body is a form: the confirming button submits it, focus starts in the first field  |
+| `confirm`     | `{ label, variant?, busyLabel?, unavailable? }`: "Delete agent", `primary` or `danger` |
+| `onConfirm`   | The confirming button or a submit. The screen checks its fields and shows every error  |
+| `cancelLabel` | "Cancel" by default, or what cancelling does: "Not now"                                |
+| `onCancel`    | Cancel, the ✕, Escape and the overlay. The screen unmounts the Dialog                  |
+| `closeButton` | `false` removes the ✕, for a decision whose cancel button says what it does            |
+| `closeLabel`  | The ✕'s name, "Close" and the title by default                                         |
+| `busy`        | The request runs: the confirming button is busy and the rest of the Dialog waits       |
+| `error`       | A failed request's message, read through the alert slot at the end of the body         |
+| `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2)                 |
+
+Never wider than the window less 32px nor taller than the window less 64px; the body scrolls and
+the header and footer don't. When the window is short (`short:`, under 36em), the header scrolls
+with the body and only the footer stays. It fades in over the `overlay` colour, nothing else moves.
+
+| State      | What happens                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| Open       | Focus on the first field of a form, or on Cancel in a confirmation                            |
+| Cancel     | Escape runs the same `onCancel` as Cancel. The overlay cancels only before anything was typed |
+| Incomplete | The confirming button stays pressable; the screen shows every field error, focuses the first  |
+| Busy       | The confirming button is busy; Cancel and ✕ are unavailable; Escape and the overlay wait      |
+| Error      | `error` shows a `danger` Callout as the last thing in the body. Focus stays on the button     |
+
+**The alert slot.** The body ends in an always-mounted `role="alert"` with no box of its own, so
+screen readers know it before the error arrives and it takes no room while empty. On each attempt
+it empties, and fills again a frame after the request ends, so a second failure with the same
+words is read again. The Callout inside it has no role.
+
+**Focus goes back** to the element that opened the Dialog. When that element has gone (a deleted
+row) or is inert, it goes to `returnFocus()`, which runs after the close, so it can name an
+element the same change added; else to the page's `h1`. Never to `body`.
+
+**When the browser closes it anyway** (Chrome lets a second Escape through while busy),
+`onCancel` still runs. The request carries on, and its result goes to a toast.
+
+**On a phone** a confirmation stays a dialog, the screen's width less 16px on each side, with no
+✕: its buttons are stacked, full width and 48px, the confirming one first in the DOM, so focus
+moves in the order you see. A `form` becomes a form sheet once the Sheet lands; until then it
+draws as a dialog too.
+
 ## EmptyState
 
 A list, page or panel with nothing in it yet, or a search with no results. With `tone="error"`,
