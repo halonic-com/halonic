@@ -346,7 +346,11 @@ jobs:
           for sha in $(git rev-list --first-parent --max-count=10 "$MERGE_BASE"); do
             git checkout --quiet --detach "$sha"
             git clean -ffdxq
-            if pnpm install --frozen-lockfile 2>&1 | tee "$log"; then
+            # A step's default shell has no pipefail, so no `| tee` here.
+            status=0
+            pnpm install --frozen-lockfile > "$log" 2>&1 || status=$?
+            cat "$log"
+            if [ "$status" = 0 ]; then
               if [ "$sha" != "$MERGE_BASE" ]; then
                 echo "::warning title=merge-base::The merge base ${MERGE_BASE:0:7} doesn't install, so the guard's baseline is ${sha:0:7}, the newest commit before it on main that does."
               fi
