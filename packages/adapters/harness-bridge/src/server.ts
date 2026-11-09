@@ -7,11 +7,11 @@ import { openBridge } from "./bridge.ts";
 import type { BodyLimits } from "./read-body.ts";
 
 /** The limits a bridge uses unless it is given others. */
-export const defaultBridgeLimits: BodyLimits = {
+export const defaultBridgeLimits: Readonly<BodyLimits> = Object.freeze({
   // Model requests carry the whole conversation, images and PDFs included, so they can be large.
   maxBytes: 32 * 1024 * 1024,
   timeoutMs: 60_000,
-};
+});
 
 /** How to set up {@link NodeHarnessBridgeServer}. */
 export interface NodeHarnessBridgeServerOptions {

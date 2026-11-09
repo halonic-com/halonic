@@ -78,7 +78,12 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
     if (Number(request.headers["content-length"] ?? 0) > settings.limits.maxBytes) {
       throw bodyTooLarge(settings.limits);
     }
-    const readBody = () => readRequestBody(request, settings.limits);
+    // A body can be read only once, so a second call gets the same read.
+    let body: Promise<Uint8Array> | undefined;
+    const readBody = () => {
+      body ??= readRequestBody(request, settings.limits);
+      return body;
+    };
     await route.handle({ run, request, response, readBody, signal });
   } catch (error) {
     if (response.headersSent) {
@@ -104,14 +109,17 @@ function findRoute(
 /** Listens on a free loopback port and resolves with that port. */
 function listenOnLoopback(server: Server): Promise<number> {
   return new Promise((resolve, reject) => {
-    server.once("error", (cause) => {
+    const onError = (cause: Error) => {
       reject(
         new KindedError("unavailable", "Halonic couldn't start the bridge on this computer.", {
           cause,
         }),
       );
-    });
+    };
+    server.once("error", onError);
     server.listen(0, loopbackHost, () => {
+      // Listening worked, so this listener has nothing left to report.
+      server.off("error", onError);
       const address = server.address();
       // A TCP server always has an address object once it listens; a string is a pipe's path.
       if (address === null || typeof address === "string") {

@@ -64,6 +64,22 @@ verifies("harness-bridge.server", () => {
         404,
       );
     });
+
+    it("gives a route that reads the body twice the same body both times", async () => {
+      const twice: BridgeRoute = {
+        ...echo,
+        handle: async ({ readBody, response }) => {
+          const first = await readBody();
+          const second = await readBody();
+          response.end(`${Buffer.from(first)}|${Buffer.from(second)}`);
+        },
+      };
+      const bridge = await open([twice]);
+      expect(await send(bridge, "/echo", { token: bridge.token, body: "hi" })).toEqual({
+        status: 200,
+        text: "hi|hi",
+      });
+    });
   });
 
   describe("limits", () => {
