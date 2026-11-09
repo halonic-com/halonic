@@ -1,6 +1,18 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
-import type { Digest, ToolApproval, ToolApprovalKey, ToolApprovalStore } from "./index.ts";
+import {
+  type Digest,
+  isUnreadableToolApprovalError,
+  type ListedToolFingerprint,
+  maxWaitingVersions,
+  type ToolApproval,
+  type ToolApprovalKey,
+  type ToolApprovalStore,
+  type ToolServer,
+  UnreadableToolApprovalError,
+  type WaitingVersion,
+  type WrittenDigest,
+} from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -9,19 +21,21 @@ const approval: ToolApproval = {
   location: "/workspaces/acme",
   source: "notes",
   name: "lookup",
-  hash: "htl1:ab",
-  approved: {
-    server: {
-      kind: "stdio",
-      command: "npx",
-      args: ["-y", "@acme/notes-mcp@2.3.1"],
-      pin: {
-        registry: "npm",
-        registryUrl: "https://registry.npmjs.org",
-        package: "@acme/notes-mcp",
-        version: "2.3.1",
-      },
+  server: {
+    kind: "stdio",
+    command: "npx",
+    args: ["-y", "@acme/notes-mcp@2.3.1"],
+    pin: {
+      registry: "npm",
+      registryUrl: "https://registry.npmjs.org",
+      package: "@acme/notes-mcp",
+      version: "2.3.1",
     },
+    env: null,
+  },
+  fingerprint: "htl1:ab",
+  tool: {
+    name: "notes__lookup",
     description: "Finds a note by its title.",
     parameters: { type: "object" },
   },
@@ -29,8 +43,10 @@ const approval: ToolApproval = {
 };
 
 verifies("ports.listed-tool-approval", () => {
-  typeTest("only stores approvals: get, approve, revoke and list", () => {
-    expectTypeOf<keyof ToolApprovalStore>().toEqualTypeOf<"get" | "approve" | "revoke" | "list">();
+  typeTest("only stores: get, approve, revoke, list and noteWaiting", () => {
+    expectTypeOf<keyof ToolApprovalStore>().toEqualTypeOf<
+      "get" | "approve" | "revoke" | "list" | "noteWaiting"
+    >();
     expectTypeOf<ToolApprovalStore["get"]>().parameters.toEqualTypeOf<[key: ToolApprovalKey]>();
     expectTypeOf<ToolApprovalStore["get"]>().returns.toEqualTypeOf<Promise<ToolApproval | null>>();
     expectTypeOf<ToolApprovalStore["approve"]>().parameters.toEqualTypeOf<
@@ -40,6 +56,12 @@ verifies("ports.listed-tool-approval", () => {
       [location: string, source: string]
     >();
     expectTypeOf<ToolApprovalStore["list"]>().returns.toEqualTypeOf<Promise<ToolApproval[]>>();
+    expectTypeOf<ToolApprovalStore["noteWaiting"]>().parameters.toEqualTypeOf<
+      [key: ToolApprovalKey, version: WaitingVersion]
+    >();
+    expectTypeOf<ToolApprovalStore["noteWaiting"]>().returns.toEqualTypeOf<
+      Promise<WaitingVersion[]>
+    >();
   });
 
   typeTest("hashes through a Digest port, not through code of its own", () => {
@@ -47,23 +69,85 @@ verifies("ports.listed-tool-approval", () => {
     expectTypeOf<Digest["sha256"]>().returns.toEqualTypeOf<Promise<Uint8Array>>();
   });
 
-  it("keeps the hash and the server with each approval", () => {
-    // @ts-expect-error: an approval is tied to a hash
-    const unbound: ToolApproval = { ...approval, hash: undefined };
-    const withoutServer: ToolApproval = {
+  it("names an approval that can't be read by its source and tool, as fields", () => {
+    const cause = new SyntaxError("Unexpected end of JSON input");
+    const error = new UnreadableToolApprovalError(
+      { location: "/workspaces/acme", source: "notes" },
+      "lookup",
+      'The approval for tool "lookup" can\'t be read.',
+      { cause },
+    );
+    expect(error).toMatchObject({
+      name: "UnreadableToolApprovalError",
+      location: "/workspaces/acme",
+      source: "notes",
+      toolName: "lookup",
+      cause,
+    });
+    expect(isUnreadableToolApprovalError(error)).toBe(true);
+
+    // One from another copy of this package is recognised by its name and fields.
+    const copied = Object.assign(new Error("copied"), {
+      name: "UnreadableToolApprovalError",
+      location: "/workspaces/acme",
+      source: "notes",
+      toolName: null,
+    });
+    expect(isUnreadableToolApprovalError(copied)).toBe(true);
+    expect(isUnreadableToolApprovalError({ ...copied })).toBe(false);
+    expect(isUnreadableToolApprovalError(Object.assign(copied, { toolName: 3 }))).toBe(false);
+    expect(isUnreadableToolApprovalError(new Error("The approval can't be read."))).toBe(false);
+  });
+
+  it("keeps the server, the fingerprint and the tool as shown with each approval", () => {
+    // @ts-expect-error: an approval is tied to a fingerprint
+    const unbound: ToolApproval = { ...approval, fingerprint: undefined };
+    // @ts-expect-error: an approval holds only at the server it was given at
+    const withoutServer: ToolApproval = { ...approval, server: undefined };
+    const withHeaderText: ToolApproval = {
       ...approval,
-      // @ts-expect-error: the server is part of what was approved
-      approved: { description: "", parameters: {} },
+      // @ts-expect-error: headers may hold a typed-in token, so only their digest is kept
+      server: { kind: "http", url: "https://notes.example.com/mcp", headers: { "X-Team": "a" } },
     };
-    const withHeaders: ToolApproval = {
+    const withoutEnv: ToolApproval = {
       ...approval,
-      approved: {
-        ...approval.approved,
-        // @ts-expect-error: headers hold secrets, so the server leaves them out
-        server: { kind: "http", url: "https://notes.example.com/mcp", headers: {} },
-      },
+      // @ts-expect-error: a stdio server's environment is part of its address
+      server: { kind: "stdio", command: "notes-mcp", args: [], pin: null },
     };
-    expect(approval.approved.server.kind).toBe("stdio");
-    expect([unbound, withoutServer, withHeaders]).toHaveLength(3);
+    const withoutSettings: ToolApproval = {
+      ...approval,
+      // @ts-expect-error: an integration's settings, such as its server's url, are part of its address
+      server: { kind: "integration", id: "notes", version: "1.2.0" },
+    };
+    // @ts-expect-error: a fingerprint names its version, `htl1:`
+    const unversioned: ToolApproval = { ...approval, fingerprint: "ab" };
+    expect(approval.tool.name).toBe("notes__lookup");
+    expect([
+      unbound,
+      withoutServer,
+      withHeaderText,
+      withoutEnv,
+      withoutSettings,
+      unversioned,
+    ]).toHaveLength(6);
+  });
+
+  typeTest("types the fingerprint as htl1: text", () => {
+    expectTypeOf<ToolApproval["fingerprint"]>().toEqualTypeOf<ListedToolFingerprint>();
+    expectTypeOf<WaitingVersion["fingerprint"]>().toEqualTypeOf<`htl1:${string}`>();
+  });
+
+  typeTest("keeps headers and the environment only as a sha256: digest", () => {
+    expectTypeOf<WrittenDigest>().toEqualTypeOf<`sha256:${string}`>();
+    expectTypeOf<
+      Extract<ToolServer, { kind: "http" }>["headers"]
+    >().toEqualTypeOf<WrittenDigest | null>();
+    expectTypeOf<
+      Extract<ToolServer, { kind: "stdio" }>["env"]
+    >().toEqualTypeOf<WrittenDigest | null>();
+  });
+
+  it("keeps a bounded number of waiting versions per tool", () => {
+    expect(maxWaitingVersions).toBeGreaterThan(3);
   });
 });
