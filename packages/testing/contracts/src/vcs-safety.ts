@@ -4,6 +4,7 @@ import {
   type MakeVcs,
   optionLikeMessages,
   optionLikePaths,
+  patternLikePaths,
   unsafeVcsPaths,
 } from "./vcs-harness.ts";
 import { changesOf, lines, sortChanges, stateOf } from "./vcs-helpers.ts";
@@ -15,6 +16,7 @@ import { changesOf, lines, sortChanges, stateOf } from "./vcs-helpers.ts";
 export function vcsSafetyCases(make: MakeVcs): void {
   unsafePathCases(make);
   optionLikeCases(make);
+  patternLikeCases(make);
   branchNameCases(make);
 }
 
@@ -98,7 +100,47 @@ function optionLikeCases(make: MakeVcs): void {
   });
 }
 
+function patternLikeCases(make: MakeVcs): void {
+  it.each(patternLikePaths)(
+    "treats the tracked file %j as a file, never a pattern",
+    async (path) => {
+      const { vcs, files } = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n", [path]: "1\n" });
+      for (const each of ["a.yaml", "b.yaml", path]) await files.write(each, "2\n");
+
+      await vcs.stage([path]);
+      expect(await changesOf(vcs.status())).toEqual(
+        sortChanges([
+          { path, status: "modified", staged: true },
+          { path: "a.yaml", status: "modified", staged: false },
+          { path: "b.yaml", status: "modified", staged: false },
+        ]),
+      );
+      await vcs.unstage([path]);
+      await vcs.discard([path]);
+      expect(await files.read(path)).toBe("1\n");
+      expect(await files.read("a.yaml")).toBe("2\n");
+      expect(await files.read("b.yaml")).toBe("2\n");
+    },
+  );
+
+  it.each(patternLikePaths)("discards the untracked file %j and nothing else", async (path) => {
+    const { vcs, files } = await make.repo({ "keep.txt": "1\n" });
+    for (const each of [path, "a.yaml", "b.yaml", "keep.yaml"]) await files.write(each, "new\n");
+    await vcs.discard([path]);
+    expect(await files.read(path)).toBeNull();
+    expect((await files.list()).sort()).toEqual(["a.yaml", "b.yaml", "keep.txt", "keep.yaml"]);
+  });
+}
+
 function branchNameCases(make: MakeVcs): void {
+  it("reads a checkout name only as a branch, and keeps the file of that name", async () => {
+    const harness = await make.repo({ "a.yaml": "1\n" });
+    await harness.files.write("a.yaml", "2\n");
+    const before = await stateOf(harness);
+    await expect(harness.vcs.checkout("a.yaml")).rejects.toThrow();
+    expect(await stateOf(harness)).toEqual(before);
+  });
+
   it("refuses a branch name that is an option or that git refuses, and changes nothing", async () => {
     const harness = await make.repo({ "a.yaml": "1\n" });
     const { vcs } = harness;

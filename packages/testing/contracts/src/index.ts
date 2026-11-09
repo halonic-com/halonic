@@ -64,6 +64,7 @@ export {
   type MakeVcs,
   optionLikeMessages,
   optionLikePaths,
+  patternLikePaths,
   unsafeVcsPaths,
   type VcsHarness,
   validBranchNames,

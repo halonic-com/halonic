@@ -24,6 +24,7 @@ describe("Vcs safety lists (contracts.vcs-safety)", () => {
     ["the name HEAD", "HEAD"],
     ["a .lock part", "a.lock"],
     ["a control character", "a\u007fb"],
+    ["the previous branch, which git expands", "@{-1}"],
   ])("has a branch name with %s", (_kind, name) => {
     expect(invalidBranchNames).toContain(name);
   });

@@ -100,6 +100,7 @@ export const invalidBranchNames: readonly string[] = [
   "a\nb",
   "a\u007fb",
   "a@{1}",
+  "@{-1}",
   ".hidden",
   "feature/.hidden",
   "a.lock",
@@ -135,6 +136,13 @@ export const optionLikePaths: readonly string[] = [
   "--output=written.txt",
   "--upload-pac=x",
 ];
+
+/**
+ * File names that are git pathspec patterns. A path is a file name, never a
+ * pattern, so each must touch only the file of that name: as a pattern,
+ * `*.yaml` would discard every `.yaml` file.
+ */
+export const patternLikePaths: readonly string[] = ["*.yaml", "?.yaml", "[ab].yaml"];
 
 /** Commit messages that are git options; each must be committed as the message. */
 export const optionLikeMessages: readonly string[] = [

@@ -70,9 +70,17 @@ export interface VcsCommit {
  *   `.studio`, `.env`, `.envrc` and `.env.*` in any case, with trailing dots
  *   or spaces or the code points HFS+ ignores, and any segment with a `:`
  *   or an 8.3 short name such as `GIT~1`);
- * - treats a path that starts with `-` as a file name, never an option;
- * - refuses with a `RangeError` a **branch name** that starts with `-` or
- *   that `git check-ref-format --branch` refuses, and the name `HEAD`;
+ * - treats **every path as a literal file name**: never an option (one that
+ *   starts with `-`) and never a pattern (`*`, `?`, `[` or `:(…)`), so a git
+ *   adapter passes paths after `--` with `--literal-pathspecs` (or
+ *   `GIT_LITERAL_PATHSPECS=1`), or `discard(["*.yaml"])` would wipe every
+ *   `.yaml` file;
+ * - refuses with a `RangeError` a **branch name** that starts with `-`, that
+ *   `git check-ref-format --branch` refuses, the name `HEAD`, and `@` or any
+ *   name with `@{`, which git expands (`@{-1}` is the previous branch);
+ * - in a git adapter, refuses a path that goes through a symbolic link, such
+ *   as `link/config` with `link -> .git` or a link out of the folder, which
+ *   the path rules above can't see;
  * - commits a message as the message, whatever it starts with.
  *
  * Remotes and upstreams come from the repository, never from a caller.
@@ -107,6 +115,10 @@ export interface Vcs {
    * overwrite an untracked file, or while a tracked file has changes: an
    * adapter may refuse any such change, as the memory one does, though git
    * refuses only those the branch would touch.
+   *
+   * A name is only ever a branch, never a path: `git checkout a.yaml` with no
+   * such branch would throw away the changes to `a.yaml`, so a git adapter
+   * uses `git switch` or `git checkout <branch> --`.
    *
    * @throws when there is no such branch, or the switch would lose changes
    */

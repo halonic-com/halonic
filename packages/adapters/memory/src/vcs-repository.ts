@@ -1,4 +1,4 @@
-import type { VcsChange } from "@halonicjs/ports";
+import type { VcsChange, VcsCommit } from "@halonicjs/ports";
 
 /** Files by path: a commit's tree or the index. */
 export type Tree = ReadonlyMap<string, string>;
@@ -167,6 +167,25 @@ export function copyCommits(from: ReadonlyMap<string, Commit>, to: Map<string, C
   for (const [hash, commit] of from) {
     if (!to.has(hash)) to.set(hash, commit);
   }
+}
+
+/** At most `limit` commits from `from` back through its parents, as the port's `log` gives them. */
+export function historyOf(
+  commits: ReadonlyMap<string, Commit>,
+  from: string | null,
+  limit: number,
+): VcsCommit[] {
+  const out: VcsCommit[] = [];
+  for (
+    let hash = from;
+    hash !== null && out.length < limit;
+    hash = commitOf(commits, hash).parent
+  ) {
+    const { author, date, message } = commitOf(commits, hash);
+    // The first line only, as `git log --format=%s` gives it.
+    out.push({ hash, author, date, message: message.replace(/\n[\s\S]*$/u, "") });
+  }
+  return out;
 }
 
 /** The commits `from` and its parents. */

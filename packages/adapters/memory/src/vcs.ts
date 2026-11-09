@@ -12,11 +12,11 @@ import { sha256Hex } from "./sha256.ts";
 import { checkBranchName, checkVcsPath } from "./vcs-input.ts";
 import {
   clashingBranch,
-  commitOf,
   copyCommits,
   countMissing,
   headCommit,
   headTree,
+  historyOf,
   isAncestor,
   type MemoryRemote,
   newRepository,
@@ -178,16 +178,7 @@ export class MemoryVcs implements Vcs {
       throw new RangeError(`The log limit must be a whole number of at least 1, not ${limit}.`);
     }
     const repo = this.#requireRepo();
-    const out: VcsCommit[] = [];
-    let hash = headCommit(repo);
-    while (hash !== null && out.length < limit) {
-      const commit = commitOf(repo.commits, hash);
-      // The first line only, as `git log --format=%s` gives it.
-      const message = commit.message.replace(/\n[\s\S]*$/u, "");
-      out.push({ hash, author: commit.author, date: commit.date, message });
-      hash = commit.parent;
-    }
-    return out;
+    return historyOf(repo.commits, headCommit(repo), limit);
   }
 
   async branches(): Promise<string[]> {
