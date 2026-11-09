@@ -226,19 +226,19 @@ function InlineLabel({ label }: { readonly label: string }) {
 }
 
 /**
- * The counter after the label. Its number is hidden from screen readers, which hear the count's
- * name instead: "Configuration, 2 errors". On a phone a space comes first, so it wraps like a word.
+ * The counter after the label. The chip hides its number from screen readers, which hear the
+ * count's name instead: "Configuration, 2 errors". On a phone a space comes first, so it wraps like
+ * a word.
  */
 function TabCounter({ count, fill }: { readonly count: TabCount; readonly fill: boolean }) {
   return (
     <>
       {fill ? " " : null}
-      <span aria-hidden="true" className="inline-flex align-middle">
-        <StatusChip tone={count.tone ?? "accent"} shape="count">
+      <span className="inline-flex align-middle">
+        <StatusChip tone={count.tone ?? "accent"} shape="count" name={count.name}>
           {count.value}
         </StatusChip>
       </span>
-      <span className="sr-only">, {count.name}</span>
     </>
   );
 }

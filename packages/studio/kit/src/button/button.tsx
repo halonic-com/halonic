@@ -50,6 +50,11 @@ interface ButtonWithLabel extends ButtonBase {
   readonly children: ReactNode;
   /** An optional 16px icon on the left. */
   readonly icon?: ReactNode;
+  /**
+   * The label while `busy`: "Creating…". The button keeps the width of the wider of its two
+   * labels, before, during and after, so nothing next to it moves.
+   */
+  readonly busyLabel?: string;
   readonly label?: never;
 }
 
@@ -59,6 +64,7 @@ interface IconButton extends ButtonBase {
   /** Its name, saying what and which: "Close Support reply", "More actions for Sorter". */
   readonly label: string;
   readonly children?: never;
+  readonly busyLabel?: never;
 }
 
 export type ButtonProps = ButtonWithLabel | IconButton;
@@ -135,17 +141,23 @@ const inFieldBoxIconButton = `size-control-sm ${hitArea}`;
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
 const largeIconSlot = "phone:size-icon-md";
 
+/** One grid cell: the resting and the busy copy lie on top of each other in it. */
+const busyCell = "inline-grid";
+const busyCopy = "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5";
+
 /**
  * The kit's button: a native `<button>`, `type="button"` unless it submits a form. With `icon`
  * and `label` and no children it's an icon button.
  *
  * A button that can't be used takes `unavailable={{ reason }}` instead of `disabled`, so it stays
- * in the Tab order and screen readers hear why. A button whose request runs is `busy`.
+ * in the Tab order and screen readers hear why. A button whose request runs is `busy`; give it a
+ * `busyLabel` when its label changes then, so its width doesn't.
  *
  * @example
  * <Button variant="primary" onClick={create}>New agent</Button>
  * <Button variant="ghost" icon={<CloseIcon />} label="Close Support reply" onClick={close} />
  * <Button unavailable={{ reason: "updates-reason" }}>Make a version</Button>
+ * <Button variant="primary" busy={creating} busyLabel="Creating…">Create</Button>
  */
 export function Button(props: ButtonProps) {
   const { variant = "secondary", size = "md", block = false, busy = false, unavailable } = props;
@@ -168,8 +180,13 @@ export function Button(props: ButtonProps) {
     block ? "w-full" : "",
   ].join(" ");
 
-  const icon = busy ? <Spinner /> : props.icon;
   const iconClasses = isIconButton && !inFieldBox ? `${iconSlot} ${largeIconSlot}` : iconSlot;
+  const iconBox = (icon: ReactNode) =>
+    icon === undefined ? null : (
+      <span className={iconClasses} aria-hidden="true">
+        {icon}
+      </span>
+    );
 
   return (
     <button
@@ -184,12 +201,25 @@ export function Button(props: ButtonProps) {
       onClick={handleClick}
       onFocus={props.onFocus}
     >
-      {icon === undefined ? null : (
-        <span className={iconClasses} aria-hidden="true">
-          {icon}
+      {props.busyLabel === undefined ? (
+        <>
+          {iconBox(busy ? <Spinner /> : props.icon)}
+          {props.children}
+        </>
+      ) : (
+        // Both copies always take up room; the one not in use is `invisible`, so it only sets the
+        // width and screen readers skip it.
+        <span className={busyCell}>
+          <span className={`${busyCopy} ${busy ? "invisible" : ""}`.trim()}>
+            {iconBox(props.icon)}
+            {props.children}
+          </span>
+          <span className={`${busyCopy} ${busy ? "" : "invisible"}`.trim()}>
+            {iconBox(<Spinner />)}
+            {props.busyLabel}
+          </span>
         </span>
       )}
-      {props.children}
     </button>
   );
 }

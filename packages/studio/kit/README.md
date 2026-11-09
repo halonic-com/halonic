@@ -121,6 +121,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `icon`        | A 16px icon before the label. With `label` and no children, the button is a square icon button   |
 | `label`       | An icon button's name, saying what and which: "Close Support reply", never just "Close"          |
 | `busy`        | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored          |
+| `busyLabel`   | The label while busy ("Creating…"). Both labels share one cell, so the width never changes       |
 | `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now            |
 | `type`        | `submit` only for a form's confirming button                                                     |
 
@@ -244,7 +245,7 @@ click is a Button or a row, never a chip.
   Running
 </StatusChip>;
 <StatusChip tone="outline">Test</StatusChip>;
-<StatusChip tone="accent" shape="count">
+<StatusChip tone="accent" shape="count" name="3 waiting">
   3
 </StatusChip>;
 ```
@@ -254,6 +255,7 @@ click is a Button or a row, never a chip.
 | `tone`  | `neutral` (the default), `accent`, `running`, `warning` ("Needs you"), `danger`, `success`, and `outline` for a tag such as Test |
 | `dot`   | A still 6px dot before the word, for a live state                                                                                |
 | `shape` | `count` for the round counter on a sidebar item or a tab, with tabular figures                                                   |
+| `name`  | A count's words, required with `count`: "3 waiting". Screen readers hear them instead of the bare number                         |
 
 Always a word or a number: the colour is never the only sign. Each coloured tone is its colour on
 its own `-soft` fill. Every chip carries a 1px see-through edge, which Windows high-contrast mode
@@ -483,6 +485,16 @@ A keyboard shortcut in a menu, the command palette or a tooltip: one box per key
 
 The shell passes "Ctrl" or "⌘" for the platform. Not interactive, and hidden on a phone, where
 there's no keyboard to press it on.
+
+It's hidden from screen readers as well, or a menu item would be named "New tab CtrlT". The control
+names the shortcut instead, from the same keys: `keyShortcutsLabel(["Ctrl", "T"])` is
+`"Control+T"`, for `aria-keyshortcuts`.
+
+```tsx
+<button aria-keyshortcuts={keyShortcutsLabel(keys)}>
+  New tab <Kbd keys={keys} />
+</button>;
+```
 
 ## Field
 

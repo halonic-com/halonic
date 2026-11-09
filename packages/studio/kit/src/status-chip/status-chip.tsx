@@ -13,15 +13,31 @@ export type StatusChipTone =
   | "success"
   | "outline";
 
-export interface StatusChipProps {
+interface StatusChipBase {
   /** Always a word ("Running", "Needs you"), or a number for a count: colour is never alone. */
   readonly children: ReactNode;
   readonly tone?: StatusChipTone;
   /** A still 6px dot before the word, for a live state: running, needs you, failed, done. */
   readonly dot?: boolean;
-  /** `count` is the round counter on a sidebar item or a tab, with tabular figures. */
-  readonly shape?: "chip" | "count";
 }
+
+/** A word: the state of an item, or a tag. */
+interface WordChip extends StatusChipBase {
+  readonly shape?: "chip";
+  readonly name?: never;
+}
+
+/** The round counter on a sidebar item or a tab, with tabular figures. */
+interface CountChip extends StatusChipBase {
+  readonly shape: "count";
+  /**
+   * What the number means, in words: "3 waiting", "2 errors". Screen readers hear it after the
+   * item's name ("Inbox, 3 waiting") instead of the bare number (component specs 23 A10).
+   */
+  readonly name: string;
+}
+
+export type StatusChipProps = WordChip | CountChip;
 
 /** Each coloured tone is its colour on its own `-soft` fill, which passes AA on every surface. */
 const toneClasses: Record<StatusChipTone, string> = {
@@ -60,14 +76,10 @@ const shapeClasses = {
  * <StatusChip tone="running" dot>Running</StatusChip>
  * <StatusChip tone="warning" dot>Needs you</StatusChip>
  * <StatusChip tone="outline">Test</StatusChip>
- * <StatusChip tone="accent" shape="count">3</StatusChip>
+ * <StatusChip tone="accent" shape="count" name="3 waiting">3</StatusChip>
  */
-export function StatusChip({
-  children,
-  tone = "neutral",
-  dot = false,
-  shape = "chip",
-}: StatusChipProps) {
+export function StatusChip(props: StatusChipProps) {
+  const { children, tone = "neutral", dot = false, shape = "chip" } = props;
   const classes = [
     "inline-flex min-h-5 shrink-0 items-center gap-1 whitespace-nowrap text-caption",
     toneClasses[tone],
@@ -84,7 +96,14 @@ export function StatusChip({
           aria-hidden="true"
         />
       ) : null}
-      {children}
+      {props.name === undefined ? (
+        children
+      ) : (
+        <>
+          <span aria-hidden="true">{children}</span>
+          <span className="sr-only">, {props.name}</span>
+        </>
+      )}
     </span>
   );
 }

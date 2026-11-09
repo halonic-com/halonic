@@ -22,12 +22,15 @@ const keyClasses = [
  * A keyboard shortcut, as in a menu, the command palette or a tooltip. Not interactive. Hidden on
  * a phone, where there's no keyboard to press it on.
  *
+ * Hidden from screen readers too: the control it belongs to names the shortcut with
+ * `aria-keyshortcuts={keyShortcutsLabel(keys)}`, from the same keys (component specs 23 A9).
+ *
  * @example
  * <Kbd keys={["Ctrl", "K"]} />
  */
 export function Kbd({ keys }: KbdProps) {
   return (
-    <span className="inline-flex items-center gap-0.5 phone:hidden">
+    <span className="inline-flex items-center gap-0.5 phone:hidden" aria-hidden="true">
       {keys.map((key, index) => (
         // The same key can appear twice ("G G"), so the position is part of the key.
         <kbd key={`${index}-${key}`} className={keyClasses}>
@@ -36,4 +39,36 @@ export function Kbd({ keys }: KbdProps) {
       ))}
     </span>
   );
+}
+
+/** The names `aria-keyshortcuts` uses for the keys a Kbd draws differently. */
+const keyNames: Readonly<Record<string, string>> = {
+  Ctrl: "Control",
+  "⌃": "Control",
+  "⌘": "Meta",
+  Cmd: "Meta",
+  "⌥": "Alt",
+  Option: "Alt",
+  "⇧": "Shift",
+  Esc: "Escape",
+  "↵": "Enter",
+  "⏎": "Enter",
+  "⌫": "Backspace",
+  Del: "Delete",
+  "↑": "ArrowUp",
+  "↓": "ArrowDown",
+  "←": "ArrowLeft",
+  "→": "ArrowRight",
+};
+
+/**
+ * The `aria-keyshortcuts` value for the keys a Kbd shows, pressed together: `["Ctrl", "Shift",
+ * "T"]` is "Control+Shift+T", and `["⌘", "K"]` is "Meta+K". The menu item, the tooltip's trigger
+ * and the palette set it from the same `keys` they give the Kbd, so the two can't differ.
+ *
+ * @example
+ * <button aria-keyshortcuts={keyShortcutsLabel(keys)}>New tab <Kbd keys={keys} /></button>
+ */
+export function keyShortcutsLabel(keys: readonly string[]): string {
+  return keys.map((key) => keyNames[key] ?? key).join("+");
 }

@@ -239,15 +239,14 @@ verifies("kit.tabs", () => {
     ];
     const { container } = render(<Page tabs={tabs} />);
     const [, configuration, runs] = tabsIn(container);
-    const chip = configuration?.querySelector('[aria-hidden="true"] > span') as HTMLElement;
-    expect(chip.textContent).toBe("2");
+    const chip = configuration?.querySelector(".rounded-full") as HTMLElement;
+    expect(chip.querySelector('[aria-hidden="true"]')?.textContent).toBe("2");
     expect(chip.className).toContain("bg-danger-soft text-danger");
-    expect(chip.className).toContain("rounded-full");
-    expect(configuration?.querySelector(".sr-only")?.textContent).toBe(", 2 errors");
+    // The chip carries the words itself; the tab adds no copy of its own.
+    expect(chip.querySelector(".sr-only")?.textContent).toBe(", 2 errors");
+    expect(configuration?.querySelectorAll(".sr-only")).toHaveLength(1);
     expect(configuration?.className).not.toContain("danger");
-    expect(runs?.querySelector('[aria-hidden="true"] > span')?.className).toContain(
-      "bg-accent-soft",
-    );
+    expect(runs?.querySelector(".rounded-full")?.className).toContain("bg-accent-soft");
   });
 
   it("shows an icon before the label, hidden from screen readers", () => {

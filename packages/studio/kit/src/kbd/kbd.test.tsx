@@ -2,7 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
-import { Kbd } from "./kbd.tsx";
+import { Kbd, keyShortcutsLabel } from "./kbd.tsx";
 
 afterEach(() => {
   unmountAll();
@@ -32,5 +32,23 @@ verifies("kit.kbd", () => {
     const wrapper = container.firstElementChild as HTMLElement;
     expect(wrapper.className).toContain("gap-0.5");
     expect(wrapper.className).toContain("phone:hidden");
+  });
+
+  it('is hidden from screen readers, so a menu item isn\'t named "New tab CtrlT"', () => {
+    const { container } = render(
+      <button type="button" aria-keyshortcuts={keyShortcutsLabel(["Ctrl", "T"])}>
+        New tab <Kbd keys={["Ctrl", "T"]} />
+      </button>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.querySelector("span")?.getAttribute("aria-hidden")).toBe("true");
+    expect(button.getAttribute("aria-keyshortcuts")).toBe("Control+T");
+  });
+
+  it("names the shortcut for aria-keyshortcuts from the same keys", () => {
+    expect(keyShortcutsLabel(["Ctrl", "Shift", "T"])).toBe("Control+Shift+T");
+    expect(keyShortcutsLabel(["⌘", "K"])).toBe("Meta+K");
+    expect(keyShortcutsLabel(["⌥", "⇧", "↑"])).toBe("Alt+Shift+ArrowUp");
+    expect(keyShortcutsLabel(["Esc"])).toBe("Escape");
   });
 });

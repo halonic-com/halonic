@@ -220,6 +220,49 @@ verifies("kit.button-unavailable", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it("with a busyLabel, stacks both copies in one cell so its width stays", () => {
+    const { container, rerender } = render(
+      <Button variant="primary" busyLabel="Creating…">
+        Create
+      </Button>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    const cell = button.firstElementChild as HTMLElement;
+    const [resting, busyCopy] = Array.from(cell.children) as HTMLElement[];
+
+    expect(cell.className).toBe("inline-grid");
+    for (const copy of [resting, busyCopy]) {
+      expect(copy?.className).toContain("col-start-1 row-start-1");
+    }
+    expect(resting?.textContent).toBe("Create");
+    expect(resting?.className).not.toContain("invisible");
+    expect(busyCopy?.textContent).toBe("Creating…");
+    expect(busyCopy?.className).toContain("invisible");
+
+    rerender(
+      <Button variant="primary" busy busyLabel="Creating…">
+        Create
+      </Button>,
+    );
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(resting?.className).toContain("invisible");
+    expect(busyCopy?.className).not.toContain("invisible");
+    expect(busyCopy?.querySelector("svg.animate-spin")).not.toBeNull();
+  });
+
+  it("with a busyLabel, keeps its icon on the resting copy and the spinner on the busy one", () => {
+    const button = renderButton({
+      busy: true,
+      busyLabel: "Opening…",
+      icon: closeIcon,
+      children: "Open folder",
+    });
+    const [resting, busyCopy] = Array.from(button.firstElementChild?.children ?? []);
+    expect(resting?.querySelector('[data-testid="close-icon"]')).not.toBeNull();
+    expect(busyCopy?.querySelector('[data-testid="close-icon"]')).toBeNull();
+    expect(busyCopy?.querySelector("svg.animate-spin")).not.toBeNull();
+  });
+
   it("while busy, doesn't submit its form and keeps aria-busy and focus", async () => {
     const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
     const { container } = render(

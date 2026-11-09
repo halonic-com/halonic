@@ -44,7 +44,7 @@ export {
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
-export { Kbd, type KbdProps } from "./kbd/kbd.tsx";
+export { Kbd, type KbdProps, keyShortcutsLabel } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
 export { List, type ListProps, type ListRow, type ListSelection } from "./list/list.tsx";
 export {

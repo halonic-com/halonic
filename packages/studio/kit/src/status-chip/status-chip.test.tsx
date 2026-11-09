@@ -70,10 +70,40 @@ verifies("kit.status-chip", () => {
   });
 
   it("draws a count round, at least 20px wide, with tabular figures", () => {
-    const { className } = renderChip({ tone: "accent", shape: "count", children: "3" });
+    const { className } = renderChip({
+      tone: "accent",
+      shape: "count",
+      name: "3 waiting",
+      children: "3",
+    });
     expect(className).toContain("rounded-full");
     expect(className).toContain("min-w-5");
     expect(className).toContain("tabular-nums");
     expect(className).not.toContain("rounded-xs");
+  });
+
+  it("reads a count as its words, not the bare number", () => {
+    const { container } = render(
+      <span>
+        Inbox{" "}
+        <StatusChip tone="accent" shape="count" name="3 waiting">
+          3
+        </StatusChip>
+      </span>,
+    );
+    const chip = container.querySelector("span > span") as HTMLElement;
+    const [number, words] = Array.from(chip.children) as HTMLElement[];
+    expect(number?.getAttribute("aria-hidden")).toBe("true");
+    expect(number?.textContent).toBe("3");
+    expect(words?.className).toBe("sr-only");
+    expect(words?.textContent).toBe(", 3 waiting");
+  });
+
+  it("won't take a count without its words, or words on a plain chip", () => {
+    // @ts-expect-error: a count needs its `name`.
+    const count: StatusChipProps = { shape: "count", children: "3" };
+    // @ts-expect-error: only a count takes a `name`.
+    const word: StatusChipProps = { name: "Running", children: "Running" };
+    expect([count, word]).toHaveLength(2);
   });
 });
