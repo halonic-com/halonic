@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type CliCommand, UsageError } from "./command.ts";
-import { exitCode } from "./exit-code.ts";
+import { exitCode, exitCodeMeanings } from "./exit-code.ts";
 import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 
@@ -51,7 +51,18 @@ describe("runCli", () => {
 
 verifies("cli.exit-codes", () => {
   it("keeps the meaning of each exit code", () => {
-    expect(exitCode).toEqual({ ok: 0, failed: 1, usage: 2, notTrusted: 3 });
+    expect(exitCode).toEqual({
+      ok: 0,
+      failed: 1,
+      usage: 2,
+      notTrusted: 3,
+      notFound: 4,
+      conflict: 5,
+      unauthenticated: 6,
+      denied: 7,
+      limitReached: 8,
+      unavailable: 9,
+    });
   });
 
   it("prints a usage error with the usage line and exits with 2", async () => {
@@ -93,6 +104,9 @@ verifies("cli.help", () => {
       "Commands:",
       "  greet     Say hello.",
       "  trust-me  Refuse, as an untrusted workspace does.",
+      "",
+      "Exit codes: 0 worked · 1 failed or found errors · 2 wrong usage or input · 3 not trusted ·",
+      "4 not found · 5 conflict · 6 signed out · 7 not allowed · 8 limit reached · 9 unavailable",
       "",
       "Run halonic <command> --help for a command's arguments and options.",
     ]);
@@ -141,5 +155,20 @@ verifies("cli.help", () => {
     expect(await runCli(["deploy"], io, commands)).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe('Unknown command "deploy".');
     expect(io.stderr).toContain("  greet     Say hello.");
+  });
+});
+
+verifies("cli.help-exit-codes", () => {
+  it("lists every exit code with its words in the help", async () => {
+    const io = captureIo("/work");
+    await runCli(["--help"], io, commands);
+    const help = io.stdout.join("\n");
+    for (const { code, meaning } of exitCodeMeanings) {
+      expect(help).toContain(`${code} ${meaning}`);
+    }
+  });
+
+  it("has words for every exit code, in code order", () => {
+    expect(exitCodeMeanings.map(({ code }) => code)).toEqual(Object.values(exitCode));
   });
 });

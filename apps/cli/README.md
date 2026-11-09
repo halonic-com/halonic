@@ -26,6 +26,15 @@ one command's arguments and options.
 | 1    | the command ran and found errors, or failed                              |
 | 2    | the command line was wrong (unknown command or option, missing argument) |
 | 3    | the workspace isn't trusted on this machine, so nothing was started      |
+| 4    | not found: the thing asked for doesn't exist (`not_found`)               |
+| 5    | conflict: its state doesn't allow this now (`conflict`)                  |
+| 6    | signed out: a sign-in is missing or has expired (`unauthenticated`)      |
+| 7    | not allowed: a rule says no (`denied`)                                   |
+| 8    | limit reached: a rate limit, quota or budget ran out (`limit_reached`)   |
+| 9    | unavailable: something Halonic needs is down; try again (`unavailable`)  |
+
+1 is also a bug on our side (`internal`) and 2 a wrong value or file (`invalid_input`). The codes
+never change meaning once released. `halonic --help` lists them too.
 
 ## Adding a command
 

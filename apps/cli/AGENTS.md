@@ -24,5 +24,7 @@ everything else is internal.
   ([details](../../docs/guides/code-style.md#thin-commands-and-screens)).
 - A new command is a new folder `src/commands/<name>/` with `command.ts` exporting `<name>Command`.
   Never edit a shared list; `pnpm discover` writes `src/generated/commands.ts`.
-- Exit codes: 0 ok, 1 errors found or the command failed, 2 wrong usage, 3 the workspace isn't
-  trusted. Commands write through `CliIo`, never to `process.stdout` directly.
+- Exit codes: 0 ok, 1 errors found or the command failed (`internal`), 2 wrong usage
+  (`invalid_input`), 3 the workspace isn't trusted, then the error kinds: 4 `not_found`,
+  5 `conflict`, 6 `unauthenticated`, 7 `denied`, 8 `limit_reached`, 9 `unavailable`. Never
+  renumber one; a new code takes the next free number. Commands write through `CliIo`, never to `process.stdout` directly.
