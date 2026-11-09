@@ -41,23 +41,6 @@
           }
         }
       }
-    },
-    {
-      "includes": [
-        "src/list/list.tsx"
-      ],
-      "linter": {
-        "rules": {
-          "complexity": {
-            "noExcessiveCognitiveComplexity": {
-              "level": "warn",
-              "options": {
-                "maxAllowedComplexity": 30
-              }
-            }
-          }
-        }
-      }
     }
   ]
 }
