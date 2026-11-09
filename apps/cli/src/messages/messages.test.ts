@@ -122,15 +122,22 @@ describe("the general sentences", () => {
     expect(words(helpMessages.optionsHeading())).toBe("Options:");
   });
 
-  it("has the bug's lines and the wrong-usage lines", () => {
+  it("has a bug's two lines as approved, with and without the command's action", () => {
+    const reason = plainText(errorMessages.internal().phrase);
+    const fix = plainText(errorMessages.internalFix().phrase);
+    const action = phrase`run ${bold("support-reply")}`;
+    expect(plainText(errorMessages.couldnt(action, reason).phrase)).toBe(
+      "Couldn't run support-reply: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(reason).toBe("Halonic ran into a problem it can't explain yet.");
+    expect(fix).toBe(
+      "Run it again with --debug to see the details, and report it: https://github.com/halonic-com/halonic/issues",
+    );
+  });
+
+  it("has the wrong-usage lines", () => {
     const words = (message: { phrase: Parameters<typeof plainText>[0] }) =>
       plainText(message.phrase);
-    expect(words(errorMessages.internal())).toBe(
-      "Halonic ran into a problem it can't explain yet.",
-    );
-    expect(words(errorMessages.internalFix())).toBe(
-      "Report it: https://github.com/halonic-com/halonic/issues",
-    );
     expect(words(usageMessages.seeEveryCommand())).toBe("Run halonic --help to see every command.");
     expect(words(usageMessages.unknownOption("--colour"))).toBe("There's no option --colour.");
     expect(words(usageMessages.seeCommandOptions("test"))).toBe(
@@ -139,8 +146,8 @@ describe("the general sentences", () => {
     expect(words(usageMessages.missingValue("--dir", "folder"))).toBe(
       "--dir needs a value: --dir <folder>.",
     );
-    expect(words(usageMessages.noValueWanted("--json"))).toBe(
-      "--json is a switch and takes no value.",
+    expect(words(usageMessages.noValueWanted("--json", "--json=yes"))).toBe(
+      "--json doesn't take a value, and you gave one: --json=yes.",
     );
   });
 });

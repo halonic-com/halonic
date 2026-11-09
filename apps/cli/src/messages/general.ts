@@ -15,8 +15,9 @@ export const errorMessages = defineMessages("error", {
   couldnt: (action: Phrase, reason: string) => phrase`Couldn't ${action}: ${reason}`,
   /** Line 1 of a bug, instead of its own text. */
   internal: () => phrase`Halonic ran into a problem it can't explain yet.`,
-  /** Line 2 of a bug. HAL-2147 changes it to the approved sentence once `--debug` exists. */
-  internalFix: () => phrase`Report it: ${issuesLink}`,
+  /** Line 2 of a bug: the approved step (F16, microcopy L4), with `--debug` from HAL-2147. */
+  internalFix: () =>
+    phrase`Run it again with --debug to see the details, and report it: ${issuesLink}`,
   /** Optional line 3: the docs page and the detailed code, for searching and bug reports. */
   more: (link: string, code: string) => [...phrase`More: ${link} `, dim(`(${code})`)],
 });
@@ -33,5 +34,7 @@ export const usageMessages = defineMessages("usage", {
   seeCommandOptions: (command: string) => phrase`Run halonic ${command} --help to see its options.`,
   missingValue: (option: string, valueName: string) =>
     phrase`${option} needs a value: ${option} <${valueName}>.`,
-  noValueWanted: (option: string) => phrase`${option} is a switch and takes no value.`,
+  /** "--json doesn't take a value, and you gave one: --json=yes.", the shape of L6. */
+  noValueWanted: (option: string, given: string) =>
+    phrase`${option} doesn't take a value, and you gave one: ${given}.`,
 });
