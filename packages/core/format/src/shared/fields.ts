@@ -15,6 +15,9 @@ export const id = s
  * A workspace collection's id: lowercase letters, digits and `-`, starting
  * with a letter or digit. Halonic's own collections (`_tokens`,
  * `_google_setups`) start with `_`, so no workspace file can name them.
+ * The scheduler's and coordination's collections (`halonic.scheduler.timers`,
+ * `halonic.coordination`) are kept out by the `.` instead, so keep a `.` in
+ * their names.
  */
 export const collectionId = s
   .string()
