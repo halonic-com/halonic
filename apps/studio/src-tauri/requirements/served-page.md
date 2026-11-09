@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-196 section 3, HAL-1375, HAL-192
 
-The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`. The Studio the computer serves shall get no native access.
+The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`, `secret_get`, `secret_set` and `secret_delete`. The Studio the computer serves shall get no native access.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The shell shall refuse every app and plugin command to a request from any addres
 - Given a request from the connect page on desktop, with no folder opened,
   when it invokes `git` with `status` in `.`,
   then the call reaches the command and is refused as `folder_not_opened`.
+- Given a request from the connect page on desktop,
+  when it invokes `secret_get` with the name `not a name`,
+  then the call reaches the command and is refused as `invalid_name`.

@@ -1510,6 +1510,8 @@ version = "0.1.0"
 dependencies = [
  "halonic-connect",
  "halonic-git-guard",
+ "halonic-keychain",
+ "halonic-secrets",
  "serde",
  "serde_json",
  "tauri",

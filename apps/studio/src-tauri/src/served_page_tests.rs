@@ -1,7 +1,8 @@
 //! The served Studio gets no native access (HAL-196 section 3, Julian's
 //! checklist): every app and plugin command the shell knows is refused when
 //! the request comes from the computer's address, while the connect page
-//! may still call `connect` and, on desktop, `git`.
+//! may still call `connect` and, on desktop, `git` and the `secret_*`
+//! commands.
 
 use serde_json::{Value, json};
 use tauri::WebviewUrl;
@@ -93,6 +94,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
     for expected in [
         "connect",
         "git",
+        "secret_get",
+        "secret_set",
+        "secret_delete",
         "plugin:opener|open_url",
         "plugin:event|listen",
     ] {
@@ -139,4 +143,21 @@ fn served_page_test_sees_the_connect_page_allowed_to_run_git_on_desktop() {
     );
     let refusal = answer.expect_err("no folder is opened yet");
     assert_eq!(refusal["kind"], "folder_not_opened", "{refusal}");
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_the_secret_commands_on_desktop() {
+    // Each call gets through to its command, and the command refuses the
+    // name before it reaches the keychain, which CI doesn't have.
+    let window = app_window();
+    for (command, body) in [
+        ("secret_get", json!({"name": "not a name"})),
+        ("secret_set", json!({"name": "not a name", "value": "v"})),
+        ("secret_delete", json!({"name": "not a name"})),
+    ] {
+        let answer = invoke(&window, CONNECT_PAGE, command, body);
+        let refusal = answer.expect_err("the name is invalid");
+        assert_eq!(refusal["kind"], "invalid_name", "{command}: {refusal}");
+    }
 }
