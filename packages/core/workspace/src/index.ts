@@ -16,4 +16,5 @@ export {
   type TrustContentInput,
   trustContent,
 } from "./trust-content.ts";
+export { trustFingerprint, trustFingerprintPrefix } from "./trust-fingerprint.ts";
 export { trustUrl } from "./trust-url.ts";

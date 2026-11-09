@@ -2,6 +2,7 @@
 export { asciiHost } from "./ascii-host.ts";
 export { AssertionError, assert, assertDefined, assertNever } from "./assert.ts";
 export { decodeBase64url, encodeBase64url } from "./base64url.ts";
+export { canonicalJson } from "./canonical-json.ts";
 export { type Clock, fixedClock, fixedClockStart, systemClock } from "./clock.ts";
 export { constantTimeEqual } from "./constant-time.ts";
 export { deepClone } from "./deep-clone.ts";

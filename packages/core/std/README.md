@@ -21,7 +21,8 @@ differ. Never compare those with `===`.
 the decoder is strict, so each byte string has exactly one text.
 
 For plain data there are `deepEqual` (key order doesn't matter),
-`deepClone` (the core has no `structuredClone`) and `isPlainObject`, which
+`deepClone` (the core has no `structuredClone`), `canonicalJson` (one JSON text per
+value, for hashing) and `isPlainObject`, which
 tells a plain record apart from a `Date`, a `Map` or a class instance. `describeObject` and `keyPath` word the errors
 about data that isn't plain, so they say what and where. `slugify` and `uniqueName`
 turn display names into file-safe ids, as the old Studio did. `posixPath`

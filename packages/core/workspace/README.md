@@ -2,7 +2,8 @@
 
 Loads one workspace through a `DefinitionSource`: every file is parsed with the kind its place
 gives, and every problem comes back with its file, key path, line and column. It also builds the
-workspace's trust content: everything that decides which programs run and where they talk to.
+workspace's trust content and its fingerprint: everything that decides which programs run and where
+they talk to.
 
 - **Layer:** core
 - **Owner:** elena
@@ -70,8 +71,11 @@ connectors. It keeps every field that could change what runs (the command and it
 arguments as a list, the working folder, every environment variable, the full URL with its host in
 Punycode, every header, the tool lists and `local`), and keeps any field the schema doesn't know yet
 as written. Secrets appear by name only (`‹secret NAME›`), and `${HOME}` stays `${HOME}`. Only a
-connector's name and description are left out. Each behaviour has a requirement in
-[`requirements/`](requirements/).
+connector's name and description are left out.
+
+`trustFingerprint` hashes that content through the `Digest` port: `hfp1:` and the SHA-256 of its
+canonical JSON, so key order doesn't count and `["a b"]` never matches `["a", "b"]`. Each behaviour
+has a requirement in [`requirements/`](requirements/).
 
 ### Example: trust content
 
