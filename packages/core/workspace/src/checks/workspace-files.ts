@@ -12,6 +12,18 @@ export function checkWorkspaceFile(context: CheckContext): WorkspaceIssue[] {
   return [context.error(workspaceFile, [], "missing-workspace-file", `Missing ${workspaceFile}`)];
 }
 
+/** A workflow test must test a workflow of its own hub (or of the root, for a test at the root). */
+export function checkTestTargets(context: CheckContext): WorkspaceIssue[] {
+  return context.filesOf("workflowTest").flatMap((test) => {
+    const target = test.value.workflow;
+    if (context.idsOf("workflow", test.hub).has(target)) {
+      return [];
+    }
+    const message = `Test targets unknown workflow "${target}"`;
+    return [context.error(test.path, ["workflow"], "unknown-workflow", message)];
+  });
+}
+
 /**
  * Two files of one kind in one hub (or both at the root) with the same id.
  * As in the old loader, each file after the first, by path, gets the issue

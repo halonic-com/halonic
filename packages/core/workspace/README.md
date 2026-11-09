@@ -62,11 +62,16 @@ export async function runExample(): Promise<{
 - **Ignored files** are those no kind places, such as a README or a file in an older layout. The
   reserved `.halonic/` folders are skipped without being listed.
 - **Checks across files** run after every file is parsed. They report, with the old loader's
-  messages, agents that delegate in a loop, two files with one id, and a missing `workspace.yaml`.
-  Each issue has the file, key path and line.
-- **Not yet:** a name one file gives that no other file has (an agent naming a model alias that
-  doesn't exist), workflow and routine checks across files, resolving model aliases to a provider
-  and model, and the definitions a run keeps. They come in the next steps of the HAL-186 plan.
+  messages, a name one file gives that no other file has (an agent's model alias, skill or
+  subagent; a provider in `models.yaml`; a test's workflow), agents that delegate in a loop, two
+  files with one id, and a missing `workspace.yaml`. Each issue has the file, key path and line of
+  the name. A file that failed its own checks counts as missing, so whatever names it is unknown.
+- **Where names are looked up:** an agent's skills, knowledge, collections and connectors are its
+  hub's own or shared at the root; a hub with `uses` may use only the shared items it lists.
+  Model aliases come from `models.yaml` and the hub's `models`. Subagents and a test's workflow
+  come from the same hub.
+- **Not yet:** workflow and routine checks across files, resolving model aliases to a provider and
+  model, and the definitions a run keeps. They come in the next steps of the HAL-186 plan.
 
 ## Trust content
 

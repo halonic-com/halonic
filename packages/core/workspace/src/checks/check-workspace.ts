@@ -1,7 +1,9 @@
 import type { LoadedFile, WorkspaceIssue } from "../load-workspace.ts";
+import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
 import { checkDelegationLoops } from "./delegation-loops.ts";
-import { checkDuplicateIds, checkWorkspaceFile } from "./workspace-files.ts";
+import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
+import { checkDuplicateIds, checkTestTargets, checkWorkspaceFile } from "./workspace-files.ts";
 
 /** One rule across files: the errors it finds. */
 type WorkspaceCheck = (context: CheckContext) => WorkspaceIssue[];
@@ -10,12 +12,17 @@ type WorkspaceCheck = (context: CheckContext) => WorkspaceIssue[];
 const checks: readonly WorkspaceCheck[] = [
   checkWorkspaceFile,
   checkDuplicateIds,
+  checkModelsFile,
+  checkSessionModel,
+  checkAgents,
   checkDelegationLoops,
+  checkTestTargets,
 ];
 
 /**
- * The checks across files: rules over several files, such as agents that
- * delegate in a loop or two files with one id.
+ * The checks across files: what one file names in another (an agent's
+ * model alias, a test's workflow) and rules over several files (agents that
+ * delegate in a loop, two files with one id).
  *
  * @param files - the files that parsed
  * @param read - every file the loader read, with its kind and text, also

@@ -1,4 +1,4 @@
-import { type FileProblem, fileKinds, type KindName } from "@halonicjs/format";
+import { type FileProblem, fileKinds, type KindName, type KindValues } from "@halonicjs/format";
 import { readYaml, type SourcePosition } from "@halonicjs/yaml";
 import type { LoadedFile, LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 
@@ -14,6 +14,11 @@ const fileStart: SourcePosition = { line: 1, col: 1 };
 
 /** The keys and list indexes to a value; `[]` for the whole file. */
 type Path = FileProblem["path"];
+
+/** The kinds whose files have an id, such as `agent`; not `models` or a workflow test. */
+type KindWithId = {
+  [Name in KindName]: KindValues[Name] extends { readonly id: string } ? Name : never;
+}[KindName];
 
 /**
  * What every check across files gets: the files that parsed, the kinds of
@@ -39,6 +44,11 @@ export class CheckContext {
       (file): file is LoadedFileOf<Name> & LoadedFile =>
         file.kind === kind && (hub === undefined || file.hub === hub),
     );
+  }
+
+  /** The ids of the parsed files of one kind in one hub (`null`: the root). */
+  idsOf(kind: KindWithId, hub: string | null): Set<string> {
+    return new Set(this.filesOf(kind, hub).map((file) => file.value.id));
   }
 
   /** Whether the loader read a file of this kind, whether it parsed or not. */
