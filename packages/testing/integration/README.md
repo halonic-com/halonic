@@ -39,39 +39,33 @@ the recording doesn't have. This example is [`examples/replay-one-exchange.ts`](
 which `src/example.test.ts` runs and checks.
 
 ```ts
-import {
-  NoRecordingError,
-  type RecordingFile,
-  replayTransport,
-} from "@halonicjs/testing-integration";
-
-/** A made-up recording: one scenario for the fictional `acme` integration, one scrubbed exchange. */
-const recording: RecordingFile = {
-  format: "halonic.recording/1",
-  integration: "acme",
-  scenario: "list-widgets",
-  scrubReport: [{ rule: "secret", path: "request.headers.authorization", count: 1 }],
-  exchanges: [
-    {
-      transport: "http",
-      request: {
-        method: "GET",
-        url: "https://api.acme.example/v1/widgets",
-        headers: { authorization: "Bearer <scrubbed:secret>" }, // matches any key on replay
-        body: { kind: "empty" },
-      },
-      response: {
-        status: 200,
-        headers: {},
-        body: { kind: "json", value: { widgets: ["sprocket", "gear"] } },
-      },
-    },
-  ],
-};
+import { NoRecordingError, replayTransport } from "@halonicjs/testing-integration";
 
 /** Replays the exchange once as recorded, then sends a request it doesn't have. Returns what it saw. */
 export async function runExample(): Promise<string[]> {
-  const replay = replayTransport(recording);
+  // A made-up recording: one scenario for the fictional `acme` integration, one scrubbed exchange.
+  const replay = replayTransport({
+    format: "halonic.recording/1",
+    integration: "acme",
+    scenario: "list-widgets",
+    scrubReport: [{ rule: "secret", path: "request.headers.authorization", count: 1 }],
+    exchanges: [
+      {
+        transport: "http",
+        request: {
+          method: "GET",
+          url: "https://api.acme.example/v1/widgets",
+          headers: { authorization: "Bearer <scrubbed:secret>" }, // matches any key on replay
+          body: { kind: "empty" },
+        },
+        response: {
+          status: 200,
+          headers: {},
+          body: { kind: "json", value: { widgets: ["sprocket", "gear"] } },
+        },
+      },
+    ],
+  });
 
   // A match: same method and URL, and the header the recording scrubbed is present. It answers from the recording.
   const reply = await replay.transport.fetch("https://api.acme.example/v1/widgets", {
