@@ -33,3 +33,13 @@ Private packages are versioned only when their `package.json` has a
 `version`: the Studio app and the two packages `tooling/publish` ships to
 npm (`@halonicjs/adapter-integration-kit`, `@halonicjs/testing-integration`).
 Don't add one to other packages.
+
+## Releasing
+
+The Version packages workflow (`.github/workflows/version-packages.yml`)
+runs on every push to `main`. While changesets are waiting, it keeps one
+pull request open, "chore(release): Halonic <version>", on the branch
+`changeset-release/main`, made with `pnpm version-packages`. Merging it is
+the release decision: that push changes the app version, so the run tags
+the merge commit `v<version>`. A push that leaves the version as it was
+never makes a tag.

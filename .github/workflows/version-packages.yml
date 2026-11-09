@@ -1,0 +1,141 @@
+# Version packages: the release bot. On every push to main it does up to
+# two things.
+#
+# - The push changed the app version in apps/studio/package.json: this is
+#   the merged Version packages pull request, so it tags the pushed commit
+#   v<version>, unless that tag exists already. It compares the version at
+#   the commit before the push with the one at the pushed commit, so an
+#   ordinary push never makes a tag. A manual run never tags; re-run the
+#   failed push run instead.
+# - Changesets are waiting: it runs `pnpm version-packages` (changeset
+#   version, then version:sync) on the branch changeset-release/main and
+#   opens or updates the "Version packages" pull request. That pull request
+#   sets the app version in package.json, tauri.conf.json and Cargo.toml.
+#
+# Token: the RELEASE_BOT_TOKEN secret (the halonic-dev account, with
+# contents and pull requests write) when it exists. Without it the default
+# token is used, and GitHub starts no workflow for what that token makes:
+# CI does not run on the pull request until a person closes and reopens
+# it, and the tag does not start the release workflow. Only the steps that
+# push or call gh get a token.
+
+name: Version packages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: version-packages
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Version pull request or release tag
+    if: github.repository == 'halonic-com/halonic'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - uses: $/.github/actions/setup
+      - id: plan
+        name: Count waiting changesets and compare the app version
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          pending=$(find .changeset -maxdepth 1 -name '*.md' ! -name README.md | wc -l)
+          version=$(node -p 'require("./apps/studio/package.json").version')
+          before=""
+          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2> /dev/null; then
+            before=$(git show "$BEFORE:apps/studio/package.json" 2> /dev/null | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version ?? ""') || before=""
+          fi
+          changed=false
+          if [ -n "$before" ] && [ "$before" != "$version" ]; then
+            changed=true
+          fi
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "Waiting changesets: $pending. App version: ${before:-unknown} before, $version now."
+      - name: Check that the app versions agree
+        if: steps.plan.outputs.changed == 'true'
+        run: pnpm check versions
+      - name: Tag the release
+        if: steps.plan.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          tag="v$VERSION"
+          if gh api "repos/$REPO/git/ref/tags/$tag" > /dev/null 2>&1; then
+            echo "$tag exists already; nothing to tag."
+            exit 0
+          fi
+          gh api "repos/$REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$SHA" > /dev/null
+          echo "Tagged $SHA as $tag."
+      - id: bump
+        name: Version the packages
+        if: steps.plan.outputs.pending != '0'
+        env:
+          BOT_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN != '' }}
+        run: |
+          if [ "$BOT_TOKEN" = "true" ]; then
+            git config user.name "halonic-dev"
+            git config user.email "353861737+halonic-dev@users.noreply.github.com"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          fi
+          git switch -C changeset-release/main
+          pnpm version-packages
+          pnpm check versions
+          version=$(node -p 'require("./apps/studio/package.json").version')
+          git add -A
+          git commit -s -q -m "chore(release): version packages for $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          {
+            echo "## What and why"
+            echo
+            echo "Merging this pull request releases Halonic $version. It sets the app version in"
+            echo "\`apps/studio/package.json\`, \`tauri.conf.json\` and \`Cargo.toml\` and turns the waiting"
+            echo "changesets into the changelog. After the merge the release bot tags the commit \`v$version\`."
+            echo
+            echo "Made by the Version packages workflow. Don't edit this branch: it is rewritten on every push to main."
+            echo
+            echo "## Requirements"
+            echo
+            echo "No behaviour change: version and changelog only."
+            echo
+            echo "## Changelog"
+            echo
+            sed -n '/^## /,$p' apps/studio/CHANGELOG.md | awk 'NR > 1 && /^## /{exit} {print}'
+          } > "$RUNNER_TEMP/body.md"
+      - name: Push and open or update the Version packages pull request
+        if: steps.plan.outputs.pending != '0'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          branch=changeset-release/main
+          gh auth setup-git
+          git push --force -q origin "HEAD:refs/heads/$branch"
+          title="chore(release): Halonic $VERSION"
+          number=$(gh pr list --repo "$REPO" --head "$branch" --base main --state open --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh api -X PATCH "repos/$REPO/pulls/$number" -f title="$title" -F body=@"$RUNNER_TEMP/body.md" > /dev/null
+          else
+            gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          fi
