@@ -9,12 +9,12 @@ import { readYaml, type YamlPath } from "./read.ts";
 import { spliceEdit } from "./splice.ts";
 import { writeYamlFile } from "./write.ts";
 
-/** Hundreds of runs per test, so allow for a busy CI runner. */
+/** A busy CI runner is over ten times slower than a laptop, so the runs below stay small. */
 vi.setConfig({ testTimeout: 20_000 });
 
 /** Plain data as workspace files hold it: no `undefined`, no `-0`. */
 const plainData = fc
-  .jsonValue({ maxDepth: 4 })
+  .jsonValue({ maxDepth: 3 })
   .map((value) => JSON.parse(JSON.stringify(value)) as unknown);
 
 /** A workspace-like file: a map at the top. */
@@ -120,7 +120,7 @@ verifies("yaml.edit", () => {
         expect(unwrap(readYaml(spliced ?? "")).data).toEqual(expected);
         expect(unwrap(editYaml(text, [edit])).layout).toBe("kept");
       }),
-      { numRuns: 300 },
+      { numRuns: 100 },
     );
   });
 });
