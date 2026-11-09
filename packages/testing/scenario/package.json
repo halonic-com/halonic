@@ -2,7 +2,7 @@
   "name": "@halonicjs/testing-scenario",
   "private": true,
   "type": "module",
-  "description": "Helpers for scenario-style tests: eventually() waits on a fake or real clock, and keepOnFailure() saves state when a test fails.",
+  "description": "Helpers for scenario-style tests: eventually() waits on a fake or real clock, keepOnFailure() saves state when a test fails, and trustedWorkspace() trusts a fixture workspace.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -14,7 +14,13 @@
   "peerDependencies": {
     "vitest": "catalog:"
   },
+  "dependencies": {
+    "@halonicjs/adapter-memory": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
+  },
   "devDependencies": {
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

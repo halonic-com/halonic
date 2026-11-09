@@ -4,7 +4,7 @@ Owner: julian · Layer: testing · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-Helpers for scenario-style tests: eventually() waits on a fake or real clock, and keepOnFailure() saves state when a test fails.
+Helpers for scenario-style tests: eventually() waits on a fake or real clock, keepOnFailure() saves state when a test fails, and trustedWorkspace() trusts a fixture workspace.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

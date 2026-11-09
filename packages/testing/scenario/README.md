@@ -1,10 +1,10 @@
 # @halonicjs/testing-scenario
 
-Helpers for scenario-style tests: `eventually()` checks until the state is right instead of sleeping, and `keepOnFailure()` saves state for the reader when a test fails.
+Helpers for scenario-style tests: `eventually()` checks until the state is right instead of sleeping, `keepOnFailure()` saves state for the reader when a test fails, and `trustedWorkspace()` trusts a fixture workspace.
 
 - **Layer:** testing
 - **Owner:** julian
-- **Public API:** `eventually`, `keepOnFailure`
+- **Public API:** `eventually`, `keepOnFailure`, `trustedWorkspace`, `trustedWorkspaceGrantedAt`
 
 `eventually(check, { within, every, wait })` runs `check` at once and, while
 it throws, waits `every` milliseconds and checks again. `within` is the sum of
@@ -27,6 +27,15 @@ already a safe folder name, or is longer than 120 characters, gets a short
 hash of the whole name at the end, so two tests never share a folder. Give
 each `keepOnFailure` in a test its own name: a second call with the same
 name throws.
+
+`trustedWorkspace(location, { connectors, commandPaths })` returns a memory
+`TrustStore` that already trusts one workspace. Its record holds the
+workspace's real trust content and `hfp1:` fingerprint, built the way
+`TrustService` builds them, so a run on the workspace passes the trust gate
+and the parity harness keeps the old repo's event logs. Change a connector
+after the call and the workspace counts as changed, as it would for a user.
+The record is granted at `2026-01-01T00:00:00.000Z`
+(`trustedWorkspaceGrantedAt`), the parity clock's start.
 
 ## Example
 
