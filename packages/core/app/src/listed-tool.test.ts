@@ -88,9 +88,21 @@ verifies("ports.untrusted-tool-listings", () => {
     );
   });
 
-  it("keeps line breaks, tabs and visible text in any script", () => {
+  it("keeps line breaks, tabs, accented letters, Chinese and a single emoji", () => {
     const text = "Line one\r\n\tLine two: Grüße, 你好, 😀";
     expect(kept(listed({ type: "object" }, { description: text })).description.text).toBe(text);
+  });
+
+  it("removes the zero-width joiner and non-joiner too, though some scripts and emoji use them", () => {
+    // The Persian for "I want" needs a non-joiner, and the family emoji is three
+    // emoji held together by joiners. Without them both still read, only
+    // drawn differently.
+    const persian = "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645";
+    const family = "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}";
+    const tool = kept(listed({ type: "object" }, { description: `${persian} ${family}` }));
+    expect(tool.description.text).toBe(
+      "\u0645\u06CC\u062E\u0648\u0627\u0647\u0645 \u{1F468}\u{1F469}\u{1F467}",
+    );
   });
 
   it("applies the 10,000 character cap to the text as the source sent it", () => {
