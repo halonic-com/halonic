@@ -23,6 +23,11 @@ package makes it findable, and it is where the next pull requests freeze a copy 
 the guard change, moving the files out of `golden/` would have dropped the note they need when they
 change.
 
+## Tests
+
+No test was weakened. The comparison is the same; one test was added that the helper fails on a
+missing or different spec file, and two that the guard treats spec files as golden.
+
 ## Covers
 
 - `format.json-schema-goldens`
@@ -57,6 +62,3 @@ change.
 - `packages/core/format/src/kinds/workflow-test/golden/workflowTest.schema.json`
 - `packages/core/format/src/kinds/workflow/golden/workflow.schema.json`
 - `packages/core/format/src/kinds/workspace/golden/workspace.schema.json`
-
-No test was weakened. The comparison is the same; one test was added that the helper fails on a
-missing or different spec file, and two that the guard treats spec files as golden.
