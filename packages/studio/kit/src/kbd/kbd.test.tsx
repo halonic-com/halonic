@@ -20,6 +20,8 @@ verifies("kit.kbd", () => {
     expect(keys[0]?.className).toContain("bg-surface-muted px-1");
     // In the active menu item, on its muted fill, the box steps up to border.
     expect(keys[0]?.className).toContain("on-muted:bg-border on-muted:text-fg");
+    // With more contrast, border is too dark under fg there, so the box is surface.
+    expect(keys[0]?.className).toContain("contrast-more:on-muted:bg-surface");
   });
 
   it("keeps a key that appears twice", () => {

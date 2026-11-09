@@ -26,6 +26,8 @@ verifies("kit.status-chip", () => {
     expect(chip.className).toContain("bg-surface-muted text-fg-muted");
     // On a muted fill it steps up to border, or its box would disappear.
     expect(chip.className).toContain("on-muted:bg-border on-muted:text-fg");
+    // With more contrast, border is too dark under fg there, so the box is surface.
+    expect(chip.className).toContain("contrast-more:on-muted:bg-surface");
     expect(chip.hasAttribute("tabindex")).toBe(false);
     expect(chip.hasAttribute("role")).toBe(false);
   });

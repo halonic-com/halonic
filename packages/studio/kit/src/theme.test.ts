@@ -200,6 +200,112 @@ describe("theme.css field focus", () => {
   });
 });
 
+describe("theme.css with more contrast", () => {
+  const moreContrast = customProperties(
+    blockBody(blockBody(css, "@media (prefers-contrast: more)"), ":root"),
+  );
+
+  function raisedColour(name: string, mode: Mode): Rgba {
+    const pair = lightDarkPair(moreContrast.get(`--color-${name}`) ?? "");
+    if (pair === undefined) {
+      throw new Error(`--color-${name} isn't raised as light-dark() under more contrast.`);
+    }
+    return parseColour(pair[mode]);
+  }
+
+  it("raises muted text to ink 80% (white 82%) and subtle text to ink 74% (white 74%)", () => {
+    expect(moreContrast.get("--color-fg-muted")).toBe(
+      "light-dark(rgb(16 16 46 / 0.8), rgb(242 242 255 / 0.82))",
+    );
+    expect(moreContrast.get("--color-fg-subtle")).toBe(
+      "light-dark(rgb(16 16 46 / 0.74), rgb(242 242 255 / 0.74))",
+    );
+  });
+
+  for (const mode of ["light", "dark"] as const) {
+    it.each(
+      ["fg-muted", "fg-subtle"].flatMap((foreground) =>
+        [...surfaces, "surface-muted"].map((surface) => ({ foreground, surface })),
+      ),
+    )(
+      `gives $foreground on $surface more contrast than normal in ${mode} mode`,
+      ({ foreground, surface }) => {
+        const background = colourToken(surface, mode);
+        const normal = contrastRatio(colourToken(foreground, mode), background);
+        const raised = contrastRatio(raisedColour(foreground, mode), background);
+        expect(raised).toBeGreaterThan(normal);
+        expect(raised).toBeGreaterThanOrEqual(text);
+      },
+    );
+  }
+
+  for (const mode of ["light", "dark"] as const) {
+    it(`keeps fg readable on a neutral chip's on-muted fill in ${mode} mode`, () => {
+      // border takes border-control here, too dark under fg, so the fill is surface instead.
+      const fg = colourToken("fg", mode);
+      expect(contrastRatio(fg, colourToken("border-control", mode))).toBeLessThan(text);
+      expect(contrastRatio(fg, colourToken("surface", mode))).toBeGreaterThanOrEqual(text);
+    });
+  }
+
+  it("gives every edge and divider the control edge's 3:1", () => {
+    for (const edge of ["--color-border", "--color-border-strong", "--shade-edge"]) {
+      expect(moreContrast.get(edge), edge).toBe("var(--color-border-control)");
+    }
+  });
+
+  it("widens the focus ring's accent to 3px outside the same 2px gap", () => {
+    expect(moreContrast.get("--focus-ring")).toBe(
+      "0 0 0 2px var(--color-surface), 0 0 0 5px var(--color-accent)",
+    );
+  });
+
+  it("raises nothing else", () => {
+    expect([...moreContrast.keys()]).toEqual([
+      "--color-fg-muted",
+      "--color-fg-subtle",
+      "--color-border",
+      "--color-border-strong",
+      "--shade-edge",
+      "--focus-ring",
+    ]);
+  });
+
+  it("swaps a focused field's soft ring for a 1px ring in its edge colour", () => {
+    for (const [field, colour] of [
+      ["focus-field", "accent"],
+      ["focus-field-danger", "danger"],
+    ]) {
+      const focus = blockBody(blockBody(css, `@utility ${field}`), "@variant field-focus");
+      expect(blockBody(focus, "@media (prefers-contrast: more)")).toContain(
+        `box-shadow: 0 0 0 1px var(--color-${colour});`,
+      );
+    }
+  });
+
+  it("outlines a selected row or tab in the control edge", () => {
+    const outline = blockBody(
+      blockBody(css, "@utility selected-forced"),
+      "@media (prefers-contrast: more)",
+    );
+    expect(outline).toContain("outline: 1px solid var(--color-border-control);");
+    expect(outline).toContain("outline-offset: -1px;");
+  });
+
+  it("lets Windows high-contrast mode win where both match", () => {
+    const utilities = [
+      blockBody(blockBody(css, "@utility focus-field"), "@variant field-focus"),
+      blockBody(blockBody(css, "@utility focus-field-danger"), "@variant field-focus"),
+      blockBody(css, "@utility selected-forced"),
+    ];
+    for (const utility of utilities) {
+      expect(utility.indexOf("@media (forced-colors: active)")).toBeGreaterThan(
+        utility.indexOf("@media (prefers-contrast: more)"),
+      );
+    }
+  });
+});
+
 describe("theme.css light and dark switch", () => {
   it("follows the system unless the app sets data-theme", () => {
     expect(blockBody(css, ":root")).toContain("color-scheme: light dark;");

@@ -42,7 +42,9 @@ export type StatusChipProps = WordChip | CountChip;
 /** Each coloured tone is its colour on its own `-soft` fill, which passes AA on every surface. */
 const toneClasses: Record<StatusChipTone, string> = {
   // On a muted fill (an unselected tab, a hovered row) the neutral box steps up to stay visible.
-  neutral: "bg-surface-muted text-fg-muted on-muted:bg-border on-muted:text-fg",
+  // With more contrast border is too dark for the text, so it's surface, set apart by its edge.
+  neutral:
+    "bg-surface-muted text-fg-muted on-muted:bg-border on-muted:text-fg contrast-more:on-muted:bg-surface",
   accent: "bg-accent-soft text-accent-text",
   running: "bg-running-soft text-running",
   warning: "bg-warning-soft text-warning",

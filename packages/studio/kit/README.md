@@ -88,6 +88,16 @@ Colour changes and short fades only. Nothing slides, scales or moves on its own,
 with motion, and status dots stay still. The one exception is the busy spinner (`animate-spin`).
 The curves and durations stay in the file for later.
 
+## More contrast
+
+When macOS or Linux asks for more contrast (`prefers-contrast: more`), colours aren't forced, so
+`theme.css` raises its own tokens (component specs 23.5): `fg-muted` and `fg-subtle` darken,
+`border`, `border-strong` and the shadows' edge take the 3:1 `border-control`, and the focus ring's
+accent grows from 2px to 3px. A focused field's soft ring becomes a 1px ring in its edge colour,
+and `selected-forced` outlines a selected tab or row in `border-control`. Fills and status colours
+don't change. A part adds the rest with `contrast-more:` classes: chips' edges in their own colour,
+and 60% instead of 45% for a waiting button. Windows high-contrast mode wins where both apply.
+
 ## Checks
 
 `pnpm turbo run test --filter=@halonicjs/studio-kit` reads `theme.css` and checks that:
@@ -98,6 +108,8 @@ The curves and durations stay in the file for later.
 - the radius, spacing, shadow, animation, breakpoint, layer and duration tokens are exactly the
   agreed set, and the shell's layout sizes keep their values, so a change is visible in review;
 - the focus rings never remove the outline, so they show in Windows high-contrast mode;
+- the more-contrast block raises exactly its six tokens, and the raised text colours gain contrast
+  on every surface;
 - the kit imports no other Studio package, in any import form.
 
 After tuning a colour, run the tests and adjust until they pass.
@@ -398,7 +410,8 @@ window width. Tests set the provider directly.
 A neutral fill on a `surface-muted` fill disappears, so it steps up with `on-muted:`
 (`on-muted:bg-border on-muted:text-fg`). The muted fill marks itself: `data-fill="muted"` while it
 is muted (an unselected tab, the active menu item), or `data-hover-fill="muted"` when it's muted only on
-hover and press (a sidebar row).
+hover and press (a sidebar row). With more contrast `border` is too dark under `fg`, so the step is
+`surface` instead (`contrast-more:on-muted:bg-surface`), set apart by the chip's own edge.
 
 ## ListHeading
 

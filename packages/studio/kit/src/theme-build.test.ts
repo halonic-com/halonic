@@ -77,4 +77,21 @@ describe("theme.css built by Tailwind: on a muted fill", () => {
     const css = await buildCss(["bg-surface-muted", "on-muted:bg-border"]);
     expect(css.indexOf(".on-muted\\:bg-border")).toBeGreaterThan(css.indexOf(".bg-surface-muted"));
   });
+
+  it("takes surface there instead with more contrast, where border is too dark for the text", async () => {
+    const css = await buildCss(["on-muted:bg-border", "contrast-more:on-muted:bg-surface"]);
+    const moreContrast = css.indexOf(".contrast-more\\:on-muted\\:bg-surface");
+    expect(moreContrast).toBeGreaterThan(css.indexOf(".on-muted\\:bg-border"));
+    expect(css.lastIndexOf("@media (prefers-contrast: more)", moreContrast)).toBeGreaterThan(-1);
+  });
+});
+
+describe("theme.css built by Tailwind: more contrast", () => {
+  it("keeps the raised tokens and their media query in the output", async () => {
+    const css = await buildCss([]);
+    const block = css.slice(css.indexOf("@media (prefers-contrast: more)"));
+    expect(block).toContain("--color-fg-muted: light-dark(");
+    expect(block).toContain("--color-border: var(--color-border-control);");
+    expect(block).toContain("--focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 5px");
+  });
 });

@@ -284,6 +284,23 @@
   }
 }
 
+/*
+ * More contrast (macOS and Linux, component specs 23.5). Colours aren't forced there, so the theme
+ * raises its own: muted and subtle text darken, every edge and divider takes the 3:1 control edge,
+ * and the focus ring's accent grows from 2px to 3px. Fills and status colours stay as they are.
+ * The chips' edges and the 60% of waiting controls are contrast-more: classes in the parts.
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --color-fg-muted: light-dark(rgb(16 16 46 / 0.8), rgb(242 242 255 / 0.82));
+    --color-fg-subtle: light-dark(rgb(16 16 46 / 0.74), rgb(242 242 255 / 0.74));
+    --color-border: var(--color-border-control);
+    --color-border-strong: var(--color-border-control);
+    --shade-edge: var(--color-border-control);
+    --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 5px var(--color-accent);
+  }
+}
+
 /* ---------------------------------------------------------------- The halo, as four utilities */
 
 /* The window frame: the halo over the canvas. */
@@ -373,8 +390,9 @@
  * The focus of a text field's box (Input, TextArea, Select): an accent edge and a 3px soft ring,
  * because the general ring would hide the edge. It shows while the text inside has focus, on any
  * focus, not only from the keyboard. A button inside the box (clear, show) keeps the general
- * ring, so you can tell the two apart. The outline is for Windows high-contrast mode, where it
- * turns Highlight and stands 2px off the box (specs 23.5).
+ * ring, so you can tell the two apart. With more contrast the soft ring is too faint to see, so a
+ * 1px accent ring doubles the edge instead. The outline is for Windows high-contrast mode, where
+ * it turns Highlight and stands 2px off the box (specs 23.5).
  */
 @custom-variant field-focus (&:has([data-field-text]:focus));
 
@@ -383,6 +401,10 @@
     outline: 2px solid transparent;
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px var(--color-accent-soft);
+
+    @media (prefers-contrast: more) {
+      box-shadow: 0 0 0 1px var(--color-accent);
+    }
 
     @media (forced-colors: active) {
       outline: 2px solid Highlight;
@@ -397,6 +419,10 @@
     outline: 2px solid transparent;
     border-color: var(--color-danger);
     box-shadow: 0 0 0 3px var(--color-danger-soft);
+
+    @media (prefers-contrast: more) {
+      box-shadow: 0 0 0 1px var(--color-danger);
+    }
 
     @media (forced-colors: active) {
       outline: 2px solid Highlight;
@@ -434,8 +460,17 @@
   }
 }
 
-/* In Windows high-contrast mode only: a 1px outline round a selected row, with the bar above. */
+/*
+ * With more contrast or in Windows high-contrast mode only: a 1px outline round a selected row or
+ * tab, with the bar above. With more contrast it's the control edge, because a selected tab's
+ * fill and a selected row's accent-soft are too close to their track to tell apart.
+ */
 @utility selected-forced {
+  @media (prefers-contrast: more) {
+    outline: 1px solid var(--color-border-control);
+    outline-offset: -1px;
+  }
+
   @media (forced-colors: active) {
     outline: 1px solid CanvasText;
     outline-offset: -1px;
