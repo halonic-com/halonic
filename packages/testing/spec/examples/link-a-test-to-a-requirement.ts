@@ -4,8 +4,8 @@ import { requirementIdPattern, verifies } from "../src/index.ts";
 // Call this at the top level of a test file, with the ID from the requirement file.
 export function declareTests(requirementId: string): void {
   verifies(requirementId, () => {
-    test("fires once the delay has passed", () => {
-      expect(1 + 1).toBe(2);
+    test("is tagged with its requirement", ({ task }) => {
+      expect(task.meta.requirement).toBe(requirementId);
     });
   });
 }
