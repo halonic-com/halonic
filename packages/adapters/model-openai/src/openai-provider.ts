@@ -76,7 +76,10 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     };
     const response = await this.#send(request, call);
     if (!response.ok) {
-      throw errorForStatus(response.status, await textOrEmpty(response), call);
+      const text = await textOrEmpty(response);
+      // An abort while the error text was read fails with the abort's reason.
+      request.signal?.throwIfAborted();
+      throw errorForStatus(response.status, text, call);
     }
     let body: unknown;
     try {

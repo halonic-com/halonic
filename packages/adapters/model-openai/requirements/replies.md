@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2284; the plan's decision to show the reasoning of local thinking models
 
-The OpenAI-compatible provider shall answer with the first choice's text, tool calls and usage, and shall give the reasoning a server sends as `reasoning_content` or `reasoning`. An answer with tool calls shall finish with `tool_calls`, whatever finish reason the server gave. Tool call arguments that aren't a JSON object shall be passed on as `{ input: <the text> }`.
+The OpenAI-compatible provider shall answer with the first choice's text, tool calls and usage, and shall give the reasoning a server sends as `reasoning_content` or `reasoning`. An answer with tool calls shall finish with `tool_calls` when the server says `stop` or `tool_calls`, and with `length` when the server says `length`. Tool call arguments sent as an object shall be taken as they are; arguments that aren't a JSON object shall be passed on as `{ input: <the text> }`. A tool call without an id shall get `call_<its index>`.
 
 ## Examples
 

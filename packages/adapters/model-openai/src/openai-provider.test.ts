@@ -126,6 +126,25 @@ verifies("model-openai.call-errors", () => {
     });
   }
 
+  it("fails with the abort's reason when the call is stopped while the error text is read", async () => {
+    const stop = new AbortController();
+    const reason = new Error("stopped by the user");
+    // The server answers 500, and the call is stopped while its text comes in.
+    const errorText = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        stop.abort(reason);
+        controller.error(new TypeError("terminated"));
+      },
+    });
+    const { provider } = providerWith({
+      http: { fetch: async () => new Response(errorText, { status: 500 }) },
+    });
+    const error: unknown = await provider
+      .chat({ ...chatRequest(), signal: stop.signal })
+      .catch((thrown: unknown) => thrown);
+    expect(error).toBe(reason);
+  });
+
   it("says refused, not model-no-tools, when the request offered no tools", async () => {
     const { error } = await failureOf(
       (v) => v.replyNext(400, { error: "acme-small does not support tools" }),

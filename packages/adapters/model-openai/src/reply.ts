@@ -39,14 +39,20 @@ function firstChoice(body: unknown): Record<string, unknown> {
 
 function readToolCalls(value: unknown): ToolCall[] {
   if (!Array.isArray(value)) return [];
-  return value.filter(isPlainObject).map((call) => {
+  return value.filter(isPlainObject).map((call, index) => {
     const fn = isPlainObject(call["function"]) ? call["function"] : {};
     return {
-      id: textOf(call["id"]),
+      // Some local servers leave the id out; each call still needs its own.
+      id: textOf(call["id"]) || `call_${index}`,
       name: textOf(fn["name"]),
-      arguments: parseArguments(textOf(fn["arguments"])),
+      arguments: readArguments(fn["arguments"]),
     };
   });
+}
+
+/** A tool call's arguments, sent as JSON text or, by some local servers, as an object. */
+function readArguments(value: unknown): Record<string, unknown> {
+  return isPlainObject(value) ? value : parseArguments(textOf(value));
 }
 
 /**
@@ -76,16 +82,16 @@ function readUsage(value: unknown): ChatResponse["usage"] {
 
 /**
  * The finish reason in our terms. Ollama says `stop` even when the model
- * called tools, so an answer with tool calls always finishes with `tool_calls`.
+ * called tools, so `stop` with tool calls finishes with `tool_calls`. `length`
+ * stays `length`, because the last call's arguments may have been cut off.
  */
 export function readFinishReason(
   value: unknown,
   calledTools: boolean,
 ): ChatResponse["finishReason"] {
-  if (calledTools) return "tool_calls";
   switch (value) {
     case "stop":
-      return "stop";
+      return calledTools ? "tool_calls" : "stop";
     case "length":
       return "length";
     case "tool_calls":
