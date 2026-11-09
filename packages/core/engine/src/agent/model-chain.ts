@@ -17,6 +17,12 @@ import {
 } from "@halonicjs/ports";
 import type { TurnLog } from "./turn-log.ts";
 
+/** A model's price per million tokens, in the workspace's budget currency. */
+export interface ModelPrice {
+  readonly input: number;
+  readonly output: number;
+}
+
 /** The provider and model a turn goes to, with the models it falls back to. */
 export interface ResolvedModel {
   readonly provider: LlmProvider;
@@ -29,6 +35,13 @@ export interface ResolvedModel {
    * Left out when the provider needs none, such as a local model.
    */
   readonly secret?: string;
+  /**
+   * Whether the provider runs on this machine (`local: true`), such as
+   * Ollama, LM Studio or the mock model. Its calls cost 0 unless `price` is set.
+   */
+  readonly local?: boolean;
+  /** What the model costs, from its alias in `models.yaml`. */
+  readonly price?: ModelPrice;
   /**
    * The models of the alias's own `fallback` entries, in order. Only this
    * level is tried: a fallback's own fallbacks are not followed.

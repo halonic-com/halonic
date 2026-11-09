@@ -17,6 +17,7 @@ loop of one model turn, which the local chat turn runs.
 | `ModelChain`         | (internal) skips a model whose key isn't set, and moves on at once from an offline one, with no retries                      | `engine.skip-model-without-key`, `engine.offline-falls-back`                        |
 |                      | stops the turn when the model is missing, can't call tools, or is refused                                                    | `engine.model-failure-stops`                                                        |
 | `ResolvedModel`      | the model a turn starts on, the name of its key's secret, and its alias's own fallbacks                                      | `engine.offline-falls-back`                                                         |
+|                      | each model's price and whether it is local, which give each `llm.response` its `cost`                                        | `engine.turn-prices-calls`                                                          |
 | `runFailureReasonOf` | the reason a run fails with after its model call threw: `model-missing`, `model-no-tools` or `error`                         | `engine.model-failure-stops`                                                        |
 | `TurnLog`            | where a turn writes `llm.request`, `llm.response`, `llm.skipped`, `llm.fallback`, `tool.called` and `tool.result`            | `engine.turn-logs-events`                                                           |
 | `RunStoreTurnLog`    | a `TurnLog` that appends those events to a run's log in a `RunStore`                                                         | `engine.turn-logs-events`                                                           |
@@ -42,6 +43,11 @@ offline model hands the call to the next one at once, and the turn stays on that
 model, a model that can't call tools, or a refused call stops the turn with that `ModelCallError`.
 When no model is left, the turn fails with a `ModelCallError` whose reason is the last cause. Runs of agents will log their turns
 through a `RunStoreTurnLog`.
+
+Each `llm.response` gets its `cost` from the model that answered: its tokens at its price per
+million, in the workspace's budget currency and not rounded. A local model without a price
+(Ollama, LM Studio, the mock model) costs 0. Any other model gets no `cost`, so the run's summary
+counts the call in `unpricedCalls`.
 
 ## Kernel
 

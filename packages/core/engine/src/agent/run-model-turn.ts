@@ -16,6 +16,7 @@ import type {
   ToolCall,
   ToolDefinition,
 } from "@halonicjs/ports";
+import { callCost } from "./call-cost.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { runToolCall, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
@@ -141,6 +142,7 @@ async function askModel(
     meta: { agentId: agent },
   });
   const { response, answeredBy } = answer;
+  const cost = callCost(answeredBy, response.usage);
   await input.log?.append({
     type: "llm.response",
     agent,
@@ -150,6 +152,7 @@ async function askModel(
     latencyMs: input.clock.now().getTime() - started,
     text: response.content,
     ...(response.reasoning === undefined ? {} : { thoughts: response.reasoning }),
+    ...(cost === undefined ? {} : { cost }),
     ...(isToolCallAsText(response, tools.byName) ? { toolCallAsText: true as const } : {}),
   });
   return answer;

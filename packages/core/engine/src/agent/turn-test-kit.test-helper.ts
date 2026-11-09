@@ -6,6 +6,7 @@ import type {
   ToolDefinition,
 } from "@halonicjs/ports";
 import { ScriptedModel } from "../testing/scripted-model.ts";
+import type { ResolvedModel } from "./model-chain.ts";
 import { type ModelTurnInput, runModelTurn } from "./run-model-turn.ts";
 import type { TurnEvent, TurnLog } from "./turn-log.ts";
 import type { HalonicTool } from "./turn-tools.ts";
@@ -54,13 +55,17 @@ export interface TestTurn {
   connectors?: ConnectorClient[];
   maxRounds?: number;
   log?: TurnLog;
+  /** The provider's id; "scripted" when left out. */
+  provider?: string;
+  /** The model's `local` and `price`, which give its calls their cost. */
+  pricing?: Pick<ResolvedModel, "local" | "price">;
 }
 
 /** Runs a turn on the scripted model with a fixed clock, and gives the model back too. */
 export async function runTestTurn(setup: TestTurn) {
-  const model = new ScriptedModel(setup.answers);
+  const model = new ScriptedModel(setup.answers, setup.provider);
   const input: ModelTurnInput = {
-    model: { provider: model, model: "scripted-1" },
+    model: { provider: model, model: "scripted-1", ...setup.pricing },
     secrets: secretsWith(),
     messages: [{ role: "user", content: "Find the Acme invoice" }],
     callerTools: setup.callerTools ?? [],
