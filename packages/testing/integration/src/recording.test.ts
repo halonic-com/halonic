@@ -1,6 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { NoRecordingError, type RecordingFile, replayTransport } from "./recording.ts";
+import { checkCase } from "./checks.ts";
+import { forecastExchange, recording, weatherSubject } from "./fixtures/weather.ts";
+import {
+  NoRecordingError,
+  type RecordedBody,
+  type RecordingFile,
+  replayTransport,
+} from "./recording.ts";
 
 const file: RecordingFile = {
   format: "halonic.recording/1",
@@ -124,6 +131,115 @@ verifies("integration.recordings-fail-closed", () => {
     expect(response.headers.get("content-type")).toBe("text/event-stream");
     expect(await response.text()).toBe(
       'event: delta\ndata: {"text":"<scrubbed:content>"}\n\ndata: [DONE]\n\n',
+    );
+  });
+
+  it.each([
+    ["another host", "https://other.example.com/v1/items?key=real-key", create, "api.example.com"],
+    ["a changed query", "https://api.example.com/v1/items?key=real-key&all=1", create, "query"],
+    [
+      "a body that isn't JSON",
+      "https://api.example.com/v1/items?key=real-key",
+      { ...create, body: "{" },
+      "body",
+    ],
+    [
+      "an array where the recording has an object",
+      "https://api.example.com/v1/items?key=real-key",
+      { ...create, body: "[]" },
+      "body",
+    ],
+    [
+      "null where the recording kept a value",
+      "https://api.example.com/v1/items?key=real-key",
+      { ...create, body: create.body.replace('"x"', "null") },
+      "body",
+    ],
+  ])("refuses a request to %s", async (_what, url, init, why) => {
+    const { transport } = replayTransport(file);
+    await expect(transport.fetch(url, init)).rejects.toThrow(why);
+  });
+
+  it("matches form and text bodies, with placeholders, and never a streamed one", async () => {
+    const sending = (body: RecordedBody): RecordingFile => ({
+      ...file,
+      exchanges: [
+        {
+          transport: "http",
+          request: { method: "POST", url: "https://api.example.com/send", headers: {}, body },
+          response: { status: 200, headers: {}, body: { kind: "empty" } },
+        },
+      ],
+    });
+    const send = (body: RecordedBody, sent: string) =>
+      replayTransport(sending(body)).transport.fetch("https://api.example.com/send", {
+        method: "POST",
+        body: sent,
+      });
+
+    const form: RecordedBody = {
+      kind: "form",
+      value: [
+        ["action", "save"],
+        ["note", "<scrubbed:content>"],
+      ],
+    };
+    await expect(send(form, "action=save&note=Ghent")).resolves.toBeDefined();
+    await expect(send(form, "action=delete&note=Ghent")).rejects.toThrow("body");
+
+    const text: RecordedBody = {
+      kind: "text",
+      contentType: "text/plain",
+      value: "to <scrubbed:content>.",
+    };
+    await expect(send(text, "to Ghent.")).resolves.toBeDefined();
+    await expect(send(text, "to Ghent!")).rejects.toThrow("body");
+
+    const streamed: RecordedBody = { kind: "sse", value: [{ event: "message", data: "hi" }] };
+    await expect(send(streamed, "data: hi\n\n")).rejects.toThrow("body");
+  });
+
+  it("replays a form answer with its content type", async () => {
+    const { transport } = replayTransport({
+      ...file,
+      exchanges: [
+        {
+          transport: "http",
+          request: {
+            method: "GET",
+            url: "https://api.example.com/saved",
+            headers: {},
+            body: { kind: "empty" },
+          },
+          response: {
+            status: 200,
+            headers: {},
+            body: {
+              kind: "form",
+              value: [
+                ["id", "7"],
+                ["status", "saved"],
+              ],
+            },
+          },
+        },
+      ],
+    });
+    const response = await transport.fetch("https://api.example.com/saved");
+    expect(response.headers.get("content-type")).toBe("application/x-www-form-urlencoded");
+    expect(await response.text()).toBe("id=7&status=saved");
+  });
+
+  it("fails a case that makes fewer requests than its recording has", async () => {
+    const answer = forecastExchange({ kind: "json", value: { summary: "Rain, 12°C" } });
+    const subject = {
+      ...weatherSubject,
+      recordings: [recording("forecast-ghent", [answer, answer])],
+    };
+    const forecastCase = { tool: "forecast", scenario: "forecast-ghent", args: { city: "Ghent" } };
+
+    await expect(checkCase(subject, forecastCase)).rejects.toThrow(
+      /"forecast" made 1 request\(s\) fewer than the recording "forecast-ghent" has/,
     );
   });
 

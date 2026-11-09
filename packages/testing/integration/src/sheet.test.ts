@@ -45,6 +45,24 @@ verifies("integration.reads-the-sheet", () => {
     );
   });
 
+  it("fails a recording made for another integration", () => {
+    const theirs = { ...recording("forecast-ghent", []), integration: "notes" };
+    expect(() => checkDeclaration({ ...weatherSubject, recordings: [theirs] })).toThrow(
+      /the recording "forecast-ghent" is for "notes"/,
+    );
+  });
+
+  it("fails a case that calls an undeclared tool or replays a missing recording", () => {
+    const undeclared = { ...forecastCase, tool: "delete-city" };
+    expect(() => checkDeclaration({ ...weatherSubject, cases: [undeclared] })).toThrow(
+      /a case calls "delete-city", which isn't declared/,
+    );
+    const unrecorded = { ...forecastCase, scenario: "forecast-paris" };
+    expect(() => checkDeclaration({ ...weatherSubject, cases: [unrecorded] })).toThrow(
+      /a case replays the scenario "forecast-paris", which has no recording/,
+    );
+  });
+
   it("resolves a { fromSetting } host only with its setting", () => {
     const local = withSheet({ hosts: ["api.example.com", { fromSetting: "url" }] });
     expect(() => checkPolicy(local)).toThrow(/setting-missing at hosts.1/);
