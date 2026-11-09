@@ -1,0 +1,15 @@
+id: weekly-report
+name: Weekly report
+description: Write the weekly report on the support mail.
+initial: write
+states:
+  write:
+    description: Write the report
+    agent: reporter
+    input: Write this week's report.
+    output: report
+    artifact: { name: weekly-report.md }
+    on:
+      - to: done
+  done:
+    type: final

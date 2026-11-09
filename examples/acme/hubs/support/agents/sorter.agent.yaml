@@ -1,0 +1,11 @@
+id: sorter
+name: Sorter
+description: Decides what kind of mail a customer sent.
+instructions: |
+  Read the customer's mail and answer with one word:
+  refund when they want money back,
+  question when they ask something else,
+  spam when nobody needs to answer it.
+output:
+  type: choice
+  options: [refund, question, spam]

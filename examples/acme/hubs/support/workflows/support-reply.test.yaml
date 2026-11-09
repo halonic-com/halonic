@@ -1,0 +1,66 @@
+workflow: support-reply
+cases:
+  - name: Sam's refund question is approved
+    input:
+      mail: "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)"
+    mocks:
+      writer:
+        - Sam wants a refund for order 1042, which arrived damaged.
+        - Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+      sorter: [refund]
+    events: [approve]
+    expect:
+      status: completed
+      final: replied
+      states: [read, classify, draft, review, replied]
+      context: { kind: refund }
+
+  - name: Alex's threat is rejected and gets no reply
+    input:
+      mail: "Hello, cancel my subscription and refund the last two years, or I'll post about you everywhere. — Alex (invented)"
+    mocks:
+      writer:
+        - Alex wants the subscription cancelled and two years refunded.
+        - We have cancelled your subscription and will refund the last two years.
+      sorter: [refund]
+    events: [reject]
+    expect:
+      status: completed
+      final: not-replied
+      states: [read, classify, draft, review, not-replied]
+
+  - name: a reply nobody has reviewed yet waits
+    input:
+      mail: "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)"
+    mocks:
+      writer:
+        - Sam wants a refund for order 1042, which arrived damaged.
+        - Sorry your order arrived damaged, Sam. We are looking into a refund.
+      sorter: [refund]
+    expect:
+      status: waiting
+      states: [read, classify, draft, review]
+
+  - name: a question gets an approved reply
+    input:
+      mail: "Do you also ship to Belgium? — Robin (invented)"
+    mocks:
+      writer:
+        - Robin asks whether we ship to Belgium.
+        - Yes, Robin, we ship to Belgium. Delivery takes three to five days.
+      sorter: [question]
+    events: [approve]
+    expect:
+      final: replied
+      context: { kind: question }
+
+  - name: spam ends without a draft or a review
+    input:
+      mail: "You have won a prize! Click here to claim it."
+    mocks:
+      writer: [Someone says we won a prize.]
+      sorter: [spam]
+    expect:
+      status: completed
+      final: ignored
+      states: [read, classify, ignored]

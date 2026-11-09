@@ -1,0 +1,4 @@
+id: mock
+name: Test model
+type: mock
+local: true

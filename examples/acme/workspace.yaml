@@ -1,0 +1,6 @@
+# Acme is an invented company. Every name, mail and order in this example is made up.
+id: acme
+name: Acme
+description: An invented shop that answers its customers' mail and reports on it once a week.
+defaults:
+  model: default

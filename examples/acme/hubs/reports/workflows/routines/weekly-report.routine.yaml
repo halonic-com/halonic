@@ -1,0 +1,7 @@
+name: Weekly report
+description: Every Monday morning, the Reporter writes the week's support report.
+trigger:
+  schedule: "0 9 * * 1"
+  timezone: Europe/Amsterdam
+run:
+  workflow: weekly-report

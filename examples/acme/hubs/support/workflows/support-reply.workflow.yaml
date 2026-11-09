@@ -1,0 +1,50 @@
+id: support-reply
+name: Support reply
+description: 'A customer''s mail, for example: "Hi, my order #1042 arrived damaged. Can I get a refund?"'
+initial: read
+start: { label: Answer a customer's mail, field: mail }
+states:
+  read:
+    description: Read the mail
+    agent: writer
+    input: Say in one sentence what the customer asks for.
+    gets: [input.mail]
+    output: request
+    on:
+      - to: classify
+  classify:
+    description: Classify it
+    agent: sorter
+    gets: [input.mail]
+    output: kind
+    on:
+      - to: ignored
+        when: { equals: ["{{context.kind}}", spam] }
+      - to: draft
+  draft:
+    description: Draft a reply
+    agent: writer
+    input: Draft a reply to the customer's mail.
+    gets: [input.mail, context.request]
+    output: reply
+    on:
+      - to: review
+  review:
+    type: wait
+    description: Review the reply, then approve or reject it.
+    on:
+      - to: replied
+        event: approve
+        label: Approve
+      - to: not-replied
+        event: reject
+        label: Reject
+  replied:
+    type: final
+    description: Finished with the reply approved.
+  not-replied:
+    type: final
+    description: Finished without the reply.
+  ignored:
+    type: final
+    description: Finished without a reply, because nobody needs to answer spam.
