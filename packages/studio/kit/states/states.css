@@ -4,7 +4,7 @@
  *
  * A cell's wrapper with data-force-state="hover", "active" or "focus" (or an element inside it
  * that carries the attribute itself) turns on the parts' own hover:, active: and focus utilities,
- * and group-hover:, which Tailwind builds from hover:. A List row's first cell with the attribute
+ * and group-hover:, which Tailwind builds from hover:. A List row's main cell with the attribute
  * turns on the row's focus ring (row-focus).
  * These variants replace Tailwind's for this page only and keep their place in its output, so a
  * forced cell gets the same rules, at the same specificity, as a real hover or focus. Tailwind's
@@ -31,8 +31,8 @@
   &[data-force-state="focus"]
 );
 
-/* A List row's ring goes round the whole row while its first cell has focus, forced or real. */
+/* A List row's ring goes round the whole row while its main cell has focus, forced or real. */
 @custom-variant row-focus (
-  tr:has(> td:first-child:focus-visible) > &,
-  tr:has(> td:first-child[data-force-state="focus"]) > &
+  tr:has(> td:focus-visible) > &,
+  tr:has(> td[data-force-state="focus"]) > &
 );

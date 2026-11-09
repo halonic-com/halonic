@@ -31,6 +31,25 @@ verifies("kit.checkbox", () => {
     expect(box.className).toContain("group-hover/checkbox:border-fg-muted");
   });
 
+  it("is a 48px target without words on a phone or a touch screen, and a tap there checks it", async () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Checkbox label="Select Sorter" checked={false} onChange={onChange} />,
+    );
+    const target = boxIn(container).parentElement as HTMLElement;
+    expect(target.tagName).toBe("LABEL");
+    expect(target.className).toContain("phone:hit-touch touch:hit-touch");
+    await click(target);
+    expect(onChange).toHaveBeenCalledWith(true);
+
+    const withWords = render(
+      <Checkbox checked={false} onChange={vi.fn()}>
+        Run on a schedule
+      </Checkbox>,
+    );
+    expect(boxIn(withWords.container).parentElement?.className).not.toContain("hit-touch");
+  });
+
   it("must have a name: words or a label, never both", () => {
     // @ts-expect-error: neither words nor a label
     const nameless = <Checkbox checked={false} onChange={vi.fn()} />;

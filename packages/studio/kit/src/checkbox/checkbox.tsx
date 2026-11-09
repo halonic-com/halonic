@@ -112,8 +112,8 @@ export function Checkbox(props: CheckboxProps) {
     }
   });
 
-  const box = (
-    <span className="relative inline-grid size-4 shrink-0">
+  const inside = (
+    <>
       <input
         type="checkbox"
         ref={(element) => {
@@ -145,18 +145,28 @@ export function Checkbox(props: CheckboxProps) {
       <span aria-hidden="true" className={markClasses}>
         {indeterminate ? <DashMark /> : <CheckMark />}
       </span>
-    </span>
+    </>
   );
+  const cursor = isUnavailable ? "cursor-not-allowed" : "cursor-pointer";
 
   if (props.children === undefined) {
-    return box;
+    // Without words the box is still a 48px target on a phone or a touch screen. The target is
+    // the label's ::after, and a label passes its clicks on to the box.
+    return (
+      // biome-ignore lint/a11y/noLabelWithoutControl: the input is inside `inside`, which Biome can't see; aria-label names it
+      <label
+        className={`relative inline-grid size-4 shrink-0 phone:hit-touch touch:hit-touch ${cursor}`}
+      >
+        {inside}
+      </label>
+    );
   }
   return (
-    // biome-ignore lint/a11y/noLabelWithoutControl: the input is inside `box`, which Biome can't see
+    // biome-ignore lint/a11y/noLabelWithoutControl: the input is inside `inside`, which Biome can't see
     <label
-      className={`group/checkbox inline-flex items-center gap-2 text-body phone:min-h-touch touch:min-h-touch ${isUnavailable ? "cursor-not-allowed text-fg-disabled text-forced-disabled" : "cursor-pointer text-fg"}`}
+      className={`group/checkbox inline-flex items-center gap-2 text-body phone:min-h-touch touch:min-h-touch ${cursor} ${isUnavailable ? "text-fg-disabled text-forced-disabled" : "text-fg"}`}
     >
-      {box}
+      <span className="relative inline-grid size-4 shrink-0">{inside}</span>
       {props.children}
     </label>
   );

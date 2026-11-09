@@ -82,14 +82,19 @@ describe("the states page's forced states", () => {
     ]);
   });
 
-  it("forces a List row's ring round the whole row from its first cell", async () => {
+  it("forces a List row's ring round the whole row from its main cell", async () => {
+    const edges = ["start", "middle", "end"] as const;
     const rules = ruleSelectors(
-      await buildCss(["focus-ring-row-start", "focus-ring-row-end"], statesCss, statesFolder),
+      await buildCss(
+        edges.map((edge) => `focus-ring-row-${edge}`),
+        statesCss,
+        statesFolder,
+      ),
     );
-    for (const edge of ["start", "end"]) {
+    for (const edge of edges) {
       expect(rules).toContainEqual([
-        `tr:has( > td:first-child:focus-visible) > .focus-ring-row-${edge}`,
-        `tr:has( > td:first-child[data-force-state="focus"]) > .focus-ring-row-${edge}`,
+        `tr:has( > td:focus-visible) > .focus-ring-row-${edge}`,
+        `tr:has( > td[data-force-state="focus"]) > .focus-ring-row-${edge}`,
       ]);
     }
   });

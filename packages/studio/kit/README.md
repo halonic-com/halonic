@@ -466,7 +466,7 @@ List draws them.
 | `label`          | The list's name when it has no heading: "Agents". A list needs one of the two            |
 | `onOpen`         | Called with a row's `id` on Enter or a click                                             |
 | `onOpenInNewTab` | Called on Ctrl Enter (⌘ Enter), a Ctrl-click (⌘-click) or a middle click                 |
-| `selection`      | `{ selected, onToggle, multiple }`: the screen keeps the set, Space toggles a row        |
+| `selection`      | `{ selected, onToggle, multiple, verb }`: the screen keeps the set, Space toggles a row  |
 | `dense`          | 32px rows, for menus and pickers                                                         |
 | `flush`          | No outer border or radius, lines from 16px. On by default on a phone                     |
 | `empty`          | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
@@ -497,6 +497,19 @@ the page doesn't jump when a row arrives, and the Empty state's title is a level
   rows={[]}
   empty={{ title: "No agents yet", description: "Agents do the work.", action: newAgent }}
 />;
+```
+
+**Open and select.** With both `onOpen` and `selection`, every row starts with a checkbox cell
+(44px, 48px on a phone or a touch screen), so a mouse or a finger can select without opening. A
+click anywhere in the cell selects and puts focus on the box, and the rest of the row opens. The
+box is named "Select classifier.ts", or with the selection's `verb`, "Stage classifier.ts", and is
+checked while the row is selected. It's a cell of the grid: ← from the main cell reaches it, Space
+toggles it, and the main cell stays the first Tab stop. The main cell's ring goes round the whole
+row, checkbox cell included; the box has its own ring. An unavailable row's box is still focusable
+but does nothing; an error row's box stays selectable.
+
+```tsx
+<List label="Changes" rows={files} onOpen={openDiff} selection={{ ...staged, verb: "Stage" }} />;
 ```
 
 **Keyboard.** The list is one Tab stop. The up and down arrow keys, Home and End move between
@@ -627,7 +640,7 @@ when it stands without words, as in a List row.
 | High contrast | A checked or mixed box fills `Highlight` with a `HighlightText` mark (`checkbox-forced`)                    |
 
 **On a phone or a touch screen** the box stays 16px, and a checkbox with words is at least 48px
-high, words included.
+high, words included. A box without words takes taps in a 48px square round it (`hit-touch`).
 
 **Unavailable** means clicks and Space change nothing, so a mixed box stays mixed too.
 

@@ -47,13 +47,21 @@ export interface ListSelection<Id extends string = string> {
   readonly onToggle: (id: Id) => void;
   /** More than one row at a time, as staging files in Changes. */
   readonly multiple?: boolean;
+  /**
+   * The verb that names a row's checkbox, in a list that also opens rows: "Stage" names it
+   * "Stage classifier.ts". Default "Select".
+   */
+  readonly verb?: string;
 }
 
 interface ListBase<Id extends string> {
   readonly rows: readonly ListRow<Id>[];
   /** Default 2. */
   readonly headingLevel?: 2 | 3 | 4;
-  /** Enter or a click on a row. Without it, a click toggles the selection. */
+  /**
+   * Enter or a click on a row. Without it, a click toggles the selection. With a `selection` too,
+   * each row starts with a checkbox cell, so a mouse or a finger can select without opening.
+   */
   readonly onOpen?: (id: Id) => void;
   /**
    * Ctrl Enter (⌘ Enter on a Mac), a Ctrl-click (⌘-click) or a middle click, as the Runs list

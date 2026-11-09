@@ -18,8 +18,14 @@ const inbox: readonly GridRow[] = [
   { id: "reply", cells: [true, true, false] },
 ];
 
-function Grid({ rows }: { readonly rows: readonly GridRow[] }) {
-  const grid = useGridNavigation(rows);
+function Grid({
+  rows,
+  startColumn,
+}: {
+  readonly rows: readonly GridRow[];
+  readonly startColumn?: number;
+}) {
+  const grid = useGridNavigation(rows, startColumn === undefined ? {} : { startColumn });
   // The hook needs no roles: the List puts them on its table, so this test leaves them out.
   return (
     <table aria-label="Inbox" {...grid.gridProps}>
@@ -67,6 +73,14 @@ verifies("kit.grid-navigation", () => {
       (button) => button.tabIndex === 0,
     );
     expect(tabStops.map((button) => button.textContent)).toEqual(["invoice 0"]);
+  });
+
+  it("starts in the start column, as the List's main cell after its checkbox", () => {
+    const { container } = render(<Grid rows={inbox} startColumn={1} />);
+    const tabStops = Array.from(container.querySelectorAll("button")).filter(
+      (button) => button.tabIndex === 0,
+    );
+    expect(tabStops.map((button) => button.textContent)).toEqual(["invoice 1"]);
   });
 
   it("passes over heading rows and empty cells", () => {

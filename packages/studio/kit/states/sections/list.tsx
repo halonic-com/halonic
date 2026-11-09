@@ -43,17 +43,27 @@ interface AgentsProps {
   readonly first?: ListRow;
   readonly heading?: boolean;
   readonly selected?: boolean;
+  /** Opens and selects, so each row starts with its checkbox cell. */
+  readonly check?: boolean;
 }
 
 /** The sheet's List: two agents, with the row's state on the first one. */
-function Agents({ first = customerSupport, heading = false, selected = false }: AgentsProps) {
+function Agents({
+  first = customerSupport,
+  heading = false,
+  selected = false,
+  check = false,
+}: AgentsProps) {
   return (
     <div className="w-80 phone:w-full">
       <List
         rows={[first, mailTriage]}
         {...(heading ? { heading: { name: "Agents", detail: "2" } } : { label: "Agents" })}
-        {...(selected ? { selection: { selected: new Set([first.id]), onToggle: ignore } } : {})}
-        onOpen={ignore}
+        {...(selected || check
+          ? { selection: { selected: new Set(selected ? [first.id] : []), onToggle: ignore } }
+          : {})}
+        // A list that only selects has no checkbox cell, so Selected stays as it was.
+        {...(selected && !check ? {} : { onOpen: ignore })}
       />
     </div>
   );
@@ -112,6 +122,7 @@ export const listSection: PartSection = {
   rows: [
     { name: "Default", copies: () => <Agents heading /> },
     { name: "Selected", copies: () => <Agents selected /> },
+    { name: "Open and select", copies: () => <Agents check selected /> },
     { name: "Loading", copies: () => <LoadingAgents /> },
     { name: "Empty", copies: () => <NoAgents /> },
     { name: "Hover", force: "hover", target: firstRow, copies: () => <Agents /> },

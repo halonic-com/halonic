@@ -1,17 +1,16 @@
-import type { ReactNode } from "react";
 import { useId } from "react";
 import { Button } from "../button/button.tsx";
 import { type GridNavigation, useGridNavigation } from "../grid-navigation/use-grid-navigation.ts";
 import { MoreIcon } from "../icons/more-icon.tsx";
 import { ListHeading } from "../list-heading/list-heading.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
-import { StatusChip } from "../status-chip/status-chip.tsx";
+import { CheckCell } from "./check-cell.tsx";
 import { EmptyList, useFocusOnEmpty } from "./empty-list.tsx";
 import { boxClasses, type ListLook, lineClasses } from "./list-lines.ts";
 import type { ListProps, ListRow, ListSelection } from "./list-props.ts";
 import { ListSkeleton, useFocusAfterLoading } from "./list-skeleton.tsx";
+import { RowContent } from "./row-content.tsx";
 import { rowHandlers } from "./row-handlers.ts";
-import { Leading, MetaLine } from "./row-parts.tsx";
 
 /**
  * `fill` goes on the cells, not the row, so the corner cells' radius keeps it inside the box.
@@ -29,17 +28,6 @@ const rowStateClasses = {
   unavailable: { fill: "bg-surface", row: "", main: "" },
 } as const;
 
-/** The row's height, from the presentation, the density and whether it has a meta line. */
-function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean): string {
-  if (phone) {
-    return dense ? "min-h-touch py-2" : "min-h-14 py-3";
-  }
-  if (dense) {
-    return "min-h-control-md touch:min-h-touch";
-  }
-  return hasMeta ? "min-h-14" : "min-h-control-lg touch:min-h-touch";
-}
-
 /**
  * The More button's column. The button is always there, dimmed (`fg-muted`, the ghost button's
  * colour) until it's hovered. The cell is part of the row: its line and fills reach the box's edge.
@@ -50,20 +38,29 @@ const moreClasses = {
 } as const;
 
 /**
- * The keyboard focus ring. With a More column it goes round the whole row: the main cell draws it
- * without its end edge and the More cell draws the rest, while the main cell has focus.
+ * The keyboard focus ring. With a checkbox or a More column it goes round the whole row while the
+ * main cell has focus: the first cell draws its start edge, the last cell its end edge, and every
+ * cell its top and bottom. The checkbox has its own ring when it has focus.
  */
-const focusClasses = {
-  alone: "focus-ring-inset",
-  withMore: { main: "focus-ring-row-start", more: "focus-ring-row-end" },
-} as const;
+function focusClasses(hasCheck: boolean, hasMore: boolean): { main: string; end: string } {
+  if (!(hasCheck || hasMore)) {
+    return { main: "focus-ring-inset", end: "" };
+  }
+  if (!hasCheck) {
+    return { main: "focus-ring-row-start", end: "focus-ring-row-end" };
+  }
+  return {
+    main: hasMore ? "focus-ring-row-middle" : "focus-ring-row-end",
+    end: "focus-ring-row-end",
+  };
+}
 
 /**
  * A bordered group of rows: agents, routines, runs. It's one Tab stop: ↑ ↓ move between rows,
  * → reaches a row's More button, Enter opens and Space selects when the list allows it.
  *
- * It's a one-column `grid` (plus the More buttons' column), because rows hold a button and can be
- * selected; a `listbox` can't hold buttons.
+ * It's a one-column `grid` (plus the checkbox and More buttons' columns), because rows hold a
+ * button and can be selected; a `listbox` can't hold buttons.
  *
  * @example
  * <List
@@ -98,8 +95,10 @@ export function List<Id extends string>({
   const look: ListLook = (flushProp ?? phone) ? "flush" : "bordered";
   const headingId = useId();
   const hasMore = rows.some((row) => row.more !== undefined);
+  const hasCheck = onOpen !== undefined && selection !== undefined;
   const grid = useGridNavigation(
-    rows.map((row) => ({ id: row.id, cells: hasMore ? [true, row.more !== undefined] : [true] })),
+    rows.map((row) => ({ id: row.id, cells: gridCells(row, hasCheck, hasMore) })),
+    { startColumn: firstFocusColumn(hasCheck) },
   );
   const showEmpty = empty !== undefined && rows.length === 0;
   const emptyFocus = useFocusOnEmpty(showEmpty);
@@ -177,6 +176,7 @@ export function List<Id extends string>({
                   phone={phone}
                   dense={dense}
                   hasMore={hasMore}
+                  hasCheck={hasCheck}
                   grid={grid}
                   onOpen={onOpen}
                   onOpenInNewTab={onOpenInNewTab}
@@ -191,6 +191,16 @@ export function List<Id extends string>({
   );
 }
 
+/** The main cell takes focus first, also after a checkbox cell. */
+function firstFocusColumn(hasCheck: boolean): number {
+  return hasCheck ? 1 : 0;
+}
+
+/** A row's focusable cells: its checkbox, its main cell and its More button. */
+function gridCells(row: ListRow, hasCheck: boolean, hasMore: boolean): boolean[] {
+  return [...(hasCheck ? [true] : []), true, ...(hasMore ? [row.more !== undefined] : [])];
+}
+
 interface RowProps<Id extends string> {
   readonly row: ListRow<Id>;
   /** The first row: no line above it. */
@@ -202,6 +212,7 @@ interface RowProps<Id extends string> {
   readonly phone: boolean;
   readonly dense: boolean;
   readonly hasMore: boolean;
+  readonly hasCheck: boolean;
   readonly grid: GridNavigation;
   readonly onOpen: ((id: Id) => void) | undefined;
   readonly onOpenInNewTab: ((id: Id) => void) | undefined;
@@ -234,25 +245,41 @@ function cornerBarClasses(look: ListLook, top: boolean, last: boolean): string {
   return [top ? "after:top-2" : "", last ? "after:bottom-2" : ""].filter(Boolean).join(" ");
 }
 
-/**
- * The row's chip or value, or an error's `danger` chip in its place. The error chip has its dot,
- * so the state doesn't rest on colour alone.
- */
-function trailingOf(row: ListRow): ReactNode {
-  return row.error === undefined ? (
-    row.trailing
-  ) : (
-    <StatusChip tone="danger" dot>
-      {row.error.chip}
-    </StatusChip>
-  );
-}
-
 function rowState(isUnavailable: boolean, isSelected: boolean): keyof typeof rowStateClasses {
   if (isUnavailable) {
     return "unavailable";
   }
   return isSelected ? "selected" : "default";
+}
+
+interface CellOptions {
+  readonly look: "bordered" | "flush";
+  readonly first: boolean;
+  readonly top: boolean;
+  readonly last: boolean;
+  readonly state: (typeof rowStateClasses)[keyof typeof rowStateClasses];
+  readonly hasCheck: boolean;
+  readonly hasMore: boolean;
+}
+
+/** The fill, line, corners, selected bar and focus ring of each of a row's cells. */
+function cellClasses({ look, first, top, last, state, hasCheck, hasMore }: CellOptions): {
+  start: string;
+  main: string;
+  end: string;
+} {
+  const lines = first ? { main: "", more: "" } : lineClasses[look];
+  const bar = state.main === "" ? "" : `${state.main} ${cornerBarClasses(look, top, last)}`;
+  const focus = focusClasses(hasCheck, hasMore);
+  // The row's first cell carries the line from 16px in a flush list, the left corners and the bar.
+  const start = `${state.fill} ${bar} ${lines.main} ${cornerClasses(look, top, last, "left")}`;
+  const right = cornerClasses(look, top, last, "right");
+  const main = hasCheck ? `${state.fill} ${lines.more}` : start;
+  return {
+    start: `${start} focus-ring-row-start`,
+    main: `${focus.main} ${main} ${hasMore ? "" : right}`,
+    end: `${state.fill} ${focus.end} ${lines.more} ${right}`,
+  };
 }
 
 function Row<Id extends string>({
@@ -264,6 +291,7 @@ function Row<Id extends string>({
   phone,
   dense,
   hasMore,
+  hasCheck,
   grid,
   onOpen,
   onOpenInNewTab,
@@ -272,10 +300,9 @@ function Row<Id extends string>({
   const isSelected = selection?.selected.has(row.id) === true;
   const isUnavailable = row.unavailable !== undefined;
   const reasonId = useId();
-  const lines = first ? { main: "", more: "" } : lineClasses[look];
   const state = rowStateClasses[rowState(isUnavailable, isSelected)];
-  const bar = state.main === "" ? "" : `${state.main} ${cornerBarClasses(look, top, last)}`;
-  const focus = hasMore ? focusClasses.withMore.main : focusClasses.alone;
+  const cells = cellClasses({ look, first, top, last, state, hasCheck, hasMore });
+  const mainColumn = hasCheck ? 1 : 0;
   const { onClick, onAuxClick, onKeyDown } = rowHandlers({
     id: row.id,
     isUnavailable,
@@ -290,62 +317,45 @@ function Row<Id extends string>({
       aria-disabled={isUnavailable ? true : undefined}
       className={`group ${state.row}`}
     >
+      {hasCheck && selection !== undefined ? (
+        <CheckCell
+          row={row}
+          selection={selection}
+          isSelected={isSelected}
+          reasonId={reasonId}
+          grid={grid}
+          className={cells.start}
+        />
+      ) : null}
       {/* biome-ignore lint/a11y/useFocusableInteractive: its tabIndex comes from grid.cell(), which Biome can't see */}
       <td
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
         role="gridcell"
-        {...grid.cell(row.id, 0)}
+        {...grid.cell(row.id, mainColumn)}
         aria-describedby={isUnavailable ? reasonId : undefined}
-        className={`p-0 ${focus} ${state.fill} ${bar} ${lines.main} ${cornerClasses(look, top, last, "left")} ${hasMore ? "" : cornerClasses(look, top, last, "right")} ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
+        className={`p-0 ${cells.main} ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
         onClick={onClick}
         onAuxClick={onAuxClick}
         onKeyDown={onKeyDown}
       >
-        <RowContent row={row} phone={phone} dense={dense} reasonId={reasonId} />
+        <RowContent
+          row={row}
+          phone={phone}
+          dense={dense}
+          reasonId={reasonId}
+          afterCheck={hasCheck}
+        />
       </td>
       {hasMore ? (
         <MoreCell
           row={row}
           dense={dense}
           grid={grid}
-          className={`${state.fill} ${focusClasses.withMore.more} ${moreClasses[phone ? "phone" : "desktop"]} ${lines.more} ${cornerClasses(look, top, last, "right")}`}
+          column={mainColumn + 1}
+          className={`${cells.end} ${moreClasses[phone ? "phone" : "desktop"]}`}
         />
       ) : null}
     </tr>
-  );
-}
-
-interface RowContentProps {
-  readonly row: ListRow;
-  readonly phone: boolean;
-  readonly dense: boolean;
-  /** The id of the meta line, which an unavailable row's cell names with `aria-describedby`. */
-  readonly reasonId: string;
-}
-
-/** The main cell's inside: the icon or avatar, the title, the meta line and the trailing part. */
-function RowContent({ row, phone, dense, reasonId }: RowContentProps) {
-  const meta = row.unavailable?.reason ?? row.error?.reason ?? row.meta;
-  const trailing = trailingOf(row);
-  // On a phone the right edge has one job: next to a More button, the chip starts the meta line.
-  const trailingBelow = phone && row.more !== undefined;
-  const showTrailingRight = !trailingBelow && trailing !== undefined;
-
-  return (
-    <div
-      className={`flex items-center gap-3 px-4 ${heightClasses(phone, dense, meta !== undefined)}`}
-    >
-      <Leading row={row} small={dense && !phone} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span
-          className={`truncate text-body-strong ${row.unavailable === undefined ? "text-fg" : "text-fg-disabled text-forced-disabled"}`}
-        >
-          {row.title}
-        </span>
-        <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
-      </div>
-      {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}
-    </div>
   );
 }
 
@@ -353,11 +363,13 @@ interface MoreCellProps<Id extends string> {
   readonly row: ListRow<Id>;
   readonly dense: boolean;
   readonly grid: GridNavigation;
+  /** The More button's column: 1, or 2 after a checkbox cell. */
+  readonly column: number;
   readonly className: string;
 }
 
 /** The row's More button, or an empty cell when another row has one and this row doesn't. */
-function MoreCell<Id extends string>({ row, dense, grid, className }: MoreCellProps<Id>) {
+function MoreCell<Id extends string>({ row, dense, grid, column, className }: MoreCellProps<Id>) {
   return (
     <td className={`p-0 text-right ${className}`}>
       {row.more === undefined ? null : (
@@ -369,7 +381,7 @@ function MoreCell<Id extends string>({ row, dense, grid, className }: MoreCellPr
           icon={<MoreIcon />}
           label={row.more.label}
           onClick={row.more.onClick}
-          {...grid.cell(row.id, 1)}
+          {...grid.cell(row.id, column)}
         />
       )}
     </td>
