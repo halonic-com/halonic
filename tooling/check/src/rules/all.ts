@@ -8,6 +8,7 @@ import { checkDependencies } from "./dependencies.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
 import { inactiveChecks, inactiveRule } from "./inactive-checks.ts";
+import { checkInvisibleCharacters } from "./invisible-characters.ts";
 import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
 import { checkNames } from "./names.ts";
@@ -26,6 +27,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "file-size": checkFileSize,
   lockfile: checkLockfile,
   "absolute-paths": checkAbsolutePaths,
+  "invisible-characters": checkInvisibleCharacters,
   dco: (context) => checkDco(context),
   trace: checkTrace,
   ...Object.fromEntries(Object.keys(inactiveChecks).map((name) => [name, inactiveRule(name)])),

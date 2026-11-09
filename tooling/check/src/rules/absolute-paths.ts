@@ -1,8 +1,6 @@
 import type { CheckContext } from "../lib/context.ts";
 import { Report } from "../lib/problems.ts";
-import { isTestFile } from "../lib/source-files.ts";
-
-const checked = /\.(?:[cm]?[jt]sx?|md|mdx|json|jsonc|ya?ml|toml|astro|css|html)$/;
+import { isTestFile, isTextFile } from "../lib/source-files.ts";
 
 /**
  * Paths that only exist on one person's or one agent's machine. Built from
@@ -28,7 +26,7 @@ function isExempt(file: string): boolean {
 export function checkAbsolutePaths(context: CheckContext): Report {
   const report = new Report("absolute-paths");
   for (const file of context.files) {
-    if (!checked.test(file) || isExempt(file)) {
+    if (!isTextFile(file) || isExempt(file)) {
       continue;
     }
     context
