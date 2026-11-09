@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode, Ref } from "react";
+import type { FocusEvent, MouseEvent, ReactNode, Ref } from "react";
 import { Spinner } from "./spinner.tsx";
 
 /** What the button does: `primary` once per view, `ghost` for Cancel, `danger` only to confirm. */
@@ -31,6 +31,9 @@ interface ButtonBase {
   /** `submit` only for a form's confirming button. */
   readonly type?: "button" | "submit";
   readonly onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  readonly onFocus?: (event: FocusEvent<HTMLButtonElement>) => void;
+  /** `-1` only inside a grid, which moves focus with the arrow keys (a List row's More button). */
+  readonly tabIndex?: 0 | -1;
   readonly ref?: Ref<HTMLButtonElement>;
 }
 
@@ -150,7 +153,9 @@ export function Button(props: ButtonProps) {
       aria-busy={busy || undefined}
       aria-disabled={unavailable === undefined ? undefined : true}
       aria-describedby={unavailable?.reason}
+      tabIndex={props.tabIndex}
       onClick={handleClick}
+      onFocus={props.onFocus}
     >
       {icon === undefined ? null : (
         <span className={iconClasses} aria-hidden="true">
