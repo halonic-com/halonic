@@ -3,7 +3,7 @@
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
 by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Kbd`](#kbd),
-[`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
+[`Field`](#field), [`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
 
 - **Layer:** studio
 - **Owner:** noah
@@ -227,6 +227,29 @@ A keyboard shortcut in a menu, the command palette or a tooltip: one box per key
 
 The shell passes "Ctrl" or "⌘" for the platform. Not interactive, and hidden on a phone, where
 there's no keyboard to press it on.
+
+## Field
+
+A label, a control and a line under it: the hint, or the error in its place. The Field gives the
+control its `id`, `aria-describedby`, `aria-invalid` and `aria-required`, so a screen never wires
+them by hand.
+
+```tsx
+<Field label="Name" hint="Shown in the sidebar." error={nameError} required>
+  <Input value={name} onChange={(event) => setName(event.target.value)} />
+</Field>;
+```
+
+| Prop        | What it is                                                                  |
+| ----------- | --------------------------------------------------------------------------- |
+| `label`     | Always there, above the control, in `text-caption` `fg-muted`               |
+| `hideLabel` | Hides the label from sight only. Just for a search in a toolbar             |
+| `hint`      | A short line under the control in `fg-subtle`                               |
+| `error`     | A sentence that says what to do: "Give the agent a name." Replaces the hint |
+| `required`  | Writes "Required" after the label in `fg-subtle`. No asterisk               |
+
+The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
+control of your own can read the Field through `useFieldControl()`.
 
 ## CopyButton
 

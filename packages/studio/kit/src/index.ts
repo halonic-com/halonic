@@ -22,6 +22,12 @@ export {
   openInNewTab,
   useOpenExternal,
 } from "./external-link/open-external.tsx";
+export {
+  Field,
+  type FieldControl,
+  type FieldProps,
+  useFieldControl,
+} from "./field/field.tsx";
 export { Kbd, type KbdProps } from "./kbd/kbd.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
 
