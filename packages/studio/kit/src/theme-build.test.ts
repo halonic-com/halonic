@@ -95,3 +95,17 @@ describe("theme.css built by Tailwind: more contrast", () => {
     expect(block).toContain("--focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 5px");
   });
 });
+
+describe("theme.css built by Tailwind: the Checkbox in high contrast", () => {
+  it("fills a checked or mixed box Highlight with a HighlightText mark, and an unavailable one GrayText", async () => {
+    const css = await buildCss(["checkbox-forced"]);
+    const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(forced).toMatch(
+      /:is\(:checked, :indeterminate\) \{\s*forced-color-adjust: none;\s*border-color: Highlight;\s*background-color: Highlight;/,
+    );
+    expect(forced).toMatch(
+      /:is\(:checked, :indeterminate\) \+ \* \{\s*forced-color-adjust: none;\s*color: HighlightText;/,
+    );
+    expect(forced).toMatch(/\[aria-disabled="true"\] \{\s*border-color: GrayText;/);
+  });
+});

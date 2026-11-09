@@ -20,6 +20,11 @@ export {
   type CalloutTone,
 } from "./callout/callout.tsx";
 export { Card, type CardProps, type CardState } from "./card/card.tsx";
+export {
+  Checkbox,
+  type CheckboxProps,
+  type CheckboxUnavailable,
+} from "./checkbox/checkbox.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export {
   EmptyState,

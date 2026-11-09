@@ -566,6 +566,40 @@ the grey fill is dropped.
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.
 
+## Checkbox
+
+A choice that is on or off. It's a native checkbox with its own look, so the browser keeps the
+keyboard and screen reader behaviour. Give it words, which are part of its target, or a `label`
+when it stands without words, as in a List row.
+
+```tsx
+<Checkbox checked={scheduled} onChange={setScheduled}>
+  Run on a schedule
+</Checkbox>;
+<Checkbox label="Select Sorter" checked={selected} onChange={toggleSorter} />;
+```
+
+| Prop            | What it is                                                                   |
+| --------------- | ---------------------------------------------------------------------------- |
+| `checked`       | On or off                                                                    |
+| `onChange`      | Called with the new value on a click or Space. Not while `unavailable`       |
+| `indeterminate` | Some, not all: a dash in place of the check, read as "mixed"                 |
+| `unavailable`   | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop |
+| `children`      | Its words: "Run on a schedule". Or `label`, its name when it has no words    |
+| `tabIndex`      | `-1` only inside a grid, which moves focus with the arrow keys               |
+
+| State         | What shows                                                                                                       |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Default       | A 16px box, radius 4px, a `border-control` edge on `surface`                                                     |
+| Hover         | The edge turns `fg-muted`, over the box or a label round it                                                      |
+| Focus         | The standard ring round the box                                                                                  |
+| Checked       | `primary` fill with an `on-primary` check; mixed shows a dash                                                    |
+| Unavailable   | 45% with an `fg-disabled` edge, `GrayText` in high contrast. Still focusable and keeps its value; ignores clicks |
+| Error         | In a Field with an error: a `danger` edge, `aria-invalid` and the Field's error line                             |
+| High contrast | A checked or mixed box fills `Highlight` with a `HighlightText` mark (`checkbox-forced`)                         |
+
+**On a phone** the box stays 16px, and a checkbox with words is at least 48px high, words included.
+
 ## Kbd
 
 A keyboard shortcut in a menu, the command palette or a tooltip: one box per key.
