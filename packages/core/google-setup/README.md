@@ -154,8 +154,14 @@ await secrets.stageClientSecret(clientRef, pastedAgain);
 await secrets.promote(clientRef); // Google accepted it
 await secrets.discard(clientRef); // or: Google refused it, the old one stays
 
-looksLikeGoogleClientSecret(noteText); // hold a note that holds a secret
+looksLikeGoogleClientSecret(clientIdField); // clear a client ID field that holds the secret (C3)
 ```
+
+Notes and chat messages (C6) don't use `looksLikeGoogleClientSecret`. They hold a message with
+`findSecretShape` from `@halonicjs/std`, the check the Assistant and Try it share, so all three spot
+the same formats. Its `google-client-secret` answer tells Studio to point to the client secret field.
+`looksLikeGoogleClientSecret` stays for the client ID field, where a cut-short paste such as
+`GOCSPX-a` must also be caught.
 
 ## Setup steps
 

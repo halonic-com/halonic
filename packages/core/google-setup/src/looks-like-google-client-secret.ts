@@ -8,8 +8,11 @@ const clientSecretPattern = /\bGOCSPX-[A-Za-z0-9_-]/;
 
 /**
  * Whether the text holds something shaped like a Google OAuth client secret,
- * so Studio can hold a note or chat message (C6) or clear a client ID field
- * (C3) before the secret goes anywhere it would be kept.
+ * so Studio can clear a client ID field (C3) before the secret is kept there.
+ *
+ * Notes and chat messages (C6) don't use this: they hold a message with
+ * `findSecretShape` from `@halonicjs/std`, the check the Assistant and Try it
+ * share, so all three spot the same formats.
  *
  * @example
  * looksLikeGoogleClientSecret("here it is: GOCSPX-abc123"); // true
