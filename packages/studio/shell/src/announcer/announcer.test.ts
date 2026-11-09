@@ -122,6 +122,26 @@ verifies("shell.announcer", () => {
     expect(said).toEqual(["sheet:polite:Copied."]);
   });
 
+  it("reads what waited for regions as soon as a modal pushes its own", () => {
+    const timers = new FakeTimers();
+    const announcer = createAnnouncer({ timers });
+    const said: string[] = [];
+    announcer.announce("Welcome.");
+    timers.advance(100);
+    announcer.pushModalRegions(recordingRegions(said, "dialog:"));
+    timers.advance(0);
+    expect(said).toEqual(["dialog:polite:Welcome."]);
+  });
+
+  it("stops holding a text for focus when it is also asked for without waiting", () => {
+    const { timers, announcer, said } = setUp(false);
+    announcer.announce("Signed in.", "polite", { whenWindowFocused: true });
+    timers.advance(100);
+    announcer.announce("Signed in.");
+    timers.advance(0);
+    expect(said).toEqual(["polite:Signed in."]);
+  });
+
   it("holds announcements until the frame mounts its regions", () => {
     const timers = new FakeTimers();
     const announcer = createAnnouncer({ timers });
