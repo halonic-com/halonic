@@ -215,12 +215,15 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      # Pull requests and merge queue scan their own commits; pushes to main
-      # scan the whole history.
+      # Pull requests and merge queue scan their own commits. Pushes to main
+      # scan main's whole history from the pushed commit. An empty log-opts
+      # would scan every fetched branch (git log --all), so an open pull
+      # request's branch could turn main red. The weekly full scan covers
+      # those branches.
       - name: Scan commits
         uses: $/.github/actions/gitleaks
         with:
-          log-opts: ${{ github.event_name != 'push' && format('{0}..{1}', github.event.pull_request.base.sha || github.event.merge_group.base_sha, github.event.pull_request.head.sha || github.event.merge_group.head_sha) || '' }}
+          log-opts: ${{ github.event_name == 'push' && github.sha || format('{0}..{1}', github.event.pull_request.base.sha || github.event.merge_group.base_sha, github.event.pull_request.head.sha || github.event.merge_group.head_sha) }}
 
   zizmor:
     name: Workflow lint (zizmor)
