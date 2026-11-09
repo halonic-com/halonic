@@ -116,7 +116,7 @@ console.log(JSON.stringify(r));
   const tools = ["cmd.exe /c ver", `${quote(process.execPath)} --version`, "where.exe git", "git --version", "powershell.exe -NoProfile -Command $PSVersionTable.PSVersion.ToString()", "pwsh.exe -NoProfile -Command 1", "python.exe --version", "curl.exe --version", "tar.exe --version", "where.exe pnpm", "cargo.exe --version", "whoami.exe /groups"];
   const results = {};
   for (const t of tools) {
-    const r = await runIn(t, { work, extraRead: [process.env.SystemRoot, process.env.ProgramFiles, process.env["ProgramFiles(x86)"]]].filter(Boolean) });
+    const r = await runIn(t, { work, extraRead: [process.env.SystemRoot, process.env.ProgramFiles, process.env["ProgramFiles(x86)"]].filter(Boolean) });
     results[t] = { exitCode: r.exitCode, error: r.error?.split("\n")[0], out: String(r.stdout ?? "").slice(0, 200).trim(), err: String(r.stderr ?? "").slice(0, 200).trim() };
   }
   report.result = results;
