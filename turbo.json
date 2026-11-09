@@ -7,6 +7,8 @@
     "tooling/config/biome.jsonc",
     "tooling/config/src/vitest-preset.ts",
     "tooling/config/src/coverage.ts",
+    "tooling/config/src/fast-check-seed.ts",
+    "tooling/config/src/fast-check-setup.ts",
     "biome.json"
   ],
   "tasks": {
@@ -41,6 +43,9 @@
       "dependsOn": [
         "//#codegen",
         "transit"
+      ],
+      "env": [
+        "FAST_CHECK_SEED"
       ],
       "outputs": [
         "test-results/**"

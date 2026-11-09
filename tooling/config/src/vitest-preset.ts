@@ -1,10 +1,15 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config";
 import { coverageSettings } from "./coverage.ts";
+import { usesFastCheck } from "./fast-check-seed.ts";
 import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
 import { UnrunTestFilesReporter } from "./unrun-files-reporter.ts";
 
 /** Where each package's test run writes its result file, relative to the package. */
 export const testResultsFile = "test-results/vitest.json";
+
+/** The setup file that gives fast-check a fixed seed (see `fastCheckSeed`). */
+export const fastCheckSetupFile = fileURLToPath(new URL("./fast-check-setup.ts", import.meta.url));
 
 /**
  * The shared Vitest settings for every package. Each package's
@@ -20,6 +25,10 @@ export const testResultsFile = "test-results/vitest.json";
  * A package may not turn `expect.requireAssertions` off, and a skipped or
  * todo test fails the run (see `NoSkippedTestsReporter`). Test files end in
  * `.test.ts` or `.test.tsx`; a `.spec.ts` file is a helper, not a test.
+ *
+ * In a package that uses fast-check, every property runs with a fixed seed,
+ * so each run makes the same `expect` calls. `FAST_CHECK_SEED` picks another
+ * seed, or `random` (see `fastCheckSeed`).
  *
  * @param overrides - settings for this one package, merged over the preset
  * @returns the Vitest config for the package
@@ -38,6 +47,9 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
     test: {
       include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
       environment: "node",
+      // Property tests check the same inputs on every run, so the requirement
+      // guard sees the same expect counts on both sides.
+      setupFiles: usesFastCheck(process.cwd()) ? [fastCheckSetupFile] : [],
       // A test that never ran must not count as passing.
       passWithNoTests: false,
       // A test with no assertion fails, so a test can't be emptied out to

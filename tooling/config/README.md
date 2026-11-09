@@ -42,3 +42,10 @@ Shared settings every package extends.
     different number each time.
   - Tests end in `.test.ts(x)`. A `.spec.ts` file is a helper that tests
     import; the preset doesn't run it, so it must hold no tests.
+  - In a package that lists `fast-check`, every property runs with a fixed
+    seed (`src/fast-check-setup.ts`), so each run checks the same inputs and
+    makes the same `expect` calls. Without it the requirement guard would
+    see a different count from the merge base's at random. To try other
+    inputs, set `FAST_CHECK_SEED` to another whole number (a failure prints
+    the seed to replay) or to `random` for a new seed on every run. A seed
+    passed to `fc.assert` itself still wins.
