@@ -41,8 +41,20 @@ function tabsIn(container: HTMLElement): HTMLButtonElement[] {
   return Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
 }
 
+/** A tab's text without the invisible bold copy that only reserves its width. */
+function labelOf(tab: HTMLElement | undefined): string | undefined {
+  if (tab === undefined) {
+    return undefined;
+  }
+  const copy = tab.cloneNode(true) as HTMLElement;
+  for (const widthCopy of copy.querySelectorAll(".invisible")) {
+    widthCopy.remove();
+  }
+  return copy.textContent ?? undefined;
+}
+
 function selectedIn(container: HTMLElement): string | undefined {
-  return tabsIn(container).find((tab) => tab.getAttribute("aria-selected") === "true")?.textContent;
+  return labelOf(tabsIn(container).find((tab) => tab.getAttribute("aria-selected") === "true"));
 }
 
 function press(element: Element, key: string): void {
@@ -58,11 +70,7 @@ verifies("kit.tabs", () => {
     const panel = container.querySelector('[role="tabpanel"]') as HTMLElement;
     const [flow] = tabsIn(container);
     expect(list.getAttribute("aria-label")).toBe("Workflow views");
-    expect(tabsIn(container).map((tab) => tab.textContent)).toEqual([
-      "Flow",
-      "Configuration",
-      "Runs",
-    ]);
+    expect(tabsIn(container).map(labelOf)).toEqual(["Flow", "Configuration", "Runs"]);
     expect(panel.getAttribute("aria-labelledby")).toBe(flow?.id);
     expect(flow?.getAttribute("aria-controls")).toBe(panel.id);
     expect(panel.textContent).toBe("flow view");
@@ -105,6 +113,22 @@ verifies("kit.tabs", () => {
     expect(configuration?.hasAttribute("data-fill")).toBe(false);
   });
 
+  it("reserves the bold label's width, so switching doesn't move the tabs after it", () => {
+    const { container } = render(<Page />);
+    const [flow, configuration] = tabsIn(container);
+    for (const tab of [flow, configuration]) {
+      const grid = tab?.querySelector(".inline-grid") as HTMLElement;
+      const [label, widthCopy] = Array.from(grid.children);
+      expect(label?.className).toBe("col-start-1 row-start-1");
+      expect(widthCopy?.getAttribute("aria-hidden")).toBe("true");
+      expect(widthCopy?.className).toBe("invisible col-start-1 row-start-1 font-medium");
+      expect(widthCopy?.textContent).toBe(label?.textContent);
+    }
+    // The visible label takes its weight from the tab's state.
+    expect(flow?.className).toContain("font-medium");
+    expect(configuration?.className).not.toContain("font-medium");
+  });
+
   it("renders at 40px with a 48px hit area on a touch screen", () => {
     const { container } = render(<Page />);
     expect(tabsIn(container)[0]?.className).toContain("touch:min-h-control-lg touch:hit-touch");
@@ -133,7 +157,7 @@ verifies("kit.tabs", () => {
     act(() => flow?.focus());
     press(flow as HTMLElement, "ArrowRight");
     expect(selectedIn(container)).toBe("Configuration");
-    expect(document.activeElement?.textContent).toBe("Configuration");
+    expect(labelOf(document.activeElement as HTMLElement)).toBe("Configuration");
     press(document.activeElement as HTMLElement, "End");
     expect(selectedIn(container)).toBe("Runs");
     press(document.activeElement as HTMLElement, "ArrowRight");
@@ -142,7 +166,7 @@ verifies("kit.tabs", () => {
     expect(selectedIn(container)).toBe("Runs");
     press(document.activeElement as HTMLElement, "Home");
     expect(selectedIn(container)).toBe("Flow");
-    expect(document.activeElement?.textContent).toBe("Flow");
+    expect(labelOf(document.activeElement as HTMLElement)).toBe("Flow");
   });
 
   it("leaves other keys alone", () => {
@@ -232,6 +256,19 @@ verifies("kit.tabs", () => {
     const icon = tabsIn(container)[0]?.firstElementChild as HTMLElement;
     expect(icon.getAttribute("aria-hidden")).toBe("true");
     expect(icon.className).toContain("size-icon-sm");
+    // inline spaces it with the tab's own gap-1.5.
+    expect(icon.className).not.toContain("me-1.5");
+  });
+
+  it("keeps a 6px gap after the icon on a phone, where the tab is laid out as text", () => {
+    const tabs: readonly Tab<View>[] = [{ id: "flow", label: "Flow", icon: <svg /> }];
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <Page tabs={tabs} />
+      </PresentationProvider>,
+    );
+    const icon = tabsIn(container)[0]?.firstElementChild as HTMLElement;
+    expect(icon.className).toContain("me-1.5 align-middle");
   });
 
   it("fills the column in equal parts on a phone, at least 48px high, with wrapping labels", () => {
@@ -249,6 +286,8 @@ verifies("kit.tabs", () => {
     expect(configuration?.className).toContain("min-h-touch min-w-0 flex-1 basis-0 px-2 py-1");
     expect(configuration?.className).toContain("hyphens-auto wrap-break-word");
     expect(configuration?.className).not.toContain("whitespace-nowrap");
+    // Equal parts already, so no width copy.
+    expect(configuration?.querySelector(".invisible")).toBeNull();
     // The counter follows the label like one more word.
     expect(configuration?.textContent).toBe("Configuration 2, 2 errors");
   });

@@ -78,6 +78,15 @@ const stateClasses = {
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
 
 /**
+ * In `fill` the tab is laid out as text so the label can wrap, so the icon needs its own gap: the
+ * same 6px as the `gap-1.5` of `inline`.
+ */
+const iconSpacing = {
+  inline: "",
+  fill: "me-1.5 align-middle",
+} as const;
+
+/**
  * A page's own views: Flow / Configuration / Runs. Arrow keys move between the tabs and select
  * them, Home and End jump, and only the selected tab is in the Tab order. Switching is instant.
  * Not the window tabs in the title bar, which belong to the shell.
@@ -167,11 +176,11 @@ export function Tabs<Id extends string>({
             }}
           >
             {tab.icon === undefined ? null : (
-              <span className={iconSlot} aria-hidden="true">
+              <span className={`${iconSlot} ${iconSpacing[layout]}`} aria-hidden="true">
                 {tab.icon}
               </span>
             )}
-            {tab.label}
+            {fill ? tab.label : <InlineLabel label={tab.label} />}
             {tab.count === undefined ? null : <TabCounter count={tab.count} fill={fill} />}
           </button>
         );
@@ -198,6 +207,22 @@ function tabState(isSelected: boolean, isDisabled: boolean): keyof typeof stateC
     return "selected";
   }
   return isDisabled ? "disabled" : "default";
+}
+
+/**
+ * An `inline` tab is as wide as its label, and the selected label is bolder. So the label sits in
+ * a one-cell grid with an invisible bold copy that sets the width, and switching tabs doesn't move
+ * the tabs after it. The visible copy keeps the weight of the tab's state.
+ */
+function InlineLabel({ label }: { readonly label: string }) {
+  return (
+    <span className="inline-grid">
+      <span className="col-start-1 row-start-1">{label}</span>
+      <span aria-hidden="true" className="invisible col-start-1 row-start-1 font-medium">
+        {label}
+      </span>
+    </span>
+  );
 }
 
 /**
