@@ -96,6 +96,16 @@ error codes, and words its message from the reason: `disk-full` (`ENOSPC`, `EDQU
 violation) or `failed` for anything else. The code and the original message stay in the result for
 Copy details; they never go on screen (rule 4 of the failure-path guide).
 
+## Error messages
+
+A screen with no text of its own for a failure passes the error and its "Couldn't…" title to
+`errorMessageFor`, the one place the Studio turns an error kind into words (microcopy 22 F13).
+The kind picks the body and the one action, which the screen wires up. A kinded error's message is
+the body unless the screen says more, such as the missing item's kind or the service that didn't
+answer. An `internal` error never shows its message: the body is "Halonic ran into a problem it
+can't explain yet." with **Copy details**. A `conflict` offers **Load the latest** only when the
+item has no unsaved edits; a file's own **Keep mine / Load theirs** wins over this message.
+
 ## Resource numbers
 
 `watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the
