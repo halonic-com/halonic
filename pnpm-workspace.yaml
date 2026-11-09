@@ -15,6 +15,7 @@ packages:
 # One version line per shared dependency. Packages use "catalog:" and the
 # check fails on any other version for an external dependency.
 catalog:
+  "@anthropic-ai/sandbox-runtime": 0.0.81
   "@biomejs/biome": 2.6.5
   "@changesets/cli": ^3.0.3
   "@stryker-mutator/core": ^10.1.1
@@ -79,3 +80,8 @@ linkWorkspacePackages: true
 # plain `pnpm add` writes "workspace:^", and no setting changes that in
 # pnpm 12 (savePrefix and saveExact don't apply to rolling).
 saveWorkspaceProtocol: rolling
+
+# Security override, allowed only through tooling/check/overrides-allowed.json
+# (HAL-1928). Value must equal the catalog version of zod.
+overrides:
+  "@anthropic-ai/sandbox-runtime>zod": 4.6.7

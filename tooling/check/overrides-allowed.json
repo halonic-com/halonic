@@ -1,3 +1,10 @@
 {
-  "allowed": []
+  "allowed": [
+    {
+      "selector": "@anthropic-ai/sandbox-runtime>zod",
+      "advisory": "GHSA-mrhx-c7xc-m3w5",
+      "reason": "srt 0.0.81 pins zod ^3.25, which has the oversized-collection memory exhaustion advisory (fixed in 4.6.6). The override moves srt to the catalog zod. srt imports zod/v3, which zod 4 ships. Approved by Liam on HAL-1928.",
+      "remove-when": "srt depends on zod >=4.6.6"
+    }
+  ]
 }

@@ -1,6 +1,17 @@
 {
   "//": "Every external dependency, why we have it and where it may be used. Adding one needs Liam's approval. A package may use it when its name matches allowedIn (* matches any text) and its layer is in layers. cloudRuntime: true lets a library ship inside a cloud runtime bundle; only the user can approve one. See docs/guides/dependencies.md.",
   "dependencies": {
+    "@anthropic-ai/sandbox-runtime": {
+      "category": "outside-world",
+      "allowedIn": [
+        "@halonicjs/adapter-sandbox-srt"
+      ],
+      "layers": [
+        "adapters"
+      ],
+      "reason": "Runs a program inside the operating system's own fence (bubblewrap on Linux, Seatbelt on macOS, a sandbox user on Windows) with a loopback proxy that filters network access. Approved in plan v1.17 (section 7.2) and by Liam on HAL-1726. Pinned to one exact version; only the library API is used, never the srt command. Brings zod, commander, node-forge and @pondwader/socks5-server, which our own code never imports.",
+      "useInstead": "the Sandbox port"
+    },
     "@biomejs/biome": {
       "category": "dev-tooling",
       "allowedIn": [

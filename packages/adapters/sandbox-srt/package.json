@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/adapter-sandbox-srt",
+  "private": true,
+  "type": "module",
+  "description": "The Sandbox port on sandbox-runtime (srt): bubblewrap on Linux, Seatbelt on macOS, a sandbox user on Windows.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  },
+  "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "catalog:",
+    "@halonicjs/ports": "workspace:*"
+  }
+}
