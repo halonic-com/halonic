@@ -33,6 +33,7 @@ code is built the way it is, before you change something they describe.
 | [Record store compaction](2026-11-08-record-store-compaction.md)                       | `RecordStore.compact` drops overwritten and removed values from storage (v2)     |
 | [Sandbox fence proof](2026-11-09-sandbox-fence-proof.md)                               | A sandbox session proves its fence before `open` returns (v2)                    |
 | [API types stand alone](2026-11-09-api-types-stand-alone.md)                           | `events` and `ports` use only each other, so callers get them without the engine |
+| [Sandbox check reason codes](2026-11-09-sandbox-check-reason-codes.md)                 | `SandboxCheck.reason` is a listed code; Studio words it; no fallback (v3)        |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

@@ -18,6 +18,7 @@ import type {
   Sandbox,
   SandboxBlock,
   SandboxCapabilities,
+  SandboxCheck,
   SandboxFence,
   SandboxProcess,
   SandboxProfile,
@@ -31,6 +32,7 @@ import type {
   StartRunRequest,
   TokenStore,
 } from "./index.ts";
+import { sandboxUnavailableReasons } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -347,5 +349,43 @@ verifies("ports.harness-run-events", () => {
       callId: "call_1",
     };
     expect(asked.type).toBe("approval.requested");
+  });
+});
+
+verifies("ports.sandbox-check-reason", () => {
+  it("names a closed list of reasons, with other as the fallback", () => {
+    expect(sandboxUnavailableReasons).toEqual([
+      "windows",
+      "container",
+      "user-namespaces-restricted",
+      "bubblewrap-missing",
+      "other",
+    ]);
+  });
+
+  it("gives a reason when the sandbox can't start, and null when it can", () => {
+    const refused: SandboxCheck = {
+      ok: false,
+      reason: "user-namespaces-restricted",
+      missing: ["unprivileged user namespaces are restricted"],
+    };
+    const works: SandboxCheck = { ok: true, reason: null, missing: [] };
+    expect([refused.reason, works.reason]).toEqual(["user-namespaces-restricted", null]);
+  });
+
+  it("doesn't compile with a reason that isn't listed", () => {
+    // @ts-expect-error: adapters return only listed reasons
+    const unlisted: SandboxCheck = { ok: false, reason: "no-kernel", missing: [] };
+    expect(unlisted).toBeDefined();
+  });
+
+  it("doesn't compile when ok and reason disagree", () => {
+    // @ts-expect-error: a sandbox that can start gives no reason
+    const okWithReason: SandboxCheck = { ok: true, reason: "windows", missing: [] };
+    // @ts-expect-error: a sandbox that can't start says why
+    const refusedWithoutReason: SandboxCheck = { ok: false, reason: null, missing: ["no fence"] };
+    // @ts-expect-error: a sandbox that can start misses nothing
+    const okMissing: SandboxCheck = { ok: true, reason: null, missing: ["bubblewrap"] };
+    expect([okWithReason, refusedWithoutReason, okMissing]).toHaveLength(3);
   });
 });

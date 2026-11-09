@@ -130,6 +130,8 @@ export {
   type SandboxProfile,
   type SandboxSession,
   type SandboxStrength,
+  type SandboxUnavailableReason,
+  sandboxUnavailableReasons,
   sandboxVersion,
 } from "./sandbox.ts";
 export {
