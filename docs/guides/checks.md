@@ -25,6 +25,7 @@ typecheck, lint and test for the packages your change affects.
 | `packages`             | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features, and the subpaths listed for it under `extraExports` in `policy.json`) or point at a test file; an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder`; `apiTypes` lists a package that isn't core |
 | `layers`               | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core, host or Studio code uses Node APIs; non-test code imports a test file; core, host or Studio code loads code the check can't follow (`import(x)` or `require(x)` with a computed name, `createRequire`, `process.getBuiltinModule`, `/// <reference types\|lib>`); a feature uses another feature other than through its `/api`                                                                            |
 | `dependencies`         | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages or `layers`, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`; an entry doesn't fit its category; a catalog version isn't a plain version (`1.2.3`, `^1.2.3`, `~1.2.3`); `overrides`, `resolutions`, `packageExtensions`, `patchedDependencies` or named catalogs are used. See [dependencies.md](dependencies.md)                                                                                                    |
+| `deny-toml`            | `apps/studio/src-tauri/deny.toml`: `[licenses] allow` differs from `shipped` in `licences.json`, or an `[advisories] ignore` entry has no reason, no or several expiry dates in its reason, a date that has passed or is more than 90 days out, or repeats an ID |
 | `advisories`           | `tooling/check/advisories-ignored.json` has an unknown field, a missing or thin reason, a bad advisory ID or date, a repeated advisory, an expired entry or one expiring more than 90 days out; or an advisory is ignored anywhere else (`auditConfig` and `ignoreGhsas` in the workspace file, an `--ignore` on an audit command in a workflow or `package.json`)                                                                                                                                                                                             |
 | `names`                | a file or path contains a package name in the `@halonic` or `@studio` npm scope. Both scopes belong to someone else                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `features`             | `apps/studio/package.json` doesn't list exactly the folders in `packages/studio/features/`. Fix with `pnpm discover --fix && pnpm install`                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -341,12 +342,16 @@ an edit of the date alone.
 `cargo-deny` has an ignore list too, in `apps/studio/src-tauri/deny.toml`.
 It follows the same rule: each `ignore` entry under `[advisories]` has a
 plain-language reason with the expiry date in it, at most 90 days out, and
-Liam reviews the pull request. `pnpm check` does not read this file yet, so
-the reviewer checks the date. The "Tauri shell (Rust checks)" job runs
-`cargo-deny` on every pull request that touches `apps/studio/src-tauri/`.
+Liam reviews the pull request. `pnpm check` reads this file (rule
+`deny-toml`) and fails on an ignore without exactly one expiry date in its
+reason, with a date that has passed or is more than 90 days out. The
+"Tauri shell (Rust checks)" job runs `cargo-deny` on every pull request that
+touches `apps/studio/src-tauri/`, and `.github/workflows/scheduled.yml` runs
+`cargo-deny check advisories` on `main` every week, because a new advisory
+can appear against a lockfile nobody touched.
 
 Its licence list is the `shipped` list in `tooling/check/licences.json`, and
-the two must stay the same. A Rust crate under another licence gets its own
+the two must stay the same: `pnpm check` fails when they differ. A Rust crate under another licence gets its own
 `exceptions` entry in `deny.toml`, which Julian reviews.
 
 ## What the TypeScript presets allow
@@ -408,7 +413,7 @@ produces packages that pass) are then skipped without blocking the merge.
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full leak guard and secret scan over the whole history
-weekly, including every pull request's head commits. A failure opens an issue.
+and `cargo-deny check advisories` on the Tauri shell weekly, including every pull request's head commits. A failure opens an issue.
 
 It also runs **mutation testing** every night: Stryker on
 `workflow`, `routines`, `schema-kit` and `yaml`, for each package that has

@@ -147,7 +147,7 @@ function readEntry(
   };
 }
 
-function checkExpiry(
+export function checkExpiry(
   at: string,
   ghsa: string,
   expires: string,

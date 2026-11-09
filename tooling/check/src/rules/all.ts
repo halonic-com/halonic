@@ -4,6 +4,7 @@ import { checkAbsolutePaths } from "./absolute-paths.ts";
 import { checkAdvisories } from "./advisories.ts";
 import { checkAgentsMd } from "./agents-md.ts";
 import { checkDco } from "./dco.ts";
+import { checkDeny } from "./deny.ts";
 import { checkDependencies } from "./dependencies.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
@@ -23,6 +24,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   layers: checkLayers,
   dependencies: checkDependencies,
   advisories: (context) => checkAdvisories(context),
+  "deny-toml": (context) => checkDeny(context),
   names: checkNames,
   features: checkFeatures,
   "file-size": checkFileSize,
