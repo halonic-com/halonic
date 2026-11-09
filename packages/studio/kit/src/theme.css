@@ -326,6 +326,29 @@
   }
 }
 
+/*
+ * The focus of a text field's box (Input, TextArea, Select): an accent edge and a 3px soft ring,
+ * because the general ring would hide the edge. It shows while the text inside has focus, on any
+ * focus, not only from the keyboard. A button inside the box (clear, show) keeps the general
+ * ring, so you can tell the two apart. The outline is for Windows high-contrast mode.
+ */
+@utility focus-field {
+  &:has([data-field-text]:focus) {
+    outline: 2px solid transparent;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  }
+}
+
+/* The same for a field with an error: the edge stays danger and the ring is danger-soft. */
+@utility focus-field-danger {
+  &:has([data-field-text]:focus) {
+    outline: 2px solid transparent;
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 3px var(--color-danger-soft);
+  }
+}
+
 /* ---------------------------------------------------------------- Safe areas on a phone */
 
 /* The top bar: clears the notch or status bar. */

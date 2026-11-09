@@ -135,6 +135,26 @@ describe("theme.css focus rings", () => {
   });
 });
 
+describe("theme.css field focus", () => {
+  it("rings a text field's box while its text has focus, and keeps the outline", () => {
+    const accent = blockBody(
+      blockBody(css, "@utility focus-field"),
+      "&:has([data-field-text]:focus)",
+    );
+    expect(accent).toContain("outline: 2px solid transparent;");
+    expect(accent).toContain("border-color: var(--color-accent);");
+    expect(accent).toContain("box-shadow: 0 0 0 3px var(--color-accent-soft);");
+
+    const danger = blockBody(
+      blockBody(css, "@utility focus-field-danger"),
+      "&:has([data-field-text]:focus)",
+    );
+    expect(danger).toContain("outline: 2px solid transparent;");
+    expect(danger).toContain("border-color: var(--color-danger);");
+    expect(danger).toContain("box-shadow: 0 0 0 3px var(--color-danger-soft);");
+  });
+});
+
 describe("theme.css light and dark switch", () => {
   it("follows the system unless the app sets data-theme", () => {
     expect(blockBody(css, ":root")).toContain("color-scheme: light dark;");

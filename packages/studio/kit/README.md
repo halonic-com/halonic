@@ -3,7 +3,7 @@
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
 by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Kbd`](#kbd),
-[`Field`](#field), [`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
+[`Field`](#field), [`Input`](#input), [`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
 
 - **Layer:** studio
 - **Owner:** noah
@@ -265,6 +265,35 @@ them by hand.
 
 The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
 control of your own can read the Field through `useFieldControl()`.
+
+## Input
+
+A one-line text field.
+
+```tsx
+<Input aria-label="Search agents" leadingIcon={<SearchIcon />} trailing={clearButton} />;
+```
+
+| State     | What shows                                                                              |
+| --------- | --------------------------------------------------------------------------------------- |
+| Default   | `surface` fill, a `border-control` edge, the placeholder in `fg-subtle`                 |
+| Hover     | The edge turns `fg-muted`                                                               |
+| Focus     | An `accent` edge and a 3px `accent-soft` ring (`focus-field`), while the text has focus |
+| Disabled  | `surface-subtle` fill, a `border` edge, the text and placeholder in `fg-disabled`       |
+| Error     | A `danger` edge, and a `danger-soft` ring with focus; the sentence comes from the Field |
+| Read-only | Like the default on `surface-subtle`, with no hover; the text stays selectable          |
+
+`Input` takes `size` (`md` 32px or `sm` 28px), a 16px `leadingIcon` and a `trailing` button (a
+`sm` ghost icon `Button`, such as Clear). A button inside the box keeps the general focus ring, so
+you can tell it from the text.
+
+**Keys.** Enter submits its form, **except while an input method is composing**: the Enter that
+picks a Japanese or Chinese word must never send. Your own key handlers use the same check,
+`isComposing(event)`, because WebKit ends a composition with an Enter whose `isComposing` is
+false.
+
+**On a phone** the box is at least 48px high, with 12px padding and 16px text
+(`text-input-touch`), so the browser doesn't zoom in.
 
 ## CopyButton
 

@@ -28,7 +28,10 @@ export {
   type FieldProps,
   useFieldControl,
 } from "./field/field.tsx";
+export type { FieldSize } from "./input/field-box.ts";
+export { Input, type InputProps } from "./input/input.tsx";
 export { Kbd, type KbdProps } from "./kbd/kbd.tsx";
+export { isComposing } from "./keyboard/is-composing.ts";
 export {
   type Presentation,
   PresentationProvider,
