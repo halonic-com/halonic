@@ -1,0 +1,32 @@
+/*
+ * A Checkbox's box in Windows high-contrast mode, which drops fills: a checked or mixed box fills
+ * with Highlight and its mark (the next element) turns HighlightText, so the box itself shows the
+ * choice. An unavailable box greys to GrayText, fill included when it's checked. It sits next to
+ * the Checkbox so theme.css stays under the size limit; theme.css imports it.
+ */
+@utility checkbox-forced {
+  @media (forced-colors: active) {
+    &:is(:checked, :indeterminate) {
+      forced-color-adjust: none;
+      border-color: Highlight;
+      background-color: Highlight;
+    }
+
+    &:is(:checked, :indeterminate) + * {
+      forced-color-adjust: none;
+      color: HighlightText;
+    }
+
+    &[aria-disabled="true"] {
+      border-color: GrayText;
+    }
+
+    &[aria-disabled="true"]:is(:checked, :indeterminate) {
+      background-color: GrayText;
+    }
+
+    &[aria-disabled="true"]:is(:checked, :indeterminate) + * {
+      color: Canvas;
+    }
+  }
+}
