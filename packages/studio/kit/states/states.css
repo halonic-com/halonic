@@ -3,7 +3,8 @@
  * the app does, and adds one thing the app never gets: forced states.
  *
  * A cell's wrapper with data-force-state="hover", "active" or "focus" (or an element inside it
- * that carries the attribute itself) turns on the parts' own hover:, active: and focus utilities.
+ * that carries the attribute itself) turns on the parts' own hover:, active: and focus utilities,
+ * and group-hover: and group-focus-within:, which Tailwind builds from them.
  * These variants replace Tailwind's for this page only and keep their place in its output, so a
  * forced cell gets the same rules, at the same specificity, as a real hover or focus. Tailwind's
  * hover: is also inside (hover: hover); here it isn't, so the forced row shows on any device.
@@ -27,4 +28,11 @@
   &:has([data-field-text]:focus),
   [data-force-state="focus"] &,
   &[data-force-state="focus"]
+);
+
+/* A List row shows its More button while a cell has focus: forced focus inside it counts too. */
+@custom-variant focus-within (
+  &:focus-within,
+  &:has([data-force-state="focus"]),
+  [data-force-state="focus"] &
 );

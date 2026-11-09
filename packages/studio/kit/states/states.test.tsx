@@ -35,7 +35,7 @@ type Forced = "hover" | "active" | "focus";
 const real: Record<Forced, RegExp> = {
   hover: /:hover(?![^(]*data-hover-fill)/,
   active: /:active/,
-  focus: /:focus-visible|:has\(\[data-field-text\]:focus\)/,
+  focus: /:focus-visible|:focus-within|:has\(\[data-field-text\]:focus\)/,
 };
 
 const isReal = (selector: string, state: Forced) =>
