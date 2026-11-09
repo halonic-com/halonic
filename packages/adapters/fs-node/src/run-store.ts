@@ -5,6 +5,7 @@ import {
   readFile,
   rename,
   rm,
+  stat,
   truncate,
   writeFile,
 } from "node:fs/promises";
@@ -32,24 +33,56 @@ const runIdPattern = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,127}$/u;
 /** Names Windows opens as a device whatever the extension, such as `NUL.jsonl`. */
 const windowsDeviceName = /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/iu;
 
+/** Settings for a {@link FolderRunStore}. */
+export interface FolderRunStoreOptions {
+  /**
+   * Called when an append stored its events but couldn't write the
+   * snapshot. The append still succeeds, since the snapshot is only a
+   * cache, so this is the one place the failure shows; log it as a warning.
+   * It must not throw, or the append rejects although its events are stored.
+   */
+  onSnapshotError?: (runId: string, error: unknown) => void;
+}
+
+/** Where a run's log ends, as this store last read or wrote it. */
+interface LogEnd {
+  /** The seq of the log's last event, 0 for an empty log. */
+  lastSeq: number;
+  /** The log's size in bytes, which ends in a line break. */
+  bytes: number;
+}
+
 /**
  * Run logs as files in one folder: `<runId>.jsonl` holds the run's events,
  * one per line, and only ever grows; `<runId>.snapshot.json` caches the
  * engine's state and may be deleted at any time. The list is worked out
  * from the logs on every call, so deleting a log removes the run.
  *
- * Appends to one run go one at a time, so `expectedSeq` holds within this
- * process. Two processes must not write to the same folder. An append that
- * fails stores nothing, but one cut off by a crash of the program may leave
- * the first events of its batch stored.
+ * Appends and reads of one run go one at a time, so `expectedSeq` holds
+ * within this process and a reader never sees an append that is still being
+ * written or cut back. Two processes must not write to the same folder. An
+ * append that fails stores nothing, but one cut off by a crash of the
+ * program may leave the first events of its batch stored.
  */
 export class FolderRunStore implements RunStore {
   readonly #root: string;
-  readonly #appends = new KeyedQueue();
+  readonly #onSnapshotError: (runId: string, error: unknown) => void;
+  readonly #queue = new KeyedQueue();
+  /**
+   * Where each log ended after this store's last append to it, so the next
+   * append needn't read the whole log again. An entry counts only while the
+   * file still has that size; any other size means someone else changed or
+   * deleted the log, and it is read again.
+   */
+  readonly #logEnds = new Map<string, LogEnd>();
 
-  /** @param root - the folder for the run files; created on the first append */
-  constructor(root: string) {
+  /**
+   * @param root - the folder for the run files; created on the first append
+   * @param options - a hook for snapshots that couldn't be written
+   */
+  constructor(root: string, options: FolderRunStoreOptions = {}) {
     this.#root = resolve(root);
+    this.#onSnapshotError = options.onSnapshotError ?? (() => {});
   }
 
   async append(
@@ -67,21 +100,24 @@ export class FolderRunStore implements RunStore {
       options.snapshot === undefined
         ? undefined
         : JSON.stringify({ seq: lastSeq, state: options.snapshot } satisfies RunSnapshot);
-    return await this.#appends.run(runId, async () => {
-      const log = await this.#readLog(runId);
-      if (log.events.length !== expectedSeq) {
-        return { ok: false, reason: "conflict", lastSeq: log.events.length };
+    return await this.#queue.run(runId, async () => {
+      try {
+        const end = await this.#logEnd(runId);
+        if (end.lastSeq !== expectedSeq) {
+          return { ok: false, reason: "conflict", lastSeq: end.lastSeq };
+        }
+        await mkdir(this.#root, { recursive: true });
+        if (expectedSeq === 0) {
+          // A new run: a snapshot left from a deleted log of the same id isn't this run's.
+          await rm(this.#file(runId, snapshotSuffix), { force: true });
+        }
+        await this.#appendLines(runId, lines, end.bytes);
+        this.#logEnds.set(runId, { lastSeq, bytes: end.bytes + Buffer.byteLength(lines) });
+      } catch (error) {
+        // The log may have been cut back, or not: read it again next time.
+        this.#logEnds.delete(runId);
+        throw error;
       }
-      await mkdir(this.#root, { recursive: true });
-      if (log.torn) {
-        // Cut the torn line off first, so the new events don't get glued onto it.
-        await truncate(this.#file(runId, logSuffix), log.intactBytes);
-      }
-      if (expectedSeq === 0) {
-        // A new run: a snapshot left from a deleted log of the same id isn't this run's.
-        await rm(this.#file(runId, snapshotSuffix), { force: true });
-      }
-      await this.#appendLines(runId, lines, log.intactBytes);
       if (snapshot !== undefined) {
         await this.#writeSnapshot(runId, snapshot);
       }
@@ -91,7 +127,8 @@ export class FolderRunStore implements RunStore {
 
   async events(runId: string, afterSeq = 0): Promise<RunEvent[]> {
     checkRunId(runId);
-    return (await this.#readLog(runId)).events.filter((event) => event.seq > afterSeq);
+    const log = await this.#queue.run(runId, () => this.#readLog(runId));
+    return log.events.filter((event) => event.seq > afterSeq);
   }
 
   /**
@@ -101,6 +138,25 @@ export class FolderRunStore implements RunStore {
    */
   async snapshot(runId: string): Promise<RunSnapshot | null> {
     checkRunId(runId);
+    return await this.#queue.run(runId, () => this.#readSnapshot(runId));
+  }
+
+  async get(runId: string): Promise<RunSummary | null> {
+    return summarize(await this.events(runId));
+  }
+
+  async list(filter: RunFilter = {}): Promise<RunSummary[]> {
+    const summaries: RunSummary[] = [];
+    for (const runId of await this.#runIds()) {
+      const summary = summarize(await this.events(runId));
+      if (summary !== null && matchesRunFilter(summary, filter)) {
+        summaries.push(summary);
+      }
+    }
+    return summaries.sort(compareRunSummaries);
+  }
+
+  async #readSnapshot(runId: string): Promise<RunSnapshot | null> {
     let text: string;
     try {
       text = await readFile(this.#file(runId, snapshotSuffix), "utf8");
@@ -113,21 +169,6 @@ export class FolderRunStore implements RunStore {
       return null;
     }
     return snapshot;
-  }
-
-  async get(runId: string): Promise<RunSummary | null> {
-    return summarize(await this.events(runId));
-  }
-
-  async list(filter: RunFilter = {}): Promise<RunSummary[]> {
-    const summaries: RunSummary[] = [];
-    for (const runId of await this.#runIds()) {
-      const summary = summarize((await this.#readLog(runId)).events);
-      if (summary !== null && matchesRunFilter(summary, filter)) {
-        summaries.push(summary);
-      }
-    }
-    return summaries.sort(compareRunSummaries);
   }
 
   /** The runs that have a log, worked out from the file names. */
@@ -145,6 +186,35 @@ export class FolderRunStore implements RunStore {
       .filter((name) => name.endsWith(logSuffix))
       .map((name) => name.slice(0, -logSuffix.length))
       .filter(isRunId);
+  }
+
+  /**
+   * Where the log ends: from the last append when the file still has the
+   * size it left, otherwise by reading the whole log. A torn last line found
+   * that way is cut off, so the next events don't get glued onto it.
+   */
+  async #logEnd(runId: string): Promise<LogEnd> {
+    const known = this.#logEnds.get(runId);
+    if (known !== undefined && (await this.#logSize(runId)) === known.bytes) {
+      return known;
+    }
+    const log = await this.#readLog(runId);
+    if (log.torn) {
+      await truncate(this.#file(runId, logSuffix), log.intactBytes);
+    }
+    return { lastSeq: log.events.length, bytes: log.intactBytes };
+  }
+
+  /** The log's size in bytes, 0 when it is missing. */
+  async #logSize(runId: string): Promise<number> {
+    try {
+      return (await stat(this.#file(runId, logSuffix))).size;
+    } catch (error) {
+      if (isMissing(error)) {
+        return 0;
+      }
+      throw error;
+    }
   }
 
   async #readLog(runId: string): Promise<RunLog> {
@@ -182,7 +252,7 @@ export class FolderRunStore implements RunStore {
    * sees the old snapshot or the new one, never half of one. The events are
    * already stored by then, and the log is the truth: when this fails, the
    * older snapshot stays, the engine replays the events after it, and the
-   * append still succeeds.
+   * append still succeeds. The error goes to the `onSnapshotError` hook.
    */
   async #writeSnapshot(runId: string, text: string): Promise<void> {
     const file = this.#file(runId, snapshotSuffix);
@@ -190,8 +260,10 @@ export class FolderRunStore implements RunStore {
     try {
       await writeFile(temporary, text, "utf8");
       await rename(temporary, file);
-    } catch {
-      await rm(temporary, { force: true });
+    } catch (error) {
+      // A temporary file left behind is replaced by the next snapshot.
+      await rm(temporary, { force: true }).catch(() => {});
+      this.#onSnapshotError(runId, error);
     }
   }
 

@@ -7,13 +7,28 @@ import { afterAll, afterEach, expect, it, vi } from "vitest";
 import { FolderRunStore } from "./run-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
-/** When set, the next log write gets only this many bytes out, then fails as a full disk would. */
-const failingWrite = vi.hoisted(() => ({ bytesOut: undefined as number | undefined }));
+const failingWrite = vi.hoisted(() => ({
+  /** When set, the next log write gets only this many bytes out, then fails as a full disk would. */
+  bytesOut: undefined as number | undefined,
+  /** When set, the failing write waits for this once its bytes are out, before it fails. */
+  hold: undefined as Promise<void> | undefined,
+  /** Called once the failing write's bytes are out. */
+  onBytesOut: undefined as (() => void) | undefined,
+}));
+
+/** How many times a run log has been read whole. */
+const logReads = vi.hoisted(() => ({ count: 0 }));
 
 vi.mock("node:fs/promises", async (importOriginal) => {
   const fs = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...fs,
+    readFile: (async (file: string, ...rest: []) => {
+      if (String(file).endsWith(".jsonl")) {
+        logReads.count += 1;
+      }
+      return await fs.readFile(file, ...rest);
+    }) as typeof fs.readFile,
     appendFile: async (file: string, text: string, encoding: BufferEncoding) => {
       const bytesOut = failingWrite.bytesOut;
       if (bytesOut === undefined) {
@@ -21,6 +36,8 @@ vi.mock("node:fs/promises", async (importOriginal) => {
       }
       failingWrite.bytesOut = undefined;
       await fs.appendFile(file, Buffer.from(text, encoding).subarray(0, bytesOut));
+      failingWrite.onBytesOut?.();
+      await failingWrite.hold;
       throw Object.assign(new Error("ENOSPC: no space left on device"), { code: "ENOSPC" });
     },
   };
@@ -29,6 +46,8 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 afterAll(removeTempFolders);
 afterEach(() => {
   failingWrite.bytesOut = undefined;
+  failingWrite.hold = undefined;
+  failingWrite.onBytesOut = undefined;
 });
 
 runStoreContract("folder", async () => new FolderRunStore(await tempFolder()));
@@ -107,6 +126,58 @@ verifies("fs-node.run-store-files", () => {
     expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
+  it("reads a log whole once, not again on every append to it", async () => {
+    const { store } = await storeWithRun();
+    const readsBefore = logReads.count;
+    for (let seq = 4; seq <= 8; seq += 1) {
+      await store.append("r1", seq - 1, [entered("r1", seq)]);
+    }
+    expect(logReads.count - readsBefore).toBe(0);
+    expect(await store.append("r1", 3, [entered("r1", 4)])).toEqual({
+      ok: false,
+      reason: "conflict",
+      lastSeq: 8,
+    });
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it("reads a log again when something else changed its size", async () => {
+    const { root, store } = await storeWithRun();
+    const log = join(root, "r1.jsonl");
+    await writeFile(log, `${JSON.stringify(entered("r1", 4))}\n`, { flag: "a" });
+    expect(await store.append("r1", 3, [entered("r1", 4)])).toEqual({
+      ok: false,
+      reason: "conflict",
+      lastSeq: 4,
+    });
+    expect(await store.append("r1", 4, [entered("r1", 5)])).toEqual({ ok: true, lastSeq: 5 });
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("makes a reader wait for an append to the same run to finish", async () => {
+    const { store } = await storeWithRun();
+    const batch = [entered("r1", 4), entered("r1", 5)];
+    let release = () => {};
+    failingWrite.hold = new Promise((resolve) => {
+      release = resolve;
+    });
+    const bytesOut = new Promise<void>((resolve) => {
+      failingWrite.onBytesOut = resolve;
+    });
+    // The first new line is whole in the log before the write fails.
+    failingWrite.bytesOut = JSON.stringify(batch[0]).length + 1;
+    const appending = store.append("r1", 3, batch);
+    await bytesOut;
+    const reads = Promise.all([store.events("r1"), store.list(), store.snapshot("r1")]);
+    // Gives a reader that doesn't wait time to see the line that is about to be cut back.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    release();
+    await expect(appending).rejects.toThrow("ENOSPC");
+    const [events, runs] = await reads;
+    expect(seqs(events)).toEqual([1, 2, 3]);
+    expect(runs.map((run) => run.lastSeq)).toEqual([3]);
+  });
+
   it("refuses an unsafe run id in every method, and leaves other files out of the list", async () => {
     const { root, store } = await storeWithRun();
     const unsafe = [
@@ -164,6 +235,8 @@ verifies("fs-node.run-store-recovery", () => {
     expect(await readFile(log, "utf8")).toBe(before);
     expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
     expect(await store.append("r1", 3, batch)).toEqual({ ok: true, lastSeq: 6 });
+    expect(await store.append("r1", 6, [entered("r1", 7)])).toEqual({ ok: true, lastSeq: 7 });
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
   it("stores nothing for a new run whose first write fails part-way", async () => {
@@ -222,11 +295,17 @@ verifies("fs-node.run-store-recovery", () => {
     expect(await store.snapshot("r1")).toEqual({ seq: 3, state: null });
   });
 
-  it("still stores the events when the snapshot can't be written", async () => {
-    const { root, store } = await storeWithRun();
+  it("still stores the events when the snapshot can't be written, and reports it", async () => {
+    const root = await tempFolder();
+    const failures: [string, unknown][] = [];
+    const store = new FolderRunStore(root, {
+      onSnapshotError: (runId, error) => failures.push([runId, error]),
+    });
+    await store.append("r1", 0, [started("r1"), entered("r1", 2), entered("r1", 3)]);
     await mkdir(join(root, "r1.snapshot.json"));
     const result = await store.append("r1", 3, [entered("r1", 4)], { snapshot: { step: 4 } });
     expect(result).toEqual({ ok: true, lastSeq: 4 });
+    expect(failures).toEqual([["r1", expect.any(Error)]]);
     expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4]);
     expect(await store.snapshot("r1")).toBeNull();
   });
