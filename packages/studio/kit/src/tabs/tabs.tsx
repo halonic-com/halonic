@@ -67,10 +67,13 @@ const sizeClasses = {
   fill: "min-h-touch min-w-0 flex-1 basis-0 px-2 py-1 text-center hyphens-auto wrap-break-word",
 } as const;
 
+/** The selected label's weight. `InlineLabel`'s width copy uses it too, so the two never drift. */
+const selectedWeight = "font-medium";
+
 const stateClasses = {
   // selected-forced is the selected tab's edge in high contrast, which drops the fill and the
   // shadow (component specs 23 A11, 23.5). The focus ring's own outline wins on focus.
-  selected: "bg-surface font-medium text-fg shadow-1 selected-forced",
+  selected: `bg-surface ${selectedWeight} text-fg shadow-1 selected-forced`,
   default: "text-fg-muted hover:text-fg",
   disabled: "cursor-not-allowed text-fg-disabled text-forced-disabled",
 } as const;
@@ -81,9 +84,9 @@ const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-fu
  * In `fill` the tab is laid out as text so the label can wrap, so the icon needs its own gap: the
  * same 6px as the `gap-1.5` of `inline`.
  */
-const iconSpacing = {
-  inline: "",
-  fill: "me-1.5 align-middle",
+const iconClasses = {
+  inline: iconSlot,
+  fill: `${iconSlot} me-1.5 align-middle`,
 } as const;
 
 /**
@@ -176,7 +179,7 @@ export function Tabs<Id extends string>({
             }}
           >
             {tab.icon === undefined ? null : (
-              <span className={`${iconSlot} ${iconSpacing[layout]}`} aria-hidden="true">
+              <span className={iconClasses[layout]} aria-hidden="true">
                 {tab.icon}
               </span>
             )}
@@ -218,7 +221,7 @@ function InlineLabel({ label }: { readonly label: string }) {
   return (
     <span className="inline-grid">
       <span className="col-start-1 row-start-1">{label}</span>
-      <span aria-hidden="true" className="invisible col-start-1 row-start-1 font-medium">
+      <span aria-hidden="true" className={`invisible col-start-1 row-start-1 ${selectedWeight}`}>
         {label}
       </span>
     </span>

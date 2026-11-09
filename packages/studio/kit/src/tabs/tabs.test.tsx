@@ -255,9 +255,9 @@ verifies("kit.tabs", () => {
     const { container } = render(<Page tabs={tabs} />);
     const icon = tabsIn(container)[0]?.firstElementChild as HTMLElement;
     expect(icon.getAttribute("aria-hidden")).toBe("true");
-    expect(icon.className).toContain("size-icon-sm");
-    // inline spaces it with the tab's own gap-1.5.
-    expect(icon.className).not.toContain("me-1.5");
+    // inline spaces it with the tab's own gap-1.5, so the icon adds no spacing of its own and no
+    // empty class part.
+    expect(icon.className).toBe("inline-grid size-icon-sm shrink-0 place-items-center *:size-full");
   });
 
   it("keeps a 6px gap after the icon on a phone, where the tab is laid out as text", () => {
@@ -268,7 +268,9 @@ verifies("kit.tabs", () => {
       </PresentationProvider>,
     );
     const icon = tabsIn(container)[0]?.firstElementChild as HTMLElement;
-    expect(icon.className).toContain("me-1.5 align-middle");
+    expect(icon.className).toBe(
+      "inline-grid size-icon-sm shrink-0 place-items-center *:size-full me-1.5 align-middle",
+    );
   });
 
   it("fills the column in equal parts on a phone, at least 48px high, with wrapping labels", () => {
