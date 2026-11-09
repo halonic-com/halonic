@@ -233,7 +233,24 @@ verifies("integration-kit.secrets-placed-by-kit", () => {
       .catch((thrown: Error) => thrown);
     expect(String(error)).not.toContain(canary["example-key"]);
   });
+
+  it("never hands the transport a dispatcher, which would see the placed secret", async () => {
+    const { http, options } = client();
+    // Node's fetch hands the whole request, headers included, to a `dispatcher`.
+    const dispatcher = {
+      dispatch: () => {
+        throw new Error("the integration's dispatcher saw the request");
+      },
+    } as unknown as NonNullable<RequestInit["dispatcher"]>;
+    const init = { auth: { secret: "example-key", as: "bearer" } as const, dispatcher };
+    await http.fetch("https://api.example.com/v1", init);
+    expect(options).toHaveLength(1);
+    expect(Object.keys(options[0] ?? {}).sort()).toEqual(transportOptions);
+  });
 });
+
+/** The only options the kit passes on to the transport. */
+const transportOptions = ["body", "headers", "method", "redirect", "signal"];
 
 verifies("integration-kit.redirects-checked", () => {
   it("follows a redirect to a declared host and drops a secret that may not go there", async () => {

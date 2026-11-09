@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-135 (secrets tied to their provider and address)
 
-The kit shall place a secret in a request only when the policy declares the secret and allows it for the request's host, and the integration shall never receive the value. An error shall never contain a secret value. A secret the policy marks `optional` shall be left out of the request when it isn't configured, and every other check shall still apply to it.
+The kit shall place a secret in a request only when the policy declares the secret and allows it for the request's host, and the integration shall never receive the value. The kit shall pass the transport only the method, headers, body, signal and redirect mode, so no other request option, such as Node's `dispatcher`, can hand the request on to the integration. An error shall never contain a secret value. A secret the policy marks `optional` shall be left out of the request when it isn't configured, and every other check shall still apply to it.
 
 ## Examples
 
@@ -23,3 +23,6 @@ The kit shall place a secret in a request only when the policy declares the secr
 - Given the same optional secret,
   when the integration asks for it on a host it isn't allowed for,
   then the kit throws `secret-not-allowed-for-host` and sends nothing.
+- Given `example-key` placed as a bearer token,
+  when the integration also passes a `dispatcher` or another option the kit doesn't know,
+  then the transport sees only the method, headers, body, signal and redirect mode.

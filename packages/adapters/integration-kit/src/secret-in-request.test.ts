@@ -129,6 +129,16 @@ verifies("integration-kit.secret-in-request", () => {
     expect(sent[0]?.headers["authorization"]).toBe(`Bearer ${key}`);
   });
 
+  it("drops a referrer, which would go out as an unchecked Referer header", async () => {
+    const { http, sent, options } = client();
+    await http.fetch("https://api.example.com/v1", {
+      auth: bearer,
+      referrer: `https://api.example.com/${key}`,
+    });
+    expect(options[0]).not.toHaveProperty("referrer");
+    expect(JSON.stringify(sent)).not.toContain(`/${key}`);
+  });
+
   it("removes a secret the request didn't place from the response", async () => {
     const { http } = client(() => new Response(`other: ${canary["client-secret"]}`));
     const response = await http.fetch("https://api.example.com/", { auth: bearer });

@@ -13,13 +13,18 @@ export interface SentRequest {
   redirect: RequestInit["redirect"];
 }
 
-/** A transport that answers from a function and records what was sent. */
+/**
+ * A transport that answers from a function and records what was sent, and
+ * the options object itself, to check what else reached the transport.
+ */
 export function fakeTransport(
   answer: (url: URL, method: string) => Response = () => new Response("ok"),
 ) {
   const sent: SentRequest[] = [];
+  const options: RequestInit[] = [];
   const transport: HttpClient = {
     fetch: async (url, init = {}) => {
+      options.push(init);
       init.signal?.throwIfAborted();
       const body =
         init.body === undefined || init.body === null ? null : await new Response(init.body).text();
@@ -33,7 +38,7 @@ export function fakeTransport(
       return answer(new URL(url), init.method ?? "GET");
     },
   };
-  return { transport, sent };
+  return { transport, sent, options };
 }
 
 /** Canary values: tests fail if one shows up anywhere but where the kit put it. */
@@ -91,7 +96,7 @@ export function client(
   limits?: RequestLimits,
   clientPolicy: IntegrationPolicy = policy,
 ) {
-  const { transport, sent } = fakeTransport(answer);
+  const { transport, sent, options } = fakeTransport(answer);
   const log = new RequestLog();
   let clock = 0;
   const http = createLimitedHttpClient({
@@ -102,7 +107,7 @@ export function client(
     now: () => clock++,
     ...(limits ? { limits } : {}),
   });
-  return { http, sent, log };
+  return { http, sent, options, log };
 }
 
 /** The refusal code a promise rejects with; throws when it settles any other way. */

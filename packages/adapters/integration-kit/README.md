@@ -66,6 +66,10 @@ Node, in the Worker and in the browser. Published as
   only, never the value. This catches a value carried as it is or in those
   forms, nothing more: an integration that can read a key can base64 it,
   change its case or split it, and the check won't see that.
+- **Only the method, headers, body and signal reach the transport.** Every
+  other `RequestInit` option is dropped: `referrer` would go out as a
+  `Referer` header the secret check never read, and Node's `dispatcher`
+  would hand the whole request, placed secrets included, to the integration.
 - **Request log:** method, host, path, status and time. No query, headers or
   bodies.
 - **Tokens** are scoped: only the names the sheet declares, kept under a name

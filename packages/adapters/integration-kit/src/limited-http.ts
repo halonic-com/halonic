@@ -146,10 +146,13 @@ async function send(
   { declared, carried }: DeclaredSecrets,
 ): Promise<Response> {
   const { policy, limits = {} } = options;
-  const { auth, signal, redirect: _redirect, ...rest } = init;
+  // Only the method, headers and body reach the transport, which the secret check has read.
+  // Every other option is dropped: `referrer` goes out as an unchecked `Referer` header, and
+  // Node's `dispatcher` would hand the whole request, placed secrets included, to the integration.
+  const { auth, signal, headers: ownHeaders } = init;
   // From here on only the frozen copies are read, never the code's `auth`.
   const placements = copyPlacements(policy, auth === undefined ? [] : [auth].flat());
-  const body = rest.body ?? null;
+  const body = init.body ?? null;
   // After the secret check, which skips a body it can't read, so this refusal logs no key.
   checkBody(policy, body);
   const url = allowedUrl(policy, rawUrl);
@@ -162,7 +165,7 @@ async function send(
     body,
     form: placements.some((p) => p.as === "form") ? toForm(policy, body) : undefined,
     placements,
-    headers: new Headers(rest.headers),
+    headers: new Headers(ownHeaders),
   };
   const deadline = new AbortController();
   const stop = (what: string, ms: number) =>
@@ -200,7 +203,6 @@ async function send(
       if (bodyBytes(body) > maxBodyBytes) throw requestTooLarge(policy, hop.url, maxBodyBytes);
       const response = await untilAborted(
         options.transport.fetch(hop.url.href, {
-          ...rest,
           method: hop.method,
           headers,
           body,

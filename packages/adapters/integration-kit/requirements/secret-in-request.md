@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-994 (I5 design v0.2 on HAL-958, section 3.6; Julian's ruling in HAL-972; attack case A25)
 
-The kit shall refuse with `secret-in-request`, and send nothing, a request whose method, URL, headers or body holds the value of one of the integration's secrets that the kit didn't put there itself. That applies to every declared secret that is set up, whether the request places it or not, in any form the secret filter matches (raw, URL-encoded, form-encoded, JSON-escaped) or percent-encoded in part in the URL or a text body, to any host, including one the secret is declared for, and to the `Location` of every redirect hop. Neither the refusal message nor the request log shall hold the value: they name the host only, with any secret removed, and a request that fails before the check has run logs no method, host or path. The check covers only those forms: a value the integration has transformed in any other way, such as base64 or a change of case, is not caught. The kit shall also remove every declared secret, not only the placed ones, from the responses it hands back.
+The kit shall refuse with `secret-in-request`, and send nothing, a request whose method, URL, headers or body holds the value of one of the integration's secrets that the kit didn't put there itself. That applies to every declared secret that is set up, whether the request places it or not, in any form the secret filter matches (raw, URL-encoded, form-encoded, JSON-escaped) or percent-encoded in part in the URL or a text body, to any host, including one the secret is declared for, and to the `Location` of every redirect hop. No other request option reaches the transport, so a `referrer` holding the value never goes out. Neither the refusal message nor the request log shall hold the value: they name the host only, with any secret removed, and a request that fails before the check has run logs no method, host or path. The check covers only those forms: a value the integration has transformed in any other way, such as base64 or a change of case, is not caught. The kit shall also remove every declared secret, not only the placed ones, from the responses it hands back.
 
 ## Examples
 
@@ -29,6 +29,9 @@ The kit shall refuse with `secret-in-request`, and send nothing, a request whose
 - Given a secret store that fails,
   when the integration sends a request with the value in the host or the path,
   then the request log holds no method, host or path for it.
+- Given the value in the path of a `referrer`,
+  when the integration sends a request with it,
+  then the transport sees no `referrer`.
 - Given `example-key` placed by the kit as a bearer token,
   when the integration sends an otherwise clean request,
   then it goes out as before.

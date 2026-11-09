@@ -10,9 +10,11 @@ import {
   secrets,
 } from "./fake-transport.test-helper.ts";
 import { createLimitedHttpClient } from "./limited-http.ts";
+import { IntegrationRefusedError } from "./refused.ts";
 import { RequestLog } from "./request-log.ts";
 import {
   removeSecrets,
+  removeSecretsFromError,
   removeSecretsStream,
   SecretRemover,
   secretForms,
@@ -163,18 +165,21 @@ verifies("integration-kit.secret-filter", () => {
             : new Response(new ReadableStream()),
         { idleTimeoutMs: 5 },
       ],
-    ])("removes the key from %s", async (_which, answer, limits) => {
-      const { http } = client(answer, limits);
-      const error = await http
-        .fetch("https://api.example.com/start", { auth: bearer })
-        .then((response) => response.text())
-        .catch((thrown: unknown) => thrown);
-      expect(error).toBeInstanceOf(Error);
-      expect(String(error)).toContain(secretRemoved);
-      expect(`${String(error)} ${(error as Error).stack}`).not.toContain(key);
-    });
+    ])(
+      "never lets %s name the key: the redirect is refused first",
+      async (_which, answer, limits) => {
+        const { http } = client(answer, limits);
+        const error = await http
+          .fetch("https://api.example.com/start", { auth: bearer })
+          .then((response) => response.text())
+          .catch((thrown: unknown) => thrown);
+        // The secret-in-request check refuses a Location that holds the key before the kit follows it.
+        expect(error).toMatchObject({ code: "secret-in-request" });
+        expect(`${String(error)} ${(error as Error).stack}`).not.toContain(key);
+      },
+    );
 
-    it("removes the key from the headers timeout", async () => {
+    it("never lets the headers timeout name the key: the redirect is refused first", async () => {
       const transport: HttpClient = {
         fetch: async (url, init = {}) =>
           url.endsWith("/start")
@@ -193,8 +198,24 @@ verifies("integration-kit.secret-filter", () => {
       const error = await http
         .fetch("https://api.example.com/start", { auth: bearer })
         .catch((thrown: unknown) => thrown);
-      expect(error).toMatchObject({ name: "TimeoutError" });
+      expect(error).toMatchObject({ code: "secret-in-request" });
       expect(`${String(error)} ${(error as Error).stack}`).not.toContain(key);
+    });
+
+    // Behind that check, every error leaving a request still goes through the filter.
+    it("removes the key from an error's message, stack and cause, keeping its class and code", () => {
+      const forms = secretForms([{ value: key, placements: [bearer] }]);
+      const cause = new Error(`timed out on https://api.example.com/k/${key}`);
+      const error = new IntegrationRefusedError(
+        "too-many-redirects",
+        `weather: api.example.com/k/${encodeURIComponent(key)} redirected too often`,
+      );
+      error.cause = cause;
+      const filtered = removeSecretsFromError(error, forms);
+      expect(filtered).toBe(error);
+      expect(error.code).toBe("too-many-redirects");
+      expect(error.message).toContain(secretRemoved);
+      expect(`${error.message} ${error.stack} ${cause.message} ${cause.stack}`).not.toContain(key);
     });
   });
 
