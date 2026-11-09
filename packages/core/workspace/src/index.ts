@@ -9,3 +9,11 @@ export {
   type WorkspaceIssue,
 } from "./load-workspace.ts";
 export { type PlaceMatch, placeOf } from "./places.ts";
+export {
+  type ConnectorTrustContent,
+  secretReference,
+  type TrustContent,
+  type TrustContentInput,
+  trustContent,
+} from "./trust-content.ts";
+export { trustUrl } from "./trust-url.ts";

@@ -2,7 +2,7 @@
   "name": "@halonicjs/workspace",
   "private": true,
   "type": "module",
-  "description": "Loads one workspace through DefinitionSource: each file parsed by the kind its place gives, with every issue's file, key path and line.",
+  "description": "Loads one workspace through DefinitionSource: each file parsed by the kind its place gives, with every issue's file, key path and line, and its trust content for the trust gate.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@halonicjs/format": "workspace:*",
-    "@halonicjs/ports": "workspace:*"
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",

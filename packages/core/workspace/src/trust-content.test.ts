@@ -1,0 +1,174 @@
+import type { Connector } from "@halonicjs/format";
+import { deepEqual } from "@halonicjs/std";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
+import { trustContent } from "./trust-content.ts";
+
+/** `${NAME}` as written in a workspace file, which Halonic never expands. */
+const variable = (name: string) => `\${${name}}`;
+
+type StdioSettings = Extract<Connector["transport"], { stdio: unknown }>["stdio"];
+
+function stdio(settings: Partial<StdioSettings> = {}, fields: Partial<Connector> = {}): Connector {
+  return {
+    version: 1,
+    id: "files",
+    transport: { stdio: { command: "node", args: ["server.js"], cwd: ".", ...settings } },
+    tools: { approve: ["delete_file"] },
+    ...fields,
+  };
+}
+
+function http(url = "https://mcp.acme.test/v1/mcp", fields: Partial<Connector> = {}): Connector {
+  return {
+    version: 1,
+    id: "files",
+    transport: { http: { url, headers: { accept: "application/json" } } },
+    secret: "files-token",
+    tools: { approve: ["delete_file"] },
+    ...fields,
+  };
+}
+
+/** Whether two workspaces have the same trust content, so the same fingerprint. */
+function same(before: Connector[], after: Connector[]): boolean {
+  return deepEqual(trustContent({ connectors: before }), trustContent({ connectors: after }));
+}
+
+verifies("workspace.trust-content", () => {
+  describe("a program", () => {
+    it("holds the command, its path, the arguments as a list, the folder and every variable", () => {
+      const connector = stdio(
+        { env: { DATA: `${variable("HOME")}/acme` }, secretEnv: { API_KEY: "files-key" } },
+        { name: "Files", description: "Reads files." },
+      );
+      const content = trustContent({
+        connectors: [connector],
+        commandPaths: new Map([["node", "/usr/bin/node"]]),
+      });
+      expect(content).toEqual({
+        connectors: [
+          {
+            version: 1,
+            id: "files",
+            transport: "stdio",
+            settings: {
+              command: "node",
+              path: "/usr/bin/node",
+              args: ["server.js"],
+              cwd: ".",
+              env: { DATA: `${variable("HOME")}/acme` },
+              secretEnv: { API_KEY: "‹secret files-key›" },
+            },
+            tools: { approve: ["delete_file"] },
+          },
+        ],
+      });
+    });
+
+    it("changes when a variable such as NODE_OPTIONS, PYTHONSTARTUP or LD_PRELOAD is added", () => {
+      for (const name of ["NODE_OPTIONS", "PYTHONSTARTUP", "LD_PRELOAD"]) {
+        expect(same([stdio()], [stdio({ env: { [name]: "./x" } })])).toBe(false);
+      }
+      expect(same([stdio()], [stdio({ secretEnv: { NODE_OPTIONS: "files-key" } })])).toBe(false);
+    });
+
+    it("changes when the folder, the command or an argument changes", () => {
+      expect(same([stdio()], [stdio({ cwd: "./tools/../scripts" })])).toBe(false);
+      expect(same([stdio()], [stdio({ command: "bash" })])).toBe(false);
+      expect(same([stdio({ args: ["a b"] })], [stdio({ args: ["a", "b"] })])).toBe(false);
+    });
+
+    it("stays the same for a folder written another way", () => {
+      expect(same([stdio({ cwd: "./tools/.." })], [stdio({ cwd: "." })])).toBe(true);
+      expect(same([stdio({ cwd: undefined })], [stdio({ cwd: "." })])).toBe(true);
+    });
+  });
+
+  describe("a remote server", () => {
+    it("holds the full URL, the headers and the secret's name only", () => {
+      const [content] = trustContent({ connectors: [http("HTTPS://MCP.Acme.test")] }).connectors;
+      expect(content?.settings).toEqual({
+        url: "https://mcp.acme.test/",
+        headers: { accept: "application/json" },
+      });
+      expect(content?.secret).toBe("‹secret files-token›");
+    });
+
+    it("changes when the path, scheme, port or query changes on the same host", () => {
+      for (const url of [
+        "https://mcp.acme.test/v1/admin",
+        "http://mcp.acme.test/v1/mcp",
+        "https://mcp.acme.test:8443/v1/mcp",
+        "https://mcp.acme.test/v1/mcp?as=admin",
+        "https://mcp.асme.test/v1/mcp",
+      ]) {
+        expect(same([http()], [http(url)])).toBe(false);
+      }
+    });
+
+    it("changes when the same connector switches transport", () => {
+      expect(same([http()], [stdio()])).toBe(false);
+    });
+
+    it("stays the same for a host in capitals, Unicode or Punycode", () => {
+      expect(same([http("https://Bücher.example/")], [http("https://xn--bcher-kva.example")])).toBe(
+        true,
+      );
+    });
+  });
+
+  describe("approvals and the rest of the file", () => {
+    it("changes when a tool stops asking, the offered list grows or a server becomes local", () => {
+      expect(same([stdio()], [stdio({}, { tools: { approve: [] } })])).toBe(false);
+      const listed = stdio({}, { tools: { allow: ["read_file"], approve: [] } });
+      expect(same([listed], [stdio({}, { tools: { approve: [] } })])).toBe(false);
+      expect(same([http()], [http(undefined, { local: true })])).toBe(false);
+    });
+
+    it("stays the same when only the order of tools or connectors, the name or the description changes", () => {
+      const a = stdio({}, { tools: { approve: ["a", "b"] } });
+      const b = stdio({}, { tools: { approve: ["b", "a"] }, name: "Files", description: "New" });
+      expect(same([a], [b])).toBe(true);
+      const mail = { ...http(), id: "mail" };
+      expect(same([stdio(), mail], [mail, stdio()])).toBe(true);
+    });
+
+    it("keeps a field the schema doesn't know yet as written", () => {
+      const withRisk = { ...stdio(), risk: "read" } as Connector;
+      expect(trustContent({ connectors: [withRisk] }).connectors[0]).toMatchObject({
+        risk: "read",
+      });
+      expect(same([stdio()], [withRisk])).toBe(false);
+      const toolField = stdio(
+        {},
+        { tools: { approve: [], autoApprove: true } as Connector["tools"] },
+      );
+      expect(same([stdio({}, { tools: { approve: [] } })], [toolField])).toBe(false);
+    });
+
+    it("keeps a transport the schema doesn't know yet, with its settings", () => {
+      const future = {
+        ...stdio(),
+        transport: { socket: { path: "run/mcp.sock" } },
+      } as unknown as Connector;
+      expect(trustContent({ connectors: [future] }).connectors[0]).toMatchObject({
+        transport: "socket",
+        settings: { value: { path: "run/mcp.sock" } },
+      });
+    });
+
+    it("holds the Google account the connector acts as", () => {
+      const google: Connector = {
+        version: 1,
+        id: "mail",
+        transport: { google: { account: "office@acme.test", client: "google" } },
+        tools: { approve: [] },
+      };
+      expect(trustContent({ connectors: [google] }).connectors[0]?.settings).toEqual({
+        account: "office@acme.test",
+        client: "google",
+      });
+    });
+  });
+});

@@ -1,13 +1,14 @@
 # @halonicjs/workspace
 
 Loads one workspace through a `DefinitionSource`: every file is parsed with the kind its place
-gives, and every problem comes back with its file, key path, line and column.
+gives, and every problem comes back with its file, key path, line and column. It also builds the
+workspace's trust content: everything that decides which programs run and where they talk to.
 
 - **Layer:** core
 - **Owner:** elena
 - **Public API:** `@halonicjs/workspace`
 
-## Example
+## Example: load a workspace
 
 Load a small workspace with one good and one bad agent. The code lives in
 [`examples/load-a-workspace.ts`](examples/load-a-workspace.ts), where it is typechecked and run by
@@ -60,3 +61,61 @@ export async function runExample(): Promise<{
   reserved `.halonic/` folders are skipped without being listed.
 - **Not yet:** checks across files (an agent naming a provider that doesn't exist), model aliases
   and the definitions a run keeps. They come in the next steps of the HAL-186 plan.
+
+## Trust content
+
+The trust prompt shows a workspace's trust content, and `TrustService` in `@halonicjs/app` compares
+its fingerprint with the trust record before anything starts. `trustContent` reads the parsed
+connectors. It keeps every field that could change what runs (the command and its path, the
+arguments as a list, the working folder, every environment variable, the full URL with its host in
+Punycode, every header, the tool lists and `local`), and keeps any field the schema doesn't know yet
+as written. Secrets appear by name only (`‹secret NAME›`), and `${HOME}` stays `${HOME}`. Only a
+connector's name and description are left out. Each behaviour has a requirement in
+[`requirements/`](requirements/).
+
+### Example: trust content
+
+The trust content of a made-up `acme` connector. This example is
+[`examples/trust-content.ts`](examples/trust-content.ts), which
+`src/example.test.ts` runs and checks. The file imports `../src/index.ts`, because a package may not import
+itself by name.
+
+```ts
+import type { Connector } from "@halonicjs/format";
+import { trustContent } from "@halonicjs/workspace";
+
+/** A made-up `acme` mail connector that starts a program. */
+const mail: Connector = {
+  version: 1,
+  id: "mail",
+  name: "Mail",
+  transport: {
+    stdio: {
+      command: "node",
+      args: ["./scripts/mail.js", "--inbox", "work"],
+      cwd: "./tools/..",
+      env: { MODE: "safe" },
+      secretEnv: { MAIL_TOKEN: "mail-token" },
+    },
+  },
+  tools: { approve: ["send_mail"] },
+};
+
+/** Builds the trust content of the `acme` workspace's one connector. */
+export function runExample(): unknown {
+  return trustContent({
+    connectors: [mail],
+    commandPaths: new Map([["node", "/usr/bin/node"]]),
+  });
+  // {
+  //   connectors: [{
+  //     version: 1, id: "mail", transport: "stdio",
+  //     settings: {
+  //       command: "node", path: "/usr/bin/node", args: ["./scripts/mail.js", "--inbox", "work"],
+  //       cwd: ".", env: { MODE: "safe" }, secretEnv: { MAIL_TOKEN: "‹secret mail-token›" },
+  //     },
+  //     tools: { approve: ["send_mail"] },
+  //   }],
+  // }
+}
+```
