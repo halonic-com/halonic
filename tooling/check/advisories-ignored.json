@@ -1,3 +1,10 @@
 {
-  "ignored": []
+  "ignored": [
+    {
+      "ghsa": "GHSA-mrhx-c7xc-m3w5",
+      "package": "zod",
+      "reason": "Only the copy inside @anthropic-ai/sandbox-runtime is flagged. It checks the sandbox settings Halonic builds in process, never data from outside, so no one can send it an oversized collection. Ends when srt moves to zod 4.6.6 or later, or when we may add a zod override.",
+      "expires": "2027-01-31"
+    }
+  ]
 }
