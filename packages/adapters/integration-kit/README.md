@@ -71,7 +71,9 @@ Node, in the Worker and in the browser. Published as
   `Referer` header the secret check never read, and Node's `dispatcher`
   would hand the whole request, placed secrets included, to the integration.
   The kit reads each option once and copies the headers, a form and the
-  bytes of a byte body before it checks anything. It checks and sends only
+  bytes of a byte body before it checks anything. It keeps the URL only when
+  it's plain text, and refuses any other URL without turning it into text.
+  It checks and sends only
   that copy, so the integration can't pass the check with a clean request
   and change it, through a getter or its own `Headers` or byte array,
   before it goes out.

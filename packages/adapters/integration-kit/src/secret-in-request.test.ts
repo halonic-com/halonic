@@ -150,6 +150,19 @@ verifies("integration-kit.secret-in-request", () => {
         },
       );
 
+      it("never turns a URL that isn't plain text into text, so the log can't get a key", async () => {
+        const { http, sent, log } = client();
+        let reads = 0;
+        const url = {
+          toString: () =>
+            ++reads === 1 ? "https://api.example.com/" : `https://api.example.com/${key}`,
+        };
+        expect(await refusal(http.fetch(url as unknown as string))).toBe("bad-url");
+        expect(reads).toBe(0);
+        expect(sent).toEqual([]);
+        expect(JSON.stringify(log.entries())).not.toContain(key);
+      });
+
       it("sends the headers it checked when the code changes its Headers object after fetch", async () => {
         const { http, sent } = client();
         const headers = new Headers({ "x-note": "clean" });

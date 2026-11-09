@@ -12,7 +12,12 @@ export interface OwnRequest {
   readonly givenMethod: string | undefined;
   /** The method the kit sends. */
   readonly method: string;
-  readonly url: unknown;
+  /**
+   * The URL, only when given as plain text. Anything else could give one URL
+   * each time it's turned into text, so it's never read, and `allowedUrl`
+   * refuses the request.
+   */
+  readonly url: string | undefined;
   readonly headers: Headers;
   /** The body, with its bytes or form copied. A kind the kit doesn't support stays as given. */
   readonly body: Body;
@@ -25,7 +30,8 @@ export interface OwnRequest {
  * once. The code keeps its own objects and could change them, or give a
  * getter, after the secret check and before the request is sent: a
  * `Headers` object or a byte array it changes once `fetch` is called, or a
- * getter that gives the check one value and the transport another.
+ * getter that gives the check one value and the transport another. A URL
+ * object could likewise give the check one text and the request log another.
  */
 export function copyRequest(
   policy: IntegrationPolicy,
@@ -37,7 +43,7 @@ export function copyRequest(
   return {
     givenMethod,
     method: (givenMethod ?? "GET").toUpperCase(),
-    url,
+    url: typeof url === "string" ? url : undefined,
     headers: new Headers(headers),
     body: copyBody(body ?? null),
     placements: copyPlacements(policy, auth === undefined ? [] : [auth].flat()),
