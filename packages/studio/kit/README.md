@@ -104,20 +104,22 @@ After tuning a colour, run the tests and adjust until they pass.
 The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 
 ```tsx
-<Button variant="primary" onClick={createAgent}>New agent</Button>;
+<Button variant="primary" onClick={createAgent}>
+  New agent
+</Button>;
 <Button variant="ghost" icon={<CloseIcon />} label="Close Support reply" onClick={close} />;
 ```
 
-| Prop          | What it is                                                                                           |
-| ------------- | ---------------------------------------------------------------------------------------------------- |
-| `variant`     | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm      |
-| `size`        | `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet         |
-| `block`       | Full width                                                                                           |
-| `icon`        | A 16px icon before the label. With `label` and no children, the button is a square icon button       |
-| `label`       | An icon button's name, saying what and which: "Close Support reply", never just "Close"              |
-| `busy`        | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored              |
-| `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now                |
-| `type`        | `submit` only for a form's confirming button                                                         |
+| Prop          | What it is                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------ |
+| `variant`     | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm |
+| `size`        | `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet    |
+| `block`       | Full width                                                                                       |
+| `icon`        | A 16px icon before the label. With `label` and no children, the button is a square icon button   |
+| `label`       | An icon button's name, saying what and which: "Close Support reply", never just "Close"          |
+| `busy`        | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored          |
+| `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now            |
+| `type`        | `submit` only for a form's confirming button                                                     |
 
 **There's no `disabled` prop.** A disabled button drops out of the Tab order, so someone on a
 keyboard loses their place and never hears why. A button that can't be used takes
@@ -130,14 +132,14 @@ only in a tooltip.
 <p id="updates-reason">Finish getting updates first.</p>;
 ```
 
-| State       | What shows                                                                                         |
-| ----------- | -------------------------------------------------------------------------------------------------- |
+| State       | What shows                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------- |
 | Default     | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger` fill       |
 | Hover       | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-hover`; a press the same |
-| Focus       | The standard focus ring                                                                            |
-| Unavailable | 45% opacity, no hover change, `not-allowed` cursor; its reason is read with it                     |
-| Busy        | The spinner in the icon's place (in front of the label when there's no icon); the label stays      |
-| Error       | None: a failed action shows a toast or a field error, never a red button                           |
+| Focus       | The standard focus ring                                                                             |
+| Unavailable | 45% opacity, no hover change, `not-allowed` cursor; its reason is read with it                      |
+| Busy        | The spinner in the icon's place (in front of the label when there's no icon); the label stays       |
+| Error       | None: a failed action shows a toast or a field error, never a red button                            |
 
 **On a phone and on a touch screen** (`phone:` and `touch:`), `sm` and `md` render at `lg` (40px),
 and every size gets a 48px hit area (`hit-touch`), drawn round the button so its look doesn't
