@@ -16,7 +16,7 @@ The stdio launcher calls these checks before it starts a program. It doesn't exi
 - Given a pin whose `version` is `latest` or `next`,
   when it is checked,
   then it is refused because the version is a tag.
-- Given a pin whose `version` is `^2.3.1`, `~2.3`, `>=2`, `2.x`, `*`, `2.3` or `2.*`,
+- Given a pin whose `version` is `^2.3.1`, `~2.3`, `>=2`, `2.x`, `*` or `2.*`, or, for npm, `2.3`,
   when it is checked,
   then it is refused because the version is a range.
 - Given a pin whose `version` is `v2.3.1`, `2.3.1+build.5` or, for PyPI, `2.3.1RC1`,
