@@ -11,7 +11,7 @@ const scratch = mkdtempSync(join(tmpdir(), "stage-"));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-verifies("tooling-publish.staged-package", () => {
+verifies("publish.staged-package", () => {
   it("stages the kit with no unpublished package inside", () => {
     const staged = stagePackage(
       root,
@@ -53,7 +53,7 @@ verifies("tooling-publish.staged-package", () => {
   }, 120_000);
 });
 
-verifies("tooling-publish.staged-package", () => {
+verifies("publish.staged-package", () => {
   it("fails on an import the package does not declare", () => {
     const distribution = mkdtempSync(join(tmpdir(), "stage-test-"));
     try {
