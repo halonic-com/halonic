@@ -39,3 +39,8 @@ An option is refused wherever it appears in the args, also after the package, wh
 reads it rather than the runner. The check can't tell where the runner's options end without
 knowing every runner's grammar; a pinned connector that really needs a flag such as `-f` can be
 trusted unpinned instead. This errs to the safe side, like the shell detection already does.
+
+The launcher refuses these variables only when the connector's own `env` sets them, which the
+workspace controls. A proxy, certificate or preload it inherits from its own process stays: that
+is the person's machine, such as a company proxy, and dropping it would break pinned connectors
+behind one. Only the package-manager and language variables are dropped when inherited, as before.
