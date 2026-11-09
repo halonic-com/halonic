@@ -7,10 +7,11 @@
 #   the commit before the push with the one at the pushed commit, so an
 #   ordinary push never makes a tag. A manual run never tags; re-run the
 #   failed push run instead.
-# - Changesets are waiting: it runs `pnpm version-packages` (changeset
-#   version, then version:sync) on the branch changeset-release/main and
-#   opens or updates the "Version packages" pull request. That pull request
-#   sets the app version in package.json, tauri.conf.json and Cargo.toml.
+# - Changesets are waiting, or pre mode was exited (pre.json says "exit"):
+#   it runs `pnpm version-packages` (changeset version, then version:sync)
+#   on the branch changeset-release/main and opens or updates the "Version
+#   packages" pull request. That pull request sets the app version in
+#   package.json, tauri.conf.json and Cargo.toml.
 #
 # Token: the RELEASE_BOT_TOKEN secret (the halonic-dev account, with
 # contents and pull requests write) when it exists. Without it the default
@@ -54,6 +55,16 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: |
           pending=$(find .changeset -maxdepth 1 -name '*.md' ! -name README.md | wc -l)
+          # After `changeset pre exit` the consumed changesets wait in
+          # .changeset/pre/ and pre.json says "exit": that is waiting too.
+          mode=""
+          if [ -f .changeset/pre.json ]; then
+            mode=$(node -p 'require("./.changeset/pre.json").mode')
+          fi
+          waiting=false
+          if [ "$pending" != 0 ] || [ "$mode" = exit ]; then
+            waiting=true
+          fi
           version=$(node -p 'require("./apps/studio/package.json").version')
           before=""
           if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2> /dev/null; then
@@ -63,10 +74,10 @@ jobs:
           if [ -n "$before" ] && [ "$before" != "$version" ]; then
             changed=true
           fi
-          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+          echo "waiting=$waiting" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
-          echo "Waiting changesets: $pending. App version: ${before:-unknown} before, $version now."
+          echo "Waiting changesets: $pending. Pre mode: ${mode:-off}. App version: ${before:-unknown} before, $version now."
       - name: Check that the app versions agree
         if: steps.plan.outputs.changed == 'true'
         run: pnpm check versions
@@ -87,7 +98,7 @@ jobs:
           echo "Tagged $SHA as $tag."
       - id: bump
         name: Version the packages
-        if: steps.plan.outputs.pending != '0'
+        if: steps.plan.outputs.waiting == 'true'
         env:
           BOT_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN != '' }}
         run: |
@@ -123,7 +134,7 @@ jobs:
             sed -n '/^## /,$p' apps/studio/CHANGELOG.md | awk 'NR > 1 && /^## /{exit} {print}'
           } > "$RUNNER_TEMP/body.md"
       - name: Push and open or update the Version packages pull request
-        if: steps.plan.outputs.pending != '0'
+        if: steps.plan.outputs.waiting == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
           REPO: ${{ github.repository }}
