@@ -9,17 +9,18 @@ const maxOutputBytes = 32 * 1024 ** 2;
 
 /**
  * Runs a program with Node's `execFile`: no shell, no window on Windows,
- * stopped after 15 seconds.
+ * stopped after 15 seconds. It gives the program's pid with its output, so
+ * the program can be left out of the table it read.
  */
 export const systemRunProgram: RunProgram = (program, args) =>
   new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       program,
       [...args],
       { encoding: "utf8", timeout: timeoutMs, maxBuffer: maxOutputBytes, windowsHide: true },
       (error, stdout) => {
         if (error === null) {
-          resolve(stdout);
+          resolve({ output: stdout, pid: child.pid });
           return;
         }
         reject(new Error(`Couldn't read the process table with ${program}.`, { cause: error }));

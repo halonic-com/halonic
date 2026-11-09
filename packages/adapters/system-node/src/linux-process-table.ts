@@ -14,7 +14,7 @@ export function linuxProcessTable(procFolder = "/proc"): ReadProcessTable {
     const entries = await readdir(procFolder);
     const pids = entries.filter((entry) => wholeNumber(entry) !== undefined);
     const rows = await Promise.all(pids.map((pid) => readStatus(join(procFolder, pid, "status"))));
-    return rows.filter((row) => row !== undefined);
+    return { rows: rows.filter((row) => row !== undefined) };
   };
 }
 

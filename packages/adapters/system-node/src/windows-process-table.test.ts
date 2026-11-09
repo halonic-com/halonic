@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { NodeResourceProbe } from "./resource-probe.ts";
 import {
   parseWindowsProcesses,
   powerShellArguments,
@@ -41,14 +42,43 @@ verifies("system-node.resource-probe", () => {
     const calls: [string, readonly string[]][] = [];
     const read = windowsProcessTable(async (program, args) => {
       calls.push([program, args]);
-      return "8\t4\t16\t\tcmd.exe\r\n";
+      return { output: "8\t4\t16\t\tcmd.exe\r\n", pid: 30 };
     }, windowsFolder);
-    expect(await read()).toEqual([{ pid: 8, parentPid: 4, name: "cmd", memoryBytes: 16 }]);
+    expect(await read()).toEqual({
+      rows: [{ pid: 8, parentPid: 4, name: "cmd", memoryBytes: 16 }],
+      readerPid: 30,
+    });
     expect(calls).toEqual([
       [windowsPowerShell(windowsFolder), powerShellArguments(windowsProcessScript)],
     ]);
     expect(windowsPowerShell(windowsFolder)).toBe(
       "windows-folder\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    );
+  });
+
+  it("doesn't list PowerShell or the conhost below it among the engine's processes", async () => {
+    // PowerShell runs as 4500, a child of the engine (4400), with its console host below it.
+    const output = [
+      "4400\t1200\t52428800\t13370000000000\tnode.exe",
+      "4410\t4400\t1024\t13370000000001\tclaude.exe",
+      "4500\t4400\t83886080\t13370000000002\tpowershell.exe",
+      "4504\t4500\t8388608\t13370000000003\tconhost.exe",
+    ];
+    const probe = new NodeResourceProbe({
+      enginePid: 4400,
+      readProcessTable: windowsProcessTable(
+        async () => ({ output: output.join("\r\n"), pid: 4500 }),
+        windowsFolder,
+      ),
+    });
+    expect(await probe.childProcesses()).toEqual([
+      { pid: 4410, name: "claude", memoryBytes: 1024 },
+    ]);
+  });
+
+  it("asks PowerShell for UTF-8 before it writes, so names outside ASCII survive", () => {
+    expect(windowsProcessScript.split("\n")[0]).toBe(
+      "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
     );
   });
 

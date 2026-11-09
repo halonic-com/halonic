@@ -1,5 +1,11 @@
 import { Buffer } from "node:buffer";
-import { baseName, type ReadProcessTable, type RunProgram, wholeNumber } from "./process-table.ts";
+import {
+  baseName,
+  type ReadProcessTable,
+  type RunProgram,
+  tableReadBy,
+  wholeNumber,
+} from "./process-table.ts";
 import type { ProcessRow } from "./process-tree.ts";
 
 /**
@@ -7,9 +13,12 @@ import type { ProcessRow } from "./process-tree.ts";
  * bytes, start time in milliseconds since 1601 (empty when Windows doesn't
  * say), then the name, last because it may hold spaces.
  * `Get-CimInstance` ships with Windows PowerShell 5.1 on every supported
- * Windows; `wmic` is gone from recent Windows 11.
+ * Windows; `wmic` is gone from recent Windows 11. Windows PowerShell 5.1
+ * writes to a pipe in the OEM code page, so the script asks for UTF-8 first
+ * or names with other than ASCII letters would come out garbled.
  */
 export const windowsProcessScript = [
+  "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
   "Get-CimInstance -ClassName Win32_Process | ForEach-Object {",
   "  $started = if ($_.CreationDate) { [long][math]::Floor($_.CreationDate.ToFileTimeUtc() / 10000) } else { '' }",
   '  "$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.WorkingSetSize)`t$started`t$($_.Name)"',
@@ -43,10 +52,14 @@ export function powerShellArguments(script: string): string[] {
  * @param windowsFolder - the Windows folder, from the `SystemRoot` variable
  */
 export function windowsProcessTable(run: RunProgram, windowsFolder: string): ReadProcessTable {
-  return async () =>
-    parseWindowsProcesses(
-      await run(windowsPowerShell(windowsFolder), powerShellArguments(windowsProcessScript)),
+  return async () => {
+    const { output, pid } = await run(
+      windowsPowerShell(windowsFolder),
+      powerShellArguments(windowsProcessScript),
     );
+    // PowerShell, and the `conhost` Windows starts below it, are children of the engine.
+    return tableReadBy(parseWindowsProcesses(output), pid);
+  };
 }
 
 /**

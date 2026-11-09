@@ -21,8 +21,15 @@ export interface ProcessRow {
 /**
  * The processes below `rootPid` in `rows`: its children, their children and
  * so on, once each and in ascending `pid` order. The root itself isn't one.
+ *
+ * @param leaveOut - a process to leave out with everything below it, such as
+ * the program that read the table
  */
-export function descendantsOf(rootPid: number, rows: readonly ProcessRow[]): ProcessUsage[] {
+export function descendantsOf(
+  rootPid: number,
+  rows: readonly ProcessRow[],
+  leaveOut?: number,
+): ProcessUsage[] {
   const childrenOf = groupByParent(rows);
   const root = rows.find((row) => row.pid === rootPid);
   const found = new Map<number, ProcessRow>();
@@ -32,6 +39,7 @@ export function descendantsOf(rootPid: number, rows: readonly ProcessRow[]): Pro
     for (const child of childrenOf.get(parent.pid) ?? []) {
       // A loop in the table (a pid reused as its own ancestor) must not be walked twice.
       if (child.pid === rootPid || found.has(child.pid)) continue;
+      if (child.pid === leaveOut) continue;
       if (startedBefore(child, parent)) continue;
       found.set(child.pid, child);
       toVisit.push(child);

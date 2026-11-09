@@ -10,10 +10,12 @@ verifies("system-node.resource-probe", () => {
     const probe = new NodeResourceProbe({
       enginePid: 10,
       engineMemory: () => 4096,
-      readProcessTable: async () => [
-        { pid: 10, parentPid: 1, name: "node", memoryBytes: 4096 },
-        { pid: 11, parentPid: 10, name: "claude", memoryBytes: 512 },
-      ],
+      readProcessTable: async () => ({
+        rows: [
+          { pid: 10, parentPid: 1, name: "node", memoryBytes: 4096 },
+          { pid: 11, parentPid: 10, name: "claude", memoryBytes: 512 },
+        ],
+      }),
     });
     expect(await probe.engineMemory()).toBe(4096);
     expect(await probe.childProcesses()).toEqual([{ pid: 11, name: "claude", memoryBytes: 512 }]);

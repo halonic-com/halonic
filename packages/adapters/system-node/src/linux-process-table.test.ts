@@ -51,7 +51,8 @@ verifies("system-node.resource-probe", () => {
     // A process whose folder is still listed but whose status file is gone.
     await mkdir(join(proc, "77"));
     await mkdir(join(proc, "self"));
-    const rows = await linuxProcessTable(proc)();
+    const { rows, readerPid } = await linuxProcessTable(proc)();
+    expect(readerPid).toBeUndefined();
     expect(rows.map((row) => row.name).sort()).toEqual(["claude", "init"]);
   });
 

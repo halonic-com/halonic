@@ -40,6 +40,16 @@ verifies("system-node.resource-probe", () => {
     expect(descendantsOf(100, rows).map((child) => child.name)).toEqual(["claude", "node"]);
   });
 
+  it("leaves out the process it is told to, and everything below it", () => {
+    const rows: ProcessRow[] = [
+      engine,
+      { pid: 200, parentPid: 100, name: "claude", memoryBytes: 20 },
+      { pid: 210, parentPid: 100, name: "powershell", memoryBytes: 60 },
+      { pid: 211, parentPid: 210, name: "conhost", memoryBytes: 8 },
+    ];
+    expect(descendantsOf(100, rows, 210).map((child) => child.name)).toEqual(["claude"]);
+  });
+
   it("walks a loop in the table once and never lists the engine", () => {
     const rows: ProcessRow[] = [
       { pid: 200, parentPid: 300, name: "a", memoryBytes: 1 },

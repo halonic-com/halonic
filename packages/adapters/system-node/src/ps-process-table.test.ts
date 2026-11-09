@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { parsePsOutput, psArguments, psProcessTable, psProgram } from "./ps-process-table.ts";
+import { NodeResourceProbe } from "./resource-probe.ts";
 
 verifies("system-node.resource-probe", () => {
   it("reads pid, parent, kibibytes and the program's name without its folder", () => {
@@ -25,10 +26,29 @@ verifies("system-node.resource-probe", () => {
     const calls: [string, readonly string[]][] = [];
     const read = psProcessTable(async (program, args) => {
       calls.push([program, args]);
-      return "  9  1  8  zsh\n";
+      return { output: "  9  1  8  zsh\n", pid: 12 };
     });
-    expect(await read()).toEqual([{ pid: 9, parentPid: 1, name: "zsh", memoryBytes: 8192 }]);
+    expect(await read()).toEqual({
+      rows: [{ pid: 9, parentPid: 1, name: "zsh", memoryBytes: 8192 }],
+      readerPid: 12,
+    });
     expect(calls).toEqual([[psProgram, psArguments]]);
     expect(psProgram).toBe("/bin/ps");
+  });
+
+  it("doesn't list ps itself among the engine's processes", async () => {
+    // `ps` runs as 120, a child of the engine (100), while it reads the table.
+    const output = [
+      "  100     1  4096 node",
+      "  110   100   512 claude",
+      "  120   100   128 /bin/ps",
+    ];
+    const probe = new NodeResourceProbe({
+      enginePid: 100,
+      readProcessTable: psProcessTable(async () => ({ output: output.join("\n"), pid: 120 })),
+    });
+    expect(await probe.childProcesses()).toEqual([
+      { pid: 110, name: "claude", memoryBytes: 512 * 1024 },
+    ]);
   });
 });

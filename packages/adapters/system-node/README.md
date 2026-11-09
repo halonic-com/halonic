@@ -41,7 +41,11 @@ nothing is cached and nothing polls.
 - **Programs it starts:** without a shell and by their full path
   (`/bin/ps`, PowerShell under `SystemRoot`), so a program of the same name
   in the working folder can't answer instead. Each is stopped after 15
-  seconds.
+  seconds. While it runs it's a child of the engine, so it and the
+  processes below it (`conhost` on Windows) are left out of the list.
+- **Names:** the program's name without its folder. Linux cuts names in
+  `/proc` at 15 characters, so a long name can read shorter there than on
+  macOS or Windows.
 - **Folder size:** the files' byte sizes, walked one folder at a time.
   Symbolic links and Windows junctions aren't followed or counted. The walk
   stops after `maxFilesCounted` files (200,000 by default) and says the size

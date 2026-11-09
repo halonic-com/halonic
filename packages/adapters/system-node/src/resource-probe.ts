@@ -69,7 +69,8 @@ export class NodeResourceProbe implements ResourceProbe {
   }
 
   async childProcesses(): Promise<readonly ProcessUsage[]> {
-    return descendantsOf(this.#enginePid, await this.#readProcessTable());
+    const table = await this.#readProcessTable();
+    return descendantsOf(this.#enginePid, table.rows, table.readerPid);
   }
 
   async folderSize(path: string): Promise<FolderSize> {

@@ -1,4 +1,10 @@
-import { baseName, type ReadProcessTable, type RunProgram, wholeNumber } from "./process-table.ts";
+import {
+  baseName,
+  type ReadProcessTable,
+  type RunProgram,
+  tableReadBy,
+  wholeNumber,
+} from "./process-table.ts";
 import type { ProcessRow } from "./process-tree.ts";
 
 /**
@@ -15,7 +21,11 @@ export const psArguments = ["-A", "-o", "pid=,ppid=,rss=,comm="] as const;
  * without `/proc`.
  */
 export function psProcessTable(run: RunProgram): ReadProcessTable {
-  return async () => parsePsOutput(await run(psProgram, psArguments));
+  return async () => {
+    const { output, pid } = await run(psProgram, psArguments);
+    // `ps` lists itself, as a child of the engine.
+    return tableReadBy(parsePsOutput(output), pid);
+  };
 }
 
 /**
