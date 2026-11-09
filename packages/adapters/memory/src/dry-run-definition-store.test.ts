@@ -52,6 +52,7 @@ verifies("memory.dry-run-definition-store", () => {
     ]);
     changes.pop();
     expect(store.changes()).toHaveLength(3);
+    expect(Object.isFrozen(store.changes()[0])).toBe(true);
   });
 
   it("keeps the location and version of the store under it until something is pending", async () => {

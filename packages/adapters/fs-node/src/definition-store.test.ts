@@ -54,6 +54,17 @@ verifies("ports.definition-store-private-entries", () => {
     expect(await store.list()).toEqual(["agents/real.yaml", "hubs/a/hub.yaml"]);
     expect(await readFile(join(root, "hubs/shared/secret.yaml"), "utf8")).toBe("secret\n");
   });
+
+  it("refuses a link under a dry run too, and records nothing", async () => {
+    const { store } = await linkedWorkspace();
+    const dryRun = new DryRunDefinitionStore(store);
+    for (const path of ["agents/link.yaml", "hubs/shared/secret.yaml", "hubs/inside/hub.yaml"]) {
+      await expect(dryRun.write(path, "x"), path).rejects.toThrow(RangeError);
+      await expect(dryRun.remove(path), path).rejects.toThrow(RangeError);
+    }
+    expect(dryRun.changes()).toEqual([]);
+    expect(await dryRun.list()).toEqual(["agents/real.yaml", "hubs/a/hub.yaml"]);
+  });
 });
 
 verifies("fs-node.definition-store", () => {

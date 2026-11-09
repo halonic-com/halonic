@@ -19,6 +19,12 @@ export type PlannedDefinitionChange =
  * Reads see the pending changes, so code that writes a file and reads it
  * back behaves as it would for real. Only the read side of the store under
  * it is ever called, so a read-only {@link DefinitionSource} works too.
+ *
+ * A write or remove first reads the path from the store under it, so a path
+ * that store refuses (for example one through a link) is refused here too.
+ * The dry run doesn't predict file system errors beyond that: writing
+ * `a.yaml/b.yaml` while `a.yaml` is a file, or writing over a folder, is
+ * accepted here even though a real folder would fail.
  */
 export class DryRunDefinitionStore implements DefinitionStore {
   readonly location: string;
@@ -62,16 +68,25 @@ export class DryRunDefinitionStore implements DefinitionStore {
 
   /** Records the write and shows it to later reads; the store under it is not changed. */
   async write(path: string, content: string): Promise<void> {
-    checkPublicWorkspacePath(path);
+    await this.#checkSourceAccepts(path);
     this.#pending.set(path, content);
-    this.#changes.push({ kind: "write", path, content });
+    this.#changes.push(Object.freeze({ kind: "write", path, content }));
   }
 
   /** Records the removal and hides the file from later reads; the store under it is not changed. */
   async remove(path: string): Promise<void> {
-    checkPublicWorkspacePath(path);
+    await this.#checkSourceAccepts(path);
     this.#pending.set(path, null);
-    this.#changes.push({ kind: "remove", path });
+    this.#changes.push(Object.freeze({ kind: "remove", path }));
+  }
+
+  /**
+   * Throws when the store under it would refuse the path. Reading is the
+   * only way to ask it without changing anything; the text is not needed.
+   */
+  async #checkSourceAccepts(path: string): Promise<void> {
+    checkPublicWorkspacePath(path);
+    await this.#source.read(path);
   }
 
   /**
@@ -94,7 +109,7 @@ export class DryRunDefinitionStore implements DefinitionStore {
     return `dry-run:${(await sha256Hex(listing)).slice(0, 16)}`;
   }
 
-  /** Every write and remove asked for so far, in order: what a real run would have done. */
+  /** Every write and remove asked for so far, in order: what a real run would have done. Each entry is frozen. */
   changes(): PlannedDefinitionChange[] {
     return [...this.#changes];
   }
