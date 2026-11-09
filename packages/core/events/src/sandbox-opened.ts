@@ -1,0 +1,122 @@
+/**
+ * How strong a sandbox's fence is, as the `Sandbox` port's `capabilities()`
+ * gives it: `os` (the operating system confines the program), `vm` (a
+ * micro-VM) or `remote` (another machine).
+ */
+export type SandboxStrength = "os" | "vm" | "remote";
+
+/**
+ * What a sandboxed step can do, as a `sandbox.opened` event records it. It is
+ * a display copy of the step's sandbox profile, made by
+ * {@link sandboxOpenedView}, so a finished run still shows it. It never holds
+ * the profile's environment variables or any field not named here.
+ */
+export interface SandboxOpenedView {
+  /** How strong the fence is. */
+  strength: SandboxStrength;
+  /** The one folder the step writes to. Paths in the person's home folder start with `~`. */
+  workingFolder: string;
+  /** The step's private temp folder. */
+  tempFolder: string;
+  /** The agent's own settings folder, or `null` when it has none. */
+  settingsFolder: string | null;
+  /** Paths the step may read but not change. */
+  readOnlyPaths: string[];
+  /** The codes of the groups of denied paths, such as `"ssh-keys"`, in the order the groups were given. */
+  deniedGroups: string[];
+  /** The denied paths that are in no group: the ones the person added. */
+  deniedPaths: string[];
+  /** The sites the step may reach besides the Halonic bridge. */
+  allowedSites: string[];
+  /** How long the step may last, in milliseconds. */
+  timeLimitMs: number;
+}
+
+/**
+ * The parts of a sandbox profile that {@link sandboxOpenedView} reads. The
+ * `Sandbox` port's `SandboxProfile` fits it; its other fields, such as `env`,
+ * are never read.
+ */
+export interface ShownSandboxProfile {
+  workingFolder: string;
+  tempFolder: string;
+  settingsFolder: string | null;
+  readOnlyPaths: readonly string[];
+  deniedPaths: readonly string[];
+  network: { allowedSites: readonly string[] };
+  timeLimitMs: number;
+}
+
+/** A named group of denied paths, such as the person's SSH keys. */
+export interface DeniedPathGroup {
+  /** A stable code, such as `"ssh-keys"`. Screens show it through the message catalogue. */
+  code: string;
+  /** The paths of the group, absolute, as they are in the profile. */
+  paths: readonly string[];
+}
+
+/** What {@link sandboxOpenedView} needs besides the profile. */
+export interface SandboxOpenedOptions {
+  /** The sandbox's strength, from its `capabilities()`. */
+  strength: SandboxStrength;
+  /** The person's home folder, or `null` when it is unknown. Paths in it are shortened to `~`. */
+  home: string | null;
+  /** The groups the profile's denied paths were built from. */
+  deniedGroups: readonly DeniedPathGroup[];
+}
+
+/**
+ * Makes the display copy of a sandbox profile that a `sandbox.opened` event
+ * carries (requirement `events.sandbox-opened`). It copies a fixed list of
+ * fields and nothing else, so the profile's `env` and any field added later
+ * never reach the run log. A group is named when all of its paths are denied;
+ * the denied paths outside the named groups are listed one by one. Paths in
+ * the person's home folder start with `~`.
+ *
+ * @param profile - the step's sandbox profile
+ * @param options - the sandbox's strength, the home folder and the groups of denied paths
+ * @returns the view for the event
+ *
+ * @example
+ * sandboxOpenedView(profile, {
+ *   strength: "os",
+ *   home: "<home>",
+ *   deniedGroups: [{ code: "ssh-keys", paths: ["<home>/.ssh"] }],
+ * });
+ * // => { strength: "os", workingFolder: "~/work", deniedGroups: ["ssh-keys"], ... }
+ */
+export function sandboxOpenedView(
+  profile: ShownSandboxProfile,
+  options: SandboxOpenedOptions,
+): SandboxOpenedView {
+  const shorten = (path: string): string => shortenHome(path, options.home);
+  const denied = new Set(profile.deniedPaths);
+  const named = options.deniedGroups.filter((group) =>
+    group.paths.every((path) => denied.has(path)),
+  );
+  const inNamedGroup = new Set(named.flatMap((group) => group.paths));
+  return {
+    strength: options.strength,
+    workingFolder: shorten(profile.workingFolder),
+    tempFolder: shorten(profile.tempFolder),
+    settingsFolder: profile.settingsFolder === null ? null : shorten(profile.settingsFolder),
+    readOnlyPaths: profile.readOnlyPaths.map(shorten),
+    deniedGroups: named.map((group) => group.code),
+    deniedPaths: [...denied].filter((path) => !inNamedGroup.has(path)).map(shorten),
+    allowedSites: [...profile.network.allowedSites],
+    timeLimitMs: profile.timeLimitMs,
+  };
+}
+
+/** `path` with the home folder written as `~`, or `path` as it is when it is outside the home folder. */
+function shortenHome(path: string, home: string | null): string {
+  if (home === null) return path;
+  const root = home.replace(/[/\\]+$/, "");
+  if (root === "") return path;
+  if (path === root) return "~";
+  const separator = path.charAt(root.length);
+  if (path.startsWith(root) && (separator === "/" || separator === "\\")) {
+    return `~${path.slice(root.length)}`;
+  }
+  return path;
+}

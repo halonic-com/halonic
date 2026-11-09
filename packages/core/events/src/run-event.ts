@@ -8,6 +8,7 @@ import type {
   ToolOutcome,
   Usage,
 } from "./run-basics.ts";
+import type { SandboxOpenedView } from "./sandbox-opened.ts";
 
 // Every event name and field here is part of the run log, which users keep on
 // disk and read with their own tools. Rename or remove nothing; new fields are
@@ -67,6 +68,11 @@ export type RunEventBody =
     }
   | { type: "llm.fallback"; agent: string; from: string; to: string; error: string }
   | { type: "tool.called"; agent: string; tool: string; args: unknown }
+  /**
+   * A step's sandbox opened (requirement `events.sandbox-opened`). `sandbox`
+   * is a display copy of its profile, never its environment variables.
+   */
+  | { type: "sandbox.opened"; state: string; agent: string; sandbox: SandboxOpenedView }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
   /** `outcome`: how the call ended (requirement `events.tool-result-outcome`); absent in older logs. */

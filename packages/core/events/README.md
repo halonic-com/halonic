@@ -20,6 +20,10 @@ optional and come with a requirement.
   that opened it. Events keep their own `entry`; logs written before that
   field existed get the same entries worked out (requirement
   `timeline-entry-id`).
+- `sandboxOpenedView(profile, options)`: the display copy of a sandbox
+  profile that a `sandbox.opened` event carries. It copies a fixed list of
+  fields, never `env`, logs denied paths as group codes plus the paths the
+  person added, and shortens home paths to `~` (requirement `sandbox-opened`).
 
 ## Example
 

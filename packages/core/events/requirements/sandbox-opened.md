@@ -1,0 +1,25 @@
+# events.sandbox-opened
+
+- Status: active
+- Since: 0.1.0
+- Source: board approval of proposal 1 ("What this run can do") in the `proposals` document on HAL-1601, with Julian's conditions on HAL-1673; task HAL-1707
+
+The run log shall have a `sandbox.opened` event, written when a sandboxed step starts, with the step's `state`, its `agent` and a display copy of its sandbox profile in `sandbox`, so a finished run still shows what the step could do. The events package shall make that copy with `sandboxOpenedView(profile, options)` from a fixed list of fields: the sandbox's strength, the working folder, the temp folder, the settings folder, the read-only paths, the denied paths, the allowed sites and the time limit. It shall never copy the profile's `env` or any field not on that list. Denied paths shall be logged as the codes of the groups whose paths are all denied, plus the other denied paths one by one: the ones the person added. Paths in the person's home folder shall start with `~`. The event holds codes and paths, never sentences; screens word them through the message catalogue.
+
+## Examples
+
+- Given a profile with `env` set and a field not on the list,
+  when its view is made,
+  then the view has neither, nor any of their values.
+- Given a profile whose denied paths are the SSH keys group, the cloud keys group and one path the person added,
+  when its view is made,
+  then `deniedGroups` is the two group codes and `deniedPaths` is the person's path.
+- Given a group of which only some paths are denied,
+  when the view is made,
+  then the group is not named and its denied paths are listed one by one.
+- Given the home folder `<home>` and the working folder `<home>/work`,
+  when the view is made,
+  then the working folder is `~/work`, and a folder next to the home folder whose name starts the same, `<home>name`, stays as it is.
+- Given the event types of the run log,
+  when they are listed,
+  then `sandbox.opened` is among them, with `state`, `agent` and `sandbox`.

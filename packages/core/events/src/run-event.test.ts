@@ -11,6 +11,7 @@ import type {
   Usage,
 } from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
+import type { SandboxOpenedView, SandboxStrength } from "./sandbox-opened.ts";
 
 // These are type tests: `tsc -p tsconfig.test.json` fails if a run log event
 // gains, loses or changes a field. The expected shapes are copied from
@@ -29,6 +30,8 @@ verifies("events.run-log-contract", () => {
       | "llm.response"
       | "llm.fallback"
       | "tool.called"
+      // Added after the reference by events.sandbox-opened (HAL-1707).
+      | "sandbox.opened"
       | "knowledge.searched"
       | "tool.result"
       | "approval.requested"
@@ -275,5 +278,28 @@ verifies("events.approval-resolved-by", () => {
     expectTypeOf<EventOf<"approval.resolved">["by"]>().toEqualTypeOf<
       ApprovalResolver | undefined
     >();
+  });
+});
+
+verifies("events.sandbox-opened", () => {
+  typeTest("records a sandboxed step's display copy of its profile and nothing else", () => {
+    expectTypeOf<EventOf<"sandbox.opened">>().toEqualTypeOf<{
+      type: "sandbox.opened";
+      state: string;
+      agent: string;
+      sandbox: SandboxOpenedView;
+    }>();
+    expectTypeOf<SandboxOpenedView>().toEqualTypeOf<{
+      strength: SandboxStrength;
+      workingFolder: string;
+      tempFolder: string;
+      settingsFolder: string | null;
+      readOnlyPaths: string[];
+      deniedGroups: string[];
+      deniedPaths: string[];
+      allowedSites: string[];
+      timeLimitMs: number;
+    }>();
+    expectTypeOf<SandboxStrength>().toEqualTypeOf<"os" | "vm" | "remote">();
   });
 });
