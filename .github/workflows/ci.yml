@@ -566,7 +566,8 @@ jobs:
           CARGO_DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
         run: |
           name="cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/cargo-deny.tar.gz" \
+          curl --fail --silent --show-error --location --retry 5 --retry-all-errors \
+            --output "$RUNNER_TEMP/cargo-deny.tar.gz" \
             "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/${name}.tar.gz"
           echo "${CARGO_DENY_SHA256}  $RUNNER_TEMP/cargo-deny.tar.gz" | sha256sum --check
           tar --extract --gzip --file "$RUNNER_TEMP/cargo-deny.tar.gz" --directory "$RUNNER_TEMP"
@@ -598,12 +599,28 @@ jobs:
         run: |
           rustup toolchain install
           rustup target add aarch64-linux-android x86_64-linux-android
+      # The Gradle distribution and the dependencies it downloads from Maven
+      # Central, so a slow or failing download only costs the first run.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/**/gradle-wrapper.properties', 'apps/studio/src-tauri/gen/android/gradle.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      # Downloads from GitHub and Maven Central now and then fail with a 504,
+      # so a failed build is tried again, up to three times in all.
       - name: Build the debug APK
         working-directory: apps/studio
         run: |
           export JAVA_HOME="$JAVA_HOME_17_X64"
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
-          pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64
+          for attempt in 1 2 3; do
+            pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64 && exit 0
+            echo "::warning::Android build attempt ${attempt} failed"
+            sleep $((attempt * 20))
+          done
+          exit 1
       # For trying a pull request's build on a phone or an emulator.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
