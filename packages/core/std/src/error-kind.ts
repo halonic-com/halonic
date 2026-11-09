@@ -40,6 +40,18 @@ export function isErrorKind(value: unknown): value is ErrorKind {
   return errorKinds.some((kind) => kind === value);
 }
 
+/** What a {@link KindedError} can carry besides its kind and message. */
+export type KindedErrorOptions = {
+  /**
+   * The one next step that fixes it, as a sentence on its own line, such as
+   * "Start Ollama, then run again." Leave it out when there is no step to
+   * suggest: surfaces then show no fix and never make one up.
+   */
+  readonly fix?: string;
+  /** The error this one wraps, for the log. */
+  readonly cause?: unknown;
+};
+
 /**
  * An error with a kind, for code that fails in a way a person should hear
  * about. Errors that already have their own class don't have to extend this
@@ -48,23 +60,32 @@ export function isErrorKind(value: unknown): value is ErrorKind {
  * The message must be safe to show and to log: no secrets, tokens, internal
  * paths or internal codes. Surfaces show a generic message for `internal`
  * instead of this one, so don't rely on the text of an `internal` error
- * reaching the user; put what helps there in the log.
+ * reaching the user; put what helps there in the log. The same rule holds
+ * for the optional `fix`, which is kept apart from the message so a surface
+ * can show it on its own line or in its own JSON field.
  *
  * @example
  * throw new KindedError("not_found", `There is no routine named "${name}".`);
+ * throw new KindedError("unavailable", "Halonic couldn't reach Ollama.", {
+ *   fix: "Start Ollama, then run again.",
+ * });
  */
 export class KindedError extends Error {
   override readonly name = "KindedError";
   readonly kind: ErrorKind;
+  /** The one next step that fixes it; `undefined` when there is none to suggest. */
+  readonly fix: string | undefined;
 
   /**
    * @param kind - how a surface should respond
    * @param message - safe to show and to log
-   * @param options - `cause` keeps the error this one wraps, for the log
+   * @param options - `fix` is the next step, safe to show and to log; `cause`
+   *   keeps the error this one wraps, for the log
    */
-  constructor(kind: ErrorKind, message: string, options?: { cause?: unknown }) {
-    super(message, options);
+  constructor(kind: ErrorKind, message: string, options: KindedErrorOptions = {}) {
+    super(message, "cause" in options ? { cause: options.cause } : undefined);
     this.kind = kind;
+    this.fix = options.fix;
   }
 }
 

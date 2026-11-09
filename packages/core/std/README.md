@@ -35,7 +35,8 @@ never passes for the real one.
 Errors a person can see carry one of eight kinds (`ErrorKind`): `invalid_input`,
 `not_found`, `conflict`, `unauthenticated`, `denied`, `limit_reached`,
 `unavailable` and `internal`. Throw a `KindedError`, or give an existing error
-class a `kind` property. Each surface (HTTP, CLI, Studio, MCP) reads the kind
+class a `kind` property. A `KindedError` can also carry a `fix`: the next step,
+kept apart from the message so a surface can show it on its own line. Each surface (HTTP, CLI, Studio, MCP) reads the kind
 with `errorKindOf` and turns it into its response in one exhaustive `switch`.
 Anything without a kind is `internal`, so an unexpected error never shows
 its own text to the user.

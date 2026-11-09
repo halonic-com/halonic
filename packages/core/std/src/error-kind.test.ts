@@ -83,3 +83,19 @@ verifies("std.error-kind", () => {
     expect(isErrorKind(3)).toBe(false);
   });
 });
+
+verifies("std.error-fix", () => {
+  it("keeps the fix apart from the message", () => {
+    const error = new KindedError("unavailable", "Halonic couldn't reach Ollama.", {
+      fix: "Start Ollama, then run again.",
+    });
+    expect(error.message).toBe("Halonic couldn't reach Ollama.");
+    expect(error.fix).toBe("Start Ollama, then run again.");
+  });
+
+  it("has no fix and no cause when none is given", () => {
+    const error = new KindedError("not_found", "There is no hub named support.");
+    expect(error.fix).toBeUndefined();
+    expect("cause" in error).toBe(false);
+  });
+});
