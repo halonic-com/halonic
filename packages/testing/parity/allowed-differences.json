@@ -345,5 +345,140 @@
     "new": "due returns only the runs to start. Times that catchUp drops are left out without a list. Overlap is applied by the app's RoutineScheduler, which reports the times it skips because a run is busy (HAL-1007).",
     "why": "Nothing in the old app read the skipped list for catch-up; the old Studio only started what was in start. Keeping due a plain list of runs keeps it simple to check for exactly-once, and the skips a person may want to see, those caused by a busy run, are still reported by the scheduler.",
     "status": "signed-off"
+  },
+  {
+    "id": "missing-key-line-agent-method",
+    "requirement": "yaml.position-of",
+    "area": "agent files: missing method key line",
+    "old": "784f78d: a key missing from a map that is the value of another key was reported at the line of the map's first key (the value line), one line below the parent key.",
+    "new": "A key missing from a map that is the value of another key is reported at the parent key's line, where the user adds the missing key. Only the line moves; the path and code are the same.",
+    "why": "Missing key reported at the parent key line, old app used the value line. The parity fixtures already expect the key line. Decided in HAL-2045 (decisions/maya/HAL-2045-yaml-missing-key-parent.md), approved by Liam (CTO) on HAL-2122; not for HAL-58.",
+    "status": "signed-off",
+    "fixtures": [
+      {
+        "case": "agent/missing-required",
+        "file": "hubs/billing/agents/clerk.agent.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "methods",
+                "extract",
+                "instructions"
+              ],
+              "code": "invalid_type",
+              "line": 13,
+              "col": 5
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "methods",
+                "extract",
+                "instructions"
+              ],
+              "code": "invalid_type",
+              "line": 12,
+              "col": 3
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "missing-key-line-deployments",
+    "requirement": "yaml.position-of",
+    "area": "deployments file: missing deployment key line",
+    "old": "784f78d: a key missing from a map that is the value of another key was reported at the line of the map's first key (the value line), one line below the parent key.",
+    "new": "A key missing from a map that is the value of another key is reported at the parent key's line, where the user adds the missing key. Only the line moves; the path and code are the same.",
+    "why": "Missing key reported at the parent key line, old app used the value line. The parity fixtures already expect the key line. Decided in HAL-2045 (decisions/maya/HAL-2045-yaml-missing-key-parent.md), approved by Liam (CTO) on HAL-2122; not for HAL-58.",
+    "status": "signed-off",
+    "fixtures": [
+      {
+        "case": "deployments/missing-required",
+        "file": "deployments.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "deployments",
+                "shadow-run",
+                "name"
+              ],
+              "code": "invalid_type",
+              "line": 9,
+              "col": 5
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "deployments",
+                "shadow-run",
+                "name"
+              ],
+              "code": "invalid_type",
+              "line": 8,
+              "col": 3
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "missing-key-line-models",
+    "requirement": "yaml.position-of",
+    "area": "models file: missing alias key line",
+    "old": "784f78d: a key missing from a map that is the value of another key was reported at the line of the map's first key (the value line), one line below the parent key.",
+    "new": "A key missing from a map that is the value of another key is reported at the parent key's line, where the user adds the missing key. Only the line moves; the path and code are the same.",
+    "why": "Missing key reported at the parent key line, old app used the value line. The parity fixtures already expect the key line. Decided in HAL-2045 (decisions/maya/HAL-2045-yaml-missing-key-parent.md), approved by Liam (CTO) on HAL-2122; not for HAL-58.",
+    "status": "signed-off",
+    "fixtures": [
+      {
+        "case": "models/missing-required",
+        "file": "models.yaml",
+        "old": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "aliases",
+                "smart",
+                "model"
+              ],
+              "code": "invalid_type",
+              "line": 17,
+              "col": 5
+            }
+          ]
+        },
+        "new": {
+          "status": "fail",
+          "problems": [
+            {
+              "path": [
+                "aliases",
+                "smart",
+                "model"
+              ],
+              "code": "invalid_type",
+              "line": 16,
+              "col": 3
+            }
+          ]
+        }
+      }
+    ]
   }
 ]

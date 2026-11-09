@@ -122,6 +122,9 @@ verifies("parity.allowed-differences-checked", () => {
       "routines.due",
       "routines.due",
       "routines.due",
+      "yaml.position-of",
+      "yaml.position-of",
+      "yaml.position-of",
     ]);
   });
 
