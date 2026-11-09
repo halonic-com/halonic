@@ -39,7 +39,7 @@ the recording doesn't have. This example is [`examples/replay-one-exchange.ts`](
 which `src/example.test.ts` runs and checks.
 
 ```ts
-import { NoRecordingError, type RecordingFile, replayTransport } from "../src/index.ts";
+import { NoRecordingError, type RecordingFile, replayTransport } from "@halonicjs/testing-integration";
 
 /** A made-up recording: one scenario for the fictional `acme` integration, one scrubbed exchange. */
 const recording: RecordingFile = {
