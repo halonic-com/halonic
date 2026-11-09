@@ -22,6 +22,7 @@ Device-wide settings such as the theme live outside any scope.
 | `RoutineScheduler`  | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                                                | `app.routine-scheduler`         |
 | `readToolListing`   | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings` |
 | `toolForModel`      | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                | `ports.untrusted-tool-listings` |
+| `listedToolsNotice` | the fixed system prompt line saying an outside server wrote the fenced tool texts, when a listed tool is offered             | `ports.untrusted-tool-listings` |
 | `checkToolCall`     | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs                                | `ports.untrusted-tool-listings` |
 | `refusalStatusLine` | one line of plain text for a refusal in the integration status, never for the model                                          | `ports.untrusted-tool-listings` |
 | `fenceUntrusted`    | puts outside text inside the untrusted fence, which holds when the text holds its markers                                    | `ports.untrusted-tool-listings` |
