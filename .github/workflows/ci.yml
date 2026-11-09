@@ -626,12 +626,30 @@ jobs:
         run: |
           rustup toolchain install
           rustup target add aarch64-linux-android x86_64-linux-android
+      # Keeps the Gradle distribution and the Maven downloads between runs,
+      # so a slow or failing services.gradle.org or Maven Central doesn't
+      # turn main red. Keyed on the wrapper version and the Gradle files; an
+      # older cache is still a good start when they change.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/wrapper
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'apps/studio/src-tauri/gen/android/**/*.gradle', 'apps/studio/src-tauri/gen/android/**/*.gradle.kts', 'apps/studio/src-tauri/gen/android/gradle.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      # A backstop for a download that still fails. Retries are cheap once
+      # the cache holds most of the files.
       - name: Build the debug APK
         working-directory: apps/studio
         run: |
           export JAVA_HOME="$JAVA_HOME_17_X64"
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
-          pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64
+          for attempt in 1 2 3; do
+            pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64 && exit 0
+            echo "::warning title=android::Build attempt $attempt failed."
+            sleep 20
+          done
+          exit 1
       # For trying a pull request's build on a phone or an emulator.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
