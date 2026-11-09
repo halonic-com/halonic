@@ -25,7 +25,8 @@
     "layer": "tooling",
     "owner": "mateo",
     "coverage": {
-      "lines": 80
+      "lines": 90,
+      "branches": 85
     }
   }
 }

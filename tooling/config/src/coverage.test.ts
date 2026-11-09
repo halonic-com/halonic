@@ -98,6 +98,12 @@ describe("coverageSettings", () => {
     expect(coverageSettings(repoWith(elsewhere)).thresholds).toEqual({ lines: 80 });
   });
 
+  it("measures the folder's own src with no floor when it has no package.json", () => {
+    const settings = coverageSettings(join(tmpdir(), "halonic-coverage-missing"));
+    expect(settings.allowExternal).toBe(false);
+    expect(settings.thresholds).toEqual({});
+  });
+
   it("drops the floor from the package's own run when it is measured elsewhere", () => {
     expect(coverageSettings(packageWith(measured)).thresholds).toEqual({});
   });

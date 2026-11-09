@@ -1,7 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
 import { UnrunTestFilesReporter } from "./unrun-files-reporter.ts";
-import { definePackageTestConfig, testResultsFile } from "./vitest-preset.ts";
+import { definePackageTestConfig, fastCheckSetupFile, testResultsFile } from "./vitest-preset.ts";
 
 describe("definePackageTestConfig", () => {
   it("writes the result file with the JSON reporter", () => {
@@ -34,5 +37,24 @@ describe("definePackageTestConfig", () => {
     expect(
       Array.isArray(reporters) && reporters.some((r) => r instanceof UnrunTestFilesReporter),
     ).toBe(true);
+  });
+
+  it("adds GitHub annotations to the output in CI only", () => {
+    vi.stubEnv("CI", "");
+    expect(definePackageTestConfig().test?.reporters).not.toContain("github-actions");
+    vi.stubEnv("CI", "true");
+    expect(definePackageTestConfig().test?.reporters).toContain("github-actions");
+  });
+
+  it("sets the fast-check seed only in a package that uses fast-check", () => {
+    // This package lists fast-check, and Vitest runs in its folder.
+    expect(definePackageTestConfig().test?.setupFiles).toEqual([fastCheckSetupFile]);
+    const other = mkdtempSync(join(tmpdir(), "halonic-preset-"));
+    try {
+      vi.spyOn(process, "cwd").mockReturnValue(other);
+      expect(definePackageTestConfig().test?.setupFiles).toEqual([]);
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
   });
 });
