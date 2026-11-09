@@ -12,9 +12,21 @@ export type Body = NonNullable<RequestInit["body"]> | null;
  */
 export const maxRequestBodyBytes = 720 * 1024;
 
-/** The limit for one request: the one asked for, held at {@link maxRequestBodyBytes}. */
+/**
+ * The limit for one request: the one asked for, held at
+ * {@link maxRequestBodyBytes}, so it can be lowered but never raised.
+ *
+ * - A value that isn't a finite number, such as `NaN` or `-Infinity`, gets
+ *   the ceiling.
+ *   `bytes > NaN` is always false, so passing it through would turn the
+ *   check off.
+ * - A negative finite value is clamped to 0, which allows a request with no body
+ *   and nothing else. Passed through, it would refuse even an empty body,
+ *   with a message about a limit of minus some bytes.
+ */
 export function requestBodyLimit(requested = maxRequestBodyBytes): number {
-  return Math.min(requested, maxRequestBodyBytes);
+  if (!Number.isFinite(requested)) return maxRequestBodyBytes;
+  return Math.max(0, Math.min(requested, maxRequestBodyBytes));
 }
 
 const utf8 = new TextEncoder();

@@ -87,4 +87,21 @@ verifies("integration-kit.request-body-limit", () => {
     const large = raised.http.fetch("https://api.example.com/", post("x".repeat(atLimit + 1)));
     expect(await refusal(large)).toBe("request-too-large");
   });
+
+  it.each([NaN, Infinity, -Infinity])("holds a limit of %s at 720 KiB", async (limit) => {
+    const { http, sent } = client(undefined, { maxRequestBodyBytes: limit });
+    const large = http.fetch("https://api.example.com/", post("x".repeat(atLimit + 1)));
+    expect(await refusal(large)).toBe("request-too-large");
+    await http.fetch("https://api.example.com/", post("x".repeat(atLimit)));
+    expect(sentBytes(sent[0]?.body)).toBe(atLimit);
+  });
+
+  it("treats a negative limit as 0: no body at all", async () => {
+    const { http, sent } = client(undefined, { maxRequestBodyBytes: -1 });
+    const one = http.fetch("https://api.example.com/", post("x"));
+    expect(await refusal(one)).toBe("request-too-large");
+    await http.fetch("https://api.example.com/", post(""));
+    await http.fetch("https://api.example.com/", { method: "GET" });
+    expect(sent).toHaveLength(2);
+  });
 });
