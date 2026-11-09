@@ -30,14 +30,47 @@ Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
 
+Read one routine's trigger, ask what is due at a fixed moment and list its next due times in a time
+zone. The code lives in [`examples/next-due-times.ts`](examples/next-due-times.ts), where it is
+typechecked and run by `src/example.test.ts`; keep this copy in step with it. The file imports
+`../src/index.ts`, because a package may not import itself by name; outside this package, import
+`@halonicjs/routines` as below.
+
 ```ts
-import { nextCronTime, parseCron } from "@halonicjs/routines";
+import type { Routine } from "@halonicjs/format";
+import { due, nextRun, occurrences } from "@halonicjs/routines";
 
-const cron = parseCron("*/15 8-18/2 * jan,dec mon-fri");
-cron.minutes; // Set {0, 15, 30, 45}
-cron.weekdays; // Set {1, 2, 3, 4, 5}
+// One routine: every weekday at 08:00 in Amsterdam. Normally it comes from a
+// `*.routine.yaml` file read with @halonicjs/format.
+const routine: Routine = {
+  version: 1,
+  id: "morning-brief",
+  name: "Morning brief",
+  enabled: true,
+  trigger: { schedule: "0 8 * * 1-5", timezone: "Europe/Amsterdam" },
+  run: { workflow: "brief", input: {} },
+  overlap: "skip",
+  catchUp: "last",
+};
 
-// Weekdays at 08:00 in Amsterdam, after Friday 6 November 2026 09:00 UTC:
-nextCronTime("0 8 * * 1-5", new Date("2026-11-06T09:00:00Z"), "Europe/Amsterdam");
-// 2026-11-09T07:00:00.000Z (Monday 08:00 CET)
+// A fixed clock keeps the output the same on every run: Monday 9 November 2026, 08:05 in Amsterdam.
+const now = new Date("2026-11-09T07:05:00Z");
+
+/** Reads one routine's trigger and lists what is due now and its next due times. */
+export function runExample(): { dueNow: string[]; next: string | null; nextWeek: string[] } {
+  // What a tick at `now` starts, when the last tick was on Friday afternoon.
+  const lastTick = new Date("2026-11-06T15:00:00Z");
+  const runs = due([{ hub: null, routine }], lastTick, now);
+  const dueNow = runs.map((run) => `${run.key} at ${run.at.toISOString()}`);
+  // ["@workspace/morning-brief at 2026-11-09T07:00:00.000Z"]
+
+  // The next time the trigger fires, strictly after now.
+  const next = nextRun(routine.trigger, now)?.toISOString() ?? null; // "2026-11-10T07:00:00.000Z"
+
+  // Every time it fires in the coming week; the weekend is skipped.
+  const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const nextWeek = occurrences(routine.trigger, now, weekEnd).map((at) => at.toISOString());
+
+  return { dueNow, next, nextWeek };
+}
 ```
