@@ -1,3 +1,4 @@
+export { accountMatches } from "./account-match.ts";
 export { type AccountType, accountTypeFromAddress } from "./account-type.ts";
 export {
   type AuthUrlInput,
@@ -6,6 +7,12 @@ export {
   googleAuthUrl,
   signInScopes,
 } from "./auth-url.ts";
+export {
+  type GoogleCheckAnswer,
+  type GoogleCheckMeaning,
+  readGoogleCheckAnswer,
+} from "./check-answer.ts";
+export type { ApiOff, ServiceCheckOutcome, ServiceResult } from "./check-result.ts";
 export { ClientSecretError, type ClientSecretErrorReason } from "./client-secret-error.ts";
 export {
   type ClientSecretRemoval,
@@ -44,6 +51,7 @@ export {
   readRefreshAnswer,
 } from "./refresh-answer.ts";
 export { mayRefresh } from "./refresh-refused.ts";
+export { type ServiceScopes, serviceScopes } from "./service-scopes.ts";
 export type { SetupEdit } from "./setup-edit.ts";
 export type {
   GoogleApi,

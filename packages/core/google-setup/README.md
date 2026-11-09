@@ -2,8 +2,8 @@
 
 The rules of the Google setup flow in Studio's Inbox, as pure logic over the ports. For now: the
 client secret store with staged replace, its token names, the `GOCSPX-` detector, the step
-generator and the saved setup progress. The checks after sign-in and the error classification
-follow.
+generator, the saved setup progress and the checks after sign-in. The error classification
+follows.
 
 - **Layer:** core
 - **Owner:** priya
@@ -150,3 +150,22 @@ A pending sign-in holds the PKCE verifier, so it is never written to the `TokenS
 store (plan D5). The `code` and `tokens` results hold secrets and never leave the host package.
 Google's `error_description` is never read, and an `error` value that isn't a plain code becomes
 `unrecognised`.
+
+## Checks after sign-in (HAL-708)
+
+The pure parts of setup items 6 and 7. The host's sign-in runs them inside `finishGoogleSignIn`,
+before it saves anything and while it still holds the fresh access token.
+
+| Export                  | What it does                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `accountMatches`        | whether the verified address is the connector's: trimmed, any letter case, no dot or `+` folding |
+| `serviceScopes`         | per service, whether Google granted all its `googleScopes`, or which are missing                 |
+| `readGoogleCheckAnswer` | one `googleCheck` answer as `works` (2xx), `apiOff` (403 that says so) or `checkFailed`          |
+| `ServiceCheckOutcome`   | what step 7 shows per service: those three, `allowed`, `scopeNotGranted` and `unreachable`       |
+
+`allowed` means every scope was granted and the sheet has no `googleCheck`: nothing showed the API
+is on. `apiOff` keeps the API host only in the `<name>.googleapis.com` shape, its name only from the
+service's sheet, and the project ID from the setup or else Google's project number. No result keeps
+Google's `message` or any other free text, so every result can be shown, logged and saved. The
+setup record still keeps the coarser `ServiceCheckResult` (`works`, `api-off`, `not-checked`); plan
+D5 revision 5 moves it to `ServiceCheckOutcome` in a later change.
