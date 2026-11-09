@@ -214,7 +214,7 @@ verifies("yaml.edit", () => {
 
     it("finds a value that contains itself, but not one that is shared", () => {
       const loop: Record<string, unknown> = {};
-      loop.self = loop;
+      loop["self"] = loop;
       expect(checkValue(loop, 10)).toBe(
         'The value at "self" contains itself, which YAML can\'t hold.',
       );
