@@ -4,10 +4,12 @@ import { type CommandSpec, WorkspaceScope } from "./index.ts";
 
 // What a feature package writes to add its own commands and events, with
 // `declare module "@halonicjs/app"` there; inside this package the check
-// rules ask for the relative path. `tsc -p tsconfig.test.json` checks this
+// rules ask for the relative path. Every augmentation names the entry, as
+// `examples/feature-command.ts` does: one on `./workspace-scope.ts` next to
+// one on `./index.ts` loses the other's names. `tsc -p tsconfig.test.json` checks this
 // file, so the `@ts-expect-error` lines below prove that wrong names and
 // payloads don't compile.
-declare module "./workspace-scope.ts" {
+declare module "./index.ts" {
   interface AppCommands {
     "typing.rename": CommandSpec<{ from: string; to: string }, boolean>;
   }
