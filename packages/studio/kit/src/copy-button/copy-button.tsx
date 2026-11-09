@@ -19,7 +19,7 @@ type CopyState = "ready" | "copied" | "failed";
 
 /** The secondary button at the small size (base component specs, section 1). */
 const buttonClasses = [
-  "grid h-control-sm items-center rounded-sm border border-border-strong bg-surface px-2.5",
+  "inline-grid h-control-sm items-center rounded-sm border border-border-strong bg-surface px-2.5",
   "text-body-strong text-fg transition-colors duration-(--duration-fast) ease-standard",
   "hover:bg-surface-subtle active:bg-surface-subtle focus-ring",
   // Like a Button: 40px with a 48px hit area on a touch screen, 48px on a phone.
@@ -32,7 +32,10 @@ const wordClasses = "col-start-1 row-start-1";
 /**
  * A button that copies a value and says "Copied" in place for a moment. Screen readers hear
  * "Copied" too, through a status region next to the button. If the clipboard refuses, a hint
- * under it says to select the text and copy it by hand.
+ * says to select the text and copy it by hand.
+ *
+ * The button and its hint join the parent's layout. Put the button in a wrapping flex row with
+ * what it copies, and the hint goes on the line under the whole row, at the row's full width.
  *
  * @example
  * <CopyButton text="Halonic (own app)" label="Copy the app name" />
@@ -58,8 +61,8 @@ export function CopyButton({ text, label }: CopyButtonProps) {
   }
 
   return (
-    // The hint takes the whole width, so it goes on the line under the button.
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+    // No box of its own, so the hint can take the full width of the caller's row.
+    <span className="contents">
       <button type="button" aria-label={label} className={buttonClasses} onClick={copy}>
         <span className={state === "copied" ? `${wordClasses} invisible` : wordClasses}>Copy</span>
         <span className={state === "copied" ? wordClasses : `${wordClasses} invisible`}>
@@ -68,7 +71,7 @@ export function CopyButton({ text, label }: CopyButtonProps) {
       </button>
       <span
         role="status"
-        className={state === "failed" ? "basis-full text-caption text-fg-muted" : "sr-only"}
+        className={state === "failed" ? "block basis-full text-caption text-fg-muted" : "sr-only"}
       >
         <span key={attempt}>{statusText(state)}</span>
       </span>

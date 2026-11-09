@@ -755,8 +755,19 @@ It copies the text and says "Copied" in place for two seconds (`COPIED_FOR_MS`).
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Ready        | The secondary button at the small size (28px; 48px on a phone), saying "Copy"                                                              |
 | Copied       | "Copied" in place, with no change in width. Screen readers hear "Copied" through a status region next to the button, which is always there |
-| Failed       | The button still says "Copy". A caption under it says "Couldn't copy. Select the text and copy it yourself."                               |
+| Failed       | The button still says "Copy". A caption under the row says "Couldn't copy. Select the text and copy it yourself."                          |
 | Hover, focus | A `surface-subtle` fill on hover; the standard focus ring                                                                                  |
+
+**Where it goes.** Beside what it copies, in a wrapping flex row. The button and its caption have
+no box of their own, so they join that row: the caption goes on the line under the whole row, at
+its full width, and stays one or two lines on a phone.
+
+```tsx
+<div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+  <code>studio serve --port 4310</code>
+  <CopyButton text="studio serve --port 4310" label="Copy the command" />
+</div>;
+```
 
 **How it copies.** `navigator.clipboard` first. Without a secure context (a phone on plain http)
 it falls back to selecting the text in a hidden text box and running the browser's copy command.

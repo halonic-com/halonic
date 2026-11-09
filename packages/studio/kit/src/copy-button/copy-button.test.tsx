@@ -90,8 +90,9 @@ verifies("kit.copy-button", () => {
     expect(shownWord()).toBe("Copy");
     expect(status.textContent).toBe("Couldn't copy. Select the text and copy it yourself.");
     expect(status.className).not.toContain("sr-only");
-    // The hint goes on its own line, under the button.
+    // The hint goes on its own line, under the caller's whole row.
     expect(status.className).toContain("basis-full");
+    expect(status.parentElement?.className).toBe("contents");
   });
 
   it("has a status region in the page before anything is copied, so the first copy is read", () => {

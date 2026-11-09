@@ -50,15 +50,12 @@ function useClickedCopy(outcome: Outcome | undefined) {
 function CommandWithCopy({ outcome }: { readonly outcome?: Outcome }) {
   const holder = useClickedCopy(outcome);
   return (
-    // The button stays beside the command; in the Error row its hint goes on the line below.
-    <span ref={holder} className="flex items-start gap-2">
+    // The button stays beside the command; in the Error row its hint goes under both.
+    <span ref={holder} className="flex flex-wrap items-start gap-x-2 gap-y-1">
       <code className="inline-flex h-control-sm shrink-0 items-center whitespace-nowrap rounded-sm border border-border bg-surface-muted px-2.5 font-mono text-small touch:h-control-lg phone:h-touch">
         {command}
       </code>
-      {/* Only the hint wraps, so the command keeps its one line. */}
-      <span className="min-w-0">
-        <CopyButton text={command} label="Copy the command" />
-      </span>
+      <CopyButton text={command} label="Copy the command" />
     </span>
   );
 }
