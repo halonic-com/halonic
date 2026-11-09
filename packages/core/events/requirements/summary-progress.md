@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: old app `summarize` at commit 784f78d
 
-While a run's events are folded, the events package shall track the current state, every state visited in order, the context values and how the run ended: `run.completed` sets the status "completed", the end time and the final context, and `run.failed` sets the status "failed", the end time and the error.
+While a run's events are folded, the events package shall track the current state, every state visited in order, the context values and how the run ended: `run.completed` sets the status "completed", the end time and the final context, and `run.failed` sets the status "failed", the end time, the error and its reason. The reason is `null` while the run hasn't failed, and when `run.failed` gives none, as in logs written before it had one.
 
 ## Examples
 
@@ -19,4 +19,10 @@ While a run's events are folded, the events package shall track the current stat
   then the status is "completed", `endedAt` is "T" and the context is `{ done: true }`.
 - Given `run.failed` at "T" with error "boom",
   when it is summarized,
-  then the status is "failed", `endedAt` is "T" and the error is "boom".
+  then the status is "failed", `endedAt` is "T", the error is "boom" and the reason is `null`.
+- Given `run.failed` with error "boom" and reason "budget",
+  when it is summarized,
+  then the reason is "budget".
+- Given only `state.entered` "a",
+  when it is summarized,
+  then the reason is `null`.

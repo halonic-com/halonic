@@ -59,6 +59,7 @@ verifies("events.summary-start", () => {
       statesVisited: [],
       context: {},
       error: null,
+      reason: null,
       definitionsVersion: "v1",
       trigger,
       parentRunId: "p1",
@@ -113,6 +114,21 @@ verifies("events.summary-progress", () => {
   it("ends failed with the error", () => {
     const summary = summaryOf({ type: "run.failed", state: null, error: "boom" });
     expect(summary).toMatchObject({ status: "failed", endedAt: "T2", error: "boom" });
+  });
+
+  it("takes the reason from run.failed", () => {
+    const summary = summaryOf({ type: "run.failed", state: null, error: "boom", reason: "budget" });
+    expect(summary.reason).toBe("budget");
+  });
+
+  it("has no reason while the run hasn't failed", () => {
+    expect(summaryOf({ type: "state.entered", state: "a" }).reason).toBeNull();
+    expect(summaryOf({ type: "run.completed", state: "end", context: {} }).reason).toBeNull();
+  });
+
+  it("has no reason when run.failed gives none, as in older logs", () => {
+    const summary = summaryOf({ type: "run.failed", state: null, error: "boom" });
+    expect(summary.reason).toBeNull();
   });
 });
 

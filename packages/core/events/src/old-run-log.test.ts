@@ -48,6 +48,7 @@ verifies("events.upgrade-old-run-logs", () => {
       statesVisited: ["pay"],
       context: {},
       error: "the bank is offline",
+      reason: null,
       definitionsVersion: "v1",
       trigger: null,
       parentRunId: null,

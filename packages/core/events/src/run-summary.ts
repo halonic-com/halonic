@@ -1,4 +1,4 @@
-import type { RunKind, RunStatus, RunTrigger, Usage } from "./run-basics.ts";
+import type { RunFailureReason, RunKind, RunStatus, RunTrigger, Usage } from "./run-basics.ts";
 
 /** A tool call a run is waiting on a person's OK for, from its `approval.requested` event. */
 export interface PendingApproval {
@@ -42,6 +42,11 @@ export interface RunSummary {
   statesVisited: string[];
   context: Record<string, unknown>;
   error: string | null;
+  /**
+   * Why the run failed, from its `run.failed` event. `null` while it hasn't
+   * failed, and for older logs whose `run.failed` gives no reason.
+   */
+  reason: RunFailureReason | null;
   definitionsVersion: string;
   trigger: RunTrigger | null;
   /** The run that started this one (subflows). */

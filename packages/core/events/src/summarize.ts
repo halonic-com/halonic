@@ -35,6 +35,7 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
     statesVisited: [],
     context: {},
     error: null,
+    reason: null,
     definitionsVersion: first.definitionsVersion,
     trigger: first.trigger ?? null,
     parentRunId: first.parent?.runId ?? null,
@@ -116,6 +117,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.status = "failed";
       summary.endedAt = event.at;
       summary.error = event.error;
+      summary.reason = event.reason ?? null;
       return;
     default:
       return;

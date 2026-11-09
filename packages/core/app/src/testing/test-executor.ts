@@ -164,6 +164,7 @@ function testSummary(
     statesVisited: [],
     context: {},
     error: null,
+    reason: null,
     definitionsVersion: "test",
     trigger,
     parentRunId: null,
