@@ -47,10 +47,12 @@ verifies("coordination-node.restart", () => {
 
     it("rejects an update whose add was never written, as after a half-written log", async () => {
       const world = newWorld();
-      await world.store.append([change('["counter","k"]', "update", { value: 2 })]);
+      const changes = [change('["counter","k"]', "update", { value: 2 })];
+      await world.store.append(changes);
       const log = new StateLog(world.store, defaultCoordinationCollection, world.clock);
 
       await expect(log.load()).rejects.toThrow('["counter","k"]');
+      expect(await world.store.changes(defaultCoordinationCollection)).toEqual(changes);
     });
 
     it("loads an update that carries only the values that changed", async () => {

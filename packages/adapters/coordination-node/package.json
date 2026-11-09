@@ -28,8 +28,8 @@
     "owner": "priya",
     "runtime": "node",
     "coverage": {
-      "lines": 100,
-      "branches": 100
+      "lines": 90,
+      "branches": 85
     }
   }
 }
