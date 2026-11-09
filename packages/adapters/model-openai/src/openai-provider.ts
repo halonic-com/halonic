@@ -1,6 +1,7 @@
 import type {
   ChatRequest,
   ChatResponse,
+  ChatStreamEvent,
   HttpClient,
   LlmCapabilities,
   LlmProvider,
@@ -13,8 +14,10 @@ import {
   type FailedCall,
 } from "./call-error.ts";
 import { BodyTooLargeError, readTextWithin } from "./read-body.ts";
-import { readReply } from "./reply.ts";
+import { ReplyFormatError, readReply } from "./reply.ts";
 import { type MaxTokensField, toWireBody } from "./request.ts";
+import { readSseData } from "./sse.ts";
+import { StreamedReply } from "./stream-reply.ts";
 
 /** The largest reply read, 10 MiB, as `integration-kit` allows a response by default. */
 const maxReplyBytes = 10 * 1024 * 1024;
@@ -46,7 +49,9 @@ export interface OpenAiCompatibleProviderOptions {
  * A model provider that speaks OpenAI's chat completions API
  * (`POST {baseUrl}/chat/completions`): OpenAI itself, and Ollama, LM Studio
  * and other servers that copy it. Tools go over the native `tools` and
- * `tool_calls` fields.
+ * `tool_calls` fields. `stream()` asks for server-sent events; `chat()`
+ * asks for one whole reply, and the contract suite checks both give the
+ * same answer.
  *
  * @example
  * const model = new OpenAiCompatibleProvider({
@@ -64,7 +69,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     tools: true,
     jsonOutput: true,
     vision: false,
-    streaming: false,
+    streaming: true,
   };
   readonly #endpoint: string;
   /** The endpoint's host and port, for an `offline` error. */
@@ -84,14 +89,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
   }
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
-    request.signal?.throwIfAborted();
-    const call: FailedCall = {
-      providerId: this.id,
-      model: request.model,
-      offeredTools: (request.tools?.length ?? 0) > 0,
-      host: this.#host,
-    };
-    const response = await this.#send(request, call);
+    const { response, call } = await this.#call(request, false);
     let body: unknown;
     try {
       body = JSON.parse(await readTextWithin(response, maxReplyBytes));
@@ -108,15 +106,55 @@ export class OpenAiCompatibleProvider implements LlmProvider {
   }
 
   /**
+   * Streams the answer as the server writes it. An abort ends the stream
+   * with the signal's reason, even when it comes while the caller handles
+   * an event; stopping early closes the call.
+   */
+  async *stream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+    const { response, call } = await this.#call(request, true);
+    const reply = new StreamedReply();
+    try {
+      if (response.body === null) throw new ReplyFormatError("the reply has no body");
+      for await (const data of readSseData(response.body)) {
+        for (const event of reply.add(JSON.parse(data))) {
+          yield event;
+          request.signal?.throwIfAborted();
+        }
+      }
+    } catch (error) {
+      request.signal?.throwIfAborted();
+      const unreadable = error instanceof SyntaxError || error instanceof ReplyFormatError;
+      throw unreadable ? errorForReply(error, call) : errorForNetwork(error, call);
+    }
+    yield { type: "done", response: reply.response() };
+  }
+
+  /** Starts a call and gives the reply once the server took it, with what an error needs to know. */
+  async #call(
+    request: ChatRequest,
+    stream: boolean,
+  ): Promise<{ response: Response; call: FailedCall }> {
+    request.signal?.throwIfAborted();
+    const call: FailedCall = {
+      providerId: this.id,
+      model: request.model,
+      offeredTools: (request.tools?.length ?? 0) > 0,
+      host: this.#host,
+    };
+    const response = await this.#send(request, stream, call);
+    return { response, call };
+  }
+
+  /**
    * Sends the call and gives the reply once its status is OK. An aborted
    * signal rejects with its own reason, a network failure as offline, and an
    * error status with what it means.
    */
-  async #send(request: ChatRequest, call: FailedCall): Promise<Response> {
+  async #send(request: ChatRequest, stream: boolean, call: FailedCall): Promise<Response> {
     const headers: Record<string, string> = { "content-type": "application/json" };
     const key = this.#key === undefined ? undefined : await this.#key();
     if (key !== undefined) headers["authorization"] = `Bearer ${key}`;
-    const body = toWireBody(request, { maxTokensField: this.#maxTokensField });
+    const body = toWireBody(request, { maxTokensField: this.#maxTokensField, stream });
     let response: Response;
     try {
       response = await this.#http.fetch(this.#endpoint, {

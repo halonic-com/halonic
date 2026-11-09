@@ -6,6 +6,8 @@ export type MaxTokensField = "max_tokens" | "max_completion_tokens";
 /** How a request is written for one provider. */
 export interface RequestOptions {
   maxTokensField: MaxTokensField;
+  /** Whether the answer comes as server-sent events; then the last event holds the usage. */
+  stream: boolean;
 }
 
 /** One message in OpenAI's chat completions format. */
@@ -37,7 +39,8 @@ export function toWireBody(request: ChatRequest, options: RequestOptions): Recor
     model: request.model,
     messages: request.messages.map(toWireMessage),
     ...wireParams(request.params ?? {}, options),
-    stream: false,
+    stream: options.stream,
+    ...(options.stream ? { stream_options: { include_usage: true } } : {}),
   };
   if (request.tools !== undefined && request.tools.length > 0) {
     body["tools"] = request.tools.map(toWireTool);

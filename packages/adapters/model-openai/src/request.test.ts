@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { toWireBody } from "./request.ts";
 
-const plain = { maxTokensField: "max_tokens" } as const;
+const plain = { maxTokensField: "max_tokens", stream: false } as const;
 
 verifies("model-openai.request", () => {
   it("writes messages, tools and settings in the chat completions format", () => {
@@ -52,7 +52,7 @@ verifies("model-openai.request", () => {
         responseFormat: "json",
         meta: { agentId: "writer", runId: "run-1" },
       },
-      { maxTokensField: "max_completion_tokens" },
+      { maxTokensField: "max_completion_tokens", stream: true },
     );
     expect(body).toEqual({
       seed: 7,
@@ -60,7 +60,8 @@ verifies("model-openai.request", () => {
       messages: [{ role: "user", content: "Hi" }],
       max_completion_tokens: 50,
       reasoning_effort: "low",
-      stream: false,
+      stream: true,
+      stream_options: { include_usage: true },
       response_format: { type: "json_object" },
     });
   });
@@ -76,7 +77,7 @@ verifies("model-openai.request", () => {
           extra: { max_tokens: 9, max_completion_tokens: 9, seed: 7 },
         },
       },
-      { maxTokensField: "max_completion_tokens" },
+      { maxTokensField: "max_completion_tokens", stream: false },
     );
     expect(body).toEqual({
       seed: 7,

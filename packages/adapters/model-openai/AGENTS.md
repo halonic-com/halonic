@@ -4,7 +4,7 @@ Owner: tomas · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-The OpenAI-compatible model adapter: chat calls over `/v1/chat/completions` for openai, openai-compatible, ollama and lmstudio providers. Streaming and the factories come in the next pull requests of HAL-2284.
+The OpenAI-compatible model adapter: chat calls and streaming over `/v1/chat/completions` for openai, openai-compatible, ollama and lmstudio providers. The factories come in a later pull request of HAL-2284.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
