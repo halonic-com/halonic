@@ -43,6 +43,17 @@ verifies("yaml.position-of", () => {
     expect(positionOf(workflow, ["steps", 1, "model"])).toEqual({ line: 6, col: 5 });
   });
 
+  it("points a missing key of a map that is a value at that map's key", () => {
+    const text = "name: x\nrun:\n  workflow: x\naliases:\n  smart:\n    tier: 2\n";
+    expect(positionOf(text, ["run", "hub"])).toEqual({ line: 2, col: 1 });
+    expect(positionOf(text, ["aliases", "smart", "model"])).toEqual({ line: 5, col: 3 });
+    expect(positionOf(text, ["aliases", "other", "model"])).toEqual({ line: 4, col: 1 });
+  });
+
+  it("points a missing key of a flow map at the same line as before", () => {
+    expect(positionOf("run: { workflow: x }\n", ["run", "hub"])).toEqual({ line: 1, col: 1 });
+  });
+
   it("points a missing list item at its list", () => {
     expect(positionOf(workflow, ["steps", 9, "id"])).toEqual({ line: 3, col: 3 });
   });

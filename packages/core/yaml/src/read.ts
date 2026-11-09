@@ -1,5 +1,13 @@
 import { err, ok, type Result } from "@halonicjs/std";
-import { type Document, LineCounter, type Node, parseDocument, type YAMLError } from "yaml";
+import {
+  type Document,
+  isMap,
+  isScalar,
+  LineCounter,
+  type Node,
+  parseDocument,
+  type YAMLError,
+} from "yaml";
 import { findDepthOffset } from "./depth.ts";
 import type { SourcePosition, YamlProblem } from "./problem.ts";
 import { findUnsupported, tooDeepMessage, unsupportedMessages } from "./unsupported.ts";
@@ -30,8 +38,10 @@ export interface YamlFile {
   readonly data: unknown;
   /**
    * Where the value at `path` starts. When nothing sits at `path`, the
-   * nearest parent that exists answers instead, so a missing key points at
-   * its map. `undefined` only for a file with no data at all.
+   * nearest parent that exists answers instead. A missing key points at the
+   * key of the map that should hold it (or at the map itself when it has no
+   * key, like a list item or the top of the file). `undefined` only for a
+   * file with no data at all.
    */
   positionOf(path: YamlPath): SourcePosition | undefined;
 }
@@ -121,7 +131,9 @@ function describeParseError(
 
 /**
  * Ported from the old app's `sourcePosition`: tries the full path, then each
- * shorter one, then the top of the document.
+ * shorter one, then the top of the document. When a key is missing from a map
+ * that is itself a value, the answer is that map's key, as in the old app's
+ * parity cases: `run:` rather than the line below it.
  */
 function positionOf(
   document: Document,
@@ -131,10 +143,22 @@ function positionOf(
   for (let length = path.length; length >= 0; length--) {
     const node = length === 0 ? document.contents : document.getIn(path.slice(0, length), true);
     if (isNodeWithRange(node)) {
-      return startOf(node, lines);
+      const key = length < path.length && isMap(node) ? keyOf(document, path, length) : undefined;
+      return startOf(key ?? node, lines);
     }
   }
   return undefined;
+}
+
+/** The key node that names the map at `path[0, length)`, if that map is a value in another map. */
+function keyOf(document: Document, path: YamlPath, length: number): Node | undefined {
+  const name = path[length - 1];
+  const parent = length === 1 ? document.contents : document.getIn(path.slice(0, length - 1), true);
+  if (!isMap(parent)) {
+    return undefined;
+  }
+  const pair = parent.items.find((item) => isScalar(item.key) && item.key.value === name);
+  return isNodeWithRange(pair?.key) ? pair.key : undefined;
 }
 
 function isNodeWithRange(value: unknown): value is Node {
