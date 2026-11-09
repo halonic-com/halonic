@@ -25,7 +25,7 @@ export interface StatusChipProps {
 
 /** Each coloured tone is its colour on its own `-soft` fill, which passes AA on every surface. */
 const toneClasses: Record<StatusChipTone, string> = {
-  // On a muted fill (a Tabs track, a hovered row) the neutral box steps up so it doesn't vanish.
+  // On a muted fill (an unselected tab, a hovered row) the neutral box steps up to stay visible.
   neutral: "bg-surface-muted text-fg-muted on-muted:bg-border on-muted:text-fg",
   accent: "bg-accent-soft text-accent-text",
   running: "bg-running-soft text-running",
