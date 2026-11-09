@@ -5,12 +5,27 @@ import { NodeHarnessBridgeServer } from "./server.ts";
 
 verifies("harness-bridge.server", () => {
   it("opens a bridge per run that serves only requests with its token", async () => {
-    const server = new NodeHarnessBridgeServer({ limits: { maxBytes: 1024 } });
+    const secrets = { get: async () => null };
+    const server = new NodeHarnessBridgeServer({ secrets, limits: { maxBytes: 1024 } });
     const bridge = await server.open(fakeRun());
     try {
       expect((await send(bridge, "/v1/messages")).status).toBe(401);
-      // No route is served yet: the model gateway and MCP come in the next pull requests.
-      expect((await send(bridge, "/v1/messages", { token: bridge.token })).status).toBe(404);
+      expect((await send(bridge, "/v1/responses", { token: bridge.token })).status).toBe(404);
+    } finally {
+      await bridge.close();
+    }
+  });
+});
+
+verifies("harness-bridge.anthropic", () => {
+  it("serves Anthropic's messages path", async () => {
+    const secrets = { get: async () => null };
+    const server = new NodeHarnessBridgeServer({ secrets });
+    const bridge = await server.open(fakeRun());
+    try {
+      // The run's agent doesn't use Anthropic: the route is there and refuses it.
+      const reply = await send(bridge, "/v1/messages", { token: bridge.token, body: "{}" });
+      expect(reply.status).toBe(403);
     } finally {
       await bridge.close();
     }
