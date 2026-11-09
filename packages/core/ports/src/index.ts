@@ -79,6 +79,8 @@ export {
   type ChatAgentSettings,
   type ChatTurnRequest,
   type ChatTurnResponse,
+  type EngineConnection,
+  type EngineConnectionState,
   type RunEventListener,
   type RunExecutor,
   type RunSubscription,

@@ -2,7 +2,8 @@
 
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
-by one. So far: [`CopyButton`](#copybutton) and [`ExternalLink`](#externallink).
+by one. So far: [`StatusChip`](#statuschip), [`Kbd`](#kbd), [`CopyButton`](#copybutton) and
+[`ExternalLink`](#externallink).
 
 - **Layer:** studio
 - **Owner:** noah
@@ -97,6 +98,46 @@ The curves and durations stay in the file for later.
 - the kit imports no other Studio package, in any import form.
 
 After tuning a colour, run the tests and adjust until they pass.
+
+## StatusChip
+
+The state of an item, in a row, a card header or a panel. It isn't interactive: something you can
+click is a Button or a row, never a chip.
+
+```tsx
+<StatusChip tone="running" dot>
+  Running
+</StatusChip>;
+<StatusChip tone="outline">Test</StatusChip>;
+<StatusChip tone="accent" shape="count">
+  3
+</StatusChip>;
+```
+
+| Prop    | What it is                                                                                                                       |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `tone`  | `neutral` (the default), `accent`, `running`, `warning` ("Needs you"), `danger`, `success`, and `outline` for a tag such as Test |
+| `dot`   | A still 6px dot before the word, for a live state                                                                                |
+| `shape` | `count` for the round counter on a sidebar item or a tab, with tabular figures                                                   |
+
+Always a word or a number: the colour is never the only sign. Each coloured tone is its colour on
+its own `-soft` fill. Every chip carries a 1px see-through edge, which Windows high-contrast mode
+draws, and which turns the chip's own colour when the system asks for more contrast. A tag's
+edge is always `border-strong`.
+
+There's no hover, focus or disabled state, and the `danger` tone is the error state. On a phone the
+chip keeps its size; when it doesn't fit beside a row's title, the row puts it under the title.
+
+## Kbd
+
+A keyboard shortcut in a menu, the command palette or a tooltip: one box per key.
+
+```tsx
+<Kbd keys={["Ctrl", "K"]} />;
+```
+
+The shell passes "Ctrl" or "⌘" for the platform. Not interactive, and hidden on a phone, where
+there's no keyboard to press it on.
 
 ## CopyButton
 

@@ -1,6 +1,7 @@
 import { type Announcer, createAnnouncer } from "./announcer/announcer.ts";
 import type { AnnouncerTimers } from "./announcer/timers.ts";
 import { type CloseStack, createCloseStack } from "./close-stack/close-stack.ts";
+import { createShellEngine, type ShellEngine } from "./engine/engine-connection.ts";
 import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
 import { type CommandContributions, CommandStores } from "./points/command-points.ts";
@@ -53,6 +54,8 @@ export interface Shell {
   readonly announcer: Announcer;
   /** The window's one Esc and Back close stack; layers register here when they open. */
   readonly closeStack: CloseStack;
+  /** The engine connection, sent as `engine.connection` and announced once per change. */
+  readonly engine: ShellEngine;
   /** Everything the features contributed, for the shell's layout. */
   readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
 }
@@ -84,6 +87,7 @@ export function createShell(options: ShellOptions): Shell {
     features,
     announcer,
     closeStack: createCloseStack(),
+    engine: createShellEngine(announcer),
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),
       contextFor: (featureId, target) => ({

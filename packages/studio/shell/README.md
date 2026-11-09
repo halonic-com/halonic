@@ -17,12 +17,13 @@ a workspace opens, `shell.services.instantiate(registry)` builds them into that 
 registry (such as `ServiceRegistry` from `@halonicjs/app`), in dependency order. A factory can only
 look up services its feature lists in `needs`.
 
-| Part                            | What it does                                               | Requirement              |
-| ------------------------------- | ---------------------------------------------------------- | ------------------------ |
-| `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry` |
-| `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services` |
-| `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`        |
-| `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`      |
+| Part                            | What it does                                               | Requirement               |
+| ------------------------------- | ---------------------------------------------------------- | ------------------------- |
+| `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry`  |
+| `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
+| `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
+| `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
+| `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
@@ -57,6 +58,14 @@ return `false` when nothing was open, so the key goes on. A layer can refuse by 
 from `close`, and the side panel passes `isActive` so it only counts while focus is inside it.
 
 Features can't bind a bare `Escape` with `keybindings.add`: register a layer instead.
+
+## Engine connection
+
+At start-up the app hands its `RunExecutor` to `shell.engine.watch(executor)`. A remote executor
+(served mode, or a phone connected to a host) has a `connection` that can be `lost`; the local one
+has none and counts as always connected. Each change is sent once as `engine.connection { state }`
+to listeners added with `shell.engine.on("engine.connection", listener)`, and announced once: the
+loss assertively, the return politely. `shell.engine.connection` is the state now.
 
 ## Example
 

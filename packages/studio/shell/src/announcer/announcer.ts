@@ -78,7 +78,7 @@ export const announceQuietMs = 2000;
 
 interface Pending {
   politeness: Politeness;
-  readonly whenWindowFocused: boolean;
+  whenWindowFocused: boolean;
 }
 
 /**
@@ -121,8 +121,14 @@ class WindowAnnouncer implements Announcer {
         politeness,
         whenWindowFocused: options.whenWindowFocused ?? false,
       });
-    } else if (politeness === "assertive") {
-      earlier.politeness = "assertive";
+    } else {
+      if (politeness === "assertive") {
+        earlier.politeness = "assertive";
+      }
+      // A request that doesn't wait for focus means the text is wanted now.
+      if (options.whenWindowFocused !== true) {
+        earlier.whenWindowFocused = false;
+      }
     }
     this.scheduleFlush();
   }
@@ -155,6 +161,7 @@ class WindowAnnouncer implements Announcer {
 
   pushModalRegions(regions: LiveRegions): () => void {
     this.modalRegions.push(regions);
+    this.scheduleFlush();
     return () => {
       const index = this.modalRegions.lastIndexOf(regions);
       if (index !== -1) {

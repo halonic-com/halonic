@@ -17,15 +17,35 @@ The requirement itself lives in a file next to the code, for example
 
 ## Example
 
-```ts
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, test } from "vitest";
+This is [`examples/link-a-test-to-a-requirement.ts`](examples/link-a-test-to-a-requirement.ts), which `src/example.test.ts` runs. The file imports from `../src/index.ts` because a package can't import itself by name; in your own package, import from `@halonicjs/testing-spec`.
 
-verifies("workflow.timer-fires-after-delay", () => {
-  test("fires once the delay has passed", () => {
-    expect(1 + 1).toBe(2);
+```ts
+import { expect, test } from "vitest";
+import { requirementIdPattern, verifies } from "@halonicjs/testing-spec";
+
+// Call this at the top level of a test file, with the ID from the requirement file.
+export function declareTests(requirementId: string): void {
+  verifies(requirementId, () => {
+    test("is tagged with its requirement", ({ task }) => {
+      expect(task.meta.requirement).toBe(requirementId);
+    });
   });
-});
+}
+
+// requirementIdPattern is the same check verifies() makes on its ID.
+export function runExample() {
+  let badIdMessage = "";
+  try {
+    verifies("Timer_Fires", () => {});
+  } catch (error) {
+    badIdMessage = (error as Error).message;
+  }
+  return {
+    goodId: requirementIdPattern.test("workflow.timer-fires-after-delay"),
+    badId: requirementIdPattern.test("Timer_Fires"),
+    badIdMessage, // "Timer_Fires" is not a requirement ID. Use <package>[.<sub-feature>].<name> …
+  };
+}
 ```
 
 Add the package as a `devDependency` (`"@halonicjs/testing-spec": "workspace:*"`).
