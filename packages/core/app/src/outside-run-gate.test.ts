@@ -33,7 +33,7 @@ function setup() {
       { connection: mail, lists: { approve: [] }, tool, args: { query: "invoices" }, ...overrides },
       settings,
     );
-  return { settings, check };
+  return { store, settings, check };
 }
 
 verifies("app.outside-run-connector-gate", () => {
@@ -74,6 +74,23 @@ verifies("app.outside-run-connector-gate", () => {
       kind: "refused",
       reason: 'sending is off for the connector "mail"',
     });
+  });
+
+  it("hands the host the store's error when the settings can't be read, apart from the reason", async () => {
+    const { store, settings, check } = setup();
+    await settings.setAllowSending(mail, true);
+    store.breakSettings(mail);
+
+    const result = await check(declared("send_draft", "send"));
+
+    expect(result).toEqual({
+      kind: "refused",
+      reason: 'the settings of the connector "mail" can\'t be read, so sending is off',
+      error: expect.any(Error),
+    });
+    if (result.kind === "refused") {
+      expect(result.reason).not.toContain("/workspaces/acme");
+    }
   });
 
   it("still refuses a send tool when sending is on, because only a run can ask", async () => {

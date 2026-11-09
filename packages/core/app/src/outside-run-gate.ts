@@ -30,7 +30,17 @@ export type OutsideRunCheck =
   /** Run it now. */
   | { readonly kind: "run" }
   /** Don't run it. The reason goes back to the caller as the call's result. */
-  | { readonly kind: "refused"; readonly reason: string };
+  | {
+      readonly kind: "refused";
+      readonly reason: string;
+      /**
+       * The store's error when the connector's settings couldn't be read, as
+       * `SendingCheck` carries it, for the host to log and show the
+       * person. Never give it to the model: it can name paths in the user's
+       * profile.
+       */
+      readonly error?: unknown;
+    };
 
 /**
  * Checks a call from outside a run with the same rules a run applies, and
@@ -46,10 +56,15 @@ export type OutsideRunCheck =
  * So a `send` tool never runs here. The sending setting is still checked
  * first, so the reason names the switch the person would look for. The
  * gate gets only the read side of the settings, so it can't change them.
+ * When the settings can't be read, the refusal also carries the store's
+ * error, for the host only.
  *
  * @example
  * const check = await checkOutsideRunCall({ connection, lists: connector.tools, tool, args }, settings);
- * if (check.kind === "refused") return { error: check.reason };
+ * if (check.kind === "refused") {
+ *   if (check.error !== undefined) log.warn("connector settings can't be read", check.error);
+ *   return { error: check.reason };
+ * }
  */
 export async function checkOutsideRunCall(
   call: OutsideRunCall,
@@ -65,7 +80,9 @@ export async function checkOutsideRunCall(
   if (call.tool.risk === "send") {
     const sending = await settings.checkSending(call.connection);
     if (!sending.allowed) {
-      return refused(sending.reason);
+      return "error" in sending
+        ? { kind: "refused", reason: sending.reason, error: sending.error }
+        : refused(sending.reason);
     }
   }
   const check = checkToolCall(call.tool, call.args);

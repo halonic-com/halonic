@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-9 plan v1.7 (connector calls from outside a run, found in the HAL-64 reviews), HAL-186 step 7(b) (HAL-1531). This is the check in `core/app`; the host enforces it in phase 4 as `server.outside-run-connector-gate`.
 
-When a connector tool is called from outside a run, the app shall apply the connector's `allow` and `approve` lists, its "allow sending" setting and `checkToolCall`, and shall answer only "run" or "refused" with a reason. It shall refuse a tool the `allow` list leaves out and every call that would need a person's approval: a tool under `approve`, every tool labelled `send` and every other tool whose risk isn't `read`, as well as any call `checkToolCall` refuses. For a `send` tool while sending is off for the connector, the reason shall say that sending is off, before any other reason about approval. The gate shall get only the read side of the connection settings, so it can't change them.
+When a connector tool is called from outside a run, the app shall apply the connector's `allow` and `approve` lists, its "allow sending" setting and `checkToolCall`, and shall answer only "run" or "refused" with a reason. It shall refuse a tool the `allow` list leaves out and every call that would need a person's approval: a tool under `approve`, every tool labelled `send` and every other tool whose risk isn't `read`, as well as any call `checkToolCall` refuses. For a `send` tool while sending is off for the connector, the reason shall say that sending is off, before any other reason about approval. When the connector's settings can't be read, the refusal shall carry the store's error apart from the reason, for the host to log and show the person, and the reason shall not repeat it. The gate shall get only the read side of the connection settings, so it can't change them.
 
 Rationale: outside a run nobody can approve a call, so letting such a call run would make chat a way around the check every run applies. This is stricter than old Studio, whose chat let `write` tools run when they weren't under `approve`; that gap is accepted on purpose (decided on HAL-1616). It can be closed later by an approval shown inline in chat, which loosens the gate without breaking anything.
 
@@ -22,6 +22,9 @@ Rationale: outside a run nobody can approve a call, so letting such a call run w
 - Given a `send` tool and no settings for the connector,
   when it is called,
   then it is refused with `sending is off for the connector "mail"`, not with the reason about approval.
+- Given a `send` tool and settings for the connector that can't be read,
+  when it is called,
+  then it is refused with `the settings of the connector "mail" can't be read, so sending is off`, and the store's error comes with the refusal, not in the reason.
 - Given a `send` tool and sending switched on,
   when it is called,
   then it is still refused, because a `send` tool needs approval, which only a run can give.
