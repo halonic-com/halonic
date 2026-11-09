@@ -56,6 +56,11 @@ jobs:
         run: node probe2.mjs node
         continue-on-error: true
         timeout-minutes: 20
+      - name: 2a. Node with the UI policy on, denial capture, other native exes
+        working-directory: spikes/mxc
+        run: node probe2.mjs node2
+        continue-on-error: true
+        timeout-minutes: 15
       - name: 2b. Why did the start fail (event log, sxstrace)
         run: |
           Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-30) } -MaxEvents 40 -ErrorAction SilentlyContinue |

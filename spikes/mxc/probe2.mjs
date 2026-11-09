@@ -8,7 +8,7 @@
 // Prints one JSON object on the last stdout line.
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { performance } from "node:perf_hooks";
 
@@ -20,7 +20,7 @@ const { run, getPlatformSupport } = await import("@microsoft/mxc-sdk/v1");
 const q = (p) => `"${p}"`;
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
-async function runIn(command, { work, read = [], denied = [], loopback = "deny", timeoutMs = 60_000 }) {
+async function runIn(command, { work, read = [], denied = [], loopback = "deny", timeoutMs = 60_000, ui, containment }) {
   const t0 = performance.now();
   try {
     const out = await run({
@@ -29,8 +29,10 @@ async function runIn(command, { work, read = [], denied = [], loopback = "deny",
       workingDirectory: work,
       network: { egress: { default: "deny" }, ingress: { default: "deny", hostLoopback: loopback } },
       timeoutMs,
+      ...(ui ? { ui } : {}),
+      ...(containment ? { containment } : {}),
     });
-    return { ms: Math.round(performance.now() - t0), exitCode: out.exitCode, stdout: String(out.stdout ?? "").trim().slice(0, 300), stderr: String(out.stderr ?? "").trim().slice(0, 300), timedOut: out.timedOut, warnings: out.warnings };
+    return { ms: Math.round(performance.now() - t0), exitCode: out.exitCode, meta: out.outputMetadata, stdout: String(out.stdout ?? "").trim().slice(0, 300), stderr: String(out.stderr ?? "").trim().slice(0, 300), timedOut: out.timedOut, warnings: out.warnings };
   } catch (error) {
     return { ms: Math.round(performance.now() - t0), error: String(error?.message ?? error).split("\n")[0] };
   }
@@ -136,6 +138,39 @@ if (mode === "native") {
   }
   // What can the container see of the Node folder? (separates "path not readable" from "DLL init fails".)
   out.dirFromInside = await runIn(`cmd.exe /c dir /b ${q(nodeDir)}`, { work, read: [nodeDir] });
+  report.result = out;
+}
+if (mode === "node2") {
+  // Hypothesis: 0xC0000142 is user32/shell32 failing to initialise because the container has no desktop (ui.disable defaults to true).
+  const nodeExe = process.execPath;
+  const read = [dirname(nodeExe), process.env.SystemRoot, process.env.ProgramFiles].filter(Boolean);
+  const cmd = `${q(nodeExe)} --version`;
+  const variants = {
+    uiEnabled: { ui: { disable: false, clipboard: "none", allowInputInjection: false } },
+    uiEnabledWithCapture: {
+      ui: { disable: false, clipboard: "none", allowInputInjection: false },
+      containment: { type: "processcontainer", config: { captureDenials: { mode: "block", outputPath: join(base, "denials-ui.json"), retainEtl: false } } },
+    },
+    uiDisabledWithCapture: {
+      containment: { type: "processcontainer", config: { captureDenials: { mode: "block", outputPath: join(base, "denials-noui.json"), retainEtl: false } } },
+    },
+    // Native exes that do / do not pull in user32, to see if the pattern holds.
+    findstr: { cmd: "findstr.exe /?" },
+    hostname: { cmd: "hostname.exe" },
+    ipconfig: { cmd: "ipconfig.exe" },
+    tasklist: { cmd: "tasklist.exe" },
+  };
+  const out = {};
+  for (const [name, v] of Object.entries(variants)) {
+    const r = await runIn(v.cmd ?? cmd, { work, read, ui: v.ui, containment: v.containment, timeoutMs: 120_000 });
+    out[name] = { exit: r.exitCode, hex: r.exitCode == null ? null : `0x${(r.exitCode >>> 0).toString(16).toUpperCase()}`, out: r.stdout?.slice(0, 80), err: r.stderr || r.error, meta: r.meta };
+    for (const f of ["denials-ui.json", "denials-noui.json"]) {
+      try {
+        if (name.toLowerCase().includes(f.includes("noui") ? "disabled" : "enabledwith")) out[name].denials = readFileSync(join(base, f), "utf8").slice(0, 3000);
+      } catch {}
+    }
+    console.error(`${name}: exit ${r.exitCode} ${r.error ?? ""}`);
+  }
   report.result = out;
 }
 console.log(JSON.stringify(report));
