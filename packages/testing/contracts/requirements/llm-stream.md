@@ -14,6 +14,9 @@ Where an adapter's `capabilities.streaming` is true, its `stream` shall yield de
 - Given the model has streamed `Hel`,
   when the signal aborts,
   then the stream ends with an error and no `done`, and no call is left open.
+- Given the model has streamed `Hel` and is still answering,
+  when the caller aborts the signal while handling that delta,
+  then the stream ends with an error and no `done`, and no call is left open.
 - Given the model has streamed the first piece of a text answer,
   when the signal aborts,
   then the stream ends with an error and no `done`, and no call is left open.

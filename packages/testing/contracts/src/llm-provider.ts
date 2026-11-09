@@ -216,6 +216,24 @@ function streamFailureCases(make: MakeLlmProvider): void {
     expect(harness.calls().open).toBe(0);
   });
 
+  it("ends with an error, and no done, when the caller aborts while handling a partial answer", async () => {
+    const harness = await make();
+    harness.hangNext("Hel");
+    const controller = new AbortController();
+    const events: ChatStreamEvent[] = [];
+    const reading = (async () => {
+      for await (const event of stream(harness.provider, chatRequest(controller.signal))) {
+        events.push(event);
+        // The signal aborts before the provider resumes, so it must notice it already has.
+        controller.abort();
+      }
+    })();
+    await expect(reading).rejects.toThrow();
+    expect(joined(events, "text")).toBe("Hel");
+    expect(events.filter((event) => event.type === "done")).toEqual([]);
+    expect(harness.calls().open).toBe(0);
+  });
+
   it("ends with an error, and no done, when the signal aborts between pieces of an answer", async () => {
     const harness = await make();
     harness.answerNext(textAnswer);

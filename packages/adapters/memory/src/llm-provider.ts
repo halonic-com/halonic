@@ -118,6 +118,8 @@ function untilAborted(signal: AbortSignal | undefined): Promise<never> {
   if (signal === undefined) {
     return Promise.reject(new Error("A hanging scripted call needs a signal to end it."));
   }
+  // A caller may abort while handling a partial delta, before the hang starts listening.
+  if (signal.aborted) return Promise.reject(signal.reason);
   return new Promise((_resolve, reject) => {
     signal.addEventListener("abort", () => reject(signal.reason), { once: true });
   });
