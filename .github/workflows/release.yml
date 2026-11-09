@@ -1,0 +1,149 @@
+# Release workflow: builds the release files and creates a DRAFT GitHub
+# Release. It never publishes: a person publishes the draft by hand.
+#
+# Today it is a dry-run skeleton. The CLI is packed from a stub and the
+# installer is a placeholder text file, so the whole path (tag, build,
+# checksums, draft release) is tested before the real app exists. No
+# signing key is used. Windows signing, the `release` environment, the
+# updater files, the APK and the SBOM are added by their own tasks.
+#
+# Run it without a tag from the Actions tab (dry_run on), or push a tag
+# that starts with `v`. A tag that contains `-test` is always a dry run.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag name for the draft release, for example v0.0.0-test.1"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run: placeholder files, draft marked as a test"
+        required: true
+        default: true
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build release files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      dry_run: ${{ steps.plan.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      - id: plan
+        name: Decide tag, version and dry run
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
+            dry_run="$INPUT_DRY_RUN"
+          else
+            tag="$REF_NAME"
+            dry_run=false
+          fi
+          case "$tag" in
+            v[0-9]*) ;;
+            *) echo "::error::Tag '$tag' must look like v0.1.0"; exit 1 ;;
+          esac
+          case "$tag" in *-test*) dry_run=true ;; esac
+          version="${tag#v}"
+          # The release file names live here and nowhere else. Keep them in
+          # step with the names agreed in HAL-1119.
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "dry_run=$dry_run"
+            echo "installer=Halonic-$version-windows-x64-setup.exe"
+            echo "cli_tarball=halonic-cli-$version.tgz"
+          } >> "$GITHUB_OUTPUT"
+      - name: Refuse a real release until the real build exists
+        if: steps.plan.outputs.dry_run != 'true'
+        run: |
+          echo "::error::Only dry runs are supported. The real Studio build, signing and the release environment are not wired in yet."
+          exit 1
+      - name: Build the CLI package (stub)
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+          CLI_TARBALL: ${{ steps.plan.outputs.cli_tarball }}
+        run: |
+          mkdir -p dist cli-stub
+          cat > cli-stub/package.json <<JSON
+          {"name": "halonic-cli-stub", "version": "$VERSION", "private": true,
+           "description": "Placeholder for the CLI package in release dry runs."}
+          JSON
+          echo "console.log('placeholder')" > cli-stub/index.js
+          (cd cli-stub && npm pack --pack-destination ../dist --silent)
+          mv dist/halonic-cli-stub-*.tgz "dist/$CLI_TARBALL"
+      - name: Make the placeholder installer
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+          INSTALLER: ${{ steps.plan.outputs.installer }}
+        run: |
+          printf 'Placeholder installer for release dry run %s. Not an installer.\n' "$VERSION" \
+            > "dist/$INSTALLER"
+      - name: Write the checksums
+        run: |
+          cd dist
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  draft-release:
+    name: Create draft release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: dist
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+          DRY_RUN: ${{ needs.build.outputs.dry_run }}
+          TARGET: ${{ github.sha }}
+        run: |
+          title="$TAG"
+          notes="Draft created by the release workflow."
+          flags=()
+          if [ "$DRY_RUN" = "true" ]; then
+            title="DRY RUN $TAG"
+            notes="Dry run with placeholder files. Do not publish. Delete this draft."
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" dist/* --draft \
+            --target "$TARGET" --title "$title" --notes "$notes" "${flags[@]}"
