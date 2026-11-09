@@ -5,7 +5,8 @@
 
 import type { ConnectorPin, ConnectorTransport } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
-import { checkPinVersion } from "./connector-pin.ts";
+import { checkPinVersion, isSamePackage, type PinRegistry } from "./connector-pin.ts";
+import { readPackageSpec } from "./package-spec.ts";
 
 /** The stdio transport, which is the only one that starts a program. */
 export type StdioTransport = Extract<ConnectorTransport, { kind: "stdio" }>;
@@ -26,6 +27,22 @@ const runnerSubcommands: ReadonlyMap<string, readonly (readonly string[])[]> = n
   ["pipx", [["run"]]],
   ["uv", [["tool", "run"]]],
 ]);
+
+/**
+ * Shells that can start a runner from their arguments, such as
+ * `cmd /c npx -y @acme/mail-mcp`, a form many Windows setups use.
+ */
+const shellPrograms = new Set(["cmd", "sh", "bash", "zsh", "powershell", "pwsh"]);
+
+/** What splits a shell's arguments into the words it runs. */
+const shellSeparators = /[\s"'`;&|()]+/;
+
+/**
+ * Runner options whose value names a package to fetch: `npx -p`, `npm exec
+ * --package`, `uvx --from` and `--with`, `pipx run --spec`. `--with` may
+ * list several, split by commas.
+ */
+const packageOptions = new Set(["-p", "--package", "--from", "--with", "--spec"]);
 
 /** Variables that can run code before the package or load another one. */
 const blockedNames = new Set([
@@ -60,25 +77,47 @@ export function programName(command: string): string {
 /**
  * Whether a stdio command starts a package runner. A subcommand counts
  * wherever it appears in the arguments, so an option before it, such as
- * `npm --yes exec`, doesn't hide it. A command that only looks like one
- * then needs a pin, which is the safe side to be wrong on.
+ * `npm --yes exec`, doesn't hide it. A shell counts when any word of its
+ * arguments starts a runner, so `cmd /c npx …` does. A command that only
+ * looks like one then needs a pin, which is the safe side to be wrong on.
  */
 export function isPackageRunner(command: string, args: readonly string[]): boolean {
+  return runnerWords(command, args) !== undefined;
+}
+
+/**
+ * The words a package runner reads after its program name, or `undefined`
+ * when the command doesn't start one. For a shell they are the words after
+ * the first runner its arguments name.
+ */
+function runnerWords(command: string, args: readonly string[]): readonly string[] | undefined {
   const program = programName(command);
+  if (shellPrograms.has(program)) {
+    const words = args.flatMap((arg) => arg.split(shellSeparators)).filter((word) => word !== "");
+    for (const [start, word] of words.entries()) {
+      const found = runnerWords(word, words.slice(start + 1));
+      if (found !== undefined) {
+        return found;
+      }
+    }
+    return undefined;
+  }
   if (runnerPrograms.has(program)) {
-    return true;
+    return args;
   }
   const subcommands = runnerSubcommands.get(program) ?? [];
   const words = args.map((arg) => arg.toLowerCase());
-  return subcommands.some((subcommand) => containsInOrder(words, subcommand));
+  return subcommands.some((subcommand) => containsInOrder(words, subcommand)) ? args : undefined;
 }
 
 /**
  * Checks a stdio transport before its program starts. A package runner needs
  * a `pin` with one exact version, and no transport with a pin may set a
  * variable, in any case, that could move the registry or run code before the
- * package. A command that isn't a package runner and has no pin passes as
- * it is.
+ * package. A pinned runner must name the pin's package, and every package it
+ * names, as an argument or as the value of a package option, must be the
+ * pin's package at no version or the pin's version. A command that isn't a
+ * package runner and has no pin passes as it is.
  *
  * @returns the pin to start, `null` for a command that isn't a package
  *   runner, or the reason to refuse
@@ -91,10 +130,11 @@ export function checkPackageRunnerLaunch(
   transport: StdioTransport,
 ): Result<ConnectorPin | null, string> {
   const { command, args, env, pin } = transport;
+  const words = runnerWords(command, args);
   if (pin === undefined) {
-    if (isPackageRunner(command, args)) {
+    if (words !== undefined) {
       return err(
-        `"${programName(command)}" fetches a package and runs it, so it needs a pin to one exact version, which this connector doesn't have`,
+        `"${programName(command)}" starts a package runner, so it needs a pin to one exact version, which this connector doesn't have`,
       );
     }
     return ok(null);
@@ -105,7 +145,99 @@ export function checkPackageRunnerLaunch(
       `the connector's environment sets ${blocked.join(", ")}, which could move the registry or run code before the pinned package`,
     );
   }
-  return checkPinVersion(pin);
+  const pinned = checkPinVersion(pin);
+  if (!pinned.ok || words === undefined) {
+    return pinned;
+  }
+  return checkNamedPackages(pin, words);
+}
+
+/**
+ * Checks the packages a pinned runner's words name against the pin. A word
+ * names a package when it is a package option's value, or when it starts
+ * with the pin's package name, such as `@acme/mail-mcp@3.0.0`. The pin's
+ * package without a version is fine, because the launcher adds the pin.
+ */
+function checkNamedPackages(
+  pin: ConnectorPin,
+  words: readonly string[],
+): Result<ConnectorPin, string> {
+  const named = words.flatMap((word, index) => {
+    const option = optionValue(words, index);
+    if (option !== undefined) {
+      return option.split(",").filter((spec) => spec !== "");
+    }
+    return isSamePackage(pin.registry, leadingName(pin.registry, word), pin.package) ? [word] : [];
+  });
+  if (named.length === 0) {
+    return err(
+      `the command doesn't name the pinned package "${pin.package}", so the launcher can't start it at ${pin.version}`,
+    );
+  }
+  for (const spec of named) {
+    const checked = checkNamedPackage(pin, spec);
+    if (!checked.ok) {
+      return checked;
+    }
+  }
+  return ok(pin);
+}
+
+function checkNamedPackage(pin: ConnectorPin, spec: string): Result<ConnectorPin, string> {
+  const bare = leadingName(pin.registry, spec) === spec;
+  const read = bare
+    ? ok({ package: spec, version: pin.version })
+    : readPackageSpec(pin.registry, asRegistrySpec(pin.registry, spec));
+  if (!read.ok) {
+    return err(`the command asks for "${spec}", which the pin doesn't allow: ${read.error}`);
+  }
+  const named = read.value;
+  if (!isSamePackage(pin.registry, named.package, pin.package)) {
+    return err(
+      `the command asks for the package "${named.package}", but the pin is for "${pin.package}"`,
+    );
+  }
+  if (named.version !== pin.version) {
+    return err(
+      `the command asks for ${pin.package} ${named.version}, but the pin is ${pin.version}`,
+    );
+  }
+  return ok(pin);
+}
+
+/**
+ * The value of the package option at `index`, written `--from spec` or
+ * `--from=spec`, or `undefined` when the word there isn't one.
+ */
+function optionValue(words: readonly string[], index: number): string | undefined {
+  const word = words[index] ?? "";
+  const equals = word.indexOf("=");
+  if (word.startsWith("--") && equals !== -1 && packageOptions.has(word.slice(0, equals))) {
+    return word.slice(equals + 1);
+  }
+  const previous = words[index - 1];
+  return previous !== undefined && packageOptions.has(previous) ? word : undefined;
+}
+
+/**
+ * The package name a word starts with: up to the `@` after the name for npm
+ * (`@acme/mail-mcp@2.3.1`), up to the first character a name can't hold for
+ * PyPI (`mail-mcp==2.3.1`).
+ */
+function leadingName(registry: PinRegistry, word: string): string {
+  if (registry === "npm") {
+    const at = word.indexOf("@", word.startsWith("@") ? 1 : 0);
+    return at === -1 ? word : word.slice(0, at);
+  }
+  return /^[A-Za-z0-9._-]*/.exec(word)?.[0] ?? "";
+}
+
+/** `uvx` also reads `mail-mcp@2.3.1`; the PyPI rules read it as `mail-mcp==2.3.1`. */
+function asRegistrySpec(registry: PinRegistry, spec: string): string {
+  if (registry === "pypi") {
+    return spec.replace(/^([A-Za-z0-9._-]+)@(?=[^:/\\]*$)/, "$1==");
+  }
+  return spec;
 }
 
 function isBlockedVariable(name: string): boolean {

@@ -31,8 +31,8 @@ Device-wide settings such as the theme live outside any scope.
 | `checkPinVersion`           | refuses a `ConnectorPin` whose version isn't one exact version, such as a tag (`latest`) or a range (`^2.3.1`)               | `app.connector-pin-version`     |
 | `checkResolvedVersion`      | refuses a resolved package or version other than the pin's                                                                   | `app.connector-pin-version`     |
 | `readPackageSpec`           | reads `name@1.2.3` (npm) or `name==1.2.3` (PyPI), and refuses no version, a tag, a range, a URL or a git source              | `app.connector-pin-spec`        |
-| `isPackageRunner`           | whether a stdio command starts `npx`, `uvx` or another package runner, with any folder, case and ending                      | `app.package-runner-launch`     |
-| `checkPackageRunnerLaunch`  | refuses a package runner without an exact pin, and a pinned launch whose `env` could move the registry                       | `app.package-runner-launch`     |
+| `isPackageRunner`           | whether a stdio command starts `npx`, `uvx` or another package runner, with any folder, case and ending, or through a shell  | `app.package-runner-launch`     |
+| `checkPackageRunnerLaunch`  | refuses a package runner without an exact pin, and a pinned launch whose args or `env` could start another version           | `app.package-runner-launch`     |
 
 ## Example
 

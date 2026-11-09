@@ -97,8 +97,7 @@ export function checkResolvedVersion(
   if (!pinned.ok) {
     return pinned;
   }
-  const { sameName } = rules[pin.registry];
-  if (sameName(resolved.package) !== sameName(pin.package)) {
+  if (!isSamePackage(pin.registry, resolved.package, pin.package)) {
     return err(
       `the registry resolved the package "${resolved.package}", but the pin is for "${pin.package}"`,
     );
@@ -109,6 +108,15 @@ export function checkResolvedVersion(
     );
   }
   return ok(resolved);
+}
+
+/**
+ * Whether two names are one package in a registry. PyPI compares them the
+ * way PyPI does, so `Mail_MCP` is `mail-mcp`; npm names must match exactly.
+ */
+export function isSamePackage(registry: PinRegistry, first: string, second: string): boolean {
+  const { sameName } = rules[registry];
+  return sameName(first) === sameName(second);
 }
 
 /** Refuses a name the registry wouldn't accept. */
