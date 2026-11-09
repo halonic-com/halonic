@@ -168,10 +168,11 @@ verifies("kit.button-unavailable", () => {
     expect(className).toContain("aria-disabled:cursor-not-allowed");
   });
 
-  it("looks unavailable at 60% with more contrast, and in GrayText at full strength in high contrast", () => {
+  it("looks unavailable at 60% with more contrast, and in GrayText, edge and text, in high contrast", () => {
     const { className } = renderUnavailable(() => {});
     expect(className).toContain("contrast-more:aria-disabled:opacity-60");
     expect(className).toContain("aria-disabled:text-forced-disabled");
+    expect(className).toContain("aria-disabled:border-forced-disabled");
     expect(className).toContain("forced-colors:aria-disabled:opacity-100");
   });
 

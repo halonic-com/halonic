@@ -59,13 +59,14 @@ export type ButtonProps = ButtonWithLabel | IconButton;
 /**
  * Every button has a 1px edge, so Windows high-contrast mode, which drops fills, still draws its
  * shape (component specs 23.5). An unavailable button is 45%, 60% when more contrast is asked
- * for, and `GrayText` at full strength in high contrast.
+ * for, and `GrayText` at full strength in high contrast, its edge as well as its text.
  */
 const shared = [
   "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm border text-body-strong",
   "transition-colors focus-ring",
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 contrast-more:aria-disabled:opacity-60",
-  "aria-disabled:text-forced-disabled forced-colors:aria-disabled:opacity-100",
+  "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
+  "forced-colors:aria-disabled:opacity-100",
 ].join(" ");
 
 /**

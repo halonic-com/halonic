@@ -16,6 +16,7 @@ verifies("kit.kbd", () => {
     expect(keys[0]?.className).toContain("font-mono text-caption text-fg-muted");
     expect(keys[0]?.className).toContain("min-h-5 min-w-5");
     expect(keys[0]?.className).toContain("rounded-xs border border-transparent");
+    expect(keys[0]?.className).toContain("contrast-more:border-current");
     expect(keys[0]?.className).toContain("bg-surface-muted px-1");
   });
 

@@ -156,6 +156,11 @@ describe("theme.css selection and high contrast", () => {
       "@media (forced-colors: active)",
     );
     expect(disabled).toContain("color: GrayText;");
+    const disabledEdge = blockBody(
+      blockBody(css, "@utility border-forced-disabled"),
+      "@media (forced-colors: active)",
+    );
+    expect(disabledEdge).toContain("border-color: GrayText;");
   });
 });
 

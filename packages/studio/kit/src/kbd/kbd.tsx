@@ -6,9 +6,13 @@ export interface KbdProps {
   readonly keys: readonly string[];
 }
 
-/** The see-through edge keeps each box's shape in Windows high-contrast mode (component specs 23.5). */
+/**
+ * The see-through edge keeps each box's shape in Windows high-contrast mode (component specs
+ * 23.5), and shows in the text colour when more contrast is asked for, like a StatusChip's.
+ */
 const keyClasses = [
   "inline-flex min-h-5 min-w-5 items-center justify-center rounded-xs border border-transparent",
+  "contrast-more:border-current",
   "bg-surface-muted px-1 font-mono text-caption text-fg-muted",
 ].join(" ");
 

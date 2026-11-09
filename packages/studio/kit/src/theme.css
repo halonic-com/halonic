@@ -397,6 +397,14 @@
   }
 }
 
+/* In Windows high-contrast mode only: the same system colour for the edge, so an unavailable
+   button's box greys out with its text, like a native disabled button. */
+@utility border-forced-disabled {
+  @media (forced-colors: active) {
+    border-color: GrayText;
+  }
+}
+
 /* ---------------------------------------------------------------- Safe areas on a phone */
 
 /* The top bar: clears the notch or status bar. */
