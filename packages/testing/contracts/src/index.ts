@@ -16,6 +16,14 @@ export {
   type MakeDefinitionStore,
   unsafeDefinitionPaths,
 } from "./definition-store.ts";
+export {
+  type FakeProgram,
+  type FakeProgramIo,
+  FakeSandboxSession,
+  type FakeSandboxSessionOptions,
+  idleProgram,
+  readText,
+} from "./fake-sandbox-session.ts";
 export { idGeneratorContract, type MakeIdGenerator } from "./id-generator.ts";
 export { type MakeRecordStore, recordStoreContract } from "./record-store.ts";
 export {
