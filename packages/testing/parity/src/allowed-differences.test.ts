@@ -109,6 +109,8 @@ verifies("parity.allowed-differences-checked", () => {
       "routines.due",
       "routines.due",
       "routines.due",
+      "routines.due",
+      "routines.due",
     ]);
   });
 

@@ -296,9 +296,18 @@
     "id": "routines-due-interval-slots",
     "requirement": "routines.due",
     "area": "routines tick: every triggers",
-    "old": "An every trigger ran when now - lastRun was at least the interval, at the time of the check, and right away on the first check if the routine had never run. With every: 30m and a last run at 09:45, the next run came at 10:15.",
-    "new": "due gives the multiples of the interval counted from the Unix epoch in UTC that fall after the last tick, up to now. With every: 30m the runs are at :00 and :30 of every hour, whenever the last one ran, and a routine that never ran waits for its first slot after the scheduler's first tick. Slots are always in UTC, so every: 1d runs at 00:00 UTC, not at local midnight.",
-    "why": "A slot that comes from the clock alone is the same on every tick and every host, so a repeated or late tick, or a second host, asks for the same run with the same run id and it starts once (routines.due-exactly-once). A time counted from the last run moves whenever a run starts late, and two hosts can disagree on it. Starting at once when a routine never ran also meant every new or renamed every routine fired the moment it was saved.",
+    "old": "An every trigger ran when now - lastRun was at least the interval, at the time of the check. With every: 30m and a last run at 09:45, the next run came at 10:15.",
+    "new": "due gives the multiples of the interval counted from the Unix epoch in UTC that fall after the last tick, up to now. With every: 30m the runs are at :00 and :30 of every hour, whenever the last one ran. Slots are always in UTC, so every: 1d runs at 00:00 UTC, not at local midnight. nextRun gives the same slot, so the Studio shows the time the tick starts.",
+    "why": "A slot that comes from the clock alone is the same on every tick and every host, so a repeated or late tick, or a second host, asks for the same run with the same run id and it starts once (routines.due-exactly-once). A time counted from the last run moves whenever a run starts late, and two hosts can disagree on it.",
+    "status": "proposed"
+  },
+  {
+    "id": "routines-due-first-slot",
+    "requirement": "routines.due",
+    "area": "routines tick: a new every routine",
+    "old": "An every routine that had never run started right away, on the first check after it was saved.",
+    "new": "A new every routine waits for its first slot after the scheduler's last tick. With every: 1h, a routine saved at 10:20 first runs at 11:00.",
+    "why": "due knows only the window since the last tick, not when each routine last ran, which keeps it the same on every host. Starting at once also meant every new or renamed every routine fired the moment it was saved, often while it was still being edited. A person who wants a run now can start it by hand.",
     "status": "proposed"
   },
   {
@@ -317,6 +326,15 @@
     "old": "catchUp: all returned at most the 20 newest missed times of a schedule; older ones were reported as skipped and dropped.",
     "new": "As in the old app, catchUp: all keeps the newest missed times and drops the older ones past the cap, but the cap is 100 instead of 20 (DEFAULT_TICK_POLICY.maxCatchUp). due returns up to 100 of the newest missed times per routine and starts them oldest first. A host can pass another cap in its TickPolicy.",
     "why": "catchUp: all is for routines whose every run counts, such as hourly totals, so a weekend asleep (about 60 hourly times) should not lose any. 100 still bounds one tick. When the cap does cut, the newest times are the ones still worth running, and starting them oldest first lets the runs see their times in order.",
+    "status": "proposed"
+  },
+  {
+    "id": "routines-due-catch-up-one-tick",
+    "requirement": "routines.due",
+    "area": "routines tick: catchUp all in one tick",
+    "old": "dueRoutines applied the routine's overlap setting in the same call, so with the default overlap: skip a catch-up started one run and reported the other missed times as skipped.",
+    "new": "due returns every missed time a catchUp: all routine allows, up to the cap, in one tick. Whether they all start at once is up to the app's RoutineScheduler, which applies overlap (app.routine-overlap): allow starts them all, queue starts them one after another, skip starts one.",
+    "why": "due can't know which runs are still going, so it can't apply overlap. Returning every allowed time keeps due a pure function of the window and lets the scheduler, which can ask the run store, decide.",
     "status": "proposed"
   },
   {
