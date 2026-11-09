@@ -44,12 +44,13 @@ export {
   DEFAULT_BACKEND_ENTRY,
   ENV_NAME_PATTERN,
   NPM_EXACT_VERSION_PATTERN,
-  PLUGIN_PATH_PATTERN,
+  networkSiteProblem,
   Plugin,
   type PluginBackend,
   type PluginLocalTool,
   type PluginUi,
   PYPI_EXACT_VERSION_PATTERN,
+  pluginPathProblem,
 } from "./kinds/plugin/schema.ts";
 export type { Provider } from "./kinds/provider/schema.ts";
 export type { Routine, RoutineTarget, RoutineTrigger } from "./kinds/routine/schema.ts";

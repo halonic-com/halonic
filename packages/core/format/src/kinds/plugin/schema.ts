@@ -1,9 +1,12 @@
 // `plugin.yaml`: a plugin's manifest (ADR 2026-11-09-plugins, section 1).
-// Like the integration sheet it imports only schema-kit, so the integration
-// kit and the conformance suite can read it without the YAML reader.
+// Like the integration sheet it imports only schema-kit, std and the format's
+// own field rules, so the integration kit and the conformance suite can read
+// it without the YAML reader.
 import { type Infer, s } from "@halonicjs/schema-kit";
+import { asciiHost } from "@halonicjs/std";
+import { relativePathProblem } from "../../shared/relative-path.ts";
+import { allowedSiteProblem, MAX_ALLOWED_SITES } from "../agent/sandbox-fields.ts";
 import {
-  HOST_PATTERN,
   INTEGRATION_NAME_PATTERN,
   IntegrationSheet,
   IntegrationTool,
@@ -28,26 +31,44 @@ const argumentName = s
 /** Text a person reads: a title or a label. Studio shows it as untrusted text. */
 const label = s.string().min(1).max(80);
 
-const hostName = s
-  .string()
-  .regex(
-    HOST_PATTERN,
-    "use an exact lower-case host name with an optional :port, such as 'api.example.com'",
-  );
+/**
+ * Why a local tool's `network` entry can't be used, or `null` when it can.
+ * The list is the sandbox's allow-list for code Halonic doesn't trust, so it
+ * takes the agent file's `allowedSites` rules: no address, port, `localhost`
+ * or local-network name. It must also be written as the sandbox stores it,
+ * lowercase and in Punycode, so a secret's host matches it exactly.
+ *
+ * @param site - a `network` entry
+ * @returns a message, or `null`
+ */
+export function networkSiteProblem(site: string): string | null {
+  const problem = allowedSiteProblem(site);
+  if (problem !== null) return problem;
+  const stored = asciiHost(site);
+  return stored === site ? null : `Write the host name as '${stored}'`;
+}
+
+const networkSite = s.string().superRefine((site, context) => {
+  const problem = networkSiteProblem(site);
+  if (problem !== null) context.addIssue({ code: "custom", message: problem });
+});
 
 /**
- * A path to a file inside the plugin folder, with `/` between folders: no
- * leading `/`, no drive letter or other `:`, no `\` and no `.` or `..`
- * folder, so it can't point outside the plugin.
+ * Why a path to a file in the plugin folder can't be used, or `null` when it
+ * can: the same rules as an agent's working folder, so it can't point outside
+ * the plugin or be read as another name on Windows or macOS.
+ *
+ * @param path - a path such as `backend/index.js`
+ * @returns a message, or `null`
  */
-export const PLUGIN_PATH_PATTERN = /^(?!\.\.?(?:\/|$))[^/\\:]+(?:\/(?!\.\.?(?:\/|$))[^/\\:]+)*$/;
+export function pluginPathProblem(path: string): string | null {
+  return relativePathProblem(path, { root: "the plugin folder", part: "file or folder name" });
+}
 
-const pluginPath = s
-  .string()
-  .regex(
-    PLUGIN_PATH_PATTERN,
-    "use a path inside the plugin folder with '/' between folders, such as 'backend/index.js'",
-  );
+const pluginPath = s.string().superRefine((path, context) => {
+  const problem = pluginPathProblem(path);
+  if (problem !== null) context.addIssue({ code: "custom", message: problem });
+});
 
 /** Where a backend's built code is when `entry` doesn't say. */
 export const DEFAULT_BACKEND_ENTRY = "backend/index.js";
@@ -165,7 +186,7 @@ const LocalTool = s
     /** The sheet's secret fields, without `as`: a local tool gets them as `env` values. */
     secrets: s.record(name, s.object(secretFields).strict()).default({}),
     /** The hosts the program may reach, beyond the bridge. */
-    network: s.array(hostName).default([]),
+    network: s.array(networkSite).max(MAX_ALLOWED_SITES).default([]),
     /** One tool call; the session's own time limit is Halonic's. */
     callTimeoutMs: s.number().int().positive().max(MAX_TIMEOUT_MS).default(60_000),
     /** Every tool it offers. A tool the server lists but this doesn't is refused. */

@@ -257,12 +257,16 @@ verifies("format.plugin-file", () => {
       "./run.js",
       "tools//run.js",
       "",
+      "run.js.",
+      "tools /run.js",
+      "RUN~1.JS",
+      "run.js:stream",
     ])("refuses the script path '%s'", (path) => {
       const problems = problemsOf(
         "plugin",
         localTool(`{ script: { program: node, path: '${path}' } }`),
       );
-      expect(summary(problems)).toEqual(["localTools.0.start.script.path invalid_format 7"]);
+      expect(summary(problems)).toEqual(["localTools.0.start.script.path custom 7"]);
     });
 
     it("refuses a shell as the program", () => {

@@ -1,12 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { fileKinds } from "../../index.ts";
+import { foldName } from "../../shared/relative-path.ts";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 import {
   allowedSiteProblem,
   asciiAllowedSites,
   defaultWorkingFolder,
-  foldName,
   PROTECTED_TOP_NAMES,
   workingFolderProblem,
 } from "./sandbox-fields.ts";
