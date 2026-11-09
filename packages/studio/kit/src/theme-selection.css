@@ -1,0 +1,66 @@
+/*
+ * The selection and high-contrast utilities, split out of theme.css by concept. theme.css imports
+ * this file, so the app still imports one file. It holds no tokens, only utilities that read them.
+ */
+
+/* ---------------------------------------------------------------- Selection and high contrast */
+
+/*
+ * The mark of a selected row (List, Inbox row): a 2px accent bar at its left edge, 6px in from the
+ * top and bottom. The row's accent-soft fill is faint in dark, and Windows high-contrast mode
+ * drops fills altogether, so the bar is what shows the selection there. It takes the system's
+ * Highlight colour in that mode. It's drawn by ::after, so a row's ::before divider stays free.
+ */
+@utility selected-bar {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: 6px;
+    inset-inline-start: 0;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--color-accent);
+  }
+
+  @media (forced-colors: active) {
+    &::after {
+      forced-color-adjust: none;
+      background: Highlight;
+    }
+  }
+}
+
+/*
+ * With more contrast or in Windows high-contrast mode only: a 1px outline round a selected row or
+ * tab, with the bar above. With more contrast it's the control edge, because a selected tab's
+ * fill and a selected row's accent-soft are too close to their track to tell apart.
+ */
+@utility selected-forced {
+  @media (prefers-contrast: more) {
+    outline: 1px solid var(--color-border-control);
+    outline-offset: -1px;
+  }
+
+  @media (forced-colors: active) {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+}
+
+/* In Windows high-contrast mode only: the system's colour for something that can't be used now.
+   Its normal colour (fg-disabled) becomes ordinary text there. */
+@utility text-forced-disabled {
+  @media (forced-colors: active) {
+    color: GrayText;
+  }
+}
+
+/* In Windows high-contrast mode only: the same system colour for the edge, so an unavailable
+   button's box greys out with its text, like a native disabled button. */
+@utility border-forced-disabled {
+  @media (forced-colors: active) {
+    border-color: GrayText;
+  }
+}

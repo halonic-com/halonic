@@ -10,10 +10,19 @@ export interface CssBlock {
   readonly body: string;
 }
 
-/** The theme file's text, without comments. */
+/**
+ * The theme file's text, without comments. Its `@import "./….css";` lines are replaced by the
+ * imported file's text, so a test sees the whole theme the way Tailwind does.
+ */
 export function readThemeFile(): string {
-  const text = readFileSync(new URL("../theme.css", import.meta.url), "utf8");
-  return text.replace(/\/\*[\s\S]*?\*\//g, "");
+  return readCssFile("theme.css");
+}
+
+function readCssFile(name: string): string {
+  const text = readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/@import "\.\/([\w-]+\.css)";/g, (_, imported: string) => readCssFile(imported));
 }
 
 /** Splits the file into its top-level blocks, in order. Nested blocks stay inside their body. */
