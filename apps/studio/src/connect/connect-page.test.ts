@@ -21,11 +21,12 @@ verifies("studio.connect.connect-screen", () => {
     expect(shell.asked).toEqual([]);
   });
 
-  it("shows Address as a label, the example as a placeholder, and the hint", async () => {
+  it("shows Address as a label with no placeholder, and the hint", async () => {
     const page = await openPage(new FakeShell(), new MemoryStore());
 
     expect(page.field.labels?.[0]?.textContent).toBe("Address");
-    expect(page.field.placeholder).toBe("192.168.1.20:4280");
+    // The mockup draws the field empty; the example lives in the field errors.
+    expect(page.field.placeholder).toBe("");
     expect(page.field.inputMode).toBe("url");
     expect(page.field.getAttribute("enterkeyhint")).toBe("go");
     expect(page.field.getAttribute("autocorrect")).toBe("off");

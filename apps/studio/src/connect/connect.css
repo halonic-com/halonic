@@ -14,6 +14,8 @@
   --on-primary: #ffffff;
   --danger: #c4253c;
   --warning: #b25e09;
+  --warning-tint: #fdf1e3;
+  --tile: #f2f3f7;
   --code: #eef0f6;
   font-family: system-ui, sans-serif;
 }
@@ -28,6 +30,8 @@
     --on-primary: #10121a;
     --danger: #ff7a8a;
     --warning: #f0a85a;
+    --warning-tint: #3a2a18;
+    --tile: #23252e;
     --code: #262833;
   }
 }
@@ -61,8 +65,8 @@ section[hidden] {
 
 .logo {
   align-self: center;
-  width: 3rem;
-  height: 3rem;
+  width: 56px;
+  height: 56px;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   display: grid;
@@ -167,16 +171,56 @@ button.primary[aria-busy="true"] {
   cursor: progress;
 }
 
+/* The spinner in front of "Connecting…" (mockup G2). */
+button.primary[aria-busy="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5rem;
+  vertical-align: -0.125em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.primary[aria-busy="true"]::before {
+    animation: none;
+  }
+}
+
 button.link {
   border: none;
   background: none;
   color: var(--primary);
 }
 
-.icon {
+/* The icon on the full-screen states sits in a tile (mockup G6, H1, H2). */
+.tile {
   align-self: center;
-  width: 2rem;
-  height: 2rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 0.75rem;
+  background: var(--tile);
+  display: grid;
+  place-items: center;
+}
+
+.tile.warning {
+  background: var(--warning-tint);
+}
+
+.icon {
+  width: 1.5rem;
+  height: 1.5rem;
   fill: none;
   stroke: var(--muted);
   stroke-width: 2;
@@ -184,7 +228,7 @@ button.link {
   stroke-linejoin: round;
 }
 
-.icon.warning {
+.tile.warning .icon {
   stroke: var(--warning);
 }
 
