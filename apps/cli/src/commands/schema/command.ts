@@ -16,7 +16,7 @@ export const schemaCommand: CliCommand = {
   async run(input, io) {
     if (input.positionals.length > 1) {
       throw new UsageError(
-        `halonic schema takes at most one folder, and you gave ${countWord(input.positionals.length)}: ${input.positionals.join(", ")}.`,
+        `halonic schema takes at most one folder, and you gave ${countWord(input.positionals.length)}: ${input.positionals.map(shownName).join(", ")}.`,
       );
     }
     const folder = input.positionals[0] ?? defaultSchemaFolder;
@@ -39,10 +39,16 @@ export function schemaFileName(kind: string): string {
   return `${kind}.schema.json`;
 }
 
+/** A name from the command line, in quotes when it's empty or holds a space or a comma, so `""` stays visible in a list. */
+function shownName(name: string): string {
+  return name === "" || /[\s,]/.test(name) ? `"${name}"` : name;
+}
+
 /**
  * A folder as the user would type it from where they are (cli-output 1.2):
  * `./schemas` for a folder below, `../out` for one above, and the full path
- * when it's on another drive.
+ * when it's on another drive. The separator is the system's, so `.\schemas`
+ * on Windows.
  */
 export function shownPath(cwd: string, target: string): string {
   const path = relative(cwd, target);

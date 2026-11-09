@@ -40,8 +40,9 @@ verifies("cli.commands.schema.write-every-kind", () => {
   it("gives the golden output and file list in the default folder", async () => {
     const io = captureIo(folder);
     expect(await runCli(["schema"], io, [schemaCommand])).toBe(exitCode.ok);
+    // The golden file has `/`; the CLI prints the system's separator.
     expect({
-      stdout: io.stdout,
+      stdout: io.stdout.map((line) => line.replaceAll(sep, "/")),
       stderr: io.stderr,
       files: readdirSync(join(folder, "schemas")).sort(),
     }).toEqual(golden);
@@ -54,6 +55,16 @@ verifies("cli.commands.schema.write-every-kind", () => {
       "✕ halonic schema takes at most one folder, and you gave two: a, b.",
       "  Usage: halonic schema [outDir]",
     ]);
+  });
+
+  it("quotes an empty name or one with a space or comma when it refuses more than one folder", async () => {
+    const io = captureIo(folder);
+    expect(await runCli(["schema", "", "b", "my out", "c,d"], io, [schemaCommand])).toBe(
+      exitCode.usage,
+    );
+    expect(io.stderr[0]).toBe(
+      '✕ halonic schema takes at most one folder, and you gave four: "", b, "my out", "c,d".',
+    );
   });
 });
 
