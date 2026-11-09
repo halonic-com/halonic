@@ -8,7 +8,7 @@ import { err, ok, type Result } from "@halonicjs/std";
 /** The registry a pin comes from: `npm` or `pypi`. */
 export type PinRegistry = ConnectorPin["registry"];
 
-/** A package at one exact version, as a registry resolved it. */
+/** A package at one exact version, as a command names it or a registry resolved it. */
 export interface PinnedPackage {
   readonly package: string;
   readonly version: string;

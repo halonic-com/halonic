@@ -30,6 +30,7 @@ Device-wide settings such as the theme live outside any scope.
 | `fenceUntrusted`            | puts outside text inside the untrusted fence, which holds when the text holds its markers                                    | `ports.untrusted-tool-listings` |
 | `checkPinVersion`           | refuses a `ConnectorPin` whose version isn't one exact version, such as a tag (`latest`) or a range (`^2.3.1`)               | `app.connector-pin-version`     |
 | `checkResolvedVersion`      | refuses a resolved package or version other than the pin's                                                                   | `app.connector-pin-version`     |
+| `readPackageSpec`           | reads `name@1.2.3` (npm) or `name==1.2.3` (PyPI), and refuses no version, a tag, a range, a URL or a git source              | `app.connector-pin-spec`        |
 
 ## Example
 
