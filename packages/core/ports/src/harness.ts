@@ -188,14 +188,22 @@ export interface Harness {
  * `ports.harness-environment`). A harness may only add: a name the engine
  * already set is an error, so a harness can't quietly replace `PATH` or
  * `HOME`. Names are compared without regard to case, because Windows treats
- * `Path` and `PATH` as one variable.
+ * `Path` and `PATH` as one variable. For the same reason a harness may not set
+ * two names that differ only in case: which one wins would depend on the
+ * platform.
  *
- * @throws Error naming the variables both set, never their values, which may hold the run token
+ * @throws Error naming the variables in question, never their values, which may hold the run token
  */
 export function addHarnessEnvironment(
   engine: Readonly<Record<string, string>>,
   harness: Readonly<Record<string, string>>,
 ): Record<string, string> {
+  const twice = namesSetTwice(Object.keys(harness));
+  if (twice.length > 0) {
+    throw new Error(
+      `The harness sets environment variables that differ only in case: ${twice.join(", ")}`,
+    );
+  }
   const engineNames = new Set(Object.keys(engine).map((name) => name.toUpperCase()));
   const clashes = Object.keys(harness).filter((name) => engineNames.has(name.toUpperCase()));
   if (clashes.length > 0) {
@@ -204,4 +212,16 @@ export function addHarnessEnvironment(
     );
   }
   return { ...engine, ...harness };
+}
+
+/** The names that share their spelling, apart from case, with an earlier name. */
+function namesSetTwice(names: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const twice: string[] = [];
+  for (const name of names) {
+    const key = name.toUpperCase();
+    if (seen.has(key)) twice.push(name);
+    else seen.add(key);
+  }
+  return twice;
 }

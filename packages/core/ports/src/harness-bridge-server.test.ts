@@ -1,13 +1,14 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import type { HarnessBridge } from "./harness.ts";
-import type {
-  BridgeEvent,
-  BridgeProviderAccess,
-  BridgeTools,
-  HarnessBridgeOptions,
-  HarnessBridgeServer,
-  OpenHarnessBridge,
+import {
+  type BridgeEvent,
+  type BridgeProviderAccess,
+  type BridgeTools,
+  bridgeCallCost,
+  type HarnessBridgeOptions,
+  type HarnessBridgeServer,
+  type OpenHarnessBridge,
 } from "./harness-bridge-server.ts";
 
 /** What the test bridge's one MCP call needs: a tool name and its arguments. */
@@ -121,5 +122,19 @@ verifies("ports.harness-bridge-server", () => {
     // @ts-expect-error: the person's own sign-in is passed on, never looked up
     const withSecret: BridgeProviderAccess = { kind: "sign-in", secret: "anthropic-key" };
     expect([subscription, withSecret]).toHaveLength(2);
+  });
+
+  it("records a subscription call at no cost, and a keyed call without a price as unpriced", () => {
+    const usage = { inputTokens: 1_000, outputTokens: 200 };
+    const anthropicKey: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
+    expect(bridgeCallCost({ kind: "sign-in" }, null, usage)).toBe(0);
+    expect(bridgeCallCost({ kind: "sign-in" }, { input: 3, output: 15 }, usage)).toBe(0);
+    expect(bridgeCallCost(anthropicKey, null, usage)).toBeUndefined();
+  });
+
+  it("prices a keyed call per million tokens", () => {
+    const usage = { inputTokens: 1_000, outputTokens: 200 };
+    const anthropicKey: BridgeProviderAccess = { kind: "key", secret: "anthropic-key" };
+    expect(bridgeCallCost(anthropicKey, { input: 3, output: 15 }, usage)).toBeCloseTo(0.006, 10);
   });
 });

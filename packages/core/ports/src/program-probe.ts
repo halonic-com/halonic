@@ -4,8 +4,9 @@ export const programProbeVersion = 1;
 /**
  * What asking a program something answered. `missing`: no program of that
  * name is where Halonic looks for it. `ran`: it ran and ended, with what it
- * wrote. `failed`: it was found but couldn't be run, or didn't end in time;
- * `error` says which, in one plain sentence.
+ * wrote; `code` is `null` when a signal ended it. `failed`: it was found but
+ * couldn't be run, or didn't end in time; `error` says which, in one plain
+ * sentence.
  */
 export type ProgramProbeResult =
   | { status: "missing" }
@@ -28,6 +29,11 @@ export type ProgramProbeResult =
  * if (answer.status === "missing") return { status: "missing" };
  */
 export interface ProgramProbe {
-  /** Runs `program` with `args` and reports how it went. Never throws: a problem is a {@link ProgramProbeResult}. */
+  /**
+   * Runs `program` with `args` and reports how it went. Never throws: a
+   * problem is a {@link ProgramProbeResult}.
+   *
+   * @param program a bare name, such as "claude". A name with a path separator is `missing`.
+   */
   ask(program: string, args: readonly string[]): Promise<ProgramProbeResult>;
 }

@@ -192,6 +192,13 @@ verifies("ports.harness-environment", () => {
     expect(message).not.toContain(bridge.token);
   });
 
+  it("refuses two names from the harness that differ only in case", () => {
+    const twice = { PATH: "/agent/bin", Path: bridge.token };
+    expect(() => addHarnessEnvironment({ HOME: "/data/agents/writer" }, twice)).toThrow(
+      "The harness sets environment variables that differ only in case: Path",
+    );
+  });
+
   typeTest("is optional, so the built-in loop fits without it", () => {
     expectTypeOf<Pick<Harness, "id" | "name" | "detect" | "start">>().toExtend<Harness>();
     expectTypeOf<NonNullable<Harness["environment"]>>().parameters.toEqualTypeOf<

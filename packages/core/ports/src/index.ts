@@ -68,6 +68,7 @@ export {
   type BridgeToolCheck,
   type BridgeToolResult,
   type BridgeTools,
+  bridgeCallCost,
   type HarnessBridgeOptions,
   type HarnessBridgeServer,
   harnessBridgeServerVersion,

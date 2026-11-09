@@ -1,4 +1,4 @@
-import type { ToolOutcome } from "@halonicjs/events";
+import type { ToolOutcome, Usage } from "@halonicjs/events";
 import type { ToolDefinition } from "./chat.ts";
 import type { HarnessBridge, HarnessEvent } from "./harness.ts";
 
@@ -13,13 +13,16 @@ export type BridgeProviderAccess =
   /**
    * With a key Halonic keeps: the bridge puts the value of the secret with
    * this name, from the `Secrets` port, in place of the program's key, and
-   * records the cost.
+   * records the cost from the model's price. A model without a price is
+   * recorded without a cost, so the run shows it as unpriced.
    */
   | { kind: "key"; secret: string }
   /**
    * With the person's own subscription: the bridge passes the program's own
    * sign-in to the provider unchanged and never reads, logs or stores it.
-   * The subscription pays, so the bridge records the call without a cost.
+   * The subscription pays and Halonic spends nothing, so the bridge records
+   * the call with its tokens and `cost: 0`. It is never counted as unpriced,
+   * which would hide a keyed model that really lacks a price.
    */
   | { kind: "sign-in" };
 
@@ -117,13 +120,36 @@ export interface HarnessBridgeOptions {
   agentId: string;
   /** The providers this agent may reach and how it signs in. A provider not named here is refused. */
   providers: Partial<Record<BridgeProvider, BridgeProviderAccess>>;
-  /** A model's price, or `null` when `models.yaml` gives none; then the call is recorded without a cost. */
+  /**
+   * A model's price, or `null` when `models.yaml` gives none. Only asked for
+   * a provider reached with a key: a keyed call without a price is recorded
+   * without a cost (unpriced), and a sign-in call always costs 0. See
+   * {@link bridgeCallCost}.
+   */
   price(provider: BridgeProvider, model: string): BridgeModelPrice | null;
   recorder: BridgeRecorder;
   tools: BridgeTools;
   approvals: BridgeApprovals;
   /** Aborting it closes the bridge, as {@link OpenHarnessBridge.close} does. */
   signal?: AbortSignal;
+}
+
+/**
+ * The `cost` the bridge records on a model call's `llm.response`, in the
+ * workspace's budget currency (requirement `ports.harness-bridge-server`).
+ * A sign-in call costs 0, because the person's subscription pays. A keyed call
+ * costs its tokens at the model's price, or is `undefined` (unpriced) when the
+ * model has no price.
+ */
+export function bridgeCallCost(
+  access: BridgeProviderAccess,
+  price: BridgeModelPrice | null,
+  usage: Usage,
+): number | undefined {
+  if (access.kind === "sign-in") return 0;
+  if (price === null) return undefined;
+  const tokensPerPrice = 1_000_000;
+  return (usage.inputTokens * price.input + usage.outputTokens * price.output) / tokensPerPrice;
 }
 
 /** A bridge that is serving one run. */
