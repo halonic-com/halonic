@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/engine",
+  "private": true,
+  "type": "module",
+  "description": "Runs workflows and agents: the run kernel, the states and the agent loop. It starts with the loop of one model turn behind the local chat turn.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "elena",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
