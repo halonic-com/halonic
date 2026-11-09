@@ -1,6 +1,6 @@
 import type { ApiOff, ServiceCheckOutcome } from "./check-result.ts";
 import { enableApiUrl, isApiHost, isProjectId } from "./console-links.ts";
-import type { SetupService } from "./setup-input.ts";
+import type { GoogleApi, SetupService } from "./setup-input.ts";
 
 /** Google's answer to a sheet's `googleCheck`, as the host received it. */
 export interface GoogleCheckAnswer {
@@ -18,8 +18,12 @@ export type GoogleCheckMeaning = Extract<
 
 const errorInfoType = "type.googleapis.com/google.rpc.ErrorInfo";
 
-/** `projects/` and a project number or ID, as Google writes `consumer`. */
-const consumerPattern = /^projects\/([a-z0-9][a-z0-9-]{0,62})$/;
+/**
+ * `projects/` and a project number, as Google writes `consumer` for
+ * `SERVICE_DISABLED`. Only digits are kept: the project ID comes from the
+ * setup, and a word here could be any text that happens to fit.
+ */
+const consumerPattern = /^projects\/(\d{1,20})$/;
 
 /** Google's reason codes are single words, such as `accessNotConfigured` or `SERVICE_DISABLED`. */
 const reasonPattern = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
@@ -35,10 +39,14 @@ const reasonPattern = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
  * - anything else is `checkFailed`, with the status and Google's reason code.
  *
  * The same rules as the integrations' reader (`disabled-api.ts`, A5): only
- * `metadata.service` and `metadata.consumer` are read, and only in the shape
- * of an API host and a project. Every `message`, the rest of the metadata and
- * any reason that isn't a plain code are ignored, because Google's free text
- * can quote the user's data.
+ * `metadata.service` and `metadata.consumer` are read. Every `message`, the
+ * rest of the metadata and any reason that isn't a plain code are ignored,
+ * because Google's free text can quote the user's data.
+ *
+ * Nothing in an `apiOff` result is text from Google's answer: the API and its
+ * name come from the service's sheet, and the project from the setup or a
+ * project number. Text that merely has the shape of a host or a project could
+ * still be anything, a token included (HAL-1226).
  *
  * @param answer - the status and the parsed body
  * @param service - the service whose check this was; its sheet names the API
@@ -70,26 +78,30 @@ export function readGoogleCheckAnswer(
   return { kind: "checkFailed", status, reason };
 }
 
-/** The `apiOff` result, with each part only when it has a shape we trust. */
+/** The `apiOff` result, with the API only when the sheet lists it, and the project only when we trust it. */
 function apiOff(
   metadata: Record<string, unknown> | undefined,
   service: SetupService,
   projectId: string | undefined,
 ): ApiOff {
-  const api = textMatching(metadata?.["service"], isApiHost);
+  const listedApi = apiListedInSheet(metadata?.["service"], service);
   const projectNumber = projectFromConsumer(metadata?.["consumer"]);
   const project = projectId !== undefined && isProjectId(projectId) ? projectId : projectNumber;
-  if (api === undefined) {
+  if (listedApi === undefined) {
     return { kind: "apiOff", ...(project === undefined ? {} : { project }) };
   }
-  const apiName = service.googleApis.find((entry) => entry.api === api)?.name;
   return {
     kind: "apiOff",
-    api,
-    ...(apiName === undefined ? {} : { apiName }),
+    api: listedApi.api,
+    apiName: listedApi.name,
     ...(project === undefined ? {} : { project }),
-    enableUrl: enableApiUrl(api, project),
+    enableUrl: enableApiUrl(listedApi.api, project),
   };
+}
+
+/** The sheet's entry for the API Google named, or `undefined` when the sheet doesn't list it. */
+function apiListedInSheet(googleService: unknown, service: SetupService): GoogleApi | undefined {
+  return service.googleApis.find((entry) => entry.api === googleService && isApiHost(entry.api));
 }
 
 /** The `error` object of Google's answer, or `undefined` when there is none. */
@@ -142,7 +154,7 @@ function errorEntryReasons(error: Record<string, unknown> | undefined): string[]
   });
 }
 
-/** The project number or ID from a `consumer` such as `projects/123456789012`. */
+/** The project number from a `consumer` such as `projects/123456789012`. */
 function projectFromConsumer(consumer: unknown): string | undefined {
   return typeof consumer === "string" ? consumerPattern.exec(consumer)?.[1] : undefined;
 }

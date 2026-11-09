@@ -44,19 +44,12 @@ verifies("google-setup.check-api-off", () => {
     ).toEqual({ kind: "apiOff" });
   });
 
-  it("leaves out the API name when the service's sheet doesn't list that API", () => {
-    const json = serviceDisabledJson({ service: "other.googleapis.com" });
-
-    const result = readGoogleCheckAnswer({ status: 403, json }, ledgerService);
-
-    expect(result).toMatchObject({ kind: "apiOff", api: "other.googleapis.com" });
-    expect(result).not.toHaveProperty("apiName");
-  });
-
-  it("keeps no API and no link when metadata.service isn't a Google API host", () => {
+  it("keeps no API and no link when metadata.service isn't an API the service's sheet lists", () => {
     for (const service of [
+      "other.googleapis.com",
       "evil.example.com",
       "ledger.googleapis.com.example.com",
+      "LEDGER.googleapis.com",
       42,
       userContent,
     ]) {
@@ -68,8 +61,15 @@ verifies("google-setup.check-api-off", () => {
     }
   });
 
-  it("keeps no project when consumer isn't in Google's shape", () => {
-    for (const consumer of ["123456789012", "projects/../evil", `projects/${userContent}`, {}]) {
+  it("keeps no project when consumer isn't a project number", () => {
+    for (const consumer of [
+      "123456789012",
+      "projects/halonic-x1",
+      "projects/../evil",
+      `projects/${userContent}`,
+      `projects/${"1".repeat(21)}`,
+      {},
+    ]) {
       const json = serviceDisabledJson({ consumer });
 
       const result = readGoogleCheckAnswer({ status: 403, json }, ledgerService);
@@ -77,6 +77,19 @@ verifies("google-setup.check-api-off", () => {
       expect(result).not.toHaveProperty("project");
       expect(result).toMatchObject({ enableUrl: ledgerEnablePage });
     }
+  });
+
+  it("keeps no text from the answer that only has the shape of a host or a project", () => {
+    const secretLike = "fake-secret-0000000001";
+    const json = serviceDisabledJson({
+      service: `${secretLike}.googleapis.com`,
+      consumer: `projects/${secretLike}`,
+    });
+
+    const result = readGoogleCheckAnswer({ status: 403, json }, ledgerService);
+
+    expect(result).toEqual({ kind: "apiOff" });
+    expect(JSON.stringify(result)).not.toContain(secretLike);
   });
 
   it("reads an ErrorInfo with an odd reason or metadata as saying nothing", () => {

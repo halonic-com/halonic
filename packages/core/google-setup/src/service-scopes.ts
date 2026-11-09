@@ -7,7 +7,11 @@ import type { SetupService } from "./setup-input.ts";
  */
 export type ServiceScopes =
   | { readonly service: string; readonly granted: true }
-  | { readonly service: string; readonly granted: false; readonly missingScopes: string[] };
+  | {
+      readonly service: string;
+      readonly granted: false;
+      readonly missingScopes: readonly string[];
+    };
 
 /**
  * Compares the scopes Google granted with each service's `googleScopes`, in

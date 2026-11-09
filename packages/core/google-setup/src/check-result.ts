@@ -25,14 +25,15 @@ export type ServiceCheckOutcome =
   | { readonly kind: "unreachable" };
 
 /**
- * The API is switched off in the user's Google Cloud project. A field is
- * missing when Google didn't name it in a shape we trust.
+ * The API is switched off in the user's Google Cloud project. No field is
+ * text from Google's answer; a field is missing when we couldn't take it
+ * from the sheet, the setup or a project number.
  */
 export interface ApiOff {
   readonly kind: "apiOff";
-  /** The API's host, such as `example.googleapis.com`. */
+  /** The API's host, such as `example.googleapis.com`, when Google named an API the service's sheet lists. */
   readonly api?: string;
-  /** The API's name from the service's sheet, when the sheet lists that API. */
+  /** The API's name from the service's sheet. Present when `api` is. */
   readonly apiName?: string;
   /** The project ID from the setup, or else the project number from Google's answer. */
   readonly project?: string;
