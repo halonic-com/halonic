@@ -62,6 +62,28 @@ verifies("app.chat-stop", () => {
     ]);
   });
 
+  it("ends as stopped, not with the turn limit, when Stop comes during the last turn", async () => {
+    const stop = new AbortController();
+    const first = tool("first", () => {
+      stop.abort();
+      return "first done";
+    });
+    const second = tool("second");
+    const model = new ScriptedChat([toolTurn(call("c1", "first"), call("c2", "second"))]);
+
+    const answer = await new ChatService(model).answer({
+      settings,
+      messages: question,
+      tools: [first.chatTool, second.chatTool],
+      turnLimit: 1,
+      signal: stop.signal,
+    });
+
+    expect(answer.end).toEqual({ reason: "stopped" });
+    expect(second.calls).toEqual([]);
+    expect(answer.messages.at(-1)).toMatchObject({ content: notRunAfterStop, toolCallId: "c2" });
+  });
+
   it("doesn't ask the model when stopped before the answer began", async () => {
     const model = new ScriptedChat([textTurn("never asked")]);
 
@@ -141,6 +163,62 @@ verifies("app.chat-failure", () => {
     const answer = await new ChatService(model).answer({ settings, messages: question, tools: [] });
 
     expect(answer.end).toMatchObject({ reason: "failed", toolsRan: false });
+  });
+
+  it("ends as failed with the listener's error, keeping what was added, when the listener throws", async () => {
+    const error = new Error("the transcript is closed");
+    const sendMail = tool("send_mail", () => "sent");
+    const listener: ChatAnswerListener = {
+      onMessage: (message) => {
+        if (message.role === "tool") {
+          throw error;
+        }
+      },
+    };
+    const model = new ScriptedChat([toolTurn(call("c1", "send_mail")), textTurn("never asked")]);
+
+    const answer = await new ChatService(model).answer({
+      settings,
+      messages: question,
+      tools: [sendMail.chatTool],
+      listener,
+    });
+
+    expect(answer.end).toEqual({ reason: "failed", error, toolsRan: true });
+    expect(sendMail.calls).toHaveLength(1);
+    expect(answer.messages.map((message) => message.role)).toEqual(["assistant", "tool"]);
+    expect(model.requests).toHaveLength(1);
+  });
+
+  it("ends as failed when the listener throws as a turn or tool call starts", async () => {
+    const error = new Error("the status line is gone");
+    const throwing: ChatAnswerListener[] = [
+      {
+        onTurn: () => {
+          throw error;
+        },
+      },
+      {
+        onToolCall: () => {
+          throw error;
+        },
+      },
+    ];
+
+    for (const listener of throwing) {
+      const readFile = tool("read_file");
+      const model = new ScriptedChat([toolTurn(call("c1", "read_file")), textTurn("Done.")]);
+
+      const answer = await new ChatService(model).answer({
+        settings,
+        messages: question,
+        tools: [readFile.chatTool],
+        listener,
+      });
+
+      expect(answer.end).toEqual({ reason: "failed", error, toolsRan: false });
+      expect(readFile.calls).toEqual([]);
+    }
   });
 
   it("turns a rejection that isn't an Error into one", async () => {

@@ -14,4 +14,7 @@ When the person stops an answer, the chat service shall start no further model t
 - Given a model turn with tool calls `c1` and `c2`,
   when the person stops the answer while `c1` runs,
   then `c1` keeps its result, `c2` doesn't run and gets "Not run: the person stopped the chat.", and the answer ends as stopped.
+- Given a turn limit of 1 and a model turn with tool calls `c1` and `c2`,
+  when the person stops the answer while `c1` runs,
+  then the answer ends as stopped, not with the turn limit.
 - Given the person stopped before the answer began, then the model is not asked.

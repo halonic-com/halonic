@@ -6,7 +6,7 @@ import type {
   ToolCall,
   ToolDefinition,
 } from "@halonicjs/ports";
-import { AnswerInProgress, asError } from "./chat-answer.ts";
+import { AnswerInProgress, asError, ListenerFailed } from "./chat-answer.ts";
 
 /** The turn limit of a chat when nothing sets one. */
 export const defaultTurnLimit = 16;
@@ -48,8 +48,8 @@ export interface ChatAnswerRequest {
 
 /**
  * Hears how an answer goes, such as "thinking…" or "using read_file…". Each
- * method is called inside the answer, so one that throws ends it with that
- * error.
+ * method is called inside the answer, so one that throws ends the answer as
+ * failed with that error.
  */
 export interface ChatAnswerListener {
   /** A model turn starts; the first turn is 1. */
@@ -65,7 +65,7 @@ export interface ChatAnswerListener {
  * - `answered`: the model answered without calling a tool
  * - `turn-limit`: the model still called tools after `turns` model turns
  * - `stopped`: the person stopped it
- * - `failed`: a model turn failed. `toolsRan` says whether a tool already
+ * - `failed`: a model turn or the listener failed. `toolsRan` says whether a tool already
  *   ran in this answer, so it may have changed something and sending the
  *   message again isn't safe.
  */
@@ -101,21 +101,40 @@ export class ChatService {
    * calls, gives it their results and asks again, until it answers without
    * a tool call, reaches the turn limit, is stopped or fails.
    *
-   * A failed model turn ends the answer instead of throwing, so the caller
-   * keeps the messages added before it, such as the results of tools that
-   * already ran.
+   * A failed model turn or listener ends the answer instead of throwing, so
+   * the caller keeps the messages added before it, such as the results of
+   * tools that already ran.
    *
    * @throws RangeError when the turn limit isn't a whole number from 1 to 64
    */
   async answer(request: ChatAnswerRequest): Promise<ChatAnswer> {
     const turnLimit = checkedTurnLimit(request.turnLimit);
     const answer = new AnswerInProgress(request);
+    try {
+      return await this.runTurns(answer, turnLimit);
+    } catch (error) {
+      if (error instanceof ListenerFailed) {
+        return answer.end({
+          reason: "failed",
+          error: error.listenerError,
+          toolsRan: answer.toolsRan,
+        });
+      }
+      throw error;
+    }
+  }
 
+  /**
+   * The turn loop of {@link answer}.
+   *
+   * @throws ListenerFailed when the listener throws
+   */
+  private async runTurns(answer: AnswerInProgress, turnLimit: number): Promise<ChatAnswer> {
     for (let turn = 1; turn <= turnLimit; turn += 1) {
       if (answer.stopped) {
         return answer.end({ reason: "stopped" });
       }
-      request.listener?.onTurn?.(turn);
+      answer.startTurn(turn);
       const response = await this.askModel(answer);
       // The port can't cancel a model call, so an answer that comes after Stop is dropped.
       if (answer.stopped) {
@@ -129,6 +148,10 @@ export class ChatService {
         return answer.end({ reason: "answered" });
       }
       await answer.runTools(response.toolCalls);
+    }
+    // Stop during the last turn's tools is still a stop, not the turn limit.
+    if (answer.stopped) {
+      return answer.end({ reason: "stopped" });
     }
     return answer.end({ reason: "turn-limit", turns: turnLimit });
   }

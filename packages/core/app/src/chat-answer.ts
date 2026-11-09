@@ -1,8 +1,31 @@
 import type { ChatMessage, ChatTurnRequest, ChatTurnResponse, ToolCall } from "@halonicjs/ports";
-import type { ChatAnswer, ChatAnswerEnd, ChatAnswerRequest, ChatTool } from "./chat-service.ts";
+import type {
+  ChatAnswer,
+  ChatAnswerEnd,
+  ChatAnswerListener,
+  ChatAnswerRequest,
+  ChatTool,
+} from "./chat-service.ts";
 
 /** The tool result for a call the model asked for but that didn't run because the person stopped the chat. */
 export const notRunAfterStop = "Not run: the person stopped the chat.";
+
+/**
+ * Thrown inside an answer when one of its listener's methods throws, so the
+ * chat service can end the answer as failed with the listener's error,
+ * instead of rejecting and losing the messages and `toolsRan`. Internal to
+ * `ChatService`.
+ */
+export class ListenerFailed extends Error {
+  /** The error the listener threw. */
+  readonly listenerError: Error;
+
+  constructor(listenerError: Error) {
+    super(`The chat answer's listener failed: ${listenerError.message}`);
+    this.name = "ListenerFailed";
+    this.listenerError = listenerError;
+  }
+}
 
 /**
  * The state of one answer while it is being made: the messages added so far,
@@ -24,6 +47,11 @@ export class AnswerInProgress {
   /** Whether the person stopped the answer. */
   get stopped(): boolean {
     return this.request.signal?.aborted === true;
+  }
+
+  /** Tells the listener that model turn `turn` starts. */
+  startTurn(turn: number): void {
+    this.tell((listener) => listener.onTurn?.(turn));
   }
 
   /** The request for the next model turn: the conversation with everything added so far. */
@@ -51,7 +79,7 @@ export class AnswerInProgress {
         this.add(toolResult(toolCall, notRunAfterStop));
         continue;
       }
-      this.request.listener?.onToolCall?.(toolCall);
+      this.tell((listener) => listener.onToolCall?.(toolCall));
       this.add(toolResult(toolCall, await this.runTool(toolCall)));
     }
   }
@@ -63,7 +91,24 @@ export class AnswerInProgress {
 
   private add(message: ChatMessage): void {
     this.added.push(message);
-    this.request.listener?.onMessage?.(message);
+    this.tell((listener) => listener.onMessage?.(message));
+  }
+
+  /**
+   * Calls the listener, if there is one.
+   *
+   * @throws ListenerFailed when the listener throws
+   */
+  private tell(call: (listener: ChatAnswerListener) => void): void {
+    const listener = this.request.listener;
+    if (listener === undefined) {
+      return;
+    }
+    try {
+      call(listener);
+    } catch (error) {
+      throw new ListenerFailed(asError(error));
+    }
   }
 
   /**

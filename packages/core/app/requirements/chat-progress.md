@@ -9,4 +9,4 @@ While the chat service makes an answer, it shall tell the answer's listener when
 ## Examples
 
 - Given a listener and a model that calls `read_file` once and then answers,
-  then the listener hears: turn 1, the call to `read_file`, the assistant message with the call, the tool result, turn 2, the final assistant message.
+  then the listener hears: turn 1, the assistant message with the call, the call to `read_file`, the tool result, turn 2, the final assistant message.
