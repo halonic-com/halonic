@@ -1,6 +1,6 @@
 import { chmod, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { DryRunDefinitionStore, MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import { definitionStoreContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
@@ -13,6 +13,13 @@ definitionStoreContract("folder", async (files) => {
   const root = await tempFolder();
   await writeFiles(root, files);
   return new FolderDefinitionStore(root);
+});
+
+// A dry run over a real folder passes the same suite and leaves the folder as it was.
+definitionStoreContract("dry run over a folder", async (files) => {
+  const root = await tempFolder();
+  await writeFiles(root, files);
+  return new DryRunDefinitionStore(new FolderDefinitionStore(root));
 });
 
 /** A folder holding `real.yaml`, `agents/real.yaml` and `outside/secret.yaml`, plus links into them. */
@@ -105,5 +112,18 @@ verifies("fs-node.definition-store", () => {
     } finally {
       await chmod(join(root, "locked"), 0o700);
     }
+  });
+});
+
+verifies("memory.dry-run-definition-store", () => {
+  it("leaves the folder under a dry run as it was", async () => {
+    const root = await tempFolder();
+    await writeFiles(root, { "a.yaml": "1", "b.yaml": "2" });
+    const store = new DryRunDefinitionStore(new FolderDefinitionStore(root));
+    await store.write("a.yaml", "changed");
+    await store.write("hubs/c/hub.yaml", "id: c\n");
+    await store.remove("b.yaml");
+    expect(await new FolderDefinitionStore(root).list()).toEqual(["a.yaml", "b.yaml"]);
+    expect(await readFile(join(root, "a.yaml"), "utf8")).toBe("1");
   });
 });
