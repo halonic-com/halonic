@@ -45,13 +45,27 @@ fn run_cases(backend: &dyn SecretBackend) -> Result<(), String> {
         get_secret(backend, SECOND),
         None,
     )?;
-    let largest = "x".repeat(MAX_VALUE_BYTES);
+    let limit = backend.max_value_bytes();
+    if limit == 0 || limit > MAX_VALUE_BYTES {
+        return Err(format!(
+            "the backend's value limit, {limit} bytes, must be between 1 and {MAX_VALUE_BYTES}"
+        ));
+    }
+    let largest = "x".repeat(limit);
     step(
         "set the largest value",
         set_secret(backend, SECOND, &largest),
     )?;
     expect(
         "the largest value reads back whole",
+        get_secret(backend, SECOND),
+        Some(&largest),
+    )?;
+    if set_secret(backend, SECOND, &format!("{largest}x")) != Err(SecretError::InvalidValue) {
+        return Err("one byte over the limit: the value was not refused".to_owned());
+    }
+    expect(
+        "a refused value leaves the old one",
         get_secret(backend, SECOND),
         Some(&largest),
     )?;

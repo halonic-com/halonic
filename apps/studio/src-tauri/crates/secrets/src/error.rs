@@ -9,7 +9,8 @@ use std::fmt;
 pub enum SecretError {
     /// The name breaks the rule of the `Secrets` port.
     InvalidName,
-    /// The value is empty or longer than [`crate::MAX_VALUE_BYTES`].
+    /// The value is empty, or longer than [`crate::MAX_VALUE_BYTES`] or than
+    /// the backend can keep ([`crate::SecretBackend::max_value_bytes`]).
     InvalidValue,
     /// There is no keychain on this system, or it can't be reached.
     Unavailable,
@@ -47,7 +48,7 @@ impl fmt::Display for SecretError {
             SecretError::InvalidValue => {
                 write!(
                     formatter,
-                    "a secret's value must not be empty or longer than 16 KiB"
+                    "a secret's value must not be empty or longer than this keychain holds (16 KiB; 1,280 bytes on Windows)"
                 )
             }
             SecretError::Unavailable => write!(formatter, "no keychain is available"),

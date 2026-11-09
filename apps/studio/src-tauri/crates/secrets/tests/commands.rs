@@ -48,6 +48,26 @@ fn secret_commands_refuse_empty_and_oversized_values() {
 }
 
 #[test]
+fn secret_commands_refuse_values_longer_than_the_backend_keeps() {
+    let backend = SmallBackend(MemoryBackend::new());
+    assert_eq!(
+        set_secret(&backend, "acme-key", &"x".repeat(SMALL_LIMIT + 1)),
+        Err(SecretError::InvalidValue)
+    );
+    assert_eq!(get_secret(&backend, "acme-key"), Ok(None));
+    assert_eq!(check_backend_contract(&backend), Ok(()));
+}
+
+#[test]
+fn secret_commands_contract_fails_a_backend_that_keeps_more_than_it_says() {
+    // A backend that says it keeps 16 KiB but cuts values short fails the
+    // largest-value case.
+    let backend = CuttingBackend(MemoryBackend::new());
+    let failure = check_backend_contract(&backend).expect_err("values come back cut");
+    assert!(failure.starts_with("the largest value"), "{failure}");
+}
+
+#[test]
 fn secret_commands_never_put_the_value_in_an_error() {
     let value = "acme-secret-value";
     let backend = FailingBackend;
@@ -108,5 +128,48 @@ impl SecretBackend for FailingBackend {
 
     fn delete(&self, _name: &SecretName) -> Result<(), SecretError> {
         Err(SecretError::Denied)
+    }
+}
+
+/// The limit of [`SmallBackend`], the Windows Credential Manager's.
+const SMALL_LIMIT: usize = 1280;
+
+/// A backend that keeps short values only, like the Windows Credential
+/// Manager.
+struct SmallBackend(MemoryBackend);
+
+impl SecretBackend for SmallBackend {
+    fn get(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get(name)
+    }
+
+    fn set(&self, name: &SecretName, value: &str) -> Result<(), SecretError> {
+        assert!(value.len() <= SMALL_LIMIT, "set_secret checks the limit");
+        self.0.set(name, value)
+    }
+
+    fn delete(&self, name: &SecretName) -> Result<(), SecretError> {
+        self.0.delete(name)
+    }
+
+    fn max_value_bytes(&self) -> usize {
+        SMALL_LIMIT
+    }
+}
+
+/// A backend that keeps only the first 1,000 bytes of a value.
+struct CuttingBackend(MemoryBackend);
+
+impl SecretBackend for CuttingBackend {
+    fn get(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get(name)
+    }
+
+    fn set(&self, name: &SecretName, value: &str) -> Result<(), SecretError> {
+        self.0.set(name, &value[..value.len().min(1000)])
+    }
+
+    fn delete(&self, name: &SecretName) -> Result<(), SecretError> {
+        self.0.delete(name)
     }
 }

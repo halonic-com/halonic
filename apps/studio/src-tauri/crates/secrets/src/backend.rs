@@ -26,12 +26,30 @@ pub trait SecretBackend: Send + Sync {
 
     /// Removes the value. Removing a name that holds nothing succeeds.
     fn delete(&self, name: &SecretName) -> Result<(), SecretError>;
+
+    /// The longest value this backend can keep, in bytes. A store that holds
+    /// less than [`MAX_VALUE_BYTES`] (the Windows Credential Manager) says so
+    /// here, so [`set_secret`] refuses a longer value before the backend
+    /// runs.
+    fn max_value_bytes(&self) -> usize {
+        MAX_VALUE_BYTES
+    }
 }
 
 /// Checks a value: not empty and at most [`MAX_VALUE_BYTES`] bytes. A Rust
 /// `&str` is always UTF-8, so that rule holds by type.
 pub fn check_value(value: &str) -> Result<(), SecretError> {
     if value.is_empty() || value.len() > MAX_VALUE_BYTES {
+        return Err(SecretError::InvalidValue);
+    }
+    Ok(())
+}
+
+/// Checks a value for one backend: [`check_value`], and no longer than the
+/// backend can keep.
+fn check_value_fits(backend: &dyn SecretBackend, value: &str) -> Result<(), SecretError> {
+    check_value(value)?;
+    if value.len() > backend.max_value_bytes() {
         return Err(SecretError::InvalidValue);
     }
     Ok(())
@@ -45,7 +63,7 @@ pub fn get_secret(backend: &dyn SecretBackend, name: &str) -> Result<Option<Stri
 /// What `secret_set` does: checks the name and the value, then writes.
 pub fn set_secret(backend: &dyn SecretBackend, name: &str, value: &str) -> Result<(), SecretError> {
     let name = SecretName::parse(name)?;
-    check_value(value)?;
+    check_value_fits(backend, value)?;
     backend.set(&name, value)
 }
 
