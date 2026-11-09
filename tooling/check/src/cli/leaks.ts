@@ -197,14 +197,49 @@ function secretIsBroken(source: TermsSource): boolean {
   return source === "none" && secret.trim() !== "";
 }
 
+const usage =
+  "Usage: check:leaks [--staged | --push <remote> | --range BASE..HEAD | --all] [--allowed-phrases FILE] [--allow-file FILE]";
+
+function loadAllowList(root: string, options: Options): AllowList {
+  const allowPath = options.allowFile ?? join(root, allowFilePath);
+  return new AllowList(existsSync(allowPath) ? readFileSync(allowPath, "utf8") : "");
+}
+
+/** Prints the verdict of a scan that found nothing wrong, or the findings and what to do about them. */
+function reportScan(
+  findings: readonly Finding[],
+  summary: { readonly source: TermsSource; readonly termCount: number },
+): number {
+  const { source } = summary;
+  // Until the secret exists CI skips the terms with a warning, so work can
+  // start. Once HALONIC_TERMS_REQUIRED is true a missing list fails.
+  const termsRequiredButMissing =
+    source === "none" && process.env[termsRequiredVariable] === "true";
+  if (findings.length === 0 && !termsRequiredButMissing) {
+    console.log(`leak guard: clean (${termsSummary(source, summary.termCount)}).`);
+    return 0;
+  }
+  if (findings.length > 0) {
+    console.log(`leak guard: ${findings.length} problem(s) found.`);
+    for (const finding of findings) {
+      console.log(formatFinding(finding));
+    }
+    console.log(`\nHow to fix or allow a false positive: ${docs}`);
+  }
+  if (termsRequiredButMissing) {
+    console.log(
+      `leak guard: failed. ${termsRequiredVariable} is true but the ${termsEnvironmentVariable} secret is not available, so personal terms were not checked.`,
+    );
+  }
+  return 1;
+}
+
 function scan(argv: readonly string[]): number {
   const options = parseOptions(argv);
   const root = git(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
   const changes = selectChanges(root, options.rest);
   if (changes === undefined) {
-    console.error(
-      "Usage: check:leaks [--staged | --push <remote> | --range BASE..HEAD | --all] [--allowed-phrases FILE] [--allow-file FILE]",
-    );
+    console.error(usage);
     return 2;
   }
   const inCi = Boolean(process.env["GITHUB_ACTIONS"]);
@@ -223,34 +258,15 @@ function scan(argv: readonly string[]): number {
   if (matcher === undefined) {
     return 1;
   }
-  const allowPath = options.allowFile ?? join(root, allowFilePath);
-  const allowList = new AllowList(existsSync(allowPath) ? readFileSync(allowPath, "utf8") : "");
-  const findings = scanChanges(changes, { terms: matcher, allowList });
-  // Until the secret exists CI skips the terms with a warning, so work can
-  // start. Once HALONIC_TERMS_REQUIRED is true a missing list fails.
-  const termsRequiredButMissing =
-    source === "none" && process.env[termsRequiredVariable] === "true";
+  const findings = scanChanges(changes, {
+    terms: matcher,
+    allowList: loadAllowList(root, options),
+  });
   if (source === "none") {
     const notice = termsNotice(inCi);
     console.log(inCi ? `::warning title=leak guard::${notice}` : `leak guard: ${notice}.`);
   }
-  if (findings.length === 0 && !termsRequiredButMissing) {
-    console.log(`leak guard: clean (${termsSummary(source, matcher.size)}).`);
-    return 0;
-  }
-  if (findings.length > 0) {
-    console.log(`leak guard: ${findings.length} problem(s) found.`);
-    for (const finding of findings) {
-      console.log(formatFinding(finding));
-    }
-    console.log(`\nHow to fix or allow a false positive: ${docs}`);
-  }
-  if (termsRequiredButMissing) {
-    console.log(
-      `leak guard: failed. ${termsRequiredVariable} is true but the ${termsEnvironmentVariable} secret is not available, so personal terms were not checked.`,
-    );
-  }
-  return 1;
+  return reportScan(findings, { source, termCount: matcher.size });
 }
 
 /**

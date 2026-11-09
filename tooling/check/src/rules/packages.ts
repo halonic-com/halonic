@@ -42,7 +42,7 @@ export function checkPackages(context: CheckContext): Report {
 
 function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
   const file = pkg.manifestPath;
-  const { name, halonic } = pkg.manifest;
+  const { name } = pkg.manifest;
   const place = context.placeOf(pkg);
   if (place === undefined) {
     report.error(
@@ -69,6 +69,13 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
       `The name must be "${place.expectedName}" (it follows from the folder), not "${name ?? "(missing)"}".`,
     );
   }
+  checkPublication(context, pkg, report);
+  checkDeclaration(pkg, place.layer, report);
+}
+
+function checkPublication(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
+  const file = pkg.manifestPath;
+  const { name, halonic } = pkg.manifest;
   const published = name !== undefined && context.policy.published.includes(name);
   if (!published && pkg.manifest.private !== true) {
     report.error(
@@ -84,10 +91,16 @@ function checkIdentity(context: CheckContext, pkg: WorkspacePackage, report: Rep
       `It has "halonic.publish", but only the packages listed under "published" in ${context.policyPath} may be published. Add it there or remove "halonic.publish".`,
     );
   }
-  if (halonic?.layer !== place.layer) {
+}
+
+/** The layer and owner the package declares for itself. */
+function checkDeclaration(pkg: WorkspacePackage, layer: Layer, report: Report): void {
+  const file = pkg.manifestPath;
+  const { halonic } = pkg.manifest;
+  if (halonic?.layer !== layer) {
     report.error(
       file,
-      `Declare the layer: "halonic": { "layer": "${place.layer}" }. The folder puts this package in the ${place.layer} layer.`,
+      `Declare the layer: "halonic": { "layer": "${layer}" }. The folder puts this package in the ${layer} layer.`,
     );
   }
   if (typeof halonic?.owner !== "string" || halonic.owner.trim() === "") {
@@ -282,6 +295,11 @@ function checkExports(
       `A feature exports "./api": the services and types other features may use.`,
     );
   }
+  checkExportTargets(context, pkg, report);
+}
+
+/** Every `exports` target must exist and must not be a test file. */
+function checkExportTargets(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
   const targets =
     typeof pkg.manifest.exports === "object" && pkg.manifest.exports !== null
       ? Object.values(pkg.manifest.exports as Record<string, unknown>)
