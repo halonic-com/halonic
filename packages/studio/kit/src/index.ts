@@ -14,7 +14,14 @@ export {
   openInNewTab,
   useOpenExternal,
 } from "./external-link/open-external.tsx";
+export { Kbd, type KbdProps } from "./kbd/kbd.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
+
+export {
+  StatusChip,
+  type StatusChipProps,
+  type StatusChipTone,
+} from "./status-chip/status-chip.tsx";
 
 /** The npm name of this package. */
 export const packageName = "@halonicjs/studio-kit";
