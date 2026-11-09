@@ -2,9 +2,10 @@
 // and its limited client, for Halonic itself. It isn't published; the
 // integration entry (`./integration`) is, as @halonicjs/integration-kit.
 // The host side takes the error classes from the integration entry, so there
-// is one copy of each. (The npm build that keeps that entry outside the
-// conformance suite's bundle and points it at the published kit comes in
-// HAL-1216's second pull request.) Internal code imports by relative path.
+// is one copy of each. The npm build (tooling/publish) keeps that entry
+// outside the conformance suite's bundle and points it at the published kit;
+// it fails when host code imports a file inside the entry's folder instead
+// of the entry itself. Internal code imports by relative path.
 
 export { declarationProblems } from "./declaration.ts";
 export {
@@ -17,7 +18,7 @@ export {
   IntegrationTimeoutError,
   type RefusalCode,
 } from "./integration/index.ts";
-export { leakAttemptCodes } from "./integration/refused.ts";
+export { leakAttemptCodes } from "./leak-attempt.ts";
 export {
   createLimitedHttpClient,
   type LimitedHttpOptions,
