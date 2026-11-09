@@ -4,6 +4,7 @@
 // and the allowed differences live in testing-parity (plan 9.3 point 7);
 // this file only feeds it parseFile. Checks that span files (unknown
 // references, workflow rules, routine triggers) are the phase 2 loader's.
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseWith } from "@halonicjs/schema-kit";
 import {
@@ -141,6 +142,38 @@ verifies("format.parity-fixtures", () => {
     ]);
   });
 
+  it("puts a missing required key on the line of its parent key, as the fixtures expect", () => {
+    const root = join(fixtures, "cases");
+    const checked: string[] = [];
+    for (const kind of readdirSync(root).sort()) {
+      const caseFile = join(root, kind, "missing-required", "case.json");
+      if (!existsSync(caseFile)) continue;
+      const expected = (
+        JSON.parse(readFileSync(caseFile, "utf8")) as {
+          expect: { file: string; path: string; line: number } | null;
+        }
+      ).expect;
+      const caseId = `${kind}/missing-required`;
+      const file = files.find(
+        (candidate) => candidate.caseId === caseId && candidate.file === expected?.file,
+      );
+      const parsed = file === undefined ? undefined : parse(file);
+      const problems = parsed === undefined || parsed.ok ? [] : parsed.error;
+      const problem = problems.find((found) => found.path.join(".") === expected?.path);
+      // A case whose problem sits on another path (a union reports its parent) is not about this rule.
+      if (problem === undefined) continue;
+      checked.push(caseId);
+      expect({ id: caseId, line: problem.line }).toEqual({ id: caseId, line: expected?.line });
+    }
+    expect(checked).toEqual(
+      expect.arrayContaining([
+        "agent/missing-required",
+        "deployments/missing-required",
+        "models/missing-required",
+      ]),
+    );
+  });
+
   it("gives every failing fixture file a path and a line", () => {
     for (const file of files) {
       const parsed = parse(file);
@@ -187,8 +220,8 @@ verifies("format.parity-defaults", () => {
 });
 
 verifies("format.parity-fixtures", () => {
-  it("allows the six files the format entries name", () => {
-    expect(report.results.filter((result) => result.verdict === "allowed").length).toBe(6);
+  it("allows the nine files the format entries name", () => {
+    expect(report.results.filter((result) => result.verdict === "allowed").length).toBe(9);
   });
 
   it("passes a mail interval of 15m, which the old code refused (format.routine-mail-interval)", () => {
