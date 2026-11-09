@@ -24,7 +24,10 @@ export const longestSecretName = `a${"b".repeat(127)}`;
  * the message: one over 128 characters (more likely a value passed as a name
  * by mistake) and ones with characters that aren't printable ASCII.
  */
-export const unquotableSecretNames: ReadonlyArray<{ readonly name: string; readonly part: string }> = [
+export const unquotableSecretNames: ReadonlyArray<{
+  readonly name: string;
+  readonly part: string;
+}> = [
   { name: `value${"q".repeat(130)}`, part: "qqqq" },
   { name: "s\u00e9rve-password", part: "rve-password" },
   { name: "serve\npassword", part: "password" },

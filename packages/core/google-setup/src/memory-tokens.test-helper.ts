@@ -1,4 +1,4 @@
-import type { TokenStore } from "@halonicjs/ports";
+import { secretKey, type TokenStore } from "@halonicjs/ports";
 
 /** A token store in memory that tests can look into, keyed by canonical name. */
 export interface MemoryTokens extends TokenStore {
@@ -12,12 +12,7 @@ export interface MemoryTokens extends TokenStore {
  */
 export function memoryTokens(): MemoryTokens {
   const values = new Map<string, string>();
-  const canonical = (name: string): string => {
-    if (name.length > 128 || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(name)) {
-      throw new RangeError(`"${name}" is not a token name.`);
-    }
-    return name.toLowerCase().replaceAll("-", "_");
-  };
+  const canonical = (name: string): string => secretKey(name).toLowerCase();
   return {
     values,
     get: async (name) => values.get(canonical(name)) ?? null,
