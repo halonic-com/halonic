@@ -22,6 +22,9 @@ export interface ShellEngine {
    * Follows an executor's connection. An executor without `connection`
    * counts as always connected. Returns a function that stops following it.
    *
+   * If a listener throws on the first state, the watch is undone before the
+   * error is thrown, so no `stop` is lost and the shell can watch again.
+   *
    * @throws ShellError when the shell already follows an executor
    */
   watch(executor: Pick<RunExecutor, "connection">): () => void;
@@ -80,7 +83,12 @@ export function createShellEngine(announcer: Announcer): ShellEngine {
         }
       };
       stopWatching = stop;
-      change(connection?.state ?? "connected");
+      try {
+        change(connection?.state ?? "connected");
+      } catch (error) {
+        stop();
+        throw error;
+      }
       return stop;
     },
     on(_event, listener) {

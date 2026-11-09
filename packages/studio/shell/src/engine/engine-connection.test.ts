@@ -131,4 +131,17 @@ verifies("shell.engine-connection", () => {
     expect(() => connection.set("connected")).toThrow(AggregateError);
     expect(shell.engine.connection).toBe("connected");
   });
+
+  it("undoes the watch when a listener throws on the first state", () => {
+    const { shell } = setUp();
+    shell.engine.on("engine.connection", () => {
+      throw new Error("faulty feature");
+    });
+    const lost = new FakeConnection("lost");
+    expect(() => shell.engine.watch({ connection: lost })).toThrow("faulty feature");
+    expect(lost.listening).toBe(0);
+    expect(shell.engine.connection).toBe("lost");
+    const next = new FakeConnection("lost");
+    expect(() => shell.engine.watch({ connection: next })).not.toThrow(ShellError);
+  });
 });

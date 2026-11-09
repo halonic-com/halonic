@@ -114,6 +114,10 @@ export interface EngineConnection {
    * Calls `listener` on each change of state: never twice in a row with the
    * same state, and never before `onChange` returns. Returns a function that
    * stops it; calling that twice is not an error.
+   *
+   * A listener may throw, as the shell re-throws its features' errors. The
+   * executor catches that inside its own loop, reports it and carries on,
+   * so one faulty feature can't break its reconnect handling.
    */
   onChange(listener: (state: EngineConnectionState) => void): () => void;
 }
