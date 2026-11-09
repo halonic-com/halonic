@@ -225,13 +225,35 @@ verifies("shell.keybindings", () => {
           studio.commands.add(command("palette.open"));
           studio.commands.add(command("palette.close"));
           studio.keybindings.add({ command: "palette.open", keys: "Ctrl+Space" });
-          studio.keybindings.add({ command: "palette.close", keys: "Esc" });
+          studio.keybindings.add({ command: "palette.close", keys: "Shift+Esc" });
         }),
       ],
     });
     const { keybindings } = shell.contributions;
     expect(keybindings.resolve("Ctrl+ ", new Set())?.command).toBe("palette.open");
-    expect(keybindings.resolve("Escape", new Set())?.command).toBe("palette.close");
+    expect(keybindings.resolve("shift+Escape", new Set())?.command).toBe("palette.close");
+  });
+
+  it("refuses a bare Escape, with or without a when, and points to the close stack", () => {
+    for (const binding of [
+      { command: "palette.close", keys: "Esc" },
+      { command: "palette.close", keys: "escape", when: "paletteOpen" },
+    ]) {
+      const create = () =>
+        createShell({
+          features: [
+            feature("palette", (studio) => {
+              studio.commands.add(command("palette.close"));
+              studio.keybindings.add(binding);
+            }),
+          ],
+        });
+      expect(create).toThrow(ShellError);
+      expect(create).toThrow(
+        'keybindings.add: the feature "palette" binds a bare Escape to "palette.close"',
+      );
+      expect(create).toThrow("closeStack.open");
+    }
   });
 
   it("counts a repeated when term once, so it doesn't beat a binding with more conditions", () => {

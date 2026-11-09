@@ -10,6 +10,14 @@ export {
   type Politeness,
 } from "./announcer/announcer.ts";
 export type { AnnouncerTimers } from "./announcer/timers.ts";
+export {
+  type CloseLayer,
+  type CloseLayerKind,
+  type CloseStack,
+  closeLayerKinds,
+  createCloseStack,
+  type EscapePress,
+} from "./close-stack/close-stack.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {

@@ -243,10 +243,16 @@ export class KeybindingTable {
   /**
    * Adds a binding.
    *
-   * @throws ShellError for bad keys or `when`, or when the same keys and `when` are bound already
+   * @throws ShellError for bad keys or `when`, a bare Escape (it belongs to
+   *   the close stack), or when the same keys and `when` are bound already
    */
   add(featureId: string, binding: KeybindingContribution): void {
     const keys = normalizeKeys(binding.keys, this.platform);
+    if (keys === "Escape") {
+      throw new ShellError(
+        `keybindings.add: the feature "${featureId}" binds a bare Escape to "${binding.command}". Esc closes layers in rank order through the shell's close stack; register the layer with closeStack.open instead, or add a modifier.`,
+      );
+    }
     const when = parseWhen(binding.when);
     const existing = this.entries.find(
       (entry) => entry.keys === keys && sameWhen(entry.when, when),

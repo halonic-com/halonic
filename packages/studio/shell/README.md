@@ -22,6 +22,7 @@ look up services its feature lists in `needs`.
 | `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry` |
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services` |
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`        |
+| `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`      |
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
@@ -44,6 +45,18 @@ readers ignore everything outside an `aria-modal` dialog.
 - `{ whenWindowFocused: true }` holds an announcement until the Studio window has focus again,
   for example after a sign-in that finished in the browser. The frame reports focus with
   `announcer.setWindowFocused`.
+
+## Esc and Back
+
+`shell.closeStack` is the window's one close stack. A menu, dialog, card or panel registers with
+`closeStack.open({ kind, close })` when it opens and calls the returned function when it closes.
+The frame passes Esc to `closeStack.escape(event)` and Android's Back to `closeStack.back()`; both
+close the first layer by rank (inline edit, menu, tooltip, dialog or sheet, summary drawer,
+stacked card, docked card, maximise, side panel), and within a rank the one opened last. Both
+return `false` when nothing was open, so the key goes on. A layer can refuse by returning `false`
+from `close`, and the side panel passes `isActive` so it only counts while focus is inside it.
+
+Features can't bind a bare `Escape` with `keybindings.add`: register a layer instead.
 
 ## Example
 

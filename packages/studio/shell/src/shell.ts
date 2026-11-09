@@ -1,5 +1,6 @@
 import { type Announcer, createAnnouncer } from "./announcer/announcer.ts";
 import type { AnnouncerTimers } from "./announcer/timers.ts";
+import { type CloseStack, createCloseStack } from "./close-stack/close-stack.ts";
 import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
 import { type CommandContributions, CommandStores } from "./points/command-points.ts";
@@ -50,6 +51,8 @@ export interface Shell {
   };
   /** The window's screen reader announcements, shared by every workspace in it. */
   readonly announcer: Announcer;
+  /** The window's one Esc and Back close stack; layers register here when they open. */
+  readonly closeStack: CloseStack;
   /** Everything the features contributed, for the shell's layout. */
   readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
 }
@@ -80,6 +83,7 @@ export function createShell(options: ShellOptions): Shell {
   return {
     features,
     announcer,
+    closeStack: createCloseStack(),
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),
       contextFor: (featureId, target) => ({
