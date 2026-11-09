@@ -56,6 +56,15 @@ pub fn navigation_destination(
     }
 }
 
+/// Decides whether a page that has started loading may stay in the window:
+/// only where [`navigation_destination`] would have let it go. This is the
+/// check after the fact for loads the guard is never asked about. Android
+/// WebView asks only about GET requests, so a form sent with POST, a 307 or
+/// 308 redirect that keeps the POST, and back and forward load unchecked.
+pub fn page_may_stay(target: &NavigationTarget, confirmed: Option<&Address>) -> bool {
+    navigation_destination(target, confirmed) == Destination::Stay
+}
+
 /// The app's own pages: `tauri://localhost` on desktop, and
 /// `http://tauri.localhost` on Android and Windows.
 fn is_connect_page(target: &NavigationTarget) -> bool {
@@ -162,6 +171,24 @@ mod tests {
             navigation_destination(&other, Some(&laptop)),
             Destination::Nowhere
         );
+    }
+
+    #[test]
+    fn navigation_guard_checks_every_loaded_page_again() {
+        let laptop = confirmed("192.168.1.20:4280");
+        let may_stay = |target: NavigationTarget| page_may_stay(&target, Some(&laptop));
+        assert!(may_stay(target("http", "192.168.1.20", 4280)));
+        assert!(may_stay(target("http", "tauri.localhost", 80)));
+        // A form sent with POST, or a 307 redirect of one, that ends here.
+        assert!(!may_stay(target("http", "192.168.1.21", 4280)));
+        assert!(!may_stay(target("https", "halonic.dev", 443)));
+        let blob = NavigationTarget {
+            scheme: "blob",
+            host: None,
+            port: None,
+        };
+        assert!(!may_stay(blob));
+        assert!(!page_may_stay(&target("http", "192.168.1.20", 4280), None));
     }
 
     #[test]

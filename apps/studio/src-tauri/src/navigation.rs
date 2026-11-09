@@ -1,11 +1,15 @@
-//! The navigation guard: every link and redirect in the app window goes
-//! through it (`halonic_connect::navigation_destination` decides). The
-//! served Studio has no capability, so this guard and the confirmed address
-//! are all the shell knows about it.
+//! The navigation guard: links and redirects in the app window go through
+//! it (`halonic_connect::navigation_destination` decides), and every page
+//! that loads is checked again (`halonic_connect::page_may_stay`), because
+//! Android WebView doesn't ask about POST requests. The served Studio has no
+//! capability, so this guard and the confirmed address are all the shell
+//! knows about it.
 
 use std::sync::Mutex;
 
-use halonic_connect::{Address, Destination, NavigationTarget, navigation_destination};
+use halonic_connect::{
+    Address, Destination, NavigationTarget, navigation_destination, page_may_stay,
+};
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime, Url, Webview};
 use tauri_plugin_opener::OpenerExt;
@@ -59,6 +63,15 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
                 Destination::Nowhere => false,
             }
         })
+        .on_page_load(|webview, payload| {
+            // A page the guard was never asked about, such as a form sent
+            // with POST on Android. It can't be sent again to the browser,
+            // so the window goes back to the connect screen.
+            let confirmed = webview.state::<ConfirmedAddress>().get();
+            if !page_may_stay(&target(payload.url()), confirmed.as_ref()) {
+                back_to_connect(webview);
+            }
+        })
         .build()
 }
 
@@ -72,7 +85,7 @@ fn target(url: &Url) -> NavigationTarget<'_> {
 
 /// Forgets the confirmed address and loads the connect page in its Change
 /// address state. The load waits until the guard has returned, because the
-/// webview is still deciding the cancelled navigation.
+/// webview is still deciding the cancelled navigation or loading the page.
 fn back_to_connect<R: Runtime>(webview: &Webview<R>) {
     webview.state::<ConfirmedAddress>().set(None);
     let webview = webview.clone();
