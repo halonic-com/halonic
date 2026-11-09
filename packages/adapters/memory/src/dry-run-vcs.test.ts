@@ -30,6 +30,8 @@ verifies("memory.dry-run-vcs", () => {
     const dryRun = new DryRunVcs(real);
 
     await dryRun.stage(["a.yaml"]);
+    await dryRun.unstage(["a.yaml"]);
+    await dryRun.stage(["a.yaml"]);
     expect(await dryRun.commit("Change a")).toBe("dry-run:commit-1");
     await dryRun.createBranch("feature");
     await dryRun.checkout("main");
@@ -38,6 +40,8 @@ verifies("memory.dry-run-vcs", () => {
     await dryRun.push();
 
     expect(dryRun.changes()).toEqual([
+      { kind: "stage", paths: ["a.yaml"] },
+      { kind: "unstage", paths: ["a.yaml"] },
       { kind: "stage", paths: ["a.yaml"] },
       { kind: "commit", message: "Change a" },
       { kind: "createBranch", branch: "feature" },
