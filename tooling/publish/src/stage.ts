@@ -62,7 +62,7 @@ export function stagePackage(
     repositoryDirectory: relative(root, packageDirectory).split(sep).join("/"),
   });
   for (const name of ["LICENSE", "NOTICE"]) copyFileSync(join(root, name), join(directory, name));
-  copyFileSync(join(packageDirectory, "README.md"), join(directory, "README.md"));
+  copyFileSync(join(packageDirectory, config.readme), join(directory, "README.md"));
   return { directory, name: config.name, version };
 }
 
@@ -142,14 +142,12 @@ function rewriteImports(
     }
   }
   const aliasedModules = new Map<string, string>();
+  const aliasedFolders: string[] = [];
   for (const [specifier, publishedName] of Object.entries(config.aliases)) {
-    const target = targets.get(specifier);
-    if (target === undefined) {
-      throw new Error(`${config.name}: the alias "${specifier}" is no workspace package entry.`);
-    }
-    aliasedModules.set(target, publishedName);
+    const entryFile = aliasedEntryFile(specifier, workspace, config.name);
+    aliasedModules.set(moduleOf(emittedPath(entryFile)), publishedName);
+    aliasedFolders.push(emittedPath(dirname(entryFile)));
   }
-  const aliasedFolders = [...aliasedModules.keys()].map((module) => dirname(module));
 
   for (const file of emittedFiles(distribution)) {
     if (aliasedFolders.some((folder) => isInside(folder, file))) continue;
@@ -172,6 +170,35 @@ function rewriteImports(
     if (rewritten !== original) writeFileSync(file, rewritten);
   }
   for (const folder of aliasedFolders) rmSync(folder, { recursive: true, force: true });
+}
+
+/**
+ * The source file of the workspace entry an alias names. Its whole folder is
+ * left out of the tarball, so it fails when that folder holds another entry
+ * of the same package: an alias of a root entry (`src/index.ts`) would
+ * otherwise take all of `src` with it.
+ */
+export function aliasedEntryFile(
+  specifier: string,
+  workspace: WorkspacePackage[],
+  publishedName: string,
+): string {
+  for (const workspacePackage of workspace) {
+    for (const [subpath, file] of workspacePackage.entries) {
+      if (join(workspacePackage.name, subpath) !== specifier) continue;
+      const folder = dirname(file);
+      const neighbours = [...workspacePackage.entries]
+        .filter(([, other]) => other !== file && isInside(folder, other))
+        .map(([otherSubpath]) => join(workspacePackage.name, otherSubpath));
+      if (neighbours.length > 0) {
+        throw new Error(
+          `${publishedName}: the alias "${specifier}" can't be left out of the tarball, because its folder also holds ${neighbours.join(", ")}. Only an entry in a folder of its own can be an alias.`,
+        );
+      }
+      return file;
+    }
+  }
+  throw new Error(`${publishedName}: the alias "${specifier}" is no workspace package entry.`);
 }
 
 /** Throws when a compiled file imports a package the manifest config does not declare. */

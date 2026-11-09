@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
 import { rewriteSpecifiers } from "./specifiers.ts";
-import { requireDeclaredImports, stagePackage } from "./stage.ts";
+import { aliasedEntryFile, requireDeclaredImports, stagePackage } from "./stage.ts";
 
 const scratch = mkdtempSync(join(tmpdir(), "stage-"));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
@@ -23,6 +23,9 @@ verifies("publish.staged-package", () => {
     expect(manifest.dependencies).toEqual({});
     expect(manifest.description).toContain("runTool");
     expect(manifest.repository.directory).toBe("packages/adapters/integration-kit");
+    expect(readFileSync(join(staged.directory, "README.md"), "utf8")).toMatch(
+      /^# @halonicjs\/integration-kit\n/,
+    );
     expect(manifest.exports["."].default).toBe(
       "./dist/adapters/integration-kit/src/integration/index.js",
     );
@@ -74,6 +77,7 @@ verifies("publish.staged-package", () => {
         name: "@acme/thing",
         entry: ".",
         description: undefined,
+        readme: "README.md",
         aliases: {},
         dependencies: {},
         peerDependencies: {},
@@ -84,6 +88,37 @@ verifies("publish.staged-package", () => {
     } finally {
       rmSync(distribution, { recursive: true, force: true });
     }
+  });
+});
+
+verifies("publish.staged-package", () => {
+  const thing = {
+    name: "@acme/thing",
+    directory: "/repo/packages/core/thing",
+    entries: new Map([
+      [".", "/repo/packages/core/thing/src/index.ts"],
+      ["./integration", "/repo/packages/core/thing/src/integration/index.ts"],
+    ]),
+    version: "0.1.0",
+    publishedName: undefined,
+  };
+
+  it("leaves out an aliased entry that has a folder of its own", () => {
+    expect(aliasedEntryFile("@acme/thing/integration", [thing], "@acme/suite")).toBe(
+      "/repo/packages/core/thing/src/integration/index.ts",
+    );
+  });
+
+  it("refuses an alias of a root entry, whose folder holds the other entries", () => {
+    expect(() => aliasedEntryFile("@acme/thing", [thing], "@acme/suite")).toThrow(
+      /"@acme\/thing" can't be left out of the tarball, because its folder also holds @acme\/thing\/integration/,
+    );
+  });
+
+  it("refuses an alias that names no workspace entry", () => {
+    expect(() => aliasedEntryFile("@acme/other", [thing], "@acme/suite")).toThrow(
+      /"@acme\/other" is no workspace package entry/,
+    );
   });
 });
 

@@ -42,9 +42,12 @@ A package opts in with `halonic.publish` in its `package.json` and a `build` scr
 - `entry`: the subpath of the package's `exports` that is published (default `.`). The kit publishes
   only `./integration`, so integrations carry none of the host side.
 - `description`: the npm description, when the workspace one doesn't fit the published entry.
+- `readme`: the README shipped to npm, relative to the package (default `README.md`). The kit ships
+  `README.npm.md`, because its workspace README describes the host side, which isn't published.
 - `aliases`: workspace entries that stay imports of another published package instead of bundled code.
   The conformance suite bundles the kit's host side but imports `./integration` from the published kit,
-  so both share one set of error classes. The aliased entry's files are left out of the tarball.
+  so both share one set of error classes. The aliased entry's folder is left out of the tarball, so it
+  may hold no other entry of its package: an alias of a root entry (`src/index.ts`) fails.
 - `dependencies` and `peerDependencies`: the only outside packages the tarball may import. Staging fails on
   any other. Dependencies are exact versions.
 
