@@ -38,13 +38,10 @@ function range(count: number): string {
 }
 
 /**
- * Every line of both sides, with its newline when it has one, marked " "
- * (kept), "-" (removed) or "+" (added),
- * from a longest common subsequence. Quadratic, which is fine for workspace
- * files.
+ * common(i, j): length of the longest common subsequence of oldLines[i..] and
+ * newLines[j..], read from a table filled from the end.
  */
-function diffLines(oldLines: string[], newLines: string[]): string[] {
-  // common(i, j): length of the longest common subsequence of oldLines[i..] and newLines[j..].
+function commonLengths(oldLines: string[], newLines: string[]): (i: number, j: number) => number {
   const width = newLines.length + 1;
   const table = new Array<number>((oldLines.length + 1) * width).fill(0);
   // Every cell read is inside the table, which starts filled with 0.
@@ -57,6 +54,17 @@ function diffLines(oldLines: string[], newLines: string[]): string[] {
           : Math.max(common(i + 1, j), common(i, j + 1));
     }
   }
+  return common;
+}
+
+/**
+ * Every line of both sides, with its newline when it has one, marked " "
+ * (kept), "-" (removed) or "+" (added),
+ * from a longest common subsequence. Quadratic, which is fine for workspace
+ * files.
+ */
+function diffLines(oldLines: string[], newLines: string[]): string[] {
+  const common = commonLengths(oldLines, newLines);
 
   // Walk the table; like git, a removed line comes before the line that replaces it.
   const out: string[] = [];

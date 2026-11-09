@@ -21,46 +21,62 @@ export interface DenyReading {
 
 const string = /"((?:[^"\\]|\\.)*)"/g;
 
-/** The text of `key = [ ... ]` inside one `[section]`, up to the matching bracket. */
-function arrayOf(text: string, section: string, key: string): string | undefined {
-  const lines = text.split("\n").map((line) => (line.trimStart().startsWith("#") ? "" : line));
+/** Index of the quote that closes the string opening at `open`, or the end of the text. */
+function closingQuote(text: string, open: number): number {
+  for (let index = open + 1; index < text.length; index += 1) {
+    if (text[index] === "\\") {
+      index += 1;
+    } else if (text[index] === '"') {
+      return index;
+    }
+  }
+  return text.length;
+}
+
+/** The lines of one `[section]`, comments blanked, joined again. */
+function sectionBody(text: string, section: string): string {
   const body: string[] = [];
   let inside = false;
-  for (const line of lines) {
+  for (const line of text.split("\n")) {
     const header = /^\s*\[([^\]]+)\]\s*$/.exec(line);
     if (header !== null) {
       inside = header[1]?.trim() === section;
     } else if (inside) {
-      body.push(line);
+      body.push(line.trimStart().startsWith("#") ? "" : line);
     }
   }
-  const joined = body.join("\n");
-  const start = new RegExp(`^${key}\\s*=\\s*\\[`, "m").exec(joined);
-  if (start === null) {
-    return undefined;
-  }
+  return body.join("\n");
+}
+
+/** Index of the `]` that closes an array whose body starts at `from`, with brackets inside strings left alone. */
+function closingBracket(text: string, from: number): number | undefined {
   let depth = 1;
-  let quoted = false;
-  for (let index = start.index + start[0].length; index < joined.length; index += 1) {
-    const char = joined[index];
-    if (quoted) {
-      if (char === "\\") {
-        index += 1;
-      } else if (char === '"') {
-        quoted = false;
-      }
-    } else if (char === '"') {
-      quoted = true;
+  for (let index = from; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      index = closingQuote(text, index);
     } else if (char === "[") {
       depth += 1;
     } else if (char === "]") {
       depth -= 1;
       if (depth === 0) {
-        return joined.slice(start.index + start[0].length, index);
+        return index;
       }
     }
   }
   return undefined;
+}
+
+/** The text of `key = [ ... ]` inside one `[section]`, up to the matching bracket. */
+function arrayOf(text: string, section: string, key: string): string | undefined {
+  const joined = sectionBody(text, section);
+  const start = new RegExp(`^${key}\\s*=\\s*\\[`, "m").exec(joined);
+  if (start === null) {
+    return undefined;
+  }
+  const from = start.index + start[0].length;
+  const end = closingBracket(joined, from);
+  return end === undefined ? undefined : joined.slice(from, end);
 }
 
 function strings(text: string): string[] {
@@ -70,18 +86,11 @@ function strings(text: string): string[] {
 /** The `{ ... }` tables of an array body, with braces inside strings left alone. */
 function tables(text: string): string[] {
   const found: string[] = [];
-  let quoted = false;
   let start = -1;
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
-    if (quoted) {
-      if (char === "\\") {
-        index += 1;
-      } else if (char === '"') {
-        quoted = false;
-      }
-    } else if (char === '"') {
-      quoted = true;
+    if (char === '"') {
+      index = closingQuote(text, index);
     } else if (char === "{") {
       start = index;
     } else if (char === "}" && start >= 0) {
@@ -95,26 +104,18 @@ function tables(text: string): string[] {
 /** The strings of an array body that sit outside any `{ ... }` table. */
 function plainStrings(text: string): string[] {
   let rest = "";
-  let quoted = false;
   let depth = 0;
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index] as string;
-    if (quoted) {
-      if (char === "\\") {
-        rest += depth === 0 ? char + (text[index + 1] ?? "") : "";
-        index += 1;
-        continue;
-      }
-      quoted = char !== '"';
-    } else if (char === '"') {
-      quoted = true;
+    if (char === '"') {
+      const end = closingQuote(text, index);
+      rest += depth === 0 ? text.slice(index, end + 1) : "";
+      index = end;
     } else if (char === "{") {
       depth += 1;
-    } else if (char === "}" && depth > 0) {
-      depth -= 1;
-      continue;
-    }
-    if (depth === 0 && char !== "}") {
+    } else if (char === "}") {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0) {
       rest += char;
     }
   }

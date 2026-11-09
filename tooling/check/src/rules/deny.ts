@@ -37,6 +37,41 @@ function ignoreProblems(entry: DenyIgnore, seen: Set<string>, today: Date): stri
   return problems;
 }
 
+/** How `allow` differs from the `shipped` list, or `undefined` when they are the same. */
+function allowMismatch(shipped: string[], allow: readonly string[]): string | undefined {
+  const missing = shipped.filter((licence) => !allow.includes(licence));
+  const extra = allow.filter((licence) => !shipped.includes(licence));
+  const parts = [
+    missing.length > 0 ? `missing: ${missing.join(", ")}` : "",
+    extra.length > 0 ? `not in "shipped": ${extra.join(", ")}` : "",
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join("; ") : undefined;
+}
+
+/** Compares `[licenses] allow` with the `shipped` list of `licences.json`. */
+function checkAllow(
+  context: CheckContext,
+  allow: readonly string[] | undefined,
+  report: Report,
+): void {
+  if (allow === undefined) {
+    report.error(denyPath, `[licenses] needs an "allow" list. ${guide}`);
+    return;
+  }
+  if (!context.files.includes(licencesPath)) {
+    report.error(licencesPath, `The file is missing, so ${denyPath} can't be compared. ${guide}`);
+    return;
+  }
+  const shipped = (JSON.parse(context.read(licencesPath)) as { shipped?: string[] }).shipped ?? [];
+  const mismatch = allowMismatch(shipped, allow);
+  if (mismatch !== undefined) {
+    report.error(
+      denyPath,
+      `[licenses] allow must be the "shipped" list of ${licencesPath} (${mismatch}). A licence change needs Julian's review, in both files. ${guide}`,
+    );
+  }
+}
+
 /**
  * Keeps the Studio shell's `deny.toml` (cargo-deny) in line with the rest of
  * the guard: `[licenses] allow` is the `shipped` list of `licences.json`, and
@@ -50,26 +85,7 @@ export function checkDeny(context: CheckContext, today = new Date()): Report {
     return report;
   }
   const { allow, ignore } = readDeny(context.read(denyPath));
-  if (allow === undefined) {
-    report.error(denyPath, `[licenses] needs an "allow" list. ${guide}`);
-  } else if (!context.files.includes(licencesPath)) {
-    report.error(licencesPath, `The file is missing, so ${denyPath} can't be compared. ${guide}`);
-  } else {
-    const shipped =
-      (JSON.parse(context.read(licencesPath)) as { shipped?: string[] }).shipped ?? [];
-    const missing = shipped.filter((licence) => !allow.includes(licence));
-    const extra = allow.filter((licence) => !shipped.includes(licence));
-    if (missing.length > 0 || extra.length > 0) {
-      const parts = [
-        missing.length > 0 ? `missing: ${missing.join(", ")}` : "",
-        extra.length > 0 ? `not in "shipped": ${extra.join(", ")}` : "",
-      ].filter(Boolean);
-      report.error(
-        denyPath,
-        `[licenses] allow must be the "shipped" list of ${licencesPath} (${parts.join("; ")}). A licence change needs Julian's review, in both files. ${guide}`,
-      );
-    }
-  }
+  checkAllow(context, allow, report);
   if (ignore === undefined) {
     report.error(
       denyPath,
