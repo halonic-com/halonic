@@ -21,10 +21,11 @@ export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
 export { type ChangedConnector, type TrustChanges, trustChanges } from "./trust-changes.ts";
 export {
   type ConnectorTrustContent,
+  type RefusedConnector,
   secretReference,
   type TrustContent,
   type TrustContentInput,
   trustContent,
 } from "./trust-content.ts";
 export { trustFingerprint, trustFingerprintPrefix } from "./trust-fingerprint.ts";
-export { trustUrl } from "./trust-url.ts";
+export { type TrustUrl, trustUrl } from "./trust-url.ts";

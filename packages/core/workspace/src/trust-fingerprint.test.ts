@@ -27,10 +27,24 @@ function fingerprintOf(connectors: Connector[]): Promise<string> {
 
 verifies("workspace.trust-fingerprint", () => {
   it("is hfp1: and the SHA-256 of the content's length, a line break and its canonical JSON", async () => {
-    // sha256("16\n" + '{"connectors":[]}'), worked out on its own.
+    // sha256("17\n" + '{"connectors":[]}'), worked out on its own.
     expect(await trustFingerprint({ connectors: [] }, digest)).toBe(
       "hfp1:108e472376d29b48d14f5f668bca2b827ca6400da7ad618b7c04f72dc42c19ae",
     );
+  });
+
+  it("refuses content with a connector that can't be trusted", async () => {
+    const content = trustContent({
+      connectors: [
+        {
+          version: 1,
+          id: "web",
+          transport: { http: { url: "https://ops:pw@mcp.acme.test/" } },
+          tools: { approve: [] },
+        },
+      ],
+    });
+    await expect(trustFingerprint(content, digest)).rejects.toThrow(RangeError);
   });
 
   it("is the same for the same content in any key order", async () => {

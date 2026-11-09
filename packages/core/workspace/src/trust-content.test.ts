@@ -134,17 +134,49 @@ verifies("workspace.trust-content", () => {
       expect(same([stdio(), mail], [mail, stdio()])).toBe(true);
     });
 
-    it("keeps a field the schema doesn't know yet as written", () => {
+    it("keeps a field the schema doesn't know yet as written, under unknown", () => {
       const withRisk = { ...stdio(), risk: "read" } as Connector;
       expect(trustContent({ connectors: [withRisk] }).connectors[0]).toMatchObject({
-        risk: "read",
+        unknown: { risk: "read" },
       });
       expect(same([stdio()], [withRisk])).toBe(false);
       const toolField = stdio(
         {},
         { tools: { approve: [], autoApprove: true } as Connector["tools"] },
       );
+      expect(trustContent({ connectors: [toolField] }).connectors[0]?.tools).toEqual({
+        approve: [],
+        unknown: { autoApprove: true },
+      });
       expect(same([stdio({}, { tools: { approve: [] } })], [toolField])).toBe(false);
+    });
+
+    it("never lets an unknown field take the place of a known one", () => {
+      const settings = { ...stdio(), settings: { command: "rm" } } as Connector;
+      const content = trustContent({ connectors: [settings] }).connectors[0];
+      expect(content?.settings).toMatchObject({ command: "node" });
+      expect(content?.unknown).toEqual({ settings: { command: "rm" } });
+      expect(same([stdio()], [settings])).toBe(false);
+
+      // A `path` written in the file must not look like the path the command resolves to.
+      const path = stdio({ path: "/usr/bin/node" } as Partial<StdioSettings>);
+      const resolved = trustContent({
+        connectors: [stdio()],
+        commandPaths: new Map([["node", "/usr/bin/node"]]),
+      });
+      expect(trustContent({ connectors: [path] }).connectors[0]?.settings).toMatchObject({
+        unknown: { path: "/usr/bin/node" },
+      });
+      expect(deepEqual(trustContent({ connectors: [path] }), resolved)).toBe(false);
+
+      const transport = {
+        ...http(),
+        transport: { http: { url: "https://mcp.acme.test/v1/mcp", transport: "stdio" } },
+      } as unknown as Connector;
+      expect(trustContent({ connectors: [transport] }).connectors[0]).toMatchObject({
+        transport: "http",
+        settings: { unknown: { transport: "stdio" } },
+      });
     });
 
     it("keeps a transport the schema doesn't know yet, with its settings", () => {
@@ -169,6 +201,24 @@ verifies("workspace.trust-content", () => {
         account: "office@acme.test",
         client: "google",
       });
+    });
+  });
+
+  describe("a URL that can't be trusted", () => {
+    it("refuses the connector, without its URL, instead of normalising it", () => {
+      const sneaky = { ...http("https://evil.test\\@mcp.acme.test/"), id: "sneaky" };
+      const password = { ...http("https://ops:pw@mcp.acme.test/"), id: "password" };
+      const content = trustContent({ connectors: [sneaky, stdio(), password] });
+      expect(content.connectors.map((connector) => connector.id)).toEqual(["files"]);
+      expect(content.refused).toEqual([
+        { id: "password", reason: "the URL has user info" },
+        { id: "sneaky", reason: "the URL has a backslash before its query" },
+      ]);
+      expect(JSON.stringify(content)).not.toContain("pw");
+    });
+
+    it("leaves refused out when every connector can be trusted", () => {
+      expect(trustContent({ connectors: [http()] })).not.toHaveProperty("refused");
     });
   });
 });

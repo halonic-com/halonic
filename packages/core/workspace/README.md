@@ -100,8 +100,14 @@ its fingerprint with the trust record before anything starts. `trustContent` rea
 connectors. It keeps every field that could change what runs (the command and its path, the
 arguments as a list, the working folder, every environment variable, the full URL with its host in
 Punycode, every header, the tool lists and `local`), and keeps any field the schema doesn't know yet
-as written. Secrets appear by name only (`‹secret NAME›`), and `${HOME}` stays `${HOME}`. Only a
-connector's name and description are left out.
+as written, under `unknown`, so it can never take the place of a known field. Secrets appear by name
+only (`‹secret NAME›`), and `${HOME}` stays `${HOME}`. Only a connector's name and description are
+left out.
+
+A URL with user info (`https://ops:pw@…`), a backslash before its query
+(`https://evil.test\@mcp.acme.test/` connects to `evil.test`) or no `//` after `http:` is refused, not
+normalised: the connector goes in `refused` with the reason, and `trustFingerprint` won't fingerprint
+content that has any, so nothing in that workspace can be trusted or started until the file is fixed.
 
 `trustFingerprint` hashes that content through the `Digest` port: `hfp1:` and the SHA-256 of its
 canonical JSON, so key order doesn't count and `["a b"]` never matches `["a", "b"]`. Each behaviour

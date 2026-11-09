@@ -75,6 +75,8 @@ export function trustChanges(trusted: TrustContent, current: TrustContent): Trus
 
 /** The top-level fields whose values differ, or that only one side has. */
 function changedFields(before: ConnectorTrustContent, after: ConnectorTrustContent): string[] {
-  const fields = new Set([...Object.keys(before), ...Object.keys(after)]);
-  return [...fields].filter((field) => !deepEqual(before[field], after[field])).sort();
+  const old = new Map<string, unknown>(Object.entries(before));
+  const now = new Map<string, unknown>(Object.entries(after));
+  const fields = new Set([...old.keys(), ...now.keys()]);
+  return [...fields].filter((field) => !deepEqual(old.get(field), now.get(field))).sort();
 }
