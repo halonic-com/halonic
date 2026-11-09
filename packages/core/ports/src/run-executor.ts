@@ -1,4 +1,4 @@
-import type { RunEvent, RunKind, RunSummary, RunTrigger } from "@halonicjs/events";
+import type { ModelSkipReason, RunEvent, RunKind, RunSummary, RunTrigger } from "@halonicjs/events";
 import type { ChatMessage, ChatParams, ChatResponse, ToolDefinition } from "./chat.ts";
 
 /** Version of the {@link RunExecutor} port. A breaking change bumps it and comes with an ADR. */
@@ -114,6 +114,20 @@ export interface ChatTurnRefusal {
 }
 
 /**
+ * A model alias a chat turn skipped before calling it. It is what an
+ * `llm.skipped` run log event says, for a turn that has no run log.
+ */
+export interface ChatTurnSkip {
+  /** The skipped alias, such as "smart". */
+  alias: string;
+  provider: string;
+  model: string;
+  reason: ModelSkipReason;
+  /** The alias tried instead; absent when none was left. */
+  next?: string;
+}
+
+/**
  * The model's answer to a {@link ChatTurnRequest}, with the model that gave it.
  * `content`, `toolCalls` and `finishReason` are those of the turn's last
  * answer; `usage` adds up every model call in the turn.
@@ -132,6 +146,8 @@ export interface ChatTurnResponse extends ChatResponse {
   turn?: ChatMessage[];
   /** What the turn refused, in the order it happened. Absent or empty when it refused nothing. */
   refusals?: ChatTurnRefusal[];
+  /** The model aliases skipped before any call, in order. Absent or empty when none was. */
+  skipped?: ChatTurnSkip[];
 }
 
 /** Receives a run's events from {@link RunExecutor.subscribe}. */
@@ -244,7 +260,8 @@ export interface RunExecutor {
    * also goes back to the model as that call's result. A tool that throws
    * gives the model an error result, not the caller an error. Nothing
    * outside a run can wait for a person, so a call that needs approval is
-   * refused here.
+   * refused here. A model alias skipped before any call, such as one whose
+   * provider has no key, is in `skipped`.
    *
    * @throws when the model can't be reached or refuses the call, or when
    *   `request.signal` is aborted and the executor honors it

@@ -3,6 +3,7 @@ import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
+  ModelSkipReason,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -29,6 +30,8 @@ verifies("events.run-log-contract", () => {
       | "llm.request"
       | "llm.response"
       | "llm.fallback"
+      // Added after the reference by events.llm-skipped (HAL-1880).
+      | "llm.skipped"
       | "tool.called"
       // Added after the reference by events.sandbox-opened (HAL-1707).
       | "sandbox.opened"
@@ -147,6 +150,8 @@ verifies("events.run-log-contract", () => {
       thoughts?: string;
       cost?: number;
       cached?: boolean;
+      // Added after the reference by events.tool-call-as-text (HAL-1880).
+      toolCallAsText?: true;
     }>();
     expectTypeOf<EventOf<"llm.fallback">>().toEqualTypeOf<{
       type: "llm.fallback";
@@ -266,10 +271,15 @@ verifies("events.tool-result-outcome", () => {
 });
 
 verifies("events.run-failed-reason", () => {
-  typeTest("says why a run failed: budget, cancelled or error", () => {
-    expectTypeOf<RunFailureReason>().toEqualTypeOf<"budget" | "cancelled" | "error">();
-    expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
-  });
+  typeTest(
+    "says why a run failed: budget, cancelled, model missing, model without tools or error",
+    () => {
+      expectTypeOf<RunFailureReason>().toEqualTypeOf<
+        "budget" | "cancelled" | "model-missing" | "model-no-tools" | "error"
+      >();
+      expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
+    },
+  );
 });
 
 verifies("events.approval-resolved-by", () => {
@@ -301,5 +311,40 @@ verifies("events.sandbox-opened", () => {
       timeLimitMs: number;
     }>();
     expectTypeOf<SandboxStrength>().toEqualTypeOf<"os" | "vm" | "remote">();
+  });
+});
+
+verifies("events.llm-skipped", () => {
+  typeTest("names the skipped alias, its model, why, and the alias tried instead", () => {
+    expectTypeOf<EventOf<"llm.skipped">>().toEqualTypeOf<{
+      type: "llm.skipped";
+      agent: string;
+      alias: string;
+      provider: string;
+      model: string;
+      reason: ModelSkipReason;
+      next?: string;
+    }>();
+    expectTypeOf<ModelSkipReason>().toEqualTypeOf<"no-key">();
+  });
+
+  typeTest("leaves next out when no alias is left", () => {
+    const last: RunEventBody = {
+      type: "llm.skipped",
+      agent: "writer",
+      alias: "default",
+      provider: "openai",
+      model: "gpt-mini",
+      reason: "no-key",
+    };
+    expectTypeOf(last).toMatchTypeOf<RunEventBody>();
+  });
+});
+
+verifies("events.tool-call-as-text", () => {
+  typeTest("marks an answer whose text is a tool call, and is absent otherwise", () => {
+    expectTypeOf<EventOf<"llm.response">["toolCallAsText"]>().toEqualTypeOf<true | undefined>();
+    // @ts-expect-error: the mark is set or absent, never false
+    expectTypeOf<false>().toMatchTypeOf<EventOf<"llm.response">["toolCallAsText"]>();
   });
 });

@@ -159,8 +159,17 @@ verifies("events.timeline-entry-id", () => {
       },
       { type: "context.updated", key: "k", value: 1 },
       { type: "signal.sent", state: "s", name: "go", data: {} },
+      {
+        type: "llm.skipped",
+        agent: "w",
+        alias: "smart",
+        provider: "p",
+        model: "m1",
+        reason: "no-key",
+        next: "default",
+      },
     );
-    expect(entryOf(events)).toEqual([1, 2, 3, 4]);
+    expect(entryOf(events)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it("keeps the entries of parallel branches apart", () => {

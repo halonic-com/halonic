@@ -75,10 +75,14 @@ export {
 } from "./knowledge-provider.ts";
 export { type LlmCache, llmCacheVersion } from "./llm-cache.ts";
 export {
+  isModelCallError,
   type LlmCapabilities,
   type LlmProvider,
   type LlmProviderFactory,
   llmProviderVersion,
+  ModelCallError,
+  type ModelCallErrorReason,
+  modelCallErrorReasons,
   type ProviderConfig,
   type ProviderFactoryContext,
 } from "./llm-provider.ts";
@@ -97,6 +101,7 @@ export {
   type ChatTurnRefusal,
   type ChatTurnRequest,
   type ChatTurnResponse,
+  type ChatTurnSkip,
   type EngineConnection,
   type EngineConnectionState,
   type RunEventListener,

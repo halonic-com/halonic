@@ -22,6 +22,16 @@ verifies("events.upgrade-old-run-logs", () => {
     }
   });
 
+  it("adds no model fallback fields to a log written before them", () => {
+    const events = lines.map(parseEventLine);
+    const response = events.find((event) => event.type === "llm.response");
+    const failed = events.find((event) => event.type === "run.failed");
+    expect(response).toBeDefined();
+    expect(response).not.toHaveProperty("toolCallAsText");
+    expect(failed).not.toHaveProperty("reason");
+    expect(events.some((event) => event.type === "llm.skipped")).toBe(false);
+  });
+
   it("summarizes a log written before the engine's fields as before", () => {
     expect(summarize(lines.map(parseEventLine))).toStrictEqual({
       id: "r-acme",

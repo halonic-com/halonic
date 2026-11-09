@@ -48,7 +48,7 @@ An updating event finishes its entry, so later events can't update it, except `l
 - Given `event.received` while the run isn't waiting,
   when its entry is worked out,
   then it is its own `seq`.
-- Given `knowledge.searched`, `artifact.created`, `context.updated` and `signal.sent`,
+- Given `knowledge.searched`, `artifact.created`, `context.updated`, `signal.sent` and `llm.skipped`,
   when their entries are worked out,
   then each is its own `seq`.
 - Given the same agent started in parallel branches "left" and "right", finishing "left" second,

@@ -1,6 +1,6 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
-import type { ChatMessage, ChatTurnRefusal, ChatTurnResponse } from "./index.ts";
+import type { ChatMessage, ChatTurnRefusal, ChatTurnResponse, ChatTurnSkip } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -47,6 +47,35 @@ verifies("ports.chat-turn-result", () => {
       name: "mail__send",
       refused: "call",
       reason: "needs OK",
+    });
+  });
+});
+
+verifies("ports.chat-turn-skipped", () => {
+  typeTest("keeps skipped optional", () => {
+    expectTypeOf<ChatTurnResponse["skipped"]>().toEqualTypeOf<ChatTurnSkip[] | undefined>();
+    expectTypeOf(plain).toMatchTypeOf<ChatTurnResponse>();
+  });
+
+  typeTest("skips a model only for a missing key", () => {
+    expectTypeOf<ChatTurnSkip["reason"]>().toEqualTypeOf<"no-key">();
+    // @ts-expect-error: an offline model was called, so it isn't skipped
+    expectTypeOf<"offline">().toMatchTypeOf<ChatTurnSkip["reason"]>();
+  });
+
+  it("carries the skipped alias, why and the alias tried instead", () => {
+    const response: ChatTurnResponse = {
+      ...plain,
+      skipped: [
+        { alias: "smart", provider: "anthropic", model: "big", reason: "no-key", next: "default" },
+      ],
+    };
+    expect(response.skipped?.[0]).toEqual({
+      alias: "smart",
+      provider: "anthropic",
+      model: "big",
+      reason: "no-key",
+      next: "default",
     });
   });
 });

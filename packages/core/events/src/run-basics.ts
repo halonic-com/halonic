@@ -36,8 +36,21 @@ export interface RunParent {
  */
 export type ToolOutcome = "ok" | "error" | "unknown";
 
-/** Why a run failed: a budget stopped it, someone cancelled it, or something went wrong. */
-export type RunFailureReason = "budget" | "cancelled" | "error";
+/**
+ * Why a run failed: a budget stopped it, someone cancelled it, the model it
+ * asked for doesn't exist at its provider (`model-missing`), that model can't
+ * call tools and the step offered some (`model-no-tools`), or something else
+ * went wrong (`error`).
+ */
+export type RunFailureReason =
+  | "budget"
+  | "cancelled"
+  | "model-missing"
+  | "model-no-tools"
+  | "error";
+
+/** Why a model was skipped before it was called: its provider's key isn't set. */
+export type ModelSkipReason = "no-key";
 
 /** Who resolved an approval: a person, or a rule that answers without asking anyone. */
 export type ApprovalResolver = "person" | "rule";

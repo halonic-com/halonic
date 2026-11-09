@@ -1,6 +1,7 @@
 import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
+  ModelSkipReason,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -65,8 +66,28 @@ export type RunEventBody =
       cost?: number;
       /** Answered from the cache (a simulation re-run), not by the model. */
       cached?: boolean;
+      /**
+       * The answer made no tool call, but its text is a call to a tool the
+       * step offered, written out as JSON (requirement
+       * `events.tool-call-as-text`). That call never runs. Absent otherwise.
+       */
+      toolCallAsText?: true;
     }
   | { type: "llm.fallback"; agent: string; from: string; to: string; error: string }
+  /**
+   * A model alias was skipped before any call (requirement
+   * `events.llm-skipped`), such as "smart: no key, using default". `next` is
+   * the alias tried instead; absent when none is left.
+   */
+  | {
+      type: "llm.skipped";
+      agent: string;
+      alias: string;
+      provider: string;
+      model: string;
+      reason: ModelSkipReason;
+      next?: string;
+    }
   | { type: "tool.called"; agent: string; tool: string; args: unknown }
   /**
    * A step's sandbox opened (requirement `events.sandbox-opened`). `sandbox`

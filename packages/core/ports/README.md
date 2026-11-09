@@ -50,6 +50,14 @@ with the memory adapters.
 `portVersions` holds the same list in code. A test fails when this table,
 `portVersions` and the port files disagree.
 
+A model call that fails throws `ModelCallError`, whose `reason` says why:
+`no-key`, `offline`, `model-missing`, `model-no-tools` or `refused`. The
+engine uses it to decide whether to try the next model. Check for it with
+`isModelCallError`, not `instanceof`, because an adapter may have its own
+copy of this package (requirement `model-call-error`). A chat turn outside a
+run returns the models it skipped before calling them in
+`ChatTurnResponse.skipped` (requirement `chat-turn-skipped`).
+
 ## Example
 
 What a port is and how an adapter satisfies one: a `Secrets` adapter over a plain map, core-style
