@@ -63,11 +63,11 @@ verifies("env-secrets.first-secret", () => {
       expect(later.asked).toEqual([]);
     });
 
-    it("refuses a bad name at the first store, so no later store is asked", async () => {
+    it("refuses a bad name itself, so no store is asked, even one that doesn't check names", async () => {
+      const first = new AskedSecrets({});
       const later = new AskedSecrets({});
-      await expect(firstSecret(new MemorySecrets({}), later).get("bad name")).rejects.toThrow(
-        RangeError,
-      );
+      await expect(firstSecret(first, later).get("bad name")).rejects.toThrow(RangeError);
+      expect(first.asked).toEqual([]);
       expect(later.asked).toEqual([]);
     });
   });

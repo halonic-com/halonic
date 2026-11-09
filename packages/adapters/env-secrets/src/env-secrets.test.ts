@@ -13,13 +13,28 @@ function environmentFor(values: Readonly<Record<string, string>>): Environment {
   );
 }
 
-/** Wraps an environment so a test can see every variable the adapter looked at. */
+/**
+ * Wraps an environment so a test can see every variable the adapter looked at,
+ * however it looked: reading it, testing for it, or listing every variable.
+ */
 function watched(environment: Environment): { environment: Environment; looked: string[] } {
   const looked: string[] = [];
   const proxy = new Proxy(environment, {
     get(target, key, receiver) {
       looked.push(String(key));
       return Reflect.get(target, key, receiver);
+    },
+    has(target, key) {
+      looked.push(String(key));
+      return Reflect.has(target, key);
+    },
+    getOwnPropertyDescriptor(target, key) {
+      looked.push(String(key));
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+    ownKeys(target) {
+      looked.push("(every variable)");
+      return Reflect.ownKeys(target);
     },
   });
   return { environment: proxy, looked };
@@ -52,6 +67,16 @@ verifies("env-secrets.environment-variables", () => {
       const { environment, looked } = watched({ HALONIC_SECRET_BAD_NAME: "x" });
       await expect(new EnvSecrets(environment).get("bad name")).rejects.toThrow(RangeError);
       expect(looked).toEqual([]);
+    });
+
+    it("reads only the environment's own variables, not one on Object.prototype", async () => {
+      const prototype = Object.prototype as Record<string, unknown>;
+      prototype["HALONIC_SECRET_POLLUTED"] = "from-prototype";
+      try {
+        expect(await new EnvSecrets({}).get("polluted")).toBeNull();
+      } finally {
+        delete prototype["HALONIC_SECRET_POLLUTED"];
+      }
     });
 
     it("sees a variable set after it was made, like process.env", async () => {

@@ -183,7 +183,14 @@ export {
   type SchedulerListener,
   schedulerVersion,
 } from "./scheduler.ts";
-export { type Secrets, secretsVersion } from "./secrets.ts";
+export {
+  describeSecretName,
+  isSecretName,
+  maxSecretNameLength,
+  type Secrets,
+  secretKey,
+  secretsVersion,
+} from "./secrets.ts";
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
 export {
   type ToolApproval,

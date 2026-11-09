@@ -18,3 +18,14 @@ export const invalidSecretNames: readonly string[] = [
 
 /** The longest valid name: 128 characters. */
 export const longestSecretName = `a${"b".repeat(127)}`;
+
+/**
+ * Bad names an error must not repeat, each with a part of it to look for in
+ * the message: one over 128 characters (more likely a value passed as a name
+ * by mistake) and ones with characters that aren't printable ASCII.
+ */
+export const unquotableSecretNames: ReadonlyArray<{ readonly name: string; readonly part: string }> = [
+  { name: `value${"q".repeat(130)}`, part: "qqqq" },
+  { name: "s\u00e9rve-password", part: "rve-password" },
+  { name: "serve\npassword", part: "password" },
+];

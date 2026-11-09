@@ -1,5 +1,4 @@
-import type { Secrets, TokenStore } from "@halonicjs/ports";
-import { secretKey } from "./secret-names.ts";
+import { type Secrets, secretKey, type TokenStore } from "@halonicjs/ports";
 
 /** Configured secrets in a map, for tests and the demo. Read-only, like every `Secrets` adapter. */
 export class MemorySecrets implements Secrets {

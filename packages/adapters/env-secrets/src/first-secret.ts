@@ -1,4 +1,4 @@
-import type { Secrets } from "@halonicjs/ports";
+import { type Secrets, secretKey } from "@halonicjs/ports";
 
 /**
  * Secrets that ask each store in order and give the first value that isn't
@@ -7,16 +7,17 @@ import type { Secrets } from "@halonicjs/ports";
  *
  * A store that throws stops the search and the error reaches the caller
  * unchanged: a broken keychain is a problem to report, not a missing secret.
- * A name that breaks the rule is refused by the first store, so no later
- * store is asked for it.
+ * A name that breaks the rule is refused here, before any store is asked, so
+ * a store that doesn't check names can't pass a bad one on to later stores.
  *
- * @param first - the store asked first; at least one is required, so the name is always checked
+ * @param first - the store asked first; at least one is required
  * @param rest - the stores asked next, in order
  */
 export function firstSecret(first: Secrets, ...rest: readonly Secrets[]): Secrets {
   const stores = [first, ...rest];
   return {
     async get(name: string): Promise<string | null> {
+      secretKey(name);
       for (const store of stores) {
         const value = await store.get(name);
         if (value !== null) {

@@ -1,4 +1,5 @@
 {
+  "//": "The host preset: Web globals only, no Node types, because this adapter runs anywhere (\"runtime\": \"any\"): the CLI, CI runners and workerd. The environment is passed in, never read from process.env.",
   "extends": "@halonicjs/tooling-config/tsconfig/host.json",
   "include": [
     "src"

@@ -31,7 +31,11 @@ export class EnvSecrets implements Secrets {
    * @throws RangeError when the name breaks the secret name rule; the message names the secret, never a value
    */
   async get(name: string): Promise<string | null> {
-    const value = this.#environment[secretVariableName(name)];
+    const variable = secretVariableName(name);
+    // Own properties only, so a polluted `Object.prototype` can't supply a value.
+    const value = Object.hasOwn(this.#environment, variable)
+      ? this.#environment[variable]
+      : undefined;
     if (value === undefined || value === "") {
       return null;
     }

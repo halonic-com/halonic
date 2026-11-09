@@ -1,13 +1,23 @@
 import type { Secrets, TokenStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { invalidSecretNames, longestSecretName } from "./secret-names.ts";
+import { invalidSecretNames, longestSecretName, unquotableSecretNames } from "./secret-names.ts";
 
 /** Creates the secrets under test, configured with exactly `values`. Read-only adapters are seeded here. */
 export type MakeSecrets = (values: Readonly<Record<string, string>>) => Promise<Secrets>;
 
 /** Creates an empty token store under test. */
 export type MakeTokenStore = () => Promise<TokenStore>;
+
+/** The message of the `RangeError` that `action` rejects with. */
+async function rangeErrorMessage(action: Promise<unknown>): Promise<string> {
+  const error = await action.then(
+    () => undefined,
+    (reason: unknown) => reason,
+  );
+  expect(error).toBeInstanceOf(RangeError);
+  return (error as RangeError).message;
+}
 
 /** The contract every {@link Secrets} adapter passes. */
 export function secretsContract(name: string, make: MakeSecrets): void {
@@ -36,6 +46,14 @@ export function secretsContract(name: string, make: MakeSecrets): void {
         const secrets = await make({});
         for (const bad of invalidSecretNames) {
           await expect(secrets.get(bad), JSON.stringify(bad)).rejects.toThrow(RangeError);
+        }
+      });
+
+      it("never repeats a long name, or one that isn't printable ASCII, in the error", async () => {
+        const secrets = await make({});
+        for (const { name, part } of unquotableSecretNames) {
+          const message = await rangeErrorMessage(secrets.get(name));
+          expect(message, JSON.stringify(name)).not.toContain(part);
         }
       });
     });
@@ -80,6 +98,15 @@ export function tokenStoreContract(name: string, make: MakeTokenStore): void {
           await expect(tokens.remove(bad), label).rejects.toThrow(RangeError);
         }
         expect(await tokens.get("serve-password")).toBe("kept");
+      });
+
+      it("never repeats a long name, or one that isn't printable ASCII, in the error", async () => {
+        const tokens = await make();
+        for (const { name, part } of unquotableSecretNames) {
+          for (const action of [tokens.get(name), tokens.set(name, "x"), tokens.remove(name)]) {
+            expect(await rangeErrorMessage(action), JSON.stringify(name)).not.toContain(part);
+          }
+        }
       });
     });
   });

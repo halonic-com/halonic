@@ -1,6 +1,4 @@
-/** The name rule of the `Secrets` port. */
-const namePattern = /^[A-Za-z][A-Za-z0-9_-]*$/;
-const maxNameLength = 128;
+import { secretKey } from "@halonicjs/ports";
 
 /** Every environment variable this package reads starts with this. */
 export const secretVariablePrefix = "HALONIC_SECRET_";
@@ -11,16 +9,11 @@ export const secretVariablePrefix = "HALONIC_SECRET_";
  * `SERVE_PASSWORD` and `serve_password` all read `HALONIC_SECRET_SERVE_PASSWORD`,
  * as the port requires.
  *
- * @throws RangeError when the name isn't `^[A-Za-z][A-Za-z0-9_-]*$` or is longer than 128 characters
+ * @throws RangeError when the name breaks the rule of the `Secrets` port
  *
  * @example
  * secretVariableName("serve-password"); // "HALONIC_SECRET_SERVE_PASSWORD"
  */
 export function secretVariableName(name: string): string {
-  if (name.length > maxNameLength || !namePattern.test(name)) {
-    throw new RangeError(
-      `Secret name ${JSON.stringify(name)} must be a letter, then letters, digits, "-" or "_", at most ${maxNameLength} characters.`,
-    );
-  }
-  return secretVariablePrefix + name.toUpperCase().replaceAll("-", "_");
+  return secretVariablePrefix + secretKey(name);
 }
