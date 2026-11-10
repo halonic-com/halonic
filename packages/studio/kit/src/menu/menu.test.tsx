@@ -48,10 +48,30 @@ function renderMenu(menuEntries: readonly MenuEntry[] = entries) {
   return { trigger, menu, items };
 }
 
-async function openMenu(trigger: HTMLButtonElement): Promise<void> {
+/**
+ * Opens the menu from its trigger, as the keyboard or the mouse would. jsdom guesses
+ * `:focus-visible` from the events it has seen, so this says which it was.
+ */
+async function openMenu(
+  trigger: HTMLButtonElement,
+  by: "keyboard" | "mouse" = "keyboard",
+): Promise<void> {
+  const matches = trigger.matches.bind(trigger);
+  vi.spyOn(trigger, "matches").mockImplementation((selector) =>
+    selector === ":focus-visible" ? by === "keyboard" : matches(selector),
+  );
   trigger.focus();
   await click(trigger);
 }
+
+async function pointer(element: Element, type: "pointermove" | "pointerout"): Promise<void> {
+  await act(async () => {
+    element.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse" }));
+  });
+}
+
+const filled = (items: readonly HTMLElement[]) =>
+  items.filter((item) => item.getAttribute("data-fill") === "muted");
 
 async function press(key: string): Promise<void> {
   await act(async () => {
@@ -91,7 +111,7 @@ verifies("kit.menu", () => {
     ]);
   });
 
-  it("opens from its trigger and puts focus on the first item, which takes the muted fill", async () => {
+  it("opens from the keyboard with focus on the first item, which takes the muted fill", async () => {
     const { trigger, menu, items } = renderMenu();
     await openMenu(trigger);
     expect(isOpen(menu)).toBe(true);
@@ -100,6 +120,31 @@ verifies("kit.menu", () => {
     expect(items[0]?.getAttribute("data-fill")).toBe("muted");
     expect(items[0]?.className).toContain("focus:bg-surface-muted");
     expect(menu.style.top).not.toBe("");
+  });
+
+  it("opens from the mouse with focus on the menu itself and no item filled", async () => {
+    const { trigger, menu, items } = renderMenu();
+    await openMenu(trigger, "mouse");
+    expect(isOpen(menu)).toBe(true);
+    expect(menu.getAttribute("tabindex")).toBe("-1");
+    expect(menu.className).toContain("outline-none");
+    expect(document.activeElement).toBe(menu);
+    expect(filled(items)).toEqual([]);
+    await press("ArrowDown");
+    expect(document.activeElement).toBe(items[0]);
+  });
+
+  it("fills the item under the pointer, and clears the fill when the pointer leaves", async () => {
+    const { trigger, menu, items } = renderMenu();
+    await openMenu(trigger, "mouse");
+    await pointer(items[1] as HTMLElement, "pointermove");
+    expect(document.activeElement).toBe(items[1]);
+    expect(filled(items)).toEqual([items[1]]);
+    await pointer(menu, "pointerout");
+    expect(document.activeElement).toBe(menu);
+    expect(filled(items)).toEqual([]);
+    await press("ArrowUp");
+    expect(document.activeElement).toBe(items[4]);
   });
 
   it("moves with the arrows, Home and End, skipping a disabled item and wrapping round", async () => {
@@ -147,9 +192,7 @@ verifies("kit.menu", () => {
     const { trigger, items } = renderMenu();
     await openMenu(trigger);
     const last = items.at(-1) as HTMLButtonElement;
-    await act(async () => {
-      last.dispatchEvent(new PointerEvent("pointermove", { bubbles: true }));
-    });
+    await pointer(last, "pointermove");
     expect(document.activeElement).toBe(last);
     await click(last);
     expect(remove).toHaveBeenCalledOnce();
@@ -198,6 +241,7 @@ verifies("kit.menu", () => {
     expect(run.getAttribute("aria-disabled")).toBe("true");
     expect(run.querySelector(".opacity-45")?.textContent).toBe("Run now");
     expect(run.className).toContain("py-1.5");
+    expect(run.className).toContain("phone:py-3 touch:py-3");
     await openMenu(trigger);
     await press("End");
     await press("ArrowUp");

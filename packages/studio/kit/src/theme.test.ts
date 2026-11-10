@@ -370,7 +370,6 @@ describe("theme.css scales", () => {
   it("has exactly the agreed layers and durations", () => {
     expect(namesStartingWith(plainVariables, "--layer-")).toEqual([
       "--layer-sticky",
-      "--layer-dropdown",
       "--layer-overlay",
       "--layer-dialog",
       "--layer-toast",

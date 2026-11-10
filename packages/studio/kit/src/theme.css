@@ -276,7 +276,6 @@
   --duration-slow: 320ms; /* dialogs, drawers, side panels */
 
   --layer-sticky: 10;
-  --layer-dropdown: 100;
   --layer-overlay: 200;
   --layer-dialog: 300;
   --layer-toast: 400;

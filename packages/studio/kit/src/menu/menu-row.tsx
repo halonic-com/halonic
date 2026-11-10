@@ -17,8 +17,8 @@ const toneClasses = {
   default: "text-fg focus:bg-surface-muted",
   danger: "text-danger focus:bg-surface-muted",
   disabled: "cursor-not-allowed text-fg-disabled text-forced-disabled",
-  // Grows to two lines: about 48px on desktop, 64px on a phone.
-  unavailable: "cursor-not-allowed py-1.5 text-fg focus:bg-surface-muted phone:py-2",
+  // Grows to two lines: about 48px on desktop, 64px on a phone and under a coarse pointer.
+  unavailable: "cursor-not-allowed py-1.5 text-fg focus:bg-surface-muted phone:py-3 touch:py-3",
 } as const;
 
 const iconSlot =

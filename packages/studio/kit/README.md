@@ -892,14 +892,17 @@ menu and let the browser open it. Divide groups with `"divider"`.
 It's a native `popover`, so it sits on top of everything and closes on an outside click. The kit
 places it 4px below the trigger, above it when there's no room, and 8px from the window's edges
 (`src/popover/place-popover.ts`; CSS anchor positioning isn't reliable in every webview yet). It
-fades in over 120ms. Focus starts on the first item. The arrows, Home, End and typed letters move
-it; Enter, Space or a click picks an item; Escape and Tab close the menu. Focus goes back to the
+fades in over 120ms. Opened by the keyboard, focus starts on the first item. Opened by the mouse,
+focus goes to the menu itself and no item is filled until the pointer is on one; when the pointer
+leaves the menu, the fill clears. The arrows, Home, End and typed letters move focus; Enter, Space
+or a click picks an item; Escape and Tab close the menu. Focus goes back to the
 trigger before `onSelect` runs, so a Dialog the item opens returns focus there.
 
 A shortcut shows as a Kbd and is named with `aria-keyshortcuts`. An `unavailable` item's reason is
 the item's description.
 
-**On a phone and under a coarse pointer** items are 48px with a 20px icon. On a phone shortcuts are
+**On a phone and under a coarse pointer** items are 48px with a 20px icon, and an unavailable
+item has 12px of padding above and below. On a phone shortcuts are
 hidden. It stays a popover menu, not a sheet.
 
 ## Field

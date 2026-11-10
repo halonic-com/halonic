@@ -56,8 +56,9 @@ export interface MenuProps {
 /** The menu sits this far below (or above) its trigger. */
 const TRIGGER_GAP = 4;
 
+// The menu itself takes focus when the mouse opens it, without a ring: no item is active yet.
 const menuClasses = [
-  "m-0 inset-auto min-w-45 overflow-y-auto rounded-md border border-transparent p-1",
+  "m-0 inset-auto outline-none min-w-45 overflow-y-auto rounded-md border border-transparent p-1",
   "bg-surface-raised text-fg shadow-2",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
 ].join(" ");
@@ -69,8 +70,10 @@ const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
  * context menu. A native `popover`, so the browser keeps it on top and closes it on an outside
  * click; the kit places it below the trigger, or above when there's no room.
  *
- * The keyboard moves between items with the arrows, Home and End, and type-to-find. Enter or
- * Space picks one; Escape and Tab close it. Focus goes back to the trigger either way.
+ * Opened by the keyboard, focus starts on the first item; opened by the mouse, it goes to the menu
+ * itself and the fill follows the pointer. The keyboard moves between items with the arrows, Home
+ * and End, and type-to-find. Enter or Space picks one; Escape and Tab close it. Focus goes back to
+ * the trigger either way.
  *
  * @example
  * <Menu
@@ -112,7 +115,12 @@ export function Menu({ trigger, entries, align = "start" }: MenuProps) {
       setOpen(isOpen);
       if (isOpen) {
         place();
-        focusItem(nextIndex(items, -1, "Home"));
+        // A trigger with the focus ring was opened by the keyboard (component specs 14, C24).
+        if (opener.matches(":focus-visible")) {
+          focusItem(nextIndex(items, -1, "Home"));
+        } else {
+          menu.focus();
+        }
       }
     };
     menu.addEventListener("toggle", onToggle);
@@ -188,8 +196,16 @@ export function Menu({ trigger, entries, align = "start" }: MenuProps) {
         popover="auto"
         role="menu"
         aria-labelledby={triggerId}
+        tabIndex={-1}
         className={menuClasses}
         onKeyDown={onKeyDown}
+        // The fill follows the pointer, so it clears when the pointer leaves. The arrows start again
+        // from the top or the bottom.
+        onPointerLeave={(event) => {
+          if (event.currentTarget.contains(document.activeElement)) {
+            event.currentTarget.focus();
+          }
+        }}
       >
         {rows.map((row, position) => {
           if (row === "divider") {
