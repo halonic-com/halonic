@@ -151,6 +151,20 @@ fn opened_folders_allows_alternates_inside() {
     sandbox.git_ok("status");
 }
 
+#[test]
+fn opened_folders_names_a_missing_alternate() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.write(".git/objects/info/alternates", "../../gone/.git/objects\n");
+    let Err(GitError::AlternateMissing { file, alternate }) = sandbox.git("status") else {
+        panic!("a missing alternate is not named");
+    };
+    let expected = std::fs::canonicalize(sandbox.acme.join(".git/objects/info/alternates"))
+        .expect("the alternates file exists");
+    assert_eq!(file, expected.display().to_string());
+    assert!(alternate.ends_with("gone/.git/objects"), "{alternate}");
+}
+
 #[cfg(unix)]
 #[test]
 fn opened_folders_refuses_a_nested_repository_whose_git_folder_is_outside() {

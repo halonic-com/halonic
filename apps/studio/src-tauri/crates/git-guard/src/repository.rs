@@ -100,7 +100,7 @@ fn check_alternates(
         }
         // Past git's depth an alternate is ignored by git, but it is still
         // refused here: nothing outside the opened folders is read.
-        let alternate = canonical(&objects.join(path_from_git(line)?))?;
+        let alternate = canonical_alternate(&file, &objects.join(path_from_git(line)?))?;
         if !folders.contains_canonical(&alternate) {
             return Err(GitError::FolderNotOpened);
         }
@@ -110,6 +110,21 @@ fn check_alternates(
         }
     }
     Ok(())
+}
+
+/// The canonical folder an alternates file names. A missing one gets its
+/// own error, naming the file and the line to fix: git would only warn and
+/// carry on without those objects.
+fn canonical_alternate(file: &Path, alternate: &Path) -> Result<PathBuf, GitError> {
+    match std::fs::metadata(alternate) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Err(GitError::AlternateMissing {
+                file: file.display().to_string(),
+                alternate: alternate.display().to_string(),
+            })
+        }
+        _ => canonical(alternate),
+    }
 }
 
 /// The paths of the gitlinks (submodules and other repositories added as

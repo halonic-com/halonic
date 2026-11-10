@@ -32,6 +32,9 @@ pub enum GitError {
     /// git could not list the repository's config or its index, so the
     /// runner can't know what to neutralise.
     RepositoryUnreadable,
+    /// An `objects/info/alternates` file names a folder that doesn't exist.
+    /// Both paths are as the repository's files give them.
+    AlternateMissing { file: String, alternate: String },
     /// The repository's own config sets a key no override reaches, such as
     /// `branch.<name>.mergeOptions`.
     ConfigNotAllowed { key: String },
@@ -65,6 +68,7 @@ impl GitError {
             GitError::FolderNotOpened => "folder_not_opened",
             GitError::FolderUnreadable => "folder_unreadable",
             GitError::RepositoryUnreadable => "repository_unreadable",
+            GitError::AlternateMissing { .. } => "alternate_missing",
             GitError::ConfigNotAllowed { .. } => "config_not_allowed",
             GitError::HooksFolderNotEmpty => "hooks_folder_not_empty",
             GitError::HooksFolderUnreadable => "hooks_folder_unreadable",
@@ -116,6 +120,12 @@ impl fmt::Display for GitError {
             GitError::FolderUnreadable => write!(formatter, "the folder cannot be read"),
             GitError::RepositoryUnreadable => {
                 write!(formatter, "the repository's config or index cannot be read")
+            }
+            GitError::AlternateMissing { file, alternate } => {
+                write!(
+                    formatter,
+                    "{file} names {alternate}, which does not exist; remove that line and try again"
+                )
             }
             GitError::ConfigNotAllowed { key } => {
                 write!(
