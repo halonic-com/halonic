@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
@@ -94,6 +94,22 @@ verifies("sandbox-srt.session", () => {
       expect(existsSync(b)).toBe(true);
       await second.close();
       expect(existsSync(b)).toBe(false);
+    });
+
+    it("denies writing the submodule settings the working folder holds at start", async () => {
+      const module = join(profile().workingFolder, ".git", "modules", "docs");
+      mkdirSync(module, { recursive: true });
+      writeFileSync(join(module, "HEAD"), "ref: refs/heads/main\n");
+      const { runner, probes } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile());
+      const config = JSON.parse(readFileSync(probes[0]?.settingsPath ?? "", "utf8"));
+      for (const file of ["config", "config.worktree", "hooks"]) {
+        expect(config.filesystem.denyWrite).toContainEqual({
+          path: join(module, file),
+          literal: true,
+        });
+      }
+      await session.close();
     });
 
     it("creates the temp folder and leaves nothing of the proof in it", async () => {

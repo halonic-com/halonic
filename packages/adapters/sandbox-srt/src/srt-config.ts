@@ -82,7 +82,11 @@ export const DENIED_RESOLVED_ADDRESSES: readonly string[] = [
  * The list covers only what runs without the user choosing to run project
  * code. It does not cover a git repository the program creates in a subfolder
  * during the session, or project scripts the user runs later (`npm test`,
- * `make`, a build file).
+ * `make`, a build file). Such a repository still runs its settings on the
+ * user's `git status` once the program adds it to the index (HAL-3493).
+ *
+ * The session adds the git files only it can find at start, such as each
+ * submodule's settings (see `gitPathsToDeny`).
  */
 const toolSettingsInWorkingFolder = [
   join(".claude", "settings.json"),
@@ -136,7 +140,9 @@ const toolSettingsInWorkingFolder = [
  * tool settings in the working folder are denied for writing as well.
  *
  * `hiddenPaths` are paths the session adds to hide from the program, such as
- * its own settings and canary folder.
+ * its own settings and canary folder. `gitPaths` are the git files the session
+ * found in the working folder at start (see `gitPathsToDeny`), relative to it,
+ * denied for writing like the tool settings.
  *
  * Only the bridge and the allowed sites are reachable, and an allowed site is
  * refused when its name resolves to a local or private address (such as
@@ -146,10 +152,11 @@ const toolSettingsInWorkingFolder = [
 export function buildSrtConfig(
   profile: SandboxProfile,
   hiddenPaths: string[] = [],
+  gitPaths: string[] = [],
 ): SandboxRuntimeConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
   const toolSettings = [
-    ...toolSettingsInWorkingFolder.map((path) => join(profile.workingFolder, path)),
+    ...[...toolSettingsInWorkingFolder, ...gitPaths].map((path) => join(profile.workingFolder, path)),
     ...worktreeGitFile(profile.workingFolder),
   ];
   const writableFolders = [profile.workingFolder, profile.tempFolder];

@@ -13,6 +13,7 @@ import type {
 } from "@halonicjs/ports";
 import { proveFence } from "./fence-proof.ts";
 import { type GitFolderSnapshot, restoreGitFolder, snapshotGitFolder } from "./git-folder-check.ts";
+import { gitPathsToDeny } from "./git-deny-paths.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import {
   type Runner,
@@ -219,7 +220,7 @@ export class SrtSession implements SandboxSession {
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
     try {
       const settingsPath = join(folder, "settings.json");
-      const config = buildSrtConfig(profile, [folder]);
+      const config = buildSrtConfig(profile, [folder], await gitPathsToDeny(profile.workingFolder));
       await writeFile(settingsPath, JSON.stringify(config), { mode: 0o600 });
       const fence = await proveFence({
         runner,

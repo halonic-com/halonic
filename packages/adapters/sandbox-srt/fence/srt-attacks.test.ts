@@ -121,6 +121,47 @@ describe("a program trying to get out of the fence", () => {
     await expect(stat(join(base, "work", ".cursor"))).rejects.toThrow();
   });
 
+  it("can't make git run a command through a submodule's or a worktree's settings", async () => {
+    const repo = join(base, "repo");
+    const module = join(repo, ".git", "modules", "docs");
+    await mkdir(module, { recursive: true });
+    await writeFile(join(repo, ".git", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(module, "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(module, "config"), "[core]\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: repo });
+    try {
+      const attempts = [
+        "printf '[core]\\n\\tfsmonitor = touch pwned\\n' >> .git/modules/docs/config",
+        "mkdir -p .git/modules/docs/hooks && echo x > .git/modules/docs/hooks/post-checkout",
+        "echo x > .git/modules/docs/config.worktree",
+        "printf '[core]\\n\\tfsmonitor = touch pwned\\n' > .git/config.worktree",
+      ];
+      for (const attempt of attempts) {
+        expect((await sh(attempt, planted)).code).not.toBe(0);
+      }
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(module, "config"), "utf8")).toBe("[core]\n");
+    await expect(stat(join(module, "hooks", "post-checkout"))).rejects.toThrow();
+    expect(await readFile(join(repo, ".git", "config.worktree"), "utf8").catch(() => "")).toBe("");
+  });
+
+  it("can't point a linked worktree's .git file at a git folder of its own", async () => {
+    const worktree = join(base, "worktree");
+    await mkdir(worktree, { recursive: true });
+    await writeFile(join(worktree, ".git"), "gitdir: /elsewhere/.git/worktrees/acme\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: worktree });
+    try {
+      expect((await sh("echo 'gitdir: ./evil' > .git", planted)).code).not.toBe(0);
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(worktree, ".git"), "utf8")).toBe(
+      "gitdir: /elsewhere/.git/worktrees/acme\n",
+    );
+  });
+
   it("can't reach the network outside the bridge", async () => {
     const { out } = await sh(
       "curl -s --max-time 10 --noproxy '*' http://example.com/ 2>&1; echo \"exit=$?\"",

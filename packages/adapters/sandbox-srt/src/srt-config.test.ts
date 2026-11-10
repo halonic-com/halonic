@@ -68,6 +68,15 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     );
   });
 
+  it("denies writing the git files the session found, in the working folder", () => {
+    const writes = buildSrtConfig(profile(), [], [join(".git", "modules", "docs", "config")])
+      .filesystem?.denyWrite;
+    expect(writes).toContainEqual({
+      path: join("/work/acme", ".git", "modules", "docs", "config"),
+      literal: true,
+    });
+  });
+
   it("also denies writing shell start-up files, git hooks and package manager settings", () => {
     const writes = buildSrtConfig(profile()).filesystem?.denyWrite ?? [];
     const paths = writes.map((entry) => (typeof entry === "string" ? entry : entry.path));
