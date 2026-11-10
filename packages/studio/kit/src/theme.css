@@ -44,6 +44,21 @@
   color-scheme: dark;
 }
 
+/*
+ * A line with no colour class takes the soft border token, not the text colour. Tailwind's
+ * preflight sets `border: 0 solid`, which leaves currentColor: a divider that forgot its
+ * `border-border` would draw near-black in light and near-white in dark, and ignore more contrast.
+ */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border);
+  }
+}
+
 @theme static {
   --*: initial;
 

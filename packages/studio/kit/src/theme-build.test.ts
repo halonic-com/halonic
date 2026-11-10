@@ -86,6 +86,16 @@ describe("theme.css built by Tailwind: on a muted fill", () => {
   });
 });
 
+describe("theme.css built by Tailwind: lines", () => {
+  it("colours a line after the preflight's `border: 0 solid`, so the border token wins", async () => {
+    const css = await buildCss([]);
+    const preflight = css.indexOf("border: 0 solid;");
+    const token = css.indexOf("border-color: var(--color-border);");
+    expect(preflight).toBeGreaterThan(-1);
+    expect(token).toBeGreaterThan(preflight);
+  });
+});
+
 describe("theme.css built by Tailwind: more contrast", () => {
   it("keeps the raised tokens and their media query in the output", async () => {
     const css = await buildCss([]);

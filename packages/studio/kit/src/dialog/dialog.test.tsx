@@ -105,7 +105,7 @@ verifies("kit.dialog", () => {
 
   it("puts a line under the header and no padding round a flush body", () => {
     const dialog = dialogOf(render(deleteDialog({ flush: true })).container);
-    expect(dialog.querySelector("header")?.className).toContain("border-b");
+    expect(dialog.querySelector("header")?.className).toContain("border-b border-border");
     expect(dialog.querySelector("header + div")?.className).not.toContain("px-6");
     expect(dialog.hasAttribute("aria-describedby")).toBe(false);
   });

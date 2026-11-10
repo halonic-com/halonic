@@ -21,6 +21,20 @@ verifies("kit.toast", () => {
     expect(css).toContain("outline-offset: calc(1px * -1)");
   });
 
+  it("centres the close on the title line, so a title-only toast stays 44px (T-D4)", async () => {
+    const css = await buildCss(["-my-1", "touch:-mt-2.5", "touch:-mb-2.5", "phone:mb-0"]);
+    expect(css).toContain("margin-block: calc(var(--spacing) * -1)");
+    const touch = css.slice(css.indexOf("@media (pointer: coarse)"));
+    expect(touch).toContain("margin-top: calc(var(--spacing) * -2.5)");
+    expect(touch).toContain("margin-bottom: calc(var(--spacing) * -2.5)");
+    // The phone keeps its 48px close as it was: no bottom margin, whatever the pointer.
+    const phone = css.slice(css.indexOf("@media (width < 600px)"));
+    expect(phone).toMatch(/\.phone\\:mb-0\s*\{\s*margin-bottom: 0px;/);
+    expect(css.indexOf("@media (width < 600px)")).toBeGreaterThan(
+      css.indexOf("@media (pointer: coarse)"),
+    );
+  });
+
   it("fades out in --duration-fast", () => {
     const theme = readFileSync(new URL("../theme.css", import.meta.url), "utf8");
     expect(theme).toContain(`--duration-fast: ${TOAST_FADE_MS}ms;`);

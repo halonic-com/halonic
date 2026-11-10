@@ -314,6 +314,14 @@ describe("theme.css light and dark switch", () => {
   });
 });
 
+describe("theme.css lines", () => {
+  it("gives a line with no colour class the soft border token, not the text colour", () => {
+    const base = blockBody(css, "@layer base");
+    expect(base).toMatch(/\*,\s*::before,\s*::after,\s*::backdrop,\s*::file-selector-button\s*\{/);
+    expect(base).toContain("border-color: var(--color-border);");
+  });
+});
+
 /** Names in a group, so adding or removing a token is a visible change in review. */
 function namesStartingWith(source: Map<string, string>, prefix: string): string[] {
   return [...source.keys()].filter((name) => name.startsWith(prefix));
