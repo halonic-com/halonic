@@ -31,7 +31,7 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
   then line 1 names the secret and its variable, HALONIC_SECRET_OPENAI_KEY, and line 2 reads "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again." (cli-output 3.4).
 - Given a finished run that changed 1 file, sent 1 email, asked once and spent an estimated €0.004,
   when its receipt is made,
-  then it reads "Changed 1 file · sent 1 email · asked you once · estimated spend €0.004", and a run that sent nothing says "Sent nothing" (cli-output 3.4).
+  then it reads "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004", and a run that sent nothing says "Sent nothing" (cli-output 3.4).
 - Given a finished run whose wait step was answered with the event `hold`,
   when `halonic runs show` names what the user answered,
   then it reads "you answered hold at 14:02", and only `approve` and `reject` get their own verb (cli-output 3.4).

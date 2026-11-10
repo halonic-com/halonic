@@ -9,8 +9,8 @@ export interface RunReceipt {
   /** What it sent, each already counted, such as "1 email"; empty when it sent nothing. */
   readonly sent: readonly string[];
   readonly askedYou: number;
-  /** The estimated spend as the output writes money, such as "€0.004"; left out for a run on the test model. */
-  readonly estimatedSpend?: string;
+  /** The estimated cost as the output writes money, such as "€0.004"; left out for a run on the test model. */
+  readonly estimatedCost?: string;
 }
 
 /** A secret as key errors name it: its name, and the variable Halonic reads it from. */
@@ -125,7 +125,7 @@ function answerLine(runId: string, events: readonly string[], dir?: string): Phr
   return phrase`${line}  ${dim(`(or ${others.join(" or ")})`)}`;
 }
 
-/** "Changed 1 file · sent 1 email · asked you once · estimated spend €0.004". */
+/** "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004". */
 function receiptLine(receipt: RunReceipt): Phrase {
   const parts: string[] = [];
   if (receipt.changedFiles > 0) {
@@ -136,8 +136,8 @@ function receiptLine(receipt: RunReceipt): Phrase {
   if (receipt.askedYou > 0) {
     parts.push(`asked you ${timesInWords(receipt.askedYou)}`);
   }
-  if (receipt.estimatedSpend !== undefined) {
-    parts.push(`estimated spend ${receipt.estimatedSpend}`);
+  if (receipt.estimatedCost !== undefined) {
+    parts.push(`estimated cost ${receipt.estimatedCost}`);
   }
   const [first = "", ...rest] = parts;
   return joinedFacts([first.charAt(0).toUpperCase() + first.slice(1), ...rest]);

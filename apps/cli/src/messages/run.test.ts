@@ -22,14 +22,14 @@ verifies("cli.messages", () => {
   });
 
   it("has the receipt in three lines, from cli-output 3.4", () => {
-    const receipt = { changedFiles: 1, sent: ["1 email"], askedYou: 1, estimatedSpend: "€0.004" };
+    const receipt = { changedFiles: 1, sent: ["1 email"], askedYou: 1, estimatedCost: "€0.004" };
     expect([
       words(runMessages.finished("Support reply", "18 s")),
       words(runMessages.receipt(receipt)),
       words(runMessages.runLog("01JD8Q")),
     ]).toEqual([
       "Support reply finished in 18 s.",
-      "Changed 1 file · sent 1 email · asked you once · estimated spend €0.004",
+      "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004",
       "Run log: halonic runs show 01JD8Q",
     ]);
   });
@@ -71,9 +71,9 @@ describe("run's sentences", () => {
     );
     expect(
       words(
-        runMessages.receipt({ changedFiles: 2, sent: [], askedYou: 2, estimatedSpend: "€0.03" }),
+        runMessages.receipt({ changedFiles: 2, sent: [], askedYou: 2, estimatedCost: "€0.03" }),
       ),
-    ).toBe("Changed 2 files · sent nothing · asked you twice · estimated spend €0.03");
+    ).toBe("Changed 2 files · sent nothing · asked you twice · estimated cost €0.03");
   });
 
   it("has the line for an agent that runs without the sandbox", () => {
