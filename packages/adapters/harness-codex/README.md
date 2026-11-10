@@ -78,6 +78,17 @@ Codex 0.166.0 or newer (`supportedVersions`): the release checked by hand on
 `codex-cli 0.169.0-alpha.6`, which are ordered the semver way, so
 0.166.0-alpha.3 is older than 0.166.0.
 
+## Approvals
+
+When Codex asks for a person's OK before a command or a file change
+(`item/commandExecution/requestApproval`, `item/fileChange/requestApproval`),
+the harness reports `approval.requested` with the tool and arguments its
+`tool.called` already gave, and the item's id as `callId`.
+`PendingApprovals` keeps each request until a person decides, and answers
+Codex with `accept` or `decline`; on `decline` the agent goes on without
+the call. With its own sandbox off, Codex 0.166.0 asks only when a rule in
+its settings says a command needs an OK (checked with a recorded run).
+
 ## Sign-in
 
 `codex login status` exits with 1 and prints "Not logged in" when no one is

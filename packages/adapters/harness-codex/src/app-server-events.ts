@@ -1,6 +1,7 @@
 import { HarnessEventFilter } from "@halonicjs/adapter-harness-kit";
 import type { HarnessEvent } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
+import type { CodexApprovalRequest } from "./approvals.ts";
 import { type CodexItem, type ItemStatus, parseCodexItem } from "./codex-item.ts";
 
 /**
@@ -24,6 +25,13 @@ export interface AppServerEventReaderOptions {
   bridgeToken: string;
   /** The Codex thread the agent runs in, from `thread/start`. Notifications about other threads are skipped. */
   threadId: string;
+}
+
+/** A tool call the reader reported, as `tool.called` named it. */
+interface ToolCall {
+  id: string;
+  tool: string;
+  args: unknown;
 }
 
 /** How a tool call ended, as `tool.result` says it. */
@@ -70,6 +78,8 @@ interface AgentThread {
  * - The task thread's `turn/completed` becomes the run's one final
  *   `agent.finished`, whose output is the last thing the agent said. A turn
  *   that failed or was interrupted ends the run with an error instead.
+ * - A request in which Codex asks for an OK becomes `approval.requested`
+ *   (see {@link approvalRequested}).
  * - Model calls go through the bridge, so the reader reports none.
  * - Notifications and item types it doesn't know are skipped, so a newer
  *   Codex can add some.
@@ -87,7 +97,7 @@ export class AppServerEventReader {
   /** The task agent and its subagents, by their thread id. Other threads are skipped. */
   readonly #agents = new Map<string, AgentThread>();
   /** The items reported as `tool.called`, until their `tool.result`, by thread and item id. */
-  readonly #openCalls = new Set<string>();
+  readonly #openCalls = new Map<string, ToolCall>();
   /** How many subagents have started, so each gets a name of its own. */
   #subagentCount = 0;
 
@@ -132,6 +142,29 @@ export class AppServerEventReader {
     }
   }
 
+  /**
+   * The `approval.requested` for an OK Codex asks for, with the agent whose
+   * thread asks. The tool and its arguments are those of the call's
+   * `tool.called` when it has been reported, such as a file change's
+   * changes, and the request's own otherwise.
+   *
+   * @returns the event, or none when the thread isn't the run's or the run has finished
+   */
+  approvalRequested(request: CodexApprovalRequest): HarnessEvent[] {
+    const agent = this.#agents.get(request.threadId);
+    if (this.#filter.finished || agent === undefined) return [];
+    const call = this.#openCalls.get(`${request.threadId}/${request.itemId}`);
+    return this.#filter.pass([
+      {
+        type: "approval.requested",
+        agent: agent.name,
+        tool: call?.tool ?? request.tool,
+        args: call?.args ?? request.args,
+        callId: request.callId,
+      },
+    ]);
+  }
+
   #started(threadId: string, agent: AgentThread, item: CodexItem | undefined): HarnessEvent[] {
     if (item === undefined) return [];
     if (item.type === "collabAgentToolCall") {
@@ -140,7 +173,7 @@ export class AppServerEventReader {
     }
     const call = toolCallOf(item);
     if (call === undefined || this.#openCalls.has(`${threadId}/${call.id}`)) return [];
-    this.#openCalls.add(`${threadId}/${call.id}`);
+    this.#openCalls.set(`${threadId}/${call.id}`, call);
     return [{ type: "tool.called", agent: agent.name, tool: call.tool, args: call.args }];
   }
 
@@ -225,7 +258,7 @@ export class AppServerEventReader {
 }
 
 /** The tool call an item stands for, or `undefined` when it isn't one the harness reports. */
-function toolCallOf(item: CodexItem): { id: string; tool: string; args: unknown } | undefined {
+function toolCallOf(item: CodexItem): ToolCall | undefined {
   switch (item.type) {
     case "commandExecution":
       return { id: item.id, tool: "shell", args: { command: item.command, cwd: item.cwd } };

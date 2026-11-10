@@ -1,6 +1,6 @@
 # Codex output for the tests
 
-What `codex app-server` printed in five sessions of Codex 0.166.0, one JSON
+What `codex app-server` printed in six sessions of Codex 0.166.0, one JSON
 message per line, recorded on 10 Nov 2026 against a local fake of the
 OpenAI Responses API, so no real model, key or person was involved. The run
 token is the made-up one the tests use. Folders, the host name, the
@@ -17,6 +17,9 @@ installation id and process ids are replaced with made-up ones.
 - `codex-0.166.0-followup.jsonl`: a turn that spawns one subagent, waits for
   it, sends it a second task with `send_input`, waits again, closes it and
   answers.
+- `codex-0.166.0-approval.jsonl`: a turn whose rules (a `prompt` rule for
+  `touch`) make Codex ask for an OK before `touch made-up.txt`; the answer
+  declines it, then an `apply_patch` adds a file and the agent answers.
 - `codex-0.166.0-failed.jsonl`: a turn the provider refuses with HTTP 401;
   Codex retries five times, then the turn fails.
 
