@@ -69,6 +69,7 @@ stdout:
       "parentRunId": null,
       "waitingOn": null,
       "accepts": [],
+      "answerLabels": {},
       "nextTimer": null,
       "waitingFor": null,
       "lastWaitingAt": "2026-11-10T14:01:00.000Z",
@@ -231,6 +232,10 @@ stdout:
           "approve",
           "reject"
         ],
+        "labels": {
+          "approve": "Approve",
+          "reject": "Reject"
+        },
         "title": "Approve this reply?",
         "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nSample: approving finishes the run. Nothing is sent.",
         "runId": "run_mfx3k2a0_01jd8q",

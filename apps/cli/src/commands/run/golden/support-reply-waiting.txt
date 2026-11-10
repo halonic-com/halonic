@@ -69,6 +69,10 @@ stdout:
         "approve",
         "reject"
       ],
+      "answerLabels": {
+        "approve": "Approve",
+        "reject": "Reject"
+      },
       "nextTimer": null,
       "waitingFor": {
         "title": "Approve this reply?",
@@ -234,6 +238,10 @@ stdout:
           "approve",
           "reject"
         ],
+        "labels": {
+          "approve": "Approve",
+          "reject": "Reject"
+        },
         "title": "Approve this reply?",
         "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nSample: approving finishes the run. Nothing is sent.",
         "runId": "run_mfx3k2a0_01jd8q",
