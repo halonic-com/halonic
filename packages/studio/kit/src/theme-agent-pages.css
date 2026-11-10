@@ -1,7 +1,8 @@
 /*
  * The agent and workflow pages' own values (component specs 16, revision 18): the agent orb's
  * colours, the stacked cards and the canvas's dot grid. Plain variables, not @theme tokens, so
- * Tailwind makes no classes from them: the orb, the stack and bg-canvas-grid are the only readers.
+ * Tailwind makes no classes from them: the orb, the stack, bg-canvas-grid and the shell's Places
+ * drawer scrim (--stack-scrim) are the only readers.
  * theme.css imports this file, so the app still imports one file.
  */
 

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { createCloseStack } from "../close-stack/close-stack.ts";
 import { createShellEngine } from "../engine/engine-connection.ts";
+import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -25,14 +26,25 @@ afterEach(() => {
   uninstall();
 });
 
-/** A sidebar with a field, Home and Runs; Runs opens its page and focuses its `h1`, as a pick does. */
-function Sidebar({ current }: { readonly current: "home" | "none" }) {
+/**
+ * A sidebar with a field, Home and Runs, at its own inline width as the resize edge sets it. Runs
+ * focuses the page's `h1` through `usePageHeadingFocus`, as `PlacesList` does: in a layout effect
+ * of the same commit that closes the drawer, before the drawer's own effect.
+ */
+function Sidebar({
+  current,
+  width,
+}: {
+  readonly current: "home" | "none";
+  readonly width: number;
+}) {
+  const focusNewPage = usePageHeadingFocus();
   const pick = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    document.querySelector<HTMLElement>("main h1")?.focus();
+    focusNewPage();
   };
   return (
-    <nav aria-label="Places">
+    <nav aria-label="Places" style={{ width }}>
       <input aria-label="Filter" />
       <a href="/home" aria-current={current === "home" ? "page" : undefined}>
         Home
@@ -44,7 +56,9 @@ function Sidebar({ current }: { readonly current: "home" | "none" }) {
   );
 }
 
-function renderFrame(options: { current?: "home" | "none"; sidebar?: boolean } = {}) {
+function renderFrame(
+  options: { current?: "home" | "none"; sidebar?: boolean; width?: number } = {},
+) {
   const timers = new FakeTimers();
   const announcer = createAnnouncer({ timers });
   const closeStack = createCloseStack();
@@ -57,7 +71,9 @@ function renderFrame(options: { current?: "home" | "none"; sidebar?: boolean } =
       language="en"
       toolbar={<button type="button">Back</button>}
       sidebar={
-        options.sidebar === false ? undefined : <Sidebar current={options.current ?? "home"} />
+        options.sidebar === false ? undefined : (
+          <Sidebar current={options.current ?? "home"} width={options.width ?? 264} />
+        )
       }
     >
       <h1 tabIndex={-1}>Runs</h1>
@@ -110,6 +126,15 @@ verifies("shell.places-drawer", () => {
     expect(drawer().nextElementSibling?.className).toContain("bg-(--stack-scrim)");
     expect(container.querySelector("main")?.hasAttribute("inert")).toBe(true);
     expect(document.activeElement).toBe(link("Home"));
+  });
+
+  it("holds a sidebar widened to 400px to the drawer's 264px", () => {
+    const { container, drawer, openDrawer } = renderFrame({ width: 400 });
+    openDrawer();
+    // jsdom applies no Tailwind: `*:w-full!` sizes the drawer's direct child over its inline width.
+    expect(drawer().className.split(" ")).toContain("*:w-full!");
+    expect(container.querySelector("nav")?.parentElement).toBe(drawer());
+    expect(container.querySelector("nav")?.style.width).toBe("400px");
   });
 
   it("focuses the first place when no place is current", () => {

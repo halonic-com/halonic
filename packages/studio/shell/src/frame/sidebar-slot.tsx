@@ -158,7 +158,12 @@ export function SidebarSlot(props: SidebarSlotProps) {
   );
 }
 
-const drawerClasses = "absolute inset-y-0 start-0 z-20 flex w-sidebar bg-surface-subtle shadow-3";
+/**
+ * The drawer is always 264px. The sidebar sets its own width inline, from its resize edge (180 to
+ * 640px), so `*:w-full!` holds it to the drawer's width over that inline style.
+ */
+const drawerClasses =
+  "absolute inset-y-0 start-0 z-20 flex w-sidebar bg-surface-subtle shadow-3 *:w-full!";
 
 /**
  * On open, focus goes to the current place's item (`aria-current="page"`), else the first link. On
