@@ -158,6 +158,11 @@ export {
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
 } from "./sidebar/sidebar-width.ts";
+export {
+  type SwitcherWorkspace,
+  WorkspaceSwitcher,
+  type WorkspaceSwitcherProps,
+} from "./sidebar/workspace-switcher.tsx";
 export type { Studio } from "./studio.ts";
 export {
   currentLocation,

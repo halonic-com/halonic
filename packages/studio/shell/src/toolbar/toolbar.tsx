@@ -1,7 +1,9 @@
 import { BackIcon, Button, ForwardIcon } from "@halonicjs/studio-kit";
-import { type MouseEvent, type ReactNode, useCallback, useId, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useId, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { useHistoryMoves } from "../tabs/history-moves.ts";
+import { LocationLink } from "../tabs/location-link.tsx";
+import { openLocation } from "../tabs/open-location.ts";
 import { currentLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
 
 /** Props for {@link Toolbar}. */
@@ -41,19 +43,8 @@ export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: Toolb
   const location = currentLocation(tabs.active);
   const parents = parentsOf?.(location) ?? [];
 
-  const openPart = (part: TabLocation, inNewTab: boolean) => {
-    if (!inNewTab) {
-      tabs.openHere(part);
-      return;
-    }
-    // A place another tab shows stays where it is; only the announcer says so (UX D3, HAL-3159).
-    const opened = tabs.openInNewTab(part);
-    announcer.announce(
-      opened.added
-        ? `Opened ${part.title} in a new tab.`
-        : `${part.title} is already open in a tab.`,
-    );
-  };
+  const openPart = (part: TabLocation, inNewTab: boolean) =>
+    openLocation(tabs, announcer, part, inNewTab);
 
   return (
     <>
@@ -63,7 +54,9 @@ export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: Toolb
         <ol className="flex min-w-0 items-center gap-1.5 text-small">
           {parents.map((part) => (
             <li key={part.key} className={pathLayout.parent}>
-              <PathLink part={part} onOpen={openPart} />
+              <LocationLink location={part} onOpen={openPart} className={pathLinkClasses}>
+                {part.title}
+              </LocationLink>
               <span aria-hidden="true" className="shrink-0 text-fg-muted">
                 /
               </span>
@@ -130,37 +123,9 @@ function HistoryButton({ direction, available, onClick }: HistoryButtonProps) {
   );
 }
 
-interface PathLinkProps {
-  readonly part: TabLocation;
-  readonly onOpen: (part: TabLocation, inNewTab: boolean) => void;
-}
-
-/**
- * A part of the path the user can go to. It is a real link, so a screen reader lists it with the
- * page's links; the shell opens it itself, so the browser never follows the address.
- */
-function PathLink({ part, onOpen }: PathLinkProps) {
-  const open = (event: MouseEvent<HTMLAnchorElement>, inNewTab: boolean) => {
-    event.preventDefault();
-    onOpen(part, inNewTab);
-  };
-  return (
-    <a
-      href={`#${part.key}`}
-      className="min-w-0 truncate rounded-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline focus-ring"
-      onClick={(event) => open(event, event.ctrlKey || event.metaKey)}
-      onAuxClick={(event) => {
-        if (event.button === middleButton) {
-          open(event, true);
-        }
-      }}
-    >
-      {part.title}
-    </a>
-  );
-}
-
-const middleButton = 1;
+/** A part of the path before the last, which the user can go to. */
+const pathLinkClasses =
+  "min-w-0 truncate rounded-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline focus-ring";
 
 /** Whether a slot was given something to show; `null`, `false` and nothing take no room. */
 function hasContent(node: ReactNode): boolean {

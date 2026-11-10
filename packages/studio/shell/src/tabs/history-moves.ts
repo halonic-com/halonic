@@ -16,22 +16,34 @@ export interface HistoryMoves {
  * The toolbar's buttons use it, and so do Alt ← and Alt → (3c), so both move focus the same way.
  */
 export function useHistoryMoves(tabs: TabSet): HistoryMoves {
-  // Counts the moves that went, so the effect runs after the commit that shows the new page.
-  const [moves, setMoves] = useState(0);
-  useLayoutEffect(() => {
-    if (moves > 0) {
-      focusPageHeading();
-    }
-  }, [moves]);
-
-  const move = useCallback((went: boolean) => {
-    if (went) {
-      setMoves((count) => count + 1);
-    }
-  }, []);
+  const focusNewPage = usePageHeadingFocus();
+  const move = useCallback(
+    (went: boolean) => {
+      if (went) {
+        focusNewPage();
+      }
+    },
+    [focusNewPage],
+  );
   const back = useCallback(() => move(tabs.back()), [tabs, move]);
   const forward = useCallback(() => move(tabs.forward()), [tabs, move]);
   return { back, forward };
+}
+
+/**
+ * Gives a function that moves focus to the page's `h1` once the page the user just went to is
+ * drawn (a11y A3): call it right after changing the tabs, and the focus follows the next commit.
+ * Focus moved from code after a key shows the ring, and after a click it doesn't.
+ */
+export function usePageHeadingFocus(): () => void {
+  // Counts the requests, so the effect runs after the commit that shows the new page.
+  const [requests, setRequests] = useState(0);
+  useLayoutEffect(() => {
+    if (requests > 0) {
+      focusPageHeading();
+    }
+  }, [requests]);
+  return useCallback(() => setRequests((count) => count + 1), []);
 }
 
 /**
