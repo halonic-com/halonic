@@ -13,10 +13,10 @@ import type { YamlPath } from "./read.ts";
  *
  * A `set` that adds a new key to a map puts it at the end of that map, or
  * right after the key `after` names; `after: null` puts it first. This is
- * where the key goes in the text, so a block put back from another version
- * of the file lands where it was. `after` does nothing when the key is
- * already there, and a key `after` names that isn't there means the end.
- * A `rewritten` layout, written from the data, puts the new key at the end.
+ * where the key goes in the text, and in the data, so a block put back from
+ * another version of the file lands where it was in every layout and in a
+ * flow map. `after` does nothing when the key is already there, and a key
+ * `after` names that isn't there means the end.
  */
 export type YamlEdit =
   | {
@@ -41,7 +41,7 @@ export function applyEditToData(data: unknown, edit: YamlEdit): Result<unknown, 
   }
   switch (edit.kind) {
     case "set":
-      return setData(data, edit.path, edit.value);
+      return setData(data, edit.path, edit.value, edit.after);
     case "delete":
       return deleteData(data, edit.path);
     case "insert":
@@ -65,7 +65,12 @@ export function describePath(path: YamlPath): string {
 
 type Container = Record<string, unknown> | unknown[];
 
-function setData(data: unknown, path: YamlPath, value: unknown): Result<unknown, string> {
+function setData(
+  data: unknown,
+  path: YamlPath,
+  value: unknown,
+  after: string | null | undefined,
+): Result<unknown, string> {
   if (path.length === 0) {
     return ok(deepClone(value));
   }
@@ -81,7 +86,7 @@ function setData(data: unknown, path: YamlPath, value: unknown): Result<unknown,
     }
     parent = step.value;
   }
-  const placed = placeValue(parent, path, deepClone(value));
+  const placed = placeValue(parent, path, deepClone(value), after);
   return placed === undefined ? ok(root.value) : err(placed);
 }
 
@@ -115,7 +120,12 @@ function missingParent(path: YamlPath, depth: number): Result<unknown, string> {
   return ok({});
 }
 
-function placeValue(parent: unknown, path: YamlPath, value: unknown): string | undefined {
+function placeValue(
+  parent: unknown,
+  path: YamlPath,
+  value: unknown,
+  after: string | null | undefined,
+): string | undefined {
   const container = asContainer(parent, path, path.length - 1);
   if (!container.ok) {
     return container.error;
@@ -132,8 +142,37 @@ function placeValue(parent: unknown, path: YamlPath, value: unknown): string | u
     container.value[index] = value;
     return undefined;
   }
+  if (after !== undefined && !Object.hasOwn(container.value, key)) {
+    addKeyAfter(container.value, key as string, value, after);
+    return undefined;
+  }
   setKey(container.value, key as string, value);
   return undefined;
+}
+
+/**
+ * Adds a key the map doesn't have right after the key `after` names, or first
+ * for `null`, or at the end when `after` isn't there. A plain object keeps
+ * its keys in the order they were added, so every key is added again in the
+ * new order. (A key that reads as a whole number, such as "2", still comes
+ * first: JavaScript orders those itself.)
+ */
+function addKeyAfter(
+  record: Record<string, unknown>,
+  key: string,
+  value: unknown,
+  after: string | null,
+): void {
+  const entries = Object.entries(record);
+  const previous = after === null ? -1 : entries.findIndex(([name]) => name === after);
+  const at = after !== null && previous === -1 ? entries.length : previous + 1;
+  entries.splice(at, 0, [key, value]);
+  for (const [name] of entries) {
+    delete record[name];
+  }
+  for (const [name, entryValue] of entries) {
+    setKey(record, name, entryValue);
+  }
 }
 
 function deleteData(data: unknown, path: YamlPath): Result<unknown, string> {

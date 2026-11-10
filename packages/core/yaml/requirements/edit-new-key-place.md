@@ -13,3 +13,5 @@ When a `set` adds a key that its map doesn't have yet and names a sibling key in
 - Given `after: "missing"`, when the new key is set, then it goes at the end of the map.
 - Given `name: X`, when `set ["name"]` runs with `after: null`, then `name` stays where it is with its new value.
 - Given a text with mixed line endings, where the edit is written through the parsed document, when `set ["b"]` runs with `after: "a"`, then `b` still sits right after `a`.
+- Given `env: {A: 1, C: 3}` in flow style, when `set ["env", "B"]` runs with `after: "A"`, then `B` sits between `A` and `C`.
+- Given a file written again from its data (the `rewritten` layout), when the new key is set with `after`, then it is in the same place there too.
