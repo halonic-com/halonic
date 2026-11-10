@@ -82,9 +82,32 @@ export async function readUnlinkedBytes(file: string): Promise<Uint8Array> {
  * after the `lstat`), a hard link, or anything but a plain file. The caller
  * closes the handle.
  *
+ * The handle can't cut the file shorter on Windows: there a file opened to
+ * append may only be added to, so `truncate` fails with `EPERM` (HAL-4361).
+ * Cut it through {@link openUnlinkedForCut} instead.
+ *
  * @throws RangeError when the file is a link or not a plain file
  */
 export async function openUnlinkedForAppend(file: string): Promise<FileHandle> {
+  return await openUnlinked(file, appendFlags);
+}
+
+/**
+ * Opens an existing store's log file to cut it shorter, with the same
+ * refusals as {@link openUnlinkedForAppend}. It is opened to write but not
+ * to append, which on Windows is what lets `truncate` work. The caller
+ * closes the handle.
+ *
+ * @throws the file system's error when the file can't be opened, with code
+ *   `ENOENT` when there is none
+ * @throws RangeError when the file is a link or not a plain file
+ */
+export async function openUnlinkedForCut(file: string): Promise<FileHandle> {
+  return await openUnlinked(file, cutFlags);
+}
+
+/** Opens `file` with `flags` after the checks of {@link openUnlinkedForAppend}. */
+async function openUnlinked(file: string, flags: number): Promise<FileHandle> {
   const entry = await lstatOrNull(file);
   if (entry?.isSymbolicLink()) {
     throw linked(file);
@@ -94,7 +117,7 @@ export async function openUnlinkedForAppend(file: string): Promise<FileHandle> {
   }
   let handle: FileHandle;
   try {
-    handle = await open(file, appendFlags, 0o600);
+    handle = await open(file, flags, 0o600);
   } catch (error) {
     if ((error as { code?: unknown } | null)?.code === "ELOOP") {
       throw linked(file);
@@ -123,6 +146,9 @@ const appendFlags =
   constants.O_CREAT |
   (constants.O_NOFOLLOW ?? 0) |
   (constants.O_NONBLOCK ?? 0);
+
+/** Write anywhere in an existing file, without following a link or waiting on a named pipe. */
+const cutFlags = constants.O_RDWR | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);
 
 /**
  * Throws unless `entry` is a plain file with no other name.

@@ -5,7 +5,12 @@ import { join, resolve } from "node:path";
 import { compactedChanges, type RecordChange, type RecordStore } from "@halonicjs/ports";
 import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
-import { makePrivateFolder, openUnlinkedForAppend, readUnlinkedBytes } from "./private-files.ts";
+import {
+  makePrivateFolder,
+  openUnlinkedForAppend,
+  openUnlinkedForCut,
+  readUnlinkedBytes,
+} from "./private-files.ts";
 import { formatRecordLines, parseRecordLog } from "./record-log.ts";
 import { renameOver } from "./rename-over.ts";
 import { withRunLock } from "./run-lock.ts";
@@ -107,13 +112,16 @@ export class FileRecordStore implements RecordStore {
   /**
    * Adds lines to a log, after cutting off a torn last line a crash left,
    * so the new lines aren't glued onto it. Notes the log's size before in
-   * `before`, and on a failed write cuts this log back itself.
+   * `before`, so a failed append can cut it back.
    */
   async #appendLines(file: string, lines: string, before: LogBefore[]): Promise<void> {
     const handle = await openUnlinkedForAppend(file);
     try {
-      const bytes = await intactEnd(handle);
-      await handle.truncate(bytes);
+      const { size } = await handle.stat();
+      const bytes = await intactEnd(handle, size);
+      if (bytes < size) {
+        await cutBack(file, bytes);
+      }
       before.push({ file, bytes });
       await writeAll(handle, file, new TextEncoder().encode(lines));
     } finally {
@@ -164,8 +172,7 @@ async function readLog(file: string): Promise<Uint8Array | null> {
  * is empty, which is the usual case and needs one byte read; otherwise just
  * after its last line break.
  */
-async function intactEnd(handle: FileHandle): Promise<number> {
-  const { size } = await handle.stat();
+async function intactEnd(handle: FileHandle, size: number): Promise<number> {
   if (size === 0) {
     return 0;
   }
@@ -207,15 +214,24 @@ async function writeAll(handle: FileHandle, file: string, bytes: Uint8Array): Pr
 async function cutBackAll(before: readonly LogBefore[]): Promise<void> {
   for (const { file, bytes } of before) {
     try {
-      const handle = await openUnlinkedForAppend(file);
-      try {
-        await handle.truncate(bytes);
-      } finally {
-        await handle.close();
-      }
+      await cutBack(file, bytes);
     } catch {
       // Left as it is; see above.
     }
+  }
+}
+
+/**
+ * Cuts a log back to `bytes`. It opens the log again rather than cutting
+ * through the append's handle: on Windows a file opened to append can't be
+ * cut shorter (HAL-4361).
+ */
+async function cutBack(file: string, bytes: number): Promise<void> {
+  const handle = await openUnlinkedForCut(file);
+  try {
+    await handle.truncate(bytes);
+  } finally {
+    await handle.close();
   }
 }
 
