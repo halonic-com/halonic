@@ -118,12 +118,13 @@ verifies("kit.disclosure", () => {
     );
   });
 
-  it("keeps the row in the text colour in forced colours, not the link colour", async () => {
-    const css = await buildCss(["summary-plain", "text-fg"]);
-    // Tailwind writes `.summary-plain` before `.text-fg`, so the summary's `text-fg` would win on order
-    // alone. Naming the class twice (`.summary-plain.summary-plain`) makes the rule weigh more.
+  it("keeps the row and its chevron in the text colour in forced colours, not the link colour", async () => {
+    const css = await buildCss(["summary-plain", "text-fg", "text-fg-subtle"]);
+    // Tailwind writes `.summary-plain` before `.text-fg` and `.text-fg-subtle`, so on order alone the
+    // summary's `text-fg` and the chevron's `text-fg-subtle` would win. Naming the class twice
+    // (`.summary-plain.summary-plain`) makes both rules weigh more.
     expect(css).toMatch(
-      /@media \(forced-colors: active\)\s*\{\s*&\.summary-plain\s*\{\s*color:\s*CanvasText;/,
+      /@media \(forced-colors: active\)\s*\{\s*&\.summary-plain\s*\{\s*color:\s*CanvasText;\s*\}\s*&\.summary-plain > \*\s*\{\s*color:\s*inherit;/,
     );
   });
 
