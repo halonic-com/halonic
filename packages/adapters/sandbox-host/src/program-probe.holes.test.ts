@@ -1,3 +1,4 @@
+import { type ChildProcess, spawn } from "node:child_process";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -35,6 +36,33 @@ async function waitUntilGone(pid: number, ms: number): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   return !isRunning(pid);
+}
+
+/** Starts a launcher process with one probe of a hanging program; resolves once the program runs. */
+async function launchWithHangingProbe(
+  how: string,
+): Promise<{ launcher: ChildProcess; pid: number }> {
+  const pidFile = join(dir, `launcher-${how}.pid`);
+  await script(`hang-${how}`, `echo $$ > ${pidFile}; sleep 30`);
+  const probeUrl = new URL("./program-probe.ts", import.meta.url).href;
+  const ending =
+    how === "exit" ? "setTimeout(() => process.exit(0), 300);" : "setInterval(() => {}, 1000);";
+  const code = `
+    import { createProgramProbe } from ${JSON.stringify(probeUrl)};
+    createProgramProbe({ env: { PATH: ${JSON.stringify(`${dir}:/usr/bin:/bin`)} } }).ask(${JSON.stringify(`hang-${how}`)}, []);
+    ${ending}
+  `;
+  const launcher = spawn(process.execPath, ["--input-type=module", "-e", code], {
+    stdio: "ignore",
+  });
+  const until = Date.now() + 5_000;
+  let pid = 0;
+  while (Date.now() < until && pid === 0) {
+    pid = Number(await readFile(pidFile, "utf8").catch(() => "0"));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  expect(pid).toBeGreaterThan(0);
+  return { launcher, pid };
 }
 
 beforeAll(async () => {
@@ -79,5 +107,20 @@ verifies("sandbox-host.program-probe-node", () => {
         expect(gone).toBe(true);
       },
     );
+
+    for (const how of ["SIGINT", "SIGTERM", "exit"] as const) {
+      it.skipIf(onWindows)(
+        `${skipOnWindows}stops a running probe when the launcher ends by ${how}`,
+        async () => {
+          const { launcher, pid } = await launchWithHangingProbe(how);
+          const exited = new Promise((resolve) => launcher.on("exit", resolve));
+          if (how !== "exit") launcher.kill(how);
+          await exited;
+          const gone = await waitUntilGone(pid, 1_000);
+          if (!gone) process.kill(pid, "SIGKILL");
+          expect(gone).toBe(true);
+        },
+      );
+    }
   });
 });

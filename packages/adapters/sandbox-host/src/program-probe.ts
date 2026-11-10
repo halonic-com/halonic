@@ -48,6 +48,51 @@ function childEnv(env: Readonly<Record<string, string | undefined>>): Record<str
   return result;
 }
 
+const liveGroups = new Set<number>();
+
+function killLiveGroups(): void {
+  for (const pid of liveGroups) {
+    try {
+      process.kill(-pid, "SIGKILL");
+    } catch {
+      // Already gone.
+    }
+  }
+  liveGroups.clear();
+}
+
+function onLauncherSignal(signal: NodeJS.Signals): void {
+  killLiveGroups();
+  unwatchLauncher();
+  // Let the launcher end the way it would have without us (or let its own handler run).
+  process.kill(process.pid, signal);
+}
+const onSigint = () => onLauncherSignal("SIGINT");
+const onSigterm = () => onLauncherSignal("SIGTERM");
+
+function watchLauncher(): void {
+  process.on("exit", killLiveGroups);
+  process.on("SIGINT", onSigint);
+  process.on("SIGTERM", onSigterm);
+}
+
+function unwatchLauncher(): void {
+  process.off("exit", killLiveGroups);
+  process.off("SIGINT", onSigint);
+  process.off("SIGTERM", onSigterm);
+}
+
+/** A probe's program leads its own process group, so Ctrl-C on the launcher no longer reaches it; stop it here. */
+function trackGroup(pid: number | undefined): () => void {
+  if (pid === undefined || process.platform === "win32") return () => {};
+  if (liveGroups.size === 0) watchLauncher();
+  liveGroups.add(pid);
+  return () => {
+    liveGroups.delete(pid);
+    if (liveGroups.size === 0) unwatchLauncher();
+  };
+}
+
 function run(
   name: string,
   path: string,
@@ -68,11 +113,13 @@ function run(
     }
     const out = new Capture();
     const err = new Capture();
+    const untrack = trackGroup(child.pid);
     let settled = false;
     const settle = (result: ProgramProbeResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      untrack();
       // A child that outlived the program may still hold the pipes and would keep the launcher alive.
       child.stdout.destroy();
       child.stderr.destroy();
