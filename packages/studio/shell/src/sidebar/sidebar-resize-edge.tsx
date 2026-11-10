@@ -57,17 +57,25 @@ export function SidebarResizeEdge({
     onResize(next);
   };
 
+  // Whether this edge's own key changed the width since the last save, so a key released here
+  // after it was pressed elsewhere, or a key that changed nothing, saves nothing.
+  const keyChanged = useRef(false);
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const next = sidebarWidthForKey(event.key, width);
+    const next = isPlain(event) ? sidebarWidthForKey(event.key, latestWidth.current) : undefined;
     if (next === undefined) {
       return;
     }
     event.preventDefault();
-    resize(next);
+    if (next !== latestWidth.current) {
+      keyChanged.current = true;
+      resize(next);
+    }
   };
 
   const onKeyUp = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (sidebarWidthForKey(event.key, latestWidth.current) !== undefined) {
+    if (keyChanged.current && sidebarWidthForKey(event.key, latestWidth.current) !== undefined) {
+      keyChanged.current = false;
       onResizeEnd(latestWidth.current);
     }
   };
@@ -90,9 +98,14 @@ export function SidebarResizeEdge({
   };
 
   const endDrag = () => {
-    if (drag.current !== undefined) {
-      drag.current = undefined;
-      setDragging(false);
+    const started = drag.current;
+    if (started === undefined) {
+      return;
+    }
+    drag.current = undefined;
+    setDragging(false);
+    // A click without a drag (such as each half of a double-click) has nothing to save.
+    if (latestWidth.current !== started.startWidth) {
       onResizeEnd(latestWidth.current);
     }
   };
@@ -127,4 +140,12 @@ export function SidebarResizeEdge({
       <span className="pointer-events-none absolute inset-y-0 left-[3px] w-0.5 bg-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-data-dragging:opacity-100 forced-colors:bg-[Highlight]" />
     </div>
   );
+}
+
+/**
+ * Only the plain keys resize, as in the window tab strip: Alt ← (Back), Ctrl Home and the like are
+ * left to the browser and to the keybindings features add.
+ */
+function isPlain(event: KeyboardEvent): boolean {
+  return !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
 }

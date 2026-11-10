@@ -100,6 +100,36 @@ verifies("shell.sidebar-resize", () => {
     expect(saved).toEqual([]);
   });
 
+  it("leaves the keys with a modifier to the browser and the keybindings", () => {
+    const { edge, saved } = renderEdge();
+    for (const modifier of ["altKey", "ctrlKey", "metaKey", "shiftKey"] as const) {
+      const down = new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        [modifier]: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        edge.dispatchEvent(down);
+        edge.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true }));
+      });
+      expect(down.defaultPrevented).toBe(false);
+    }
+    expect(edge.getAttribute("aria-valuenow")).toBe("264");
+    expect(saved).toEqual([]);
+  });
+
+  it("saves only on the release of a key that changed the width here", () => {
+    const { edge, saved } = renderEdge(180);
+
+    act(() => {
+      edge.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
+    });
+    press(edge, "ArrowLeft");
+    press(edge, "Home");
+    expect(saved).toEqual([]);
+  });
+
   it("follows a drag, kept within 180 to 640px, and saves when the pointer is released", () => {
     const { edge, saved } = renderEdge();
 
@@ -125,9 +155,13 @@ verifies("shell.sidebar-resize", () => {
     expect(saved).toEqual([]);
   });
 
-  it("goes back to 264px on a double-click, and saves it", () => {
+  it("goes back to 264px on a double-click, and saves it once", () => {
     const { edge, saved } = renderEdge(500);
 
+    for (const _click of [1, 2]) {
+      pointer(edge, "pointerdown", 500);
+      pointer(edge, "pointerup", 500);
+    }
     act(() => {
       edge.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });

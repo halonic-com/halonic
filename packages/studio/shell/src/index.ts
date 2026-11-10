@@ -148,8 +148,6 @@ export {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
-  SIDEBAR_WIDTH_STEP,
-  sidebarWidthForKey,
 } from "./sidebar/sidebar-width.ts";
 export type { Studio } from "./studio.ts";
 export {
