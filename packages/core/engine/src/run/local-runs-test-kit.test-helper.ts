@@ -1,5 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { Agent, Collection, Workflow } from "@halonicjs/format";
+import type { Agent, Collection, KnowledgeSource, Workflow } from "@halonicjs/format";
 import type {
   ChatResponse,
   Clock,
@@ -14,6 +14,7 @@ import type { Budget } from "../budget/budget.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { NotingScheduler } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
+import type { AgentKnowledgeOptions } from "../knowledge/agent-knowledge.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
@@ -101,6 +102,10 @@ export interface RunsSetup {
   readonly budget?: Budget;
   /** The connected servers; none when left out. */
   readonly connectors?: readonly ConnectorClient[];
+  /** The knowledge sources the hub can see; none when left out. */
+  readonly knowledge?: Readonly<Record<string, KnowledgeSource>>;
+  /** How the executor builds agents' knowledge sources; it builds none when left out. */
+  readonly knowledgeOptions?: AgentKnowledgeOptions;
   /** What runs need to reach the connectors; runs offer none of their tools when left out. */
   readonly connectorCalls?: RunConnectorCalls;
 }
@@ -118,6 +123,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     harnesses,
     workflows,
     collections,
+    knowledge,
     blobs = new KernelBlobs(),
   } = setup;
   const model = new ScriptedModel(answers);
@@ -128,6 +134,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
     connectors: setup.connectors ?? [],
+    ...(setup.knowledgeOptions === undefined ? {} : { knowledge: setup.knowledgeOptions }),
     secrets: secretsWith(),
     clock,
     runs: {
@@ -146,6 +153,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
           ...(agents === undefined ? {} : { agents }),
           ...(workflows === undefined ? {} : { workflows }),
           ...(collections === undefined ? {} : { collections }),
+          ...(knowledge === undefined ? {} : { knowledge }),
         };
       },
     },

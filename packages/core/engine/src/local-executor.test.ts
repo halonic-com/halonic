@@ -2,6 +2,12 @@ import type { ChatTurnRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { halonicTool, secretsWith, steppingClock } from "./agent/turn-test-kit.test-helper.ts";
+import {
+  FakeSource,
+  fakeKnowledge,
+  hit,
+  sourceFile,
+} from "./knowledge/knowledge-test-kit.test-helper.ts";
 import { LocalExecutor, type LocalExecutorOptions } from "./local-executor.ts";
 import {
   call,
@@ -111,7 +117,31 @@ verifies("engine.local-chat-turn", () => {
     });
     await expect(executor.chatTurn(request)).rejects.toThrow("no model with alias fast");
   });
+});
 
+verifies("engine.knowledge-auto", () => {
+  it("adds an auto source's passages to a chat turn's agent's last message, and none without an agent", async () => {
+    const model = new ScriptedModel([textAnswer("Hello"), textAnswer("Hi")]);
+    const wiki = new FakeSource("wiki", [hit("acme.md")], { untrusted: false });
+    const { options, built } = fakeKnowledge([wiki], [sourceFile("wiki", { mode: "auto" })]);
+    const { executor } = executorOn(model, { knowledge: options });
+
+    await executor.chatTurn({ ...request, agentId: "clerk" });
+    await executor.chatTurn(request);
+
+    expect(built).toEqual([{ id: "wiki", config: { name: "wiki" }, basePath: "hubs/acme" }]);
+    expect(model.requests[0]?.messages).toEqual([
+      {
+        role: "user",
+        content:
+          'Find the Acme invoice\n\nPassages from the knowledge source "wiki" that match the task best:\n\nref: "acme.md"\ntitle: Title of acme.md\nAbout acme.md',
+      },
+    ]);
+    expect(model.requests[1]?.messages).toEqual(request.messages);
+  });
+});
+
+verifies("engine.local-chat-turn", () => {
   describe("without runs", () => {
     const { executor } = executorOn(new ScriptedModel([]));
     const start = { hubId: "acme", workflowId: "reply", input: {} };

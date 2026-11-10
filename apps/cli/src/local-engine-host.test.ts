@@ -133,13 +133,14 @@ verifies("cli.local-engine", () => {
     expect(schedulerErrors).toEqual([]);
   });
 
-  it("starts a run with the hub's workflow, agents, workflows and collections", () => {
+  it("starts a run with the hub's workflow, agents, workflows, collections and knowledge", () => {
     const definitions = runDefinitionsOf(workspace, "support", "support-reply");
 
     expect(definitions.workflow.id).toBe("support-reply");
     expect(Object.keys(definitions.agents ?? {}).sort()).toEqual(["sorter", "writer"]);
     expect(Object.keys(definitions.workflows ?? {})).toEqual(["support-reply"]);
     expect(definitions.collections).toEqual({});
+    expect(definitions.knowledge).toEqual({});
   });
 
   it("refuses a workflow the hub doesn't have, naming the hub and the workflow", () => {

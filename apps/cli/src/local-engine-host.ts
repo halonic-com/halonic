@@ -218,14 +218,14 @@ async function holdEngineLock(
 
 /**
  * The definitions a new run of `workflowId` in `hubId` starts with, as the
- * workspace has them now: the workflow, and the hub's agents, workflows and
- * collections.
+ * workspace has them now: the workflow, and the hub's agents, workflows,
+ * collections and knowledge sources.
  *
  * @throws RangeError when the workspace has no such hub, or the hub no such workflow
  *
  * @example
  * runDefinitionsOf(workspace, "support", "support-reply");
- * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {} }
+ * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {}, knowledge: {} }
  */
 export function runDefinitionsOf(
   workspace: LoadedWorkspace,
@@ -242,5 +242,6 @@ export function runDefinitionsOf(
     agents: hub.agents,
     workflows: hub.workflows,
     collections: hub.collections,
+    knowledge: hub.knowledge,
   };
 }

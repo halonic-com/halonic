@@ -10,7 +10,7 @@ import type {
   ToolOutcome,
   ToolRisk,
 } from "@halonicjs/events";
-import type { Agent, Collection, Workflow } from "@halonicjs/format";
+import type { Agent, Collection, KnowledgeSource, Workflow } from "@halonicjs/format";
 import type { ResumeAfterStop, RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
@@ -315,6 +315,11 @@ export interface RunDefinitions {
    * started with. Runs kept without them give those agents no records tools.
    */
   readonly collections?: Readonly<Record<string, Collection>>;
+  /**
+   * The knowledge sources the hub can see by id, for agents with
+   * `knowledge`. Runs kept without them give those agents no knowledge.
+   */
+  readonly knowledge?: Readonly<Record<string, KnowledgeSource>>;
 }
 
 /** The pure decider: what a run does next, given its state and one input. */

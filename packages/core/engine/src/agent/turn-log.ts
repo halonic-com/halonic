@@ -11,6 +11,7 @@ export type TurnEvent = Extract<
       | "llm.response"
       | "llm.skipped"
       | "llm.fallback"
+      | "knowledge.searched"
       | "tool.called"
       | "tool.result";
   }

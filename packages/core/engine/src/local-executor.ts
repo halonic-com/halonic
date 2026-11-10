@@ -25,6 +25,13 @@ import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import { branchOfCall } from "./kernel/run-branches.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
+import {
+  type AgentKnowledge,
+  type AgentKnowledgeOptions,
+  agentKnowledge,
+  noKnowledge,
+  openSources,
+} from "./knowledge/agent-knowledge.ts";
 import { effectBoundary, makeConnectorCall, readToolsOf } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
@@ -52,6 +59,11 @@ export interface LocalExecutorOptions {
    * with `collections` gets its records tools.
    */
   readonly memory?: RecordStore;
+  /**
+   * Builds agents' knowledge sources. With it, a run's agent and a chat
+   * turn's agent get the sources their `knowledge` lists; without it, none.
+   */
+  readonly knowledge?: AgentKnowledgeOptions;
   /** The connected servers, whose tools are offered last. */
   readonly connectors: readonly ConnectorClient[];
   /** Where a turn checks that a model's key is set, to skip the model before calling it when it isn't. */
@@ -205,6 +217,7 @@ export class LocalExecutor implements RunExecutor {
    * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
    */
   async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
+    const knowledge = await this.chatKnowledgeOf(request);
     return runModelTurn({
       model: await this.options.resolveModel(request),
       secrets: this.options.secrets,
@@ -216,7 +229,35 @@ export class LocalExecutor implements RunExecutor {
       maxRounds: this.maxRounds,
       agent: request.agentId ?? chatAgent,
       clock: this.options.clock,
+      autoKnowledge: knowledge.auto,
     });
+  }
+
+  /** The knowledge sources of a chat turn's agent, as the workspace has them now. */
+  private async chatKnowledgeOf(request: ChatTurnRequest): Promise<AgentKnowledge> {
+    const options = this.options.knowledge;
+    if (options === undefined || request.agentId === undefined) {
+      return noKnowledge;
+    }
+    return openSources(request.hubId, await options.chatSourcesOf(request), options);
+  }
+
+  /**
+   * The knowledge sources of an agent in a run, from the run's kept
+   * definitions; none for an agent the definitions have no file for.
+   */
+  private runKnowledgeOf(turn: RunTurn, agentId: string): AgentKnowledge {
+    const options = this.options.knowledge;
+    const agent = agentIn(turn.definitions, agentId);
+    if (options === undefined || agent === undefined) {
+      return noKnowledge;
+    }
+    return agentKnowledge(
+      turn.run.hubId,
+      agent.knowledge,
+      turn.definitions.knowledge ?? {},
+      options,
+    );
   }
 
   /**
@@ -293,6 +334,7 @@ export class LocalExecutor implements RunExecutor {
       agent: task.agent,
       clock: this.options.clock,
       checkCall: checkSubagentToolCall,
+      autoKnowledge: this.runKnowledgeOf(turn, task.agent).auto,
     });
     return result.content;
   }
@@ -345,6 +387,7 @@ export class LocalExecutor implements RunExecutor {
       agent: call.agent,
       clock: this.options.clock,
       checkCall: checkRunToolCall,
+      autoKnowledge: this.runKnowledgeOf(turn, call.agent).auto,
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
     });
     return outcome.kind === "stopped"

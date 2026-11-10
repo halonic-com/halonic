@@ -72,6 +72,18 @@ export {
   step,
 } from "./kernel/step.ts";
 export {
+  type AgentKnowledge,
+  type AgentKnowledgeOptions,
+  agentKnowledge,
+  noKnowledge,
+  openSources,
+} from "./knowledge/agent-knowledge.ts";
+export {
+  autoPassages,
+  type KnowledgeFirstInput,
+  withKnowledgeFirst,
+} from "./knowledge/knowledge-first.ts";
+export {
   type LocalEngine,
   type LocalEngineOptions,
   type LocalEngineScheduler,

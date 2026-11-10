@@ -12,10 +12,12 @@ import type {
   ChatTurnSkip,
   Clock,
   ConnectorClient,
+  KnowledgeProvider,
   Secrets,
   ToolCall,
   ToolDefinition,
 } from "@halonicjs/ports";
+import { withKnowledgeFirst } from "../knowledge/knowledge-first.ts";
 import { callCost } from "./call-cost.ts";
 import { type CallChecker, checkCallBeforeRun } from "./check-call-before-run.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
@@ -56,6 +58,11 @@ export interface ModelTurnInput {
   readonly log?: TurnLog;
   /** Checks each call the turn runs itself; a chat turn's check when left out. */
   readonly checkCall?: CallChecker;
+  /**
+   * The agent's knowledge sources with `mode: auto`: before the first model
+   * call, the task text is searched and their best passages go into the prompt.
+   */
+  readonly autoKnowledge?: readonly KnowledgeProvider[];
 }
 
 /**
@@ -135,9 +142,10 @@ async function turnLoop(
     ...(input.log === undefined ? {} : { log: input.log }),
     ...(effects === undefined ? {} : { effects }),
   };
+  // A resumed turn's history already holds the passages it started with.
   const start: TurnStart =
     resumeFrom === undefined
-      ? { kind: "ask-model", history: input.messages, turn: [], round: 1 }
+      ? { kind: "ask-model", history: await firstMessages(input), turn: [], round: 1 }
       : await goOnAfterApproval(context, tools, resumeFrom);
   if (start.kind === "stopped") {
     return start;
@@ -171,6 +179,20 @@ async function turnLoop(
       return answered({ ...ended, toolCalls: step.callerCalls, finishReason: "tool_calls" });
     }
   }
+}
+
+/** The messages of a new turn, with the passages of the `auto` knowledge sources. */
+async function firstMessages(input: ModelTurnInput): Promise<readonly ChatMessage[]> {
+  const sources = input.autoKnowledge ?? [];
+  if (sources.length === 0) {
+    return input.messages;
+  }
+  return await withKnowledgeFirst({
+    sources,
+    messages: input.messages,
+    agent: input.agent,
+    ...(input.log === undefined ? {} : { log: input.log }),
+  });
 }
 
 function answered(result: ModelTurnResult): AgentTurnOutcome {
