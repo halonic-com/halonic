@@ -3,6 +3,7 @@ import { copyFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { checkCommitId, checkPublicWorkspacePath, isPrivateWorkspacePath } from "@halonicjs/ports";
 import type { ConfigEntry } from "./hardening.ts";
+import { inPathBatches } from "./path-batches.ts";
 import type { Repository } from "./repository.ts";
 
 /**
@@ -26,7 +27,7 @@ export async function snapshotCommit(
     await onCopy(["add", "--all", "--", "."]);
     // `.env` and the other private entries stay out even when `.gitignore` lets them in.
     const leftOut = nulSeparated(await onCopy(["ls-files", "-z"])).filter(isPrivateWorkspacePath);
-    if (leftOut.length > 0) await onCopy(["rm", "--cached", "--quiet", "--", ...leftOut]);
+    await inPathBatches(leftOut, (batch) => onCopy(["rm", "--cached", "--quiet", "--", ...batch]));
     const tree = text(await onCopy(["write-tree"]));
     const parent = await currentCommit(repository);
     const parents = parent === null ? [] : ["-p", parent];

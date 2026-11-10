@@ -38,6 +38,8 @@ Before each call in a repository, the adapter checks that the folder is the repo
 
 Private files (`.studio`, `.env`, `.envrc`, `.env.*`) never show in `status`, as they never go into a snapshot.
 
+Paths go to git as arguments, since the runner can't give git a list on stdin or in a file. Windows caps a command line at 32,767 characters, so `stage`, `unstage`, `discard` and a snapshot split a long list of paths into several calls of at most 16,384 characters of paths each. When one of those calls fails, the calls before it stay done.
+
 ## Versions
 
 A version is a full commit id (port v2). `snapshot` commits the public files on disk through a copy of the index in `.git`, so the person's branch, index and working tree don't change and the commit is on no branch; `.env` and the other private entries stay out even when `.gitignore` lets them in. `readAt` and `listAt` read a commit's regular files with `ls-tree` and `cat-file blob`, never the working tree, and run no filter. `rename` uses `git mv` for what the repository tracks, so the history follows the file.

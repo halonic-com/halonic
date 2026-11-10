@@ -21,6 +21,7 @@ import {
 } from "./git-output.ts";
 import type { GitRunner } from "./git-runner.ts";
 import type { ConfigEntry } from "./hardening.ts";
+import { inPathBatches } from "./path-batches.ts";
 import { gitError, Repository } from "./repository.ts";
 import { checkBranchNameShape, checkNoFolders, checkVcsPaths } from "./vcs-input.ts";
 import { pullFastForward, pushToUpstream } from "./vcs-remote.ts";
@@ -84,33 +85,43 @@ export class GitVcs implements Vcs {
 
   async stage(paths: string[]): Promise<void> {
     const repository = await this.#checkedFiles(paths);
-    // `--all` stages a deletion too; git refuses a path that matches nothing and stages none.
-    await repository.output({ args: ["add", "--all", "--", ...paths] });
+    // `--all` stages a deletion too; git refuses a path that matches nothing
+    // and stages none of its batch.
+    await inPathBatches(paths, (batch) =>
+      repository.output({ args: ["add", "--all", "--", ...batch] }),
+    );
   }
 
   async unstage(paths: string[]): Promise<void> {
     const repository = await this.#checkedFiles(paths);
     if (await hasCommit(repository)) {
-      await repository.output({ args: ["reset", "--quiet", "--", ...paths] });
+      await inPathBatches(paths, (batch) =>
+        repository.output({ args: ["reset", "--quiet", "--", ...batch] }),
+      );
       return;
     }
     // Before the first commit there is no HEAD to reset to: take the files out of the index.
-    await repository.output({
-      args: ["rm", "--cached", "--quiet", "--ignore-unmatch", "--", ...paths],
-    });
+    await inPathBatches(paths, (batch) =>
+      repository.output({
+        args: ["rm", "--cached", "--quiet", "--ignore-unmatch", "--", ...batch],
+      }),
+    );
   }
 
   async discard(paths: string[]): Promise<void> {
     const repository = await this.#checkedFiles(paths);
-    const listed = await repository.output({ args: ["ls-files", "-z", "--", ...paths] });
-    const tracked = new Set(listed.toString("utf8").split("\0"));
+    const listed = await inPathBatches(paths, (batch) =>
+      repository.output({ args: ["ls-files", "-z", "--", ...batch] }),
+    );
+    const tracked = new Set(listed.flatMap((output) => output.toString("utf8").split("\0")));
     const inIndex = paths.filter((path) => tracked.has(path));
     const untracked = paths.filter((path) => !tracked.has(path));
-    if (inIndex.length > 0)
-      await repository.output({ args: ["checkout", "--quiet", "--", ...inIndex] });
-    if (untracked.length > 0) {
-      await repository.output({ args: ["clean", "--force", "--quiet", "--", ...untracked] });
-    }
+    await inPathBatches(inIndex, (batch) =>
+      repository.output({ args: ["checkout", "--quiet", "--", ...batch] }),
+    );
+    await inPathBatches(untracked, (batch) =>
+      repository.output({ args: ["clean", "--force", "--quiet", "--", ...batch] }),
+    );
   }
 
   async commit(message: string): Promise<string> {
