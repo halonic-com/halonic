@@ -259,6 +259,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/fs-node
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
@@ -268,6 +271,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../packages/core/workspace
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*
