@@ -6,6 +6,7 @@ import { act, use } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { HomeCardContribution, HomeSection } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
+import { quietConsoleErrors, reportedShellError } from "../test-support/console-errors.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { HomePage } from "./home-page.tsx";
@@ -13,7 +14,7 @@ import { HomePage } from "./home-page.tsx";
 beforeEach(() => {
   vi.useFakeTimers();
   // React logs every error a boundary catches; here the failures are the point.
-  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  quietConsoleErrors();
 });
 
 afterEach(() => {
@@ -193,5 +194,26 @@ verifies("shell.home-states", () => {
     await settle();
     expect(imports).toBe(2);
     expect(section.querySelector("p")?.textContent).toBe("Recent runs rows");
+  });
+
+  it("shows the error for a card whose view isn't exported, reports it, and keeps the others", async () => {
+    const inbox = new PendingRows();
+    const misnamed: Registered<HomeCardContribution> = {
+      id: "recent-runs",
+      view: "RecentRunsCard",
+      featureId: "runs",
+      load: async () => ({ RunsCard: () => <p>Recent runs rows</p> }),
+    };
+    const container = renderHome([card("needs-you", inbox), misnamed]);
+    await settle();
+    await arrive(inbox, "2 waiting rows");
+
+    const section = sectionNamed(container, "Recent runs");
+    expect(section.querySelector("h3")?.textContent).toBe("Couldn't load recent runs");
+    expect(section.querySelector("button")?.textContent).toBe("Try again");
+    expect(sectionNamed(container, "Needs you").querySelector("p")?.textContent).toBe(
+      "2 waiting rows",
+    );
+    expect(reportedShellError()?.message).toContain('"RecentRunsCard"');
   });
 });

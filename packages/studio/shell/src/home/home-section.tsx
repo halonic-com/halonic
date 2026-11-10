@@ -1,9 +1,7 @@
 import { EmptyState, ListHeading } from "@halonicjs/studio-kit";
 import {
-  Component,
   type ComponentType,
   lazy,
-  type ReactNode,
   type RefObject,
   Suspense,
   useId,
@@ -16,6 +14,7 @@ import { errorMessageFor } from "../errors/error-message.ts";
 import { type HomeCardContribution, type HomeSection, homeSectionTitles } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
 import { loadView } from "../view.ts";
+import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { SectionSkeleton } from "./home-loading.tsx";
 
@@ -60,7 +59,7 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
   return (
     <section aria-labelledby={headingId}>
       <ListHeading id={headingId} headingRef={headingRef} name={homeSectionTitles[card.id]} />
-      <CardErrorBoundary
+      <ViewErrorBoundary
         // A new attempt starts a new boundary, which forgets the error and mounts the card again.
         key={attempt}
         fallback={(error) => (
@@ -71,7 +70,7 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
           <CardView context={context} />
           {retried ? <FocusOnShow target={headingRef} /> : null}
         </Suspense>
-      </CardErrorBoundary>
+      </ViewErrorBoundary>
     </section>
   );
 }
@@ -123,31 +122,4 @@ function FocusOnShow({ target }: { readonly target: RefObject<HTMLElement | null
     target.current?.focus();
   }, [target]);
   return null;
-}
-
-interface CardErrorBoundaryState {
-  /** The error the card threw, in an object, since a card may throw anything, even `undefined`. */
-  readonly failed: { readonly error: unknown } | undefined;
-}
-
-interface CardErrorBoundaryProps {
-  readonly fallback: (error: unknown) => ReactNode;
-  readonly children: ReactNode;
-}
-
-/**
- * Catches a card that fails to load or draw, so one section failing doesn't blank Home. React has
- * no hook for this: an error boundary is a class.
- */
-class CardErrorBoundary extends Component<CardErrorBoundaryProps, CardErrorBoundaryState> {
-  override state: CardErrorBoundaryState = { failed: undefined };
-
-  static getDerivedStateFromError(error: unknown): CardErrorBoundaryState {
-    return { failed: { error } };
-  }
-
-  override render(): ReactNode {
-    const { failed } = this.state;
-    return failed === undefined ? this.props.children : this.props.fallback(failed.error);
-  }
 }

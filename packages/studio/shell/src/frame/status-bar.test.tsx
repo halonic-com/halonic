@@ -2,18 +2,25 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { defineFeature } from "../feature.ts";
 import type { BarItemContribution } from "../points/frame.ts";
 import { createShell } from "../shell.ts";
+import { quietConsoleErrors, reportedShellError } from "../test-support/console-errors.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { type StatusBarItemProps, StatusBarItems } from "./status-bar.tsx";
 
+beforeEach(() => {
+  // React logs every error a boundary catches; in the failure tests that is the point.
+  quietConsoleErrors();
+});
+
 afterEach(() => {
   unmountAll();
+  vi.restoreAllMocks();
 });
 
 /** An item whose view says its text and which feature's context it got. */
@@ -43,12 +50,16 @@ async function renderItems(items: readonly BarItemContribution[]): Promise<HTMLE
     ),
   });
   const container = render(
-    <footer>
-      <StatusBarItems items={shell.contributions.statusBar.list()} contextFor={contextOf} />
-    </footer>,
+    <>
+      <main>The rest of the frame</main>
+      <footer>
+        <StatusBarItems items={shell.contributions.statusBar.list()} contextFor={contextOf} />
+      </footer>
+    </>,
   );
+  // Lets the views import, and a failed import reach its boundary.
   await act(async () => {
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
   return container;
 }
@@ -70,5 +81,36 @@ verifies("shell.status-bar", () => {
     const container = await renderItems([]);
     expect(container.querySelector("footer")?.childElementCount).toBe(0);
     expect(container.querySelector("[aria-live], [role='status']")).toBeNull();
+  });
+
+  it("shows nothing for an item whose view isn't exported, reports it, and keeps the others", async () => {
+    const misnamed: BarItemContribution = {
+      id: "spend",
+      order: 20,
+      view: "SpendItem",
+      load: async () => ({ Spend: () => <span>€3.20 of €50.00</span> }),
+    };
+    const container = await renderItems([misnamed, item("branch", 10, "main")]);
+    const shown = Array.from(
+      container.querySelectorAll("footer > *"),
+      (element) => element.textContent,
+    );
+    expect(shown).toEqual(["main for branch-feature"]);
+    expect(container.querySelector("main")?.textContent).toBe("The rest of the frame");
+    expect(reportedShellError()?.message).toContain('"SpendItem"');
+  });
+
+  it("shows nothing for an item whose view fails to import, and keeps the others", async () => {
+    const broken: BarItemContribution = {
+      id: "spend",
+      order: 20,
+      view: "Item",
+      load: async () => {
+        throw new Error("chunk missing");
+      },
+    };
+    const container = await renderItems([broken, item("branch", 10, "main")]);
+    expect(container.querySelector("footer")?.textContent).toBe("main for branch-feature");
+    expect(container.querySelector("main")?.textContent).toBe("The rest of the frame");
   });
 });
