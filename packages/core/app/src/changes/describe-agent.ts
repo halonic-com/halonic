@@ -1,4 +1,4 @@
-import type { Agent, AgentMethod } from "@halonicjs/format";
+import { type Agent, type AgentMethod, defaultWorkingFolder } from "@halonicjs/format";
 import { deepEqual } from "@halonicjs/std";
 import {
   countOf,
@@ -136,16 +136,27 @@ function fieldLine(field: string, before: Agent, after: Agent): ChangeLine | und
   if (deepEqual(was, is)) {
     return undefined;
   }
+  // A list left out and an empty list mean the same to the sandbox
+  // (`agent.allowedSites ?? []`), so that change isn't one.
+  if (LIST_FIELDS.has(field) && deepEqual(namesIn(was), namesIn(is))) {
+    return undefined;
+  }
   return {
     id: `field:${field}`,
-    sentence: `${AGENT_FIELDS[field] ?? field}${fieldChange(field, was, is, after)}`,
+    sentence: `${AGENT_FIELDS[field] ?? field}${fieldChange(field, was, is, before, after)}`,
     ...(IMPORTANT_FIELDS.has(field) ? { important: true } : {}),
     parts: [[field]],
   };
 }
 
 /** What follows the field's label: ": claude → gpt", " edited: 1 sentence changed", " added". */
-function fieldChange(field: string, was: unknown, is: unknown, after: Agent): string {
+function fieldChange(
+  field: string,
+  was: unknown,
+  is: unknown,
+  before: Agent,
+  after: Agent,
+): string {
   if (field === "instructions") {
     return textChange(String(was), String(is));
   }
@@ -156,7 +167,7 @@ function fieldChange(field: string, was: unknown, is: unknown, after: Agent): st
     return `: ${listChange(namesIn(was), namesIn(is))}`;
   }
   if (VALUE_FIELDS.has(field)) {
-    return `: ${shownValue(field, was, after)} → ${shownValue(field, is, after)}`;
+    return `: ${shownValue(field, was, before)} → ${shownValue(field, is, after)}`;
   }
   if (field === "output") {
     return replyFormatChange(was as Agent["output"], is as Agent["output"]);
@@ -194,7 +205,7 @@ function shownValue(field: string, value: unknown, agent: Agent): string {
     return "halonic";
   }
   if (field === "workingFolder") {
-    return `files/agents/${agent.id}`;
+    return defaultWorkingFolder(agent.id);
   }
   return "none";
 }

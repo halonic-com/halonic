@@ -94,16 +94,19 @@ function fieldSentence(field: string, was: unknown, is: unknown): string {
   }
 }
 
-/** "Runs: workflow support-triage → agent finance", "Prompt edited", "Workflow input edited". */
+/** "Runs: workflow support-triage → agent finance", "Hub: a → b, prompt edited", "Prompt edited", "Workflow input edited". */
 function runSentence(was: RoutineTarget, is: RoutineTarget): string {
   const target = targetName(is);
   if (targetName(was) !== target) {
     return `Runs: ${targetName(was)} → ${target}`;
   }
-  if (was.hub !== is.hub) {
-    return `Hub: ${was.hub ?? "this hub"} → ${is.hub ?? "this hub"}`;
+  const edited = "agent" in is ? "Prompt edited" : "Workflow input edited";
+  if (was.hub === is.hub) {
+    return edited;
   }
-  return "agent" in is ? "Prompt edited" : "Workflow input edited";
+  const hub = `Hub: ${was.hub ?? "this hub"} → ${is.hub ?? "this hub"}`;
+  const onlyHub = deepEqual({ ...was, hub: undefined }, { ...is, hub: undefined });
+  return onlyHub ? hub : `${hub}, ${edited.toLowerCase()}`;
 }
 
 function targetName(target: RoutineTarget): string {

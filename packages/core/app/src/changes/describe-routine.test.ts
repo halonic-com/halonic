@@ -97,6 +97,20 @@ describe("describeRoutineChange", () => {
     );
   });
 
+  it("says when the hub and the prompt change together", () => {
+    const run = "run: { agent: finance, prompt: Write the morning report. }";
+    const otherHub = lastVersion.replace(
+      run,
+      "run: { hub: sales, agent: finance, prompt: Write the morning report. }",
+    );
+    const both = lastVersion.replace(
+      run,
+      "run: { hub: sales, agent: finance, prompt: Write it in Dutch. }",
+    );
+    expect(described(lastVersion, otherHub)[0]?.sentence).toBe("Hub: this hub → sales");
+    expect(described(lastVersion, both)[0]?.sentence).toBe("Hub: this hub → sales, prompt edited");
+  });
+
   it("gives no lines when nothing changed", () => {
     expect(described(lastVersion, lastVersion)).toEqual([]);
   });

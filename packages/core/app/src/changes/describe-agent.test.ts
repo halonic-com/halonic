@@ -171,6 +171,42 @@ describe("describeAgentChange", () => {
     );
   });
 
+  it("gives no line when a list goes from left out to empty", () => {
+    const noSites = `${lastVersion}allowedSites: []\n`;
+    expect(described(lastVersion, noSites)).toEqual([]);
+    expect(described(noSites, lastVersion)).toEqual([]);
+  });
+
+  it("still says a list's order changed", () => {
+    const reordered = lastVersion.replace(
+      "connectors: [slack, notion]",
+      "connectors: [notion, slack]",
+    );
+    expect(described(lastVersion, reordered)[0]?.sentence).toBe("Connections: order changed");
+  });
+
+  it("names each side's own default working folder", () => {
+    const renamed = describeAgentChange(agent(lastVersion), {
+      ...agent(lastVersion),
+      id: "billing",
+    });
+    expect(renamed).toContainEqual({
+      id: "field:id",
+      sentence: "Id: finance → billing",
+      parts: [["id"]],
+    });
+    const moved = describeAgentChange(
+      { ...agent(lastVersion), id: "billing" },
+      { ...agent(lastVersion), workingFolder: "files/finance" },
+    );
+    expect(moved).toContainEqual({
+      id: "field:workingFolder",
+      sentence: "Working folder: files/agents/billing → files/finance",
+      important: true,
+      parts: [["workingFolder"]],
+    });
+  });
+
   it("gives no lines when nothing changed", () => {
     expect(described(lastVersion, lastVersion)).toEqual([]);
   });
