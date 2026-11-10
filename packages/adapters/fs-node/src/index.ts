@@ -6,3 +6,4 @@ export type { FolderEvents } from "./folder-watch.ts";
 export { FileRecordStore } from "./record-store.ts";
 export { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
 export { FileTrustStore } from "./trust-store.ts";
+export { FileUnfencedRunConsentStore } from "./unfenced-run-consent-store.ts";

@@ -1,12 +1,13 @@
 # @halonicjs/adapter-fs-node
 
 The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
-`AgentPlacementStore`, `ConnectionSettingsStore` and `BlobStore` ports on
-the local file system with Node: workspace files are plain files under a
-root folder, each run and each collection of records is a JSONL log, each
-trust record, each agent's "this computer" choice and each connector's
-"allow sending" setting is a JSON file in the profile, and each blob is a
-file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
+`AgentPlacementStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`
+and `BlobStore` ports on the local file system with Node: workspace files are
+plain files under a root folder, each run and each collection of records is a
+JSONL log, each trust record, each agent's "this computer" choice, each
+connector's "allow sending" setting and the yes to run without the sandbox is
+a JSON file in the profile, and each blob is a file in the profile. The CLI
+(`halonic validate`, `test`, `run`) and the parity run use
 it.
 
 - **Layer:** adapters
@@ -207,6 +208,22 @@ sending on. The setting survives a restart. It passes the shared
   never quotes the file's text. `ConnectionSettings` in `core/app` then
   treats sending as off and tells the person why; switching sending on or
   off again replaces the file.
+
+## The yes to run without the sandbox, in the profile
+
+`new FileUnfencedRunConsentStore(root)` keeps the user's one yes to run
+plugin and integration code without the sandbox as `consent.json` in
+`root`, a folder in the user's profile such as `<profile>/unfenced-runs`,
+never inside a workspace, so neither a workspace nor an agent can give the
+yes. It passes the shared `UnfencedRunConsentStore` contract suite.
+
+- **Writes** go through a temporary file and a rename, with the same modes
+  as trust records, and hold only the reason and the time.
+- **Shape:** after `JSON.parse` the file must be exactly a non-empty
+  `reason` and an `allowedAt` a `Date` can read (HAL-3385). Anything else,
+  a link or a file that isn't JSON makes `get` throw, without quoting the
+  file, and `UnfencedRuns` in `core/app` asks the user again. `remove`
+  deletes the file without reading it.
 
 ## Records in the profile
 
