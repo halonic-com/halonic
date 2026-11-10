@@ -112,6 +112,9 @@ export interface ToolApproval extends ToolApprovalKey {
   approvedAt: string;
 }
 
+/** The `fingerprint` of a stored {@link ToolApproval}: `htl1:` and 64 lowercase hex digits. */
+export const listedToolFingerprintPattern = /^htl1:[0-9a-f]{64}$/u;
+
 /** One version of a listed tool that waited for approval. */
 export interface WaitingVersion {
   fingerprint: ListedToolFingerprint;
@@ -161,11 +164,11 @@ export interface ToolApprovalStore {
   list(location: string, source: string): Promise<ToolApproval[]>;
   /**
    * Notes that a version of a listed tool is waiting, and returns the
-   * versions noted for that tool, oldest first. Noting a fingerprint that
-   * is already there keeps its first `firstSeenAt`. The store keeps at most
-   * the newest {@link maxWaitingVersions}, so a server that changes a tool
-   * on every call can't fill the profile. The host uses them to stop asking
-   * about a tool its server keeps changing.
+   * versions noted for that tool, oldest first. The store follows
+   * {@link keptWaitingVersions}, so a server that changes a tool on every
+   * call, or lists new names on every call, can't fill the profile. The
+   * host uses the versions to stop asking about a tool its server keeps
+   * changing.
    */
   noteWaiting(key: ToolApprovalKey, version: WaitingVersion): Promise<WaitingVersion[]>;
 }
@@ -236,3 +239,74 @@ export function isUnreadableToolApprovalError(
 
 /** How many waiting versions of one listed tool a {@link ToolApprovalStore} keeps. */
 export const maxWaitingVersions = 8;
+
+/**
+ * How many listed tools of one source a {@link ToolApprovalStore} keeps
+ * waiting versions for: twice the most tools one listing may return.
+ */
+export const maxWaitingTools = 256;
+
+/** How long a {@link ToolApprovalStore} keeps a waiting version after it was first seen: 24 hours. */
+export const waitingVersionKeptMs = 24 * 60 * 60 * 1000;
+
+/**
+ * The waiting versions of one source after noting `version` for the tool
+ * `name`, the one rule every {@link ToolApprovalStore} follows:
+ *
+ * - The time `version` was first seen counts as now. Every version first
+ *   seen more than {@link waitingVersionKeptMs} before it is dropped, and so
+ *   is a tool left with none.
+ * - A fingerprint that is still noted keeps its first `firstSeenAt`;
+ *   otherwise `version` is added as the newest.
+ * - Each tool keeps its newest {@link maxWaitingVersions} versions.
+ * - The source keeps the {@link maxWaitingTools} tools whose newest version
+ *   was first seen most recently, `name` always among them. Among tools
+ *   whose newest versions were first seen at the same time, the one first
+ *   in UTF-16 code-unit order is dropped first.
+ *
+ * Dropping only ever makes the host ask again, never offer a tool.
+ *
+ * @param waiting - the source's waiting versions by tool name, each oldest first; not changed
+ * @returns the source's waiting versions to store, and those of `name`, as `noteWaiting` returns them
+ * @throws RangeError when `version.firstSeenAt` isn't a date
+ */
+export function keptWaitingVersions(
+  waiting: ReadonlyMap<string, readonly WaitingVersion[]>,
+  name: string,
+  version: WaitingVersion,
+): { waiting: Map<string, WaitingVersion[]>; versions: WaitingVersion[] } {
+  const now = Date.parse(version.firstSeenAt);
+  if (Number.isNaN(now)) {
+    throw new RangeError(`The waiting version's firstSeenAt isn't a date: ${version.firstSeenAt}`);
+  }
+  const recent = (noted: WaitingVersion) =>
+    now - Date.parse(noted.firstSeenAt) <= waitingVersionKeptMs;
+
+  const kept = new Map<string, WaitingVersion[]>();
+  for (const [other, versions] of waiting) {
+    const left = versions.filter(recent).map((noted) => ({ ...noted }));
+    if (left.length > 0) kept.set(other, left);
+  }
+
+  const versions = kept.get(name) ?? [];
+  if (!versions.some((noted) => noted.fingerprint === version.fingerprint)) {
+    versions.push({ fingerprint: version.fingerprint, firstSeenAt: version.firstSeenAt });
+  }
+  const toolVersions = versions.slice(-maxWaitingVersions);
+  kept.set(name, toolVersions);
+
+  if (kept.size > maxWaitingTools) {
+    const lastNoted = (versions: readonly WaitingVersion[]) =>
+      Math.max(...versions.map((noted) => Date.parse(noted.firstSeenAt)));
+    const others = [...kept]
+      .filter(([other]) => other !== name)
+      .sort(
+        ([leftName, left], [rightName, right]) =>
+          lastNoted(left) - lastNoted(right) || (leftName < rightName ? -1 : 1),
+      );
+    for (const [other] of others.slice(0, kept.size - maxWaitingTools)) {
+      kept.delete(other);
+    }
+  }
+  return { waiting: kept, versions: toolVersions.map((noted) => ({ ...noted })) };
+}

@@ -3,7 +3,10 @@ import { expect, expectTypeOf, it } from "vitest";
 import {
   type Digest,
   isUnreadableToolApprovalError,
+  keptWaitingVersions,
   type ListedToolFingerprint,
+  listedToolFingerprintPattern,
+  maxWaitingTools,
   maxWaitingVersions,
   type ToolApproval,
   type ToolApprovalKey,
@@ -12,6 +15,7 @@ import {
   UnreadableToolApprovalError,
   type WaitingVersion,
   type WrittenDigest,
+  waitingVersionKeptMs,
 } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
@@ -180,5 +184,90 @@ verifies("ports.listed-tool-approval", () => {
 
   it("keeps a bounded number of waiting versions per tool", () => {
     expect(maxWaitingVersions).toBeGreaterThan(3);
+  });
+
+  it("checks a stored fingerprint strictly", () => {
+    expect(listedToolFingerprintPattern.test(fingerprint(1))).toBe(true);
+    for (const bad of [
+      `htl2:${"a".repeat(64)}`,
+      `htl1:${"A".repeat(64)}`,
+      `htl1:${"a".repeat(63)}`,
+      `htl1:${"a".repeat(64)}\n`,
+    ]) {
+      expect(listedToolFingerprintPattern.test(bad), bad).toBe(false);
+    }
+  });
+});
+
+/** A distinct well-formed fingerprint for each number. */
+function fingerprint(n: number): ListedToolFingerprint {
+  return `htl1:${n.toString(16).padStart(64, "0")}`;
+}
+
+/** A waiting version first seen `hours` after the start of 9 November 2026. */
+function version(n: number, hours: number): WaitingVersion {
+  return {
+    fingerprint: fingerprint(n),
+    firstSeenAt: new Date(Date.UTC(2026, 10, 9) + hours * 3_600_000).toISOString(),
+  };
+}
+
+verifies("ports.listed-tool-approval-waiting", () => {
+  it("adds a new fingerprint as the newest, and keeps the first time of one already noted", () => {
+    const first = keptWaitingVersions(new Map(), "lookup", version(1, 0)).waiting;
+    const second = keptWaitingVersions(first, "lookup", version(2, 1)).waiting;
+    const again = keptWaitingVersions(second, "lookup", { ...version(1, 2) }).waiting;
+    expect(again.get("lookup")).toEqual([version(1, 0), version(2, 1)]);
+    // The map it was given is not changed.
+    expect(first.get("lookup")).toEqual([version(1, 0)]);
+  });
+
+  it("keeps the newest versions of one tool, up to the limit", () => {
+    let waiting = new Map<string, WaitingVersion[]>();
+    for (let n = 1; n <= maxWaitingVersions + 2; n += 1) {
+      waiting = keptWaitingVersions(waiting, "lookup", version(n, n / 10)).waiting;
+    }
+    const kept = waiting.get("lookup") ?? [];
+    expect(kept).toHaveLength(maxWaitingVersions);
+    expect(kept[0]).toEqual(version(3, 0.3));
+  });
+
+  it("drops versions first seen more than 24 hours before the one being noted", () => {
+    expect(waitingVersionKeptMs).toBe(86_400_000);
+    let waiting = keptWaitingVersions(new Map(), "lookup", version(1, 0)).waiting;
+    waiting = keptWaitingVersions(waiting, "search", version(2, 0)).waiting;
+    waiting = keptWaitingVersions(waiting, "lookup", version(3, 24)).waiting;
+    expect(waiting.get("lookup")).toEqual([version(1, 0), version(3, 24)]);
+
+    // A fingerprint noted again after its time is up counts as new.
+    waiting = keptWaitingVersions(waiting, "lookup", version(1, 25)).waiting;
+    expect(waiting.get("lookup")).toEqual([version(3, 24), version(1, 25)]);
+    expect(waiting.has("search")).toBe(false);
+  });
+
+  it("keeps the tools noted most recently, so new names on every call can't fill the profile", () => {
+    let waiting = keptWaitingVersions(new Map(), "lookup", version(1, 0)).waiting;
+    waiting = keptWaitingVersions(waiting, "lookup", version(2, 0)).waiting;
+    for (let n = 0; n < maxWaitingTools; n += 1) {
+      waiting = keptWaitingVersions(waiting, `flood-${n}`, version(1000 + n, 1)).waiting;
+    }
+    expect(waiting.size).toBe(maxWaitingTools);
+    expect(waiting.has("lookup")).toBe(false);
+    // Among tools last noted at the same time, the first by code unit goes.
+    expect(waiting.has("flood-0")).toBe(true);
+    waiting = keptWaitingVersions(waiting, "lookup", version(3, 2)).waiting;
+    expect(waiting.get("lookup")).toEqual([version(3, 2)]);
+    expect(waiting.has("flood-0")).toBe(false);
+    expect(waiting.has("flood-1")).toBe(true);
+  });
+
+  it("refuses a version whose firstSeenAt isn't a date", () => {
+    expect(
+      () =>
+        keptWaitingVersions(new Map(), "lookup", {
+          fingerprint: fingerprint(1),
+          firstSeenAt: "soon",
+        }).waiting,
+    ).toThrow(RangeError);
   });
 });

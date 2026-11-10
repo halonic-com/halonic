@@ -19,5 +19,6 @@ export {
 export { makePrivateFolder } from "./private-files.ts";
 export { FileRecordStore } from "./record-store.ts";
 export { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
+export { FileToolApprovalStore } from "./tool-approval-store.ts";
 export { FileTrustStore } from "./trust-store.ts";
 export { FileUnfencedRunConsentStore } from "./unfenced-run-consent-store.ts";
