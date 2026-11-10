@@ -1,4 +1,4 @@
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
 // Where a repository's git files are: all of them must be inside the
@@ -50,8 +50,9 @@ export const gitPaths: readonly string[] = [
 export const gitPathArgs: readonly string[] = gitPaths.flatMap((name) => ["--git-path", name]);
 
 /**
- * Each of {@link gitPaths}, as git names it in `lines`, must really be in
- * the git folder; a link that stays in it is fine. One that doesn't exist
+ * Each of {@link gitPaths}, as git names it in `lines`, and each of
+ * {@link linksInGitFolder}, must really be in the git folder; a link that
+ * stays in it is fine. One that doesn't exist
  * yet is fine too, unless it is a link: git would follow it on creating it.
  *
  * @throws Error when one of them is a link that leads outside the git folder, or nowhere
@@ -66,6 +67,17 @@ export async function checkGitPaths(
     const real = path === "" ? null : await realGitPath(path);
     if (real === null || !isInside(gitDir, real)) throw outsideFolder(top);
   }
+}
+
+/**
+ * Every link at the top of the git folder. git writes some files there
+ * through `fopen`, which follows a link: `COMMIT_EDITMSG` on `commit`,
+ * `FETCH_HEAD` on `pull`. A list of names would miss the next one, so
+ * every link counts.
+ */
+export async function linksInGitFolder(gitDir: string): Promise<string[]> {
+  const entries = await readdir(gitDir, { withFileTypes: true });
+  return entries.filter((entry) => entry.isSymbolicLink()).map((entry) => join(gitDir, entry.name));
 }
 
 /** The real path of `path`, `path` itself when nothing is there, or `null` for a link that leads nowhere. */

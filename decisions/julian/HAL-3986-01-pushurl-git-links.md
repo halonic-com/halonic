@@ -18,6 +18,11 @@ Two findings from the attack tests on HAL-3971, reproduced with git 2.47.3:
   `index` and `packed-refs` are (`rev-parse --git-path`) and refuses the repository when the real
   path of one is outside its git folder, or when one is a link that leads nowhere yet. A link that
   stays inside the git folder is still allowed (`git.repository`).
+- **Other links at the top of `.git`** (added in review, HAL-4017). git writes some files there
+  through a link: a `.git/COMMIT_EDITMSG` link made `commit` overwrite the file it named with the
+  message, and a `.git/FETCH_HEAD` link made `pull` overwrite its file. So the adapter also lists
+  the git folder and applies the same rule to every link at its top, not to a list of names that
+  would miss the next one. Links deeper down (`objects/<xx>`, `refs/heads/...`) aren't checked.
 
 A repository without such a key or link behaves as before. The Rust `git-guard` gets the same
 cases on HAL-3811.

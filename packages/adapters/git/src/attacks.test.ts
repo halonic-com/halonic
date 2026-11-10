@@ -3,6 +3,7 @@ import {
   lstat,
   mkdir,
   readdir,
+  readFile,
   rename,
   rm,
   symlink,
@@ -421,6 +422,22 @@ verifies("git.repository", () => {
       await symlink(join(await scratch.folder(), "logs"), join(folder, ".git", "logs"));
       await expect(Repository.open(await runner(), folder)).rejects.toThrow("outside the folder");
     });
+
+    // git writes these through the link: `commit` the message, `pull` what it fetched.
+    for (const name of ["COMMIT_EDITMSG", "FETCH_HEAD"]) {
+      it(`refuses a link from .git/${name} to a file outside`, async () => {
+        const folder = await repositoryWith(scratch);
+        const outside = join(await scratch.folder(), name);
+        await writeFile(outside, "kept\n");
+        await rm(join(folder, ".git", name), { force: true });
+        await symlink(outside, join(folder, ".git", name));
+        const vcs = new GitVcs(folder, { runner: await runner(), author: testAuthor });
+        await writeFile(join(folder, "a.yaml"), "2\n");
+        await expect(vcs.stage(["a.yaml"])).rejects.toThrow("outside the folder");
+        await expect(vcs.commit("Overwrite")).rejects.toThrow("outside the folder");
+        expect(await readFile(outside, "utf8")).toBe("kept\n");
+      });
+    }
 
     it("allows a link inside .git that stays in the git folder", async () => {
       const folder = await repositoryWith(scratch);

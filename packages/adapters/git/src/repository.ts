@@ -19,6 +19,7 @@ import {
   checkNestedInside,
   gitPathArgs,
   gitPaths,
+  linksInGitFolder,
   locateNestedArgs,
   outsideFolder,
 } from "./repository-location.ts";
@@ -135,7 +136,10 @@ export class Repository {
     if (located.code !== 0) return null;
     const lines = located.stdout.toString("utf8").split("\n");
     await checkLocated(this.#top, this.#gitDir, lines.slice(0, 3));
-    await checkGitPaths(this.#top, this.#gitDir, lines.slice(3, 3 + gitPaths.length));
+    await checkGitPaths(this.#top, this.#gitDir, [
+      ...lines.slice(3, 3 + gitPaths.length),
+      ...(await linksInGitFolder(this.#gitDir)),
+    ]);
     await checkAlternates(this.#top, join(this.#gitDir, "objects"), 0);
     return neutralisingConfig(this.#runner, this.#top, this.#gitDir);
   }
