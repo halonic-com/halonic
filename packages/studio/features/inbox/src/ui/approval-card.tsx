@@ -8,6 +8,7 @@ import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
 import { ArgumentList } from "./argument-list.tsx";
 import { AskForChangesDialog } from "./ask-for-changes-dialog.tsx";
 import {
+  type BackLink,
   CardHeader,
   DecidedBar,
   FailedLine,
@@ -25,6 +26,8 @@ export interface ApprovalCardProps {
   readonly onOpenRun: (runId: string) => void;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
+  /** Where you came from, for **Back to run** or **Back to the chat**; `null` from the Inbox itself. */
+  readonly back: BackLink | null;
   /** The clock, so a test can set it. */
   readonly now?: () => Date;
 }
@@ -73,7 +76,7 @@ export function decidedText(decided: Decided, at: Date): string {
  * which reports your decision, never the tool's result.
  */
 export function ApprovalCard(props: ApprovalCardProps) {
-  const { item, agentName, decisions, next } = props;
+  const { item, agentName, decisions, next, back } = props;
   const now = props.now ?? (() => new Date());
   const titleId = useId();
   const title = approvalTitle(item, agentName);
@@ -132,6 +135,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           text={decidedText(state.decided, state.at)}
           {...(state.decided.kind === "note" ? { note: state.decided.note } : {})}
           next={next}
+          back={back}
           callout={decided}
         />
       ) : (

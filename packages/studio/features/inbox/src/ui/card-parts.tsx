@@ -13,6 +13,30 @@ export interface NextItem {
   readonly open: () => void;
 }
 
+/**
+ * Where you came from, for the decided card's way back (flow-inbox 5.3, 8.2): a run's
+ * **Review in Inbox** gives **Back to run 01JD8Q**, an agent chat's **Back to the chat with
+ * Mailbot**. `null` when you opened the Inbox itself.
+ */
+export type BackLink =
+  | {
+      readonly kind: "run" /** The run's name as Studio shows it, such as `01JD8Q`. */;
+      readonly runName: string;
+      readonly open: () => void;
+    }
+  | {
+      readonly kind: "chat" /** The agent's name as the workspace shows it. */;
+      readonly agentName: string;
+      readonly open: () => void;
+    };
+
+/** The way back's label: "Back to run 01JD8Q" or "Back to the chat with Mailbot" (microcopy 19). */
+export function backLabel(back: BackLink): string {
+  return back.kind === "run"
+    ? `Back to run ${back.runName}`
+    : `Back to the chat with ${back.agentName}`;
+}
+
 interface CardHeaderProps {
   readonly titleId: string;
   readonly title: string;
@@ -64,11 +88,16 @@ interface DecidedBarProps {
   /** The note you sent, under `text` as plain text, folded when long. */
   readonly note?: string;
   readonly next: NextItem | null;
+  readonly back: BackLink | null;
   readonly callout: RefObject<CalloutHandle | null>;
 }
 
-/** The bar once decided: the decided Callout, which takes focus, then **Next** (flow-inbox 5.3). */
-export function DecidedBar({ text, note, next, callout }: DecidedBarProps) {
+/**
+ * The bar once decided: the decided Callout, which takes focus, then the way back, secondary,
+ * and **Next** (flow-inbox 5.3). The way back stays when nothing else waits, so you're never
+ * left without one.
+ */
+export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps) {
   return (
     <div className="flex flex-col gap-3 border-t border-border p-4">
       <Callout tone="info" announce="focus" ref={callout}>
@@ -80,7 +109,8 @@ export function DecidedBar({ text, note, next, callout }: DecidedBarProps) {
           </>
         )}
       </Callout>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {back === null ? null : <Button onClick={back.open}>{backLabel(back)}</Button>}
         {next === null ? (
           <p className="text-small text-fg-muted">Nothing else is waiting for you.</p>
         ) : (

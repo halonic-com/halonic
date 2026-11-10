@@ -22,4 +22,4 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 
 ## Local rules
 
-- (none yet; the owner adds rules here when a mistake repeats)
+- **Ask for changes is desktop only until the phone sheet lands (HAL-4008).** The card's dialog is the desktop form (flow-inbox 5.3); a phone gets a full-screen sheet (flow-inbox 8.2, HAL-1305). Don't make the cards reachable on a narrow window before that sheet is in.

@@ -51,6 +51,7 @@ function openCard(overrides: Partial<ApprovalCardProps> = {}) {
     },
     onOpenRun: () => {},
     next: null,
+    back: null,
     now: () => clock.now,
     ...overrides,
   };
@@ -240,6 +241,34 @@ verifies("inbox.approval-card", () => {
       expect(next.textContent).toBe("Next: Approve this reply? · 2 left, 2 left");
       await press(next);
       expect(open).toHaveBeenCalledOnce();
+    });
+
+    it("offers the way back to the run you came from, also when nothing else waits", async () => {
+      const open = vi.fn();
+      const { root, later } = openCard({ back: { kind: "run", runName: "01JD8Q", open } });
+      expect(root.textContent).not.toContain("Back to run");
+      later(61);
+      await press(button(root, "Approve"));
+      expect(root.textContent).toContain("Nothing else is waiting for you.");
+      await press(button(root, "Back to run 01JD8Q"));
+      expect(open).toHaveBeenCalledOnce();
+    });
+
+    it("offers the way back to the chat you came from, next to Next", async () => {
+      const back = vi.fn();
+      const { root, later } = openCard({
+        next: { title: "Approve this reply?", left: 2, open: () => {} },
+        back: { kind: "chat", agentName: "Mailbot", open: back },
+      });
+      later(61);
+      await press(button(root, "Reject"));
+      const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(labels.slice(-2)).toEqual([
+        "Back to the chat with Mailbot",
+        "Next: Approve this reply? · 2 left, 2 left",
+      ]);
+      await press(button(root, "Back to the chat"));
+      expect(back).toHaveBeenCalledOnce();
     });
 
     it("ignores a press in the first second, and lets a screen reader's click through", async () => {

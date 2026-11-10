@@ -41,6 +41,7 @@ function openCard(overrides: Partial<WaitCardProps> = {}) {
     },
     onOpenRun: () => {},
     next: null,
+    back: null,
     now: () => clock.now,
     ...overrides,
   };
@@ -190,6 +191,17 @@ verifies("inbox.wait-card", () => {
       await press(button(root, "Try again"));
       expect(sent).toEqual(["reject", "reject"]);
       expect(root.textContent).toContain("Rejected by you at");
+    });
+
+    it("offers the way back to the run you came from once answered", async () => {
+      const open = vi.fn();
+      const { root, later } = openCard({ back: { kind: "run", runName: "01JD8Q", open } });
+      expect(root.textContent).not.toContain("Back to run");
+      later(61);
+      await press(button(root, "Approve"));
+      expect(root.textContent).toContain("Nothing else is waiting for you.");
+      await press(button(root, "Back to run 01JD8Q"));
+      expect(open).toHaveBeenCalledOnce();
     });
 
     it("opens the run", async () => {

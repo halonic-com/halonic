@@ -5,6 +5,7 @@ import type { WaitItem } from "../inbox-items.ts";
 import { markedName } from "../plain/hidden-characters.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
 import {
+  type BackLink,
   CardHeader,
   DecidedBar,
   FailedLine,
@@ -20,6 +21,8 @@ export interface WaitCardProps {
   readonly onOpenRun: (runId: string) => void;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
+  /** Where you came from, for **Back to run** or **Back to the chat**; `null` from the Inbox itself. */
+  readonly back: BackLink | null;
   /** The clock, so a test can set it. */
   readonly now?: () => Date;
 }
@@ -62,7 +65,7 @@ export function answeredText(event: string, at: Date): string {
  * none red. It has the approval card's 1 s guard, and is replaced in place once answered.
  */
 export function WaitCard(props: WaitCardProps) {
-  const { item, decisions, next } = props;
+  const { item, decisions, next, back } = props;
   const now = props.now ?? (() => new Date());
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -115,7 +118,12 @@ export function WaitCard(props: WaitCardProps) {
         )}
       </div>
       {state.kind === "answered" ? (
-        <DecidedBar text={answeredText(state.event, state.at)} next={next} callout={answered} />
+        <DecidedBar
+          text={answeredText(state.event, state.at)}
+          next={next}
+          back={back}
+          callout={answered}
+        />
       ) : (
         <AnswerBar accepts={item.accepts} state={state} guard={guard} onAnswer={answer} />
       )}
