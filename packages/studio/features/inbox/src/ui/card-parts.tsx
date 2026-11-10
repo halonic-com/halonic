@@ -1,5 +1,5 @@
 import { Button, Callout, type CalloutHandle } from "@halonicjs/studio-kit";
-import type { RefObject } from "react";
+import { type RefObject, useEffect, useState } from "react";
 
 /** The line above the bar when an answer wasn't recorded (mc 10.2). */
 export const failedText = "Couldn't record your decision.";
@@ -19,6 +19,18 @@ interface CardHeaderProps {
   /** "Waiting since 10:42 (1 min)". */
   readonly since: string;
   readonly onOpenRun: () => void;
+}
+
+/**
+ * Renders the card again every minute while it's open, so its "Waiting since
+ * 10:42 (1 min)" keeps counting.
+ */
+export function useEveryMinute(): void {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((tick) => tick + 1), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 }
 
 /** A card's header: its title, which takes focus when it opens, since when it waits, **Open run**. */

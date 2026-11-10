@@ -62,4 +62,16 @@ verifies("inbox.argument-fields", () => {
     );
     expect(rawJson(undefined)).toBe("null");
   });
+
+  it("writes hidden characters in the raw JSON as escapes, and it stays the same JSON", () => {
+    const args = {
+      [`ti${String.fromCodePoint(0x200b)}tle`]: `Refund${String.fromCodePoint(0x202e)}for Sam`,
+      body: `${String.fromCodePoint(0xfeff)}Hi${String.fromCodePoint(0xe0041)}`,
+    };
+    const json = rawJson(args);
+    expect(json).toBe(
+      '{\n  "ti\\u200btle": "Refund\\u202efor Sam",\n  "body": "\\ufeffHi\\udb40\\udc41"\n}',
+    );
+    expect(JSON.parse(json)).toEqual(args);
+  });
 });

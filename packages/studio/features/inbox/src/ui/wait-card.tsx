@@ -4,7 +4,13 @@ import type { InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { markedName } from "../plain/hidden-characters.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
-import { CardHeader, DecidedBar, FailedLine, type NextItem } from "./card-parts.tsx";
+import {
+  CardHeader,
+  DecidedBar,
+  FailedLine,
+  type NextItem,
+  useEveryMinute,
+} from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
 import { PlainValue } from "./plain-value.tsx";
 
@@ -64,6 +70,7 @@ export function WaitCard(props: WaitCardProps) {
   const [state, setState] = useState<CardState>({ kind: "open", failed: null });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
+  useEveryMinute();
 
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   useEffect(() => {

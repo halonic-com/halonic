@@ -7,7 +7,14 @@ import { markedName } from "../plain/hidden-characters.ts";
 import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
 import { ArgumentList } from "./argument-list.tsx";
 import { AskForChangesDialog } from "./ask-for-changes-dialog.tsx";
-import { CardHeader, DecidedBar, FailedLine, failedText, type NextItem } from "./card-parts.tsx";
+import {
+  CardHeader,
+  DecidedBar,
+  FailedLine,
+  failedText,
+  type NextItem,
+  useEveryMinute,
+} from "./card-parts.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
 
 export interface ApprovalCardProps {
@@ -41,7 +48,11 @@ interface NoteForm {
 
 const busyLabels: Record<Decision, string> = { approve: "Approving…", reject: "Rejecting…" };
 
-/** The decided Callout's text (mc 10.2, ux-checklists-approvals D3). */
+/**
+ * The decided Callout's text (mc 10.2, ux-checklists-approvals D3). `at` is
+ * Studio's clock when the answer was recorded: the summary `send` returns
+ * has no time for a decision, and the local engine records with the same clock.
+ */
 export function decidedText(decided: Decided, at: Date): string {
   const time = decidedAt(at);
   switch (decided.kind) {
@@ -72,6 +83,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const [form, setForm] = useState<NoteForm>({ open: false, busy: false, failed: false });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
+  useEveryMinute();
 
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   useEffect(() => {

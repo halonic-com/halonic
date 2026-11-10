@@ -81,6 +81,30 @@ export function markedName(value: string): string {
     .join("");
 }
 
+/**
+ * JSON text with every hidden character written as a `\uXXXX` escape, so the
+ * raw JSON shows it too and stays the same JSON. A character above U+FFFF,
+ * such as a tag character, becomes its two UTF-16 escapes. Hidden characters
+ * can only stand inside JSON strings, where an escape means the same.
+ *
+ * @example
+ * escapeHidden(JSON.stringify(`Refund${String.fromCodePoint(0x202e)}for Sam`)); // '"Refund\\u202efor Sam"'
+ */
+export function escapeHidden(json: string): string {
+  let escaped = "";
+  for (const character of json) {
+    const point = character.codePointAt(0) ?? 0;
+    if (!isHidden(point)) {
+      escaped += character;
+      continue;
+    }
+    for (let index = 0; index < character.length; index++) {
+      escaped += `\\u${character.charCodeAt(index).toString(16).padStart(4, "0")}`;
+    }
+  }
+  return escaped;
+}
+
 function isHidden(point: number): boolean {
   return hiddenRanges.some(([first, last]) => point >= first && point <= last);
 }

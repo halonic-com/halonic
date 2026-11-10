@@ -1,3 +1,5 @@
+import { escapeHidden } from "./hidden-characters.ts";
+
 /** What one argument's value shows as. */
 export type ArgumentValue =
   /** A string the agent sent: model output, shown as plain text, folded and marked. */
@@ -52,9 +54,13 @@ export function argumentFields(
   return fields;
 }
 
-/** The exact arguments, for **Show raw JSON** (INBOX-CARD-05). */
+/**
+ * The exact arguments, for **Show raw JSON** (INBOX-CARD-05). A hidden
+ * character shows as its `\uXXXX` escape, like JSON writes a control
+ * character, so it can't act on the text around it here either.
+ */
 export function rawJson(args: unknown): string {
-  return JSON.stringify(args, null, 2) ?? "null";
+  return escapeHidden(JSON.stringify(args, null, 2) ?? "null");
 }
 
 function addEntries(

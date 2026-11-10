@@ -86,6 +86,18 @@ verifies("inbox.approval-card", () => {
       expect(document.activeElement).toBe(title);
     });
 
+    it("keeps counting the waiting time while it's open", () => {
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+      try {
+        const { root, later } = openCard();
+        later(120);
+        act(() => vi.advanceTimersByTime(60_000));
+        expect(root.textContent).toContain("Waiting since 10:42 (3 min)");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("shows since when it waits, the action and every argument, and no timer", () => {
       const { root } = openCard();
       const text = root.textContent ?? "";
