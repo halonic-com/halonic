@@ -23,11 +23,14 @@ method someone adds.
   An untracked folder whose `.git` file named a git folder outside was accepted, and `snapshot`
   read that repository to record it as a gitlink. Untracked nested repositories that aren't
   ignored are now checked the same way as tracked ones, and refused when their git folder is
-  outside the workspace (`git.repo-leaks`).
+  outside the workspace. An ignored one isn't listed, so `add --force` (`-f`), the one call that
+  would record it, is refused; the adapter never uses it (`git.repo-leaks`).
 
 A deny-list keeps this small. An allow-list of options per subcommand would be stricter, but
 it would have to change with every new method; this can be revisited if more such options turn up.
-The Rust `git-guard` gets the same cases on HAL-3811.
+The Rust `git-guard` gets the same cases on HAL-3811. Where it differs: it allow-lists every
+option exactly, and it allows `add -f` and lists ignored nested repositories for that call only.
+Both refuse the same attacks.
 
 ## Covers
 

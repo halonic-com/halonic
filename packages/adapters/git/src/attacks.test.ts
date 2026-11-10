@@ -401,6 +401,25 @@ verifies("git.repository", () => {
       await expect(Repository.open(await runner(), folder)).rejects.toThrow("nested at");
     });
 
+    it("refuses add --force, which would record an ignored nested repository", async () => {
+      const elsewhere = await repositoryWith(scratch);
+      const folder = await repositoryWith(scratch);
+      await mkdir(join(folder, "vendor"));
+      await writeFile(join(folder, "vendor", ".git"), `gitdir: ${join(elsewhere, ".git")}\n`);
+      await writeFile(join(folder, ".gitignore"), "vendor/\n");
+      const repository = await open(folder);
+      for (const args of [
+        ["add", "-f", "--", "vendor"],
+        ["add", "-Af", "--", "vendor"],
+        ["add", "--force", "--", "vendor"],
+        ["add", "--forc", "--", "vendor"],
+      ]) {
+        await expect(repository.run({ args }), args.join(" ")).rejects.toThrow(
+          "The git adapter doesn't pass",
+        );
+      }
+    });
+
     it("allows an untracked nested repository with its git folder inside", async () => {
       const folder = await repositoryWith(scratch);
       await nestRepository(folder, "vendor");

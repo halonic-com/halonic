@@ -55,10 +55,13 @@ export function checkSubcommand(args: readonly string[]): void {
  */
 const fileOptions = ["output", "file", "pathspec-from-file", "template"];
 const refusedLongOptions: Readonly<Record<string, readonly string[]>> = {
+  // `add --force` records an ignored nested repository, which the checks don't list.
+  add: [...fileOptions, "force"],
   // `cat-file --textconv` runs `diff.<driver>.textconv`, with no `--no-textconv` to beat it.
   "cat-file": [...fileOptions, "textconv"],
 };
 const refusedShortOptions: Readonly<Record<string, string>> = {
+  add: "f",
   commit: "Ft",
   config: "f",
 };
