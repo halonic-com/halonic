@@ -1,4 +1,4 @@
-import { type ChildProcessByStdio, spawn } from "node:child_process";
+import { type ChildProcess, type ChildProcessByStdio, spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import { findProgram } from "@halonicjs/adapter-system-node";
 import type { ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
@@ -48,48 +48,53 @@ function childEnv(env: Readonly<Record<string, string | undefined>>): Record<str
   return result;
 }
 
-const liveGroups = new Set<number>();
+const liveProbes = new Set<ChildProcess>();
 
-function killLiveGroups(): void {
-  for (const pid of liveGroups) {
-    try {
-      process.kill(-pid, "SIGKILL");
-    } catch {
-      // Already gone.
-    }
+/** On POSIX the program leads its own process group, so this also stops what it forked. */
+function killGroup(child: ChildProcess): void {
+  try {
+    if (child.pid !== undefined && process.platform !== "win32")
+      process.kill(-child.pid, "SIGKILL");
+    else child.kill("SIGKILL");
+  } catch {
+    // Already gone.
   }
-  liveGroups.clear();
 }
 
+function killLiveProbes(): void {
+  for (const child of liveProbes) killGroup(child);
+  liveProbes.clear();
+}
+
+const onSigint = () => onLauncherSignal("SIGINT");
+const onSigterm = () => onLauncherSignal("SIGTERM");
+
 function onLauncherSignal(signal: NodeJS.Signals): void {
-  killLiveGroups();
+  killLiveProbes();
   unwatchLauncher();
   // Let the launcher end the way it would have without us (or let its own handler run).
   process.kill(process.pid, signal);
 }
-const onSigint = () => onLauncherSignal("SIGINT");
-const onSigterm = () => onLauncherSignal("SIGTERM");
 
 function watchLauncher(): void {
-  process.on("exit", killLiveGroups);
+  process.on("exit", killLiveProbes);
   process.on("SIGINT", onSigint);
   process.on("SIGTERM", onSigterm);
 }
 
 function unwatchLauncher(): void {
-  process.off("exit", killLiveGroups);
+  process.off("exit", killLiveProbes);
   process.off("SIGINT", onSigint);
   process.off("SIGTERM", onSigterm);
 }
 
-/** A probe's program leads its own process group, so Ctrl-C on the launcher no longer reaches it; stop it here. */
-function trackGroup(pid: number | undefined): () => void {
-  if (pid === undefined || process.platform === "win32") return () => {};
-  if (liveGroups.size === 0) watchLauncher();
-  liveGroups.add(pid);
+/** The program has its own process group, so Ctrl-C on the launcher no longer reaches it; stop it on the way out. */
+function track(child: ChildProcess): () => void {
+  if (liveProbes.size === 0) watchLauncher();
+  liveProbes.add(child);
   return () => {
-    liveGroups.delete(pid);
-    if (liveGroups.size === 0) unwatchLauncher();
+    liveProbes.delete(child);
+    if (liveProbes.size === 0) unwatchLauncher();
   };
 }
 
@@ -113,7 +118,7 @@ function run(
     }
     const out = new Capture();
     const err = new Capture();
-    const untrack = trackGroup(child.pid);
+    const untrack = track(child);
     let settled = false;
     const settle = (result: ProgramProbeResult) => {
       if (settled) return;
@@ -125,19 +130,8 @@ function run(
       child.stderr.destroy();
       resolve(result);
     };
-    const killGroup = () => {
-      try {
-        // On POSIX the program leads its own process group, so this also stops what it forked.
-        if (child.pid !== undefined && process.platform !== "win32")
-          process.kill(-child.pid, "SIGKILL");
-        else child.kill("SIGKILL");
-      } catch {
-        // Already gone.
-      }
-    };
-
     const timer = setTimeout(() => {
-      killGroup();
+      killGroup(child);
       settle({
         status: "failed",
         path,
@@ -149,7 +143,7 @@ function run(
     child.stderr.on("data", (chunk: Buffer) => err.add(chunk));
     child.on("error", () => settle(cantStart));
     // The program is done; stop anything it left behind so the pipes can close.
-    child.on("exit", killGroup);
+    child.on("exit", () => killGroup(child));
     child.on("close", (code) => {
       settle({ status: "ran", path, code, stdout: out.text(), stderr: err.text() });
     });
