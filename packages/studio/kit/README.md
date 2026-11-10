@@ -1275,6 +1275,37 @@ holds a link or a button: anything you can click is an item below it.
 item has 12px of padding above and below. On a phone shortcuts are
 hidden. It stays a popover menu, not a sheet.
 
+### ContextMenu
+
+The same menu for a right-click, Shift F10 or the Menu key on something that isn't a button, such
+as a window tab. The screen listens for those and sets `target`; the menu is open while it's set
+and calls `onClose` when it closes by itself (Escape, Tab, a pick or an outside click). Its
+`label` names it, such as the tab's title.
+
+```tsx
+const [target, setTarget] = useState<ContextMenuTarget>();
+
+<div
+  role="tab"
+  onContextMenu={(event) => {
+    event.preventDefault();
+    setTarget({ element: event.currentTarget, at: { x: event.clientX, y: event.clientY } });
+  }}
+/>;
+<ContextMenu
+  label="Support reply"
+  entries={entries}
+  target={target}
+  onClose={() => setTarget(undefined)}
+/>;
+```
+
+With a point (`at`, a right-click) the menu opens there and the focus goes to the menu itself, as
+when the mouse opens a Menu. Without one (Shift F10, the Menu key) it opens 4px below the element
+and the focus goes to its first usable item. Escape and Tab give the focus back to the element; a
+pick gives it back before `onSelect` runs, so an item that removes the element (Close) can move the
+focus on. A right-click on the open menu doesn't open the browser's own menu over it.
+
 ## HeaderBadge
 
 The badge in the title bar's header slot, at its right end before Saved and the Assistant button:

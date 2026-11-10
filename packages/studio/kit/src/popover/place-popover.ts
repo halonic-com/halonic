@@ -75,12 +75,20 @@ function horizontal(trigger: Box, width: number, windowWidth: number, align: Pop
  * `top` and `left` place it.
  */
 export function placePopover(popover: HTMLElement, trigger: Element, options: PlaceOptions): void {
+  placePopoverBy(popover, trigger.getBoundingClientRect(), options);
+}
+
+/**
+ * Places an open `popover` next to `box`: a trigger's box, or the point a right-click was at as a
+ * box with no size.
+ */
+export function placePopoverBy(popover: HTMLElement, box: Box, options: PlaceOptions): void {
   popover.style.maxHeight = "";
   const { width, height } = popover.getBoundingClientRect();
   // The root's client size leaves out a page scrollbar, so a popover never ends up under one.
   const { clientWidth, clientHeight } = document.documentElement;
   const view = { width: clientWidth, height: clientHeight };
-  const placement = place(trigger.getBoundingClientRect(), { width, height }, view, options);
+  const placement = place(box, { width, height }, view, options);
   popover.style.top = `${placement.top}px`;
   popover.style.left = `${placement.left}px`;
   popover.style.maxHeight = placement.maxHeight === undefined ? "" : `${placement.maxHeight}px`;

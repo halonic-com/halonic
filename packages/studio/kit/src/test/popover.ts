@@ -1,9 +1,10 @@
 /**
  * A fake `popover` for component tests. jsdom has no `showPopover()`, so a test gets one that
- * sets `data-popover-open` and shows it, fires `toggle` a moment later with its `newState`, as a browser does
- * (a queued task there, a microtask here), and a click on a `popovertarget` button that toggles
- * its popover. It doesn't do the top layer or light dismiss: that's the browser's part. A test
- * calls `hidePopover()` itself to stand in for an outside click.
+ * sets `data-popover-open` and shows it, fires `beforetoggle` at once and `toggle` a moment later
+ * with their `newState`, as a browser does (`toggle` is a queued task there, a microtask here),
+ * and a click on a `popovertarget` button that toggles its popover. It doesn't do the top layer
+ * or light dismiss: that's the browser's part. A test calls `hidePopover()` itself to stand in for
+ * an outside click.
  */
 const prototype = HTMLElement.prototype;
 const names = ["showPopover", "hidePopover", "togglePopover"] as const;
@@ -12,10 +13,12 @@ function setOpen(element: HTMLElement, open: boolean): void {
   if (element.hasAttribute("data-popover-open") === open) {
     return;
   }
+  const newState = open ? "open" : "closed";
+  element.dispatchEvent(Object.assign(new Event("beforetoggle"), { newState }));
   element.toggleAttribute("data-popover-open", open);
   // jsdom hides every `[popover]` and can't focus inside it, as it has no `:popover-open`.
   element.style.display = open ? "block" : "";
-  const event = Object.assign(new Event("toggle"), { newState: open ? "open" : "closed" });
+  const event = Object.assign(new Event("toggle"), { newState });
   queueMicrotask(() => element.dispatchEvent(event));
 }
 

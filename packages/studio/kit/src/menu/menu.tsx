@@ -1,16 +1,6 @@
-import {
-  type KeyboardEvent,
-  type ReactNode,
-  type Ref,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
-import { keyShortcutsLabel } from "../kbd/kbd.tsx";
+import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import { type PopoverAlign, placePopover } from "../popover/place-popover.ts";
-import { findIndex, isTypedLetter, nextIndex, TYPE_TO_FIND_MS } from "./menu-keys.ts";
-import { MenuRow } from "./menu-row.tsx";
+import { focusFirstItem, MenuList } from "./menu-list.tsx";
 
 /** One thing the menu does: "Rename…", "Delete agent". */
 export interface MenuItem {
@@ -69,22 +59,11 @@ export interface MenuProps {
 /** The menu sits this far below (or above) its trigger. */
 const TRIGGER_GAP = 4;
 
-// The menu itself takes focus when the mouse opens it, without a ring: no item is active yet.
-// Exported for the states page's static copy.
-export const menuClasses = [
-  "m-0 inset-auto outline-none min-w-45 overflow-y-auto rounded-md border border-transparent p-1",
-  "bg-surface-raised text-fg shadow-2",
-  "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
-].join(" ");
-
-export const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
-
-// Padding 8px 8px 6px, at most 300px wide, wrapping (component specs 20.2).
-const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-muted";
+export { dividerClasses, menuClasses } from "./menu-list.tsx";
 
 /**
- * A short list of actions that opens from a button: a row's ⋮ More button, a title bar or a
- * context menu. A native `popover`, so the browser keeps it on top and closes it on an outside
+ * A short list of actions that opens from a button: a row's ⋮ More button or a title bar. A menu
+ * that opens from a right-click or Shift F10 instead is a `ContextMenu`. A native `popover`, so the browser keeps it on top and closes it on an outside
  * click; the kit places it below the trigger, or above when there's no room.
  *
  * Opened by the keyboard, focus starts on the first item; opened by the mouse, it goes to the menu
@@ -100,23 +79,12 @@ const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-mut
  */
 export function Menu({ trigger, entries, description, align = "start" }: MenuProps) {
   const menuId = useId();
-  const descriptionId = useId();
   const triggerId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(-1);
-  const typed = useRef({ text: "", at: 0 });
   /** The trigger was last pressed with a pointer, not a key. */
   const pressed = useRef(false);
-  const rows = dangerLast(entries);
-  const items = rows.filter((row): row is MenuItem => row !== "divider");
-
-  function focusItem(index: number | undefined): void {
-    if (index !== undefined) {
-      menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]")[index]?.focus();
-    }
-  }
 
   function close(): void {
     menuRef.current?.hidePopover();
@@ -138,7 +106,7 @@ export function Menu({ trigger, entries, description, align = "start" }: MenuPro
         // A trigger with the focus ring was opened by the keyboard (component specs 14, C24). A
         // click on a trigger the keyboard focused keeps its ring, so a press counts as the mouse.
         if (!pressed.current && opener.matches(":focus-visible")) {
-          focusItem(nextIndex(items, -1, "Home"));
+          focusFirstItem(menu, entries);
         } else {
           menu.focus();
         }
@@ -176,44 +144,6 @@ export function Menu({ trigger, entries, description, align = "start" }: MenuPro
     };
   }, [open, align]);
 
-  function pick(item: MenuItem): void {
-    if (item.disabled === true || item.unavailable !== undefined) {
-      return;
-    }
-    // Focus is back on the trigger first, so a Dialog the item opens returns it there.
-    close();
-    item.onSelect();
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
-    const moved = nextIndex(items, active, event.key);
-    if (moved !== undefined) {
-      event.preventDefault();
-      focusItem(moved);
-    } else if (event.key === "Enter" || event.key === " ") {
-      // Not the button's own click, which would come a second time on Space's keyup.
-      event.preventDefault();
-      const item = items[active];
-      if (item !== undefined) {
-        pick(item);
-      }
-    } else if (event.key === "Escape" || event.key === "Tab") {
-      event.preventDefault();
-      close();
-    } else if (isTypedLetter(event)) {
-      focusItem(findIndex(items, active, typeAhead(event.key, event.timeStamp)));
-    }
-  }
-
-  /** The letters typed so far, or one letter again when the same one is pressed repeatedly. */
-  function typeAhead(letter: string, now: number): string {
-    const fresh = now - typed.current.at > TYPE_TO_FIND_MS;
-    const text = fresh ? letter : typed.current.text + letter;
-    typed.current = { text, at: now };
-    return [...text].every((each) => each === letter) ? letter : text;
-  }
-
-  let index = -1;
   return (
     <>
       {trigger({
@@ -223,75 +153,14 @@ export function Menu({ trigger, entries, description, align = "start" }: MenuPro
         "aria-haspopup": "menu",
         "aria-expanded": open,
       })}
-      <div
+      <MenuList
         id={menuId}
-        ref={menuRef}
-        popover="auto"
-        role="menu"
-        aria-labelledby={triggerId}
-        aria-describedby={description === undefined ? undefined : descriptionId}
-        tabIndex={-1}
-        className={menuClasses}
-        onKeyDown={onKeyDown}
-        // The fill follows the pointer, so it clears when the pointer leaves. The arrows start again
-        // from the top or the bottom.
-        onPointerLeave={(event) => {
-          if (event.currentTarget.contains(document.activeElement)) {
-            event.currentTarget.focus();
-          }
-        }}
-      >
-        {description === undefined ? null : (
-          // Not an item: no role, not focusable, so the arrows and type-to-find pass it by.
-          <>
-            <p id={descriptionId} className={descriptionClasses}>
-              {description}
-            </p>
-            <hr className={dividerClasses} />
-          </>
-        )}
-        {rows.map((row, position) => {
-          if (row === "divider") {
-            return <hr key={`divider-${position}`} className={dividerClasses} />;
-          }
-          index += 1;
-          const itemIndex = index;
-          return (
-            <MenuRow
-              key={row.id}
-              item={row}
-              active={itemIndex === active}
-              keyShortcuts={row.keys === undefined ? undefined : keyShortcutsLabel(row.keys)}
-              onFocus={() => setActive(itemIndex)}
-              onBlur={() => setActive(-1)}
-              onPick={() => pick(row)}
-            />
-          );
-        })}
-      </div>
+        listRef={menuRef}
+        naming={{ labelledBy: triggerId }}
+        entries={entries}
+        description={description}
+        onClose={close}
+      />
     </>
   );
-}
-
-/**
- * The entries with danger items moved to the end, below one divider, and no divider at the
- * start, at the end or twice in a row.
- */
-function dangerLast(entries: readonly MenuEntry[]): readonly MenuEntry[] {
-  const isDanger = (entry: MenuEntry) => entry !== "divider" && entry.danger === true;
-  const ordered = [
-    ...entries.filter((entry) => !isDanger(entry)),
-    "divider" as const,
-    ...entries.filter(isDanger),
-  ];
-  const rows: MenuEntry[] = [];
-  for (const entry of ordered) {
-    if (entry !== "divider" || (rows.length > 0 && rows.at(-1) !== "divider")) {
-      rows.push(entry);
-    }
-  }
-  if (rows.at(-1) === "divider") {
-    rows.pop();
-  }
-  return rows;
 }
