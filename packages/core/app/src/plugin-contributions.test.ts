@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import { type PluginEntry, PluginService } from "./plugin-service.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
+import { TestRecordStore } from "./testing/test-record-store.ts";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
 import { TrustService } from "./trust-service.ts";
 
@@ -55,7 +56,13 @@ async function loadedPlugins(): Promise<{ service: PluginService; entries: Plugi
     clock,
     appVersion: "0.1.0",
   });
-  const service = new PluginService({ plugins: reader, digest, trust });
+  const service = new PluginService({
+    plugins: reader,
+    digest,
+    trust,
+    records: new TestRecordStore(),
+    clock,
+  });
   for (const entry of await service.load()) {
     if (entry.status === "new" && entry.folder !== "rain") {
       await service.trust(entry.folder, entry.fingerprint, "prompt");
