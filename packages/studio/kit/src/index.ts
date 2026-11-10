@@ -91,6 +91,7 @@ export {
   type ListHeadingLayout,
   type ListHeadingProps,
 } from "./list-heading/list-heading.tsx";
+export { LongText, type LongTextProps } from "./long-text/long-text.tsx";
 export {
   Menu,
   type MenuEntry,
@@ -131,6 +132,7 @@ export {
 } from "./status-chip/status-chip.tsx";
 export { Switch, type SwitchProps, type SwitchUnavailable } from "./switch/switch.tsx";
 export { type Tab, type TabCount, Tabs, type TabsProps } from "./tabs/tabs.tsx";
+export { TextSheet, type TextSheetProps } from "./text-sheet/text-sheet.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,
   TOAST_WITH_ACTION_CLOSES_AFTER_MS,

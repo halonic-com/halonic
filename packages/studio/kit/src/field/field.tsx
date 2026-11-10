@@ -13,6 +13,11 @@ export interface FieldControl {
   /** True while the Field shows an error: the control sets `aria-invalid`. */
   readonly invalid: boolean;
   readonly required: boolean;
+  /** The label's words, for a control that shows them again: the text sheet's title. */
+  readonly label: string;
+  /** The hint and the error themselves, for a control that shows them again: the text sheet. */
+  readonly hint: ReactNode;
+  readonly error: string | undefined;
 }
 
 const FieldControlContext = createContext<FieldControl | undefined>(undefined);
@@ -103,6 +108,9 @@ export function Field({
     describedBy: hasLine ? lineId : undefined,
     invalid,
     required,
+    label,
+    hint: isShown(hint) ? hint : undefined,
+    error: invalid ? (error ?? undefined) : undefined,
   };
 
   const side = (layout ?? (rows === undefined ? "stack" : "side")) === "side";
@@ -244,8 +252,11 @@ function PrefixRow({
   );
 }
 
-/** The line under the control: the error with its icon, else the hint, else nothing. */
-function FieldLine({
+/**
+ * The line under the control: the error with its icon, else the hint, else nothing. The text
+ * sheet draws its field's line with it too.
+ */
+export function FieldLine({
   id,
   hint,
   error,

@@ -1009,6 +1009,48 @@ with its own icon; `muted` puts the icon and the text in `fg-muted`.
 <LineFrame icon={<ShareIcon />}>Shared with your team.</LineFrame>;
 ```
 
+## LongText and TextSheet
+
+A long text field: Description, Instructions, an agent step's text. Put it in a `Field` like any
+control.
+
+```tsx
+<Field label="Instructions" hint="What the agent does." error={instructionsError}>
+  <LongText
+    value={instructions}
+    placeholder="Add instructions"
+    onChange={save}
+    onSheetDone={(opened) => {
+      if (opened !== instructions) {
+        toasts.show({
+          tone: "info",
+          title: "Updated the instructions of Mail triage",
+          action: { label: "Undo", onClick: () => save(opened) },
+        });
+      }
+    }}
+  />
+</Field>;
+```
+
+- **On desktop** it's the kit's `TextArea`.
+- **On a phone** the text isn't typed in the page (component specs 3). The field is a button
+  drawn as the phone Input: the text folded after 8 lines and a 20px chevron. Its name is the
+  Field's label and its text is its description. With a Field error the edge is `danger`, so an
+  empty required field shows on the page, not only in the sheet.
+- Pressing it opens the **text sheet**. The sheet has the label as its title and **Done** at the
+  right, with no Close, because it cancels nothing. Then come the Field's hint, its error, and
+  one borderless textarea that fills the screen down to the keyboard. It saves as you type
+  through `onChange`. Done and Android back close it and call `onSheetDone` with the text it
+  opened with. **The toast with Undo is the screen's:** a phone has no Ctrl Z.
+- While the Field has an error, Done and back don't close the sheet: focus moves into the text,
+  so the error is read. A failed save (`saveError`) is a danger Callout above the text, and Done
+  still closes.
+- Inside a form sheet a long field stays a real `TextArea`, so a sheet of typing never opens over
+  another. That switch comes with the Dialog's form sheet.
+
+`TextSheet` is exported on its own too, for a screen that opens one without the folded field.
+
 ## Menu
 
 A short list of actions that opens from a button: a row's ⋮ More button, the title bar, a sidebar
