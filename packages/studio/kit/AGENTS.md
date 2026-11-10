@@ -18,8 +18,9 @@ everything else is internal.
 
 ## Local rules
 
-- `src/theme.css` is the only place a colour, size, radius, shadow or duration is written. A missing
-  value becomes a new token there, never a one-off in a component.
+- `src/theme.css` and the files it imports are the only place a colour, size, radius, shadow or
+  duration is written. A missing value becomes a new token in `theme.css`, never a one-off in a
+  component.
 - Every colour is `light-dark(light, dark)`. Never add `dark:` classes or a second dark copy.
 - Never import from another Studio package. The shell and features depend on the kit, not the
   reverse; `src/boundaries.test.ts` enforces it.
