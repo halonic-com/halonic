@@ -13,8 +13,8 @@ export const toolApprovalStoreVersion = 1;
  * `${NAME}` and is never resolved, so rotating a secret asks nothing and no
  * secret value reaches the profile.
  *
- * - `http`: the connector's URL, normalised, without user name, password or
- *   fragment. The query string stays, because it is part of the server's
+ * - `http`: the connector's URL as the trust content writes it, without
+ *   its fragment. A URL with user info has no address, as it can't be trusted. The query string stays, because it is part of the server's
  *   identity. The headers count too, but only as their {@link WrittenDigest},
  *   because a person may have typed a token straight into one.
  * - `stdio`: the command and its arguments, the pin when the command is a

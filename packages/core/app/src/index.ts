@@ -11,6 +11,19 @@ export {
   type SandboxReason,
 } from "./agent-placement.ts";
 export {
+  type ApproveAllResult,
+  approveAllShown,
+  approveListedTools,
+  approveWaitingTool,
+  changesBeforeQuiet,
+  changeWindowMs,
+  keepsChanging,
+  type ListedToolApprovalCheck,
+  type ListedToolApprovalInput,
+  type UnreadableApproval,
+  type WaitingTool,
+} from "./approve-listed-tools.ts";
+export {
   type ChatAnswer,
   type ChatAnswerEnd,
   type ChatAnswerListener,
@@ -86,6 +99,16 @@ export {
   type ListenerErrorHandler,
 } from "./event-bus.ts";
 export { knowledgeDocForModel, knowledgeHitForModel } from "./knowledge-for-model.ts";
+export {
+  httpToolServer,
+  listedToolFingerprint,
+  listedToolFingerprintPrefix,
+  listedToolText,
+  sameToolServer,
+  stdioToolServer,
+  strictCanonicalJson,
+  writtenDigest,
+} from "./listed-tool-fingerprint.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export {
