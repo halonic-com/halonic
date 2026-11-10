@@ -145,6 +145,7 @@ verifies("kit.radio", () => {
     expect(container.querySelector("input:not([type])")).toBeNull();
     expect(groupIn(container).className).toContain("gap-2");
     expect(groupIn(container).className).toContain("phone:gap-0");
+    expect(groupIn(container).className).toContain("touch:gap-0");
   });
 
   it("is at least 48px high per option on a phone or a touch screen", () => {

@@ -112,7 +112,7 @@ export function RadioGroup<Value extends string>({
       aria-describedby={field?.describedBy}
       aria-invalid={invalid ? true : undefined}
       aria-required={field?.required === true ? true : undefined}
-      className={`flex flex-col phone:gap-0 ${spaced ? "gap-3" : "gap-2"}`}
+      className={`flex flex-col phone:gap-0 touch:gap-0 ${spaced ? "gap-3" : "gap-2"}`}
     >
       {options.map((option) => (
         <RadioRow

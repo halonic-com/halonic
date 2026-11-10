@@ -877,8 +877,8 @@ words alone and described by its note, so a screen reader reads the note once.
 | High contrast | A picked circle's ring in `Highlight` (`radio-forced`); an unavailable one `GrayText`                    |
 
 Options are 8px apart, 12px while the picked option shows a field. **On a phone or a touch
-screen** every option is at least 48px high, label included, and on a phone the options are 0px
-apart, because the rows' height gives the space.
+screen** every option is at least 48px high, label included, and the options are 0px apart,
+because the rows' height gives the space.
 
 **Unavailable is native `disabled` here**, the one exception to 23 A1 in the kit, because the
 arrow keys must skip the option. Its reason is always its note, which describes it.
