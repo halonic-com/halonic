@@ -53,19 +53,22 @@ verifies("mcp.stdio-connector", () => {
       expect(starter.counts().started).toBe(0);
     });
 
-    it("starts a package runner without a pin as configured, in its cwd, like any trusted program", async () => {
-      const { starter, factory, context } = setUp();
-      const npx = { ...config.transport, command: "npx", args: ["-y", "@acme/notes-mcp"] };
-      const client = factory.create({ ...config, transport: npx }, context);
-      await client.listTools();
-      expect(starter.counts().started).toBe(1);
-      expect(starter.programs[0]?.launch).toMatchObject({
-        program: "npx",
-        args: ["-y", "@acme/notes-mcp"],
-        cwd: "/workspaces/acme/tools",
-      });
-      await client.close();
-    });
+    itUnlessWindows(
+      "[platform:win32] HAL-4470: starts a package runner without a pin as configured, in its cwd, like any trusted program",
+      async () => {
+        const { starter, factory, context } = setUp();
+        const npx = { ...config.transport, command: "npx", args: ["-y", "@acme/notes-mcp"] };
+        const client = factory.create({ ...config, transport: npx }, context);
+        await client.listTools();
+        expect(starter.counts().started).toBe(1);
+        expect(starter.programs[0]?.launch).toMatchObject({
+          program: "npx",
+          args: ["-y", "@acme/notes-mcp"],
+          cwd: "/workspaces/acme/tools",
+        });
+        await client.close();
+      },
+    );
 
     it("refuses a secret that isn't set, by name, and tries again on the next call", async () => {
       const { starter, factory, context } = setUp(new MemorySecrets());
