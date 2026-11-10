@@ -51,6 +51,16 @@ export const pluginMessages = defineMessages("plugin", {
   /** Answer No, or Enter, with a !: added but off, exit 3 (Studio's Not now, D4). */
   addedButOff: (name: string, id: string) =>
     phrase`${name} is added but off. Nothing from it runs until you trust it: halonic trust --plugin ${id}`,
+  /**
+   * No terminal, or `CI` set, without `--yes --fingerprint`: the copy is made,
+   * then it ends as a No does, added but off with a ! and exit 3, in F16's two
+   * lines (cli-output 3.6, revision 24).
+   */
+  addNoTerminal: (name: string) =>
+    phrase`${name} is added but off, because there's no terminal to ask you to trust it.`,
+  /** The fix names `trust --plugin`, because a second `plugin add` would be a conflict. */
+  addNoTerminalFix: (id: string) =>
+    phrase`Review it with halonic trust --plugin ${id}, then pass --yes --fingerprint <fingerprint>.`,
   /** After the refusal's reason from the attack-test list; never more detail than the reason. */
   refusedSourceFix: () => phrase`Check the folder or git address.`,
 

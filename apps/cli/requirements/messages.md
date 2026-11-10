@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 19, with Liam's F5 and F6 on HAL-2618 (HAL-2676)
+- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703 (HAL-2676)
 
 The `halonic` command shall take every sentence it shows the user from the CLI's message catalogue, where the sentence has a key made of its area and its name, such as `usage.unknownCommand`. A sentence shall have the same words in a terminal, through a pipe and in `--json`: colour, bold, dim and the marks' plain-text stand-ins shall be the only difference.
 
@@ -32,3 +32,6 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given `halonic plugin remove weather` for a plugin with an API key,
   when its question is made,
   then it reads "Remove Weather? Its settings and the API key you entered are removed from this computer." (cli-output 3.6).
+- Given a trust check where the only differences are two rows marked Changed,
+  when its summary is made,
+  then it reads "2 changed programs." and never names a count of 0 (cli-output 3.5).

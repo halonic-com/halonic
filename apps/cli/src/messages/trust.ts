@@ -6,6 +6,12 @@ import { suggestedCommand } from "./suggested-command.ts";
 /** Where an unpinned program downloads its code from: npm for `npx`, PyPI for `uvx` and `pipx run`. */
 export type PackageRegistry = "npm" | "PyPI";
 
+/** How many program rows are marked New and how many Changed since the workspace was trusted. */
+export interface ProgramChanges {
+  readonly added: number;
+  readonly changed: number;
+}
+
 /**
  * The sentences of `halonic trust [--dir <folder>]` (cli-output 1.7, 1.9 and
  * 3.5), in the content and order of Studio's trust check. In 0.1 the check
@@ -25,9 +31,20 @@ export const trustMessages = defineMessages("trust", {
   /** The heading instead, when the workspace changed since it was trusted. */
   changedHeading: (name: string, trustedOn: string) =>
     phrase`What changed in ${name} since you trusted it on ${trustedOn}`,
-  /** Studio's summary sentence, first under the changed heading. */
-  newPrograms: (count: number, trustedOn: string) =>
-    phrase`${counted(count, "new program", "new programs")} since you trusted this on ${trustedOn}.`,
+  /**
+   * Studio's summary sentence, first under the changed heading. It names only
+   * what changed, never a 0 (cli-output 3.5, revision 24). One changed row
+   * carries the date; several are one list, new before changed, without the
+   * date, because the heading already has it. Called only when something
+   * changed.
+   */
+  changeSummary: (changes: ProgramChanges, trustedOn: string) => {
+    if (changes.added + changes.changed === 1) {
+      const row = changes.added === 1 ? "new program" : "changed program";
+      return phrase`1 ${row} since you trusted this on ${trustedOn}.`;
+    }
+    return phrase`${changeList(changes)}.`;
+  },
   /** After a row that wasn't there when it was trusted. */
   newRow: () => phrase`New`,
   /** After a row that is different from when it was trusted. */
@@ -83,6 +100,17 @@ export const trustMessages = defineMessages("trust", {
   reviewThenTrust: (dir?: string) =>
     phrase`Review what it can start, then trust it: ${suggestedCommand("trust", dir)}`,
 });
+
+/** "2 changed programs", "1 new program and 2 changed programs": the parts that aren't 0, new first. */
+function changeList(changes: ProgramChanges): string {
+  const parts = [
+    changes.added > 0 ? counted(changes.added, "new program", "new programs") : undefined,
+    changes.changed > 0
+      ? counted(changes.changed, "changed program", "changed programs")
+      : undefined,
+  ].filter((part) => part !== undefined);
+  return parts.join(" and ");
+}
 
 /** "A", "A and B", "A, B and C". */
 function listed(names: readonly string[]): Phrase {

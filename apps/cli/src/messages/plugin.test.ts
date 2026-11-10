@@ -21,6 +21,15 @@ verifies("cli.messages", () => {
     );
     expect(words(pluginMessages.removeNoTerminalFix())).toBe("To remove it anyway, pass --yes.");
   });
+
+  it("leaves a plugin added but off when there's no terminal to ask", () => {
+    expect(words(pluginMessages.addNoTerminal("Weather"))).toBe(
+      "Weather is added but off, because there's no terminal to ask you to trust it.",
+    );
+    expect(words(pluginMessages.addNoTerminalFix("weather"))).toBe(
+      "Review it with halonic trust --plugin weather, then pass --yes --fingerprint <fingerprint>.",
+    );
+  });
 });
 
 describe("plugin's sentences", () => {

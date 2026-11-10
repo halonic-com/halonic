@@ -54,15 +54,21 @@ describe("trust's sentences", () => {
     expect(words(trustMessages.changedHeading("Acme", "3 Nov"))).toBe(
       "What changed in Acme since you trusted it on 3 Nov",
     );
-    expect(words(trustMessages.newPrograms(1, "3 Nov"))).toBe(
-      "1 new program since you trusted this on 3 Nov.",
-    );
-    expect(words(trustMessages.newPrograms(2, "3 Nov"))).toBe(
-      "2 new programs since you trusted this on 3 Nov.",
-    );
     expect([words(trustMessages.newRow()), words(trustMessages.changedRow())]).toEqual([
       "New",
       "Changed",
+    ]);
+  });
+
+  it("names only what changed in the summary, never a 0", () => {
+    const summary = (added: number, changed: number) =>
+      words(trustMessages.changeSummary({ added, changed }, "3 Nov"));
+    expect([summary(1, 0), summary(0, 1), summary(2, 0), summary(0, 2), summary(1, 2)]).toEqual([
+      "1 new program since you trusted this on 3 Nov.",
+      "1 changed program since you trusted this on 3 Nov.",
+      "2 new programs.",
+      "2 changed programs.",
+      "1 new program and 2 changed programs.",
     ]);
   });
 
