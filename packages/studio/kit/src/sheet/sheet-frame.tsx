@@ -1,5 +1,5 @@
-import { type ReactNode, type RefObject, useId, useRef } from "react";
-import { Button } from "../button/button.tsx";
+import { type FormEvent, type ReactNode, type RefObject, useId, useRef } from "react";
+import { Button, type ButtonUnavailable } from "../button/button.tsx";
 import { ModalRegions } from "../dialog/modal-regions.tsx";
 import { useCancelEvents } from "../dialog/use-cancel-events.ts";
 import { useModal } from "../dialog/use-modal.ts";
@@ -25,8 +25,22 @@ export interface SheetFrameProps {
    * throws away what changed. Without it, the title starts 16px in (the text sheet).
    */
   readonly onClose?: () => void;
+  /** Close can't be pressed now: while a form sheet is busy, with the busy button as the reason. */
+  readonly closeUnavailable?: ButtonUnavailable | undefined;
   /** Escape and Android back, which the shell turns into the dialog's `cancel`. */
   readonly onCancel: () => void;
+  /**
+   * The browser closed the dialog although `onCancel` refused (Chrome lets a second Escape
+   * through). Default: `onCancel`.
+   */
+  readonly onClosedByBrowser?: () => void;
+  /**
+   * Makes the sheet one form, round the body and the footer: its submit button, or Enter in a
+   * one-line field, submits it.
+   */
+  readonly onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
+  /** The last row, under the scrolling body: a form sheet's ActionBar. */
+  readonly footer?: ReactNode;
   /** The top bar's right slot: the text sheet's Done. */
   readonly actions?: ReactNode;
   /** Where focus goes when the sheet opens. Default: its title. */
@@ -51,17 +65,30 @@ export function SheetFrame(props: SheetFrameProps) {
     initial: () => props.initialFocus?.() ?? title.current,
     fallback: props.returnFocus,
   });
-  const events = useCancelEvents(props.onCancel, props.onCancel);
-  return (
-    <dialog ref={dialog} aria-labelledby={titleId} className={sheetFrameClasses} {...events}>
+  const events = useCancelEvents(props.onCancel, props.onClosedByBrowser ?? props.onCancel);
+  const content = (
+    <>
       <SheetBar
         titleId={titleId}
         title={title}
         text={props.title}
         onClose={props.onClose}
+        closeUnavailable={props.closeUnavailable}
         actions={props.actions}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">{props.children}</div>
+      {props.footer}
+    </>
+  );
+  return (
+    <dialog ref={dialog} aria-labelledby={titleId} className={sheetFrameClasses} {...events}>
+      {props.onSubmit === undefined ? (
+        content
+      ) : (
+        <form className="contents" noValidate onSubmit={props.onSubmit}>
+          {content}
+        </form>
+      )}
       <ModalRegions />
     </dialog>
   );
@@ -72,6 +99,7 @@ interface SheetBarProps {
   readonly title: RefObject<HTMLHeadingElement | null>;
   readonly text: string;
   readonly onClose: (() => void) | undefined;
+  readonly closeUnavailable: ButtonUnavailable | undefined;
   readonly actions: ReactNode;
 }
 
@@ -81,11 +109,18 @@ interface SheetBarProps {
  * title on one line, and the actions slot at the right with 12px more on its right, so a text
  * button there keeps the page's 16px inset.
  */
-function SheetBar({ titleId, title, text, onClose, actions }: SheetBarProps) {
+function SheetBar({ titleId, title, text, onClose, closeUnavailable, actions }: SheetBarProps) {
   return (
     <header className="flex min-h-phone-bar shrink-0 items-center gap-1 border-b border-border px-1 pt-safe">
       {onClose === undefined ? null : (
-        <Button variant="ghost" size="lg" icon={<CloseIcon />} label="Close" onClick={onClose} />
+        <Button
+          variant="ghost"
+          size="lg"
+          icon={<CloseIcon />}
+          label="Close"
+          unavailable={closeUnavailable}
+          onClick={onClose}
+        />
       )}
       <h2
         ref={title}

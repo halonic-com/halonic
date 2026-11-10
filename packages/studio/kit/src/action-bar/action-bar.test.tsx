@@ -108,6 +108,41 @@ verifies("kit.action-bar", () => {
     expect(onAsk).not.toHaveBeenCalled();
   });
 
+  it("gives the busy button's id to it alone, so two busy buttons never share one", () => {
+    const { container } = render(
+      <ActionBar
+        rows={[
+          [
+            { label: "Approve", busy: true },
+            { label: "Reject", busy: true },
+          ],
+        ]}
+      />,
+    );
+    const [approve, reject] = buttons(container) as [HTMLButtonElement, HTMLButtonElement];
+    expect(approve.id).not.toBe("");
+    expect(reject.id).not.toBe(approve.id);
+  });
+
+  it("takes a button's own id, kept while it's busy, and an unavailable reason", async () => {
+    const onCreate = vi.fn();
+    const { container, rerender } = render(
+      <ActionBar
+        rows={[
+          [{ id: "create", label: "Create", unavailable: { reason: "why" }, onClick: onCreate }],
+        ]}
+      />,
+    );
+    const create = buttons(container)[0] as HTMLButtonElement;
+    expect(create.id).toBe("create");
+    expect(create.getAttribute("aria-disabled")).toBe("true");
+    expect(create.getAttribute("aria-describedby")).toBe("why");
+    await click(create);
+    expect(onCreate).not.toHaveBeenCalled();
+    rerender(<ActionBar rows={[[{ id: "create", label: "Create", busy: true }]]} />);
+    expect((buttons(container)[0] as HTMLButtonElement).id).toBe("create");
+  });
+
   it("rides the keyboard by default and marks a bar that steps aside while you type", () => {
     const ride = render(<ActionBar rows={[[{ label: "Create", variant: "primary" }]]} />);
     expect(

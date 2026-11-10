@@ -372,8 +372,16 @@ These regions are separate from the alert slot, which carries only the Dialog's 
 
 **On a phone** a confirmation stays a dialog, the screen's width less 16px on each side, with no
 ✕: its buttons are stacked, full width and 48px, the confirming one first in the DOM, so focus
-moves in the order you see. A `form` becomes a form sheet once the Sheet lands; until then it
-draws as a dialog too.
+moves in the order you see.
+
+**A `form` Dialog on a phone is a form sheet** (component specs 15.3): the same `<dialog>` and
+props, drawn full screen. Close sits at the top left (it cancels and asks nothing) and the title
+takes focus. The fields are padded 12px 16px and 16px apart in a body that scrolls. The confirming
+button is full width and 48px in an `ActionBar` at the bottom, riding on the keyboard, and it
+submits the one form, so Enter in a field confirms too. There's no Cancel button: Close is
+Cancel. While `busy`, Close is unavailable with the busy button as its reason. A failed submit's
+Callout is the last thing in the body, above the bar. Parts inside can ask `useInFormSheet()`, so a
+long field stays a textarea there instead of folding into a text sheet.
 
 ## EmptyState
 

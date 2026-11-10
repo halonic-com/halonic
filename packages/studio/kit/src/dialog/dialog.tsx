@@ -3,6 +3,7 @@ import { usePresentation } from "../presentation/presentation.tsx";
 import { AlertSlot } from "./alert-slot.tsx";
 import { DialogFooter, DialogHeader } from "./dialog-parts.tsx";
 import type { DialogProps, DialogSize } from "./dialog-props.ts";
+import { FormSheet } from "./form-sheet.tsx";
 import { ModalRegions } from "./modal-regions.tsx";
 import { useCancelEvents } from "./use-cancel-events.ts";
 import { useModal } from "./use-modal.ts";
@@ -38,7 +39,9 @@ const bodyScroll = "min-h-0 flex-1 overflow-y-auto short:flex-none short:overflo
  * the first field of a form, or on Cancel in a confirmation, and goes back to the opener.
  *
  * The confirming button stays pressable while the form is incomplete: the screen shows every
- * field error and focuses the first. A failed request keeps the Dialog open with `error`.
+ * field error and focuses the first. A failed request keeps the Dialog open with `error`. On a
+ * phone a `form` Dialog is a full-screen form sheet, with Close at the top left and the
+ * confirming button in an ActionBar at the bottom.
  *
  * @example
  * {deleting ? (
@@ -50,6 +53,12 @@ const bodyScroll = "min-h-0 flex-1 overflow-y-auto short:flex-none short:overflo
  * ) : null}
  */
 export function Dialog(props: DialogProps) {
+  const phone = usePresentation() === "phone";
+  return phone && props.form === true ? <FormSheet {...props} /> : <DialogBox {...props} />;
+}
+
+/** The centred box: every Dialog on desktop, and a confirmation on a phone. */
+function DialogBox(props: DialogProps) {
   const { size = "sm", flush = false, form = false, busy = false } = props;
   const phone = usePresentation() === "phone";
   const ids = { title: useId(), body: useId(), confirm: useId() };

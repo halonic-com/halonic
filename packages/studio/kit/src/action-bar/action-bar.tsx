@@ -1,5 +1,5 @@
 import { type MouseEvent, type ReactNode, useId } from "react";
-import { Button } from "../button/button.tsx";
+import { Button, type ButtonUnavailable } from "../button/button.tsx";
 
 /** One of the bar's buttons. Always `size="touch"` and full width: the bar draws it. */
 export interface ActionBarButton {
@@ -13,11 +13,18 @@ export interface ActionBarButton {
   readonly busyLabel?: string;
   /**
    * While its request runs. The other buttons in the bar are then unavailable, with this one's
-   * busy label as their reason, and every click is ignored until it's done.
+   * busy label as their reason, and every click is ignored until it's done. One at a time.
    */
   readonly busy?: boolean;
   /** `submit` only for a form sheet's confirming button. */
   readonly type?: "button" | "submit";
+  /**
+   * Can't be used for a reason that isn't waiting: the `id` of the visible text that says why. It
+   * stays focusable and ignores presses (component specs 23 A1).
+   */
+  readonly unavailable?: ButtonUnavailable | undefined;
+  /** Its `id`, for a control elsewhere that points at it: a form sheet's Close while it's busy. */
+  readonly id?: string;
   readonly onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
@@ -68,8 +75,9 @@ const noteTones: Record<ActionBarNoteTone, string> = {
  */
 export function ActionBar({ rows, note, whileTyping = "ride" }: ActionBarProps) {
   checkPrimary(rows);
-  const busyId = useId();
-  const busy = rows.flat().some((button) => button.busy === true);
+  const ownBusyId = useId();
+  const busyButton = rows.flat().find((button) => button.busy === true);
+  const busyId = busyButton?.id ?? ownBusyId;
   return (
     <div
       data-while-typing={whileTyping}
@@ -92,14 +100,18 @@ export function ActionBar({ rows, note, whileTyping = "ride" }: ActionBarProps) 
               className="flex min-w-fit flex-1 basis-[calc(50%-var(--spacing))]"
             >
               <Button
-                {...(button.busy === true ? { id: busyId } : {})}
+                {...idOf(button, busyButton, busyId)}
                 variant={button.variant ?? "secondary"}
                 size="touch"
                 block
                 {...(button.icon === undefined ? {} : { icon: button.icon })}
                 busy={button.busy === true}
                 busyLabel={button.busyLabel}
-                unavailable={busy && button.busy !== true ? { reason: busyId } : undefined}
+                unavailable={
+                  busyButton !== undefined && button !== busyButton
+                    ? { reason: busyId }
+                    : button.unavailable
+                }
                 type={button.type ?? "button"}
                 onClick={button.onClick}
               >
@@ -111,6 +123,17 @@ export function ActionBar({ rows, note, whileTyping = "ride" }: ActionBarProps) 
       ))}
     </div>
   );
+}
+
+/**
+ * The busy button's id is the others' reason. Only the first busy button takes it, so two busy
+ * at once never share an id; one at a time is the rule.
+ */
+function idOf(button: ActionBarButton, busyButton: ActionBarButton | undefined, busyId: string) {
+  if (button === busyButton) {
+    return { id: busyId };
+  }
+  return button.id === undefined ? {} : { id: button.id };
 }
 
 /** At most one `primary`, and it's the first button: a mistake here is the screen's, not the user's. */
