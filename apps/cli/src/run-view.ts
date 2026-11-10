@@ -204,8 +204,9 @@ function markOf(step: RunStep): Mark {
  * The alias is the method's own when the step calls one, else the agent's,
  * else the default of its hub or workspace, as the engine picks it. With no
  * alias at all the line names only the agent. An agent that's no longer in
- * the workspace is named by its id; a step without an agent has no facts. All of it comes from workspace files, so it is made printable
- * (cli-output section 5).
+ * the workspace is named by its id; a step without an agent has no facts.
+ * All of it comes from workspace files, so it is made printable (cli-output
+ * section 5).
  */
 function agentFacts(
   stateId: string,

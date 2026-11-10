@@ -15,7 +15,7 @@ segment is left out, so there is never an empty `·`.
 
 The live line and the ✓ line share this, so they keep saying the same (`cli.print-ahead`). In the
 Acme example every agent runs on the workspace default, so both golden files and `halonic runs show`
-now say it:
+(and its requirement's examples) now say it:
 
 ```text
 before:  ✓ Read the email        Writer   1 s
@@ -35,5 +35,6 @@ is wording on a screen the board already approved, which the team decides (board
 ## Covers
 
 - cli.run-live
+- cli.commands.runs.show
 - apps/cli/src/commands/run/golden/support-reply-waiting.txt
 - apps/cli/src/commands/run/golden/support-reply-approved.txt

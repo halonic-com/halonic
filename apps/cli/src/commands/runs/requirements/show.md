@@ -13,10 +13,10 @@ The `halonic runs show <run-id>` command shall show one run of the workspace, re
   then it starts with "Support reply in acme · run a1b2c3 · started 10:31, finished 10:31" and exits 0.
 - Given a run of Mail triage whose step Read the email took 1 s and that finished in 18 s without a tool call,
   when `halonic runs show 0a0b0c` is run,
-  then after the heading it prints "", "✓ Read the email Writer 1 s", "", "✓ Mail triage finished in 18 s." and " Sent nothing".
+  then after the heading it prints "", "✓ Read the email Writer · default 1 s", "", "✓ Mail triage finished in 18 s." and " Sent nothing".
 - Given a run still in its step Read the email since 10:20,
   when `halonic runs show 0a0b0d` is run,
-  then it ends with "◌ Read the email Writer · running since 10:20".
+  then it ends with "◌ Read the email Writer · default · running since 10:20".
 - Given a run that failed yesterday at 16:41,
   when `halonic runs show 01jd6m` is run,
   then its heading ends "started yesterday 16:40, failed yesterday 16:41", on stdout, and it exits 0.
