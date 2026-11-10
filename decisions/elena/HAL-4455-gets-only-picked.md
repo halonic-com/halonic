@@ -26,9 +26,13 @@ the mail twice. A step lists what it picks so that the model sees only that.
 ## Tests
 
 No test was weakened. New tests cover the rule in `stepPrompt`, in a `task` state and in a
-`parallel` branch; both engine tests failed before the fix.
+`parallel` branch; both engine tests failed before the fix. The CLI's two `support-reply`
+goldens recorded the bug: their `classify` prompt held the mail as JSON and then again under
+`## Data`. They now hold the `## Data` section alone, and nothing else in them changes.
 
 ## Covers
 
 - workflow.state-input
 - workflow.with-gets
+- apps/cli/src/commands/run/golden/support-reply-waiting.txt
+- apps/cli/src/commands/run/golden/support-reply-approved.txt
