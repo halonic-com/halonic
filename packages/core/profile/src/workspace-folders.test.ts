@@ -31,6 +31,13 @@ verifies("profile.workspace-folders", () => {
     expect(first.blobsFolder()).toBe(`${first.folder}/blobs`);
   });
 
+  it("keeps the workspace's records beside its runs and blobs", async () => {
+    const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+    expect(folders.recordsFolder()).toBe(`${folders.folder}/records`);
+    const windows = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
+    expect(windows.recordsFolder()).toBe(`${windows.folder}\\records`);
+  });
+
   it("keys the folder by the SHA-256 of the real path", async () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
     const hash = await digest.sha256(encodeUtf8("/srv/acme/workspace"));

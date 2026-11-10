@@ -1,8 +1,8 @@
 # @halonicjs/profile
 
 Where Halonic keeps a person's files. `profileFolder` finds the profile folder, the same one for the
-CLI and the Studio. Inside it, `workspaceFolders` gives each workspace one folder for its runs and
-their blobs, so nothing Halonic records ever lands in the workspace or its git repository
+CLI and the Studio. Inside it, `workspaceFolders` gives each workspace one folder for its runs,
+their blobs and its records, so nothing Halonic records ever lands in the workspace or its git repository
 (HAL-2022 G4).
 
 - **Layer:** core
@@ -39,6 +39,11 @@ letters, digits, `-` or `_` starting with a letter or digit, or that is a Window
 | `runs/`                  | the workspace's runs                    |
 | `deployments/<id>/runs/` | one deployment's runs                   |
 | `blobs/`                 | kept definitions and large run payloads |
+| `records/`               | agent notes and collection records      |
+
+Records belong to the workspace: two workspaces with an agent `clerk` never share its notes, and a
+moved workspace folder starts without its old records, as it does without its old runs. A person's
+connection data (tokens, Google setups) is not a workspace's and is kept elsewhere in the profile.
 
 The package only works out paths: it creates nothing and reads no files. The adapter gives it the
 system, the home folder and the environment variables, and a `Digest` for the hash.

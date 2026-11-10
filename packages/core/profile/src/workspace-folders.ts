@@ -48,6 +48,13 @@ export interface WorkspaceFolders {
   runsFolder(deploymentId?: string): string;
   /** The folder for the blobs the workspace's runs refer to: kept definitions and large payloads. */
   blobsFolder(): string;
+  /**
+   * The folder for the workspace's records, which a file record store is
+   * given: agent notes and collections. Records belong to the workspace, so
+   * two workspaces never share them (HAL-3295). A person's connection data,
+   * such as tokens, is kept elsewhere in the profile, not here.
+   */
+  recordsFolder(): string;
 }
 
 /**
@@ -94,6 +101,9 @@ export async function workspaceFolders(
     },
     blobsFolder(): string {
       return joinPath(profile.platform, folder, "blobs");
+    },
+    recordsFolder(): string {
+      return joinPath(profile.platform, folder, "records");
     },
   };
 }
