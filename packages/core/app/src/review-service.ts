@@ -3,11 +3,8 @@
 // rejects what it wrote. Accept changes only the record; Reject writes the
 // baseline back. Nothing here commits, pushes or makes anything live.
 
-import type { DefinitionStore, Digest, ExpectedContent } from "@halonicjs/ports";
-import { contentDigest, KeyedQueue } from "@halonicjs/std";
-import { EventBus, type ListenerErrorHandler } from "./event-bus.ts";
+import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
-import { ReviewRecords } from "./review-records.ts";
 import type {
   ItemToReview,
   ProposedWrite,
@@ -19,27 +16,7 @@ import type {
   ReviewTarget,
 } from "./review-types.ts";
 
-/** What {@link ReviewService} needs from the host. */
-export interface ReviewServiceOptions {
-  /**
-   * The workspace's store underneath its `ReviewingDefinitionStore`: the
-   * records are kept in it under `.halonic/review/`, and the service's own
-   * writes don't go through the write hook.
-   */
-  readonly store: DefinitionStore;
-  /** Hashes file text for the write-if-unchanged check, and names the records. */
-  readonly digest: Digest;
-  /**
-   * Receives the error of an {@link ReviewService.onDidChange} listener
-   * that threw, so the change itself still succeeds. Without it, the call
-   * that changed the records throws that error, which suits tests.
-   */
-  readonly onListenerError?: ListenerErrorHandler;
-}
-
-interface ReviewEvents {
-  changed: { readonly paths: readonly string[] };
-}
+export type { ReviewServiceOptions } from "./review-files.ts";
 
 type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
 
@@ -60,17 +37,10 @@ type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
  * await review.restore(step, "before"); // Undo
  */
 export class ReviewService {
-  private readonly store: DefinitionStore;
-  private readonly digest: Digest;
-  private readonly records: ReviewRecords;
-  private readonly queue = new KeyedQueue();
-  private readonly events: EventBus<ReviewEvents>;
+  private readonly files: ReviewFiles;
 
   constructor(options: ReviewServiceOptions) {
-    this.store = options.store;
-    this.digest = options.digest;
-    this.records = new ReviewRecords(options.store, options.digest);
-    this.events = new EventBus<ReviewEvents>(options.onListenerError);
+    this.files = new ReviewFiles(options);
   }
 
   /**
@@ -81,7 +51,7 @@ export class ReviewService {
    * @returns a function that removes the listener
    */
   onDidChange(listener: (paths: readonly string[]) => void): () => void {
-    return this.events.on("changed", ({ paths }) => listener(paths));
+    return this.files.onDidChange(listener);
   }
 
   /**
@@ -91,33 +61,32 @@ export class ReviewService {
    * so the changes it covered become ordinary ones.
    */
   propose(write: ProposedWrite): Promise<ProposeOutcome> {
-    return this.queue.run(write.path, async () => {
-      const read = await this.records.read(write.path);
-      const record = read.status === "found" ? read.record : null;
-      const before = await this.store.read(write.path);
-      const digestBefore = await this.digestOf(before);
+    return this.files.turn(write.path, async () => {
+      const record = await this.files.read(write.path);
+      const before = await this.files.store.read(write.path);
+      const digestBefore = await this.files.digestOf(before);
       if (digestBefore !== write.expected) {
         return { status: "changed-on-disk", current: before };
       }
       if (record !== null && record.seen !== digestBefore) {
         return { status: "held" };
       }
-      const written = await this.store.write(write.path, write.content, {
+      const written = await this.files.store.write(write.path, write.content, {
         expected: write.expected,
       });
       if (written.status === "changed-on-disk") {
         return written;
       }
       const baseline = record === null ? before : record.baseline;
-      const after = await this.keep({
+      const after = await this.files.keep({
         path: write.path,
         baseline,
         card: write.card,
-        seen: await this.digestOf(write.content),
+        seen: await this.files.digestOf(write.content),
       });
       const replaced = record !== null && !sameCard(record.card, write.card) ? record.card : null;
       const file = { before, after: write.content };
-      this.changed([write.path]);
+      this.files.changed([write.path]);
       return {
         status: "written",
         step: { files: [{ path: write.path, record: { before: record, after }, file }] },
@@ -129,7 +98,7 @@ export class ReviewService {
   /** Accepts what the target covers: the baseline becomes the file, so its record goes. The files aren't touched. */
   accept(target: ReviewTarget): Promise<ReviewOutcome> {
     return this.decide(target, async (record) => {
-      await this.records.remove(record.path);
+      await this.files.putRecord(record.path, null);
       return { path: record.path, record: { before: record, after: null } };
     });
   }
@@ -142,12 +111,12 @@ export class ReviewService {
    */
   reject(target: ReviewTarget): Promise<ReviewOutcome> {
     return this.decide(target, async (record) => {
-      const current = await this.store.read(record.path);
-      const restored = await this.putFile(record.path, record.seen, record.baseline);
+      const current = await this.files.store.read(record.path);
+      const restored = await this.files.putFile(record.path, record.seen, record.baseline);
       if (!restored) {
         return "held";
       }
-      await this.records.remove(record.path);
+      await this.files.putRecord(record.path, null);
       return {
         path: record.path,
         record: { before: record, after: null },
@@ -167,14 +136,14 @@ export class ReviewService {
     const done: ReviewedFile[] = [];
     const held: string[] = [];
     for (const entry of files) {
-      const restored = await this.queue.run(entry.path, async () => {
+      const restored = await this.files.turn(entry.path, async () => {
         if (entry.file !== undefined) {
-          const expected = await this.digestOf(entry.file[from]);
-          if (!(await this.putFile(entry.path, expected, entry.file[to]))) {
+          const expected = await this.files.digestOf(entry.file[from]);
+          if (!(await this.files.putFile(entry.path, expected, entry.file[to]))) {
             return false;
           }
         }
-        await this.putRecord(entry.path, entry.record[to]);
+        await this.files.putRecord(entry.path, entry.record[to]);
         return true;
       });
       if (restored) {
@@ -183,7 +152,7 @@ export class ReviewService {
         held.push(entry.path);
       }
     }
-    this.changed(done.map((file) => file.path));
+    this.files.changed(done.map((file) => file.path));
     return { step: { files: done }, held };
   }
 
@@ -193,7 +162,7 @@ export class ReviewService {
    * out, and Changes marks their rows.
    */
   async itemsWithChangesToReview(): Promise<readonly ItemToReview[]> {
-    const { records } = await this.records.all();
+    const { records } = await this.files.list();
     return records.map(({ path, card }) => ({ path, card }));
   }
 
@@ -206,18 +175,17 @@ export class ReviewService {
    * @param paths - only these files, as a watch batch names them; all files when left out
    */
   async check(paths?: readonly string[]): Promise<ReviewCheck> {
-    const { records, dropped } =
-      paths === undefined ? await this.records.all() : await this.records.some(paths);
+    const { records, dropped } = await this.files.list(paths);
     const held: string[] = [];
     for (const record of records) {
-      const seen = await this.queue.run(record.path, async () =>
-        this.digestOf(await this.store.read(record.path)),
+      const seen = await this.files.turn(record.path, async () =>
+        this.files.digestOf(await this.files.store.read(record.path)),
       );
       if (seen !== record.seen) {
         held.push(record.path);
       }
     }
-    this.changed(dropped.flatMap(({ path }) => (path === null ? [] : [path])));
+    this.files.changed(dropped.flatMap(({ path }) => (path === null ? [] : [path])));
     return { held, dropped };
   }
 
@@ -226,9 +194,9 @@ export class ReviewService {
     const done: ReviewedFile[] = [];
     const held: string[] = [];
     for (const path of await this.pathsOf(target)) {
-      const result = await this.queue.run(path, async () => {
-        const read = await this.records.read(path);
-        return read.status === "found" ? decision(read.record) : null;
+      const result = await this.files.turn(path, async () => {
+        const record = await this.files.read(path);
+        return record === null ? null : decision(record);
       });
       if (result === "held") {
         held.push(path);
@@ -236,7 +204,7 @@ export class ReviewService {
         done.push(result);
       }
     }
-    this.changed(done.map((file) => file.path));
+    this.files.changed(done.map((file) => file.path));
     return { step: { files: done }, held };
   }
 
@@ -244,7 +212,7 @@ export class ReviewService {
     if (target.kind === "file") {
       return [target.path];
     }
-    const { records } = await this.records.all();
+    const { records } = await this.files.list();
     return records
       .filter((record) =>
         target.kind === "card"
@@ -252,55 +220,6 @@ export class ReviewService {
           : record.card.chatId === target.chatId,
       )
       .map((record) => record.path);
-  }
-
-  private changed(paths: readonly string[]): void {
-    if (paths.length > 0) {
-      this.events.emit("changed", { paths });
-    }
-  }
-
-  /** Saves a record, or removes it when the baseline is the file again: then nothing is left to review. */
-  private async keep(record: ReviewRecord): Promise<ReviewRecord | null> {
-    if (record.seen === (await this.digestOf(record.baseline))) {
-      await this.records.remove(record.path);
-      return null;
-    }
-    await this.records.save(record);
-    return record;
-  }
-
-  private async putRecord(path: string, record: ReviewRecord | null): Promise<void> {
-    if (record === null) {
-      await this.records.remove(path);
-    } else {
-      await this.records.save(record);
-    }
-  }
-
-  /**
-   * Writes `text` into the file, or removes it for `null`, if it still
-   * holds what `expected` says. Gives `false`, writing nothing, if not.
-   */
-  private async putFile(
-    path: string,
-    expected: ExpectedContent,
-    text: string | null,
-  ): Promise<boolean> {
-    if (text !== null) {
-      const written = await this.store.write(path, text, { expected });
-      return written.status === "written";
-    }
-    // The port has no remove-if-unchanged; checking just before is the closest.
-    if ((await this.digestOf(await this.store.read(path))) !== expected) {
-      return false;
-    }
-    await this.store.remove(path);
-    return true;
-  }
-
-  private async digestOf(text: string | null): Promise<ExpectedContent> {
-    return text === null ? "absent" : contentDigest(text, this.digest);
   }
 }
 
