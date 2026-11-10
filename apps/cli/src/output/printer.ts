@@ -58,9 +58,10 @@ export interface Printer {
    * question shows first, and returns whether the answer was yes (see
    * `askYesNo`). A live line is taken away first, so the question and the
    * answer typed after it have the line to themselves. It may be asked again
-   * for a second question.
+   * for a second question. Once `signal` is aborted, a question waiting for
+   * its answer ends and throws (see `askYesNo`).
    */
-  ask(question: Question): Promise<boolean>;
+  ask(question: Question, signal?: AbortSignal): Promise<boolean>;
 }
 
 export interface PrinterOptions {
@@ -158,9 +159,9 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       });
     },
     close: () => liveLine?.close(),
-    ask(question) {
+    ask(question, signal) {
       liveLine?.clear();
-      return askYesNo(question, asking);
+      return askYesNo(question, asking, signal);
     },
   };
 }

@@ -48,4 +48,18 @@ verifies("cli.questions", () => {
     expect(stdin.isPaused()).toBe(true);
     expect(stdin.listenerCount("data")).toBe(0);
   });
+
+  it("stops reading when the signal is aborted, and keeps what was typed for the next line", async () => {
+    const stdin = new PassThrough();
+    const reader = new LineReader(stdin);
+    const controller = new AbortController();
+    const answer = reader.readLine(controller.signal);
+    stdin.write("y");
+    controller.abort();
+    expect(await answer).toBeUndefined();
+    expect(stdin.isPaused()).toBe(true);
+    expect(stdin.listenerCount("data")).toBe(0);
+    stdin.write("es\n");
+    expect(await reader.readLine()).toBe("yes");
+  });
 });

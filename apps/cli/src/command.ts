@@ -41,7 +41,8 @@ export interface CommandContext {
    * With the question's `yes` set it asks nothing and returns yes; where
    * nobody can answer (no terminal on stdin, `CI` or `--json`) it asks
    * nothing and throws the question's refusal. End a step's live line
-   * before asking.
+   * before asking. Ctrl C or SIGTERM while it waits ends the question and
+   * throws the `AbortError`, as {@link CommandContext.signal} does for any work.
    */
   ask(question: Question): Promise<boolean>;
   /**

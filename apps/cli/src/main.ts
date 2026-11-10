@@ -32,6 +32,6 @@ function stdinQuestions() {
   const lines = new LineReader(process.stdin);
   return {
     write: (text: string) => process.stderr.write(text),
-    readLine: () => lines.readLine(),
+    readLine: (signal?: AbortSignal) => lines.readLine(signal),
   };
 }

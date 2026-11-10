@@ -20,12 +20,18 @@ says since revisions 19 and 34:
   signal's** code. The old sentence said "the same code", which read as the first signal's.
   Revision 34 settled it: the signal that ends the process names the exit. `watchForStop`
   already did this; only the words change.
+- A first signal while a yes-or-no question (`cli.questions`, from #1010) waits for its answer
+  ends the question: the CLI stops reading stdin, ends the `[y/N] ` line, and the command
+  gets the `AbortError`, so "Stopped." starts its own line. Without this the question kept
+  waiting after Ctrl C. Asked for in the review on HAL-3473.
 
-Two examples are added; none is removed or changed.
+Three examples are added; none is removed or changed.
 
 ## Tests
 
 No guard was weakened. The fake signal source moved from `stop.test.ts` to
 `src/test/fake-signals.ts` unchanged, so `runCli`'s tests use it too. New tests run commands
 through `runCli`: 130 and 143, `--json`, a command that throws once stopped, both orders of a
-second signal, the listeners removed afterwards, and the stop line after the cleared live line.
+second signal, the listeners removed afterwards, the stop line after the cleared live line, and
+Ctrl C during a question. `LineReader` gets a test that an aborted read stops and keeps what was
+typed.

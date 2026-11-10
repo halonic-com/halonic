@@ -26,8 +26,11 @@ export function canAsk({ env, stdinIsTerminal, json }: AskInputs): boolean {
 export interface QuestionTerminal {
   /** Writes text to stderr as it is, without adding a newline, so the answer follows on the same line. */
   write(text: string): void;
-  /** The next line the user types, or `undefined` when stdin has ended. */
-  readLine(): Promise<string | undefined>;
+  /**
+   * The next line the user types, or `undefined` when stdin has ended or
+   * `signal` was aborted, which stops the reading.
+   */
+  readLine(signal?: AbortSignal): Promise<string | undefined>;
 }
 
 /**
@@ -77,19 +80,35 @@ export interface Asking {
  * when {@link Asking.canAsk} is false, it asks nothing and throws the
  * refusal. When it asks, the question's {@link Question.shownFirst} lines
  * come first.
+ *
+ * Ctrl C or SIGTERM while it waits for the answer (cli-output 1.5) ends the
+ * question: it stops reading, ends the `[y/N]` line, so "Stopped." gets its
+ * own line, and throws the `AbortError`, which the command may catch to
+ * return its `StoppedResult`.
+ *
+ * @param signal - the command's stop signal; once aborted, nothing is asked
  */
-export async function askYesNo(question: Question, asking: Asking): Promise<boolean> {
+export async function askYesNo(
+  question: Question,
+  asking: Asking,
+  signal?: AbortSignal,
+): Promise<boolean> {
   if (question.yes) {
     return true;
   }
   if (!asking.canAsk) {
     throw question.refusal();
   }
+  signal?.throwIfAborted();
   for (const line of question.shownFirst ?? []) {
     asking.terminal.write(`${asking.render(line)}\n`);
   }
   asking.terminal.write(asking.render(questionMessages.yesNo(question.question.phrase).phrase));
-  const answer = await asking.terminal.readLine();
+  const answer = await asking.terminal.readLine(signal);
+  if (signal?.aborted === true) {
+    asking.terminal.write("\n");
+    signal.throwIfAborted();
+  }
   return isYes(answer);
 }
 

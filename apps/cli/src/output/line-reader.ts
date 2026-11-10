@@ -18,16 +18,24 @@ export class LineReader {
     input.setEncoding("utf8");
   }
 
-  /** The next line without its line ending, or `undefined` when stdin has ended. */
-  readLine(): Promise<string | undefined> {
+  /**
+   * The next line without its line ending, or `undefined` when stdin has
+   * ended. When `signal` is aborted, such as by Ctrl C, it stops reading and
+   * gives `undefined`; what was typed so far stays for the next line.
+   */
+  readLine(signal?: AbortSignal): Promise<string | undefined> {
     const line = this.#takeLine();
     if (line !== undefined || this.#ended) {
       return Promise.resolve(line ?? this.#takeRest());
+    }
+    if (signal?.aborted === true) {
+      return Promise.resolve(undefined);
     }
     return new Promise((resolve) => {
       const done = (answer: string | undefined) => {
         this.#input.off("data", onData);
         this.#input.off("end", onEnd);
+        signal?.removeEventListener("abort", onAbort);
         this.#input.pause();
         resolve(answer);
       };
@@ -42,6 +50,8 @@ export class LineReader {
         this.#ended = true;
         done(this.#takeRest());
       };
+      const onAbort = () => done(undefined);
+      signal?.addEventListener("abort", onAbort);
       this.#input.on("data", onData);
       this.#input.on("end", onEnd);
       this.#input.resume();

@@ -182,7 +182,7 @@ async function runCommandLine(
       cwd: io.cwd,
       secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
       progress: (doing) => printer.progress(doing),
-      ask: (question) => printer.ask(question),
+      ask: (question) => printer.ask(question, watch.signal),
       signal: watch.signal,
     };
     return await runCommand(path, pathArgs, context, printer, options, watch);

@@ -4,16 +4,26 @@ import type { CliCommand } from "./command.ts";
 import { exitCode } from "./exit-code.ts";
 import { defineMessages } from "./messages/define.ts";
 import { bold, phrase } from "./messages/phrase.ts";
+import type { QuestionTerminal } from "./output/question.ts";
 import type { StopSignal } from "./output/stop.ts";
-import { type CliSetup, runCli } from "./run-cli.ts";
+import { type CliSetup, runCli, type Terminal } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { fakeSignals } from "./test/fake-signals.ts";
 
 const waitMessages = defineMessages("wait", {
   summary: () => phrase`Wait until stopped`,
+  goOn: () => phrase`Go on?`,
   cancelled: () =>
     phrase`The run 01JD8Q was cancelled after the step ${bold("Classify")}. Nothing after it ran.`,
 });
+
+/** A terminal on every stream, without colour or live lines, so a question may be asked. */
+const plainTerminal: Terminal = {
+  env: { LANG: "en_US.UTF-8", NO_COLOR: "1", TERM: "dumb" },
+  platform: "linux",
+  stdoutIsTerminal: true,
+  stderrIsTerminal: true,
+};
 
 /** How the test command ends once it is asked to stop. */
 type Ending = "returns" | "throws";
@@ -117,6 +127,39 @@ verifies("cli.stop", () => {
       await running;
     });
   }
+
+  it("at Ctrl C during a question, stops waiting for the answer and says Stopped. on its own line", async () => {
+    const io = captureIo("/work");
+    const signals = fakeSignals();
+    const written: string[] = [];
+    const questions: QuestionTerminal = {
+      write: (text) => written.push(text),
+      // Like stdin with nobody typing: the answer comes only when the signal ends the reading.
+      readLine: (signal) =>
+        new Promise((resolve) => signal?.addEventListener("abort", () => resolve(undefined))),
+    };
+    const asking: CliCommand = {
+      ...waitCommand("returns"),
+      async run(_input, context) {
+        await context.ask({
+          question: waitMessages.goOn(),
+          yes: false,
+          refusal: () => new Error("no terminal"),
+        });
+        return { exitCode: exitCode.ok, lines: [], json: {} };
+      },
+    };
+    const terminal: Terminal = { ...plainTerminal, questions };
+    const running = runCli(["wait"], io, [asking], {
+      terminal,
+      stop: { signals, exitNow: () => {} },
+    });
+    await Promise.resolve();
+    signals.send("SIGINT");
+    expect(await running).toBe(130);
+    expect(written).toEqual(["Go on? [y/N] ", "\n"]);
+    expect(io.stderr).toEqual(["Stopped."]);
+  });
 
   it("runs a command to its end when no signal comes", async () => {
     const io = captureIo("/work");
