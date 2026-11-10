@@ -64,6 +64,7 @@ function countMutant(counts: Counts, status: string): void {
  * fails. Floors only go up. Packages without an entry only report.
  */
 export const mutationFloors: Readonly<Record<string, number>> = {
+  "packages/core/schema-kit": 98,
   "packages/core/yaml": 85,
 };
 

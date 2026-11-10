@@ -69,6 +69,10 @@ verifies("mutation.floor-per-package", () => {
     expect(mutationFloors["packages/core/yaml"]).toBe(85);
   });
 
+  test("floors core/schema-kit at 98", () => {
+    expect(mutationFloors["packages/core/schema-kit"]).toBe(98);
+  });
+
   test("is under the floor when the score is lower", () => {
     expect(
       belowFloor(scoreOf(report(...Array(84).fill("Killed"), ...Array(16).fill("Survived"))), 85),
