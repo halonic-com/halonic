@@ -1,0 +1,53 @@
+# Phase 5 spike (HAL-3775, board decision on HAL-3288): native srt on a free
+# GitHub-hosted Windows runner. Installs the srt version the lockfile pins
+# (one-time windows-install), then runs the canary probes and the Windows
+# attack, bypass and tool probes. Report-only: the pass/fail per probe is in the
+# job summary and in the uploaded windows-spike-results.json. It runs by hand
+# and on a change to the spike's own files, never on every pull request.
+name: Sandbox Windows spike
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/sandbox-windows-spike.yml
+      - packages/adapters/sandbox-srt/scripts/windows-spike-probe.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    name: Native srt on Windows (spike)
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Not the shared setup action: its restored pnpm store fails on Windows.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - name: Install the dependencies
+        run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-srt..."
+        shell: bash
+      - name: Install the sandbox (srt windows-install)
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: |
+          node node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js --version || true
+          node node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js windows-install --skip-profile-grant
+      - name: Canary probes
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node scripts/windows-fence-probe.mjs
+      - name: Spike probes (attacks, bypasses, tools)
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node scripts/windows-spike-probe.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: windows-spike-results
+          path: packages/adapters/sandbox-srt/windows-spike-results.json
+          if-no-files-found: warn

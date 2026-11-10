@@ -17,6 +17,10 @@
       "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and looks only in absolute PATH folders of the launcher's environment, which no skill sets.",
       "scriptsTest": "packages/adapters/sandbox-host/src/program-probe.attack.test.ts"
     },
+    "packages/adapters/sandbox-srt/scripts/windows-spike-probe.mjs": {
+      "reason": "CI tooling for the Phase 5 Windows spike (HAL-3775), run by hand and by the report-only sandbox-windows-spike job, never shipped. It starts Node with the srt CLI from this package's node_modules and child scripts it writes to a temporary folder, and it also runs fixed shell commands outside srt (curl, PowerShell, git, npm) as controls on a throwaway runner. Every command is a literal in this file. It never loads a skill.",
+      "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
+    },
     "packages/adapters/sandbox-srt/src/machine.ts": {
       "reason": "Probes whether bubblewrap starts and may create user namespaces. It runs only bwrap with fixed arguments.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/machine.starts.test.ts"
