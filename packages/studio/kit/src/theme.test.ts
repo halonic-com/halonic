@@ -381,7 +381,6 @@ describe("theme.css scales", () => {
       "--layer-overlay",
       "--layer-dialog",
       "--layer-toast",
-      "--layer-tooltip",
     ]);
     expect(namesStartingWith(plainVariables, "--duration-")).toEqual([
       "--duration-fast",

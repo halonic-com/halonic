@@ -15,7 +15,8 @@ export const TOOLTIP_DELAY_MS = 500;
 
 /** What the tooltip's `children` spread on their control: a kit `Button` takes both. */
 export interface TooltipTriggerProps {
-  readonly "aria-describedby": string;
+  /** Left out when the tooltip's text is the control's name (`isName`). */
+  readonly "aria-describedby"?: string;
   readonly "aria-keyshortcuts"?: string;
 }
 
@@ -24,6 +25,11 @@ export interface TooltipProps {
   readonly text: string;
   /** The control's shortcut, shown after the words: `["Ctrl", "T"]`. */
   readonly keys?: readonly string[];
+  /**
+   * The text is the control's name, as on an icon button whose `label` is "New tab". The control
+   * then isn't described by it too, which a screen reader would read twice.
+   */
+  readonly isName?: boolean;
   /** The control, given the props that link it to the tooltip. */
   readonly children: (props: TooltipTriggerProps) => ReactNode;
 }
@@ -43,8 +49,9 @@ const tooltipClasses = [
 
 /**
  * A short label for a control, shown after 500ms of hover or at once on keyboard focus, and hidden
- * on leave, blur or Escape. A `popover="manual"` placed with the kit's positioning helper, linked
- * with `aria-describedby`. Not native `title`: that can't be styled, doesn't show on keyboard
+ * on leave, a press, blur or Escape. After a press it waits until the pointer has left and come
+ * back. A `popover="manual"` centred under the control by the kit's positioning helper, linked with
+ * `aria-describedby` unless its text is the control's name. Not native `title`: that can't be styled, doesn't show on keyboard
  * focus and many screen readers skip it.
  *
  * Never on touch: a tap doesn't show it, so what it says must be reachable another way (component
@@ -54,25 +61,27 @@ const tooltipClasses = [
  * a tooltip.
  *
  * @example
- * <Tooltip text="New tab" keys={["Ctrl", "T"]}>
+ * <Tooltip text="New tab" keys={["Ctrl", "T"]} isName>
  *   {(props) => <Button {...props} variant="ghost" icon={<PlusIcon />} label="New tab" />}
  * </Tooltip>
  */
-export function Tooltip({ text, keys, children }: TooltipProps) {
+export function Tooltip({ text, keys, isName = false, children }: TooltipProps) {
   const id = useId();
   const anchor = useRef<HTMLSpanElement>(null);
   const tooltip = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shown = useRef(false);
+  /** The control was pressed and the pointer hasn't left it since (component specs 14, C27). */
+  const pressed = useRef(false);
 
   function show(): void {
     const element = tooltip.current;
-    if (element === null || anchor.current === null || shown.current) {
+    if (element === null || anchor.current === null || shown.current || pressed.current) {
       return;
     }
     element.showPopover();
     shown.current = true;
-    placePopover(element, anchor.current, { gap: CONTROL_GAP, align: "start" });
+    placePopover(element, anchor.current, { gap: CONTROL_GAP, align: "center" });
   }
 
   function hide(): void {
@@ -92,6 +101,16 @@ export function Tooltip({ text, keys, children }: TooltipProps) {
     }
     clearTimeout(timer.current);
     timer.current = setTimeout(show, TOOLTIP_DELAY_MS);
+  }
+
+  function onPointerDown(): void {
+    hide();
+    pressed.current = true;
+  }
+
+  function onPointerLeave(): void {
+    hide();
+    pressed.current = false;
   }
 
   function onFocus(event: FocusEvent): void {
@@ -117,13 +136,14 @@ export function Tooltip({ text, keys, children }: TooltipProps) {
         ref={anchor}
         className="inline-flex"
         onPointerEnter={onPointerEnter}
-        onPointerLeave={hide}
+        onPointerDown={onPointerDown}
+        onPointerLeave={onPointerLeave}
         onFocus={onFocus}
         onBlur={hide}
         onKeyDown={onKeyDown}
       >
         {children({
-          "aria-describedby": id,
+          ...(isName ? {} : { "aria-describedby": id }),
           ...(keys === undefined ? {} : { "aria-keyshortcuts": keyShortcutsLabel(keys) }),
         })}
       </span>
