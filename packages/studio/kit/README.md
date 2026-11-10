@@ -1025,8 +1025,8 @@ old `value`. Outside a modal Dialog the screen says so with a toast; inside one 
 the Field's `error`, as for the Switch.
 
 **On a phone** the control is 48px high, so the whole height is the hit area; the track and thumb
-stay 6px and 16px, and the thumb gets a 24px grab area round it. Keep it 16px from the screen
-edges (the page's inset does), out of Android's back-gesture area.
+stay 6px and 16px, with no grab area round the thumb, so no track shows past its round ends. Keep
+it 16px from the screen edges (the page's inset does), out of Android's back-gesture area.
 
 **Browsers.** The desktop webviews are Chromium and WebKit, which have no pseudo-element for the
 filled part, so the track paints it as a gradient up to `--slider-fill`, which the Slider sets.
