@@ -105,10 +105,14 @@ export interface CliCommand {
    */
   readonly subcommands?: readonly CliCommand[];
   /**
-   * Runs the command and returns what it did; `runCli` prints it. A command
-   * that only hands off to its subcommands, such as `plugin`, leaves it out:
-   * `halonic plugin` on its own then prints its help and exits with 2, as
-   * `halonic` on its own does.
+   * Runs the command and returns what it did; `runCli` prints it. The
+   * result is only the end: what happens while it runs, a live ◌ line, a
+   * run's JSON Lines events or a yes-or-no question, comes in through the
+   * context as a progress sink and an `ask` function the printer owns (Liam,
+   * HAL-2194). A command never writes to `CliIo` itself. A command that only
+   * hands off to its subcommands, such as `plugin`, leaves it out: `halonic
+   * plugin` on its own then prints its help and exits with 2, as `halonic`
+   * on its own does.
    *
    * @throws UsageError when the arguments are wrong. Any other error ends the
    *   command with the exit code of its kind (1 when it has none), and
