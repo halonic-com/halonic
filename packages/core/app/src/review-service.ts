@@ -6,10 +6,12 @@
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
 import { type FileWriter, ReviewWriteHook } from "./review-hook.ts";
 import { decidePart, fileReview } from "./review-parts.ts";
+import { proposeDelete, proposeWrite, sameCard } from "./review-propose.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type {
   FileReview,
   ItemToReview,
+  ProposedDelete,
   ProposedWrite,
   ProposeOutcome,
   ReviewCheck,
@@ -71,42 +73,19 @@ export class ReviewService {
   /**
    * Writes the assistant's text into the file (`app.review-assistant-writes`).
    * The first write keeps the text from before it as the baseline; later
-   * writes keep the baseline. A record that can't be read is dropped first,
-   * so the changes it covered become ordinary ones.
+   * writes keep the baseline.
    */
   propose(write: ProposedWrite): Promise<ProposeOutcome> {
-    return this.files.turn(write.path, async () => {
-      const record = await this.files.read(write.path);
-      const before = await this.files.store.read(write.path);
-      const digestBefore = await this.files.digestOf(before);
-      if (digestBefore !== write.expected) {
-        return { status: "changed-on-disk", current: before };
-      }
-      if (record !== null && record.seen !== digestBefore) {
-        return { status: "held" };
-      }
-      const written = await this.files.store.write(write.path, write.content, {
-        expected: write.expected,
-      });
-      if (written.status === "changed-on-disk") {
-        return written;
-      }
-      const baseline = record === null ? before : record.baseline;
-      const after = await this.files.keep({
-        path: write.path,
-        baseline,
-        card: write.card,
-        seen: await this.files.digestOf(write.content),
-      });
-      const replaced = record !== null && !sameCard(record.card, write.card) ? record.card : null;
-      const file = { before, after: write.content };
-      this.files.changed([write.path]);
-      return {
-        status: "written",
-        step: { files: [{ path: write.path, record: { before: record, after }, file }] },
-        replaced,
-      };
-    });
+    return proposeWrite(this.files, write);
+  }
+
+  /**
+   * Moves the file the assistant deletes to the trash and records it
+   * (`app.review-deletes-and-new-files`). Reject puts it back; Accept
+   * leaves it in the trash.
+   */
+  proposeDelete(remove: ProposedDelete): Promise<ProposeOutcome> {
+    return proposeDelete(this.files, remove);
   }
 
   /**
@@ -136,8 +115,7 @@ export class ReviewService {
     }
     return this.decide(target, async (record) => {
       const current = await this.files.store.read(record.path);
-      const restored = await this.files.putFile(record.path, record.seen, record.baseline);
-      if (!restored) {
+      if (!(await this.files.putBaseline(record))) {
         return "held";
       }
       await this.files.putRecord(record.path, null);
@@ -271,10 +249,6 @@ export class ReviewService {
       )
       .map((record) => record.path);
   }
-}
-
-function sameCard(one: ReviewCard, other: ReviewCard): boolean {
-  return one.chatId === other.chatId && one.cardId === other.cardId;
 }
 
 /** The entry for the step a restore made: what was `to` is now its `after`. */

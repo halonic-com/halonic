@@ -23,7 +23,8 @@ export async function fileReview(
     card: record.card,
     baseline: record.baseline,
     seen: await files.digestOf(text),
-    parts: diffLines(record.baseline ?? "", text ?? ""),
+    deleted: text === null,
+    parts: text === null ? [] : diffLines(record.baseline ?? "", text),
   };
 }
 
