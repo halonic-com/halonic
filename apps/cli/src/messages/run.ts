@@ -1,8 +1,7 @@
-import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { money } from "./money.ts";
-import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
+import { markPart, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** Things a run sent, of one kind, such as 1 email: the count and the noun's two forms. */
@@ -48,16 +47,8 @@ export const runMessages = defineMessages("run", {
   waitingForYou: (description: string) => phrase`Waiting for you: ${description}`,
   /** With a !, for a wait step without a description. */
   waitingInStep: (step: string) => phrase`Waiting for you in the step ${step}.`,
-  /**
-   * Under the waiting line: the events in the step's order, the first one written out, each with
-   * the author's label after it when it has one.
-   */
-  answerHere: (
-    runId: string,
-    events: readonly string[],
-    dir?: string,
-    labels: Readonly<Record<string, string>> = {},
-  ) => answerLine(runId, events, dir, labels),
+  /** Under the waiting line. `halonic runs send` is not on main yet, so it only names the Inbox. */
+  answerHere: () => phrase`Answer in Studio's Inbox.`,
   /** With a !, before the run starts, for an agent set to "On this computer". Never a question. */
   onThisComputer: (agent: string, chosenOn: string) =>
     phrase`${agent} runs on this computer without the sandbox, as chosen on ${chosenOn}.`,
@@ -80,39 +71,6 @@ function joinedFacts(facts: readonly string[]): Phrase {
   return facts.flatMap((fact, index) =>
     index === 0 ? [fact] : [" ", markPart("separator"), " ", fact],
   );
-}
-
-/**
- * "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject)".
- * Three or more events read "(or reject, hold or skip)" (revision 37). The event stays, since it is
- * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072). A label is the
- * author's free text, so it is escaped (cli-output section 5).
- */
-function answerLine(
-  runId: string,
-  events: readonly string[],
-  dir: string | undefined,
-  labels: Readonly<Record<string, string>>,
-): Phrase {
-  const labelOf = (event: string) => {
-    const label = labels[event];
-    return label === undefined ? undefined : printable(label);
-  };
-  const labelled = (event: string) => {
-    const label = labelOf(event);
-    return label === undefined ? event : `${event} (${label})`;
-  };
-  const [first = "", ...others] = events;
-  const command = `${suggestedCommand("runs send", dir, runId)} ${first}`;
-  const firstLabel = labelOf(first);
-  const line =
-    firstLabel === undefined
-      ? phrase`Answer in Studio's Inbox, or here: ${command}`
-      : phrase`Answer in Studio's Inbox, or here: ${command} ${dim(`(${firstLabel})`)}`;
-  if (others.length === 0) {
-    return line;
-  }
-  return phrase`${line}  ${dim(`(or ${listInWords(others.map(labelled), "or")})`)}`;
 }
 
 /** "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004". */

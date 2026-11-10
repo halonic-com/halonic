@@ -52,39 +52,12 @@ describe("run's sentences", () => {
     );
   });
 
-  it("has the waiting lines, with the first event written out and the user's --dir", () => {
+  it("has the waiting lines", () => {
     expect(words(runMessages.waitingForYou("Approve this reply?"))).toBe(
       "Waiting for you: Approve this reply?",
     );
     expect(words(runMessages.waitingInStep("review"))).toBe("Waiting for you in the step review.");
-    expect(words(runMessages.answerHere("01JD8Q", ["approve", "reject"]))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01JD8Q approve  (or reject)",
-    );
-    expect(words(runMessages.answerHere("01jd8q", ["approve", "reject", "hold", "skip"]))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject, hold or skip)",
-    );
-    expect(words(runMessages.answerHere("01JD8Q", ["done"], "./acme"))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send --dir ./acme 01JD8Q done",
-    );
-  });
-
-  it("writes the author's label after an event that has one, and keeps the event to type", () => {
-    const labels = { approve: "Send reply", hold: "Ask me later" };
-    expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (Send reply)  (or reject)",
-    );
-    expect(
-      words(runMessages.answerHere("01jd8q", ["reject", "approve", "hold"], "./acme", labels)),
-    ).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send --dir ./acme 01jd8q reject  (or approve (Send reply) or hold (Ask me later))",
-    );
-  });
-
-  it("escapes a label's control characters, since the label comes from the workflow file", () => {
-    const labels = { approve: "\u001b[31mSend\u202e", reject: "Drop\nit" };
-    expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
-      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (\\u001b[31mSend\\u202e)  (or reject (Drop\\u000ait))",
-    );
+    expect(words(runMessages.answerHere())).toBe("Answer in Studio's Inbox.");
   });
 
   it("leaves out what doesn't apply in the receipt, and says sent nothing only without a tool call", () => {
