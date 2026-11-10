@@ -44,7 +44,7 @@ function runOf(bodies: readonly RunEventBody[], startedAt: string, stepMs = 1000
   const summary = summarize(
     bodies.map((body, index) => ({
       ...body,
-      runId: "01JD8Q",
+      runId: "run_mfx3k2a1_a101jd8q",
       seq: index + 1,
       at: new Date(start + index * stepMs).toISOString(),
     })),
@@ -58,6 +58,7 @@ function runOf(bodies: readonly RunEventBody[], startedAt: string, stepMs = 1000
 function row(summary: RunSummary) {
   const listed = listedRun(summary, findWorkflow, clock);
   return {
+    runId: listed.runId,
     status: listed.status,
     workflow: listed.workflow,
     what: plainText(listed.what),
@@ -72,6 +73,7 @@ describe("listedRun", () => {
     const summary = runOf([started, { type: "state.entered", state: "draft" }], today);
 
     expect(row(summary)).toEqual({
+      runId: "01jd8q",
       status: "running",
       workflow: "Support reply",
       what: "In Draft a reply",
@@ -111,6 +113,82 @@ describe("listedRun", () => {
     });
   });
 
+  it("shows a tool approval as Needs you, in the step whose agent asked", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "draft" },
+        {
+          type: "approval.requested",
+          state: "draft",
+          agent: "writer",
+          tool: "gmail__send",
+          args: {},
+          callId: "c1",
+          resume: { messages: [], calls: [], step: 0 },
+        },
+        { type: "run.waiting", state: "draft", events: ["approve", "reject"] },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({
+      status: "needsYou",
+      what: "Waiting for your approval in the step Draft a reply",
+    });
+  });
+
+  it("shows a run waiting for its child run as Waiting, by the child's short id", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "review" },
+        {
+          type: "run.waiting",
+          state: "review",
+          events: ["approve"],
+          child: "run_mfx3k2a1_9c7k2m9p",
+        },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({
+      status: "waiting",
+      what: "Waiting for child run 7k2m9p",
+    });
+  });
+
+  it.each([
+    ["2026-11-09T14:00:00.000Z", "Waiting until 14:00"],
+    ["2026-11-10T08:00:00.000Z", "Waiting until tomorrow 08:00"],
+    ["2026-12-03T08:00:00.000Z", "Waiting until 3 Dec 08:00"],
+  ])("shows a run waiting for a timer due at %s as %j", (at, what) => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "hold" },
+        { type: "run.waiting", state: "hold", events: [], timers: [{ after: "2h", at }] },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({ status: "waiting", what });
+  });
+
+  it("shows a run that waits for nothing it names as Waiting in its step", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "hold" },
+        { type: "run.waiting", state: "hold", events: [] },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({ status: "waiting", what: "Waiting in Hold" });
+  });
+
   it("shows a completed run's estimated cost and how long it took", () => {
     const summary = runOf(
       [
@@ -131,7 +209,7 @@ describe("listedRun", () => {
       9000,
     );
 
-    expect(row(summary)).toEqual({
+    expect(row(summary)).toMatchObject({
       status: "done",
       workflow: "Support reply",
       what: "Estimated cost €0.004",
@@ -168,7 +246,7 @@ describe("listedRun", () => {
       60_000,
     );
 
-    expect(row(summary)).toEqual({
+    expect(row(summary)).toMatchObject({
       status: "failed",
       workflow: "Support reply",
       what: "In Read the mail",

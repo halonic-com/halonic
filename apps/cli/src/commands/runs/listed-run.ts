@@ -3,6 +3,7 @@
 // word, which sentence for the What column, and when the run started. The
 // words themselves come from `runsListMessages`, so this file holds no text.
 
+import { shortRunId } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { KindValues } from "@halonicjs/format";
 import { duration } from "../../messages/duration.ts";
@@ -28,6 +29,7 @@ export type FindWorkflow = (hubId: string, workflowId: string) => WorkflowDefini
 /** One run, as its row in the list shows it. */
 export interface ListedRun {
   readonly status: ListedStatus;
+  /** The short id, as Studio shows it and `runs show` takes it back. */
   readonly runId: string;
   /** The workflow's title, or its id when it's no longer in the workspace. */
   readonly workflow: string;
@@ -59,7 +61,7 @@ export function listedRun(
   const workflow = findWorkflow(summary.hubId, summary.workflowId);
   return {
     status: listedStatus(summary),
-    runId: summary.id,
+    runId: shortRunId(summary.id),
     workflow: workflow?.name ?? summary.workflowId,
     what: whatColumn(summary, workflow, clock),
     when: whenColumn(summary, clock),

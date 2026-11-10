@@ -81,14 +81,22 @@ describe("the runs list's sentences", () => {
 
   it("says what each kind of run is doing or did", () => {
     expect([
-      words(list.waitingInStep("review")),
-      words(list.waitingUntil("14:00")),
-      words(list.waitingForRun("7K2M9P")),
+      words(list.waitingInStep("Review")),
+      words(list.waitingForApproval("Draft a reply")),
+      words(list.waitingUntil({ day: "today", time: "14:00" })),
+      words(list.waitingUntil({ day: "tomorrow", time: "08:00" })),
+      words(list.waitingUntil({ day: "later", date: { day: 3, month: 12 }, time: "08:00" })),
+      words(list.waitingForChildRun("7k2m9p")),
+      words(list.waitingIn("Classify it")),
       words(list.cancelledIn("Draft a reply")),
     ]).toEqual([
-      "Waiting for you in the step review",
+      "Waiting for you in the step Review",
+      "Waiting for your approval in the step Draft a reply",
       "Waiting until 14:00",
-      "Waiting for run 7K2M9P",
+      "Waiting until tomorrow 08:00",
+      "Waiting until 3 Dec 08:00",
+      "Waiting for child run 7k2m9p",
+      "Waiting in Classify it",
       "Cancelled in Draft a reply",
     ]);
   });

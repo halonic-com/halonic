@@ -262,6 +262,9 @@ importers:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../packages/core/app
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../packages/core/events
