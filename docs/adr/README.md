@@ -37,6 +37,7 @@ code is built the way it is, before you change something they describe.
 | [Run snapshot is a cache](2026-11-09-run-snapshot-is-a-cache.md)                       | `RunStore` may drop a snapshot; only a crash can store part of an append         |
 | [Harness signed out](2026-11-09-harness-signed-out.md)                                 | `detect()` can answer `signed-out`, with the version; never a guess (v2)         |
 | [Vcs versions](2026-11-10-vcs-versions-and-worktrees.md)                               | `Vcs` reads commits, snapshots and renames; a version is a full id (v2)          |
+| [MXC sandbox backend](2026-11-10-mxc-sandbox-backend.md)                               | On Windows 11, MXC is a second backend, used only after a trust check (proposed) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).
