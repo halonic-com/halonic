@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      tooling: ${{ steps.diff.outputs.tooling }}
+      scaffold: ${{ steps.diff.outputs.scaffold }}
       tauri: ${{ steps.diff.outputs.tauri }}
       sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
       sandbox: ${{ steps.diff.outputs.sandbox }}
@@ -55,7 +55,6 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           areas=(
-            "tooling=^(\.github/workflows/ci\.yml$|\.github/actions/|tooling/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|turbo\.json$|biome\.json$)"
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-srt/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node)/|packages/core/ports/)"
@@ -65,6 +64,15 @@ jobs:
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
             "workflows=^\.github/"
           )
+          # The scaffold job runs a full `pnpm verify --full`. A pull request
+          # needs it only when the templates or the tooling itself change;
+          # dependency and config bumps (package.json, the lockfile, turbo.json,
+          # biome.json) are checked by it in the merge queue and on main.
+          if [ "$EVENT" = "pull_request" ]; then
+            areas+=("scaffold=^(\.github/workflows/ci\.yml$|\.github/actions/|tooling/)")
+          else
+            areas+=("scaffold=^(\.github/workflows/ci\.yml$|\.github/actions/|tooling/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|turbo\.json$|biome\.json$)")
+          fi
           changed=""
           by_area=false
           if [ "$EVENT" = "pull_request" ]; then
@@ -659,7 +667,7 @@ jobs:
     # hands an agent a package that fails.
     name: Empty package and feature pass every check
     needs: changes
-    if: needs.changes.outputs.tooling == 'true'
+    if: needs.changes.outputs.scaffold == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
