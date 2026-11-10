@@ -1,5 +1,6 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::thread;
 
@@ -31,6 +32,7 @@ fn run_store_turns_forget_a_run_whose_turn_panicked() {
 #[test]
 fn run_store_turns_forget_a_run_once_overlapping_turns_end() {
     let turns = &Turns::default();
+    let first_ended = &AtomicBool::new(false);
     let (started, wait_for_start) = mpsc::channel();
     let (finish, wait_for_finish) = mpsc::channel::<()>();
     thread::scope(|scope| {
@@ -39,13 +41,21 @@ fn run_store_turns_forget_a_run_once_overlapping_turns_end() {
             turns.take(Path::new("r1.lock"), || {
                 started.send(()).unwrap();
                 wait_for_finish.recv().unwrap();
+                first_ended.store(true, Ordering::SeqCst);
             });
         });
         wait_for_start.recv().unwrap();
         // The second turn starts while the first holds the run, so it waits
         // unless the first has already ended; either way the run is
         // forgotten only once both have.
-        let waiting = scope.spawn(|| turns.take(Path::new("r1.lock"), || "second"));
+        let waiting = scope.spawn(|| {
+            turns.take(Path::new("r1.lock"), || {
+                // Without `Turns` keeping them apart, this could run before
+                // the first turn ends.
+                assert!(first_ended.load(Ordering::SeqCst));
+                "second"
+            })
+        });
         finish.send(()).unwrap();
         assert_eq!(waiting.join().unwrap(), "second");
     });
