@@ -156,5 +156,56 @@ verifies("format.secret-names", () => {
       );
       expect(summary(problemsOf("connector", google))).toEqual(["secret secret-looks-like-key 3"]);
     });
+
+    /** The problem codes and messages a Google connector with this `client` gets. */
+    function clientProblems(client: string): Array<{ code: string; message: string }> {
+      const text = yaml(
+        "id: mailbox",
+        "transport:",
+        "  google:",
+        "    account: desk@example.com",
+        `    client: '${client}'`,
+      );
+      const parsed = parseFile("connector", text);
+      return parsed.ok ? [] : parsed.error.map(({ code, message }) => ({ code, message }));
+    }
+
+    it("passes a Google client whose secret names follow the rule", () => {
+      expect(clientProblems("work-google")).toEqual([]);
+    });
+
+    it("refuses a Google client that forms a bad name, once, at its line", () => {
+      const text = yaml(
+        "id: mailbox",
+        "transport:",
+        "  google:",
+        "    account: desk@example.com",
+        "    client: work google",
+      );
+      expect(summary(problemsOf("connector", text))).toEqual([
+        "transport.google.client secret-name 5",
+      ]);
+      expect(clientProblems("work google")).toEqual([
+        {
+          code: "secret-name",
+          message:
+            'The secret name "work google-client-id" can\'t be used. Start with a letter, then use only letters, digits, - or _, such as openai-key.',
+        },
+      ]);
+    });
+
+    it("refuses a Google client that fits 128 characters only on its own", () => {
+      // `-client-secret` adds 14 characters, so 114 is the longest client.
+      expect(clientProblems(`g${"q".repeat(113)}`)).toEqual([]);
+      const problems = clientProblems(`g${"q".repeat(114)}`);
+      expect(problems.map(({ code }) => code)).toEqual(["secret-name"]);
+      expect(problems[0]?.message).toContain("129 characters");
+    });
+
+    it.each(keys)("refuses %s as the Google client, without repeating it", (_name, key) => {
+      const problems = clientProblems(key);
+      expect(problems.map(({ code }) => code)).toEqual(["secret-looks-like-key"]);
+      expect(problems[0]?.message).not.toContain(key.slice(4, 20));
+    });
   });
 });

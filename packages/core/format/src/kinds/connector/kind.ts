@@ -1,7 +1,7 @@
 import type { Path } from "@halonicjs/schema-kit";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkSecretName } from "../../shared/secret-name.ts";
-import { Connector } from "./schema.ts";
+import { Connector, googleClientSecretNames } from "./schema.ts";
 
 /** `library/connectors/<id>.connector.yaml`, shared at the root or a hub's own. */
 export const connectorKind: FileKind<Connector> = {
@@ -36,7 +36,32 @@ function secretNames(connector: Connector): Array<readonly [string, Path]> {
 
 /** The secrets are named in the file, so a bad name or a pasted key is caught here, not at run time. */
 function checkSecretNames(connector: Connector): KindCheckProblem[] {
-  return secretNames(connector).flatMap(([name, path]) => checkSecretName(name, path) ?? []);
+  const problems = secretNames(connector).flatMap(
+    ([name, path]) => checkSecretName(name, path) ?? [],
+  );
+  const clientProblem = checkGoogleClient(connector);
+  return clientProblem === undefined ? problems : [...problems, clientProblem];
+}
+
+/**
+ * A Google connector's `client` isn't a secret's name itself, but every name
+ * it forms is one. Each formed name is checked, and the first problem is
+ * reported once, at `client`: the names share the `client` part, so one bad
+ * `client` would otherwise give the same problem twice. The longest name
+ * also catches a `client` that fits 128 characters only on its own.
+ */
+function checkGoogleClient(connector: Connector): KindCheckProblem | undefined {
+  if (!("google" in connector.transport)) {
+    return undefined;
+  }
+  const path: Path = ["transport", "google", "client"];
+  for (const name of googleClientSecretNames(connector.transport.google.client)) {
+    const problem = checkSecretName(name, path);
+    if (problem !== undefined) {
+      return problem;
+    }
+  }
+  return undefined;
 }
 
 /** A tool that needs approval but isn't in `tools.allow` is never offered, so say so. */

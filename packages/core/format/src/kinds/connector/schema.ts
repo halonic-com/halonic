@@ -35,12 +35,23 @@ const GoogleTransport = s
       .object({
         /** The Google account the connector acts as. */
         account: s.string().email(),
-        /** OAuth client: secrets `<client>-client-id` and `<client>-client-secret`. */
+        /** OAuth client: its secrets are named by {@link googleClientSecretNames}. */
         client: s.string().default("google"),
       })
       .strict(),
   })
   .strict();
+
+/**
+ * The secrets a Google connector's `client` names: the OAuth client's ID and
+ * its secret.
+ *
+ * @example
+ * googleClientSecretNames("google"); // ["google-client-id", "google-client-secret"]
+ */
+export function googleClientSecretNames(client: string): readonly string[] {
+  return [`${client}-client-id`, `${client}-client-secret`];
+}
 
 /**
  * `library/connectors/<id>.connector.yaml`: tools for agents from an MCP
