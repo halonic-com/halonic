@@ -6,6 +6,9 @@ import { afterAll, describe, expect, it } from "vitest";
 import { FolderDefinitionStore } from "./definition-store.ts";
 import { removeTempFolders, tempFolder, writeFiles } from "./temp-folder.test-helper.ts";
 
+/** Fails on Windows today: POSIX modes (HAL-4364). */
+const itUnlessWindows = it.skipIf(process.platform === "win32");
+
 afterAll(removeTempFolders);
 
 const digest = {
@@ -78,7 +81,7 @@ verifies("fs-node.write-is-whole-or-nothing", () => {
       expect(await readFile(join(root, "hubs/a.yaml/x.yaml"), "utf8")).toBe("1");
     });
 
-    it("keeps the permissions of the file it replaces", async () => {
+    itUnlessWindows("keeps the permissions of the file it replaces", async () => {
       const { root, store } = await folderWith({ "run.sh": "echo 1\n" });
       await chmod(join(root, "run.sh"), 0o755);
       await store.write("run.sh", "echo 2\n");

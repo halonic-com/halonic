@@ -1038,12 +1038,12 @@ jobs:
       RUN_SANDBOX: ${{ needs.changes.outputs.sandbox == 'true' }}
       RUN_LIST: ${{ matrix.name == 'Windows' || needs.changes.outputs.sandbox == 'true' }}
     steps:
-      # Windows needs the history for Turbo's `[base]` filter.
+      # The whole history: Windows needs it for Turbo's `[base]` filter.
       - if: env.RUN_LIST == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: ${{ runner.os == 'Windows' && 0 || 1 }}
+          fetch-depth: 0
       - if: env.RUN_LIST == 'true'
         uses: $/.github/actions/setup
         with:
