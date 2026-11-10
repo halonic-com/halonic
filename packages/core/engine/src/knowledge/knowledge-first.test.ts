@@ -1,4 +1,4 @@
-import { fenceUntrusted } from "@halonicjs/app";
+import { fenceUntrusted, maxKnowledgeRefLength } from "@halonicjs/app";
 import type { ChatMessage } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -75,6 +75,29 @@ verifies("engine.knowledge-auto", () => {
     expect(message?.content.match(/^ref: /gm)).toHaveLength(autoPassages);
     expect(message?.content).toContain('ref: "a\\nb.md"');
     expect(log.events[0]).toMatchObject({ refs: ["a\nb.md", "c.md", "d.md"] });
+  });
+
+  it("adds no passages for an untrusted source whose only hit has a ref that is too long", async () => {
+    const tooLong = `${"a".repeat(maxKnowledgeRefLength)}.md`;
+    const handbook = new FakeSource("handbook", [hit(tooLong)]);
+    const wiki = new FakeSource("wiki", [hit("a.md")], { untrusted: false });
+    const log = new MemoryTurnLog();
+
+    const [message] = await withKnowledgeFirst({
+      sources: [handbook, wiki],
+      messages: [task],
+      agent: "w",
+      log,
+    });
+
+    expect(message?.content).not.toContain('"handbook"');
+    expect(message?.content).toBe(
+      'Answer the refund question\n\nPassages from the knowledge source "wiki" that match the task best:\n\nref: "a.md"\ntitle: Title of a.md\nAbout a.md',
+    );
+    expect(await withKnowledgeFirst({ sources: [handbook], messages: [task], agent: "w" })).toEqual(
+      [task],
+    );
+    expect(log.events[0]).toMatchObject({ source: "handbook", refs: [tooLong] });
   });
 
   it("searches the last user message, and leaves the messages alone when nothing is found", async () => {

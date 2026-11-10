@@ -1,8 +1,9 @@
 // `mode: auto` knowledge: before the first model call, the task text is
-// searched and the best passages go into the prompt. Every title and
-// snippet goes through `knowledgeHitForModel` first, so text a source didn't
-// promise is the workspace's own reaches the model only inside the
-// untrusted fence (requirement `ports.untrusted-knowledge`).
+// searched and the best passages go into the prompt. Every hit goes through
+// `knowledgeHitForModel` first, so text a source didn't promise is the
+// workspace's own reaches the model only inside the untrusted fence, and a
+// hit it refuses doesn't reach the model at all (requirement
+// `ports.untrusted-knowledge`).
 
 import { knowledgeHitForModel } from "@halonicjs/app";
 import type { ChatMessage, KnowledgeHit, KnowledgeProvider } from "@halonicjs/ports";
@@ -27,7 +28,8 @@ export interface KnowledgeFirstInput {
  * last user message (requirement `engine.knowledge-auto`). It searches each
  * source that can search for that message's text, logs `knowledge.searched`
  * with the refs it found, and adds at most {@link autoPassages} hits per
- * source. The messages stay as they are when nothing is found, there is no
+ * source. A source whose hits `knowledgeHitForModel` all refuses adds no
+ * passages. The messages stay as they are when nothing is left, there is no
  * user message or its text is blank.
  *
  * @throws when a source's search fails, or the log can't be written
@@ -57,8 +59,9 @@ export async function withKnowledgeFirst(input: KnowledgeFirstInput): Promise<Ch
       query,
       refs: hits.map((hit) => hit.ref),
     });
-    if (hits.length > 0) {
-      blocks.push(passagesBlock(source, hits));
+    const forModel = hits.flatMap((hit) => knowledgeHitForModel(source, hit) ?? []);
+    if (forModel.length > 0) {
+      blocks.push(passagesBlock(source, forModel));
     }
   }
   if (blocks.length > 0) {
@@ -67,12 +70,11 @@ export async function withKnowledgeFirst(input: KnowledgeFirstInput): Promise<Ch
   return messages;
 }
 
-/** One source's passages, fenced as `knowledgeHitForModel` says. */
+/** One source's passages, already as `knowledgeHitForModel` returned them. */
 function passagesBlock(source: KnowledgeProvider, hits: readonly KnowledgeHit[]): string {
-  const passages = hits.map((hit) => passageText(knowledgeHitForModel(source, hit)));
   return [
     `Passages from the knowledge source ${JSON.stringify(source.id)} that match the task best:`,
-    ...passages,
+    ...hits.map(passageText),
   ].join("\n\n");
 }
 
