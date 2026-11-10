@@ -39,6 +39,21 @@ its runs never used, on a tool call it has no result for, and on an event its ru
   case with `unscripted-program` (HAL-4248 adds the scripted results). The runner tells such a step by the run's
   `harness-unavailable` failure reason, never by the engine's error text.
 
+## Differences from the old runner
+
+The old runner's tests (acme, foreach, gets, hubs, knowledge, legacy, parallel, subflows, timers)
+run through `runWorkspaceTests` in `src/ported/` (requirement `test-runner.old-suites`). Where the
+new code does something else, the ported test leaves that part out, and it is listed here:
+
+- The runner builds no knowledge sources, so an agent's `knowledge:` gives it nothing in a test;
+  the old runner took the knowledge factories (`test-runner.run-tests`, HAL-4458).
+- A workspace from before the renames (`org.yaml`, `projects/`, `flows/`) doesn't load, so it runs
+  no test (`workspace.load`).
+- A run's log doesn't hold a subagent's turn or a call to a tool that only reads, so the ported
+  tests read those from the model's requests (`engine.turn-logs-events`).
+- The model sees a connector's tools by their own names (`search_issues`), not
+  `<connector>__<tool>`; a case still scripts them as `<connector>.<tool>`.
+
 ## Example
 
 List the test of a small in-memory workspace named "without a decision the run waits". The code lives in

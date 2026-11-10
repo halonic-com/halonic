@@ -126,3 +126,28 @@ export function fakeDeps(overrides: Partial<TestDeps> = {}): TestDeps {
     ...overrides,
   };
 }
+
+/**
+ * {@link fakeDeps} that keep each case's model, in case order, so a test can
+ * read the prompts each case's agents got.
+ */
+export function recordingDeps(overrides: Partial<TestDeps> = {}): {
+  deps: TestDeps;
+  models: ReturnType<typeof fakeModel>[];
+} {
+  const models: ReturnType<typeof fakeModel>[] = [];
+  const model = (script: ModelScript) => {
+    const made = fakeModel(script);
+    models.push(made);
+    return made;
+  };
+  return { deps: fakeDeps({ model, ...overrides }), models };
+}
+
+/** The last message of each request a model got, with the agent that sent it. */
+export function promptsOf(model: ReturnType<typeof fakeModel> | undefined): [string, string][] {
+  return (model?.requests ?? []).map((request) => [
+    request.meta?.agentId ?? "",
+    request.messages.at(-1)?.content ?? "",
+  ]);
+}
