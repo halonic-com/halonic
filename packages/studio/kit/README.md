@@ -554,9 +554,25 @@ belong to the shell.
 | `sticky`   | The tabs stay at the top of the scroll area, on a `surface` fill, so their counters stay in view |
 | `children` | The selected tab's view, inside the one `tabpanel`                                               |
 
-A `count` is `{ value, tone, name }`: an `accent` chip, or `danger` when it counts errors. The
-number is hidden from screen readers, which hear its `name` instead: "Configuration, 2 errors".
-The tab itself never turns red.
+A `count` is `{ value, tone, name }`: an `accent` chip, `warning` when it counts what waits for
+a person ("1 needs you"), or `danger` when it counts errors. The number is hidden from screen
+readers, which hear its `name` instead: "Configuration, 2 errors". The tab itself never turns red.
+A tab without a count can show `running: { name: "1 running" }`: a still 6px `running` dot after
+the label (never breathing, `CanvasText` in high contrast), read as "Runs, 1 running".
+
+**Tabs apart from their panel.** When the views are picked in a header, away from the view itself
+(the item page), use `TabList` and `TabPanel` with the same ids from `useTabIds()`. They draw and
+behave as `Tabs` does:
+
+```tsx
+const ids = useTabIds();
+<header>
+  <TabList label="Workflow views" tabs={views} selected={view} onSelect={setView} ids={ids} />
+</header>;
+<TabPanel ids={ids} tabs={views} selected={view}>
+  {viewContent}
+</TabPanel>;
+```
 
 Without `fill`, the labels sit on one line. When the tabs are wider than their column, as at
 200% text, each label wraps inside its tab instead of running out of it.

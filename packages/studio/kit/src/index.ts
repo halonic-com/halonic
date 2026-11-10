@@ -124,6 +124,7 @@ export { CloseIcon } from "./icons/close-icon.tsx";
 export { ForwardIcon } from "./icons/forward-icon.tsx";
 export { InfoIcon } from "./icons/info-icon.tsx";
 export { MenuIcon } from "./icons/menu-icon.tsx";
+export { MoreIcon } from "./icons/more-icon.tsx";
 export {
   PlaceIcon,
   type PlaceIconName,
@@ -197,7 +198,18 @@ export {
   type StatusChipTone,
 } from "./status-chip/status-chip.tsx";
 export { Switch, type SwitchProps, type SwitchUnavailable } from "./switch/switch.tsx";
-export { type Tab, type TabCount, Tabs, type TabsProps } from "./tabs/tabs.tsx";
+export {
+  type Tab,
+  type TabCount,
+  type TabIds,
+  TabList,
+  type TabListProps,
+  TabPanel,
+  type TabPanelProps,
+  Tabs,
+  type TabsProps,
+  useTabIds,
+} from "./tabs/tabs.tsx";
 export { TextSheet, type TextSheetProps } from "./text-sheet/text-sheet.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,

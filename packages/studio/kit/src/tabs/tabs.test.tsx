@@ -4,7 +4,7 @@ import { act, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PresentationProvider } from "../presentation/presentation.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
-import { type Tab, Tabs, type TabsProps } from "./tabs.tsx";
+import { type Tab, TabList, TabPanel, Tabs, type TabsProps, useTabIds } from "./tabs.tsx";
 
 afterEach(() => {
   unmountAll();
@@ -247,6 +247,86 @@ verifies("kit.tabs", () => {
     expect(configuration?.querySelectorAll(".sr-only")).toHaveLength(1);
     expect(configuration?.className).not.toContain("danger");
     expect(runs?.querySelector(".rounded-full")?.className).toContain("bg-accent-soft");
+  });
+
+  it("counts what needs a person in amber", () => {
+    const tabs: readonly Tab<View>[] = [
+      { id: "runs", label: "Runs", count: { value: 1, tone: "warning", name: "1 needs you" } },
+    ];
+    const { container } = render(<Page tabs={tabs} start="runs" />);
+    const [runs] = tabsIn(container);
+    expect(runs?.querySelector(".rounded-full")?.className).toContain(
+      "bg-warning-soft text-warning",
+    );
+    expect(runs?.querySelector(".sr-only")?.textContent).toBe(", 1 needs you");
+  });
+
+  it("shows a still running dot, read as words after the name", () => {
+    const tabs: readonly Tab<View>[] = [
+      { id: "flow", label: "Flow" },
+      { id: "runs", label: "Runs", running: { name: "1 running" } },
+    ];
+    const { container } = render(<Page tabs={tabs} />);
+    const [, runs] = tabsIn(container);
+    const dot = runs?.querySelector('[aria-hidden="true"].rounded-full') as HTMLElement;
+    expect(dot.className).toContain("size-1.5");
+    expect(dot.className).toContain("bg-running");
+    expect(dot.className).toContain("forced-colors:bg-[CanvasText]");
+    // Still, never breathing.
+    expect(dot.className).not.toContain("animate");
+    expect(runs?.querySelector(".sr-only")?.textContent).toBe(", 1 running");
+  });
+
+  it("shows the counter, not the running dot, when a tab has both", () => {
+    const tabs: readonly Tab<View>[] = [
+      {
+        id: "runs",
+        label: "Runs",
+        count: { value: 1, tone: "warning", name: "1 needs you" },
+        running: { name: "1 running" },
+      },
+    ];
+    const { container } = render(<Page tabs={tabs} start="runs" />);
+    const [runs] = tabsIn(container);
+    expect(runs?.querySelectorAll(".sr-only")).toHaveLength(1);
+    expect(runs?.querySelector(".sr-only")?.textContent).toBe(", 1 needs you");
+    expect(runs?.querySelector(".bg-running")).toBeNull();
+  });
+
+  it("puts the tab list and its panel apart, still tied together", () => {
+    function Header() {
+      const ids = useTabIds();
+      const [view, setView] = useState<View>("flow");
+      return (
+        <>
+          <header>
+            <TabList
+              label="Workflow views"
+              tabs={views}
+              selected={view}
+              onSelect={setView}
+              ids={ids}
+            />
+          </header>
+          <main>
+            <TabPanel ids={ids} tabs={views} selected={view}>
+              <p>{view} view</p>
+            </TabPanel>
+          </main>
+        </>
+      );
+    }
+    const { container } = render(<Header />);
+    const panel = container.querySelector('main > [role="tabpanel"]') as HTMLElement;
+    const [flow, configuration] = tabsIn(container);
+    expect(container.querySelector('header > [role="tablist"]')).not.toBeNull();
+    expect(flow?.getAttribute("aria-controls")).toBe(panel.id);
+    expect(panel.getAttribute("aria-labelledby")).toBe(flow?.id);
+
+    press(flow as HTMLElement, "ArrowRight");
+    expect(panel.textContent).toBe("configuration view");
+    expect(panel.getAttribute("aria-labelledby")).toBe(configuration?.id);
+    expect(document.activeElement).toBe(configuration);
   });
 
   it("shows an icon before the label, hidden from screen readers", () => {

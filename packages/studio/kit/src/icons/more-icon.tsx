@@ -1,6 +1,6 @@
 /**
- * The More mark: three dots in a column, in the text colour. Used by a List row's More button,
- * whose label says what it does.
+ * The More mark: three dots in a column, in the text colour. Used by a List row's More button and
+ * the item page header's ⋮, whose label says what it does.
  */
 export function MoreIcon() {
   return (

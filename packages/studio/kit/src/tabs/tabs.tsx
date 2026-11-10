@@ -5,8 +5,11 @@ import { StatusChip } from "../status-chip/status-chip.tsx";
 /** The counter on a tab: how many things its view holds, or how many errors it has. */
 export interface TabCount {
   readonly value: number;
-  /** `danger` when it counts errors. The tab itself never turns red. */
-  readonly tone?: "accent" | "danger";
+  /**
+   * `danger` when it counts errors, `warning` when it counts what waits for a person ("1 needs
+   * you"). The tab itself never turns red.
+   */
+  readonly tone?: "accent" | "warning" | "danger";
   /** What the number means, read after the tab's name: "2 errors" makes "Configuration, 2 errors". */
   readonly name: string;
 }
@@ -19,12 +22,35 @@ export interface Tab<Id extends string = string> {
   /** An optional 16px icon before the label. */
   readonly icon?: ReactNode;
   readonly count?: TabCount;
+  /**
+   * A still `running` dot after the label while one of the view's runs is running, with its words
+   * for screen readers: `{ name: "1 running" }` reads "Runs, 1 running". A `count` wins over it.
+   */
+  readonly running?: { readonly name: string };
   /** Can't be opened now. It's still shown, but clicks and the arrow keys skip it. */
   readonly disabled?: boolean;
 }
 
-/** The props of `Tabs`. */
-export interface TabsProps<Id extends string = string> {
+/** The ids that tie a `TabList` to its `TabPanel`. Make them with `useTabIds`. */
+export interface TabIds {
+  readonly base: string;
+}
+
+/** New ids for one tab list and its panel. */
+export function useTabIds(): TabIds {
+  return { base: useId() };
+}
+
+function tabElementId(ids: TabIds, id: string): string {
+  return `${ids.base}-tab-${id}`;
+}
+
+function panelElementId(ids: TabIds): string {
+  return `${ids.base}-panel`;
+}
+
+/** The props of `TabList`. */
+export interface TabListProps<Id extends string = string> {
   /** The name of the tab list: "Workflow views". */
   readonly label: string;
   readonly tabs: readonly Tab<Id>[];
@@ -36,10 +62,26 @@ export interface TabsProps<Id extends string = string> {
    * on a phone (the presentation context), off on desktop.
    */
   readonly fill?: boolean;
-  /** The tabs stay at the top of the scroll area while the page scrolls under them. */
-  readonly sticky?: boolean;
+  /** The same ids as the `TabPanel` that shows the selected view. */
+  readonly ids: TabIds;
+}
+
+/** The props of `TabPanel`. */
+export interface TabPanelProps<Id extends string = string> {
+  /** The same ids as the `TabList`. */
+  readonly ids: TabIds;
+  readonly tabs: readonly Tab<Id>[];
+  readonly selected: Id;
   /** The selected tab's view. */
   readonly children: ReactNode;
+}
+
+/** The props of `Tabs`. */
+export interface TabsProps<Id extends string = string>
+  extends Omit<TabListProps<Id>, "ids">,
+    Pick<TabPanelProps<Id>, "children"> {
+  /** The tabs stay at the top of the scroll area while the page scrolls under them. */
+  readonly sticky?: boolean;
 }
 
 const trackClasses = {
@@ -109,23 +151,41 @@ const iconClasses = {
  *   {view === "flow" ? <Flow /> : …}
  * </Tabs>
  */
-export function Tabs<Id extends string>({
+export function Tabs<Id extends string>({ sticky = false, children, ...listProps }: TabsProps<Id>) {
+  const ids = useTabIds();
+  const list = <TabList {...listProps} ids={ids} />;
+  return (
+    <div>
+      {sticky ? <div className={stickyClasses}>{list}</div> : list}
+      <TabPanel ids={ids} tabs={listProps.tabs} selected={listProps.selected}>
+        {children}
+      </TabPanel>
+    </div>
+  );
+}
+
+/**
+ * The tab list of `Tabs` on its own, for a page whose views are picked somewhere else than right
+ * above them, such as the item page's header. Pair it with a `TabPanel` that takes the same ids.
+ *
+ * @example
+ * const ids = useTabIds();
+ * <header><TabList label="Workflow views" tabs={views} selected={view} onSelect={setView} ids={ids} /></header>
+ * <TabPanel ids={ids} tabs={views} selected={view}>{content}</TabPanel>
+ */
+export function TabList<Id extends string>({
   label,
   tabs,
   selected,
   onSelect,
   fill: fillProp,
-  sticky = false,
-  children,
-}: TabsProps<Id>) {
+  ids,
+}: TabListProps<Id>) {
   const presentation = usePresentation();
   const fill = fillProp ?? presentation === "phone";
   const layout = fill ? "fill" : "inline";
-  const baseId = useId();
   const tabElements = useRef(new Map<Id, HTMLButtonElement>());
 
-  const tabId = (id: Id) => `${baseId}-tab-${id}`;
-  const panelId = `${baseId}-panel`;
   const enabled = tabs.filter((tab) => tab.disabled !== true);
   // The tab list stays reachable by Tab even when the selected id isn't one of the tabs.
   const focusable = tabs.some((tab) => tab.id === selected) ? selected : enabled[0]?.id;
@@ -146,7 +206,7 @@ export function Tabs<Id extends string>({
     select(next);
   };
 
-  const list = (
+  return (
     <div role="tablist" aria-label={label} className={trackClasses[layout]} onKeyDown={onKeyDown}>
       {tabs.map((tab) => {
         const isSelected = tab.id === selected;
@@ -164,9 +224,9 @@ export function Tabs<Id extends string>({
             }}
             type="button"
             role="tab"
-            id={tabId(tab.id)}
+            id={tabElementId(ids, tab.id)}
             aria-selected={isSelected}
-            aria-controls={isSelected ? panelId : undefined}
+            aria-controls={isSelected ? panelElementId(ids) : undefined}
             aria-disabled={isDisabled ? true : undefined}
             tabIndex={tab.id === focusable ? 0 : -1}
             // An unselected tab shows the muted track, so its counter takes the on-muted: look.
@@ -185,23 +245,25 @@ export function Tabs<Id extends string>({
               </span>
             )}
             {fill ? tab.label : <InlineLabel label={tab.label} />}
-            {tab.count === undefined ? null : <TabCounter count={tab.count} fill={fill} />}
+            <TabSignal tab={tab} fill={fill} />
           </button>
         );
       })}
     </div>
   );
+}
 
+/** The one `tabpanel` that holds the selected view, labelled by the selected tab. */
+export function TabPanel<Id extends string>({ ids, tabs, selected, children }: TabPanelProps<Id>) {
   return (
-    <div>
-      {sticky ? <div className={stickyClasses}>{list}</div> : list}
-      <div
-        role="tabpanel"
-        id={panelId}
-        aria-labelledby={tabs.some((tab) => tab.id === selected) ? tabId(selected) : undefined}
-      >
-        {children}
-      </div>
+    <div
+      role="tabpanel"
+      id={panelElementId(ids)}
+      aria-labelledby={
+        tabs.some((tab) => tab.id === selected) ? tabElementId(ids, selected) : undefined
+      }
+    >
+      {children}
     </div>
   );
 }
@@ -226,6 +288,34 @@ function InlineLabel({ label }: { readonly label: string }) {
         {label}
       </span>
     </span>
+  );
+}
+
+/** What follows the label: the counter, else the running dot, else nothing. */
+function TabSignal({ tab, fill }: { readonly tab: Tab; readonly fill: boolean }) {
+  if (tab.count !== undefined) {
+    return <TabCounter count={tab.count} fill={fill} />;
+  }
+  if (tab.running !== undefined) {
+    return <RunningDot name={tab.running.name} fill={fill} />;
+  }
+  return null;
+}
+
+/**
+ * The still running dot (never breathing). High contrast drops fills, so there it keeps its fill
+ * in `CanvasText`. Screen readers hear its name after the tab's: "Runs, 1 running".
+ */
+function RunningDot({ name, fill }: { readonly name: string; readonly fill: boolean }) {
+  return (
+    <>
+      {fill ? " " : null}
+      <span
+        aria-hidden="true"
+        className="inline-block size-1.5 shrink-0 rounded-full bg-running align-middle forced-color-adjust-none forced-colors:bg-[CanvasText]"
+      />
+      <span className="sr-only">, {name}</span>
+    </>
   );
 }
 
