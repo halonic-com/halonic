@@ -82,7 +82,10 @@ function optionLikeCases(make: MakeVcs): void {
     expect(await files.read("keep.yaml")).toBe("keep\n");
   });
 
-  it("commits a message that is a git option as the message", async () => {
+  // One history for every message, so `--amend` can be caught replacing a commit: a few
+  // dozen git processes in a row. That takes about 1 s on a laptop but over 5 s on cold,
+  // uncached CI runners (HAL-3828), so this waits longer than vitest's 5 s.
+  it("commits a message that is a git option as the message", { timeout: 20_000 }, async () => {
     const { vcs, files } = await make.repo({ "a.yaml": "0\n" });
     const [first] = await vcs.log(1);
     for (const [index, message] of optionLikeMessages.entries()) {
