@@ -95,15 +95,14 @@ pub async fn trust_list<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Value>, Tru
 /// Saves the record and opens its folder, if the person chose the folder
 /// (see `TrustState::grant`); the shell asks them itself when they didn't.
 #[tauri::command]
-pub async fn trust_grant<R: Runtime>(
-    app: AppHandle<R>,
-    record: Value,
-) -> Result<(), TrustRefusal> {
+pub async fn trust_grant<R: Runtime>(app: AppHandle<R>, record: Value) -> Result<(), TrustRefusal> {
     on_worker(app, move |app| {
         let store = trust_store(app)?;
         let folders = app.state::<GitState>().folders();
         let state = app.state::<TrustState>();
-        state.grant(&store, &folders, &record, |question| ask_to_trust(app, question))
+        state.grant(&store, &folders, &record, |question| {
+            ask_to_trust(app, question)
+        })
     })
     .await
 }
@@ -117,7 +116,8 @@ pub async fn trust_revoke<R: Runtime>(
     on_worker(app, move |app| {
         let store = trust_store(app)?;
         let folders = app.state::<GitState>().folders();
-        app.state::<TrustState>().revoke(&store, &folders, &location)
+        app.state::<TrustState>()
+            .revoke(&store, &folders, &location)
     })
     .await
 }

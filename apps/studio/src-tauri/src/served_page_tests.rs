@@ -175,7 +175,12 @@ fn served_page_test_sees_the_connect_page_allowed_the_trust_commands_on_desktop(
     let window = app_window();
     let missing = std::env::temp_dir().join("served-page-no-such-folder");
     let record = json!({"location": missing.display().to_string(), "pins": {}});
-    let answer = invoke(&window, CONNECT_PAGE, "trust_grant", json!({"record": record}));
+    let answer = invoke(
+        &window,
+        CONNECT_PAGE,
+        "trust_grant",
+        json!({"record": record}),
+    );
     let refusal = answer.expect_err("the folder doesn't exist");
     assert_eq!(refusal["kind"], "folder_unreadable", "{refusal}");
 }
