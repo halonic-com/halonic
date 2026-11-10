@@ -118,7 +118,7 @@ pub fn ask_to_trust<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
 mod tests {
     use tauri::test::{MockRuntime, mock_builder};
     use tauri::webview::WebviewWindowBuilder;
-    use tauri::{App, Manager, WebviewUrl};
+    use tauri::{App, WebviewUrl};
 
     use super::{SHELL_WINDOW, shell_window};
 
