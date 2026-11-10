@@ -54,6 +54,15 @@ export async function runExample(): Promise<{
 }
 ```
 
+## Names
+
+Two names that differ only in case or in `-` versus `_` are the same token: `Google-Refresh` and
+`google_refresh` both read the record `google_refresh`. A name that breaks the `Secrets` port's rule
+(a letter, then letters, digits, `-` or `_`, at most 128 characters) throws a `RangeError` before the
+record store or the secrets are touched. `get` of a token that was never set, or `remove` of a missing
+one, answers without reading the key, and a `remove` of a missing token appends nothing. A token set
+to an empty string reads back as `""`, not `null`.
+
 ## The key
 
 The key is the configured secret `token-key`: 32 random bytes in base64url, without padding. Under

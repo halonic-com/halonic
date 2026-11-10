@@ -17,6 +17,7 @@ import { canonicalTokenName } from "./token-name.ts";
  */
 export const tokenCollection = "_tokens";
 
+/** What {@link createTokenStore} needs: the record store, the secrets that hold the key, and a clock. */
 export interface TokenStoreOptions {
   /**
    * Where the sealed tokens are kept. **Agents and tools must not be able to
