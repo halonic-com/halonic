@@ -41,19 +41,19 @@ async function fakeShell(at: string, body = 'eval "$3"'): Promise<string> {
 // These start a POSIX shell script; a login shell's PATH is only read on macOS.
 describe.skipIf(process.platform === "win32")("a login shell's PATH", () => {
   verifies("mcp.login-shell-path", () => {
-    it("reads only the PATH the login shell prints, around whatever its profile prints", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: reads only the PATH the login shell prints, around whatever its profile prints", async () => {
       const shell = await fakeShell(join(folder, "bin", "zsh"));
       expect(await readLoginShellPath({ SHELL: shell, HOME: folder })).toBe(
         "/acme/login/bin:/usr/bin",
       );
     });
 
-    it("gives no PATH for a shell that fails", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: gives no PATH for a shell that fails", async () => {
       const failing = await fakeShell(join(folder, "bin", "zsh"), "exit 1");
       expect(await readLoginShellPath({ SHELL: failing, HOME: folder })).toBeUndefined();
     });
 
-    it("starts nothing for a relative SHELL, or a HOME that is missing or relative", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: starts nothing for a relative SHELL, or a HOME that is missing or relative", async () => {
       const shell = await fakeShell(join(folder, "bin", "zsh"));
       expect(await readLoginShellPath({ SHELL: "bin/zsh", HOME: folder })).toBeUndefined();
       expect(await readLoginShellPath({ SHELL: shell })).toBeUndefined();
@@ -61,13 +61,13 @@ describe.skipIf(process.platform === "win32")("a login shell's PATH", () => {
       expect(existsSync(join(folder, "ran"))).toBe(false);
     });
 
-    it("never runs a shell under a skill's scripts/ folder", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: never runs a shell under a skill's scripts/ folder", async () => {
       const shell = await fakeShell(join(folder, "skills", "acme", "scripts", "zsh"));
       expect(await readLoginShellPath({ SHELL: shell, HOME: folder })).toBeUndefined();
       expect(existsSync(join(folder, "ran"))).toBe(false);
     });
 
-    it("never runs a shell whose link leads into a skill's scripts/ folder", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: never runs a shell whose link leads into a skill's scripts/ folder", async () => {
       await fakeShell(join(folder, "skills", "acme", "scripts", "zsh"));
       await symlink(join(folder, "skills", "acme", "scripts"), join(folder, "innocent"));
       const linked = join(folder, "innocent", "zsh");
@@ -77,7 +77,7 @@ describe.skipIf(process.platform === "win32")("a login shell's PATH", () => {
   });
 
   verifies("mcp.runner-lookup", () => {
-    it("finds a real runner file, asks the login shell once, and doesn't take a folder for a program", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: finds a real runner file, asks the login shell once, and doesn't take a folder for a program", async () => {
       const bin = join(folder, "login-bin");
       await mkdir(join(bin, "node"), { recursive: true });
       await writeFile(join(bin, "npx"), "#!/bin/sh\n");

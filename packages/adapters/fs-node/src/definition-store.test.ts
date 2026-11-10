@@ -90,7 +90,7 @@ verifies("fs-node.definition-store", () => {
   });
 
   itUnlessWindows(
-    "leaves out a file name a workspace path can't hold, and lists nothing for a missing root",
+    "[platform:win32] HAL-4365: leaves out a file name a workspace path can't hold, and lists nothing for a missing root",
     async () => {
       const root = await tempFolder();
       await writeFiles(root, { "a\\b.yaml": "x", "a.yaml": "1" });
@@ -109,27 +109,33 @@ verifies("fs-node.definition-store", () => {
     expect(await store.list()).toEqual(["hubs/a/hub.yaml"]);
   });
 
-  itUnlessWindows("reports a write that the file system refuses", async () => {
-    const root = await tempFolder();
-    await mkdir(join(root, "hubs"));
-    await writeFile(join(root, "file.yaml"), "1");
-    const store = new FolderDefinitionStore(root);
-    await expect(store.write("hubs", "x")).rejects.toMatchObject({ code: "EISDIR" });
-    await expect(store.write("file.yaml/a.yaml", "x")).rejects.toThrow();
-  });
+  itUnlessWindows(
+    "[platform:win32] HAL-4365: reports a write that the file system refuses",
+    async () => {
+      const root = await tempFolder();
+      await mkdir(join(root, "hubs"));
+      await writeFile(join(root, "file.yaml"), "1");
+      const store = new FolderDefinitionStore(root);
+      await expect(store.write("hubs", "x")).rejects.toMatchObject({ code: "EISDIR" });
+      await expect(store.write("file.yaml/a.yaml", "x")).rejects.toThrow();
+    },
+  );
 
-  itUnlessWindows("passes on a file system error other than a missing entry", async () => {
-    const root = await tempFolder();
-    await writeFiles(root, { "locked/a.yaml": "1" });
-    const store = new FolderDefinitionStore(root);
-    await chmod(join(root, "locked"), 0o000);
-    try {
-      await expect(store.list()).rejects.toMatchObject({ code: "EACCES" });
-      await expect(store.read("locked/a.yaml")).rejects.toMatchObject({ code: "EACCES" });
-    } finally {
-      await chmod(join(root, "locked"), 0o700);
-    }
-  });
+  itUnlessWindows(
+    "[platform:win32] HAL-4365: passes on a file system error other than a missing entry",
+    async () => {
+      const root = await tempFolder();
+      await writeFiles(root, { "locked/a.yaml": "1" });
+      const store = new FolderDefinitionStore(root);
+      await chmod(join(root, "locked"), 0o000);
+      try {
+        await expect(store.list()).rejects.toMatchObject({ code: "EACCES" });
+        await expect(store.read("locked/a.yaml")).rejects.toMatchObject({ code: "EACCES" });
+      } finally {
+        await chmod(join(root, "locked"), 0o700);
+      }
+    },
+  );
 });
 
 verifies("memory.dry-run-definition-store", () => {

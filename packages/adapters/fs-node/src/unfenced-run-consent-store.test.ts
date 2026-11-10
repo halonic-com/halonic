@@ -120,7 +120,7 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       return outside;
     }
 
-    it("refuses a link to a valid yes outside the folder", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to a valid yes outside the folder", async () => {
       const root = await tempFolder();
       await symlink(await outsideYes(), fileIn(root));
 
@@ -130,14 +130,14 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       });
     });
 
-    it("refuses a link to nothing rather than reading it as no yes", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to nothing rather than reading it as no yes", async () => {
       const root = await tempFolder();
       await symlink(join(await tempFolder(), "gone.json"), fileIn(root));
 
       await expect(new FileUnfencedRunConsentStore(root).get()).rejects.toThrow("can't be read");
     });
 
-    it("refuses a hard link to a valid yes outside the folder", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: refuses a hard link to a valid yes outside the folder", async () => {
       const root = await tempFolder();
       await link(await outsideYes(), fileIn(root));
 
@@ -146,7 +146,7 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       });
     });
 
-    it("saves over a link without writing through it", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: saves over a link without writing through it", async () => {
       const outside = await outsideYes();
       const before = await readFile(outside, "utf8");
       const root = await tempFolder();
@@ -159,7 +159,7 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       expect(await store.get()).toEqual(unfencedRunConsent("container"));
     });
 
-    it("removes a link without touching what it points to", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: removes a link without touching what it points to", async () => {
       const outside = await outsideYes();
       const before = await readFile(outside, "utf8");
       const root = await tempFolder();

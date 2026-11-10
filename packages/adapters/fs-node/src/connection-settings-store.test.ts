@@ -191,12 +191,15 @@ verifies("fs-node.connection-settings-store-files", () => {
   // cases on Windows, which a new skip can't do until the guard can check its
   // decision note (HAL-58).
   describe("links and permissions", () => {
-    itUnlessWindows("makes the folder and the files private to the user", async () => {
-      const root = join(await tempFolder(), "connections");
-      await new FileConnectionSettingsStore(root).save(connectionSettings(mail.location));
-      expect((await stat(root)).mode & 0o777).toBe(0o700);
-      expect((await stat(fileFor(root, mail))).mode & 0o777).toBe(0o600);
-    });
+    itUnlessWindows(
+      "[platform:win32] HAL-4363: makes the folder and the files private to the user",
+      async () => {
+        const root = join(await tempFolder(), "connections");
+        await new FileConnectionSettingsStore(root).save(connectionSettings(mail.location));
+        expect((await stat(root)).mode & 0o777).toBe(0o700);
+        expect((await stat(fileFor(root, mail))).mode & 0o777).toBe(0o600);
+      },
+    );
 
     /** Settings with sending on for `mail` in a file outside the store's root, such as in a workspace. */
     async function outsideSettings(): Promise<string> {
@@ -223,20 +226,23 @@ verifies("fs-node.connection-settings-store-files", () => {
       await expect(new FileConnectionSettingsStore(root).get(mail)).rejects.toThrow('"mail"');
     });
 
-    itUnlessWindows("saves over a link without writing through it", async () => {
-      const root = join(await tempFolder(), "connections");
-      await mkdir(root, { recursive: true });
-      const outside = await outsideSettings();
-      const before = await readFile(outside, "utf8");
-      await symlink(outside, fileFor(root, mail));
+    itUnlessWindows(
+      "[platform:win32] HAL-4363: saves over a link without writing through it",
+      async () => {
+        const root = join(await tempFolder(), "connections");
+        await mkdir(root, { recursive: true });
+        const outside = await outsideSettings();
+        const before = await readFile(outside, "utf8");
+        await symlink(outside, fileFor(root, mail));
 
-      await new FileConnectionSettingsStore(root).save(
-        connectionSettings(mail.location, mail.connector, false),
-      );
-      expect(await readFile(outside, "utf8")).toBe(before);
-      expect((await lstat(fileFor(root, mail))).isSymbolicLink()).toBe(false);
-      expect((await stat(fileFor(root, mail))).mode & 0o777).toBe(0o600);
-    });
+        await new FileConnectionSettingsStore(root).save(
+          connectionSettings(mail.location, mail.connector, false),
+        );
+        expect(await readFile(outside, "utf8")).toBe(before);
+        expect((await lstat(fileFor(root, mail))).isSymbolicLink()).toBe(false);
+        expect((await stat(fileFor(root, mail))).mode & 0o777).toBe(0o600);
+      },
+    );
 
     it("removes a link without touching what it points to", async () => {
       const root = join(await tempFolder(), "connections");
@@ -252,7 +258,7 @@ verifies("fs-node.connection-settings-store-files", () => {
     });
 
     itUnlessWindows(
-      "keeps a file private after it is saved over one anybody could read",
+      "[platform:win32] HAL-4363: keeps a file private after it is saved over one anybody could read",
       async () => {
         const root = await tempFolder();
         const store = new FileConnectionSettingsStore(root);
@@ -266,13 +272,16 @@ verifies("fs-node.connection-settings-store-files", () => {
 
     // `mkdir` sets the mode only on a folder it creates, so a folder made
     // earlier by something else needs a `chmod`.
-    itUnlessWindows("makes a folder that was already there private on save", async () => {
-      const root = join(await tempFolder(), "connections");
-      await mkdir(root, { mode: 0o777 });
-      await chmod(root, 0o777);
+    itUnlessWindows(
+      "[platform:win32] HAL-4363: makes a folder that was already there private on save",
+      async () => {
+        const root = join(await tempFolder(), "connections");
+        await mkdir(root, { mode: 0o777 });
+        await chmod(root, 0o777);
 
-      await new FileConnectionSettingsStore(root).save(connectionSettings(mail.location));
-      expect((await stat(root)).mode & 0o777).toBe(0o700);
-    });
+        await new FileConnectionSettingsStore(root).save(connectionSettings(mail.location));
+        expect((await stat(root)).mode & 0o777).toBe(0o700);
+      },
+    );
   });
 });

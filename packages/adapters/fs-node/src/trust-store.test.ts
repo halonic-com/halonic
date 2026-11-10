@@ -88,7 +88,7 @@ verifies("fs-node.trust-store-files", () => {
     });
 
     it.skipIf(process.platform === "win32")(
-      "makes the folder and the files private to the user",
+      "[platform:win32] needs POSIX links, modes and signals: makes the folder and the files private to the user",
       async () => {
         const root = join(await tempFolder(), "trust");
         await new FileTrustStore(root).grant(trustRecord("/workspaces/acme"));
@@ -98,7 +98,7 @@ verifies("fs-node.trust-store-files", () => {
     );
 
     it.skipIf(process.platform === "win32")(
-      "makes a folder that was already there private on grant",
+      "[platform:win32] needs POSIX links, modes and signals: makes a folder that was already there private on grant",
       async () => {
         const root = join(await tempFolder(), "trust");
         await mkdir(root);
@@ -190,14 +190,14 @@ verifies("fs-node.trust-store-files", () => {
       return { root, store: new FileTrustStore(root) };
     }
 
-    it("refuses a link to a valid record outside the folder", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to a valid record outside the folder", async () => {
       const { root, store } = await linkedStore(await outsideRecord());
 
       await expect(store.get(acme)).rejects.toThrow(JSON.stringify(acme));
       await expect(store.list()).rejects.toThrow(JSON.stringify(fileFor(root, acme)));
     });
 
-    it("says the record is a link", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: says the record is a link", async () => {
       const { store } = await linkedStore(await outsideRecord());
 
       await expect(store.get(acme)).rejects.toMatchObject({
@@ -205,14 +205,14 @@ verifies("fs-node.trust-store-files", () => {
       });
     });
 
-    it("refuses a link to nothing rather than reading it as no record", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to nothing rather than reading it as no record", async () => {
       const { store } = await linkedStore(join(await tempFolder(), "gone.json"));
 
       await expect(store.get(acme)).rejects.toThrow(JSON.stringify(acme));
       await expect(store.list()).rejects.toThrow("can't be read");
     });
 
-    it("refuses a link to another record in the folder", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to another record in the folder", async () => {
       const root = join(await tempFolder(), "trust");
       const store = new FileTrustStore(root);
       await store.grant(trustRecord("/workspaces/zeta"));
@@ -222,7 +222,7 @@ verifies("fs-node.trust-store-files", () => {
       expect(await store.get("/workspaces/zeta")).toEqual(trustRecord("/workspaces/zeta"));
     });
 
-    it("grants over a link without writing through it", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: grants over a link without writing through it", async () => {
       const outside = await outsideRecord();
       const before = await readFile(outside, "utf8");
       const { root, store } = await linkedStore(outside);
@@ -234,7 +234,7 @@ verifies("fs-node.trust-store-files", () => {
       expect(await store.list()).toEqual([trustRecord(acme)]);
     });
 
-    it("revokes a link without touching what it points to", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: revokes a link without touching what it points to", async () => {
       const outside = await outsideRecord();
       const { root, store } = await linkedStore(outside);
 
@@ -245,7 +245,7 @@ verifies("fs-node.trust-store-files", () => {
 
     // A hard link is a second name for the workspace file itself, so `lstat`
     // doesn't see a link; only its count of names gives it away (HAL-2985).
-    it("refuses a hard link to a valid record outside the folder", async () => {
+    it("[platform:win32] needs POSIX links, modes and signals: refuses a hard link to a valid record outside the folder", async () => {
       const root = join(await tempFolder(), "trust");
       await mkdir(root, { recursive: true });
       await link(await outsideRecord(), fileFor(root, acme));
@@ -272,7 +272,7 @@ verifies("fs-node.trust-store-files", () => {
 
     // Opening a named pipe waits for a writer, so reading one would hang (HAL-2985).
     it.skipIf(process.platform === "win32")(
-      "refuses a named pipe rather than waiting on it",
+      "[platform:win32] needs POSIX links, modes and signals: refuses a named pipe rather than waiting on it",
       async () => {
         const root = await tempFolder();
         const store = new FileTrustStore(root);
@@ -300,7 +300,7 @@ verifies("fs-node.trust-store-files", () => {
     });
 
     it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-      "passes on an error reading the folder",
+      "[platform:win32] needs POSIX links, modes and signals: passes on an error reading the folder",
       async () => {
         const root = await tempFolder();
         const store = new FileTrustStore(root);

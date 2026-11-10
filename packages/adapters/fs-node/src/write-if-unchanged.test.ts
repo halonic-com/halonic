@@ -81,12 +81,15 @@ verifies("fs-node.write-is-whole-or-nothing", () => {
       expect(await readFile(join(root, "hubs/a.yaml/x.yaml"), "utf8")).toBe("1");
     });
 
-    itUnlessWindows("keeps the permissions of the file it replaces", async () => {
-      const { root, store } = await folderWith({ "run.sh": "echo 1\n" });
-      await chmod(join(root, "run.sh"), 0o755);
-      await store.write("run.sh", "echo 2\n");
-      expect((await stat(join(root, "run.sh"))).mode & 0o777).toBe(0o755);
-    });
+    itUnlessWindows(
+      "[platform:win32] HAL-4364: keeps the permissions of the file it replaces",
+      async () => {
+        const { root, store } = await folderWith({ "run.sh": "echo 1\n" });
+        await chmod(join(root, "run.sh"), 0o755);
+        await store.write("run.sh", "echo 2\n");
+        expect((await stat(join(root, "run.sh"))).mode & 0o777).toBe(0o755);
+      },
+    );
 
     it("never lets a reader see half a file while it is rewritten", async () => {
       // Large texts, so a write that isn't whole would be caught in the middle.

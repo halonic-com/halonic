@@ -142,7 +142,7 @@ verifies("mcp.program-starter", () => {
     });
 
     it.skipIf(process.platform === "win32")(
-      "stops the programs it started too, even when they ignore SIGTERM",
+      "[platform:win32] needs POSIX links, modes and signals: stops the programs it started too, even when they ignore SIGTERM",
       async () => {
         const program = await nodeProgramStarter.start(node(parentOfStubbornChild));
         const pid = Number((await readLines(program.stdout, 64).next()).value);
