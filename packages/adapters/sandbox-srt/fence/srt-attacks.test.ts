@@ -14,6 +14,16 @@ import { SrtSandbox } from "../src/srt-sandbox.ts";
  */
 const sandbox = new SrtSandbox();
 
+/** Waits until the file has content; a program writing to it may not have started yet. */
+async function waitForContent(path: string, timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if ((await readFile(path, "utf8").catch(() => "")) !== "") return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`nothing was written to ${path} within ${timeoutMs} ms`);
+}
+
 async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
   const decoder = new TextDecoder();
   let text = "";
@@ -150,11 +160,11 @@ describe("a program trying to get out of the fence", () => {
       program: "sh",
       args: [
         "-c",
-        `(setsid sh -c 'while true; do date +%s%N > ${ticks}; sleep 0.1; done' &) ; sleep 60`,
+        `(setsid sh -c 'while true; do date +%s%N >> ${ticks}; sleep 0.1; done' &) ; sleep 60`,
       ],
     });
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    expect(await readFile(ticks, "utf8")).not.toBe("");
+    // The program appends, so the file is never empty between two writes. It runs before the kill.
+    await waitForContent(ticks);
     await started.kill();
     await started.exited;
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -169,7 +179,7 @@ describe("a program trying to get out of the fence", () => {
       const ticks = join(base, "temp", "limited-ticks");
       const started = await limited.start({
         program: "sh",
-        args: ["-c", `(while true; do date +%s%N > ${ticks}; sleep 0.1; done) & wait`],
+        args: ["-c", `(while true; do date +%s%N >> ${ticks}; sleep 0.1; done) & wait`],
       });
       const exit = await started.exited;
       expect(exit.reason).toBe("timeout");
