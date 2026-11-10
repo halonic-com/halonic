@@ -118,7 +118,11 @@ export {
   type WorkflowLookup,
   workflowIn,
 } from "./hub-workflows.ts";
-export { knowledgeDocForModel, knowledgeHitForModel } from "./knowledge-for-model.ts";
+export {
+  knowledgeDocForModel,
+  knowledgeHitForModel,
+  maxKnowledgeRefLength,
+} from "./knowledge-for-model.ts";
 export {
   httpToolServer,
   listedToolFingerprint,

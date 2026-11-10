@@ -1,4 +1,4 @@
-import { fenceUntrusted } from "@halonicjs/app";
+import { fenceUntrusted, maxKnowledgeRefLength } from "@halonicjs/app";
 import type { KnowledgeDoc, KnowledgeProvider } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -130,5 +130,46 @@ verifies("engine.knowledge-tools", () => {
     await expect(run("knowledge_read", { source: "wiki", ref: 3 })).rejects.toThrow(
       '"ref" must be a string',
     );
+  });
+});
+
+verifies("ports.untrusted-knowledge", () => {
+  const longRef = "a".repeat(maxKnowledgeRefLength + 1);
+
+  it("leaves out a hit whose ref is too long, and answers plainly when none is left", async () => {
+    const { run } = toolsOf([source("handbook", [{ ...launch, ref: longRef }, launch])]);
+
+    const text = await run("knowledge_search", { source: "handbook", query: "Friday" });
+
+    expect(text.match(/^ref: /gm)).toHaveLength(1);
+    expect(text).not.toContain(longRef);
+    const onlyLong = toolsOf([source("handbook", [{ ...launch, ref: longRef }])]);
+    expect(await onlyLong.run("knowledge_search", { source: "handbook", query: "Friday" })).toBe(
+      noHitsText,
+    );
+  });
+
+  it("fills the limit with the hits that are left", async () => {
+    const docs = [
+      { ...launch, ref: longRef },
+      ...[1, 2].map((n) => ({ ...launch, ref: `notes/${n}.md` })),
+    ];
+    const { run } = toolsOf([source("handbook", docs)]);
+
+    const text = await run("knowledge_search", { source: "handbook", query: "Ship", limit: 2 });
+
+    expect(text.match(/^ref: /gm)).toHaveLength(2);
+  });
+
+  it("answers a read of a document whose ref is too long as if it weren't there", async () => {
+    const { run } = toolsOf([source("handbook", [{ ...launch, ref: longRef }])]);
+
+    expect(await run("knowledge_read", { source: "handbook", ref: longRef })).toBe(unknownRefText);
+  });
+
+  it("keeps a long ref of a source with untrusted: false", async () => {
+    const { run } = toolsOf([source("handbook", [{ ...launch, ref: longRef }], false)]);
+
+    expect(await run("knowledge_read", { source: "handbook", ref: longRef })).toContain(longRef);
   });
 });

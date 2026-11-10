@@ -3,6 +3,8 @@
 // through `knowledgeHitForModel` or `knowledgeDocForModel` first, so text a
 // source didn't promise is the workspace's own reaches the model only
 // inside the untrusted fence (requirement `ports.untrusted-knowledge`).
+// A hit or document those helpers drop, because its ref is too long, never
+// reaches the model.
 
 import { knowledgeDocForModel, knowledgeHitForModel } from "@halonicjs/app";
 import type { KnowledgeHit, KnowledgeProvider } from "@halonicjs/ports";
@@ -12,9 +14,9 @@ import { integerArg, requiredStringArg, type ToolArgs } from "../tool-args.ts";
 /** The names of the knowledge tools, in the order they are offered. */
 export const knowledgeToolNames = ["knowledge_search", "knowledge_read"] as const;
 
-/** What `knowledge_search` answers when the source finds nothing. */
+/** What `knowledge_search` answers when the source finds nothing the model may see. */
 export const noHitsText = "No matches.";
-/** What `knowledge_read` answers for a ref the source doesn't have. */
+/** What `knowledge_read` answers for a ref the source doesn't have, or a document the model may not see. */
 export const unknownRefText = "No document with that ref.";
 
 /**
@@ -57,13 +59,13 @@ function searchTool(sources: readonly KnowledgeProvider[], ids: readonly string[
       const query = requiredStringArg(args, "query");
       const limit = integerArg(args, "limit", { min: 1, max: 20, fallback: 5 });
       const hits = await source.search(query, { limit });
-      if (hits.length === 0) {
+      const forModel = hits
+        .flatMap((hit) => knowledgeHitForModel(source, hit) ?? [])
+        .slice(0, limit);
+      if (forModel.length === 0) {
         return noHitsText;
       }
-      return hits
-        .slice(0, limit)
-        .map((hit) => hitText(knowledgeHitForModel(source, hit)))
-        .join("\n\n");
+      return forModel.map(hitText).join("\n\n");
     },
   };
 }
@@ -86,10 +88,10 @@ function readTool(sources: readonly KnowledgeProvider[], ids: readonly string[])
     run: async (args) => {
       const source = sourceArg(sources, args);
       const doc = await source.get(requiredStringArg(args, "ref"));
-      if (doc === null) {
+      const forModel = doc === null ? null : knowledgeDocForModel(source, doc);
+      if (forModel === null) {
         return unknownRefText;
       }
-      const forModel = knowledgeDocForModel(source, doc);
       return `ref: ${JSON.stringify(forModel.ref)}\ntitle: ${forModel.title}\n\n${forModel.content}`;
     },
   };
