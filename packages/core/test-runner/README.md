@@ -5,7 +5,7 @@ each test's result as data: passed or failed, why it failed, and the runs it mad
 
 - **Layer:** core
 - **Owner:** elena
-- **Public API:** `@halonicjs/test-runner`
+- **Public API:** `@halonicjs/test-runner` (`runWorkspaceTests`, `listWorkspaceTests` and their types)
 
 The runner has no adapters, files or network of its own. The caller passes everything in
 (`TestDeps`): the scripted model each case talks to, fresh stores for each case, the clock each
@@ -22,24 +22,22 @@ shape of the parity recordings.
 filter the run takes: hub, workflow and name, each matched exactly. Parsing `--filter` into
 those is the CLI's job.
 
-Checking a case's `expect` against its runs is in the package (`checkExpectations`, internal for
-now, not exported). It gives one failure, as data, for each part that doesn't match, in the order
-the CLI says them: `final` (not when `states` or `status` failed too), `states`, `status`,
-`context` by dotted path (the run may set more keys; arrays must be equal), `artifacts` (at least
-the listed files, checked against the runs' `artifact.created` events) and, when `expect` sets no
-status, an unexpected failed run. A step that would start a program, which the run reports as
-`harness-unavailable`, gives only an `unscripted-program` failure naming that step.
+`runWorkspaceTests` runs the cases the filter keeps, one after the other, each on an engine of its
+own: fresh stores, a test clock that starts at the given clock's time and moves only on
+`{ advance }`, the scripted model made from the case's `mocks`, and connectors that answer from its
+`tools`. Each case's run is the `test` run `test_1`. A failed test is a result, never an error.
 
-Running the tests comes in the next pull request (HAL-4215): for now the package lists cases,
-checks expectations and defines the types and the dependencies a run takes, but nothing in it
-starts a run.
+The expectations follow the old runner: `context` is a partial match (objects key by key, arrays
+whole), `artifacts` means "at least these" and is checked against the run's `artifact.created`
+events, `final` without `status` expects the run to finish, and a run that fails with no `status`
+that allows it fails its test. On top of `expect`, a case fails on scripted replies or tool results
+its runs never used, on a tool call it has no result for, and on an event its run doesn't take.
 
 ## Known gaps
 
-- A test file can script a program step's results (the case's `programs` key, in
-  `@halonicjs/format`), but the runner doesn't read it yet, because nothing in it starts a run
-  (HAL-4215, HAL-4248). The runner tells a step that would start an unscripted program by the
-  run's `harness-unavailable` failure reason, never by the engine's error text.
+- The runner doesn't use a case's `programs` yet, so a step that would start a program fails its
+  case with `unscripted-program` (HAL-4248 adds the scripted results). The runner tells such a step by the run's
+  `harness-unavailable` failure reason, never by the engine's error text.
 
 ## Example
 

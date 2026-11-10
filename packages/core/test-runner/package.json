@@ -17,6 +17,7 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/workflow": "workspace:*",
     "@halonicjs/workspace": "workspace:*",
     "@halonicjs/yaml": "workspace:*"
   },
