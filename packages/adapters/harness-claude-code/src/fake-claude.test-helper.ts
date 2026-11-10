@@ -1,5 +1,18 @@
-import type { FakeProgram } from "@halonicjs/testing-contracts";
 import type { SettingsFolderWriter } from "./settings.ts";
+
+/**
+ * The part of the contract suite's `FakeProgramIo` these programs use. The
+ * helper declares it itself, because only test files may import a testing
+ * package; a program written against it is a `FakeProgram`.
+ */
+interface ProgramIo {
+  readLine(): Promise<string | null>;
+  write(text: string): void;
+  writeError(text: string): void;
+}
+
+/** A fake `claude`, for a `FakeSandboxSession` to run. */
+type FakeClaude = (io: ProgramIo) => Promise<number>;
 
 /** A settings folder in memory, by path, for runs whose settings folder isn't on this computer's disk. */
 export class MemorySettingsFolder implements SettingsFolderWriter {
@@ -37,7 +50,7 @@ export function userMessageText(line: string | null): string | undefined {
  * does: it reads the prompt, prints `lines`, then waits for its input to end
  * before it exits.
  */
-export function claudeAnswering(lines: readonly string[]): FakeProgram {
+export function claudeAnswering(lines: readonly string[]): FakeClaude {
   return async (io) => {
     await io.readLine();
     for (const line of lines) io.write(`${line}\n`);
@@ -49,14 +62,14 @@ export function claudeAnswering(lines: readonly string[]): FakeProgram {
 }
 
 /** Claude Code finishing with "Teal." */
-export const claudeFinishing: FakeProgram = claudeAnswering([
+export const claudeFinishing: FakeClaude = claudeAnswering([
   JSON.stringify({ type: "system", subtype: "init", claude_code_version: "2.1.321" }),
   assistantLine("Teal."),
   successLine("Teal."),
 ]);
 
 /** Claude Code failing before its result: it reads the prompt, prints `message` to standard error and exits with 1. */
-export function claudeFailing(message: string): FakeProgram {
+export function claudeFailing(message: string): FakeClaude {
   return async (io) => {
     await io.readLine();
     io.writeError(`${message}\n`);
