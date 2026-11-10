@@ -1,104 +1,19 @@
-import {
-  type BridgeEvent,
-  type BridgeProviderAccess,
-  harnessBridgeTokenHeader,
-} from "@halonicjs/ports";
+import type { BridgeEvent, BridgeProviderAccess } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openBridge } from "./bridge.ts";
 import { controlledStream, fakeProvider } from "./fake-provider.test-helper.ts";
-import { fakeRun, send } from "./fakes.test-helper.ts";
-import { openAiRoute } from "./openai-route.ts";
-import type { Fetch } from "./pass-through.ts";
+import { send } from "./fakes.test-helper.ts";
+import {
+  agentKey,
+  closeOpenedBridges,
+  codexRequest,
+  event,
+  open,
+  programRequest,
+  streamed,
+} from "./openai-route.test-helper.ts";
 
-/** The value the fake secrets hold for the agent's key. Not a real key. */
-const agentKey = "openai-test-value";
-
-/** The fake secrets: the agent's key, and one that holds a line break. */
-const secretValues = new Map([
-  ["openai-key", agentKey],
-  ["broken-key", "openai-test\nvalue"],
-]);
-
-const closers: (() => Promise<void>)[] = [];
-
-afterEach(async () => {
-  await Promise.all(closers.splice(0).map((close) => close()));
-});
-
-const keyed: BridgeProviderAccess = { kind: "key", secret: "openai-key" };
-
-/**
- * Opens a bridge that serves only the OpenAI route, for an agent with the
- * given access (`null`: none), and keeps what it records. Only `gpt-5.5` has
- * a price: 1.25 for input, 10 for output and 0.125 for cache reads, per
- * million tokens.
- */
-async function open(fetch: Fetch, openai: BridgeProviderAccess | null = keyed) {
-  const recorded: BridgeEvent[] = [];
-  const secrets = { get: async (name: string) => secretValues.get(name) ?? null };
-  const route = openAiRoute({
-    secrets,
-    fetch,
-    limits: { responseTimeoutMs: 2_000, idleTimeoutMs: 500 },
-  });
-  const run = {
-    ...fakeRun(),
-    providers: openai === null ? {} : { openai },
-    price: (_provider: string, model: string) =>
-      model === "gpt-5.5" ? { input: 1.25, output: 10, cacheRead: 0.125 } : null,
-    recorder: { record: async (event: BridgeEvent) => void recorded.push(event) },
-  };
-  const bridge = await openBridge(run, {
-    limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
-    closeTimeoutMs: 1_000,
-    routes: [route],
-  });
-  closers.push(bridge.close);
-  return { bridge, recorded };
-}
-
-/** Codex's request: its own key and organization, its headers, and the run token. */
-function programRequest(
-  bridge: { url: string; token: string },
-  body: unknown,
-  signal?: AbortSignal,
-) {
-  return fetch(`${bridge.url}/v1/responses`, {
-    method: "POST",
-    headers: {
-      [harnessBridgeTokenHeader]: bridge.token,
-      authorization: "Bearer the-programs-own-placeholder",
-      "openai-organization": "org-placeholder",
-      "openai-beta": "responses=experimental",
-      accept: "text/event-stream",
-      "content-type": "application/json",
-      originator: "codex_cli_rs",
-    },
-    body: typeof body === "string" ? body : JSON.stringify(body),
-    ...(signal === undefined ? {} : { signal }),
-  });
-}
-
-/** A Responses request as Codex sends it, with a shell tool and two input items. */
-const codexRequest = {
-  model: "gpt-5.5",
-  instructions: "You are Codex.",
-  input: [
-    { type: "message", role: "user", content: [{ type: "input_text", text: "Hi" }] },
-    { type: "message", role: "assistant", content: [{ type: "output_text", text: "Hello" }] },
-  ],
-  tools: [{ type: "function", name: "shell", parameters: { type: "object" } }],
-  stream: true,
-  store: false,
-};
-
-/** One server-sent event as the Responses API writes it. */
-function event(type: string, data: object) {
-  return `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
-}
-
-const streamed = { headers: { "content-type": "text/event-stream" } };
+afterEach(closeOpenedBridges);
 
 verifies("harness-bridge.openai", () => {
   describe("passing a request on", () => {
@@ -171,104 +86,6 @@ verifies("harness-bridge.openai", () => {
       expect(reply.status).toBe(429);
       expect(reply.headers.get("retry-after")).toBe("7");
       expect(await reply.text()).toBe(error);
-    });
-  });
-
-  it("removes OpenAI's web search and MCP tools by their type, and keeps every other tool", async () => {
-    const openai = fakeProvider(() => new Response("{}"));
-    const tools = [
-      { type: "web_search" },
-      { type: "web_search_preview_2025_03_11", search_context_size: "low" },
-      { type: "mcp", server_label: "outside", server_url: "https://mcp.example.test" },
-      { type: "function", name: "web_search", parameters: { type: "object" } },
-      { type: "custom", name: "apply_patch" },
-    ];
-    const { bridge } = await open(openai.fetch);
-    await programRequest(bridge, { ...codexRequest, tools });
-
-    const forwarded = JSON.parse(openai.calls[0]?.body ?? "");
-    expect(forwarded.tools).toEqual([tools[3], tools[4]]);
-    expect(forwarded.input).toEqual(codexRequest.input);
-  });
-
-  describe("a tool_choice that forces a removed tool", () => {
-    const tools = [
-      { type: "web_search_preview" },
-      { type: "mcp", server_label: "outside", server_url: "https://mcp.example.test" },
-      { type: "function", name: "shell", parameters: { type: "object" } },
-    ];
-    const choices: [string, unknown, unknown][] = [
-      ["a web search tool", { type: "web_search_preview" }, "auto"],
-      ["an MCP tool", { type: "mcp", server_label: "outside" }, "auto"],
-      [
-        "a list of allowed tools with one removed",
-        {
-          type: "allowed_tools",
-          mode: "required",
-          tools: [{ type: "mcp" }, { type: "function", name: "shell" }],
-        },
-        { type: "allowed_tools", mode: "required", tools: [{ type: "function", name: "shell" }] },
-      ],
-      [
-        "a list of allowed tools that are all removed",
-        { type: "allowed_tools", mode: "auto", tools: [{ type: "web_search" }] },
-        "auto",
-      ],
-    ];
-    for (const [what, sent, forwarded] of choices) {
-      it(`becomes ${JSON.stringify(forwarded)} for ${what}`, async () => {
-        const openai = fakeProvider(() => new Response("{}"));
-        const { bridge } = await open(openai.fetch);
-        await programRequest(bridge, { ...codexRequest, tools, tool_choice: sent });
-        expect(JSON.parse(openai.calls[0]?.body ?? "").tool_choice).toEqual(forwarded);
-      });
-    }
-
-    it("stays as it is when it forces a kept tool", async () => {
-      const openai = fakeProvider(() => new Response("{}"));
-      const { bridge } = await open(openai.fetch);
-      const sent = JSON.stringify({
-        ...codexRequest,
-        tool_choice: { type: "function", name: "shell" },
-      });
-      await programRequest(bridge, sent);
-      expect(openai.calls[0]?.body).toBe(sent);
-    });
-  });
-
-  describe('a tool_choice of "required"', () => {
-    it("becomes auto when the bridge removed every tool", async () => {
-      const openai = fakeProvider(() => new Response("{}"));
-      const { bridge } = await open(openai.fetch);
-      const tools = [{ type: "web_search" }, { type: "mcp", server_label: "outside" }];
-      await programRequest(bridge, { ...codexRequest, tools, tool_choice: "required" });
-
-      const forwarded = JSON.parse(openai.calls[0]?.body ?? "");
-      expect(forwarded.tool_choice).toBe("auto");
-      expect(forwarded.tools).toEqual([]);
-    });
-
-    it("stays as it is when a tool is left", async () => {
-      const openai = fakeProvider(() => new Response("{}"));
-      const { bridge } = await open(openai.fetch);
-      const shell = { type: "function", name: "shell", parameters: { type: "object" } };
-      await programRequest(bridge, {
-        ...codexRequest,
-        tools: [{ type: "web_search" }, shell],
-        tool_choice: "required",
-      });
-
-      const forwarded = JSON.parse(openai.calls[0]?.body ?? "");
-      expect(forwarded.tool_choice).toBe("required");
-      expect(forwarded.tools).toEqual([shell]);
-    });
-
-    it("stays as it is when the request came without tools", async () => {
-      const openai = fakeProvider(() => new Response("{}"));
-      const { bridge } = await open(openai.fetch);
-      const sent = JSON.stringify({ ...codexRequest, tools: [], tool_choice: "required" });
-      await programRequest(bridge, sent);
-      expect(openai.calls[0]?.body).toBe(sent);
     });
   });
 
