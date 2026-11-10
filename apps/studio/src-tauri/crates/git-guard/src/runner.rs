@@ -97,6 +97,10 @@ impl GitRunner {
     /// [`crate::find_git`]). `empty_hooks_folder` is created if it is
     /// missing and must stay empty: every call points `core.hooksPath` at
     /// it, so no repository hook ever runs.
+    ///
+    /// Refuses a program that doesn't take the runner's config, such as a
+    /// wrapper script that drops the `GIT_CONFIG_*` variables before it
+    /// starts git: every call would then run with no hardening.
     pub fn new(git: PathBuf, empty_hooks_folder: &Path) -> Result<Self, GitError> {
         std::fs::create_dir_all(empty_hooks_folder).map_err(|error| GitError::Io {
             message: error.to_string(),
@@ -108,6 +112,7 @@ impl GitRunner {
             limits: Limits::default(),
         };
         runner.check_hooks_folder_is_empty()?;
+        runner.check_hardening_reaches_git()?;
         Ok(runner)
     }
 
@@ -371,6 +376,29 @@ impl GitRunner {
             command.arg(git_dir).arg(work_tree);
         }
         command
+    }
+
+    /// Checks once that the hardening config reaches git (HAL-4399). git
+    /// answers with the empty hooks folder only if the config arrived. The
+    /// call runs in the hooks folder, which is no repository, so no
+    /// repository's config is read.
+    fn check_hardening_reaches_git(&self) -> Result<(), GitError> {
+        let deadline = Instant::now() + self.limits.local_timeout;
+        let answer = self.run_internal(
+            &self.empty_hooks_folder,
+            None,
+            &["config", "--get", HOOKS_PATH],
+            deadline,
+        )?;
+        let answered = String::from_utf8_lossy(&answer.stdout);
+        let answered = answered.trim_end_matches(['\n', '\r']);
+        let expected = plain_path(&self.empty_hooks_folder);
+        if answer.code != Some(0) || expected.to_string_lossy() != answered {
+            return Err(GitError::HardeningIgnored {
+                git: self.git.to_string_lossy().into_owned(),
+            });
+        }
+        Ok(())
     }
 
     fn check_hooks_folder_is_empty(&self) -> Result<(), GitError> {

@@ -284,3 +284,45 @@ fn git_hardening_refuses_a_hooks_folder_that_is_gone() {
         .expect("the hooks folder is removed");
     assert_eq!(sandbox.git("status"), Err(GitError::HooksFolderUnreadable));
 }
+
+/// An executable script in `folder` that starts the real git with `before`
+/// run first, the way a launcher found as `git` on the PATH would.
+#[cfg(unix)]
+fn git_wrapper(folder: &std::path::Path, before: &str) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let git = halonic_git_guard::find_git(&path).expect("the tests need git on the PATH");
+    let wrapper = folder.join("git");
+    let text = format!("#!/bin/sh\n{before}\nexec '{}' \"$@\"\n", git.display());
+    std::fs::write(&wrapper, text).expect("the wrapper writes");
+    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))
+        .expect("the wrapper is executable");
+    wrapper
+}
+
+#[cfg(unix)]
+#[test]
+fn git_hardening_refuses_a_wrapper_that_drops_its_config() {
+    let temporary = support::TemporaryFolder::new();
+    let wrapper = git_wrapper(temporary.path(), "unset GIT_CONFIG_COUNT");
+    let refused =
+        halonic_git_guard::GitRunner::new(wrapper.clone(), &temporary.path().join("empty-hooks"))
+            .expect_err("the wrapper is refused");
+    assert_eq!(
+        refused,
+        GitError::HardeningIgnored {
+            git: wrapper.to_string_lossy().into_owned()
+        }
+    );
+    assert_eq!(refused.kind(), "hardening_ignored");
+}
+
+#[cfg(unix)]
+#[test]
+fn git_hardening_accepts_a_wrapper_that_passes_its_config_on() {
+    let temporary = support::TemporaryFolder::new();
+    let wrapper = git_wrapper(temporary.path(), "true");
+    halonic_git_guard::GitRunner::new(wrapper, &temporary.path().join("empty-hooks"))
+        .expect("the wrapper is accepted");
+}

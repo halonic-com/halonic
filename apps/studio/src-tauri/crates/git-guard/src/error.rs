@@ -44,6 +44,10 @@ pub enum GitError {
     HooksFolderUnreadable,
     /// git ignored the runner's config, as git before 2.31 does.
     GitTooOld,
+    /// The program found as git didn't take the runner's config when the
+    /// runner started: a wrapper script that drops the `GIT_CONFIG_*`
+    /// variables, or git before 2.31. `git` is the program's path.
+    HardeningIgnored { git: String },
     /// No `git` program was found on the PATH.
     GitNotFound,
     /// git ran past its time limit and was stopped.
@@ -73,6 +77,7 @@ impl GitError {
             GitError::HooksFolderNotEmpty => "hooks_folder_not_empty",
             GitError::HooksFolderUnreadable => "hooks_folder_unreadable",
             GitError::GitTooOld => "git_too_old",
+            GitError::HardeningIgnored { .. } => "hardening_ignored",
             GitError::GitNotFound => "git_not_found",
             GitError::TimedOut => "timed_out",
             GitError::OutputTooLarge => "output_too_large",
@@ -140,6 +145,10 @@ impl fmt::Display for GitError {
             GitError::GitTooOld => write!(
                 formatter,
                 "git is too old; the Studio needs git 2.31 or later"
+            ),
+            GitError::HardeningIgnored { git } => write!(
+                formatter,
+                "the program at {git} doesn't pass the Studio's git settings on to git, so it can't run safely; it may be a wrapper script or git older than 2.31, so put git 2.31 or later itself first on the PATH"
             ),
             GitError::GitNotFound => write!(formatter, "git was not found"),
             GitError::TimedOut => write!(formatter, "git ran past its time limit"),
