@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "check:claude-code": "node src/cli/claude-code.ts"
+    "check:claude-code": "node src/cli/claude-code.ts",
+    "check:codex": "node src/cli/codex.ts"
   },
   "dependencies": {
     "@halonicjs/adapter-harness-bridge": "workspace:*",
     "@halonicjs/adapter-harness-claude-code": "workspace:*",
+    "@halonicjs/adapter-harness-codex": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*"

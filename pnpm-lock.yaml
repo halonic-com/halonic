@@ -1808,6 +1808,9 @@ importers:
       '@halonicjs/adapter-harness-claude-code':
         specifier: workspace:*
         version: link:../../adapters/harness-claude-code
+      '@halonicjs/adapter-harness-codex':
+        specifier: workspace:*
+        version: link:../../adapters/harness-codex
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../../adapters/sandbox-srt

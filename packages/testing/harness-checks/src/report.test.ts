@@ -1,9 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { ClaudeCodeFindings } from "./claude-code-check.ts";
+import type { CodexFindings } from "./codex-check.ts";
 import type { TappedRequest } from "./header-tap.ts";
 import type { PromptOutcome } from "./prompt-outcome.ts";
-import { claudeCodeReport, hostsOf, promptVerdict, requestsText } from "./report.ts";
+import { claudeCodeReport, codexReport, hostsOf, promptVerdict, requestsText } from "./report.ts";
 
 const signInHeaders = ["authorization", "x-api-key"];
 
@@ -134,5 +135,29 @@ verifies("harness-checks.report", () => {
 
     expect(report).toContain("didn't answer `claude --version` inside srt");
     expect(report).toContain('| Keychain entries named "Claude Code…" | not macOS |');
+  });
+
+  it("writes the Codex report with its sign-in kind and its own refresh reason", () => {
+    const codex: CodexFindings = {
+      version: "0.166.0",
+      storage: { credentialsFile: "present", keychainServices: [] },
+      signInKind: "chatgpt",
+      signedInOutside: "yes",
+      signedInInside: "yes",
+      prompt: {
+        ...answered,
+        requests: [{ ...signedCall, path: "/v1/responses", headers: { authorization: "present" } }],
+      },
+      refresh: "not-possible",
+    };
+
+    const report = codexReport(codex, { platform: "linux", arch: "x64" });
+
+    expect(report).toContain("### Harness sign-in check: Codex");
+    expect(report).toContain("| `auth.json` in the settings folder | present |");
+    expect(report).toContain("| Sign-in in `auth.json` | ChatGPT |");
+    expect(report).toContain('| Keychain entries named "Codex…" | none |');
+    expect(report).toContain("| Sign-in path | **through the bridge** |");
+    expect(report).toContain("`auth.json` holds no ChatGPT sign-in with a `last_refresh`");
   });
 });

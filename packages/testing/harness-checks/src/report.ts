@@ -1,4 +1,5 @@
 import type { ClaudeCodeFindings } from "./claude-code-check.ts";
+import type { CodexFindings, CodexSignInKind } from "./codex-check.ts";
 import type { TappedRequest } from "./header-tap.ts";
 import type { PromptOutcome, RefreshOutcome } from "./prompt-outcome.ts";
 
@@ -111,6 +112,42 @@ export function claudeCodeReport(findings: ClaudeCodeFindings, machine: Machine)
       refreshNotPossible: "the sign-in isn't in `.credentials.json`, so its expiry can't be set",
     }),
   ]);
+}
+
+/** The header Codex sends a ChatGPT sign-in or API key in. */
+const codexSignInHeaders = ["authorization"];
+
+/** The Codex report as Markdown. */
+export function codexReport(findings: CodexFindings, machine: Machine): string {
+  return harnessReport("Codex", [
+    ["Computer", `${machine.platform} ${machine.arch}`],
+    ["Codex", findings.version ?? "didn't answer `codex --version` inside srt"],
+    ["`auth.json` in the settings folder", findings.storage.credentialsFile],
+    ["Sign-in in `auth.json`", signInKindText(findings.signInKind)],
+    ['Keychain entries named "Codex…"', keychainText(findings.storage.keychainServices)],
+    ["Signed in, outside the sandbox", findings.signedInOutside],
+    ["Signed in, inside srt", findings.signedInInside],
+    ...pathRows({
+      prompt: findings.prompt,
+      refresh: findings.refresh,
+      signInHeaders: codexSignInHeaders,
+      refreshNotPossible:
+        "`auth.json` holds no ChatGPT sign-in with a `last_refresh`, so its age can't be set",
+    }),
+  ]);
+}
+
+function signInKindText(kind: CodexSignInKind): string {
+  switch (kind) {
+    case "chatgpt":
+      return "ChatGPT";
+    case "api-key":
+      return "API key";
+    case "neither":
+      return "neither ChatGPT nor an API key";
+    case "no-file":
+      return "no file";
+  }
 }
 
 /** The Keychain entries a report lists, or why there are none. */

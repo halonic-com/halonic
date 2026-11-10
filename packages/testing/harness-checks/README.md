@@ -1,6 +1,6 @@
 # @halonicjs/testing-harness-checks
 
-Manual checks of how the coding-agent harnesses sign in when they run behind Halonic's bridge and sandbox. A person runs them by hand on their own computer, with their own subscription; CI runs only the package's tests, with made-up tokens. They answer checks 1 and 2 of HAL-1710 ([harness checks](/HAL/issues/HAL-194#document-harness-checks)).
+Manual checks of how the coding-agent harnesses sign in when they run behind Halonic's bridge and sandbox. A person runs them by hand on their own computer, with their own subscription; CI runs only the package's tests, with made-up tokens. There is one for Claude Code and one for Codex. They answer checks 1 and 2 of HAL-1710 ([harness checks](/HAL/issues/HAL-194#document-harness-checks)).
 
 - **Layer:** testing
 - **Owner:** owen
@@ -17,13 +17,24 @@ It opens the run's real bridge, set up for a subscription, puts a small "tap" in
 
 It prints a Markdown table to paste into HAL-1710, with a verdict for the sign-in path and the refresh path: **through the bridge**, or **needs provider hosts in `allowedSites`** with the hosts.
 
-### What it never prints
+## What the Codex check does
 
-No header value, token, account name or anything Claude Code printed. The report holds header names with "present" or "absent", paths, hosts, status codes, exit codes and counts. Claude Code's answers are read in memory for one fact each (`loggedIn`, `is_error`, its sign-in message) and dropped.
+It uses the same bridge, tap and sandbox, set up for OpenAI. Codex gets what its adapter gives it: `CODEX_HOME` and the run token variable, Halonic's `config.toml` in the settings folder (the bridge as a custom model provider with `requires_openai_auth`), and the bridge's address with `-c` on the command line. Then it:
+
+1. Looks for the sign-in: is `auth.json` in the settings folder, does it hold a ChatGPT sign-in or an API key (by which fields are there), and (on macOS) which Keychain entries are named "Codex…". It reads no value.
+2. Asks `codex login status`, outside the sandbox and inside it.
+3. Sends one short prompt (`codex exec`) inside the sandbox and notes which requests reached the bridge, whether each carried `authorization`, `chatgpt-account-id` and the bridge's run token header, and which hosts the sandbox refused. This answers whether a ChatGPT sign-in follows a custom base URL.
+4. With `--expire-sign-in`: copies the settings folder, sets the sign-in's `last_refresh` 30 days back in the copy, and sends the prompt again, so Codex refreshes first. The copy is deleted at the end.
+
+Halonic writes its `config.toml` before every run of an agent, so the check does too, and puts your own `config.toml` back afterwards (or removes it when there was none). Halonic's `config.toml` doesn't set `cli_auth_credentials_store`, so the check finds the sign-in where a real run would.
+
+## What the checks never print
+
+No header value, token, account name or anything the harness printed. The report holds header names with "present" or "absent", paths, hosts, status codes, exit codes and counts. Claude Code's answers are read in memory for one fact each (`loggedIn`, `is_error`, its sign-in message) and dropped; for Codex, the exit code, the type of each `--json` event and the "Not logged in" line. From `auth.json` the Codex check reads only which fields are there.
 
 ## Running it
 
-You need a clone of this repo with `pnpm install` done, Claude Code installed, and a computer where srt runs (macOS, or Linux with bubblewrap; not inside a container).
+You need a clone of this repo with `pnpm install` done, Claude Code or Codex installed, and a computer where srt runs (macOS, or Linux with bubblewrap; not inside a container).
 
 1. Make a settings folder for the check and sign in to it with your subscription. Use a folder of its own, not `~/.claude`:
 
@@ -53,6 +64,17 @@ You need a clone of this repo with `pnpm install` done, Claude Code installed, a
 
 5. Paste each report into HAL-1710 as it is.
 
+For Codex, the same with its own settings folder. Sign in with ChatGPT (not an API key) to answer whether the ChatGPT sign-in follows a custom base URL:
+
+```sh
+mkdir -p ~/halonic-check/codex
+CODEX_HOME=~/halonic-check/codex codex login
+node packages/testing/harness-checks/src/cli/codex.ts --settings-folder ~/halonic-check/codex
+node packages/testing/harness-checks/src/cli/codex.ts --settings-folder ~/halonic-check/codex --expire-sign-in
+```
+
+The refresh can be forced only when the ChatGPT sign-in is in `auth.json`; when Codex keeps it in the Keychain, the report says so.
+
 `--timeout-seconds <n>` sets how long one prompt may take (default 180). A prompt whose network is refused can retry for a while before it gives up.
 
 ### Reading the report
@@ -65,12 +87,13 @@ The refused hosts come from srt's own debug log, which the check turns on for th
 
 ## Building blocks
 
-The command is built from parts a later check (Codex, HAL-4475 D4) reuses:
+Both commands are built from the same parts:
 
 - `openBridgeSandbox`: the run's real bridge set up for a subscription, a header tap in front of it, and an srt sandbox that reaches only the tap.
 - `openHeaderTap`: passes requests on to the bridge unchanged and keeps only the method, the path, the status and whether each watched header was sent. Never a value.
 - `deniedHostsRunner`: reads the hosts the sandbox refused from srt's debug log, which it turns on for the launcher only.
-- `claudeSignInStorage`: whether Claude Code's `.credentials.json` is in a settings folder, and on macOS which Keychain entries are named "Claude Code…". It opens neither.
+- `signInStorage`: whether a harness's sign-in file (Claude Code's `.credentials.json`, Codex's `auth.json`) is in a settings folder, and on macOS which Keychain entries are named after it. It opens neither.
+- `askOutside`: runs a harness's own question, such as `codex login status`, outside the sandbox with only the variables given.
 
 ## Example
 
