@@ -3,6 +3,7 @@
 // runs this before every such call (`server.outside-run-connector-gate`), so
 // a served Studio can't reach a connector past the checks a run applies.
 
+import { type Connector, needsApproval } from "@halonicjs/format";
 import type { ConnectionKey } from "@halonicjs/ports";
 import type { SendingSettings } from "./connection-settings.ts";
 import { checkToolCall } from "./tool-call-check.ts";
@@ -16,8 +17,8 @@ export interface OutsideRunCall {
   readonly lists: {
     /** Only these tools are offered. Absent means every tool. */
     readonly allow?: readonly string[];
-    /** Calls to these tools wait for a person, which only a run can do. */
-    readonly approve: readonly string[];
+    /** Calls to these tools, or to every tool with `all`, wait for a person, which only a run can do. */
+    readonly approve: Connector["tools"]["approve"];
   };
   /** The tool as it was offered to the model. */
   readonly tool: OfferedTool;
@@ -48,7 +49,7 @@ export type OutsideRunCheck =
  * a run no one can give it. In order, a call is refused when:
  *
  * 1. the connector's `allow` list leaves the tool out;
- * 2. the tool is under `approve`;
+ * 2. the tool is under `approve`, or `approve` is `all`;
  * 3. the tool is labelled `send` and sending is off for the connector;
  * 4. {@link checkToolCall} refuses it, or would ask a person first, as it
  *    does for every tool whose risk isn't `read`.
@@ -74,7 +75,7 @@ export async function checkOutsideRunCall(
   if (call.lists.allow !== undefined && !call.lists.allow.includes(name)) {
     return refused(`${call.tool.name} isn't in the connector's allow list`);
   }
-  if (call.lists.approve.includes(name)) {
+  if (needsApproval(call.lists, name)) {
     return refused(`${call.tool.name} needs a person's approval, so it runs only in a run`);
   }
   if (call.tool.risk === "send") {

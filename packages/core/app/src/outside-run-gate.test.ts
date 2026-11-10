@@ -65,6 +65,15 @@ verifies("app.outside-run-connector-gate", () => {
     });
   });
 
+  it("refuses every tool of a connector whose approve is all, even one that only reads", async () => {
+    const { check } = setup();
+
+    expect(await check(declared("search", "read"), { lists: { approve: "all" } })).toEqual({
+      kind: "refused",
+      reason: "search needs a person's approval, so it runs only in a run",
+    });
+  });
+
   it("checks the sending setting before checkToolCall, so the reason names the switch", async () => {
     const { check } = setup();
 

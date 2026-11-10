@@ -221,8 +221,8 @@ verifies("format.parity-defaults", () => {
 });
 
 verifies("format.parity-fixtures", () => {
-  it("allows the nine files the format entries name", () => {
-    expect(report.results.filter((result) => result.verdict === "allowed").length).toBe(9);
+  it("allows the ten files the format entries name", () => {
+    expect(report.results.filter((result) => result.verdict === "allowed").length).toBe(10);
   });
 
   it("passes a mail interval of 15m, which the old code refused (format.routine-mail-interval)", () => {

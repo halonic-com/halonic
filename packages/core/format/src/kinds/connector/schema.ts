@@ -46,6 +46,9 @@ const GoogleTransport = s
   })
   .strict();
 
+/** The `tools.approve` value that makes every tool of the connector ask a person first. */
+export const approveAll = "all";
+
 /**
  * `library/connectors/<id>.connector.yaml`: tools for agents from an MCP
  * server or a built-in service. Secrets are referenced by name only.
@@ -63,8 +66,12 @@ export const Connector = s
       .object({
         /** Only these tools are offered to agents. Leave out to offer every tool. */
         allow: s.array(s.string()).optional(),
-        /** Every call to these tools waits for a person to approve or reject it. */
-        approve: s.array(s.string()).default([]),
+        /**
+         * Every call to these tools waits for a person to approve or reject
+         * it. `all` means every tool the server offers, including tools it
+         * adds later: a new MCP connector starts with it.
+         */
+        approve: s.union([s.array(s.string()), s.literal(approveAll)]).default([]),
       })
       .strict()
       .default({ approve: [] }),
@@ -75,3 +82,16 @@ export const Connector = s
 
 /** A connector, with defaults filled in. */
 export type Connector = Infer<typeof Connector>;
+
+/**
+ * Whether every call to `tool` waits for a person, as the connector's
+ * `tools.approve` says: the tool is listed there, or it says `all`.
+ * `tool` is the name the server lists the tool under.
+ *
+ * @example
+ * needsApproval({ approve: "all" }, "delete_file"); // true
+ * needsApproval({ approve: ["send_mail"] }, "read_mail"); // false
+ */
+export function needsApproval(tools: Pick<Connector["tools"], "approve">, tool: string): boolean {
+  return tools.approve === approveAll || tools.approve.includes(tool);
+}

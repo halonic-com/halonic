@@ -201,7 +201,9 @@ function unknownTransport(transport: object): { kind: string; settings: Record<s
 
 function toolsContent(tools: Connector["tools"]): Record<string, unknown> {
   const allow = tools.allow === undefined ? {} : { allow: sorted(tools.allow) };
-  return withUnknown({ approve: sorted(tools.approve), ...allow }, tools, toolsFields);
+  // `all` is kept as written, so a list of every tool and `all` differ.
+  const approve = typeof tools.approve === "string" ? tools.approve : sorted(tools.approve);
+  return withUnknown({ approve, ...allow }, tools, toolsFields);
 }
 
 const stdioFields = new Set(["command", "args", "env", "secretEnv", "cwd"]);

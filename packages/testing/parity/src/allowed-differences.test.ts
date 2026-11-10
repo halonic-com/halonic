@@ -127,6 +127,7 @@ verifies("parity.allowed-differences-checked", () => {
       "yaml.position-of",
       "workspace.file-places",
       "routines.cron-rejects-bad-expressions",
+      "format.connector-approve-all",
     ]);
   });
 

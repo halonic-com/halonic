@@ -12,7 +12,7 @@ export type { Agent, AgentMethod, AgentOutput, MethodField } from "./kinds/agent
 export type { Collection, CollectionField, CollectionView } from "./kinds/collection/schema.ts";
 export { FIELD_TYPES } from "./kinds/collection/schema.ts";
 export { connectorIsLocal } from "./kinds/connector/is-local.ts";
-export type { Connector } from "./kinds/connector/schema.ts";
+export { approveAll, type Connector, needsApproval } from "./kinds/connector/schema.ts";
 export type { Deployment, Deployments } from "./kinds/deployments/schema.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
 export { checkIntegrationSheet } from "./kinds/integration/kind.ts";

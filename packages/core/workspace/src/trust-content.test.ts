@@ -126,6 +126,12 @@ verifies("workspace.trust-content", () => {
       expect(same([http()], [http(undefined, { local: true })])).toBe(false);
     });
 
+    it("changes when `approve: all` becomes a list, even one that names every tool", () => {
+      const everyTool = stdio({}, { tools: { approve: "all" } });
+      expect(same([everyTool], [stdio({}, { tools: { approve: ["delete_file"] } })])).toBe(false);
+      expect(same([everyTool], [stdio({}, { tools: { approve: "all" } })])).toBe(true);
+    });
+
     it("stays the same when only the order of tools or connectors, the name or the description changes", () => {
       const a = stdio({}, { tools: { approve: ["a", "b"] } });
       const b = stdio({}, { tools: { approve: ["b", "a"] }, name: "Files", description: "New" });

@@ -2,7 +2,7 @@ import type { Path } from "@halonicjs/schema-kit";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkKeysIn } from "../../shared/key-in-value.ts";
 import { checkSecretName, looksLikeKey } from "../../shared/secret-name.ts";
-import { Connector } from "./schema.ts";
+import { approveAll, Connector } from "./schema.ts";
 
 /** `library/connectors/<id>.connector.yaml`, shared at the root or a hub's own. */
 export const connectorKind: FileKind<Connector> = {
@@ -100,11 +100,14 @@ function argument(arg: string, before: string | undefined): readonly [string | u
   return [before?.startsWith("-") ? before : undefined, arg];
 }
 
-/** A tool that needs approval but isn't in `tools.allow` is never offered, so say so. */
+/**
+ * A tool that needs approval but isn't in `tools.allow` is never offered, so
+ * say so. `approve: all` names no tool, so there is nothing to compare.
+ */
 function checkApprovedTools(connector: Connector): KindCheckProblem[] {
   const { allow, approve } = connector.tools;
   const problems: KindCheckProblem[] = [];
-  if (allow === undefined) {
+  if (allow === undefined || approve === approveAll) {
     return problems;
   }
   approve.forEach((tool, index) => {
