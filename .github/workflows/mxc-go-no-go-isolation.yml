@@ -1,0 +1,70 @@
+# THROWAWAY (HAL-3320, part of HAL-3303): MXC write-outside-folder and outbound-internet probes on
+# the Windows 11 runner (BaseContainer), as the runner's admin user and as a normal local user.
+# Draft pull request only; closed once the report is written. Never merges.
+name: MXC go/no-go (isolation)
+
+on:
+  pull_request:
+    paths:
+      - spikes/mxc/**
+      - .github/workflows/mxc-go-no-go-isolation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  isolation:
+    name: MXC write and internet probes on windows-11-arm
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+      - name: Host facts
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          whoami /groups /fo csv | ConvertFrom-Csv | Where-Object { $_.'Group Name' -match 'Administrators|High Mandatory' } | Select-Object 'Group Name' | Out-String
+          node --version
+      - name: Install the MXC SDK
+        working-directory: spikes/mxc
+        run: npm install --no-audit --no-fund
+      - name: Probes as the runner user (admin)
+        working-directory: spikes/mxc
+        run: node probe5.mjs all
+        continue-on-error: true
+        timeout-minutes: 10
+      # A throwaway standard user (not in Administrators) with a random password made here and never
+      # printed. The spike folder is copied to a folder that user owns.
+      - name: Probes as a normal user
+        run: |
+          $user = "mxcprobe"
+          $bytes = [byte[]]::new(24); [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+          $plain = [Convert]::ToBase64String($bytes) + "aA1!"
+          $secure = ConvertTo-SecureString $plain -AsPlainText -Force
+          New-LocalUser -Name $user -Password $secure -AccountNeverExpires | Out-Null
+          Add-LocalGroupMember -Group Users -Member $user -ErrorAction SilentlyContinue
+          "admin member: " + [bool](Get-LocalGroupMember Administrators | Where-Object Name -like "*\$user")
+          $root = "$env:SystemDrive\mxc-user"
+          New-Item -ItemType Directory -Force "$root\data" | Out-Null
+          Copy-Item -Recurse spikes\mxc "$root\spike"
+          icacls $root /grant "${user}:(OI)(CI)M" /T /Q | Out-Null
+          $node = (Get-Command node).Source
+          $cred = [System.Management.Automation.PSCredential]::new($user, $secure)
+          $p = Start-Process -FilePath $node -ArgumentList "probe5.mjs", "all", "$root\data" -WorkingDirectory "$root\spike" `
+            -Credential $cred -LoadUserProfile -NoNewWindow -Wait -PassThru `
+            -RedirectStandardOutput "$root\out.txt" -RedirectStandardError "$root\err.txt"
+          "exit: $($p.ExitCode)"
+          Get-Content "$root\err.txt" -ErrorAction SilentlyContinue
+          Get-Content "$root\out.txt" -ErrorAction SilentlyContinue
+        continue-on-error: true
+        timeout-minutes: 10
+      - name: Leftovers on the drive root
+        run: Get-ChildItem "$env:SystemDrive\" -Filter "native-*" -Force | Select-Object FullName | Out-String
+        continue-on-error: true
