@@ -94,3 +94,65 @@ export function describeSecretName(name: string): string {
   }
   return `A secret name of ${name.length} characters`;
 }
+
+// A workspace names the secrets its providers and models use. Those names
+// share one namespace with Halonic's own secrets, and on desktop with the
+// tokens too (one keychain backs both stores). So every name a workspace
+// picks goes through `workspaceSecrets`, which refuses the ones that belong
+// to Halonic, whatever their case or `-`/`_` spelling.
+
+/**
+ * Halonic's own secrets: the key of the encrypted token store and the hash of
+ * the sign-in password. Only Halonic reads them; no workspace may pick them.
+ */
+export const halonicSecretNames: readonly string[] = ["token-key", "serve-password"];
+
+/**
+ * The prefix of a token's name in a store that also holds secrets, such as
+ * the desktop keychain. A secret name with this prefix is a token, so no
+ * workspace may pick it.
+ */
+export const tokenNamePrefix = "halonic_token_";
+
+const halonicSecretKeys = new Set(halonicSecretNames.map(secretKey));
+const tokenKeyPrefix = secretKey(tokenNamePrefix);
+
+/**
+ * Whether a secret name belongs to Halonic: one of {@link halonicSecretNames}
+ * or a token name under {@link tokenNamePrefix}. Names are compared in their
+ * `secretKey` form, so `Token_Key` is `token-key`.
+ *
+ * @throws RangeError when the name breaks the rule of the `Secrets` port
+ *
+ * @example
+ * isHalonicSecretName("Serve_Password"); // true
+ * isHalonicSecretName("openai-key"); // false
+ */
+export function isHalonicSecretName(name: string): boolean {
+  const key = secretKey(name);
+  return halonicSecretKeys.has(key) || key.startsWith(tokenKeyPrefix);
+}
+
+/**
+ * The secrets as a workspace may read them: by any name it picks, except the
+ * ones that belong to Halonic ({@link isHalonicSecretName}). Pass this, never
+ * the raw store, wherever a workspace's choice of name reaches `Secrets`.
+ *
+ * @throws RangeError from `get`, for a name of Halonic's own; the message
+ *   never repeats the name
+ *
+ * @example
+ * const picks = workspaceSecrets(secrets);
+ * await picks.get("openai-key"); // the configured key, or null
+ * await picks.get("token-key"); // throws a RangeError
+ */
+export function workspaceSecrets(secrets: Secrets): Secrets {
+  return {
+    get: async (name) => {
+      if (isHalonicSecretName(name)) {
+        throw new RangeError("A workspace can't pick a secret that belongs to Halonic.");
+      }
+      return await secrets.get(name);
+    },
+  };
+}

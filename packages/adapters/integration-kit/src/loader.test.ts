@@ -235,3 +235,19 @@ verifies("integration-kit.loader", () => {
     expect(new Set(formatImports)).toEqual(new Set(["@halonicjs/format/integration"]));
   });
 });
+
+verifies("ports.workspace-secrets", () => {
+  it.each(["token-key", "Serve_Password", "HALONIC-TOKEN-google_refresh"])(
+    "refuses the pick %s, one of Halonic's own names, and sends nothing",
+    async (picked) => {
+      const { loaded, sent } = load({ choices: { secretNames: { "weather-key": picked } } });
+      if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+      await expect(
+        loaded.value.host.http.fetch("https://api.example.com/v1", {
+          auth: { secret: "weather-key", as: "bearer" },
+        }),
+      ).rejects.toThrow(new RangeError("A workspace can't pick a secret that belongs to Halonic."));
+      expect(sent).toEqual([]);
+    },
+  );
+});

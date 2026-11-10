@@ -203,12 +203,16 @@ export {
 } from "./scheduler.ts";
 export {
   describeSecretName,
+  halonicSecretNames,
+  isHalonicSecretName,
   isQuotableSecretName,
   isSecretName,
   maxSecretNameLength,
   type Secrets,
   secretKey,
   secretsVersion,
+  tokenNamePrefix,
+  workspaceSecrets,
 } from "./secrets.ts";
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
 export {

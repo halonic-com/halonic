@@ -291,3 +291,16 @@ verifies("engine.model-failure-stops", () => {
     });
   });
 });
+
+verifies("ports.workspace-secrets", () => {
+  it("ends the turn when a model's secret is one of Halonic's own", async () => {
+    const smart = new ScriptedModel([textAnswer("From the cloud")], "acme-cloud");
+
+    await expect(
+      runTurnOn(alias("smart", smart, { secret: "token_key" }), {
+        secrets: secretsWith("token-key", "token_key"),
+      }),
+    ).rejects.toThrow(new RangeError("A workspace can't pick a secret that belongs to Halonic."));
+    expect(smart.requests).toEqual([]);
+  });
+});

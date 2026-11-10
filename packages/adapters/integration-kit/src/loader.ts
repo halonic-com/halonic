@@ -3,13 +3,14 @@ import {
   integrationPolicy,
   parseIntegrationSheet,
 } from "@halonicjs/format/integration";
-import type {
-  HttpClient,
-  Integration,
-  IntegrationHost,
-  ProviderConfig,
-  Secrets,
-  TokenStore,
+import {
+  type HttpClient,
+  type Integration,
+  type IntegrationHost,
+  type ProviderConfig,
+  type Secrets,
+  type TokenStore,
+  workspaceSecrets,
 } from "@halonicjs/ports";
 import { deepEqual, err, ok, type Result } from "@halonicjs/std";
 import { declarationProblems } from "./declaration.ts";
@@ -224,14 +225,16 @@ function requestLimits(limits: Readonly<Record<string, number | undefined>>): Re
 
 /**
  * The raw secrets seen through the user's picks: the kit asks by the sheet's
- * name and reads the workspace secret picked for it, or nothing.
+ * name and reads the workspace secret picked for it, or nothing. The workspace
+ * chose those names, so they can't reach Halonic's own secrets or tokens.
  */
 function chosenSecrets(raw: Secrets, secretNames: Readonly<Record<string, string>>): Secrets {
   const picks = new Map(Object.entries(secretNames));
+  const workspace = workspaceSecrets(raw);
   return {
     get: async (name) => {
       const picked = picks.get(name);
-      return picked === undefined ? null : await raw.get(picked);
+      return picked === undefined ? null : await workspace.get(picked);
     },
   };
 }

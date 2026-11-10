@@ -14,6 +14,7 @@ import {
   type ModelCallErrorReason,
   type ModelPrice,
   type Secrets,
+  workspaceSecrets,
 } from "@halonicjs/ports";
 import type { TurnLog } from "./turn-log.ts";
 
@@ -81,7 +82,9 @@ export class ModelChain {
    */
   constructor(first: ResolvedModel, secrets: Secrets, agent: string, log?: TurnLog) {
     this.models = withoutRepeats([first, ...(first.fallback ?? [])]);
-    this.secrets = secrets;
+    // A model's secret is a name the workspace chose, so it can't reach
+    // Halonic's own secrets or tokens.
+    this.secrets = workspaceSecrets(secrets);
     this.agent = agent;
     this.log = log;
   }
