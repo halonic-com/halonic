@@ -1,6 +1,12 @@
 import type { Path } from "@halonicjs/schema-kit";
 import { err, ok, type Result } from "@halonicjs/std";
-import type { IntegrationHost, IntegrationSecret, IntegrationSheet } from "./schema.ts";
+import type {
+  AddressClass,
+  IntegrationHost,
+  IntegrationSecret,
+  IntegrationSecretHost,
+  IntegrationSheet,
+} from "./schema.ts";
 
 /**
  * What one integration may do, in the shape of the kit's `IntegrationPolicy`
@@ -47,6 +53,7 @@ export interface PolicyProblem {
   readonly code:
     | "setting-missing"
     | "setting-not-a-url"
+    | "setting-outside-class"
     | "plain-http-not-local"
     | "secret-over-plain-http";
   /** Where the host sits in the sheet. */
@@ -57,13 +64,16 @@ export interface PolicyProblem {
 /**
  * Turns a parsed sheet and the integration's settings into the policy the
  * kit enforces. A `{ fromSetting }` host becomes the host of the URL in that
- * setting. This is the only place plain `http` is allowed: to a host on
- * this machine or a private network, and a secret only to this machine.
+ * setting, which must be in the class the sheet declares for it: a value
+ * outside it is refused as `setting-outside-class`. This is the only place
+ * plain `http` is allowed: to a `loopback` or `private` host, and a secret
+ * only to a `loopback` one.
  *
  * An optional secret may still list a private-network host over `http`:
  * without a key the request goes out bare, and with one the kit refuses it.
  *
  * @example
+ * // hosts: [{ fromSetting: url, class: loopback }]
  * const resolved = integrationPolicy(sheet, { url: "http://localhost:8080/mcp" });
  * if (resolved.ok) createIntegrationHost({ policy: resolved.value.policy, ...ports });
  */
@@ -72,10 +82,11 @@ export function integrationPolicy(
   settings: Readonly<Record<string, unknown>>,
 ): Result<ResolvedIntegration, PolicyProblem[]> {
   const problems: PolicyProblem[] = [];
+  const classes = settingClasses(sheet);
   const hosts: string[] = [];
   const localHosts: string[] = [];
   sheet.hosts.forEach((host, index) => {
-    const found = resolveHost(sheet, host, settings, ["hosts", index], problems);
+    const found = resolveHost(sheet, host, classes, settings, ["hosts", index], problems);
     if (found !== undefined) {
       (found.plain ? localHosts : hosts).push(found.host);
     }
@@ -86,7 +97,7 @@ export function integrationPolicy(
     const secretHosts: string[] = [];
     secret.hosts.forEach((host, index) => {
       const path = ["secrets", name, "hosts", index];
-      const found = resolveHost(sheet, host, settings, path, problems);
+      const found = resolveHost(sheet, host, classes, settings, path, problems);
       if (found === undefined) {
         return;
       }
@@ -142,9 +153,21 @@ interface FoundHost {
   readonly plain: boolean;
 }
 
+/** The class the sheet declares for each setting a `{ fromSetting }` host reads. */
+function settingClasses(sheet: IntegrationSheet): ReadonlyMap<string, AddressClass> {
+  const classes = new Map<string, AddressClass>();
+  for (const host of sheet.hosts) {
+    if (typeof host !== "string" && !classes.has(host.fromSetting)) {
+      classes.set(host.fromSetting, host.class);
+    }
+  }
+  return classes;
+}
+
 function resolveHost(
   sheet: IntegrationSheet,
-  host: IntegrationHost,
+  host: IntegrationHost | IntegrationSecretHost,
+  classes: ReadonlyMap<string, AddressClass>,
   settings: Readonly<Record<string, unknown>>,
   path: Path,
   problems: PolicyProblem[],
@@ -153,6 +176,9 @@ function resolveHost(
     return { host, hostname: host, plain: false };
   }
   const setting = host.fromSetting;
+  // A secret's `{ fromSetting }` host that `hosts` leaves out has no class;
+  // the sheet's checks refuse it as `secret-host-not-declared`.
+  const declared = classes.get(setting);
   const value = Object.hasOwn(settings, setting) ? settings[setting] : undefined;
   if (typeof value !== "string" || value === "") {
     problems.push({
@@ -179,7 +205,50 @@ function resolveHost(
     });
     return undefined;
   }
+  if (declared === undefined || addressClassOf(found.hostname) !== declared) {
+    problems.push({
+      code: "setting-outside-class",
+      path,
+      message: `${sheet.id}: the setting "${setting}" must hold ${classWords(declared)}, not ${found.host}`,
+    });
+    return undefined;
+  }
   return found;
+}
+
+/**
+ * The class a URL's host is in, read from the literal text: a name can
+ * resolve anywhere, so only `localhost` and IP addresses count as this
+ * computer or the home network, and an IP address never counts as public.
+ * Undefined for an address in no class, such as link-local `169.254.0.0/16`,
+ * where cloud machines serve their credentials, or `[::]`.
+ *
+ * Checking the addresses a public name resolves to is the Node transport's
+ * job (I5 design 3.8), on every request.
+ */
+function addressClassOf(hostname: string): AddressClass | undefined {
+  if (isLoopback(hostname)) {
+    return "loopback";
+  }
+  if (isLocalAddress(hostname)) {
+    return "private";
+  }
+  const literal = hostname.startsWith("[") || ipv4(hostname) !== undefined;
+  return literal || hostname.endsWith(".localhost") ? undefined : "public";
+}
+
+/** What a class allows, for a message. */
+function classWords(declared: AddressClass | undefined): string {
+  switch (declared) {
+    case "loopback":
+      return "a URL on this machine (localhost, 127.0.0.0/8 or [::1])";
+    case "private":
+      return "a URL with a private network address (10/8, 172.16/12, 192.168/16 or fc00::/7)";
+    case "public":
+      return "an https URL with a public host name";
+    case undefined:
+      return "a URL for a host in the sheet's hosts";
+  }
 }
 
 /**

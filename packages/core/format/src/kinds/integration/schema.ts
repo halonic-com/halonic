@@ -21,19 +21,44 @@ const name = s
 export const HOST_PATTERN =
   /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z](?:[a-z0-9-]*[a-z0-9])?(?::(?:[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5]))?$/;
 
-/** A fixed host, or the host of the URL in one of the integration's settings. */
+const fixedHost = s
+  .string()
+  .regex(
+    HOST_PATTERN,
+    "use an exact lower-case host name with an optional :port, such as 'api.example.com'",
+  );
+
+/**
+ * Where the host of a `{ fromSetting }` URL may be, which the sheet declares
+ * so the trust check can say it before the setting is filled in:
+ * - `loopback`: only on this computer (`localhost`, `127.0.0.0/8`, `::1`);
+ * - `private`: only on the home network, as a private IP address;
+ * - `public`: any public host name, over `https`.
+ *
+ * `integrationPolicy` refuses a setting whose URL is outside the class.
+ */
+export const ADDRESS_CLASSES = ["loopback", "private", "public"] as const;
+
+/** One of {@link ADDRESS_CLASSES}. */
+export type AddressClass = (typeof ADDRESS_CLASSES)[number];
+
+/** A fixed host, or the host of the URL in one of the integration's settings, with its class. */
 const Host = s.union([
-  s
-    .string()
-    .regex(
-      HOST_PATTERN,
-      "use an exact lower-case host name with an optional :port, such as 'api.example.com'",
-    ),
-  s.object({ fromSetting: s.string().min(1) }).strict(),
+  fixedHost,
+  s.object({ fromSetting: s.string().min(1), class: s.enum(ADDRESS_CLASSES) }).strict(),
 ]);
 
-/** A host as the sheet writes it. */
+/** A host as the sheet writes it in `hosts`. */
 export type IntegrationHost = Infer<typeof Host>;
+
+/**
+ * A host a secret may go to: a fixed host, or a `{ fromSetting }` host from
+ * `hosts`, named by its setting. The class stays with the one in `hosts`.
+ */
+const SecretHost = s.union([fixedHost, s.object({ fromSetting: s.string().min(1) }).strict()]);
+
+/** A host as the sheet writes it in a secret's `hosts`. */
+export type IntegrationSecretHost = Infer<typeof SecretHost>;
 
 /**
  * What every secret says, wherever the kit puts it. A plugin's local tool
@@ -43,7 +68,7 @@ export const secretFields = {
   /** Why the integration needs it, in words the user understands. */
   purpose: s.string().min(1),
   /** The hosts it may go to. Each must be in the sheet's `hosts`. */
-  hosts: s.array(Host).min(1),
+  hosts: s.array(SecretHost).min(1),
   /** Sent only when the workspace has set it up; without it the request goes out bare. */
   optional: s.boolean().default(false),
 };

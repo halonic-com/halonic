@@ -42,10 +42,19 @@
               "fromSetting": {
                 "type": "string",
                 "minLength": 1
+              },
+              "class": {
+                "type": "string",
+                "enum": [
+                  "loopback",
+                  "private",
+                  "public"
+                ]
               }
             },
             "required": [
-              "fromSetting"
+              "fromSetting",
+              "class"
             ],
             "additionalProperties": false
           }

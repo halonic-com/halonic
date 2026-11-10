@@ -64,7 +64,9 @@ verifies("integration.reads-the-sheet", () => {
   });
 
   it("resolves a { fromSetting } host only with its setting", () => {
-    const local = withSheet({ hosts: ["api.example.com", { fromSetting: "url" }] });
+    const local = withSheet({
+      hosts: ["api.example.com", { fromSetting: "url", class: "loopback" }],
+    });
     expect(() => checkPolicy(local)).toThrow(/setting-missing at hosts.1/);
     expect(() =>
       checkPolicy({ ...local, settings: { url: "http://localhost:8080" } }),

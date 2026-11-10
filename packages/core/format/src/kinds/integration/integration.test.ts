@@ -69,7 +69,7 @@ verifies("format.integration-file", () => {
 
   it("reads a host from a setting and an optional secret for it", () => {
     const sheet = parsedValue("integration", fixture("knowledge-mcp"));
-    expect(sheet.hosts).toEqual([{ fromSetting: "url" }]);
+    expect(sheet.hosts).toEqual([{ fromSetting: "url", class: "public" }]);
     expect(sheet.secrets["mcp-server-key"]).toMatchObject({
       hosts: [{ fromSetting: "url" }],
       as: "bearer",
@@ -106,7 +106,7 @@ verifies("format.integration-file", () => {
     ["hosts: [192.168.1.5]", "hosts.0 invalid_format 5"],
     ["hosts: [localhost]", "hosts.0 invalid_format 5"],
     ["hosts: ['api.example.com:70000']", "hosts.0 invalid_format 5"],
-    ["hosts: [{ fromSetting: url, port: 1 }]", "hosts.0 unrecognized_keys 5"],
+    ["hosts: [{ fromSetting: url, class: public, port: 1 }]", "hosts.0 unrecognized_keys 5"],
   ])("refuses %s in its place", (line, expected) => {
     const key = line.slice(0, line.indexOf(":"));
     const text = yaml(...base.map((kept) => (kept.startsWith(`${key}:`) ? line : kept)));
@@ -274,7 +274,7 @@ verifies("format.integration-file", () => {
       "version: 1.0.0",
       "kit: 1",
       "provides: [connector, connector]",
-      "hosts: [api.example.com, { fromSetting: url }, { fromSetting: url }]",
+      "hosts: [api.example.com, { fromSetting: url, class: public }, { fromSetting: url, class: private }]",
       "tokens:",
       "  - { name: refresh, purpose: p }",
       "  - { name: refresh, purpose: p }",

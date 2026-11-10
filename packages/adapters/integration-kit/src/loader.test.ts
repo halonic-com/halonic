@@ -162,7 +162,10 @@ verifies("integration-kit.loader", () => {
   });
 
   it("resolves a { fromSetting } host from the workspace's settings", async () => {
-    const mcp = { ...sheet(), hosts: ["api.example.com", { fromSetting: "url" }] };
+    const mcp = {
+      ...sheet(),
+      hosts: ["api.example.com", { fromSetting: "url", class: "loopback" }],
+    };
     const settings = { url: "http://localhost:8080/mcp" };
     const { loaded, sent } = load({ choices: { settings } }, mcp);
     if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
@@ -192,7 +195,7 @@ verifies("integration-kit.loader", () => {
       ({ tokens: [], tools: [], needs: [], ...data }) as unknown as IntegrationSheet;
     const ollama = parsed({
       ...sheet(),
-      hosts: [{ fromSetting: "url" }],
+      hosts: [{ fromSetting: "url", class: "loopback" }],
       secrets: { "server-key": { purpose: "x", hosts: [{ fromSetting: "url" }], as: "bearer" } },
     });
 

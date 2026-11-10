@@ -1,8 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { type IntegrationSheet, integrationPolicy } from "../../index.ts";
-import { parsedValue, yaml } from "../../test/parse.spec.ts";
+import {
+  ADDRESS_CLASSES,
+  type AddressClass,
+  type IntegrationSheet,
+  integrationPolicy,
+} from "../../index.ts";
+import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 
 function fixture(name: string): IntegrationSheet {
   return parsedValue(
@@ -11,8 +17,8 @@ function fixture(name: string): IntegrationSheet {
   );
 }
 
-/** A sheet with one host from the `url` setting and a secret for it. */
-function fromSetting(optional: boolean): IntegrationSheet {
+/** A sheet with one host of `addressClass` from the `url` setting, and a secret for it. */
+function fromSetting(addressClass: AddressClass, optional: boolean): IntegrationSheet {
   return parsedValue(
     "integration",
     yaml(
@@ -20,7 +26,7 @@ function fromSetting(optional: boolean): IntegrationSheet {
       "version: 1.0.0",
       "kit: 1",
       "provides: [connector]",
-      "hosts: [{ fromSetting: url }]",
+      `hosts: [{ fromSetting: url, class: ${addressClass} }]`,
       "secrets:",
       "  mcp-key:",
       "    purpose: key",
@@ -129,7 +135,7 @@ describe("format.integration-policy", () => {
   });
 
   it("allows plain http to this machine, with a secret", () => {
-    const { policy } = resolve(fromSetting(false), { url: "http://localhost:11434" });
+    const { policy } = resolve(fromSetting("loopback", false), { url: "http://localhost:11434" });
     expect(policy.hosts).toEqual([]);
     expect(policy.localHosts).toEqual(["localhost:11434"]);
     expect(policy.secrets).toEqual({
@@ -138,10 +144,12 @@ describe("format.integration-policy", () => {
   });
 
   it("allows plain http to a private network, but a secret only when it's optional", () => {
-    expect(problems(fromSetting(false), { url: "http://192.168.1.5:8080/mcp" })).toEqual([
-      "secrets.mcp-key.hosts.0 secret-over-plain-http",
-    ]);
-    const { policy } = resolve(fromSetting(true), { url: "http://192.168.1.5:8080/mcp" });
+    expect(problems(fromSetting("private", false), { url: "http://192.168.1.5:8080/mcp" })).toEqual(
+      ["secrets.mcp-key.hosts.0 secret-over-plain-http"],
+    );
+    const { policy } = resolve(fromSetting("private", true), {
+      url: "http://192.168.1.5:8080/mcp",
+    });
     expect(policy.localHosts).toEqual(["192.168.1.5:8080"]);
     expect(policy.secrets).toEqual({
       "mcp-key": { hosts: ["192.168.1.5:8080"], optional: true, placement: { as: "bearer" } },
@@ -158,7 +166,7 @@ describe("format.integration-policy", () => {
     "http://10.example.com",
     "http://[::]",
   ])("refuses plain http to %s, which isn't local", (url) => {
-    expect(problems(fromSetting(true), { url })).toEqual([
+    expect(problems(fromSetting("public", true), { url })).toEqual([
       "hosts.0 plain-http-not-local",
       "secrets.mcp-key.hosts.0 plain-http-not-local",
     ]);
@@ -188,18 +196,18 @@ describe("format.integration-policy", () => {
     [{ url: "https://[1::2::3]" }, "setting-not-a-url"],
     [{ url: "https://[:1::]" }, "setting-not-a-url"],
   ])("refuses the setting %j", (settings, code) => {
-    expect(problems(fromSetting(true), settings)).toEqual([
+    expect(problems(fromSetting("public", true), settings)).toEqual([
       `hosts.0 ${code}`,
       `secrets.mcp-key.hosts.0 ${code}`,
     ]);
   });
 
   it("lets a secret go over plain http only to a whole loopback address", () => {
-    const { policy } = resolve(fromSetting(false), { url: "http://127.8.9.10:8080" });
+    const { policy } = resolve(fromSetting("loopback", false), { url: "http://127.8.9.10:8080" });
     expect(policy.secrets).toEqual({
       "mcp-key": { hosts: ["127.8.9.10:8080"], placement: { as: "bearer" } },
     });
-    expect(problems(fromSetting(false), { url: "http://10.0.0.7" })).toEqual([
+    expect(problems(fromSetting("private", false), { url: "http://10.0.0.7" })).toEqual([
       "secrets.mcp-key.hosts.0 secret-over-plain-http",
     ]);
   });
@@ -212,30 +220,117 @@ describe("format.integration-policy", () => {
         "version: 1.0.0",
         "kit: 1",
         "provides: [connector]",
-        "hosts: [{ fromSetting: toString }]",
+        "hosts: [{ fromSetting: toString, class: public }]",
       ),
     );
     expect(problems(sheet, {})).toEqual(["hosts.0 setting-missing"]);
   });
 
-  it.each([
-    "https://mcp.example.com",
-    "https://mcp.example.com:8443/path",
-    "HTTPS://Mcp.Example.COM:443",
-    "http://localhost:80/",
-    "http://LOCALHOST:3000",
-    "http://127.0.0.1:8080?q",
-    "http://10.0.0.7#top",
-    "http://[::1]:8080",
-    "http://[fd12:3456::1]",
-    "http://[fd00:0:0:1::]",
-    "https://[::]",
-    "https://[1:0:0:2::3]",
-    "https://[2001:db8::1:0:0:1]",
-    "https://[1:2:3:4:5:6:7:8]",
-    "https://[1:2:3:4:5:6:7:0]",
-  ])("reads the host of %s as URL does", (url) => {
-    const { policy } = resolve(fromSetting(true), { url });
+  it.each<[string, AddressClass]>([
+    ["https://mcp.example.com", "public"],
+    ["https://mcp.example.com:8443/path", "public"],
+    ["HTTPS://Mcp.Example.COM:443", "public"],
+    ["http://localhost:80/", "loopback"],
+    ["http://LOCALHOST:3000", "loopback"],
+    ["http://127.0.0.1:8080?q", "loopback"],
+    ["http://10.0.0.7#top", "private"],
+    ["http://[::1]:8080", "loopback"],
+    ["http://[fd12:3456::1]", "private"],
+    ["http://[fd00:0:0:1::]", "private"],
+    ["https://[fd00::]", "private"],
+    ["https://[fd01:0:0:2::3]", "private"],
+    ["https://[fd01:db8::1:0:0:1]", "private"],
+    ["https://[fd01:2:3:4:5:6:7:8]", "private"],
+    ["https://[fd01:2:3:4:5:6:7:0]", "private"],
+  ])("reads the host of %s as URL does", (url, addressClass) => {
+    const { policy } = resolve(fromSetting(addressClass, true), { url });
     expect([...policy.hosts, ...(policy.localHosts ?? [])]).toEqual([new URL(url).host]);
+  });
+});
+
+verifies("format.integration-host-class", () => {
+  const sheetWith = (...lines: string[]) =>
+    yaml("id: mcp", "version: 1.0.0", "kit: 1", "provides: [connector]", ...lines);
+
+  it.each([
+    ["hosts: [{ fromSetting: url }]", "hosts.0 invalid_union 5"],
+    ["hosts: [{ fromSetting: url, class: anywhere }]", "hosts.0 invalid_union 5"],
+  ])("refuses %s, which has no class it knows", (line, expected) => {
+    expect(summary(problemsOf("integration", sheetWith(line)))).toEqual([expected]);
+  });
+
+  it("keeps the class in hosts, not in a secret's hosts", () => {
+    const text = sheetWith(
+      "hosts: [{ fromSetting: url, class: public }]",
+      "secrets:",
+      "  mcp-key:",
+      "    purpose: key",
+      "    hosts: [{ fromSetting: url, class: public }]",
+      "    as: bearer",
+    );
+    expect(summary(problemsOf("integration", text))).toEqual([
+      "secrets.mcp-key.hosts.0 unrecognized_keys 9",
+    ]);
+  });
+
+  it.each<[AddressClass, string[], string[]]>([
+    [
+      "loopback",
+      ["http://localhost:8080", "http://127.0.0.2", "https://[::1]:8443"],
+      ["http://192.168.1.5", "https://mcp.example.com"],
+    ],
+    [
+      "private",
+      ["http://192.168.1.5:8123", "https://[fd12::1]"],
+      ["http://localhost:8123", "https://nas.example.com", "https://[fe80::1]"],
+    ],
+    [
+      "public",
+      ["https://mcp.example.com"],
+      [
+        "https://localhost",
+        "https://app.localhost",
+        "https://10.0.0.7",
+        "https://8.8.8.8",
+        "https://[::]",
+      ],
+    ],
+  ])("takes a %s setting only inside its class", (addressClass, inside, outside) => {
+    for (const url of inside) {
+      const { policy } = resolve(fromSetting(addressClass, true), { url });
+      expect([...policy.hosts, ...(policy.localHosts ?? [])]).toEqual([new URL(url).host]);
+    }
+    for (const url of outside) {
+      expect(problems(fromSetting(addressClass, true), { url })).toEqual([
+        "hosts.0 setting-outside-class",
+        "secrets.mcp-key.hosts.0 setting-outside-class",
+      ]);
+    }
+  });
+
+  it("refuses plain http to a public host before its class", () => {
+    expect(problems(fromSetting("public", true), { url: "http://mcp.example.com" })).toEqual([
+      "hosts.0 plain-http-not-local",
+      "secrets.mcp-key.hosts.0 plain-http-not-local",
+    ]);
+  });
+
+  it.each(["https://169.254.169.254", "https://[::]"])("refuses %s under every class", (url) => {
+    for (const addressClass of ADDRESS_CLASSES) {
+      expect(problems(fromSetting(addressClass, true), { url })).toEqual([
+        "hosts.0 setting-outside-class",
+        "secrets.mcp-key.hosts.0 setting-outside-class",
+      ]);
+    }
+  });
+
+  it("says what the class allows and the host it got", () => {
+    const resolved = integrationPolicy(fromSetting("private", true), {
+      url: "http://localhost:8123",
+    });
+    expect(resolved.ok ? [] : resolved.error.map((problem) => problem.message)).toEqual([
+      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16 or fc00::/7), not localhost:8123',
+      'mcp: the setting "url" must hold a URL with a private network address (10/8, 172.16/12, 192.168/16 or fc00::/7), not localhost:8123',
+    ]);
   });
 });

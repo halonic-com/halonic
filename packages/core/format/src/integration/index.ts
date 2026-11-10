@@ -12,11 +12,14 @@ export {
   type ResolvedIntegration,
 } from "../kinds/integration/policy.ts";
 export {
+  ADDRESS_CLASSES,
+  type AddressClass,
   CONTENT_PATH_PATTERN,
   HOST_PATTERN,
   INTEGRATION_NAME_PATTERN,
   type IntegrationHost,
   type IntegrationSecret,
+  type IntegrationSecretHost,
   IntegrationSheet,
   type IntegrationTool,
   MAX_RESPONSE_BYTES,

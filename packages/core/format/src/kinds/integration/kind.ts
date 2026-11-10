@@ -4,6 +4,7 @@ import {
   GOOGLE_CHECK_URL_PATTERN,
   GOOGLE_SECRET,
   type IntegrationHost,
+  type IntegrationSecretHost,
   IntegrationSheet,
 } from "./schema.ts";
 
@@ -131,7 +132,11 @@ function checkGoogleFields(sheet: IntegrationSheet): KindCheckProblem[] {
   return problems;
 }
 
-/** A host as one text, to compare: `api.example.com`, or `fromSetting url`. */
-function hostKey(host: IntegrationHost): string {
+/**
+ * A host as one text, to compare: `api.example.com`, or `fromSetting url`.
+ * A secret names a `{ fromSetting }` host by its setting alone, so the class
+ * isn't part of it.
+ */
+function hostKey(host: IntegrationHost | IntegrationSecretHost): string {
   return typeof host === "string" ? host : `fromSetting ${host.fromSetting}`;
 }
