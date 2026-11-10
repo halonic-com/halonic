@@ -5,10 +5,7 @@ import {
 } from "@halonicjs/ports";
 
 /** The folders of the sandbox profile the environment points Claude Code at. */
-export type ClaudeCodeFolders = Pick<
-  SandboxProfile,
-  "workingFolder" | "tempFolder" | "settingsFolder"
->;
+export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFolder">;
 
 /**
  * The environment variables Claude Code needs to run behind the bridge

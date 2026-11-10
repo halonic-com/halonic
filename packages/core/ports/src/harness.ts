@@ -12,7 +12,10 @@ export const harnessVersion = 2;
  * @example
  * const found = await codex.detect();
  * if (found.status === "missing") show(`${codex.name} isn't installed`);
- * if (found.status === "unsupported") show(`${codex.name} ${found.version} isn't supported (needs ${found.supported})`);
+ * if (found.status === "unsupported") {
+ *   const oldest = found.supported.replace(/^>=/, "");
+ *   show(`${codex.name} ${found.version} isn't supported. Halonic needs ${oldest} or newer.`);
+ * }
  * if (found.status === "signed-out") show(`Found ${codex.name} ${found.version} · not signed in`);
  */
 export type HarnessDetection =
@@ -26,7 +29,11 @@ export type HarnessDetection =
   | { status: "signed-out"; version: string }
   /** The program isn't installed, or isn't where Halonic looks for it. */
   | { status: "missing" }
-  /** Installed, but in a version Halonic doesn't support; `supported` says which ones it does, such as ">=1.0.0". */
+  /**
+   * Installed, but in a version Halonic doesn't support. `supported` names the
+   * oldest version it does, always written as ">=X.Y.Z" (such as ">=1.0.0"),
+   * so screens can drop the ">=" and say "needs 1.0.0 or newer".
+   */
   | { status: "unsupported"; version: string; supported: string }
   /** Found, but asking it for its version failed; `error` says how, in words a person can act on. */
   | { status: "failed"; error: string };

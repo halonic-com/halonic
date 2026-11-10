@@ -11,10 +11,13 @@ everything else is internal.
 
 ## Commands
 
-| Command                                                               | What it does                                                                         |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm verify`                                                         | checks every package your change affects, including the ones that depend on this one |
-| `pnpm turbo run test --filter=@halonicjs/adapter-harness-claude-code` | runs only this package's tests (and the codegen they need)                           |
+| Command                                                                                | What it does                                                    |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `pnpm --filter @halonicjs/adapter-harness-claude-code test -- --maxWorkers=2`          | runs this package's tests                                       |
+| `pnpm exec turbo run typecheck lint --filter=...[origin/main] --concurrency=2`         | checks the packages your change touches and the ones using them |
+| `pnpm exec turbo run test --filter=...[origin/main] --concurrency=2 -- --maxWorkers=2` | tests the packages your change touches and the ones using them  |
+
+Don't run `pnpm verify` here by default: CI runs the full suite (HAL-2418).
 
 ## Local rules
 
