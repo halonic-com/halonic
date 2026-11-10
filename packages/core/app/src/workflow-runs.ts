@@ -34,6 +34,21 @@ export interface FollowOptions {
    * `RunExecutor` port can't cancel a run yet.
    */
   readonly signal?: AbortSignal;
+  /**
+   * Called for every event the follow reads, oldest first: the stored ones,
+   * then the new ones, each before the follow decides whether it stops there
+   * (requirement `app.run-follow-events`). A surface uses it to draw while
+   * the run goes. It is never called once the follow has settled.
+   *
+   * It runs synchronously and is not awaited, so it returns nothing. If it
+   * throws, the follow closes its stream and rejects with that error.
+   *
+   * @param event - the event just read
+   * @param events - the log so far, `event` last: a read-only view that is
+   *   only valid during the call, because the follow keeps adding to it. A
+   *   surface that keeps it must copy it.
+   */
+  readonly onEvent?: (event: RunEvent, events: readonly RunEvent[]) => void;
 }
 
 /**
@@ -77,7 +92,8 @@ export class WorkflowRuns {
    * @param workspace - a workspace the person trusts
    * @param typed - the workflow as typed, looked up as `lookUpWorkflow` does
    * @param input - the run's input
-   * @param options - `signal` stops following; aborted before the start, nothing starts
+   * @param options - `signal` stops following; aborted before the start, nothing starts.
+   *   `onEvent` sees each event while the run goes, as for {@link WorkflowRuns.follow}
    * @throws what the executor's `start` throws, such as for a refused input
    * @throws RunFollowStopped when `options.signal` stops the follow
    *
@@ -113,6 +129,7 @@ export class WorkflowRuns {
    * @throws the error the executor's stream ends with, such as for an
    *   unknown run; the caller may follow again
    * @throws RunFollowStopped when `options.signal` stops the follow
+   * @throws what `options.onEvent` throws
    *
    * @example
    * const before = summary.lastSeq;
@@ -121,7 +138,7 @@ export class WorkflowRuns {
    * // { summary: { status: "completed", … }, events: [run.started, …, run.completed] }
    */
   follow(runId: string, options: FollowOptions = {}): Promise<RunDetail> {
-    const { after = 0, signal } = options;
+    const { after = 0, signal, onEvent } = options;
     return new Promise((resolve, reject) => {
       const events: RunEvent[] = [];
       let settled = false;
@@ -152,6 +169,14 @@ export class WorkflowRuns {
         onEvent: (event) => {
           if (settled) return;
           events.push(event);
+          try {
+            onEvent?.(event, events);
+          } catch (error) {
+            finish(() => reject(error));
+            return;
+          }
+          // `onEvent` may have stopped the follow, through the signal.
+          if (settled) return;
           if (event.seq > after && stopEvents.has(event.type)) {
             finishWithLog();
           }

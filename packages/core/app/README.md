@@ -40,6 +40,7 @@ Device-wide settings such as the theme live outside any scope.
 | `lookUpWorkflow`            | the workflow a typed id or `hub/id` points to; none, or several hubs with that id                                               | `app.workflow-lookup`            |
 | `WorkflowRuns.startRun`     | starts the workflow a typed id or `hub/id` points to and follows the run; none or several start nothing                         | `app.run-start`                  |
 | `WorkflowRuns.follow`       | a run's whole log until it ends or waits after a `seq`, missing no event; a signal stops following                              | `app.run-follow`                 |
+| `FollowOptions.onEvent`     | each event as the follow reads it, oldest first, so a surface can draw while the run goes                                       | `app.run-follow-events`          |
 | `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only             | `app.connection-settings`        |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals    | `ports.untrusted-tool-listings`  |
 | `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                   | `ports.untrusted-tool-listings`  |
