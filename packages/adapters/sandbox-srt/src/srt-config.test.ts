@@ -52,13 +52,47 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
 
   it("denies writing the tool settings and hooks inside the working folder", () => {
     const writes = buildSrtConfig(profile()).filesystem?.denyWrite;
-    const inWork = (...parts: string[]) => ({ path: join("/work/acme", ...parts), literal: true });
-    expect(writes).toEqual([
-      inWork(".claude", "settings.json"),
-      inWork(".claude", "settings.local.json"),
-      inWork(".codex"),
-      inWork(".cursor"),
-    ]);
+    const inWork = (...parts: string[]) => ({
+      path: join("/work/acme", ...parts),
+      literal: true,
+    });
+    expect(writes).toEqual(
+      expect.arrayContaining([
+        inWork(".claude", "settings.json"),
+        inWork(".claude", "settings.local.json"),
+        inWork(".codex"),
+        inWork(".cursor"),
+      ]),
+    );
+  });
+
+  it("also denies writing shell start-up files, git hooks and package manager settings", () => {
+    const writes = buildSrtConfig(profile()).filesystem?.denyWrite ?? [];
+    const paths = writes.map((entry) => (typeof entry === "string" ? entry : entry.path));
+    for (const path of [
+      ".bashrc",
+      ".zshrc",
+      ".npmrc",
+      ".envrc",
+      ".gitmodules",
+      ".husky",
+      ".vscode",
+      ".idea",
+      ".gitconfig",
+      ".ripgreprc",
+      ".tool-versions",
+      "mise.toml",
+    ]) {
+      expect(paths).toContain(join("/work/acme", path));
+    }
+    expect(paths).toContain(join("/work/acme", ".git", "hooks"));
+    expect(paths).toContain(join("/work/acme", ".git", "config"));
+    for (const dir of ["commands", "agents", "skills", "hooks"]) {
+      expect(paths).toContain(join("/work/acme", ".claude", dir));
+    }
+    for (const dir of ["releases", "plugins"]) {
+      expect(paths).toContain(join("/work/acme", ".yarn", dir));
+    }
   });
 
   it("hides the paths a session adds from reading and writing", () => {
@@ -73,7 +107,10 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
   it("allows exactly the bridge and the allowed sites on the network", () => {
     const config = buildSrtConfig(
       profile({
-        network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: ["*.npmjs.org"] },
+        network: {
+          bridge: { host: "127.0.0.1", port: 4100 },
+          allowedSites: ["*.npmjs.org"],
+        },
       }),
     );
     expect(config.network?.allowedDomains).toEqual(["127.0.0.1:4100", "*.npmjs.org"]);
@@ -81,7 +118,9 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
 
   it("writes an IPv6 bridge host in brackets", () => {
     const config = buildSrtConfig(
-      profile({ network: { bridge: { host: "::1", port: 4100 }, allowedSites: [] } }),
+      profile({
+        network: { bridge: { host: "::1", port: 4100 }, allowedSites: [] },
+      }),
     );
     expect(config.network?.allowedDomains).toEqual(["[::1]:4100"]);
   });
@@ -89,7 +128,10 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
   it("refuses an allowed site that resolves to a local or private address, apart from the bridge", () => {
     const config = buildSrtConfig(
       profile({
-        network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: ["*.nip.io"] },
+        network: {
+          bridge: { host: "127.0.0.1", port: 4100 },
+          allowedSites: ["*.nip.io"],
+        },
       }),
     );
     // srt builds its guard from these network settings when a session starts.
@@ -131,9 +173,17 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
         settingsFolder: "/data/agents/ada",
         readOnlyPaths: ["/work/acme/halonic.yaml"],
         deniedPaths: ["/keys/ada*"],
-        network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: ["*.npmjs.org"] },
+        network: {
+          bridge: { host: "127.0.0.1", port: 4100 },
+          allowedSites: ["*.npmjs.org"],
+        },
       }),
-      profile({ network: { bridge: { host: "::1", port: 4100 }, allowedSites: ["*.npmjs.org"] } }),
+      profile({
+        network: {
+          bridge: { host: "::1", port: 4100 },
+          allowedSites: ["*.npmjs.org"],
+        },
+      }),
     ];
     for (const p of profiles) {
       expect(() => SandboxRuntimeConfigSchema.parse(buildSrtConfig(p))).not.toThrow();

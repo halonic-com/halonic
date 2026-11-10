@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
@@ -32,17 +33,66 @@ const proxyVariables = new Set(
 );
 
 /**
- * The host's `PATH` without relative entries and without entries the program
- * can write.
+ * What a variable name may be. `env` runs without `-i`, so a name that starts
+ * with `-` would be read as one of its options (`--unset=HTTP_PROXY`).
  */
-function safePath(profile: SandboxProfile, hostPath: string): string {
-  const writable = [resolve(profile.workingFolder), resolve(profile.tempFolder)];
-  return hostPath
+const variableName = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** @throws when the profile has a variable whose name is not a plain one. */
+function assertVariableNames(profile: SandboxProfile): void {
+  for (const name of Object.keys(profile.env)) {
+    if (!variableName.test(name)) {
+      throw new Error(`the profile has a variable with a name that is not plain: ${name}`);
+    }
+  }
+}
+
+/** A folder as the PATH may name it: as given, and with symlinks resolved (`/var` is `/private/var` on macOS). */
+function folderNames(folder: string): string[] {
+  const names = [resolve(folder)];
+  try {
+    names.push(realpathSync(folder));
+  } catch {
+    // The folder is gone or unreadable: only its given name counts.
+  }
+  return names;
+}
+
+/**
+ * A `PATH` without entries inside the session's private folder, so nothing
+ * the launcher or the program runs is ever found there. Relative entries with
+ * a `..` segment are dropped too: they resolve against the program's folder,
+ * which Halonic cannot know, so they could lead into the private folder.
+ */
+function withoutPrivateFolder(path: string, privateFolder: string | undefined): string {
+  if (privateFolder === undefined) return path;
+  const folders = folderNames(privateFolder);
+  return path
     .split(delimiter)
-    .filter(
-      (entry) => isAbsolute(entry) && !writable.some((folder) => isInside(folder, resolve(entry))),
-    )
+    .filter((entry) => {
+      if (entry === "") return true;
+      if (!isAbsolute(entry) && entry.split(/[\\/]/).includes("..")) return false;
+      return !folderNames(entry).some((name) => folders.some((folder) => isInside(folder, name)));
+    })
     .join(delimiter);
+}
+
+/**
+ * The host's `PATH` without relative entries, without entries the program
+ * can write and without entries in the private folder.
+ */
+function safePath(profile: SandboxProfile, hostPath: string, privateFolder?: string): string {
+  const writable = [resolve(profile.workingFolder), resolve(profile.tempFolder)];
+  return withoutPrivateFolder(
+    hostPath
+      .split(delimiter)
+      .filter(
+        (entry) =>
+          isAbsolute(entry) && !writable.some((folder) => isInside(folder, resolve(entry))),
+      )
+      .join(delimiter),
+    privateFolder,
+  );
 }
 
 /**
@@ -54,10 +104,11 @@ function safePath(profile: SandboxProfile, hostPath: string): string {
 export function launcherEnv(
   profile: SandboxProfile,
   hostEnv: Record<string, string | undefined> = process.env,
+  privateFolder?: string,
 ): Record<string, string> {
   const env: Record<string, string> = {};
   const hostPath = hostEnv["PATH"];
-  if (hostPath !== undefined) env["PATH"] = safePath(profile, hostPath);
+  if (hostPath !== undefined) env["PATH"] = safePath(profile, hostPath, privateFolder);
   env["TMPDIR"] = profile.tempFolder;
   return env;
 }
@@ -66,15 +117,21 @@ export function launcherEnv(
  * The variables the program gets, set inside the fence on top of what srt
  * sets there (its proxy variables): the safe host `PATH` when the profile has
  * none, the session's temp folder and the profile's variables. Never the rest
- * of the host's environment, and never a proxy variable of the profile.
+ * of the host's environment, and never a proxy variable of the profile. A
+ * `PATH` of the profile loses its entries in the private folder.
+ *
+ * @throws when a variable of the profile has a name that is not plain.
  */
 export function programEnv(
   profile: SandboxProfile,
   hostEnv: Record<string, string | undefined> = process.env,
+  privateFolder?: string,
 ): Record<string, string> {
-  const env = launcherEnv(profile, hostEnv);
+  assertVariableNames(profile);
+  const env = launcherEnv(profile, hostEnv, privateFolder);
   for (const [name, value] of Object.entries(profile.env)) {
-    if (!proxyVariables.has(name)) env[name] = value;
+    if (proxyVariables.has(name)) continue;
+    env[name] = name === "PATH" ? withoutPrivateFolder(value, privateFolder) : value;
   }
   return env;
 }
@@ -130,8 +187,8 @@ export class SrtSession implements SandboxSession {
     this.#folder = folder;
     this.#settingsPath = settingsPath;
     this.#fence = fence;
-    this.#launcherEnv = launcherEnv(profile);
-    this.#programEnv = programEnv(profile);
+    this.#launcherEnv = launcherEnv(profile, process.env, folder);
+    this.#programEnv = programEnv(profile, process.env, folder);
     this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
     this.#timer.unref();
     const abort = () => void this.close();
@@ -151,6 +208,7 @@ export class SrtSession implements SandboxSession {
     options: { signal?: AbortSignal } = {},
   ): Promise<SrtSession> {
     const startedAt = Date.now();
+    assertVariableNames(profile);
     await mkdir(profile.tempFolder, { recursive: true });
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
     try {
@@ -163,8 +221,9 @@ export class SrtSession implements SandboxSession {
         canaryFolder: join(folder, "canary"),
         tempFolder: profile.tempFolder,
         workingFolder: profile.workingFolder,
-        launcherEnv: launcherEnv(profile),
-        programEnv: programEnv(profile),
+        launcherEnv: launcherEnv(profile, process.env, folder),
+        // The probe gets none of the profile's variables: it proves the fence, not the program's setup.
+        programEnv: launcherEnv(profile, process.env, folder),
       });
       const remaining = {
         ...profile,

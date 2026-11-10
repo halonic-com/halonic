@@ -31,13 +31,58 @@ export const DENIED_RESOLVED_ADDRESSES: readonly string[] = [
  * Files and folders inside the working folder that other tools read as
  * instructions or hooks. The program may write the working folder, but not
  * these, so it can't plant a hook that runs outside the fence later.
- * sandbox-runtime's own write-deny list doesn't cover them.
+ * sandbox-runtime applies a similar list only at the command's own folder, so
+ * this list repeats those entries for the working folder's root and adds more.
+ *
+ * Denying `.git/hooks` and `.git/config` when there is no `.git` yet makes
+ * `.git` a read-only empty folder, so `git init` fails inside the fence. That
+ * is on purpose: the program can't create a repository with its own hooks.
+ *
+ * The list covers only what runs without the user choosing to run project
+ * code. It does not cover a git repository the program creates in a subfolder
+ * during the session, or project scripts the user runs later (`npm test`,
+ * `make`, a build file).
  */
 const toolSettingsInWorkingFolder = [
   join(".claude", "settings.json"),
   join(".claude", "settings.local.json"),
+  join(".claude", "commands"),
+  join(".claude", "agents"),
+  join(".claude", "skills"),
+  join(".claude", "hooks"),
   ".codex",
   ".cursor",
+  // Shell start-up files, read when someone opens a shell in the folder.
+  ".bashrc",
+  ".bash_profile",
+  ".bash_login",
+  ".profile",
+  ".zshrc",
+  ".zshenv",
+  ".zprofile",
+  ".envrc",
+  // Git runs these, or what they point to, on the user's next commit or fetch.
+  join(".git", "hooks"),
+  join(".git", "config"),
+  ".gitconfig",
+  ".ripgreprc",
+  ".gitmodules",
+  ".husky",
+  // Package manager settings, which can point installs at another registry or run scripts.
+  ".npmrc",
+  ".yarnrc",
+  ".yarnrc.yml",
+  ".pnpmfile.cjs",
+  join(".yarn", "releases"),
+  join(".yarn", "plugins"),
+  // Tool version managers, which can fetch and run another binary.
+  "mise.toml",
+  ".mise.toml",
+  ".tool-versions",
+  // Editor settings and tasks that run when the folder is opened.
+  ".vscode",
+  ".idea",
+  ".mcp.json",
 ];
 
 /**

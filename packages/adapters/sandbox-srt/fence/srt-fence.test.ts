@@ -1,8 +1,10 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
@@ -15,6 +17,7 @@ import { SrtSandbox } from "../src/srt-sandbox.ts";
  * proved nothing must not look like a pass.
  */
 const sandbox = new SrtSandbox();
+const execFileAsync = promisify(execFile);
 
 async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
   const decoder = new TextDecoder();
@@ -54,7 +57,11 @@ describe("SrtSandbox with the real fence", () => {
   });
 
   it("can start on this machine", async () => {
-    expect(await sandbox.check()).toEqual({ ok: true, reason: null, missing: [] });
+    expect(await sandbox.check()).toEqual({
+      ok: true,
+      reason: null,
+      missing: [],
+    });
   });
 
   it("proves the fence", () => {
@@ -62,7 +69,10 @@ describe("SrtSandbox with the real fence", () => {
   });
 
   it("runs a program and gives its output and exit code", async () => {
-    const started = await session.start({ program: "sh", args: ["-c", "echo hi; exit 3"] });
+    const started = await session.start({
+      program: "sh",
+      args: ["-c", "echo hi; exit 3"],
+    });
     const [out, exit] = await Promise.all([read(started.stdout), started.exited]);
     expect(out.trim()).toBe("hi");
     expect(exit).toMatchObject({ code: 3, reason: "exited" });
@@ -76,7 +86,10 @@ describe("SrtSandbox with the real fence", () => {
   });
 
   it("writes the working folder and nowhere else", async () => {
-    const inside = await session.start({ program: "sh", args: ["-c", "echo x > made.txt"] });
+    const inside = await session.start({
+      program: "sh",
+      args: ["-c", "echo x > made.txt"],
+    });
     expect((await inside.exited).code).toBe(0);
     expect(await readFile(join(base, "work", "made.txt"), "utf8")).toBe("x\n");
     const outside = await session.start({
@@ -92,6 +105,54 @@ describe("SrtSandbox with the real fence", () => {
       args: ["-c", "mkdir -p .claude && echo {} > .claude/settings.json"],
     });
     expect((await started.exited).code).not.toBe(0);
+  });
+
+  it("denies writing the wider tool settings, and git init in a folder without .git", async () => {
+    const vscode = await session.start({
+      program: "sh",
+      args: ["-c", "mkdir -p .vscode && echo {} > .vscode/tasks.json"],
+    });
+    expect((await vscode.exited).code).not.toBe(0);
+    const init = await session.start({
+      program: "sh",
+      args: ["-c", "git init -q ."],
+    });
+    expect((await init.exited).code).not.toBe(0);
+  });
+
+  it("denies creating a new denied entry such as .npmrc", async () => {
+    const npmrc = await session.start({
+      program: "sh",
+      args: ["-c", "echo registry=http://example.invalid > .npmrc"],
+    });
+    expect((await npmrc.exited).code).not.toBe(0);
+  });
+
+  it("in a git worktree, git status works and the .git file can't be rewritten", async () => {
+    const main = join(base, "main-repo");
+    const worktree = join(base, "worktree");
+    const git = (cwd: string, ...args: string[]) =>
+      execFileAsync("git", ["-c", "user.name=acme", "-c", "user.email=acme@example.com", ...args], {
+        cwd,
+      });
+    await mkdir(main, { recursive: true });
+    await git(main, "init", "-q", "-b", "main");
+    await git(main, "commit", "-q", "--allow-empty", "-m", "init");
+    await git(main, "worktree", "add", "-q", worktree);
+    const worktreeSession = await sandbox.open({ ...profile(), workingFolder: worktree });
+    try {
+      const status = await worktreeSession.start({ program: "git", args: ["status", "--short"] });
+      expect((await status.exited).code).toBe(0);
+      const before = await readFile(join(worktree, ".git"), "utf8");
+      const rewrite = await worktreeSession.start({
+        program: "sh",
+        args: ["-c", "echo 'gitdir: /nowhere' > .git"],
+      });
+      expect((await rewrite.exited).code).not.toBe(0);
+      expect(await readFile(join(worktree, ".git"), "utf8")).toBe(before);
+    } finally {
+      await worktreeSession.close();
+    }
   });
 
   it("kill ends a program and the background processes it started", async () => {
@@ -124,7 +185,10 @@ describe("SrtSandbox with the real fence", () => {
     const marker = join(base, "planted-ran");
     const planter = await sandbox.open({
       ...profile(),
-      env: { HOME: join(base, "temp"), PATH: `${join(base, "work", "bin")}:/usr/bin:/bin` },
+      env: {
+        HOME: join(base, "temp"),
+        PATH: `${join(base, "work", "bin")}:/usr/bin:/bin`,
+      },
     });
     try {
       const plant = await planter.start({
@@ -135,12 +199,18 @@ describe("SrtSandbox with the real fence", () => {
         ],
       });
       expect((await plant.exited).code).toBe(0);
-      const next = await planter.start({ program: "echo", args: ["still fenced"] });
+      const next = await planter.start({
+        program: "echo",
+        args: ["still fenced"],
+      });
       expect((await read(next.stdout)).trim()).toBe("still fenced");
       await next.exited;
       const reopened = await sandbox.open({
         ...profile(),
-        env: { HOME: join(base, "temp"), PATH: `${join(base, "work", "bin")}:/usr/bin:/bin` },
+        env: {
+          HOME: join(base, "temp"),
+          PATH: `${join(base, "work", "bin")}:/usr/bin:/bin`,
+        },
       });
       expect(reopened.fence).toEqual({ state: "fenced" });
       await reopened.close();
@@ -161,7 +231,10 @@ describe("SrtSandbox with the real fence", () => {
     const port = (server: Server) => (server.address() as AddressInfo).port;
     const bridged = await sandbox.open({
       ...profile(),
-      network: { bridge: { host: "127.0.0.1", port: port(bridge) }, allowedSites: [] },
+      network: {
+        bridge: { host: "127.0.0.1", port: port(bridge) },
+        allowedSites: [],
+      },
     });
     // Ask through the proxy srt sets inside the fence, for loopback too.
     const ask = async (target: Server): Promise<string> => {

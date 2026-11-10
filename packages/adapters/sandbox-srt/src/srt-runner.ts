@@ -11,7 +11,7 @@ export interface RunningProgram {
   stderr: ReadableStream<Uint8Array>;
   /** Settles when the program and everything it started has ended. Never rejects. */
   ended: Promise<{ code: number | null; signal: string | null }>;
-  /** Ends the program and everything it started, at once. Safe to call twice. */
+  /** Ends the program and everything it started: asks first (SIGTERM), then forces it after a short wait. Safe to call twice. */
   killTree(): void;
 }
 
@@ -123,10 +123,14 @@ export const srtRunner: Runner = {
     );
     await launched(child);
     const pid = child.pid;
+    let forceTimer: NodeJS.Timeout | undefined;
+    let gone = false;
     const ended = new Promise<{ code: number | null; signal: string | null }>((resolve) => {
       child.once("close", (code, signal) => {
         // Whatever the program left behind in the group goes with it.
-        killGroup(pid);
+        gone = true;
+        clearTimeout(forceTimer);
+        killGroup(pid, "SIGKILL");
         resolve({ code, signal });
       });
     });
@@ -135,15 +139,29 @@ export const srtRunner: Runner = {
       stdout: Readable.toWeb(child.stdout as Readable) as ReadableStream<Uint8Array>,
       stderr: Readable.toWeb(child.stderr as Readable) as ReadableStream<Uint8Array>,
       ended,
-      killTree: () => killGroup(pid),
+      killTree: () => {
+        if (gone) return;
+        forceTimer ??= stopGroup(pid, terminationGraceMs);
+      },
     };
   },
 };
 
-function killGroup(pid: number | undefined): void {
+/** How long a program gets to end after SIGTERM before it is killed. */
+export const terminationGraceMs = 2000;
+
+/** Sends SIGTERM to the group, then SIGKILL after `graceMs`. Returns the timer of the second signal. */
+export function stopGroup(pid: number | undefined, graceMs: number): NodeJS.Timeout {
+  killGroup(pid, "SIGTERM");
+  const timer = setTimeout(() => killGroup(pid, "SIGKILL"), graceMs);
+  timer.unref();
+  return timer;
+}
+
+function killGroup(pid: number | undefined, signal: "SIGTERM" | "SIGKILL"): void {
   if (pid === undefined) return;
   try {
-    process.kill(-pid, "SIGKILL");
+    process.kill(-pid, signal);
   } catch {
     // The group has already ended.
   }
