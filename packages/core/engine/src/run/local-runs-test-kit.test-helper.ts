@@ -1,5 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { Agent, Workflow } from "@halonicjs/format";
+import type { Agent, Collection, Workflow } from "@halonicjs/format";
 import type { ChatResponse, Clock, RecordStore, ScheduledTimer } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
@@ -85,6 +85,8 @@ export interface RunsSetup {
   readonly memory?: RecordStore;
   /** The hub's other workflows, which its `workflow` states run; none when left out. */
   readonly workflows?: Readonly<Record<string, Workflow>>;
+  /** The collections the hub can see; none when left out. */
+  readonly collections?: Readonly<Record<string, Collection>>;
   /** Where runs keep their definitions; new and empty when left out. Share it to restart on the same store. */
   readonly blobs?: KernelBlobs;
 }
@@ -101,6 +103,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     agents,
     harnesses,
     workflows,
+    collections,
     blobs = new KernelBlobs(),
   } = setup;
   const model = new ScriptedModel(answers);
@@ -126,6 +129,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
           workflow,
           ...(agents === undefined ? {} : { agents }),
           ...(workflows === undefined ? {} : { workflows }),
+          ...(collections === undefined ? {} : { collections }),
         };
       },
     },

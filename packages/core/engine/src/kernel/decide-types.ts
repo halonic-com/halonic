@@ -8,7 +8,7 @@ import type {
   RunTrigger,
   ToolOutcome,
 } from "@halonicjs/events";
-import type { Agent, Workflow } from "@halonicjs/format";
+import type { Agent, Collection, Workflow } from "@halonicjs/format";
 import type { ResumeAfterApproval, RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
@@ -235,6 +235,12 @@ export interface RunDefinitions {
    * without them can't start a child run.
    */
   readonly workflows?: Readonly<Record<string, Workflow>>;
+  /**
+   * The collections the hub can see by id, for the records tools of an
+   * agent with `collections`: a run writes records with the fields it
+   * started with. Runs kept without them give those agents no records tools.
+   */
+  readonly collections?: Readonly<Record<string, Collection>>;
 }
 
 /** The pure decider: what a run does next, given its state and one input. */

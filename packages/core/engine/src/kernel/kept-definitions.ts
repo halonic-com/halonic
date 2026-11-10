@@ -47,7 +47,8 @@ export async function readDefinitions(
   return isPlainObject(parsed) &&
     isPlainObject(parsed["workflow"]) &&
     (parsed["agents"] === undefined || isPlainObject(parsed["agents"])) &&
-    (parsed["workflows"] === undefined || isPlainObject(parsed["workflows"]))
+    (parsed["workflows"] === undefined || isPlainObject(parsed["workflows"])) &&
+    (parsed["collections"] === undefined || isPlainObject(parsed["collections"]))
     ? (parsed as unknown as RunDefinitions)
     : null;
 }

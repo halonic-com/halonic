@@ -58,16 +58,22 @@ loop of one model turn, which the local chat turn runs.
 A run's turn writes through a `LargeResultsTurnLog` wrapped round its `RunStoreTurnLog`. A tool
 result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `tool.result` keeps the
 first 2,000 characters as `result` and the blob as `resultBlob` (requirement
-`engine.large-results-to-blobs`). The model still gets the whole result. Runs wrap their log this
-way once they call tools (step 4(c) of the HAL-186 plan).
+`engine.large-results-to-blobs`). The model still gets the whole result. A run's model call keeps
+no turn log yet; it is wrapped this way once it does.
 
 An agent with `subagents` gets a `delegate_<id>` tool for each one in its hub (`subagentTools`).
 The caller's `runSubagent` runs the subagent's own turn one level deeper, and the tool logs
 `agent.started` and `agent.finished` around it, naming the delegating agent as `parent`. At depth 3
 an agent gets no `delegate_` tools, so agents that delegate to each other stop there. The agent's
-instructions get `delegationHint`, since a subagent never sees the conversation. A run's agent gets
-these tools once runs call tools (step 4(c) of the HAL-186 plan); that step also holds back
-approval tools from a subagent, which can't pause the run.
+instructions get `delegationHint`, since a subagent never sees the conversation. In a run, the
+local executor runs the subagent's turn on its own model and tools, and refuses a subagent's call
+that needs a person's OK, because a subagent can't pause the run yet (HAL-3361).
+
+A run's agent gets the tools its kept file grants after its memory tools (requirement
+`engine.run-agent-tools`): `list_runs` and `read_run` with `runLogs: true`, the records tools of
+its `collections` when the executor has a record store, and a `delegate_` tool per subagent. The
+collections come from the run's kept definitions (`RunDefinitions.collections`). A chat turn gets
+none of them.
 
 An agent with `collections` gets `find_<id>`, `add_<id>` and `update_<id>` for each collection its
 hub can see (`recordTools`). Values are checked against the collection's fields and brought into
@@ -135,8 +141,8 @@ run still waiting on a call when the engine stops is `running`, so the next star
 `interrupted`. An effect the executor can't carry out yet (a tool call, a harness run) fails the run
 with reason `error` rather than leaving it going with no timer. A failed call becomes an `effect-failed` input, and the run fails with the
 reason `runFailureReasonOf` gives. For now a run's model call sends the state's prompt to its agent's
-model without tools; tools, the agent's own prompt and the run log of the call come with the agent
-loop. `subscribe` reads every event from the store, after each append the executor makes; it
+model with Halonic's tools and the tools its file grants; the agent's own prompt and the run log
+of the call come with the agent loop. `subscribe` reads every event from the store, after each append the executor makes; it
 assumes one engine per run store, as `endInterruptedRuns` does.
 
 Each folder in `src/states` exports `<folder>State` from its `state.ts`. `pnpm discover` lists
