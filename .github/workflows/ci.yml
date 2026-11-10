@@ -756,6 +756,9 @@ jobs:
     # failure, never a silent pass. Turbo runs with its loose environment
     # here: with the strict one, Windows PowerShell (which the process-table
     # tests start) gets too few variables and hangs until it is stopped.
+    # sandbox-host is left out on Windows: its tests drive `#!/bin/sh`
+    # scripts, so every one skips there and the coverage floor can't be met.
+    # It needs Windows tests of its own before it joins this job.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
@@ -778,10 +781,13 @@ jobs:
           cache: ${{ runner.os != 'Windows' }}
       - name: Typecheck and test
         shell: bash
+        env:
+          SKIP_FILTER: ${{ matrix.skip }}
         run: >
           pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
+          $SKIP_FILTER
 
   android:
     # The Android connect shell's debug APK, for arm64 phones and x86_64
