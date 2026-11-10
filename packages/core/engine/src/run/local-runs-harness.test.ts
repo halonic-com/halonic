@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
-import { finished, harnessPorts } from "../harness/harness-test-kit.test-helper.ts";
+import { expect, it, vi } from "vitest";
+import { finished, harnessPorts, stillOpen } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
 import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
@@ -131,7 +131,7 @@ verifies("engine.harness-start-limits", () => {
 
   it("fails the run with harness-start-failed when the start limit's timer arrives first", async () => {
     const ports = harnessPorts();
-    ports.harness.silent = true;
+    ports.harness.hangs = true;
     const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
       agents,
       harnesses: ports.options,
@@ -167,5 +167,60 @@ verifies("engine.harness-start-limits", () => {
     });
 
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+});
+
+verifies("engine.harness-stops-with-engine", () => {
+  it("stops a harness run going on when the engine closes, and records nothing more", async () => {
+    const ports = harnessPorts();
+    ports.harness.hangs = true;
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start(replyStart);
+    const harnessCall = scheduler.deliver("run_1", "harness:call-1");
+    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await executor.close();
+    await harnessCall;
+
+    expect(stillOpen(ports.steps)).toBe(0);
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "running" });
+    expect(typesOf(runs.logs.get("run_1")).at(-1)).toBe("harness.started");
+  });
+
+  it("starts no harness for a timer that arrives after the engine closed", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("Dear support")];
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start(replyStart);
+    await executor.close();
+    await scheduler.runDue();
+
+    expect(ports.steps).toEqual([]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "running" });
+  });
+
+  it("ends the run as interrupted when an engine next starts on the store, since a harness run can't resume", async () => {
+    const ports = harnessPorts();
+    ports.harness.hangs = true;
+    const runs = new KernelRuns();
+    const first = runsOn([], runs, { agents, harnesses: ports.options });
+    await first.executor.start(replyStart);
+    const harnessCall = first.scheduler.deliver("run_1", "harness:call-1");
+    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await first.executor.close();
+    await harnessCall;
+
+    const next = runsOn([], runs, { agents, harnesses: harnessPorts().options });
+    await next.executor.start({ ...replyStart, runId: "run_2" });
+
+    expect(await runs.get("run_1")).toMatchObject({ status: "failed", reason: "interrupted" });
   });
 });

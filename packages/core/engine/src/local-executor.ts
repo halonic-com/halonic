@@ -163,6 +163,17 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
+   * Stops the engine's work in this process, and resolves once nothing it
+   * started is left running: every harness run is stopped with its session
+   * and bridge. Runs that were going end as `interrupted` when an engine
+   * next starts on the same store. Timers delivered after this change
+   * nothing. The host calls it before it exits.
+   */
+  async close(): Promise<void> {
+    await this.runs?.close();
+  }
+
+  /**
    * Runs one chat turn with the caller's tools, Halonic's tools and the
    * connected servers' tools. It keeps no run log, because a chat turn
    * belongs to no run: the models it skipped are in `skipped` instead.

@@ -1,9 +1,10 @@
 import type { RunEventBody } from "@halonicjs/events";
 import { isRunFailureError } from "@halonicjs/ports";
+import { StopSource } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
-import { finished, harnessPorts, startLimits } from "./harness-test-kit.test-helper.ts";
+import { finished, harnessPorts, startLimits, stillOpen } from "./harness-test-kit.test-helper.ts";
 import { type HarnessCall, type HarnessEventLog, runHarnessCall } from "./run-harness-call.ts";
 
 const call: HarnessCall = {
@@ -19,19 +20,26 @@ const call: HarnessCall = {
   agent: { ...writerAgent("claude-code"), instructions: "Write short mails.", model: "sonnet" },
 };
 
+/** A signal no one tells to stop, for calls the engine doesn't stop. */
+const goingOn = new StopSource().signal;
+
 /** A log that stores nothing, except where `append` says. */
 function logOf(append: (event: RunEventBody) => Promise<void>): HarnessEventLog {
   return { append, settled: async () => {} };
 }
 
 /** Runs the call on the ports, and keeps what it wrote to the log. */
-async function runOn(ports: ReturnType<typeof harnessPorts>, limits = startLimits().limits) {
+async function runOn(
+  ports: ReturnType<typeof harnessPorts>,
+  limits = startLimits().limits,
+  stop = goingOn,
+) {
   const written: RunEventBody[] = [];
   const log = logOf(async (event) => {
     written.push(event);
   });
   try {
-    return { output: await runHarnessCall(ports.options, call, log, limits), written };
+    return { output: await runHarnessCall(ports.options, call, log, limits, stop), written };
   } catch (error) {
     return { error, written };
   }
@@ -150,7 +158,7 @@ verifies("engine.run-harness", () => {
       },
     };
 
-    await runHarnessCall(ports.options, call, log, startLimits().limits);
+    await runHarnessCall(ports.options, call, log, startLimits().limits, goingOn);
 
     expect(order).toEqual(["log.settled after bridge.close"]);
   });
@@ -201,9 +209,9 @@ verifies("engine.run-harness-failures", () => {
       if (event.type === "sandbox.opened") throw new Error("The disk is full.");
     });
 
-    await expect(runHarnessCall(ports.options, call, log, startLimits().limits)).rejects.toThrow(
-      "The disk is full.",
-    );
+    await expect(
+      runHarnessCall(ports.options, call, log, startLimits().limits, goingOn),
+    ).rejects.toThrow("The disk is full.");
     expect(ports.steps).toEqual(["bridge.open", "sandbox.open", "session.close", "bridge.close"]);
   });
 
@@ -287,7 +295,7 @@ verifies("engine.harness-start-limits", () => {
 
   it("fails with harness-start-failed when the harness sends nothing in time, and stops everything", async () => {
     const ports = harnessPorts();
-    ports.harness.silent = true;
+    ports.harness.hangs = true;
     const start = startLimits();
 
     const result = runOn(ports, start.limits);
@@ -344,5 +352,62 @@ verifies("engine.harness-start-limits", () => {
 
     expect(output).toBe("ok");
     expect(ports.steps.filter((step) => step === "session.close")).toHaveLength(1);
+  });
+});
+
+verifies("engine.harness-stops-with-engine", () => {
+  it("stops the harness, closes the sandbox, then closes the bridge when stopped while the harness runs", async () => {
+    const ports = harnessPorts();
+    ports.harness.hangs = true;
+    const stop = new StopSource();
+    const start = startLimits();
+
+    const result = runOn(ports, start.limits, stop.signal);
+    await start.scheduler.waitFor("run_1", "start:harness:call-1");
+    stop.stop(new Error("The engine stopped."));
+    const { error } = await result;
+
+    expect(String(error)).toContain("The engine stopped.");
+    expect(isRunFailureError(error)).toBe(false);
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+    expect(stillOpen(ports.steps)).toBe(0);
+  });
+
+  it("stops while the harness reports events, without waiting for its next one", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [{ type: "tool.called", agent: "writer", tool: "Read", args: {} }];
+    ports.harness.hangs = true;
+    const stop = new StopSource();
+    const start = startLimits();
+
+    const result = runOn(ports, start.limits, stop.signal);
+    // The first event is in once its start limit's timer is gone.
+    await start.scheduler.waitFor("run_1", "start:harness:call-1");
+    await vi.waitFor(() => expect(start.scheduler.timers.size).toBe(0));
+    stop.stop(new Error("The engine stopped."));
+    const { error, written } = await result;
+
+    expect(String(error)).toContain("The engine stopped.");
+    expect(written.at(-1)).toMatchObject({ type: "tool.called" });
+    expect(stillOpen(ports.steps)).toBe(0);
+  });
+
+  it("closes a sandbox that opens after the call was stopped", async () => {
+    const ports = harnessPorts();
+    const held = Promise.withResolvers<void>();
+    ports.sandbox.openHeld = held.promise;
+    const stop = new StopSource();
+    const start = startLimits();
+
+    const result = runOn(ports, start.limits, stop.signal);
+    await start.scheduler.waitFor("run_1", "start:sandbox:call-1");
+    stop.stop(new Error("The engine stopped."));
+    const { error } = await result;
+
+    expect(String(error)).toContain("The engine stopped.");
+    expect(ports.steps).toEqual(["bridge.open", "bridge.close"]);
+    held.resolve();
+    await vi.waitFor(() => expect(ports.steps).toContain("session.close"));
+    expect(stillOpen(ports.steps)).toBe(0);
   });
 });
