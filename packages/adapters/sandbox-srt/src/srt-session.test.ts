@@ -331,7 +331,7 @@ verifies("sandbox-srt.session", () => {
         "../work/skills/x/scripts/run.sh",
       ]) {
         await expect(session.start({ program, args: [] })).rejects.toThrow(
-          /doesn't start a skill's scripts/,
+          /skill's scripts\/ folder/,
         );
       }
       expect(runs).toHaveLength(before);
@@ -346,19 +346,27 @@ verifies("sandbox-srt.session", () => {
       await writeFile(join(scripts, "run.sh"), "#!/bin/sh\n");
       await symlink(join(scripts, "run.sh"), join(base, "work", "innocent"));
       await expect(session.start({ program: "./innocent", args: [] })).rejects.toThrow(
-        /doesn't start a skill's scripts/,
+        /skill's scripts\/ folder/,
       );
+      await expect(session.start({ program: "sh", args: ["innocent"] })).rejects.toThrow(
+        /skill's scripts\/ folder/,
+      );
+      await symlink(scripts, join(base, "work", "tools"));
+      await expect(
+        session.start({ program: "sh", args: ["run.sh"], cwd: "tools" }),
+      ).rejects.toThrow(/skill's scripts\/ folder/);
       expect(runs).toHaveLength(0);
       await session.close();
     });
 
-    it("still starts bare names and other programs with a path", async () => {
+    it("still starts bare names and paths that only look like a skill's scripts", async () => {
       const { runner, runs } = fakeRunner();
       const session = await new SrtSandbox(linux, runner).open(profile());
       await session.start({ program: "scripts", args: [] });
       await session.start({ program: "./tools/scripts/run.sh", args: [] });
       await session.start({ program: "skills/x/SKILL.md", args: [] });
-      expect(runs).toHaveLength(3);
+      await session.start({ program: "node", args: ["scripts/build.js", "skills/mail/SKILL.md"] });
+      expect(runs).toHaveLength(4);
       await session.close();
     });
 
@@ -387,14 +395,6 @@ verifies("sandbox-srt.session", () => {
         await session.close();
       },
     );
-
-    it("starts a program whose names only look like a skill's scripts", async () => {
-      const { runner, runs } = fakeRunner();
-      const session = await new SrtSandbox(linux, runner).open(profile());
-      await session.start({ program: "node", args: ["scripts/build.js", "skills/mail/SKILL.md"] });
-      expect(runs).toHaveLength(1);
-      await session.close();
-    });
 
     it("throws once the session is closed", async () => {
       const { runner } = fakeRunner();

@@ -18,7 +18,7 @@
       "scriptsTest": "packages/adapters/sandbox-srt/src/machine.starts.test.ts"
     },
     "packages/adapters/sandbox-srt/src/srt-runner.ts": {
-      "reason": "Starts sandbox-runtime's srt with Node to run a session's program inside the fence. srtRunner.run itself refuses a program, argument or folder under a skill's scripts/ folder before anything starts, so no caller gets round it.",
+      "reason": "Starts sandbox-runtime's srt with Node to run a session's program inside the fence. srtRunner.run itself refuses a program, argument or folder under a skill's scripts/ folder, as written or through a symbolic link, before anything starts, so no caller gets round it.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
     },
     "packages/adapters/system-node/src/run-program.ts": {

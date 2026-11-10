@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 
@@ -40,5 +43,26 @@ verifies("sandbox-srt.session", () => {
         expect(spawned).toEqual([]);
       },
     );
+
+    it("refuses a link that leads into a skill's scripts/ folder and starts nothing (HAL-3011)", async () => {
+      const work = await mkdtemp(join(tmpdir(), "halonic-srt-runner-"));
+      try {
+        const scripts = join(work, "skills", "mail", "scripts");
+        await mkdir(scripts, { recursive: true });
+        await writeFile(join(scripts, "send"), "#!/bin/sh\n");
+        await symlink(join(scripts, "send"), join(work, "innocent"));
+        for (const bad of [
+          { program: "./innocent", args: [] },
+          { program: "sh", args: ["innocent"] },
+        ]) {
+          await expect(srtRunner.run({ ...request, cwd: work, ...bad })).rejects.toThrow(
+            /skill's scripts\/ folder/,
+          );
+        }
+        expect(spawned).toEqual([]);
+      } finally {
+        await rm(work, { recursive: true, force: true });
+      }
+    });
   });
 });
