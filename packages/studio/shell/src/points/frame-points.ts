@@ -29,7 +29,10 @@ export interface FramePoints {
   readonly titleBar: Point<BarItemContribution>;
   readonly phoneBar: Point<PhoneBarContribution>;
   readonly settings: Point<SettingsSectionContribution>;
-  /** Adds a sidebar place; the shell sets their order. Throws a `ShellError` for an unknown place. */
+  /**
+   * Adds a sidebar place; the shell sets their order, name and icon. Throws a `ShellError` for an
+   * unknown place or one another feature added.
+   */
   readonly places: Point<PlaceContribution>;
 }
 
@@ -72,6 +75,7 @@ export class FrameStores {
         add: (place) => {
           guard("places.add");
           rejectUnknownPlace(place, featureId);
+          this.rejectTakenPlace(place, featureId);
           this.places.add(featureId, place);
         },
       },
@@ -96,6 +100,16 @@ export class FrameStores {
           ),
       },
     };
+  }
+
+  /** A place can't be renamed, so the generic "rename one" message wouldn't help here. */
+  private rejectTakenPlace(place: PlaceContribution, featureId: string): void {
+    const existing = this.places.get(place.id);
+    if (existing !== undefined) {
+      throw new ShellError(
+        `places.add: the place "${place.id}" is added by both "${existing.featureId}" and "${featureId}". Each place belongs to one feature; add your page to that feature's view instead.`,
+      );
+    }
   }
 }
 

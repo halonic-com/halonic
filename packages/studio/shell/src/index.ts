@@ -61,9 +61,13 @@ export {
   type PanelWindowContribution,
   type PhoneBarContribution,
   type PlaceContribution,
+  type PlaceName,
   type PlaceSignal,
+  placeNames,
   type SettingsSectionContribution,
+  type ShownPlace,
   type SidebarPlace,
+  showPlace,
   sidebarPlaces,
 } from "./points/frame.ts";
 export type { FrameContributions, FramePoints } from "./points/frame-points.ts";

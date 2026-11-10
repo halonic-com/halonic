@@ -31,8 +31,10 @@ look up services its feature lists in `needs`.
 The sidebar's places come from features through `places.add`, naming one of the fixed places
 (`sidebarPlaces`: Home, Inbox, Agents, Workflows, Routines, Library, Runs, Changes). The shell
 lists them in that order and leaves out a place no feature added, so a place whose feature hasn't
-landed is simply not there. A place's `signal` is its count or running dot, with the words a screen
-reader hears after its name (`shell.sidebar-places`).
+landed is simply not there. The shell owns each place's name and icon (`placeNames`), so a feature
+gives only the place, its view and its `signal`: the count or running dot, with the words a screen
+reader hears after the name. `showPlace` gives what the sidebar shows, with nothing for a zero
+(`shell.sidebar-places`).
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
