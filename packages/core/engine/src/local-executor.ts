@@ -34,6 +34,7 @@ import {
   openSources,
 } from "./knowledge/agent-knowledge.ts";
 import {
+  allowedToolsOf,
   connectorsOf,
   effectBoundary,
   makeConnectorCall,
@@ -420,8 +421,9 @@ export class LocalExecutor implements RunExecutor {
    * A run's model call: the state's prompt to its agent's model, with
    * Halonic's tools, the agent's memory and knowledge tools, the tools its file grants
    * ({@link LocalExecutor.runToolsOf}) and, with `runs.connectorCalls`, the
-   * tools of the connected servers its kept file lists ({@link connectorsOf}),
-   * through the same turn loop a chat turn uses.
+   * tools of the connected servers its kept file lists ({@link connectorsOf})
+   * that their kept files allow ({@link allowedToolsOf}), through the same
+   * turn loop a chat turn uses.
    * Every call is checked with `checkToolCall` first ({@link checkRunToolCall}),
    * and the agent's `maxSteps` is the round limit. The agent's own prompt and
    * the turn's run log come later in step 4.
@@ -451,7 +453,10 @@ export class LocalExecutor implements RunExecutor {
     });
     const connectorCalls = this.options.runs?.connectorCalls;
     const inBranch = branchOfCall(run.parallel, call.callId) !== null;
-    const listed = connectorsOf(this.options.connectors, agent);
+    const listed = allowedToolsOf(
+      connectorsOf(this.options.connectors, agent),
+      turn.definitions.connectorTools ?? {},
+    );
     const connectors = inBranch ? listed.map(readToolsOf) : listed;
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);

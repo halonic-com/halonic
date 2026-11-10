@@ -4,7 +4,7 @@
 // key, and only then does the engine make it, here.
 
 import type { SendingSettings } from "@halonicjs/app";
-import type { Agent } from "@halonicjs/format";
+import type { Agent, Connector } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
@@ -129,4 +129,31 @@ export function connectorsOf(
   if (agent === undefined) return [];
   const listed = new Set(agent.connectors);
   return connectors.filter((connector) => listed.has(connector.id));
+}
+
+/**
+ * The connectors as a run offers them: each with only the tools its file's
+ * `allow` names, under the name its server lists them under, as the
+ * outside-run gate reads the list. A connector with no `tools` lists in the
+ * run's definitions is left out: a run offers nothing its files don't say.
+ */
+export function allowedToolsOf(
+  connectors: readonly ConnectorClient[],
+  lists: Readonly<Record<string, Connector["tools"]>>,
+): readonly ConnectorClient[] {
+  return connectors.flatMap((connector) => {
+    const allow = Object.hasOwn(lists, connector.id) ? lists[connector.id]?.allow : null;
+    if (allow === null) return [];
+    if (allow === undefined) return [connector];
+    const allowed = new Set(allow);
+    return [
+      {
+        id: connector.id,
+        listTools: async () =>
+          (await connector.listTools()).filter((tool) => allowed.has(tool.name)),
+        callTool: (name, args, options) => connector.callTool(name, args, options),
+        close: () => connector.close(),
+      },
+    ];
+  });
 }

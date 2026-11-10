@@ -223,6 +223,45 @@ verifies("engine.run-connector-calls", () => {
   });
 });
 
+verifies("engine.run-connector-allow", () => {
+  it("offers only the tools its connector's file allows, and calls none the model names past them", async () => {
+    const mail = new ScriptedConnector("mail", [
+      mailTool("search", "read"),
+      mailTool("delete_all", "read"),
+    ]);
+    const { connectorCalls } = settingsGiving({ allowed: true });
+    const answers = [callAnswer(call("d-1", "delete_all", {})), textAnswer("Done")];
+    const { executor, scheduler, model } = runsOn(answers, new KernelRuns(), {
+      agents: mailWriter,
+      connectors: [mail],
+      connectorTools: { mail: { allow: ["search"], approve: [] } },
+      connectorCalls,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(model.requests[0]?.tools?.map((tool) => tool.name)).toEqual(["search"]);
+    expect(mail.calls).toEqual([]);
+  });
+
+  it("offers no tools of a connector the run's definitions have no file for", async () => {
+    const mail = new ScriptedConnector("mail", [mailTool("search", "read")]);
+    const { connectorCalls } = settingsGiving({ allowed: true });
+    const { executor, scheduler, model } = runsOn([textAnswer("Hi")], new KernelRuns(), {
+      agents: mailWriter,
+      connectors: [mail],
+      connectorTools: {},
+      connectorCalls,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(model.requests[0]?.tools).toEqual([]);
+  });
+});
+
 verifies("engine.unknown-outcome", () => {
   it("waits for a person when the call fails, and makes it again with the same key on retry", async () => {
     let failures = 1;

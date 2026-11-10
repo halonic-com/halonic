@@ -10,7 +10,7 @@ import type {
   ToolOutcome,
   ToolRisk,
 } from "@halonicjs/events";
-import type { Agent, Collection, KnowledgeSource, Workflow } from "@halonicjs/format";
+import type { Agent, Collection, Connector, KnowledgeSource, Workflow } from "@halonicjs/format";
 import type { ResumeAfterStop, RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
@@ -343,6 +343,13 @@ export interface RunDefinitions {
    * `knowledge`. Runs kept without them give those agents no knowledge.
    */
   readonly knowledge?: Readonly<Record<string, KnowledgeSource>>;
+  /**
+   * The `tools` lists of the connector files the hub can see, by connector
+   * id: a run's agent is offered only the tools a connector's `allow` keeps,
+   * and nothing of a connector with no lists here. Runs kept without them
+   * offer no connector's tools.
+   */
+  readonly connectorTools?: Readonly<Record<string, Connector["tools"]>>;
 }
 
 /** The pure decider: what a run does next, given its state and one input. */
