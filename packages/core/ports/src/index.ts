@@ -24,6 +24,7 @@ export {
   connectionSettingsStoreVersion,
 } from "./connection-settings-store.ts";
 export {
+  type ConnectorCallOptions,
   type ConnectorClient,
   type ConnectorConfig,
   type ConnectorFactory,

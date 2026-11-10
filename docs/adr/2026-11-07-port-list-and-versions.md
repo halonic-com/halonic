@@ -211,6 +211,29 @@ One new port, at version 1:
   and asks again when the reason changes, when the computer passed the
   sandbox check before, and after Take back.
 
+## Additive after the freeze: optional hints
+
+_2026-11-10, decided by Liam on HAL-3756, built in HAL-1532 (HAL-186 step 4c, part 4)._
+"The freeze" calls a new optional input breaking when the adapter **must
+honor** it, because an old adapter would ignore it and give wrong results.
+A **hint** is different: an optional input that no caller's correctness
+depends on, so an adapter may use it or ignore it, and the result is right
+either way. A hint keeps the port's version, as long as:
+
+- it sits in an optional options object, so later hints need no new
+  argument, and every field in it is optional
+- its doc says that an adapter may ignore it
+- the contract suite has a case that an adapter accepts it and still works
+  when it ignores it
+
+The first hint is `ConnectorClient.callTool(name, args, { idempotencyKey? })`
+(`ports.connector-call-hints`, `contracts.connector-call-hints`): the
+`<runId>:<callId>` key a run records before a connector call that can change
+things. An adapter may pass it on, so a server that knows it can drop a
+duplicate. The guarantee doesn't rest on it: the run log, the unknown
+outcome and a person's `retry` or `skip` (`engine.unknown-outcome`) keep a
+call from being made twice on its own. `ConnectorClient` stays at version 1.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

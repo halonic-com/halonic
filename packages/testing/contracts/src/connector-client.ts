@@ -130,6 +130,12 @@ export function connectorClientContract(
       if (kind === "google") googleCases(make);
     });
   });
+  verifies("contracts.connector-call-hints", () => {
+    describe(`ConnectorClient call hints: ${name} (${kind})`, () => {
+      refuseRealNetwork();
+      hintCases(kind, make);
+    });
+  });
 }
 
 /** Creates a client, runs `body` with it, and always closes it. */
@@ -236,4 +242,25 @@ function googleCases(make: MakeConnector): void {
       expect(typeof (await client.callTool(readCall.name, readCall.args))).toBe("string");
       expect(harness.reached()).toEqual([readCall]);
     }));
+}
+
+/** The hint a run passes when a person has it try a call again. */
+const contractHint = { idempotencyKey: "r-acme:call-2" };
+
+/** An adapter may use a hint or ignore it, but the call works the same either way. */
+function hintCases(kind: ConnectorKind, make: MakeConnector): void {
+  it("answers a call with an idempotency key as it answers one without", () =>
+    withClient(make, contractGrant, async ({ harness, client }) => {
+      const call = callWithAnswer(kind, harness);
+      const answer = await client.callTool(call.name, call.args, contractHint);
+      expect(answer).toBe(await client.callTool(call.name, call.args));
+      expect(harness.reached()).toEqual([call, call]);
+    }));
+}
+
+/** A call the connector under test answers: `update_note` on the contract's server, or Google's `readCall`. */
+function callWithAnswer(kind: ConnectorKind, harness: ConnectorHarness): ReachedCall {
+  if (kind !== "google") return { name: "update_note", args: { id: "n-1", text: "Hi" } };
+  if (harness.readCall === undefined) throw new TypeError("a google binding gives a readCall");
+  return harness.readCall;
 }

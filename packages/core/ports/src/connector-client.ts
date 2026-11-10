@@ -35,6 +35,20 @@ export interface ConnectorTool {
   untrusted?: boolean;
 }
 
+/**
+ * Hints for one tool call. Each is optional, and an adapter may ignore any
+ * of them: no caller's correctness depends on an adapter using one (port
+ * list ADR, "Additive after the freeze: optional hints").
+ */
+export interface ConnectorCallOptions {
+  /**
+   * The same for every attempt at one call, such as `<runId>:<callId>`
+   * when a person has a run try a call again. An adapter may pass it on,
+   * so a server that knows it can drop a duplicate, and may ignore it.
+   */
+  readonly idempotencyKey?: string;
+}
+
 /** A connection to one connector: an MCP server over HTTP or a local process, or a built-in one. */
 export interface ConnectorClient {
   /** The connector's id in the workspace. */
@@ -53,8 +67,17 @@ export interface ConnectorClient {
    * @throws when the connector can't be reached or started
    */
   listTools(): Promise<ConnectorTool[]>;
-  /** Calls a tool and returns its text result. Throws on transport errors and tool errors. */
-  callTool(name: string, args: Record<string, unknown>): Promise<string>;
+  /**
+   * Calls a tool and returns its text result. Throws on transport errors and tool errors.
+   *
+   * `options` holds hints (`ports.connector-call-hints`): an adapter may
+   * use them and may ignore them, and the call must work either way.
+   */
+  callTool(
+    name: string,
+    args: Record<string, unknown>,
+    options?: ConnectorCallOptions,
+  ): Promise<string>;
   /** Release the connection (stop a local process). Safe to call twice. */
   close(): Promise<void>;
 }
