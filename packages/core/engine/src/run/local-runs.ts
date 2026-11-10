@@ -33,7 +33,7 @@ import {
   missingDefinitionsError,
   readDefinitions,
 } from "../kernel/kept-definitions.ts";
-import type { PendingCall, RunState } from "../kernel/run-state.ts";
+import { callOf, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
@@ -262,8 +262,8 @@ export class LocalRuns {
     this.#calling.add(slot);
     try {
       const run = await readRun(this.#options.store, runId);
-      const call = run?.pendingCall;
-      if (run == null || call == null || call.callId !== callId) return;
+      const call = run == null ? null : callOf(run, callId);
+      if (run == null || call === null) return;
       const result = await this.#callResult(run, call, kind);
       if (this.#closed) return;
       await this.#recordIfTaken(runId, result);

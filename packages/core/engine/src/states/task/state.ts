@@ -59,7 +59,7 @@ function startAgent({ run, stateId, state, scope, agents }: StateContext): State
  * own loop runs it: when its file says so, names no harness, or isn't among
  * the run's definitions (runs kept before agents joined them).
  */
-function programHarnessOf(
+export function programHarnessOf(
   agents: Readonly<Record<string, Agent>>,
   agentId: string,
 ): ProgramHarness | null {

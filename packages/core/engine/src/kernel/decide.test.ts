@@ -247,19 +247,21 @@ verifies("engine.state-registry", () => {
   typeTest("lists every built state type, typed against the registry", () => {
     expectTypeOf(states).toMatchTypeOf<StateRegistry>();
     expectTypeOf(states.task).toEqualTypeOf<StateHandler<"task">>();
-    expectTypeOf<keyof typeof states>().toEqualTypeOf<"final" | "task" | "wait" | "workflow">();
+    expectTypeOf<keyof typeof states>().toEqualTypeOf<
+      "final" | "parallel" | "task" | "wait" | "workflow"
+    >();
   });
 
   it("fails a run that enters a state type the engine can't run yet", () => {
-    const parallel: Workflow = {
+    const foreach: Workflow = {
       ...reply,
-      states: { ...reply.states, draft: { type: "parallel", on: [] } },
+      states: { ...reply.states, draft: { type: "foreach", on: [] } },
     };
-    const { log } = play(parallel, [startInput]);
+    const { log } = play(foreach, [startInput]);
     expect(log.at(-1)).toMatchObject({
       type: "run.failed",
       state: "draft",
-      error: `The engine can't run "parallel" states yet.`,
+      error: `The engine can't run "foreach" states yet.`,
     });
   });
 

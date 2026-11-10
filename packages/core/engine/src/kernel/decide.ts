@@ -14,6 +14,7 @@ import type {
 } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
 import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./registry.ts";
+import { branchOfCall } from "./run-branches.ts";
 import { evolve, type RunState, type WaitingApproval } from "./run-state.ts";
 
 /**
@@ -48,7 +49,8 @@ export function decide(
   if (run === null) {
     throw new InputRefused("engine.run-unknown", "The run has not started.");
   }
-  if (input.type === "effect-failed") {
+  // A branch's failed call goes to its `parallel` state, which decides what it means.
+  if (input.type === "effect-failed" && branchOfCall(run.parallel, input.callId) === null) {
     return failedEffect(run, input);
   }
   if (run.state === null) {
