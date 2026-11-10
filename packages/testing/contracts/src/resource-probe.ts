@@ -19,8 +19,21 @@ function isWholeBytes(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0;
 }
 
+/** How an adapter's run of the contract is tuned. */
+export interface ResourceProbeContractOptions {
+  /**
+   * Extra tries for the case that reads the real process table, for an adapter that starts a program
+   * to do it and may be slow on a loaded machine (HAL-3230). Defaults to 0.
+   */
+  processTableRetries?: number;
+}
+
 /** The contract every {@link ResourceProbe} adapter passes. */
-export function resourceProbeContract(name: string, make: MakeResourceProbe): void {
+export function resourceProbeContract(
+  name: string,
+  make: MakeResourceProbe,
+  options: ResourceProbeContractOptions = {},
+): void {
   verifies("contracts.resource-probe", () => {
     describe(`ResourceProbe contract: ${name}`, () => {
       it("gives the engine's memory as a whole number of bytes above 0", async () => {
@@ -32,8 +45,10 @@ export function resourceProbeContract(name: string, make: MakeResourceProbe): vo
 
       // A real probe may start a program to read the process table: PowerShell and WMI on
       // Windows took 1.8 to over 5 s on CI runners, so this waits longer than vitest's 5 s.
+      // The adapter may ask for retries (HAL-3230); a probe that hangs on every try still fails.
       it("lists the processes below the engine once each, in pid order", {
         timeout: 20_000,
+        retry: options.processTableRetries ?? 0,
       }, async () => {
         const { probe } = await make();
         const processes = await probe.childProcesses();
