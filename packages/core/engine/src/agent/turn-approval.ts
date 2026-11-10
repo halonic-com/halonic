@@ -7,23 +7,33 @@ import type { AgentResume, LoggedToolCall, ToolOutcome } from "@halonicjs/events
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { passResultToModel } from "./pass-result-to-model.ts";
 import {
-  carryOutCall,
+  type CallStep,
+  makeOrHandOver,
   refuseCall,
   refuseUnoffered,
   runCalls,
+  type StopKind,
+  stopKindOf,
   type ToolCallContext,
 } from "./run-tool-call.ts";
 import type { TurnTools } from "./turn-tools.ts";
 
-/** The turn stopped at a tool call that needs a person's OK. */
-export interface TurnStop {
-  readonly type: "approval";
+/**
+ * The turn stopped before a tool call: one that needs a person's OK, or a
+ * connector call that can change things, which the engine makes itself.
+ */
+export type TurnStop = StopAt & {
   /** The tool the waiting call goes to, as the model named it. */
   readonly tool: string;
   readonly args: Record<string, unknown>;
   /** Where the turn stopped; the waiting call is `resume.calls[0]`. */
   readonly resume: AgentResume;
-}
+};
+
+/** Why the turn stopped: `effect` names the connector the call goes to. */
+type StopAt =
+  | { readonly type: "approval" }
+  | { readonly type: "effect"; readonly connector: string };
 
 /** Where a stopped turn goes on from, and what the person answered. */
 export interface ApprovalAnswer {
@@ -87,16 +97,20 @@ export async function goOnAfterApproval(
   if (waiting === undefined) {
     throw new Error("The agent can't go on after the approval: where it stopped names no call.");
   }
-  const turn = [await answerWaitingCall(context, tools, waiting, answer)];
+  const answered = await answerWaitingCall(context, tools, waiting, answer);
+  if (answered.kind !== "answered") {
+    return stopAt(resume.calls, history, resume.step, stopKindOf(answered));
+  }
+  const turn = [answered.message];
   const step = await runCalls(context, tools, rest, turn);
-  if (step.kind === "ask") {
-    return stopAt(step.waiting, [...history, ...turn], resume.step);
+  if (step.kind === "stop") {
+    return stopAt(step.waiting, [...history, ...turn], resume.step, step.at);
   }
   return { kind: "ask-model", history, turn, round: resume.step + 1 };
 }
 
 /**
- * The stop before `waiting[0]`, which needs a person's OK.
+ * The stop before `waiting[0]`, which needs a person's OK or the engine.
  *
  * @param messages - the whole conversation so far, with the answer that made the calls
  * @param step - the round of the answer that made the calls
@@ -105,6 +119,7 @@ export function stopAt(
   waiting: readonly ToolCall[],
   messages: readonly ChatMessage[],
   step: number,
+  at: StopKind,
 ): TurnStopped {
   const calls = waiting.map(loggedCall);
   const [call] = calls;
@@ -112,34 +127,35 @@ export function stopAt(
     throw new Error("A turn can only stop at a call.");
   }
   const resume: AgentResume = { messages: [...messages], calls, step };
-  return {
-    kind: "stopped",
-    stop: { type: "approval", tool: call.name, args: call.arguments, resume },
-  };
+  return { kind: "stopped", stop: { ...at, tool: call.name, args: call.arguments, resume } };
 }
 
+/**
+ * The answer to the call the turn stopped before. A call a person approved
+ * is made, or handed over to the engine when it changes things.
+ */
 async function answerWaitingCall(
   context: ToolCallContext,
   tools: TurnTools,
   call: ToolCall,
   answer: TurnAnswer,
-): Promise<ChatMessage> {
+): Promise<CallStep> {
   const tool = tools.byName.get(call.name);
   if (tool === undefined) {
-    return refuseUnoffered(context, call);
+    return answered(refuseUnoffered(context, call));
   }
   if ("result" in answer) {
-    return {
-      role: "tool",
-      toolCallId: call.id,
-      name: call.name,
-      content: passResultToModel(tool, answer.result),
-    };
+    const content = passResultToModel(tool, answer.result);
+    return answered({ role: "tool", toolCallId: call.id, name: call.name, content });
   }
   if (!answer.approved) {
-    return refuseCall(context, tool.source, call, rejection(answer.comment));
+    return answered(refuseCall(context, tool.source, call, rejection(answer.comment)));
   }
-  return carryOutCall(context, tool, call);
+  return makeOrHandOver(context, tool, call);
+}
+
+function answered(message: ChatMessage): CallStep {
+  return { kind: "answered", message };
 }
 
 /** Why the model's call didn't run: a person rejected it, and what they wrote, if anything. */

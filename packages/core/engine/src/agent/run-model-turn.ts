@@ -19,7 +19,7 @@ import type {
 import { callCost } from "./call-cost.ts";
 import { type CallChecker, checkCallBeforeRun } from "./check-call-before-run.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
-import { runCalls, type ToolCallContext } from "./run-tool-call.ts";
+import { type EffectBoundary, runCalls, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
 import {
   goOnAfterApproval,
@@ -65,6 +65,11 @@ export interface ModelTurnInput {
 export interface AgentTurnInput extends Omit<ModelTurnInput, "callerTools"> {
   /** Where the turn stopped, and the person's answer or the call's result; absent for a new turn. */
   readonly resumeFrom?: TurnAnswer;
+  /**
+   * Where the turn hands over connector calls that can change things; see
+   * {@link EffectBoundary}. Without it, the turn makes every call itself.
+   */
+  readonly effects?: EffectBoundary;
 }
 
 /** How a run's model turn ended: with an answer, or at a call that waits for a person's OK. */
@@ -114,10 +119,13 @@ export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResu
  * @throws as {@link runModelTurn} does, and when `resumeFrom` names no waiting call
  */
 export function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutcome> {
-  return turnLoop({ ...input, callerTools: [] }, input.resumeFrom);
+  return turnLoop({ ...input, callerTools: [] }, input);
 }
 
-async function turnLoop(input: ModelTurnInput, resumeFrom?: TurnAnswer): Promise<AgentTurnOutcome> {
+async function turnLoop(
+  input: ModelTurnInput,
+  { resumeFrom, effects }: Pick<AgentTurnInput, "resumeFrom" | "effects"> = {},
+): Promise<AgentTurnOutcome> {
   const tools = await collectTurnTools(input);
   const models = new ModelChain(input.model, input.secrets, input.agent, input.log);
   const context: ToolCallContext = {
@@ -125,6 +133,7 @@ async function turnLoop(input: ModelTurnInput, resumeFrom?: TurnAnswer): Promise
     refusals: [...tools.refusals],
     check: input.checkCall ?? checkCallBeforeRun,
     ...(input.log === undefined ? {} : { log: input.log }),
+    ...(effects === undefined ? {} : { effects }),
   };
   const start: TurnStart =
     resumeFrom === undefined
@@ -155,8 +164,8 @@ async function turnLoop(input: ModelTurnInput, resumeFrom?: TurnAnswer): Promise
     }
     turn.push(assistantMessage(response, response.toolCalls));
     const step = await runCalls(context, tools, response.toolCalls, turn);
-    if (step.kind === "ask") {
-      return stopAt(step.waiting, [...history, ...turn], round);
+    if (step.kind === "stop") {
+      return stopAt(step.waiting, [...history, ...turn], round, step.at);
     }
     if (step.callerCalls.length > 0) {
       return answered({ ...ended, toolCalls: step.callerCalls, finishReason: "tool_calls" });

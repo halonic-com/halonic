@@ -1,0 +1,90 @@
+// Connector calls in workflow runs (HAL-1532). A run's turn hands over each
+// connector call that can change things at the side-effect boundary: the
+// "allow sending" check first, then the kernel records the call and its
+// key, and only then does the engine make it, here.
+
+import type { SendingSettings } from "@halonicjs/app";
+import type { ConnectorClient } from "@halonicjs/ports";
+import { isPlainObject } from "@halonicjs/std";
+import type { EffectBoundary } from "../agent/run-tool-call.ts";
+import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
+import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
+
+/**
+ * What runs need to reach connectors. Without it, a run's model call
+ * offers no connector's tools, and a `call-tool` effect fails the run.
+ */
+export interface RunConnectorCalls {
+  /** The workspace's resolved real path, which with a connector's id keys its settings. */
+  readonly location: string;
+  /**
+   * Whether each connector may send. Only the read side of the settings, so
+   * nothing on a call's path can switch sending on.
+   */
+  readonly sending: SendingSettings;
+  /**
+   * Hears the store's error when a connector's settings can't be read, for
+   * the host to log and show the person. It never reaches the model: it can
+   * name paths in the user's profile.
+   */
+  reportSettingsError(connector: string, error: unknown): void;
+}
+
+/**
+ * The boundary a run's turn hands its connector calls over at. A refusal
+ * keeps only the reason, which may go to the model; the store's error goes
+ * to the host.
+ */
+export function effectBoundary(calls: RunConnectorCalls): EffectBoundary {
+  return {
+    checkSending: async (connector) => {
+      const check = await calls.sending.checkSending({ location: calls.location, connector });
+      if (check.allowed) return check;
+      if (check.error !== undefined) calls.reportSettingsError(connector, check.error);
+      return { allowed: false, reason: check.reason };
+    },
+  };
+}
+
+/**
+ * Makes the call a `call-tool` effect asks for, on the connector of that
+ * id, under the name its server listed the tool under. When the connector
+ * or tool can't be found, the call wasn't made, so its outcome is `error`.
+ * When the call itself fails, the connector may have done the work before
+ * it failed, so its outcome is `unknown`, and the run waits for a person.
+ */
+export async function makeConnectorCall(
+  connectors: readonly ConnectorClient[],
+  effect: CallToolEffect,
+): Promise<ToolResult> {
+  const connector = connectors.find((connected) => connected.id === effect.connector);
+  if (connector === undefined) {
+    return notMade(`the connector "${effect.connector}" isn't connected`);
+  }
+  const tools = await collectTurnTools({
+    callerTools: [],
+    halonicTools: [],
+    connectors: [connector],
+  });
+  const tool = tools.byName.get(effect.tool);
+  if (tool?.kind !== "server") {
+    return notMade(`the connector "${effect.connector}" no longer offers ${effect.tool}`);
+  }
+  const risk = tool.risk === undefined ? {} : { risk: tool.risk };
+  const args = isPlainObject(effect.args) ? effect.args : {};
+  try {
+    const result = await connector.callTool(tool.listedName, args);
+    return { type: "tool", result, outcome: "ok", ...risk };
+  } catch (error) {
+    return { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...risk };
+  }
+}
+
+/** The text of a call that broke off: it may or may not have done its work. */
+export function brokeOff(why: string): string {
+  return `The call broke off without an answer, so it may or may not have done its work: ${why}`;
+}
+
+function notMade(why: string): ToolResult {
+  return { type: "tool", result: `The call wasn't made: ${why}.`, outcome: "error" };
+}

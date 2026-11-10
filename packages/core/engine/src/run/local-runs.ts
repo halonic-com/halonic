@@ -24,11 +24,13 @@ import { runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
 import type {
+  CallToolEffect,
   DecideInput,
   Effect,
   ModelCallResult,
   RunDefinitions,
   StartChildEffect,
+  ToolResult,
 } from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
 import {
@@ -39,9 +41,11 @@ import {
 import { callOf, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf } from "./child-runs.ts";
+import type { RunConnectorCalls } from "./connector-calls.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { LiveHarnessCalls } from "./live-harness-calls.ts";
 import { providerTextOf } from "./provider-text-of.ts";
+import { RunConnectorCallRunner } from "./run-connector-call-runner.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { RunFeed } from "./run-feed.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
@@ -76,6 +80,11 @@ export interface LocalRunsOptions {
    * stops a run.
    */
   budget?(): Promise<Budget | undefined>;
+  /**
+   * What runs need to reach connectors. Without it, a run's model call
+   * offers no connector's tools, and a `call-tool` effect fails the run.
+   */
+  readonly connectorCalls?: RunConnectorCalls;
 }
 
 /**
@@ -83,6 +92,12 @@ export interface LocalRunsOptions {
  * the tool call the agent stopped at because it needs a person's OK.
  */
 export type CallModel = (run: RunState, call: PendingCall) => Promise<ModelCallResult>;
+
+/**
+ * Makes a connector call a run recorded, and gives its result. It never
+ * throws: a call that fails gives the outcome it had.
+ */
+export type CallTool = (effect: CallToolEffect) => Promise<ToolResult>;
 
 /** The longest run id, in UTF-8 bytes, because it is a `Scheduler` key. */
 const maxRunIdBytes = 256;
@@ -96,17 +111,19 @@ const callTimer = "call:";
 const harnessTimer = "harness:";
 const stateTimer = "timer:";
 const childTimer = "child:";
+const toolTimer = "tool:";
 
 /** How a call a run waits on is carried out: a model call, or a run of the agent's harness. */
 type CallKind = "model" | "harness";
 
 /**
  * The effects this executor carries out: harness runs only when it has
- * `harnesses`. Tool calls arrive with the agent loop (4a).
+ * `harnesses`, and connector calls only when it has `connectorCalls`.
  */
 function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["type"]> {
   const built: Effect["type"][] = ["call-model", "set-timer", "start-child", "tell-parent"];
   if (options.harnesses !== undefined) built.push("run-harness");
+  if (options.connectorCalls !== undefined) built.push("call-tool");
   return new Set(built);
 }
 
@@ -117,11 +134,19 @@ function budgetCheckOf(options: LocalRunsOptions): BudgetCheck | undefined {
   return { budget, spend: (run, at) => spendOf(options.store, run, at) };
 }
 
+/** Without `connectorCalls`, no `call-tool` effect gets this far; this answers one anyway. */
+const noConnectorCalls: CallTool = async () => ({
+  type: "tool",
+  result: "The call wasn't made: this engine makes no connector calls.",
+  outcome: "error",
+});
+
 /** Runs workflows in this process for the local executor. */
 export class LocalRuns {
   readonly #options: LocalRunsOptions;
   readonly #clock: Clock;
   readonly #callModel: CallModel;
+  readonly #connectorCalls: RunConnectorCallRunner;
   readonly #feed: RunFeed;
   readonly #startDeadlines: StartDeadlines;
   readonly #builtEffects: ReadonlySet<Effect["type"]>;
@@ -134,7 +159,12 @@ export class LocalRuns {
   #closed = false;
 
   /** @throws RangeError when a start limit in `harnesses` isn't a whole number of milliseconds of 1 or more */
-  constructor(options: LocalRunsOptions, clock: Clock, callModel: CallModel) {
+  constructor(
+    options: LocalRunsOptions,
+    clock: Clock,
+    callModel: CallModel,
+    callTool: CallTool = noConnectorCalls,
+  ) {
     checkStartTimeouts(options.harnesses?.startTimeoutsMs);
     this.#options = options;
     this.#clock = clock;
@@ -143,6 +173,14 @@ export class LocalRuns {
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
     this.#builtEffects = builtEffectsOf(options);
     this.#budget = budgetCheckOf(options);
+    this.#connectorCalls = new RunConnectorCallRunner({
+      store: options.store,
+      deadlines: this.#startDeadlines,
+      callTool,
+      record: (runId, input) => this.#recordIfTaken(runId, input),
+      now: () => this.#now(),
+      isClosed: () => this.#closed,
+    });
   }
 
   /**
@@ -230,6 +268,8 @@ export class LocalRuns {
       await this.#recordIfTaken(timer.key, { type: "timer", at: this.#now(), key });
     } else if (timer.timerId.startsWith(childTimer)) {
       await this.#hearFromChild(timer.key, timer.timerId.slice(childTimer.length));
+    } else if (timer.timerId.startsWith(toolTimer)) {
+      await this.#connectorCalls.make(timer.key, timer.timerId.slice(toolTimer.length));
     }
   }
 
@@ -263,6 +303,7 @@ export class LocalRuns {
    * finds the runs it ended.
    */
   async #endInterruptedRuns(): Promise<void> {
+    await this.#connectorCalls.markCutShort();
     const ended = await endInterruptedRuns(this.#options.store, this.#clock);
     for (const runId of ended) this.#feed.notify(runId);
     for (const runId of ended) {
@@ -390,6 +431,8 @@ export class LocalRuns {
       await scheduler.schedule(run.runId, `${callTimer}${effect.callId}`, this.#now());
     } else if (effect.type === "run-harness") {
       await scheduler.schedule(run.runId, `${harnessTimer}${effect.callId}`, this.#now());
+    } else if (effect.type === "call-tool") {
+      await scheduler.schedule(run.runId, `${toolTimer}${effect.callId}`, this.#now());
     } else if (effect.type === "set-timer") {
       await scheduler.schedule(run.runId, `${stateTimer}${effect.key}`, effect.at);
     } else if (effect.type === "start-child") {

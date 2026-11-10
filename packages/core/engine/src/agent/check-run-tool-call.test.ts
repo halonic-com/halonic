@@ -1,3 +1,4 @@
+import type { ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { call, ScriptedConnector } from "../testing/scripted-model.ts";
@@ -12,6 +13,18 @@ const lookup: TurnTool = {
   tool: halonicTool("lookup", async () => "found"),
 };
 
+/** The `mail` connector's `search` tool, listed with `risk`, or without one. */
+function mailTool(risk: ToolRisk | undefined): TurnTool {
+  return {
+    kind: "server",
+    source: "mail",
+    definition: { name: "mail__search", description: "Searches", parameters: {} },
+    listedName: "search",
+    connector: new ScriptedConnector("mail", []),
+    ...(risk === undefined ? {} : { risk }),
+  };
+}
+
 verifies("engine.run-tool-calls", () => {
   it("runs a call to a Halonic tool whose arguments its parameters declare", () => {
     expect(checkRunToolCall(lookup, call("c-1", "lookup"))).toEqual({ kind: "run" });
@@ -25,18 +38,18 @@ verifies("engine.run-tool-calls", () => {
     });
   });
 
-  it("refuses a call to a connector's tool, which runs don't reach yet", () => {
-    const send: TurnTool = {
-      kind: "server",
-      source: "mail",
-      definition: { name: "mail__send", description: "Sends", parameters: {} },
-      listedName: "send",
-      connector: new ScriptedConnector("mail", []),
-      risk: "read",
-    };
-    expect(checkRunToolCall(send, call("c-1", "mail__send"))).toEqual({
-      kind: "refused",
-      reason: "mail's tools don't run in workflow runs yet",
+  it("runs a call to a connector's tool whose listing says it only reads", () => {
+    expect(checkRunToolCall(mailTool("read"), call("c-1", "mail__search"))).toEqual({
+      kind: "run",
+    });
+  });
+
+  it("asks a person about a connector's tool that can change things, or whose listing doesn't say", () => {
+    expect(checkRunToolCall(mailTool("send"), call("c-1", "mail__search"))).toEqual({
+      kind: "ask",
+    });
+    expect(checkRunToolCall(mailTool(undefined), call("c-1", "mail__search"))).toEqual({
+      kind: "ask",
     });
   });
 });

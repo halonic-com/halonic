@@ -1,14 +1,18 @@
-// Enforces the start limits of harness calls with the `Scheduler` port: each
-// start sets a timer for when its time is up, and the timer ends the wait
-// if the start is still going. Core has no timers of its own, and the
+// Enforces the start limits of harness calls, and the time limit of a
+// connector call a run makes, with the `Scheduler` port: each wait sets a
+// timer for when its time is up, and the timer ends the wait if it is
+// still going. Core has no timers of its own, and the
 // scheduler delivers timers while a harness call runs, so this works the
 // same on every runtime.
 
 import type { Clock, ScheduledTimer, Scheduler } from "@halonicjs/ports";
 import type { StartLimit, StartLimits } from "../harness/start-limits.ts";
 
-/** The prefix of a start limit's timer id: `start:<phase>:<callId>`. */
+/** The prefix of a limit's timer id: `start:<phase>:<callId>`, or `start:connector:<callId>`. */
 const startTimer = "start:";
+
+/** A wait with a time limit that isn't one of a harness call's starts. */
+export type TimeLimit<T> = Omit<StartLimit<T>, "phase">;
 
 /** The start limits of every harness call this engine is running. */
 export class StartDeadlines {
@@ -29,7 +33,20 @@ export class StartDeadlines {
 
   /** The limits of one harness call of a run. */
   of(runId: string, callId: string): StartLimits {
-    return { within: (limit) => this.#within(runId, callId, limit) };
+    return {
+      within: (limit) => this.#within(runId, `${startTimer}${limit.phase}:${callId}`, limit),
+    };
+  }
+
+  /**
+   * Waits for a connector call of a run, as `connector.started` gave its
+   * limit.
+   *
+   * @throws the error of `limit.timedOut()` when the time is up first
+   * @throws what `limit.start()` throws
+   */
+  connectorCall<T>(runId: string, callId: string, limit: TimeLimit<T>): Promise<T> {
+    return this.#within(runId, `${startTimer}connector:${callId}`, limit);
   }
 
   /**
@@ -41,8 +58,7 @@ export class StartDeadlines {
     this.#waiting.get(slot(timer.key, timer.timerId))?.();
   }
 
-  async #within<T>(runId: string, callId: string, limit: StartLimit<T>): Promise<T> {
-    const timerId = `${startTimer}${limit.phase}:${callId}`;
+  async #within<T>(runId: string, timerId: string, limit: TimeLimit<T>): Promise<T> {
     const timerSlot = slot(runId, timerId);
     let timeUp = () => {};
     const expired = new Promise<"expired">((resolve) => {
@@ -70,7 +86,7 @@ export class StartDeadlines {
  * Stops what a start gives after its time was up. Its failure, or the
  * start's own, has no one left to tell: the call has already failed.
  */
-function stopWhenItArrives<T>(work: Promise<T>, limit: StartLimit<T>): void {
+function stopWhenItArrives<T>(work: Promise<T>, limit: TimeLimit<T>): void {
   work.then((value) => limit.late?.(value)).catch(() => {});
 }
 

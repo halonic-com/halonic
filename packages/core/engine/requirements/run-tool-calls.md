@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3331, plan HAL-186 step 4a (the run half, decided on HAL-3325)
 
-When a workflow run calls a state's agent, the engine shall offer Halonic's tools and the agent's memory tools, run the calls through the same turn loop a chat turn uses, and make at most the agent's `maxSteps` model calls, or 6 when the run's definitions have no file for the agent. The engine shall check every call with `checkToolCall` before it runs. If the check refuses a call, then the engine shall not run it and shall give the model the reason as that call's result. The engine shall offer no connector's tools in a run's model call, and shall refuse a call to one. A call that needs a person's OK shall stop the call for an approval, as `engine.turn-approval-stop` says.
+When a workflow run calls a state's agent, the engine shall offer Halonic's tools and the agent's memory tools, run the calls through the same turn loop a chat turn uses, and make at most the agent's `maxSteps` model calls, or 6 when the run's definitions have no file for the agent. The engine shall check every call with `checkToolCall` before it runs. If the check refuses a call, then the engine shall not run it and shall give the model the reason as that call's result. The engine shall offer a connector's tools in a run's model call only where the executor is given connector calls, as `engine.run-connector-calls` says, and shall check a call to one as a listed tool, counting it as `write` when its listing gives no risk. A call that needs a person's OK shall stop the call for an approval, as `engine.turn-approval-stop` says.
 
 ## Examples
 

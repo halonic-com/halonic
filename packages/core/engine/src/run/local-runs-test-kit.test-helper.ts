@@ -1,6 +1,12 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { Agent, Collection, Workflow } from "@halonicjs/format";
-import type { ChatResponse, Clock, RecordStore, ScheduledTimer } from "@halonicjs/ports";
+import type {
+  ChatResponse,
+  Clock,
+  ConnectorClient,
+  RecordStore,
+  ScheduledTimer,
+} from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
@@ -10,6 +16,7 @@ import { NotingScheduler } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
+import type { RunConnectorCalls } from "./connector-calls.ts";
 
 /**
  * Timers in a map that a test delivers with {@link TestScheduler.runDue},
@@ -92,6 +99,10 @@ export interface RunsSetup {
   readonly blobs?: KernelBlobs;
   /** The workspace's budget; none when left out. */
   readonly budget?: Budget;
+  /** The connected servers; none when left out. */
+  readonly connectors?: readonly ConnectorClient[];
+  /** What runs need to reach the connectors; runs offer none of their tools when left out. */
+  readonly connectorCalls?: RunConnectorCalls;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -116,7 +127,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     resolveModel: async () => ({ provider: model, model: "scripted-1" }),
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
-    connectors: [],
+    connectors: setup.connectors ?? [],
     secrets: secretsWith(),
     clock,
     runs: {
@@ -126,6 +137,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       ids: fixedIds(),
       ...(harnesses === undefined ? {} : { harnesses }),
       ...(setup.budget === undefined ? {} : { budget: async () => setup.budget }),
+      ...(setup.connectorCalls === undefined ? {} : { connectorCalls: setup.connectorCalls }),
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);

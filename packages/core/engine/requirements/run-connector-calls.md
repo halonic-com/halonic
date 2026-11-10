@@ -1,0 +1,27 @@
+# engine.run-connector-calls
+
+- Status: active
+- Since: 0.1.0
+- Source: HAL-1532, step 4(c) of the [HAL-186 implementation plan](/HAL/issues/HAL-186#document-implementation-plan), "Allow sending per connection" and "Idempotency keys and unknown outcome"; Liam's notes on HAL-1532 (only `SendingSettings`, the store's error to the host)
+
+Where the executor is given connector calls for runs, the engine shall offer the connected servers' tools in a run's model call, and shall make a call to a tool whose listing says it only reads in the turn, as any other call. For a call that can change things (any other risk, or none) to a tool labelled `send`, the engine shall ask `SendingSettings.checkSending` for the connector before it asks a person for an OK, and again after the OK, and if sending isn't allowed, shall give the model the reason as the call's result, as data, record no `effect.requested`, and make no call. When the settings can't be read, the engine shall pass the store's error to the host apart from the reason, and never to the model. Otherwise the engine shall record the call as `engine.connector-effects` says, and only then make it, within the time limit `connector.started` gave; a call that fails or takes longer gets `outcome: "unknown"`, as `engine.unknown-outcome` says. When the engine starts, a run with a recorded call and no result shall get `outcome: "unknown"` and wait for `retry` or `skip`, and the call shall not be made again. Where the executor isn't given connector calls, a run's model call shall offer no connector's tools. The engine shall get only `SendingSettings`, never the settings' write side.
+
+## Examples
+
+- Given a run whose agent calls `send_mail` on `mail`, labelled `send`, and sending is on,
+  when a person approves the call,
+  then the engine records `effect.requested`, `connector.started` and `tool.called`, calls `mail` once, records `tool.result` with `outcome: "ok"`, and the agent goes on with the result.
+- Given the same run with sending off,
+  when the agent calls `send_mail`,
+  then no person is asked, the model gets `Refused: sending is off for the connector "mail"`, and nothing is recorded or called.
+- Given the same run waiting for the OK, and sending switched off since,
+  when a person approves the call,
+  then the model gets the same refusal, and nothing is recorded or called.
+- Given the same run whose settings can't be read,
+  when the agent calls `send_mail`,
+  then the host gets the store's error, and the model gets only the reason.
+- Given a run whose agent calls `search` on `mail`, labelled `read`,
+  then `mail` is called in the turn, with no `effect.requested`.
+- Given an engine that stopped after recording a call to `send_mail` and before making it,
+  when an engine starts on the same store,
+  then the call isn't made, the run records `tool.result` with `outcome: "unknown"` and waits for `retry` or `skip`.

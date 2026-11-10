@@ -1,0 +1,211 @@
+import type { SendingCheck, SendingSettings } from "@halonicjs/app";
+import type { RunEvent } from "@halonicjs/events";
+import type { ChatResponse, ConnectorTool, ToolRisk } from "@halonicjs/ports";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
+import { KernelBlobs, KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
+import { call, callAnswer, ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
+import type { RunConnectorCalls } from "./connector-calls.ts";
+import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
+
+/** The `mail` connector's `send_mail`, listed with `risk`. */
+function mailTool(name: string, risk: ToolRisk): ConnectorTool {
+  return {
+    name,
+    description: `Does ${name}`,
+    parameters: { type: "object", properties: { to: { type: "string" } } },
+    risk,
+  };
+}
+
+/** Sending settings that give `settings.check`, which a test may change, and the errors the host heard. */
+function settingsGiving(check: SendingCheck) {
+  const reported: unknown[] = [];
+  const settings = { check };
+  const sending: SendingSettings = { checkSending: async () => settings.check };
+  const connectorCalls: RunConnectorCalls = {
+    location: "/workspaces/acme",
+    sending,
+    reportSettingsError: (_connector, error) => reported.push(error),
+  };
+  return { connectorCalls, reported, settings };
+}
+
+const sendingOff: SendingCheck = {
+  allowed: false,
+  reason: 'sending is off for the connector "mail"',
+};
+
+const sendMail = callAnswer(call("m-1", "send_mail", { to: "support" }));
+
+/**
+ * A run of the reply workflow whose agent calls `send_mail` on `mail`, then
+ * answers `Posted`. With sending on, it waits for the OK on the call.
+ */
+async function waitingForOk(
+  answer: (name: string, args: Record<string, unknown>) => string = () => "Sent",
+  check: SendingCheck = { allowed: true },
+  after: ChatResponse[] = [textAnswer("Posted")],
+) {
+  const mail = new ScriptedConnector("mail", [mailTool("send_mail", "send")], answer);
+  const { connectorCalls, reported, settings } = settingsGiving(check);
+  const runs = new KernelRuns();
+  const blobs = new KernelBlobs();
+  const setup = runsOn([sendMail, ...after], runs, { connectors: [mail], connectorCalls, blobs });
+  await setup.executor.start(replyStart);
+  await setup.scheduler.runDue();
+  return { ...setup, mail, reported, settings };
+}
+
+function eventsOf(events: readonly RunEvent[] | undefined, type: string): RunEvent[] {
+  return (events ?? []).filter((event) => event.type === type);
+}
+
+/** The tool message the model got for `m-1` in its last request. */
+function lastResult(model: { requests: { messages: { role: string; content: string }[] }[] }) {
+  return model.requests.at(-1)?.messages.find((message) => message.role === "tool")?.content;
+}
+
+verifies("engine.run-connector-calls", () => {
+  typeTest("gives the engine only the read side of the connection settings", () => {
+    expectTypeOf<RunConnectorCalls["sending"]>().toEqualTypeOf<SendingSettings>();
+  });
+
+  it("records a send the person approved before it makes it, once, and goes on with its result", async () => {
+    const { executor, scheduler, runs, mail, model } = await waitingForOk();
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    expect(mail.calls).toEqual([{ name: "send_mail", args: { to: "support" } }]);
+    const log = runs.logs.get("run_1");
+    expect(
+      typesOf(log).filter(
+        (type) =>
+          type.startsWith("effect") || type.startsWith("tool") || type.startsWith("connector"),
+      ),
+    ).toEqual(["effect.requested", "connector.started", "tool.called", "tool.result"]);
+    expect(eventsOf(log, "effect.requested")).toMatchObject([
+      { callId: "call-4", idempotencyKey: "run_1:call-4", connector: "mail" },
+    ]);
+    expect(eventsOf(log, "tool.result")).toMatchObject([{ outcome: "ok", risk: "send" }]);
+    expect(lastResult(model)).toContain("Sent");
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("refuses a send as data when sending is off, without asking a person or recording a call", async () => {
+    const { runs, mail, model } = await waitingForOk(undefined, sendingOff);
+
+    expect(mail.calls).toEqual([]);
+    const types = typesOf(runs.logs.get("run_1"));
+    expect(types).not.toContain("approval.requested");
+    expect(types).not.toContain("effect.requested");
+    expect(lastResult(model)).toBe('Refused: sending is off for the connector "mail"');
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("checks sending again after the OK, in case it was switched off while the run waited", async () => {
+    const { executor, scheduler, runs, mail, model, settings } = await waitingForOk();
+    settings.check = sendingOff;
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    expect(mail.calls).toEqual([]);
+    expect(eventsOf(runs.logs.get("run_1"), "effect.requested")).toEqual([]);
+    expect(lastResult(model)).toBe('Refused: sending is off for the connector "mail"');
+  });
+
+  it("gives the host the store's error when the settings can't be read, and the model only the reason", async () => {
+    const error = new Error("EACCES: settings in the profile folder");
+    const reason = 'the settings of the connector "mail" can\'t be read, so sending is off';
+    const { reported, model } = await waitingForOk(undefined, { allowed: false, reason, error });
+
+    expect(reported).toEqual([error]);
+    expect(lastResult(model)).toBe(`Refused: ${reason}`);
+    expect(JSON.stringify(model.requests)).not.toContain("EACCES");
+  });
+
+  it("makes a call to a tool that only reads in the turn, with no record before it", async () => {
+    const mail = new ScriptedConnector("mail", [mailTool("search", "read")], () => "3 mails");
+    const { connectorCalls } = settingsGiving({ allowed: true });
+    const answers = [callAnswer(call("s-1", "search", { to: "support" })), textAnswer("Found")];
+    const { executor, scheduler, runs } = runsOn(answers, new KernelRuns(), {
+      connectors: [mail],
+      connectorCalls,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(mail.calls).toHaveLength(1);
+    expect(eventsOf(runs.logs.get("run_1"), "effect.requested")).toEqual([]);
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { reply: "Found" },
+    });
+  });
+
+  it("offers no connector's tools when the executor has no connector calls", async () => {
+    const mail = new ScriptedConnector("mail", [mailTool("search", "read")]);
+    const { executor, scheduler, model } = runsOn([textAnswer("Hi")], new KernelRuns(), {
+      connectors: [mail],
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(model.requests[0]?.tools).toEqual([]);
+  });
+});
+
+verifies("engine.unknown-outcome", () => {
+  it("waits for a person when the call fails, and makes it again with the same key on retry", async () => {
+    let failures = 1;
+    const { executor, scheduler, runs, mail } = await waitingForOk(() => {
+      if (failures-- > 0) throw new Error("connection reset");
+      return "Sent";
+    });
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    expect(mail.calls).toHaveLength(1);
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "waiting",
+      accepts: ["retry", "skip"],
+    });
+    expect(eventsOf(runs.logs.get("run_1"), "tool.result")).toMatchObject([
+      { outcome: "unknown", result: expect.stringContaining("connection reset") },
+    ]);
+
+    await executor.send("run_1", "retry", undefined, { callId: "call-4" });
+    await scheduler.runDue();
+
+    expect(mail.calls).toHaveLength(2);
+    const keys = eventsOf(runs.logs.get("run_1"), "effect.requested").map(
+      (event) => event.type === "effect.requested" && event.idempotencyKey,
+    );
+    expect(keys).toEqual(["run_1:call-4", "run_1:call-4"]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("breaks the call off with an unknown outcome when its time limit is up", async () => {
+    const { executor, scheduler, runs, mail } = await waitingForOk();
+    mail.callTool = () => new Promise<string>(() => {});
+
+    await executor.send("run_1", "approve");
+    await scheduler.deliver("run_1", "call:call-3");
+    const calling = scheduler.deliver("run_1", "tool:call-4");
+    await scheduler.deliver("run_1", "start:connector:call-4");
+    await calling;
+
+    expect(eventsOf(runs.logs.get("run_1"), "tool.result")).toMatchObject([
+      { outcome: "unknown", result: expect.stringContaining("took longer than 60 seconds") },
+    ]);
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "waiting",
+      accepts: ["retry", "skip"],
+    });
+  });
+});

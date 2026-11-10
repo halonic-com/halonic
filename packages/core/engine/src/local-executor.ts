@@ -24,6 +24,7 @@ import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
+import { effectBoundary, makeConnectorCall } from "./run/connector-calls.ts";
 import { LocalRuns, type LocalRunsOptions } from "./run/local-runs.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
@@ -110,7 +111,12 @@ export class LocalExecutor implements RunExecutor {
     this.runs =
       options.runs === undefined
         ? undefined
-        : new LocalRuns(options.runs, options.clock, (run, call) => this.callModel(run, call));
+        : new LocalRuns(
+            options.runs,
+            options.clock,
+            (run, call) => this.callModel(run, call),
+            (effect) => makeConnectorCall(options.connectors, effect),
+          );
   }
 
   /**
@@ -287,18 +293,19 @@ export class LocalExecutor implements RunExecutor {
 
   /**
    * A run's model call: the state's prompt to its agent's model, with
-   * Halonic's tools, the agent's memory tools and the tools its file grants
-   * ({@link LocalExecutor.runToolsOf}), through the same turn
-   * loop a chat turn uses. Every call is checked with `checkToolCall`
-   * first ({@link checkRunToolCall}), and the agent's `maxSteps` is the
-   * round limit. Connectors stay out until the side-effect boundary
-   * (allow sending, idempotency keys, the effect-requested record) is
-   * built in HAL-186 step 4c. The agent's own prompt and the turn's run
-   * log come later in step 4.
+   * Halonic's tools, the agent's memory tools, the tools its file grants
+   * ({@link LocalExecutor.runToolsOf}) and, with `runs.connectorCalls`, the
+   * connected servers' tools, through the same turn loop a chat turn uses.
+   * Every call is checked with `checkToolCall` first ({@link checkRunToolCall}),
+   * and the agent's `maxSteps` is the round limit. The agent's own prompt and
+   * the turn's run log come later in step 4.
    *
    * A call that needs a person's OK ends the call with `{ type: "approval",
-   * tool, args, resume }`, and the run waits. Once they answer, the next
-   * call carries `resume` with the answer, and the turn goes on from there.
+   * tool, args, resume }`, and the run waits. A connector call that can
+   * change things passes the "allow sending" check, then ends the call with
+   * `{ type: "effect", connector, tool, args, resume }`: the engine records
+   * it before it makes it. Either way, the next call carries `resume` with
+   * the answer or the result, and the turn goes on from there.
    *
    * @throws when the run's definitions are gone, as {@link missingDefinitionsError} says
    */
@@ -312,12 +319,14 @@ export class LocalExecutor implements RunExecutor {
       messages,
       tools: [],
     });
+    const connectorCalls = this.options.runs?.connectorCalls;
     const outcome = await runAgentTurn({
       model,
       secrets: this.options.secrets,
       messages,
       halonicTools: this.runToolsOf(turn, call.agent, 0),
-      connectors: [],
+      connectors: connectorCalls === undefined ? [] : this.options.connectors,
+      ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
       maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
       agent: call.agent,
       clock: this.options.clock,
