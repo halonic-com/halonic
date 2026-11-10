@@ -26,7 +26,11 @@ const hashPattern = /^[0-9a-f]{64}$/u;
  * path is checked to stay inside the folder before it is used. A blob file
  * that is a link, a hard link or not a plain file can't be read (see
  * `readUnlinkedBytes`), and a put replaces it rather than writing through it.
- * The folder must sit in the profile, never in a workspace.
+ * A put refuses a blob's two-character folder that is a link. The folder must
+ * sit in the profile, never in a workspace.
+ *
+ * `get` doesn't hash the bytes again: it trusts that only the store writes
+ * into its folder.
  */
 export class FolderBlobStore implements BlobStore {
   readonly #root: string;
@@ -43,9 +47,11 @@ export class FolderBlobStore implements BlobStore {
       );
     }
     // A copy, so a caller changing `data` while the write waits can't change what is stored.
-    const bytes = data.slice();
+    // Not `data.slice()`: on Node's Buffer that is a view of the same bytes.
+    const bytes = new Uint8Array(data);
     const hash = createHash("sha256").update(bytes).digest("hex");
     const file = this.#fileFor(hash);
+    await refuseLinkedFolder(dirname(file));
     if (!(await isStoredBlob(file))) {
       await this.#write(file, bytes);
     }
@@ -110,4 +116,20 @@ export function blobFile(root: string, hash: string): string {
 async function isStoredBlob(file: string): Promise<boolean> {
   const entry = await lstatOrNull(file);
   return entry?.isFile() === true && entry.nlink === 1;
+}
+
+/**
+ * Refuses a blob's folder that is there but isn't a plain folder, such as a
+ * symbolic link: `mkdir` and `chmod` would follow it, and the put would
+ * write into the folder it points to.
+ *
+ * @throws RangeError when the folder is a link or not a folder
+ */
+async function refuseLinkedFolder(folder: string): Promise<void> {
+  const entry = await lstatOrNull(folder);
+  if (entry !== null && !entry.isDirectory()) {
+    throw new RangeError(
+      `Blob folder ${JSON.stringify(folder)} is a link or not a folder: the store doesn't follow links.`,
+    );
+  }
 }

@@ -59,6 +59,20 @@ verifies("fs-node.blob-store-files", () => {
 
       expect((await stat(join(root, "2c", helloHash))).ino).toBe(before.ino);
     });
+
+    it("stores the bytes as they were when put, even from a Buffer changed while the put waits", async () => {
+      const root = join(await tempFolder(), "blobs");
+      const store = new FolderBlobStore(root);
+      // `Buffer.slice` returns a view, not a copy (Tomas, HAL-3912).
+      const data = Buffer.from("hello");
+
+      const putting = store.put(data, "text/plain");
+      data[0] = "H".charCodeAt(0);
+      const ref = await putting;
+
+      expect(ref.hash).toBe(helloHash);
+      expect(await store.get(helloHash)).toEqual(hello);
+    });
   });
 
   describe("the folder's edges", () => {
@@ -110,6 +124,20 @@ verifies("fs-node.blob-store-files", () => {
 
       expect(await store.get(helloHash)).toEqual(hello);
       expect((await stat(join(outside, "elsewhere"))).nlink).toBe(1);
+    });
+
+    it.runIf(unix)("refuses to put through a link in place of a blob's folder", async () => {
+      const outside = await tempFolder();
+      const root = join(outside, "blobs");
+      await mkdir(join(outside, "elsewhere"), { mode: 0o755 });
+      await mkdir(root);
+      await symlink(join(outside, "elsewhere"), join(root, "2c"));
+      const store = new FolderBlobStore(root);
+
+      await expect(store.put(hello, "text/plain")).rejects.toThrow(RangeError);
+
+      expect(await readdir(join(outside, "elsewhere"))).toEqual([]);
+      expect((await stat(join(outside, "elsewhere"))).mode & 0o777).toBe(0o755);
     });
   });
 });
