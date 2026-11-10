@@ -11,7 +11,7 @@ import type { RunState } from "./run-state.ts";
  */
 export type BuiltStateType = Extract<
   StateType,
-  "task" | "wait" | "final" | "workflow" | "parallel"
+  "task" | "wait" | "final" | "workflow" | "parallel" | "foreach"
 >;
 
 /** What a state handler sees: the run as it is now, and the state it is in. */

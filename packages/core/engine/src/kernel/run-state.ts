@@ -13,6 +13,7 @@ import {
   type ParallelBranches,
   startBranch,
 } from "./run-branches.ts";
+import { type ForeachItems, finishItem, startItem } from "./run-items.ts";
 
 /**
  * The model call a task state waits on: the one its `agent.started` asked
@@ -107,6 +108,8 @@ export interface RunState {
   readonly child: ChildRun | null;
   /** The branches of the `parallel` state the run is in, once one has started; `null` in any other state. */
   readonly parallel: ParallelBranches | null;
+  /** The items of the `foreach` state the run is in, once one has started; `null` in any other state. */
+  readonly foreach: ForeachItems | null;
   /** The `seq` of the last event folded in. The next append expects it. */
   readonly lastSeq: number;
 }
@@ -146,12 +149,16 @@ export function nextCallId(state: RunState): string {
   return `call-${state.calls + 1}`;
 }
 
-/** The model call the run waits on with this id: a task state's, or a `parallel` branch's. */
+/** The model call the run waits on with this id: a task state's, a `parallel` branch's or a `foreach` item's. */
 export function callOf(state: RunState, callId: string): PendingCall | null {
   if (state.pendingCall?.callId === callId) {
     return state.pendingCall;
   }
-  return branchOfCall(state.parallel, callId)?.call ?? null;
+  return (
+    branchOfCall(state.parallel, callId)?.call ??
+    state.foreach?.running.find((running) => running.call.callId === callId)?.call ??
+    null
+  );
 }
 
 function startedState(event: RunEvent): RunState {
@@ -180,6 +187,7 @@ function startedState(event: RunEvent): RunState {
     effect: null,
     child: null,
     parallel: null,
+    foreach: null,
     lastSeq: event.seq,
   };
 }
@@ -190,6 +198,7 @@ const ended = {
   effect: null,
   child: null,
   parallel: null,
+  foreach: null,
   accepts: [],
   approvals: [],
 } as const;
@@ -205,6 +214,7 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
         enteredSeq: event.seq,
         accepts: [],
         parallel: null,
+        foreach: null,
       };
     case "agent.started":
       return startCall(state, event);
@@ -244,7 +254,8 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
 
 /**
  * A state's own agent asks for one model call: the task state's, or one
- * branch's of a `parallel` state. Subagents (`parent` set) run inside their
+ * branch's of a `parallel` state, or one item's of a `foreach` state.
+ * Subagents (`parent` set) run inside their
  * delegating agent's call, so they ask for none of their own.
  */
 function startCall(state: RunState, event: Extract<RunEvent, { type: "agent.started" }>): RunState {
@@ -252,10 +263,13 @@ function startCall(state: RunState, event: Extract<RunEvent, { type: "agent.star
     return state;
   }
   const calls = state.calls + 1;
-  const { state: stateId, agent, prompt, branch } = event;
+  const { state: stateId, agent, prompt, branch, item } = event;
   const call: PendingCall = { callId: `call-${calls}`, state: stateId, agent, prompt };
   if (branch !== undefined) {
     return { ...state, calls, parallel: startBranch(state.parallel, branch, call) };
+  }
+  if (item !== undefined) {
+    return { ...state, calls, foreach: startItem(state.foreach, item, call) };
   }
   return { ...state, calls, pendingCall: call };
 }
@@ -269,6 +283,12 @@ function finishCall(
   }
   if (event.branch !== undefined) {
     return { ...state, parallel: endBranch(state.parallel, event.branch, branchEndOf(event)) };
+  }
+  if (event.item !== undefined) {
+    return {
+      ...state,
+      foreach: finishItem(state.foreach, event.state, event.item, event.output),
+    };
   }
   if (state.pendingCall?.state !== event.state) {
     return state;

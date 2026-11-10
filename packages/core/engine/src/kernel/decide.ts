@@ -16,7 +16,7 @@ import { InputRefused } from "./input-refused.ts";
 import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./registry.ts";
 import { brokeOff, type RequestedEffect, unknownOutcomeEvents } from "./requested-effect.ts";
 import { branchOfCall } from "./run-branches.ts";
-import { evolve, type RunState, type WaitingApproval } from "./run-state.ts";
+import { callOf, evolve, type RunState, type WaitingApproval } from "./run-state.ts";
 
 /**
  * A decision being built. Every event is folded into `run` as it is
@@ -173,17 +173,18 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
 }
 
 /**
- * Only the call the run waits on fails it. A failure of any other call, such
- * as one delivered after the run moved on, changes nothing. A connector call
- * that can change things doesn't fail the run: no one knows whether it did
- * its work, so its outcome is unknown and the run waits for a person.
+ * Only a call the run waits on fails it: the task state's, or any item's of
+ * a `foreach` state. A failure of any other call, such as one delivered
+ * after the run moved on, changes nothing. A connector call that can change
+ * things doesn't fail the run: no one knows whether it did its work, so its
+ * outcome is unknown and the run waits for a person.
  */
 function failedEffect(run: RunState, input: EffectFailedInput): Decision {
   const effect = run.effect;
   if (effect !== null && !effect.unknown && effect.callId === input.callId) {
     return effectCutShort(run, effect, input.error);
   }
-  if (run.pendingCall?.callId !== input.callId) {
+  if (callOf(run, input.callId) === null) {
     return { events: [], effects: [] };
   }
   const { error, reason, host, providerText } = input;

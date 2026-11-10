@@ -248,20 +248,20 @@ verifies("engine.state-registry", () => {
     expectTypeOf(states).toMatchTypeOf<StateRegistry>();
     expectTypeOf(states.task).toEqualTypeOf<StateHandler<"task">>();
     expectTypeOf<keyof typeof states>().toEqualTypeOf<
-      "final" | "parallel" | "task" | "wait" | "workflow"
+      "final" | "foreach" | "parallel" | "task" | "wait" | "workflow"
     >();
   });
 
   it("fails a run that enters a state type the engine can't run yet", () => {
-    const foreach: Workflow = {
-      ...reply,
-      states: { ...reply.states, draft: { type: "foreach", on: [] } },
-    };
-    const { log } = play(foreach, [startInput]);
+    // Every type the format knows has a handler now, so this stands for a
+    // definition from a later format, with a type this engine doesn't know.
+    const later = { type: "loop", on: [] } as unknown as WorkflowState;
+    const unknownType: Workflow = { ...reply, states: { ...reply.states, draft: later } };
+    const { log } = play(unknownType, [startInput]);
     expect(log.at(-1)).toMatchObject({
       type: "run.failed",
       state: "draft",
-      error: `The engine can't run "foreach" states yet.`,
+      error: `The engine can't run "loop" states yet.`,
     });
   });
 

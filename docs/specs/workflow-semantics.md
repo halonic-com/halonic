@@ -172,8 +172,9 @@ A state with `type: foreach` runs once for each item of a list.
 - **Concurrency.** At most `concurrency` items run at once (default 1). Items
   start in list order.
 - **Results.** They are stored as a list, in item order, under `output`.
-- **Failure.** The first failure stops new items from starting. The state fails
-  once the items already running have ended.
+- **Failure.** The first item that fails fails the state and the run, with that
+  item's reason. Items still running end on their own, and what they give is
+  not recorded (HAL-1537).
 - **Limits.** A child run for an item must finish without waiting. An item agent
   can't pause for an approval.
 - **Log.** An event from an item carries `item`.

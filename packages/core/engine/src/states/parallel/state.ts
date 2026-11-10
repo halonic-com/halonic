@@ -1,5 +1,6 @@
 import type { RunFailureReason } from "@halonicjs/events";
 import { promptFor, withGets } from "@halonicjs/workflow";
+import { programHarnessOf } from "../../kernel/agent-call.ts";
 import type { DecidedEvent, DecideInput, Effect } from "../../kernel/decide-types.ts";
 import {
   nothing,
@@ -14,7 +15,6 @@ import {
   endBranch,
   type RunningBranch,
 } from "../../kernel/run-branches.ts";
-import { programHarnessOf } from "../task/state.ts";
 import { joinBranches } from "./join.ts";
 
 /**

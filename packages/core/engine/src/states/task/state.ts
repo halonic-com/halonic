@@ -1,11 +1,7 @@
 import type { Agent } from "@halonicjs/format";
 import { promptFor, withGets } from "@halonicjs/workflow";
-import type {
-  DecidedEvent,
-  DecideInput,
-  Effect,
-  ProgramHarness,
-} from "../../kernel/decide-types.ts";
+import { agentCallEffect } from "../../kernel/agent-call.ts";
+import type { DecidedEvent, DecideInput } from "../../kernel/decide-types.ts";
 import {
   nothing,
   type StateContext,
@@ -57,26 +53,10 @@ function startAgent({ run, stateId, state, scope, agents }: StateContext): State
   }
   const prompt = withGets(promptFor(state.input, scope, run.input), state.gets, scope);
   const call = { callId: nextCallId(run), state: stateId, agent, prompt };
-  const harness = programHarnessOf(agents, agent);
-  const effect: Effect =
-    harness === null ? { type: "call-model", ...call } : { type: "run-harness", ...call, harness };
   return {
     events: [{ type: "agent.started", state: stateId, agent, prompt }],
-    effects: [effect],
+    effects: [agentCallEffect(agents, call)],
   };
-}
-
-/**
- * The harness that starts a program for the agent, or `null` when Halonic's
- * own loop runs it: when its file says so, names no harness, or isn't among
- * the run's definitions (runs kept before agents joined them).
- */
-export function programHarnessOf(
-  agents: Readonly<Record<string, Agent>>,
-  agentId: string,
-): ProgramHarness | null {
-  const harness = Object.hasOwn(agents, agentId) ? agents[agentId]?.harness : undefined;
-  return harness === undefined || harness === "halonic" ? null : harness;
 }
 
 /**
