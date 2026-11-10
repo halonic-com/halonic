@@ -118,16 +118,27 @@ verifies("kit.disclosure", () => {
     );
   });
 
+  /** Where the forced-colours CanvasText rule starts in built CSS, or -1. */
+  const forcedColourRule =
+    /@media \(forced-colors: active\)\s*\{\s*\.forced-colors\\:text-\\\[CanvasText\\\]\s*\{\s*color:\s*CanvasText;/;
+
   it("keeps the row in the text colour in forced colours, not the link colour", async () => {
     const { container } = render(<Disclosure summary="Budget">Text</Disclosure>);
     const css = await buildCss(parts(container).summary.className.split(" "));
     // Every rule has the same weight, so the one written last wins: CanvasText after text-fg.
     const textColour = css.indexOf("color: var(--color-fg);");
-    const forcedColour = css.search(
-      /@media \(forced-colors: active\)\s*\{\s*\.forced-colors\\:text-\\\[CanvasText\\\]\s*\{\s*color:\s*CanvasText;/,
-    );
     expect(textColour).toBeGreaterThan(-1);
-    expect(forcedColour).toBeGreaterThan(textColour);
+    expect(css.search(forcedColourRule)).toBeGreaterThan(textColour);
+  });
+
+  it("keeps the chevron in the text colour in forced colours, not its own subtle colour", async () => {
+    const { container } = render(<Disclosure summary="Budget">Text</Disclosure>);
+    const chevron = parts(container).summary.querySelector('[aria-hidden="true"]') as HTMLElement;
+    const css = await buildCss(chevron.className.split(" "));
+    // Its own text-fg-subtle beats the colour it would inherit, so CanvasText must come after it.
+    const subtleColour = css.indexOf("color: var(--color-fg-subtle);");
+    expect(subtleColour).toBeGreaterThan(-1);
+    expect(css.search(forcedColourRule)).toBeGreaterThan(subtleColour);
   });
 
   it("treats an empty label as none", () => {

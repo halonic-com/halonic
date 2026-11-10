@@ -24,8 +24,8 @@ export interface DisclosureProps {
  * The row: at least 48px, padded 0 16px like a List row, with the 20px chevron at the right.
  * `summary-plain` hides the browser's own triangle, in WebKitGTK and Safari too. In forced
  * colours a browser may paint a summary in the link colour; the row isn't a link, so it keeps
- * the text colour, and the chevron inherits it. That is a variant, not part of `summary-plain`:
- * Tailwind sorts variants after `text-fg`, so it wins.
+ * the text colour. That is a variant, not part of `summary-plain`: Tailwind sorts variants after
+ * `text-fg`, so it wins.
  */
 const summaryClasses = [
   "flex min-h-touch cursor-pointer items-center summary-plain gap-3 px-4 text-fg",
@@ -34,9 +34,13 @@ const summaryClasses = [
   "focus-ring-inset",
 ].join(" ");
 
-/** Points down when closed and up when open. It flips at once: no animation in v0.1. */
+/**
+ * Points down when closed and up when open. It flips at once: no animation in v0.1. Its own
+ * `text-fg-subtle` would beat the row's colour, so in forced colours it takes CanvasText itself.
+ */
 const chevronClasses = [
   "inline-grid size-icon-md shrink-0 place-items-center text-fg-subtle *:size-full",
+  "forced-colors:text-[CanvasText]",
   "group-open/disclosure:rotate-180",
 ].join(" ");
 
