@@ -18,6 +18,7 @@ export {
 } from "./inputs.ts";
 export {
   acceptedEvents,
+  answerLabels,
   dueTimer,
   getState,
   type Scope,

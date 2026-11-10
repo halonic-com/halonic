@@ -72,6 +72,7 @@ verifies("events.upgrade-old-run-logs", () => {
       parentRunId: null,
       waitingOn: null,
       accepts: [],
+      answerLabels: {},
       nextTimer: null,
       waitingFor: null,
       lastWaitingAt: "2026-11-05T07:00:05.000Z",

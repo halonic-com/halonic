@@ -43,6 +43,7 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
     parentRunId: first.parent?.runId ?? null,
     waitingOn: null,
     accepts: [],
+    answerLabels: {},
     nextTimer: null,
     waitingFor: null,
     lastWaitingAt: null,
@@ -77,6 +78,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.status = "waiting";
       summary.waitingOn = event.child ?? null;
       summary.accepts = event.events;
+      summary.answerLabels = { ...event.labels };
       summary.nextTimer = earliestTimer(event.timers);
       summary.waitingFor =
         event.title === undefined && event.body === undefined
@@ -113,6 +115,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.status = "running";
       summary.waitingOn = null;
       summary.accepts = [];
+      summary.answerLabels = {};
       summary.nextTimer = null;
       summary.waitingFor = null;
       return;

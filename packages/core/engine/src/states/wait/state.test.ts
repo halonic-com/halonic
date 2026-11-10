@@ -90,6 +90,22 @@ verifies("engine.wait-state", () => {
     }
   });
 
+  it("writes the labels of the answers that have one", () => {
+    const workflow = approvalWorkflow();
+    const decide = workflow.states["decide"];
+    if (decide?.type !== "wait") throw new Error("expected decide to be a wait state");
+    const on = decide.on.map((transition) =>
+      transition.event === "approve" ? { ...transition, label: "Send reply" } : transition,
+    );
+    const labelled: Workflow = {
+      ...workflow,
+      states: { ...workflow.states, decide: { ...decide, on } },
+    };
+    const waiting = play(labelled, [start]).decisions[0]?.events.at(-1);
+    expect(waiting).toMatchObject({ type: "run.waiting", labels: { approve: "Send reply" } });
+    expect(play(workflow, [start]).decisions[0]?.events.at(-1)).not.toHaveProperty("labels");
+  });
+
   it("writes the payload to lastEvent and moves on the event", () => {
     const { log } = play(approvalWorkflow(), [start, send("approve", { payload: { note: "ok" } })]);
     expect(log.slice(3).map(({ runId: _r, seq: _s, at: _a, ...body }) => body)).toEqual([

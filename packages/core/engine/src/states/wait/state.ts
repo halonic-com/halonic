@@ -1,5 +1,6 @@
 import {
   acceptedEvents,
+  answerLabels,
   dueTimer,
   renderDescription,
   type Scope,
@@ -23,7 +24,7 @@ const lastEventKey = "lastEvent";
 
 /**
  * A `wait` state waits for a person. On entry it records `run.waiting` with
- * the events it takes, the due times of its timers and its description
+ * the events it takes and their labels, the due times of its timers and its description
  * filled in against the run, and sets one timer for each timer. An event sent to it, or the first of its timers that is due,
  * moves the run on. Leaving the state leaves its timers to fire for nothing:
  * each timer names the visit it was set on, so a later visit ignores it.
@@ -44,6 +45,7 @@ function startWaiting({ run, stateId, state, workflow, scope }: StateContext): S
     type: "run.waiting",
     state: stateId,
     events: acceptedEvents(workflow, stateId),
+    ...labelled(answerLabels(workflow, stateId)),
     ...(timers.length === 0
       ? {}
       : { timers: timers.map(({ after, at }) => ({ after, at: at.toISOString() })) }),
@@ -167,4 +169,9 @@ function describedAs(
   if (description === undefined) return {};
   const { title, body } = renderDescription(description, scope);
   return { ...(title === "" ? {} : { title }), ...(body === "" ? {} : { body }) };
+}
+
+/** The answers' labels, left out when no answer has one, as in older logs. */
+function labelled(labels: Record<string, string>): { labels?: Record<string, string> } {
+  return Object.keys(labels).length === 0 ? {} : { labels };
 }

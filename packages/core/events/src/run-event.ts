@@ -277,6 +277,8 @@ export type RunEventBody =
    * `title` and `body`: the wait step's description, filled in against the
    * run when it started waiting (requirement `events.waiting-description`).
    * The filled-in values can be model output: show them as plain text.
+   * `labels`: event → the label the step's author gave that answer, for the
+   * events that have one (requirement `events.answer-labels`).
    */
   | {
       type: "run.waiting";
@@ -286,6 +288,7 @@ export type RunEventBody =
       timers?: { after: string; at: string }[];
       title?: string;
       body?: string;
+      labels?: Record<string, string>;
     }
   /** A timer transition (`after`) of a wait state fired. */
   | { type: "timer.fired"; state: string; after: string }

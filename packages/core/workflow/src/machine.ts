@@ -81,6 +81,27 @@ export function acceptedEvents(workflow: Workflow, stateId: string): string[] {
 }
 
 /**
+ * The labels a state's author gave its answers: event → label, the first
+ * non-empty label of the event's transitions in file order. Events without
+ * one are left out, and so are timer transitions. A screen shows a label on the event's button in
+ * place of the event name, and `run.waiting` carries them.
+ *
+ * @example
+ * // on: [{ to: sent, event: approve, label: "Send reply" }, { to: end, event: reject }]
+ * answerLabels(workflow, "review"); // { approve: "Send reply" }
+ */
+export function answerLabels(workflow: Workflow, stateId: string): Record<string, string> {
+  // A Map, then fromEntries, so an event named `__proto__` is a key like any other.
+  const labels = new Map<string, string>();
+  for (const transition of getState(workflow, stateId).on) {
+    const label = transition.label?.trim();
+    if (isTimer(transition) || !label || labels.has(transition.event)) continue;
+    labels.set(transition.event, label);
+  }
+  return Object.fromEntries(labels);
+}
+
+/**
  * The timers a state starts when it is entered at `enteredAt`: one for each
  * transition with `after`, due that long after entering, in file order.
  */

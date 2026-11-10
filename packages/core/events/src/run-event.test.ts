@@ -115,6 +115,7 @@ verifies("events.run-log-contract", () => {
       timers?: { after: string; at: string }[];
       title?: string;
       body?: string;
+      labels?: Record<string, string>;
     }>();
     expectTypeOf<EventOf<"timer.fired">>().toEqualTypeOf<{
       type: "timer.fired";
@@ -486,5 +487,13 @@ verifies("events.waiting-description", () => {
   typeTest("lets run.waiting carry the filled-in title and body, both optional", () => {
     expectTypeOf<EventOf<"run.waiting">["title"]>().toEqualTypeOf<string | undefined>();
     expectTypeOf<EventOf<"run.waiting">["body"]>().toEqualTypeOf<string | undefined>();
+  });
+});
+
+verifies("events.answer-labels", () => {
+  typeTest("lets run.waiting carry its answers' labels, optional", () => {
+    expectTypeOf<EventOf<"run.waiting">["labels"]>().toEqualTypeOf<
+      Record<string, string> | undefined
+    >();
   });
 });

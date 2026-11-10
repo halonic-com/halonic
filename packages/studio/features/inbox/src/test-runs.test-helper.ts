@@ -24,6 +24,7 @@ export function waitingRun(id: string, fields: Partial<RunSummary> = {}): RunSum
     parentRunId: null,
     waitingOn: null,
     accepts: ["approve", "reject"],
+    answerLabels: {},
     nextTimer: null,
     waitingFor: null,
     lastWaitingAt: "2026-11-10T10:40:00.000Z",

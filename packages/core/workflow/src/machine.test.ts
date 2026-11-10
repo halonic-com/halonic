@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
   acceptedEvents,
+  answerLabels,
   dueTimer,
   getState,
   hasState,
@@ -80,6 +81,47 @@ verifies("workflow.accepted-events", () => {
     });
     expect(acceptedEvents(workflow, "review")).toEqual(["approve", "reject"]);
     expect(acceptedEvents(triage, "done")).toEqual([]);
+  });
+});
+
+verifies("workflow.answer-labels", () => {
+  it("gives each event the first label of its transitions, without timers", () => {
+    const workflow = workflowOf({
+      id: "w",
+      name: "W",
+      initial: "review",
+      states: {
+        review: {
+          type: "wait",
+          on: [
+            { to: "end", event: "approve", when: { exists: "context.ok" } },
+            { to: "end", event: "approve", label: "Send reply" },
+            { to: "end", event: "approve", label: "Send anyway" },
+            { to: "end", event: "reject" },
+            { to: "end", event: "hold", label: "  " },
+            { to: "end", after: "2d", label: "Too late" },
+          ],
+        },
+        end: { type: "final" },
+      },
+    });
+    expect(answerLabels(workflow, "review")).toEqual({ approve: "Send reply" });
+    expect(answerLabels(triage, "done")).toEqual({});
+  });
+
+  it("keeps an event named __proto__ as a key", () => {
+    const workflow = workflowOf({
+      id: "w",
+      name: "W",
+      initial: "review",
+      states: {
+        review: { type: "wait", on: [{ to: "end", event: "__proto__", label: "Odd" }] },
+        end: { type: "final" },
+      },
+    });
+    const labels = answerLabels(workflow, "review");
+    expect(Object.hasOwn(labels, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(labels)).toBe(Object.prototype);
   });
 });
 

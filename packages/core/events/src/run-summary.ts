@@ -61,6 +61,12 @@ export interface RunSummary {
   waitingOn: string | null;
   /** Events the run accepts while waiting. */
   accepts: string[];
+  /**
+   * While waiting: event → the label the wait step's author gave that answer,
+   * for the events in `accepts` that have one. Show a label in place of its
+   * event name; `{}` when none has one, and in older logs.
+   */
+  answerLabels: Record<string, string>;
   /** While waiting: when the next timer is due (ISO), if the state has timers. */
   nextTimer: string | null;
   /**

@@ -171,6 +171,7 @@ function testSummary(
     parentRunId: null,
     waitingOn: null,
     accepts: [],
+    answerLabels: {},
     nextTimer: null,
     waitingFor: null,
     lastWaitingAt: null,
