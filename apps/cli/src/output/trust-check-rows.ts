@@ -1,11 +1,17 @@
 // The rows of the trust check (cli-output 3.5, revision 40): a program with
-// its command, secrets and ! line, an address, an agent with its sites and
-// folder, and a changed agent's one row per field. `trust-check.ts` puts
+// its command, secrets and ! line, an address, a local integration with the
+// address each of its settings holds, an agent with its sites and folder,
+// and a changed agent's one row per field. `trust-check.ts` puts
 // them in sections.
 
 import { programName } from "@halonicjs/app";
 import { defaultWorkingFolder } from "@halonicjs/format";
-import type { AgentTrustContent, ChangedAgent, ConnectorTrustContent } from "@halonicjs/workspace";
+import type {
+  AgentTrustContent,
+  ChangedAgent,
+  ConnectorTrustContent,
+  IntegrationTrustContent,
+} from "@halonicjs/workspace";
 import { columnGap } from "../messages/columns.ts";
 import type { Message } from "../messages/define.ts";
 import { dim, markPart, type Phrase, phrase, visibleLength } from "../messages/phrase.ts";
@@ -44,6 +50,28 @@ export function addressRow(connector: ConnectorTrustContent): Phrase {
   const address =
     connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
   return row(connector.id, withSecrets(phrase`${address}`, connector));
+}
+
+/**
+ * "  my-crm        CRM_URL   https://crm.example.com", then one line under it
+ * per further setting, the names padded to the longest (team, HAL-3498).
+ */
+export function integrationRows(integration: IntegrationTrustContent): Phrase[] {
+  const settings = Object.entries(integration.addresses);
+  const width = Math.max(0, ...settings.map(([name]) => name.length));
+  return settings.map(([name, address], index) => {
+    const detail = phrase`${name.padEnd(width + columnGap)}${settingAddress(address)}`;
+    return index === 0 ? row(integration.id, detail) : phrase`${underRow}${detail}`;
+  });
+}
+
+/** The address a setting holds, "not set", or why it can't be trusted. */
+function settingAddress(address: string | null): Phrase {
+  if (address === null) {
+    return trustMessages.settingNotSet().phrase;
+  }
+  const refused = /^‹refused: (.+)›$/u.exec(address)?.[1];
+  return refused === undefined ? phrase`${address}` : trustMessages.settingRefused(refused).phrase;
 }
 
 /** The detail, then "· gets the secret GMAIL_TOKEN" when the connector gets any. */

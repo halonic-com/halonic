@@ -1,6 +1,11 @@
 import type { TrustCheck } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
-import type { AgentTrustContent, ConnectorTrustContent, TrustChanges } from "@halonicjs/workspace";
+import type {
+  AgentTrustContent,
+  ConnectorTrustContent,
+  IntegrationTrustContent,
+  TrustChanges,
+} from "@halonicjs/workspace";
 import { expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
 import { shownDate, trustCheckLines } from "./trust-check.ts";
@@ -33,6 +38,16 @@ const coder: AgentTrustContent = {
 };
 const current = { fingerprint, unpinned: ["mail-mcp", "notes-mcp"] };
 const content = { connectors: [mail, notes], agents: [coder] };
+
+const crm: IntegrationTrustContent = {
+  id: "my-crm",
+  addresses: {
+    CRM_URL: "https://crm.example.com/",
+    REPORTS_URL: null,
+    WEBHOOK: "‹refused: the URL has user info›",
+  },
+};
+const noChanges = { added: [], changed: [], removed: [], unchanged: 0 };
 
 const lines = (check: TrustCheck) => trustCheckLines(check, facts).map(plainText);
 
@@ -128,6 +143,7 @@ verifies("cli.trust-check", () => {
         removed: [],
         unchanged: 0,
       },
+      integrations: noChanges,
       onlyRemoves: false,
     };
     expect(lines({ status: "changed", content, ...current, changes, trustedAt })).toEqual([
@@ -151,9 +167,74 @@ verifies("cli.trust-check", () => {
     ]);
   });
 
+  it("lists a local integration's setting addresses under Addresses, one line each", () => {
+    const check: TrustCheck = {
+      status: "new",
+      content: { connectors: [], integrations: [crm] },
+      fingerprint,
+      unpinned: [],
+    };
+    expect(lines(check).slice(2)).toEqual([
+      "Will list 3 addresses.",
+      "",
+      "Addresses",
+      "  my-crm        CRM_URL       https://crm.example.com/",
+      "                REPORTS_URL   not set",
+      "                WEBHOOK       can't be used: the URL has user info",
+      "",
+      "Fingerprint",
+      `  ${fingerprint}`,
+    ]);
+  });
+
+  it("shows a changed setting address as one changed address", () => {
+    const before = { id: "my-crm", addresses: { CRM_URL: "https://old.example.com/" } };
+    const after = { id: "my-crm", addresses: { CRM_URL: "https://crm.example.com/" } };
+    const changes: TrustChanges = {
+      ...noChanges,
+      agents: noChanges,
+      integrations: {
+        ...noChanges,
+        changed: [{ id: "my-crm", before, after, fields: ["addresses"] }],
+      },
+      onlyRemoves: false,
+    };
+    const check: TrustCheck = {
+      status: "changed",
+      content: { connectors: [], integrations: [after] },
+      ...current,
+      changes,
+      trustedAt,
+    };
+    expect(lines(check).slice(0, 4)).toEqual([
+      "What changed in Acme since you trusted it on 3 Nov",
+      "1 changed address since you trusted this on 3 Nov.",
+      "",
+      "Addresses",
+    ]);
+    expect(lines(check)[4]).toBe("  my-crm        CRM_URL   https://crm.example.com/   Changed");
+  });
+
+  it("leaves out the change summary when there is nothing to name", () => {
+    const changes: TrustChanges = {
+      ...noChanges,
+      removed: [notes],
+      agents: noChanges,
+      integrations: noChanges,
+      onlyRemoves: true,
+    };
+    const check: TrustCheck = { status: "changed", content, ...current, changes, trustedAt };
+    expect(lines(check)).toEqual([
+      "What changed in Acme since you trusted it on 3 Nov",
+      "",
+      "Fingerprint",
+      `  ${fingerprint}`,
+    ]);
+  });
+
   it("says a trusted workspace is already trusted, with the date, and nothing else", () => {
     const grant = { location: "acme", fingerprint };
-    const shrunk = { connectors: [], agents: [] };
+    const shrunk = { connectors: [], agents: [], integrations: [] };
     expect(lines({ status: "trusted", content, ...current, grant, shrunk, trustedAt })).toEqual([
       "✓ Acme is already trusted on this computer. Nothing changed since 3 Nov.",
     ]);

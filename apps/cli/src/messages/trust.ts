@@ -17,10 +17,14 @@ export interface TrustChangeCounts {
   readonly programs: RowChanges;
   /** Counted per agent, not per field (revision 40). */
   readonly agents: RowChanges;
+  /** HTTP connectors and local integrations, one each however many settings it reads. */
   readonly addresses: RowChanges;
 }
 
-/** What the first-time summary counts. Sites are counted once each across all agents. */
+/**
+ * What the first-time summary counts. Sites are counted once each across all
+ * agents; addresses count every setting address of a local integration.
+ */
 export interface TrustCounts {
   readonly programs: number;
   readonly agents: number;
@@ -110,6 +114,13 @@ export const trustMessages = defineMessages("trust", {
    * after Agents, as Studio's Addresses section (microcopy 4.3; team, HAL-3468).
    */
   addressesHeading: () => phrase`Addresses`,
+  /** A local integration's setting with no address in it yet. */
+  settingNotSet: () => phrase`not set`,
+  /**
+   * A local integration's setting whose URL can't be trusted, such as one
+   * with a password in it: "can't be used: the URL has user info".
+   */
+  settingRefused: (reason: string) => phrase`can't be used: ${reason}`,
   /** Under a program whose version isn't pinned, with a ! (decided from the command alone). */
   notPinned: (registry: PackageRegistry) =>
     phrase`Can download new code from ${registry} when it starts: version not pinned.`,
