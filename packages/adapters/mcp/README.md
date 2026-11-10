@@ -12,7 +12,8 @@ Our own MCP client for programs on the person's computer.
   app's own environment (its `PATH`, on macOS the login shell's, then the usual install folders)
   and refuses a relative path. The login shell runs without `-i` and for 5 seconds at most, so a
   runner that only `.zshrc` puts on the `PATH` (nvm, fnm) may not be found; the refusal then asks for
-  the runner's full path. It isn't wired into the launcher yet.
+  the runner's full path. The stdio connector doesn't call it yet: it starts the configured
+  command as it is, so `findRunner` is not exported either.
 
 ## How a pinned package starts
 
@@ -21,11 +22,11 @@ any failed step refuses the start before a secret is read or a folder is created
 
 1. `checkPackageRunnerLaunch` from `@halonicjs/app` checks the command and the connector's `env`,
    counting the variables `secretEnv` sets. The refusal lists live there, not here.
-2. The pin's `registryUrl`, and only it, is asked which package and version it lists (npm's
+2. Once the workspace is trusted, the pin's `registryUrl`, and only it, is asked which package and version it lists (npm's
    package document, PyPI's JSON API), with a 15-second limit. `checkResolvedVersion` refuses any
    other package or version.
 3. The runner starts with the pin's version added to its arguments (`pinnedRunnerArgs`), in a new
-   folder in the system's temporary folder. The folder holds only an empty `package.json`, so npm
+   folder in the system's temporary folder. The folder holds only a `package.json` with `{}` in it, so npm
    doesn't look for a project above it (on Linux, `/tmp` is writable by anyone), and an empty npm
    config. `HOME`, the config, cache and temporary folder variables point at it, so no `.npmrc`,
    `uv.toml` or cache of the person's or the workspace's is read, and each launch downloads the
@@ -34,9 +35,13 @@ any failed step refuses the start before a secret is read or a folder is created
    `registryUrl`. npm's user and global config point at the folder's empty config, uv and pip read
    no config file, and uv downloads no Python. An inherited proxy, certificate or preload stays:
    that's the person's machine.
-5. The folder is deleted when the connector closes.
+5. The folder is deleted when the connector closes, and also when the start fails, so the next call
+   plans a new launch with a new folder. A connector closed while its registry lookup runs creates
+   no folder.
 
-A package runner without a pin starts as configured, like any program the person trusted.
+A package runner without a pin starts as configured, like any program the person trusted, in the
+workspace folder (or its `cwd`), with the inherited environment, the connector's `env` and its
+secrets. Both kinds start only once the workspace is trusted.
 
 ## How a program is started and stopped
 
@@ -54,7 +59,7 @@ A package runner without a pin starts as configured, like any program the person
   `%ProgramFiles%`, npm's under `%APPDATA%`, Volta's `Volta\bin` under `%LOCALAPPDATA%`, then
   Scoop's `scoop\shims`, `.local\bin` and `.cargo\bin` under the home folder. Variable names are
   read in any letter case. Scoop's shims are `.exe` files, so they start directly. The launcher
-  that uses this is still to come (HAL-2544, #1279 and #1281).
+  that uses this is still to come.
 
 - **Layer:** adapters
 - **Owner:** tomas
@@ -90,10 +95,15 @@ tool of a `stdio` connector as `write` unless the workspace sets a lower risk.
 ## Example
 
 ```ts
-import { McpStdioConnectorFactory, nodeProgramStarter } from "@halonicjs/adapter-mcp";
+import {
+  McpStdioConnectorFactory,
+  nodeLaunchFolders,
+  nodeProgramStarter,
+} from "@halonicjs/adapter-mcp";
 
 const factory = new McpStdioConnectorFactory({
   starter: nodeProgramStarter,
+  folders: nodeLaunchFolders,
   inheritedEnv: process.env,
   clientInfo: { name: "halonic", version: "0.1.0" },
 });
@@ -103,6 +113,7 @@ const answer = await notes.callTool("search_notes", { query: "invoices" });
 await notes.close();
 ```
 
-`inheritedEnv` is every variable a started program gets besides its own `env` and secrets. The
+`folders` makes and deletes the launch folders of pinned programs (`nodeLaunchFolders` puts them in
+the system's temporary folder). `inheritedEnv` is every variable a started program gets besides its own `env` and secrets. The
 example passes the app's whole `process.env`, which suits a program the person trusted directly.
 The connector doesn't trim it: the composition root decides what goes in.

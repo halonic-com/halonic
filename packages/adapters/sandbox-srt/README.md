@@ -18,8 +18,12 @@ planted at a gitlink, reporting each as a refused write.
 
 On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
 (the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
-program, argument or variable with a double quote, a percent sign or a line break is refused rather
-than quoted wrongly. The `sandbox-windows` CI job runs the fence through a session
+program, argument or variable with a double quote, a percent sign, a line break or a NUL is refused
+rather than quoted wrongly. The launcher itself, which runs outside the fence, gets only the
+system and user-folder variables `cmd.exe` and srt need (`SystemRoot`, `ComSpec`, `PATHEXT`,
+`USERPROFILE`, `APPDATA` and the like, read in any letter case), the safe host `PATH`, and the
+session's temp folder as `TEMP`, `TMP` and `TMPDIR`. The program gets the profile's variables and
+the sandbox account's own `TEMP`. The `sandbox-windows` CI job runs the fence through a session
 (`pnpm test:fence:windows`).
 
 ## Exports
