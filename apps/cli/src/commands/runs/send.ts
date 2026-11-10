@@ -47,6 +47,7 @@ import type { SandboxGateRun } from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngine } from "../../workspace-engine.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
+import { workspaceNameOf } from "../../workspace-trust.ts";
 import { liveLines } from "../run/live-lines.ts";
 import { runProgress } from "../run/result.ts";
 import type { RunSetup } from "../run/run.ts";
@@ -83,21 +84,22 @@ export async function sendToRun(
   const workspace = await openWorkspaceDir(input, context);
   const runs = await openWorkspaceRuns(workspace.root, setup.profile);
   const dir = givenDir(input, workspace);
+  const loaded = await loadWorkspace(workspace.store);
+  const named = { event, typed, name: printable(workspaceNameOf(loaded, workspace)), dir };
   const lookup = await new RunHistory(runs).showRun(typed);
   switch (lookup.found) {
     case "none":
-      throw noRunError(event, typed, workspace, dir);
+      throw noRunError(named);
     case "several":
       throw new OwnLineError(
         "invalid_input",
-        withoutRun(event, runsMessages.severalRuns(lookup.shortId, workspace.name)),
+        withoutRun(event, runsMessages.severalRuns(lookup.shortId, named.name)),
         runsMessages.severalRunsFix(dir),
       );
     case "one":
       break;
   }
   const { summary } = lookup.run;
-  const loaded = await loadWorkspace(workspace.store);
   const workflow = workflowOf(loaded, summary);
   // One clock for the lines printed while the run goes and the result that repeats them.
   const facts = {
@@ -120,7 +122,7 @@ export async function sendToRun(
       run = await new RunEvents(engine, runs).sendEvent(summary.id, event);
     } catch (error) {
       if (!(error instanceof RunEventRefused)) throw error;
-      const refused = { event, typed, workspace, dir, workflow, clock: facts.clock };
+      const refused = { ...named, workflow, clock: facts.clock };
       throw refusedError(error.refusal, refused);
     }
     const sent = phrase`${markPart("done")} ${runsMessages.sent(event, shortRunId(run.id), workflow?.name ?? run.workflowId).phrase}`;
@@ -204,7 +206,7 @@ function sendArguments(input: CommandInput): SendArguments {
 }
 
 /**
- * "Couldn't send approve: there's no run 01JD8X in acme.": with no one run
+ * "Couldn't send approve: there's no run 01JD8X in Acme.": with no one run
  * to name, line 1 leaves the run out of the command's action.
  */
 function withoutRun(event: string, reason: Message): Message {
@@ -228,13 +230,19 @@ function sandboxRunOf(detail: RunDetail): SandboxGateRun {
   return harness === undefined ? { hubId, workflowId } : { hubId, workflowId, harness };
 }
 
-/** What a refused send's lines name besides the refusal. */
-interface RefusedSend {
+/** What a send's errors name, whatever the run turns out to be. */
+interface NamedSend {
   readonly event: string;
   /** The run id as the user typed it, as line 1 and the fixes repeat it. */
   readonly typed: string;
-  readonly workspace: OpenWorkspaceDir;
+  /** The workspace's name, as {@link workspaceNameOf} gives it: "Acme". */
+  readonly name: string;
+  /** `--dir` as the user typed it, for the suggested commands. */
   readonly dir: string | undefined;
+}
+
+/** What a refused send's lines name besides the refusal. */
+interface RefusedSend extends NamedSend {
   readonly workflow: WorkflowDefinition | undefined;
   readonly clock: RunClock;
 }
@@ -247,7 +255,7 @@ function refusedError(refusal: RunEventRefusal, send: RefusedSend): Error {
   switch (refusal.reason) {
     // The run was found, so it went away between the lookup and the send.
     case "no-run":
-      return noRunError(send.event, send.typed, send.workspace, send.dir);
+      return noRunError(send);
     case "not-waiting":
       return new RefusedSendError(
         "conflict",
@@ -268,17 +276,12 @@ function refusedError(refusal: RunEventRefusal, send: RefusedSend): Error {
   }
 }
 
-/** "✕ Couldn't send approve: there's no run 01JD8X in acme.", exit 4. */
-function noRunError(
-  event: string,
-  typed: string,
-  workspace: OpenWorkspaceDir,
-  dir: string | undefined,
-): OwnLineError {
+/** "✕ Couldn't send approve: there's no run 01JD8X in Acme.", exit 4. */
+function noRunError(send: NamedSend): OwnLineError {
   return new OwnLineError(
     "not_found",
-    withoutRun(event, runsMessages.noRun(typed, workspace.name)),
-    runsMessages.noRunFix(dir),
+    withoutRun(send.event, runsMessages.noRun(send.typed, send.name)),
+    runsMessages.noRunFix(send.dir),
   );
 }
 

@@ -8,7 +8,7 @@ import type { Clock, TrustStore } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
 import { halonicVersion } from "./version.ts";
-import type { OpenWorkspaceDir } from "./workspace-dir.ts";
+import type { OpenWorkspaceDir, WorkspaceDir } from "./workspace-dir.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 
 /** What {@link trustSubjectOf} reads. */
@@ -51,6 +51,18 @@ export function trustContentInputOf(
   };
 }
 
+/**
+ * The workspace's name as a sentence names it: from `workspace.yaml`, or
+ * the folder as typed when it has none. The trust line and `runs send`'s
+ * id errors both say it, so one workspace reads one way (HAL-4533).
+ *
+ * @example
+ * workspaceNameOf(loaded, { shown: "./acme", … }); // "Acme"
+ */
+export function workspaceNameOf(workspace: LoadedWorkspace, dir: WorkspaceDir): string {
+  return filesOf(workspace, "workspace")[0]?.value.name ?? dir.shown;
+}
+
 /** A workspace as a trust check is about it. */
 export interface WorkspaceTrust {
   /** The workspace's name from `workspace.yaml`, or the folder as typed when it has none. */
@@ -71,7 +83,7 @@ export async function readWorkspaceTrust(
   search: CommandSearch,
 ): Promise<WorkspaceTrust> {
   const workspace = await loadWorkspace(dir.store);
-  const name = filesOf(workspace, "workspace")[0]?.value.name ?? dir.shown;
+  const name = workspaceNameOf(workspace, dir);
   const connectors = filesOf(workspace, "connector").map((file) => file.value);
   const subject = trustSubjectOf({
     workspace,

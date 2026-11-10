@@ -1,5 +1,6 @@
 import { nearMatch } from "../near-match.ts";
 import type { Mark } from "../output/paint.ts";
+import { counted } from "./counts.ts";
 import { type CalendarDay, dayInWords } from "./dates.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
@@ -258,13 +259,17 @@ export function happenedInWords(at: StartedAt): string {
 
 /**
  * When a run ended, as `runsMessages.notWaiting` ends with it:
- * whole minutes within the hour ("2 min ago", never "0 min ago"), else as
- * {@link happenedInWords} writes it ("at 10:31", "yesterday at 16:40").
- * cli-output 3.4 shows only "2 min ago"; the rest is team wording on
- * HAL-2742, as HAL-2282 allows.
+ * whole minutes within the hour, written out as the run texts write units
+ * ("1 minute ago", "2 minutes ago", never "0 minutes ago"), else as
+ * {@link happenedInWords} writes it, as `runs show` does ("at 10:31",
+ * "yesterday at 16:40"). cli-output 3.4 shows "2 min ago"; the unit written
+ * out is Sofia's word check on HAL-4533, the rest team wording on HAL-2742,
+ * as HAL-2282 allows.
  */
 export function endedInWords(ended: EndedAt): string {
-  return ended.day === "withinTheHour" ? `${ended.minutes} min ago` : happenedInWords(ended);
+  return ended.day === "withinTheHour"
+    ? `${counted(ended.minutes, "minute", "minutes")} ago`
+    : happenedInWords(ended);
 }
 
 function dueInWords(due: DueAt): string {

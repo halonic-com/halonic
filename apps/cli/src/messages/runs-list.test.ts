@@ -2,7 +2,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { dim, plainText } from "./phrase.ts";
-import { runsListMessages as list, type StatusFilter, statusYouMeant } from "./runs-list.ts";
+import {
+  endedInWords,
+  runsListMessages as list,
+  type StatusFilter,
+  statusYouMeant,
+} from "./runs-list.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -83,6 +88,17 @@ verifies("cli.messages", () => {
       "No failed runs of support-reply in acme.",
     );
     expect(list.seeEveryRun().phrase).toEqual([dim("See every run with halonic runs.")]);
+  });
+});
+
+describe("when a run ended, in words", () => {
+  it("writes the minutes out within the hour, else the time as runs show does", () => {
+    expect([
+      endedInWords({ day: "withinTheHour", minutes: 1 }),
+      endedInWords({ day: "withinTheHour", minutes: 2 }),
+      endedInWords({ day: "today", time: "10:31" }),
+      endedInWords({ day: "yesterday", time: "16:40" }),
+    ]).toEqual(["1 minute ago", "2 minutes ago", "at 10:31", "yesterday at 16:40"]);
   });
 });
 

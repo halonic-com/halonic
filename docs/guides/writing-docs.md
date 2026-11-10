@@ -97,5 +97,6 @@ the same pull request.
 | **routine**     | starts a workflow or an agent by itself: on a schedule, at an interval or on a trigger                                     | job, cron                                         |
 | **run**         | one execution of a workflow, recorded step by step                                                                         | execution, session                                |
 | **approval**    | a step where a run waits until a person agrees                                                                             | confirmation                                      |
+| **event**       | what you send to a waiting run to answer it, such as `approve` or `reject`                                                 | answer (as a noun), command                       |
 | **feature**     | one part of the Studio, such as Agents or Routines, built as its own package (code term; users see the screens)            | module, plugin                                    |
 | **requirement** | one recorded rule of behaviour with a stable ID, proven by tests                                                           | spec, story                                       |

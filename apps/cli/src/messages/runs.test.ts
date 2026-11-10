@@ -13,12 +13,12 @@ verifies("cli.messages", () => {
     expect([
       words(runsMessages.sent("approve", "01JD8Q", "Support reply")),
       words(runsMessages.sendAction("approve", "01JD8Q")),
-      words(runsMessages.notWaiting({ status: "finished", ago: "2 min ago" })),
+      words(runsMessages.notWaiting({ status: "finished", ago: "2 minutes ago" })),
       words(runsMessages.notWaitingFix("01JD8Q")),
     ]).toEqual([
       "Sent approve to run 01JD8Q. Support reply goes on.",
       "send approve to run 01JD8Q",
-      "it isn't waiting for you. It finished 2 min ago.",
+      "it isn't waiting for you. It finished 2 minutes ago.",
       "See it with halonic runs show 01JD8Q.",
     ]);
   });
@@ -111,15 +111,15 @@ describe("runs's sentences", () => {
   it("says why a run that isn't waiting can't take the event, by its status", () => {
     expect(
       [
-        { status: "finished", ago: "2 min ago" },
-        { status: "failed", ago: "2 min ago" },
-        { status: "stopped", ago: "2 min ago" },
+        { status: "finished", ago: "2 minutes ago" },
+        { status: "failed", ago: "2 minutes ago" },
+        { status: "stopped", ago: "2 minutes ago" },
         { status: "running", step: "Draft a reply" },
       ].map((why) => words(runsMessages.notWaiting(why as NotWaiting))),
     ).toEqual([
-      "it isn't waiting for you. It finished 2 min ago.",
-      "it isn't waiting for you. It failed 2 min ago.",
-      "it isn't waiting for you. It stopped 2 min ago.",
+      "it isn't waiting for you. It finished 2 minutes ago.",
+      "it isn't waiting for you. It failed 2 minutes ago.",
+      "it isn't waiting for you. It stopped 2 minutes ago.",
       "it isn't waiting for you. It's running, in the step Draft a reply.",
     ]);
   });

@@ -86,7 +86,7 @@ verifies("cli.commands.runs.send", () => {
       const recent = await sendIn(acme, ["0f0e0d", "approve"]);
       expect(recent.code).toBe(exitCode.conflict);
       expect(recent.io.stderr).toEqual([
-        "✕ Couldn't send approve to run 0f0e0d: it isn't waiting for you. It finished 2 min ago.",
+        "✕ Couldn't send approve to run 0f0e0d: it isn't waiting for you. It finished 2 minutes ago.",
         "  See it with halonic runs show 0f0e0d.",
       ]);
 
@@ -116,7 +116,7 @@ verifies("cli.commands.runs.send", () => {
 
       expect(code).toBe(exitCode.notFound);
       expect(io.stderr).toEqual([
-        "✕ Couldn't send approve: there's no run 01jd8x in acme.",
+        "✕ Couldn't send approve: there's no run 01jd8x in Acme.",
         `  See the runs waiting for you with halonic runs --dir .${sep}acme --status waiting.`,
       ]);
     });
@@ -128,7 +128,7 @@ verifies("cli.commands.runs.send", () => {
 
       expect(code).toBe(exitCode.usage);
       expect(io.stderr).toEqual([
-        "✕ Couldn't send approve: two runs in acme end in 09d9a0.",
+        "✕ Couldn't send approve: two runs in Acme end in 09d9a0.",
         "  Use the full id, as halonic runs --json shows it.",
       ]);
     });

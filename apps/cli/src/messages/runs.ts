@@ -15,7 +15,7 @@ export type CancelledAt =
 
 /**
  * Why a run can't take an event, by its status (cli-output 3.4, revision 31):
- * how long ago it ended, written as "2 min ago", or the step it's running.
+ * how long ago it ended, written as "2 minutes ago", or the step it's running.
  */
 export type NotWaiting =
   | { readonly status: "finished" | "failed" | "stopped"; readonly ago: string }
