@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1527, Liam's review of halonic#787; HAL-189 (harness runs)
+- Source: HAL-1527, Liam's review of halonic#787; HAL-189 (harness runs); HAL-1535 (child runs are carried out)
 
-When a step of the local executor asks for an effect it can't carry out yet (a tool call, a harness run, a child run or telling the parent), the executor shall end the run with `run.failed`, `reason: "error"` and an error that names the effect, and shall set no timer for that step's effects.
+When a step of the local executor asks for an effect it can't carry out yet (a tool call or a harness run), the executor shall end the run with `run.failed`, `reason: "error"` and an error that names the effect, and shall set no timer for that step's effects.
 
 ## Examples
 

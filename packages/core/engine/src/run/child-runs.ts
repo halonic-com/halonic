@@ -1,0 +1,84 @@
+// What the local executor reads to carry out a `workflow` state's effects:
+// the start of a child run, how a child is now for its parent, and which run
+// an event sent to a parent belongs to.
+
+import type { BlobStore, RunStore } from "@halonicjs/ports";
+import type { ChildRunNow, StartChildEffect, StartInput } from "../kernel/decide-types.ts";
+import { keepDefinitions, readDefinitions } from "../kernel/kept-definitions.ts";
+import type { RunState } from "../kernel/run-state.ts";
+import { readRun } from "../kernel/step.ts";
+import { maxChildDepth } from "../states/workflow/state.ts";
+
+/**
+ * The start of the child run a parent's `workflow` state asked for: in the
+ * parent's hub and of its kind, with the parent's kept definitions and the
+ * child's workflow as the one it runs. The child keeps those definitions
+ * as its own, so it never reads the workspace's files either.
+ *
+ * @param parent - the parent run as its step left it
+ * @throws when the parent's definitions are missing or don't have the workflow
+ */
+export async function childStart(
+  blobs: Pick<BlobStore, "get" | "put">,
+  parent: RunState,
+  effect: StartChildEffect,
+  at: string,
+): Promise<StartInput> {
+  const definitions = await readDefinitions(blobs, parent.definitionsVersion);
+  const workflows = definitions?.workflows ?? {};
+  const workflow = Object.hasOwn(workflows, effect.workflowId)
+    ? workflows[effect.workflowId]
+    : undefined;
+  if (definitions === null || workflow === undefined) {
+    throw new Error(
+      `The definitions run "${parent.runId}" started with have no workflow "${effect.workflowId}".`,
+    );
+  }
+  const definitionsVersion = await keepDefinitions(blobs, { ...definitions, workflow });
+  return {
+    type: "start",
+    at,
+    runId: effect.childRunId,
+    hubId: parent.hubId,
+    workflowId: effect.workflowId,
+    input: effect.input,
+    kind: parent.kind,
+    definitionsVersion,
+    parent: { runId: parent.runId, state: effect.state, depth: effect.depth },
+  };
+}
+
+/**
+ * How a child run is now, as its parent hears it, read from the store when
+ * the telling is carried out, so a late or repeated telling is up to date.
+ *
+ * @returns `null` while the child runs, or when it has no log
+ */
+export async function childNow(
+  runs: Pick<RunStore, "events" | "snapshot" | "get">,
+  childRunId: string,
+): Promise<ChildRunNow | null> {
+  const child = await readRun(runs, childRunId);
+  if (child === null || child.status === "running") return null;
+  if (child.status === "waiting") return { status: "waiting", events: child.accepts };
+  if (child.status === "completed") return { status: "completed", context: child.context };
+  const error = (await runs.get(childRunId))?.error ?? `Run "${childRunId}" failed.`;
+  return { status: "failed", error };
+}
+
+/**
+ * The run an event sent to `runId` belongs to: the run itself, or, while it
+ * waits on a child that waits, that child, all the way down.
+ */
+export async function receiverOf(
+  runs: Pick<RunStore, "events" | "snapshot">,
+  runId: string,
+): Promise<string> {
+  let receiver = runId;
+  for (let depth = 0; depth < maxChildDepth; depth += 1) {
+    const run = await readRun(runs, receiver);
+    if (run === null || run.status !== "waiting" || run.child === null) break;
+    receiver = run.child.runId;
+  }
+  return receiver;
+}

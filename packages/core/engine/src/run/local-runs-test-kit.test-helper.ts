@@ -83,6 +83,10 @@ export interface RunsSetup {
   readonly halonicTools?: readonly HalonicTool[];
   /** Where agents keep their notes; no memory tools when left out. */
   readonly memory?: RecordStore;
+  /** The hub's other workflows, which its `workflow` states run; none when left out. */
+  readonly workflows?: Readonly<Record<string, Workflow>>;
+  /** Where runs keep their definitions; new and empty when left out. */
+  readonly blobs?: KernelBlobs;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -91,7 +95,14 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   runs: Runs = new KernelRuns() as Runs,
   setup: RunsSetup = {},
 ) {
-  const { workflow = replyWorkflow, clock = steppingClock(), agents, harnesses } = setup;
+  const {
+    workflow = replyWorkflow,
+    clock = steppingClock(),
+    agents,
+    harnesses,
+    workflows,
+    blobs = new KernelBlobs(),
+  } = setup;
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
   const definitionsAsked: string[] = [];
@@ -104,19 +115,23 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     clock,
     runs: {
       store: runs,
-      blobs: new KernelBlobs(),
+      blobs,
       scheduler,
       ids: fixedIds(),
       ...(harnesses === undefined ? {} : { harnesses }),
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);
-        return agents === undefined ? { workflow } : { workflow, agents };
+        return {
+          workflow,
+          ...(agents === undefined ? {} : { agents }),
+          ...(workflows === undefined ? {} : { workflows }),
+        };
       },
     },
   });
   scheduler.onTimer = (timer) => executor.onTimer(timer);
-  return { executor, model, runs, scheduler, definitionsAsked };
+  return { executor, model, runs, blobs, scheduler, definitionsAsked };
 }
 
 /** A start of the reply workflow in the `acme` hub. */

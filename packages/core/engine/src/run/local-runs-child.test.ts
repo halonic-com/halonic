@@ -1,0 +1,209 @@
+import type { Workflow } from "@halonicjs/format";
+import type { BlobRef, ChatResponse } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
+import {
+  approvalWorkflow,
+  KernelBlobs,
+  KernelRuns,
+  replyWorkflow,
+  writerAgent,
+} from "../kernel/kernel-test-kit.test-helper.ts";
+import { readRun } from "../kernel/step.ts";
+import { textAnswer } from "../testing/scripted-model.ts";
+import { childStart, receiverOf } from "./child-runs.ts";
+import { runsOn } from "./local-runs-test-kit.test-helper.ts";
+
+/** A parent whose first state runs `child` with the parent's `from`, and keeps its context as `verdict`. */
+function onboard(child: string): Workflow {
+  return {
+    version: 1,
+    id: "onboard",
+    name: "Onboard a customer",
+    initial: "check",
+    context: {},
+    states: {
+      check: {
+        type: "workflow",
+        workflow: child,
+        input: { from: "{{input.from}}" },
+        output: "verdict",
+        on: [{ to: "welcome", event: "done" }],
+      },
+      welcome: { type: "final", on: [] },
+    },
+    layout: {},
+  };
+}
+
+/** A person approves first, then the writer drafts the reply. */
+const review: Workflow = {
+  ...replyWorkflow,
+  id: "review",
+  initial: "decide",
+  states: {
+    ...replyWorkflow.states,
+    decide: { type: "wait", on: [{ to: "draft", event: "approve" }] },
+  },
+};
+
+/** A workflow that ends as soon as it starts. */
+const instant: Workflow = {
+  ...replyWorkflow,
+  id: "instant",
+  initial: "sent",
+  context: { ready: true },
+};
+
+const workflows = { approval: approvalWorkflow(), reply: replyWorkflow, review, instant };
+
+const start = { hubId: "acme", workflowId: "onboard", input: { from: "support" } };
+
+function childRuns(
+  child: string,
+  answers: (ChatResponse | Error)[] = [textAnswer("Dear support")],
+  blobs?: KernelBlobs,
+) {
+  const setup = { workflow: onboard(child), workflows, ...(blobs === undefined ? {} : { blobs }) };
+  return runsOn(answers, new KernelRuns(), setup);
+}
+
+/** Blobs that keep the first definitions, then refuse to keep any more. */
+class FullBlobs extends KernelBlobs {
+  override async put(data: Uint8Array, mediaType: string): Promise<BlobRef> {
+    if (this.blobs.size > 0) throw new Error("The disk is full.");
+    return super.put(data, mediaType);
+  }
+}
+
+verifies("engine.local-child-runs", () => {
+  it("starts the child at once and waits with it; an event for the parent goes to the child", async () => {
+    const { executor, runs, scheduler } = childRuns("approval");
+
+    const waiting = await executor.start(start);
+
+    expect(waiting).toMatchObject({
+      id: "run_1",
+      status: "waiting",
+      accepts: ["approve", "reject"],
+    });
+    expect(await runs.get("run_1.2")).toMatchObject({ hubId: "acme", workflowId: "approval" });
+    expect(runs.logs.get("run_1.2")?.[0]).toMatchObject({
+      input: { from: "support" },
+      kind: "run",
+      parent: { runId: "run_1", state: "check", depth: 1 },
+    });
+
+    const done = await executor.send("run_1", "approve", { note: "ok" });
+
+    expect(done).toMatchObject({
+      status: "completed",
+      context: { verdict: { outcome: "pending", lastEvent: { note: "ok" } } },
+    });
+    // Only the child's own 2d timer is left; the parent heard from it at once.
+    expect([...scheduler.timers.keys()]).toEqual([JSON.stringify(["run_1.2", "timer:2:2"])]);
+  });
+
+  it("completes the parent in the same call when the child ends at once", async () => {
+    const { executor } = childRuns("instant");
+
+    expect(await executor.start(start)).toMatchObject({
+      status: "completed",
+      context: { verdict: { ready: true } },
+    });
+  });
+
+  it("goes on once the child's model call is done", async () => {
+    const { executor, runs, scheduler } = childRuns("reply");
+
+    expect(await executor.start(start)).toMatchObject({ status: "running" });
+    await scheduler.runDue();
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { verdict: { reply: "Dear support" } },
+    });
+  });
+
+  it("fails the parent when the child fails", async () => {
+    const { executor, runs, scheduler } = childRuns("reply", [new Error("socket hang up")]);
+    await executor.start(start);
+    await scheduler.runDue();
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining('Workflow "reply" failed: socket hang up'),
+    });
+  });
+
+  it("fails the parent when the child asks for an effect it can't carry out", async () => {
+    const setup = {
+      workflow: onboard("reply"),
+      workflows,
+      agents: { writer: writerAgent("codex") },
+    };
+    const { executor, runs } = runsOn([], new KernelRuns(), setup);
+
+    await executor.start(start);
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining("can't carry out a run-harness effect"),
+    });
+  });
+
+  it("fails the parent with the reason when the child can't start", async () => {
+    const { executor } = childRuns("approval", [], new FullBlobs());
+
+    expect(await executor.start(start)).toMatchObject({
+      status: "failed",
+      error: 'Workflow "approval" failed: The child run couldn\'t start: The disk is full.',
+    });
+  });
+
+  it("tells a waiting parent that its child ended as interrupted when the engine stopped", async () => {
+    const before = childRuns("review");
+    await before.executor.start(start);
+    // The child moves on to its model call; the engine stops before it is made.
+    await before.executor.send("run_1", "approve");
+
+    const setup = { workflow: onboard("review"), workflows, blobs: before.blobs };
+    const after = runsOn([], before.runs, setup);
+    await after.executor.start({ ...start, runId: "run_9" });
+
+    expect(await before.runs.get("run_1.2")).toMatchObject({ reason: "interrupted" });
+    expect(await before.runs.get("run_1")).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining('Workflow "review" failed: The engine stopped'),
+    });
+  });
+});
+
+describe("child runs", () => {
+  it("can't start a child whose workflow the parent's definitions don't have", async () => {
+    const { executor, runs, blobs } = childRuns("approval");
+    await executor.start(start);
+    const parent = await readRun(runs, "run_1");
+    if (parent === null) throw new Error("expected the parent run");
+    const effect = {
+      type: "start-child" as const,
+      childRunId: "run_1.9",
+      state: "check",
+      workflowId: "billing",
+      input: {},
+      depth: 1,
+    };
+
+    await expect(childStart(blobs, parent, effect, "")).rejects.toThrow(
+      'have no workflow "billing"',
+    );
+  });
+
+  it("gives an event to the run itself when it doesn't wait on a child", async () => {
+    const { executor, runs } = childRuns("reply");
+    await executor.start(start);
+
+    expect(await receiverOf(runs, "run_1")).toBe("run_1");
+    expect(await receiverOf(runs, "r-missing")).toBe("r-missing");
+  });
+});

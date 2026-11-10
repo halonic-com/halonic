@@ -13,6 +13,7 @@ loop of one model turn, which the local chat turn runs.
 |                      | streams a run's events from the store to `subscribe`, in order, and closes the stream once the run has ended                  | `engine.local-run-subscribe`                                                        |
 |                      | fails a run whose call fails, with the reason `runFailureReasonOf` gives the error                                            | `engine.run-call-fails`                                                             |
 |                      | fails a run whose step asks for an effect it can't carry out yet, and sets no timer for it                                    | `engine.local-runs-unbuilt-effect`                                                  |
+|                      | starts child runs, passes a parent's events to its waiting child, and lets the parent go on in the same call                  | `engine.local-child-runs`                                                           |
 | `localEngine`        | builds the local executor and the workspace's routine scheduler on one scheduler, and closes them in order                    | `engine.local-engine-routines`                                                      |
 | `runModelTurn`       | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again     | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return`                    |
 |                      | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name          | `engine.turn-round-limit`, `engine.turn-tool-names`                                 |
@@ -113,8 +114,8 @@ for each effect, then return; the run goes on when the timer is due, so the sche
 forwards its timers to `LocalExecutor.onTimer`. A model call is carried out from the run's state
 (`pendingCall` keeps the prompt), and a timer that is late or delivered twice changes nothing. A
 run still waiting on a call when the engine stops is `running`, so the next start ends it as
-`interrupted`. An effect the executor can't carry out yet (a tool call, a child run, telling the
-parent) fails the run with reason `error` rather than leaving it going with no timer. A failed call becomes an `effect-failed` input, and the run fails with the
+`interrupted`. An effect the executor can't carry out yet (a tool call, a harness run) fails the run
+with reason `error` rather than leaving it going with no timer. A failed call becomes an `effect-failed` input, and the run fails with the
 reason `runFailureReasonOf` gives. For now a run's model call sends the state's prompt to its agent's
 model without tools; tools, the agent's own prompt and the run log of the call come with the agent
 loop. `subscribe` reads every event from the store, after each append the executor makes; it
@@ -133,8 +134,15 @@ start asked for twice finds the same child. Child runs nest at most 5 deep (`max
 child's step that leaves it waiting, completed or failed asks to tell its parent (`tell-parent`);
 the effect runner reads how the child is then and gives the parent a `child` input. While the child
 waits, the parent records `run.waiting` with `child` and the child's events, and refuses an event
-sent to itself: the executor passes such an event to the child. The local executor carries out
-`start-child` and `tell-parent` in a following change; until then a run that reaches one fails.
+sent to itself: the executor passes such an event to the child.
+
+The local executor starts a child run at once, in the parent's hub and of its kind, with the
+parent's kept definitions (the child's workflow as the one it runs). A parent hears from its child
+in the same call: `send` to a parent whose child waits passes the event to the child, unchanged,
+and returns the parent once it has gone on. The telling is backed by a scheduler timer on the
+parent (`child:<childRunId>`), set first and cancelled once the parent has heard, so a telling a
+crash cut off is carried out after the restart. A child that can't start, that the executor fails,
+or that the next start ends as interrupted tells its parent too, so the parent fails with it.
 
 A `wait` state's timers are keyed by the `seq` of the `state.entered` that set them, so a timer
 left over from an earlier visit to the state changes nothing; leaving a state doesn't cancel its
