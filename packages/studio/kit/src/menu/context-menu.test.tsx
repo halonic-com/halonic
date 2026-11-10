@@ -139,7 +139,9 @@ verifies("kit.context-menu", () => {
     await pointer(tab, "pointerdown");
     await rightClick(tab, 120, 30);
     expect(isOpen(menu)).toBe(false);
-    await pointer(tab, "pointerup");
+    // Released outside act: an async act waits a macrotask, which on a busy machine can let the
+    // task after the release run first. The release itself changes no state.
+    tab.dispatchEvent(new Event("pointerup", { bubbles: true }));
     expect(isOpen(menu)).toBe(false);
     await nextTask();
     expect(isOpen(menu)).toBe(true);
