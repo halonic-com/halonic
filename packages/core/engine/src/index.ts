@@ -80,6 +80,8 @@ export {
   maxLoggedResultBytes,
   resultStartLength,
 } from "./tools/large-results.ts";
+export type { CollectionRecord } from "./tools/records/record-query.ts";
+export { fieldSchema, type RecordToolsOptions, recordTools } from "./tools/records/record-tools.ts";
 export {
   noRunsText,
   type RunLogToolsOptions,

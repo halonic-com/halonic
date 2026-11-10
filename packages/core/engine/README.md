@@ -47,6 +47,7 @@ loop of one model turn, which the local chat turn runs.
 | `StateHandler`       | one state type's `enter` and `onInput`, found by `pnpm discover` in `src/states`                                              | `engine.state-registry`                                                             |
 | `task` state         | runs its agent with one model call, writes `output` and takes the `done` transition                                           | `engine.task-state`                                                                 |
 | `final` state        | completes the run with its context                                                                                            | `engine.final-state`                                                                |
+| `recordTools`        | `find_`, `add_` and `update_<collection>` for an agent with `collections`: checked values, seeds once, changes logged         | `engine.record-tools`, `engine.record-values`                                       |
 | `runLogTools`        | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model         | `engine.run-log-tools`                                                              |
 | `wait` state         | records `run.waiting` and sets its timers; a sent event writes `lastEvent` and moves on, a due timer moves on `after <delay>` | `engine.wait-state`, `engine.wait-timers`                                           |
 | `InputRefused`       | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused    | `engine.decide-refusals`, `engine.decision-callid-must-match`                       |
@@ -66,6 +67,14 @@ an agent gets no `delegate_` tools, so agents that delegate to each other stop t
 instructions get `delegationHint`, since a subagent never sees the conversation. A run's agent gets
 these tools once runs call tools (step 4(c) of the HAL-186 plan); that step also holds back
 approval tools from a subagent, which can't pause the run.
+
+An agent with `collections` gets `find_<id>`, `add_<id>` and `update_<id>` for each collection its
+hub can see (`recordTools`). Values are checked against the collection's fields and brought into
+their form (`engine.record-values`), computed fields are worked out from their formula and never
+run as code (`engine.record-computed`), and `find` takes a `where` or a named view
+(`engine.record-filter`). Each change is logged with the agent and the run as `by`, and seed records
+are added once, before the first read. A record keeps the time of its last change as `updatedAt`;
+the old `createdAt` is gone, because the record store's fold keeps only that time.
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
