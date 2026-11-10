@@ -753,7 +753,9 @@ jobs:
     # filters are globs so a package that doesn't exist yet (sandbox-host)
     # is no error. A test that can't run on a system skips itself with a
     # reason (`it.skipIf(...)`, for example bwrap on macOS): never a
-    # failure, never a silent pass.
+    # failure, never a silent pass. Turbo runs with its loose environment
+    # here: with the strict one, Windows PowerShell (which the process-table
+    # tests start) gets too few variables and hangs until it is stopped.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
