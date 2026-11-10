@@ -242,7 +242,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
     // The append starts while the compact runs, so it waits for the compact's
     // write lock, retries included, and lands on the log the compact leaves.
     itUnlessWindows(
-      "compacts once the other program lets go, and an append waiting on it lands after",
+      "[platform:win32] HAL-4361: compacts once the other program lets go, and an append waiting on it lands after",
       async () => {
         const root = await tempFolder();
         const store = new FileRecordStore(root);
@@ -259,7 +259,7 @@ verifies("fs-node.rename-retry-on-windows", () => {
     );
 
     itUnlessWindows(
-      "fails, keeps the old log and removes its temporary file when it stays held, and the waiting append lands on the old log",
+      "[platform:win32] HAL-4361: fails, keeps the old log and removes its temporary file when it stays held, and the waiting append lands on the old log",
       async () => {
         const root = await tempFolder();
         const store = new FileRecordStore(root);

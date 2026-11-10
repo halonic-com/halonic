@@ -95,7 +95,7 @@ verifies("mcp.stdio-connector", () => {
 
   describe("starting the program", () => {
     itUnlessWindows(
-      "puts secrets only in the environment, next to the inherited and configured variables",
+      "[platform:win32] HAL-4359: puts secrets only in the environment, next to the inherited and configured variables",
       async () => {
         const { starter, factory, context } = setUp();
         const client = factory.create(config, context);

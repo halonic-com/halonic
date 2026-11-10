@@ -295,7 +295,7 @@ verifies("fs-node.run-store-lock", () => {
   });
 
   it.skipIf(process.platform === "win32")(
-    "fails instead of trying for ever when the lock is a link to a missing file",
+    "[platform:win32] needs POSIX links, modes and signals: fails instead of trying for ever when the lock is a link to a missing file",
     async () => {
       const file = await lockFile();
       await symlink(join(file, "..", "missing"), file);
@@ -306,7 +306,7 @@ verifies("fs-node.run-store-lock", () => {
   );
 
   it.skipIf(process.platform === "win32")(
-    "fails instead of trying for ever when the takeover file is a link to a missing file",
+    "[platform:win32] needs POSIX links, modes and signals: fails instead of trying for ever when the takeover file is a link to a missing file",
     async () => {
       const file = await lockFile(JSON.stringify(record(exitedPid())));
       await symlink(join(file, "..", "missing"), `${file}.takeover`);

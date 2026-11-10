@@ -27,14 +27,17 @@ verifies("fs-node.blob-store-files", () => {
       expect(await readFile(join(root, "2c", helloHash), "utf8")).toBe("hello");
     });
 
-    it.runIf(unix)("makes the folders private and the file readable only by the user", async () => {
-      const root = join(await tempFolder(), "blobs");
-      await new FolderBlobStore(root).put(hello, "text/plain");
+    it.runIf(unix)(
+      "[platform:win32] needs POSIX links, modes and signals: makes the folders private and the file readable only by the user",
+      async () => {
+        const root = join(await tempFolder(), "blobs");
+        await new FolderBlobStore(root).put(hello, "text/plain");
 
-      expect((await stat(root)).mode & 0o777).toBe(0o700);
-      expect((await stat(join(root, "2c"))).mode & 0o777).toBe(0o700);
-      expect((await stat(join(root, "2c", helloHash))).mode & 0o777).toBe(0o600);
-    });
+        expect((await stat(root)).mode & 0o777).toBe(0o700);
+        expect((await stat(join(root, "2c"))).mode & 0o777).toBe(0o700);
+        expect((await stat(join(root, "2c", helloHash))).mode & 0o777).toBe(0o600);
+      },
+    );
 
     it("reads a folder that doesn't exist yet as empty", async () => {
       const store = new FolderBlobStore(join(await tempFolder(), "blobs"));
@@ -96,20 +99,23 @@ verifies("fs-node.blob-store-files", () => {
       }
     });
 
-    it.runIf(unix)("refuses to read a link, and a put replaces it", async () => {
-      const outside = await tempFolder();
-      const root = join(outside, "blobs");
-      await writeFile(join(outside, "elsewhere"), "hello", "utf8");
-      await mkdir(join(root, "2c"), { recursive: true });
-      await symlink(join(outside, "elsewhere"), join(root, "2c", helloHash));
-      const store = new FolderBlobStore(root);
+    it.runIf(unix)(
+      "[platform:win32] needs POSIX links, modes and signals: refuses to read a link, and a put replaces it",
+      async () => {
+        const outside = await tempFolder();
+        const root = join(outside, "blobs");
+        await writeFile(join(outside, "elsewhere"), "hello", "utf8");
+        await mkdir(join(root, "2c"), { recursive: true });
+        await symlink(join(outside, "elsewhere"), join(root, "2c", helloHash));
+        const store = new FolderBlobStore(root);
 
-      await expect(store.get(helloHash)).rejects.toThrow(RangeError);
-      await store.put(hello, "text/plain");
+        await expect(store.get(helloHash)).rejects.toThrow(RangeError);
+        await store.put(hello, "text/plain");
 
-      expect(await store.get(helloHash)).toEqual(hello);
-      expect(await readFile(join(outside, "elsewhere"), "utf8")).toBe("hello");
-    });
+        expect(await store.get(helloHash)).toEqual(hello);
+        expect(await readFile(join(outside, "elsewhere"), "utf8")).toBe("hello");
+      },
+    );
 
     it("refuses to read a hard link, and a put replaces it", async () => {
       const outside = await tempFolder();
@@ -126,18 +132,21 @@ verifies("fs-node.blob-store-files", () => {
       expect((await stat(join(outside, "elsewhere"))).nlink).toBe(1);
     });
 
-    it.runIf(unix)("refuses to put through a link in place of a blob's folder", async () => {
-      const outside = await tempFolder();
-      const root = join(outside, "blobs");
-      await mkdir(join(outside, "elsewhere"), { mode: 0o755 });
-      await mkdir(root);
-      await symlink(join(outside, "elsewhere"), join(root, "2c"));
-      const store = new FolderBlobStore(root);
+    it.runIf(unix)(
+      "[platform:win32] needs POSIX links, modes and signals: refuses to put through a link in place of a blob's folder",
+      async () => {
+        const outside = await tempFolder();
+        const root = join(outside, "blobs");
+        await mkdir(join(outside, "elsewhere"), { mode: 0o755 });
+        await mkdir(root);
+        await symlink(join(outside, "elsewhere"), join(root, "2c"));
+        const store = new FolderBlobStore(root);
 
-      await expect(store.put(hello, "text/plain")).rejects.toThrow(RangeError);
+        await expect(store.put(hello, "text/plain")).rejects.toThrow(RangeError);
 
-      expect(await readdir(join(outside, "elsewhere"))).toEqual([]);
-      expect((await stat(join(outside, "elsewhere"))).mode & 0o777).toBe(0o755);
-    });
+        expect(await readdir(join(outside, "elsewhere"))).toEqual([]);
+        expect((await stat(join(outside, "elsewhere"))).mode & 0o777).toBe(0o755);
+      },
+    );
   });
 });
