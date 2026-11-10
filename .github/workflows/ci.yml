@@ -1250,7 +1250,7 @@ jobs:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45 # longer than the longest job (tauri-windows, android: 40)
+    timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
       actions: write # to list the run's jobs and cancel the run
     env:
@@ -1283,11 +1283,11 @@ jobs:
     # required check, unlike skipped. In any other run a cancelled or failed
     # job still fails it. In a merge-queue run nothing replaces the run, but
     # fail-fast (above) cancels it when a job fails. There ci-ok runs
-    # anyway and reports that failure at once.
+    # anyway and reports that failure at once. ci-ok doesn't need fail-fast:
+    # a watcher that timed out or errored must not fail a green run.
     if: ${{ github.event_name == 'merge_group' || !cancelled() }}
     needs:
       [
-        fail-fast,
         changes,
         fast,
         leaks,
