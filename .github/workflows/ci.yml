@@ -428,6 +428,12 @@ jobs:
     if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # The walk-back runs older commits whose tests were not written for a
+    # loaded runner, and a git-heavy contract test passed the default 5 s
+    # limit once (HAL-3869, HAL-3852). Give each test and hook 30 s. Commits
+    # before the preset reads this variable ignore it.
+    env:
+      HALONIC_TEST_TIMEOUT: "30000"
     permissions:
       contents: read
       # The walk-back below looks up main's push CI runs.
