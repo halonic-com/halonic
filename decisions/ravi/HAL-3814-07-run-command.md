@@ -4,15 +4,14 @@
 - Task: HAL-3814; plan for `halonic run`, PR D, approved by the maintainer on HAL-3895
 - Approval: the maintainer approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:681AbgRsww/m+r0QBmTFz89PjLA45AhmtE36SvDz1hcXWPDgW2xjPXXsinf1FQy73gm7tmbZhGM+hZGv/IQrCw==
 
 `halonic run` is a new command, so it brings its own golden files, written from a run of the
 Acme example on the test model with a fixed clock and fixed ids. Each file holds the command's
 output in the three modes the CLI checklist asks for: colour, `NO_COLOR` and `--json`.
 
 - `support-reply-waiting.txt`: Support reply on Sam's email, waiting at Approve this reply?,
-  with the waiting lines of cli-output 3.4. Each answer is followed by its label from the
-  workflow file, as `halonic runs show` writes it (HAL-4072).
+  with the waiting lines of cli-output 3.4. The hint under the waiting line names only
+  Studio's Inbox, as `halonic runs show` writes it until `halonic runs send` lands (HAL-4182).
 - `support-reply-approved.txt`: the same run with `--event approve`, ending with the receipt
   ("Sent nothing · asked you once") and the run log command.
 

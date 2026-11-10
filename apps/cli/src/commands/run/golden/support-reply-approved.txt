@@ -64,7 +64,7 @@ stdout:
       },
       "error": null,
       "reason": null,
-      "definitionsVersion": "07df9cbe3430ce7e43ee6e365fd6a4bf3f93159d0e8bd723ce0f7325d33ce0fb",
+      "definitionsVersion": "32cd5243fe37754f77f45d73ad9ef748f9e0796bf80551eab1abf09ce81c7b50",
       "trigger": null,
       "parentRunId": null,
       "waitingOn": null,
@@ -87,7 +87,7 @@ stdout:
           "mail": "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)"
         },
         "kind": "run",
-        "definitionsVersion": "07df9cbe3430ce7e43ee6e365fd6a4bf3f93159d0e8bd723ce0f7325d33ce0fb",
+        "definitionsVersion": "32cd5243fe37754f77f45d73ad9ef748f9e0796bf80551eab1abf09ce81c7b50",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 1,
         "at": "2026-11-10T14:01:00.000Z"
