@@ -136,6 +136,7 @@ verifies("workspace.load", () => {
         ...settings,
         "hubs/billing/.halonic/source.json": "{}",
         ".halonic/staging/agents/a.agent.yaml": "name: [",
+        ".Halonic./staging/agents/b.agent.yaml": "name: [",
         "notes/README.md": "# Notes\n",
       }),
     );

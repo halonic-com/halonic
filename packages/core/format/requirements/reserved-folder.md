@@ -10,3 +10,4 @@ The format shall reserve a `.halonic/` folder at the workspace root and inside e
 
 - Given `hubs/billing/.halonic/source.json`, when `isReservedPath` checks it, then it is reserved.
 - Given `hubs/billing/library/.halonic/x.yaml`, when it is checked, then it is not reserved: only the hub folder's own `.halonic/` is.
+- Given `.Halonic./staging/x.yaml` or `hubs/billing/.HALONIC/source.json`, when it is checked, then it is reserved: names compare the way Windows and macOS open them, with case folded, trailing dots and spaces removed and the code points HFS+ ignores removed (HAL-3968).

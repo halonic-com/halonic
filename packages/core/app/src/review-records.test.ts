@@ -88,6 +88,9 @@ verifies("app.review-record", () => {
       await expect(reviewRecordPath("hubs/p/.halonic/source.json", digest)).rejects.toThrow(
         RangeError,
       );
+      await expect(reviewRecordPath("hubs/p/.Halonic./source.json", digest)).rejects.toThrow(
+        RangeError,
+      );
     });
   });
 

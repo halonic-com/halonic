@@ -80,11 +80,27 @@ verifies("format.reserved-folder", () => {
   });
 
   it.each([
+    ".Halonic",
+    ".HALONIC/staging/abc/hub.yaml",
+    ".halonic./x",
+    ".halonic. ./x",
+    ".hal\u200Conic/x",
+    "Hubs/billing/.halonic/source.json",
+    "hubs/billing/.Halonic./source.json",
+    "HUBS./billing/.HALONIC /source.json",
+  ])("reserves %s, which opens the same folder on Windows or macOS", (path) => {
+    expect(isReservedPath(path)).toBe(true);
+  });
+
+  it.each([
     "hubs/billing/agents/clerk.agent.yaml",
     "hubs/billing/library/.halonic/x.yaml",
     ".halonic-notes.md",
     "hubs/.halonic/hub.yaml",
     "docs/.halonic/x",
+    "hubs/billing/library/.Halonic./x.yaml",
+    "hubs//.halonic/x",
+    ".halonic-notes./x",
   ])("leaves %s to the loader", (path) => {
     expect(isReservedPath(path)).toBe(false);
   });
