@@ -63,6 +63,70 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       expect(paths).not.toContain(join(".git", "modules", "libs", "config"));
     });
 
+    it("hold each linked worktree's commondir, and a commondir only when it is there", async () => {
+      await gitFolder(".git");
+      await mkdir(join(work, ".git", "worktrees", "feature"), { recursive: true });
+      await writeFile(join(work, ".git", "worktrees", "feature", "commondir"), "../..\n");
+      const paths = await gitPathsToDeny(work);
+      expect(paths).toContain(join(".git", "worktrees", "feature", "commondir"));
+      expect(paths).not.toContain(join(".git", "commondir"));
+    });
+
+    it("hold the .git file of each submodule checkout in .gitmodules, nested ones too", async () => {
+      await gitFolder(".git");
+      await writeFile(
+        join(work, ".gitmodules"),
+        '[submodule "docs"]\n\tpath = docs\n\turl = ../docs\n[submodule "lib"]\n\tpath = "libs/acme" # vendored\n',
+      );
+      await mkdir(join(work, "docs", "theme"), { recursive: true });
+      await mkdir(join(work, "libs", "acme"), { recursive: true });
+      await writeFile(join(work, "docs", ".git"), "gitdir: ../.git/modules/docs\n");
+      await writeFile(join(work, "libs", "acme", ".git"), "gitdir: ../../.git/modules/lib\n");
+      await writeFile(join(work, "docs", ".gitmodules"), '[submodule "theme"]\n\tpath = theme\n');
+      await writeFile(
+        join(work, "docs", "theme", ".git"),
+        "gitdir: ../../.git/modules/docs/modules/theme\n",
+      );
+      const paths = await gitPathsToDeny(work);
+      expect(paths).toContain(join("docs", ".git"));
+      expect(paths).toContain(join("libs", "acme", ".git"));
+      expect(paths).toContain(join("docs", "theme", ".git"));
+    });
+
+    it("hold the config and hooks of a submodule checkout whose .git is a folder", async () => {
+      await gitFolder(".git");
+      await writeFile(join(work, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+      await gitFolder(join("docs", ".git"));
+      const paths = await gitPathsToDeny(work);
+      for (const file of ["config", "hooks", "config.worktree"]) {
+        expect(paths).toContain(join("docs", ".git", file));
+      }
+    });
+
+    it("leave out a submodule whose .git is not there, as git breaks on the empty file srt puts there", async () => {
+      await gitFolder(".git");
+      await writeFile(join(work, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+      await mkdir(join(work, "docs"), { recursive: true });
+      expect(await gitPathsToDeny(work)).toEqual([join(".git", "config.worktree")]);
+    });
+
+    it("take no .gitmodules path that leaves the checkout or goes through a link", async () => {
+      const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));
+      try {
+        await gitFolder(".git");
+        await writeFile(join(outside, ".git"), "gitdir: elsewhere\n");
+        await symlink(outside, join(work, "linked"));
+        const listed = ["../outside", outside, "linked", "./linked", "a/../linked"];
+        await writeFile(
+          join(work, ".gitmodules"),
+          listed.map((path, i) => `[submodule "m${i}"]\n\tpath = ${path}\n`).join(""),
+        );
+        expect(await gitPathsToDeny(work)).toEqual([join(".git", "config.worktree")]);
+      } finally {
+        await rm(outside, { recursive: true, force: true });
+      }
+    });
+
     it("never follow a link the program put in place of a folder", async () => {
       const outside = await mkdtemp(join(tmpdir(), "srt-git-deny-outside-"));
       try {

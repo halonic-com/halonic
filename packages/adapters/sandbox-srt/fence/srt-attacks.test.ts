@@ -162,6 +162,32 @@ describe("a program trying to get out of the fence", () => {
     );
   });
 
+  it("can't point a submodule's .git at a git folder of its own, as a file or a folder", async () => {
+    const repo = join(base, "with-submodule");
+    await mkdir(join(repo, ".git", "modules", "docs"), { recursive: true });
+    await mkdir(join(repo, "docs"), { recursive: true });
+    await writeFile(join(repo, ".git", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(repo, ".git", "modules", "docs", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(repo, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+    await writeFile(join(repo, "docs", ".git"), "gitdir: ../.git/modules/docs\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: repo });
+    try {
+      const attempts = [
+        "echo 'gitdir: ../evil' > docs/.git",
+        "rm -f docs/.git && mkdir docs/.git && echo x > docs/.git/config",
+        "mv docs docs-old && mkdir docs && echo 'gitdir: ../evil' > docs/.git",
+      ];
+      for (const attempt of attempts) {
+        expect((await sh(attempt, planted)).code).not.toBe(0);
+      }
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(repo, "docs", ".git"), "utf8")).toBe(
+      "gitdir: ../.git/modules/docs\n",
+    );
+  });
+
   it("can't reach the network outside the bridge", async () => {
     const { out } = await sh(
       "curl -s --max-time 10 --noproxy '*' http://example.com/ 2>&1; echo \"exit=$?\"",

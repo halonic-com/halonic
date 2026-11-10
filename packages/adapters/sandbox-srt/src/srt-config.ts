@@ -156,7 +156,9 @@ export function buildSrtConfig(
 ): SandboxRuntimeConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
   const toolSettings = [
-    ...[...toolSettingsInWorkingFolder, ...gitPaths].map((path) => join(profile.workingFolder, path)),
+    ...[...toolSettingsInWorkingFolder, ...gitPaths].map((path) =>
+      join(profile.workingFolder, path),
+    ),
     ...worktreeGitFile(profile.workingFolder),
   ];
   const writableFolders = [profile.workingFolder, profile.tempFolder];

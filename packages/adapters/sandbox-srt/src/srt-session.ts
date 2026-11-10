@@ -12,8 +12,8 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import { proveFence } from "./fence-proof.ts";
-import { type GitFolderSnapshot, restoreGitFolder, snapshotGitFolder } from "./git-folder-check.ts";
 import { gitPathsToDeny } from "./git-deny-paths.ts";
+import { type GitFolderSnapshot, restoreGitFolder, snapshotGitFolder } from "./git-folder-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import {
   type Runner,
