@@ -21,6 +21,8 @@ import { checkRunToolCall, checkSubagentToolCall } from "./agent/check-run-tool-
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
+import { type ChatHarnessTurn, ChatHarnessTurns } from "./harness/chat-harness-turns.ts";
+import { isProgramHarness } from "./kernel/agent-call.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import { branchOfCall } from "./kernel/run-branches.ts";
@@ -74,6 +76,13 @@ export interface LocalExecutorOptions {
   readonly maxRounds?: number;
   /** What runs need. Without it, the executor runs chat turns only and refuses runs. */
   readonly runs?: LocalRunsOptions;
+  /**
+   * The file of a chat turn's agent as the workspace has it now; `undefined`
+   * for an agent that has none. With it, a chat with an agent whose file
+   * names a harness program runs in that harness, with `runs.harnesses`;
+   * without it, every chat turn runs in Halonic's own loop.
+   */
+  chatAgentOf?(request: ChatTurnRequest): Promise<Agent | undefined>;
 }
 
 /** The round limit of a chat turn when the options don't set one. */
@@ -111,6 +120,7 @@ export class LocalExecutor implements RunExecutor {
   private readonly options: LocalExecutorOptions;
   private readonly maxRounds: number;
   private readonly runs: LocalRuns | undefined;
+  private readonly chatHarnesses: ChatHarnessTurns | undefined;
 
   /**
    * @throws RangeError when `maxRounds` is less than 1 or not a whole number, or a start
@@ -136,6 +146,16 @@ export class LocalExecutor implements RunExecutor {
               : (effect) =>
                   makeConnectorCall(options.connectors, effectBoundary(connectorCalls), effect),
           );
+    const runs = options.runs;
+    this.chatHarnesses =
+      runs?.harnesses === undefined
+        ? undefined
+        : new ChatHarnessTurns({
+            harnesses: runs.harnesses,
+            scheduler: runs.scheduler,
+            ids: runs.ids,
+            clock: options.clock,
+          });
   }
 
   /**
@@ -204,6 +224,7 @@ export class LocalExecutor implements RunExecutor {
    * repeated timer changes nothing. Without `runs` there are no timers.
    */
   async onTimer(timer: ScheduledTimer): Promise<void> {
+    this.chatHarnesses?.expire(timer);
     await this.runs?.onTimer(timer);
   }
 
@@ -212,11 +233,12 @@ export class LocalExecutor implements RunExecutor {
    * then its sandbox session, then its bridge, and resolves once all three
    * have stopped; a session that opens after that is closed as it opens.
    * Harness runs that were going end as `interrupted` when an engine next
-   * starts on the same store. Timers delivered after this change nothing.
-   * `localEngine`'s `close` calls it before it closes the scheduler.
+   * starts on the same store, and chat turns in a harness reject. Timers
+   * delivered after this change nothing. `localEngine`'s `close` calls it
+   * before it closes the scheduler.
    */
   async close(): Promise<void> {
-    await this.runs?.close();
+    await Promise.all([this.runs?.close(), this.chatHarnesses?.close()]);
   }
 
   /**
@@ -225,10 +247,23 @@ export class LocalExecutor implements RunExecutor {
    * because a chat turn belongs to no run: the models it skipped are in
    * `skipped` instead.
    *
+   * A turn whose agent's file names a harness program runs in that harness
+   * instead, as one harness call ({@link ChatHarnessTurns.turn}).
+   *
    * @throws when no model fits the request
    * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
+   * @throws when the agent runs in a harness and the executor has no `runs.harnesses`, or the harness call fails
    */
   async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
+    const harnessTurn = await this.harnessTurnOf(request);
+    if (harnessTurn !== undefined) {
+      if (this.chatHarnesses === undefined) {
+        throw new Error(
+          `Agent "${harnessTurn.agentId}" runs in ${harnessTurn.harness}, and this executor has no harnesses to run it in.`,
+        );
+      }
+      return this.chatHarnesses.turn(harnessTurn);
+    }
     const knowledge = await this.chatKnowledgeOf(request);
     return runModelTurn({
       model: await this.options.resolveModel(request),
@@ -243,6 +278,21 @@ export class LocalExecutor implements RunExecutor {
       clock: this.options.clock,
       autoKnowledge: knowledge.auto,
     });
+  }
+
+  /**
+   * The chat turn as a harness turn, when its agent's file names a harness
+   * program; `undefined` when Halonic's own loop runs it.
+   */
+  private async harnessTurnOf(request: ChatTurnRequest): Promise<ChatHarnessTurn | undefined> {
+    const { agentId } = request;
+    if (agentId === undefined || this.options.chatAgentOf === undefined) return undefined;
+    const agent = await this.options.chatAgentOf(request);
+    const harness = agent?.harness;
+    if (agent === undefined || harness === undefined || !isProgramHarness(harness)) {
+      return undefined;
+    }
+    return { request, agentId, agent, harness };
   }
 
   /** The knowledge sources of a chat turn's agent, as the workspace has them now. */

@@ -84,7 +84,7 @@ export interface RunsSetup {
   readonly workflow?: Workflow;
   /** A clock that moves on 250 ms per reading when left out. */
   readonly clock?: Clock;
-  /** The hub's agents; none when left out. */
+  /** The hub's agents, which chat turns also find; none when left out. */
   readonly agents?: Readonly<Record<string, Agent>>;
   /** The ports for its agents' harness runs; none when left out. */
   readonly harnesses?: HarnessRunsOptions;
@@ -137,6 +137,10 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     ...(setup.knowledgeOptions === undefined ? {} : { knowledge: setup.knowledgeOptions }),
     secrets: secretsWith(),
     clock,
+    chatAgentOf: async ({ agentId }) =>
+      agentId !== undefined && agents !== undefined && Object.hasOwn(agents, agentId)
+        ? agents[agentId]
+        : undefined,
     runs: {
       store: runs,
       blobs,

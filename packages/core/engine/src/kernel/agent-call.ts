@@ -38,6 +38,7 @@ export function programHarnessOf(
   return harness !== undefined && isProgramHarness(harness) ? harness : null;
 }
 
-function isProgramHarness(harness: string): harness is ProgramHarness {
+/** Whether the harness starts a program, rather than being Halonic's own loop or unknown to this engine. */
+export function isProgramHarness(harness: string): harness is ProgramHarness {
   return harness !== "halonic" && AGENT_HARNESSES.includes(harness);
 }
