@@ -45,7 +45,9 @@ export function ToolbarSaveNote({ saving, timers = systemTimers }: ToolbarSaveNo
     <div className="flex items-center gap-1.5 whitespace-nowrap text-small text-fg-muted">
       {marks[words.mark]}
       {words.name === undefined ? (
-        <span className={isProblem(words.mark) ? "text-fg" : undefined}>{words.text}</span>
+        <span className={isProblem(words.mark) ? `${longWords} text-fg` : undefined}>
+          {words.text}
+        </span>
       ) : (
         <>
           <span aria-hidden="true">{words.text}</span>
@@ -78,6 +80,13 @@ const marks: Readonly<Record<SaveNoteMark, ReactNode>> = {
   warning: <NamedMark name="Warning" colour="text-warning" icon={<WarningIcon />} />,
   danger: <NamedMark name="Error" colour="text-danger" icon={<AlertIcon />} />,
 };
+
+/**
+ * A problem's words stop at 240px and end in "…", so a long item title can't push the path away
+ * or hide the button, which keeps its width. The whole title stays in the text, so a screen reader reads all of it, and
+ * the failed-save toast shows it in full.
+ */
+const longWords = "min-w-0 max-w-60 truncate";
 
 /** A problem's words read in the text colour; "Saving…" and "Saved" stay quiet in `fg-muted`. */
 function isProblem(mark: SaveNoteMark): boolean {

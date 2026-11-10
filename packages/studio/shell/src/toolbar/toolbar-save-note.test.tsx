@@ -99,6 +99,16 @@ verifies("shell.save-note", () => {
     expect(write).toHaveBeenCalledTimes(2);
   });
 
+  it("shortens a long title on screen but keeps it whole for a screen reader, with Try again", async () => {
+    const title = "Support reply for customers who wrote in about a late or missing order";
+    await failSave({ key: "workflow/acme/long", title });
+    const words = [...note.querySelectorAll("span")].find((span) =>
+      span.textContent?.startsWith("Couldn't save"),
+    );
+    expect(words?.className).toContain("truncate");
+    expect(spoken()).toBe(`Error Couldn't save ${title} Try again`);
+  });
+
   it("counts the items when several couldn't be saved", async () => {
     await failSave(supportReply);
     await failSave(sorter);
