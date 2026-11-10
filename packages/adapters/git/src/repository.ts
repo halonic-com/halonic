@@ -22,6 +22,8 @@ export interface RepositoryCall {
   config?: readonly ConfigEntry[];
   /** Whether it reaches a remote. */
   network?: boolean;
+  /** An absolute index file to use in place of the repository's own. */
+  indexFile?: string;
 }
 
 /**
@@ -56,6 +58,11 @@ export class Repository {
     return this.#top;
   }
 
+  /** Its `.git` folder, inside {@link Repository.top}. */
+  get gitDir(): string {
+    return this.#gitDir;
+  }
+
   /**
    * Checks the repository again, then runs git in it, hardened, with what
    * neutralises its own config.
@@ -79,6 +86,7 @@ export class Repository {
       ],
       config: [...neutralising, ...(call.config ?? [])],
       network: call.network === true,
+      ...(call.indexFile === undefined ? {} : { indexFile: call.indexFile }),
     });
   }
 

@@ -35,6 +35,8 @@ export interface GitCall {
   config?: readonly ConfigEntry[];
   /** Whether it reaches a remote, which gives it the longer time limit. */
   network?: boolean;
+  /** An absolute index file to use in place of the repository's own (`GIT_INDEX_FILE`). */
+  indexFile?: string;
 }
 
 /** What git gave back. A non-zero `code` is git's answer, not an error of the runner. */
@@ -82,13 +84,16 @@ export class GitRunner {
   /**
    * Runs one call, hardened.
    *
-   * @throws Error when `cwd` isn't absolute, git can't start, passes its limits, or the hooks folder is no longer empty
+   * @throws Error when `cwd` or `indexFile` isn't absolute, git can't start, passes its limits, or the hooks folder is no longer empty
    */
   async run(call: GitCall): Promise<GitResult> {
     // git ignores a relative GIT_CEILING_DIRECTORIES, so a relative `cwd`
     // would let it read a repository above the folder.
     if (!isAbsolute(call.cwd)) {
       throw new Error(`git runs only in an absolute folder, not ${call.cwd}`);
+    }
+    if (call.indexFile !== undefined && !isAbsolute(call.indexFile)) {
+      throw new Error(`git takes only an absolute index file, not ${call.indexFile}`);
     }
     await this.#checkHooksFolderIsEmpty();
     const config: ConfigEntry[] = [
@@ -98,12 +103,13 @@ export class GitRunner {
     ];
     // git doesn't look for a repository above `cwd`, so a folder inside
     // another repository is never read as part of it.
-    const ceiling = { GIT_CEILING_DIRECTORIES: dirname(call.cwd) };
+    const extra: Record<string, string> = { GIT_CEILING_DIRECTORIES: dirname(call.cwd) };
+    if (call.indexFile !== undefined) extra["GIT_INDEX_FILE"] = call.indexFile;
     return runProcess({
       program: this.#git,
       args: ["--no-pager", ...call.args],
       cwd: call.cwd,
-      env: hardenedEnvironment(this.#environment, ceiling, config),
+      env: hardenedEnvironment(this.#environment, extra, config),
       timeoutMs: call.network === true ? this.#networkTimeoutMs : this.#localTimeoutMs,
       maxOutputBytes: this.#maxOutputBytes,
     });

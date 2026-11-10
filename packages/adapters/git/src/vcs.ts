@@ -1,5 +1,5 @@
-import { appendFile, mkdir, realpath } from "node:fs/promises";
-import { join } from "node:path";
+import { appendFile, lstat, mkdir, rename as move, realpath } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { Vcs, VcsCommit, VcsStatus } from "@halonicjs/ports";
 import {
   logArgs,
@@ -14,6 +14,7 @@ import type { ConfigEntry } from "./hardening.ts";
 import { gitError, Repository } from "./repository.ts";
 import { checkBranchNameShape, checkVcsPaths } from "./vcs-input.ts";
 import { pullFastForward, pushToUpstream } from "./vcs-remote.ts";
+import { listAtCommit, readAtCommit, snapshotCommit } from "./vcs-versions.ts";
 
 /** Who commits: git reads no user config, so the caller says. */
 export interface GitAuthor {
@@ -140,6 +141,33 @@ export class GitVcs implements Vcs {
     await repository.output({ args: ["switch", "--quiet", "--create", name] });
   }
 
+  async snapshot(): Promise<string> {
+    return snapshotCommit(await this.#repository(), this.#authorConfig());
+  }
+
+  async readAt(version: string, path: string): Promise<string | null> {
+    return readAtCommit(await this.#repository(), version, path);
+  }
+
+  async listAt(version: string, dir?: string): Promise<string[] | null> {
+    return listAtCommit(await this.#repository(), version, dir);
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    const repository = await this.#checkedRepository([from, to]);
+    if (to === from || to.startsWith(`${from}/`)) {
+      throw new Error(`Can't rename ${from} into itself.`);
+    }
+    const [source, target] = [join(repository.top, from), join(repository.top, to)];
+    if (!(await exists(source))) throw new Error(`Can't rename: there is no ${from}.`);
+    if (await exists(target)) throw new Error(`Can't rename ${from}: ${to} already exists.`);
+    await mkdir(dirname(target), { recursive: true });
+    const tracked = await repository.output({ args: ["ls-files", "-z", "--", from] });
+    // `git mv` moves the index entries with the files, so the history follows them.
+    if (tracked.length > 0) await repository.output({ args: ["mv", "--", from, to] });
+    else await move(source, target);
+  }
+
   async init(): Promise<void> {
     if ((await Repository.open(this.#runner, this.#folder)) !== null) return;
     const folder = await realpath(this.#folder);
@@ -196,6 +224,14 @@ export class GitVcs implements Vcs {
       ["user.useConfigOnly", "true"],
     ];
   }
+}
+
+/** Whether anything is at `path`, a link included. */
+async function exists(path: string): Promise<boolean> {
+  return lstat(path).then(
+    () => true,
+    () => false,
+  );
 }
 
 /** Whether the current branch has a commit yet. */

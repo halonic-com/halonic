@@ -95,6 +95,14 @@ verifies("git.hardened", () => {
       );
     });
 
+    it("refuses a relative index file, which git would read in the workspace", async () => {
+      const folder = await repositoryWith(scratch);
+      const runner = await testRunner(scratch);
+      await expect(
+        runner.run({ cwd: folder, args: ["status"], indexFile: "other.index" }),
+      ).rejects.toThrow("only an absolute index file");
+    });
+
     it("gives git only the absolute folders of the PATH", async () => {
       const folder = await repositoryWith(scratch);
       const path = `bin:.:${process.env["PATH"] ?? ""}`;
