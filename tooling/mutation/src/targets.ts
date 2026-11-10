@@ -75,7 +75,13 @@ export function strykerConfig(paths: StrykerPaths): Record<string, unknown> {
     // With pnpm, Stryker can't find the runner next to itself; name it.
     plugins: [paths.vitestRunner],
     vitest: { configFile: "vitest.config.ts" },
-    mutate: ["src/**/*.ts", "src/**/*.tsx", "!src/**/*.test.ts", "!src/**/*.test.tsx"],
+    mutate: [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "!src/**/*.test.ts",
+      "!src/**/*.test.tsx",
+      "!src/**/test/**",
+    ],
     // Stryker rewrites tsconfig.json with the TypeScript 5 API, which
     // TypeScript 7 doesn't have. Vitest doesn't read tsconfig, so we
     // point Stryker at a file that doesn't exist and it skips the step.

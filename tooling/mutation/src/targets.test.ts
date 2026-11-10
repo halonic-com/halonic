@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, matchesGlob } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, test } from "vitest";
 import {
@@ -70,10 +70,31 @@ describe("strykerConfig", () => {
       "src/**/*.tsx",
       "!src/**/*.test.ts",
       "!src/**/*.test.tsx",
+      "!src/**/test/**",
     ]);
     expect(config["plugins"]).toEqual(["/r/runner.js"]);
     expect(config["jsonReporter"]).toEqual({ fileName: "/w/yaml.json" });
     expect(config["tempDirName"]).toBe("/w/s");
+  });
+
+  test("leaves out test files and anything under a test folder, but not sources", () => {
+    const mutate = strykerConfig({ vitestRunner: "r", report: "r", sandbox: "s" })[
+      "mutate"
+    ] as string[];
+    const excluded = (file: string): boolean =>
+      mutate.some((glob) => glob.startsWith("!") && matchesGlob(file, glob.slice(1)));
+    for (const file of [
+      "src/a.test.ts",
+      "src/x/a.test.tsx",
+      "src/test/old-a.kit.ts",
+      "src/test/compare.spec.ts",
+      "src/x/test/deep/helper.ts",
+    ]) {
+      expect(excluded(file), file).toBe(true);
+    }
+    for (const file of ["src/a.ts", "src/x/b.tsx", "src/testing.ts", "src/contest/a.ts"]) {
+      expect(excluded(file), file).toBe(false);
+    }
   });
 });
 
