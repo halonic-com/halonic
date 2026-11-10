@@ -40,7 +40,7 @@ function startItems(context: StateContext): StateStep {
     return failed(`The engine can't run for-each items of a workflow yet (state "${stateId}").`);
   }
   if (state.agent === undefined) {
-    return failed(`For-each state "${stateId}" names no agent.`);
+    return failed(`For-each state "${stateId}" names no agent or workflow.`);
   }
   const list = itemsOf(context);
   if ("error" in list) {

@@ -195,7 +195,11 @@ verifies("engine.foreach-state", () => {
       triageWorkflow({ items: "{{input.subject}}" }),
       'The items of for-each state "triage" ("{{input.subject}}") give a text, not a list.',
     ],
-    ["names no agent", triageWorkflow({}, ["agent"]), 'For-each state "triage" names no agent.'],
+    [
+      "names no agent or workflow",
+      triageWorkflow({}, ["agent"]),
+      'For-each state "triage" names no agent or workflow.',
+    ],
   ])("fails the run when the state %s", (_name, workflow, error) => {
     const { log } = play(workflow, [start]);
     expect(log.at(-1)).toMatchObject({ type: "run.failed", state: "triage", error });
