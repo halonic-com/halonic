@@ -110,8 +110,11 @@ verifies("integration-runner.requests", () => {
 
   describe("the 32 KiB cap on URL, headers and secret placements (section 3.3)", () => {
     const limit = 32 * 1024;
-    /** The size of `fetchFrame`'s URL, `x-a` and the placement's `bearer` and `k`. */
-    const fixed = "https://api.example.com/".length + "x-a".length + "bearer".length + 1;
+    /**
+     * The size of `fetchFrame`'s URL, `x-a` and the placement's `bearer` and
+     * `k`, with 4 bytes each for the one header and the one placement.
+     */
+    const fixed = "https://api.example.com/".length + "x-a".length + "bearer".length + 1 + 2 * 4;
 
     it("sends a request at the cap to the kit", async () => {
       const kit = fakeKitClient(() => new Response(null));
@@ -151,6 +154,61 @@ verifies("integration-runner.requests", () => {
         await connection.close();
       },
     );
+  });
+
+  describe("the caps on how many headers and placements (HAL-4375)", () => {
+    const headers = (count: number) =>
+      Array.from({ length: count }, (_, n): [string, string] => [`x-${n}`, "v"]);
+    const placements = (count: number) =>
+      Array.from({ length: count }, () => ({ secret: "k", as: "bearer" as const }));
+
+    it.each([
+      ["100 headers", { headers: headers(100) }],
+      ["16 secret placements", { auth: placements(16) }],
+    ])("sends a request with %s to the kit", async (_, parts) => {
+      const kit = fakeKitClient(() => new Response(null));
+      const { runner, connection, call } = await runningCall(kit);
+      await runner.send(fetchFrame(call, parts));
+      expect(await runner.next()).toMatchObject({ type: "head", id: 0 });
+      expect(kit.sent).toHaveLength(1);
+      await connection.close();
+    });
+
+    it.each([
+      ["101 headers", { headers: headers(101) }, "at most 100 headers"],
+      ["17 secret placements", { auth: placements(17) }, "at most 16 secret placements"],
+    ])("refuses a request with %s as too large, before the kit", async (_, parts, message) => {
+      const kit = fakeKitClient(() => new Response(null));
+      const { options, runner, connection, call } = await runningCall(kit);
+      await runner.send(fetchFrame(call, parts));
+      expect(await runner.next()).toMatchObject({
+        type: "error",
+        id: 0,
+        code: "request-too-large",
+        message: expect.stringContaining(message),
+      });
+      expect(kit.sent).toEqual([]);
+      expect(options.blocks).toEqual([]);
+      await connection.close();
+    });
+
+    it("counts 4 bytes for each header, so many tiny ones don't fit under 32 KiB", async () => {
+      // 6,000 headers of `a: b` are 12,000 bytes of text, but 36,000 with their 4 bytes each.
+      const kit = fakeKitClient(() => new Response(null));
+      const { runner, connection, call } = await runningCall(kit, {
+        maxRequestHeaders: Number.POSITIVE_INFINITY,
+      });
+      const tiny = Array.from({ length: 6_000 }, (): [string, string] => ["a", "b"]);
+      await runner.send(fetchFrame(call, { headers: tiny }));
+      expect(await runner.next()).toMatchObject({
+        type: "error",
+        id: 0,
+        code: "request-too-large",
+        message: expect.stringContaining("bytes together"),
+      });
+      expect(kit.sent).toEqual([]);
+      await connection.close();
+    });
   });
 
   describe("a request Halonic can't answer", () => {

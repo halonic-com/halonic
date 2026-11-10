@@ -2,7 +2,8 @@
 // `call` frame until its `result`, or until it is cancelled. A cancelled call
 // has given up on its answer but still runs in the runner, so it stays in
 // the table until the runner answers, and the runner is stopped if that takes
-// longer than the grace.
+// longer than the grace. When a call stops running, the bridge closes its
+// requests (HAL-4353).
 
 import { RunnerCallTimeoutError, type RunnerLimits, RunnerToolError } from "./limits.ts";
 
@@ -19,6 +20,8 @@ export interface CallTableHooks {
   onBusy(): void;
   /** The last call left the table. */
   onIdle(): void;
+  /** A call stopped running: it answered, was cancelled, or failed with the runner. */
+  onEnded(call: number): void;
 }
 
 interface TableCall {
@@ -58,9 +61,10 @@ export class CallTable {
   start(name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<string> {
     if (signal?.aborted) return Promise.reject(signal.reason);
     const id = this.#nextId;
-    this.#nextId += 1;
-    // Throws before the call is in the table when its arguments are too large to send.
+    // Throws when the arguments are too large to send. The number is taken
+    // only once the frame is sent, so the runner can't use one it never saw.
     this.#hooks.send({ type: "call", call: id, name, args });
+    this.#nextId += 1;
     return new Promise<string>((resolve, reject) => {
       const deadline = setTimeout(
         () => this.#cancel(id, new RunnerCallTimeoutError("the tool call took too long")),
@@ -89,6 +93,7 @@ export class CallTable {
     if (entry === undefined) return false;
     this.#remove(call, entry);
     if (entry.state === "cancelled") return true;
+    this.#hooks.onEnded(call);
     if (outcome.error !== undefined) {
       entry.reject(new RunnerToolError(this.#hooks.filter(outcome.error)));
     } else {
@@ -101,7 +106,10 @@ export class CallTable {
   failAll(error: Error): void {
     for (const [call, entry] of this.#calls) {
       this.#remove(call, entry);
-      if (entry.state === "running") entry.reject(error);
+      if (entry.state === "running") {
+        entry.reject(error);
+        this.#hooks.onEnded(call);
+      }
     }
   }
 
@@ -115,6 +123,7 @@ export class CallTable {
     entry.cleanUp = () => clearTimeout(grace);
     entry.reject(reason);
     this.#hooks.sendCancel(call);
+    this.#hooks.onEnded(call);
   }
 
   #remove(call: number, entry: TableCall): void {

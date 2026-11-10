@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4281 (HAL-983, design HAL-958 section 3.7, attack cases A19, A21, A37)
+- Source: HAL-4281, HAL-4353 (HAL-983, design HAL-958 section 3.7, attack cases A19, A21, A37)
 
-While the runner runs, Halonic's side of the bridge shall cancel a call whose signal aborts or that runs past its time limit and stop the runner when a cancelled call doesn't answer within 5 seconds, ping the runner every 5 seconds between calls and stop it when it doesn't answer within 1 second, stop it after 2 minutes without a call, keep at most 1 MiB of stderr per call, and pass tool results, tool errors and stderr through the kit's secret filter.
+While the runner runs, Halonic's side of the bridge shall cancel a call whose signal aborts or that runs past its time limit and stop the runner when a cancelled call doesn't answer within 5 seconds, ping the runner every 5 seconds between calls and stop it when it doesn't answer within 1 second, stop it after 2 minutes without a call, keep at most 1 MiB of stderr per call, stop the runner when it leaves more than 8 MiB of its stdin unread, stop it with the reason `start-too-large` when the settings don't fit in a frame, use up no call number for a call whose arguments don't fit in a frame, and pass tool results, tool errors and stderr through the kit's secret filter.
 
 ## Examples
 
@@ -16,6 +16,12 @@ While the runner runs, Halonic's side of the bridge shall cancel a call whose si
   then it is stopped with the reason `unresponsive`.
 - Given a runner with no call for 2 minutes,
   then it is stopped with the reason `idle`.
+- Given a runner that sends requests but doesn't read its stdin,
+  when Halonic's queue for it passes 8 MiB,
+  then it is stopped with the reason `channel-failed`.
+- Given settings too large for the `start` frame,
+  when the runner says `ready`,
+  then it is stopped with the reason `start-too-large` and no block is reported.
 - Given a tool result that holds a secret value,
   when it reaches Halonic,
   then the value is replaced with `[secret removed]`.

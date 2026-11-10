@@ -3,6 +3,8 @@
 // the runner owns a body from its `head` until `end`, an error, or its own
 // `cancel-body`, and reads it one `pull` at a time, so the kit's idle timer
 // runs only while the integration waits (design HAL-958, section 3.7).
+// A request belongs to its tool call and is closed when the call stops
+// running, so no network work outlives the call (A37, HAL-4353).
 
 import {
   IntegrationRefusedError,
@@ -28,6 +30,8 @@ export interface RequestTableHooks {
 }
 
 interface TableRequest {
+  /** The tool call the request was sent in. */
+  readonly call: number;
   readonly abort: AbortController;
   /** The response body, once its `head` has been sent. */
   reader?: ReadableStreamDefaultReader<Uint8Array>;
@@ -46,6 +50,12 @@ export class RequestTable {
   readonly #live = new Map<number, TableRequest>();
   /** Request numbers only go up, so a number can't be used twice and none need remembering. */
   #lastId = -1;
+  /**
+   * Requests closed because their call ended. The runner's `pull` or
+   * `cancel-body` for one may have crossed the call's end on the wire, so it is
+   * ignored, not a violation. At most `maxRequestsInFlight` join per call.
+   */
+  readonly #closedWithCall = new Set<number>();
 
   constructor(
     http: IntegrationHttpClient,
@@ -84,11 +94,9 @@ export class RequestTable {
       });
       return;
     }
-    if (requestHeadBytes(frame) > this.#limits.maxRequestHeadBytes) {
-      this.#fail(frame.id, {
-        code: "request-too-large",
-        message: `a request's URL, headers and secret placements can be at most ${this.#limits.maxRequestHeadBytes} bytes together`,
-      });
+    const tooLarge = this.#requestTooLarge(frame);
+    if (tooLarge !== undefined) {
+      this.#fail(frame.id, { code: "request-too-large", message: tooLarge });
       return;
     }
     let body: ReturnType<typeof decodeRequestBody>;
@@ -98,13 +106,18 @@ export class RequestTable {
       this.#hooks.violation("a request body that is not base64");
       return;
     }
-    const entry: TableRequest = { abort: new AbortController(), pulling: false };
+    const entry: TableRequest = {
+      call: frame.call,
+      abort: new AbortController(),
+      pulling: false,
+    };
     this.#live.set(frame.id, entry);
     this.#send(frame, body, entry).catch((error) => this.#broke(error));
   }
 
   /** Takes a `pull` frame: answers with one `chunk`, the `end` or an `error`. */
   pull(id: number): void {
+    if (this.#closedWithCall.has(id)) return;
     const entry = this.#live.get(id);
     if (entry?.reader === undefined) {
       this.#hooks.violation("a pull for a body the runner doesn't own");
@@ -120,6 +133,7 @@ export class RequestTable {
 
   /** Takes a `cancel-body` frame: the integration stopped reading. */
   cancelBody(id: number): void {
+    if (this.#closedWithCall.has(id)) return;
     const entry = this.#live.get(id);
     if (entry?.reader === undefined) {
       this.#hooks.violation("a cancel for a body the runner doesn't own");
@@ -137,6 +151,22 @@ export class RequestTable {
     const entry = this.#live.get(id);
     // Already answered: the abort crossed the answer on the way.
     if (entry !== undefined) this.#close(id, entry);
+  }
+
+  /**
+   * Closes every request of a call that stopped running: aborts the kit's
+   * request, drops its body, frees its slot, and tells the runner.
+   */
+  closeCall(call: number): void {
+    for (const [id, entry] of this.#live) {
+      if (entry.call !== call) continue;
+      this.#close(id, entry);
+      this.#closedWithCall.add(id);
+      this.#fail(id, {
+        code: "call-not-running",
+        message: "the request was closed because its tool call ended",
+      });
+    }
   }
 
   /** Aborts every request and drops every body, when the runner stops. */
@@ -225,6 +255,21 @@ export class RequestTable {
     this.#hooks.send({ type: "chunk", id, base64: toBase64(piece.subarray(0, max)) });
   }
 
+  /** Why a request is too large to send to the kit, or `undefined` when it isn't (section 3.3). */
+  #requestTooLarge(frame: FetchFrame): string | undefined {
+    const limits = this.#limits;
+    if (frame.headers.length > limits.maxRequestHeaders) {
+      return `a request can have at most ${limits.maxRequestHeaders} headers`;
+    }
+    if (frame.auth.length > limits.maxSecretPlacements) {
+      return `a request can have at most ${limits.maxSecretPlacements} secret placements`;
+    }
+    if (requestHeadBytes(frame) > limits.maxRequestHeadBytes) {
+      return `a request's URL, headers and secret placements can be at most ${limits.maxRequestHeadBytes} bytes together`;
+    }
+    return undefined;
+  }
+
   /**
    * Answers a request with an error. A kit message can repeat what the
    * runner sent, so one too large for a frame is replaced by a fixed one.
@@ -264,14 +309,21 @@ const messageTooLarge = "the request was refused; the reason is too long to send
 
 const utf8 = new TextEncoder();
 
-/** The UTF-8 size of a request's URL, header names and values, and secret placements (section 3.3). */
+/** What each header and each placement adds on the wire: its `: ` and line end. */
+const bytesPerEntry = 4;
+
+/**
+ * The UTF-8 size of a request's URL, header names and values, and secret
+ * placements, with {@link bytesPerEntry} for each header and placement (section 3.3).
+ */
 function requestHeadBytes(frame: FetchFrame): number {
   const parts = [
     frame.url,
     ...frame.headers.flat(),
     ...frame.auth.flatMap((placement) => Object.values(placement)),
   ];
-  return parts.reduce((total, part) => total + utf8.encode(part).byteLength, 0);
+  const textBytes = parts.reduce((total, part) => total + utf8.encode(part).byteLength, 0);
+  return textBytes + (frame.headers.length + frame.auth.length) * bytesPerEntry;
 }
 
 /** A placement from a frame, with an absent header prefix left out rather than `undefined`. */

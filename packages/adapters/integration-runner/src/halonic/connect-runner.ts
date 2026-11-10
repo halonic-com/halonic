@@ -9,7 +9,12 @@ import type {
   SandboxProcess,
 } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
-import { FrameLineError, FrameLineWriter, readFrameLines } from "../frame-lines.ts";
+import {
+  FrameLineError,
+  FrameLineWriter,
+  FrameTooLargeError,
+  readFrameLines,
+} from "../frame-lines.ts";
 import { type HalonicFrame, type RunnerFrame, runnerFrame } from "../frames.ts";
 import { CallTable } from "./calls.ts";
 import { Heartbeat } from "./heartbeat.ts";
@@ -79,6 +84,7 @@ class RunnerBridge {
   readonly #requests: RequestTable;
   readonly #heartbeat: Heartbeat;
   readonly #stderr: StderrLog;
+  readonly #maxQueuedWriteBytes: number;
   #state: "waiting" | "started" | "stopped" = "waiting";
   #stop: RunnerStop | undefined;
   #markReady: () => void = () => undefined;
@@ -89,6 +95,7 @@ class RunnerBridge {
   constructor(options: ConnectRunnerOptions) {
     const limits = { ...defaultRunnerLimits, ...options.limits };
     this.#options = options;
+    this.#maxQueuedWriteBytes = limits.maxQueuedWriteBytes;
     this.#writer = new FrameLineWriter(options.process.stdin);
     this.ready = new Promise((resolve, reject) => {
       this.#markReady = resolve;
@@ -111,6 +118,7 @@ class RunnerBridge {
       onIdle: () => {
         if (this.#state === "started") this.#heartbeat.betweenCalls();
       },
+      onEnded: (call) => this.#requests.closeCall(call),
     });
     this.#requests = new RequestTable(options.http, this.#calls, limits, {
       send: (frame) => this.#send(frame),
@@ -213,19 +221,32 @@ class RunnerBridge {
     }
     clearTimeout(this.#readyTimer);
     this.#state = "started";
-    this.#send({
-      type: "start",
-      settings: { ...this.#options.settings },
-      tools: [...this.#options.tools],
-    });
+    try {
+      this.#send({
+        type: "start",
+        settings: { ...this.#options.settings },
+        tools: [...this.#options.tools],
+      });
+    } catch (error) {
+      if (!(error instanceof FrameTooLargeError)) throw error;
+      this.#halt({ reason: "start-too-large" });
+      return;
+    }
     this.#heartbeat.betweenCalls();
     this.#markReady();
   }
 
-  /** Sends a frame. A frame too large to send throws to the caller; a broken stdin stops the runner. */
+  /**
+   * Sends a frame. A frame too large to send throws to the caller. A broken
+   * stdin, or one the runner leaves unread past the cap, stops the runner.
+   */
   #send(frame: HalonicFrame): void {
     if (this.#state === "stopped") return;
     this.#writer.write(frame).catch(() => this.#halt({ reason: "channel-failed" }));
+    if (this.#writer.queuedBytes > this.#maxQueuedWriteBytes) {
+      // Later, not now: a caller such as `CallTable.start` may still be adding to its table.
+      queueMicrotask(() => this.#halt({ reason: "channel-failed" }));
+    }
   }
 
   #violation(detail: string): void {

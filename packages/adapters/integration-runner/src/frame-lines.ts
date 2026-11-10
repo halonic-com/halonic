@@ -102,10 +102,16 @@ export class FrameLineWriter {
   readonly #writer: WritableStreamDefaultWriter<Uint8Array>;
   readonly #maxBytes: number;
   readonly #encoder = new TextEncoder();
+  #queuedBytes = 0;
 
   constructor(stream: WritableStream<Uint8Array>, maxBytes = maxFrameBytes) {
     this.#writer = stream.getWriter();
     this.#maxBytes = maxBytes;
+  }
+
+  /** The bytes of frames written but not yet taken by the stream: what the other side hasn't read. */
+  get queuedBytes(): number {
+    return this.#queuedBytes;
   }
 
   /**
@@ -118,7 +124,14 @@ export class FrameLineWriter {
     if (bytes.byteLength > this.#maxBytes) {
       throw new FrameTooLargeError(`a frame of ${bytes.byteLength} bytes is over the limit`);
     }
-    return this.#writer.write(bytes);
+    this.#queuedBytes += bytes.byteLength;
+    const taken = () => {
+      this.#queuedBytes -= bytes.byteLength;
+    };
+    return this.#writer.write(bytes).then(taken, (error: unknown) => {
+      taken();
+      throw error;
+    });
   }
 
   /** Ends the stream after the frames already queued. Safe to call twice. */

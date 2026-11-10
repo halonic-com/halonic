@@ -30,8 +30,20 @@ export interface RunnerLimits {
   /**
    * A request's URL, headers and secret placements together, as UTF-8
    * (32 KiB); a larger one is refused before it reaches the kit (section 3.3).
+   * Each header and each placement counts 4 bytes more, for its `: ` and line
+   * end, so many tiny ones can't slip under it (HAL-4375).
    */
   maxRequestHeadBytes: number;
+  /** Headers in one request (100); more are refused as `request-too-large`. */
+  maxRequestHeaders: number;
+  /** Secret placements in one request (16); more are refused as `request-too-large`. */
+  maxSecretPlacements: number;
+  /**
+   * Frames Halonic has queued for the runner's stdin and the runner hasn't
+   * read yet (8 MiB). A runner that sends but doesn't read is stopped, so
+   * Halonic's memory doesn't grow with what it sends.
+   */
+  maxQueuedWriteBytes: number;
 }
 
 /** The design's limits. */
@@ -46,6 +58,9 @@ export const defaultRunnerLimits: Readonly<RunnerLimits> = Object.freeze({
   maxStderrBytesPerCall: 1_048_576,
   maxBodyPieceBytes: 256 * 1024,
   maxRequestHeadBytes: 32 * 1024,
+  maxRequestHeaders: 100,
+  maxSecretPlacements: 16,
+  maxQueuedWriteBytes: 8 * 1024 * 1024,
 });
 
 /**
@@ -56,11 +71,14 @@ export const defaultRunnerLimits: Readonly<RunnerLimits> = Object.freeze({
  * - `unresponsive`: no `ready` in time, or a missed `pong`.
  * - `call-deadline`: a cancelled call didn't answer within the grace.
  * - `protocol`: the runner sent something outside the protocol (A26, A33); `detail` says what.
- * - `channel-failed`: its stdin could no longer be written.
+ * - `channel-failed`: its stdin could no longer be written, or the runner left
+ *   more than {@link RunnerLimits.maxQueuedWriteBytes} of it unread.
+ * - `start-too-large`: the settings make `start` too large for a frame.
  * - `exited`: the runner ended by itself.
  */
 export type RunnerStop =
   | { reason: "closed" }
+  | { reason: "start-too-large" }
   | { reason: "idle" }
   | { reason: "unresponsive" }
   | { reason: "call-deadline" }

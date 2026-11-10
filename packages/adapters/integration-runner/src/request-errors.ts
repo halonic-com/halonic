@@ -14,7 +14,8 @@ import {
  *
  * - `timeout`: the kit's time limit ran out.
  * - `failed`: the network or the server failed.
- * - `call-not-running`: the request came from outside a running tool call (A37).
+ * - `call-not-running`: the request came from outside a running tool call, or
+ *   its call ended while it was open (A37).
  * - `too-many-requests`: the integration already has the most requests in flight (A21).
  */
 export const bridgeErrorCodes = [

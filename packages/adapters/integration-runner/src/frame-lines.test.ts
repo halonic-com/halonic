@@ -106,5 +106,18 @@ verifies("integration-runner.frames", () => {
       await writer.close();
       expect(await read).toEqual([]);
     });
+
+    it("counts the bytes the other side hasn't taken yet", async () => {
+      const lines = new TransformStream<Uint8Array, Uint8Array>();
+      const writer = new FrameLineWriter(lines.writable);
+      const line = `${JSON.stringify({ type: "ping", n: 0 })}\n`.length;
+      const written = [writer.write({ type: "ping", n: 0 }), writer.write({ type: "ping", n: 1 })];
+      expect(writer.queuedBytes).toBe(2 * line);
+      const read = readAll(lines.readable);
+      await Promise.all(written);
+      expect(writer.queuedBytes).toBe(0);
+      await writer.close();
+      await read;
+    });
   });
 });
