@@ -1,8 +1,8 @@
 # Decision: say what's wrong when a subcommand comes after the command's options
 
-- Requirements: `cli.subcommand-placement`
 - Task: HAL-2918, W10 of the words check of the `runs` pull requests (HAL-2909), cli-output revision 37
 - Approval: the task asks for this change (a team wording decision, HAL-2282); the maintainer approves this note in review
+- Kind: user-visible
 
 ## What changes
 
@@ -20,3 +20,7 @@ isn't a subcommand.
 
 No test was weakened. The `cli.subcommand-placement` test checks the new line 1 with the same
 number of `expect` calls.
+
+## Covers
+
+- cli.subcommand-placement
