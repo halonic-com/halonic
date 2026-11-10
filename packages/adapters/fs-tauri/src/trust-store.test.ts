@@ -52,6 +52,14 @@ verifies("fs-tauri.trust-commands", () => {
       expect(shell.asked).toEqual(["/hubs/shared", "/hubs/shared/skills", "/workspaces/acme-evil"]);
     });
 
+    it("asks about a folder that only looks inside a picked one until `..` is resolved", async () => {
+      const shell = new FakeTrustShell({ picked: ["/workspaces/acme"] });
+      const store = new TauriTrustStore(shell);
+      await store.grant(trustRecord("/workspaces/acme/../other"));
+      await store.grant(trustRecord("/workspaces/acme/./hubs/../skills"));
+      expect(shell.asked).toEqual(["/workspaces/acme/../other"]);
+    });
+
     it("closes the folder when its trust is revoked", async () => {
       const shell = new FakeTrustShell();
       const store = new TauriTrustStore(shell);

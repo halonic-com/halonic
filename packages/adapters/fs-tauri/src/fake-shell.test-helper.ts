@@ -1,4 +1,5 @@
 import type { TrustRecord } from "@halonicjs/ports";
+import { posixPath } from "@halonicjs/std";
 import type { TauriShell, TrustRefusal, TrustRefusalKind } from "./shell.ts";
 
 /** One command the page sent. */
@@ -99,9 +100,12 @@ export class FakeTrustShell implements TauriShell {
 
   #grant(record: TrustRecord): null {
     const { location } = record;
-    // By path part, as the shell compares canonical paths: `/acme-evil` isn't inside `/acme`.
+    // As the shell does, on the canonical path and by path part: `/acme/../other` and
+    // `/acme-evil` aren't inside `/acme`. The fake has no links to resolve, so cleaning
+    // up `.` and `..` is all canonical means here.
+    const canonical = posixPath.normalize(location);
     const chosen = this.picked.some(
-      (folder) => location === folder || location.startsWith(`${folder}/`),
+      (folder) => canonical === folder || canonical.startsWith(`${folder}/`),
     );
     if (!chosen) {
       this.asked.push(location);
