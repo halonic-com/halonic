@@ -60,7 +60,11 @@ export type ReviewTarget =
       readonly path: string;
       /** Its index in `parts`. */
       readonly part: number;
-      /** The {@link FileReview.seen} the parts were worked out from, so a click on an out-of-date list does nothing. */
+      /**
+       * The {@link FileReview.seen} the parts were worked out from, so a
+       * click on an out-of-date list does nothing. Parts from unsaved text
+       * are for showing only, so they always answer `stale`: save first.
+       */
       readonly seen: ExpectedContent;
     }
   | { readonly kind: "file"; readonly path: string }

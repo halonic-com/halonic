@@ -42,7 +42,7 @@ async function withAssistantChange() {
     const read = await records.read(path);
     return read.status === "found" ? read.record.baseline : undefined;
   };
-  return { inner, store, review, baseline };
+  return { inner, store, review, records, baseline };
 }
 
 verifies("app.review-other-writes-merge", () => {
@@ -90,6 +90,39 @@ verifies("app.review-other-writes-merge", () => {
       expected: await contentDigest("stale\n", digest),
     });
     expect(result.status).toBe("changed-on-disk");
+    expect(await baseline()).toBe(lines());
+  });
+
+  it("leaves the record alone and keeps the file held when it changed outside Halonic first", async () => {
+    const { inner, store, review, baseline } = await withAssistantChange();
+    // Someone outside Halonic changes line 9 on disk, then the editor saves an edit to line 6.
+    inner.files.set(path, lines({ 3: "line 3 by the assistant", 9: "line 9 outside" }));
+    await store.write(
+      path,
+      lines({ 3: "line 3 by the assistant", 6: "line 6 by the person", 9: "line 9 outside" }),
+    );
+    expect(await baseline()).toBe(lines());
+    const found = await review.changesIn(path);
+    const outcome = await review.reject({
+      kind: "part",
+      path,
+      part: 0,
+      seen: found?.seen ?? "absent",
+    });
+    expect(outcome).toMatchObject({ status: "done", held: [path] });
+    expect(inner.files.get(path)).toContain("line 9 outside");
+  });
+
+  it("leaves the record alone when the file to remove is already gone", async () => {
+    const { inner, store, records, baseline } = await withAssistantChange();
+    // As the assistant's delete leaves it: no file, the old text as the baseline.
+    inner.files.delete(path);
+    const read = await records.read(path);
+    if (read.status !== "found") {
+      throw new Error("no record");
+    }
+    await records.save({ ...read.record, baseline: lines(), seen: "absent" });
+    await store.remove(path);
     expect(await baseline()).toBe(lines());
   });
 

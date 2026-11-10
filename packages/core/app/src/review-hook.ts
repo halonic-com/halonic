@@ -47,6 +47,10 @@ export class ReviewWriteHook implements FileWriter {
         return;
       }
       const before = await this.files.store.read(path);
+      if (before === null) {
+        // Already gone: nothing is removed, so the record stays as it is.
+        return;
+      }
       await this.files.store.remove(path);
       await this.moveBaseline(path, before, null);
     });
@@ -59,6 +63,12 @@ export class ReviewWriteHook implements FileWriter {
   ): Promise<void> {
     const record = await this.files.read(path);
     if (record === null) {
+      return;
+    }
+    if ((await this.files.digestOf(before)) !== record.seen) {
+      // The file changed outside Halonic before this write. Merging from it
+      // would count that change as the assistant's, so the record stays as
+      // it is and the file stays held for Compare (AI changes 1.10).
       return;
     }
     await this.files.keep(await this.moved(record, before, after));

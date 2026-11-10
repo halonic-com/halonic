@@ -181,6 +181,9 @@ export class ReviewService {
    * The changes to review in one file (`app.review-changes-in`), worked
    * out from the saved file, or from `current`, the editor's unsaved text,
    * while the person types. `null` for a file without changes to review.
+   * Parts from unsaved text are for showing only: the baseline moves on
+   * save, so Accept or Reject of one of them answers `stale`. Save before
+   * deciding one.
    */
   async changesIn(path: string, current?: string): Promise<FileReview | null> {
     const record = await this.files.read(path);
