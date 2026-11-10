@@ -35,6 +35,7 @@ jobs:
       tooling: ${{ steps.diff.outputs.tooling }}
       tauri: ${{ steps.diff.outputs.tauri }}
       sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
+      sandbox: ${{ steps.diff.outputs.sandbox }}
       android: ${{ steps.diff.outputs.android }}
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
@@ -54,6 +55,7 @@ jobs:
             "tooling=^(\.github/workflows/ci\.yml$|\.github/actions/|tooling/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|turbo\.json$|biome\.json$)"
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-srt/|pnpm-lock\.yaml$)"
+            "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node)/|packages/core/ports/)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/connect/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
@@ -743,6 +745,42 @@ jobs:
         working-directory: packages/adapters/sandbox-srt
         run: pnpm test:fence
 
+  sandbox-os:
+    # The sandbox and launcher packages on the other two systems (plan
+    # phase 3): they start processes, build paths and read the system, so
+    # what holds on Linux can still break on macOS or Windows. Typecheck
+    # and tests only; lint and build don't depend on the platform. The
+    # filters are globs so a package that doesn't exist yet (sandbox-host)
+    # is no error. A test that can't run on a system skips itself with a
+    # reason (`it.skipIf(...)`, for example bwrap on macOS): never a
+    # failure, never a silent pass.
+    name: Sandbox packages on ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.sandbox == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macOS, os: macos-15 }
+          - { name: Windows, os: windows-2025 }
+    env:
+      TURBO_CACHE_DIR: ${{ runner.temp }}/turbo-cache
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Typecheck and test
+        shell: bash
+        run: >
+          pnpm exec turbo run typecheck test --continue --output-logs=new-only
+          --filter='@halonicjs/adapter-sandbox-*'
+          --filter=@halonicjs/adapter-system-node
+
   android:
     # The Android connect shell's debug APK, for arm64 phones and x86_64
     # emulators. Its own job, so the slow Android build never holds up the
@@ -871,6 +909,7 @@ jobs:
         tauri,
         tauri-windows,
         sandbox-fence,
+        sandbox-os,
         android,
         e2e,
         docs,
