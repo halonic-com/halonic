@@ -81,6 +81,7 @@ stdout:
       "lastWaitingAt": "2026-11-10T14:01:00.000Z",
       "approvals": [],
       "signals": [],
+      "cantTry": [],
       "lastSeq": 18,
       "updatedAt": "2026-11-10T14:01:00.000Z"
     },
@@ -151,7 +152,7 @@ stdout:
         "type": "agent.started",
         "state": "classify",
         "agent": "sorter",
-        "prompt": "{\"mail\":\"Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)\"}\n\n## Data\n\n### input.mail\nHi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)",
+        "prompt": "## Data\n\n### input.mail\nHi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)",
         "runId": "run_mfx3k2a0_01jd8q",
         "seq": 8,
         "at": "2026-11-10T14:01:00.000Z"

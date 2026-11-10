@@ -8,7 +8,7 @@ The engine shall decide what a run does next without reading a clock or making i
 
 ## Examples
 
-- Given a completed run,
+- Given a completed run, or one that ended at a step it couldn't try (`run.cant-try`),
   when an `effect-done` input arrives,
   then the engine refuses it with `engine.run-ended`.
 - Given a run in a task state,

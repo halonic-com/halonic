@@ -87,6 +87,7 @@ function updateOf(event: RunEvent): EntryUpdate | null {
   switch (event.type) {
     case "run.completed":
     case "run.failed":
+    case "run.cant-try":
       return { opener: "run.started", fields: [], closes: true };
     case "transition":
       return { opener: "state.entered", fields: [event.from], closes: true };

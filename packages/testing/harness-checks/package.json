@@ -1,0 +1,34 @@
+{
+  "name": "@halonicjs/testing-harness-checks",
+  "private": true,
+  "type": "module",
+  "description": "Manual checks, run by hand on a person's computer, of how the coding-agent harnesses sign in through the bridge and the sandbox (HAL-1710).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-harness-bridge": "workspace:*",
+    "@halonicjs/adapter-harness-claude-code": "workspace:*",
+    "@halonicjs/adapter-sandbox-srt": "workspace:*",
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "owen",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}

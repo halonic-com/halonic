@@ -1,5 +1,5 @@
 import type { RunFailureReason } from "@halonicjs/events";
-import { promptFor, withGets } from "@halonicjs/workflow";
+import { stepPrompt } from "@halonicjs/workflow";
 import { programHarnessOf } from "../../kernel/agent-call.ts";
 import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
 import type { DecidedEvent, DecideInput, Effect } from "../../kernel/decide-types.ts";
@@ -52,7 +52,7 @@ function startBranches({ run, stateId, state, scope, agents }: StateContext): St
     }
     // Each agent.started takes the next call id as it is folded in.
     const callId = `call-${run.calls + events.length + 1}`;
-    const prompt = withGets(promptFor(branch.input, scope, run.input), state.gets, scope);
+    const prompt = stepPrompt(branch.input, state.gets, scope, run.input);
     events.push({
       type: "agent.started",
       state: stateId,

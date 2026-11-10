@@ -3,6 +3,7 @@ import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
+  CantTryStep,
   ProviderText,
   RunFailureReason,
   RunKind,
@@ -64,6 +65,8 @@ verifies("events.run-log-contract", () => {
       | "event.received"
       | "run.completed"
       | "run.failed"
+      // Added after the reference by events.run-cant-try (HAL-4285).
+      | "run.cant-try"
     >();
   });
 
@@ -92,6 +95,8 @@ verifies("events.run-log-contract", () => {
       parent?: RunParent;
       // Added after the reference by events.run-started-harness (HAL-189).
       harness?: string;
+      // Added after the reference by events.run-cant-try (HAL-4285).
+      cantTry?: CantTryStep[];
     }>();
     expectTypeOf<EventOf<"state.entered">>().toEqualTypeOf<{
       type: "state.entered";
@@ -197,6 +202,8 @@ verifies("events.run-log-contract", () => {
       // Added after the reference by events.agent-finished-error (HAL-1536).
       error?: string;
       reason?: RunFailureReason;
+      // Added after the reference by events.run-cant-try (HAL-4285).
+      cantTry?: CantTryStep;
     }>();
   });
 
@@ -275,7 +282,8 @@ verifies("events.run-log-contract", () => {
       state: string;
       workflow: string;
       childRunId: string;
-      status: "completed" | "failed";
+      // "cant-try" added after the reference by events.run-cant-try (HAL-4285).
+      status: "completed" | "failed" | "cant-try";
       error?: string;
       // Added after the reference by events.workflow-finished-context (HAL-1537).
       context?: Record<string, unknown>;

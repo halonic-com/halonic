@@ -1,7 +1,8 @@
 // A case's `expect`, checked against what its runs did. The rules are the
 // old runner's: `context` is a partial match, `artifacts` means "at least
 // these", `final` without `status` means the run finished, and a run that
-// failed with nothing that allows it fails its test.
+// failed with nothing that allows it fails its test. A run that couldn't
+// try every step fails its test the same way; no case can expect it.
 
 import type { RunSummary } from "@halonicjs/events";
 import type { WorkflowTestCase } from "@halonicjs/format";
@@ -27,7 +28,7 @@ export function checkExpectations(expect: Expect, runs: readonly TestRun[]): Tes
     ...outcomeFailures(expect, own.summary),
     ...contextFailures("", expect.context, own.summary.context, true),
     ...artifactFailures(expect.artifacts, own),
-    ...unexpectedFailure(expect, own.summary),
+    ...unexpectedEnd(expect, own.summary),
   ];
 }
 
@@ -105,8 +106,19 @@ function artifactFailures(expected: readonly string[] | undefined, run: TestRun)
     .map((file) => ({ kind: "artifacts", expected: file, saved }));
 }
 
-/** A run that failed when `expect` says nothing about its status fails with its error. */
-function unexpectedFailure(expect: Expect, run: RunSummary): TestFailure[] {
-  if (run.status !== "failed" || statusExpected(expect) !== undefined) return [];
-  return [{ kind: "error", message: run.error ?? "The run failed." }];
+/**
+ * A run that failed or couldn't try every step, when `expect` says nothing
+ * about its status: it fails with its error, or with the steps it couldn't
+ * try. With a status expected, `status` already reports it.
+ */
+function unexpectedEnd(expect: Expect, run: RunSummary): TestFailure[] {
+  if (statusExpected(expect) !== undefined) return [];
+  switch (run.status) {
+    case "failed":
+      return [{ kind: "error", message: run.error ?? "The run failed." }];
+    case "cant-try":
+      return [{ kind: "cant-try", steps: run.cantTry }];
+    default:
+      return [];
+  }
 }

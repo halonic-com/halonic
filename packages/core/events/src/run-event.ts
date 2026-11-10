@@ -1,6 +1,7 @@
 import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
+  CantTryStep,
   ModelSkipReason,
   ProviderText,
   RunFailureReason,
@@ -59,6 +60,13 @@ export type RunEventBody =
        * each agent's own harness, and in older logs.
        */
       harness?: string;
+      /**
+       * The steps of a Try it or Test run that can't be tried, as found when
+       * the run's item was loaded, so a timeline can mark them straight away
+       * (requirement `events.run-cant-try`). Absent when there are none, and
+       * in older logs.
+       */
+      cantTry?: CantTryStep[];
     }
   | { type: "state.entered"; state: string }
   /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */
@@ -248,6 +256,8 @@ export type RunEventBody =
    * as a parallel branch does; `output` is then `null` (requirement
    * `events.agent-finished-error`). Absent in older logs and for an agent
    * that answered.
+   * `cantTry`: set instead of `reason` when the agent's step couldn't be
+   * tried (requirement `events.run-cant-try`), as a parallel branch reports it.
    */
   | {
       type: "agent.finished";
@@ -257,6 +267,7 @@ export type RunEventBody =
       parent?: string;
       error?: string;
       reason?: RunFailureReason;
+      cantTry?: CantTryStep;
     }
   | {
       type: "artifact.created";
@@ -277,7 +288,8 @@ export type RunEventBody =
       state: string;
       workflow: string;
       childRunId: string;
-      status: "completed" | "failed";
+      /** `cant-try` when the child ended with `run.cant-try` (requirement `events.run-cant-try`). */
+      status: "completed" | "failed" | "cant-try";
       error?: string;
       /**
        * The child's final context, set when it completed as one item of a
@@ -326,7 +338,14 @@ export type RunEventBody =
       host?: string;
       sandboxReason?: string;
       providerText?: ProviderText;
-    };
+    }
+  /**
+   * A Try it or Test run ended at a step it couldn't try, and nothing in it
+   * really failed (requirement `events.run-cant-try`). `cantTry` lists every
+   * such step: the ones found when the item was loaded and the ones found
+   * while running. A run with a real failure ends with `run.failed` instead.
+   */
+  | { type: "run.cant-try"; state: string | null; cantTry: CantTryStep[] };
 
 /**
  * One entry of a run log. Every run is an append-only stream of these; the

@@ -2,6 +2,9 @@ export { addUsage } from "./add-usage.ts";
 export type { AgentResume, LoggedToolCall } from "./agent-resume.ts";
 export type {
   ApprovalResolver,
+  CantTryReason,
+  CantTryStep,
+  LeftOutReason,
   ModelSkipReason,
   ProviderText,
   RunCatchUp,

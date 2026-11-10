@@ -1,4 +1,4 @@
-import { promptFor, withGets } from "@halonicjs/workflow";
+import { stepPrompt } from "@halonicjs/workflow";
 import { agentCallEffect } from "../../kernel/agent-call.ts";
 import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
 import type { DecidedEvent, DecideInput } from "../../kernel/decide-types.ts";
@@ -55,7 +55,7 @@ function startAgent({ run, stateId, state, scope, agents }: StateContext): State
       outcome: { type: "fail", error: `Task state "${stateId}" names no agent.` },
     };
   }
-  const prompt = withGets(promptFor(state.input, scope, run.input), state.gets, scope);
+  const prompt = stepPrompt(state.input, state.gets, scope, run.input);
   const call = { callId: nextCallId(run), state: stateId, agent, prompt };
   return {
     events: [{ type: "agent.started", state: stateId, agent, prompt }],

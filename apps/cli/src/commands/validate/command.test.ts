@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -204,4 +204,24 @@ verifies("cli.commands.validate.check-workspace", () => {
       await golden("no-workspace", ["validate"]);
     });
   });
+});
+
+verifies("workspace.unreadable-file", () => {
+  // Windows has no read permission bits, and root reads any file.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "names a workspace file that can't be read, with exit 2",
+    async () => {
+      writeFiles(acme, agent("sorter", "fast"));
+      chmodSync(join(acme, "hubs/support/agents/sorter.agent.yaml"), 0o000);
+
+      const { code, io } = await validateIn(acme);
+
+      expect(code).toBe(exitCode.usage);
+      expect(io.stdout).toEqual([]);
+      expect(io.stderr.slice(0, 2)).toEqual([
+        "✕ Couldn't check acme: the workspace file hubs/support/agents/sorter.agent.yaml can't be read.",
+        "  Check the file's permissions, or move it out of the workspace.",
+      ]);
+    },
+  );
 });

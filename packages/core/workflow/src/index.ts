@@ -14,6 +14,7 @@ export {
   contextBefore,
   promptFor,
   type StateInput,
+  stepPrompt,
   withGets,
 } from "./inputs.ts";
 export {

@@ -1,4 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { TabPageContext, ViewMemory } from "../item-page/remembered-view.ts";
 import { ItemGone } from "../page/item-gone.tsx";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import { focusPageHeading } from "./history-moves.ts";
@@ -46,6 +47,9 @@ interface PageMemory {
  * of the last five active tabs stay mounted, the others hidden and inert, so switching back keeps
  * their half-typed text. Each page is its own scroller.
  *
+ * An item page drawn with `ItemPage` shows the view its tab was left on, even after its page was
+ * unmounted.
+ *
  * When the active tab changes, its page gets back its scroll and the focus it last had, or else
  * focus goes to its `h1`, as it does for a tab whose page wasn't mounted any more. While the focus
  * is in the tab strip it stays there, as in any tab list. A tab whose place changes draws a fresh
@@ -69,6 +73,7 @@ export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
   const mounted = mountedTabIds(mountedRef.current, state);
   const pages = useRef(new Map<string, HTMLDivElement>());
   const memory = useRef(new Map<string, PageMemory>());
+  const views = useRef(new ViewMemory());
   const shown = useRef(shownPlace(state));
 
   useLayoutEffect(() => {
@@ -79,6 +84,10 @@ export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
       }
     }
   }, [mounted]);
+
+  useLayoutEffect(() => {
+    views.current.keepOnly(state.tabs.map((tab) => tab.id));
+  }, [state]);
 
   useLayoutEffect(() => {
     const before = shown.current;
@@ -135,7 +144,11 @@ export function TabPages({ tabs, renderPage, goneItem }: TabPagesProps) {
           {gone === undefined ? (
             // Keyed by the place, so a tab that moves on to another place draws a fresh page.
             <PageErrorBoundary pageKey={location.key} pageName={location.title}>
-              {renderPage(location, tab)}
+              <TabPageContext
+                value={{ tabId: tab.id, locationKey: location.key, views: views.current }}
+              >
+                {renderPage(location, tab)}
+              </TabPageContext>
             </PageErrorBoundary>
           ) : (
             <ItemGone

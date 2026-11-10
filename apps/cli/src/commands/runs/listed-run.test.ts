@@ -289,6 +289,25 @@ describe("listedRun", () => {
     });
   });
 
+  it("shows a run that couldn't try every step as Couldn't try, in its step (HAL-4285)", () => {
+    const cantTry = {
+      status: "cant-try",
+      item: "workflows/support-reply.yaml",
+      step: "draft",
+      reason: { kind: "needs-left-out-change", path: "models.yaml", leftOut: "models" },
+    } as const;
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "draft" },
+        { type: "run.cant-try", state: "draft", cantTry: [cantTry] },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({ status: "couldntTry", what: "In Draft a reply" });
+  });
+
   it("shows any other failure as Failed, where and not why", () => {
     const summary = runOf(
       [started, { type: "run.failed", state: "read", error: "boom" }],

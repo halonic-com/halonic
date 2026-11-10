@@ -8,16 +8,13 @@ import type { DefinitionSource } from "@halonicjs/ports";
 export class MemorySource implements DefinitionSource {
   readonly location = "memory:test-runner";
   private readonly files: Map<string, string>;
-  /** Paths `list` gives although `read` finds no file, as when one is removed in between. */
-  private readonly vanished: readonly string[];
 
-  constructor(files: Record<string, string>, vanished: readonly string[] = []) {
+  constructor(files: Record<string, string>) {
     this.files = new Map(Object.entries(files));
-    this.vanished = vanished;
   }
 
   async list(): Promise<string[]> {
-    return [...this.files.keys(), ...this.vanished].sort();
+    return [...this.files.keys()].sort();
   }
 
   async read(path: string): Promise<string | null> {

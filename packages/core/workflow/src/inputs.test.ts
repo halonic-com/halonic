@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { childInput, contextBefore, promptFor, withGets } from "./inputs.ts";
+import { childInput, contextBefore, promptFor, stepPrompt, withGets } from "./inputs.ts";
 import { mailWorkflow } from "./test/mail-workflow.spec.ts";
 import { workflowOf } from "./test/workflow.spec.ts";
 
@@ -67,6 +67,20 @@ verifies("workflow.state-input", () => {
       '{"count":3,"tags":["a"]}',
     );
     expect(promptFor(undefined, scope, { n: 3 })).toBe('{"n":3}');
+  });
+
+  // Ported from the old engine at 784f78d: "a step that picks data and has no input of its own
+  // sends only that, not the whole run input" (HAL-4455).
+  it("sends only the picked data for a step that picks data and has no input", () => {
+    const runInput = { from: "support", secret: "not sent" };
+    const picked = { ...scope, input: runInput };
+    expect(stepPrompt(undefined, ["input.from"], picked, runInput)).toBe(
+      "## Data\n\n### input.from\nsupport",
+    );
+    expect(stepPrompt(undefined, [], picked, runInput)).toBe(JSON.stringify(runInput));
+    expect(stepPrompt("Reply.", ["input.from"], picked, runInput)).toBe(
+      "Reply.\n\n## Data\n\n### input.from\nsupport",
+    );
   });
 
   it("gives a child run a rendered map, a text as its message, or nothing", () => {

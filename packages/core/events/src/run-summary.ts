@@ -1,4 +1,11 @@
-import type { RunFailureReason, RunKind, RunStatus, RunTrigger, Usage } from "./run-basics.ts";
+import type {
+  CantTryStep,
+  RunFailureReason,
+  RunKind,
+  RunStatus,
+  RunTrigger,
+  Usage,
+} from "./run-basics.ts";
 
 /** A tool call a run is waiting on a person's OK for, from its `approval.requested` event. */
 export interface PendingApproval {
@@ -84,6 +91,13 @@ export interface RunSummary {
   approvals: PendingApproval[];
   /** Signals the run sent, in order (for signal triggers). */
   signals: SentSignal[];
+  /**
+   * The steps of a Try it or Test run that couldn't be tried, from
+   * `run.started`, a parallel branch's `agent.finished` and `run.cant-try`.
+   * Kept when a real failure ends the run as `failed`. `[]` for any other
+   * run, and in older logs.
+   */
+  cantTry: CantTryStep[];
   /**
    * Sequence number of the run's last event. A writer appends after it, and a
    * client subscribes from it. Not in the old summary; derived, so the run

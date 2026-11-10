@@ -1,4 +1,5 @@
 export { listWorkspaceTests } from "./list-tests.ts";
+export { runWorkspaceTests } from "./run-tests.ts";
 export type {
   ModelScript,
   ScriptedModel,

@@ -288,6 +288,17 @@ verifies("engine.parallel-state", () => {
     });
   });
 
+  it("sends only the picked data to a branch with no input of its own (HAL-4455)", () => {
+    const branches = { web: { agent: "searcher" } };
+    const { decisions } = play(researchWorkflow({ branches, gets: ["input.topic"] }), [
+      { ...start, input: { topic: "tea", secret: "not sent" } },
+    ]);
+    expect(decisions[0]?.events.at(-1)).toMatchObject({
+      type: "agent.started",
+      prompt: "## Data\n\n### input.topic\ntea",
+    });
+  });
+
   it("fails the run when the state has no branches", () => {
     const { run, log } = play(researchWorkflow({ branches: {} }), [start]);
     expect(run?.status).toBe("failed");

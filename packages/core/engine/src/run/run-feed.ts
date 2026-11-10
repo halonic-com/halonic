@@ -1,4 +1,5 @@
 import type { RunEventListener, RunStore, RunSubscription } from "@halonicjs/ports";
+import { hasEnded } from "../kernel/run-state.ts";
 
 /** One open subscription: who listens, and the last `seq` it was given. */
 interface Follower {
@@ -74,8 +75,7 @@ export class RunFeed {
       follower.listener.onEvent(event);
       follower.lastSeq = event.seq;
     }
-    const ended = run.status === "completed" || run.status === "failed";
-    if (ended && follower.lastSeq >= run.lastSeq) {
+    if (hasEnded(run.status) && follower.lastSeq >= run.lastSeq) {
       this.#close(follower);
     }
   }

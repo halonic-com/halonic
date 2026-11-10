@@ -154,6 +154,11 @@ export function nextCallId(state: RunState): string {
   return `call-${state.calls + 1}`;
 }
 
+/** Whether a run has ended: completed, failed or ended at a step it couldn't try. */
+export function hasEnded(status: RunStatus): boolean {
+  return status === "completed" || status === "failed" || status === "cant-try";
+}
+
 /** The model call the run waits on with this id: a task state's, a `parallel` branch's or a `foreach` item's. */
 export function callOf(state: RunState, callId: string): PendingCall | null {
   if (state.pendingCall?.callId === callId) {
@@ -246,6 +251,8 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
       return { ...state, ...ended, status: "completed", context: event.context };
     case "run.failed":
       return { ...state, ...ended, status: "failed" };
+    case "run.cant-try":
+      return { ...state, ...ended, status: "cant-try" };
     default:
       return state;
   }

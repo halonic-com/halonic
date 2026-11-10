@@ -49,6 +49,7 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
     lastWaitingAt: null,
     approvals: [],
     signals: [],
+    cantTry: [...(first.cantTry ?? [])],
     lastSeq: first.seq,
     updatedAt: first.at,
   };
@@ -109,6 +110,9 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
     case "approval.resolved":
       removeApproval(summary.approvals, event.callId);
       return;
+    case "agent.finished":
+      if (event.cantTry !== undefined) summary.cantTry.push(event.cantTry);
+      return;
     case "event.received":
     case "workflow.finished":
     case "timer.fired":
@@ -132,6 +136,12 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.endedAt = event.at;
       summary.error = event.error;
       summary.reason = event.reason ?? null;
+      summary.approvals = [];
+      return;
+    case "run.cant-try":
+      summary.status = "cant-try";
+      summary.endedAt = event.at;
+      summary.cantTry = event.cantTry;
       summary.approvals = [];
       return;
     default:

@@ -47,6 +47,7 @@ verifies("events.summary-start", () => {
       lastWaitingAt: null,
       approvals: [],
       signals: [],
+      cantTry: [],
       lastSeq: 1,
       updatedAt: startedAt,
     });

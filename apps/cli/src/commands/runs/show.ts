@@ -131,5 +131,7 @@ function shownEnd(summary: RunSummary, clock: RunClock): ShownEnd {
         status: listedStatus(summary) === "stopped" ? "stopped" : "failed",
         at: at(summary.endedAt ?? summary.updatedAt),
       };
+    case "cant-try":
+      return { status: "couldntTry", at: at(summary.endedAt ?? summary.updatedAt) };
   }
 }

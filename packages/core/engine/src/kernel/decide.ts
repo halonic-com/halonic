@@ -16,7 +16,7 @@ import { InputRefused } from "./input-refused.ts";
 import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./registry.ts";
 import { brokeOff, type RequestedEffect, unknownOutcomeEvents } from "./requested-effect.ts";
 import { branchOfCall } from "./run-branches.ts";
-import { callOf, evolve, type RunState, type WaitingApproval } from "./run-state.ts";
+import { callOf, evolve, hasEnded, type RunState, type WaitingApproval } from "./run-state.ts";
 import { foldableEvent } from "./saved-artifacts.ts";
 
 /**
@@ -114,7 +114,7 @@ export function checkRunTakes(run: RunState | null, input: DecideInput): void {
   if (run === null) {
     throw new InputRefused("engine.run-unknown", "The run has not started.");
   }
-  if (run.status === "completed" || run.status === "failed") {
+  if (hasEnded(run.status)) {
     throw new InputRefused("engine.run-ended", `Run "${run.runId}" has ended (${run.status}).`);
   }
   if (input.type === "send") {

@@ -1,6 +1,7 @@
 // The agent host's entry point. A placeholder: it prints its version and exits.
-// The real host (E1) replaces it. It imports nothing yet, so the build can
-// turn it into a single executable without a bundler.
+// The real host (E1) replaces it. It imports nothing, so the build can turn it
+// into a single executable without a bundler. The files the host will run
+// from are embedded next to it (see build/payload.ts); unpacking them is next.
 
 // Put in front of this file by the build. Missing when the file runs from source.
 declare const HALONIC_AGENT_HOST_VERSION: string | undefined;

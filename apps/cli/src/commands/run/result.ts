@@ -45,7 +45,9 @@ export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult 
   const steps = runStepLines(events, summary, definitions, facts.clock);
   const heading = runHeading(summary, definitions, facts.workspaceName);
   return {
-    exitCode: summary.status === "failed" ? exitCode.failed : exitCode.ok,
+    // A run that couldn't try every step didn't pass, so a script must not take it as done.
+    exitCode:
+      summary.status === "failed" || summary.status === "cant-try" ? exitCode.failed : exitCode.ok,
     lines: [
       heading,
       ...(steps.length === 0 ? [] : [[], ...steps]),

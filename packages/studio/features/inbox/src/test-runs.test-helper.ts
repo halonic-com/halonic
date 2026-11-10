@@ -30,6 +30,7 @@ export function waitingRun(id: string, fields: Partial<RunSummary> = {}): RunSum
     lastWaitingAt: "2026-11-10T10:40:00.000Z",
     approvals: [],
     signals: [],
+    cantTry: [],
     lastSeq: 5,
     updatedAt: "2026-11-10T10:40:00.000Z",
     ...fields,

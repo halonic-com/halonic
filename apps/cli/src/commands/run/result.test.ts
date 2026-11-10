@@ -8,6 +8,7 @@ import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import { exitCode } from "../../exit-code.ts";
 import { stoppedResult } from "../../follow-run.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
@@ -90,6 +91,19 @@ verifies("cli.run", () => {
       expect(stoppedResult([], workspace)).toEqual({ stopped: true, json: {} });
     },
   );
+
+  it("exits as a failure for a run that couldn't try every step (HAL-4285)", () => {
+    const facts = {
+      workspace,
+      workspaceName: "acme",
+      dir: undefined,
+      clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
+    };
+    const cantTry = { ...run, summary: { ...run.summary, status: "cant-try" as const } };
+
+    expect(runResult(cantTry, facts).exitCode).toBe(exitCode.failed);
+    expect(runResult(run, facts).exitCode).toBe(exitCode.ok);
+  });
 
   it.skipIf(process.platform === "win32")(
     "[platform:win32] HAL-4406: shows an escape code in the workflow's name as its code",

@@ -15,9 +15,17 @@ export type StatusFilter = (typeof statusFilters)[number];
  * What the list says a run is, with Studio's status words (cli-output 3.4):
  * a waiting run is `needsYou` when it waits for the user and `waiting` when
  * it waits for a time or a child run; a failed run is `stopped` when its
- * reason is `budget` or `cancelled`.
+ * reason is `budget` or `cancelled`. `couldntTry` is a Try it or Test run
+ * that ended at a step it couldn't try: neither done nor failed.
  */
-export type ListedStatus = "running" | "needsYou" | "waiting" | "done" | "failed" | "stopped";
+export type ListedStatus =
+  | "running"
+  | "needsYou"
+  | "waiting"
+  | "done"
+  | "failed"
+  | "stopped"
+  | "couldntTry";
 
 /** The filters the user gave, kept so a suggested command can repeat them. */
 export interface ListFilters {
@@ -58,6 +66,7 @@ const statusLooks: Readonly<Record<ListedStatus, { readonly mark: Mark; readonly
     done: { mark: "done", word: "Done" },
     failed: { mark: "failed", word: "Failed" },
     stopped: { mark: "failed", word: "Stopped" },
+    couldntTry: { mark: "needsYou", word: "Couldn't try" },
   };
 
 /**

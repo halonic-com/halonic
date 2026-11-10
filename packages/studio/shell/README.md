@@ -456,6 +456,48 @@ it. The host saves the width on this computer, as it does the sidebar's:
 
 The edge itself, Maximise and ✕ come with the item page frame.
 
+## Item page
+
+`ItemPage` is the frame the features draw an agent's, a workflow's or another item's page in (UX
+checklist 1.10). The feature owns the item; the shell draws the header and keeps the picked view:
+
+```tsx
+<ItemPage
+  icon={<WorkflowIcon />}
+  kind="Workflow"
+  name={workflow.name}
+  onRename={rename}
+  actions={[{ id: "delete", label: "Delete…", danger: true, onSelect: askToDelete }]}
+  views={[
+    { id: "flow", label: "Flow" },
+    {
+      id: "configuration",
+      label: "Configuration",
+      count: { value: 2, tone: "danger", name: "2 errors" },
+    },
+    { id: "runs", label: "Runs", count: { value: 1, tone: "warning", name: "1 needs you" } },
+  ]}
+  end={<RunButton />}
+>
+  {(view) => <WorkflowView view={view} />}
+</ItemPage>;
+```
+
+- **The header** is 52px and stays at the top while the view scrolls: the kind's icon, the kind in
+  small caps and the name as a rename field (the page's `h1`), the ⋮ menu when there are
+  `actions`, the views nav centred ("Workflow views"), and `end` at the right.
+- **Rename:** Enter or leaving the field keeps the trimmed name; an empty one puts the old name
+  back. Esc puts the old name back and that press does nothing else; with the name unchanged, Esc
+  goes on to the close stack.
+- **One view at a time,** remembered for the window tab and the item, even when the tab's page was
+  unmounted (`TabPages` keeps it). A tab that shows the item for the first time starts on the first
+  view. A page that draws its own header can use `ItemHeader` and `useRememberedView` itself.
+- **Badges** are the kit tabs' `count` (`danger` errors, `warning` waiting for a person) and
+  `running` dot.
+- **Not yet:** the chat beside the view (once a feature provides one for the kind), the panel's
+  edge, Maximise and ✕, the narrow window's **← Chat**, the stacked cards, and the "Changes not
+  live yet" line (24.9). Until the chat comes, the view takes the full width.
+
 ## Resource numbers
 
 `watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the

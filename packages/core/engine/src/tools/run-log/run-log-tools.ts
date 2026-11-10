@@ -25,7 +25,7 @@ export const unknownRunText = "Unknown run.";
 /** What `read_run` answers for a run with no events it shows. */
 export const noEventsText = "No events yet.";
 
-const statuses: readonly RunStatus[] = ["completed", "failed", "waiting", "running"];
+const statuses: readonly RunStatus[] = ["completed", "failed", "cant-try", "waiting", "running"];
 const dayMs = 86_400_000;
 
 /**
