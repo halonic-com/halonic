@@ -1,22 +1,24 @@
-import type { RunEvent } from "@halonicjs/events";
+import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
 import type { Workflow } from "@halonicjs/format";
-import type {
-  AppendOptions,
-  AppendResult,
-  BlobRef,
-  BlobStore,
-  RunSnapshot,
-  RunStore,
+import {
+  type AppendOptions,
+  type AppendResult,
+  type BlobRef,
+  type BlobStore,
+  matchesRunFilter,
+  type RunFilter,
+  type RunSnapshot,
+  type RunStore,
 } from "@halonicjs/ports";
 import { decodeUtf8 } from "@halonicjs/std";
 import type { DecideInput, StartInput } from "./decide-types.ts";
 
 /**
- * The parts of a run store the kernel uses, in memory, with the port's
- * check on `expectedSeq`. A test can drop or replace a run's snapshot, and
- * can make the next appends lose a race to another writer.
+ * A run store in memory, with the port's check on `expectedSeq`. A test can
+ * drop or replace a run's snapshot, and can make the next appends lose a
+ * race to another writer.
  */
-export class KernelRuns implements Pick<RunStore, "append" | "events" | "snapshot"> {
+export class KernelRuns implements RunStore {
   readonly logs = new Map<string, RunEvent[]>();
   readonly snapshots = new Map<string, RunSnapshot>();
   appends = 0;
@@ -52,6 +54,17 @@ export class KernelRuns implements Pick<RunStore, "append" | "events" | "snapsho
 
   async snapshot(runId: string): Promise<RunSnapshot | null> {
     return this.snapshots.get(runId) ?? null;
+  }
+
+  async get(runId: string): Promise<RunSummary | null> {
+    return summarize(this.logs.get(runId) ?? []);
+  }
+
+  async list(filter: RunFilter = {}): Promise<RunSummary[]> {
+    const summaries = [...this.logs.values()].map((log) => summarize(log));
+    return summaries.filter(
+      (summary): summary is RunSummary => summary !== null && matchesRunFilter(summary, filter),
+    );
   }
 }
 

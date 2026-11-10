@@ -1,6 +1,7 @@
 import type {
   RunEventBase,
   RunEventBody,
+  RunFailureReason,
   RunKind,
   RunParent,
   RunTrigger,
@@ -70,8 +71,22 @@ export interface EffectDoneInput extends InputBase {
   readonly result: ModelResult | ToolResult;
 }
 
+/**
+ * An effect `decide` asked for failed, such as a model call with no model
+ * left. The run fails with the reason `runFailureReasonOf` gave the error.
+ */
+export interface EffectFailedInput extends InputBase {
+  readonly type: "effect-failed";
+  /** The `callId` of the effect that failed. */
+  readonly callId: string;
+  readonly error: string;
+  readonly reason: RunFailureReason;
+  /** The host that couldn't be reached, for `model-unreachable`. */
+  readonly host?: string;
+}
+
 /** Everything that moves a run on. `step` records each one and passes it to `decide`. */
-export type DecideInput = StartInput | SendInput | TimerInput | EffectDoneInput;
+export type DecideInput = StartInput | SendInput | TimerInput | EffectDoneInput | EffectFailedInput;
 
 /** Ask a state's agent for its answer to a prompt. */
 export interface CallModelEffect {

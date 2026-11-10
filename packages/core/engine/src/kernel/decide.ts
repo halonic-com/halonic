@@ -6,6 +6,7 @@ import type {
   DecideInput,
   Decision,
   Effect,
+  EffectFailedInput,
   RunDefinitions,
   StartInput,
 } from "./decide-types.ts";
@@ -59,6 +60,9 @@ export function decide(
   }
   if (run === null) {
     throw new InputRefused("engine.run-unknown", "The run has not started.");
+  }
+  if (input.type === "effect-failed") {
+    return failedEffect(run, input);
   }
   if (input.type !== "effect-done" || run.state === null) {
     // Sends and timers arrive with the wait state and its checks (3c).
@@ -122,6 +126,25 @@ function start(input: StartInput, workflow: Workflow): Decision {
   };
   enter(draft, workflow.initial);
   return { events: draft.events, effects: draft.effects };
+}
+
+/**
+ * Only the call the run waits on fails it. A failure of any other call, such
+ * as one delivered after the run moved on, changes nothing.
+ */
+function failedEffect(run: RunState, input: EffectFailedInput): Decision {
+  if (run.pendingCall?.callId !== input.callId) {
+    return { events: [], effects: [] };
+  }
+  const { error, reason, host } = input;
+  const failed: DecidedEvent = {
+    type: "run.failed",
+    state: run.state,
+    error,
+    reason,
+    ...(host === undefined ? {} : { host }),
+  };
+  return { events: [failed], effects: [] };
 }
 
 function emit(draft: Draft, event: DecidedEvent): void {

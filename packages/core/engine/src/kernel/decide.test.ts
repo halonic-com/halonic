@@ -157,6 +157,32 @@ verifies("engine.task-state", () => {
   });
 });
 
+verifies("engine.run-call-fails", () => {
+  const failed = (callId: string): DecideInput => ({
+    type: "effect-failed",
+    at: "2026-11-09T09:00:05.000Z",
+    callId,
+    error: "The model didn't answer.",
+    reason: "model-unreachable",
+    host: "models.acme.test",
+  });
+
+  it("fails the run only for the call it waits on", () => {
+    const { decisions, run } = play(reply, [startInput, failed("call-2"), failed("call-1")]);
+    expect(decisions[1]).toEqual({ events: [], effects: [] });
+    expect(decisions[2]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "draft",
+        error: "The model didn't answer.",
+        reason: "model-unreachable",
+        host: "models.acme.test",
+      },
+    ]);
+    expect(run).toMatchObject({ status: "failed", pendingCall: null });
+  });
+});
+
 verifies("engine.final-state", () => {
   it("completes the run with the initial context and what the run wrote", () => {
     const { log, run } = play(reply, [startInput, answer("call-1", "On its way")]);

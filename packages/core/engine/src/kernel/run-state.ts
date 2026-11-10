@@ -6,6 +6,8 @@ export interface PendingCall {
   readonly callId: string;
   readonly state: string;
   readonly agent: string;
+  /** What the call asks the agent, so the executor can carry it out from the state alone. */
+  readonly prompt: string;
 }
 
 /**
@@ -103,7 +105,7 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "state.entered":
       return { ...state, status: "running", state: event.state, enteredAt: event.at };
     case "agent.started":
-      return startCall(state, event.state, event.agent, event.parent);
+      return startCall(state, event);
     case "agent.finished":
       return finishCall(state, event.state, event.parent);
     case "context.updated":
@@ -127,17 +129,17 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
  * A state's own agent asks for one model call. Subagents (`parent` set) run
  * inside their delegating agent's call, so they ask for none of their own.
  */
-function startCall(
-  state: RunState,
-  stateId: string,
-  agent: string,
-  parent: string | undefined,
-): RunState {
-  if (parent !== undefined) {
+function startCall(state: RunState, event: Extract<RunEvent, { type: "agent.started" }>): RunState {
+  if (event.parent !== undefined) {
     return state;
   }
   const calls = state.calls + 1;
-  return { ...state, calls, pendingCall: { callId: `call-${calls}`, state: stateId, agent } };
+  const { state: stateId, agent, prompt } = event;
+  return {
+    ...state,
+    calls,
+    pendingCall: { callId: `call-${calls}`, state: stateId, agent, prompt },
+  };
 }
 
 function finishCall(state: RunState, stateId: string, parent: string | undefined): RunState {

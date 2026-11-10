@@ -100,7 +100,12 @@ verifies("engine.run-state-fold", () => {
 describe("evolve", () => {
   it("waits on the call a state's agent started, and counts call ids", () => {
     const state = folded(draftLog.slice(0, 3));
-    expect(state.pendingCall).toEqual({ callId: "call-1", state: "draft", agent: "writer" });
+    expect(state.pendingCall).toEqual({
+      callId: "call-1",
+      state: "draft",
+      agent: "writer",
+      prompt: "Reply",
+    });
     expect(nextCallId(state)).toBe("call-2");
   });
 

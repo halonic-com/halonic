@@ -17,6 +17,7 @@ export type {
   Decision,
   Effect,
   EffectDoneInput,
+  EffectFailedInput,
   ModelResult,
   RunDefinitions,
   SendInput,
