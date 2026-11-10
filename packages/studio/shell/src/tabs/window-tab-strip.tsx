@@ -10,6 +10,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { useNarrowWindow } from "../frame/frame-effects.ts";
+import { OpenTabsMenu } from "./open-tabs-menu.tsx";
 import { dragTargetIndex, TAB_DRAG_THRESHOLD, type TabSpan } from "./tab-drag.ts";
 import { currentLocation, type TabLocation, type TabSet, type WindowTab } from "./tab-set.ts";
 
@@ -39,6 +41,9 @@ export interface WindowTabStripProps {
  * to 96px, and then the strip scrolls sideways with the active tab kept in view. **+** after the
  * last tab opens a new tab on Home.
  *
+ * In a narrow window (600 to 899px) the tabs fold into "3 open tabs ▾" and its Menu
+ * ({@link OpenTabsMenu}), with **+** after it.
+ *
  * Nothing on a tab is `fg-subtle`, which reaches only 4.46:1 on the hovered tab.
  *
  * @example
@@ -55,6 +60,7 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
   const [focusedId, setFocusedId] = useState<string | undefined>(undefined);
   const rovingId = state.tabs.find((tab) => tab.id === focusedId)?.id ?? state.activeId;
   const startDrag = useTabDrag(tabs, elements);
+  const narrow = useNarrowWindow();
 
   useEffect(() => {
     elements.current.get(state.activeId)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
@@ -82,6 +88,15 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
       focusTab(focusNext);
     }
   };
+
+  if (narrow) {
+    return (
+      <>
+        <OpenTabsMenu tabs={tabs} state={state} iconFor={iconFor} needsYou={needsYou} />
+        <NewTabButton tabs={tabs} onNewTab={onNewTab} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -115,16 +130,23 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
           />
         ))}
       </div>
-      <div className="shrink-0 self-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<PlusIcon />}
-          label="New tab"
-          onClick={() => onNewTab?.(tabs.newTab())}
-        />
-      </div>
+      <NewTabButton tabs={tabs} onNewTab={onNewTab} />
     </>
+  );
+}
+
+/** **+**, after the tabs or the folded tabs, opens a new tab on Home. */
+function NewTabButton({ tabs, onNewTab }: Pick<WindowTabStripProps, "tabs" | "onNewTab">) {
+  return (
+    <div className="shrink-0 self-center">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<PlusIcon />}
+        label="New tab"
+        onClick={() => onNewTab?.(tabs.newTab())}
+      />
+    </div>
   );
 }
 

@@ -110,6 +110,7 @@ export {
   type HeaderBadgeButton,
   type HeaderBadgeMenu,
   type HeaderBadgeProps,
+  headerBadgeMenuClasses,
 } from "./header-badge/header-badge.tsx";
 export {
   HeaderBadgeSheet,

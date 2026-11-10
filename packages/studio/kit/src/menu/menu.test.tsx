@@ -303,6 +303,26 @@ verifies("kit.menu", () => {
     expect(check.querySelector("svg")).not.toBeNull();
   });
 
+  it("gives an item that needs someone the 6px warning dot at the right, and says so", () => {
+    const { menu } = renderMenu([
+      { id: "inbox", label: "Inbox", checked: true, onSelect: vi.fn() },
+      {
+        id: "reply",
+        label: "Support reply",
+        checked: false,
+        attention: "needs you",
+        onSelect: vi.fn(),
+      },
+    ]);
+    const [inbox, reply] = Array.from(menu.querySelectorAll<HTMLElement>("[role=menuitemradio]"));
+    expect(inbox?.querySelector(".bg-warning")).toBeNull();
+    expect(inbox?.textContent).toBe("Inbox");
+    const dot = reply?.querySelector(".bg-warning") as HTMLElement;
+    expect(dot.getAttribute("aria-hidden")).toBe("true");
+    expect(dot.className).toContain("size-1.5");
+    expect(reply?.textContent).toBe("Support reply, needs you");
+  });
+
   it("moves through radio items with the arrows and picks one with Enter", async () => {
     const pickAcme = vi.fn();
     const { trigger } = renderMenu([

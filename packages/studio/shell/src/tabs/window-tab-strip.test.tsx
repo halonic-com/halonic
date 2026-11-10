@@ -2,7 +2,8 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { currentLocation, type TabLocation, TabSet } from "./tab-set.ts";
 import { WindowTabStrip } from "./window-tab-strip.tsx";
@@ -11,7 +12,17 @@ const agents: TabLocation = { key: "agents", title: "Agents" };
 const sorter: TabLocation = { key: "agent/acme/sorter", title: "Sorter", kind: "agent" };
 const reply: TabLocation = { key: "workflow/acme/reply", title: "Support reply", kind: "workflow" };
 
-afterEach(unmountAll);
+let uninstallMedia: () => void;
+
+// A wide window: the narrow window's folded tabs are `shell.open-tabs-menu`'s.
+beforeEach(() => {
+  uninstallMedia = new FakeMediaQueries(1440).install();
+});
+
+afterEach(() => {
+  unmountAll();
+  uninstallMedia();
+});
 
 /** A strip over tabs on Agents, Sorter and Support reply, with Sorter active. */
 function renderStrip(options: { needsYou?: (location: TabLocation) => boolean } = {}) {

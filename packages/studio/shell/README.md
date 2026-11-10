@@ -91,6 +91,11 @@ new tab on Home and calls `onNewTab`, so the frame can open Ctrl K there. Nothin
 `fg-subtle`. Dragging a tab moves it, with no motion: it jumps to its new place as the pointer
 crosses a neighbour's middle. The tab menu and the tooltips come in later pull requests.
 
+In a narrow window (600 to 899px) the strip folds the tabs into one header badge, "3 open tabs ▾",
+with **+** after it (component specs 24.5 T5). It shows the 6px dot and says "3 open tabs, 1 needs
+you" while a tab needs you, and opens a kit Menu of the open tabs with the active one checked. A
+pick makes that tab active.
+
 ```tsx
 <ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
 ```

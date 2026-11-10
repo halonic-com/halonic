@@ -57,6 +57,12 @@ const badgeClasses = [
 
 const padding = { menu: "pr-1.5 pl-2", button: "px-2" } as const;
 
+/**
+ * The sample chip's look, for another Menu trigger drawn as a header badge: the narrow window's
+ * "3 open tabs ▾" in the title bar (VK T2-F43). It brings its own words and ▾.
+ */
+export const headerBadgeMenuClasses = `${badgeClasses} ${padding.menu}`;
+
 const iconSlot = "inline-grid size-3.5 shrink-0 place-items-center *:size-full";
 
 /** On a phone the badge has its own 48px line in More, under the workspace row (20.1). */
@@ -87,11 +93,7 @@ export function HeaderBadge(props: HeaderBadgeProps) {
 function PlainBadge({ props }: { readonly props: HeaderBadgeProps }) {
   if (props.as === "menu") {
     return (
-      <button
-        type="button"
-        className={`${badgeClasses} ${padding.menu}`}
-        onClick={props.onOpenSheet}
-      >
+      <button type="button" className={headerBadgeMenuClasses} onClick={props.onOpenSheet}>
         <MenuBadgeBody text={props.children} />
       </button>
     );
@@ -121,7 +123,7 @@ function MenuBadge({ props }: { readonly props: HeaderBadgeMenu }) {
       description={props.description}
       entries={props.entries}
       trigger={(trigger: MenuTriggerProps) => (
-        <button type="button" {...trigger} className={`${badgeClasses} ${padding.menu}`}>
+        <button type="button" {...trigger} className={headerBadgeMenuClasses}>
           <MenuBadgeBody text={props.children} />
         </button>
       )}

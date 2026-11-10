@@ -88,6 +88,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
           </span>
         ) : null}
       </span>
+      {item.attention === undefined ? null : <AttentionDot words={item.attention} />}
       {item.keys === undefined ? null : (
         <span className="ml-auto pl-4">
           <Kbd keys={item.keys} />
@@ -99,6 +100,22 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
         </span>
       ) : null}
     </button>
+  );
+}
+
+/**
+ * The still 6px `warning` dot, kept in its colour in forced colours, and its words for a screen
+ * reader, so the item doesn't rely on colour alone.
+ */
+function AttentionDot({ words }: { readonly words: string }) {
+  return (
+    <span className="inline-grid size-icon-sm shrink-0 place-items-center">
+      <span
+        aria-hidden="true"
+        className="size-1.5 rounded-full bg-warning forced-color-adjust-none"
+      />
+      <span className="sr-only">, {words}</span>
+    </span>
   );
 }
 

@@ -1236,6 +1236,7 @@ menu and let the browser open it. Divide groups with `"divider"`.
 | `trigger`     | Renders the button that opens it; a kit `Button` takes every prop it gets        |
 | `entries`     | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
 |               | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked`     |
+|               | and `attention` (the needs-you dot and its words)                                |
 | `description` | Optional: a sentence that explains the menu, shown above the items               |
 | `align`       | `start` (the default) lines up with the trigger's left edge, `end` its right     |
 
@@ -1263,6 +1264,10 @@ the item's description.
 An item with `checked` is one choice of several, a `menuitemradio` with `aria-checked`: `true` on
 the current one, which shows a 16px `accent` check at the right, `false` on the others. The filter
 chips' picker uses it on desktop, where a phone opens the picker sheet.
+
+An item with `attention` waits for someone, as a window tab can: it shows the still 6px `warning`
+dot at the right, kept in forced colours, and its words follow the label in the item's name,
+"Support reply, needs you". The narrow window's list of open tabs uses it.
 
 A `description` is a sentence that explains the menu, such as the sample chip's "Runs on the
 built-in test model, with scripted replies. No key, no cost." It's the first row, in `text-small`
@@ -1323,6 +1328,9 @@ icon and a trailing chevron, `aria-haspopup="menu"` and `aria-expanded`, and ope
 up with its right edge, 4px below. The trust badge has a dashed ring ("not decided yet") and no
 chevron or `aria-haspopup`: it opens the trust check, not a menu. The whole badge is the target.
 With more contrast its edge is `border-control`; in high contrast the see-through edge shows.
+
+`headerBadgeMenuClasses` is the sample chip's look for another Menu trigger that is drawn as a
+header badge, with its own words and chevron: the shell's "3 open tabs ▾" in a narrow window.
 
 **On a phone** it sits on its own 48px line, which the shell puts under the workspace row in More,
 with a 48px hit area; at large text it wraps instead of being cut. There the trust badge opens

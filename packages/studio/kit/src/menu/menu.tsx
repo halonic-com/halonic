@@ -36,6 +36,11 @@ export interface MenuItem {
    * desktop, a list of open tabs.
    */
   readonly checked?: boolean;
+  /**
+   * The item waits for someone: the still 6px `warning` dot at the right, as on a window tab, and
+   * these words read after the label, "needs you". A list of open tabs.
+   */
+  readonly attention?: string | undefined;
   readonly onSelect: () => void;
 }
 
