@@ -73,6 +73,8 @@ export class CodexRun implements HarnessRun {
   #reader: AppServerEventReader | undefined;
   #iterated = false;
   #cancelled = false;
+  /** Set once the turn's final event has come and the run is stopping Codex. */
+  #finishing = false;
 
   constructor(
     task: HarnessTask,
@@ -193,7 +195,8 @@ export class CodexRun implements HarnessRun {
   /** Reads a notification about the task's thread, and finishes the run after its final event. */
   #read(notification: { method: string; params: unknown }): void {
     const reader = this.#reader;
-    if (reader === undefined) return;
+    // Codex may still say something while it stops; the run finishes once.
+    if (reader === undefined || this.#finishing) return;
     let events: HarnessEvent[];
     try {
       events = reader.read(notification);
@@ -205,14 +208,33 @@ export class CodexRun implements HarnessRun {
       this.#events.push(events);
       return;
     }
-    // The final event waits until Codex has stopped, so a cancel that comes
-    // meanwhile still ends the run with an error.
-    void this.#launched.then(async (process) => {
-      await process?.kill();
-      if (this.#cancelled) return this.#fail(cancelledError());
-      this.#events.push(events);
-      this.#events.end();
-    });
+    this.#finishing = true;
+    void this.#finish(events);
+  }
+
+  /**
+   * Stops Codex, then ends the run with the turn's final events. The final
+   * event waits until Codex has stopped, so a cancel that comes meanwhile
+   * still ends the run with an error.
+   */
+  async #finish(events: HarnessEvent[]): Promise<void> {
+    await this.#stopCodex();
+    if (this.#events.ended) return;
+    if (this.#cancelled) return this.#fail(cancelledError());
+    this.#events.push(events);
+    this.#events.end();
+  }
+
+  /**
+   * Stops Codex and everything it started. When the session can't stop it,
+   * the run ends with that error, so its reader still hears how it ended.
+   */
+  async #stopCodex(): Promise<void> {
+    try {
+      await (await this.#launched)?.kill();
+    } catch (error) {
+      this.#fail(error);
+    }
   }
 
   /**
@@ -248,7 +270,7 @@ export class CodexRun implements HarnessRun {
     } finally {
       // A reader that stops early, or a run that failed, leaves nothing running.
       this.#events.fail(new Error("The Codex run has ended."));
-      await (await this.#launched)?.kill();
+      await this.#stopCodex();
     }
   }
 
@@ -272,7 +294,7 @@ export class CodexRun implements HarnessRun {
     if (this.#events.ended) return;
     this.#cancelled = true;
     // A program that never started has nothing to stop.
-    await (await this.#launched)?.kill();
+    await this.#stopCodex();
     this.#fail(cancelledError());
   }
 

@@ -6,6 +6,7 @@ import {
   type HarnessRun,
   type HarnessTask,
   type SandboxProfile,
+  type SandboxSession,
 } from "@halonicjs/ports";
 import { type FakeProgram, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
@@ -64,6 +65,34 @@ const configPath = join("/agents/writer/settings", "config.toml");
 function openSession(program: FakeProgram, profile = engineProfile): FakeSandboxSession {
   const env = addHarnessEnvironment(profile.env, newHarness().environment?.(bridge, profile) ?? {});
   return new FakeSandboxSession({ profile: { ...profile, env }, program });
+}
+
+/**
+ * `session`, except that each `kill` of a program it started goes through
+ * `kill`, which gets the real one to call.
+ */
+function withKill(
+  session: SandboxSession,
+  kill: (realKill: () => Promise<void>) => Promise<void>,
+): SandboxSession {
+  return {
+    profile: session.profile,
+    get fence() {
+      return session.fence;
+    },
+    onBlocked: (listener) => session.onBlocked(listener),
+    close: () => session.close(),
+    start: async (command) => {
+      const process = await session.start(command);
+      return {
+        stdin: process.stdin,
+        stdout: process.stdout,
+        stderr: process.stderr,
+        exited: process.exited,
+        kill: () => kill(() => process.kill()),
+      };
+    },
+  };
 }
 
 async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error?: unknown }> {
@@ -147,6 +176,43 @@ verifies("harness-codex.start", () => {
       expect(error).toBeUndefined();
       expect(events).toEqual([{ type: "agent.finished", agent: "writer", output: "Teal." }]);
       expect(session.running).toBe(0);
+    });
+
+    it("ends with the session's error, without the token, when it can't stop Codex", async () => {
+      const session = openSession(codexFinishing);
+      const failingKill = withKill(session, async (realKill) => {
+        await realKill();
+        throw new Error(`could not stop the program started with ${bridge.token}`);
+      });
+      const { events, error } = await readAll(newHarness().start(task, failingKill, bridge));
+
+      expect(String(error)).toContain("could not stop the program");
+      expect(String(error)).not.toContain(bridge.token);
+      expect(events.map(({ type }) => type)).not.toContain("agent.finished");
+    });
+
+    it("stops Codex once when it says more after the turn has completed", async () => {
+      let kills = 0;
+      const session = withKill(
+        openSession(
+          fakeCodex(async (codex) => {
+            await answer(codex, "Teal.");
+            codex.notify("turn/completed", {
+              turn: { id: fakeTurnId, status: "completed", error: null },
+            });
+          }),
+        ),
+        async (realKill) => {
+          kills += 1;
+          await realKill();
+        },
+      );
+      const { events, error } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(error).toBeUndefined();
+      expect(events).toEqual([{ type: "agent.finished", agent: "writer", output: "Teal." }]);
+      // One for the turn's end, one when the stream closes; none for the second notification.
+      expect(kills).toBe(2);
     });
 
     it("passes a person's answer into the running turn", async () => {
