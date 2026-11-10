@@ -11,7 +11,7 @@ import type {
 } from "./run-basics.ts";
 import type { RunEventBody, RunEventType } from "./run-event.ts";
 import type { LoggedSandboxBlock } from "./sandbox-blocked.ts";
-import type { SandboxOpenedView, SandboxStrength } from "./sandbox-opened.ts";
+import type { DeniedPathGroupCode, SandboxOpenedView, SandboxStrength } from "./sandbox-opened.ts";
 
 // Type tests for the run log fields added after the reference shapes in
 // run-event.test.ts, one requirement each.
@@ -91,15 +91,32 @@ verifies("events.sandbox-opened", () => {
     expectTypeOf<SandboxOpenedView>().toEqualTypeOf<{
       strength: SandboxStrength;
       workingFolder: string;
-      tempFolder: string;
-      settingsFolder: string | null;
       readOnlyPaths: string[];
-      deniedGroups: string[];
+      deniedGroups: DeniedPathGroupCode[];
       deniedPaths: string[];
       allowedSites: string[];
       timeLimitMs: number;
     }>();
     expectTypeOf<SandboxStrength>().toEqualTypeOf<"os" | "vm" | "remote">();
+    expectTypeOf<DeniedPathGroupCode>().toEqualTypeOf<
+      | "ssh-keys"
+      | "cloud-sign-ins"
+      | "browser-data"
+      | "password-stores"
+      | "halonic-data"
+      | "agent-settings"
+    >();
+  });
+});
+
+verifies("events.sandbox-off", () => {
+  typeTest("records a step that ran without the sandbox and when the person chose that", () => {
+    expectTypeOf<EventOf<"sandbox.off">>().toEqualTypeOf<{
+      type: "sandbox.off";
+      state: string;
+      agent: string;
+      chosenAt: string;
+    }>();
   });
 });
 

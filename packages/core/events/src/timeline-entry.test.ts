@@ -237,8 +237,6 @@ verifies("events.started-events", () => {
     const sandbox = {
       strength: "os" as const,
       workingFolder: "~/acme/files/agents/w",
-      tempFolder: "<temp>/r",
-      settingsFolder: null,
       readOnlyPaths: [],
       deniedGroups: [],
       deniedPaths: [],

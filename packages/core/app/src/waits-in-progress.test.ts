@@ -91,8 +91,6 @@ verifies("app.resource-report-waits", () => {
           sandbox: {
             strength: "os",
             workingFolder: "~/acme/files/agents/writer",
-            tempFolder: "<temp>/halonic-r1",
-            settingsFolder: null,
             readOnlyPaths: [],
             deniedGroups: [],
             deniedPaths: [],

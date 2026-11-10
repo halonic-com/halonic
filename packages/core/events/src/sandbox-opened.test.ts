@@ -1,7 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { RunEvent } from "./run-event.ts";
-import { type SandboxOpenedOptions, sandboxOpenedView } from "./sandbox-opened.ts";
+import {
+  deniedPathGroupCodes,
+  type SandboxOpenedOptions,
+  sandboxOpenedView,
+} from "./sandbox-opened.ts";
 
 // Made-up home and temp folders; every other path is built from them.
 const home = "/home/user"; // leak-guard: allow absolute-path a made-up home folder for the tests
@@ -25,7 +29,7 @@ const options: SandboxOpenedOptions = {
   home,
   deniedGroups: [
     { code: "ssh-keys", paths: [`${home}/.ssh`] },
-    { code: "cloud-keys", paths: [`${home}/.aws`] },
+    { code: "cloud-sign-ins", paths: [`${home}/.aws`] },
     { code: "halonic-data", paths: [`${home}/.halonic/data`] },
   ],
 };
@@ -35,10 +39,8 @@ verifies("events.sandbox-opened", () => {
     expect(sandboxOpenedView(profile, options)).toEqual({
       strength: "os",
       workingFolder: "~/work/site",
-      tempFolder: temp,
-      settingsFolder: "~/.halonic/agents/writer",
       readOnlyPaths: ["~/work/site/.halonic"],
-      deniedGroups: ["ssh-keys", "cloud-keys", "halonic-data"],
+      deniedGroups: ["ssh-keys", "cloud-sign-ins", "halonic-data"],
       deniedPaths: ["/srv/private"],
       allowedSites: ["registry.npmjs.org"],
       timeLimitMs: 600_000,
@@ -57,9 +59,7 @@ verifies("events.sandbox-opened", () => {
       "deniedGroups",
       "deniedPaths",
       "readOnlyPaths",
-      "settingsFolder",
       "strength",
-      "tempFolder",
       "timeLimitMs",
       "workingFolder",
     ]);
@@ -75,7 +75,7 @@ verifies("events.sandbox-opened", () => {
   it("logs denied paths as group codes plus the paths the person added", () => {
     const added = { ...profile, deniedPaths: [...profile.deniedPaths, `${home}/Documents/tax`] };
     const view = sandboxOpenedView(added, options);
-    expect(view.deniedGroups).toEqual(["ssh-keys", "cloud-keys", "halonic-data"]);
+    expect(view.deniedGroups).toEqual(["ssh-keys", "cloud-sign-ins", "halonic-data"]);
     expect(view.deniedPaths).toEqual(["/srv/private", "~/Documents/tax"]);
   });
 
@@ -92,7 +92,7 @@ verifies("events.sandbox-opened", () => {
   it("never names a group that has no paths", () => {
     const empty: SandboxOpenedOptions = {
       ...options,
-      deniedGroups: [{ code: "x", paths: [] }],
+      deniedGroups: [{ code: "browser-data", paths: [] }],
     };
     expect(sandboxOpenedView(profile, empty).deniedGroups).toEqual([]);
   });
@@ -134,10 +134,11 @@ verifies("events.sandbox-opened", () => {
     );
   });
 
-  it("keeps a missing settings folder as null", () => {
-    expect(sandboxOpenedView({ ...profile, settingsFolder: null }, options).settingsFolder).toBe(
-      null,
-    );
+  it("never logs the temp folder or the settings folder, which the screens don't show", () => {
+    const logged = JSON.stringify(sandboxOpenedView(profile, options));
+    expect(logged).not.toContain(temp);
+    expect(logged).not.toContain("halonic-run-1");
+    expect(logged).not.toContain("agents/writer");
   });
 
   it("returns lists the caller can't change through the profile", () => {
@@ -157,5 +158,16 @@ verifies("events.sandbox-opened", () => {
       sandbox: sandboxOpenedView(profile, options),
     };
     expect(event.sandbox.strength).toBe("os");
+  });
+
+  it("names the six groups of denied paths in one list", () => {
+    expect(deniedPathGroupCodes).toEqual([
+      "ssh-keys",
+      "cloud-sign-ins",
+      "browser-data",
+      "password-stores",
+      "halonic-data",
+      "agent-settings",
+    ]);
   });
 });

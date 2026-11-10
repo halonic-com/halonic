@@ -8,6 +8,25 @@ import { shortenHome } from "./home-path.ts";
 export type SandboxStrength = "os" | "vm" | "remote";
 
 /**
+ * The codes of the groups of paths a sandbox denies: the person's SSH keys,
+ * their cloud sign-ins, browser data, password stores, Halonic's own data and
+ * other agents' settings (such as `~/.claude`). One list, so the profile
+ * builder, the run log and the screens name the same groups. Screens word
+ * each code through the message catalogue.
+ */
+export const deniedPathGroupCodes = [
+  "ssh-keys",
+  "cloud-sign-ins",
+  "browser-data",
+  "password-stores",
+  "halonic-data",
+  "agent-settings",
+] as const;
+
+/** A group of denied paths: one of {@link deniedPathGroupCodes}. */
+export type DeniedPathGroupCode = (typeof deniedPathGroupCodes)[number];
+
+/**
  * What a sandboxed step can do, as a `sandbox.opened` event records it. It is
  * a display copy of the step's sandbox profile, made by
  * {@link sandboxOpenedView}, so a finished run still shows it. It never holds
@@ -16,16 +35,16 @@ export type SandboxStrength = "os" | "vm" | "remote";
 export interface SandboxOpenedView {
   /** How strong the fence is. */
   strength: SandboxStrength;
-  /** The one folder the step writes to. Paths in the person's home folder start with `~`. */
+  /**
+   * The step's working folder. Paths in the person's home folder start with
+   * `~`. Its own temp folder and settings folder are writable too, but the
+   * screens never show their paths, so the view leaves them out.
+   */
   workingFolder: string;
-  /** The step's private temp folder. */
-  tempFolder: string;
-  /** The agent's own settings folder, or `null` when it has none. */
-  settingsFolder: string | null;
   /** Paths the step may read but not change. */
   readOnlyPaths: string[];
-  /** The codes of the groups of denied paths, such as `"ssh-keys"`, in the order the groups were given. */
-  deniedGroups: string[];
+  /** The codes of the groups of denied paths, in the order the groups were given. */
+  deniedGroups: DeniedPathGroupCode[];
   /** The denied paths that are in no group: the ones the person added. */
   deniedPaths: string[];
   /** The sites the step may reach besides the Halonic bridge. */
@@ -41,8 +60,6 @@ export interface SandboxOpenedView {
  */
 export interface ShownSandboxProfile {
   workingFolder: string;
-  tempFolder: string;
-  settingsFolder: string | null;
   readOnlyPaths: readonly string[];
   deniedPaths: readonly string[];
   network: { allowedSites: readonly string[] };
@@ -51,8 +68,8 @@ export interface ShownSandboxProfile {
 
 /** A named group of denied paths, such as the person's SSH keys. */
 export interface DeniedPathGroup {
-  /** A stable code, such as `"ssh-keys"`. Screens show it through the message catalogue. */
-  code: string;
+  /** Which group it is. Screens show it through the message catalogue. */
+  code: DeniedPathGroupCode;
   /** The paths of the group, absolute, as they are in the profile. */
   paths: readonly string[];
 }
@@ -70,8 +87,8 @@ export interface SandboxOpenedOptions {
 /**
  * Makes the display copy of a sandbox profile that a `sandbox.opened` event
  * carries (requirement `events.sandbox-opened`). It copies a fixed list of
- * fields and nothing else, so the profile's `env` and any field added later
- * never reach the run log. A group is named when it has paths and all of them
+ * fields and nothing else, so the profile's `env`, its temp and settings
+ * folders and any field added later never reach the run log. A group is named when it has paths and all of them
  * are denied, so a group with no paths never claims something was blocked;
  * the denied paths outside the named groups are listed one by one. Paths in
  * the person's home folder start with `~`.
@@ -101,8 +118,6 @@ export function sandboxOpenedView(
   return {
     strength: options.strength,
     workingFolder: shorten(profile.workingFolder),
-    tempFolder: shorten(profile.tempFolder),
-    settingsFolder: profile.settingsFolder === null ? null : shorten(profile.settingsFolder),
     readOnlyPaths: profile.readOnlyPaths.map(shorten),
     deniedGroups: named.map((group) => group.code),
     deniedPaths: [...denied].filter((path) => !inNamedGroup.has(path)).map(shorten),

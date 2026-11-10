@@ -29,6 +29,12 @@ optional and come with a requirement.
   profile that a `sandbox.opened` event carries. It copies a fixed list of
   fields, never `env`, logs denied paths as group codes plus the paths the
   person added, and shortens home paths to `~` (requirement `sandbox-opened`).
+  `deniedPathGroupCodes` is the one list of the six groups of denied paths.
+  `readSandboxOpened(value)` reads a stored view without throwing, and gives
+  `null` for a damaged one.
+- `sandbox.off`: a step ran without the sandbox because a person chose to run
+  the agent on this computer, with `chosenAt`, when they chose it
+  (requirement `sandbox-off`).
 - `sandbox.started` and `harness.started`: written before the engine opens a
   step's sandbox or starts its harness program, with how long it waits, so a
   screen can say what the step is waiting for (requirement `started-events`).

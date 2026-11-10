@@ -140,6 +140,13 @@ export type RunEventBody =
    */
   | { type: "sandbox.opened"; state: string; agent: string; sandbox: SandboxOpenedView }
   /**
+   * A step ran without the sandbox because a person chose to run the agent
+   * on this computer (requirement `events.sandbox-off`). `chosenAt` is when
+   * they made that choice, as an ISO 8601 date and time. Logs written before
+   * this event have neither it nor `sandbox.opened`.
+   */
+  | { type: "sandbox.off"; state: string; agent: string; chosenAt: string }
+  /**
    * A step's sandbox refused an access (requirement `events.sandbox-blocked`).
    * `count` is the running total of refused accesses to this target (or to
    * `others`) in the step so far: the engine logs a target's first block at
