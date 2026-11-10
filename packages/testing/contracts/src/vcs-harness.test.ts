@@ -6,7 +6,12 @@ import {
   plantedHooks,
   unsafeVcsPaths,
 } from "./vcs-harness.ts";
-import { invalidCommitRefs, unknownCommit, unsafePatches } from "./vcs-version-inputs.ts";
+import {
+  invalidCommitRefs,
+  unknownCommit,
+  unsafePatches,
+  unsupportedPatches,
+} from "./vcs-version-inputs.ts";
 
 describe("Vcs safety lists (contracts.vcs-safety)", () => {
   // The suite is only as strong as these lists: each kind of input from the port doc is in them.
@@ -63,6 +68,25 @@ describe("Vcs safety lists (contracts.vcs-safety)", () => {
   it("names .git, .env and a path outside the folder in the unsafe patches", () => {
     const patches = unsafePatches.map(([, patch]) => patch).join("\n");
     for (const path of [".git/config", ".env", "../x.yaml", "rename to .git/config"]) {
+      expect(patches).toContain(path);
+    }
+  });
+
+  it.each([
+    ["a mode change", "new mode 100755"],
+    ["a symbolic link", "new file mode 120000"],
+    ["a gitlink", "new file mode 160000"],
+    ["a binary patch", "GIT binary patch"],
+    ["a rename header", "rename from a.yaml"],
+    ["a copy header", "copy from a.yaml"],
+  ])("refuses a patch with %s, on safe paths too", (_kind, line) => {
+    const patches = unsupportedPatches.map(([, patch]) => patch);
+    expect(patches.some((patch) => patch.split("\n").includes(line))).toBe(true);
+  });
+
+  it("names every private entry kind in the unsafe patches, deletes too", () => {
+    const patches = unsafePatches.map(([, patch]) => patch).join("\n");
+    for (const path of [".env.local", ".envrc", "deleted file mode 100644\n--- a/.env"]) {
       expect(patches).toContain(path);
     }
   });

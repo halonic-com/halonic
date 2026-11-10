@@ -1,20 +1,14 @@
 import { expect, it } from "vitest";
 import { type MakeVcs, optionLikePaths, patternLikePaths, unsafeVcsPaths } from "./vcs-harness.ts";
-import { changesOf, stagedDiffs, stateOf } from "./vcs-helpers.ts";
+import { changesOf, stateOf } from "./vcs-helpers.ts";
+import { vcsPatchSafetyCases } from "./vcs-patch-safety.ts";
 import {
+  deletePatch,
   invalidCommitRefs,
   linePatch,
+  privateWorkspaceFiles,
   unknownCommit,
-  unsafePatches,
 } from "./vcs-version-inputs.ts";
-
-/** Private entries a workspace folder can hold, which no version or worktree may give back. */
-const privateFiles = {
-  ".env": "KEY=1\n",
-  ".env.local": "KEY=2\n",
-  ".envrc": "export KEY=3\n",
-  ".studio/trust.json": "{}\n",
-};
 
 /**
  * The safety part of the {@link Vcs} contract for port version 2: worktrees
@@ -27,7 +21,7 @@ export function vcsVersionSafetyCases(make: MakeVcs): void {
   privateEntryCases(make);
   versionCases(make);
   pathCases(make);
-  patchCases(make);
+  vcsPatchSafetyCases(make);
 }
 
 /** Whether `path` is `folder` or inside it, in any case and with either separator. */
@@ -53,11 +47,11 @@ function worktreeFolderCases(make: MakeVcs): void {
 
 function privateEntryCases(make: MakeVcs): void {
   it("leaves private entries out of a snapshot, and never reads or lists them at a version", async () => {
-    const harness = await make.repo({ "a.yaml": "1\n", ...privateFiles });
+    const harness = await make.repo({ "a.yaml": "1\n", ...privateWorkspaceFiles });
     const { vcs } = harness;
     const snapshot = await vcs.snapshot();
     expect(await vcs.listAt(snapshot)).toEqual(["a.yaml"]);
-    for (const path of Object.keys(privateFiles)) {
+    for (const path of Object.keys(privateWorkspaceFiles)) {
       await expect(vcs.readAt(snapshot, path), path).rejects.toThrow(RangeError);
     }
     await expect(vcs.listAt(snapshot, ".studio")).rejects.toThrow(RangeError);
@@ -72,7 +66,7 @@ function privateEntryCases(make: MakeVcs): void {
     const { vcs } = harness;
     const snapshot = await vcs.snapshot();
     const worktree = await vcs.addWorktree(snapshot);
-    for (const [path, content] of Object.entries(privateFiles)) {
+    for (const [path, content] of Object.entries(privateWorkspaceFiles)) {
       await harness.writePrivate(worktree, path, content);
     }
     await harness.worktreeFiles(worktree).write("a.yaml", "2\n");
@@ -81,6 +75,38 @@ function privateEntryCases(make: MakeVcs): void {
       { path: "a.yaml", status: "modified" },
     ]);
     expect(changes.map((change) => change.diff).join("")).not.toContain("KEY=");
+  });
+
+  it("never lists a private entry HEAD tracks as changed, and never lets a patch change it", async () => {
+    const harness = await make.repo({ "a.yaml": "1\n" });
+    const { vcs } = harness;
+    await harness.commitPrivate(".env", "KEY=1\n");
+    await harness.commitPrivate(".env.local", "KEY=2\n");
+    const [head] = await vcs.log(1);
+    if (head === undefined) throw new Error("The repository has no commit.");
+    const snapshot = await vcs.snapshot();
+    expect(await vcs.listAt(snapshot)).toEqual(["a.yaml"]);
+
+    // The snapshot leaves them out, so against HEAD they would show as deleted:
+    // applying that diff would delete the person's `.env`.
+    const atSnapshot = await vcs.addWorktree(snapshot);
+    expect(await vcs.diffBetween(head.hash, atSnapshot.id)).toEqual([]);
+    const atHead = await vcs.addWorktree(head.hash);
+    await harness.writePrivate(atHead, ".env", "KEY=changed\n");
+    await harness.worktreeFiles(atHead).write("a.yaml", "2\n");
+    const changes = await vcs.diffBetween(head.hash, atHead.id);
+    expect(changes.map(({ path, status }) => ({ path, status }))).toEqual([
+      { path: "a.yaml", status: "modified" },
+    ]);
+    expect(changes.map((change) => change.diff).join("")).not.toContain("KEY=");
+
+    const before = await stateOf(harness);
+    for (const patch of [deletePatch(".env", "KEY=1"), linePatch(".env.local", "KEY=2", "KEY=3")]) {
+      await expect(vcs.applyPatch(patch, { reverse: false })).rejects.toThrow(RangeError);
+    }
+    expect(await harness.readPrivate(".env")).toBe("KEY=1\n");
+    expect(await harness.readPrivate(".env.local")).toBe("KEY=2\n");
+    expect(await stateOf(harness)).toEqual(before);
   });
 }
 
@@ -102,6 +128,27 @@ function versionCases(make: MakeVcs): void {
     }
     await expect(vcs.addWorktree(unknownCommit)).rejects.toThrow(/Unknown version/);
     await expect(vcs.diffBetween(unknownCommit, worktree.id)).rejects.toThrow(/Unknown version/);
+    expect(await vcs.listWorktrees()).toEqual([worktree]);
+    expect(await stateOf(harness)).toEqual(before);
+  });
+
+  it("refuses a full id that names a tree or a file, not a commit, and changes nothing", async () => {
+    const harness = await make.repo({ "a.yaml": "1\n", "agents/b.yaml": "1\n" });
+    const { vcs } = harness;
+    const snapshot = await vcs.snapshot();
+    const worktree = await vcs.addWorktree(snapshot);
+    const ids = await harness.nonCommitIds(snapshot);
+    // git has trees and blobs, so this case can't pass with none.
+    if (make.drivesGit) expect(ids.length).toBeGreaterThanOrEqual(2);
+    const before = await stateOf(harness);
+
+    for (const id of ids) {
+      await expect(vcs.readAt(id, "a.yaml"), id).rejects.toThrow(RangeError);
+      await expect(vcs.listAt(id), id).rejects.toThrow(RangeError);
+      await expect(vcs.listAt(id, "agents"), id).rejects.toThrow(RangeError);
+      await expect(vcs.addWorktree(id), id).rejects.toThrow(RangeError);
+      await expect(vcs.diffBetween(id, worktree.id), id).rejects.toThrow(RangeError);
+    }
     expect(await vcs.listWorktrees()).toEqual([worktree]);
     expect(await stateOf(harness)).toEqual(before);
   });
@@ -153,61 +200,4 @@ function pathCases(make: MakeVcs): void {
       ]);
     },
   );
-}
-
-/** A workspace with a staged and an unstaged change, and `.env`, for the patch cases. */
-async function patchWorkspace(make: MakeVcs) {
-  const harness = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n", ...privateFiles });
-  await harness.files.write("b.yaml", "staged\n");
-  await harness.vcs.stage(["b.yaml"]);
-  await harness.files.write("b.yaml", "on disk\n");
-  return harness;
-}
-
-function patchCases(make: MakeVcs): void {
-  it("refuses a patch that doesn't apply cleanly, and changes no file and not the index", async () => {
-    const harness = await patchWorkspace(make);
-    await harness.files.write("c.yaml", "1\n");
-    const before = await stateOf(harness);
-    const staged = await stagedDiffs(harness, ["a.yaml", "b.yaml", "c.yaml"]);
-
-    // The first part applies on its own; the second no longer matches `b.yaml`.
-    const patch = linePatch("a.yaml", "1", "2") + linePatch("b.yaml", "staged", "x");
-    await expect(harness.vcs.applyPatch(patch, { reverse: false })).rejects.toThrow();
-    // Reversed: the first part undoes `c.yaml`'s "0" to "1"; `a.yaml` was never changed to "2".
-    const never = linePatch("c.yaml", "0", "1") + linePatch("a.yaml", "1", "2");
-    await expect(harness.vcs.applyPatch(never, { reverse: true })).rejects.toThrow();
-    await expect(harness.vcs.applyPatch("not a patch\n", { reverse: false })).rejects.toThrow();
-
-    expect(await stateOf(harness)).toEqual(before);
-    expect(await stagedDiffs(harness, ["a.yaml", "b.yaml", "c.yaml"])).toEqual(staged);
-  });
-
-  it.each(unsafePatches)("refuses a patch that %s, and changes nothing", async (_kind, patch) => {
-    const harness = await patchWorkspace(make);
-    const before = await stateOf(harness);
-    const staged = await stagedDiffs(harness, ["a.yaml", "b.yaml"]);
-    await expect(harness.vcs.applyPatch(patch, { reverse: false })).rejects.toThrow(RangeError);
-    await expect(harness.vcs.applyPatch(patch, { reverse: true })).rejects.toThrow(RangeError);
-    expect(await stateOf(harness)).toEqual(before);
-    expect(await stagedDiffs(harness, ["a.yaml", "b.yaml"])).toEqual(staged);
-  });
-
-  it("refuses a patch that would create a symbolic link, and changes nothing", async () => {
-    const harness = await patchWorkspace(make);
-    const before = await stateOf(harness);
-    const patch = [
-      "diff --git a/link b/link",
-      "new file mode 120000",
-      "--- /dev/null",
-      "+++ b/link",
-      "@@ -0,0 +1 @@",
-      "+.git",
-      "\\ No newline at end of file",
-      "",
-    ].join("\n");
-    // Once `link` points at `.git`, a patch to `link/config` would write the repository's config.
-    await expect(harness.vcs.applyPatch(patch, { reverse: false })).rejects.toThrow();
-    expect(await stateOf(harness)).toEqual(before);
-  });
 }
