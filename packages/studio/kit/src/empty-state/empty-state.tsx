@@ -71,6 +71,7 @@ interface SectionError extends EmptyStateBase {
   readonly secondaryAction?: never;
 }
 
+/** The props of `EmptyState`. */
 export type EmptyStateProps = Nothing | CentredError | SectionError;
 
 /** The title can take focus from code (A2), but it isn't a control, so it draws no ring. */

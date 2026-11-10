@@ -7,6 +7,7 @@ import { TextArea } from "../input/text-area.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { TextSheet } from "../text-sheet/text-sheet.tsx";
 
+/** The props of `LongText`. */
 export interface LongTextProps {
   readonly value: string;
   /** Every change, saved as you type, on desktop and in the text sheet alike. */

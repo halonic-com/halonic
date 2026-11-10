@@ -20,6 +20,7 @@ export interface TooltipTriggerProps {
   readonly "aria-keyshortcuts"?: string;
 }
 
+/** The props of `Tooltip`. */
 export interface TooltipProps {
   /** A few words, never anything you click: "New tab", "Finish getting updates first." */
   readonly text: string;

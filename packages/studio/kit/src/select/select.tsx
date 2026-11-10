@@ -19,6 +19,7 @@ export interface SelectOption {
   readonly reason?: string;
 }
 
+/** The props of `Select`. */
 export interface SelectProps {
   /** The values to pick from, in the order the list shows them. */
   readonly options: readonly SelectOption[];

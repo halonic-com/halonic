@@ -2,10 +2,7 @@
 
 The Studio's design tokens: every colour, text style, size, radius, shadow and motion value, in one
 file (`src/theme.css`), for light and dark mode, and the shared base components, which arrive one
-by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip), [`Tabs`](#tabs),
-[`List`](#list), [`Kbd`](#kbd), [`Field`](#field), [`Input`](#input), [`TextArea`](#textarea),
-[`CopyButton`](#copybutton), [`ExternalLink`](#externallink),
-[`WindowBar` and `Window`](#windowbar-and-window) and [`IconTile`](#icontile).
+by one. Each component has its own section below, in the order it arrived.
 
 - **Layer:** studio
 - **Owner:** noah
@@ -149,8 +146,8 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
 - the agent orb's edges keep 3:1 and text keeps 4.5:1 on the stack shades, and each shade is darker
   than the card in front;
 - the focus rings never remove the outline, so they show in Windows high-contrast mode;
-- the more-contrast block raises exactly its six tokens, and the raised text colours gain contrast
-  on every surface;
+- the more-contrast block raises exactly its seven variables, and the raised text colours gain
+  contrast on every surface;
 - the kit imports no other Studio package, in any import form.
 
 After tuning a colour, run the tests and adjust until they pass.
@@ -569,7 +566,7 @@ skipped. Switching is instant, with no sliding indicator, and never adds to Back
 | State    | What shows                                                                 |
 | -------- | -------------------------------------------------------------------------- |
 | Default  | `fg-muted` text on the `surface-muted` track, 28px high                    |
-| Selected | A `surface` fill, `fg` text at weight 500, `shadow-1`, a transparent edge  |
+| Selected | A `surface` fill, `fg` text at weight 500, `shadow-1`                      |
 | Hover    | Text `fg`, no fill change                                                  |
 | Focus    | The standard focus ring                                                    |
 | Disabled | `fg-disabled`, clicks ignored, skipped by the arrow keys (`aria-disabled`) |
@@ -581,8 +578,9 @@ and the counter follows it like one more word; a word longer than its tab breaks
 Labels are never shortened and the tabs never scroll sideways. **On a touch screen** at desktop
 width a tab renders at 40px with a 48px hit area.
 
-**In high contrast** the selected tab keeps an edge: forced colours drops its fill and shadow and
-paints the transparent outline instead. A disabled tab turns `GrayText` (`text-forced-disabled`).
+**In high contrast** the selected tab keeps an outline: forced colours drops its fill and shadow and
+keeps a 1px `CanvasText` outline instead (with more contrast, a 1px `border-control` one). A
+disabled tab turns `GrayText` (`text-forced-disabled`).
 
 ## PickerSheet
 
@@ -793,16 +791,16 @@ rows hold a button.
 | State       | What shows                                                                                                                                                                                          |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Default     | A `surface` fill; 56px with a meta line, 40px without, 32px `dense`; padded 16px                                                                                                                    |
-| Hover       | `surface-subtle`, faded in over 120ms, and the More button appears                                                                                                                                  |
+| Hover       | `surface-subtle`, faded in over 120ms. The More button is always there, in `fg-muted`                                                                                                               |
 | Focus       | An inset 2px `accent` ring, which the list's edge can't clip                                                                                                                                        |
 | Unavailable | Title and icon `fg-disabled` (`GrayText` in high contrast), avatar at 45%, the reason in `fg-muted`. No hover, a `not-allowed` cursor. Still focusable, but doesn't open                            |
 | Error       | The reason in `danger` in place of the meta line, and a `danger` chip. It still opens                                                                                                               |
 | Selected    | `accent-soft` and a 2px `accent` bar at the start (8px from a bordered box's corners), and an outline in high contrast; `aria-selected="true"`. Not "where you are": that's the shell's `halo-tint` |
 
-**On a phone** the list is `flush` and rows are at least 56px (64px with a meta line), padded
-12px 16px; `dense` rows are 48px, with a 20px icon. The More button is always there at 48px, and
+**On a phone** the list is `flush` and rows are at least 56px, padded 12px 16px; `dense` rows are
+48px, with a 20px icon. The More button is always there at 48px, and
 the right edge has one job: a row with a More button puts its chip at the start of the meta line,
-before the text. **On a touch screen** at desktop width the More button is always shown too, and
+before the text. **On a touch screen** at desktop width the More column is wider (52px) and
 rows are at least 48px, a `dense` row's icon 20px again. A `dense` list's More button is 28px, so
 the button stays clear of the row's lines; its ring overlaps them and isn't clipped.
 
@@ -832,7 +830,8 @@ skeleton and an error together, and the screen focuses its title.
 ## useGridNavigation
 
 The roving focus behind the List, for a `grid` the kit doesn't draw (the Inbox list). Pass each
-row's `id` and which of its cells can take focus; spread `gridProps` on the grid and
+row's `id` and which of its cells can take focus (a second argument, `{ startColumn }`, picks the
+column that takes focus first, 0 by default); spread `gridProps` on the grid and
 `cell(row, column)` on each focusable element.
 
 ```tsx
@@ -870,7 +869,7 @@ the grey fill is dropped.
 | `trailing` | 10px by 80px, for a value or a chip    |
 | `heading`  | 8px by 48px, in a List heading's place |
 | `icon`     | 20px square                            |
-| `avatar`   | 28px square with an 8px radius         |
+| `avatar`   | 28px and round                         |
 
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.
@@ -1205,8 +1204,8 @@ control.
 - While the Field has an error, Done and back don't close the sheet: focus moves into the text,
   so the error is read. A failed save (`saveError`) is a danger Callout above the text, and Done
   still closes.
-- Inside a form sheet a long field stays a real `TextArea`, so a sheet of typing never opens over
-  another. That switch comes with the Dialog's form sheet.
+- Inside a form sheet (a `form` Dialog on a phone) a long field stays a real `TextArea`, so a sheet
+  of typing never opens over another.
 
 `TextSheet` is exported on its own too, for a screen that opens one without the folded field.
 
@@ -1539,9 +1538,9 @@ you can tell it from the text. A press anywhere in the box, padding and icon inc
 caret in the text; a press on the trailing button doesn't.
 
 **Keys.** Enter submits its form, **except while an input method is composing**: the Enter that
-picks a Japanese or Chinese word must never send. Your own key handlers use the same check,
-`isComposing(event)`, because WebKit ends a composition with an Enter whose `isComposing` is
-false.
+picks a Japanese or Chinese word must never send. `Input` and `TextArea` don't pass a composing
+Enter to your `onKeyDown`; a key handler on any other element uses the same check,
+`isComposing(event)`, because WebKit ends a composition with an Enter whose `isComposing` is false.
 
 **On a phone** the box is at least 48px high, with 12px padding and 16px text
 (`text-input-touch`), so the browser doesn't zoom in. The trailing button keeps its `sm` look with
@@ -1879,8 +1878,8 @@ with the arrow keys. Biome flags `tabIndex` on a `<pre>` (`noNoninteractiveTabin
 which stays inside the clip. The bar isn't clipped, so the focus ring of an action in it shows in
 full, also in high-contrast mode.
 
-Each `Window` is a region landmark named by its title, so screen-reader users can jump to it. Use
-one or a few per page.
+Each `Window` is a region landmark named by its title (with an empty title it's unnamed), so
+screen-reader users can jump to it. Use one or a few per page.
 
 The site's code windows are always dark; the Studio's follow light and dark mode, like the rest of
 the app. A long title wraps instead of being cut off, so the bar grows a line in a narrow pane.
@@ -1955,7 +1954,7 @@ colours a transparent outline becomes its edge.
 | Hover   | No change in look; the timer pauses. A finger on it pauses it too                          |
 | Focus   | The action and close button take the ring; the timer pauses. Pressing the action closes it |
 | Error   | `danger`: `role="alert"`, stays until closed. The other tones are `role="status"`          |
-| Many    | At most three; a fourth closes the oldest                                                  |
+| Many    | On desktop at most three; a fourth closes the oldest                                       |
 
 **While a kit Dialog is open,** everything outside it is inert, so toasts wait and show when it
 closes; their timers wait too. They're in the page, visually hidden, from the moment they arrive.
@@ -1970,6 +1969,26 @@ with nothing measured. One toast shows at a time and the rest wait in order. The
 48px, set into the padding so the toast isn't taller. The text and the action are one wrapping
 group, so a long action ("Sign in with Google") goes under the text and lines up with it, while
 "Undo" stays beside it.
+
+## Other exports
+
+The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `InfoIcon` and `WarningIcon` are outline icons
+in `currentColor`, hidden from screen readers; the slot they sit in gives them their size.
+`useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
+names a `PlaceIcon` knows. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
+components share are exported, so a test reads them instead of copying the number:
+
+| Export                              | Value     | What it is                                                  |
+| ----------------------------------- | --------- | ----------------------------------------------------------- |
+| `CALLOUT_FILES_SHOWN`               | 3         | Files a Callout names before "and N more"                   |
+| `COMMAND_COPIED`                    | "Copied"  | What a CommandBox says once the command is on the clipboard |
+| `COMMAND_NOT_COPIED`                | a message | What it says when neither way of copying worked             |
+| `SKELETON_AFTER_MS`                 | 300       | A loading List waits this long before it shows its skeleton |
+| `STILL_LOADING_AFTER_MS`            | 10000     | After this the List says it's still loading, with Try again |
+| `TOASTS_SHOWN`                      | 3         | Toasts on screen at once on desktop                         |
+| `TOAST_CLOSES_AFTER_MS`             | 5000      | A success or info toast stays this long                     |
+| `TOAST_WITH_ACTION_CLOSES_AFTER_MS` | 10000     | The same, when it has an action                             |
+| `TOOLTIP_DELAY_MS`                  | 500       | How long the pointer rests before a Tooltip shows           |
 
 ## Testing a component
 

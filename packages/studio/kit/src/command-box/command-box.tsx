@@ -12,6 +12,7 @@ export const COMMAND_COPIED = "Copied";
 /** What it says when neither way of copying worked. The command is left selected. */
 export const COMMAND_NOT_COPIED = "Couldn't copy. Select the command and copy it.";
 
+/** The props of `CommandBox`. */
 export interface CommandBoxProps {
   /** The command, exactly as it's run: "halonic trust ~/work/acme". Shown and copied as is. */
   readonly command: string;

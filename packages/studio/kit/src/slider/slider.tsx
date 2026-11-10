@@ -18,6 +18,7 @@ export interface SliderUnavailable {
   readonly reason: string;
 }
 
+/** The props of `Slider`. */
 export interface SliderProps {
   readonly min: number;
   readonly max: number;

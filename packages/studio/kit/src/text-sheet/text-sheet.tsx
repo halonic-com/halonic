@@ -5,6 +5,7 @@ import { describedBy } from "../field/control.ts";
 import { FieldLine } from "../field/field.tsx";
 import { SheetFrame } from "../sheet/sheet-frame.tsx";
 
+/** The props of `TextSheet`. */
 export interface TextSheetProps {
   /** The field's label: "Instructions", "Description". */
   readonly title: string;

@@ -7,6 +7,7 @@ import type { Ref } from "react";
  */
 export type ListHeadingLayout = "inline" | "stacked";
 
+/** The props of `ListHeading`. */
 export interface ListHeadingProps {
   /** The group's name, written in sentence case: CSS draws the capitals. It may be cut. */
   readonly name: string;

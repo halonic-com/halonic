@@ -9,6 +9,7 @@ export type WriteClipboard = (text: string) => Promise<boolean>;
 
 const ClipboardContext = createContext<WriteClipboard>(copyText);
 
+/** The props of `ClipboardProvider`. */
 export interface ClipboardProviderProps {
   readonly writeClipboard: WriteClipboard;
   readonly children: ReactNode;

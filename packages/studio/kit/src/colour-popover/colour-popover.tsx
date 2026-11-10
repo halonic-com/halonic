@@ -21,6 +21,7 @@ export interface ColourPreset {
   readonly name: string;
 }
 
+/** The props of `ColourPopover`. */
 export interface ColourPopoverProps {
   /** Its `id`, for the opener's `aria-controls`. */
   readonly id: string;

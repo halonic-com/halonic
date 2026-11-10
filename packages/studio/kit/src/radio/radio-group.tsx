@@ -31,6 +31,7 @@ export type RadioOption<Value extends string = string> =
   | RadioOptionAvailable<Value>
   | RadioOptionUnavailable<Value>;
 
+/** The props of `RadioGroup`. */
 export interface RadioGroupProps<Value extends string> {
   /** A few choices, shown all at once. For a long list, use a Select. */
   readonly options: readonly RadioOption<Value>[];

@@ -34,6 +34,7 @@ export interface GridNavigationOptions {
   readonly startColumn?: number;
 }
 
+/** What `useGridNavigation` returns: the props for the grid, and the props for each cell. */
 export interface GridNavigation {
   /** Spread onto the `role="grid"` element. */
   readonly gridProps: {

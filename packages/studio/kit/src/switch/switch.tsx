@@ -36,6 +36,7 @@ interface SwitchWithLabel extends SwitchBase {
   readonly children?: never;
 }
 
+/** The props of `Switch`. */
 export type SwitchProps = SwitchWithText | SwitchWithLabel;
 
 /**

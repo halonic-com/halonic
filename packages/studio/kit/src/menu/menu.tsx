@@ -51,6 +51,7 @@ export interface MenuTriggerProps {
   readonly "aria-expanded": boolean;
 }
 
+/** The props of `Menu`. */
 export interface MenuProps {
   /** The button that opens the menu, which also names it: a ⋮ "More actions for Sorter". */
   readonly trigger: (props: MenuTriggerProps) => ReactNode;

@@ -19,6 +19,7 @@ const region = [
 
 const focusable = "button";
 
+/** The props of `ToastRegion`. */
 export interface ToastRegionProps {
   readonly store: ToastStore;
 }

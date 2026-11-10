@@ -32,6 +32,7 @@ export type PushModalRegions = (regions: ModalLiveRegions) => () => void;
 
 const ModalRegionsContext = createContext<PushModalRegions | null>(null);
 
+/** The props of `ModalRegionsProvider`. */
 export interface ModalRegionsProviderProps {
   /** The shell passes its announcer's `pushModalRegions`. */
   readonly pushModalRegions: PushModalRegions;

@@ -38,6 +38,7 @@ export interface FieldPrefix {
   readonly name: string;
 }
 
+/** The props of `Field`. */
 export interface FieldProps {
   /** Always there, above the control. It's the control's name: "Name", "Model". */
   readonly label: string;

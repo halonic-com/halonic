@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 
+/** The props of `Kbd`. */
 export interface KbdProps {
   /**
    * The keys, one box each, in the order you press them: `["Ctrl", "K"]`. The shell picks "Ctrl"

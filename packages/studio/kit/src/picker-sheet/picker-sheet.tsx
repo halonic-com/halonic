@@ -17,6 +17,7 @@ export interface PickerOption<Value extends string = string> {
   readonly unavailable?: { readonly reason: string };
 }
 
+/** The props of `PickerSheet`. */
 export interface PickerSheetProps<Value extends string = string> {
   /** The field's label: "Model", "Hub". */
   readonly title: string;

@@ -1,5 +1,6 @@
 import { type ReactNode, useId } from "react";
 
+/** The props of `WindowBar`. */
 export interface WindowBarProps {
   /** The file name or the run: `workflows/review.yaml`, `review · run 12`. */
   readonly title: string;
@@ -56,6 +57,7 @@ const framedBarClasses = `${barClasses} rounded-t-[calc(var(--radius-md)-1px)]`;
 /** The content is clipped to the frame's bottom corners. Anything wider scrolls itself. */
 const framedContentClasses = "overflow-hidden rounded-b-[calc(var(--radius-md)-1px)]";
 
+/** The props of `Window`. */
 export interface WindowProps extends Omit<WindowBarProps, "titleId"> {
   /** The file or the run's steps. The window adds no padding: what's inside sets its own. */
   readonly children: ReactNode;

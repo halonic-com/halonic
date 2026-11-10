@@ -57,6 +57,7 @@ export async function openInNewTab(address: ExternalAddress): Promise<void> {
 
 const OpenExternalContext = createContext<OpenExternal>(openInNewTab);
 
+/** The props of `OpenExternalProvider`. */
 export interface OpenExternalProviderProps {
   readonly openExternal: OpenExternal;
   readonly children: ReactNode;

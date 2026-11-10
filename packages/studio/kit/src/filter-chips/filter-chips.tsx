@@ -62,6 +62,7 @@ export interface FilterChipsToggles extends RowLabel {
   readonly options?: never;
 }
 
+/** The props of `FilterChips`. */
 export type FilterChipsProps<Value extends string = string> =
   | FilterChipsOneOf<Value>
   | FilterChipsToggles;

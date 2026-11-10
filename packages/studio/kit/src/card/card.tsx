@@ -56,6 +56,7 @@ type InteractiveCard = CardBase & {
   readonly actions?: never;
 };
 
+/** The props of `Card`. */
 export type CardProps = StaticCard | InteractiveCard;
 
 const stateClasses: Record<CardState, string> = {

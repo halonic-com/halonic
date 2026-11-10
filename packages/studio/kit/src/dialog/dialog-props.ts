@@ -19,6 +19,7 @@ export interface DialogConfirm {
   readonly unavailable?: ButtonUnavailable;
 }
 
+/** The props of `Dialog`. */
 export interface DialogProps {
   /** "Delete agent?", "New agent". The dialog's name. */
   readonly title: string;

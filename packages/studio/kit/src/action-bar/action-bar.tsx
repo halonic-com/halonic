@@ -37,6 +37,7 @@ export type ActionBarRow = readonly [ActionBarButton] | readonly [ActionBarButto
 /** The colour of the line above the buttons. */
 export type ActionBarNoteTone = "muted" | "warning" | "danger";
 
+/** The props of `ActionBar`. */
 export interface ActionBarProps {
   /**
    * An optional row on top of everything else in the bar, drawn as it's given: the review row

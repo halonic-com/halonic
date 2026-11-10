@@ -7,6 +7,7 @@ export interface LineFrameAction {
   readonly onClick: () => void;
 }
 
+/** The props of `LineFrame`. */
 export interface LineFrameProps {
   /**
    * A 16px icon from the kit's set, in the colour its parent gives it (`fg` unless `muted`).

@@ -4,6 +4,7 @@ import { ChevronDownIcon } from "../icons/chevron-down-icon.tsx";
 /** `label` for a summary that names something, `value` for a summary that's a value. */
 export type DisclosureTone = "label" | "value";
 
+/** The props of `Disclosure`. */
 export interface DisclosureProps {
   /** The row's words: "How the budget works", or a value under a `label`: "3 items". */
   readonly summary: string;

@@ -26,6 +26,7 @@ interface ExternalLinkToRequestedAddress {
   readonly onError: (error: unknown) => void;
 }
 
+/** The props of `ExternalLink`. */
 export type ExternalLinkProps = ExternalLinkToAddress | ExternalLinkToRequestedAddress;
 
 /** The inline link style: accent text, underlined on hover (base component specs, 17.1). */

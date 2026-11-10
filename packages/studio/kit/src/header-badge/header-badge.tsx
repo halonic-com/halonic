@@ -35,6 +35,7 @@ export interface HeaderBadgeButton {
   readonly onClick: () => void;
 }
 
+/** The props of `HeaderBadge`. */
 export type HeaderBadgeProps = HeaderBadgeMenu | HeaderBadgeButton;
 
 /**

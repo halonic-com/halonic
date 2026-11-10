@@ -1,6 +1,7 @@
 import { EyeIcon } from "../icons/eye-icon.tsx";
 import { LineFrame } from "../line-frame/line-frame.tsx";
 
+/** The props of `ViewOnlyLine`. */
 export interface ViewOnlyLineProps {
   /**
    * The page's own sentence, never shortened: "View only on a phone. Edit this workflow on a

@@ -11,6 +11,7 @@ export type SkeletonBarKind = "title" | "meta" | "trailing" | "heading" | "icon"
  */
 export type SkeletonBarWidth = "1/3" | "2/5" | "1/2" | "3/5" | "2/3" | "7/10" | "full";
 
+/** The props of `SkeletonBar`. */
 export interface SkeletonBarProps {
   readonly kind: SkeletonBarKind;
   /** Only for `title` and `meta`. Default `full`. */

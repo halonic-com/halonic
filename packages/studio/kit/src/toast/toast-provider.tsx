@@ -3,6 +3,7 @@ import type { ToastStore } from "./toast-store.ts";
 
 const ToastStoreContext = createContext<ToastStore | null>(null);
 
+/** The props of `ToastStoreProvider`. */
 export interface ToastStoreProviderProps {
   /** The window's store, the one its `ToastRegion` shows. */
   readonly store: ToastStore;

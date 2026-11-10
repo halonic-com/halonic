@@ -21,6 +21,7 @@ type OwnedAttributes =
   | "aria-describedby"
   | "aria-required";
 
+/** The props of `TextArea`. */
 export interface TextAreaProps
   extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, OwnedAttributes> {
   /** It grows with its text up to this many lines, then scrolls inside. Default 5. */

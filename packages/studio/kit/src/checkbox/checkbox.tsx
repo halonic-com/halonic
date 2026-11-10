@@ -46,6 +46,7 @@ interface CheckboxWithLabel extends CheckboxBase {
   readonly children?: never;
 }
 
+/** The props of `Checkbox`. */
 export type CheckboxProps = CheckboxWithText | CheckboxWithLabel;
 
 /**

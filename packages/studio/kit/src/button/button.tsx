@@ -76,6 +76,7 @@ interface IconButton extends ButtonBase {
   readonly busyLabel?: never;
 }
 
+/** The props of `Button`. */
 export type ButtonProps = ButtonWithLabel | IconButton;
 
 /**

@@ -23,6 +23,7 @@ export interface Tab<Id extends string = string> {
   readonly disabled?: boolean;
 }
 
+/** The props of `Tabs`. */
 export interface TabsProps<Id extends string = string> {
   /** The name of the tab list: "Workflow views". */
   readonly label: string;

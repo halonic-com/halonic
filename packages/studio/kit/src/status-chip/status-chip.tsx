@@ -37,6 +37,7 @@ interface CountChip extends StatusChipBase {
   readonly name: string;
 }
 
+/** The props of `StatusChip`. */
 export type StatusChipProps = WordChip | CountChip;
 
 /** Each coloured tone is its colour on its own `-soft` fill, which passes AA on every surface. */

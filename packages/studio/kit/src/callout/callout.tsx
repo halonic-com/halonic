@@ -56,6 +56,7 @@ interface FocusedCallout extends CalloutBase {
   readonly ref?: Ref<CalloutHandle>;
 }
 
+/** The props of `Callout`. */
 export type CalloutProps = QuietCallout | FocusedCallout;
 
 /** The number of files shown before "and N more". */

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+/** The props of `IconTile`. */
 export interface IconTileProps {
   /** One of our 20px line icons, drawn in `currentColor`. */
   readonly children: ReactNode;

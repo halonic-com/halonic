@@ -8,6 +8,7 @@ export type Presentation = "desktop" | "phone";
 
 const PresentationContext = createContext<Presentation>("desktop");
 
+/** The props of `PresentationProvider`. */
 export interface PresentationProviderProps {
   readonly presentation: Presentation;
   readonly children: ReactNode;

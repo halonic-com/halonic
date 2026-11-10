@@ -48,6 +48,7 @@ type InputLeading =
       readonly leadingIcon?: never;
     };
 
+/** The props of `Input`. */
 export type InputProps = InputBase & InputLeading;
 
 /**

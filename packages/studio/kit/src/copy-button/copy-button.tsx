@@ -4,6 +4,7 @@ import { useWriteClipboard } from "./clipboard.tsx";
 /** How long the button says "Copied" before it says "Copy" again. */
 export const COPIED_FOR_MS = 2000;
 
+/** The props of `CopyButton`. */
 export interface CopyButtonProps {
   /**
    * The text to copy: a value the user types somewhere else, such as an app name or a scope list.

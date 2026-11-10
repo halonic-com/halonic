@@ -10,6 +10,7 @@ export function useFormRows(): FormRowsKind | undefined {
   return useContext(FormRowsContext);
 }
 
+/** The props of `FormRows`. */
 export interface FormRowsProps {
   /**
    * Rows inside a Card (a routine's When and Starts cards): a 120px label column, 12px between

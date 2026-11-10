@@ -79,6 +79,7 @@ export const placeIconNames = Object.keys(drawings) as readonly PlaceIconName[];
 /** On the 24 grid drawn at 20px, a 1.8 line is the kit's 1.5px line on screen. */
 const strokeWidth = 1.8;
 
+/** The props of `PlaceIcon`. */
 export interface PlaceIconProps {
   readonly name: PlaceIconName;
   /** The filled icon, for the place where you are; otherwise the outline. */
