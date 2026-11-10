@@ -14,6 +14,8 @@ The scripted mock model. It answers each agent from a script, turns `tool:<name>
 - A reply whose every non-blank line is `tool:<name> <arguments>` asks for those tools. Arguments that aren't a JSON object are passed on as `{ input: <text> }`. Call ids count up per model: `mock_call_1`, `mock_call_2` …
 - Usage is about four characters a token, rounded up, as in the old mock, so recorded event logs and budget tests keep their numbers.
 - The model reports `tools` and `jsonOutput` support, no `vision`, and no streaming.
+- In code, a reply can also be a whole answer object, given back exactly with its own usage, finish reason and call ids; `{ refuse: "<message>" }`, which fails the call as `refused`; or `{ hang: true }`, which keeps the call open until the request's signal aborts. The workspace YAML takes text replies only.
+- A request whose signal has already aborted is rejected, and isn't recorded or given a reply.
 - `remaining()` gives the replies left per agent, and `requests` keeps every request, so a test can check it used its whole script.
 
 A provider whose `options.script` is not a map from agent id to a list of text replies is refused with an error that names the provider, and the agent id when one agent's replies aren't a list of text. Without `options.script`, every agent gets its last user message echoed.

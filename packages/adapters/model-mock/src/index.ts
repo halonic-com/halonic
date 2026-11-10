@@ -5,4 +5,4 @@ export {
   MockLlmProvider,
   mockProviderType,
 } from "./mock-provider.ts";
-export { anyAgent, type MockScript } from "./script.ts";
+export { anyAgent, type MockReply, type MockScript } from "./script.ts";

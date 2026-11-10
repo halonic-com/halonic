@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatRequest } from "@halonicjs/ports";
+import { type ChatMessage, type ChatRequest, isModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { MockLlmProvider } from "./mock-provider.ts";
@@ -105,5 +105,57 @@ verifies("model-mock.script-left", () => {
     await model.chat(request);
     expect(model.remaining()).toEqual({ writer: 1, editor: 0 });
     expect(model.requests).toEqual([request]);
+  });
+});
+
+verifies("model-mock.whole-replies", () => {
+  it("gives back a whole answer exactly, as its own copy", async () => {
+    const answer = {
+      content: "The list goes on and",
+      toolCalls: [{ id: "call_1", name: "search", arguments: { q: "acme" } }],
+      usage: { inputTokens: 12, outputTokens: 5 },
+      finishReason: "length" as const,
+      reasoning: "Short on room.",
+    };
+    const model = new MockLlmProvider("mock", { writer: [answer] });
+    const given = await model.chat(from("writer", "Hi"));
+    expect(given).toEqual(answer);
+    expect(given).not.toBe(answer);
+  });
+
+  it("fails a { refuse } reply as refused", async () => {
+    const model = new MockLlmProvider("mock", { writer: [{ refuse: "Key expired." }] });
+    const error: unknown = await model.chat(from("writer")).catch((thrown: unknown) => thrown);
+    expect(isModelCallError(error) && [error.reason, error.message]).toEqual([
+      "refused",
+      "Key expired.",
+    ]);
+  });
+
+  it("keeps a { hang } call open until its signal aborts", async () => {
+    const model = new MockLlmProvider("mock", { writer: [{ hang: true }] });
+    const controller = new AbortController();
+    const answering = model.chat({ ...from("writer"), signal: controller.signal });
+    let settled = false;
+    void answering.catch(() => undefined).finally(() => (settled = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(settled).toBe(false);
+    controller.abort(new Error("stopped"));
+    await expect(answering).rejects.toThrow("stopped");
+  });
+
+  it("refuses a hang that has no signal, instead of waiting forever", async () => {
+    const model = new MockLlmProvider("mock", { writer: [{ hang: true }] });
+    await expect(model.chat(from("writer"))).rejects.toThrow("needs a signal");
+  });
+});
+
+verifies("model-mock.abort-signal", () => {
+  it("rejects an aborted call without recording it or using up a reply", async () => {
+    const model = new MockLlmProvider("mock", { writer: ["Hello"] });
+    const request = { ...from("writer"), signal: AbortSignal.abort(new Error("stopped")) };
+    await expect(model.chat(request)).rejects.toThrow("stopped");
+    expect(model.requests).toEqual([]);
+    expect(model.remaining()).toEqual({ writer: 1 });
   });
 });

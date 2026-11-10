@@ -1,13 +1,20 @@
 import type { Usage } from "@halonicjs/events";
-import type { ChatRequest, ChatResponse, LlmCapabilities, LlmProvider } from "@halonicjs/ports";
-import { anyAgent, type MockScript, ReplyQueues } from "./script.ts";
+import {
+  type ChatRequest,
+  type ChatResponse,
+  type LlmCapabilities,
+  type LlmProvider,
+  ModelCallError,
+} from "@halonicjs/ports";
+import { deepClone } from "@halonicjs/std";
+import { anyAgent, type MockReply, type MockScript, ReplyQueues } from "./script.ts";
 import { readToolCalls } from "./tool-call-lines.ts";
 
 /** The provider type of the mock model, as a workspace's `providers/*.yaml` names it. */
 export const mockProviderType = "mock";
 
 /** Gives the reply when an agent's script has run out. */
-export type FallbackReply = (request: ChatRequest) => string;
+export type FallbackReply = (request: ChatRequest) => MockReply;
 
 /**
  * A model that answers from a script and never touches the network. It gives
@@ -58,11 +65,20 @@ export class MockLlmProvider implements LlmProvider {
     return this.replies.remaining();
   }
 
-  /** Answers with the agent's next scripted reply, as text or as tool calls. */
+  /**
+   * Answers with the agent's next scripted reply (see {@link MockReply}).
+   *
+   * @throws the signal's reason when `request.signal` aborts, before the call is recorded or while it hangs
+   * @throws {ModelCallError} `refused` for a `{ refuse }` reply, or a hang without a signal, which would never end
+   */
   async chat(request: ChatRequest): Promise<ChatResponse> {
+    request.signal?.throwIfAborted();
     this.requests.push(request);
     const agentId = request.meta?.agentId ?? anyAgent;
     const reply = this.replies.next(agentId) ?? this.fallback(request);
+    if (typeof reply !== "string") {
+      return answerWith(reply, request.signal);
+    }
     const usage = estimateUsage(request, reply);
     const toolCalls = readToolCalls(reply, () => this.nextCallId());
     if (toolCalls !== null) {
@@ -75,6 +91,25 @@ export class MockLlmProvider implements LlmProvider {
     this.callCount += 1;
     return `mock_call_${this.callCount}`;
   }
+}
+
+/** Gives back a whole scripted answer, refuses, or hangs until the signal aborts. */
+async function answerWith(
+  reply: Exclude<MockReply, string>,
+  signal: AbortSignal | undefined,
+): Promise<ChatResponse> {
+  if ("refuse" in reply) {
+    throw new ModelCallError("refused", reply.refuse);
+  }
+  if ("hang" in reply) {
+    if (signal === undefined) {
+      throw new ModelCallError("refused", "A scripted hang needs a signal to end it.");
+    }
+    await new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+    });
+  }
+  return deepClone(reply as ChatResponse);
 }
 
 /** The default fallback: the text of the last user message, or "" when there is none. */

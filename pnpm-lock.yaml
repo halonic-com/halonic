@@ -662,6 +662,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/std
     devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
