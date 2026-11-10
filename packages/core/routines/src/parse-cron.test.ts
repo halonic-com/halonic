@@ -42,6 +42,33 @@ verifies("routines.parse-cron", () => {
     expect(sorted(cron.weekdays)).toEqual([0]);
   });
 
+  it("reads every month name as its number, January being 1", () => {
+    const names = [
+      "jan",
+      "feb",
+      "mar",
+      "apr",
+      "may",
+      "jun",
+      "jul",
+      "aug",
+      "sep",
+      "oct",
+      "nov",
+      "dec",
+    ];
+    names.forEach((name, index) => {
+      expect(sorted(parseCron(`0 0 1 ${name} *`).months)).toEqual([index + 1]);
+    });
+  });
+
+  it("reads every weekday name as its number, Sunday being 0", () => {
+    const names = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    names.forEach((name, index) => {
+      expect(sorted(parseCron(`0 0 * * ${name}`).weekdays)).toEqual([index]);
+    });
+  });
+
   it("splits fields on any run of whitespace", () => {
     expect(parseCron("0\t9  * *   1")).toEqual(parseCron("0 9 * * 1"));
   });
@@ -135,6 +162,14 @@ verifies("routines.cron-rejects-bad-expressions", () => {
       'Minute: "*/1e1" needs a step that is a whole number of 1 or more.',
     );
     expect(() => parseCron("*/ * * * *")).toThrow(/step/);
+  });
+
+  it("names the field a bad value sits in", () => {
+    expect(() => parseCron("0 24 * * *")).toThrow('Hour: "24" is outside 0-23.');
+    expect(() => parseCron("0 0 32 * *")).toThrow('Day: "32" is outside 1-31.');
+    expect(() => parseCron("0 0 0 * *")).toThrow('Day: "0" is outside 1-31.');
+    expect(() => parseCron("0 0 * 13 *")).toThrow('Month: "13" is outside 1-12.');
+    expect(() => parseCron("0 0 * * 8")).toThrow('Weekday: "8" is outside 0-7.');
   });
 
   it("reports the first bad field from the left", () => {

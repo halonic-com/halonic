@@ -60,6 +60,16 @@ verifies("routines.next-cron-time", () => {
     expect(nextCronTime("0 0 30 2 *", d("2026-01-01T00:00:00Z"), "UTC")).toBeNull();
   });
 
+  it("looks up to five years of 366 days ahead, and not a minute further", () => {
+    // 29 February 2100 doesn't exist, so the next one after 2099 is 2104-02-29.
+    // From the first start the search window ends exactly at that minute;
+    // from the second it ends one minute after it.
+    expect(nextCronTime("0 0 29 2 *", d("2099-02-23T23:59:00Z"), "UTC")).toBeNull();
+    expect(iso(nextCronTime("0 0 29 2 *", d("2099-02-24T00:00:00Z"), "UTC"))).toBe(
+      "2104-02-29T00:00:00.000Z",
+    );
+  });
+
   it("throws on a bad expression or an unknown zone", () => {
     expect(() => nextCronTime("60 * * * *", d("2026-01-01T00:00:00Z"), "UTC")).toThrow(/0-59/);
     expect(() => nextCronTime("0 * * * *", d("2026-01-01T00:00:00Z"), "Mars/Olympus")).toThrow(
