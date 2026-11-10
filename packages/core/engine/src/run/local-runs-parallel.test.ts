@@ -1,8 +1,10 @@
 import type { Workflow } from "@halonicjs/format";
+import type { ConnectorTool, ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
-import { textAnswer } from "../testing/scripted-model.ts";
+import { ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
+import type { RunConnectorCalls } from "./connector-calls.ts";
 import { runsOn } from "./local-runs-test-kit.test-helper.ts";
 
 /** Two branches whose results go to `findings`; a failed branch gives `{ error }`. */
@@ -29,6 +31,22 @@ const research: Workflow = {
 };
 
 const researchStart = { hubId: "acme", workflowId: "research", input: {} };
+
+/** A `mail` tool, listed with `risk` when one is given. */
+function mailTool(name: string, risk?: ToolRisk): ConnectorTool {
+  return {
+    name,
+    description: `Does ${name}`,
+    parameters: { type: "object", properties: {} },
+    ...(risk === undefined ? {} : { risk }),
+  };
+}
+
+const sendingOn: RunConnectorCalls = {
+  location: "/workspaces/acme",
+  sending: { checkSending: async () => ({ allowed: true }) },
+  reportSettingsError: () => {},
+};
 
 verifies("engine.parallel-state", () => {
   it("carries out every branch's call at once through the executor, then moves on", async () => {
@@ -70,5 +88,32 @@ verifies("engine.parallel-state", () => {
     expect(runs.logs.get("run_1")).toContainEqual(
       expect.objectContaining({ type: "agent.finished", branch: "web", reason: "error" }),
     );
+  });
+
+  it("offers a branch's agent only the connector tools that read", async () => {
+    const mail = new ScriptedConnector(
+      "mail",
+      [
+        mailTool("search", "read"),
+        mailTool("archive", "write"),
+        mailTool("send_mail", "send"),
+        mailTool("label"),
+      ],
+      () => "done",
+    );
+    const { executor, model, runs, scheduler } = runsOn(
+      [textAnswer("n"), textAnswer("w")],
+      new KernelRuns(),
+      { workflow: research, connectors: [mail], connectorCalls: sendingOn },
+    );
+    await executor.start(researchStart);
+
+    await scheduler.runDue();
+
+    expect(model.requests).toHaveLength(2);
+    for (const request of model.requests) {
+      expect(request.tools?.map((tool) => tool.name)).toEqual(["search"]);
+    }
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 });

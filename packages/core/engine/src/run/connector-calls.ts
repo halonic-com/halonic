@@ -48,6 +48,21 @@ export function effectBoundary(calls: RunConnectorCalls): EffectBoundary {
 }
 
 /**
+ * The connector with only the tools whose listing says they read: what a
+ * `parallel` branch's model call is offered. A tool whose listing gives no
+ * risk counts as `write`, so it is left out too. Calls go to the connector
+ * itself.
+ */
+export function readToolsOf(connector: ConnectorClient): ConnectorClient {
+  return {
+    id: connector.id,
+    listTools: async () => (await connector.listTools()).filter((tool) => tool.risk === "read"),
+    callTool: (name, args, options) => connector.callTool(name, args, options),
+    close: () => connector.close(),
+  };
+}
+
+/**
  * Makes the call a `call-tool` effect asks for, on the connector of that
  * id, under the name its server listed the tool under, with the effect's
  * idempotency key, which is the same on every attempt. A tool labelled

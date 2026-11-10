@@ -23,8 +23,9 @@ import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
+import { branchOfCall } from "./kernel/run-branches.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
-import { effectBoundary, makeConnectorCall } from "./run/connector-calls.ts";
+import { effectBoundary, makeConnectorCall, readToolsOf } from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
@@ -305,6 +306,10 @@ export class LocalExecutor implements RunExecutor {
    * and the agent's `maxSteps` is the round limit. The agent's own prompt and
    * the turn's run log come later in step 4.
    *
+   * A `parallel` branch's call is offered only the connector tools whose
+   * listing says they read ({@link readToolsOf}): a branch can't make a
+   * call that changes things, because a run records one effect at a time.
+   *
    * A call that needs a person's OK ends the call with `{ type: "approval",
    * tool, args, resume }`, and the run waits. A connector call that can
    * change things passes the "allow sending" check, then ends the call with
@@ -325,12 +330,16 @@ export class LocalExecutor implements RunExecutor {
       tools: [],
     });
     const connectorCalls = this.options.runs?.connectorCalls;
+    const inBranch = branchOfCall(run.parallel, call.callId) !== null;
+    const connectors = inBranch
+      ? this.options.connectors.map(readToolsOf)
+      : this.options.connectors;
     const outcome = await runAgentTurn({
       model,
       secrets: this.options.secrets,
       messages,
       halonicTools: this.runToolsOf(turn, call.agent, 0),
-      connectors: connectorCalls === undefined ? [] : this.options.connectors,
+      connectors: connectorCalls === undefined ? [] : connectors,
       ...(connectorCalls === undefined ? {} : { effects: effectBoundary(connectorCalls) }),
       maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
       agent: call.agent,
