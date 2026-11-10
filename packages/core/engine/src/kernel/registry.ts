@@ -9,7 +9,10 @@ import type { RunState } from "./run-state.ts";
  * `src/states`. The composite states join as their folders land (step 5);
  * once all six are here, the registry is typed against `StateType` itself.
  */
-export type BuiltStateType = Extract<StateType, "task" | "wait" | "final" | "workflow">;
+export type BuiltStateType = Extract<
+  StateType,
+  "task" | "wait" | "final" | "workflow" | "parallel"
+>;
 
 /** What a state handler sees: the run as it is now, and the state it is in. */
 export interface StateContext {

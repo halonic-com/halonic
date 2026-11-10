@@ -141,14 +141,22 @@ and is saved by a person.
 A state with `type: parallel` starts every branch at once and waits for all of
 them. Branches are declared as `branches: { name: { agent, input } }`.
 
+- **Order.** Branches start, and their results are written, in name order. A
+  run keeps its definitions as canonical JSON, which doesn't keep the order of
+  the file.
 - **Results.** Each result is written to the context under its branch name, in
-  branch order. With `output`, the results are also stored as one map.
+  name order, once every branch has ended. With `output`, the results are also
+  stored as one map. A failed branch gives `{ error }`.
 - **`join: all`** (the default) fails the state if any branch fails, unless
-  `continueOnError` is set. A failed branch then gives `{ error }`.
+  `continueOnError` is set. It fails with the first failed branch in name
+  order, and that branch's reason.
 - **`join: any`** fails the state only if every branch fails.
-- **No cancelling.** Branches don't cancel each other.
-- **No approvals.** A branch agent can't pause for an approval.
-- **Log.** An event from a branch carries `branch`. The log is still written in
+- **No cancelling.** Branches don't cancel each other: a state that fails does
+  so once every branch has ended.
+- **No approvals.** A branch agent can't pause for an approval. One that stops
+  for an approval ends its branch with an error.
+- **Log.** An event from a branch carries `branch`. A failed branch ends with
+  `agent.finished` carrying `error` and `reason`. The log is still written in
   `seq` order.
 
 ## For-each

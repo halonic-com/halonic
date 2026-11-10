@@ -58,6 +58,7 @@ verifies("engine.run-state-fold", () => {
       calls: 1,
       pendingCall: null,
       child: null,
+      parallel: null,
       lastSeq: 5,
     });
   });
