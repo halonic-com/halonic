@@ -24,7 +24,21 @@ export interface WindowTab {
 export interface TabSetState {
   readonly tabs: readonly WindowTab[];
   readonly activeId: string;
+  /** Whether the active tab has a place behind it, so the toolbar can show Back as unavailable. */
+  readonly canGoBack: boolean;
+  /** Whether the active tab has a place ahead of it. */
+  readonly canGoForward: boolean;
 }
+
+/** What `openInNewTab` did: the tab showing the place, and whether it is a new one. */
+export interface OpenedTab {
+  readonly tab: WindowTab;
+  /** `false` when a tab already showed the place, so the strip can say it is already open. */
+  readonly added: boolean;
+}
+
+/** The tabs and the active one; `TabSet` works out the rest of the state from them. */
+type TabsAndActive = Pick<TabSetState, "tabs" | "activeId">;
 
 /** Home, where a new tab starts and where the window goes when its last tab closes. */
 export const homeLocation: TabLocation = { key: "home", title: "Home" };
@@ -50,7 +64,7 @@ export class TabSet {
 
   constructor() {
     const first = this.createTab(homeLocation);
-    this.current = { tabs: [first], activeId: first.id };
+    this.current = stateOf({ tabs: [first], activeId: first.id });
   }
 
   /** The tabs now. */
@@ -71,31 +85,36 @@ export class TabSet {
 
   /**
    * Opens `location` in the active tab, after the place it shows, and drops that tab's Forward.
-   * If another tab already shows it, that tab becomes active instead.
+   * If the active tab shows it already, nothing changes; if another tab does, that tab becomes
+   * active instead.
    */
   openHere(location: TabLocation): void {
+    const tab = this.active;
+    if (currentLocation(tab).key === location.key) {
+      return;
+    }
     const open = this.tabShowing(location.key);
     if (open !== undefined) {
       this.activate(open.id);
       return;
     }
-    const tab = this.active;
     const history = [...tab.history.slice(0, tab.position + 1), location];
     this.replace(tab.id, { ...tab, history, position: history.length - 1 });
   }
 
   /**
    * Opens `location` in a new tab right after the active one, which stays active (a Ctrl-click
-   * or a middle-click). If a tab already shows it, nothing opens. Returns the tab showing it.
+   * or a middle-click). If a tab already shows it, nothing opens. Returns the tab showing it, and
+   * whether it was added, so the strip can announce a place that is already open.
    */
-  openInNewTab(location: TabLocation): WindowTab {
+  openInNewTab(location: TabLocation): OpenedTab {
     const open = this.tabShowing(location.key);
     if (open !== undefined) {
-      return open;
+      return { tab: open, added: false };
     }
     const tab = this.createTab(location);
     this.insert(tab, this.indexOf(this.current.activeId) + 1, this.current.activeId);
-    return tab;
+    return { tab, added: true };
   }
 
   /** Opens a new tab on Home at the end of the strip and makes it active (+ and Ctrl T). */
@@ -186,16 +205,16 @@ export class TabSet {
   }
 
   /**
-   * Goes back in the active tab's history, past places another tab shows now. Returns `false` when
-   * there's nothing to go back to.
+   * Goes one place back in the active tab's history, even when another tab shows that place too.
+   * Returns `false` when there's nothing to go back to.
    */
   back(): boolean {
     return this.step(-1);
   }
 
   /**
-   * Goes forward in the active tab's history, past places another tab shows now. Returns `false`
-   * when there's nothing ahead.
+   * Goes one place forward in the active tab's history, even when another tab shows that place
+   * too. Returns `false` when there's nothing ahead.
    */
   forward(): boolean {
     return this.step(1);
@@ -216,23 +235,18 @@ export class TabSet {
   }
 
   /**
-   * Moves the active tab through its history, skipping places another tab shows now: stopping
-   * there would show the same place twice, and switching to that tab would leave this tab's
-   * Back stuck on it.
+   * Moves the active tab exactly one place through its history. It doesn't skip places another
+   * tab shows (UX decision D1, HAL-3033): Back always lands where the user just was, even if that
+   * briefly shows a place in two tabs.
    */
   private step(direction: 1 | -1): boolean {
     const tab = this.active;
-    for (let position = tab.position + direction; ; position += direction) {
-      const location = tab.history[position];
-      if (location === undefined) {
-        return false;
-      }
-      const open = this.tabShowing(location.key);
-      if (open === undefined || open.id === tab.id) {
-        this.replace(tab.id, { ...tab, position });
-        return true;
-      }
+    const position = tab.position + direction;
+    if (tab.history[position] === undefined) {
+      return false;
     }
+    this.replace(tab.id, { ...tab, position });
+    return true;
   }
 
   private createTab(location: TabLocation): WindowTab {
@@ -251,14 +265,16 @@ export class TabSet {
   }
 
   /**
-   * The tab showing `key`, if any. Home is the one place several tabs may show at once: every new
-   * tab starts there.
+   * The tab showing `key`, if any, preferring the active tab: since Back and Forward may show a
+   * place in two tabs, opening it must not jump away from the tab the user is in. Home is the one
+   * place several tabs may show at once (every new tab starts there), so it never counts as open.
    */
   private tabShowing(key: string): WindowTab | undefined {
     if (key === homeLocation.key) {
       return undefined;
     }
-    return this.current.tabs.find((tab) => currentLocation(tab).key === key);
+    const showing = (tab: WindowTab) => currentLocation(tab).key === key;
+    return showing(this.active) ? this.active : this.current.tabs.find(showing);
   }
 
   private tab(tabId: string): WindowTab | undefined {
@@ -273,12 +289,23 @@ export class TabSet {
     return this.current.tabs.findIndex((tab) => tab.id === tabId);
   }
 
-  private update(state: TabSetState): void {
-    this.current = state;
+  private update(state: TabsAndActive): void {
+    this.current = stateOf(state);
     for (const listener of this.listeners) {
       listener();
     }
   }
+}
+
+/** The full state for `tabs` with `activeId` active. */
+function stateOf({ tabs, activeId }: TabsAndActive): TabSetState {
+  const active = tabs.find((tab) => tab.id === activeId) ?? (tabs[0] as WindowTab);
+  return {
+    tabs,
+    activeId,
+    canGoBack: active.position > 0,
+    canGoForward: active.position < active.history.length - 1,
+  };
 }
 
 /** `tab` with `key` retitled in its history; the same tab when the place isn't in it. */

@@ -43,9 +43,12 @@ it with `shell.services.contextFor(featureId, registry)`. The layout reads every
 ## Window tabs
 
 A `TabSet` holds one workspace's window tabs (design direction 2). Each tab has its own Back and
-Forward, like a browser tab. `openHere` shows a place in the active tab; `openInNewTab` (a
-Ctrl-click) adds a tab right after it and keeps the active one. A place open in another tab is never
-opened twice: `openHere` switches to that tab. Home is the exception, because every new tab
+Forward, like a browser tab, that move exactly one place; `state.canGoBack` and
+`state.canGoForward` say whether they can. `openHere` shows a place in the active tab and does
+nothing when the tab shows it already; `openInNewTab` (a Ctrl-click) adds a tab right after it, keeps
+the active one and returns `{ tab, added }`. A place open in another tab is never opened twice:
+`openHere` switches to that tab, and `openInNewTab` returns it with `added: false` so the strip can
+say it is already open. Home is the exception, because every new tab
 (`newTab`, + and Ctrl T) starts there. Closing the active tab activates the one to its right, else
 its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T) brings back the
 last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab.
