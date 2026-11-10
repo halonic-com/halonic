@@ -1,7 +1,6 @@
 import type { DefinitionStore, Digest } from "@halonicjs/ports";
 import type { ListenerErrorHandler } from "./event-bus.ts";
 import { ReviewService } from "./review-service.ts";
-import { ReviewingDefinitionStore } from "./reviewing-store.ts";
 import { serviceKey } from "./service-registry.ts";
 import { WorkspaceFiles } from "./workspace-files.ts";
 import { WorkspaceScope, type WorkspaceScopeOptions } from "./workspace-scope.ts";
@@ -14,13 +13,14 @@ export const reviewServiceKey = serviceKey<ReviewService>("workspace.review");
 
 /** What {@link openWorkspace} needs. */
 export interface OpenWorkspaceOptions {
-  /**
-   * Where the workspace files live: the real store, never a dry run. The
-   * scope hides the review records from everything but the review service
-   * by wrapping it in a `ReviewingDefinitionStore`, whose version would
-   * hide a dry run's `dry-run:` prefix.
-   */
+  /** Where the workspace files live. */
   store: DefinitionStore;
+  /**
+   * The store for the review records: rooted at the workspace's review
+   * folder in the profile (`reviewFolder()` of `workspaceFolders`), never
+   * in the workspace (HAL-3417).
+   */
+  reviewRecords: DefinitionStore;
   /** Hashes file text: the review records and the write-if-unchanged check need it. */
   digest: Digest;
   /** Receives the error of an event listener that threw; see {@link WorkspaceScopeOptions}. */
@@ -34,7 +34,13 @@ export interface OpenWorkspaceOptions {
  * it returns; `close()` disposes all of them.
  *
  * @example
- * const scope = openWorkspace({ store, digest, onListenerError: (error) => log.error(error) });
+ * const folders = await workspaceFolders(profile, workspaceRealPath, digest);
+ * const scope = openWorkspace({
+ *   store,
+ *   reviewRecords: new FolderDefinitionStore(folders.reviewFolder()),
+ *   digest,
+ *   onListenerError: (error) => log.error(error),
+ * });
  * scope.services.get(workspaceFilesKey).change("Added an agent", { "hubs/p/agents/a.agent.yaml": "name: A\n" });
  * await scope.commands.execute("workspace.save");
  */
@@ -43,13 +49,15 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
     location: options.store.location,
     onListenerError: options.onListenerError,
   });
-  // Everything but the review service gets the store with the review records hidden.
-  const store = new ReviewingDefinitionStore(options.store, options.digest);
-  const files = scope.services.provide(workspaceFilesKey, new WorkspaceFiles(store, scope.events));
+  const files = scope.services.provide(
+    workspaceFilesKey,
+    new WorkspaceFiles(options.store, scope.events),
+  );
   scope.services.provide(
     reviewServiceKey,
     new ReviewService({
       store: options.store,
+      records: options.reviewRecords,
       digest: options.digest,
       onListenerError: options.onListenerError,
     }),

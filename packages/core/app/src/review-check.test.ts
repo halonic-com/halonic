@@ -21,11 +21,12 @@ const k2 = { chatId: "c2", cardId: "k2" };
 /** A workspace where the assistant changed `clerk` (card k1) and created `notes` (card k2). */
 async function withChanges() {
   const store = new TestDefinitionStore({ [clerk]: "model: fast\n" }, digest);
-  const review = new ReviewService({ store, digest });
+  const recordStore = new TestDefinitionStore({}, digest);
+  const review = new ReviewService({ store, records: recordStore, digest });
   const expected = await contentDigest("model: fast\n", digest);
   await review.propose({ path: clerk, content: "model: smart\n", expected, card: k1 });
   await review.propose({ path: notes, content: "name: Notes\n", expected: "absent", card: k2 });
-  return { store, review };
+  return { store, recordStore, review };
 }
 
 verifies("app.review-on-open", () => {
@@ -47,20 +48,20 @@ verifies("app.review-on-open", () => {
   });
 
   it("removes a record that can't be read, so that file's changes are ordinary ones", async () => {
-    const { store, review } = await withChanges();
+    const { store, recordStore, review } = await withChanges();
     const recordFile = await reviewRecordPath(clerk, digest);
-    store.files.set(recordFile, '{"format":1,');
+    recordStore.files.set(recordFile, '{"format":1,');
     expect(await review.check()).toEqual({
       held: [],
       dropped: [{ path: null, reason: "it isn't valid JSON" }],
     });
     expect(store.files.get(clerk)).toBe("model: smart\n");
-    expect(store.files.has(recordFile)).toBe(false);
+    expect(recordStore.files.has(recordFile)).toBe(false);
   });
 
   it("names the dropped file when a watch batch names it", async () => {
-    const { store, review } = await withChanges();
-    store.files.set(await reviewRecordPath(clerk, digest), "[]");
+    const { recordStore, review } = await withChanges();
+    recordStore.files.set(await reviewRecordPath(clerk, digest), "[]");
     const heard: (readonly string[])[] = [];
     review.onDidChange((paths) => heard.push(paths));
     expect(await review.check([clerk])).toEqual({
@@ -125,14 +126,18 @@ class TruncatingStore extends TestDefinitionStore {
 
 verifies("app.review-on-open", () => {
   it("never reads a record while it is being saved, so a check can't drop it", async () => {
-    const store = new TruncatingStore({ [clerk]: "model: fast\n" }, digest);
-    const review = new ReviewService({ store, digest });
+    const store = new TestDefinitionStore({ [clerk]: "model: fast\n" }, digest);
+    const recordStore = new TruncatingStore({}, digest);
+    const review = new ReviewService({ store, records: recordStore, digest });
     const fast = await contentDigest("model: fast\n", digest);
     await review.propose({ path: clerk, content: "model: smart\n", expected: fast, card: k1 });
 
     let goOn = () => {};
     const emptied = new Promise<void>((resolve) => {
-      store.pauseNextWrite = { emptied: resolve, goOn: new Promise((release) => (goOn = release)) };
+      recordStore.pauseNextWrite = {
+        emptied: resolve,
+        goOn: new Promise((release) => (goOn = release)),
+      };
     });
     const smart = await contentDigest("model: smart\n", digest);
     const writing = review.propose({
