@@ -8,6 +8,7 @@
   choice, within the team; no board card, because Compare and the held state are already
   approved); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:41e+JIk6DTe/P1yKshr+hoqF1+0V1H/hZ/YXVKfhniyT/+xKUIy4nTEY2T/N2dakBisyare2H3HzU4fOPPddDw==
 
 ## What changes
 
