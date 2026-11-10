@@ -47,6 +47,23 @@ verifies("memory.vcs-commits", () => {
       expect((await vcs.status()).changes).toEqual([]);
     });
 
+    it("leaves the review records out, whatever .gitignore says", async () => {
+      const { vcs, files } = await repoWith({ "a.yaml": "1\n", ".halonic/review/b.json": "{}\n" });
+      await files.write("a.yaml", "2\n");
+      await files.write(".halonic/review/b.json", '{"changed":true}\n');
+      await files.write(".halonic/review/c.json", "{}\n");
+      await files.write(".halonic/notes.md", "kept\n");
+
+      const version = await vcs.commitVersion({ message: "Create version", exclude: [] });
+
+      expect(await vcs.listAt(version)).toEqual([
+        ".halonic/notes.md",
+        ".halonic/review/b.json",
+        "a.yaml",
+      ]);
+      expect(await vcs.readAt(version, ".halonic/review/b.json")).toBe("{}\n");
+    });
+
     it("refuses an empty include or message, and a version with no change", async () => {
       const { vcs, files } = await repoWith({ "a.yaml": "1\n" });
       const [before] = await vcs.log(1);

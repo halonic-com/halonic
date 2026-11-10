@@ -49,6 +49,14 @@ export function checkProposalRef(ref: string): void {
   }
 }
 
+/**
+ * Folders Create version always leaves out, whatever `.gitignore` says:
+ * `.halonic/review/` holds the assistant's review records, which are per
+ * device (HAL-3277). Workspaces made before `init` ignored it don't have the
+ * line, so the port can't count on `.gitignore`.
+ */
+export const unversionedFolders: readonly string[] = Object.freeze([".halonic/review"]);
+
 /** How a file differs from the last commit. */
 export type VcsFileStatus =
   | "modified"
@@ -369,8 +377,8 @@ export interface Vcs {
    * the repository tracks it and it changed on disk (unlike
    * `git commit -- <path>`, which commits what is on disk for every tracked
    * path it names). Files the repository ignores are left out, and so are
-   * private entries, even ones `.gitignore` doesn't name; one HEAD already
-   * tracks keeps its content at HEAD. The working tree is never touched.
+   * private entries and {@link unversionedFolders}, even where `.gitignore`
+   * doesn't name them; one HEAD already tracks keeps its content at HEAD. The working tree is never touched.
    * The index takes the new commit's content for the paths it committed;
    * every other path stays as it was, staged changes and all, so the
    * changes left out are still changes afterwards.

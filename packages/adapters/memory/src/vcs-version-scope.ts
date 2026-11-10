@@ -1,4 +1,8 @@
-import { isPrivateWorkspacePath, type VcsCommitVersionOptions } from "@halonicjs/ports";
+import {
+  isPrivateWorkspacePath,
+  unversionedFolders,
+  type VcsCommitVersionOptions,
+} from "@halonicjs/ports";
 import { checkVcsPath } from "./vcs-input.ts";
 import type { Tree } from "./vcs-repository.ts";
 
@@ -24,9 +28,9 @@ export function versionScope(options: VcsCommitVersionOptions): VersionScope {
   return include === undefined ? { exclude } : { include, exclude };
 }
 
-/** Whether Create version commits `path`'s change. A private entry never is. */
+/** Whether Create version commits `path`'s change. A private entry or a review record never is. */
 export function inScope(path: string, scope: VersionScope): boolean {
-  if (isPrivateWorkspacePath(path)) return false;
+  if (isPrivateWorkspacePath(path) || isUnderAny(path, unversionedFolders)) return false;
   if (scope.include !== undefined && !isUnderAny(path, scope.include)) return false;
   return !isUnderAny(path, scope.exclude);
 }

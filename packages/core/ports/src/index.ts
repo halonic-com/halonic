@@ -266,6 +266,7 @@ export {
 export {
   checkCommitId,
   checkProposalRef,
+  unversionedFolders,
   type Vcs,
   type VcsApplyOptions,
   type VcsChange,
