@@ -154,6 +154,12 @@ export {
   fingerprintGaps,
 } from "./trust-fingerprint.ts";
 export {
+  type MakeTrustChecker,
+  type TrustChecker,
+  type TrustCheckSubject,
+  trustServiceAttackContract,
+} from "./trust-service-attacks.ts";
+export {
   type MakeTrustStore,
   type TrustStoreHarness,
   trustRecord,

@@ -1,7 +1,14 @@
 import { createHash } from "node:crypto";
 import { chmod, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { trustRecord, trustStoreContract } from "@halonicjs/testing-contracts";
+import { TrustService } from "@halonicjs/app";
+import type { Digest } from "@halonicjs/ports";
+import {
+  type MakeTrustStore,
+  trustRecord,
+  trustServiceAttackContract,
+  trustStoreContract,
+} from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
@@ -14,7 +21,7 @@ function fileFor(root: string, location: string): string {
   return join(root, `${createHash("sha256").update(location, "utf16le").digest("hex")}.json`);
 }
 
-trustStoreContract("file", async () => {
+const makeTrustStore: MakeTrustStore = async () => {
   const root = await tempFolder();
   return {
     store: new FileTrustStore(root),
@@ -27,7 +34,21 @@ trustStoreContract("file", async () => {
       await writeFile(file, text.slice(0, text.length / 2), "utf8");
     },
   };
-});
+};
+trustStoreContract("file", makeTrustStore);
+
+// The attack cases through the real trust check, with records in files.
+const digest: Digest = {
+  async sha256(data) {
+    return new Uint8Array(createHash("sha256").update(data).digest());
+  },
+};
+const clock = { now: () => new Date("2026-11-10T10:00:00.000Z") };
+trustServiceAttackContract(
+  "file",
+  makeTrustStore,
+  (store) => new TrustService({ store, digest, clock, appVersion: "0.1.0" }),
+);
 
 verifies("fs-node.trust-store-files", () => {
   describe("the files", () => {

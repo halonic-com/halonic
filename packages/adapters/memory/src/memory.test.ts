@@ -1,3 +1,4 @@
+import { TrustService } from "@halonicjs/app";
 import type { ConnectorTool, ConnectorTransport, Digest, HttpClient } from "@halonicjs/ports";
 import {
   agentPlacementStoreContract,
@@ -23,6 +24,7 @@ import {
   schedulerContract,
   secretsContract,
   tokenStoreContract,
+  trustServiceAttackContract,
   trustStoreAttackContract,
   trustStoreContract,
   type VcsHarness,
@@ -76,6 +78,11 @@ trustStoreAttackContract("memory", makeTrustStore, async (connectors) => {
   const content = trustContent({ connectors });
   return { content, fingerprint: await trustFingerprint(content, digest) };
 });
+trustServiceAttackContract(
+  "memory",
+  makeTrustStore,
+  (store) => new TrustService({ store, digest, clock: new ManualClock(), appVersion: "0.1.0" }),
+);
 agentPlacementStoreContract("memory", async () => {
   const store = new MemoryAgentPlacementStore();
   return { store, damage: async (key) => store.damage(key) };
