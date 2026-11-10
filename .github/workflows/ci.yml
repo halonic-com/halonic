@@ -56,17 +56,31 @@ jobs:
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
           )
-          if [ "$EVENT" != "pull_request" ]; then
-            changed=""
-          else
+          # Docs and tests: Markdown, the docs folders, test and spec files,
+          # Rust test files, and test, fixture and snapshot folders.
+          docs_or_tests='(\.md$|^docs/|^apps/docs/|\.(test|spec)\.[cm]?tsx?$|\.test-helper\.ts$|\.test\.(json|yaml)$|_tests\.rs$|/(test|tests|__tests__|fixtures|__snapshots__)/)'
+          changed=""
+          by_area=false
+          if [ "$EVENT" = "pull_request" ]; then
             changed=$(git diff --name-only "$BASE...HEAD")
+            by_area=true
+          elif [ "$EVENT" = "merge_group" ]; then
+            # The whole group against the main commit it is built on, never
+            # one pull request. Only a group that changes docs and tests and
+            # nothing else is filtered by area. Anything else, an empty diff
+            # or a diff that can't be read runs every job.
+            if changed=$(git diff --name-only "$BASE...HEAD") && [ -n "$changed" ] &&
+              ! grep -qvE "$docs_or_tests" <<< "$changed"; then
+              by_area=true
+            fi
+            echo "::notice title=Changed areas::Docs- or tests-only group: $by_area ($(grep -c . <<< "$changed") files)"
           fi
           for area in "${areas[@]}"; do
             name="${area%%=*}"
-            if [ "$EVENT" != "pull_request" ] || grep -qE "${area#*=}" <<< "$changed"; then
-              echo "$name=true" >> "$GITHUB_OUTPUT"
+            if [ "$by_area" != true ] || grep -qE "${area#*=}" <<< "$changed"; then
+              echo "$name=true" | tee -a "$GITHUB_OUTPUT"
             else
-              echo "$name=false" >> "$GITHUB_OUTPUT"
+              echo "$name=false" | tee -a "$GITHUB_OUTPUT"
             fi
           done
 

@@ -399,6 +399,16 @@ for every other job and fails if any failed. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
+On a pull request, the `Changed areas` job decides which of those jobs run
+from the pull request's diff. In the merge queue it reads the whole
+group's diff against the `main` commit the group is built on. If that diff
+holds only docs and tests (Markdown, `docs/`, `apps/docs/`, test and spec
+files, Rust `_tests.rs` files, and `test`, `tests`, `fixtures` and
+snapshot folders), the same area rules apply as on a pull request, so a
+README-only group skips Tauri, Android and Playwright. Any other file, an
+empty diff or a diff that can't be read runs every job. On `main` every
+job runs.
+
 | Job                          | What                                                                                                                                                      |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies                   |
