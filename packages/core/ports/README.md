@@ -55,8 +55,8 @@ with the memory adapters.
 `portVersions` and the port files disagree.
 
 A model call that fails throws `ModelCallError`, whose `reason` says why:
-`no-key`, `offline`, `model-missing`, `model-no-tools`, `out-of-memory` or
-`refused`, with the `host` that didn't answer for `offline`. The engine uses
+`no-key`, `offline`, `model-missing`, `model-no-tools`, `out-of-memory`,
+`key-refused`, `out-of-credit`, `provider-busy` or `refused`, with the `host` that didn't answer for `offline`. The engine uses
 it to decide whether to try the next model. A provider finds `out-of-memory`
 in a model server's error text with `isModelOutOfMemory` (requirement
 `model-out-of-memory-text`). Check for it with

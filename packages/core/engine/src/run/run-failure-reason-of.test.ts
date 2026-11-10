@@ -41,8 +41,18 @@ verifies("engine.run-failure-reason-of", () => {
       expect(runFailureReasonOf(new ModelCallError(reason, "x"))).toEqual({ reason });
     });
 
-    it.each(["no-key", "refused"] as const)("gives error for %s", (reason) => {
-      expect(runFailureReasonOf(new ModelCallError(reason, "x"))).toEqual({ reason: "error" });
+    it.each(["key-refused", "out-of-credit", "provider-busy"] as const)("keeps %s", (reason) => {
+      expect(runFailureReasonOf(new ModelCallError(reason, "x"))).toEqual({ reason });
+    });
+
+    it("gives key-refused for no-key, since either way the key needs fixing", () => {
+      expect(runFailureReasonOf(new ModelCallError("no-key", "x"))).toEqual({
+        reason: "key-refused",
+      });
+    });
+
+    it("gives error for refused", () => {
+      expect(runFailureReasonOf(new ModelCallError("refused", "x"))).toEqual({ reason: "error" });
     });
 
     it("reads one from another copy of the ports package", () => {

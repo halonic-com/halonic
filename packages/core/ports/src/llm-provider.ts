@@ -30,7 +30,8 @@ export interface LlmProvider {
    *
    * @throws {ModelCallError} when the call fails, with the reason why: no
    * key, offline, the model is missing, it can't call tools, it ran out of
-   * memory, or the provider refused. Callers treat any other error as `refused`, except the abort
+   * memory, the key wasn't accepted, the account is out of credit, the
+   * provider is busy, or the provider refused. Callers treat any other error as `refused`, except the abort
    * error when `request.signal` aborts the call.
    */
   chat(request: ChatRequest): Promise<ChatResponse>;
@@ -55,13 +56,16 @@ export const modelCallErrorReasons = [
   "model-missing",
   "model-no-tools",
   "out-of-memory",
+  "key-refused",
+  "out-of-credit",
+  "provider-busy",
   "refused",
 ] as const;
 
 /**
  * Why a model call failed:
  * - `no-key`: the provider needs a key and its secret isn't set. A provider
- *   that has a key and is turned away (HTTP 401 or 403) says `refused`.
+ *   that has a key and is turned away says `key-refused`.
  * - `offline`: the provider couldn't be reached, such as no network, a DNS
  *   failure, a refused connection or a timeout. The error names the `host`
  *   when the provider knows it.
@@ -69,6 +73,12 @@ export const modelCallErrorReasons = [
  * - `model-no-tools`: the model can't call tools and the request offered some.
  * - `out-of-memory`: the model doesn't fit in the memory of the machine that
  *   runs it. Providers find it with {@link isModelOutOfMemory}.
+ * - `key-refused`: the provider didn't accept the key (HTTP 401 or 403).
+ * - `out-of-credit`: the account at the provider has no credit left or
+ *   reached its spending limit, such as HTTP 402 or OpenAI's 429 with
+ *   `insufficient_quota`. This is never Halonic's own budget.
+ * - `provider-busy`: the provider is overloaded or asked the caller to slow
+ *   down, such as any other HTTP 429, a 5xx or Anthropic's 529.
  * - `refused`: anything else the provider turned down or failed on.
  */
 export type ModelCallErrorReason = (typeof modelCallErrorReasons)[number];

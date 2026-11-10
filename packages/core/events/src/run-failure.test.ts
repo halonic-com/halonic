@@ -25,6 +25,9 @@ verifies("events.run-failed-reason", () => {
       | "interrupted"
       | "sandbox-start-failed"
       | "harness-start-failed"
+      | "key-refused"
+      | "out-of-credit"
+      | "provider-busy"
     >();
     expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
   });
@@ -79,6 +82,24 @@ verifies("events.run-failed-sandbox-start-failed", () => {
 verifies("events.run-failed-harness-start-failed", () => {
   typeTest("has a reason for a harness that didn't start", () => {
     expectTypeOf<IsReason<"harness-start-failed">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-key-refused", () => {
+  typeTest("has a reason for a key the provider didn't accept, or no key at all", () => {
+    expectTypeOf<IsReason<"key-refused">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-out-of-credit", () => {
+  typeTest("has a reason for an account at the provider with no credit left", () => {
+    expectTypeOf<IsReason<"out-of-credit">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-provider-busy", () => {
+  typeTest("has a reason for a provider that was busy", () => {
+    expectTypeOf<IsReason<"provider-busy">>().toEqualTypeOf<true>();
   });
 });
 

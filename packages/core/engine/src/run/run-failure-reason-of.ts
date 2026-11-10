@@ -7,13 +7,19 @@ export interface RunFailure {
   host?: string;
 }
 
-/** The run failure reason of each model call failure. */
+/**
+ * The run failure reason of each model call failure. No key stored is part of
+ * `key-refused` (microcopy 15.3): either way, the person fixes the key.
+ */
 const reasonOfModelCall = {
-  "no-key": "error",
+  "no-key": "key-refused",
   offline: "model-unreachable",
   "model-missing": "model-missing",
   "model-no-tools": "model-no-tools",
   "out-of-memory": "model-out-of-memory",
+  "key-refused": "key-refused",
+  "out-of-credit": "out-of-credit",
+  "provider-busy": "provider-busy",
   refused: "error",
 } as const satisfies Record<ModelCallErrorReason, RunFailureReason>;
 
@@ -23,8 +29,8 @@ const reasonOfModelCall = {
  * `engine.run-failure-reason-of`):
  *
  * - a `ModelCallError` gives the reason of its model call failure, and the
- *   host for `offline`. `no-key` and `refused` are `error`: the message
- *   says which.
+ *   host for `offline`. `no-key` is `key-refused`, and `refused` is
+ *   `error`: the message says what went wrong.
  * - a `RunFailureError` from an adapter gives its own failure;
  * - a Node error with the code `ENOSPC` is `disk-full`, so a store or sandbox
  *   that writes files needs no wrapping;

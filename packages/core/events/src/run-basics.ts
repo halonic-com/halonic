@@ -85,6 +85,10 @@ export interface ToolNoun {
  * - `sandbox-start-failed`: the sandbox check had passed, but the sandbox didn't start for this run.
  * - `harness-start-failed`: the harness program failed to start for this run, or didn't send its
  *   first event within its time limit (60 s by default).
+ * - `key-refused`: the model's provider didn't accept its key, or no key was stored for it.
+ * - `out-of-credit`: the account at the model's provider has no credit left or reached its limit.
+ *   This is never the Halonic budget, which is `budget`.
+ * - `provider-busy`: the model's provider was overloaded or asked Halonic to slow down.
  */
 export type RunFailureReason =
   | "budget"
@@ -97,7 +101,10 @@ export type RunFailureReason =
   | "disk-full"
   | "interrupted"
   | "sandbox-start-failed"
-  | "harness-start-failed";
+  | "harness-start-failed"
+  | "key-refused"
+  | "out-of-credit"
+  | "provider-busy";
 
 /** Why a model was skipped before it was called: its provider's key isn't set. */
 export type ModelSkipReason = "no-key";

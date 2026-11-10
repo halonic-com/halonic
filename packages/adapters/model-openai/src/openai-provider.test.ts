@@ -85,7 +85,7 @@ verifies("model-openai.call-errors", () => {
     [
       "a key it doesn't accept",
       (v) => v.replyNext(401, { error: { message: "Incorrect API key provided: sk-abc" } }),
-      "refused",
+      "key-refused",
       /^acme didn't accept the key \(HTTP 401\)$/,
       undefined,
     ],
@@ -105,22 +105,90 @@ verifies("model-openai.call-errors", () => {
     ],
     [
       "a rate limit",
-      (v) => v.replyNext(429, { error: { message: "Slow down" } }),
-      "refused",
+      (v) => v.replyNext(429, { error: { message: "Slow down", type: "requests" } }),
+      "provider-busy",
       /^acme refused the call to the model "acme-small" \(HTTP 429\)$/,
       "Slow down",
     ],
     [
+      "a used up quota",
+      (v) =>
+        v.replyNext(429, {
+          error: { message: "You exceeded your quota", type: "insufficient_quota", code: null },
+        }),
+      "out-of-credit",
+      /\(HTTP 429\)$/,
+      "You exceeded your quota",
+    ],
+    [
+      "a payment required",
+      (v) => v.replyNext(402, { error: "Insufficient credits" }),
+      "out-of-credit",
+      /\(HTTP 402\)$/,
+      "Insufficient credits",
+    ],
+    [
+      "a spend limit, named by its code",
+      (v) =>
+        v.replyNext(429, {
+          error: {
+            message: "Your project has reached its spend limit",
+            type: "requests",
+            code: "project_spend_limit_exceeded",
+          },
+        }),
+      "out-of-credit",
+      /\(HTTP 429\)$/,
+      "Your project has reached its spend limit",
+    ],
+    [
+      "an overloaded server",
+      (v) =>
+        v.replyNext(503, {
+          error: { message: "The server is overloaded", code: "server_is_overloaded" },
+        }),
+      "provider-busy",
+      /\(HTTP 503\)$/,
+      "The server is overloaded",
+    ],
+    [
+      "Groq's full flex tier",
+      (v) => v.replyNext(498, { error: { message: "Flex tier capacity exceeded" } }),
+      "provider-busy",
+      /\(HTTP 498\)$/,
+      "Flex tier capacity exceeded",
+    ],
+    [
+      "a 403 about the country, not the key",
+      (v) =>
+        v.replyNext(403, {
+          error: {
+            message: "Country, region, or territory not supported",
+            code: "unsupported_country_region_territory",
+          },
+        }),
+      "refused",
+      /^acme refused the call to the model "acme-small" \(HTTP 403\)$/,
+      "Country, region, or territory not supported",
+    ],
+    [
+      "a request it turns down",
+      (v) => v.replyNext(400, { error: { message: "max_tokens is too large" } }),
+      "refused",
+      /^acme refused the call to the model "acme-small" \(HTTP 400\)$/,
+      "max_tokens is too large",
+    ],
+    [
       "an error body in another format",
       (v) => v.replyNext(502, { detail: "busy" }),
-      "refused",
+      "provider-busy",
       /\(HTTP 502\)$/,
       '{"detail":"busy"}',
     ],
     [
       "a key in the vendor's text",
       (v) => v.replyNext(500, { error: "bad key sk-Abcdefghijklmnop1234" }),
-      "refused",
+      "provider-busy",
       /\(HTTP 500\)$/,
       undefined,
     ],

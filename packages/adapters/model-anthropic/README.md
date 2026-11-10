@@ -19,7 +19,7 @@ const answer = await model.chat({
 });
 ```
 
-`key` is a function that gives the key for one call; the key only goes into the `x-api-key` header. A failed call throws a `ModelCallError` whose reason says why: `refused` (401, 403, an overload and other errors), `model-missing` (404) or `offline`, which names the host that didn't answer. The message ends in the HTTP status. The API's own error text is not in it: it goes on the error's `cause`, for `--debug`, never after 401 or 403 and never when it holds the key. A reply over 10 MiB fails with `refused`.
+`key` is a function that gives the key for one call; the key only goes into the `x-api-key` header. A failed call throws a `ModelCallError` whose reason says why: `key-refused` (401, 403), `model-missing` (404), `out-of-credit` (402, or a 400 saying the credit balance is too low), `provider-busy` (429, 5xx and the 529 of an overload), `offline`, which names the host that didn't answer, or `refused` for any other error. The message ends in the HTTP status. The API's own error text is not in it: it goes on the error's `cause`, for `--debug`, never after 401 or 403 and never when it holds the key. A reply over 10 MiB fails with `refused`.
 
 The Messages API has no plain JSON mode, so the provider says `jsonOutput: false`. Settings only Anthropic knows, such as `thinking`, go in `params.extra`. Thinking comes back as `reasoning`, and its blocks as the replay that the next turn sends back.
 

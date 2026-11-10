@@ -242,7 +242,19 @@ verifies("engine.model-failure-stops", () => {
       "model-missing",
       new ModelCallError("model-missing", 'acme-local has no model "acme-local-1"'),
     ],
-    ["refused", new ModelCallError("refused", "acme-local turned the key away (401)")],
+    [
+      "key-refused",
+      new ModelCallError("key-refused", "acme-local didn't accept the key (HTTP 401)"),
+    ],
+    [
+      "out-of-credit",
+      new ModelCallError("out-of-credit", "acme-local refused the call (HTTP 402)"),
+    ],
+    [
+      "provider-busy",
+      new ModelCallError("provider-busy", "acme-local refused the call (HTTP 529)"),
+    ],
+    ["refused", new ModelCallError("refused", "acme-local refused the call (HTTP 400)")],
     ["out-of-memory", new ModelCallError("out-of-memory", "acme-local-1 doesn't fit in memory")],
   ])("stops the turn on %s and tries no fallback", async (reason, error) => {
     const local = new ScriptedModel([error], "acme-local");
@@ -264,12 +276,15 @@ verifies("engine.model-failure-stops", () => {
     expect(smart.requests).toEqual([]);
   });
 
-  it("gives a run the failure reason of a missing model or one without tools, and error otherwise", () => {
+  it("gives a run the failure reason of the model call, and error for refused or anything else", () => {
     expect(runFailureReasonOf(new ModelCallError("model-missing", "gone"))).toEqual({
       reason: "model-missing",
     });
     expect(runFailureReasonOf(new ModelCallError("model-no-tools", "no tools"))).toEqual({
       reason: "model-no-tools",
+    });
+    expect(runFailureReasonOf(new ModelCallError("key-refused", "no"))).toEqual({
+      reason: "key-refused",
     });
     expect(runFailureReasonOf(new ModelCallError("refused", "no"))).toEqual({ reason: "error" });
     expect(runFailureReasonOf(new Error("broke"))).toEqual({ reason: "error" });

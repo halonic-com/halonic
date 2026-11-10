@@ -115,7 +115,7 @@ verifies("model-anthropic.call-errors", () => {
     [
       "a key it doesn't accept",
       (v) => v.replyNext(403, vendorError("permission_error", "Your key test-key-1 can't")),
-      "refused",
+      "key-refused",
       /^acme didn't accept the key \(HTTP 403\)$/,
       undefined,
     ],
@@ -129,21 +129,96 @@ verifies("model-anthropic.call-errors", () => {
     [
       "an overload",
       (v) => v.replyNext(529, vendorError("overloaded_error", "Overloaded")),
-      "refused",
+      "provider-busy",
       /^acme refused the call to the model "acme-small" \(HTTP 529\)$/,
       "Overloaded",
     ],
     [
+      "a rate limit",
+      (v) => v.replyNext(429, vendorError("rate_limit_error", "Number of requests too high")),
+      "provider-busy",
+      /\(HTTP 429\)$/,
+      "Number of requests too high",
+    ],
+    [
+      "a credit balance that is too low",
+      (v) =>
+        v.replyNext(
+          400,
+          vendorError("invalid_request_error", "Your credit balance is too low to access the API."),
+        ),
+      "out-of-credit",
+      /\(HTTP 400\)$/,
+      "Your credit balance is too low to access the API.",
+    ],
+    [
+      "a payment required",
+      (v) => v.replyNext(402, vendorError("billing_error", "Payment required")),
+      "out-of-credit",
+      /\(HTTP 402\)$/,
+      "Payment required",
+    ],
+    [
+      "a billing error under another status",
+      (v) => v.replyNext(400, vendorError("billing_error", "Add credit to continue")),
+      "out-of-credit",
+      /\(HTTP 400\)$/,
+      "Add credit to continue",
+    ],
+    [
+      "a spend limit the user set",
+      (v) =>
+        v.replyNext(
+          400,
+          vendorError(
+            "invalid_request_error",
+            "You have reached your specified API usage limits. You will regain access on 2026-12-01.",
+          ),
+        ),
+      "out-of-credit",
+      /\(HTTP 400\)$/,
+      "You have reached your specified API usage limits. You will regain access on 2026-12-01.",
+    ],
+    [
+      "the spend cap of the account's tier",
+      (v) =>
+        v.replyNext(429, {
+          type: "error",
+          error: {
+            type: "rate_limit_error",
+            message: "Spend limit reached",
+            details: { error_code: "enforced_spend_limit_reached" },
+          },
+        }),
+      "out-of-credit",
+      /\(HTTP 429\)$/,
+      "Spend limit reached",
+    ],
+    [
+      "a 403 about the region, not the key",
+      (v) => v.replyNext(403, vendorError("permission_error", "This region is not supported")),
+      "refused",
+      /^acme refused the call to the model "acme-small" \(HTTP 403\)$/,
+      "This region is not supported",
+    ],
+    [
+      "a request it turns down",
+      (v) => v.replyNext(400, vendorError("invalid_request_error", "max_tokens: too large")),
+      "refused",
+      /^acme refused the call to the model "acme-small" \(HTTP 400\)$/,
+      "max_tokens: too large",
+    ],
+    [
       "an error body in another format",
       (v) => v.replyNext(502, { detail: "busy" }),
-      "refused",
+      "provider-busy",
       /\(HTTP 502\)$/,
       '{"detail":"busy"}',
     ],
     [
       "a key in the vendor's text",
       (v) => v.replyNext(500, vendorError("api_error", `bad key ${keyShapedText}`)),
-      "refused",
+      "provider-busy",
       /\(HTTP 500\)$/,
       undefined,
     ],
