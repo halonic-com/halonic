@@ -1005,8 +1005,10 @@ jobs:
     #
     # Required (in ci-ok's needs). `srt-win wfp verify` timed out once after
     # 30 s on a runner with no leak (the probes never ran), so the probe step
-    # tries twice. A real leak fails both tries. Each case's pass/fail line is
-    # in the job summary.
+    # tries again, but only when the probes did not run (exit code 2 or 3).
+    # An observed leak (exit code 1) fails at once, so a leak that shows only
+    # sometimes cannot pass on a second try. Each case's pass/fail line is in
+    # the job summary.
     name: Sandbox fence on Windows (canary probes)
     needs: changes
     if: needs.changes.outputs.sandbox-fence == 'true'
@@ -1032,7 +1034,15 @@ jobs:
       - name: Canary probes
         working-directory: packages/adapters/sandbox-srt
         shell: bash
-        run: node scripts/windows-fence-probe.mjs || node scripts/windows-fence-probe.mjs
+        run: |
+          rc=0
+          node scripts/windows-fence-probe.mjs || rc=$?
+          if [ "$rc" -eq 2 ] || [ "$rc" -eq 3 ]; then
+            echo "The probes did not run (exit code $rc), trying once more."
+            rc=0
+            node scripts/windows-fence-probe.mjs || rc=$?
+          fi
+          exit "$rc"
 
   agent-host:
     # The agent host as one executable, built with Node's single-executable

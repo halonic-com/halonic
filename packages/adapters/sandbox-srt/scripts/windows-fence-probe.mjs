@@ -5,7 +5,9 @@
 //
 // It works outside the user profile (RUNNER_TEMP in CI), because the sandbox
 // account cannot look inside the profile of the user who ran the install.
-// Run from this package after `windows-install`. Exit code 0 means fenced.
+// Run from this package after `windows-install`. Exit codes: 0 fenced, 1 a leak
+// was observed, 2 or 3 the probes did not run (port in the proxy range, or the
+// program inside gave no result), so a retry is allowed.
 import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
@@ -81,7 +83,7 @@ console.log(`srt exit code: ${run.status}`);
 console.log(`stdout: ${run.stdout}`);
 console.log(`stderr: ${run.stderr}`);
 
-// One pass/fail line per case, for the job summary (the job reports only).
+// One pass/fail line per case, for the job summary (the job fails on a leak).
 function writeSummary(cases) {
   const lines = cases.map(([name, ok]) => `- ${ok ? "PASS" : "FAIL"}: ${name}`);
   console.log(lines.join("\n"));
@@ -101,7 +103,7 @@ try {
   console.error(
     "NOT FENCED: the program inside the sandbox gave no result, so the probes did not run.",
   );
-  process.exit(1);
+  process.exit(3);
 }
 writeSummary([
   ["control write worked", result.control === true],
