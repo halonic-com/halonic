@@ -83,7 +83,7 @@ export function SidePanel(props: SidePanelProps) {
           className={
             sheet
               ? "flex flex-wrap gap-2 border-t border-border px-4 pt-3 pb-safe"
-              : "flex items-center justify-end gap-2 border-t border-border px-4 py-2.5"
+              : "flex h-12 items-center justify-end gap-2 border-t border-border px-4"
           }
         >
           {props.footer}

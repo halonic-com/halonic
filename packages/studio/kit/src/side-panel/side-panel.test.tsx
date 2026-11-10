@@ -69,7 +69,7 @@ verifies("kit.side-panel", () => {
     const { header, footer } = parts(container);
     expect(header?.lastElementChild?.textContent).toBe("Close Sort the inbox");
     expect(footer?.className).toContain(
-      "flex items-center justify-end gap-2 border-t border-border px-4 py-2.5",
+      "flex h-12 items-center justify-end gap-2 border-t border-border px-4",
     );
     expect(footer?.textContent).toBe("Run step");
   });
