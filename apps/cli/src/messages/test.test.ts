@@ -58,6 +58,9 @@ describe("test's sentences", () => {
       ".",
     ]);
     expect(testMessages.someFailed(2, 1, 0.9).phrase).toContainEqual(bold("1 failed"));
+    expect(
+      testMessages.endedOtherwise("completed", { status: "failed", step: "Draft reply" }).phrase,
+    ).toContainEqual(bold("Draft reply"));
   });
 
   it("has a sentence for each other expectation, from cli-output 3.3 revision 23", () => {
