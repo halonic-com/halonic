@@ -189,7 +189,8 @@ function localToolContent(tool: PluginLocalTool): PluginLocalToolContent {
   };
 }
 
-function localPart(tool: PluginLocalTool): PluginPart {
+/** The part a local tool is, such as `local:files`. */
+export function localPart(tool: PluginLocalTool): PluginPart {
   return `local:${tool.id}`;
 }
 
