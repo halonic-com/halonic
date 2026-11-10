@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   addHarnessEnvironment,
   type HarnessBridge,
@@ -22,9 +22,6 @@ import {
 import { claudeCodeHarness } from "./harness.ts";
 import { claudeCodeSettingsFiles } from "./settings.ts";
 import { SignInError } from "./sign-in.ts";
-
-/** Fails on Windows today: the settings files written before start are not found (HAL-4358). */
-const itUnlessWindows = it.skipIf(process.platform === "win32");
 
 /** A probe the run cases never ask: they don't call `detect`. */
 const unusedProbe = {
@@ -71,10 +68,14 @@ function openSession(program: FakeProgram): FakeSandboxSession {
   return new FakeSandboxSession({ profile: { ...engineProfile, env }, program });
 }
 
-/** The texts of the files written to the agent's settings folder, leaving out the run's own files. */
+/**
+ * The texts of the files written to the agent's settings folder, leaving out
+ * the run's own files. The harness names each file with `join`, which puts
+ * `\` between the parts on Windows, so the folder is compared in that form.
+ */
 function settingsFolderTexts(files: MemorySettingsFolder): string[] {
-  const folder = engineProfile.settingsFolder ?? "";
-  return [...files.files].filter(([path]) => path.startsWith(folder)).map(([, text]) => text);
+  const folder = join(engineProfile.settingsFolder ?? "");
+  return [...files.files].filter(([path]) => dirname(path) === folder).map(([, text]) => text);
 }
 
 async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error?: unknown }> {
@@ -170,22 +171,19 @@ verifies("harness-claude-code.start", () => {
     // the launcher's unfenced one, with a profile of its own. The harness
     // can't tell the two apart, so the settings, and the web tools they
     // deny, are the same (decision 7, HAL-2076).
-    itUnlessWindows(
-      "[platform:win32] HAL-4358: writes the same settings in sandbox and this-computer mode",
-      async () => {
-        const sandboxMode = new MemorySettingsFolder();
-        await readAll(newHarness(sandboxMode).start(task, openSession(claudeFinishing), bridge));
-        const thisComputerMode = new MemorySettingsFolder();
-        const thisComputer = new FakeSandboxSession({
-          profile: { ...engineProfile, workingFolder: "/projects/notes" },
-          program: claudeFinishing,
-        });
-        await readAll(newHarness(thisComputerMode).start(task, thisComputer, bridge));
+    it("writes the same settings in sandbox and this-computer mode", async () => {
+      const sandboxMode = new MemorySettingsFolder();
+      await readAll(newHarness(sandboxMode).start(task, openSession(claudeFinishing), bridge));
+      const thisComputerMode = new MemorySettingsFolder();
+      const thisComputer = new FakeSandboxSession({
+        profile: { ...engineProfile, workingFolder: "/projects/notes" },
+        program: claudeFinishing,
+      });
+      await readAll(newHarness(thisComputerMode).start(task, thisComputer, bridge));
 
-        expect(settingsFolderTexts(thisComputerMode)).toEqual(settingsFolderTexts(sandboxMode));
-        expect(settingsFolderTexts(sandboxMode)).toEqual(Object.values(claudeCodeSettingsFiles()));
-      },
-    );
+      expect(settingsFolderTexts(thisComputerMode)).toEqual(settingsFolderTexts(sandboxMode));
+      expect(settingsFolderTexts(sandboxMode)).toEqual(Object.values(claudeCodeSettingsFiles()));
+    });
 
     it("ends Claude Code's input after its result, and ends the stream once it has exited", async () => {
       const session = openSession(claudeFinishing);
