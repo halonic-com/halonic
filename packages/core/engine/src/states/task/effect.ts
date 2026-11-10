@@ -14,7 +14,11 @@ import type {
   ToolResult,
 } from "../../kernel/decide-types.ts";
 import { nothing, type StateContext, type StateStep } from "../../kernel/registry.ts";
-import { type RequestedEffect, skippedEffectResult } from "../../kernel/requested-effect.ts";
+import {
+  type RequestedEffect,
+  skippedEffectResult,
+  unknownOutcomeEvents,
+} from "../../kernel/requested-effect.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
 
 /**
@@ -22,9 +26,6 @@ import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
  * default `callTimeoutMs` of a plugin's local tool.
  */
 export const connectorCallTimeoutMs = 60_000;
-
-/** The events a run waiting on a call whose outcome is unknown takes. */
-export const unknownOutcomeEvents: readonly string[] = ["retry", "skip"];
 
 /** Records the call under a new call id and its key, then asks for it to be made. */
 export function requestEffect(

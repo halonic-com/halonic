@@ -202,3 +202,32 @@ verifies("engine.unknown-outcome", () => {
     expect(refused).toThrow(expect.objectContaining({ code: "engine.decision-callid-must-match" }));
   });
 });
+
+verifies("engine.run-connector-calls", () => {
+  it("waits for a person when the executor reports the call failed, and doesn't fail the run", () => {
+    const failed: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:06.000Z",
+      callId: "call-2",
+      error: "the connection dropped",
+      reason: "error",
+    };
+    const { decisions, run } = play(replyWorkflow, [start, stopped, failed]);
+    expect(decisions[2]).toEqual({
+      events: [
+        {
+          type: "tool.result",
+          agent: "writer",
+          tool: "send_mail",
+          result:
+            "The call broke off without an answer, so it may or may not have done its work: " +
+            "the connection dropped",
+          outcome: "unknown",
+        },
+        { type: "run.waiting", state: "draft", events: ["retry", "skip"] },
+      ],
+      effects: [],
+    });
+    expect(run).toMatchObject({ status: "waiting", pendingCall: null, effect: { unknown: true } });
+  });
+});

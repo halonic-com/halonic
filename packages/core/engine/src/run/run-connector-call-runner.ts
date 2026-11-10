@@ -5,9 +5,9 @@
 
 import type { RunStore } from "@halonicjs/ports";
 import type { CallToolEffect, DecideInput, ToolResult } from "../kernel/decide-types.ts";
+import { brokeOff } from "../kernel/requested-effect.ts";
 import { readRun } from "../kernel/step.ts";
 import { connectorCallTimeoutMs } from "../states/task/effect.ts";
-import { brokeOff } from "./connector-calls.ts";
 import type { CallTool } from "./local-runs.ts";
 import type { StartDeadlines } from "./start-deadlines.ts";
 

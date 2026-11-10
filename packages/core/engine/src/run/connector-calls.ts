@@ -9,6 +9,7 @@ import { isPlainObject } from "@halonicjs/std";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
 import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
+import { brokeOff } from "../kernel/requested-effect.ts";
 
 /**
  * What runs need to reach connectors. Without it, a run's model call
@@ -78,11 +79,6 @@ export async function makeConnectorCall(
   } catch (error) {
     return { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...risk };
   }
-}
-
-/** The text of a call that broke off: it may or may not have done its work. */
-export function brokeOff(why: string): string {
-  return `The call broke off without an answer, so it may or may not have done its work: ${why}`;
 }
 
 function notMade(why: string): ToolResult {

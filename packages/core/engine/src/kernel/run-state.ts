@@ -3,7 +3,7 @@ import {
   type RequestedEffect,
   type ResumeAfterEffect,
   receiveEvent,
-  requestEffect,
+  takeEffectRequest,
   takeEffectResult,
 } from "./requested-effect.ts";
 import {
@@ -230,7 +230,7 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "approval.resolved":
       return resolveApproval(state, event);
     case "effect.requested":
-      return requestEffect(state, event);
+      return takeEffectRequest(state, event);
     case "tool.result":
       return takeEffectResult(state, event);
     case "run.completed":

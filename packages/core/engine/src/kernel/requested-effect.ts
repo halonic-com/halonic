@@ -43,6 +43,14 @@ export const skippedEffectResult =
   "The call broke off without an answer, so it may or may not have done its work. " +
   "A person chose to go on without trying it again.";
 
+/** The events a run waiting on a call whose outcome is unknown takes. */
+export const unknownOutcomeEvents: readonly string[] = ["retry", "skip"];
+
+/** The text of a call that broke off: it may or may not have done its work. */
+export function brokeOff(why: string): string {
+  return `The call broke off without an answer, so it may or may not have done its work: ${why}`;
+}
+
 /** A send moves a waiting run on; a `skip` of a call whose outcome is unknown lets its agent go on. */
 export function receiveEvent(state: RunState, event: string): RunState {
   const running = { ...state, status: "running" as const, accepts: [] };
@@ -59,7 +67,7 @@ export function receiveEvent(state: RunState, event: string): RunState {
  * A request again under the same call id is a person's `retry`: it keeps
  * the id and the prompt, and waits for the result again.
  */
-export function requestEffect(
+export function takeEffectRequest(
   state: RunState,
   event: Extract<RunEvent, { type: "effect.requested" }>,
 ): RunState {

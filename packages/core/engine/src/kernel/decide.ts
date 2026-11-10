@@ -14,6 +14,7 @@ import type {
 } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
 import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./registry.ts";
+import { brokeOff, type RequestedEffect, unknownOutcomeEvents } from "./requested-effect.ts";
 import { branchOfCall } from "./run-branches.ts";
 import { evolve, type RunState, type WaitingApproval } from "./run-state.ts";
 
@@ -173,9 +174,15 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
 
 /**
  * Only the call the run waits on fails it. A failure of any other call, such
- * as one delivered after the run moved on, changes nothing.
+ * as one delivered after the run moved on, changes nothing. A connector call
+ * that can change things doesn't fail the run: no one knows whether it did
+ * its work, so its outcome is unknown and the run waits for a person.
  */
 function failedEffect(run: RunState, input: EffectFailedInput): Decision {
+  const effect = run.effect;
+  if (effect !== null && !effect.unknown && effect.callId === input.callId) {
+    return effectCutShort(run, effect, input.error);
+  }
   if (run.pendingCall?.callId !== input.callId) {
     return { events: [], effects: [] };
   }
@@ -189,6 +196,16 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
     ...(providerText === undefined ? {} : { providerText }),
   };
   return { events: [failed], effects: tellParent({ ...run, status: "failed" }) };
+}
+
+/** The same events a call that broke off records, as `takeToolResult` does. */
+function effectCutShort(run: RunState, effect: RequestedEffect, error: string): Decision {
+  const { state, agent, tool } = effect;
+  const events: DecidedEvent[] = [
+    { type: "tool.result", agent, tool, result: brokeOff(error), outcome: "unknown" },
+    { type: "run.waiting", state, events: [...unknownOutcomeEvents] },
+  ];
+  return { events, effects: tellParent({ ...run, status: "waiting" }) };
 }
 
 function emit(draft: Draft, event: DecidedEvent): void {

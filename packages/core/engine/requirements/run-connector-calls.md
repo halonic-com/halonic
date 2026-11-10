@@ -22,6 +22,9 @@ Where the executor is given connector calls for runs, the engine shall offer the
   then the host gets the store's error, and the model gets only the reason.
 - Given a run whose agent calls `search` on `mail`, labelled `read`,
   then `mail` is called in the turn, with no `effect.requested`.
+- Given a run with a recorded call to `send_mail`,
+  when the executor reports that the call failed (`effect-failed`),
+  then the run doesn't fail: it records `tool.result` with `outcome: "unknown"` and waits for `retry` or `skip`.
 - Given an engine that stopped after recording a call to `send_mail` and before making it,
   when an engine starts on the same store,
   then the call isn't made, the run records `tool.result` with `outcome: "unknown"` and waits for `retry` or `skip`.
