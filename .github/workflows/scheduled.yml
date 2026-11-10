@@ -75,7 +75,7 @@ jobs:
     # The score per package goes into the job summary. A package with a floor
     # (tooling/mutation, mutationFloors) fails when it scores under it, and so
     # does a broken Stryker run. Floors only go up.
-    name: Mutation testing (report only)
+    name: Mutation testing
     if: github.event.schedule != '47 4 * * 1'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
