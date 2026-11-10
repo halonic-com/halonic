@@ -168,5 +168,43 @@ verifies("harness-codex.app-server-client", () => {
       const client = new AppServerClient({ process, onMessage: () => undefined, bridgeToken });
       await expect(client.request("thread/start")).rejects.toThrow("Codex has ended.");
     });
+
+    it("fails a write without the bridge token in its message", async () => {
+      const stdin = new WritableStream<Uint8Array>({
+        write() {
+          throw new Error(`broken pipe; token ${bridgeToken}`);
+        },
+      });
+      const process = { stdin, stdout: new FakeAppServer().process.stdout };
+      const client = new AppServerClient({ process, onMessage: () => undefined, bridgeToken });
+      const error = await client.notify("initialized").catch((caught: unknown) => caught);
+      expect(String(error)).toContain("Halonic couldn't write to Codex: broken pipe; token");
+      expect(String(error)).not.toContain(bridgeToken);
+    });
+
+    it("leaves no unhandled rejection when the output ends while a write is pending, then the write fails", async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown) => unhandled.push(reason);
+      globalThis.process.on("unhandledRejection", onUnhandled);
+      try {
+        let failWrite: (error: Error) => void = () => undefined;
+        const stdin = new WritableStream<Uint8Array>({
+          write: () => new Promise<void>((_resolve, reject) => (failWrite = reject)),
+        });
+        const server = new FakeAppServer();
+        const process = { stdin, stdout: server.process.stdout };
+        const client = new AppServerClient({ process, onMessage: () => undefined, bridgeToken });
+        const thread = client.request("thread/start");
+        server.end();
+        await client.closed;
+        failWrite(new Error("Codex has ended."));
+        await expect(thread).rejects.toThrow("Codex has ended.");
+        // Node reports unhandled rejections after the microtask queue drains.
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(unhandled).toEqual([]);
+      } finally {
+        globalThis.process.off("unhandledRejection", onUnhandled);
+      }
+    });
   });
 });

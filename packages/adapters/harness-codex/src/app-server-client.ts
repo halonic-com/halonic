@@ -108,6 +108,10 @@ export class AppServerClient {
     const answered = new Promise<unknown>((resolve, reject) => {
       this.#pending.set(id, { method, resolve, reject });
     });
+    // Codex's output can end while the write is pending, which rejects
+    // `answered`; if the write then fails, nobody awaits `answered`, and an
+    // unhandled rejection would stop Node.
+    answered.catch(() => undefined);
     try {
       await this.#send({ id, method, params });
     } catch (error) {
@@ -132,7 +136,13 @@ export class AppServerClient {
 
   async #send(message: Record<string, unknown>): Promise<void> {
     const line = `${JSON.stringify(message)}\n`;
-    await this.#writer.write(new TextEncoder().encode(line));
+    try {
+      await this.#writer.write(new TextEncoder().encode(line));
+    } catch (error) {
+      // The error comes from the sandbox's pipe and could quote anything, so it is scrubbed too.
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(this.#scrubber.scrub(`Halonic couldn't write to Codex: ${reason}`));
+    }
   }
 
   async #readAll(stdout: ReadableStream<Uint8Array>): Promise<Error | undefined> {
