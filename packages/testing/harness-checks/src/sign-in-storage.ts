@@ -3,17 +3,31 @@ import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-/** The file Claude Code keeps its sign-in in when it doesn't use the macOS Keychain. */
-export const claudeCredentialsFile = ".credentials.json";
+/** Where a harness can keep its sign-in: a file in its settings folder, or Keychain entries. */
+export interface SignInPlace {
+  /** The file's name in the settings folder, such as `.credentials.json`. */
+  file: string;
+  /** How the names of its Keychain entries start, such as "Claude Code". */
+  keychainPrefix: string;
+}
 
-/** Where Claude Code's sign-in for one settings folder is: by name only, never its contents. */
-export interface ClaudeSignInStorage {
-  /** Whether `.credentials.json` is in the settings folder. */
+/** Claude Code's sign-in: `.credentials.json`, or the Keychain on macOS. */
+export const claudeSignInPlace: SignInPlace = {
+  file: ".credentials.json",
+  keychainPrefix: "Claude Code",
+};
+
+/** Codex's sign-in: `auth.json`, or the Keychain when its settings say so. */
+export const codexSignInPlace: SignInPlace = { file: "auth.json", keychainPrefix: "Codex" };
+
+/** Where a harness's sign-in for one settings folder is: by name only, never its contents. */
+export interface SignInStorage {
+  /** Whether the sign-in file is in the settings folder. */
   credentialsFile: "present" | "absent";
   /**
-   * The names of the Keychain entries whose service starts with "Claude Code",
-   * or `null` when this isn't macOS. Only the service names: never the
-   * account or the password.
+   * The names of the Keychain entries whose service starts with the
+   * harness's prefix, or `null` when this isn't macOS. Only the service
+   * names: never the account or the password.
    */
   keychainServices: string[] | null;
 }
@@ -25,22 +39,21 @@ export interface Keychain {
 }
 
 /**
- * Where Claude Code keeps the sign-in for `settingsFolder` (requirement
- * `harness-checks.sign-in-storage`): whether the file is there, and which
- * Keychain entries are named after Claude Code. It never opens the file or
- * asks the Keychain for a password.
+ * Where a harness keeps the sign-in for `settingsFolder` (requirement
+ * `harness-checks.sign-in-storage`): whether its file is there, and which
+ * Keychain entries are named after it. It never opens the file or asks the
+ * Keychain for a password.
  */
-export async function claudeSignInStorage(
+export async function signInStorage(
   settingsFolder: string,
+  place: SignInPlace,
   keychain: Keychain,
-): Promise<ClaudeSignInStorage> {
+): Promise<SignInStorage> {
   const services = await keychain.serviceNames();
   return {
-    credentialsFile: (await isFile(join(settingsFolder, claudeCredentialsFile)))
-      ? "present"
-      : "absent",
+    credentialsFile: (await isFile(join(settingsFolder, place.file))) ? "present" : "absent",
     keychainServices:
-      services === null ? null : services.filter((name) => name.startsWith("Claude Code")),
+      services === null ? null : services.filter((name) => name.startsWith(place.keychainPrefix)),
   };
 }
 

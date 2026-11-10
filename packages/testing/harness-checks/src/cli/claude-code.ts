@@ -1,9 +1,9 @@
-import { type ExecFileException, execFile } from "node:child_process";
 import { mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import { arch, homedir, platform, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { type AskOutside, checkClaudeCode, oauthTokenVariable } from "../claude-code-check.ts";
+import { askOutside } from "../ask-outside.ts";
+import { checkClaudeCode, oauthTokenVariable } from "../claude-code-check.ts";
 import { claudeCodeReport } from "../report.ts";
 import { systemKeychain } from "../sign-in-storage.ts";
 
@@ -53,20 +53,6 @@ function readOptions(args: string[]): Options {
     useOauthToken: values["use-oauth-token"],
     timeoutMs: seconds * 1_000,
   };
-}
-
-/** Runs a program as the person, outside the sandbox, with only the variables given. */
-const askOutside: AskOutside = (program, args, env) =>
-  new Promise((done) => {
-    execFile(program, args, { env, timeout: 60_000 }, (error, stdout) => {
-      done({ code: exitCode(error), stdout });
-    });
-  });
-
-/** The exit code `execFile` reports: 0 without an error, `null` when a signal or a failed start ended it. */
-function exitCode(error: ExecFileException | null): number | null {
-  if (error === null) return 0;
-  return typeof error.code === "number" ? error.code : null;
 }
 
 async function main(): Promise<void> {

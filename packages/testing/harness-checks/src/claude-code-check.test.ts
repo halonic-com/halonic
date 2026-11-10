@@ -4,9 +4,9 @@ import { join } from "node:path";
 import type { SandboxCommand } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import type { AskOutside } from "./ask-outside.ts";
 import type { BridgeSandbox, BridgeSandboxOptions, CheckedRun } from "./bridge-sandbox.ts";
 import {
-  type AskOutside,
   type ClaudeCodeCheckOptions,
   checkClaudeCode,
   expireCredentials,
@@ -118,7 +118,11 @@ function checkOptions(
   opened: Opened[],
   changes: Partial<ClaudeCodeCheckOptions> = {},
 ): ClaudeCodeCheckOptions {
-  const askOutside: AskOutside = async () => ({ code: 1, stdout: '{"loggedIn":false}' });
+  const askOutside: AskOutside = async () => ({
+    code: 1,
+    stdout: '{"loggedIn":false}',
+    stderr: "",
+  });
   return {
     settingsFolder: settings,
     scratchFolder: join(scratch, "check"),
@@ -176,7 +180,7 @@ verifies("harness-checks.claude-code", () => {
     const asked: Record<string, string>[] = [];
     const askOutside: AskOutside = async (_program, _args, env) => {
       asked.push(env);
-      return { code: 1, stdout: '{"loggedIn":false}' };
+      return { code: 1, stdout: '{"loggedIn":false}', stderr: "" };
     };
 
     const findings = await checkClaudeCode(

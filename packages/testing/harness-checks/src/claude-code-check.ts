@@ -7,6 +7,7 @@ import {
 } from "@halonicjs/adapter-harness-claude-code";
 import { harnessBridgeTokenHeader, type SandboxCommand } from "@halonicjs/ports";
 import { readVersion } from "@halonicjs/std";
+import type { AskOutside } from "./ask-outside.ts";
 import type { BridgeSandbox, BridgeSandboxOptions, CheckedRun } from "./bridge-sandbox.ts";
 import {
   type OpenSandbox,
@@ -18,10 +19,10 @@ import {
   withSandbox,
 } from "./prompt-outcome.ts";
 import {
-  type ClaudeSignInStorage,
-  claudeCredentialsFile,
-  claudeSignInStorage,
+  claudeSignInPlace,
   type Keychain,
+  type SignInStorage,
+  signInStorage,
 } from "./sign-in-storage.ts";
 
 /** The variable `claude setup-token`'s long-lived sign-in goes in. */
@@ -34,7 +35,7 @@ export const claudeWatchedHeaders = ["authorization", "x-api-key", harnessBridge
 export interface ClaudeCodeFindings {
   /** The `claude --version` number, or `null` when Claude Code didn't answer. */
   version: string | null;
-  storage: ClaudeSignInStorage;
+  storage: SignInStorage;
   /** Whether the check gave Claude Code `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`. */
   oauthTokenVariable: "passed" | "not-used";
   /** What `claude auth status` says outside the sandbox. */
@@ -50,13 +51,6 @@ export interface ClaudeCodeFindings {
    */
   refresh: RefreshOutcome;
 }
-
-/** Runs a program outside the sandbox, as the person, and gives back its exit code and output. */
-export type AskOutside = (
-  program: string,
-  args: string[],
-  env: Record<string, string>,
-) => Promise<{ code: number | null; stdout: string }>;
 
 /** What {@link checkClaudeCode} needs. */
 export interface ClaudeCodeCheckOptions {
@@ -96,7 +90,7 @@ const prompt: SandboxCommand = {
 export async function checkClaudeCode(
   options: ClaudeCodeCheckOptions,
 ): Promise<ClaudeCodeFindings> {
-  const storage = await claudeSignInStorage(options.settingsFolder, options.keychain);
+  const storage = await signInStorage(options.settingsFolder, claudeSignInPlace, options.keychain);
   const outside = await options.askOutside(claudeProgram, ["auth", "status"], {
     ...options.hostEnv,
     CLAUDE_CONFIG_DIR: options.settingsFolder,
@@ -131,13 +125,13 @@ export async function checkClaudeCode(
 /** The prompt again on a copy of the settings folder whose sign-in has expired, when asked for and possible. */
 async function refreshOutcome(
   options: ClaudeCodeCheckOptions,
-  storage: ClaudeSignInStorage,
+  storage: SignInStorage,
 ): Promise<RefreshOutcome> {
   if (!options.expireSignIn) return "not-forced";
   if (storage.credentialsFile === "absent") return "not-possible";
   const copy = join(options.scratchFolder, "settings-expired");
   await cp(options.settingsFolder, copy, { recursive: true });
-  if (!(await expireCredentials(join(copy, claudeCredentialsFile)))) return "not-possible";
+  if (!(await expireCredentials(join(copy, claudeSignInPlace.file)))) return "not-possible";
   return inSandbox(options, copy, "refresh", (sandbox) =>
     claudePrompt(sandbox, options.promptTimeoutMs),
   );

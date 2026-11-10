@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { claudeSignInStorage, type Keychain, keychainServiceNames } from "./sign-in-storage.ts";
+import {
+  claudeSignInPlace,
+  codexSignInPlace,
+  type Keychain,
+  keychainServiceNames,
+  signInStorage,
+} from "./sign-in-storage.ts";
 
 let folder: string;
 
@@ -34,23 +40,37 @@ verifies("harness-checks.sign-in-storage", () => {
   it("finds .credentials.json in the settings folder", async () => {
     await writeFile(join(folder, ".credentials.json"), "{}");
 
-    expect(await claudeSignInStorage(folder, noKeychain)).toEqual({
+    expect(await signInStorage(folder, claudeSignInPlace, noKeychain)).toEqual({
       credentialsFile: "present",
       keychainServices: null,
     });
   });
 
   it("says the file is absent when the folder has none", async () => {
-    expect((await claudeSignInStorage(folder, noKeychain)).credentialsFile).toBe("absent");
+    expect((await signInStorage(folder, claudeSignInPlace, noKeychain)).credentialsFile).toBe(
+      "absent",
+    );
   });
 
   it("lists only the Keychain entries named after Claude Code", async () => {
     const keychain: Keychain = { serviceNames: async () => keychainServiceNames(dump) };
 
-    expect((await claudeSignInStorage(folder, keychain)).keychainServices).toEqual([
+    expect((await signInStorage(folder, claudeSignInPlace, keychain)).keychainServices).toEqual([
       "Claude Code-credentials",
       "Claude Code-credentials-1a2b3c4d",
     ]);
+  });
+
+  it("finds Codex's auth.json and its Keychain entries the same way", async () => {
+    await writeFile(join(folder, "auth.json"), "{}");
+    const keychain: Keychain = {
+      serviceNames: async () => ["Codex Auth", "Claude Code-credentials"],
+    };
+
+    expect(await signInStorage(folder, codexSignInPlace, keychain)).toEqual({
+      credentialsFile: "present",
+      keychainServices: ["Codex Auth"],
+    });
   });
 
   it("reads service names, never an account, from the Keychain's dump", () => {
