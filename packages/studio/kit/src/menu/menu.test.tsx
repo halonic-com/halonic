@@ -287,4 +287,34 @@ verifies("kit.menu", () => {
       "phone:size-icon-md touch:size-icon-md",
     );
   });
+
+  it("makes items with checked radio items, the current one with a 16px accent check", () => {
+    const { menu } = renderMenu([
+      { id: "all", label: "All hubs", checked: false, onSelect: vi.fn() },
+      { id: "acme", label: "acme", checked: true, onSelect: vi.fn() },
+    ]);
+    const radios = Array.from(menu.querySelectorAll<HTMLElement>("[role=menuitemradio]"));
+    expect(radios.map((item) => item.getAttribute("aria-checked"))).toEqual(["false", "true"]);
+    expect(radios[0]?.querySelector(".text-accent")).toBeNull();
+    const check = radios[1]?.querySelector(".text-accent") as HTMLElement;
+    expect(check.getAttribute("aria-hidden")).toBe("true");
+    expect(check.className).toContain("size-icon-sm");
+    expect(check.className).toContain("ml-auto");
+    expect(check.querySelector("svg")).not.toBeNull();
+  });
+
+  it("moves through radio items with the arrows and picks one with Enter", async () => {
+    const pickAcme = vi.fn();
+    const { trigger } = renderMenu([
+      { id: "all", label: "All hubs", checked: true, onSelect: vi.fn() },
+      { id: "acme", label: "acme", checked: false, onSelect: pickAcme },
+    ]);
+    await openMenu(trigger);
+    expect(document.activeElement?.textContent).toBe("All hubs");
+    await press("ArrowDown");
+    expect(document.activeElement?.textContent).toBe("acme");
+    await press("Enter");
+    expect(pickAcme).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(trigger);
+  });
 });

@@ -932,7 +932,7 @@ menu and let the browser open it. Divide groups with `"divider"`.
 | --------- | -------------------------------------------------------------------------------- |
 | `trigger` | Renders the button that opens it; a kit `Button` takes every prop it gets        |
 | `entries` | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
-|           | `icon`, `keys`, `danger`, `disabled` or `unavailable: { reason }`                |
+|           | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked`     |
 | `align`   | `start` (the default) lines up with the trigger's left edge, `end` its right     |
 
 | State            | What shows                                                                                  |
@@ -955,6 +955,10 @@ trigger before `onSelect` runs, so a Dialog the item opens returns focus there.
 
 A shortcut shows as a Kbd and is named with `aria-keyshortcuts`. An `unavailable` item's reason is
 the item's description.
+
+An item with `checked` is one choice of several, a `menuitemradio` with `aria-checked`: `true` on
+the current one, which shows a 16px `accent` check at the right, `false` on the others. The filter
+chips' picker uses it on desktop, where a phone opens the picker sheet.
 
 **On a phone and under a coarse pointer** items are 48px with a 20px icon, and an unavailable
 item has 12px of padding above and below. On a phone shortcuts are
