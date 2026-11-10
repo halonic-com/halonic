@@ -158,7 +158,7 @@ async function runCommand(
     const [word] = input.positionals;
     // A command with subcommands takes no arguments, so a word after its options names a subcommand.
     if (command.subcommands !== undefined && word !== undefined) {
-      throw unknownSubcommand(path, word);
+      throw wordAfterOptions(path, word);
     }
     return await (command.run?.(input, io, context) ?? exitCode.usage);
   } catch (error) {
@@ -210,6 +210,24 @@ function unknownSubcommand(path: CommandPath, word: string): UsageError {
       ? usageMessages.unknownCommand(`${words} ${word}`)
       : usageMessages.unknownCommandNear(`${words} ${word}`, `${words} ${near}`);
   return new UsageError(problem, usageMessages.seeSubcommands(words));
+}
+
+/**
+ * The usage error for a word that comes after a command's options. A real
+ * subcommand there is only in the wrong place, so the error says where it
+ * goes instead of claiming it doesn't exist: `halonic runs --limit 5 show
+ * 01JD8Q` gets "Put show right after runs." with the usage line of
+ * `runs show` as its fix. Any other word gets {@link unknownSubcommand}.
+ */
+function wordAfterOptions(path: CommandPath, word: string): UsageError {
+  const subcommand = (lastOf(path).subcommands ?? []).find((candidate) => candidate.name === word);
+  if (subcommand === undefined) {
+    return unknownSubcommand(path, word);
+  }
+  return new UsageError(
+    usageMessages.subcommandPlacement(word, commandWords(path)),
+    usageLine([...path, subcommand]),
+  );
 }
 
 function printLines(print: (line: Phrase) => void, lines: readonly Phrase[]): void {

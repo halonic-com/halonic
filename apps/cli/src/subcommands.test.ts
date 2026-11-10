@@ -161,3 +161,17 @@ verifies("cli.subcommands", () => {
     expect(await runCli(["plugin", "list"], captureIo("/work"), commands)).toBe(exitCode.ok);
   });
 });
+
+verifies("cli.subcommand-placement", () => {
+  it("says where a real subcommand goes when it comes after the command's options", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["runs", "--limit", "5", "show", "01JD8Q"], io, commands)).toBe(
+      exitCode.usage,
+    );
+    expect(io.stdout).toEqual([]);
+    expect(io.stderr).toEqual([
+      "✕ Put show right after runs.",
+      "  Usage: halonic runs show <run-id>",
+    ]);
+  });
+});
