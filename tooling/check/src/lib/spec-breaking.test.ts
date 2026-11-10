@@ -102,13 +102,41 @@ verifies("check.api-specs-breaking", () => {
       '$: the number of "oneOf" alternatives changed from 2 to 1.',
     ]);
     expect(breakingChanges({ allOf: [{}] }, { allOf: [{}, {}] })).toEqual([
-      '$: the number of "allOf" alternatives changed from 1 to 2.',
+      '$: the number of "allOf" parts changed from 1 to 2.',
     ]);
+    expect(breakingChanges({ allOf: [{}, {}] }, { allOf: [{}] })).toEqual([]);
   });
 
   test("still compares the alternatives both lists have", () => {
     expect(
       breakingChanges({ anyOf: [{ const: 1 }] }, { anyOf: [{ const: 2 }, { const: 3 }] }),
     ).toEqual(['$.anyOf[0]: "const" changed from 1 to 2.']);
+  });
+
+  test("compares alternatives by content, so reordering is not breaking", () => {
+    const before = { oneOf: [{ type: "string" }, { type: "number" }] };
+    const after = { oneOf: [{ type: "number" }, { type: "string" }] };
+    expect(breakingChanges(before, after)).toEqual([]);
+    const added = { oneOf: [{ const: true }, ...after.oneOf] };
+    expect(breakingChanges(before, added)).toEqual([]);
+  });
+
+  test("names an alternative that is no longer accepted, wherever it moved", () => {
+    const before = { anyOf: [{ type: "string" }, { type: "number" }] };
+    const after = { anyOf: [{ type: "boolean" }, { type: "string" }] };
+    expect(breakingChanges(before, after)).toEqual([
+      '$.anyOf[1]: "type" changed from "number" to "boolean".',
+    ]);
+  });
+
+  test("names a type added to a schema that had none", () => {
+    const current = {
+      ...released,
+      properties: { ...released.properties, note: { type: "string" } },
+    };
+    const before = { ...released, properties: { ...released.properties, note: {} } };
+    expect(breakingChanges(before, current)).toEqual([
+      '$.properties.note: a "type" of "string" was added, which narrows what is accepted.',
+    ]);
   });
 });
