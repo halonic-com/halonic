@@ -1,4 +1,13 @@
-import type { Vcs, VcsCommit, VcsStatus } from "@halonicjs/ports";
+import {
+  checkCommitId,
+  type Vcs,
+  type VcsApplyOptions,
+  type VcsCommit,
+  type VcsFileDiff,
+  type VcsStatus,
+  type VcsWorktree,
+} from "@halonicjs/ports";
+import { parsePatch } from "./text-patch.ts";
 import { checkBranchName, checkVcsPath } from "./vcs-input.ts";
 
 /** One change a {@link DryRunVcs} was asked to make, in the order it was asked. */
@@ -10,6 +19,9 @@ export type PlannedVcsChange =
   | { readonly kind: "commit"; readonly message: string }
   | { readonly kind: "checkout" | "createBranch"; readonly branch: string }
   | { readonly kind: "rename"; readonly from: string; readonly to: string }
+  | { readonly kind: "addWorktree"; readonly version: string }
+  | { readonly kind: "removeWorktree"; readonly id: string }
+  | { readonly kind: "applyPatch"; readonly patch: string; readonly reverse: boolean }
   | { readonly kind: "init" | "pull" | "push" };
 
 /**
@@ -20,8 +32,10 @@ export type PlannedVcsChange =
  *
  * Unlike the dry-run definition store, reads don't show the recorded changes:
  * `status`, `diff`, `log`, `branches`, `readAt` and `listAt` describe the
- * real repository. `snapshot` is read through too: it adds a commit on no
- * branch and changes neither the working tree, the index nor a branch. Git's
+ * real repository, and so do `listWorktrees` and `diffBetween`. `snapshot`
+ * is read through too: it adds a commit on no branch and changes neither the
+ * working tree, the index nor a branch. A recorded worktree gets an id and a
+ * folder starting `dry-run:`, which no real worktree has. Git's
  * state is too large to replay in memory, and `push` reaches another machine.
  * So the `Vcs` contract, which expects a commit to show up in the log, does
  * not apply.
@@ -80,6 +94,37 @@ export class DryRunVcs implements Vcs {
     checkVcsPath(to);
     await this.#checkRepository();
     this.#record({ kind: "rename", from, to });
+  }
+
+  listWorktrees(): Promise<VcsWorktree[]> {
+    return this.#source.listWorktrees();
+  }
+
+  diffBetween(version: string, worktreeId: string): Promise<VcsFileDiff[]> {
+    return this.#source.diffBetween(version, worktreeId);
+  }
+
+  /** Records the worktree after checking the repository has the version. */
+  async addWorktree(version: string): Promise<VcsWorktree> {
+    checkCommitId(version);
+    await this.#source.listAt(version);
+    this.#record({ kind: "addWorktree", version });
+    const added = this.#changes.filter((change) => change.kind === "addWorktree").length;
+    const id = `dry-run:worktree-${added}`;
+    return { id, path: id, version };
+  }
+
+  async removeWorktree(id: string): Promise<void> {
+    this.#record({ kind: "removeWorktree", id });
+  }
+
+  /** Records the patch after reading it and checking its paths; whether it would apply isn't predicted. */
+  async applyPatch(patch: string, options: VcsApplyOptions = {}): Promise<void> {
+    for (const file of parsePatch(patch)) {
+      for (const path of [file.oldPath, file.newPath]) if (path !== null) checkVcsPath(path);
+    }
+    await this.#checkRepository();
+    this.#record({ kind: "applyPatch", patch, reverse: options.reverse === true });
   }
 
   async stage(paths: string[]): Promise<void> {

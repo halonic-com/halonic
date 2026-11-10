@@ -70,6 +70,34 @@ export interface VcsCommit {
   message: string;
 }
 
+/** A worktree: a version checked out, detached, into its own folder outside the workspace. */
+export interface VcsWorktree {
+  /** The adapter's id for it, as `removeWorktree` and `diffBetween` take it. */
+  id: string;
+  /** Its folder: an absolute path outside the workspace folder for a git adapter. */
+  path: string;
+  /** The commit it was added at. */
+  version: string;
+}
+
+/** How a file in a worktree differs from the version it is compared with. */
+export type VcsDiffStatus = "added" | "modified" | "deleted";
+
+/** One file that differs between a version and a worktree. */
+export interface VcsFileDiff {
+  /** Path relative to the worktree's root, "/" separated. */
+  path: string;
+  status: VcsDiffStatus;
+  /** Unified diff of the file, in git's format. */
+  diff: string;
+}
+
+/** How `applyPatch` applies a patch. */
+export interface VcsApplyOptions {
+  /** Undo the patch instead: what discarding one hunk does. */
+  reverse?: boolean;
+}
+
 /**
  * Version control of one workspace folder (git today). Paths are relative to that folder.
  *
@@ -236,6 +264,47 @@ export interface Vcs {
    * @throws when `from` doesn't exist or `to` already does; nothing changes
    */
   rename(from: string, to: string): Promise<void>;
+  /**
+   * Checks a commit out, detached, into a new folder of its own, where the
+   * assistant or an agent can change files without touching the workspace.
+   * The folder is never inside the workspace folder, so the Studio's file
+   * tree and watcher never see it. A git adapter takes the folder that
+   * holds its worktrees (in the app's data folder) when it is made.
+   *
+   * @throws as {@link Vcs.readAt} for the version
+   */
+  addWorktree(version: string): Promise<VcsWorktree>;
+  /**
+   * Deletes a worktree's folder, changed files and all, and the
+   * repository's record of it.
+   *
+   * @throws when there is no worktree with that id: `Unknown worktree <id>`
+   */
+  removeWorktree(id: string): Promise<void>;
+  /** The worktrees this adapter added that still exist, oldest first. */
+  listWorktrees(): Promise<VcsWorktree[]>;
+  /**
+   * Every file that differs between a commit and a worktree's files as they
+   * are on disk, new files included, private entries left out, sorted by
+   * path. Changes neither the worktree nor the workspace. A git adapter
+   * finds the worktree's repository through its own record of it, never
+   * through the `.git` file in the worktree folder, which whatever ran there
+   * could have rewritten.
+   *
+   * @throws as {@link Vcs.readAt} for the version, and as
+   *   {@link Vcs.removeWorktree} for the id
+   */
+  diffBetween(version: string, worktreeId: string): Promise<VcsFileDiff[]>;
+  /**
+   * Applies a unified diff to the workspace's working tree, not the index;
+   * with `reverse`, undoes it instead. Discarding one hunk of a change is
+   * `applyPatch(hunk, { reverse: true })`. All or nothing: when any part of
+   * it doesn't apply cleanly, nothing changes.
+   *
+   * @throws RangeError when the patch names a path the port refuses
+   * @throws when it doesn't apply cleanly: `The change no longer matches the file.`
+   */
+  applyPatch(patch: string, options?: VcsApplyOptions): Promise<void>;
   /** Make the folder a repository, ignoring `.studio`, the folder Halonic keeps its runtime data in. */
   init(): Promise<void>;
   /** The remote names, such as "origin". */

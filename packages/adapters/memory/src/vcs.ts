@@ -3,13 +3,17 @@ import {
   checkCommitId,
   type DefinitionStore,
   type Vcs,
+  type VcsApplyOptions,
   type VcsChange,
   type VcsCommit,
+  type VcsFileDiff,
   type VcsStatus,
+  type VcsWorktree,
 } from "@halonicjs/ports";
 import { ManualClock } from "./clock.ts";
 import { unifiedDiff } from "./line-diff.ts";
 import { sha256Hex } from "./sha256.ts";
+import { patchedFiles } from "./text-patch.ts";
 import { checkBranchName, checkVcsPath } from "./vcs-input.ts";
 import {
   clashingBranch,
@@ -31,6 +35,7 @@ import {
   treeOf,
   unstagedChanges,
 } from "./vcs-repository.ts";
+import { MemoryWorktrees } from "./vcs-worktrees.ts";
 
 /** Options for {@link MemoryVcs}; each one is optional. */
 export interface MemoryVcsOptions {
@@ -52,6 +57,7 @@ export class MemoryVcs implements Vcs {
   readonly #clock: Clock;
   readonly #author: string;
   #repo: Repository | null = null;
+  readonly #worktrees = new MemoryWorktrees();
 
   /** @param files - the working tree; the folder is not a repository until `init` */
   constructor(files: DefinitionStore, options: MemoryVcsOptions = {}) {
@@ -243,6 +249,41 @@ export class MemoryVcs implements Vcs {
       throw new Error(`The branch ${name} clashes with the branch ${other}.`);
     repo.branches.set(name, headCommit(repo));
     repo.head = name;
+  }
+
+  async addWorktree(version: string): Promise<VcsWorktree> {
+    checkCommitId(version);
+    return this.#worktrees.add(version, this.#treeAt(version));
+  }
+
+  async removeWorktree(id: string): Promise<void> {
+    this.#worktrees.remove(id);
+  }
+
+  async listWorktrees(): Promise<VcsWorktree[]> {
+    return this.#worktrees.list();
+  }
+
+  async diffBetween(version: string, worktreeId: string): Promise<VcsFileDiff[]> {
+    checkCommitId(version);
+    return this.#worktrees.diff(this.#treeAt(version), worktreeId);
+  }
+
+  /** A worktree's files, for tests and the demo to change. Not part of the port. */
+  worktreeFiles(id: string): DefinitionStore {
+    return this.#worktrees.files(id);
+  }
+
+  async applyPatch(patch: string, options: VcsApplyOptions = {}): Promise<void> {
+    this.#requireRepo();
+    const results = await patchedFiles(patch, options.reverse === true, checkVcsPath, (path) =>
+      this.#files.read(path),
+    );
+    // Every file was patched in memory first, so a mismatch above changed nothing.
+    for (const [path, content] of results) {
+      if (content === null) await this.#files.remove(path);
+      else await this.#files.write(path, content);
+    }
   }
 
   async init(): Promise<void> {

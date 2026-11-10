@@ -1,4 +1,4 @@
-# The Vcs port reads versions, takes snapshots and renames (v2)
+# The Vcs port reads versions, takes snapshots, renames and keeps worktrees (v2)
 
 - **Status:** Accepted
 - **Date:** 2026-11-10
@@ -17,11 +17,18 @@ shapes.
 
 ## Decision
 
-**`Vcs` version 2 adds four methods:** `snapshot()`, `readAt(version, path)`,
-`listAt(version, dir?)` and `rename(from, to)`. The worktree and patch
-methods of the same routing note (`addWorktree`, `removeWorktree`,
-`listWorktrees`, `diffBetween`, `applyPatch`) join version 2 in a follow-up
-pull request before any release, without another bump.
+**`Vcs` version 2 adds** `snapshot()`, `readAt(version, path)`,
+`listAt(version, dir?)` and `rename(from, to)`, and the worktree and patch
+methods: `addWorktree(version)`, `removeWorktree(id)`, `listWorktrees()`,
+`diffBetween(version, worktreeId)` and `applyPatch(patch, { reverse })`.
+They landed in two pull requests before any release, under one bump.
+
+**Worktrees live outside the workspace folder**, detached at a version, so
+the Studio's file tree and watcher never see them. Reading one never trusts
+the `.git` file in its folder, which whatever ran there could have
+rewritten (the worktree side of HAL-3188). **`applyPatch` is all or
+nothing** and touches the working tree only: discarding one hunk is
+`applyPatch(hunk, { reverse: true })`.
 
 **A version is a full commit id and nothing else.** `checkCommitId` refuses
 branch names, `HEAD`, `@{-1}`, short ids and anything starting with `-`
@@ -45,8 +52,8 @@ same change; the git adapter (HAL-2607) implements them when it lands.
 - The engine can build a `DefinitionSource` at a commit on `readAt` and
   `listAt` (HAL-3246), and `ProposalService` can start from `snapshot()`
   (HAL-3248).
-- `ports.vcs-commit-ref`, `memory.vcs-versions` and
-  `memory.dry-run-vcs-versions` keep the behaviour true; Julian's `vcs` and
+- `ports.vcs-commit-ref`, `memory.vcs-versions`, `memory.vcs-worktrees`
+  and the two `memory.dry-run-vcs-*` requirements keep the behaviour true; Julian's `vcs` and
   `vcs-safety` contract cases (HAL-3265) hold every adapter to it.
 - A snapshot nobody keeps is an unreachable commit; git's own `gc` removes
   it after its usual grace period. A worktree at a snapshot keeps it.
