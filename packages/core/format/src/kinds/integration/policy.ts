@@ -67,10 +67,9 @@ export interface PolicyProblem {
  * setting, which must be in the class the sheet declares for it: a value
  * outside it is refused as `setting-outside-class`. This is the only place
  * plain `http` is allowed: to a `loopback` or `private` host, and a secret
- * only to a `loopback` one.
- *
- * An optional secret may still list a private-network host over `http`:
- * without a key the request goes out bare, and with one the kit refuses it.
+ * only to a `loopback` one, even when it's optional: the kit checks where a
+ * secret may go before it looks the key up, so it would refuse every request
+ * that names the secret there, set up or not.
  *
  * @example
  * // hosts: [{ fromSetting: url, class: loopback }]
@@ -101,7 +100,7 @@ export function integrationPolicy(
       if (found === undefined) {
         return;
       }
-      if (found.plain && !secret.optional && !isLoopback(found.hostname)) {
+      if (found.plain && !isLoopback(found.hostname)) {
         problems.push({
           code: "secret-over-plain-http",
           path,

@@ -37,6 +37,20 @@ function fromSetting(addressClass: AddressClass, optional: boolean): Integration
   );
 }
 
+/** A sheet with one host of `addressClass` from the `url` setting, and no secret. */
+function hostOnly(addressClass: AddressClass): IntegrationSheet {
+  return parsedValue(
+    "integration",
+    yaml(
+      "id: mcp",
+      "version: 1.0.0",
+      "kit: 1",
+      "provides: [connector]",
+      `hosts: [{ fromSetting: url, class: ${addressClass} }]`,
+    ),
+  );
+}
+
 function resolve(sheet: IntegrationSheet, settings: Record<string, unknown>) {
   const resolved = integrationPolicy(sheet, settings);
   if (!resolved.ok) {
@@ -143,16 +157,22 @@ describe("format.integration-policy", () => {
     });
   });
 
-  it("allows plain http to a private network, but a secret only when it's optional", () => {
-    expect(problems(fromSetting("private", false), { url: "http://192.168.1.5:8080/mcp" })).toEqual(
-      ["secrets.mcp-key.hosts.0 secret-over-plain-http"],
-    );
-    const { policy } = resolve(fromSetting("private", true), {
-      url: "http://192.168.1.5:8080/mcp",
+  it.each([false, true])(
+    "refuses a secret over plain http to a private network, optional: %s",
+    (optional) => {
+      expect(
+        problems(fromSetting("private", optional), { url: "http://192.168.1.5:8080/mcp" }),
+      ).toEqual(["secrets.mcp-key.hosts.0 secret-over-plain-http"]);
+    },
+  );
+
+  it("allows https to a private network, with the secret", () => {
+    const { policy } = resolve(fromSetting("private", false), {
+      url: "https://192.168.1.5:8443/mcp",
     });
-    expect(policy.localHosts).toEqual(["192.168.1.5:8080"]);
+    expect(policy.hosts).toEqual(["192.168.1.5:8443"]);
     expect(policy.secrets).toEqual({
-      "mcp-key": { hosts: ["192.168.1.5:8080"], optional: true, placement: { as: "bearer" } },
+      "mcp-key": { hosts: ["192.168.1.5:8443"], placement: { as: "bearer" } },
     });
   });
 
@@ -243,7 +263,7 @@ describe("format.integration-policy", () => {
     ["https://[fd01:2:3:4:5:6:7:8]", "private"],
     ["https://[fd01:2:3:4:5:6:7:0]", "private"],
   ])("reads the host of %s as URL does", (url, addressClass) => {
-    const { policy } = resolve(fromSetting(addressClass, true), { url });
+    const { policy } = resolve(hostOnly(addressClass), { url });
     expect([...policy.hosts, ...(policy.localHosts ?? [])]).toEqual([new URL(url).host]);
   });
 });
@@ -297,7 +317,7 @@ verifies("format.integration-host-class", () => {
     ],
   ])("takes a %s setting only inside its class", (addressClass, inside, outside) => {
     for (const url of inside) {
-      const { policy } = resolve(fromSetting(addressClass, true), { url });
+      const { policy } = resolve(hostOnly(addressClass), { url });
       expect([...policy.hosts, ...(policy.localHosts ?? [])]).toEqual([new URL(url).host]);
     }
     for (const url of outside) {
