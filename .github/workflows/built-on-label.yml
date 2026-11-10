@@ -14,8 +14,12 @@ on:
 
 permissions: {}
 
+# The event action is part of the group: `gh pr create --label` fires
+# `opened` and `labeled` together, and one run cancelling the other left a
+# cancelled check that blocked the merge queue (HAL-3482). Only a repeat of
+# the same action cancels the older run.
 concurrency:
-  group: built-on-label-${{ github.event.pull_request.number || github.ref }}
+  group: built-on-label-${{ github.event.pull_request.number || github.ref }}-${{ github.event.action }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
