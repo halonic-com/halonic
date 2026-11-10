@@ -21,6 +21,7 @@ This package is built in steps (HAL-983). So far it has the protocol on both sid
   - Tool results, tool errors and stderr pass through the kit's secret filter.
 - **The limits** (`defaultRunnerLimits`):
   - at most 8 requests in flight;
+  - a request's URL, headers and secret placements together at most 32 KiB;
   - a call is cancelled when its signal aborts or after 5 minutes, and the runner is stopped if it
     hasn't answered 5 seconds later;
   - between calls, a `ping` every 5 seconds that must be answered within 1 second;

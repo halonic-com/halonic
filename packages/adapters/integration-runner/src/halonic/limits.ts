@@ -27,6 +27,11 @@ export interface RunnerLimits {
   maxStderrBytesPerCall: number;
   /** The largest body piece in one `chunk` frame (256 KiB), well inside a frame as base64. */
   maxBodyPieceBytes: number;
+  /**
+   * A request's URL, headers and secret placements together, as UTF-8
+   * (32 KiB); a larger one is refused before it reaches the kit (section 3.3).
+   */
+  maxRequestHeadBytes: number;
 }
 
 /** The design's limits. */
@@ -40,6 +45,7 @@ export const defaultRunnerLimits: Readonly<RunnerLimits> = Object.freeze({
   readyTimeoutMs: 10_000,
   maxStderrBytesPerCall: 1_048_576,
   maxBodyPieceBytes: 256 * 1024,
+  maxRequestHeadBytes: 32 * 1024,
 });
 
 /**

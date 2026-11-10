@@ -84,6 +84,13 @@ export class RequestTable {
       });
       return;
     }
+    if (requestHeadBytes(frame) > this.#limits.maxRequestHeadBytes) {
+      this.#fail(frame.id, {
+        code: "request-too-large",
+        message: `a request's URL, headers and secret placements can be at most ${this.#limits.maxRequestHeadBytes} bytes together`,
+      });
+      return;
+    }
     let body: ReturnType<typeof decodeRequestBody>;
     try {
       body = decodeRequestBody(frame.body);
@@ -93,7 +100,7 @@ export class RequestTable {
     }
     const entry: TableRequest = { abort: new AbortController(), pulling: false };
     this.#live.set(frame.id, entry);
-    void this.#send(frame, body, entry);
+    this.#send(frame, body, entry).catch((error) => this.#broke(error));
   }
 
   /** Takes a `pull` frame: answers with one `chunk`, the `end` or an `error`. */
@@ -108,7 +115,7 @@ export class RequestTable {
       return;
     }
     entry.pulling = true;
-    void this.#readPiece(id, entry, entry.reader);
+    this.#readPiece(id, entry, entry.reader).catch((error) => this.#broke(error));
   }
 
   /** Takes a `cancel-body` frame: the integration stopped reading. */
@@ -218,8 +225,27 @@ export class RequestTable {
     this.#hooks.send({ type: "chunk", id, base64: toBase64(piece.subarray(0, max)) });
   }
 
+  /**
+   * Answers a request with an error. A kit message can repeat what the
+   * runner sent, so one too large for a frame is replaced by a fixed one.
+   */
   #fail(id: number, failure: RequestFailure): void {
-    this.#hooks.send({ type: "error", id, code: failure.code, message: failure.message });
+    try {
+      this.#hooks.send({ type: "error", id, code: failure.code, message: failure.message });
+    } catch (error) {
+      if (!(error instanceof FrameTooLargeError)) throw error;
+      this.#hooks.send({ type: "error", id, code: failure.code, message: messageTooLarge });
+    }
+  }
+
+  /**
+   * A request or a body piece that could not be answered. The runner would
+   * wait for that answer forever, so it is stopped, and no failure is left
+   * unhandled to end Halonic's process.
+   */
+  #broke(error: unknown): void {
+    const what = error instanceof Error ? error.name : "an unknown error";
+    this.#hooks.violation(`a request Halonic could not answer (${what})`);
   }
 
   #isLive(id: number, entry: TableRequest): boolean {
@@ -231,6 +257,21 @@ export class RequestTable {
     entry.abort.abort();
     if (entry.reader !== undefined) dropReader(entry.reader);
   }
+}
+
+/** The message sent in place of one too large for an `error` frame. */
+const messageTooLarge = "the request was refused; the reason is too long to send";
+
+const utf8 = new TextEncoder();
+
+/** The UTF-8 size of a request's URL, header names and values, and secret placements (section 3.3). */
+function requestHeadBytes(frame: FetchFrame): number {
+  const parts = [
+    frame.url,
+    ...frame.headers.flat(),
+    ...frame.auth.flatMap((placement) => Object.values(placement)),
+  ];
+  return parts.reduce((total, part) => total + utf8.encode(part).byteLength, 0);
 }
 
 /** A placement from a frame, with an absent header prefix left out rather than `undefined`. */
