@@ -34,13 +34,13 @@ in `/etc/wsl.conf` (then `wsl --shutdown`). Paste the output below.
 
 ## Results
 
-Run on 10 Nov 2026 (about 19:35 UTC), on the board's own PC, from `main` at
+Run on 10 Nov 2026, on the board's own PC, from `main` at
 `25e673a`, unchanged and with no harness sandbox around it. Both runs passed.
 
 | Field               | Value |
 | ------------------- | ----- |
 | Date                | 10 Nov 2026 |
-| Run by              | The board, on Timothy's PC ([HAL-3743](/HAL/issues/HAL-3743)) |
+| Run by              | The board ([HAL-3743](/HAL/issues/HAL-3743)) |
 | Windows build       | Windows 11 Pro 10.0.26200 |
 | WSL and kernel      | 6.18.33.2-microsoft-standard-WSL2; fresh Ubuntu 26.04.1 LTS distro, systemd on, normal user |
 | srt version         | 0.0.82 (`@anthropic-ai/sandbox-runtime`), bubblewrap 0.11.1, socat, ripgrep from Ubuntu |
@@ -89,8 +89,9 @@ EXIT=0
 
 Notes:
 
-- The `/mnt/c` prefix in the marker file path is shown as `<C: drive>`, and the Public folder name as `<public folder>`, below; nothing else in the output was changed.
-
+- In the output above, the `/mnt/c` prefix of the marker file path is shown as
+  `<C: drive>` and the Public folder name as `<public folder>`. Nothing else in
+  the output was changed.
 - For the interop-off run, interop was turned off in that distro's
   `/etc/wsl.conf` and only that distro was restarted (`wsl --terminate Ubuntu`).
   `wsl.conf` was restored afterwards.
