@@ -2,22 +2,30 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RunEvent } from "@halonicjs/events";
 import type { RecordChange } from "@halonicjs/ports";
-import { agentPlacement, connectionSettings, trustRecord } from "@halonicjs/testing-contracts";
+import {
+  agentPlacement,
+  connectionSettings,
+  trustRecord,
+  unfencedRunConsent,
+} from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { FileAgentPlacementStore } from "./agent-placement-store.ts";
+import { FolderBlobStore } from "./blob-store.ts";
 import { FileConnectionSettingsStore } from "./connection-settings-store.ts";
 import { FileRecordStore } from "./record-store.ts";
 import { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 import { FileTrustStore } from "./trust-store.ts";
+import { FileUnfencedRunConsentStore } from "./unfenced-run-consent-store.ts";
 
 /**
  * The trust store, the agent placement store, the connection settings
- * store, the record store's compact and the run store's snapshot on Windows, with a program that holds the target open, as
- * `definition-store-rename-retry.test.ts` does for the folder definition
- * store: the next `busyRenames` renames fail with `EBUSY` as Windows gives
- * it. Waits between tries are counted, never really waited.
+ * store, the blob store, the unfenced-run consent store, the record store's
+ * compact and the run store's snapshot on Windows, with a program that holds
+ * the target open, as `definition-store-rename-retry.test.ts` does for the
+ * folder definition store: the next `busyRenames` renames fail with `EBUSY`
+ * as Windows gives it. Waits between tries are counted, never really waited.
  */
 const hooks = vi.hoisted(() => ({ busyRenames: 0, waits: 0 }));
 
@@ -170,6 +178,59 @@ verifies("fs-node.rename-retry-on-windows", () => {
       expect(await store.get({ location, connector: "mail" })).toEqual(
         connectionSettings(location, "mail", false),
       );
+      await onlyFile(root);
+    });
+  });
+
+  describe("blob store: a blob another program holds on Windows", () => {
+    // A put renames only when the blob isn't stored yet, so there is no old
+    // blob to keep: when it stays held, nothing is stored.
+    const hello = new TextEncoder().encode("hello");
+    const helloHash = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+
+    it("puts once the other program lets go of the blob", async () => {
+      const root = await tempFolder();
+      const store = new FolderBlobStore(root);
+      hooks.busyRenames = 2;
+      await store.put(hello, "text/plain");
+      expect(hooks.waits).toBe(2);
+      expect(await store.get(helloHash)).toEqual(hello);
+      expect(await onlyFile(join(root, "2c"))).toBe(join(root, "2c", helloHash));
+    });
+
+    it("fails, stores nothing and removes its temporary file when the blob stays held", async () => {
+      const root = await tempFolder();
+      const store = new FolderBlobStore(root);
+      hooks.busyRenames = 100;
+      await expect(store.put(hello, "text/plain")).rejects.toMatchObject({ code: "EBUSY" });
+      expect(hooks.waits).toBe(5);
+      expect(await store.get(helloHash)).toBeNull();
+      expect(await readdir(join(root, "2c"))).toEqual([]);
+    });
+  });
+
+  describe("unfenced-run consent store: a yes another program holds on Windows", () => {
+    it("saves once the other program lets go of the yes", async () => {
+      const root = await tempFolder();
+      const store = new FileUnfencedRunConsentStore(root);
+      await store.save(unfencedRunConsent("windows"));
+      hooks.busyRenames = 2;
+      await store.save(unfencedRunConsent("linux"));
+      expect(hooks.waits).toBe(2);
+      expect(await store.get()).toEqual(unfencedRunConsent("linux"));
+      await onlyFile(root);
+    });
+
+    it("fails, keeps the old yes and removes its temporary file when the yes stays held", async () => {
+      const root = await tempFolder();
+      const store = new FileUnfencedRunConsentStore(root);
+      await store.save(unfencedRunConsent("windows"));
+      hooks.busyRenames = 100;
+      await expect(store.save(unfencedRunConsent("linux"))).rejects.toMatchObject({
+        code: "EBUSY",
+      });
+      expect(hooks.waits).toBe(5);
+      expect(await store.get()).toEqual(unfencedRunConsent("windows"));
       await onlyFile(root);
     });
   });
