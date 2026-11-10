@@ -101,7 +101,9 @@ save(edited.value.text);
 
 - `set` creates missing maps on the way (never lists). On a list it replaces
   an item that exists; use `insert` to add one. `set` on `[]` replaces the
-  whole document.
+  whole document. A new key goes at the end of its map, or right after the
+  key `after` names (`after: null` puts it first), so a block put back from
+  another version of the file lands where it was.
 - `delete` removes a key or item with its lines and its trailing comment. The
   comments above it stay. The last entry leaves `{}` or `[]`, with those
   comments under it.

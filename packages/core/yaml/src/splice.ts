@@ -50,7 +50,7 @@ function spliceLines(text: string, edit: YamlEdit): string | undefined {
   }
   switch (edit.kind) {
     case "set":
-      return spliceSet(parsed, edit.path, edit.value);
+      return spliceSet(parsed, edit.path, edit.value, edit.after);
     case "delete":
       return nodeAt(parsed, edit.path) === undefined ? text : deleteEntry(parsed, edit.path);
     case "insert":
@@ -94,13 +94,20 @@ function spliceInFlow(parsed: Parsed, edit: YamlEdit, length: number): string | 
 }
 
 /** Sets an existing value, or adds the first missing key with the maps under it. */
-function spliceSet(parsed: Parsed, path: YamlPath, value: unknown): string | undefined {
+function spliceSet(
+  parsed: Parsed,
+  path: YamlPath,
+  value: unknown,
+  after: string | null | undefined,
+): string | undefined {
   for (let length = 0; length <= path.length; length++) {
     const prefix = path.slice(0, length);
     const node = nodeAt(parsed, prefix);
     const nested = nest(path.slice(length), value);
     if (node === undefined) {
-      return addPair(parsed, prefix.slice(0, -1), String(path[length - 1]), nested);
+      // `after` names a sibling of the last key, so it only counts when that key is the new one.
+      const place = length === path.length ? after : undefined;
+      return addPair(parsed, prefix.slice(0, -1), String(path[length - 1]), nested, place);
     }
     if (length === path.length || isEmpty(node)) {
       return setNode(parsed, prefix, node, nested);

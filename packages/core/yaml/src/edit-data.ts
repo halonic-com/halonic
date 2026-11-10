@@ -10,9 +10,21 @@ import type { YamlPath } from "./read.ts";
  *   nothing is there.
  * - `insert`: adds `value` to a list before the item at the index that ends
  *   `path`; the list's length adds it at the end.
+ *
+ * A `set` that adds a new key to a map puts it at the end of that map, or
+ * right after the key `after` names; `after: null` puts it first. This is
+ * where the key goes in the text, so a block put back from another version
+ * of the file lands where it was. `after` does nothing when the key is
+ * already there, and a key `after` names that isn't there means the end.
+ * A `rewritten` layout, written from the data, puts the new key at the end.
  */
 export type YamlEdit =
-  | { readonly kind: "set"; readonly path: YamlPath; readonly value: unknown }
+  | {
+      readonly kind: "set";
+      readonly path: YamlPath;
+      readonly value: unknown;
+      readonly after?: string | null;
+    }
   | { readonly kind: "delete"; readonly path: YamlPath }
   | { readonly kind: "insert"; readonly path: YamlPath; readonly value: unknown };
 

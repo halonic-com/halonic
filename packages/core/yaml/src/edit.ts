@@ -1,5 +1,14 @@
 import { deepEqual, err, ok, type Result } from "@halonicjs/std";
-import { isCollection, isNode, isPair, isScalar, isSeq, type Node, parseDocument } from "yaml";
+import {
+  isCollection,
+  isMap,
+  isNode,
+  isPair,
+  isScalar,
+  isSeq,
+  type Node,
+  parseDocument,
+} from "yaml";
 import { applyEditToData, checkValue, type YamlEdit } from "./edit-data.ts";
 import { lineEndingOf } from "./edit-text.ts";
 import type { YamlProblem } from "./problem.ts";
@@ -168,9 +177,45 @@ function setInDocument(
   if (from === 0) {
     replaceContents(document, value);
   } else {
+    const isNewKey = from === path.length && !document.hasIn(path);
     document.setIn(path.slice(0, from), value);
+    if (isNewKey && edit.kind === "set" && edit.after !== undefined) {
+      moveNewPair(document, path, edit.after);
+    }
   }
   return render(text, document);
+}
+
+/**
+ * Moves the pair `setIn` just added at the end of its map to where `after`
+ * says: right after that key, or first for `null`. A key `after` names that
+ * isn't there leaves it at the end.
+ */
+function moveNewPair(
+  document: ReturnType<typeof parseDocument>,
+  path: YamlPath,
+  after: string | null,
+): void {
+  const map = path.length === 1 ? document.contents : document.getIn(path.slice(0, -1), true);
+  if (!isMap(map)) {
+    return;
+  }
+  const added = map.items.pop();
+  if (added === undefined) {
+    return;
+  }
+  if (after === null) {
+    map.items.unshift(added);
+    return;
+  }
+  const previous = map.items.findIndex(
+    (pair) => isScalar(pair.key) && String(pair.key.value) === after,
+  );
+  if (previous === -1) {
+    map.items.push(added);
+    return;
+  }
+  map.items.splice(previous + 1, 0, added);
 }
 
 /** Replace the whole document, carrying over the comment at the top of the file. */

@@ -237,12 +237,17 @@ export function replaceScalar(parsed: Parsed, node: Node, value: unknown): strin
   return parsed.text.slice(0, start) + rendered + parsed.text.slice(end);
 }
 
-/** Adds `key: value` after the last entry of the block map at `mapPath`. */
+/**
+ * Adds `key: value` to the block map at `mapPath`: after its last entry, or
+ * right after the entry `after` names, or first (above the comments over the
+ * first entry) when `after` is `null`.
+ */
 export function addPair(
   parsed: Parsed,
   mapPath: YamlPath,
   key: string,
   value: unknown,
+  after?: string | null,
 ): string | undefined {
   const map = nodeAt(parsed, mapPath);
   if (!isMap(map)) {
@@ -252,16 +257,32 @@ export function addPair(
     return map.items.length === 0 ? replaceValue(parsed, mapPath, { [key]: value }) : undefined;
   }
   const first = map.items[0]?.key as Node | undefined;
-  const last = map.items[map.items.length - 1];
-  if (first?.range == null || last === undefined) {
+  if (first?.range == null) {
     return undefined;
   }
-  const at = entryEnd(parsed.text, pairEnd(last));
+  const at = newPairOffset(parsed.text, map, first.range[0], after);
+  if (at === undefined) {
+    return undefined;
+  }
   return insertLines(
     parsed.text,
     at,
     renderPair(key, value, columnOf(parsed.text, first.range[0]), parsed.style),
   );
+}
+
+/** Where a new pair's lines go in a block map whose first key starts at `firstKey`. */
+function newPairOffset(
+  text: string,
+  map: YAMLMap,
+  firstKey: number,
+  after: string | null | undefined,
+): number | undefined {
+  if (after === null) {
+    return aboveComments(text, lineStart(text, firstKey));
+  }
+  const previous = (after === undefined ? undefined : pairOf(map, after)) ?? map.items.at(-1);
+  return previous === undefined ? undefined : entryEnd(text, pairEnd(previous));
 }
 
 /** Inserts `- value` into the block list at `listPath`, above the comments over item `index`. */
