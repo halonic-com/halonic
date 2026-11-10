@@ -22,7 +22,9 @@ import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
  * never be inside a workspace: an agent that edits the workspace must not be
  * able to take itself out of its sandbox. For the same reason a choice that
  * is a link, such as one to a file in a workspace, can't be read, and a
- * save makes the folder private even when it was already there.
+ * save makes the folder private even when it was already there. Only the
+ * files are checked, not the folder: a folder that is itself a link is
+ * followed, which is safe only because the folder lives in the profile.
  */
 export class FileAgentPlacementStore implements AgentPlacementStore {
   readonly #root: string;

@@ -1,6 +1,18 @@
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, lstat, mkdir, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  link,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { TrustService } from "@halonicjs/app";
 import type { Digest } from "@halonicjs/ports";
 import {
@@ -230,6 +242,21 @@ verifies("fs-node.trust-store-files", () => {
       expect(await readdir(root)).toEqual([]);
       expect(JSON.parse(await readFile(outside, "utf8"))).toEqual(trustRecord(acme));
     });
+
+    // A hard link is a second name for the workspace file itself, so `lstat`
+    // doesn't see a link; only its count of names gives it away (HAL-2985).
+    it("refuses a hard link to a valid record outside the folder", async () => {
+      const root = join(await tempFolder(), "trust");
+      await mkdir(root, { recursive: true });
+      await link(await outsideRecord(), fileFor(root, acme));
+      const store = new FileTrustStore(root);
+
+      await expect(store.get(acme)).rejects.toMatchObject({
+        message: expect.stringContaining(JSON.stringify(acme)),
+        cause: expect.objectContaining({ message: expect.stringContaining("is a hard link") }),
+      });
+      await expect(store.list()).rejects.toThrow(JSON.stringify(fileFor(root, acme)));
+    });
   });
 
   describe("a file system error", () => {
@@ -242,6 +269,25 @@ verifies("fs-node.trust-store-files", () => {
       await expect(store.get("/workspaces/acme")).rejects.toThrow('"/workspaces/acme"');
       await expect(store.list()).rejects.toThrow(JSON.stringify(file));
     });
+
+    // Opening a named pipe waits for a writer, so reading one would hang (HAL-2985).
+    it.skipIf(process.platform === "win32")(
+      "refuses a named pipe rather than waiting on it",
+      async () => {
+        const root = await tempFolder();
+        const store = new FileTrustStore(root);
+        const file = fileFor(root, "/workspaces/acme");
+        await promisify(execFile)("mkfifo", [file]);
+
+        await expect(store.get("/workspaces/acme")).rejects.toMatchObject({
+          message: expect.stringContaining('"/workspaces/acme"'),
+          cause: expect.objectContaining({
+            message: expect.stringContaining("isn't a plain file"),
+          }),
+        });
+        await expect(store.list()).rejects.toThrow(JSON.stringify(file));
+      },
+    );
 
     it("leaves no temporary file behind when a grant fails", async () => {
       const root = await tempFolder();

@@ -25,7 +25,10 @@ const leadingLocation = /^\s*\{\s*"location"\s*:\s*("(?:[^"\\\n]|\\.)*")/u;
  * workspace must not be able to trust it. For the same reason a record that
  * is a link, such as one to a file in a workspace, can't be read: `get`
  * throws naming the location and `list` throws naming the file, as for a
- * damaged record (HAL-2978).
+ * damaged record (HAL-2978). The same goes for a hard link or anything that
+ * isn't a plain file, such as a named pipe. Only the files are checked, not
+ * the folder: a folder that is itself a link is followed, which is safe only
+ * because the folder lives in the profile.
  */
 export class FileTrustStore implements TrustStore {
   readonly #root: string;
