@@ -32,7 +32,11 @@ async function open(fetch: Fetch, anthropic: BridgeProviderAccess | null = keyed
     fetch,
     limits: { responseTimeoutMs: 2_000, idleTimeoutMs: 500 },
   });
-  const run = { ...fakeRun(), providers: anthropic === null ? {} : { anthropic } };
+  const run = {
+    ...fakeRun(),
+    providers: anthropic === null ? {} : { anthropic },
+    recorder: { record: async () => {} },
+  };
   const bridge = await openBridge(run, {
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
     closeTimeoutMs: 1_000,

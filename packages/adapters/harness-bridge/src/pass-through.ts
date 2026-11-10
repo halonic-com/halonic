@@ -27,6 +27,16 @@ export interface UpstreamRequest {
   body: Uint8Array;
   /** Which of the provider's reply headers go back to the program. */
   replyHeader(name: string): boolean;
+  /** Sees the reply as it goes back, such as to read what the call used. */
+  watch?: ReplyWatcher;
+}
+
+/** Sees a provider's reply as the bridge copies it back to the program. */
+export interface ReplyWatcher {
+  /** The reply has started, with the provider's status and headers. */
+  started(status: number, headers: Headers): void;
+  /** The next piece of the body, as the provider sent it. */
+  received(chunk: Uint8Array): void;
 }
 
 /** What {@link passThrough} calls out with, and how long it waits. */
@@ -78,6 +88,7 @@ export async function passThrough(
     deadline.start(limits.responseTimeoutMs, didNotAnswer(upstream, limits));
     const reply = await callProvider(upstream, caller.fetch, signal);
     context.response.writeHead(reply.status, replyHeaders(reply.headers, upstream.replyHeader));
+    upstream.watch?.started(reply.status, reply.headers);
     // Send the status now: a program waiting on a stream shouldn't wait for its first event too.
     context.response.flushHeaders();
     if (reply.body !== null) {
@@ -86,6 +97,7 @@ export async function passThrough(
         deadline.start(limits.idleTimeoutMs, wentSilent(upstream, limits));
         const { done, value } = await reader.read();
         if (done) break;
+        upstream.watch?.received(value);
         if (!context.response.write(value)) {
           deadline.start(limits.idleTimeoutMs, stoppedReading(limits));
           await once(context.response, "drain", { signal });

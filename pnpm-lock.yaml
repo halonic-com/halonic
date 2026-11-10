@@ -450,6 +450,9 @@ importers:
 
   packages/adapters/harness-bridge:
     dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../core/events
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

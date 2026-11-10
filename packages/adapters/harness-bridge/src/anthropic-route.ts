@@ -1,9 +1,11 @@
 import type { HarnessBridgeOptions, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import { AnthropicReplyReader } from "./anthropic-reply.ts";
 import { refuseUrlSources } from "./anthropic-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { type ProviderReach, parseModelRequest, withoutProviderReach } from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
+import { readModelCall, recordModelCall } from "./spend.ts";
 
 /** The one host the bridge sends Anthropic requests to. */
 const anthropicOrigin = "https://api.anthropic.com";
@@ -51,6 +53,8 @@ export interface AnthropicRouteDependencies {
  * (requirement `harness-bridge.anthropic`). Streaming replies stream through
  * unchanged. Anthropic's web tools and MCP servers are removed first; image
  * and PDF blocks go on as they are, and one with a URL source is refused.
+ * Each call is recorded with its usage and cost (requirement
+ * `harness-bridge.spend`).
  */
 export function anthropicRoute(dependencies: AnthropicRouteDependencies): BridgeRoute {
   return {
@@ -61,20 +65,25 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
       refuseUrlSources(request);
+      const call = readModelCall("anthropic", request);
       const body = withoutProviderReach(sent, request, anthropicReach);
       // Keep the program's query, such as Claude Code's `?beta=true`.
       const { search } = new URL(context.request.url ?? "", anthropicOrigin);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
-      await passThrough(
-        context,
-        {
-          provider: "Anthropic",
-          url: new URL(`/v1/messages${search}`, anthropicOrigin),
-          headers: { ...headers, "x-api-key": key },
-          body,
-          replyHeader: isForwardedReplyHeader,
-        },
-        dependencies,
+      const reply = new AnthropicReplyReader();
+      await recordModelCall(context.run, call, reply, () =>
+        passThrough(
+          context,
+          {
+            provider: "Anthropic",
+            url: new URL(`/v1/messages${search}`, anthropicOrigin),
+            headers: { ...headers, "x-api-key": key },
+            body,
+            replyHeader: isForwardedReplyHeader,
+            watch: reply,
+          },
+          dependencies,
+        ),
       );
     },
   };
