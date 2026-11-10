@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-4094 (review of the pinned launcher stack, for HAL-230 and HAL-2544)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J29nx1PhTxmJYQr4LTe7crU9dtOTXwxi7fN9NbRti3XBvHpd/FKYDqEAGN68/Wgdcpl/c6ruSz7x5M3Xe6nxDg==
 
 `mcp.stdio-connector` said the connector refuses every package runner (`npx`, `uvx` …) "which
 starts through the pinned launcher". That was a placeholder until the launcher existed, so nothing
