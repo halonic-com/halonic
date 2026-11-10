@@ -13,6 +13,7 @@ import { radioSection } from "./radio.tsx";
 import { statusChipSection } from "./status-chip.tsx";
 import { switchSection } from "./switch.tsx";
 import { tabsSection } from "./tabs.tsx";
+import { viewOnlyLineSection } from "./view-only-line.tsx";
 import { windowSection } from "./window.tsx";
 
 /**
@@ -29,6 +30,7 @@ export const SECTIONS: readonly PartSection[] = [
   checkboxSection,
   switchSection,
   kbdSection,
+  viewOnlyLineSection,
   formRowsSection,
   radioSection,
   copyButtonSection,

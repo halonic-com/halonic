@@ -70,6 +70,7 @@ export { Input, type InputProps } from "./input/input.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps, keyShortcutsLabel } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
+export { LineFrame, type LineFrameProps } from "./line-frame/line-frame.tsx";
 export type { ListEmpty } from "./list/empty-list.tsx";
 export { List } from "./list/list.tsx";
 export type { ListProps, ListRow, ListSelection } from "./list/list-props.ts";
@@ -135,6 +136,7 @@ export {
   type TooltipProps,
   type TooltipTriggerProps,
 } from "./tooltip/tooltip.tsx";
+export { ViewOnlyLine, type ViewOnlyLineProps } from "./view-only-line/view-only-line.tsx";
 export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";
 
 /** The npm name of this package. */

@@ -908,6 +908,28 @@ names the shortcut instead, from the same keys: `keyShortcutsLabel(["Ctrl", "T"]
 </button>;
 ```
 
+## ViewOnlyLine and LineFrame
+
+`ViewOnlyLine` is the one line that says a page can't be changed on a phone: a 16px eye in
+`fg-muted`, then the page's own sentence in `text-small` `fg-muted`. Put it first in the page's
+content, under the tabs or the top bar, at most once per page, and not again in the sheets the page
+opens. The sentence is the screen's and is never shortened; it wraps. It has no action, isn't
+dismissible and isn't live: a calm fact, read in order. The rest of the page shows its values as
+text, with no greyed-out controls.
+
+```tsx
+<ViewOnlyLine>View only on a phone. Edit this workflow on a computer.</ViewOnlyLine>;
+```
+
+It's drawn on `LineFrame`, the frame of a plain line at the top of a page: padding 8px 16px, at
+least 48px high, a 1px `border` line below, no fill, and a 16px icon top-aligned with the first line
+of `text-small` text. A feature's own line (the Changes feature's sharing strip) uses the frame
+with its own icon; `muted` puts the icon and the text in `fg-muted`.
+
+```tsx
+<LineFrame icon={<ShareIcon />}>Shared with your team.</LineFrame>;
+```
+
 ## Menu
 
 A short list of actions that opens from a button: a row's ⋮ More button, the title bar, a sidebar
