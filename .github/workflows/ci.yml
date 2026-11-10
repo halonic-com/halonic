@@ -34,6 +34,7 @@ jobs:
     outputs:
       tooling: ${{ steps.diff.outputs.tooling }}
       tauri: ${{ steps.diff.outputs.tauri }}
+      sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
       android: ${{ steps.diff.outputs.android }}
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
@@ -52,6 +53,7 @@ jobs:
           areas=(
             "tooling=^(\.github/workflows/ci\.yml$|\.github/actions/|tooling/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|turbo\.json$|biome\.json$)"
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/)"
+            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-srt/|pnpm-lock\.yaml$)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/connect/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
@@ -714,6 +716,33 @@ jobs:
       - name: Tests
         run: cargo test --locked --workspace
 
+  sandbox-fence:
+    # The real fence: the tests under packages/adapters/sandbox-srt/fence run
+    # the actual sandbox-runtime (bubblewrap) and try to get out. Ubuntu 24.04
+    # refuses unprivileged user namespaces through AppArmor by default, so the
+    # job turns that off first; without them the fence can't start and these
+    # tests fail on purpose (never skip). No cache is restored.
+    name: Sandbox fence (bubblewrap)
+    needs: changes
+    if: needs.changes.outputs.sandbox-fence == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Install bubblewrap and socat
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends bubblewrap socat ripgrep
+          sudo sysctl --write kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Fence tests
+        working-directory: packages/adapters/sandbox-srt
+        run: pnpm test:fence
+
   android:
     # The Android connect shell's debug APK, for arm64 phones and x86_64
     # emulators. Its own job, so the slow Android build never holds up the
@@ -841,6 +870,7 @@ jobs:
         scaffold,
         tauri,
         tauri-windows,
+        sandbox-fence,
         android,
         e2e,
         docs,
