@@ -9,7 +9,7 @@ import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { detectClaudeCode } from "@halonicjs/adapter-harness-claude-code";
 import { detectCodex } from "@halonicjs/adapter-harness-codex";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { recoverGitFolders, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { NodeResourceProbe } from "@halonicjs/adapter-system-node";
 import {
   type DataFolder,
@@ -30,6 +30,7 @@ import type {
 import { type ProfileFolder, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { localLoadedModels } from "./local-model-servers.ts";
+import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 
@@ -39,11 +40,6 @@ export interface DoctorMachine {
   readonly profile: ProfileFolder;
   readonly trustStore: TrustStore;
   readonly sandbox: Pick<Sandbox, "check" | "capabilities">;
-  /**
-   * Undoes what sessions left behind when a Halonic process died before it could
-   * close them. Run at the start of a command; it never throws.
-   */
-  readonly recoverSandbox?: () => Promise<void>;
   /** The kind of sandbox on the ✓ line, such as "bubblewrap". */
   readonly sandboxKind: string;
   readonly probe: ResourceProbe;
@@ -74,15 +70,6 @@ const sandboxKinds: Readonly<Record<string, string>> = {
   darwin: "Seatbelt",
 };
 
-/**
- * Where sandbox sessions keep what a crash recovery needs: `sandbox-journals` in the
- * profile folder, which is this user's own (the profile folder is under their home
- * folder, or the `HALONIC_HOME` they chose), not the shared temp folder.
- */
-export function sandboxJournalFolder(profile: ProfileFolder): string {
-  return join(profile.root, "sandbox-journals");
-}
-
 /** The folders in a workspace's profile folder that hold what its runs left. */
 const runFolderNames = ["runs", "deployments", "blobs"];
 
@@ -97,17 +84,10 @@ export function nodeDoctorMachine(): DoctorMachine {
   const profile = profileFolder(nodeProfileEnvironment());
   const programs = createProgramProbe();
   const system = platform();
-  const journalFolder = sandboxJournalFolder(profile);
   return {
     profile,
     trustStore: new FileTrustStore(trustFolder(profile)),
-    sandbox: new SrtSandbox(undefined, undefined, journalFolder),
-    // A failed recovery leaves its journal in place for the next start, so nothing is lost by moving on.
-    recoverSandbox: () =>
-      recoverGitFolders(journalFolder).then(
-        () => undefined,
-        () => undefined,
-      ),
+    sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
     sandboxKind: sandboxKinds[system] ?? system,
     probe: new NodeResourceProbe(),
     harnesses: [

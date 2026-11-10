@@ -17,6 +17,9 @@ const folderName = "halonic";
 /** The name of the folder in the profile that holds the trust records. */
 const trustFolderName = "trust";
 
+/** The name of the folder in the profile that holds the sandbox's crash journals. */
+const sandboxJournalFolderName = "sandbox-journals";
+
 /** What {@link profileFolder} reads from the system; the adapter fills it in. */
 export interface ProfileEnvironment {
   /** The system Halonic runs on. */
@@ -87,6 +90,22 @@ export function profileFolder(environment: ProfileEnvironment): ProfileFolder {
  */
 export function trustFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, trustFolderName);
+}
+
+/**
+ * The folder for the sandbox's crash journals, `sandbox-journals` in the
+ * profile folder. It is the person's own: the sandbox keeps it from the
+ * programs it runs.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the journal folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * sandboxJournalFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/sandbox-journals"
+ */
+export function sandboxJournalFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, sandboxJournalFolderName);
 }
 
 /** The system's folder for a person's application data. */

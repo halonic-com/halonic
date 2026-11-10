@@ -1,7 +1,13 @@
+import { profileFolder } from "@halonicjs/profile";
 import { commands } from "./generated/commands.ts";
 import { LineReader } from "./output/line-reader.ts";
 import { exitOnceWritten } from "./output/stop.ts";
 import { runCli } from "./run-cli.ts";
+import { recoverSandboxSessions } from "./sandbox-journals.ts";
+import { nodeProfileEnvironment } from "./workspace-runs.ts";
+
+// Before any session opens, undo what a crashed run left in its git folders.
+await recoverSandboxSessions(profileFolder(nodeProfileEnvironment())).catch(() => []);
 
 // The `halonic` program: the real process's arguments, folder and output streams.
 process.exitCode = await runCli(
