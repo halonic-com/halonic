@@ -1,6 +1,9 @@
-import type { RunEvent, RunKind, RunParent, RunStatus } from "@halonicjs/events";
+import type { AgentResume, RunEvent, RunKind, RunParent, RunStatus } from "@halonicjs/events";
 
-/** The model call a task state waits on: the one its `agent.started` asked for. */
+/**
+ * The model call a task state waits on: the one its `agent.started` asked
+ * for, or the one that goes on after a person answered an approval.
+ */
 export interface PendingCall {
   /** `call-<n>`, unique in the run. An `effect-done` input names it. */
   readonly callId: string;
@@ -8,6 +11,29 @@ export interface PendingCall {
   readonly agent: string;
   /** What the call asks the agent, so the executor can carry it out from the state alone. */
   readonly prompt: string;
+  /** Set when the agent goes on after an approval: where it stopped, and the answer. */
+  readonly resume?: ResumeAfterApproval;
+}
+
+/** Where an agent stopped for a person's OK, and what the person answered. */
+export interface ResumeAfterApproval {
+  /** The conversation so far; the call that waited for the OK is `calls[0]`. */
+  readonly resume: AgentResume;
+  readonly approved: boolean;
+  /** What the person wrote with the answer, if anything. */
+  readonly comment?: string;
+}
+
+/** A tool call waiting for a person's OK, as its `approval.requested` asked. */
+export interface WaitingApproval {
+  /** `call-<n>`, unique in the run. A `send` that names a call id must name one of these. */
+  readonly callId: string;
+  readonly state: string;
+  readonly agent: string;
+  readonly tool: string;
+  /** The prompt of the model call that stopped for it, for the call that goes on. */
+  readonly prompt: string;
+  readonly resume: AgentResume;
 }
 
 /** The child run a `workflow` state started and waits on: the one its `workflow.started` named. */
@@ -43,11 +69,8 @@ export interface RunState {
   readonly enteredSeq: number | null;
   /** The events a waiting run takes, as its last `run.waiting` listed them; empty while it isn't waiting. */
   readonly accepts: readonly string[];
-  /**
-   * The call ids of the tool calls waiting for a person's approval, oldest
-   * first. A `send` that names a call id must name one of these.
-   */
-  readonly approvals: readonly string[];
+  /** The tool calls waiting for a person's approval, oldest first. */
+  readonly approvals: readonly WaitingApproval[];
   /**
    * The values `context.updated` set. The workflow's initial context is not
    * in the log, so `decide` lays these over it.
@@ -162,9 +185,9 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "workflow.finished":
       return { ...state, status: "running", accepts: [], child: null };
     case "approval.requested":
-      return { ...state, approvals: [...state.approvals, event.callId] };
+      return requestApproval(state, event);
     case "approval.resolved":
-      return { ...state, approvals: state.approvals.filter((id) => id !== event.callId) };
+      return resolveApproval(state, event);
     case "run.completed":
       return { ...state, ...ended, status: "completed", context: event.context };
     case "run.failed":
@@ -196,4 +219,59 @@ function finishCall(state: RunState, stateId: string, parent: string | undefined
     return state;
   }
   return { ...state, pendingCall: null };
+}
+
+/**
+ * An agent stopped at a tool call that needs a person's OK. The approval
+ * takes a call id of its own, and the model call that stopped is over.
+ */
+function requestApproval(
+  state: RunState,
+  event: Extract<RunEvent, { type: "approval.requested" }>,
+): RunState {
+  const { callId, state: stateId, agent, tool, resume } = event;
+  const stopped = state.pendingCall?.state === stateId ? state.pendingCall : null;
+  const approval: WaitingApproval = {
+    callId,
+    state: stateId,
+    agent,
+    tool,
+    prompt: stopped?.prompt ?? "",
+    resume,
+  };
+  return {
+    ...state,
+    calls: state.calls + 1,
+    approvals: [...state.approvals, approval],
+    pendingCall: stopped === null ? state.pendingCall : null,
+  };
+}
+
+/**
+ * A person answered an approval. When the run is still in the approval's
+ * state, its agent goes on with the answer in a new model call.
+ */
+function resolveApproval(
+  state: RunState,
+  event: Extract<RunEvent, { type: "approval.resolved" }>,
+): RunState {
+  const approval = state.approvals.find((waiting) => waiting.callId === event.callId);
+  const approvals = state.approvals.filter((waiting) => waiting.callId !== event.callId);
+  if (approval === undefined || approval.state !== state.state) {
+    return { ...state, approvals };
+  }
+  const calls = state.calls + 1;
+  const { approved, comment } = event;
+  const resume: ResumeAfterApproval = {
+    resume: approval.resume,
+    approved,
+    ...(comment === undefined ? {} : { comment }),
+  };
+  const { state: stateId, agent, prompt } = approval;
+  return {
+    ...state,
+    approvals,
+    calls,
+    pendingCall: { callId: `call-${calls}`, state: stateId, agent, prompt, resume },
+  };
 }

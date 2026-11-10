@@ -13,7 +13,7 @@ import type {
 } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
 import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./registry.ts";
-import { evolve, type RunState } from "./run-state.ts";
+import { evolve, type RunState, type WaitingApproval } from "./run-state.ts";
 
 /**
  * A decision being built. Every event is folded into `run` as it is
@@ -129,7 +129,8 @@ export function checkRunTakes(run: RunState | null, input: DecideInput): void {
  * by accident. Then the run must be waiting, for this event.
  */
 function checkRunTakesSend(run: RunState, input: SendInput): void {
-  if (input.callId !== undefined && !run.approvals.includes(input.callId)) {
+  const waitsOn = (approval: WaitingApproval) => approval.callId === input.callId;
+  if (input.callId !== undefined && !run.approvals.some(waitsOn)) {
     throw new InputRefused(
       "engine.decision-callid-must-match",
       `Run "${run.runId}" doesn't wait on call "${input.callId}".`,

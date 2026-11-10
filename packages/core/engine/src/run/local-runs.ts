@@ -19,7 +19,12 @@ import { encodeUtf8 } from "@halonicjs/std";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog } from "../harness/serial-run-log.ts";
-import type { DecideInput, Effect, RunDefinitions } from "../kernel/decide-types.ts";
+import type {
+  DecideInput,
+  Effect,
+  ModelCallResult,
+  RunDefinitions,
+} from "../kernel/decide-types.ts";
 import { InputRefused } from "../kernel/input-refused.ts";
 import {
   keepDefinitions,
@@ -59,8 +64,11 @@ export interface LocalRunsOptions {
   readonly harnesses?: HarnessRunsOptions;
 }
 
-/** Carries out a model call a run waits on, and gives the model's answer. */
-export type CallModel = (run: RunState, call: PendingCall) => Promise<unknown>;
+/**
+ * Carries out a model call a run waits on, and gives the model's answer, or
+ * the tool call the agent stopped at because it needs a person's OK.
+ */
+export type CallModel = (run: RunState, call: PendingCall) => Promise<ModelCallResult>;
 
 /** The longest run id, in UTF-8 bytes, because it is a `Scheduler` key. */
 const maxRunIdBytes = 256;
@@ -228,9 +236,10 @@ export class LocalRuns {
   /** The input a call gives: its answer, or why it failed. */
   async #callResult(run: RunState, call: PendingCall, kind: CallKind): Promise<DecideInput> {
     try {
-      const output =
-        kind === "model" ? await this.#callModel(run, call) : await this.#runHarness(run, call);
-      const result = { type: kind, output };
+      const result =
+        kind === "model"
+          ? await this.#callModel(run, call)
+          : { type: "harness" as const, output: await this.#runHarness(run, call) };
       return { type: "effect-done", at: this.#now(), callId: call.callId, result };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

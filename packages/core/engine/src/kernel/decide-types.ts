@@ -1,4 +1,5 @@
 import type {
+  AgentResume,
   RunEventBase,
   RunEventBody,
   RunFailureReason,
@@ -8,7 +9,7 @@ import type {
   ToolOutcome,
 } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
-import type { RunState } from "./run-state.ts";
+import type { ResumeAfterApproval, RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
 // from outside comes in here: the time with every input, and a new id with
@@ -69,12 +70,27 @@ export interface ToolResult {
   readonly outcome: ToolOutcome;
 }
 
+/**
+ * The agent stopped at a tool call that needs a person's OK. The run waits
+ * for `approve` or `reject`, then the agent goes on from `resume`.
+ */
+export interface ApprovalNeeded {
+  readonly type: "approval";
+  readonly tool: string;
+  readonly args: unknown;
+  /** Where the agent stopped; the call that waits for the OK is `resume.calls[0]`. */
+  readonly resume: AgentResume;
+}
+
+/** What a model call for a state's agent gives: its answer, or a stop for an approval. */
+export type ModelCallResult = ModelResult | ApprovalNeeded;
+
 /** An effect `decide` asked for has finished. */
 export interface EffectDoneInput extends InputBase {
   readonly type: "effect-done";
   /** The `callId` of the effect that finished. */
   readonly callId: string;
-  readonly result: ModelResult | HarnessResult | ToolResult;
+  readonly result: ModelCallResult | HarnessResult | ToolResult;
 }
 
 /**
@@ -119,6 +135,8 @@ export interface CallModelEffect {
   readonly state: string;
   readonly agent: string;
   readonly prompt: string;
+  /** Set when the agent goes on after a person answered its approval. */
+  readonly resume?: ResumeAfterApproval;
 }
 
 /** The harnesses that start a program for the agent: every harness but Halonic's own loop. */

@@ -175,8 +175,9 @@ describe("evolve", () => {
       callId,
       resume: { messages: [], calls: [], step: 1 },
     });
+    const callIds = (state: RunState) => state.approvals.map((approval) => approval.callId);
     const requested = logOf([started, request("call-2"), request("call-3")]);
-    expect(folded(requested).approvals).toEqual(["call-2", "call-3"]);
+    expect(callIds(folded(requested))).toEqual(["call-2", "call-3"]);
     const resolved = logOf([
       ...requested,
       {
@@ -188,9 +189,112 @@ describe("evolve", () => {
         approved: true,
       },
     ]);
-    expect(folded(resolved).approvals).toEqual(["call-3"]);
+    expect(callIds(folded(resolved))).toEqual(["call-3"]);
     const failed = logOf([...requested, { type: "run.failed", state: "draft", error: "stopped" }]);
     expect(folded(failed)).toMatchObject({ approvals: [], accepts: [] });
+  });
+
+  it("ends the call an agent stopped for an approval, and gives the approval a call id", () => {
+    const resume = {
+      messages: [],
+      calls: [{ id: "m-1", name: "send_mail", arguments: {} }],
+      step: 1,
+    };
+    const stopped = folded([
+      ...draftLog.slice(0, 3),
+      ...logOf([
+        {
+          type: "approval.requested",
+          state: "draft",
+          agent: "writer",
+          tool: "send_mail",
+          args: {},
+          callId: "call-2",
+          resume,
+        },
+      ]).map((event) => ({ ...event, seq: 4 })),
+    ]);
+    expect(stopped).toMatchObject({ calls: 2, pendingCall: null });
+    expect(stopped.approvals).toEqual([
+      {
+        callId: "call-2",
+        state: "draft",
+        agent: "writer",
+        tool: "send_mail",
+        prompt: "Reply",
+        resume,
+      },
+    ]);
+    expect(nextCallId(stopped)).toBe("call-3");
+  });
+
+  it("goes on with the agent in a new call once a person answers its approval", () => {
+    const resume = {
+      messages: [],
+      calls: [{ id: "m-1", name: "send_mail", arguments: {} }],
+      step: 1,
+    };
+    const answered = folded([
+      ...draftLog.slice(0, 3),
+      ...logOf([
+        {
+          type: "approval.requested",
+          state: "draft",
+          agent: "writer",
+          tool: "send_mail",
+          args: {},
+          callId: "call-2",
+          resume,
+        },
+        {
+          type: "approval.resolved",
+          state: "draft",
+          agent: "writer",
+          tool: "send_mail",
+          callId: "call-2",
+          approved: false,
+          comment: "Not this one",
+          by: "person",
+        },
+      ]).map((event, index) => ({ ...event, seq: 4 + index })),
+    ]);
+    expect(answered).toMatchObject({ calls: 3, approvals: [] });
+    expect(answered.pendingCall).toEqual({
+      callId: "call-3",
+      state: "draft",
+      agent: "writer",
+      prompt: "Reply",
+      resume: { resume, approved: false, comment: "Not this one" },
+    });
+  });
+
+  it("starts no call for an approval answered after the run left its state", () => {
+    const request: RunEventBody = {
+      type: "approval.requested",
+      state: "draft",
+      agent: "writer",
+      tool: "send_mail",
+      args: {},
+      callId: "call-1",
+      resume: { messages: [], calls: [], step: 1 },
+    };
+    const left = folded(
+      logOf([
+        started,
+        { type: "state.entered", state: "draft" },
+        request,
+        { type: "state.entered", state: "review" },
+        {
+          type: "approval.resolved",
+          state: "draft",
+          agent: "writer",
+          tool: "send_mail",
+          callId: "call-1",
+          approved: true,
+        },
+      ]),
+    );
+    expect(left).toMatchObject({ approvals: [], pendingCall: null, calls: 1 });
   });
 
   it("drops the pending call when the run fails", () => {

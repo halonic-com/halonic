@@ -19,6 +19,7 @@ import type {
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
+import type { ModelCallResult } from "./kernel/decide-types.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import { LocalRuns, type LocalRunsOptions } from "./run/local-runs.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
@@ -184,9 +185,13 @@ export class LocalExecutor implements RunExecutor {
   /**
    * A run's model call: the state's prompt to its agent's model, without
    * tools. Tools (the agent's memory tools among them), the agent's own
-   * prompt and the turn's run log come with the agent loop (step 4).
+   * prompt and the turn's run log come with the agent loop (step 4). Without
+   * tools the agent never stops for an approval, so it has none to go on from.
    */
-  private async callModel(run: RunState, call: PendingCall): Promise<unknown> {
+  private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
+    if (call.resume !== undefined) {
+      throw new Error("A run's agent can't go on after an approval until runs offer it tools.");
+    }
     const messages = [{ role: "user" as const, content: call.prompt }];
     const model = await this.options.resolveModel({
       hubId: run.hubId,
@@ -205,7 +210,7 @@ export class LocalExecutor implements RunExecutor {
       agent: call.agent,
       clock: this.options.clock,
     });
-    return turn.content;
+    return { type: "model", output: turn.content };
   }
 }
 

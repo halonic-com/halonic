@@ -9,6 +9,7 @@ export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
 export { decide } from "./kernel/decide.ts";
 export type {
+  ApprovalNeeded,
   CallModelEffect,
   CallToolEffect,
   ChildInput,
@@ -21,6 +22,7 @@ export type {
   EffectDoneInput,
   EffectFailedInput,
   HarnessResult,
+  ModelCallResult,
   ModelResult,
   ProgramHarness,
   RunDefinitions,
@@ -48,7 +50,9 @@ export {
   evolve,
   foldRun,
   type PendingCall,
+  type ResumeAfterApproval,
   type RunState,
+  type WaitingApproval,
 } from "./kernel/run-state.ts";
 export {
   maxStepAttempts,

@@ -4,9 +4,7 @@ import type {
   DecidedEvent,
   DecideInput,
   Effect,
-  EffectDoneInput,
   ProgramHarness,
-  ToolResult,
 } from "../../kernel/decide-types.ts";
 import {
   nothing,
@@ -14,19 +12,25 @@ import {
   type StateHandler,
   type StateStep,
 } from "../../kernel/registry.ts";
-import { nextCallId } from "../../kernel/run-state.ts";
+import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
+import { answerApproval, askForApproval } from "./approval.ts";
 
 /**
  * A plain `task` state runs its agent once on entry: it asks for one model
  * call with the state's prompt, or, when the agent's file names a harness
  * other than Halonic's own loop, for one harness run. It finishes with
- * `done` when the answer comes back. Tool calls, methods, conversations,
- * artifacts and signals join with the agent loop (step 4).
+ * `done` when the answer comes back. When the agent stops at a tool call
+ * that needs a person's OK, the state waits for `approve` or `reject`, then
+ * the agent goes on with the answer. Methods, conversations, artifacts and
+ * signals join with the agent loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
   type: "task",
   enter: startAgent,
-  onInput: finishAgent,
+  onInput: (context, input) => {
+    if (input.type === "send") return answerApproval(context, input);
+    return takeCallResult(context, input);
+  },
 };
 
 function startAgent({ run, stateId, state, scope, agents }: StateContext): StateStep {
@@ -62,18 +66,33 @@ function programHarnessOf(
 }
 
 /**
- * Only the answer to the call the state waits on counts. Any other result,
+ * Only the result of the call the state waits on counts. Any other result,
  * such as one delivered twice after a retry, changes nothing.
  */
-function finishAgent({ run, stateId, state }: StateContext, input: DecideInput): StateStep {
-  const pending = run.pendingCall;
-  if (input.type !== "effect-done" || !isAgentAnswer(input.result)) {
+function takeCallResult(context: StateContext, input: DecideInput): StateStep {
+  const pending = context.run.pendingCall;
+  if (input.type !== "effect-done") {
     return nothing;
   }
-  if (pending === null || pending.state !== stateId || pending.callId !== input.callId) {
+  if (pending === null || pending.state !== context.stateId || pending.callId !== input.callId) {
     return nothing;
   }
-  const output = input.result.output;
+  switch (input.result.type) {
+    case "model":
+    case "harness":
+      return finishAgent(context, pending, input.result.output);
+    case "approval":
+      return askForApproval(context, pending, input.result);
+    case "tool":
+      return nothing;
+  }
+}
+
+function finishAgent(
+  { stateId, state }: StateContext,
+  pending: PendingCall,
+  output: unknown,
+): StateStep {
   const events: DecidedEvent[] = [
     { type: "agent.finished", state: stateId, agent: pending.agent, output },
   ];
@@ -81,11 +100,4 @@ function finishAgent({ run, stateId, state }: StateContext, input: DecideInput):
     events.push({ type: "context.updated", key: state.output, value: output });
   }
   return { events, effects: [], outcome: { type: "finish", event: "done" } };
-}
-
-/** A model call and a harness run both answer for the state's agent. */
-function isAgentAnswer(
-  result: EffectDoneInput["result"],
-): result is Exclude<EffectDoneInput["result"], ToolResult> {
-  return result.type === "model" || result.type === "harness";
 }
