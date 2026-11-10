@@ -17,6 +17,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         "tab-strip": `${import.meta.dirname}/e2e/pages/tab-strip.html`,
+        "context-menu": `${import.meta.dirname}/e2e/pages/context-menu.html`,
       },
     },
   },

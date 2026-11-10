@@ -63,8 +63,9 @@ export { dividerClasses, menuClasses } from "./menu-list.tsx";
 
 /**
  * A short list of actions that opens from a button: a row's ⋮ More button or a title bar. A menu
- * that opens from a right-click or Shift F10 instead is a `ContextMenu`. A native `popover`, so the browser keeps it on top and closes it on an outside
- * click; the kit places it below the trigger, or above when there's no room.
+ * that opens from a right-click or Shift F10 instead is a `ContextMenu`. A native `popover`, so
+ * the browser keeps it on top and closes it on an outside click; the kit places it below the
+ * trigger, or above when there's no room.
  *
  * Opened by the keyboard, focus starts on the first item; opened by the mouse, it goes to the menu
  * itself and the fill follows the pointer. The keyboard moves between items with the arrows, Home
