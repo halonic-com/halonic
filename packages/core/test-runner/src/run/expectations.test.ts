@@ -1,4 +1,10 @@
-import { type RunEvent, type RunEventBody, type RunSummary, summarize } from "@halonicjs/events";
+import {
+  type CantTryStep,
+  type RunEvent,
+  type RunEventBody,
+  type RunSummary,
+  summarize,
+} from "@halonicjs/events";
 import type { WorkflowTestCase } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -45,6 +51,20 @@ const waiting = run([
 const failed = run([
   { type: "state.entered", state: "extract" },
   { type: "run.failed", state: "extract", error: "The model refused.", reason: "error" },
+]);
+
+const notifyStep: CantTryStep = {
+  status: "cant-try",
+  item: "hubs/billing/workflows/invoice.yaml",
+  step: "notify",
+  reason: { kind: "needs-left-out-change", path: "connections.yaml", leftOut: "connections" },
+};
+
+const cantTry = run([
+  { type: "state.entered", state: "extract" },
+  { type: "context.updated", key: "total", value: 120 },
+  { type: "state.entered", state: "notify" },
+  { type: "run.cant-try", state: "notify", cantTry: [notifyStep] },
 ]);
 
 function check(expect: Expect, ...runs: TestRun[]) {
@@ -96,6 +116,21 @@ verifies("test-runner.expectations", () => {
     it("fails a failed run with its error unless the test expects it to fail", () => {
       expect(check({}, failed)).toEqual([{ kind: "error", message: "The model refused." }]);
       expect(check({ status: "failed" }, failed)).toEqual([]);
+    });
+
+    it("fails a run that couldn't try every step, with those steps, when no status is expected", () => {
+      expect(check({ context: { total: 120 } }, cantTry)).toEqual([
+        { kind: "cant-try", steps: [notifyStep] },
+      ]);
+    });
+
+    it("never takes a run that couldn't try every step for the status a case expects", () => {
+      expect(check({ final: "notify" }, cantTry)).toEqual([
+        { kind: "status", expected: "completed", actual: "cant-try", step: "notify" },
+      ]);
+      expect(check({ status: "failed" }, cantTry)).toEqual([
+        { kind: "status", expected: "failed", actual: "cant-try", step: "notify" },
+      ]);
     });
 
     it("matches context partly, one failure per field by its path", () => {

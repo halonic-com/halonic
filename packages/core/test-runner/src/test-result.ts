@@ -1,9 +1,12 @@
 // What a test run gives back: one result per test case, with the runs it
 // made and, when it failed, why, as data the CLI turns into sentences.
 
-import type { RunEvent, RunSummary } from "@halonicjs/events";
+import type { CantTryStep, RunEvent, RunStatus, RunSummary } from "@halonicjs/events";
 
-/** The statuses a test can expect a run to end in. */
+/**
+ * The statuses a test can expect a run to end in. `cant-try` is not one: a
+ * test can't ask for a run that didn't try every step (HAL-4477).
+ */
 export type ExpectedStatus = "completed" | "waiting" | "failed";
 
 /**
@@ -22,12 +25,13 @@ export type TestFailure =
     }
   /**
    * `expect.status`, or `completed` implied by `final`. `step` is where the
-   * run waits or failed, absent when it finished.
+   * run waits, failed or couldn't try, absent when it finished or when the
+   * whole item couldn't be tried.
    */
   | {
       readonly kind: "status";
       readonly expected: ExpectedStatus;
-      readonly actual: ExpectedStatus | "running";
+      readonly actual: RunStatus;
       readonly step?: string;
     }
   /**
@@ -56,8 +60,13 @@ export type TestFailure =
   | {
       readonly kind: "event-not-delivered";
       readonly event: string;
-      readonly status: ExpectedStatus | "running";
+      readonly status: RunStatus;
     }
+  /**
+   * The run stopped at steps it couldn't try, with no `status` expected
+   * (requirement `events.run-cant-try`): every such step, as the run log has them.
+   */
+  | { readonly kind: "cant-try"; readonly steps: readonly CantTryStep[] }
   /** The run failed with no expectation that allows it, or the engine threw. */
   | { readonly kind: "error"; readonly message: string };
 
