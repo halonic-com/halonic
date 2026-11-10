@@ -49,7 +49,12 @@ describe("SrtSandbox on Windows, through the session", () => {
   async function runScript(name: string, source: string, inside = session): Promise<string> {
     await writeFile(join(work, name), source);
     const started = await inside.start({ program: process.execPath, args: [join(work, name)] });
-    const [out] = await Promise.all([read(started.stdout), started.exited]);
+    const [out, errors] = await Promise.all([
+      read(started.stdout),
+      read(started.stderr),
+      started.exited,
+    ]);
+    if (out.trim() === "") throw new Error(`${name} printed nothing; its errors: ${errors}`);
     return out.trim();
   }
 
@@ -122,24 +127,28 @@ setTimeout(() => done("blocked"), 5000);
         `const net = require("node:net");
 const http = require("node:http");
 const result = {};
-const finish = () => { if ("direct" in result && "proxy" in result) { console.log(JSON.stringify(result)); process.exit(0); } };
+const report = () => { console.log(JSON.stringify(result)); process.exit(0); };
+const finish = () => { if ("direct" in result && "proxy" in result) report(); };
+process.on("uncaughtException", (error) => { result.error = String(error); report(); });
 const socket = net.connect({ host: "127.0.0.1", port: ${canaryPort} });
 socket.on("connect", () => { result.direct = "connected"; finish(); });
 socket.on("error", () => { result.direct = "blocked"; finish(); });
 const proxy = process.env.HTTP_PROXY ?? process.env.http_proxy;
 if (proxy === undefined) { result.proxy = "none"; finish(); }
 else {
-  const via = new URL(proxy);
+  // srt may name its proxy without a scheme.
+  const via = new URL(proxy.includes("://") ? proxy : "http://" + proxy);
   const request = http.request({ host: via.hostname, port: via.port, path: "http://127.0.0.1:${canaryPort}/" });
   request.on("response", (response) => { result.proxy = response.statusCode === 200 ? "reached" : "refused"; finish(); });
   request.on("error", () => { result.proxy = "refused"; finish(); });
   request.end();
 }
-setTimeout(() => { result.direct ??= "blocked"; result.proxy ??= "refused"; finish(); }, 5000);
+setTimeout(() => { result.direct ??= "blocked"; result.proxy ??= "refused"; report(); }, 5000);
 `,
         unbridged,
       );
       const result = JSON.parse(out.split(/\r?\n/).pop() ?? "");
+      expect(result.error).toBeUndefined();
       expect(result.direct).toBe("blocked");
       expect(result.proxy).not.toBe("reached");
       expect(connections).toBe(before);
