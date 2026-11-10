@@ -69,6 +69,26 @@ verifies("ports.definition-store-write-if-unchanged", () => {
         expect(await store.read("a.yaml")).toBe("from the editor");
       });
 
+      it("lets a remove asked for during a write wait for it, so the file ends removed", async () => {
+        const store = make({ "a.yaml": "1" });
+        const [result] = await Promise.all([
+          store.write("a.yaml", "2", { expected: await digestOf("1") }),
+          store.remove("a.yaml"),
+        ]);
+        expect(result).toEqual({ status: "written" });
+        expect(await store.read("a.yaml")).toBeNull();
+      });
+
+      it("gives null as the current text to a write asked for after a remove", async () => {
+        const store = make({ "a.yaml": "1" });
+        const [, result] = await Promise.all([
+          store.remove("a.yaml"),
+          store.write("a.yaml", "2", { expected: await digestOf("1") }),
+        ]);
+        expect(result).toEqual({ status: "changed-on-disk", current: null });
+        expect(await store.read("a.yaml")).toBeNull();
+      });
+
       it("replaces the file whatever it holds when nothing is expected", async () => {
         const store = make({ "a.yaml": "3" });
         expect(await store.write("a.yaml", "2")).toEqual({ status: "written" });

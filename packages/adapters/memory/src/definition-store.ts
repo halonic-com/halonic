@@ -18,7 +18,10 @@ import { sha256Hex, webCryptoDigest } from "./sha256.ts";
 export class MemoryDefinitionStore implements DefinitionStore {
   readonly location: string;
   readonly #files = new Map<string, string>();
-  /** Writes to one path run one after another, so the check for `expected` and the write are never split. */
+  /**
+   * Writes and removes of one path run one after another, so the check for
+   * `expected` and the write are never split, not even by a remove.
+   */
   readonly #writes = new KeyedQueue();
 
   /**
@@ -65,7 +68,9 @@ export class MemoryDefinitionStore implements DefinitionStore {
 
   async remove(path: string): Promise<void> {
     checkPublicWorkspacePath(path);
-    this.#files.delete(path);
+    await this.#writes.run(path, async () => {
+      this.#files.delete(path);
+    });
   }
 
   /** `sha256:` and the first 16 hex characters of a hash over every path and its text, as in the old adapter. */

@@ -18,7 +18,10 @@ export class TestDefinitionStore implements DefinitionStore {
   failOn: string | null = null;
   private saves = 0;
   private readonly digest: Sha256 | null;
-  /** Writes to one path run one after another, so the check for `expected` and the write are never split. */
+  /**
+   * Writes and removes of one path run one after another, so the check for
+   * `expected` and the write are never split, not even by a remove.
+   */
   private readonly writes = new KeyedQueue();
 
   /**
@@ -72,9 +75,11 @@ export class TestDefinitionStore implements DefinitionStore {
 
   async remove(path: string): Promise<void> {
     this.check(path);
-    this.log.push(`remove ${path}`);
-    this.files.delete(path);
-    this.saves++;
+    await this.writes.run(path, async () => {
+      this.log.push(`remove ${path}`);
+      this.files.delete(path);
+      this.saves++;
+    });
   }
 
   private check(path: string): void {

@@ -33,5 +33,35 @@ verifies("ports.definition-store-write-if-unchanged", () => {
       ]);
       expect(store.files.get("a.yaml")).toBe("from the editor");
     });
+
+    it("doesn't let a remove land while a write waits for its digest", async () => {
+      let hashing: () => void = () => {};
+      const hashStarted = new Promise<void>((resolve) => {
+        hashing = resolve;
+      });
+      let finishHash: () => void = () => {};
+      const hashFinished = new Promise<void>((resolve) => {
+        finishHash = resolve;
+      });
+      const slowDigest: Digest = {
+        async sha256(data) {
+          hashing();
+          await hashFinished;
+          return await digest.sha256(data);
+        },
+      };
+      const store = new TestDefinitionStore({ "a.yaml": "1" }, slowDigest);
+      const expected = await contentDigest("1", digest);
+
+      const write = store.write("a.yaml", "2", { expected });
+      await hashStarted;
+      const remove = store.remove("a.yaml");
+      finishHash();
+
+      expect(await write).toEqual({ status: "written" });
+      await remove;
+      expect(store.files.has("a.yaml")).toBe(false);
+      expect(store.log).toEqual(["write a.yaml", "remove a.yaml"]);
+    });
   });
 });

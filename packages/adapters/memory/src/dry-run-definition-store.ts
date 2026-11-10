@@ -35,7 +35,10 @@ export class DryRunDefinitionStore implements DefinitionStore {
   /** The pending text of each changed path; `null` when it would be removed. */
   readonly #pending = new Map<string, string | null>();
   readonly #changes: PlannedDefinitionChange[] = [];
-  /** Writes to one path run one after another, so the check for `expected` and the write are never split. */
+  /**
+   * Writes and removes of one path run one after another, so the check for
+   * `expected` and the write are never split, not even by a remove.
+   */
   readonly #writes = new KeyedQueue();
 
   /** @param source - the store whose files the dry run starts from; it is only read */
@@ -94,8 +97,10 @@ export class DryRunDefinitionStore implements DefinitionStore {
   /** Records the removal and hides the file from later reads; the store under it is not changed. */
   async remove(path: string): Promise<void> {
     await this.#checkSourceAccepts(path);
-    this.#pending.set(path, null);
-    this.#changes.push(Object.freeze({ kind: "remove", path }));
+    await this.#writes.run(path, async () => {
+      this.#pending.set(path, null);
+      this.#changes.push(Object.freeze({ kind: "remove", path }));
+    });
   }
 
   /**
