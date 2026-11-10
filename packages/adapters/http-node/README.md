@@ -24,11 +24,22 @@ For every request and every redirect hop, `createNodeHttpClient({ hostClass, own
 
 A refusal throws `AddressRefusedError` with `code: "address-not-allowed"`.
 
+**The URL decides the host, never a header.** The transport drops a caller's `host` header and
+sends the URL's; for `https` to a name it checks the certificate against the URL's host. It also
+drops `connection`, `keep-alive`, `transfer-encoding`, `te`, `upgrade`, `expect` and
+`content-length`, and sets the framing itself.
+
+`ownPorts` is checked on `loopback` hosts only. That holds while Halonic's own servers listen on
+`127.0.0.1` alone: one that listened on the LAN address would be reachable through a `private`
+host with this computer's LAN IP.
+
 ## What it does like `fetch`
 
 - `redirect`: `manual` returns the `3xx`, `error` throws, `follow` (the default) takes up to 20
   hops, checks each one as above, drops `authorization`, `cookie` and `proxy-authorization` when
-  the origin changes, and turns a `POST` into a `GET` on 301, 302 and 303.
+  the origin changes, and turns a `POST` into a `GET` on 301, 302 and 303. Other headers, such
+  as `x-api-key`, go on to the new origin, so a caller that places secrets must use `manual`
+  (the kit always does).
 - `signal` aborts the request and the body.
 - The body is read the way `fetch` reads it, so a string or `URLSearchParams` gets the same bytes
   and `content-type`. A streamed request body is refused.

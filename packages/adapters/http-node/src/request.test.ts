@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type LoopbackServer, startLoopbackServer } from "./loopback-server.test-helper.ts";
+import {
+  fakeResolver,
+  type LoopbackServer,
+  startLoopbackServer,
+} from "./loopback-server.test-helper.ts";
 import { createNodeHttpClient } from "./node-http-client.ts";
 
 let server: LoopbackServer;
@@ -45,6 +49,40 @@ describe("the Node transport as an HttpClient", () => {
       "application/x-www-form-urlencoded;charset=UTF-8",
     );
     expect(received?.headers["content-length"]).toBe("9");
+  });
+
+  it("sends the URL's host, not one the caller set", async () => {
+    const named = createNodeHttpClient({
+      hostClass: () => "loopback",
+      resolve: fakeResolver({ "api.example.test": [["127.0.0.1"]] }).resolve,
+    });
+    await named.fetch(`http://api.example.test:${server.port}/`, {
+      headers: { host: "other.example.test" },
+    });
+    expect(server.received[0]?.headers.host).toBe(`api.example.test:${server.port}`);
+  });
+
+  it("sets the framing itself and drops the caller's hop-by-hop headers", async () => {
+    await http.fetch(at("/"), {
+      method: "POST",
+      body: "abc",
+      headers: {
+        connection: "upgrade",
+        "keep-alive": "timeout=600",
+        "transfer-encoding": "chunked",
+        te: "trailers",
+        upgrade: "websocket",
+        expect: "100-continue",
+        "content-length": "999",
+      },
+    });
+    const headers = server.received[0]?.headers ?? {};
+    expect(headers["content-length"]).toBe("3");
+    for (const name of ["keep-alive", "transfer-encoding", "te", "upgrade", "expect"]) {
+      expect(headers[name]).toBeUndefined();
+    }
+    expect(headers.connection).not.toBe("upgrade");
+    expect(server.received[0]?.body).toBe("abc");
   });
 
   it("keeps the status text and every repeated header", async () => {

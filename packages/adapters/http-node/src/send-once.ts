@@ -1,6 +1,6 @@
 import * as http from "node:http";
 import * as https from "node:https";
-import type { LookupFunction } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
 import { Readable } from "node:stream";
 import { contentCodings, decompressed } from "./decompress.ts";
 
@@ -15,6 +15,23 @@ export interface PreparedRequest {
 const noBodyStatuses = new Set([204, 205, 304]);
 
 /**
+ * Headers the transport sets itself and never takes from the caller. Node
+ * sends a caller's `host` instead of the URL's and, for `https`, takes the TLS
+ * server name from it, so an allowed host on a shared address could front for
+ * one the sheet never named. The rest decide the framing of the connection.
+ */
+const transportOwnedHeaders = [
+  "host",
+  "connection",
+  "keep-alive",
+  "transfer-encoding",
+  "te",
+  "upgrade",
+  "expect",
+  "content-length",
+];
+
+/**
  * Sends one request to a URL over `node:http` or `node:https`, connecting
  * only to the addresses `lookup` hands out, and answers with a Web `Response` whose body
  * is decompressed. Redirects come back as they are.
@@ -25,8 +42,13 @@ export function sendOnce(
   lookup: LookupFunction,
   signal: AbortSignal | undefined,
 ): Promise<Response> {
-  const module = url.protocol === "https:" ? https : http;
+  const isHttps = url.protocol === "https:";
+  const module = isHttps ? https : http;
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
   const headers = Object.fromEntries(request.headers);
+  for (const name of transportOwnedHeaders) {
+    delete headers[name];
+  }
   if (request.body !== null) {
     headers["content-length"] = String(request.body.byteLength);
   }
@@ -34,7 +56,10 @@ export function sendOnce(
     const outgoing = module.request(
       {
         protocol: url.protocol,
-        hostname: url.hostname.replace(/^\[|\]$/g, ""),
+        hostname,
+        // The certificate is always checked against the URL's host. TLS takes no
+        // server name for an IP address, so none is set for one.
+        ...(isHttps && isIP(hostname) === 0 ? { servername: hostname } : {}),
         port: url.port === "" ? undefined : Number(url.port),
         path: `${url.pathname}${url.search}`,
         method: request.method,
