@@ -36,19 +36,19 @@ export function useDocumentLanguage(language: string): void {
 }
 
 /**
- * Passes Esc to the close stack, which closes the topmost layer only. An open `<dialog>` handles
- * its own Esc as Cancel, so a press inside one is left to it: otherwise one Esc would close the
- * dialog and the layer under it. A press the stack used goes no further.
+ * Passes Esc to the close stack, which closes the topmost layer only. While a modal `<dialog>` is
+ * open it handles Esc itself as Cancel, wherever focus is (even on `body`), so the frame leaves
+ * every press to it: otherwise one Esc would close the dialog and the layer under it. A press the
+ * stack used is marked handled with `preventDefault()`, so nothing after it acts on it again.
  */
 export function useEscapeClosesTopLayer(closeStack: CloseStack): void {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape" || event.defaultPrevented || isInsideOpenDialog(event.target)) {
+      if (event.key !== "Escape" || event.defaultPrevented || isModalDialogOpen()) {
         return;
       }
-      if (closeStack.escape({ isComposing: event.isComposing })) {
+      if (closeStack.escape({ isComposing: isComposing(event) })) {
         event.preventDefault();
-        event.stopPropagation();
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -56,9 +56,25 @@ export function useEscapeClosesTopLayer(closeStack: CloseStack): void {
   }, [closeStack]);
 }
 
-function isInsideOpenDialog(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest("dialog[open]") !== null;
+/**
+ * Whether a modal dialog is open. The kit's Dialog is the Studio's only `<dialog>`, and it always
+ * opens with `showModal()`, so any open one is modal. (`:modal` would say so directly, but jsdom
+ * doesn't know it.)
+ */
+function isModalDialogOpen(): boolean {
+  return document.querySelector("dialog[open]") !== null;
 }
+
+/**
+ * Whether the press belongs to an input method. WebKit (WKWebView on macOS) sends the Esc that
+ * ends a composition with `isComposing: false` but `keyCode` 229, the code every browser uses for
+ * a key the input method took.
+ */
+function isComposing(event: KeyboardEvent): boolean {
+  return event.isComposing || event.keyCode === IME_KEY_CODE;
+}
+
+const IME_KEY_CODE = 229;
 
 /**
  * Tells the announcer whether the window has focus, so an announcement made while the user was in

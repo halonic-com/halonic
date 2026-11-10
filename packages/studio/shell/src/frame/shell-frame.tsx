@@ -65,29 +65,37 @@ export function ShellFrame(props: ShellFrameProps) {
   );
 }
 
+/**
+ * Both layouts are one tree: the phone leaves the desktop's bars out but keeps their places
+ * (`null`), so `main` stays at the same position and React keeps the page, with its typed text,
+ * scroll and focus, when the width crosses `PHONE_MAX_WIDTH`.
+ */
 function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentation }) {
-  if (props.presentation === "phone") {
-    return (
-      <div data-layout="phone" className="flex h-dvh flex-col bg-surface text-fg">
-        <main className="min-h-0 flex-1 overflow-auto">{props.children}</main>
-      </div>
-    );
-  }
+  const desktop = props.presentation === "desktop";
   return (
-    <div data-layout="desktop" className="flex h-dvh flex-col bg-halo-frame text-fg">
-      <header className="flex h-10 shrink-0 items-center gap-2 px-2">{props.titleBar}</header>
+    <div
+      data-layout={props.presentation}
+      className={`flex h-dvh flex-col text-fg ${desktop ? "bg-halo-frame" : "bg-surface"}`}
+    >
+      {desktop ? (
+        <header className="flex h-10 shrink-0 items-center gap-2 px-2">{props.titleBar}</header>
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col bg-surface">
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-2">
-          {props.toolbar}
-        </div>
+        {desktop ? (
+          <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-2">
+            {props.toolbar}
+          </div>
+        ) : null}
         <div className="flex min-h-0 flex-1">
-          {props.sidebar}
+          {desktop ? props.sidebar : null}
           <main className="min-w-0 flex-1 overflow-auto">{props.children}</main>
         </div>
       </div>
-      <footer className="flex h-6 shrink-0 items-center gap-3 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">
-        {props.statusBar}
-      </footer>
+      {desktop ? (
+        <footer className="flex h-6 shrink-0 items-center gap-3 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">
+          {props.statusBar}
+        </footer>
+      ) : null}
     </div>
   );
 }

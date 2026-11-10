@@ -13,14 +13,18 @@ import { ShellFrame } from "./shell-frame.tsx";
 
 let media: FakeMediaQueries;
 let uninstall: () => void;
+let restoreModal: () => void;
 
 beforeEach(() => {
   media = new FakeMediaQueries(1440);
   uninstall = media.install();
+  restoreModal = fakeShowModal();
 });
 
+// The frame unmounts first: a Dialog's unmount still calls the fake close().
 afterEach(() => {
   unmountAll();
+  restoreModal();
   uninstall();
 });
 
@@ -54,6 +58,39 @@ function pressEscape(target: Element): KeyboardEvent {
   return event;
 }
 
+/**
+ * jsdom has `<dialog>` but no `showModal()`; opening it is all the Dialog tests need. Returns a
+ * function that puts the original methods back, so the fake doesn't leak into other files.
+ */
+function fakeShowModal(): () => void {
+  const prototype = HTMLDialogElement.prototype;
+  const original = {
+    showModal: Object.getOwnPropertyDescriptor(prototype, "showModal"),
+    close: Object.getOwnPropertyDescriptor(prototype, "close"),
+  };
+  Object.defineProperty(prototype, "showModal", {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    },
+  });
+  Object.defineProperty(prototype, "close", {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
+  return () => {
+    for (const [name, descriptor] of Object.entries(original)) {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(prototype, name);
+      } else {
+        Object.defineProperty(prototype, name, descriptor);
+      }
+    }
+  };
+}
+
 function nextFrame(): Promise<void> {
   return act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 }
@@ -82,6 +119,20 @@ verifies("shell.frame", () => {
 
     act(() => media.resize(800));
     expect(container.querySelector('[data-layout="desktop"] main')?.textContent).toBe("desktop");
+  });
+
+  it("keeps the page and its state when the width crosses to the phone and back", () => {
+    const { container } = renderFrame(<input aria-label="Name" />);
+    const input = container.querySelector("input") as HTMLInputElement;
+    input.value = "Sorter";
+    input.focus();
+
+    act(() => media.resize(400));
+    act(() => media.resize(1440));
+
+    expect(container.querySelector("input")).toBe(input);
+    expect(input.value).toBe("Sorter");
+    expect(document.activeElement).toBe(input);
   });
 
   it("sets the document's language", () => {
@@ -124,6 +175,29 @@ verifies("shell.frame", () => {
     expect(closed).toBe(false);
   });
 
+  it("ignores the Esc that WebKit sends to end a composition, with key code 229", () => {
+    const { container, closeStack } = renderFrame();
+    let closed = false;
+    closeStack.open({
+      kind: "menu",
+      close: () => {
+        closed = true;
+        return true;
+      },
+    });
+    // KeyboardEventInit has no keyCode, so the test sets it on the event as WebKit does.
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      isComposing: false,
+    });
+    Object.defineProperty(event, "keyCode", { value: 229 });
+    act(() => {
+      container.querySelector("main")?.dispatchEvent(event);
+    });
+    expect(closed).toBe(false);
+  });
+
   it("leaves Esc inside an open dialog to the dialog", () => {
     const { container, closeStack } = renderFrame(
       <dialog open>
@@ -142,6 +216,30 @@ verifies("shell.frame", () => {
     expect(panelOpen).toBe(true);
   });
 
+  it("leaves Esc to an open modal Dialog even when focus is on the body", () => {
+    const { closeStack } = renderFrame(
+      <Dialog
+        title="Delete Sorter?"
+        confirm={{ label: "Delete", variant: "danger", busyLabel: "Deleting…" }}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      >
+        <p>Sorter goes to the trash.</p>
+      </Dialog>,
+    );
+    let panelOpen = true;
+    closeStack.open({
+      kind: "side-panel",
+      close: () => {
+        panelOpen = false;
+        return true;
+      },
+    });
+    const event = pressEscape(document.body);
+    expect(panelOpen).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("reads announcements in its own live regions", async () => {
     const { container, timers, announcer } = renderFrame();
     act(() => {
@@ -156,14 +254,6 @@ verifies("shell.frame", () => {
   });
 
   it("sends a kit Dialog's announcements to the Dialog's own regions", async () => {
-    // jsdom has <dialog> but no showModal(); opening it is all this test needs.
-    const prototype = HTMLDialogElement.prototype;
-    prototype.showModal = function showModal(this: HTMLDialogElement) {
-      this.setAttribute("open", "");
-    };
-    prototype.close = function close(this: HTMLDialogElement) {
-      this.removeAttribute("open");
-    };
     const { container, timers, announcer } = renderFrame(
       <Dialog
         title="Delete Sorter?"
