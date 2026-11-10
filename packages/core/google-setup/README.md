@@ -275,15 +275,15 @@ The pure parts of the Google sign-in round trip. The host package
 `@halonicjs/host-google-sign-in` makes the PKCE pair and `state`, keeps the pending sign-ins and
 talks to Google.
 
-| Export                | What it does                                                                                                                                                     |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `googleAuthUrl`       | the auth URL: code flow, PKCE S256, loopback redirect, `openid email` plus the services' scopes                                                                  |
-| `loopbackRedirectUri` | `http://127.0.0.1:<port><path>`; refuses a query string, a fragment and anything unusual in the path                                                             |
-| `PendingSignIns`      | the port for pending sign-ins: `start` (one per account), `take(state)`, and `authUrlFor` and `cancel` for "Open again" and "Cancel"; in memory only, 10 minutes |
-| `readSignInCallback`  | reads the callback: finds the sign-in by `state` first, then maps `error` or returns the code                                                                    |
-| `classifyTokenAnswer` | what Google's token answer means: `wrongClientSecret`, `codeRefused`, `noRefreshToken` and so on                                                                 |
-| `signInScopes`        | the scopes to ask for: `baseSignInScopes` (`openid`, `email`) and the services' scopes, sorted, without duplicates                                               |
-| `googleAuthEndpoint`, `googleTokenEndpoint` | Google's authorisation and token endpoints, as constants                                                                                   |
+| Export                                      | What it does                                                                                                                                                     |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `googleAuthUrl`                             | the auth URL: code flow, PKCE S256, loopback redirect, `openid email` plus the services' scopes                                                                  |
+| `loopbackRedirectUri`                       | `http://127.0.0.1:<port><path>`; refuses a query string, a fragment and anything unusual in the path                                                             |
+| `PendingSignIns`                            | the port for pending sign-ins: `start` (one per account), `take(state)`, and `authUrlFor` and `cancel` for "Open again" and "Cancel"; in memory only, 10 minutes |
+| `readSignInCallback`                        | reads the callback: finds the sign-in by `state` first, then maps `error` or returns the code                                                                    |
+| `classifyTokenAnswer`                       | what Google's token answer means: `wrongClientSecret`, `codeRefused`, `noRefreshToken` and so on                                                                 |
+| `signInScopes`                              | the scopes to ask for: `baseSignInScopes` (`openid`, `email`) and the services' scopes, sorted, without duplicates                                               |
+| `googleAuthEndpoint`, `googleTokenEndpoint` | Google's authorisation and token endpoints, as constants                                                                                                         |
 
 A pending sign-in holds the PKCE verifier, so it is never written to the `TokenStore` or any other
 store (plan D5). The `code` and `tokens` results hold secrets and never leave the host package.
@@ -295,14 +295,14 @@ Google's `error_description` is never read, and an `error` value that isn't a pl
 The pure parts of setup items 6 and 7. The host's sign-in runs them inside `finishGoogleSignIn`,
 before it saves anything and while it still holds the fresh access token.
 
-| Export                  | What it does                                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `accountMatches`        | whether the verified address is the connector's: trimmed, any letter case, no dot or `+` folding |
-| `serviceScopes`         | per service, whether Google granted all its `googleScopes`, or which are missing                 |
-| `readGoogleCheckAnswer` | one `googleCheck` answer as `works` (2xx), `apiOff` (403 that says so) or `checkFailed`          |
-| `ServiceCheckOutcome`   | what step 7 shows per service: those three, `allowed`, `scopeNotGranted` and `unreachable`       |
+| Export                   | What it does                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `accountMatches`         | whether the verified address is the connector's: trimmed, any letter case, no dot or `+` folding                      |
+| `serviceScopes`          | per service, whether Google granted all its `googleScopes`, or which are missing                                      |
+| `readGoogleCheckAnswer`  | one `googleCheck` answer as `works` (2xx), `apiOff` (403 that says so) or `checkFailed`                               |
+| `ServiceCheckOutcome`    | what step 7 shows per service: those three, `allowed`, `scopeNotGranted` and `unreachable`                            |
 | `accountTypeFromAddress` | `personal` for a Gmail or Googlemail address, otherwise `undefined`: the address alone can't tell a Workspace account |
-| `isApiHost`             | whether text has the `<name>.googleapis.com` shape, the only API host a result keeps             |
+| `isApiHost`              | whether text has the `<name>.googleapis.com` shape, the only API host a result keeps                                  |
 
 `allowed` means every scope was granted and the sheet has no `googleCheck`: nothing showed the API
 is on. `apiOff` keeps the API host only in the `<name>.googleapis.com` shape, its name only from the
@@ -335,14 +335,14 @@ When a token refresh is refused, a run must not ask Google again.
 `SetupRecordError` and `ClientSecretError` keep their detailed `reason` and carry a coarse `kind` that
 `errorKindOf` from `@halonicjs/std` reads:
 
-| Error | Reason | Kind |
-| --- | --- | --- |
-| `SetupRecordError` | `not-found` | `not_found` |
-| | `refused` | `invalid_input` |
-| | `cannot-share` | `conflict` |
-| | `damaged` | `internal` |
-| `ClientSecretError` | `empty` | `invalid_input` |
-| | `not-saved` | `not_found` |
-| | `nothing-staged` | `conflict` |
+| Error               | Reason           | Kind            |
+| ------------------- | ---------------- | --------------- |
+| `SetupRecordError`  | `not-found`      | `not_found`     |
+|                     | `refused`        | `invalid_input` |
+|                     | `cannot-share`   | `conflict`      |
+|                     | `damaged`        | `internal`      |
+| `ClientSecretError` | `empty`          | `invalid_input` |
+|                     | `not-saved`      | `not_found`     |
+|                     | `nothing-staged` | `conflict`      |
 
 Besides the calls shown above, `setups` also has `read`, `list`, `usingClient` and `remove`.
