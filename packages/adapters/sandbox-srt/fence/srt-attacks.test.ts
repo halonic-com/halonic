@@ -1,4 +1,6 @@
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
@@ -104,6 +106,7 @@ describe("a program trying to get out of the fence", () => {
     for (const attempt of attempts) {
       expect((await sh(attempt)).code).not.toBe(0);
     }
+    await expect(stat(join(base, "work", ".claude", "settings.local.json"))).rejects.toThrow();
     await expect(stat(join(base, "work", ".codex"))).rejects.toThrow();
     await expect(stat(join(base, "work", ".cursor"))).rejects.toThrow();
   });
@@ -115,17 +118,26 @@ describe("a program trying to get out of the fence", () => {
     expect(out).not.toContain("Example Domain");
   });
 
-  it("can't open a raw connection to a loopback port, bypassing the proxy", async () => {
-    const { out } = await sh(
-      "curl -s --max-time 5 --noproxy '*' http://127.0.0.1:22/ 2>&1; echo \"exit=$?\"",
-    );
-    expect(out).not.toMatch(/exit=0/);
+  it("can't open a raw connection to a host loopback port, bypassing the proxy", async () => {
+    const server = createServer((_request, response) => response.end("host-loopback-body"));
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = (server.address() as AddressInfo).port;
+    try {
+      const { out } = await sh(
+        `curl -s --max-time 5 --noproxy '*' http://127.0.0.1:${port}/ 2>&1; echo "exit=$?"`,
+      );
+      expect(out).not.toContain("host-loopback-body");
+    } finally {
+      server.close();
+    }
   });
 
   it("doesn't see the host's environment", async () => {
     process.env["HALONIC_ATTACK_CANARY"] = "canary-value";
     try {
       const { out } = await sh("env");
+      // The profile's own variables do arrive, so an empty `env` can't pass this.
+      expect(out).toContain(`HOME=${join(base, "temp")}`);
       expect(out).not.toContain("canary-value");
     } finally {
       delete process.env["HALONIC_ATTACK_CANARY"];
@@ -154,12 +166,20 @@ describe("a program trying to get out of the fence", () => {
   it("is stopped by the time limit, with everything it started", async () => {
     const limited = await sandbox.open({ ...profile(), timeLimitMs: 3000 });
     try {
-      const started = await limited.start({ program: "sh", args: ["-c", "sleep 300 & wait"] });
+      const ticks = join(base, "temp", "limited-ticks");
+      const started = await limited.start({
+        program: "sh",
+        args: ["-c", `(while true; do date +%s%N > ${ticks}; sleep 0.1; done) & wait`],
+      });
       const exit = await started.exited;
       expect(exit.reason).toBe("timeout");
       // The program's end shows before the session finishes shutting down; close waits for that.
       await limited.close();
       expect(limited.fence).toEqual({ state: "stopped" });
+      // What the program started in the background has stopped writing too.
+      const after = await readFile(ticks, "utf8");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      expect(await readFile(ticks, "utf8")).toBe(after);
     } finally {
       await limited.close();
     }
