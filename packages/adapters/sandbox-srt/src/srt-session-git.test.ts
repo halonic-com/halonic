@@ -8,6 +8,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
 
+// chmod does not stop writes on Windows, nor for root.
+const cannotBlockWrites = process.platform === "win32" || process.getuid?.() === 0;
+
 let base: string;
 let git: string;
 
@@ -110,7 +113,7 @@ verifies("sandbox-srt.session", () => {
       expect(blocks).toEqual([]);
     });
 
-    it.skipIf(process.getuid?.() === 0)(
+    it.skipIf(cannotBlockWrites)(
       "still reports the refused write, then rejects close(), when an undo fails",
       async () => {
         const linked = join(git, "worktrees", "feature");
@@ -128,7 +131,7 @@ verifies("sandbox-srt.session", () => {
       },
     );
 
-    it.skipIf(process.getuid?.() === 0)(
+    it.skipIf(cannotBlockWrites)(
       "touches nothing under a link it could not turn back into a folder",
       async () => {
         const outside = join(base, "outside");
