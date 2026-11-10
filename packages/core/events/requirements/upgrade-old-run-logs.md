@@ -26,9 +26,9 @@ When a stored `run.started` event has `projectId` or `flowId` and not the new na
 - Given a run log written before `llm.skipped` and `llm.response.toolCallAsText` existed,
   when each line is parsed,
   then every event is read exactly as written: its `llm.response` has no `toolCallAsText`, no `llm.skipped` is added, and its `run.failed` keeps no `reason`.
-- Given a run log written before `tool.result.risk` and `tool.result.noun` existed,
+- Given a run log written before `tool.result.risk`, `tool.result.noun` and `tool.result.verb` existed,
   when each line is parsed,
-  then every `tool.result` is read exactly as written, with neither field added.
+  then every `tool.result` is read exactly as written, with none of the three added.
 - Given a run log written before `tool.result.resultBlob` existed,
   when each line is parsed,
   then every `tool.result` is read exactly as written, without `resultBlob`.
