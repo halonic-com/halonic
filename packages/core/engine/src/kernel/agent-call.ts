@@ -24,7 +24,9 @@ export function agentCallEffect(
  * `halonic run --harness` sets it, comes before the one the agent's file
  * names. An agent whose file says `halonic` or names no harness runs in
  * Halonic's own loop, and so does one that isn't among the run's
- * definitions (runs kept before agents joined them).
+ * definitions (runs kept before agents joined them). A `harness` in a log
+ * that this engine doesn't know, from a newer one, falls back to Halonic's
+ * own loop as well.
  */
 export function programHarnessOf(
   run: Pick<RunState, "harness">,

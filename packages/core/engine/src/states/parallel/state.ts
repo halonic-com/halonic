@@ -40,10 +40,12 @@ function startBranches({ run, stateId, state, scope, agents }: StateContext): St
   const events: DecidedEvent[] = [];
   const effects: Effect[] = [];
   for (const [name, branch] of branches) {
-    const harness = programHarnessOf(agents, branch.agent);
+    const harness = programHarnessOf(run, agents, branch.agent);
     if (harness !== null) {
+      // Name where the harness came from: the run's start or the agent's file.
+      const whose = run.harness === null ? "the" : "the run's";
       return failed(
-        `Branch "${name}" of parallel state "${stateId}" runs agent "${branch.agent}" in the ` +
+        `Branch "${name}" of parallel state "${stateId}" runs agent "${branch.agent}" in ${whose} ` +
           `"${harness}" harness, and parallel branches can't run a harness yet.`,
       );
     }

@@ -1,5 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { Workflow } from "@halonicjs/format";
+import type { Agent, Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { finished, harnessPorts } from "../harness/harness-test-kit.test-helper.ts";
@@ -32,6 +32,60 @@ const onboard: Workflow = {
       on: [{ to: "welcome", event: "done" }],
     },
     welcome: { type: "final", on: [] },
+  },
+  layout: {},
+};
+
+/** A `research` state whose two branches run the searcher and the reader at once. */
+const research: Workflow = {
+  version: 1,
+  id: "research",
+  name: "Research a topic",
+  initial: "research",
+  context: {},
+  states: {
+    research: {
+      type: "parallel",
+      branches: {
+        web: { agent: "searcher", input: "Search the web for {{input.topic}}" },
+        notes: { agent: "reader", input: "Read the notes on {{input.topic}}" },
+      },
+      output: "findings",
+      on: [{ to: "done", event: "done" }],
+    },
+    done: { type: "final", on: [] },
+  },
+  layout: {},
+};
+
+function researchAgents(harness?: Agent["harness"]): Record<string, Agent> {
+  return {
+    searcher: { ...writerAgent(harness), id: "searcher" },
+    reader: { ...writerAgent(), id: "reader" },
+  };
+}
+
+const researchStart = { ...startInput("sha-1"), workflowId: "research", input: { topic: "tea" } };
+
+/** A `triage` state that runs the writer once for each email, two at a time. */
+const triage: Workflow = {
+  version: 1,
+  id: "triage",
+  name: "Triage the inbox",
+  initial: "triage",
+  context: {},
+  states: {
+    triage: {
+      type: "foreach",
+      agent: "writer",
+      items: "{{input.emails}}",
+      as: "email",
+      concurrency: 2,
+      input: "Label {{email.subject}}",
+      output: "labels",
+      on: [{ to: "filed", event: "done" }],
+    },
+    filed: { type: "final", on: [] },
   },
   layout: {},
 };
@@ -77,6 +131,46 @@ verifies("engine.run-harness-override", () => {
 
     expect(decision).toEqual(live.decisions[2]);
     expect(decision.effects.map((effect) => effect.type)).toEqual(["answer-harness"]);
+  });
+
+  it("fails a parallel state whose branch agent would run in the run's program harness", () => {
+    const start = { ...researchStart, harness: "codex" };
+
+    const { run, log } = play(research, [start], researchAgents());
+
+    expect(run?.status).toBe("failed");
+    expect(log.at(-1)).toMatchObject({
+      error:
+        'Branch "notes" of parallel state "research" runs agent "reader" in the run\'s "codex" ' +
+        "harness, and parallel branches can't run a harness yet.",
+    });
+  });
+
+  it("runs a parallel branch's harness agent as a model call when the run's harness is halonic", () => {
+    const start = { ...researchStart, harness: "halonic" };
+
+    const { decisions } = play(research, [start], researchAgents("claude-code"));
+
+    expect(decisions[0]?.effects.map((effect) => effect.type)).toEqual([
+      "call-model",
+      "call-model",
+    ]);
+  });
+
+  it("runs each for-each item's agent in the run's harness", () => {
+    const start = {
+      ...startInput("sha-1"),
+      workflowId: "triage",
+      input: { emails: [{ subject: "Refund" }, { subject: "Invoice" }] },
+      harness: "codex",
+    };
+
+    const { decisions } = play(triage, [start], { writer: writerAgent() });
+
+    expect(decisions[0]?.effects).toEqual([
+      expect.objectContaining({ type: "run-harness", harness: "codex", callId: "call-1" }),
+      expect.objectContaining({ type: "run-harness", harness: "codex", callId: "call-2" }),
+    ]);
   });
 
   it("refuses a harness that isn't one before anything is written", async () => {
