@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { runProcess } from "./run-process.ts";
+import { runProcess, windowsTreeStop } from "./run-process.ts";
 
 // Ported from the desktop's git-guard, `limited_run_tests.rs`:
 // `git_process_returns_the_full_output_within_the_limits`,
@@ -24,10 +24,12 @@ function node(script: string, limits: { timeoutMs?: number; maxOutputBytes?: num
 }
 
 /**
- * Whether the process `pid` still runs. A stopped one can stay a zombie
- * until it is reaped, which `kill(pid, 0)` can't tell from a running one.
+ * Whether the process `pid` still runs. On Linux a stopped one can stay a
+ * zombie until it is reaped, which `kill(pid, 0)` can't tell from a running
+ * one, so it reads /proc there. Windows has no zombies.
  */
 async function stillRunning(pid: number): Promise<boolean> {
+  if (process.platform === "win32") return signalReaches(pid);
   try {
     const stat = await readFile(`/proc/${pid}/stat`, "utf8");
     // The state follows the program name, which is in parentheses.
@@ -35,6 +37,16 @@ async function stillRunning(pid: number): Promise<boolean> {
     return state !== "Z" && state !== "X";
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function signalReaches(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ESRCH") return false;
     throw error;
   }
 }
@@ -87,9 +99,9 @@ verifies("git.hardened", () => {
       );
     });
 
-    // Linux only: it reads /proc to tell a stopped program from a running one.
-    // Stopping what git started on Windows is HAL-2669.
-    it.runIf(process.platform === "linux")(
+    // Linux and Windows: macOS has neither /proc nor a way to tell a zombie
+    // from a running program without starting `ps`.
+    it.runIf(process.platform === "linux" || process.platform === "win32")(
       "stops every program it started, too, past its time limit",
       async () => {
         const folder = await mkdtemp(join(tmpdir(), "halonic-adapter-git-"));
@@ -119,6 +131,16 @@ verifies("git.hardened", () => {
           maxOutputBytes: 1024,
         }),
       ).rejects.toThrow("more than 1024 bytes");
+    });
+
+    it("on Windows stops the tree with taskkill, by its full path", () => {
+      const windowsFolder = "D:\\Windows"; // leak-guard: allow absolute-path an invented Windows folder
+      expect(windowsTreeStop(4242, windowsFolder)).toEqual({
+        program: `${windowsFolder}\\System32\\taskkill.exe`,
+        args: ["/PID", "4242", "/T", "/F"],
+      });
+      const fallback = windowsTreeStop(4242, undefined).program;
+      expect(fallback).toMatch(/^C:\\Windows\\/u); // leak-guard: allow absolute-path Windows' own install folder
     });
 
     it("rejects when the program can't start", async () => {

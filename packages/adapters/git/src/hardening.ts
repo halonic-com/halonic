@@ -43,6 +43,12 @@ export const hardeningConfig: readonly ConfigEntry[] = [
   ["credential.helper", ""],
   // The message is the one given, never a file `commit.template` names.
   ["commit.template", ""],
+  // With no user config git still reads `$XDG_CONFIG_HOME/git/ignore` and
+  // `git/attributes` (or under `$HOME/.config`). Neither is the
+  // workspace's: the first would hide files from a snapshot, the second
+  // could name a diff or filter driver. Empty: neither is read.
+  ["core.excludesFile", ""],
+  ["core.attributesFile", ""],
 ];
 
 /**

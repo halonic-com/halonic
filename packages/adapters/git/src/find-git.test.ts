@@ -2,6 +2,7 @@ import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
+import { isAbsolutePath } from "./absolute-path.ts";
 import { findGit, gitCandidates } from "./find-git.ts";
 import { Scratch } from "./fixtures.test-helper.ts";
 import { GitRunner } from "./git-runner.ts";
@@ -53,11 +54,45 @@ verifies("git.find-git", () => {
     });
   });
 
+  describe("isAbsolutePath", () => {
+    it("on Windows takes only a drive with a slash or a share, never C:git or \\git", () => {
+      const drive = "C:\\Git"; // leak-guard: allow absolute-path an invented Windows folder
+      expect(isAbsolutePath(drive, "win32")).toBe(true);
+      expect(isAbsolutePath("D:/git", "win32")).toBe(true);
+      expect(isAbsolutePath("\\\\server\\share", "win32")).toBe(true);
+      expect(isAbsolutePath("C:git", "win32")).toBe(false);
+      expect(isAbsolutePath("\\git", "win32")).toBe(false);
+      expect(isAbsolutePath("", "win32")).toBe(false);
+    });
+
+    it("elsewhere takes only a path from the root", () => {
+      expect(isAbsolutePath("/acme/bin", "linux")).toBe(true);
+      expect(isAbsolutePath("bin", "linux")).toBe(false);
+      expect(isAbsolutePath("", "darwin")).toBe(false);
+    });
+  });
+
   describe("the runner", () => {
     it("refuses a git path that isn't absolute", async () => {
       await expect(
         GitRunner.create({ git: "git", hooksFolder: await scratch.folder() }),
       ).rejects.toThrow("absolute path");
     });
+
+    // Windows names the variable `Path`; the runner reads it in any case.
+    it.runIf(process.platform !== "win32")(
+      "looks for git in the Path of the environment it is given, in any case",
+      async () => {
+        const folder = await scratch.folder();
+        await writeFile(join(folder, "git"), "#!/bin/sh\necho acme-git\n");
+        await chmod(join(folder, "git"), 0o755);
+        const runner = await GitRunner.create({
+          environment: { Path: folder },
+          hooksFolder: await scratch.folder(),
+        });
+        const result = await runner.run({ cwd: folder, args: ["--version"] });
+        expect(result.stdout.toString().trim()).toBe("acme-git");
+      },
+    );
   });
 });

@@ -1,6 +1,7 @@
-import { mkdtemp, readdir } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
+import { isAbsolutePath } from "./absolute-path.ts";
 import { type FindGitOptions, findGit } from "./find-git.ts";
 import { type ConfigEntry, hardenedEnvironment, hardeningConfig } from "./hardening.ts";
 import { type ProcessResult, runProcess } from "./node/run-process.ts";
@@ -11,8 +12,9 @@ export interface GitRunnerOptions {
   git?: string;
   /**
    * A folder that stays empty, which every call points `core.hooksPath`
-   * at; a new temporary folder by default. Each call checks it is still
-   * empty.
+   * at; a new temporary folder by default, which {@link GitRunner.close}
+   * removes. Each call checks it is still empty. A folder given here is
+   * the caller's: the runner never removes it.
    */
   hooksFolder?: string;
   /** The environment git starts from, before the hardening; `process.env` by default. */
@@ -48,10 +50,17 @@ export type GitResult = ProcessResult;
  * removed, no system or user config, the hardening config given in the
  * environment, and `PATH` cut down to its absolute folders, so neither git
  * nor a program it starts is ever found in the workspace.
+ *
+ * `HOME` and `XDG_CONFIG_HOME` stay as they are: `ssh` needs the user's
+ * keys and known hosts. git reads no config from them, and the hardening
+ * blanks the ignore and attributes files it would otherwise read there.
  */
 export class GitRunner {
   readonly #git: string;
   readonly #hooksFolder: string;
+  /** Whether the runner made the hooks folder, and so removes it on {@link close}. */
+  readonly #ownsHooksFolder: boolean;
+  #closed = false;
   readonly #environment: Readonly<Record<string, string | undefined>>;
   readonly #localTimeoutMs: number;
   readonly #networkTimeoutMs: number;
@@ -60,6 +69,7 @@ export class GitRunner {
   private constructor(git: string, hooksFolder: string, options: GitRunnerOptions) {
     this.#git = git;
     this.#hooksFolder = hooksFolder;
+    this.#ownsHooksFolder = options.hooksFolder === undefined;
     this.#environment = withAbsolutePath(options.environment ?? process.env);
     this.#localTimeoutMs = options.localTimeoutMs ?? 60_000;
     this.#networkTimeoutMs = options.networkTimeoutMs ?? 300_000;
@@ -73,7 +83,7 @@ export class GitRunner {
    */
   static async create(options: GitRunnerOptions = {}): Promise<GitRunner> {
     const git = options.git ?? (await findGit(searchPathOf(options)));
-    if (!isAbsolute(git)) throw new Error(`The git program must be an absolute path: ${git}`);
+    if (!isAbsolutePath(git)) throw new Error(`The git program must be an absolute path: ${git}`);
     const hooksFolder =
       options.hooksFolder ?? (await mkdtemp(join(tmpdir(), "halonic-git-hooks-")));
     const runner = new GitRunner(git, hooksFolder, options);
@@ -84,15 +94,16 @@ export class GitRunner {
   /**
    * Runs one call, hardened.
    *
-   * @throws Error when `cwd` or `indexFile` isn't absolute, git can't start, passes its limits, or the hooks folder is no longer empty
+   * @throws Error when the runner is closed, `cwd` or `indexFile` isn't absolute, git can't start, passes its limits, or the hooks folder is no longer empty
    */
   async run(call: GitCall): Promise<GitResult> {
+    if (this.#closed) throw new Error("This git runner is closed; create a new one.");
     // git ignores a relative GIT_CEILING_DIRECTORIES, so a relative `cwd`
     // would let it read a repository above the folder.
-    if (!isAbsolute(call.cwd)) {
+    if (!isAbsolutePath(call.cwd)) {
       throw new Error(`git runs only in an absolute folder, not ${call.cwd}`);
     }
-    if (call.indexFile !== undefined && !isAbsolute(call.indexFile)) {
+    if (call.indexFile !== undefined && !isAbsolutePath(call.indexFile)) {
       throw new Error(`git takes only an absolute index file, not ${call.indexFile}`);
     }
     await this.#checkHooksFolderIsEmpty();
@@ -115,6 +126,17 @@ export class GitRunner {
     });
   }
 
+  /**
+   * Ends the runner: later calls reject, and the hooks folder goes if the
+   * runner made it. Closing twice does nothing more. Wait for the calls
+   * still running first: git reads the hooks folder while it runs.
+   */
+  async close(): Promise<void> {
+    if (this.#closed) return;
+    this.#closed = true;
+    if (this.#ownsHooksFolder) await rm(this.#hooksFolder, { recursive: true, force: true });
+  }
+
   async #checkHooksFolderIsEmpty(): Promise<void> {
     const entries = await readdir(this.#hooksFolder);
     if (entries.length > 0) {
@@ -125,9 +147,15 @@ export class GitRunner {
   }
 }
 
-/** Where to look for git: the `PATH` of the environment the runner was given, if any. */
+/**
+ * Where to look for git: the `PATH` of the environment the runner was
+ * given, if any. Windows names it `Path`, and its names ignore case, so
+ * any case counts.
+ */
 function searchPathOf(options: GitRunnerOptions): FindGitOptions {
-  const path = options.environment?.["PATH"];
+  const environment = options.environment ?? {};
+  const name = Object.keys(environment).find((key) => isPathName(key));
+  const path = name === undefined ? undefined : environment[name];
   return path === undefined ? {} : { path };
 }
 
@@ -137,12 +165,15 @@ function withAbsolutePath(
 ): Record<string, string | undefined> {
   const result = { ...environment };
   for (const name of Object.keys(result)) {
-    if (name.toUpperCase() !== "PATH") continue;
-    const separator = process.platform === "win32" ? ";" : ":";
+    if (!isPathName(name)) continue;
     result[name] = (result[name] ?? "")
-      .split(separator)
-      .filter((folder) => folder !== "" && isAbsolute(folder))
-      .join(separator);
+      .split(delimiter)
+      .filter((folder) => isAbsolutePath(folder))
+      .join(delimiter);
   }
   return result;
+}
+
+function isPathName(name: string): boolean {
+  return name.toUpperCase() === "PATH";
 }

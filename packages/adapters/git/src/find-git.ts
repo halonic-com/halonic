@@ -1,6 +1,7 @@
 import { constants } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import { posix, win32 } from "node:path";
+import { isAbsolutePath } from "./absolute-path.ts";
 
 /** Where to look for git: the `PATH` and the platform it is read on. */
 export interface FindGitOptions {
@@ -40,16 +41,8 @@ export function gitCandidates(searchPath: string, platform: NodeJS.Platform): st
   const programName = windows ? "git.exe" : "git";
   return searchPath
     .split(paths.delimiter)
-    .filter((folder) => isAbsoluteFolder(folder, windows))
+    .filter((folder) => isAbsolutePath(folder, platform))
     .map((folder) => paths.join(folder, programName));
-}
-
-function isAbsoluteFolder(folder: string, windows: boolean): boolean {
-  if (folder === "") return false;
-  // A drive letter with a backslash and a `\\server\share` path are absolute;
-  // `C:git`, with no backslash after the drive, and `\git` are not.
-  if (windows) return /^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/u.test(folder);
-  return posix.isAbsolute(folder);
 }
 
 async function isProgram(candidate: string, windows: boolean): Promise<boolean> {

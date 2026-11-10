@@ -27,9 +27,11 @@ export interface ProcessResult {
 /**
  * Runs one program with no shell and no input, and collects its output.
  *
- * The program gets a process group of its own where the platform has them,
- * so that past its time or output limit it is stopped together with every
- * program it started (git starts `ssh`, `git-remote-https` and others).
+ * Past its time or output limit the program is stopped together with
+ * every program it started (git starts `ssh`, `git-remote-https` and
+ * others). On macOS and Linux it gets a process group of its own, which is
+ * stopped as one. Windows has no such groups, so there `taskkill /T` stops
+ * the program and the tree of programs below it.
  *
  * @throws Error when the program can't start, or passes its time or output limit
  */
@@ -52,7 +54,7 @@ export function runProcess(call: ProcessCall): Promise<ProcessResult> {
     const stop = (reason: string): void => {
       if (stopReason !== null) return;
       stopReason = reason;
-      stopAll(child.pid, ownGroup, () => child.kill("SIGKILL"));
+      stopAll(child.pid, process.platform, () => child.kill("SIGKILL"));
     };
     const timer = setTimeout(() => stop(`took longer than ${call.timeoutMs} ms`), call.timeoutMs);
     const collect = (into: Buffer[]) => (chunk: Buffer) => {
@@ -85,10 +87,14 @@ export function runProcess(call: ProcessCall): Promise<ProcessResult> {
   });
 }
 
-/** Stops the program's whole process group, or the program alone where there are no groups. */
-function stopAll(pid: number | undefined, ownGroup: boolean, stopChild: () => void): void {
-  if (!ownGroup || pid === undefined) {
+/** Stops the program and every program it started, the way the platform allows. */
+function stopAll(pid: number | undefined, platform: NodeJS.Platform, stopChild: () => void): void {
+  if (pid === undefined) {
     stopChild();
+    return;
+  }
+  if (platform === "win32") {
+    stopTree(pid, stopChild);
     return;
   }
   try {
@@ -97,4 +103,35 @@ function stopAll(pid: number | undefined, ownGroup: boolean, stopChild: () => vo
     // The group has already gone; stop the program itself in case it hasn't.
     stopChild();
   }
+}
+
+/**
+ * Stops the Windows process `pid` and its tree with `taskkill`. The program
+ * itself is stopped as well whatever `taskkill` says, so a `taskkill` that
+ * can't start or finds nothing never leaves it running.
+ */
+function stopTree(pid: number, stopChild: () => void): void {
+  const { program, args } = windowsTreeStop(pid, process.env["SystemRoot"]);
+  const taskkill = spawn(program, args, { shell: false, stdio: "ignore", windowsHide: true });
+  taskkill.on("error", stopChild);
+  taskkill.on("close", stopChild);
+}
+
+/**
+ * The `taskkill` call that stops `pid` and every program below it, by its
+ * full path under the Windows folder: Windows looks in the current folder
+ * first for a bare program name.
+ *
+ * @param windowsFolder - the Windows folder, from the `SystemRoot` variable
+ */
+export function windowsTreeStop(
+  pid: number,
+  windowsFolder: string | undefined,
+): { program: string; args: string[] } {
+  // Windows always sets SystemRoot; the usual folder stands in if a caller cleared it.
+  const folder = windowsFolder ?? "C:\\Windows"; // leak-guard: allow absolute-path Windows' own install folder
+  return {
+    program: `${folder}\\System32\\taskkill.exe`,
+    args: ["/PID", String(pid), "/T", "/F"],
+  };
 }

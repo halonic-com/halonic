@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
@@ -126,6 +126,46 @@ verifies("git.hardened", () => {
         "has files in it",
       );
       await expect(GitRunner.create({ hooksFolder })).rejects.toThrow("has files in it");
+    });
+
+    it("reads no ignore or attributes file from the user's config folder", async () => {
+      const configHome = await scratch.folder();
+      await mkdir(join(configHome, "git"));
+      await writeFile(join(configHome, "git", "ignore"), "*.secret\n");
+      await writeFile(join(configHome, "git", "attributes"), "*.yaml diff=planted\n");
+      const folder = await repositoryWith(scratch);
+      await writeFile(join(folder, "b.secret"), "1\n");
+      const runner = await testRunner(scratch, {
+        ...process.env,
+        HOME: configHome,
+        XDG_CONFIG_HOME: configHome,
+      });
+      expect(await gitSays(runner, folder, ["status", "--porcelain"])).toBe("?? b.secret");
+      expect(await gitSays(runner, folder, ["check-attr", "diff", "a.yaml"])).toBe(
+        "a.yaml: diff: unspecified",
+      );
+    });
+  });
+});
+
+verifies("git.runner-close", () => {
+  describe("closing the runner", () => {
+    it("removes the hooks folder it made, and refuses calls afterwards", async () => {
+      const runner = await GitRunner.create();
+      const folder = await repositoryWith(scratch);
+      const hooksFolder = await gitSays(runner, folder, ["config", "--get", "core.hooksPath"]);
+      expect((await stat(hooksFolder)).isDirectory()).toBe(true);
+      await runner.close();
+      await runner.close();
+      await expect(stat(hooksFolder)).rejects.toThrow("ENOENT");
+      await expect(runner.run({ cwd: folder, args: ["status"] })).rejects.toThrow("closed");
+    });
+
+    it("keeps a hooks folder it was given", async () => {
+      const hooksFolder = await scratch.folder();
+      const runner = await GitRunner.create({ hooksFolder });
+      await runner.close();
+      expect((await stat(hooksFolder)).isDirectory()).toBe(true);
     });
   });
 });
