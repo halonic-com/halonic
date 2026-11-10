@@ -75,5 +75,15 @@ verifies("sandbox-srt.session", () => {
       await writeFile(join(gitdir, "commondir"), "../../../x\n");
       await expect(open()).rejects.toThrow(join(gitdir, "commondir"));
     });
+
+    it("accepts no commondir, not ../.., in the git folder a submodule's .git file leads to", async () => {
+      await rm(join(work, ".git"), { recursive: true });
+      const gitdir = join(base, "main", ".git", "modules", "docs");
+      await mkdir(gitdir, { recursive: true });
+      await writeFile(join(work, ".git"), `gitdir: ${gitdir}\n`);
+      await expect((await open()).close()).resolves.toBeUndefined();
+      await writeFile(join(gitdir, "commondir"), "../..\n");
+      await expect(open()).rejects.toThrow(join(gitdir, "commondir"));
+    });
   });
 });
