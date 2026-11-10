@@ -46,6 +46,14 @@ async function appendConfig(folder: string, text: string): Promise<void> {
   await appendFile(join(folder, ".git", "config"), `${text}\n`);
 }
 
+/**
+ * `value` as a quoted config value. Unquoted, a Windows path's backslashes
+ * are escapes git refuses, and then git reads no config at all.
+ */
+function configString(value: string): string {
+  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+}
+
 /** A repository with a plant in it, whose program lives outside the repository. */
 async function planted(): Promise<{ folder: string; plant: Plant }> {
   const folder = await repositoryWith(scratch);
@@ -338,7 +346,7 @@ verifies("git.repository", () => {
 
     it("refuses a core.worktree elsewhere", async () => {
       const folder = await repositoryWith(scratch);
-      await appendConfig(folder, `[Core]\n\tWorkTree = ${await scratch.folder()}`);
+      await appendConfig(folder, `[Core]\n\tWorkTree = ${configString(await scratch.folder())}`);
       await expect(Repository.open(await runner(), folder)).rejects.toThrow("outside the folder");
     });
 
