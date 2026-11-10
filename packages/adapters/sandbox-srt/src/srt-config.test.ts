@@ -194,7 +194,7 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
 
   // srt doesn't run on Windows, so the real path isn't added there.
   it.skipIf(process.platform === "win32")(
-    "also denies the real path of a folder reached through a symlink, for entries that don't exist yet",
+    "[platform:win32] also denies the real path of a folder reached through a symlink, for entries that don't exist yet",
     () => {
       const base = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));
       mkdirSync(join(base, "real", "work"), { recursive: true });
