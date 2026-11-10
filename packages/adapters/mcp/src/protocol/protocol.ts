@@ -26,6 +26,16 @@ export const initializeResultSchema = s.object({
  */
 export const toolNamePattern = /^[A-Za-z0-9_.-]{1,128}$/;
 
+/**
+ * The `_meta` keys where a server may say what a tool can do, in
+ * `ConnectorTool` terms. MCP has no field for it. Like the annotations,
+ * they are the server's claim: the host decides what to trust.
+ */
+export const toolMetaKeys = {
+  risk: "halonic.com/risk",
+  untrusted: "halonic.com/untrusted",
+} as const;
+
 /** One tool in a `tools/list` page. */
 export const toolSchema = s.object({
   name: s.string().regex(toolNamePattern),
@@ -38,6 +48,12 @@ export const toolSchema = s.object({
       destructiveHint: s.boolean().optional(),
       idempotentHint: s.boolean().optional(),
       openWorldHint: s.boolean().optional(),
+    })
+    .optional(),
+  _meta: s
+    .object({
+      [toolMetaKeys.risk]: s.enum(["read", "write", "send"]).optional(),
+      [toolMetaKeys.untrusted]: s.boolean().optional(),
     })
     .optional(),
 });

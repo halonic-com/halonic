@@ -12,6 +12,7 @@ export {
   type McpTool,
   type McpToolResult,
   supportedProtocolVersions,
+  toolMetaKeys,
   toolNamePattern,
 } from "./protocol/protocol.ts";
 export {
