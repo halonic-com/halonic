@@ -9,6 +9,10 @@
       "reason": "Smoke tooling (pnpm smoke:sea), run in CI after the build, never shipped. It starts only the agent host it just built in dist/, with no arguments. It never loads a skill.",
       "scriptsTest": "apps/agent-host/src/scripts.starts.test.ts"
     },
+    "packages/adapters/git/src/node/run-process.ts": {
+      "reason": "Starts only git, at the absolute path findGit resolved, with array arguments and no shell. Every call runs hardened: hooks point at an empty folder and no user or system config is read.",
+      "scriptsTest": "packages/adapters/git/src/skill-scripts.test.ts"
+    },
     "packages/adapters/sandbox-host/src/program-probe.ts": {
       "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and looks only in absolute PATH folders of the launcher's environment, which no skill sets.",
       "scriptsTest": "packages/adapters/sandbox-host/src/program-probe.attack.test.ts"
