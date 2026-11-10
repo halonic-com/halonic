@@ -145,7 +145,7 @@ describe("theme.css built by Tailwind: the Slider", () => {
     const css = await buildCss(["slider"]);
     const desktop = css.slice(css.indexOf(".slider {"), css.indexOf("@media (width < 600px)"));
     expect(desktop).toMatch(
-      /&::-webkit-slider-runnable-track \{[^}]*height: 6px;[^}]*var\(--color-primary\) var\(--slider-fill, 0%\)[^}]*var\(--color-surface-muted\)[^}]*var\(--color-border-control\)/,
+      /&::-webkit-slider-runnable-track \{[^}]*height: 6px;[^}]*var\(--color-primary\) var\(--slider-fill\)[^}]*var\(--color-surface-muted\)[^}]*var\(--color-border-control\)/,
     );
     expect(desktop).toMatch(
       /&::-moz-range-track \{[^}]*height: 6px;[^}]*border: 1px solid var\(--color-border-control\);/,
@@ -173,6 +173,21 @@ describe("theme.css built by Tailwind: the Slider", () => {
     );
   });
 
+  it("ends the fill under the thumb's centre, and keeps an unavailable thumb primary", async () => {
+    const css = await buildCss(["slider"]);
+    expect(css).toMatch(/--slider-thumb: 16px;/);
+    // Tailwind wraps the calc() over lines, so compare it with the spaces folded.
+    expect(css.replace(/\s+/g, " ")).toContain(
+      "--slider-fill: calc( var(--slider-thumb) / 2 + (100% - var(--slider-thumb)) * var(--slider-ratio, 0) );",
+    );
+    const unavailable = css.slice(css.indexOf('&[aria-disabled="true"] {'));
+    expect(unavailable).toMatch(
+      /&::-webkit-slider-thumb \{\s*background-color: var\(--color-primary\);\s*\}\s*&::-moz-range-thumb \{\s*background-color: var\(--color-primary\);/,
+    );
+    // After the hover and press variants, so it wins over them.
+    expect(css.indexOf('&[aria-disabled="true"] {')).toBeGreaterThan(css.indexOf("&:active {"));
+  });
+
   it("gives the thumb a 24px grab area on a phone, and keeps an edge and system colours in high contrast", async () => {
     const css = await buildCss(["slider"]);
     const phone = css.slice(css.indexOf("@media (width < 600px)"), css.indexOf("&[aria-disabled"));
@@ -182,6 +197,7 @@ describe("theme.css built by Tailwind: the Slider", () => {
     expect(phone).toMatch(
       /outline: 2px solid var\(--color-surface-raised\);\s*outline-offset: -4px;/,
     );
+    expect(phone).toMatch(/--slider-thumb: 24px;/);
     const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
     expect(forced).toMatch(/forced-color-adjust: none;/);
     expect(forced).toMatch(/&::-moz-range-track \{\s*border-color: CanvasText;/);

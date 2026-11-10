@@ -4,7 +4,7 @@ import { act, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Field } from "../field/field.tsx";
 import { render, unmountAll } from "../test/render.tsx";
-import { Slider, type SliderProps, sliderFill } from "./slider.tsx";
+import { Slider, type SliderProps, sliderRatio } from "./slider.tsx";
 
 afterEach(() => {
   unmountAll();
@@ -68,15 +68,15 @@ verifies("kit.slider", () => {
     expect((range.parentElement as HTMLElement).className).toContain("gap-3");
   });
 
-  it("fills the track up to the thumb through --slider-fill", () => {
+  it("fills the track up to the thumb through --slider-ratio", () => {
     const { container } = render(<Opacity onCommit={vi.fn()} />);
     const range = rangeIn(container);
     // 40 on 10 to 100 is a third of the way.
-    expect(Number.parseFloat(range.style.getPropertyValue("--slider-fill"))).toBeCloseTo(33.33, 1);
-    expect(sliderFill(10, 10, 100)).toBe(0);
-    expect(sliderFill(100, 10, 100)).toBe(100);
-    expect(sliderFill(140, 10, 100)).toBe(100);
-    expect(sliderFill(5, 5, 5)).toBe(0);
+    expect(Number.parseFloat(range.style.getPropertyValue("--slider-ratio"))).toBeCloseTo(0.333, 2);
+    expect(sliderRatio(10, 10, 100)).toBe(0);
+    expect(sliderRatio(100, 10, 100)).toBe(1);
+    expect(sliderRatio(140, 10, 100)).toBe(1);
+    expect(sliderRatio(5, 5, 5)).toBe(0);
   });
 
   it("updates the screen while it moves and saves once when a drag lets go", () => {
@@ -103,6 +103,65 @@ verifies("kit.slider", () => {
       letGo(range);
     }
     expect(onCommit.mock.calls).toEqual([[45], [50], [55]]);
+  });
+
+  it("saves a held key once, when it's let go, after saving its first press", () => {
+    const onCommit = vi.fn();
+    const { container } = render(<Opacity onCommit={onCommit} step={5} />);
+    const range = rangeIn(container);
+    const keyDown = (repeat: boolean) =>
+      act(() => {
+        range.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "ArrowRight", repeat, bubbles: true }),
+        );
+      });
+    keyDown(false);
+    move(range, 45);
+    letGo(range);
+    for (const value of [50, 55, 60]) {
+      keyDown(true);
+      move(range, value);
+      letGo(range);
+    }
+    expect(onCommit.mock.calls).toEqual([[45]]);
+    act(() => {
+      range.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true }));
+    });
+    expect(onCommit.mock.calls).toEqual([[45], [60]]);
+    // A key let go without repeats has nothing left to save.
+    act(() => {
+      range.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true }));
+    });
+    expect(onCommit).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the same ref callback across renders and sets the caller's ref", () => {
+    const ref = vi.fn();
+    const { rerender } = render(
+      <Slider
+        min={10}
+        max={100}
+        value={40}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+        format={percent}
+        ref={ref}
+      />,
+    );
+    rerender(
+      <Slider
+        min={10}
+        max={100}
+        value={50}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+        format={percent}
+        ref={ref}
+      />,
+    );
+    // Once with the element; a churning callback would also call it with null and again.
+    expect(ref).toHaveBeenCalledTimes(1);
+    expect(ref.mock.calls[0]?.[0]).toBeInstanceOf(HTMLInputElement);
   });
 
   it("puts the thumb back when the screen passes the old value after a failed save", () => {

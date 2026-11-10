@@ -1007,18 +1007,19 @@ screen reader behaviour. Put it in a Field, whose label names it.
 | `format`             | The value as shown to the right and as its `aria-valuetext`: `(v) => v + "%"`     |
 | `unavailable`        | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop      |
 
-| State         | What shows                                                                                                      |
-| ------------- | --------------------------------------------------------------------------------------------------------------- |
-| Default       | A 6px track: `surface-muted` with a `border-control` edge, `primary` with no edge up to the thumb               |
-| Thumb         | A 16px `primary` circle in a 2px `surface-raised` ring; the value 12px right, tabular, at least 4ch wide        |
-| Hover         | The thumb turns `primary-hover`, also while pressed                                                             |
-| Focus         | The standard focus ring round the thumb, in place of its ring                                                   |
-| Unavailable   | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value; drags and keys do nothing |
-| Error         | In a Field with an error: the Field's error line under it, which describes it                                   |
-| High contrast | A `CanvasText` edge round the track; the filled part and the thumb `Highlight`                                  |
+| State         | What shows                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Default       | A 6px track: `surface-muted` with a `border-control` edge, `primary` with no edge up to the thumb                         |
+| Thumb         | A 16px `primary` circle in a 2px `surface-raised` ring; the value 12px right, tabular, at least 4ch wide                  |
+| Hover         | The thumb turns `primary-hover`, also while pressed                                                                       |
+| Focus         | The standard focus ring round the thumb, in place of its ring                                                             |
+| Unavailable   | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value; no hover; drags and keys do nothing |
+| Error         | In a Field with an error: the Field's error line under it, which describes it                                             |
+| High contrast | A `CanvasText` edge round the track; the filled part and the thumb `Highlight`                                            |
 
 **Saving.** A drag shows each value at once through `onChange` and saves once, when you let go.
 The arrow keys, Page Up and Down, Home and End save on every step, because each one is a pick.
+A held key is one pick: its repeats move the thumb but wait, and it saves once when let go.
 Both come from the browser's own `change` event. **A failed save** puts the thumb back: pass the
 old `value`. Outside a modal Dialog the screen says so with a toast; inside one (Settings) it sets
 the Field's `error`, as for the Switch.

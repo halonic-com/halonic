@@ -4,8 +4,9 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type Ref,
-  type RefObject,
+  useCallback,
   useEffect,
+  useEffectEvent,
   useRef,
 } from "react";
 import { assignRef, describedBy } from "../field/control.ts";
@@ -57,12 +58,15 @@ const MOVING_KEYS = new Set([
   "End",
 ]);
 
-/** How far along the range `value` is, 0 to 100, for the filled part of the track. */
-export function sliderFill(value: number, min: number, max: number): number {
+/**
+ * How far along the range `value` is, 0 to 1. The track's CSS turns it into the thumb's centre,
+ * which moves across the track less the thumb's own width.
+ */
+export function sliderRatio(value: number, min: number, max: number): number {
   if (max <= min) {
     return 0;
   }
-  return Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+  return Math.min(1, Math.max(0, (value - min) / (max - min)));
 }
 
 /** 45%, 60% with more contrast, and full strength (`GrayText`) in high contrast. */
@@ -71,29 +75,58 @@ const unavailableClasses = "opacity-45 contrast-more:opacity-60 forced-colors:op
 /**
  * Calls `onCommit` on the browser's own `change`, which fires when a drag lets go and on every key
  * step: exactly when a pick is saved. React's onChange is the `input` event, so it can't tell.
- * Returns the ref the range input needs.
+ * A held key is one pick, not one per repeat: its repeats wait, and save once when it's let go.
+ * Returns a stable ref callback for the range input, which also sets the caller's `ref`.
  */
-function useCommitOnChange(
+function useCommitOnPick(
   onCommit: (value: number) => void,
   isUnavailable: boolean,
-): RefObject<HTMLInputElement | null> {
+  ref: Ref<HTMLInputElement> | undefined,
+): (element: HTMLInputElement | null) => void {
   const input = useRef<HTMLInputElement | null>(null);
-  const latest = useRef({ onCommit, isUnavailable });
-  latest.current = { onCommit, isUnavailable };
+  const commit = useEffectEvent((value: number) => {
+    if (!isUnavailable) {
+      onCommit(value);
+    }
+  });
   useEffect(() => {
     const element = input.current;
     if (element === null) {
       return;
     }
-    const commit = () => {
-      if (!latest.current.isUnavailable) {
-        latest.current.onCommit(Number(element.value));
+    let holding = false;
+    const change = () => {
+      if (!holding) {
+        commit(Number(element.value));
       }
     };
-    element.addEventListener("change", commit);
-    return () => element.removeEventListener("change", commit);
+    const keyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.repeat && MOVING_KEYS.has(event.key)) {
+        holding = true;
+      }
+    };
+    const keyUp = () => {
+      if (holding) {
+        holding = false;
+        commit(Number(element.value));
+      }
+    };
+    element.addEventListener("change", change);
+    element.addEventListener("keydown", keyDown);
+    element.addEventListener("keyup", keyUp);
+    return () => {
+      element.removeEventListener("change", change);
+      element.removeEventListener("keydown", keyDown);
+      element.removeEventListener("keyup", keyUp);
+    };
   }, []);
-  return input;
+  return useCallback(
+    (element: HTMLInputElement | null) => {
+      input.current = element;
+      assignRef(ref, element);
+    },
+    [ref],
+  );
 }
 
 /** Keeps an unavailable slider still: no drag starts and the keys that move it do nothing. */
@@ -132,18 +165,15 @@ export function Slider({
 }: SliderProps) {
   const field = useFieldControl();
   const isUnavailable = unavailable !== undefined;
-  const input = useCommitOnChange(onCommit, isUnavailable);
+  const setInput = useCommitOnPick(onCommit, isUnavailable, ref);
   const shown = format(value);
-  const style = { "--slider-fill": `${sliderFill(value, min, max)}%` } as CSSProperties;
+  const style = { "--slider-ratio": sliderRatio(value, min, max) } as CSSProperties;
 
   return (
     <div className={`flex items-center gap-3 ${isUnavailable ? unavailableClasses : ""}`}>
       <input
         type="range"
-        ref={(element) => {
-          input.current = element;
-          assignRef(ref, element);
-        }}
+        ref={setInput}
         id={field?.id}
         min={min}
         max={max}

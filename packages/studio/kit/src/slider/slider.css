@@ -5,12 +5,21 @@
  * 16px `primary` circle in a 2px `surface-raised` ring, which the focus ring replaces.
  *
  * Chromium and WebKit have no pseudo-element for the filled part, so their track paints it as a
- * gradient up to `--slider-fill`, which the component sets. Firefox (served Studio) gets
+ * gradient up to `--slider-fill`: the thumb's centre, from the 0 to 1 `--slider-ratio` the
+ * component sets. The centre moves across the track less the thumb's width, so the fill ends
+ * under the thumb at every value. Firefox (served Studio) gets
  * `::-moz-range-progress`. Each engine needs its own rules: a selector list that names another
  * engine's pseudo-element is dropped whole. It sits next to the Slider so theme.css stays under
  * the size limit; theme.css imports it.
  */
 @utility slider {
+  --slider-thumb: 16px;
+  --slider-fill: calc(
+    var(--slider-thumb) /
+    2 +
+    (100% - var(--slider-thumb)) *
+    var(--slider-ratio, 0)
+  );
   appearance: none;
   background: transparent;
   cursor: pointer;
@@ -30,8 +39,8 @@
     background:
       linear-gradient(
         to right,
-        var(--color-primary) var(--slider-fill, 0%),
-        transparent var(--slider-fill, 0%)
+        var(--color-primary) var(--slider-fill),
+        transparent var(--slider-fill)
       )
       border-box,
       linear-gradient(var(--color-surface-muted), var(--color-surface-muted)) padding-box,
@@ -120,6 +129,8 @@
    * and the focus ring an accent outline at the grab area's edge.
    */
   @variant phone {
+    --slider-thumb: 24px;
+
     &::-webkit-slider-thumb {
       width: 24px;
       height: 24px;
@@ -154,8 +165,17 @@
     }
   }
 
+  /* Unavailable: no hover or press fill, like the Switch. After the variants, so it wins. */
   &[aria-disabled="true"] {
     cursor: not-allowed;
+
+    &::-webkit-slider-thumb {
+      background-color: var(--color-primary);
+    }
+
+    &::-moz-range-thumb {
+      background-color: var(--color-primary);
+    }
   }
 
   /*
@@ -171,7 +191,7 @@
 
     &::-webkit-slider-runnable-track {
       background:
-        linear-gradient(to right, Highlight var(--slider-fill, 0%), Canvas var(--slider-fill, 0%))
+        linear-gradient(to right, Highlight var(--slider-fill), Canvas var(--slider-fill))
         padding-box,
         linear-gradient(CanvasText, CanvasText) border-box;
     }
@@ -197,7 +217,7 @@
 
     &[aria-disabled="true"]::-webkit-slider-runnable-track {
       background:
-        linear-gradient(to right, GrayText var(--slider-fill, 0%), Canvas var(--slider-fill, 0%))
+        linear-gradient(to right, GrayText var(--slider-fill), Canvas var(--slider-fill))
         padding-box,
         linear-gradient(GrayText, GrayText) border-box;
     }
