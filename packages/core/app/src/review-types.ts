@@ -3,6 +3,7 @@
 
 import type { ExpectedContent } from "@halonicjs/ports";
 import type { LineChange } from "@halonicjs/std";
+import type { ItemPath } from "./changes/revert-parts.ts";
 import type { ProposalRefusal } from "./review-gate.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type { DroppedReviewRecord } from "./review-records.ts";
@@ -89,7 +90,7 @@ export type ProposeOutcome =
    */
   | { readonly status: "refused"; readonly reason: ProposalRefusal };
 
-/** What an Accept or Reject covers. Single changes on an item page come with `revertParts` (HAL-3278). */
+/** What an Accept or Reject covers. */
 export type ReviewTarget =
   | {
       /** One part: a line change of {@link FileReview.parts}. */
@@ -102,6 +103,18 @@ export type ReviewTarget =
        * click on an out-of-date list does nothing. Parts from unsaved text
        * are for showing only, so they always answer `stale`: save first.
        */
+      readonly seen: ExpectedContent;
+    }
+  | {
+      /**
+       * One change on an item page: a line `describeItemChange` gives for
+       * the baseline before and the file after (HAL-3278).
+       */
+      readonly kind: "change";
+      readonly path: string;
+      /** The line's `parts`: the item paths it covers. */
+      readonly parts: readonly ItemPath[];
+      /** The {@link FileReview.seen} the line was worked out from, as for a part. */
       readonly seen: ExpectedContent;
     }
   | { readonly kind: "file"; readonly path: string }
@@ -120,8 +133,15 @@ export type ReviewOutcome =
        */
       readonly held: readonly string[];
     }
-  /** The parts a part target named were worked out from text the file no longer holds: nothing changed; show them again. */
-  | { readonly status: "stale"; readonly path: string };
+  /** The parts a part or change target named were worked out from text the file no longer holds: nothing changed; show them again. */
+  | { readonly status: "stale"; readonly path: string }
+  /**
+   * A change target that can't be decided apart from the rest of the
+   * file: the assistant created the file, the line has no parts, or the
+   * file or its baseline doesn't read as YAML. Nothing changed; offer the
+   * line parts or the whole file instead. `message` says which, for the log.
+   */
+  | { readonly status: "cant-separate"; readonly path: string; readonly message: string };
 
 /** The changes to review in one file, for the editor, the item bar and the chat card. */
 export interface FileReview {

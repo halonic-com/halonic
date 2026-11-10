@@ -6,7 +6,7 @@
 import { catchUp } from "./review-catch-up.ts";
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
 import { type FileWriter, ReviewWriteHook } from "./review-hook.ts";
-import { decidePart, fileReview } from "./review-parts.ts";
+import { decideInFile, fileReview, type InFileTarget } from "./review-parts.ts";
 import { proposeDelete, proposeWrite, sameCard } from "./review-propose.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type {
@@ -27,7 +27,7 @@ export type { ReviewServiceOptions } from "./review-files.ts";
 type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
 
 /** The targets that cover whole files. */
-type FilesTarget = Exclude<ReviewTarget, { kind: "part" }>;
+type FilesTarget = Exclude<ReviewTarget, InFileTarget>;
 
 /**
  * The assistant's changes to review in one workspace. Each file with
@@ -103,13 +103,13 @@ export class ReviewService {
 
   /**
    * Accepts what the target covers. The files aren't touched: for a part
-   * the baseline takes it over; for whole files the baseline becomes the
-   * file, so the record goes. For a card or a chat, a record that can't be
-   * read is removed without telling the listeners.
+   * or a change the baseline takes it over; for whole files the baseline
+   * becomes the file, so the record goes. For a card or a chat, a record
+   * that can't be read is removed without telling the listeners.
    */
   accept(target: ReviewTarget): Promise<ReviewOutcome> {
-    if (target.kind === "part") {
-      return decidePart(this.files, target, "accept");
+    if (isInFile(target)) {
+      return decideInFile(this.files, target, "accept");
     }
     return this.decide(target, async (record) => {
       await this.files.putRecord(record.path, null);
@@ -119,15 +119,15 @@ export class ReviewService {
 
   /**
    * Rejects what the target covers: the baseline's lines go back into the
-   * file for a part, and each whole file gets its baseline back (a file the
+   * file for a part, the baseline's values for a change, and each whole file gets its baseline back (a file the
    * assistant created is removed) and loses its record. A file that changed
    * outside Halonic since it was last seen is left alone and listed in
    * `held`. For a card or a chat, a record that can't be read is removed
    * without telling the listeners.
    */
   reject(target: ReviewTarget): Promise<ReviewOutcome> {
-    if (target.kind === "part") {
-      return decidePart(this.files, target, "reject");
+    if (isInFile(target)) {
+      return decideInFile(this.files, target, "reject");
     }
     return this.decide(target, async (record) => {
       const current = await this.files.store.read(record.path);
@@ -288,6 +288,10 @@ export class ReviewService {
       (await this.files.digestOf(await this.files.store.read(path))) === record.seen
     );
   }
+}
+
+function isInFile(target: ReviewTarget): target is InFileTarget {
+  return target.kind === "part" || target.kind === "change";
 }
 
 /** Whether the target covers the file of `record`. */
