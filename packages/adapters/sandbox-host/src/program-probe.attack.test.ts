@@ -189,25 +189,32 @@ verifies("sandbox-host.program-probe-node", () => {
         },
       );
 
-      it.skipIf(onWindows)(`${skipOnWindows}refuses a file under a skill's scripts/ folder and starts nothing (HAL-188)`, async () => {
-        const scripts = join(dir, "library", "skills", "mail", "scripts");
-        const marker = join(dir, "skill-script-ran");
-        await mkdir(scripts, { recursive: true });
-        await writeFile(join(scripts, "send"), `#!/bin/sh\ntouch ${marker}\n`, { mode: 0o755 });
-        const names = [join(scripts, "send"), "library/skills/mail/scripts/send", "./scripts/send"];
-        const before = process.cwd();
-        process.chdir(join(dir, "library", "skills", "mail"));
-        try {
-          for (const name of names) {
-            expect(await probe(withBin()).ask(name, [])).toEqual({
-              status: "missing",
-            });
+      it.skipIf(onWindows)(
+        `${skipOnWindows}refuses a file under a skill's scripts/ folder and starts nothing (HAL-188)`,
+        async () => {
+          const scripts = join(dir, "library", "skills", "mail", "scripts");
+          const marker = join(dir, "skill-script-ran");
+          await mkdir(scripts, { recursive: true });
+          await writeFile(join(scripts, "send"), `#!/bin/sh\ntouch ${marker}\n`, { mode: 0o755 });
+          const names = [
+            join(scripts, "send"),
+            "library/skills/mail/scripts/send",
+            "./scripts/send",
+          ];
+          const before = process.cwd();
+          process.chdir(join(dir, "library", "skills", "mail"));
+          try {
+            for (const name of names) {
+              expect(await probe(withBin()).ask(name, [])).toEqual({
+                status: "missing",
+              });
+            }
+          } finally {
+            process.chdir(before);
           }
-        } finally {
-          process.chdir(before);
-        }
-        expect(await readdir(dir)).not.toContain("skill-script-ran");
-      });
+          expect(await readdir(dir)).not.toContain("skill-script-ran");
+        },
+      );
     });
 
     describe("no shell", () => {
