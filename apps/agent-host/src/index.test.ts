@@ -1,18 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { bundleEntry, executableName, seaConfig } from "./build/build-sea.ts";
 import { packageName } from "./index.ts";
 
 describe("packageName", () => {
   it("is the npm name", () => {
     expect(packageName).toBe("@halonicjs/app-agent-host");
-  });
-});
-
-describe("the entry point", () => {
-  it("prints a source version when run from source", async () => {
-    const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
-    await import("./main.ts");
-    expect(write).toHaveBeenCalledWith("halonic-agent-host 0.0.0-source\n");
   });
 });
 

@@ -261,6 +261,10 @@ importers:
         version: 2.11.10
 
   apps/agent-host:
+    dependencies:
+      '@halonicjs/adapter-sandbox-srt':
+        specifier: workspace:*
+        version: link:../../packages/adapters/sandbox-srt
     devDependencies:
       '@halonicjs/tooling-config':
         specifier: workspace:*

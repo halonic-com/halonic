@@ -18,6 +18,15 @@ export interface PayloadManifest {
    * folder.
    */
   digest: string;
+  /** The module the executable loads to run the host, such as "apps/agent-host/src/host.ts". */
+  entry: string;
+  /**
+   * The files the executable runs as Node programs when one is its first
+   * argument. A package that starts `process.execPath` with a script, as
+   * sandbox-srt starts srt's `dist/cli.js`, gets the executable itself, so
+   * it has to stand in for Node there.
+   */
+  programs: string[];
   /** Where each workspace package is in the payload, by its npm name, such as "packages/core/ports". */
   packages: Record<string, string>;
   /** Every file, sorted by path. */

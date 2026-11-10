@@ -4,7 +4,7 @@ Owner: owen · Layer: apps · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-Halonic's agent host as one Node program. A placeholder for now: it prints its version and exits.
+Halonic's agent host as one Node program. For now it unpacks its files, prints its version and checks the sandbox; the loopback server comes next (HAL-4476).
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
@@ -23,4 +23,4 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 
 ## Local rules
 
-- (none yet; the owner adds rules here when a mistake repeats)
+- `src/main.ts` is the executable's main script: it may import only Node's own modules (and types). Everything else goes in the payload, loaded from `src/host.ts`.

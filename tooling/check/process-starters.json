@@ -6,8 +6,12 @@
       "scriptsTest": "apps/agent-host/src/scripts.starts.test.ts"
     },
     "apps/agent-host/scripts/smoke.ts": {
-      "reason": "Smoke tooling (pnpm smoke:sea), run in CI after the build, never shipped. It starts only the agent host it just built in dist/, with no arguments. It never loads a skill.",
+      "reason": "Smoke tooling (pnpm smoke:sea), run in CI after the build, never shipped. It starts only the agent host it just built in dist/, with fixed arguments: a fresh temp profile folder, --sandbox-check, and srt's --version through the payload the host unpacked there. It never loads a skill.",
       "scriptsTest": "apps/agent-host/src/scripts.starts.test.ts"
+    },
+    "apps/agent-host/src/main.ts": {
+      "reason": "The agent host executable's entry point. With createRequire it loads only files of the payload the build embedded, unpacked and checked against their SHA-256 digests: the host's entry, and the manifest's programs (srt's dist/cli.js, which sandbox-srt starts through process.execPath). Any other first argument is not run, so never a skill's scripts.",
+      "scriptsTest": "apps/agent-host/src/main.test.ts"
     },
     "packages/adapters/git/src/node/run-process.ts": {
       "reason": "Starts only git, at the absolute path findGit resolved, with array arguments and no shell. Every call runs hardened: hooks point at an empty folder and no user or system config is read.",

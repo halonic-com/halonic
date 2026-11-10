@@ -136,9 +136,10 @@ describe("payloadManifest", () => {
     packages: { "@halonicjs/a": "a" },
   };
   const bytes = (text: string) => new TextEncoder().encode(text);
+  const use = { entry: "a/one.js", programs: ["a/two.js"] };
 
   it("gives each file's digest and size, and keeps the packages", () => {
-    const manifest = payloadManifest(payload, (source) => bytes(source));
+    const manifest = payloadManifest(payload, use, (source) => bytes(source));
     expect(manifest.files).toEqual([
       {
         path: "a/one.js",
@@ -153,12 +154,18 @@ describe("payloadManifest", () => {
         executable: true,
       },
     ]);
-    expect(manifest.packages).toEqual({ "@halonicjs/a": "a" });
+    expect(manifest).toMatchObject({ ...use, packages: { "@halonicjs/a": "a" } });
+  });
+
+  it("refuses an entry or a program that isn't in the payload", () => {
+    expect(() => payloadManifest(payload, { entry: "a/one.js", programs: ["b/cli.js"] })).toThrow(
+      "The payload has no b/cli.js.",
+    );
   });
 
   it("has a digest that changes when any file changes", () => {
-    const before = payloadManifest(payload, (source) => bytes(source)).digest;
-    const after = payloadManifest(payload, (source) => bytes(`${source}!`)).digest;
+    const before = payloadManifest(payload, use, (source) => bytes(source)).digest;
+    const after = payloadManifest(payload, use, (source) => bytes(`${source}!`)).digest;
     expect(before).toMatch(/^[0-9a-f]{64}$/);
     expect(after).not.toBe(before);
   });

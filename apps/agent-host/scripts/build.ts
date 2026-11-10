@@ -16,7 +16,11 @@ const { version } = JSON.parse(readFileSync(join(packageDirectory, "package.json
 };
 mkdirSync(dist, { recursive: true });
 const payload = collectPayload(packageDirectory, join(packageDirectory, "..", ".."));
-const manifest = payloadManifest(payload);
+const manifest = payloadManifest(payload, {
+  entry: "apps/agent-host/src/host.ts",
+  // sandbox-srt starts srt's command line with `process.execPath`, which is this executable.
+  programs: ["node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js"],
+});
 const bundle = join(dist, "main.mjs");
 const output = join(dist, executableName(process.platform));
 writeFileSync(

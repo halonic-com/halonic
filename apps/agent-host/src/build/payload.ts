@@ -47,22 +47,31 @@ export function collectPayload(hostFolder: string, repoRoot: string): Payload {
   return collector.payload();
 }
 
+/** What the executable does with the payload: see {@link PayloadManifest}. */
+export type PayloadUse = Pick<PayloadManifest, "entry" | "programs">;
+
 /**
  * The manifest of a payload: each file's digest and size, and one digest of
  * them all.
  *
  * @param read - reads a file's bytes; Node's own `readFileSync` unless a test gives another
+ * @throws when the entry or a program isn't one of the payload's files
  */
 export function payloadManifest(
   payload: Payload,
+  use: PayloadUse,
   read: (source: string) => Uint8Array = readFileSync,
 ): PayloadManifest {
+  const paths = new Set(payload.files.map((file) => file.path));
+  for (const path of [use.entry, ...use.programs]) {
+    if (!paths.has(path)) throw new Error(`The payload has no ${path}.`);
+  }
   const files = payload.files.map(({ path, source, executable }) => {
     const bytes = read(source);
     return { path, sha256: sha256(bytes), size: bytes.byteLength, executable };
   });
   const listing = files.map(({ path, sha256 }) => `${path}\0${sha256}\n`).join("");
-  return { digest: sha256(listing), packages: payload.packages, files };
+  return { digest: sha256(listing), ...use, packages: payload.packages, files };
 }
 
 function sha256(data: Uint8Array | string): string {
