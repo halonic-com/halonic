@@ -1544,6 +1544,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-trust-grant"
+version = "0.1.0"
+dependencies = [
+ "halonic-git-guard",
+ "halonic-trust-store",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "halonic-trust-store"
 version = "0.1.0"
 dependencies = [

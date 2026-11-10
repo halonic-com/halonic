@@ -80,15 +80,17 @@ pub(crate) fn canonical(folder: &Path) -> Result<PathBuf, GitError> {
     Ok(canonical)
 }
 
-/// A canonical path in the form to give git.
+/// A canonical path in the form other programs give and take: git, and
+/// Node's `realpath`, which the CLI's trust records are keyed by.
 ///
 /// On Windows, canonicalising adds the long-path prefix, `\\?\` before a
 /// drive path and `\\?\UNC\` before a network path. git can't resolve a
-/// relative alternate against a git folder written that way, so the prefix
-/// comes off. It stays when a part ends in `.` or a space, or is a device
-/// name such as `NUL`: without the prefix, Windows would drop the dot or the
-/// space, or name the device, and so name something other than the folder.
-pub(crate) fn for_git(path: &Path) -> OsString {
+/// relative alternate against a git folder written that way, and Node never
+/// writes it, so the prefix comes off. It stays when a part ends in `.` or a
+/// space, or is a device name such as `NUL`: without the prefix, Windows
+/// would drop the dot or the space, or name the device, and so name
+/// something other than the folder.
+pub fn plain_path(path: &Path) -> OsString {
     if cfg!(windows)
         && let Some(plain) = path.to_str().and_then(without_long_path_prefix)
     {

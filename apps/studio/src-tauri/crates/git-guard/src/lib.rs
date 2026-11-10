@@ -31,5 +31,5 @@ pub use check_args::{CheckedCall, check_args};
 pub use error::GitError;
 pub use find_git::find_git;
 pub use limited_run::{GitOutput, Limits};
-pub use opened_folders::OpenedFolders;
+pub use opened_folders::{OpenedFolders, plain_path};
 pub use runner::GitRunner;
