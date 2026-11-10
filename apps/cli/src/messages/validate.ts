@@ -39,10 +39,6 @@ export const validateMessages = defineMessages("validate", {
   where: (line: number, column: number) => [dim(`${line}:${column}`)],
   /** A problem's code, last on its line and dimmed: "(unknown-alias)". */
   code: (code: string) => [dim(`(${code})`)],
-
-  /** The reason when the folder has no workspace in it. */
-  noWorkspace: () => phrase`there's no workspace.yaml here.`,
-  noWorkspaceFix: () => phrase`Run it inside a workspace, or create one with halonic init.`,
 });
 
 /** "2 errors and 1 warning", with the errors in bold as the number that matters. */

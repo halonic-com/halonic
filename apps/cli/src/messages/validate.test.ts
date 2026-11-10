@@ -64,11 +64,4 @@ describe("validate's sentences", () => {
     expect(validateMessages.where(12, 10).phrase).toEqual([dim("12:10")]);
     expect(validateMessages.code("unknown-alias").phrase).toEqual([dim("(unknown-alias)")]);
   });
-
-  it("has the not-a-workspace reason and fix", () => {
-    expect(words(validateMessages.noWorkspace())).toBe("there's no workspace.yaml here.");
-    expect(words(validateMessages.noWorkspaceFix())).toBe(
-      "Run it inside a workspace, or create one with halonic init.",
-    );
-  });
 });
