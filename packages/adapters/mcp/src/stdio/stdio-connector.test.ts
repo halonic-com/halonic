@@ -3,6 +3,7 @@ import type { ConnectorConfig, ConnectorFactoryContext } from "@halonicjs/ports"
 import { contractGrant, type ReachedCall } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
+import { unusedRunners } from "../pinned/fake-runners.spec.ts";
 import { contractServer, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
 import { McpStdioConnectorFactory } from "./stdio-connector.ts";
 
@@ -24,6 +25,7 @@ function setUp(secrets = new MemorySecrets({ "notes-token": "value-from-secrets"
   const factory = new McpStdioConnectorFactory({
     starter,
     folders: unusedFolders,
+    runners: unusedRunners,
     inheritedEnv: { PATH: "/usr/bin", UNSET: undefined },
     clientInfo: { name: "halonic", version: "0.1.0" },
   });
@@ -127,6 +129,7 @@ verifies("mcp.stdio-connector", () => {
       const factory = new McpStdioConnectorFactory({
         starter,
         folders: unusedFolders,
+        runners: unusedRunners,
         inheritedEnv: {},
         clientInfo: { name: "halonic", version: "0.1.0" },
       });

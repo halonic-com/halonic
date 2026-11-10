@@ -7,6 +7,7 @@ import type {
   ConnectorFactoryContext,
   ConnectorTool,
 } from "@halonicjs/ports";
+import { findRunner, type RunnerSearch } from "../pinned/find-runner.ts";
 import type { LaunchFolders } from "../pinned/launch-folders.ts";
 import { checkPinnedLaunch, pinnedLaunch } from "../pinned/pinned-launch.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
@@ -19,6 +20,12 @@ export interface McpStdioOptions {
   readonly starter: ProgramStarter;
   /** Where a pinned program starts: a new empty folder for each launch, usually `nodeLaunchFolders`. */
   readonly folders: LaunchFolders;
+  /**
+   * Where a pinned program's runner is looked for: the app's own
+   * environment, usually `createRunnerSearch(process.env)`, kept for the
+   * app's lifetime so the login shell is asked once per start.
+   */
+  readonly runners: RunnerSearch;
   /** The environment a program inherits, usually the app's own `process.env`. */
   readonly inheritedEnv: Readonly<Record<string, string | undefined>>;
   /** How Halonic introduces itself to the server. */
@@ -32,7 +39,8 @@ export interface McpStdioOptions {
  *
  * A package runner with a `pin`, such as `npx` or `uvx`, starts through the
  * pinned launcher: exactly the pin's version, looked up only at the pin's
- * registry, in an empty folder of its own (`mcp.pinned-launcher`). Without
+ * registry, in an empty folder of its own (`mcp.pinned-launcher`), as the
+ * runner found in the app's own environment (`mcp.runner-lookup`). Without
  * a pin it starts as configured, like any trusted program.
  */
 export class McpStdioConnectorFactory implements ConnectorFactory {
@@ -156,7 +164,8 @@ class McpStdioConnector implements ConnectorClient {
   /**
    * The program, its arguments, folder and environment, with each secret
    * only in the environment. A pin is checked, and looked up at its
-   * registry, before any secret is read or any folder is created.
+   * registry, and its runner is found, before any secret is read or any
+   * folder is created.
    */
   async #plan(): Promise<Planned> {
     const workspaceRoot = this.#context.workspaceRoot;
@@ -176,13 +185,19 @@ class McpStdioConnector implements ConnectorClient {
         folder: undefined,
       };
     }
+    const runners = this.#options.runners;
+    const runner = await findRunner(this.#stdio.command, pin.value.registry, runners);
+    if ("refused" in runner) {
+      throw new Error(`Halonic didn't start the connector "${this.id}": ${runner.refused}.`);
+    }
     const secretEnv = await this.#secretEnv();
-    // The registry lookup takes a while; a client closed meanwhile creates no folder.
+    // The registry and the login shell take a while; a client closed meanwhile creates no folder.
     if (this.#closed) {
       throw new Error(`Connector "${this.id}" was closed while its pin was checked.`);
     }
     const folder = await this.#options.folders.create();
-    const launch = pinnedLaunch(this.#stdio, pin.value, inheritedEnv, folder);
+    const place = { folder, runner: runner.found, platform: runners.platform };
+    const launch = pinnedLaunch(this.#stdio, pin.value, inheritedEnv, place);
     return { launch: { ...launch, env: { ...launch.env, ...secretEnv } }, folder };
   }
 

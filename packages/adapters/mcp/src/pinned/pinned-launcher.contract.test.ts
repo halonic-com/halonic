@@ -11,6 +11,7 @@ import { refuseRealConnections } from "@halonicjs/testing-contracts/node";
 import { contractServer, FakeFolders, FakeStarter } from "../stdio/fake-program.spec.ts";
 import type { ProgramLaunch, ProgramStarter, RunningProgram } from "../stdio/program.ts";
 import { McpStdioConnectorFactory } from "../stdio/stdio-connector.ts";
+import { runnerComputer } from "./fake-runners.spec.ts";
 
 refuseRealConnections();
 
@@ -59,6 +60,7 @@ connectorPinContract("mcp-stdio", async ({ inheritedEnv }) => {
   const factory = new McpStdioConnectorFactory({
     starter,
     folders: new FakeFolders(),
+    runners: runnerComputer,
     inheritedEnv,
     clientInfo: { name: "halonic", version: "0.1.0" },
   });
