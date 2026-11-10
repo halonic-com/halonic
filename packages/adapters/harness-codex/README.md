@@ -10,10 +10,11 @@ secrets and approvals stay in Halonic.
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-harness-codex`
 
-So far it exports `detectCodex`, `codexEnvironment` and the constants around
-them (`codexProgram`, `codexRunTokenVariable`, `supportedVersions`,
-`oldestSupportedVersion`). Inside the package, and not exported, are the client that talks to `codex app-server` and the reader that turns its
-notifications into run events. Starting a run (`start`, `send`, `cancel`)
+So far it exports `detectCodex`, `codexEnvironment` (with its `CodexFolders`
+type) and the constants around them (`codexProgram`, `codexRunTokenVariable`,
+`supportedVersions`, `oldestSupportedVersion`). Inside the package, and not
+exported, are the client that talks to `codex app-server` and the reader that
+turns its notifications into run events. Starting a run (`start`, `send`, `cancel`)
 follows (HAL-194 build plan, D3).
 
 ## Talking to `codex app-server`
@@ -80,8 +81,8 @@ Codex 0.166.0 or newer (`supportedVersions`): the release checked by hand on
 
 ## Sign-in
 
-`codex login status` exits with 1 and prints "Not logged in" when no one is
-signed in; `detectCodex` then answers `signed-out`. It also exits with 1 when it
+`codex login status` exits with 1 and prints a line that is exactly "Not logged
+in" when no one is signed in; `detectCodex` then answers `signed-out`. It also exits with 1 when it
 can't read its settings or the stored sign-in, with another message: that,
 and any other answer, is `ready`, because Halonic never guesses. Its output
 can show part of an API key, so it is never passed on.
@@ -89,7 +90,9 @@ can show part of an API key, so it is never passed on.
 ## The run token
 
 Codex sends the run token to the bridge in the `x-halonic-run-token` header.
-`codexEnvironment` puts it in `HALONIC_RUN_TOKEN`, and the bridge provider in
-the agent's `config.toml` names that variable in `env_http_headers`, so the
-token never lands in a file. The bridge's address goes in `config.toml`
+`codexEnvironment` puts it in `HALONIC_RUN_TOKEN` and in no other variable, and
+sets `CODEX_HOME` to the agent's own settings folder, never the person's
+`~/.codex`. If the profile has no settings folder it throws an error that
+doesn't hold the token. The bridge provider in the agent's `config.toml` names
+`HALONIC_RUN_TOKEN` in `env_http_headers`, so the token never lands in a file. The bridge's address goes in `config.toml`
 (D3): Codex reads a custom provider's address only from there.
