@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3385; the design on HAL-1873, section 5 (Julian's option A on HAL-1939), approved by the board on HAL-1949
 
-A permission sheet's `{ fromSetting }` host in `hosts` shall declare its class, `loopback`, `private` or `public`, so the trust check can say where it may go before the setting is filled in; a secret shall name such a host by its setting alone; and `integrationPolicy` shall refuse, as `setting-outside-class`, a setting whose URL's host is outside that class: `loopback` takes only `localhost`, `127.0.0.0/8` and `[::1]`; `private` only a private IP address (`10/8`, `172.16/12`, `192.168/16`, `fc00::/7`); `public` only a host name other than `localhost` and `*.localhost`, over `https`. An address in no class, such as link-local `169.254.0.0/16` or `[::]`, is refused by every class.
+The format shall require a permission sheet's `{ fromSetting }` host in `hosts` to declare its class, `loopback`, `private` or `public`, so the trust check can say where it may go before the setting is filled in; a secret shall name such a host by its setting alone; and `integrationPolicy` shall refuse, as `setting-outside-class`, a setting whose URL's host is outside that class: `loopback` takes only `localhost`, `127.0.0.0/8` and `[::1]`; `private` only a private IP address (`10/8`, `172.16/12`, `192.168/16`, `fc00::/7`); `public` only a host name other than `localhost` and `*.localhost`, over `https`. An address in no class, such as link-local `169.254.0.0/16` or `[::]`, is refused by every class.
 
 ## Examples
 
