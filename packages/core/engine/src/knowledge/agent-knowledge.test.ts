@@ -32,13 +32,24 @@ verifies("engine.agent-knowledge", () => {
     expect(built).toEqual([]);
   });
 
-  it("fails naming the source and its type when no factory builds that type", () => {
+  it("fails naming the source, its type and the types the engine has", () => {
     const { options } = fakeKnowledge([]);
     const known = { handbook: sourceFile("handbook", { provider: "vector" }) };
 
     expect(() => agentKnowledge("acme", ["handbook"], known, options)).toThrow(
       new Error(
-        'The knowledge source "handbook" uses the provider "vector", which this engine has no factory for.',
+        'The knowledge source "handbook" needs the provider "vector", and this engine doesn\'t have it. Change the source\'s provider to one it has: "fake".',
+      ),
+    );
+  });
+
+  it("says to take the source out of the agent's knowledge when the engine has no providers", () => {
+    const options = { ...fakeKnowledge([]).options, factories: [] };
+    const known = { handbook: sourceFile("handbook", { provider: "vector" }) };
+
+    expect(() => agentKnowledge("acme", ["handbook"], known, options)).toThrow(
+      new Error(
+        'The knowledge source "handbook" needs the provider "vector", and this engine doesn\'t have it. It has no knowledge providers, so take "handbook" out of the agent\'s knowledge.',
       ),
     );
   });

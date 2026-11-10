@@ -43,7 +43,7 @@ export const noKnowledge: AgentKnowledge = { sources: [], auto: [] };
  *
  * @param ids - the ids in the agent's `knowledge`
  * @param known - the sources the agent's hub can see, by id; an id that isn't here is left out
- * @throws Error naming the source and its type when no factory builds that type
+ * @throws Error naming the source, its type and the types the engine has, when no factory builds that type
  *
  * @example
  * const knowledge = agentKnowledge("support", ["handbook"], definitions.knowledge ?? {}, options);
@@ -65,7 +65,7 @@ export function agentKnowledge(
  * Builds the providers of sources the host already picked, as
  * {@link agentKnowledge} does.
  *
- * @throws Error naming the source and its type when no factory builds that type
+ * @throws Error naming the source, its type and the types the engine has, when no factory builds that type
  */
 export function openSources(
   hubId: string,
@@ -96,8 +96,13 @@ function factoryOf(
 ): KnowledgeProviderFactory {
   const factory = factories.find((each) => each.type === source.provider);
   if (factory === undefined) {
+    const types = factories.map((each) => `"${each.type}"`).join(", ");
+    const fix =
+      types === ""
+        ? `It has no knowledge providers, so take "${source.id}" out of the agent's knowledge.`
+        : `Change the source's provider to one it has: ${types}.`;
     throw new Error(
-      `The knowledge source "${source.id}" uses the provider "${source.provider}", which this engine has no factory for.`,
+      `The knowledge source "${source.id}" needs the provider "${source.provider}", and this engine doesn't have it. ${fix}`,
     );
   }
   return factory;
