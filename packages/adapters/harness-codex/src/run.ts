@@ -15,7 +15,7 @@ import type {
 } from "@halonicjs/ports";
 import { isPlainObject, SecretScrubber } from "@halonicjs/std";
 import { AppServerClient, type AppServerMessage, type ClientInfo } from "./app-server-client.ts";
-import { AppServerEventReader } from "./app-server-events.ts";
+import { AppServerEventReader, TurnFailedError } from "./app-server-events.ts";
 import { PendingApprovals } from "./approvals.ts";
 import { codexConfigArgs, codexConfigFile, codexConfigText } from "./config.ts";
 import { codexProgram } from "./detect.ts";
@@ -201,6 +201,8 @@ export class CodexRun implements HarnessRun {
     try {
       events = reader.read(notification);
     } catch (error) {
+      // The subagents still working finish before the run ends with the error.
+      if (error instanceof TurnFailedError) this.#events.push(error.events);
       this.#fail(error);
       return;
     }

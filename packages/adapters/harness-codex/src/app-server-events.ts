@@ -27,6 +27,21 @@ export interface AppServerEventReaderOptions {
   threadId: string;
 }
 
+/**
+ * The error a run ends with when the task agent's turn failed or was
+ * interrupted. Its `events` come just before it: the `agent.finished` of
+ * each subagent still working, so every `agent.started` has its end.
+ */
+export class TurnFailedError extends Error {
+  readonly events: readonly HarnessEvent[];
+
+  constructor(message: string, events: readonly HarnessEvent[]) {
+    super(message);
+    this.name = "TurnFailedError";
+    this.events = events;
+  }
+}
+
 /** A tool call the reader reported, as `tool.called` named it. */
 interface ToolCall {
   id: string;
@@ -80,7 +95,8 @@ interface AgentThread {
  *   calls in its thread are reported with the subagent as `agent`.
  * - The task thread's `turn/completed` becomes the run's one final
  *   `agent.finished`, whose output is the last thing the agent said. A turn
- *   that failed or was interrupted ends the run with an error instead.
+ *   that failed or was interrupted ends the run with a {@link TurnFailedError}
+ *   instead. Either way, the subagents still working finish first.
  * - A request in which Codex asks for an OK becomes `approval.requested`
  *   (see {@link approvalRequested}).
  * - Model calls go through the bridge, so the reader reports none.
@@ -123,7 +139,7 @@ export class AppServerEventReader {
    * Reads the next notification Codex sent.
    *
    * @returns the events it stands for, often none; none holds the bridge token
-   * @throws Error when the task agent's turn failed or was interrupted; the message never holds the bridge token
+   * @throws TurnFailedError when the task agent's turn failed or was interrupted; the message never holds the bridge token
    */
   read(notification: AppServerNotification): HarnessEvent[] {
     const { method, params } = notification;
@@ -247,15 +263,18 @@ export class AppServerEventReader {
 
   /**
    * The `agent.finished` of the turn. The task agent's is the run's final
-   * event, or the error the run ends with; the subagents still working
-   * finish just before it. A subagent whose turn failed finishes with what
+   * event, or the error the run ends with; either way, the subagents still
+   * working finish just before it. A subagent whose turn failed finishes with what
    * went wrong as its output, and the run goes on: the task agent hears of
    * it from Codex and decides what to do.
    */
   #turnCompleted(agent: AgentThread, turn: unknown): HarnessEvent[] {
     const status = isPlainObject(turn) ? turn["status"] : undefined;
     if (agent.parent === undefined) {
-      if (status !== "completed") throw this.#filter.error(failureSentence(turn));
+      if (status !== "completed") {
+        const { message } = this.#filter.error(failureSentence(turn));
+        throw new TurnFailedError(message, this.#filter.pass(this.#unfinishedSubagents()));
+      }
       return [
         ...this.#unfinishedSubagents(),
         { type: "agent.finished", agent: agent.name, output: agent.answer },

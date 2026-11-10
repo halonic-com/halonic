@@ -62,8 +62,9 @@ type, so they are called "subagent", "subagent-2" and so on. A subagent sent
 another task after it finished starts again under the same name. A failed
 subagent turn finishes the subagent with what went wrong and the run goes
 on. A subagent still working when the task agent finishes gets its
-`agent.finished` just before the run's final one. Codex's other subagent calls (`wait`, `closeAgent` and the like) give no
-event.
+`agent.finished` just before the run's final one, or before the error
+when the task agent's turn failed. Codex's other subagent calls (`wait`,
+`closeAgent` and the like) give no event.
 
 ## Example
 

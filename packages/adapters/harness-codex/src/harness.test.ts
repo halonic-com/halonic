@@ -18,6 +18,7 @@ import {
   codexFailing,
   codexFinishing,
   fakeCodex,
+  fakeThreadId,
   fakeTurnId,
   MemorySettingsFolder,
 } from "./fake-codex.test-helper.ts";
@@ -407,6 +408,38 @@ verifies("harness-codex.start", () => {
       );
       const { error } = await readAll(newHarness().start(task, session, bridge));
 
+      expect(String(error)).toContain("Codex stopped with an error: Quota exceeded");
+      expect(session.running).toBe(0);
+    });
+
+    it("finishes the subagents still working before it ends with the turn's error", async () => {
+      const session = openSession(
+        fakeCodex(async (codex) => {
+          const spawn = {
+            type: "collabAgentToolCall",
+            id: "spawn-1",
+            tool: "spawnAgent",
+            status: "completed",
+            senderThreadId: fakeThreadId,
+            receiverThreadIds: ["thread-helper"],
+            prompt: "Read the notes.",
+          };
+          codex.notify("item/completed", { turnId: fakeTurnId, item: spawn });
+          const error = { message: "Quota exceeded", codexErrorInfo: null };
+          codex.notify("turn/completed", { turn: { id: fakeTurnId, status: "failed", error } });
+        }),
+      );
+      const { events, error } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(events).toEqual([
+        { type: "agent.started", agent: "subagent", prompt: "Read the notes.", parent: "writer" },
+        {
+          type: "agent.finished",
+          agent: "subagent",
+          output: "The task agent finished before this subagent did.",
+          parent: "writer",
+        },
+      ]);
       expect(String(error)).toContain("Codex stopped with an error: Quota exceeded");
       expect(session.running).toBe(0);
     });

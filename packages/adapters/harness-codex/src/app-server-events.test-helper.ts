@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { HarnessEvent } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
-import { AppServerEventReader, type AppServerNotification } from "./app-server-events.ts";
+import {
+  AppServerEventReader,
+  type AppServerNotification,
+  TurnFailedError,
+} from "./app-server-events.ts";
 
 /** The token the recorded runs were given; made up. */
 export const bridgeToken = "made-up-run-token-0123456789";
@@ -38,6 +42,7 @@ export function readAll(
   try {
     for (const notification of notifications) events.push(...reader.read(notification));
   } catch (error) {
+    if (error instanceof TurnFailedError) events.push(...error.events);
     return { events, error };
   }
   return { events };

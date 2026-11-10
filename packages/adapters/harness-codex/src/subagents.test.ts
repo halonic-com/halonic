@@ -8,6 +8,7 @@ import {
   readAll,
   readRecorded,
   threadId,
+  turnCompleted,
 } from "./app-server-events.test-helper.ts";
 import type { AppServerNotification } from "./app-server-events.ts";
 
@@ -149,6 +150,29 @@ verifies("harness-codex.subagents", () => {
         { ...finished("subagent-2", unfinished), parent: "subagent" },
         finished("subagent", unfinished),
         { type: "agent.finished", agent: "writer", output: "" },
+      ]);
+    });
+
+    it("finishes the subagents still working, newest first, when the task agent's turn fails", () => {
+      const nested = {
+        ...spawn,
+        id: "spawn-2",
+        senderThreadId: "thread-helper",
+        receiverThreadIds: ["thread-nested"],
+        prompt: "Read monday.md.",
+      };
+      const unfinished = "The task agent finished before this subagent did.";
+      const { events, error } = readAll([
+        item("item/completed", spawn),
+        { method: "item/completed", params: { threadId: "thread-helper", item: nested } },
+        turnCompleted({ status: "failed", error: { message: "Quota exceeded" } }),
+      ]);
+      expect(String(error)).toContain("Codex stopped with an error: Quota exceeded");
+      expect(events).toEqual([
+        started("subagent", "Read the notes."),
+        { ...started("subagent-2", "Read monday.md."), parent: "subagent" },
+        { ...finished("subagent-2", unfinished), parent: "subagent" },
+        finished("subagent", unfinished),
       ]);
     });
 
