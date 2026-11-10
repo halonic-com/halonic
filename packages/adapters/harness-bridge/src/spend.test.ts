@@ -16,8 +16,11 @@ afterEach(async () => {
 /** The price the test's `models.yaml` gives: only `claude-sonnet-5-5` has one. */
 const sonnetPrice: ModelPrice = { input: 3, output: 15 };
 
-/** Opens a bridge with the Anthropic route for an agent with a key, and keeps what it records. */
-async function open(fetch: Fetch) {
+/**
+ * Opens a bridge with the Anthropic route for an agent with a key, and keeps
+ * what it records, each event once `landing` resolves, as a slow log would.
+ */
+async function open(fetch: Fetch, landing: () => Promise<void> = async () => {}) {
   const recorded: BridgeEvent[] = [];
   const route = anthropicRoute({
     secrets: { get: async () => "anthropic-test-value" },
@@ -31,6 +34,7 @@ async function open(fetch: Fetch) {
       model === "claude-sonnet-5-5" ? sonnetPrice : null,
     recorder: {
       record: async (event: BridgeEvent) => {
+        await landing();
         recorded.push(event);
       },
     },
@@ -38,6 +42,7 @@ async function open(fetch: Fetch) {
   const bridge = await openBridge(run, {
     limits: { maxBytes: 1024 * 1024, timeoutMs: 5_000 },
     routes: [route],
+    closeTimeoutMs: 1_000,
   });
   closers.push(bridge.close);
   return { bridge, recorded };
@@ -144,6 +149,28 @@ verifies("harness-bridge.spend", () => {
 
       program.abort();
       await vi.waitFor(() => expect(recorded).toHaveLength(2));
+      expect(recorded[1]).toMatchObject({ usage: { inputTokens: 80, outputTokens: 1 }, text: "" });
+    });
+
+    it("records what a stream used before close() resolves when the bridge closes mid-stream", async () => {
+      const stream = controlledStream();
+      const anthropic = fakeProvider(
+        () => new Response(stream.body, { headers: { "content-type": "text/event-stream" } }),
+      );
+      // Each event takes a turn of the event loop to land, so close() has to wait for it.
+      const { bridge, recorded } = await open(
+        anthropic.fetch,
+        () => new Promise((resolve) => setImmediate(resolve)),
+      );
+      const reply = await programRequest(bridge, { stream: true });
+      const reader = reply.body?.getReader();
+      stream.push(
+        event("message_start", { message: { usage: { input_tokens: 80, output_tokens: 1 } } }),
+      );
+      await reader?.read();
+
+      await bridge.close();
+      expect(recorded).toHaveLength(2);
       expect(recorded[1]).toMatchObject({ usage: { inputTokens: 80, outputTokens: 1 }, text: "" });
     });
   });
