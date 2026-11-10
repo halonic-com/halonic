@@ -146,7 +146,9 @@ describe("holdLock under attack", () => {
 
     const said = await race(file, 12, 300);
 
-    expect(expectNoOverlap(said)).toBeGreaterThanOrEqual(1);
+    const held = expectNoOverlap(said);
+    expect(held).toBeGreaterThanOrEqual(1);
+    expect(said.filter((line) => line === "LockHeldError")).toHaveLength(12 - held);
     await expect(lstat(file)).rejects.toMatchObject({ code: "ENOENT" });
   }, 20_000);
 });

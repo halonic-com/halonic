@@ -228,6 +228,11 @@ describe("openLocalEngine", () => {
 
 // The attack tests of HAL-4045 for the engine lock.
 describe("the engine lock under attack", () => {
+  // Runs before the file's afterEach closes the engines, and even when a test fails.
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("refuses a second engine that opens the workspace through a symlink", async () => {
     await openEngine();
     const linked = join(folder, "acme-link");
@@ -266,7 +271,6 @@ describe("the engine lock under attack", () => {
     await writeFile(lock, taker, "utf8");
 
     await vi.advanceTimersByTimeAsync(heldLockRenewEveryMs);
-    vi.useRealTimers();
     await engine.close();
 
     expect(reported).toEqual([
