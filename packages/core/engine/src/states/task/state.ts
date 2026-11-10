@@ -1,6 +1,6 @@
-import type { Agent } from "@halonicjs/format";
 import { promptFor, withGets } from "@halonicjs/workflow";
 import { agentCallEffect } from "../../kernel/agent-call.ts";
+import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
 import type { DecidedEvent, DecideInput } from "../../kernel/decide-types.ts";
 import {
   nothing,
@@ -94,16 +94,14 @@ function finishAgent(
   pending: PendingCall,
   answer: unknown,
 ): StateStep {
-  let output = answer;
-  const options = choiceOptionsOf(agents, pending.agent);
-  if (options !== null) {
-    const option = optionOf(options, output);
-    if (option === null) {
-      const error = notAnOptionError(pending.agent, options, output);
-      return { ...nothing, outcome: { type: "fail", error, reason: "answer-not-an-option" } };
-    }
-    output = option;
+  const checked = checkChoiceAnswer(agents, pending.agent, answer);
+  if ("error" in checked) {
+    return {
+      ...nothing,
+      outcome: { type: "fail", error: checked.error, reason: "answer-not-an-option" },
+    };
   }
+  const output = checked.output;
   const events: DecidedEvent[] = [
     { type: "agent.finished", state: stateId, agent: pending.agent, output },
   ];
@@ -118,37 +116,4 @@ function finishAgent(
     events.push(artifact);
   }
   return { events, effects: [], outcome: { type: "finish", event: "done" } };
-}
-
-/** The options of an agent whose output is a `choice`, or `null` for any other agent. */
-function choiceOptionsOf(
-  agents: Readonly<Record<string, Agent>>,
-  agentId: string,
-): readonly string[] | null {
-  const output = Object.hasOwn(agents, agentId) ? agents[agentId]?.output : undefined;
-  return output?.type === "choice" ? output.options : null;
-}
-
-/**
- * The option the answer is, with the whitespace around it trimmed, or `null`
- * when it is none of them. The match is exact and case-sensitive, and the
- * engine never guesses the closest option.
- */
-function optionOf(options: readonly string[], answer: unknown): string | null {
-  if (typeof answer !== "string") return null;
-  const trimmed = answer.trim();
-  return options.find((option) => option === trimmed) ?? null;
-}
-
-/** The longest part of an answer `run.failed` quotes, in characters. */
-const maxQuotedAnswer = 120;
-
-function notAnOptionError(agentId: string, options: readonly string[], answer: unknown): string {
-  const text = typeof answer === "string" ? answer : (JSON.stringify(answer) ?? String(answer));
-  const quoted = text.length > maxQuotedAnswer ? `${text.slice(0, maxQuotedAnswer)}…` : text;
-  const listed = options.map((option) => JSON.stringify(option)).join(", ");
-  return (
-    `Agent "${agentId}" answered ${JSON.stringify(quoted)}, which isn't one of its options: ${listed}. ` +
-    "Tighten the agent's instructions or use a larger model."
-  );
 }

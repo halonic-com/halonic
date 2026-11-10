@@ -1,6 +1,7 @@
 import type { RunFailureReason } from "@halonicjs/events";
 import { promptFor, withGets } from "@halonicjs/workflow";
 import { programHarnessOf } from "../../kernel/agent-call.ts";
+import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
 import type { DecidedEvent, DecideInput, Effect } from "../../kernel/decide-types.ts";
 import {
   nothing,
@@ -21,9 +22,9 @@ import { joinBranches } from "./join.ts";
  * A `parallel` state starts every branch's agent at once, in name order
  * (see {@link branchesOf}), each with its own model call, and waits for all of them; branches never cancel each other.
  * Each branch's `agent.started` and `agent.finished` carry `branch`. A branch
- * whose call fails, or whose agent stops for an approval (a branch can't
- * wait for a person), ends with `agent.finished` and an `error`, and the run
- * goes on. Once every branch has ended, {@link joinBranches} decides how the
+ * whose call fails, whose agent stops for an approval (a branch can't
+ * wait for a person), or whose agent answers none of its `choice` options,
+ * ends with `agent.finished` and an `error`, and the run goes on. Once every branch has ended, {@link joinBranches} decides how the
  * state ends. Branches whose agent runs in a program harness join later.
  */
 export const parallelState: StateHandler<"parallel"> = {
@@ -82,7 +83,7 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
   switch (input.result.type) {
     case "model":
     case "harness":
-      return endWith(context, branch, { output: input.result.output });
+      return endWith(context, branch, answered(context, branch, input.result.output));
     case "approval":
       return endWith(context, branch, approvalRefused(context.stateId, branch, input.result.tool));
     case "effect":
@@ -110,6 +111,12 @@ function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): 
       : { type: "agent.finished", state: stateId, agent, output: end.output, branch: branch.name };
   const join = joinBranches(stateId, state, endBranch(run.parallel, branch.name, end));
   return { ...join, events: [finished, ...join.events] };
+}
+
+/** A branch's answer; one that isn't among its agent's options ends the branch with an error. */
+function answered({ agents }: StateContext, branch: RunningBranch, answer: unknown): BranchEnd {
+  const checked = checkChoiceAnswer(agents, branch.call?.agent ?? "", answer);
+  return "error" in checked ? { error: checked.error, reason: "answer-not-an-option" } : checked;
 }
 
 function approvalRefused(stateId: string, branch: RunningBranch, tool: string): BranchEnd {
