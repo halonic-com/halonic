@@ -78,7 +78,11 @@ export function errorForStatus(
   const vendorText = keyRefused ? "" : shortened(vendor.message, key);
   const options = vendorText === "" ? {} : { cause: new VendorErrorText(status, vendorText) };
   if (isOutOfCredit(status, vendor)) {
-    return new ModelCallError("out-of-credit", refusedCall, options);
+    return new ModelCallError(
+      "out-of-credit",
+      `${call.providerId} refused the call to the model "${call.model}" because the account has no credit left or reached its limit (${http})`,
+      options,
+    );
   }
   if (keyRefused) {
     return new ModelCallError("key-refused", `${call.providerId} didn't accept the key (${http})`);
@@ -91,7 +95,11 @@ export function errorForStatus(
     );
   }
   if (status === 429 || status >= 500) {
-    return new ModelCallError("provider-busy", refusedCall, options);
+    return new ModelCallError(
+      "provider-busy",
+      `${call.providerId} was busy and couldn't take the call to the model "${call.model}" (${http})`,
+      options,
+    );
   }
   return new ModelCallError("refused", refusedCall, options);
 }

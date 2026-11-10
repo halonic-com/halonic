@@ -130,7 +130,7 @@ verifies("model-anthropic.call-errors", () => {
       "an overload",
       (v) => v.replyNext(529, vendorError("overloaded_error", "Overloaded")),
       "provider-busy",
-      /^acme refused the call to the model "acme-small" \(HTTP 529\)$/,
+      /^acme was busy and couldn't take the call to the model "acme-small" \(HTTP 529\)$/,
       "Overloaded",
     ],
     [
@@ -155,7 +155,7 @@ verifies("model-anthropic.call-errors", () => {
       "a payment required",
       (v) => v.replyNext(402, vendorError("billing_error", "Payment required")),
       "out-of-credit",
-      /\(HTTP 402\)$/,
+      /^acme refused the call to the model "acme-small" because the account has no credit left or reached its limit \(HTTP 402\)$/,
       "Payment required",
     ],
     [

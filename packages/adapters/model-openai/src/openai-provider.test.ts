@@ -107,7 +107,7 @@ verifies("model-openai.call-errors", () => {
       "a rate limit",
       (v) => v.replyNext(429, { error: { message: "Slow down", type: "requests" } }),
       "provider-busy",
-      /^acme refused the call to the model "acme-small" \(HTTP 429\)$/,
+      /^acme was busy and couldn't take the call to the model "acme-small" \(HTTP 429\)$/,
       "Slow down",
     ],
     [
@@ -117,7 +117,7 @@ verifies("model-openai.call-errors", () => {
           error: { message: "You exceeded your quota", type: "insufficient_quota", code: null },
         }),
       "out-of-credit",
-      /\(HTTP 429\)$/,
+      /^acme refused the call to the model "acme-small" because the account has no credit left or reached its limit \(HTTP 429\)$/,
       "You exceeded your quota",
     ],
     [

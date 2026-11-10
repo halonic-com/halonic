@@ -19,7 +19,7 @@ loop of one model turn, which the local chat turn runs.
 |                      | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one  | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
 |                      | marks an answer whose text is a call to an offered tool with `toolCallAsText`, and never runs that call                       | `engine.turn-tool-call-as-text`                                                     |
 | `ModelChain`         | (internal) skips a model whose key isn't set, and moves on at once from an offline one, with no retries                       | `engine.skip-model-without-key`, `engine.offline-falls-back`                        |
-|                      | stops the turn when the model is missing, can't call tools, runs out of memory, or is refused                                 | `engine.model-failure-stops`                                                        |
+|                      | stops the turn when the model is missing, can't use tools, runs out of memory, or is refused                                  | `engine.model-failure-stops`                                                        |
 | `ResolvedModel`      | the model a turn starts on, the name of its key's secret, and its alias's own fallbacks                                       | `engine.offline-falls-back`                                                         |
 |                      | each model's price and whether it is local, which give each `llm.response` its `cost`                                         | `engine.turn-prices-calls`                                                          |
 | `runFailureReasonOf` | the one place an error becomes the reason, and the host, that a `run.failed` event records                                    | `engine.run-failure-reason-of`, `engine.model-failure-stops`                        |
@@ -65,7 +65,7 @@ Runs of agents will log their turns through a `RunStoreTurnLog`.
 A turn's models are the alias its request resolved to, then that alias's own `fallback` entries,
 one level deep and each alias once. A model whose key isn't set is skipped before any call. An
 offline model hands the call to the next one at once, and the turn stays on that model. A missing
-model, a model that can't call tools, or a refused call stops the turn with that `ModelCallError`.
+model, a model that can't use tools, or a refused call stops the turn with that `ModelCallError`.
 When no model is left, the turn fails with a `ModelCallError` whose reason is the last cause.
 
 Each `llm.response` gets its `cost` from the model that answered: its tokens at its price per
