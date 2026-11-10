@@ -6,6 +6,7 @@ import {
   plantedHooks,
   unsafeVcsPaths,
 } from "./vcs-harness.ts";
+import { invalidCommitRefs, unknownCommit, unsafePatches } from "./vcs-version-inputs.ts";
 
 describe("Vcs safety lists (contracts.vcs-safety)", () => {
   // The suite is only as strong as these lists: each kind of input from the port doc is in them.
@@ -46,5 +47,23 @@ describe("Vcs safety lists (contracts.vcs-safety)", () => {
     expect(optionLikePaths).toEqual(
       expect.arrayContaining(["--all", "--output=written.txt", "-f"]),
     );
+  });
+
+  it.each([
+    ["the name HEAD", "HEAD"],
+    ["an option", "-x"],
+    ["the previous branch, which git expands", "@{-1}"],
+    ["a branch name", "main"],
+    ["a short id", "0123456"],
+    ["an id in capitals", unknownCommit.toUpperCase()],
+  ])("refuses a version that is %s", (_kind, ref) => {
+    expect(invalidCommitRefs).toContain(ref);
+  });
+
+  it("names .git, .env and a path outside the folder in the unsafe patches", () => {
+    const patches = unsafePatches.map(([, patch]) => patch).join("\n");
+    for (const path of [".git/config", ".env", "../x.yaml", "rename to .git/config"]) {
+      expect(patches).toContain(path);
+    }
   });
 });
