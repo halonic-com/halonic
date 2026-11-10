@@ -96,7 +96,7 @@ verifies("app.trust-service", () => {
 
     expectStatus(check, "trusted");
     expect(check.grant).toEqual({ location, fingerprint: check.fingerprint });
-    expect(check.shrunk).toEqual([]);
+    expect(check.shrunk).toEqual({ connectors: [], agents: [] });
     expect(await store.get(location)).toMatchObject({
       fingerprint: check.fingerprint,
       grantedAt: "2026-11-09T10:00:00.000Z",
@@ -132,13 +132,30 @@ verifies("app.trust-service", () => {
     const check = await service.check(subject(program("files")));
 
     expectStatus(check, "trusted");
-    expect(check.shrunk).toEqual(["mail"]);
+    expect(check.shrunk).toEqual({ connectors: ["mail"], agents: [] });
     expect(check.grant.fingerprint).toBe(check.fingerprint);
     expect(await store.get(location)).toMatchObject({
       fingerprint: check.fingerprint,
       content: check.content,
       grantedAt: "2026-11-09T10:00:00.000Z",
       pins: {},
+    });
+  });
+
+  it("shrinks the record without asking when only a harness agent is removed, and says so", async () => {
+    const { service, store } = setup();
+    await trustAsPerson(service, { ...subject(program("files")), agents: [harnessAgent([])] });
+    const before = (await store.get(location)) as TrustRecord;
+
+    const check = await service.check(subject(program("files")));
+
+    expectStatus(check, "trusted");
+    expect(check.shrunk).toEqual({ connectors: [], agents: ["coder"] });
+    expect(check.fingerprint).not.toBe(before.fingerprint);
+    expect(await store.get(location)).toMatchObject({
+      fingerprint: check.fingerprint,
+      content: check.content,
+      grantedAt: before.grantedAt,
     });
   });
 

@@ -127,6 +127,7 @@ export {
   type TrustRefusal,
   TrustService,
   type TrustServiceOptions,
+  type TrustShrink,
   type TrustSubject,
 } from "./trust-service.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";

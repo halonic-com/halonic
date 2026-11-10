@@ -1,7 +1,8 @@
 // Decides whether a workspace is trusted, as `app.trust-service` asks: it
 // builds the trust content, fingerprints it and compares it with the trust
 // record in the user's profile. Only a person adds to a record (HAL-571);
-// a change that only removes whole connectors shrinks it (HAL-65 decision 9).
+// a change that only removes whole connectors or harness agents shrinks it
+// (HAL-65 decision 9).
 
 import type { Agent, Connector } from "@halonicjs/format";
 import type {
@@ -58,13 +59,21 @@ interface CurrentTrust {
   readonly unpinned: readonly string[];
 }
 
+/** What a record lost when it shrank, by id and in the order the content lists them. */
+export interface TrustShrink {
+  /** The connectors that were removed. */
+  readonly connectors: readonly string[];
+  /** The harness agents that were removed or went back to Halonic's own harness. */
+  readonly agents: readonly string[];
+}
+
 /** Whether a workspace is trusted, and if not, why. */
 export type TrustCheck =
   | (CurrentTrust & {
       readonly status: "trusted";
       readonly grant: TrustGrant;
-      /** The connectors the record lost because they were removed, by id. Empty when nothing was. */
-      readonly shrunk: readonly string[];
+      /** What the record lost because it was removed. Both lists are empty when nothing was. */
+      readonly shrunk: TrustShrink;
     })
   | (CurrentTrust & { readonly status: "new" })
   | (CurrentTrust & {
@@ -130,7 +139,7 @@ export class TrustService {
 
   /**
    * Whether the workspace is trusted now. A change that only removes whole
-   * connectors shrinks the record and counts as trusted, without asking.
+   * connectors or harness agents shrinks the record and counts as trusted, without asking.
    *
    * @throws when shrinking the record can't be saved
    */
@@ -146,14 +155,14 @@ export class TrustService {
       return { status: "new", ...current };
     }
     if (record.fingerprint === current.fingerprint) {
-      return { status: "trusted", ...current, grant: grantOf(record), shrunk: [] };
+      return { status: "trusted", ...current, grant: grantOf(record), shrunk: NOTHING_SHRUNK };
     }
 
     const trusted = await this.trustedContent(record);
     const changes = trustChanges(trusted ?? { connectors: [] }, current.content);
     if (trusted !== null && changes.onlyRemoves) {
       const shrunk = await this.shrink(record, current, changes);
-      return { status: "trusted", ...current, grant: grantOf(shrunk), shrunk: idsOf(changes) };
+      return { status: "trusted", ...current, grant: grantOf(shrunk), shrunk: removedIds(changes) };
     }
     return { status: "changed", ...current, changes, trustedAt: record.grantedAt };
   }
@@ -230,7 +239,8 @@ export class TrustService {
     current: CurrentTrust,
     changes: TrustChanges,
   ): Promise<TrustRecord> {
-    const removed = new Set(idsOf(changes));
+    // Pins belong to connectors; a removed agent has none.
+    const removed = new Set(removedIds(changes).connectors);
     const pins = Object.fromEntries(
       Object.entries(record.pins).filter(([connector]) => !removed.has(connector)),
     );
@@ -245,6 +255,8 @@ export class TrustService {
     return shrunk;
   }
 }
+
+const NOTHING_SHRUNK: TrustShrink = { connectors: [], agents: [] };
 
 function grantOf(record: TrustRecord): TrustGrant {
   return { location: record.location, fingerprint: record.fingerprint };
@@ -265,8 +277,11 @@ function unpinnedConnectors(connectors: readonly Connector[]): string[] {
   return ids.sort();
 }
 
-function idsOf(changes: TrustChanges): string[] {
-  return changes.removed.map((connector) => connector.id);
+function removedIds(changes: TrustChanges): TrustShrink {
+  return {
+    connectors: changes.removed.map((connector) => connector.id),
+    agents: changes.agents.removed.map((agent) => agent.id),
+  };
 }
 
 /**

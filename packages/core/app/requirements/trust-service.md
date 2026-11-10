@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-188 build items 6, 7, 9a and 10c (HAL-65 decisions 1 and 9, HAL-571: only a person adds to a trust record, HAL-1921 review note 2, HAL-2038: a second question for programs that aren't pinned)
 
-The app shall decide whether a workspace is trusted by building its trust content, always with the absolute path each program command resolves to and the workspace's agents, and comparing its fingerprint with the trust record for the workspace's location. It shall hand out a trust grant only when the record's fingerprint matches the current one. Without a record the workspace is new; with a record whose fingerprint differs it has changed, and the app shall give what changed and when it was trusted. When the change only removes whole connectors and the record's own content still gives its fingerprint, the app shall shrink the record to the current content without asking, keeping the date it was granted. When the record can't be read, the workspace isn't trusted and the app shall give the store's error.
+The app shall decide whether a workspace is trusted by building its trust content, always with the absolute path each program command resolves to and the workspace's agents, and comparing its fingerprint with the trust record for the workspace's location. It shall hand out a trust grant only when the record's fingerprint matches the current one. Without a record the workspace is new; with a record whose fingerprint differs it has changed, and the app shall give what changed and when it was trusted. When the change only removes whole connectors or harness agents and the record's own content still gives its fingerprint, the app shall shrink the record to the current content without asking, keeping the date it was granted, and shall give the ids of the connectors and agents it removed. When the record can't be read, the workspace isn't trusted and the app shall give the store's error.
 
 The app shall save a record only when a person trusts the workspace and the fingerprint they were shown is exactly the current one, never a part of it, and shall otherwise save nothing and give the current fingerprint. It has no way to update a record without that fingerprint, so saving a workspace in the Studio never trusts it.
 
@@ -22,7 +22,9 @@ With every check, the app shall list the connectors whose program is a package r
   when it is checked,
   then it has changed, lists the connector as changed and gives the date it was trusted, and there is no grant.
 - Given a trusted workspace with the connectors `files` and `mail`, when `mail` is deleted,
-  then it is trusted without asking, the record now holds only `files` and keeps its grant date.
+  then it is trusted without asking, the record now holds only `files` and keeps its grant date, and `mail` is given as removed.
+- Given a trusted workspace with the connector `files` and the Claude Code agent `coder`, when `coder` is deleted,
+  then it is trusted without asking, the record no longer holds `coder` and keeps its grant date, and `coder` is given as a removed agent.
 - Given a trust record whose content was edited by hand so it no longer gives its fingerprint, when a connector is deleted,
   then it has changed, and the record isn't shrunk.
 - Given a store whose `get` throws,
