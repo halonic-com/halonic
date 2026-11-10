@@ -1,6 +1,6 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -84,7 +84,7 @@ verifies("cli.commands.trust.review-and-trust", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual(["✓ Acme can run now."]);
-    expect(written()).toContain("Trust check for Acme (./acme)");
+    expect(written()).toContain(`Trust check for Acme (.${sep}acme)`);
     expect(written()).toContain("! Can download new code from npm when it starts");
     expect(written()).toContain("Trust Acme on this computer? [y/N]");
     expect(written()).toContain("It can download new code when it starts. Trust it anyway? [y/N]");
@@ -112,7 +112,7 @@ verifies("cli.commands.trust.review-and-trust", () => {
     const code = await runCli(["trust", "--dir", "acme"], io, commands());
 
     expect(code).toBe(exitCode.notTrusted);
-    expect(io.stderr[0]).toBe("Trust check for Acme (./acme)");
+    expect(io.stderr[0]).toBe(`Trust check for Acme (.${sep}acme)`);
     expect(io.stderr.slice(-2)).toEqual([
       "✕ Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
       "  Review it with halonic trust --dir acme, then pass --yes --fingerprint <fingerprint>.",
@@ -205,15 +205,31 @@ verifies("cli.commands.trust.review-and-trust", () => {
     const code = await runCli(["trust", "--dir", "acme", "--remove"], removed, commands());
 
     expect(empty.stdout).toEqual(["No trusted workspaces yet."]);
-    expect(list.stdout).toEqual(["Acme   ./acme   trusted on 3 Nov"]);
+    expect(list.stdout).toEqual([`Acme   .${sep}acme   trusted on 3 Nov`]);
     expect(JSON.parse(json.stdout.join("\n")).workspaces).toEqual([
-      { name: "Acme", folder: "./acme", fingerprint, trustedAt: "2026-11-03T12:00:00.000Z" },
+      { name: "Acme", folder: `.${sep}acme`, fingerprint, trustedAt: "2026-11-03T12:00:00.000Z" },
     ]);
     expect(code).toBe(exitCode.ok);
     expect(removed.stdout).toEqual([
       "✓ Removed trust for Acme. Its programs and real models won't start until you review it again.",
     ]);
     expect(await store.list()).toEqual([]);
+  });
+
+  it("lists a workspace from where the user is, also when they got there through a link", async () => {
+    writeAcme();
+    const fingerprint = await fingerprintOfAcme();
+    const trust = ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint];
+    await runCli(trust, captureIo(folder), commands());
+    // A link stands in for what a Windows short name such as `RUNNER~1` does:
+    // the same folder under another path than the record's real one.
+    const link = join(folder, "link");
+    symlinkSync(folder, link, "junction");
+
+    const list = captureIo(link);
+    await runCli(["trust", "--list"], list, commands());
+
+    expect(list.stdout).toEqual([`Acme   .${sep}acme   trusted on 3 Nov`]);
   });
 
   it("removes the trust of a workspace whose folder is gone", async () => {
@@ -231,7 +247,7 @@ verifies("cli.commands.trust.review-and-trust", () => {
     const code = await runCli(["trust", "--dir", "acme", "--remove"], io, commands());
 
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout[0]).toContain("Removed trust for ./acme.");
+    expect(io.stdout[0]).toContain(`Removed trust for .${sep}acme.`);
   });
 });
 

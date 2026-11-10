@@ -1,3 +1,4 @@
+import { sep } from "node:path";
 import type { CliCommand } from "../command.ts";
 import { type CliExit, runCli, type Terminal } from "../run-cli.ts";
 import { captureIo } from "./capture-io.ts";
@@ -93,9 +94,9 @@ export function goldenText(args: readonly string[], run: GoldenRun): string {
       `## ${modeTitles[mode]}: halonic ${args.join(" ")}`,
       `exit ${exit}`,
       "stdout:",
-      ...indented(stdout),
+      ...indented(stdout, mode),
       "stderr:",
-      ...indented(stderr),
+      ...indented(stderr, mode),
     ].join("\n");
   });
   return `${sections.join("\n\n")}\n`;
@@ -107,8 +108,31 @@ const modeTitles: Readonly<Record<GoldenMode, string>> = {
   json: "--json",
 };
 
-function indented(lines: readonly string[]): string[] {
-  return lines.flatMap((line) => line.split("\n")).map((line) => `  ${showEscapes(line)}`);
+function indented(lines: readonly string[], mode: GoldenMode): string[] {
+  return lines
+    .flatMap((line) => line.split("\n"))
+    .map((line) => `  ${showEscapes(withSlashes(line, mode))}`);
+}
+
+/** A `\` between folders, but not the one that starts a `\u001b` code from `printable`. */
+const textSeparator = /\\(?!u[0-9a-f]{4})/gu;
+
+/** The same `\` inside a JSON string, where it is written `\\`. */
+const jsonSeparator = /\\\\(?!u[0-9a-f]{4})/gu;
+
+/**
+ * A printed line with `/` between folders on every system, so one golden
+ * file holds on Windows too. The CLI shows paths with the system's separator
+ * (cli-output 1.2): `.\acme` and, in `--json`, `".\\acme"` on Windows both
+ * read `./acme` here. Elsewhere the line stays exactly as printed.
+ *
+ * @param separator - the system's separator; a test passes `\` to check Windows anywhere
+ */
+export function withSlashes(line: string, mode: GoldenMode, separator: string = sep): string {
+  if (separator === "/") {
+    return line;
+  }
+  return line.replace(mode === "json" ? jsonSeparator : textSeparator, "/");
 }
 
 function showEscapes(text: string): string {

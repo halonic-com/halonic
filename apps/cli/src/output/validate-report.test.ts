@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { LoadedWorkspace, WorkspaceIssue } from "@halonicjs/workspace";
 import { describe, expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
@@ -66,10 +67,10 @@ describe("validateLines", () => {
     const report = validateReport(loaded(designProblems, 12));
 
     expect(validateLines(report, view).map(plainText)).toEqual([
-      "hubs/support/agents/sorter.agent.yaml",
+      join("hubs", "support", "agents", "sorter.agent.yaml"),
       '  12:10  ✕ The model alias "smrt" isn\'t in models.yaml. Use one of: fast, smart.  (unknown-alias)',
       "",
-      "hubs/support/workflows/support-reply.workflow.yaml",
+      join("hubs", "support", "workflows", "support-reply.workflow.yaml"),
       '  40:13  ✕ The arrow from Classify goes to "Drat reply", which isn\'t a step in this workflow. Did you mean Draft reply?  (unknown-step)',
       "   8:3   ! The step Archive has no arrow into it, so it never runs.  (unreachable-step)",
       "",

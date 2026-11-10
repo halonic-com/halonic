@@ -235,7 +235,12 @@ async function listTrusted(machine: TrustMachine, cwd: string): Promise<CommandR
       json: { workspaces: [] },
     };
   }
-  const workspaces = await Promise.all(records.map((record) => listed(record, cwd)));
+  // A record holds the folder's real path, so each one is shown from the real
+  // path of the current folder too: through a link, or a Windows short name
+  // such as `RUNNER~1`, the two would share no folders and `./acme` would
+  // come out as `../../…/acme`.
+  const here = await realpath(cwd).catch(() => cwd);
+  const workspaces = await Promise.all(records.map((record) => listed(record, here)));
   const rows = workspaces.map((workspace) => [
     phrase`${workspace.name}`,
     phrase`${workspace.folder}`,

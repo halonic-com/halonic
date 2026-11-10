@@ -5,7 +5,7 @@ import type { CliCommand } from "../command.ts";
 import { exitCode } from "../exit-code.ts";
 import { defineMessages } from "../messages/define.ts";
 import { bold, markPart, phrase } from "../messages/phrase.ts";
-import { goldenText, runGolden } from "./golden.ts";
+import { goldenText, runGolden, withSlashes } from "./golden.ts";
 import { checklistProblems } from "./golden-checklist.ts";
 
 const words = defineMessages("test", {
@@ -99,5 +99,24 @@ describe("checklistProblems", () => {
       "With --json, stderr isn't empty.",
       "With --json, stdout isn't a JSON object.",
     ]);
+  });
+});
+
+describe("withSlashes", () => {
+  it("shows a Windows path with / in the words and in --json, so one golden file holds", () => {
+    expect(withSlashes("✓ Created acme in .\\hubs\\acme.", "noColour", "\\")).toBe(
+      "✓ Created acme in ./hubs/acme.",
+    );
+    expect(withSlashes('  "folder": ".\\\\hubs\\\\acme"', "json", "\\")).toBe(
+      '  "folder": "./hubs/acme"',
+    );
+  });
+
+  it("keeps the \\u codes of escaped text, and every line where the separator is already /", () => {
+    expect(withSlashes('hub ".\\acme\\u001b[31m"', "colour", "\\")).toBe('hub "./acme\\u001b[31m"');
+    expect(withSlashes('  "name": "\\\\u001b[31m\\n"', "json", "\\")).toBe(
+      '  "name": "\\\\u001b[31m\\n"',
+    );
+    expect(withSlashes("a\\b", "noColour", "/")).toBe("a\\b");
   });
 });
