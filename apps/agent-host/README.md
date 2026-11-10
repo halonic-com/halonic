@@ -1,6 +1,6 @@
 # @halonicjs/app-agent-host
 
-Halonic's agent host as one Node program. For now it unpacks its files, prints its version and, with `--sandbox-check`, says whether the sandbox works on this machine. The loopback server comes next (HAL-4476).
+Halonic's agent host as one Node program. It unpacks its files and serves on loopback, with a token made for each launch. For now it answers only `GET /v1/health`; the sandbox, the bridge and the harnesses come next (HAL-4476).
 
 - **Layer:** apps
 - **Owner:** owen
@@ -28,9 +28,31 @@ The build puts the payload's manifest (each file's SHA-256, size and executable 
 ## Running it
 
 ```
-halonic-agent-host --profile-folder <folder> [--sandbox-check]
+halonic-agent-host --profile-folder <folder> [--version | --sandbox-check]
 halonic-agent-host <unpacked program> [arguments]
 ```
 
+With `--version` the host prints its version, and with `--sandbox-check` whether the sandbox works on this machine, as JSON. Without either, it serves (below).
+
 - **The host.** On launch the executable unpacks the payload into `<profile folder>/agent-host/<version>-<digest>` and checks every file against its SHA-256. A folder an earlier launch left is reused when every file still matches, and unpacked again otherwise. It unpacks into a temporary folder first and renames it, so a launch that stops halfway leaves nothing half-written. It then maps `@halonicjs/*` to the unpacked packages with a resolve hook and loads `src/host.ts`. The folder is inside Halonic's own data, which the sandbox profile denies to the programs it runs.
 - **A payload program.** sandbox-srt starts srt's command line as `process.execPath <srt dist/cli.js>`, and here `process.execPath` is this executable. When the first argument is one of the manifest's programs inside a folder this version unpacked, and the file still has its digest, the executable runs it as Node would. Any other argument isn't run.
+
+## Serving on loopback
+
+The program that starts the host (Studio) reads one line from its standard output:
+
+```
+{"url":"http://127.0.0.1:49152","token":"<43 characters>"}
+```
+
+The host listens on a free port of `127.0.0.1` only. The token is 32 random bytes in base64url, new at each launch, and goes only to that program on standard output: never in arguments, the environment or a file, where other programs could read it. A request gets in only when:
+
+1. its `Host` header is `127.0.0.1:<port>` or `localhost:<port>`, so a web page that points its own domain at 127.0.0.1 (DNS rebinding) gets `421`;
+2. it has no `Origin` header, so a request from a web page gets `403`; there is no CORS, because Studio's Rust side makes the requests;
+3. its `Authorization` header is `Bearer <token>`, compared in constant time; otherwise `401`.
+
+Every refusal comes before the path is looked at, so a caller without the token can't learn which paths exist. Answers are JSON; an error is `{"error":{"kind","message"}}`. The host stops when its standard input closes, so it never outlives the program that started it.
+
+| Request          | Answer                              |
+| ---------------- | ----------------------------------- |
+| `GET /v1/health` | `{"ok":true,"version":"<version>"}` |

@@ -265,6 +265,9 @@ importers:
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-srt
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../packages/core/std
     devDependencies:
       '@halonicjs/tooling-config':
         specifier: workspace:*

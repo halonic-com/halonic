@@ -6,7 +6,7 @@
       "scriptsTest": "apps/agent-host/src/scripts.starts.test.ts"
     },
     "apps/agent-host/scripts/smoke.ts": {
-      "reason": "Smoke tooling (pnpm smoke:sea), run in CI after the build, never shipped. It starts only the agent host it just built in dist/, with fixed arguments: a fresh temp profile folder, --sandbox-check, and srt's --version through the payload the host unpacked there. It never loads a skill.",
+      "reason": "Smoke tooling (pnpm smoke:sea), run in CI after the build, never shipped. It starts only the agent host it just built in dist/, with fixed arguments: a fresh temp profile folder with --version, --sandbox-check, or nothing more (to serve, ended by closing its input), and srt's --version through the payload the host unpacked there. It never loads a skill.",
       "scriptsTest": "apps/agent-host/src/scripts.starts.test.ts"
     },
     "apps/agent-host/src/main.ts": {

@@ -2,7 +2,7 @@
   "name": "@halonicjs/app-agent-host",
   "private": true,
   "type": "module",
-  "description": "Halonic's agent host as one Node program. For now it unpacks its files, prints its version and checks the sandbox.",
+  "description": "Halonic's agent host as one Node program: it unpacks its files and serves on loopback with a token per launch.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -28,6 +28,7 @@
   },
   "version": "0.0.0",
   "dependencies": {
-    "@halonicjs/adapter-sandbox-srt": "workspace:*"
+    "@halonicjs/adapter-sandbox-srt": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   }
 }
