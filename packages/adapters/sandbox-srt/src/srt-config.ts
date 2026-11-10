@@ -16,6 +16,8 @@ function literalPath(path: string): { path: string; literal: true } {
  * isn't there yet (`.npmrc`) would never match if it stayed `/var/...`.
  */
 export function resolveRealPath(path: string): string {
+  // srt doesn't run on Windows, and a POSIX path there would gain a drive letter and add a second entry.
+  if (process.platform === "win32") return path;
   const missing: string[] = [];
   let existing = path;
   for (;;) {

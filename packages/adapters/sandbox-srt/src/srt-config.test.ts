@@ -192,19 +192,23 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     }
   });
 
-  it("also denies the real path of a folder reached through a symlink, for entries that don't exist yet", () => {
-    const base = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));
-    mkdirSync(join(base, "real", "work"), { recursive: true });
-    symlinkSync(join(base, "real"), join(base, "link"));
-    const work = join(base, "link", "work");
-    const config = buildSrtConfig(profile({ workingFolder: work }));
-    const denied = config.filesystem?.denyWrite?.map((entry) =>
-      typeof entry === "string" ? entry : entry.path,
-    );
-    expect(denied).toContain(join(work, ".npmrc"));
-    expect(denied).toContain(join(base, "real", "work", ".npmrc"));
-    expect(denied).toContain(join(base, "real", "work", ".codex"));
-  });
+  // srt doesn't run on Windows, so the real path isn't added there.
+  it.skipIf(process.platform === "win32")(
+    "also denies the real path of a folder reached through a symlink, for entries that don't exist yet",
+    () => {
+      const base = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));
+      mkdirSync(join(base, "real", "work"), { recursive: true });
+      symlinkSync(join(base, "real"), join(base, "link"));
+      const work = join(base, "link", "work");
+      const config = buildSrtConfig(profile({ workingFolder: work }));
+      const denied = config.filesystem?.denyWrite?.map((entry) =>
+        typeof entry === "string" ? entry : entry.path,
+      );
+      expect(denied).toContain(join(work, ".npmrc"));
+      expect(denied).toContain(join(base, "real", "work", ".npmrc"));
+      expect(denied).toContain(join(base, "real", "work", ".codex"));
+    },
+  );
 
   it("denies writing a worktree's .git file, which points git at its real folder", () => {
     const work = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));

@@ -173,6 +173,26 @@ describe("a program trying to get out of the fence", () => {
     expect(await readFile(ticks, "utf8")).toBe(after);
   });
 
+  it("kill ends a program that keeps starting new detached children", async () => {
+    const ticks = join(base, "temp", "forking-ticks");
+    const worker = join(base, "temp", "forking-worker.sh");
+    const spawner = join(base, "temp", "forking-spawner.sh");
+    const detach = "perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV'";
+    await writeFile(worker, `while true; do date +%s%N >> ${ticks}; sleep 0.1; done\n`);
+    await writeFile(spawner, `while true; do (${detach} sh ${worker} &); sleep 0.2; done\n`);
+    const started = await session.start({
+      program: "sh",
+      args: ["-c", `(${detach} sh ${spawner} &) ; sleep 60`],
+    });
+    await waitForContent(ticks);
+    await started.kill();
+    await started.exited;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const after = await readFile(ticks, "utf8");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(await readFile(ticks, "utf8")).toBe(after);
+  });
+
   it("is stopped by the time limit, with everything it started", async () => {
     const limited = await sandbox.open({ ...profile(), timeLimitMs: 3000 });
     try {
