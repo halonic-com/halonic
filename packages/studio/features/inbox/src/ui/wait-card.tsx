@@ -96,7 +96,7 @@ export function WaitCard(props: WaitCardProps) {
           // Filled in from the run's context, so it can hold model output: mark what's hidden.
           title={markedName(item.title)}
           heading={heading}
-          since={waitingSince(new Date(item.since), now())}
+          since={state.kind === "answered" ? null : waitingSince(new Date(item.since), now())}
           onOpenRun={() => props.onOpenRun(item.runId)}
         />
         {item.body === "" ? null : (

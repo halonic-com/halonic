@@ -10,7 +10,7 @@ The bar under the card holds **Reject**, **Ask for changes** and **Approve**. Fo
 
 **Ask for changes** opens a dialog, "Ask for changes", with its **Note** field focused. Enter adds a line and Ctrl Enter sends, the same as **Send note**, which reads "Sending note…" while the note is sent. **Send note** is never disabled: an empty note shows "Say what should change." under the field and focuses it. A note that can't be sent keeps the dialog open with the note and says "Couldn't record your decision."; Cancel closes it and the card keeps the note until the item is decided.
 
-After a decision the card shall be replaced in place: the action's summary, muted in a dashed frame, then the decided Callout, which takes focus: "Approved by you at 10:44. The run continues.", "Rejected by you at 10:44. This tool call didn't run. The agent is told, and the run continues." or "Note sent to the agent at 10:44: _note_". Then **Next: _title_ · _2_ left**, or "Nothing else is waiting for you." It never says "Done" or "Sent" and has no Undo.
+After a decision the card shall be replaced in place: the header keeps **Open run** but no longer says since when it waits, the action's summary, muted in a dashed frame, then the decided Callout, which takes focus: "Approved by you at 10:44. The run continues.", "Rejected by you at 10:44. This tool call didn't run. The agent is told, and the run continues." or "Note sent to the agent at 10:44: _note_", with the note as plain text, never as Markdown or HTML, folded like a long argument. Then **Next: _title_ · _2_ left**, or "Nothing else is waiting for you." It never says "Done" or "Sent" and has no Undo.
 
 ## Examples
 

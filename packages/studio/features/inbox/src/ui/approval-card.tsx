@@ -49,7 +49,8 @@ interface NoteForm {
 const busyLabels: Record<Decision, string> = { approve: "Approving…", reject: "Rejecting…" };
 
 /**
- * The decided Callout's text (mc 10.2, ux-checklists-approvals D3). `at` is
+ * The decided Callout's text (mc 10.2, ux-checklists-approvals D3); a note follows it as plain
+ * text, folded when long, so a pasted page can't fill the bar. `at` is
  * Studio's clock when the answer was recorded: the summary `send` returns
  * has no time for a decision, and the local engine records with the same clock.
  */
@@ -61,7 +62,7 @@ export function decidedText(decided: Decided, at: Date): string {
     case "reject":
       return `Rejected by you at ${time}. This tool call didn't run. The agent is told, and the run continues.`;
     case "note":
-      return `Note sent to the agent at ${time}: ${decided.note}`;
+      return `Note sent to the agent at ${time}:`;
   }
 }
 
@@ -121,13 +122,18 @@ export function ApprovalCard(props: ApprovalCardProps) {
           titleId={titleId}
           title={title}
           heading={heading}
-          since={waitingSince(new Date(item.since), now())}
+          since={state.kind === "decided" ? null : waitingSince(new Date(item.since), now())}
           onOpenRun={() => props.onOpenRun(item.runId)}
         />
         {state.kind === "decided" ? <DecidedAction item={item} /> : <Action item={item} />}
       </div>
       {state.kind === "decided" ? (
-        <DecidedBar text={decidedText(state.decided, state.at)} next={next} callout={decided} />
+        <DecidedBar
+          text={decidedText(state.decided, state.at)}
+          {...(state.decided.kind === "note" ? { note: state.decided.note } : {})}
+          next={next}
+          callout={decided}
+        />
       ) : (
         <DecisionBar
           state={state}

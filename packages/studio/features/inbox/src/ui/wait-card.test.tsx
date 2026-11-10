@@ -137,6 +137,8 @@ verifies("inbox.wait-card", () => {
       expect(document.activeElement).toBe(callout);
       expect(root.querySelector(".border-dashed")?.textContent).toContain("Hi Sam");
       expect(root.textContent).toContain("Nothing else is waiting for you.");
+      expect(root.textContent).not.toContain("Waiting since");
+      expect(button(root, "Open run")).toBeDefined();
     });
 
     it("says only who rejected and when, for the step's own reject", async () => {

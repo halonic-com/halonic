@@ -220,6 +220,9 @@ verifies("inbox.approval-card", () => {
       expect(root.textContent).toContain("Nothing else is waiting for you.");
       expect(root.querySelector(".border-dashed")?.textContent).toBe("create_note · notes-mcp");
       expect(root.textContent).not.toMatch(/Done|Sent|Undo/);
+      // It no longer waits: the header keeps Open run, not the waiting time (flow-inbox 5.3).
+      expect(root.textContent).not.toContain("Waiting since");
+      expect(button(root, "Open run")).toBeDefined();
     });
 
     it("says the agent is told when you reject, and offers Next", async () => {
@@ -329,6 +332,31 @@ verifies("inbox.approval-card", () => {
         "Note sent to the agent at 10:44: Use the shorter title",
       );
       expect(document.activeElement).toBe(callout);
+    });
+
+    it("shows the sent note as text: a link and a script stay as written", async () => {
+      const { root, later } = openCard();
+      later(61);
+      const note = "See [the docs](https://example.com) <script>alert(1)</script>";
+      await press(button(root, "Ask for changes"));
+      await type(note);
+      await press(dialogButton("Send note"));
+      const callout = root.querySelector("[role='group']");
+      expect(callout?.textContent).toContain(`Note sent to the agent at 10:44: ${note}`);
+      expect(callout?.querySelector("a, script")).toBeNull();
+    });
+
+    it("folds a long sent note behind Show more", async () => {
+      const { root, later } = openCard();
+      later(61);
+      await press(button(root, "Ask for changes"));
+      await type(Array.from({ length: 44 }, (_, index) => `line ${index + 1}`).join("\n"));
+      await press(dialogButton("Send note"));
+      const callout = root.querySelector<HTMLElement>("[role='group']");
+      if (callout === null) throw new Error("no decided Callout");
+      expect(callout.textContent).not.toContain("line 7");
+      await act(async () => button(callout, "Show 38 more lines").click());
+      expect(callout.textContent).toContain("line 44");
     });
 
     it("says what's missing for an empty note, and sends nothing", async () => {
