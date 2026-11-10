@@ -35,8 +35,8 @@ interface KeyFacts {
  *   model-out-of-memory, disk-full, interrupted) wait for the board;
  * - the sandbox reasons are `sandboxMessages`;
  * - `cancelled` isn't a failure: Ctrl C or SIGTERM prints "Stopped. The run …
- *   was cancelled after the step …" (cli-output 1.5);
- * - `model-no-tools` has no words in cli-output yet (HAL-2718).
+ *   was cancelled after the step …" (cli-output 1.5), and `runs show` says
+ *   `runsMessages.showCancelled` for a run cancelled somewhere else.
  */
 export type RunFailure =
   | ({ readonly reason: "key-refused" } & KeyFacts)
@@ -111,6 +111,12 @@ export type RunFailure =
       readonly alias: string;
     }
   | { readonly reason: "site-blocked"; readonly agent: string; readonly site: string }
+  | {
+      readonly reason: "model-no-tools";
+      /** The model the alias points at, such as "llama3.2". */
+      readonly model: string;
+      readonly alias: string;
+    }
   | { readonly reason: "error"; readonly message?: string }
   | { readonly reason: "internal" };
 
@@ -176,7 +182,11 @@ const lineOne = {
         : phrase`this month's estimated spend reached its budget of ${money(failure.budget)}.`
     }`,
   "turn-limit": (run, failure) => {
-    const usedUp = phrase`${failure.agent} used all ${counted(failure.turns, "turn", "turns")} without finishing.`;
+    // "used all 1 turn" reads like a bug (HAL-2745).
+    const usedUp =
+      failure.turns === 1
+        ? phrase`${failure.agent} used its only turn without finishing.`
+        : phrase`${failure.agent} used all ${counted(failure.turns, "turn", "turns")} without finishing.`;
     // The second sentence only when the run log has the last calls, as in Studio's banner.
     return failedIn(
       run,
@@ -199,6 +209,11 @@ const lineOne = {
     failedIn(
       run,
       phrase`the sandbox stopped ${failure.agent} from reaching ${failure.site}, which isn't in its allowed sites. Nothing reached that site.`,
+    ),
+  "model-no-tools": (run, failure) =>
+    failedIn(
+      run,
+      phrase`${failure.model}, used by the model alias ${failure.alias}, can't use tools, and this step offers tools.`,
     ),
   error: (run, failure) => {
     // An empty message says no more than none at all.
@@ -245,6 +260,9 @@ const lineTwo = {
     phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml.`,
   "site-blocked": (_run, failure) =>
     phrase`Add ${failure.site} to ${failure.agent}'s allowed sites, if ${failure.agent} should reach it.`,
+  // "In models.yaml" first, so it can't read as where the tools are.
+  "model-no-tools": (_run, failure) =>
+    phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,
   error: () => errorMessages.internalFix().phrase,
   internal: () => errorMessages.internalFix().phrase,
 } satisfies ByReason;

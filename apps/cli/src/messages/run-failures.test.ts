@@ -170,8 +170,17 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       "Support reply failed in the step Classify: Sorter used all 6 turns without finishing. Its last turns were calls to search_docs that returned nothing.",
     );
     expect(lines({ ...failure, turns: 1 }, "Classify")[0]).toBe(
-      "Support reply failed in the step Classify: Sorter used all 1 turn without finishing.",
+      "Support reply failed in the step Classify: Sorter used its only turn without finishing.",
     );
+  });
+
+  it("points the alias at another model when its model can't use tools (HAL-2745)", () => {
+    expect(
+      lines({ reason: "model-no-tools", model: "llama3.2", alias: "fast" }, "Classify"),
+    ).toEqual([
+      "Support reply failed in the step Classify: llama3.2, used by the model alias fast, can't use tools, and this step offers tools.",
+      "In models.yaml, point the model alias fast at a model that can use tools.",
+    ]);
   });
 
   it("keeps the fail-closed promise for a local-only workspace and a blocked site", () => {
