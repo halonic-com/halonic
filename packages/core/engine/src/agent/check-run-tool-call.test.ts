@@ -2,7 +2,7 @@ import type { ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { call, ScriptedConnector } from "../testing/scripted-model.ts";
-import { checkRunToolCall } from "./check-run-tool-call.ts";
+import { checkRunToolCall, runToolCheckOf } from "./check-run-tool-call.ts";
 import { halonicTool } from "./turn-test-kit.test-helper.ts";
 import type { TurnTool } from "./turn-tools.ts";
 
@@ -51,5 +51,31 @@ verifies("engine.run-tool-calls", () => {
     expect(checkRunToolCall(mailTool(undefined), call("c-1", "mail__search"))).toEqual({
       kind: "ask",
     });
+  });
+});
+
+verifies("engine.run-connector-approve", () => {
+  it("asks about a call under approve by the name the server lists, not the offered one", () => {
+    const check = runToolCheckOf({ mail: { approve: ["search"] } });
+    expect(check(mailTool("read"), call("c-1", "mail__search"))).toEqual({ kind: "ask" });
+    const byOfferedName = runToolCheckOf({ mail: { approve: ["mail__search"] } });
+    expect(byOfferedName(mailTool("read"), call("c-1", "mail__search"))).toEqual({ kind: "run" });
+  });
+
+  it("refuses a call the run's check refuses rather than asking about it", () => {
+    const odd = {
+      id: "c-1",
+      name: "mail__search",
+      arguments: [] as unknown as Record<string, unknown>,
+    };
+    expect(runToolCheckOf({ mail: { approve: "all" } })(mailTool("read"), odd)).toMatchObject({
+      kind: "refused",
+    });
+  });
+
+  it("leaves Halonic's tools and connectors with no lists to the run's check", () => {
+    const check = runToolCheckOf({ other: { approve: "all" } });
+    expect(check(lookup, call("c-1", "lookup"))).toEqual({ kind: "run" });
+    expect(check(mailTool("read"), call("c-1", "mail__search"))).toEqual({ kind: "run" });
   });
 });

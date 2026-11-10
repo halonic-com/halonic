@@ -17,7 +17,7 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
-import { checkRunToolCall, checkSubagentToolCall } from "./agent/check-run-tool-call.ts";
+import { checkSubagentToolCall, runToolCheckOf } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
@@ -424,7 +424,8 @@ export class LocalExecutor implements RunExecutor {
    * tools of the connected servers its kept file lists ({@link connectorsOf})
    * that their kept files allow ({@link allowedToolsOf}), through the same
    * turn loop a chat turn uses.
-   * Every call is checked with `checkToolCall` first ({@link checkRunToolCall}),
+   * Every call is checked with `checkToolCall` first, and a connector call
+   * its kept file puts under `approve` asks a person ({@link runToolCheckOf}),
    * and the agent's `maxSteps` is the round limit. The agent's own prompt and
    * the turn's run log come later in step 4.
    *
@@ -453,10 +454,8 @@ export class LocalExecutor implements RunExecutor {
     });
     const connectorCalls = this.options.runs?.connectorCalls;
     const inBranch = branchOfCall(run.parallel, call.callId) !== null;
-    const listed = allowedToolsOf(
-      connectorsOf(this.options.connectors, agent),
-      turn.definitions.connectorTools ?? {},
-    );
+    const connectorTools = turn.definitions.connectorTools ?? {};
+    const listed = allowedToolsOf(connectorsOf(this.options.connectors, agent), connectorTools);
     const connectors = inBranch ? listed.map(readToolsOf) : listed;
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
@@ -470,7 +469,7 @@ export class LocalExecutor implements RunExecutor {
       maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
       agent: call.agent,
       clock: this.options.clock,
-      checkCall: checkRunToolCall,
+      checkCall: runToolCheckOf(connectorTools),
       autoKnowledge: knowledge.auto,
       ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
     });

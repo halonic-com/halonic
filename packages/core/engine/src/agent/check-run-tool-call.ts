@@ -9,8 +9,9 @@ import {
   type OfferedTool,
   UntrustedText,
 } from "@halonicjs/app";
+import { type Connector, needsApproval } from "@halonicjs/format";
 import type { ToolCall } from "@halonicjs/ports";
-import type { CallCheck } from "./check-call-before-run.ts";
+import type { CallCheck, CallChecker } from "./check-call-before-run.ts";
 import type { HalonicTool, TurnTool } from "./turn-tools.ts";
 
 /**
@@ -26,6 +27,27 @@ export function checkRunToolCall(tool: TurnTool, call: ToolCall): CallCheck {
     return refused(`${tool.source}'s tools don't run in workflow runs`);
   }
   return checkToolCall(offered, call.arguments);
+}
+
+/**
+ * {@link checkRunToolCall} for a run whose connectors' files have the
+ * `tools` lists given, by connector id: a call it lets run to a connector's
+ * tool that its file's `approve` names, under the name its server lists it
+ * under, or that says `all`, asks a person first, whatever risk the server
+ * lists (HAL-4554). A refusal still wins, so a person isn't asked about a
+ * call that wouldn't run.
+ */
+export function runToolCheckOf(
+  lists: Readonly<Record<string, Pick<Connector["tools"], "approve">>>,
+): CallChecker {
+  return (tool, call) => {
+    const check = checkRunToolCall(tool, call);
+    if (check.kind !== "run" || tool.kind !== "server") return check;
+    const approve = Object.hasOwn(lists, tool.source) ? lists[tool.source] : undefined;
+    return approve !== undefined && needsApproval(approve, tool.listedName)
+      ? { kind: "ask" }
+      : check;
+  };
 }
 
 /** The tool as `checkToolCall` reads it, or `null` for the caller's, which a run never offers. */

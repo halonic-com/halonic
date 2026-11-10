@@ -1,5 +1,6 @@
 import type { SendingCheck, SendingSettings } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
+import type { Connector } from "@halonicjs/format";
 import type { ChatResponse, ConnectorTool, ToolRisk } from "@halonicjs/ports";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
@@ -259,6 +260,56 @@ verifies("engine.run-connector-allow", () => {
     await scheduler.runDue();
 
     expect(model.requests[0]?.tools).toEqual([]);
+  });
+});
+
+/** A run whose agent calls `tool` on `mail`, whose kept file has the `approve` list given. */
+async function callingUnder(approve: Connector["tools"]["approve"], tool: ConnectorTool) {
+  const mail = new ScriptedConnector("mail", [tool], () => "3 mails");
+  const { connectorCalls } = settingsGiving({ allowed: true });
+  const answers = [callAnswer(call("s-1", tool.name, { to: "support" })), textAnswer("Found")];
+  const setup = runsOn(answers, new KernelRuns(), {
+    agents: mailWriter,
+    connectors: [mail],
+    connectorTools: { mail: { approve } },
+    connectorCalls,
+  });
+  await setup.executor.start(replyStart);
+  await setup.scheduler.runDue();
+  return { ...setup, mail };
+}
+
+verifies("engine.run-connector-approve", () => {
+  it("waits for a person before a read tool its connector's file puts under approve", async () => {
+    const { executor, scheduler, runs, mail } = await callingUnder(
+      ["search"],
+      mailTool("search", "read"),
+    );
+
+    expect(mail.calls).toEqual([]);
+    expect(typesOf(runs.logs.get("run_1"))).toContain("approval.requested");
+    expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    expect(mail.calls).toEqual([{ name: "search", args: { to: "support" } }]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("waits for a person before every tool when the file says approve: all", async () => {
+    const { runs, mail } = await callingUnder("all", mailTool("list_folders", "read"));
+
+    expect(mail.calls).toEqual([]);
+    expect(typesOf(runs.logs.get("run_1"))).toContain("approval.requested");
+    expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
+  });
+
+  it("runs a read tool the file doesn't put under approve without asking", async () => {
+    const { runs, mail } = await callingUnder(["send_mail"], mailTool("search", "read"));
+
+    expect(mail.calls).toHaveLength(1);
+    expect(typesOf(runs.logs.get("run_1"))).not.toContain("approval.requested");
   });
 });
 
