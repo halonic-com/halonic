@@ -22,14 +22,15 @@ const k1 = { chatId: "c1", cardId: "k1" };
 /** A workspace with `old.agent.yaml`, a trash, and the assistant's delete of it. */
 async function withDelete() {
   const store = new TestDefinitionStore({ [old]: text }, digest);
+  const recordStore = new TestDefinitionStore({}, digest);
   const trash = new TestTrash(store, digest);
-  const review = new ReviewService({ store, digest, trash });
+  const review = new ReviewService({ store, records: recordStore, digest, trash });
   const outcome = await review.proposeDelete({
     path: old,
     expected: await contentDigest(text, digest),
     card: k1,
   });
-  return { store, trash, review, outcome, records: new ReviewRecords(store, digest) };
+  return { store, trash, review, outcome, records: new ReviewRecords(recordStore, digest) };
 }
 
 function stepOf(outcome: ReviewOutcome) {
@@ -78,7 +79,13 @@ verifies("app.review-deletes-and-new-files", () => {
 
   it("writes the baseline back when the assistant changed the file before deleting it", async () => {
     const store = new TestDefinitionStore({ [old]: text }, digest);
-    const review = new ReviewService({ store, digest, trash: new TestTrash(store, digest) });
+    const recordStore = new TestDefinitionStore({}, digest);
+    const review = new ReviewService({
+      store,
+      records: recordStore,
+      digest,
+      trash: new TestTrash(store, digest),
+    });
     await review.propose({
       path: old,
       content: "name: Changed\n",
@@ -113,7 +120,8 @@ verifies("app.review-deletes-and-new-files", () => {
 
   it("removes a file the assistant created on Reject, and Undo brings it back", async () => {
     const store = new TestDefinitionStore({}, digest);
-    const review = new ReviewService({ store, digest });
+    const recordStore = new TestDefinitionStore({}, digest);
+    const review = new ReviewService({ store, records: recordStore, digest });
     await review.propose({ path: old, content: text, expected: "absent", card: k1 });
     const step = stepOf(await review.reject({ kind: "file", path: old }));
     expect(store.files.has(old)).toBe(false);
@@ -123,8 +131,9 @@ verifies("app.review-deletes-and-new-files", () => {
 
   it("leaves nothing to review when the assistant deletes a file it created", async () => {
     const store = new TestDefinitionStore({}, digest);
+    const recordStore = new TestDefinitionStore({}, digest);
     const trash = new TestTrash(store, digest);
-    const review = new ReviewService({ store, digest, trash });
+    const review = new ReviewService({ store, records: recordStore, digest, trash });
     await review.propose({ path: old, content: text, expected: "absent", card: k1 });
     await review.proposeDelete({
       path: old,
@@ -138,7 +147,8 @@ verifies("app.review-deletes-and-new-files", () => {
   it("deletes nothing when the file isn't what the model read, or when there is no trash", async () => {
     const { review } = await withDelete();
     const store = new TestDefinitionStore({ [old]: text }, digest);
-    const noTrash = new ReviewService({ store, digest });
+    const recordStore = new TestDefinitionStore({}, digest);
+    const noTrash = new ReviewService({ store, records: recordStore, digest });
     const expected = await contentDigest(text, digest);
     expect(await review.proposeDelete({ path: old, expected, card: k1 })).toEqual({
       status: "changed-on-disk",
