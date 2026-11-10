@@ -52,29 +52,41 @@ async function expectRefused(
 // A link could put an agent's notes in a file the agent may edit, or let an
 // append write into one (HAL-2978, HAL-3009).
 verifies("fs-node.record-store-files", () => {
-  describe.skipIf(process.platform === "win32")("a log that is a link", () => {
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a symbolic link to a valid log outside the folder", async () => {
+  describe("a log that is a link", () => {
+    it("refuses a symbolic link to a valid log outside the folder", async () => {
       const { store, outside } = await storeWithLog((target, log) => symlink(target, log));
       await expectRefused(store, outside, "is a link");
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a symbolic link to nothing rather than reading it as empty", async () => {
+    it("refuses a symbolic link to nothing rather than reading it as empty", async () => {
       const gone = join(await tempFolder(), "gone.jsonl");
       const { store, outside } = await storeWithLog((_target, log) => symlink(gone, log));
       await expectRefused(store, outside, "is a link");
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a hard link to a valid log outside the folder", async () => {
+    // Any program can make a junction on Windows, without special rights.
+    it("refuses a junction in the log's place", async () => {
+      const folder = await tempFolder();
+      const { store, outside } = await storeWithLog((_target, log) =>
+        symlink(folder, log, "junction"),
+      );
+      await expectRefused(store, outside, "is a link");
+    });
+
+    it("refuses a hard link to a valid log outside the folder", async () => {
       const { store, outside } = await storeWithLog((target, log) => link(target, log));
       await expectRefused(store, outside, "is a hard link");
     });
 
     // Opening a named pipe waits for a writer, so reading one would hang (HAL-2985).
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a named pipe rather than waiting on it", async () => {
-      const { store, outside } = await storeWithLog(async (_target, log) => {
-        await promisify(execFile)("mkfifo", [log]);
-      });
-      await expectRefused(store, outside, "isn't a plain file");
-    });
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] needs POSIX links, modes and signals: refuses a named pipe rather than waiting on it",
+      async () => {
+        const { store, outside } = await storeWithLog(async (_target, log) => {
+          await promisify(execFile)("mkfifo", [log]);
+        });
+        await expectRefused(store, outside, "isn't a plain file");
+      },
+    );
   });
 });

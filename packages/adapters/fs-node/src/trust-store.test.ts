@@ -172,7 +172,7 @@ verifies("fs-node.trust-store-files", () => {
 
   // A link could put a record in a file an agent may edit, such as one inside
   // its workspace, so the agent could trust a workspace itself (HAL-2978).
-  describe.skipIf(process.platform === "win32")("a record that is a link", () => {
+  describe("a record that is a link", () => {
     const acme = "/workspaces/acme";
 
     /** A valid record for `acme` in a file outside the store's root, such as in a workspace. */
@@ -190,14 +190,14 @@ verifies("fs-node.trust-store-files", () => {
       return { root, store: new FileTrustStore(root) };
     }
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to a valid record outside the folder", async () => {
+    it("refuses a link to a valid record outside the folder", async () => {
       const { root, store } = await linkedStore(await outsideRecord());
 
       await expect(store.get(acme)).rejects.toThrow(JSON.stringify(acme));
       await expect(store.list()).rejects.toThrow(JSON.stringify(fileFor(root, acme)));
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: says the record is a link", async () => {
+    it("says the record is a link", async () => {
       const { store } = await linkedStore(await outsideRecord());
 
       await expect(store.get(acme)).rejects.toMatchObject({
@@ -205,14 +205,14 @@ verifies("fs-node.trust-store-files", () => {
       });
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to nothing rather than reading it as no record", async () => {
+    it("refuses a link to nothing rather than reading it as no record", async () => {
       const { store } = await linkedStore(join(await tempFolder(), "gone.json"));
 
       await expect(store.get(acme)).rejects.toThrow(JSON.stringify(acme));
       await expect(store.list()).rejects.toThrow("can't be read");
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to another record in the folder", async () => {
+    it("refuses a link to another record in the folder", async () => {
       const root = join(await tempFolder(), "trust");
       const store = new FileTrustStore(root);
       await store.grant(trustRecord("/workspaces/zeta"));
@@ -222,7 +222,21 @@ verifies("fs-node.trust-store-files", () => {
       expect(await store.get("/workspaces/zeta")).toEqual(trustRecord("/workspaces/zeta"));
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: grants over a link without writing through it", async () => {
+    // Any program can make a junction on Windows, without special rights.
+    it("refuses a junction in the record's place", async () => {
+      const root = join(await tempFolder(), "trust");
+      await mkdir(root, { recursive: true });
+      await symlink(await tempFolder(), fileFor(root, acme), "junction");
+      const store = new FileTrustStore(root);
+
+      await expect(store.get(acme)).rejects.toMatchObject({
+        message: expect.stringContaining(JSON.stringify(acme)),
+        cause: expect.objectContaining({ message: expect.stringContaining("is a link") }),
+      });
+      await expect(store.list()).rejects.toThrow(JSON.stringify(fileFor(root, acme)));
+    });
+
+    it("grants over a link without writing through it", async () => {
       const outside = await outsideRecord();
       const before = await readFile(outside, "utf8");
       const { root, store } = await linkedStore(outside);
@@ -230,11 +244,13 @@ verifies("fs-node.trust-store-files", () => {
       await store.grant(trustRecord(acme));
       expect(await readFile(outside, "utf8")).toBe(before);
       expect((await lstat(fileFor(root, acme))).isSymbolicLink()).toBe(false);
-      expect((await stat(fileFor(root, acme))).mode & 0o777).toBe(0o600);
+      if (process.platform !== "win32") {
+        expect((await stat(fileFor(root, acme))).mode & 0o777).toBe(0o600);
+      }
       expect(await store.list()).toEqual([trustRecord(acme)]);
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: revokes a link without touching what it points to", async () => {
+    it("revokes a link without touching what it points to", async () => {
       const outside = await outsideRecord();
       const { root, store } = await linkedStore(outside);
 
@@ -245,7 +261,7 @@ verifies("fs-node.trust-store-files", () => {
 
     // A hard link is a second name for the workspace file itself, so `lstat`
     // doesn't see a link; only its count of names gives it away (HAL-2985).
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a hard link to a valid record outside the folder", async () => {
+    it("refuses a hard link to a valid record outside the folder", async () => {
       const root = join(await tempFolder(), "trust");
       await mkdir(root, { recursive: true });
       await link(await outsideRecord(), fileFor(root, acme));

@@ -201,7 +201,7 @@ verifies("fs-node.agent-placement-store-files", () => {
       expect(await store.get(coder)).toBeNull();
     });
 
-    describe.skipIf(process.platform === "win32")("links and permissions", () => {
+    describe("links and permissions", () => {
       /** A valid choice for `coder` in a file outside the store's root, such as in a workspace. */
       async function outsideChoice(): Promise<string> {
         const outside = join(await tempFolder(), "placement.json");
@@ -215,7 +215,7 @@ verifies("fs-node.agent-placement-store-files", () => {
 
       // A link could put the choice in a file an agent may edit, such as one
       // inside its workspace.
-      it("[platform:win32] needs POSIX links, modes and signals: refuses a choice that is a link to a file outside the folder", async () => {
+      it("refuses a choice that is a link to a file outside the folder", async () => {
         const root = join(await tempFolder(), "placements");
         await mkdir(root, { recursive: true });
         await symlink(await outsideChoice(), fileFor(root, coder));
@@ -223,7 +223,16 @@ verifies("fs-node.agent-placement-store-files", () => {
         await expect(new FileAgentPlacementStore(root).get(coder)).rejects.toThrow('"coder"');
       });
 
-      it("[platform:win32] needs POSIX links, modes and signals: refuses a choice that is a hard link to a file outside the folder", async () => {
+      // Any program can make a junction on Windows, without special rights.
+      it("refuses a choice that is a junction", async () => {
+        const root = join(await tempFolder(), "placements");
+        await mkdir(root, { recursive: true });
+        await symlink(await tempFolder(), fileFor(root, coder), "junction");
+
+        await expect(new FileAgentPlacementStore(root).get(coder)).rejects.toThrow('"coder"');
+      });
+
+      it("refuses a choice that is a hard link to a file outside the folder", async () => {
         const root = join(await tempFolder(), "placements");
         await mkdir(root, { recursive: true });
         await link(await outsideChoice(), fileFor(root, coder));
@@ -231,7 +240,7 @@ verifies("fs-node.agent-placement-store-files", () => {
         await expect(new FileAgentPlacementStore(root).get(coder)).rejects.toThrow('"coder"');
       });
 
-      it("[platform:win32] needs POSIX links, modes and signals: saves over a link without writing through it", async () => {
+      it("saves over a link without writing through it", async () => {
         const root = join(await tempFolder(), "placements");
         await mkdir(root, { recursive: true });
         const outside = await outsideChoice();
@@ -242,10 +251,12 @@ verifies("fs-node.agent-placement-store-files", () => {
         await store.save(agentPlacement(coder.location, coder.agent, "sha256:new"));
         expect(await readFile(outside, "utf8")).toBe(before);
         expect((await lstat(fileFor(root, coder))).isSymbolicLink()).toBe(false);
-        expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
+        if (process.platform !== "win32") {
+          expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
+        }
       });
 
-      it("[platform:win32] needs POSIX links, modes and signals: removes a link without touching what it points to", async () => {
+      it("removes a link without touching what it points to", async () => {
         const root = join(await tempFolder(), "placements");
         await mkdir(root, { recursive: true });
         const outside = await outsideChoice();
@@ -258,24 +269,30 @@ verifies("fs-node.agent-placement-store-files", () => {
         );
       });
 
-      it("[platform:win32] needs POSIX links, modes and signals: keeps a file private after it is saved over one anybody could read", async () => {
-        const { root, store } = await saved();
-        await chmod(fileFor(root, coder), 0o666);
+      it.skipIf(process.platform === "win32")(
+        "[platform:win32] needs POSIX links, modes and signals: keeps a file private after it is saved over one anybody could read",
+        async () => {
+          const { root, store } = await saved();
+          await chmod(fileFor(root, coder), 0o666);
 
-        await store.save(agentPlacement(coder.location, coder.agent, "sha256:new"));
-        expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
-      });
+          await store.save(agentPlacement(coder.location, coder.agent, "sha256:new"));
+          expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
+        },
+      );
 
       // `mkdir` sets the mode only on a folder it creates, so a folder made
       // earlier by something else needs a `chmod`.
-      it("[platform:win32] needs POSIX links, modes and signals: makes a folder that was already there private on save", async () => {
-        const root = join(await tempFolder(), "placements");
-        await mkdir(root, { mode: 0o777 });
-        await chmod(root, 0o777);
+      it.skipIf(process.platform === "win32")(
+        "[platform:win32] needs POSIX links, modes and signals: makes a folder that was already there private on save",
+        async () => {
+          const root = join(await tempFolder(), "placements");
+          await mkdir(root, { mode: 0o777 });
+          await chmod(root, 0o777);
 
-        await new FileAgentPlacementStore(root).save(agentPlacement(coder.location, coder.agent));
-        expect((await stat(root)).mode & 0o777).toBe(0o700);
-      });
+          await new FileAgentPlacementStore(root).save(agentPlacement(coder.location, coder.agent));
+          expect((await stat(root)).mode & 0o777).toBe(0o700);
+        },
+      );
     });
   });
 });

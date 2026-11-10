@@ -112,7 +112,7 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
     });
   });
 
-  describe.skipIf(process.platform === "win32")("a yes that is a link", () => {
+  describe("a yes that is a link", () => {
     /** A valid yes in a file outside the store's folder, such as in a workspace. */
     async function outsideYes(): Promise<string> {
       const outside = join(await tempFolder(), "consent.json");
@@ -120,7 +120,7 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       return outside;
     }
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to a valid yes outside the folder", async () => {
+    it("refuses a link to a valid yes outside the folder", async () => {
       const root = await tempFolder();
       await symlink(await outsideYes(), fileIn(root));
 
@@ -130,14 +130,25 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       });
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a link to nothing rather than reading it as no yes", async () => {
+    it("refuses a link to nothing rather than reading it as no yes", async () => {
       const root = await tempFolder();
       await symlink(join(await tempFolder(), "gone.json"), fileIn(root));
 
       await expect(new FileUnfencedRunConsentStore(root).get()).rejects.toThrow("can't be read");
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: refuses a hard link to a valid yes outside the folder", async () => {
+    // Any program can make a junction on Windows, without special rights.
+    it("refuses a junction in the yes's place", async () => {
+      const root = await tempFolder();
+      await symlink(await tempFolder(), fileIn(root), "junction");
+
+      await expect(new FileUnfencedRunConsentStore(root).get()).rejects.toMatchObject({
+        message: expect.stringContaining("can't be read"),
+        cause: expect.objectContaining({ message: expect.stringContaining("is a link") }),
+      });
+    });
+
+    it("refuses a hard link to a valid yes outside the folder", async () => {
       const root = await tempFolder();
       await link(await outsideYes(), fileIn(root));
 
@@ -146,7 +157,7 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       });
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: saves over a link without writing through it", async () => {
+    it("saves over a link without writing through it", async () => {
       const outside = await outsideYes();
       const before = await readFile(outside, "utf8");
       const root = await tempFolder();
@@ -159,7 +170,7 @@ verifies("fs-node.unfenced-run-consent-store-file", () => {
       expect(await store.get()).toEqual(unfencedRunConsent("container"));
     });
 
-    it("[platform:win32] needs POSIX links, modes and signals: removes a link without touching what it points to", async () => {
+    it("removes a link without touching what it points to", async () => {
       const outside = await outsideYes();
       const before = await readFile(outside, "utf8");
       const root = await tempFolder();
