@@ -1,18 +1,26 @@
-import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { chmod, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   checkPublicWorkspacePath,
   type DefinitionStore,
+  type DefinitionWatch,
+  type DefinitionWatchListener,
   type Digest,
   isPrivateWorkspacePath,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import { bytesToHex, KeyedQueue, matchesExpected } from "@halonicjs/std";
+import { bytesToHex, contentDigest, KeyedQueue, matchesExpected } from "@halonicjs/std";
+import {
+  type FolderEvents,
+  FolderWatch,
+  nodeFolderEvents,
+  type OwnChange,
+} from "./folder-watch.ts";
 import { entryAt, isMissing } from "./links.ts";
 import { renameOver } from "./rename-over.ts";
+import { isTemporaryWrite, temporaryWriteFileName } from "./temporary-write.ts";
 
 /** The Web Crypto API that Node has, as the {@link Digest} port. */
 const webCryptoDigest: Digest = {
@@ -21,11 +29,16 @@ const webCryptoDigest: Digest = {
   },
 };
 
-/**
- * Names of the temporary files a write renames into place. `list()` leaves
- * them out, so a write in progress never shows up as a workspace file.
- */
-const temporaryWriteName = /^\.halonic-write-[0-9a-f-]+\.tmp$/u;
+/** How long the folder must be quiet before a watch reports a batch, by default. */
+const defaultQuietMs = 100;
+
+/** Options for a {@link FolderDefinitionStore}'s `watch()`; tests change them. */
+export interface FolderStoreWatchOptions {
+  /** Where events come from; `node:fs.watch`, recursive, by default. */
+  readonly events?: FolderEvents;
+  /** How long the folder must be quiet before a batch is reported. */
+  readonly quietMs?: number;
+}
 
 /**
  * Workspace files as plain files under a root folder: what the CLI and
@@ -46,14 +59,21 @@ export class FolderDefinitionStore implements DefinitionStore {
   readonly location: string;
   readonly #root: string;
   readonly #writes = new KeyedQueue();
+  readonly #watches = new Set<FolderWatch>();
+  readonly #watchOptions: Required<FolderStoreWatchOptions>;
 
   /**
    * @param root - the workspace folder; a relative one is resolved against the working directory
    * @param location - shown to people as where the files live; the root by default
+   * @param watchOptions - how `watch()` hears about the folder and batches what it hears
    */
-  constructor(root: string, location?: string) {
+  constructor(root: string, location?: string, watchOptions: FolderStoreWatchOptions = {}) {
     this.#root = resolve(root);
     this.location = location ?? root;
+    this.#watchOptions = {
+      events: watchOptions.events ?? nodeFolderEvents,
+      quietMs: watchOptions.quietMs ?? defaultQuietMs,
+    };
   }
 
   async list(dir?: string): Promise<string[]> {
@@ -87,7 +107,7 @@ export class FolderDefinitionStore implements DefinitionStore {
           return { status: "changed-on-disk", current };
         }
       }
-      await this.#replace(path, content);
+      await this.#ownChange(path, content, () => this.#replace(path, content));
       return { status: "written" };
     });
   }
@@ -99,7 +119,7 @@ export class FolderDefinitionStore implements DefinitionStore {
     const file = join(this.#root, path);
     const folder = dirname(file);
     await mkdir(folder, { recursive: true });
-    const temporary = join(folder, `.halonic-write-${randomUUID()}.tmp`);
+    const temporary = join(folder, temporaryWriteFileName());
     try {
       await writeFile(temporary, content, { encoding: "utf8", flag: "wx" });
       if (existing !== null) {
@@ -116,11 +136,58 @@ export class FolderDefinitionStore implements DefinitionStore {
 
   async remove(path: string): Promise<void> {
     checkPublicWorkspacePath(path);
-    if (!(await entryAt(this.#root, path))?.isFile()) {
-      return;
+    await this.#writes.run(path, async () => {
+      if (!(await entryAt(this.#root, path))?.isFile()) {
+        return;
+      }
+      // `force`: a file another program removed in the meantime is not an error.
+      await this.#ownChange(path, null, () => rm(join(this.#root, path), { force: true }));
+    });
+  }
+
+  /**
+   * Reports changes from outside Halonic, as the port says. Events from
+   * `node:fs.watch` are gathered until the folder has been quiet for a
+   * moment (100 ms by default), so a checkout comes as one batch.
+   */
+  async watch(listener: DefinitionWatchListener): Promise<DefinitionWatch> {
+    const watch = await FolderWatch.open(
+      { root: this.#root, files: this, digest: webCryptoDigest, ...this.#watchOptions },
+      listener,
+    );
+    this.#watches.add(watch);
+    return {
+      close: async () => {
+        this.#watches.delete(watch);
+        await watch.close();
+      },
+    };
+  }
+
+  /**
+   * Runs one of the store's own changes to `path`, which leaves `content`
+   * there (`null` for a remove), so no open watch reports it.
+   */
+  async #ownChange(
+    path: string,
+    content: string | null,
+    apply: () => Promise<void>,
+  ): Promise<void> {
+    const watches = [...this.#watches];
+    if (watches.length > 0) {
+      const change: OwnChange =
+        content === null ? "absent" : await contentDigest(content, webCryptoDigest);
+      for (const watch of watches) {
+        watch.beginOwnChange(path, change);
+      }
     }
-    // `force`: a file another program removed in the meantime is not an error.
-    await rm(join(this.#root, path), { force: true });
+    try {
+      await apply();
+    } finally {
+      for (const watch of watches) {
+        await watch.endOwnChange(path);
+      }
+    }
   }
 
   /**
@@ -159,7 +226,7 @@ export class FolderDefinitionStore implements DefinitionStore {
       if (
         entry.isSymbolicLink() ||
         entry.name.includes("\\") ||
-        temporaryWriteName.test(entry.name) ||
+        isTemporaryWrite(entry.name) ||
         isPrivateWorkspacePath(entry.name)
       ) {
         continue;

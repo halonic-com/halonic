@@ -87,6 +87,34 @@ export type WriteResult =
   | { readonly status: "written" }
   | { readonly status: "changed-on-disk"; readonly current: string | null };
 
+/**
+ * One workspace file that changed outside Halonic. `removed` means it is gone
+ * at the end of the batch; a file removed and created again, as many editors
+ * save, is `changed`. A folder that went away gives one `removed` per file
+ * that was in it.
+ */
+export interface WorkspaceFileChange {
+  readonly path: string;
+  readonly kind: "changed" | "removed";
+}
+
+/** Who hears about changes from outside Halonic while a watch is open. */
+export interface DefinitionWatchListener {
+  /**
+   * One batch of changes, each path at most once, sorted by path. Many
+   * changes close together (a checkout touching 50 files) come as one batch.
+   */
+  changed(changes: readonly WorkspaceFileChange[]): void;
+  /** The watch broke (the folder went away, say) and reports nothing more. */
+  failed(error: Error): void;
+}
+
+/** An open watch; see {@link DefinitionStore.watch}. */
+export interface DefinitionWatch {
+  /** Stops the watch. No batch is reported after it resolves. */
+  close(): Promise<void>;
+}
+
 /** A {@link DefinitionSource} that can also change the files: the Studio's editors and `halonic serve` use it. */
 export interface DefinitionStore extends DefinitionSource {
   /**
@@ -97,6 +125,15 @@ export interface DefinitionStore extends DefinitionSource {
   write(path: string, content: string, options?: WriteOptions): Promise<WriteResult>;
   /** Deletes a file. Deleting a file that isn't there is not an error. */
   remove(path: string): Promise<void>;
+  /**
+   * Reports the files that change from outside Halonic (save model 6):
+   * another editor, a sync tool, `git pull`. A change is one whose text
+   * differs from what the store last saw, so the store's own writes and
+   * removes, and a file saved again with the same text, are not reported.
+   * Private entries are left out, as in `list()`. A store nothing else can
+   * change, such as one in memory, reports nothing.
+   */
+  watch(listener: DefinitionWatchListener): Promise<DefinitionWatch>;
 }
 
 // The path rules above, as code, so every adapter refuses exactly the same paths.

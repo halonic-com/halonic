@@ -2,6 +2,7 @@ import {
   checkPublicWorkspacePath,
   type DefinitionSource,
   type DefinitionStore,
+  type DefinitionWatch,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -96,6 +97,14 @@ export class DryRunDefinitionStore implements DefinitionStore {
     await this.#checkSourceAccepts(path);
     this.#pending.set(path, null);
     this.#changes.push(Object.freeze({ kind: "remove", path }));
+  }
+
+  /**
+   * Reports nothing: a dry run's changes are its own, and the store under it
+   * is only read, so it may have no watch.
+   */
+  async watch(): Promise<DefinitionWatch> {
+    return { close: async () => {} };
   }
 
   /**

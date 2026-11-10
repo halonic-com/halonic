@@ -1,4 +1,4 @@
-import type { DefinitionStore, Digest, WriteResult } from "@halonicjs/ports";
+import type { DefinitionStore, DefinitionWatch, Digest, WriteResult } from "@halonicjs/ports";
 import { openWorkspace, workspaceFilesKey } from "../src/index.ts";
 
 const agentPath = "hubs/acme/agents/clerk.agent.yaml";
@@ -41,6 +41,10 @@ class MapStore implements DefinitionStore {
   async remove(path: string): Promise<void> {
     this.files.delete(path);
     this.writes++;
+  }
+  // Nothing else changes the map, so there is nothing to watch.
+  async watch(): Promise<DefinitionWatch> {
+    return { close: async () => {} };
   }
 }
 

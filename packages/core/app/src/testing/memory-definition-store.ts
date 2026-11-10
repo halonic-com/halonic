@@ -1,4 +1,4 @@
-import type { DefinitionStore, WriteOptions, WriteResult } from "@halonicjs/ports";
+import type { DefinitionStore, DefinitionWatch, WriteOptions, WriteResult } from "@halonicjs/ports";
 import { KeyedQueue, matchesExpected, type Sha256 } from "@halonicjs/std";
 
 /**
@@ -75,6 +75,11 @@ export class TestDefinitionStore implements DefinitionStore {
     this.log.push(`remove ${path}`);
     this.files.delete(path);
     this.saves++;
+  }
+
+  /** Reports nothing: only the tests change these files. */
+  async watch(): Promise<DefinitionWatch> {
+    return { close: async () => {} };
   }
 
   private check(path: string): void {

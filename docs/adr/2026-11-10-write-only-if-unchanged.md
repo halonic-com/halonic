@@ -33,6 +33,12 @@ and `matchesExpected` live in `@halonicjs/std`, because the ports package
 uses no other package and core has no `TextEncoder`. Core passes the
 `Digest` port in.
 
+**`watch(listener)` is part of the same version,** as HAL-396 (files 2.1)
+agreed: batches of `{ path, kind: changed | removed }` for files whose text
+differs from what the store last saw. The store knows its own writes, so it
+never reports them; a file removed and created again is `changed`. Both
+parts land the same day, before any release, so they share version 2.
+
 **The folder store writes a temporary file and renames it,** one write per
 path at a time, so a reader never sees half a file and Halonic's own writes
 can't race each other.
@@ -43,5 +49,8 @@ can't race each other.
   Callers that ignore the result keep working.
 - The `definition-store` contract suite gets write-if-unchanged cases, so the
   desktop and browser stores pass them when they are built.
+- Every `DefinitionStore` implements `watch`. A store nothing else can change
+  (memory, a dry run, the core test doubles) reports nothing; the memory
+  store's `changeOutside` lets a test make up an outside change.
 - A program outside Halonic can still change a file in the moment between the
   check and the rename. The watcher (save model 6) reports such a change.

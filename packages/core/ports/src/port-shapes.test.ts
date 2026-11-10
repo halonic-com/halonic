@@ -44,6 +44,7 @@ const definitions: DefinitionStore = {
   version: async () => "v1",
   write: async () => ({ status: "written" }),
   remove: async () => {},
+  watch: async () => ({ close: async () => {} }),
 };
 
 verifies("ports.read-only-sides", () => {
