@@ -81,7 +81,7 @@ describe("run's sentences", () => {
   });
 
   it("escapes a label's control characters, since the label comes from the workflow file", () => {
-    const labels = { approve: "\u001b[31mSend‮", reject: "Drop\nit" };
+    const labels = { approve: "\u001b[31mSend\u202e", reject: "Drop\nit" };
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
       "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (\\u001b[31mSend\\u202e)  (or reject (Drop\\u000ait))",
     );
