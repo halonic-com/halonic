@@ -1,8 +1,8 @@
+import { diskSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 import type { Harness, ProgramProbe } from "@halonicjs/ports";
 import { detectClaudeCode } from "./detect.ts";
 import { claudeCodeEnvironment } from "./environment.ts";
 import { ClaudeCodeRun } from "./run.ts";
-import { diskSettingsFolder, type SettingsFolderWriter } from "./settings.ts";
 
 /** What the Claude Code harness is made with. */
 export interface ClaudeCodeHarnessOptions {

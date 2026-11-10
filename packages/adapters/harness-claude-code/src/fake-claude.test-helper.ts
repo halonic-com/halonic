@@ -1,4 +1,4 @@
-import type { SettingsFolderWriter } from "./settings.ts";
+import type { SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 
 /**
  * The part of the contract suite's `FakeProgramIo` these programs use. The

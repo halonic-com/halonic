@@ -1,15 +1,10 @@
 import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { diskSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  claudeCodeSettingsFiles,
-  diskSettingsFolder,
-  mcpSettingsFile,
-  type SettingsFolderWriter,
-  writeClaudeCodeSettings,
-} from "./settings.ts";
+import { claudeCodeSettingsFiles, mcpSettingsFile, writeClaudeCodeSettings } from "./settings.ts";
 
 let folder: string;
 

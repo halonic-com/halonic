@@ -2,8 +2,8 @@
 
 What the harness adapters (`harness-claude-code`, `harness-codex`) share, so
 each keeps the `Harness` port's promises in the same way: reading a
-program's output line by line, and the filter every event passes through on
-its way out.
+program's output line by line, the filter every event passes through on
+its way out, and writing the agent's settings folder.
 
 - **Layer:** adapters
 - **Owner:** owen
@@ -28,6 +28,16 @@ agent's final `agent.finished` through once, and nothing after it. That is the
 one without a `parent`: a subagent's `agent.finished` doesn't end the run.
 `finished` says whether it has passed, and `error(message)` makes an `Error`
 with the token removed from its message.
+
+## The settings folder
+
+`writeSettingsFiles(folder, files, writer)` writes a harness's settings
+files, by file name, into the agent's settings folder. A file that already
+holds the same text is left alone, because the program may watch its
+settings and another run of the agent may be reading them.
+`diskSettingsFolder` writes on this computer's disk: each file is written
+aside and then renamed into place, so a reader never sees half a file.
+Tests pass a `SettingsFolderWriter` that keeps the files in memory.
 
 ## Example
 

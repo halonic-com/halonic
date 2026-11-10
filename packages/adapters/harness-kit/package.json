@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-harness-kit",
   "private": true,
   "type": "module",
-  "description": "What the harness adapters share: reading a program's output line by line, and keeping the bridge token and anything after the final agent.finished out of a run's events.",
+  "description": "What the harness adapters share: reading a program's output line by line, keeping the bridge token and anything after the final agent.finished out of a run's events, and writing the agent's settings folder.",
   "exports": {
     ".": "./src/index.ts"
   },

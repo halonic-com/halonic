@@ -1,4 +1,6 @@
 // The public API of @halonicjs/adapter-harness-claude-code. Everything else in src/ is internal.
+
+export type { SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 export {
   claudeProgram,
   detectClaudeCode,
@@ -7,5 +9,4 @@ export {
 } from "./detect.ts";
 export { type ClaudeCodeFolders, claudeCodeEnvironment } from "./environment.ts";
 export { type ClaudeCodeHarnessOptions, claudeCodeHarness } from "./harness.ts";
-export type { SettingsFolderWriter } from "./settings.ts";
 export { findSignInProblem, SignInError, type SignInProblem } from "./sign-in.ts";
