@@ -1073,7 +1073,8 @@ control.
 - **On a phone** the text isn't typed in the page (component specs 3). The field is a button
   drawn as the phone Input: the text folded after 8 lines and a 20px chevron. Its name is the
   Field's label and its text is its description. With a Field error the edge is `danger`, so an
-  empty required field shows on the page, not only in the sheet.
+  empty required field shows on the page, not only in the sheet. The error is read as part of the
+  button's description; the button isn't `aria-invalid`, which a button doesn't support.
 - Pressing it opens the **text sheet**. The sheet has the label as its title and **Done** at the
   right, with no Close, because it cancels nothing. Then come the Field's hint, its error, and
   one borderless textarea that fills the screen down to the keyboard. It saves as you type

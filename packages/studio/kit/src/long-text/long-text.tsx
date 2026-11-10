@@ -80,7 +80,6 @@ function FoldedText(props: LongTextProps) {
           aria-haspopup="dialog"
           aria-labelledby={field?.labelId}
           aria-describedby={describedBy(textId, field?.describedBy)}
-          aria-invalid={invalid || undefined}
           className="absolute inset-0 size-full cursor-pointer rounded-sm outline-none"
           onClick={() => setOpened(props.value)}
         />

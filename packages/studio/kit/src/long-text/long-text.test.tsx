@@ -103,7 +103,8 @@ verifies("kit.long-text", () => {
   it("shows a Field error on the page with a danger edge", () => {
     const { container } = render(onPhone(<Instructions value="" error="Add instructions." />));
     const button = folded(container);
-    expect(button.getAttribute("aria-invalid")).toBe("true");
+    // A button can't be aria-invalid; the error reaches screen readers as its description.
+    expect(button.hasAttribute("aria-invalid")).toBe(false);
     expect((button.parentElement as HTMLElement).className).toContain("border-danger");
     expect(described(button)).toContain("Add instructions.");
   });
