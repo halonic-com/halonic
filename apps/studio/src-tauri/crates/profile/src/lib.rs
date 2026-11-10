@@ -79,7 +79,10 @@ impl fmt::Display for ProfileError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProfileError::HalonicHomeNotAbsolute { value } => {
-                write!(formatter, "HALONIC_HOME must be an absolute folder, not {value:?}")
+                write!(
+                    formatter,
+                    "HALONIC_HOME must be an absolute folder, not {value:?}"
+                )
             }
             ProfileError::HomeNotAbsolute { value } => {
                 write!(formatter, "the home folder must be absolute, not {value:?}")

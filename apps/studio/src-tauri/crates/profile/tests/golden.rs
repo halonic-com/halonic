@@ -70,7 +70,10 @@ fn trust_folder_names_why_an_environment_is_refused() {
         }
     );
     let message = home.to_string();
-    assert!(message.contains("home folder must be absolute"), "{message}");
+    assert!(
+        message.contains("home folder must be absolute"),
+        "{message}"
+    );
 
     environment.halonic_home = Some("profile".to_owned());
     let chosen = profile_folder(&environment).unwrap_err();
