@@ -317,5 +317,9 @@ process; it never waits. The holder renews its lock every
 `heldLockRenewEveryMs` (a third of the 10 seconds after which a lock is
 stale) by writing its record again with `takenAt` now. When another
 process has taken the lock over, because this one missed its renewals for
-that long, `onLost` hears it and the renewals stop. `release()` removes the
-lock while it still holds this process's record.
+that long, `onLost` hears it and the renewals stop. A renewal that finds its
+own lock already older than that limit, say after the computer slept, gives
+the lock up instead of renewing it, because another process may be taking it
+over at that moment; `onLost` hears that too. `release()` removes the
+lock while it still holds this process's record. A lock file that is a link
+to a file that isn't there fails with an error that says to remove the link.

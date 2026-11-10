@@ -70,15 +70,24 @@ try {
   first, by the same rules as the built-in loop; a refused call doesn't run
   and the program reads `Refused: <reason>`. A call that runs is recorded as
   `tool.called` and `tool.result`; one that broke off without an answer is
-  recorded with outcome `unknown`. A call that needs a person's OK is
-  refused until the bridge can ask for approvals (build plan B7). `GET /mcp`
-  gets a 405: the bridge sends no messages of its own.
+  recorded with outcome `unknown`. A call that needs a person's OK is asked
+  through the run's `approvals` first and runs only once approved; a call a
+  person rejected, or one whose question ended without an answer, doesn't run
+  and isn't recorded. `GET /mcp` gets a 405: the bridge sends no messages of
+  its own.
+- **Permission prompt.** `POST /mcp/permission-prompt` is a second MCP server
+  with the one tool `approve_permission`, which Claude Code calls through
+  `--permission-prompt-tool` before one of its own tool calls that its settings
+  don't already allow. The bridge asks a person through the run's `approvals`
+  and answers in Claude Code's format, `allow` with the input unchanged or
+  `deny` with the reason. It records nothing, because Claude Code reports its
+  own calls, and a program never finds the tool among Halonic's at `/mcp`.
 - **Closing.** `close()` refuses new requests, aborts the ones in flight and
   resolves once they have ended or the close time limit has passed. Closing
   twice is safe.
 
 The rules are in `requirements/`: `server.md`, `pass-through.md`,
-`anthropic.md`, `openai.md`, `sign-in.md`, `spend.md` and `mcp.md`.
+`anthropic.md`, `openai.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
 
 ## Options
 

@@ -43,6 +43,9 @@ Device-wide settings such as the theme live outside any scope.
 |                             | subscribes again after the last event when the stream breaks, at most 3 times in a row without a new event                      | `app.run-follow-resubscribe`     |
 |                             | an aborted signal also cancels the run, when the executor can; `RunFollowStopped` says whether it did                           | `app.run-cancel-on-abort`        |
 | `FollowOptions.onEvent`     | each event as the follow reads it, oldest first, so a surface can draw while the run goes                                       | `app.run-follow-events`          |
+| `TrustService.check`        | is a workspace trusted: its fingerprint against its record; a grant only on a match                                             | `app.trust-service`              |
+| `TrustService.checkPlugin`  | the same for a plugin folder, whose record never shrinks; `grantPlugin` saves a person's trust                                  | `app.plugin-trust`               |
+| `ReviewService.accept`      | one change on an item page: accept moves the baseline, `reject` writes it back; stale changes change nothing                    | `app.review-accept-reject-change`|
 | `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only             | `app.connection-settings`        |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals    | `ports.untrusted-tool-listings`  |
 | `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                   | `ports.untrusted-tool-listings`  |

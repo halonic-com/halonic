@@ -8,6 +8,9 @@ Our own MCP client for programs on the person's computer.
   starts the program of a trusted workspace on the first call and talks MCP over its standard input
   and output. Package runners (`npx`, `uvx` …) start through the pinned launcher, which comes next
   (HAL-2544); until then they are refused.
+- `src/pinned/` holds `findRunner`, which finds a pinned connector's runner and its Node from the
+  app's own environment (its `PATH`, on macOS the login shell's, then the usual install folders)
+  and refuses a relative path. It isn't wired into the launcher yet.
 
 ## How a program is started and stopped
 
