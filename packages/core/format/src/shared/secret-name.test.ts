@@ -79,14 +79,16 @@ verifies("format.secret-names", () => {
       ).toBe(true);
     });
 
-    it("refuses a name that breaks the rule, at its line, and repeats it", () => {
+    it("refuses a name that breaks the rule, at its line", () => {
       const text = yaml("id: openai", "type: openai", "secret: openai key");
       expect(summary(problemsOf("provider", text))).toEqual(["secret secret-name 3"]);
-      expect(providerProblems("openai key")).toEqual([
+    });
+
+    it.each(["openai key", "openai.key"])("repeats the typo %s in the message", (name) => {
+      expect(providerProblems(name)).toEqual([
         {
           code: "secret-name",
-          message:
-            'The secret name "openai key" can\'t be used. Start with a letter, then use only letters, digits, - or _, such as openai-key.',
+          message: `The secret name "${name}" can't be used. Start with a letter, then use only letters, digits, - or _, such as openai-key.`,
         },
       ]);
     });
@@ -98,14 +100,26 @@ verifies("format.secret-names", () => {
     });
 
     it.each([
-      ["over 128 characters", `name-${"q".repeat(130)}`, "qqqq"],
-      ["with a character that isn't ASCII", "sérve-password", "rve-password"],
-      ["with a control character", "serve\u0007password", "password"],
-    ])("refuses a name %s, giving only its length", (_name, name, part) => {
+      ["a pasted password", "Hunter2!x"],
+      ["an @ in it", "pass@word"],
+      ["a character that isn't ASCII", "sérve-password"],
+      ["a control character", "serve\u0007password"],
+    ])("refuses a name with %s, without repeating it", (_name, name) => {
+      expect(providerProblems(name)).toEqual([
+        {
+          code: "secret-name",
+          message:
+            "This secret name has characters that can't be used. Start with a letter, then use only letters, digits, - or _.",
+        },
+      ]);
+    });
+
+    it("refuses a name over 128 characters, giving only its length", () => {
+      const name = `name-${"q".repeat(130)}`;
       const problems = providerProblems(name);
       expect(problems.map(({ code }) => code)).toEqual(["secret-name"]);
       expect(problems[0]?.message).toContain(`${name.length} characters`);
-      expect(problems[0]?.message).not.toContain(part);
+      expect(problems[0]?.message).not.toContain("qqqq");
     });
   });
 

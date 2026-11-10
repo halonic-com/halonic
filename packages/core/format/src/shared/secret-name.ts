@@ -1,4 +1,4 @@
-import { isQuotableSecretName, isSecretName, maxSecretNameLength } from "@halonicjs/ports";
+import { isSecretName, maxSecretNameLength } from "@halonicjs/ports";
 import type { Path } from "@halonicjs/schema-kit";
 import { findSecretShape } from "@halonicjs/std";
 import type { KindCheckProblem } from "../kind.ts";
@@ -53,17 +53,47 @@ const words = {
     "This looks like an API key, not a secret's name. Remove it from the file, store the key as a secret, and write the secret's name here, such as openai-key.",
   "secret-name": (name: string) =>
     `The secret name "${name}" can't be used. Start with a letter, then use only letters, digits, - or _, such as openai-key.`,
-  "secret-name-unquotable": (length: number) =>
+  "secret-name-too-long": (length: number) =>
     `This secret name is ${length} characters long. Use at most ${maxSecretNameLength}, starting with a letter, then only letters, digits, - or _.`,
+  "secret-name-characters":
+    "This secret name has characters that can't be used. Start with a letter, then use only letters, digits, - or _.",
 } as const;
+
+const typoSeparators = /[ .]/g;
+
+/**
+ * Whether a name that breaks the rule does so the way a typo does: it
+ * would pass with each space and dot written as `-` (`openai key`,
+ * `openai.key`). Only such a name may be repeated in a message. Anything
+ * else (`Hunter2!x`, `pass@word`) may be a password pasted by mistake, and
+ * `halonic validate` output can end up in a CI log.
+ *
+ * @example
+ * isTypoedSecretName("openai key"); // true
+ * isTypoedSecretName("Hunter2!x"); // false
+ */
+function isTypoedSecretName(name: string): boolean {
+  return isSecretName(name.replace(typoSeparators, "-"));
+}
+
+/** The `secret-name` message: the name quoted only when it is a typo. */
+function badNameMessage(name: string): string {
+  if (isTypoedSecretName(name)) {
+    return words["secret-name"](name);
+  }
+  if (name.length > maxSecretNameLength) {
+    return words["secret-name-too-long"](name.length);
+  }
+  return words["secret-name-characters"];
+}
 
 /**
  * Checks a value a file gives as a secret's name, before anything asks a
  * store for it. A key is refused first (`secret-looks-like-key`), then a
  * name that breaks the rule of the `Secrets` port (`secret-name`). Both are
  * errors, because the file may be committed. The message repeats the value
- * only when it is a plain name of at most 128 printable ASCII characters
- * that doesn't look like a key.
+ * only when it doesn't look like a key and would pass the rule with its
+ * spaces and dots written as `-`.
  *
  * @param name - the value from the file
  * @param path - where it sits in the file
@@ -85,8 +115,6 @@ export function checkSecretName(name: string, path: Path): KindCheckProblem | un
     severity: "error",
     code: "secret-name",
     path,
-    message: isQuotableSecretName(name)
-      ? words["secret-name"](name)
-      : words["secret-name-unquotable"](name.length),
+    message: badNameMessage(name),
   };
 }
