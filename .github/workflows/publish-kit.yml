@@ -26,7 +26,7 @@
 # answers 409 "Cannot stage previously published version" when a version is
 # staged again. The run treats that as a skip, not a failure.
 #
-# So merging a pull request that changes either package's `package.json` is
+# So merging a pull request that changes either package's `version` is
 # a release, and so is a run by hand with `dry_run` off. Releases need the
 # board's yes: ask through a task for Chief, and merge or run only once the
 # user has approved.
