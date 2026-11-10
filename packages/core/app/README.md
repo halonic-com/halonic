@@ -36,7 +36,7 @@ Device-wide settings such as the theme live outside any scope.
 | `RunHistory.findRun`        | the run a typed id points to: the full id or the short id (`shortRunId`), in any case; none, or several with the same end      | `app.run-short-id`               |
 | `RunHistory.hasTestRuns`    | whether a workspace has test runs, so an empty run list can say it has only those                                              | `app.run-list-facts`             |
 | `RunHistory.madeToolCalls`  | whether a run's log has a tool call, so the list can say a run sent nothing                                                    | `app.run-list-facts`             |
-| `lookUpWorkflow`            | the workflow a typed id or `hub/id` points to; none (with near matches), or several hubs with that id                          | `app.workflow-lookup`            |
+| `lookUpWorkflow`            | the workflow a typed id or `hub/id` points to; none, or several hubs with that id                                              | `app.workflow-lookup`            |
 | `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only            | `app.connection-settings`        |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals   | `ports.untrusted-tool-listings`  |
 | `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                  | `ports.untrusted-tool-listings`  |

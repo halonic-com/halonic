@@ -1,9 +1,9 @@
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { DefinitionStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { settingsPath } from "@halonicjs/workspace";
-import type { CliIo, CliOption, CommandInput } from "./command.ts";
+import type { CliOption, CommandContext, CommandInput } from "./command.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { shownPath } from "./shown-path.ts";
@@ -25,6 +25,8 @@ export interface WorkspaceDir {
   readonly root: string;
   /** The folder as the user would type it, such as `./acme` or `.`, for the words. */
   readonly shown: string;
+  /** The folder's own name, as a sentence names the workspace: "No runs in acme yet." */
+  readonly name: string;
 }
 
 /** An opened workspace folder: where it is, and its files. */
@@ -41,12 +43,12 @@ export interface OpenWorkspaceDir extends WorkspaceDir {
  *
  * @example
  * workspaceDir({ positionals: [], options: { dir: "acme" } }, "<cwd>");
- * // { root: "<cwd>/acme", shown: "./acme" }
+ * // { root: "<cwd>/acme", shown: "./acme", name: "acme" }
  */
 export function workspaceDir(input: CommandInput, cwd: string): WorkspaceDir {
   const dir = input.options["dir"];
   const root = typeof dir === "string" ? resolve(cwd, dir) : cwd;
-  return { root, shown: shownPath(cwd, root) };
+  return { root, shown: shownPath(cwd, root), name: basename(root) };
 }
 
 /**
@@ -55,8 +57,11 @@ export function workspaceDir(input: CommandInput, cwd: string): WorkspaceDir {
  *
  * @throws NoWorkspaceError when the folder has no `workspace.yaml`, or doesn't exist.
  */
-export async function openWorkspaceDir(input: CommandInput, io: CliIo): Promise<OpenWorkspaceDir> {
-  const dir = workspaceDir(input, io.cwd);
+export async function openWorkspaceDir(
+  input: CommandInput,
+  context: Pick<CommandContext, "cwd">,
+): Promise<OpenWorkspaceDir> {
+  const dir = workspaceDir(input, context.cwd);
   const store = new FolderDefinitionStore(dir.root, dir.shown);
   if ((await store.read(settingsPath)) === null) {
     throw new NoWorkspaceError();

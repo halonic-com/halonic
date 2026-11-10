@@ -301,7 +301,7 @@ async function runCommand(
     printer.error(error, {
       usage: usageLine(path),
       ...(input !== undefined && command.action !== undefined
-        ? { action: command.action(input) }
+        ? { action: command.action(input, context) }
         : {}),
       debug: options.debug,
     });

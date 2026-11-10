@@ -41,6 +41,7 @@ verifies("cli.workspace-dir", () => {
     const opened = await openWorkspaceDir(inputWith("acme"), ioIn(cwd));
     expect(opened.root).toBe(join(cwd, "acme"));
     expect(opened.shown).toBe(`.${sep}acme`);
+    expect(opened.name).toBe("acme");
     expect(await opened.store.read("workspace.yaml")).toContain("id: acme");
   });
 
@@ -78,6 +79,7 @@ verifies("cli.workspace-dir", () => {
     expect(workspaceDir(inputWith(join("..", "other")), join(cwd, "acme"))).toEqual({
       root: join(cwd, "other"),
       shown: join("..", "other"),
+      name: "other",
     });
   });
 });

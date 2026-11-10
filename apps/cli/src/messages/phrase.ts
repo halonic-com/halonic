@@ -57,6 +57,19 @@ export function dim(text: string): Part {
   return { text, emphasis: "dim" };
 }
 
+/**
+ * The whole phrase as secondary text, such as the list's When column: its
+ * texts dimmed, its marks kept.
+ */
+export function dimmed(value: Phrase): Phrase {
+  return value.map((part) => {
+    if (typeof part === "string") {
+      return dim(part);
+    }
+    return "text" in part ? dim(part.text) : part;
+  });
+}
+
 /** A mark inside a sentence, such as the › between Studio places. */
 export function markPart(mark: Mark): Part {
   return { mark };

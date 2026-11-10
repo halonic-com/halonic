@@ -52,18 +52,26 @@ describe("run's sentences", () => {
     expect(words(runMessages.answerHere("01JD8Q", ["approve", "reject"]))).toBe(
       "Answer in Studio's Inbox, or here: halonic runs send 01JD8Q approve  (or reject)",
     );
+    expect(words(runMessages.answerHere("01jd8q", ["approve", "reject", "hold", "skip"]))).toBe(
+      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject, hold or skip)",
+    );
     expect(words(runMessages.answerHere("01JD8Q", ["done"], "./acme"))).toBe(
       "Answer in Studio's Inbox, or here: halonic runs send --dir ./acme 01JD8Q done",
     );
   });
 
-  it("leaves out what doesn't apply in the receipt, but always says what was sent", () => {
+  it("leaves out what doesn't apply in the receipt, and says sent nothing only without a tool call", () => {
     expect(words(runMessages.receipt({ changedFiles: 0, sent: [], askedYou: 1 }))).toBe(
       "Sent nothing · asked you once",
     );
     expect(
       words(runMessages.receipt({ changedFiles: 2, sent: [], askedYou: 2, estimatedCost: 0.03 })),
     ).toBe("Changed 2 files · sent nothing · asked you twice · estimated cost €0.03");
+    // Tool calls whose log doesn't say what they sent: no sent part, never a guess.
+    expect(words(runMessages.receipt({ changedFiles: 1, askedYou: 0, estimatedCost: 0.004 }))).toBe(
+      "Changed 1 file · estimated cost €0.004",
+    );
+    expect(words(runMessages.receipt({ changedFiles: 0, askedYou: 0 }))).toBe("");
   });
 
   it("has the line for an agent that runs without the sandbox", () => {

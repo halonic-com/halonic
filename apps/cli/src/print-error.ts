@@ -1,5 +1,5 @@
 import { type ErrorKind, errorKindOf, type SecretScrubber } from "@halonicjs/std";
-import { UsageError } from "./command.ts";
+import { OwnLineError, UsageError } from "./command.ts";
 import type { Message } from "./messages/define.ts";
 import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
@@ -173,7 +173,7 @@ function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
   return {
     kind,
     reason,
-    firstLine: withAction(reason, context),
+    firstLine: error instanceof OwnLineError ? reason : withAction(reason, context),
     fix: fix === undefined ? undefined : phrase`${fix}`,
     docs: field("docs"),
     code: field("code"),

@@ -14,8 +14,13 @@ export interface SentItems {
 /** What a finished run did, for its receipt line. Only the parts that apply are shown. */
 export interface RunReceipt {
   readonly changedFiles: number;
-  /** What it sent, by kind; empty when it sent nothing. */
-  readonly sent: readonly SentItems[];
+  /**
+   * What it sent, by kind. Empty only when the run made no tool call, which
+   * reads "sent nothing". Left out when it made tool calls whose log doesn't
+   * say what they sent: the receipt then has no sent part rather than a guess
+   * (cli-output 3.4, revision 32).
+   */
+  readonly sent?: readonly SentItems[];
   readonly askedYou: number;
   /** The estimated cost in euros; left out for a run on the test model. */
   readonly estimatedCost?: number;
@@ -51,7 +56,10 @@ export const runMessages = defineMessages("run", {
 
   /** "Support reply finished in 18 s.", with the duration as the output writes it. */
   finished: (title: string, duration: string) => phrase`${title} finished in ${duration}.`,
-  /** The receipt (glossary): changed, sent, asked and cost, in that order. */
+  /**
+   * The receipt (glossary): changed, sent, asked and cost, in that order.
+   * Empty when every part is left out; the run's output then has no middle line.
+   */
   receipt: (receipt: RunReceipt) => receiptLine(receipt),
   runLog: (runId: string, dir?: string) =>
     phrase`Run log: ${suggestedCommand("runs show", dir, runId)}`,
@@ -63,7 +71,10 @@ function joinedFacts(facts: readonly string[]): Phrase {
   );
 }
 
-/** "Answer in Studio's Inbox, or here: halonic runs send 01JD8Q approve  (or reject)". */
+/**
+ * "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject)".
+ * Three or more events read "(or reject, hold or skip)" (revision 37).
+ */
 function answerLine(runId: string, events: readonly string[], dir?: string): Phrase {
   const [first = "", ...others] = events;
   const command = `${suggestedCommand("runs send", dir, runId)} ${first}`;
@@ -71,7 +82,7 @@ function answerLine(runId: string, events: readonly string[], dir?: string): Phr
   if (others.length === 0) {
     return line;
   }
-  return phrase`${line}  ${dim(`(or ${others.join(" or ")})`)}`;
+  return phrase`${line}  ${dim(`(or ${listInWords(others, "or")})`)}`;
 }
 
 /** "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004". */
@@ -80,15 +91,20 @@ function receiptLine(receipt: RunReceipt): Phrase {
   if (receipt.changedFiles > 0) {
     parts.push(`changed ${counted(receipt.changedFiles, "file", "files")}`);
   }
-  // "Sent nothing" is always there, because that's what people check.
-  parts.push(receipt.sent.length === 0 ? "sent nothing" : `sent ${sentInWords(receipt.sent)}`);
+  // "Sent nothing" is what people check, so it's there whenever it's known.
+  if (receipt.sent !== undefined) {
+    parts.push(receipt.sent.length === 0 ? "sent nothing" : `sent ${sentInWords(receipt.sent)}`);
+  }
   if (receipt.askedYou > 0) {
     parts.push(`asked you ${timesInWords(receipt.askedYou)}`);
   }
   if (receipt.estimatedCost !== undefined) {
     parts.push(`estimated cost ${money(receipt.estimatedCost)}`);
   }
-  const [first = "", ...rest] = parts;
+  const [first, ...rest] = parts;
+  if (first === undefined) {
+    return [];
+  }
   return joinedFacts([first.charAt(0).toUpperCase() + first.slice(1), ...rest]);
 }
 

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2754, for HAL-1892 and HAL-2742; the CLI output design on HAL-1981 (cli-output section 3, "Which folder", and the "Not a workspace" rows of 3.2 and 3.4), approved by the board on HAL-2123
 
-The `halonic` commands that read a workspace shall work in the current folder, or in the folder given with `--dir <folder>`, resolved from the current folder. It shall never look for a workspace in a parent folder. When that folder has no `workspace.yaml`, or doesn't exist, the command shall stop with a `not_found` error (exit 4, code `no-workspace`) whose reason is "there's no workspace.yaml here." and whose fix is "Run it inside a workspace, or create one with halonic init.". Every message shall show the folder as the user would type it, such as `./acme`.
+The `halonic` commands that read a workspace shall work in the current folder, or in the folder given with `--dir <folder>`, resolved from the current folder. It shall never look for a workspace in a parent folder. When that folder has no `workspace.yaml`, or doesn't exist, the command shall stop with a `not_found` error (exit 4, code `no-workspace`) whose reason is "there's no workspace.yaml here." and whose fix is "Run it inside a workspace, or create one with halonic init.". Every message shall show the folder as the user would type it, such as `./acme`, and a sentence that names the workspace shall name it by its folder's own name, such as `acme`.
 
 ## Examples
 

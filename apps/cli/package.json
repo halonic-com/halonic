@@ -23,6 +23,7 @@
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/profile": "workspace:*",

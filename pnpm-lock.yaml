@@ -298,6 +298,9 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../packages/core/events
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format

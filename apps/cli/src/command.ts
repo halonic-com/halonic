@@ -1,4 +1,5 @@
 import type { Secrets } from "@halonicjs/ports";
+import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type { ExitCode } from "./exit-code.ts";
 import type { Message } from "./messages/define.ts";
 import { type Phrase, plainText } from "./messages/phrase.ts";
@@ -136,7 +137,7 @@ export interface CliCommand {
    * schemas" makes "✕ Couldn't write the schemas: the disk is full.". Without
    * it, line 1 is the error's own message.
    */
-  action?(input: CommandInput): Message;
+  action?(input: CommandInput, context: Pick<CommandContext, "cwd">): Message;
   /** The options it accepts, by name without the dashes. */
   readonly options: Readonly<Record<string, CliOption>>;
   /**
@@ -194,5 +195,16 @@ export class UsageError extends Error {
     super(plainText(problem.phrase));
     this.problem = problem;
     this.fixMessage = fix;
+  }
+}
+
+/**
+ * An error whose message is a whole line 1, never put after the command's
+ * "Couldn't *action*:", such as "There's no workflow called "suport-reply"
+ * in acme." (cli-output 3.4). Its message and fix come from the catalogue.
+ */
+export class OwnLineError extends KindedError {
+  constructor(kind: ErrorKind, line: Message, fix?: Message) {
+    super(kind, plainText(line.phrase), fix === undefined ? {} : { fix: plainText(fix.phrase) });
   }
 }

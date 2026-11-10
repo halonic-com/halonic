@@ -25,17 +25,19 @@ export function countInWords(count: number): string {
 }
 
 /**
- * Names as a sentence lists them: commas, with "and" before the last.
+ * Names as a sentence lists them: commas, with "and" (or "or") before the
+ * last (cli-output 3.4, revision 25).
  *
  * @example
  * listInWords(["Read mail", "Classify", "Closed"]); // "Read mail, Classify and Closed"
+ * listInWords(["approve", "reject"], "or"); // "approve or reject"
  * listInWords(["reply.md"]); // "reply.md"
  */
-export function listInWords(names: readonly string[]): string {
+export function listInWords(names: readonly string[], last: "and" | "or" = "and"): string {
   if (names.length <= 1) {
     return names.join("");
   }
-  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  return `${names.slice(0, -1).join(", ")} ${last} ${names.at(-1)}`;
 }
 
 /**
