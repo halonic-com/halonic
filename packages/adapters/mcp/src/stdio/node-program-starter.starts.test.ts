@@ -1,6 +1,6 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, delimiter, dirname, join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readLines } from "./lines.ts";
@@ -90,6 +90,39 @@ verifies("mcp.program-starter", () => {
       const missing = { ...node(""), program: join(folder, "no-such-program") };
       await expect(nodeProgramStarter.start(missing)).rejects.toThrow();
     });
+
+    it("finds a bare name in the absolute folders of the PATH it is given", async () => {
+      const launch = {
+        ...node("process.exit(0)", { PATH: dirname(process.execPath) }),
+        program: basename(process.execPath),
+      };
+      const program = await nodeProgramStarter.start(launch);
+      expect(await stopProgram(program, 5000)).toEqual({ code: 0, signal: null });
+    });
+
+    it("never starts a bare name from the folder it starts in, even with . on the PATH", async () => {
+      // Before HAL-3976, Linux's own lookup started this through the `.` entry.
+      await writeFile(join(folder, "acme-server"), "#!/bin/sh\n");
+      await chmod(join(folder, "acme-server"), 0o755);
+      const launch = {
+        ...node(""),
+        program: "acme-server",
+        env: { PATH: ["", "."].join(delimiter) },
+      };
+      await expect(nodeProgramStarter.start(launch)).rejects.toThrow("was not found");
+    });
+
+    it.skipIf(process.platform === "win32")(
+      "refuses a bare name found in a skill's scripts/ folder on the PATH",
+      async () => {
+        const scripts = join(folder, "skills/acme/scripts");
+        await mkdir(scripts, { recursive: true });
+        await writeFile(join(scripts, "acme-server"), "#!/bin/sh\n");
+        await chmod(join(scripts, "acme-server"), 0o755);
+        const launch = { ...node(""), program: "acme-server", env: { PATH: scripts } };
+        await expect(nodeProgramStarter.start(launch)).rejects.toThrow(skillScriptsRefusal);
+      },
+    );
 
     it.skipIf(process.platform === "win32")(
       "stops the programs it started too, even when they ignore SIGTERM",

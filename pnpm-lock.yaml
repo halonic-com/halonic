@@ -544,6 +544,9 @@ importers:
 
   packages/adapters/git:
     dependencies:
+      '@halonicjs/adapter-system-node':
+        specifier: workspace:*
+        version: link:../system-node
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
@@ -721,6 +724,9 @@ importers:
 
   packages/adapters/mcp:
     dependencies:
+      '@halonicjs/adapter-system-node':
+        specifier: workspace:*
+        version: link:../system-node
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../core/app
@@ -879,6 +885,9 @@ importers:
 
   packages/adapters/sandbox-host:
     dependencies:
+      '@halonicjs/adapter-system-node':
+        specifier: workspace:*
+        version: link:../system-node
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

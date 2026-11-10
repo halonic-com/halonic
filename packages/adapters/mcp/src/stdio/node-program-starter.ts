@@ -1,14 +1,18 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { win32 } from "node:path";
-import type { ProgramExit, ProgramStarter, RunningProgram } from "./program.ts";
+import { findProgram } from "@halonicjs/adapter-system-node";
+import type { ProgramExit, ProgramLaunch, ProgramStarter, RunningProgram } from "./program.ts";
 import { skillScriptsRefusal, touchesSkillScripts } from "./skill-scripts.ts";
 
 const isWindows = process.platform === "win32";
 
 /**
  * Starts a stdio connector's program with Node: array arguments, no shell,
- * and only the environment it is given. It refuses a program, argument or
- * folder under a skill's `scripts/` folder before anything starts.
+ * and only the environment it is given. A bare program name is first found
+ * in the absolute folders of that environment's `PATH` (on Windows only as
+ * `<name>.exe`), so neither Node nor Windows ever looks in the current
+ * folder. It refuses a program it can't find, and a program, argument or
+ * folder under a skill's `scripts/` folder, before anything starts.
  *
  * On macOS and Linux the program gets its own process group, so a signal
  * reaches everything it started, such as the server under `npx`, and
@@ -20,7 +24,12 @@ export const nodeProgramStarter: ProgramStarter = {
     if (await touchesSkillScripts(launch.cwd, launch.program, launch.args)) {
       throw new Error(skillScriptsRefusal);
     }
-    const child = spawn(launch.program, [...launch.args], {
+    const program = await absoluteProgram(launch);
+    // A PATH folder may be a skill's scripts/ folder too.
+    if (await touchesSkillScripts(launch.cwd, program, [])) {
+      throw new Error(skillScriptsRefusal);
+    }
+    const child = spawn(program, [...launch.args], {
       cwd: launch.cwd,
       env: { ...launch.env },
       stdio: ["pipe", "pipe", "pipe"],
@@ -32,6 +41,21 @@ export const nodeProgramStarter: ProgramStarter = {
     return runningProgram(child);
   },
 };
+
+/**
+ * The absolute path of the launch's program, found in the `PATH` of the
+ * environment the program gets.
+ *
+ * @throws when no absolute folder of that `PATH` has it
+ */
+async function absoluteProgram(launch: ProgramLaunch): Promise<string> {
+  const path = launch.env["PATH"] ?? launch.env["Path"] ?? "";
+  const program = await findProgram(launch.program, { path });
+  if (program !== undefined) return program;
+  throw new Error(
+    `The program ${launch.program} was not found in any absolute folder of the PATH.`,
+  );
+}
 
 /** Resolves once the child has started, and rejects when it can't be launched. */
 function launched(child: ChildProcess): Promise<void> {

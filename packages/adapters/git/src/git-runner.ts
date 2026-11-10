@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
-import { isAbsolutePath } from "./absolute-path.ts";
+import { isAbsolutePath } from "@halonicjs/adapter-system-node";
 import { type FindGitOptions, findGit } from "./find-git.ts";
 import { type ConfigEntry, hardenedEnvironment, hardeningConfig } from "./hardening.ts";
 import { type ProcessResult, runProcess } from "./node/run-process.ts";

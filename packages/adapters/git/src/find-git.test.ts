@@ -1,16 +1,18 @@
 import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { programCandidates } from "@halonicjs/adapter-system-node";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
-import { isAbsolutePath } from "./absolute-path.ts";
-import { findGit, gitCandidates } from "./find-git.ts";
+import { findGit } from "./find-git.ts";
 import { Scratch } from "./fixtures.test-helper.ts";
 import { GitRunner } from "./git-runner.ts";
 
 // The PATH-order and relative-folder cases are ported from the desktop's
 // git-guard, `limited_run_tests.rs`
 // (`git_process_finds_git_only_in_absolute_folders`); its `find_git.rs` has
-// no tests of its own. The Windows cases are new.
+// no tests of its own. The Windows cases are new. findGit is findProgram
+// for git: the shared lookup's own tests are in adapter-system-node
+// (`find-program.test.ts`), and these keep covering it through git.
 
 const scratch = new Scratch();
 afterAll(() => scratch.remove());
@@ -46,29 +48,14 @@ verifies("git.find-git", () => {
       const drive = "C:\\Git\\cmd"; // leak-guard: allow absolute-path an invented Windows folder
       const share = "\\\\server\\share\\bin";
       const path = ["C:git", "\\git", "", drive, share].join(";");
-      expect(gitCandidates(path, "win32")).toEqual([`${drive}\\git.exe`, `${share}\\git.exe`]);
+      expect(programCandidates("git", path, "win32")).toEqual([
+        `${drive}\\git.exe`,
+        `${share}\\git.exe`,
+      ]);
     });
 
     it("reads process.env.PATH when no PATH is given", async () => {
       expect(await findGit()).toMatch(/[\\/]git(?:\.exe)?$/u);
-    });
-  });
-
-  describe("isAbsolutePath", () => {
-    it("on Windows takes only a drive with a slash or a share, never C:git or \\git", () => {
-      const drive = "C:\\Git"; // leak-guard: allow absolute-path an invented Windows folder
-      expect(isAbsolutePath(drive, "win32")).toBe(true);
-      expect(isAbsolutePath("D:/git", "win32")).toBe(true);
-      expect(isAbsolutePath("\\\\server\\share", "win32")).toBe(true);
-      expect(isAbsolutePath("C:git", "win32")).toBe(false);
-      expect(isAbsolutePath("\\git", "win32")).toBe(false);
-      expect(isAbsolutePath("", "win32")).toBe(false);
-    });
-
-    it("elsewhere takes only a path from the root", () => {
-      expect(isAbsolutePath("/acme/bin", "linux")).toBe(true);
-      expect(isAbsolutePath("bin", "linux")).toBe(false);
-      expect(isAbsolutePath("", "darwin")).toBe(false);
     });
   });
 

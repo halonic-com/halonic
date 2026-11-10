@@ -4,7 +4,7 @@ Owner: owen · Layer: adapters · Read the root `AGENTS.md` first; this file add
 
 ## Scope
 
-The ResourceProbe port on Node: the engine's memory, the processes below it, folder sizes and free disk space.
+The ResourceProbe port on Node: the engine's memory, the processes below it, folder sizes and free disk space. Also `findProgram`, the absolute-path lookup every Node starter uses before it starts a program.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

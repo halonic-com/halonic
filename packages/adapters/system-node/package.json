@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-system-node",
   "private": true,
   "type": "module",
-  "description": "The ResourceProbe port on Node: the engine's memory, the processes below it from /proc, ps or PowerShell, folder sizes and free disk space.",
+  "description": "The ResourceProbe port on Node: the engine's memory, the processes below it from /proc, ps or PowerShell, folder sizes and free disk space, and the absolute-path program lookup every Node starter uses.",
   "exports": {
     ".": "./src/index.ts"
   },

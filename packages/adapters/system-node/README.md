@@ -3,6 +3,8 @@
 The `ResourceProbe` port on Node: the engine's memory, the processes below
 the engine, the size of a folder's files and the free disk space. `halonic
 doctor` and the Studio read these through `ResourceReport` in `core/app`.
+It also finds a program's absolute path for every Node starter
+(`findProgram`, see below).
 
 - **Layer:** adapters
 - **Owner:** owen
@@ -66,3 +68,27 @@ Tests pass their own `readProcessTable`, a function that returns `{ rows, reader
 
 A process that ends while the table is read is left out. Any other error,
 such as a folder the engine may not read, is thrown.
+
+## Finding a program to start
+
+`findProgram(name, { path, platform })` gives the absolute path every Node
+starter hands to `spawn`, so neither Node nor Windows ever searches for a
+bare name itself (requirement `system-node.find-program`). The git adapter's
+`findGit`, the MCP stdio starter and the sandbox-host program probe use it.
+
+```ts
+import { findProgram } from "@halonicjs/adapter-system-node";
+
+const git = await findProgram("git", { path: process.env.PATH }); // undefined when not found
+```
+
+- Only the absolute folders of the `PATH` are searched, in their order. An
+  empty or relative folder, such as `.` or `bin`, is skipped: it would be
+  read against the current folder, which may be the workspace.
+- On Windows only `<name>.exe` counts, never `.cmd` or `.bat`, which need a
+  shell, and the current folder is never searched.
+- An absolute name is checked and given back as it is (on Windows only an
+  `.exe`). A relative name with a folder in it, such as `./server` or
+  `C:server`, is never found.
+- `isAbsolutePath(path, platform)` is the strict check it uses: on Windows
+  `C:git` and `\git` aren't absolute, though Node's `isAbsolute` takes `\git`.

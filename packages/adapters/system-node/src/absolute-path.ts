@@ -6,7 +6,7 @@ import { posix } from "node:path";
  * or a `\\server\share` path. `C:git`, with no slash after the
  * drive, and `\git` are not: Windows reads them against the current drive
  * or folder, which may be the workspace. Node's own `isAbsolute` accepts
- * `\git`, so the runner and `findGit` share this check instead.
+ * `\git`, so the starters and `findProgram` share this check instead.
  */
 export function isAbsolutePath(
   path: string,

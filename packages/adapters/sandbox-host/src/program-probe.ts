@@ -1,8 +1,6 @@
 import { type ChildProcessByStdio, spawn } from "node:child_process";
-import { constants } from "node:fs";
-import { access, stat } from "node:fs/promises";
-import { delimiter, join } from "node:path";
 import type { Readable } from "node:stream";
+import { findProgram } from "@halonicjs/adapter-system-node";
 import type { ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
 
 const defaultTimeoutMs = 5_000;
@@ -30,8 +28,9 @@ export function createProgramProbe(options: ProgramProbeOptions = {}): ProgramPr
     async ask(program, args) {
       try {
         if (program === "" || /[\\/]/.test(program)) return { status: "missing" };
-        const path = await findProgram(program, env["PATH"] ?? "");
-        if (path === null) return { status: "missing" };
+        // Only absolute PATH folders, never the current one; on Windows only `<name>.exe`.
+        const path = await findProgram(program, { path: env["PATH"] ?? "" });
+        if (path === undefined) return { status: "missing" };
         return await run(program, path, args, childEnv(env), timeoutMs);
       } catch {
         return { status: "failed", path: program, error: `${program} couldn't be asked.` };
@@ -47,29 +46,6 @@ function childEnv(env: Readonly<Record<string, string | undefined>>): Record<str
     if (value !== undefined) result[key] = value;
   }
   return result;
-}
-
-async function findProgram(name: string, pathList: string): Promise<string | null> {
-  const names = process.platform === "win32" ? [`${name}.exe`, `${name}.com`] : [name];
-  for (const dir of pathList.split(delimiter)) {
-    // An empty or relative entry would mean the current folder; skip it.
-    if (!dir.startsWith("/") && !/^[A-Za-z]:[\\/]/.test(dir)) continue;
-    for (const candidate of names) {
-      const path = join(dir, candidate);
-      if (await isExecutableFile(path)) return path;
-    }
-  }
-  return null;
-}
-
-async function isExecutableFile(path: string): Promise<boolean> {
-  try {
-    if (!(await stat(path)).isFile()) return false;
-    await access(path, constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function run(

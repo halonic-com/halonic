@@ -14,11 +14,11 @@
       "scriptsTest": "packages/adapters/git/src/skill-scripts.test.ts"
     },
     "packages/adapters/mcp/src/stdio/node-program-starter.ts": {
-      "reason": "Starts the local program of a stdio MCP connector the person trusted, with array arguments, no shell and only the environment the connector builds, in its own process group so stopping it reaches what it started. On Windows it also starts taskkill from the system folder to end the process tree. It refuses a program, argument or folder under a skill's scripts/ folder, as written or through a symbolic link, before anything starts.",
+      "reason": "Starts the local program of a stdio MCP connector the person trusted, by the absolute path findProgram resolved from the absolute folders of the connector's PATH (never the current folder; on Windows only an .exe), with array arguments, no shell and only the environment the connector builds, in its own process group so stopping it reaches what it started. On Windows it also starts taskkill from the system folder to end the process tree. It refuses a program, argument or folder under a skill's scripts/ folder, as written or through a symbolic link, before anything starts.",
       "scriptsTest": "packages/adapters/mcp/src/stdio/node-program-starter.starts.test.ts"
     },
     "packages/adapters/sandbox-host/src/program-probe.ts": {
-      "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and looks only in absolute PATH folders of the launcher's environment, which no skill sets.",
+      "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and starts only the absolute path findProgram resolved from the absolute PATH folders of the launcher's environment, which no skill sets (never the current folder; on Windows only an .exe).",
       "scriptsTest": "packages/adapters/sandbox-host/src/program-probe.attack.test.ts"
     },
     "packages/adapters/sandbox-srt/scripts/windows-spike-probe.mjs": {
