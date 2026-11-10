@@ -53,8 +53,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
   return (
     <button
       type="button"
-      role={item.checked === undefined ? "menuitem" : "menuitemradio"}
-      aria-checked={item.checked}
+      {...roleOf(item)}
       tabIndex={-1}
       aria-disabled={disabled || unavailable ? true : undefined}
       aria-describedby={unavailable ? reasonId : undefined}
@@ -101,6 +100,13 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       ) : null}
     </button>
   );
+}
+
+/** A plain item, or one choice of several with its state. */
+function roleOf(item: MenuItem) {
+  return item.checked === undefined
+    ? ({ role: "menuitem" } as const)
+    : ({ role: "menuitemradio", "aria-checked": item.checked } as const);
 }
 
 function rowTone(item: MenuItem): keyof typeof toneClasses {
