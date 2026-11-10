@@ -9,7 +9,7 @@ loop of one model turn, which the local chat turn runs.
 
 | Part                 | What it does                                                                                                                                                                                                      | Requirement                                                                         |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `LocalExecutor`      | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs                                                                                                            | `engine.local-chat-turn`, `engine.local-runs`                                       |
+| `LocalExecutor`      | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs                                                                                                            | `engine.local-chat-turn`, `engine.local-chat-harness`, `engine.local-runs`          |
 |                      | streams a run's events from the store to `subscribe`, in order, and closes the stream once the run has ended                                                                                                      | `engine.local-run-subscribe`                                                        |
 |                      | fails a run whose call fails, with the reason `runFailureReasonOf` gives the error                                                                                                                                | `engine.run-call-fails`                                                             |
 |                      | fails a run whose step asks for an effect it can't carry out yet, and sets no timer for it                                                                                                                        | `engine.local-runs-unbuilt-effect`                                                  |
@@ -95,7 +95,7 @@ For now they pass values through unchanged.
 `LocalExecutorOptions` is what a `LocalExecutor` is built from; `maxRounds` defaults to
 `defaultMaxRounds` (20).
 
-A chat turn belongs to no run, so `LocalExecutor.chatTurn` keeps no run log; it returns the
+A chat turn belongs to no run, so `LocalExecutor.chatTurn` keeps no run log (also when the agent runs in a harness); it returns the
 turn's messages in `turn`, what it refused in `refusals` and the models it skipped in `skipped`.
 Runs of agents will log their turns through a `RunStoreTurnLog`.
 
@@ -223,7 +223,10 @@ the same sandbox, bridge and start limits (`ChatHarnessTurns`, requirement `engi
 Each message starts a new call whose prompt carries the earlier messages; the caller's tools aren't
 offered to it. A chat can't wait for a person, so an approval the harness asks for is answered
 `approved: false` and shows in `refusals`. The turn keeps no run log, and stopping the engine stops
-its harness call as it stops a run's. `ChatHarnessTurns` isn't wired into `LocalExecutor.chatTurn` yet.
+its harness call as it stops a run's. `LocalExecutor.chatTurn` reads the agent's file (from the host's
+`chatAgentOf`) and, when it names a harness program, runs the turn this way with the harness ports of
+its `runs`, calling no model; without `runs.harnesses` that turn rejects instead of falling back to
+Halonic's own loop (requirement `engine.local-chat-harness`).
 
 ## Budgets
 
