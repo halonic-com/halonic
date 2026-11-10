@@ -301,6 +301,9 @@ importers:
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-srt
+      '@halonicjs/adapter-scheduler-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/scheduler-node
       '@halonicjs/adapter-system-node':
         specifier: workspace:*
         version: link:../../packages/adapters/system-node

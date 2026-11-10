@@ -24,6 +24,7 @@
     "@halonicjs/adapter-model-openai": "workspace:*",
     "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
+    "@halonicjs/adapter-scheduler-node": "workspace:*",
     "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/app": "workspace:*",
     "@halonicjs/engine": "workspace:*",
