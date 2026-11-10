@@ -92,9 +92,14 @@ verifies("git.find-git", () => {
     );
 
     // HAL-4373: an agent runner's launcher on the PATH did this, and every
-    // planted hook and program ran.
-    it.runIf(process.platform !== "win32")(
-      "refuses a git wrapper that drops the hardening config",
+    // planted hook and program ran. Windows has the same attack, but not
+    // through a script: findGit takes only git.exe, never a git.cmd or
+    // git.bat (the Windows case above), and the runner starts git without a
+    // shell, which Node refuses for a .cmd or .bat. A wrapper there has to
+    // be a compiled git.exe, which this test can't build. The check is the
+    // same code on Windows, and every runner made there passes through it.
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] HAL-4373: a wrapper there is a compiled git.exe, not a script this test can write: refuses a git wrapper that drops the hardening config",
       async () => {
         const folder = await scratch.folder();
         const wrapper = join(folder, "git");
