@@ -58,16 +58,20 @@ export type CheckboxProps = CheckboxWithText | CheckboxWithLabel;
 const boxShared = [
   "peer m-0 size-4 shrink-0 cursor-pointer appearance-none rounded-xs border bg-surface",
   "transition-colors focus-ring checkbox-forced",
-  "checked:border-primary checked:bg-primary indeterminate:border-primary indeterminate:bg-primary",
+  "checked:bg-primary indeterminate:bg-primary",
 ].join(" ");
 
+/** A checked or mixed box's edge. Kept out of `boxShared` so an unavailable box never carries it:
+ * with both in the CSS the later rule wins, and that would be this one. */
+const markedEdge = "checked:border-primary indeterminate:border-primary";
+
 const boxStateClasses = {
-  default: "border-border-control",
+  default: `border-border-control ${markedEdge}`,
   // Only on an empty box: a checked one keeps its primary edge.
-  hoverable: "border-border-control hover:border-fg-muted group-hover/checkbox:border-fg-muted",
-  invalid: "border-danger",
+  hoverable: `border-border-control hover:border-fg-muted group-hover/checkbox:border-fg-muted ${markedEdge}`,
+  invalid: `border-danger ${markedEdge}`,
   // 45%, and GrayText at full strength in high contrast, as an unavailable Button. A checked or
-  // mixed box keeps its primary fill but not its primary edge, which the state variants would win.
+  // mixed box keeps its primary fill but takes the `fg-disabled` edge, not the primary one.
   unavailable: [
     "cursor-not-allowed border-fg-disabled checked:border-fg-disabled indeterminate:border-fg-disabled",
     "opacity-45 contrast-more:opacity-60 forced-colors:opacity-100",
