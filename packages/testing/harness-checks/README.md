@@ -40,6 +40,8 @@ You need a clone of this repo with `pnpm install` done, Claude Code installed, a
 
 3. To see where a token refresh goes, run it again with `--expire-sign-in`. This works only when the sign-in is in `.credentials.json` (always on Linux). On macOS, when the sign-in is in the Keychain, the report says the refresh couldn't be forced.
 
+   The expired copy still holds the folder's real refresh token. If a refresh gets through, the provider rotates that token, and the one left in `~/halonic-check/claude` may stop working. Run `CLAUDE_CONFIG_DIR=~/halonic-check/claude claude auth login` again before the next check.
+
 4. On macOS, if the sign-in went to the Keychain and Claude Code can't read it inside srt, try the long-lived token instead. `claude setup-token` prints it once; put it in your shell without it landing in the history, then pass it in:
 
    ```sh

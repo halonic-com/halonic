@@ -19,7 +19,7 @@ export interface PromptOutcome {
   exitCode: number | null;
   /** What reached the bridge, by path and header name. */
   requests: TappedRequest[];
-  /** The `host:port` of each connection the sandbox refused. */
+  /** The `host:port` of each connection the sandbox refused, each once. */
   denied: string[];
   /** How many model calls the bridge answered and recorded. */
   modelCalls: number;
@@ -70,7 +70,7 @@ export async function promptOutcome(
     result: resultOf(run),
     exitCode: run.exit.code,
     requests: sandbox.requests.slice(before.requests),
-    denied: sandbox.denied.slice(before.denied),
+    denied: [...new Set(sandbox.denied.slice(before.denied))],
     modelCalls: sandbox.modelCalls - before.modelCalls,
   };
 }

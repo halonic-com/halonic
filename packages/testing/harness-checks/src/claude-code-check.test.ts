@@ -43,12 +43,29 @@ interface Opened {
   credentials: string | null;
 }
 
+/** What the fake sandbox notes for a program: requests at the bridge, refused hosts and model calls. */
+interface FakeTraces {
+  requests: TappedRequest[];
+  denied: string[];
+  modelCalls: number;
+}
+
+/** The prompt answered, leaving one model call carrying a sign-in. */
+function answeredPrompt(traces: FakeTraces): CheckedRun {
+  traces.requests.push(signedCall);
+  traces.modelCalls += 1;
+  return ran(0, '{"type":"result","is_error":false,"result":"ok"}');
+}
+
 /**
  * A fake bridge and sandbox: `--version` and `auth status` answer, the
- * status question leaves a request at the bridge, and the prompt leaves one
- * model call carrying a sign-in.
+ * status question leaves a request at the bridge and a refusal, and the
+ * prompt goes as `prompt` says, answered by default.
  */
-function fakeOpener(opened: Opened[]): (options: BridgeSandboxOptions) => Promise<BridgeSandbox> {
+function fakeOpener(
+  opened: Opened[],
+  prompt: (traces: FakeTraces) => CheckedRun = answeredPrompt,
+): (options: BridgeSandboxOptions) => Promise<BridgeSandbox> {
   return async (options) => {
     opened.push({
       options,
@@ -56,29 +73,28 @@ function fakeOpener(opened: Opened[]): (options: BridgeSandboxOptions) => Promis
         () => null,
       ),
     });
-    const requests: TappedRequest[] = [];
-    const denied: string[] = [];
-    let modelCalls = 0;
+    const traces: FakeTraces = { requests: [], denied: [], modelCalls: 0 };
     const answers: Record<string, () => CheckedRun> = {
       "--version": () => ran(0, "2.3.1 (Claude Code)\n"),
       auth: () => {
-        requests.push({ ...signedCall, method: "GET", path: "/api/oauth/profile", status: 404 });
-        denied.push("statsig.anthropic.com:443");
+        traces.requests.push({
+          ...signedCall,
+          method: "GET",
+          path: "/api/oauth/profile",
+          status: 404,
+        });
+        traces.denied.push("platform.claude.com:443");
         return ran(0, '{"loggedIn":true,"email":"someone@example.com"}');
       },
-      "-p": () => {
-        requests.push(signedCall);
-        modelCalls += 1;
-        return ran(0, '{"type":"result","is_error":false,"result":"ok"}');
-      },
+      "-p": () => prompt(traces),
     };
     return {
       bridgeUrl: "http://127.0.0.1:41817",
       run: async (command: SandboxCommand) => answers[command.args[0] ?? ""]?.() ?? ran(127),
-      requests,
-      denied,
+      requests: traces.requests,
+      denied: traces.denied,
       get modelCalls() {
-        return modelCalls;
+        return traces.modelCalls;
       },
       close: async () => {},
     };
@@ -195,6 +211,24 @@ verifies("harness-checks.claude-code", () => {
     ]);
     expect(opened[0]?.options.extraEnv).toEqual({
       CLAUDE_CODE_OAUTH_TOKEN: "made-up-oauth-token",
+    });
+  });
+
+  it("reports a host the prompt was refused at, also when an earlier question was refused there", async () => {
+    const opened: Opened[] = [];
+    const signedOutPrompt = (traces: FakeTraces): CheckedRun => {
+      traces.denied.push("platform.claude.com:443", "platform.claude.com:443");
+      return ran(1, '{"is_error":true,"result":"Not logged in · Please run /login"}');
+    };
+
+    const findings = await checkClaudeCode({
+      ...checkOptions(opened),
+      openSandbox: fakeOpener(opened, signedOutPrompt),
+    });
+
+    expect(findings.prompt).toMatchObject({
+      result: "signed-out",
+      denied: ["platform.claude.com:443"],
     });
   });
 

@@ -22,7 +22,11 @@ export function deniedHost(line: string): string | undefined {
 
 /** A sandbox runner whose refused connections can be read once its programs have ended. */
 export interface DeniedHostsRunner extends Runner {
-  /** The `host:port` of each refused connection so far, each once, in the order they came. */
+  /**
+   * The `host:port` of each refused connection so far, in the order they
+   * came, repeats included: a later program refused at the same host must
+   * still show up in what came after it started.
+   */
   readonly denied: readonly string[];
 }
 
@@ -38,7 +42,7 @@ export function deniedHostsRunner(base: Runner): DeniedHostsRunner {
   const denied: string[] = [];
   const note = (line: string): void => {
     const host = deniedHost(line);
-    if (host !== undefined && !denied.includes(host)) denied.push(host);
+    if (host !== undefined) denied.push(host);
   };
   return {
     denied,

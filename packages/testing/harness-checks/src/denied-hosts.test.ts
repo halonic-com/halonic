@@ -69,7 +69,7 @@ verifies("harness-checks.denied-hosts", () => {
     expect(base.requests[0]?.programEnv).toEqual({ PATH: "/usr/bin" });
   });
 
-  it("lists each refusal once, also when a line comes in two chunks, and passes the output on", async () => {
+  it("lists every refusal, repeats included, also when a line comes in two chunks, and passes the output on", async () => {
     const stderr = [
       "[SandboxDebug] No matching config rule, deny",
       "ing: platform.claude.com:443\nLogin expired · Please run /login\n",
@@ -82,7 +82,11 @@ verifies("harness-checks.denied-hosts", () => {
     const output = await new Response(program.stderr).text();
 
     expect(output).toBe(stderr.join(""));
-    expect(runner.denied).toEqual(["platform.claude.com:443", "statsig.anthropic.com:443"]);
+    expect(runner.denied).toEqual([
+      "platform.claude.com:443",
+      "platform.claude.com:443",
+      "statsig.anthropic.com:443",
+    ]);
   });
 
   it("hands over a last line without a line break", async () => {
