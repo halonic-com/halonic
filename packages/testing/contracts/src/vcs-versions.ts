@@ -1,8 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { vcsCommitVersionCases } from "./vcs-commit-version.ts";
+import { vcsCommitVersionSafetyCases } from "./vcs-commit-version-safety.ts";
+import { vcsCommitsHardenedCases } from "./vcs-commits-hardened.ts";
 import { vcsVersionHardenedCases } from "./vcs-hardened.ts";
 import type { MakeVcs } from "./vcs-harness.ts";
 import { changesOf, commitFile, commitHash, stagedDiffs, stateOf } from "./vcs-helpers.ts";
+import { vcsProposalRefCases } from "./vcs-proposal-refs.ts";
 import { unknownCommit } from "./vcs-version-inputs.ts";
 import { vcsVersionSafetyCases } from "./vcs-versions-safety.ts";
 import { vcsWorktreeCases } from "./vcs-worktrees.ts";
@@ -29,6 +33,25 @@ export function vcsVersionContracts(name: string, make: MakeVcs): void {
   verifies("contracts.vcs-versions-hardened", () => {
     describe(`Vcs versions hardened contract: ${name}`, () => {
       vcsVersionHardenedCases(make);
+    });
+  });
+
+  verifies("contracts.vcs-commit-version", () => {
+    describe(`Vcs Create version contract: ${name}`, () => {
+      vcsCommitVersionCases(make);
+      vcsCommitVersionSafetyCases(make);
+    });
+  });
+
+  verifies("contracts.vcs-proposal-refs", () => {
+    describe(`Vcs proposal refs contract: ${name}`, () => {
+      vcsProposalRefCases(make);
+    });
+  });
+
+  verifies("contracts.vcs-commits-hardened", () => {
+    describe(`Vcs Create version and proposals hardened contract: ${name}`, () => {
+      vcsCommitsHardenedCases(make);
     });
   });
 }

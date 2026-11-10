@@ -123,6 +123,14 @@ async function expectNoRepository(vcs: Vcs): Promise<void> {
     ["listWorktrees", () => vcs.listWorktrees()],
     ["diffBetween", () => vcs.diffBetween(unknownCommit, "missing")],
     ["applyPatch", () => vcs.applyPatch(linePatch("a.yaml", "1", "2"), { reverse: false })],
+    ["commitVersion", () => vcs.commitVersion({ message: "Create version", exclude: [] })],
+    [
+      "commitWorktreeTo",
+      () =>
+        vcs.commitWorktreeTo("missing", "refs/halonic/proposals/run-1", { parent: unknownCommit }),
+    ],
+    ["readRef", () => vcs.readRef("refs/halonic/proposals/run-1")],
+    ["deleteRef", () => vcs.deleteRef("refs/halonic/proposals/run-1")],
   ];
   for (const [method, call] of calls) await expect(call(), method).rejects.toThrow();
   expect((await vcs.status()).isRepo).toBe(false);

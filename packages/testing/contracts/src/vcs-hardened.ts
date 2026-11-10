@@ -87,7 +87,7 @@ function hookCases(make: MakeVcs, test: HardenedTest): void {
 }
 
 /** Keys whose program a local command could start, with the attributes that switch them on. */
-async function plantLocalConfig(plant: PlantGitCode): Promise<void> {
+export async function plantLocalConfig(plant: PlantGitCode): Promise<void> {
   await plant.config("core.fsmonitor");
   for (const key of ["clean", "smudge", "process"]) await plant.config(`filter.planted.${key}`);
   await plant.attributes("* filter=planted");
@@ -184,7 +184,8 @@ function localRemoteCases(make: MakeVcs, test: HardenedTest): void {
   });
 }
 
-function plantOf(harness: VcsHarness): PlantGitCode {
+/** The harness's planted code; an adapter that drives git must give it. */
+export function plantOf(harness: VcsHarness): PlantGitCode {
   if (harness.plant === undefined) {
     throw new Error("An adapter that drives git must give `plant` for every repository and clone.");
   }

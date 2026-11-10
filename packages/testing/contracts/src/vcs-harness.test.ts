@@ -7,6 +7,7 @@ import {
   unsafeVcsPaths,
 } from "./vcs-harness.ts";
 import { unsafePatches, unsupportedPatches } from "./vcs-patch-inputs.ts";
+import { invalidProposalRefs, validProposalRefs } from "./vcs-proposal-inputs.ts";
 import { invalidCommitRefs, unknownCommit } from "./vcs-version-inputs.ts";
 
 describe("Vcs safety lists (contracts.vcs-safety)", () => {
@@ -85,5 +86,23 @@ describe("Vcs safety lists (contracts.vcs-safety)", () => {
     for (const path of [".env.local", ".envrc", "deleted file mode 100644\n--- a/.env"]) {
       expect(patches).toContain(path);
     }
+  });
+
+  it.each([
+    ["a branch", "refs/heads/main"],
+    ["HEAD", "HEAD"],
+    ["a step out of the folder", "refs/halonic/proposals/../x"],
+    ["an id that starts with -", "refs/halonic/proposals/-x"],
+    ["an empty id", "refs/halonic/proposals/"],
+    ["a nested id", "refs/halonic/proposals/a/b"],
+  ])("refuses a proposal ref that is %s", (_kind, ref) => {
+    expect(invalidProposalRefs).toContain(ref);
+  });
+
+  it("takes only proposal refs whose id follows the rule", () => {
+    for (const ref of validProposalRefs) {
+      expect(ref).toMatch(/^refs\/halonic\/proposals\/[A-Za-z0-9_][A-Za-z0-9_-]*$/u);
+    }
+    expect(validProposalRefs.some((ref) => invalidProposalRefs.includes(ref))).toBe(false);
   });
 });

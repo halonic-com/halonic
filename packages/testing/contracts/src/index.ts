@@ -180,6 +180,7 @@ export {
   unfencedRunConsentStoreContract,
 } from "./unfenced-run-consent-store.ts";
 export { vcsContract } from "./vcs.ts";
+export { vcsCommitsHardenedCases } from "./vcs-commits-hardened.ts";
 export {
   type HardenedTest,
   vcsHardenedCases,
@@ -199,4 +200,5 @@ export {
   validBranchNames,
 } from "./vcs-harness.ts";
 export { linePatch, unsafePatches } from "./vcs-patch-inputs.ts";
+export { invalidProposalRefs, validProposalRefs } from "./vcs-proposal-inputs.ts";
 export { invalidCommitRefs, unknownCommit } from "./vcs-version-inputs.ts";
