@@ -78,7 +78,8 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
     return nothing;
   }
   if (input.type === "effect-failed") {
-    return endWith(context, branch, { error: input.error, reason: input.reason });
+    const { error, reason, cantTry } = input;
+    return endWith(context, branch, cantTry === undefined ? { error, reason } : { error, cantTry });
   }
   switch (input.result.type) {
     case "model":
@@ -97,18 +98,7 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
 function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): StateStep {
   const { run, stateId, state } = context;
   const agent = branch.call?.agent ?? "";
-  const finished: DecidedEvent =
-    "error" in end
-      ? {
-          type: "agent.finished",
-          state: stateId,
-          agent,
-          output: null,
-          error: end.error,
-          reason: end.reason,
-          branch: branch.name,
-        }
-      : { type: "agent.finished", state: stateId, agent, output: end.output, branch: branch.name };
+  const finished = branchFinished(stateId, agent, branch.name, end);
   const join = joinBranches(stateId, state, endBranch(run.parallel, branch.name, end));
   return { ...join, events: [finished, ...join.events] };
 }
@@ -117,6 +107,23 @@ function endWith(context: StateContext, branch: RunningBranch, end: BranchEnd): 
 function answered({ agents }: StateContext, branch: RunningBranch, answer: unknown): BranchEnd {
   const checked = checkChoiceAnswer(agents, branch.call?.agent ?? "", answer);
   return "error" in checked ? { error: checked.error, reason: "answer-not-an-option" } : checked;
+}
+
+/** The branch's `agent.finished`: its answer, its failure, or the step it couldn't try. */
+function branchFinished(
+  stateId: string,
+  agent: string,
+  name: string,
+  end: BranchEnd,
+): DecidedEvent {
+  const base = { type: "agent.finished", state: stateId, agent, branch: name } as const;
+  if ("cantTry" in end) {
+    return { ...base, output: null, error: end.error, cantTry: end.cantTry };
+  }
+  if ("error" in end) {
+    return { ...base, output: null, error: end.error, reason: end.reason };
+  }
+  return { ...base, output: end.output };
 }
 
 function approvalRefused(stateId: string, branch: RunningBranch, tool: string): BranchEnd {

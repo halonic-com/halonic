@@ -81,6 +81,10 @@ function childMoved({ run, stateId, state }: StateContext, input: ChildInput): S
     const reason = input.reason === "budget" ? { reason: input.reason } : {};
     return { events, effects: [], outcome: { type: "fail", error, ...reason } };
   }
+  if (input.status === "cant-try") {
+    // The child's steps are this run's too: it couldn't try them either.
+    return { events, effects: [], outcome: { type: "cant-try", found: input.cantTry } };
+  }
   if (state.output !== undefined) {
     events.push({ type: "context.updated", key: state.output, value: input.context });
   }
@@ -107,7 +111,7 @@ function waitWithChild(
 
 function finished(
   child: ChildRun,
-  status: "completed" | "failed",
+  status: "completed" | "failed" | "cant-try",
   input: ChildInput,
 ): DecidedEvent {
   return {

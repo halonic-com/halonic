@@ -64,6 +64,7 @@ export async function childNow(
   if (child === null || child.status === "running") return null;
   if (child.status === "waiting") return { status: "waiting", events: child.accepts };
   if (child.status === "completed") return { status: "completed", context: child.context };
+  if (child.status === "cant-try") return { status: "cant-try", cantTry: child.cantTry };
   const summary = await runs.get(childRunId);
   const error = summary?.error ?? `Run "${childRunId}" failed.`;
   const reason = summary?.reason ?? null;

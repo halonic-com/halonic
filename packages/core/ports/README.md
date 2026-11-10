@@ -67,11 +67,15 @@ copy of this package (requirement `model-call-error`). A chat turn outside a
 run returns the models it skipped before calling them in
 `ChatTurnResponse.skipped` (requirement `chat-turn-skipped`).
 
-Two files hold shared types, not a port: `chat.ts` (the messages of a model
-call) and `run-failure-error.ts`. The second has `RunFailureError`, which an
-adapter that isn't a model provider throws to tell the engine why a run can't
-go on: the disk is full, or the sandbox or the harness didn't start
-(requirement `run-failure-error`). Check for it with `isRunFailureError`.
+Three files hold shared types, not a port: `chat.ts` (the messages of a model
+call), `run-failure-error.ts` and `cant-try-error.ts`. The second has
+`RunFailureError`, which an adapter that isn't a model provider throws to tell
+the engine why a run can't go on: the disk is full, or the sandbox or the
+harness didn't start (requirement `run-failure-error`). Check for it with
+`isRunFailureError`. The third has `CantTryError`, which a Try it or Test
+adapter throws when a step needs a change left out of the run, so the run ends
+as can't-try instead of failed (requirement `cant-try-error`). Check for it
+with `isCantTryError`.
 
 ## Rules that ship with the ports
 

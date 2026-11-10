@@ -1,4 +1,4 @@
-import type { RunFailureReason } from "@halonicjs/events";
+import type { CantTryStep, RunFailureReason } from "@halonicjs/events";
 import type { Branch, WorkflowState } from "@halonicjs/format";
 import type { PendingCall } from "./run-state.ts";
 
@@ -12,10 +12,14 @@ export function branchesOf(state: WorkflowState): [string, Branch][] {
   return Object.entries(state.branches ?? {}).sort(([a], [b]) => (a < b ? -1 : 1));
 }
 
-/** How a branch ended: its agent's answer, or why it failed. */
+/**
+ * How a branch ended: its agent's answer, why it failed, or the step it
+ * couldn't try, which ends the branch as a failure does.
+ */
 export type BranchEnd =
   | { readonly output: unknown }
-  | { readonly error: string; readonly reason: RunFailureReason };
+  | { readonly error: string; readonly reason: RunFailureReason }
+  | { readonly error: string; readonly cantTry: CantTryStep };
 
 /** One branch of a `parallel` state, from its `agent.started` on. */
 export interface RunningBranch {

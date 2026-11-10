@@ -17,6 +17,10 @@ interface EndedBranch {
  * - `join: all` (the default) fails when any branch failed, with the first
  *   failed branch in name order, unless `continueOnError` is set.
  * - `join: any` fails only when every branch failed.
+ * - A branch that couldn't try its step counts as failed, but once every
+ *   branch has ended, it ends the run with `run.cant-try`, whatever `join`
+ *   and `continueOnError` say: the run mustn't go on as if it had tried it.
+ *   Only a real failure that fails the state wins over it.
  *
  * Results go to the context under each branch's name, in name order: the
  * answer, or `{ error }` for a failed branch. With `output`, they also go
@@ -32,11 +36,15 @@ export function joinBranches(
     return { events: [], effects: [] };
   }
   const failed = ended.filter((branch) => "error" in branch.end);
-  const firstFailed = failed[0];
+  const firstReallyFailed = failed.find((branch) => !("cantTry" in branch.end));
   const failsState =
     state.join === "any" ? failed.length === ended.length : state.continueOnError !== true;
-  if (firstFailed !== undefined && failsState) {
-    return failedState(stateId, state, firstFailed);
+  if (firstReallyFailed !== undefined && failsState) {
+    return failedState(stateId, state, firstReallyFailed);
+  }
+  if (failed.some((branch) => "cantTry" in branch.end)) {
+    // Each branch's step is already on its agent.finished.
+    return { events: [], effects: [], outcome: { type: "cant-try", found: [] } };
   }
   return {
     events: resultEvents(state, ended),

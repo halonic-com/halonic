@@ -1,4 +1,4 @@
-import type { RunFailureReason } from "@halonicjs/events";
+import type { CantTryStep, RunFailureReason } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
 import { getState, type Scope, selectTransition } from "@halonicjs/workflow";
 import { states } from "../generated/states.ts";
@@ -153,13 +153,14 @@ function checkRunTakesSend(run: RunState, input: SendInput): void {
 
 function start(input: StartInput, definitions: RunDefinitions): Decision {
   const workflow = definitions.workflow;
-  const { type: _type, at, runId, trigger, parent, harness, ...fields } = input;
+  const { type: _type, at, runId, trigger, parent, harness, cantTry = [], ...fields } = input;
   const started: DecidedEvent = {
     type: "run.started",
     ...fields,
     ...(trigger === undefined ? {} : { trigger }),
     ...(parent === undefined ? {} : { parent }),
     ...(harness === undefined ? {} : { harness }),
+    ...(cantTry.length === 0 ? {} : { cantTry: [...cantTry] }),
   };
   const draft: Draft = {
     run: evolve(null, { ...started, runId, seq: 1, at }),
@@ -170,7 +171,12 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     agents: definitions.agents ?? {},
     workflows: definitions.workflows ?? {},
   };
-  enter(draft, workflow.initial);
+  if (cantTry.some((found) => found.step === null)) {
+    // The whole item can't be tried, so the run enters no state at all.
+    endCantTry(draft, null, []);
+  } else {
+    enter(draft, workflow.initial);
+  }
   return decisionOf(draft);
 }
 
@@ -188,6 +194,11 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
   }
   if (callOf(run, input.callId) === null) {
     return { events: [], effects: [] };
+  }
+  if (input.cantTry !== undefined) {
+    const cantTry = [...run.cantTry, input.cantTry];
+    const ended: DecidedEvent = { type: "run.cant-try", state: run.state, cantTry };
+    return { events: [ended], effects: tellParent({ ...run, status: "cant-try" }) };
   }
   const { error, reason, host, sandboxReason, providerText } = input;
   const failed: DecidedEvent = {
@@ -231,8 +242,21 @@ function fail(
   emit(draft, { type: "run.failed", state, error, reason });
 }
 
+/**
+ * End the run at a step it couldn't try, with every step it couldn't try:
+ * the ones it knows, then the ones just `found`.
+ */
+function endCantTry(draft: Draft, state: string | null, found: readonly CantTryStep[]): void {
+  emit(draft, { type: "run.cant-try", state, cantTry: [...draft.run.cantTry, ...found] });
+}
+
+/** Enter a state; one the run can't try ends the run there, as a failed step would. */
 function enter(draft: Draft, stateId: string): void {
   emit(draft, { type: "state.entered", state: stateId });
+  if (draft.run.cantTry.some((found) => found.step === stateId)) {
+    endCantTry(draft, stateId, []);
+    return;
+  }
   const handler = handlerFor(draft, stateId);
   if (handler !== undefined) {
     settle(draft, stateId, handler.enter(contextOf(draft, stateId)));
@@ -247,6 +271,9 @@ function settle(draft: Draft, stateId: string, step: StateStep): void {
   draft.effects.push(...step.effects);
   if (step.outcome?.type === "fail") {
     fail(draft, stateId, step.outcome.error, step.outcome.reason);
+  }
+  if (step.outcome?.type === "cant-try") {
+    endCantTry(draft, stateId, step.outcome.found);
   }
   if (step.outcome?.type === "finish") {
     follow(draft, stateId, step.outcome.event);

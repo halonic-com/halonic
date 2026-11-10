@@ -6,6 +6,7 @@ export {
   isAgentPlacementFor,
 } from "./agent-placement-store.ts";
 export { type BlobRef, type BlobStore, blobStoreVersion } from "./blob-store.ts";
+export { CantTryError, isCantTryError } from "./cant-try-error.ts";
 export type {
   ChatMessage,
   ChatParams,

@@ -160,6 +160,29 @@ verifies("engine.foreach-workflow-items", () => {
     ]);
   });
 
+  it("records the child's end, then ends the run, when it couldn't try a step (HAL-4285)", () => {
+    const step = {
+      status: "cant-try",
+      item: "workflows/reply.yaml",
+      step: "draft",
+      reason: { kind: "needs-left-out-change", path: "models.yaml", leftOut: "models" },
+    } as const;
+    const ended = told("r-acme.2.1", { status: "cant-try", cantTry: [step] });
+    const { log, run } = play(greetWorkflow(), [start, ended], undefined, workflows);
+    expect(bodies(log, 4)).toEqual([
+      {
+        type: "workflow.finished",
+        state: "greet",
+        workflow: "reply",
+        childRunId: "r-acme.2.1",
+        item: 1,
+        status: "cant-try",
+      },
+      { type: "run.cant-try", state: "greet", cantTry: [step] },
+    ]);
+    expect(run?.status).toBe("cant-try");
+  });
+
   it("fails the run for its budget when an item's child run was stopped for its budget", () => {
     const stop = "Run budget reached: 0.60 of 0.50 EUR spent.";
     const failed = told("r-acme.2.0", { status: "failed", error: stop, reason: "budget" });

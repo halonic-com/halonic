@@ -127,6 +127,10 @@ function takeChildNews(context: StateContext, input: ChildInput): StateStep {
     const reason = input.reason === "budget" ? { reason: input.reason } : {};
     return { events: [finished], effects: [], outcome: { type: "fail", error, ...reason } };
   }
+  if (input.status === "cant-try") {
+    const finished: DecidedEvent = { ...base, status: "cant-try" };
+    return { events: [finished], effects: [], outcome: { type: "cant-try", found: input.cantTry } };
+  }
   const finished: DecidedEvent = { ...base, status: "completed", context: input.context };
   return finishItem(context, { workflow }, running, input.context, finished);
 }

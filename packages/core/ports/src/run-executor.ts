@@ -1,4 +1,11 @@
-import type { ModelSkipReason, RunEvent, RunKind, RunSummary, RunTrigger } from "@halonicjs/events";
+import type {
+  CantTryStep,
+  ModelSkipReason,
+  RunEvent,
+  RunKind,
+  RunSummary,
+  RunTrigger,
+} from "@halonicjs/events";
 import type { ChatMessage, ChatParams, ChatResponse, ToolDefinition } from "./chat.ts";
 
 /** Version of the {@link RunExecutor} port. A breaking change bumps it and comes with an ADR. */
@@ -23,6 +30,13 @@ export interface StartRunRequest {
    * the harness is installed is the caller's check (`detect()`).
    */
   harness?: string;
+  /**
+   * The steps of a Try it or Test run that can't be tried, as found when the
+   * caller loaded the run's item: each `step` names a state of the run's
+   * workflow, or is `null` when the whole item can't be tried. They go on
+   * `run.started`, and the run never runs them. None when absent.
+   */
+  cantTry?: readonly CantTryStep[];
   /**
    * The id the run gets, for a start that may be repeated: a routine fire, a
    * mail or a signal. When a run with this id already exists, `start` returns

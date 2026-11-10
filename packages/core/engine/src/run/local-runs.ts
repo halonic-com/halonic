@@ -36,11 +36,10 @@ import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run
 import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf, runAndChildren } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
+import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
-import { providerTextOf } from "./provider-text-of.ts";
 import { RunConnectorCallRunner } from "./run-connector-call-runner.ts";
-import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { RunFeed } from "./run-feed.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 
@@ -159,7 +158,7 @@ export class LocalRuns {
     const runId = request.runId ?? this.#options.ids.next("run");
     const existing = await this.#options.store.get(runId);
     if (existing !== null) return existing;
-    const { hubId, workflowId, input, trigger, harness } = request;
+    const { hubId, workflowId, input, trigger, harness, cantTry = [] } = request;
     const definitions = await this.#options.definitionsOf(hubId, workflowId);
     const definitionsVersion = await keepDefinitions(this.#options.blobs, definitions);
     try {
@@ -174,6 +173,7 @@ export class LocalRuns {
         definitionsVersion,
         ...(trigger === undefined ? {} : { trigger }),
         ...(harness === undefined ? {} : { harness }),
+        cantTry,
       });
     } catch (error) {
       // A start repeated at the same moment: the other one recorded it.
@@ -327,17 +327,7 @@ export class LocalRuns {
           : { type: "harness" as const, output: await this.#harnessCalls.run(run, call, waitedOn) };
       return { type: "effect-done", at: this.#now(), callId: waitedOn.callId, result };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const failure = runFailureReasonOf(error);
-      const providerText = providerTextOf(error);
-      return {
-        type: "effect-failed",
-        at: this.#now(),
-        callId: waitedOn.callId,
-        error: message,
-        ...failure,
-        ...(providerText === undefined ? {} : { providerText }),
-      };
+      return failedCallInput(error, { callId: waitedOn.callId, at: this.#now(), step: call.state });
     }
   }
 

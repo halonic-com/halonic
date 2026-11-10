@@ -1,5 +1,6 @@
 import type {
   AgentResume,
+  CantTryStep,
   ProviderText,
   RunEventBase,
   RunEventBody,
@@ -37,6 +38,12 @@ export interface StartInput extends InputBase {
   readonly parent?: RunParent;
   /** The harness every task agent of the run runs in, whatever its file names. */
   readonly harness?: string;
+  /**
+   * The steps of a Try it or Test run that can't be tried, as found when its
+   * item was loaded. The run never runs them, and ends with `run.cant-try`
+   * when it reaches one, or at once when one is the whole item.
+   */
+  readonly cantTry?: readonly CantTryStep[];
 }
 
 /** An event sent to a waiting run, such as `approve`. */
@@ -137,6 +144,12 @@ export interface EffectFailedInput extends InputBase {
   readonly sandboxReason?: string;
   /** The model provider's own error text, for `--debug` and Copy details only. */
   readonly providerText?: ProviderText;
+  /**
+   * Set when the call's step couldn't be tried, because it needs a change
+   * left out of the run: it ends its branch as a failure does, but the run
+   * ends with `run.cant-try`, not `run.failed`, and `reason` isn't used.
+   */
+  readonly cantTry?: CantTryStep;
 }
 
 /**
@@ -162,6 +175,11 @@ export type ChildRunNow =
       readonly error: string;
       /** Why the child failed, from its `run.failed`; absent when it gave none. */
       readonly reason?: RunFailureReason;
+    }
+  | {
+      readonly status: "cant-try";
+      /** Every step the child couldn't try, from its `run.cant-try`. */
+      readonly cantTry: readonly CantTryStep[];
     };
 
 /** A child run a `workflow` state started waits or has ended. */

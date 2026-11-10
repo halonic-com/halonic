@@ -1,4 +1,11 @@
-import type { AgentResume, RunEvent, RunKind, RunParent, RunStatus } from "@halonicjs/events";
+import type {
+  AgentResume,
+  CantTryStep,
+  RunEvent,
+  RunKind,
+  RunParent,
+  RunStatus,
+} from "@halonicjs/events";
 import {
   type RequestedEffect,
   type ResumeAfterEffect,
@@ -81,6 +88,12 @@ export interface RunState {
    * it, or `null` when each agent runs in the one its file names.
    */
   readonly harness: string | null;
+  /**
+   * The steps of a Try it or Test run that can't be tried: the ones
+   * `run.started` names, then the ones found while running. Empty for any
+   * other run.
+   */
+  readonly cantTry: readonly CantTryStep[];
   readonly status: RunStatus;
   /** The state the run is in, or `null` before the first `state.entered`. */
   readonly state: string | null;
@@ -182,6 +195,7 @@ function startedState(event: RunEvent): RunState {
     input: event.input,
     parent: event.parent ?? null,
     harness: event.harness ?? null,
+    cantTry: event.cantTry ?? [],
     status: "running",
     state: null,
     enteredAt: null,
@@ -252,7 +266,7 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "run.failed":
       return { ...state, ...ended, status: "failed" };
     case "run.cant-try":
-      return { ...state, ...ended, status: "cant-try" };
+      return { ...state, ...ended, status: "cant-try", cantTry: event.cantTry };
     default:
       return state;
   }
@@ -288,7 +302,9 @@ function finishCall(
     return state;
   }
   if (event.branch !== undefined) {
-    return { ...state, parallel: endBranch(state.parallel, event.branch, branchEndOf(event)) };
+    const parallel = endBranch(state.parallel, event.branch, branchEndOf(event));
+    const cantTry = event.cantTry === undefined ? state.cantTry : [...state.cantTry, event.cantTry];
+    return { ...state, parallel, cantTry };
   }
   if (event.item !== undefined) {
     return {
@@ -302,10 +318,16 @@ function finishCall(
   return { ...state, pendingCall: null };
 }
 
-/** How a branch's `agent.finished` ended it; a failure without a reason counts as `error`. */
+/**
+ * How a branch's `agent.finished` ended it: a step it couldn't try, or a
+ * failure, which counts as `error` without a reason.
+ */
 function branchEndOf(event: Extract<RunEvent, { type: "agent.finished" }>): BranchEnd {
   if (event.error === undefined) {
     return { output: event.output };
+  }
+  if (event.cantTry !== undefined) {
+    return { error: event.error, cantTry: event.cantTry };
   }
   return { error: event.error, reason: event.reason ?? "error" };
 }
