@@ -63,6 +63,10 @@ verifies("fs-node.folder-reader", () => {
     const above = join(await tempFolder(), "plugins");
     await symlink(root, above, folderLinkType);
     const reader = new FileSystemFolderReader(above);
+    expect(await reader.entries()).toEqual([
+      { path: "acme", kind: "folder" },
+      { path: "acme/plugin.yaml", kind: "file", size: 9 },
+    ]);
     expect(await reader.read("acme/plugin.yaml")).toEqual(new TextEncoder().encode("id: acme\n"));
     expect(await reader.locationOf()).toBe(await new FileSystemFolderReader(root).locationOf());
   });

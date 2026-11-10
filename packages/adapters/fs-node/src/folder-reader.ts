@@ -1,5 +1,5 @@
 import { constants, type Stats } from "node:fs";
-import { open, readdir, realpath } from "node:fs/promises";
+import { open, readdir, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   checkWorkspacePath,
@@ -18,9 +18,11 @@ const openFlags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.
 
 /**
  * Every entry and byte of a folder on this machine, for the plugin service
- * (requirement `fs-node.folder-reader`). Every segment of a path is looked
- * at with `lstat`, so a symbolic link or a Windows junction is listed as a
- * link and never followed, and nothing is hidden.
+ * (requirement `fs-node.folder-reader`). The folder itself may be reached
+ * through a link, as a `plugins` folder kept with dotfiles often is. Every
+ * segment under it is looked at with `lstat`, so a symbolic link or a Windows
+ * junction inside is listed as a link and never followed, and nothing is
+ * hidden.
  *
  * A file is read from one open handle that is checked to be the same
  * regular file `lstat` saw, so a file swapped for a link or a pipe between
@@ -46,7 +48,7 @@ export class FileSystemFolderReader implements FolderReader {
       const stats = await entryAt(this.#root, dir);
       if (stats === null || !stats.isDirectory()) return [];
       start = join(this.#root, dir);
-    } else if (!(await lstatOrNull(this.#root))?.isDirectory()) {
+    } else if (!(await isFolderThroughLinks(this.#root))) {
       return [];
     }
     const found: FolderEntry[] = [];
@@ -99,7 +101,15 @@ export class FileSystemFolderReader implements FolderReader {
     found: FolderEntry[],
     limit: number,
   ): Promise<void> {
-    for (const name of await readdir(folder)) {
+    let names: string[];
+    try {
+      names = await readdir(folder);
+    } catch (error) {
+      // Removed since `lstat` saw it: it isn't in the folder any more.
+      if (isMissing(error)) return;
+      throw error;
+    }
+    for (const name of names) {
       if (found.length > limit) return;
       const path = relative === undefined ? name : `${relative}/${name}`;
       const stats = await lstatOrNull(join(folder, name));
@@ -108,6 +118,19 @@ export class FileSystemFolderReader implements FolderReader {
       found.push(entryOf(path, stats));
       if (stats.isDirectory()) await this.#walk(join(folder, name), path, found, limit);
     }
+  }
+}
+
+/**
+ * Whether there is a folder at `path`, following links on the way and at the
+ * end: only for the root, which the person chose, never for what is under it.
+ */
+async function isFolderThroughLinks(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
   }
 }
 
