@@ -188,6 +188,36 @@ verifies("memory.dry-run-vcs-worktrees", () => {
   });
 });
 
+verifies("memory.dry-run-vcs-remove-worktree", () => {
+  it("removes a real or recorded worktree once, and refuses an unknown one", async () => {
+    const { real } = await changedRepository();
+    const snapshot = await real.snapshot();
+    const realWorktree = await real.addWorktree(snapshot);
+    const dryRun = new DryRunVcs(real);
+    const recorded = await dryRun.addWorktree(snapshot);
+
+    await dryRun.removeWorktree(realWorktree.id);
+    await dryRun.removeWorktree(recorded.id);
+    await expect(dryRun.removeWorktree(recorded.id)).rejects.toThrow("Unknown worktree");
+    await expect(dryRun.removeWorktree("worktree-9")).rejects.toThrow("Unknown worktree");
+
+    expect(dryRun.changes()).toEqual([
+      { kind: "addWorktree", version: snapshot },
+      { kind: "removeWorktree", id: realWorktree.id },
+      { kind: "removeWorktree", id: recorded.id },
+    ]);
+    expect(await real.listWorktrees()).toEqual([realWorktree]);
+  });
+
+  it("refuses a folder that isn't a repository, and has no worktrees after an init", async () => {
+    const notRepo = new DryRunVcs(new MemoryVcs(new MemoryDefinitionStore({ "a.yaml": "1\n" })));
+    await expect(notRepo.removeWorktree("worktree-1")).rejects.toThrow("not a repository");
+    await notRepo.init();
+    await expect(notRepo.removeWorktree("worktree-1")).rejects.toThrow("Unknown worktree");
+    expect(notRepo.changes()).toEqual([{ kind: "init" }]);
+  });
+});
+
 verifies("memory.dry-run-vcs-commits", () => {
   const ref = "refs/halonic/proposals/run-1";
 

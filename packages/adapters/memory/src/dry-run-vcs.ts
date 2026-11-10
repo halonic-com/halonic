@@ -131,7 +131,10 @@ export class DryRunVcs implements Vcs {
     return { id, path: id, version };
   }
 
+  /** Records the removal after checking the worktree exists, counting the recorded changes in. */
   async removeWorktree(id: string): Promise<void> {
+    const isRepo = await this.#checkRepository();
+    if (!(await this.#hasWorktree(id, isRepo))) throw new Error(`Unknown worktree ${id}.`);
     this.#record({ kind: "removeWorktree", id });
   }
 
@@ -250,6 +253,25 @@ export class DryRunVcs implements Vcs {
 
   #record(change: PlannedVcsChange): void {
     this.#changes.push(Object.freeze(change));
+  }
+
+  /**
+   * Whether the worktree exists once the recorded changes are counted in. A
+   * folder only about to be made a repository has no worktrees of its own.
+   */
+  async #hasWorktree(id: string, isRepo: boolean): Promise<boolean> {
+    const removed = this.#changes.some(
+      (change) => change.kind === "removeWorktree" && change.id === id,
+    );
+    if (removed) return false;
+    // Recorded worktrees are numbered from 1, as addWorktree makes their ids.
+    const added = Array.from(
+      { length: this.#count("addWorktree") },
+      (_, index) => `dry-run:worktree-${index + 1}`,
+    );
+    if (added.includes(id)) return true;
+    if (!isRepo) return false;
+    return (await this.#source.listWorktrees()).some((worktree) => worktree.id === id);
   }
 
   /** Throws, as the real repository would, when the folder isn't one and no `init` is recorded. */
