@@ -7,6 +7,7 @@ import type { RunEvent } from "@halonicjs/events";
 import { tellParent } from "../kernel/decide.ts";
 import type { DecidedEvent, Decision, Effect } from "../kernel/decide-types.ts";
 import { foldRun, type RunState } from "../kernel/run-state.ts";
+import { foldableEvent } from "../kernel/saved-artifacts.ts";
 import { type Budget, budgetStopOf, type Spend } from "./budget.ts";
 
 /** What `step` reads to keep a run to its budget. */
@@ -72,7 +73,7 @@ function foldDecided(
 ): RunState {
   const lastSeq = run?.lastSeq ?? 0;
   const stamped: RunEvent[] = events.map((event, index) => ({
-    ...event,
+    ...foldableEvent(event),
     runId,
     seq: lastSeq + index + 1,
     at,

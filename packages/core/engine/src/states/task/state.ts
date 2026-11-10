@@ -10,6 +10,7 @@ import {
 } from "../../kernel/registry.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
 import { answerApproval, askForApproval, askForHarnessApproval } from "./approval.ts";
+import { artifactOf } from "./artifact.ts";
 import {
   answersUnknownEffect,
   answerUnknownEffect,
@@ -28,8 +29,9 @@ import {
  * on with the answer: in a new model call, or in the harness call that
  * asked, which kept running while the run waited. When it stops before a
  * connector call that can change things, the engine records the call and
- * makes it, and the agent goes on with the result; see `effect.ts`. Methods,
- * conversations, artifacts and signals join with the agent loop (step 4).
+ * makes it, and the agent goes on with the result; see `effect.ts`. A state
+ * with `artifact` saves the answer as a file; see `artifact.ts`. Methods,
+ * conversations and signals join with the agent loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
   type: "task",
@@ -107,6 +109,13 @@ function finishAgent(
   ];
   if (state.output !== undefined) {
     events.push({ type: "context.updated", key: state.output, value: output });
+  }
+  const artifact = artifactOf(stateId, state, output);
+  if (artifact?.type === "fail") {
+    return { events, effects: [], outcome: artifact };
+  }
+  if (artifact !== null) {
+    events.push(artifact);
   }
   return { events, effects: [], outcome: { type: "finish", event: "done" } };
 }

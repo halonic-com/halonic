@@ -283,10 +283,29 @@ export type Effect =
   | SetTimerEffect;
 
 /**
- * An event `decide` wants appended. `step` adds `runId`, `seq` and `at` (the
- * input's time); it leaves `entry` out, because `entryOf` works it out the same.
+ * An event as the run log keeps it, before `step` adds `runId`, `seq` and
+ * `at` (the input's time). It leaves `entry` out, because `entryOf` works it
+ * out the same.
  */
-export type DecidedEvent = RunEventBody & Pick<RunEventBase, "branch" | "item">;
+export type LoggedEvent = RunEventBody & Pick<RunEventBase, "branch" | "item">;
+
+/**
+ * A file a state saves, such as an agent's answer for its `artifact`. `decide`
+ * does no output, so it hands over the text; `step` keeps it in the blob
+ * store before it appends, and logs `artifact.created` with the blob's hash,
+ * size and media type in this place.
+ */
+export interface SaveArtifact {
+  readonly type: "save-artifact";
+  readonly state: string;
+  readonly name: string;
+  /** A `type/subtype` media type the blob store takes. */
+  readonly mediaType: string;
+  readonly text: string;
+}
+
+/** An event `decide` wants appended: one for the log as it is, or a file to save first. */
+export type DecidedEvent = LoggedEvent | SaveArtifact;
 
 /** What `decide` returns: the events to append, then the effects to carry out. */
 export interface Decision {

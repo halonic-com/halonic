@@ -17,6 +17,7 @@ import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./re
 import { brokeOff, type RequestedEffect, unknownOutcomeEvents } from "./requested-effect.ts";
 import { branchOfCall } from "./run-branches.ts";
 import { callOf, evolve, type RunState, type WaitingApproval } from "./run-state.ts";
+import { foldableEvent } from "./saved-artifacts.ts";
 
 /**
  * A decision being built. Every event is folded into `run` as it is
@@ -212,7 +213,7 @@ function effectCutShort(run: RunState, effect: RequestedEffect, error: string): 
 function emit(draft: Draft, event: DecidedEvent): void {
   draft.events.push(event);
   draft.run = evolve(draft.run, {
-    ...event,
+    ...foldableEvent(event),
     runId: draft.run.runId,
     seq: draft.run.lastSeq + 1,
     at: draft.at,

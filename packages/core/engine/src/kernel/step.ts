@@ -3,9 +3,10 @@ import type { BlobStore, RunStore } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { type BudgetCheck, keepToBudget } from "../budget/keep-to-budget.ts";
 import { checkRunTakes, decide, tellParent } from "./decide.ts";
-import type { DecidedEvent, DecideInput, Decision, Effect } from "./decide-types.ts";
+import type { DecideInput, Decision, Effect, LoggedEvent } from "./decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kept-definitions.ts";
 import { foldRun, type RunState } from "./run-state.ts";
+import { saveArtifacts } from "./saved-artifacts.ts";
 
 /**
  * The version of the snapshot `step` stores. Bump it whenever `RunState`
@@ -26,7 +27,8 @@ interface StoredSnapshot {
 /** The ports `step` reads and writes. */
 export interface StepPorts {
   readonly runs: Pick<RunStore, "append" | "events" | "snapshot">;
-  readonly blobs: Pick<BlobStore, "get">;
+  /** Reads the run's definitions, and keeps the files its states save. */
+  readonly blobs: Pick<BlobStore, "get" | "put">;
   /** Keeps runs to their budget; without it, no budget stops a run. */
   readonly budget?: BudgetCheck;
 }
@@ -72,9 +74,12 @@ export async function readRun(
  * A run whose definitions are missing from the blob store fails with an
  * error that says so. It never falls back to the workspace's files. With
  * `budget`, a decision that asks for a paid call while a budget is reached
- * stores its events and then fails the run with the reason `budget`.
+ * stores its events and then fails the run with the reason `budget`. A file
+ * a state saves goes into the blob store before the events, so its
+ * `artifact.created` never names a missing blob.
  *
  * @throws InputRefused when the run can't take the input; nothing is stored
+ * @throws when a file a state saves can't be stored; nothing is appended
  * @throws when a starting run's definitions are missing, or the log kept
  *   moving on for {@link maxStepAttempts} reads
  */
@@ -94,7 +99,8 @@ export async function step(
       // Only an input that doesn't start a run can decide nothing, so `run` is set.
       return { run: run as RunState, events: [], effects: decision.effects };
     }
-    const events = stamp(runId, run?.lastSeq ?? 0, input.at, decision.events);
+    const logged = await saveArtifacts(ports.blobs, decision.events);
+    const events = stamp(runId, run?.lastSeq ?? 0, input.at, logged);
     const after = foldRun(events, run) as RunState;
     const snapshot: StoredSnapshot = { version: snapshotVersion, state: after };
     const result = await ports.runs.append(runId, run?.lastSeq ?? 0, events, { snapshot });
@@ -140,7 +146,7 @@ function stamp(
   runId: string,
   lastSeq: number,
   at: string,
-  events: readonly DecidedEvent[],
+  events: readonly LoggedEvent[],
 ): RunEvent[] {
   // `entry` is left out: `entryOf` gives the same entries without it.
   return events.map((event, index) => ({ ...event, runId, seq: lastSeq + index + 1, at }));

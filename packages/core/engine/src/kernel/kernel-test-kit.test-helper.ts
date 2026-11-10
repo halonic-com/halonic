@@ -15,6 +15,7 @@ import { decodeUtf8 } from "@halonicjs/std";
 import { decide } from "./decide.ts";
 import type { DecideInput, Decision, RunDefinitions, StartInput } from "./decide-types.ts";
 import { foldRun, type RunState } from "./run-state.ts";
+import { foldableEvent } from "./saved-artifacts.ts";
 
 /**
  * A run store in memory, with the port's check on `expectedSeq`. A test can
@@ -206,7 +207,7 @@ export function play(
     decisions.push(decision);
     for (const event of decision.events) {
       log.push({
-        ...event,
+        ...foldableEvent(event),
         runId: input.type === "start" ? input.runId : "r-acme",
         seq: log.length + 1,
         at: input.at,
