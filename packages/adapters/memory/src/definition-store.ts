@@ -53,6 +53,19 @@ export class MemoryDefinitionStore implements DefinitionStore {
     this.#files.delete(path);
   }
 
+  /**
+   * Writes a private entry, such as `.env`, the way a program running in the
+   * folder could. Not part of the port, which refuses private paths: tests
+   * use it to check a private entry never leaves the folder.
+   *
+   * @throws RangeError when `path` is unsafe or isn't private
+   */
+  writePrivate(path: string, content: string): void {
+    checkWorkspacePath(path);
+    if (!isPrivateWorkspacePath(path)) throw new RangeError(`${path} isn't a private entry.`);
+    this.#files.set(path, content);
+  }
+
   /** `sha256:` and the first 16 hex characters of a hash over every path and its text, as in the old adapter. */
   async version(): Promise<string> {
     const paths = [...this.#files.keys()].sort();
