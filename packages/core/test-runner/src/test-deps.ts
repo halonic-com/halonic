@@ -37,11 +37,15 @@ export interface TestDeps {
   readonly halonicTools?: readonly HalonicTool[];
 }
 
-/** Which tests to run. Every part that is set must match. */
+/**
+ * Which tests to run. The runner keeps a case only when every part that is
+ * set equals the case's own, exactly. It never parses a filter: turning
+ * `halonic test --filter` into these parts is the CLI's job.
+ */
 export interface TestFilter {
   readonly hub?: string;
   readonly workflow?: string;
-  /** Matches when the case's name contains it, ignoring case. */
+  /** The case's `name` as the test file has it. */
   readonly name?: string;
 }
 

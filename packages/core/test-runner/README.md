@@ -18,13 +18,21 @@ file and line. Each result also has the runs the case made, with their summaries
 shape of the parity recordings.
 
 `listWorkspaceTests` lists the cases without running them, for `halonic test --list`, with the same
-filter the run takes (hub, workflow, and a part of the name).
+filter the run takes: hub, workflow and name, each matched exactly. Parsing `--filter` into
+those is the CLI's job.
 
 Running the tests comes in the next pull request (HAL-4215).
 
+## Known gaps
+
+- An `artifacts` expectation can't pass yet: it is checked against the run's `artifact.created`
+  events, and the engine doesn't emit them yet (HAL-4247).
+- A test file can't script a program step's result yet, so a step that would start a program
+  fails its case with `unscripted-program` (HAL-4248).
+
 ## Example
 
-List the tests of a small in-memory workspace whose name contains "wait". The code lives in
+List the test of a small in-memory workspace named "without a decision the run waits". The code lives in
 [`examples/list-tests.ts`](examples/list-tests.ts), where it is typechecked and run by
 `src/example.test.ts`; keep this copy in step with it. The file imports `../src/index.ts`, because a
 package may not import itself by name; outside this package, import `@halonicjs/test-runner` as
@@ -67,13 +75,13 @@ const source: DefinitionSource = {
   version: async () => "v1",
 };
 
-/** Loads the workspace and lists its tests whose name contains "wait", as `halonic test --list --filter wait` does. */
+/** Loads the workspace and lists its tests named "without a decision the run waits". */
 export async function runExample(): Promise<string[]> {
   const workspace = await loadWorkspace(source);
   const tests = await listWorkspaceTests({
     workspace,
     textOf: (path) => source.read(path),
-    filter: { name: "wait" },
+    filter: { name: "without a decision the run waits" },
   });
   return tests.map((test) => `${test.workflow} › ${test.name} (${test.file}:${test.line})`);
   // ["approval › without a decision the run waits (hubs/billing/workflows/approval.test.yaml:6)"]

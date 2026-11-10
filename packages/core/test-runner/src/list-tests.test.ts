@@ -59,12 +59,15 @@ verifies("test-runner.list-tests", () => {
       ]);
     });
 
-    it("keeps the cases whose name contains the filter's, ignoring case", async () => {
+    it("keeps only the case whose name equals the filter's, exactly", async () => {
       const workspace = await loadWorkspace(source);
+      const listed = (name: string) => listWorkspaceTests({ workspace, filter: { name } });
 
-      const listed = await listWorkspaceTests({ workspace, textOf, filter: { name: "DAY" } });
-
-      expect(listed.map((test) => test.name)).toEqual(["one day is not enough"]);
+      expect((await listed("one day is not enough")).map((test) => test.name)).toEqual([
+        "one day is not enough",
+      ]);
+      expect(await listed("day")).toEqual([]);
+      expect(await listed("One day is not enough")).toEqual([]);
     });
 
     it("keeps nothing when the hub or the workflow differs", async () => {

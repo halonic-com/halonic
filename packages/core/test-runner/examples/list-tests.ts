@@ -34,13 +34,13 @@ const source: DefinitionSource = {
   version: async () => "v1",
 };
 
-/** Loads the workspace and lists its tests whose name contains "wait", as `halonic test --list --filter wait` does. */
+/** Loads the workspace and lists its tests named "without a decision the run waits". */
 export async function runExample(): Promise<string[]> {
   const workspace = await loadWorkspace(source);
   const tests = await listWorkspaceTests({
     workspace,
     textOf: (path) => source.read(path),
-    filter: { name: "wait" },
+    filter: { name: "without a decision the run waits" },
   });
   return tests.map((test) => `${test.workflow} › ${test.name} (${test.file}:${test.line})`);
   // ["approval › without a decision the run waits (hubs/billing/workflows/approval.test.yaml:6)"]

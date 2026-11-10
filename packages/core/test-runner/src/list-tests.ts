@@ -37,7 +37,7 @@ export async function findTestCases(input: TestInput): Promise<FoundTestCase[]> 
  * them, for `halonic test --list`.
  *
  * @example
- * await listWorkspaceTests({ workspace, filter: { name: "refund" } });
+ * await listWorkspaceTests({ workspace, filter: { name: "answers a refund question" } });
  * // [{ hub: "support", workflow: "support-reply", name: "answers a refund question", file: "hubs/support/workflows/support-reply.test.yaml", line: 4 }]
  */
 export async function listWorkspaceTests(input: TestInput): Promise<TestCaseRef[]> {
@@ -49,7 +49,7 @@ function matches(ref: TestCaseRef, filter: TestFilter | undefined): boolean {
   if (filter === undefined) return true;
   if (filter.hub !== undefined && filter.hub !== ref.hub) return false;
   if (filter.workflow !== undefined && filter.workflow !== ref.workflow) return false;
-  return filter.name === undefined || ref.name.toLowerCase().includes(filter.name.toLowerCase());
+  return filter.name === undefined || filter.name === ref.name;
 }
 
 /** The line of each case's `name` in the file, or nothing when the text can't be had. */
