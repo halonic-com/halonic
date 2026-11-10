@@ -1,11 +1,12 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, expect, it, vi } from "vitest";
-import { withRunLock } from "./run-lock.ts";
+import { isStale, parseRecord, withRunLock } from "./run-lock.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
 /**
@@ -65,6 +66,28 @@ afterEach(() => {
 });
 
 const iso = (time: number) => new Date(time).toISOString();
+
+/**
+ * The lock files the Studio shell's Rust run lock judges too, so a CLI and
+ * the desktop app agree on which locks are stale and on the record they
+ * write. Its path is also a test input in this package's `turbo.json`, so a
+ * change to it re-runs this test.
+ */
+const sharedCases = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../../../apps/studio/src-tauri/crates/run-lock/tests/fixtures/run-lock-cases.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+) as {
+  now: string;
+  thisHost: string;
+  runningPids: number[];
+  record: RunLockRecord & { text: string };
+  cases: { name: string; text: string; changedAt?: string; stale: boolean }[];
+};
 
 /** A lock record taken `ageMs` ago by `pid` on `host`. */
 function record(pid: number, host = hostname(), ageMs = 0): RunLockRecord {
@@ -194,6 +217,28 @@ verifies("fs-node.run-store-lock", () => {
       await writeFile(file, other, "utf8");
     });
     expect(await readFile(file, "utf8")).toBe(other);
+  });
+
+  it.each(sharedCases.cases)("judges the shared case: $name", ({ text, changedAt, stale }) => {
+    const found = {
+      text,
+      record: parseRecord(text),
+      changedAt: Date.parse(changedAt ?? sharedCases.now),
+    };
+    const here = {
+      host: sharedCases.thisHost,
+      processRuns: (pid: number) => sharedCases.runningPids.includes(pid),
+    };
+    expect(isStale(found, Date.parse(sharedCases.now), here)).toBe(stale);
+  });
+
+  it("reads and writes the record exactly as the Rust run lock does", async () => {
+    const { text, ...shared } = sharedCases.record;
+    expect(parseRecord(text)).toEqual({ ...shared, version: runLockFormat });
+    const file = await lockFile();
+    const held = await withRunLock(file, async () => await readFile(file, "utf8"));
+    expect(Object.keys(JSON.parse(held))).toEqual(Object.keys(JSON.parse(text)));
+    expect(JSON.parse(held).takenAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
   it("fails without running the work when the lock's folder is missing", async () => {

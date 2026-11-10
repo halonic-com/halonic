@@ -1,0 +1,17 @@
+[package]
+name = "halonic-run-lock"
+description = "The run lock the Studio shell shares with the CLI: `<runId>.lock`, taken with an exclusive create and judged stale by the same rules as fs-node."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# The lock record is JSON, read and written as `halonic-connect` reads its
+# hello answer.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }

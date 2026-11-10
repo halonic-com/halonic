@@ -1,0 +1,278 @@
+{
+  "//": "Lock files and whether each is stale, read by the Rust run lock (crates/run-lock) and fs-node's run-lock.test.ts, so both judge a lock alike. 'now' is the time of judging; 'thisHost' is this computer's name; only the ids in 'runningPids' run. A case's file was last changed at 'changedAt', or at 'now' when it has none. 'record' is a record and its text exactly as both write it.",
+  "now": "2026-11-10T12:00:00.000Z",
+  "thisHost": "this-computer",
+  "runningPids": [
+    4242
+  ],
+  "record": {
+    "pid": 4242,
+    "host": "this-computer-é",
+    "takenAt": "2026-11-10T12:00:00.000Z",
+    "text": "{\"version\":1,\"pid\":4242,\"host\":\"this-computer-é\",\"takenAt\":\"2026-11-10T12:00:00.000Z\"}"
+  },
+  "cases": [
+    {
+      "name": "a live writer on this computer, fresh",
+      "text": "{\"version\":1,\"pid\":4242,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a process that no longer runs on this computer",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a fresh lock from another computer, whose process can't be checked",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a host name that differs only in case is another computer",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"This-Computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "exactly as old as the limit",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T11:59:50.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "one millisecond older than the limit",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T11:59:49.999Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a live writer's lock that is too old",
+      "text": "{\"version\":1,\"pid\":4242,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:00.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "exactly as far in the future as the limit",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T12:00:10.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "too far in the future, from a clock that was off",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T12:00:10.001Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a process id above 32 bits names no process",
+      "text": "{\"version\":1,\"pid\":4294967296,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "the largest safe process id names no process",
+      "text": "{\"version\":1,\"pid\":9007199254740991,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a process id written with a fraction of zero",
+      "text": "{\"version\":1,\"pid\":5151.0,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a process id written with an exponent",
+      "text": "{\"version\":1,\"pid\":5.151e3,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "fields in another order, with spaces and an extra field",
+      "text": "{ \"takenAt\": \"2026-11-10T11:59:55.000Z\", \"host\": \"this-computer\", \"pid\": 5151, \"version\": 1, \"extra\": true }",
+      "stale": true
+    },
+    {
+      "name": "a later version of the format",
+      "text": "{\"version\":2,\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "the last of two process ids counts",
+      "text": "{\"version\":1,\"pid\":4242,\"host\":\"this-computer\",\"pid\":5151,\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "process id 0 is no record, so only the file's age counts",
+      "text": "{\"version\":1,\"pid\":0,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a negative process id is no record",
+      "text": "{\"version\":1,\"pid\":-1,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a process id with a fraction is no record",
+      "text": "{\"version\":1,\"pid\":5151.5,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a process id as text is no record",
+      "text": "{\"version\":1,\"pid\":\"5151\",\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a process id of 2^53 is no record",
+      "text": "{\"version\":1,\"pid\":9007199254740992,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "no version is no record",
+      "text": "{\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a version with a fraction is no record",
+      "text": "{\"version\":1.5,\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a version as text is no record",
+      "text": "{\"version\":\"1\",\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a host that isn't text is no record",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":42,\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "no takenAt is no record",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"this-computer\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt that can't be read is stale at once",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"yesterday\"}",
+      "stale": true
+    },
+    {
+      "name": "an empty takenAt is stale at once",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"\"}",
+      "stale": true
+    },
+    {
+      "name": "a takenAt without milliseconds",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T11:59:55Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt without seconds",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T12:00Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt with an offset",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T12:59:55.000+01:00\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt with a negative offset",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T06:29:55.000-05:30\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt with one digit of fraction",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T11:59:50.1Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt with six digits of fraction keeps three",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T11:59:49.999999Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a takenAt in lower case",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10t11:59:55z\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt with a space for T",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10 11:59:55Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a takenAt on day 32 can't be read",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-10-32T11:59:55Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a takenAt of only a date is midnight",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10\"}",
+      "stale": true
+    },
+    {
+      "name": "a takenAt at 24:00 is the next midnight",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-09T24:00:00.000Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a takenAt with hour 25 can't be read",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T25:00:00Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a takenAt with a dot but no fraction can't be read",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T11:59:55.Z\"}",
+      "stale": true
+    },
+    {
+      "name": "a takenAt in month 13 can't be read",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-13-10T11:59:55Z\"}",
+      "stale": true
+    },
+    {
+      "name": "an empty file, fresh",
+      "text": "",
+      "stale": false
+    },
+    {
+      "name": "an empty file older than the limit",
+      "text": "",
+      "changedAt": "2026-11-10T11:59:49.999Z",
+      "stale": true
+    },
+    {
+      "name": "an empty file from too far in the future",
+      "text": "",
+      "changedAt": "2026-11-10T12:00:10.001Z",
+      "stale": true
+    },
+    {
+      "name": "text that isn't JSON, fresh",
+      "text": "not a lock",
+      "stale": false
+    },
+    {
+      "name": "half a record, fresh",
+      "text": "{\"version\":1,\"pid\":51",
+      "stale": false
+    },
+    {
+      "name": "JSON null",
+      "text": "null",
+      "stale": false
+    },
+    {
+      "name": "a JSON array",
+      "text": "[1,5151]",
+      "stale": false
+    },
+    {
+      "name": "JSON text",
+      "text": "\"lock\"",
+      "stale": false
+    },
+    {
+      "name": "a byte order mark before the record",
+      "text": "﻿{\"version\":1,\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a trailing comma",
+      "text": "{\"version\":1,\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\",}",
+      "stale": false
+    }
+  ]
+}
