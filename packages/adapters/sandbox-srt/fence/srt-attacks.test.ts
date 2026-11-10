@@ -21,6 +21,17 @@ async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
   return text + decoder.decode();
 }
 
+// Each tick is written to a temp file and moved over, so a read never sees a half-written file.
+async function untilFirstTick(file: string): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    const text = await readFile(file, "utf8").catch(() => "");
+    if (text !== "") return;
+    if (Date.now() > deadline) throw new Error(`no tick in ${file}`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 describe("a program trying to get out of the fence", () => {
   let base: string;
   let secret: string;
@@ -150,11 +161,10 @@ describe("a program trying to get out of the fence", () => {
       program: "sh",
       args: [
         "-c",
-        `(setsid sh -c 'while true; do date +%s%N > ${ticks}; sleep 0.1; done' &) ; sleep 60`,
+        `(setsid sh -c 'while true; do date +%s%N > ${ticks}.tmp; mv ${ticks}.tmp ${ticks}; sleep 0.1; done' &) ; sleep 60`,
       ],
     });
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    expect(await readFile(ticks, "utf8")).not.toBe("");
+    await untilFirstTick(ticks);
     await started.kill();
     await started.exited;
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -169,7 +179,10 @@ describe("a program trying to get out of the fence", () => {
       const ticks = join(base, "temp", "limited-ticks");
       const started = await limited.start({
         program: "sh",
-        args: ["-c", `(while true; do date +%s%N > ${ticks}; sleep 0.1; done) & wait`],
+        args: [
+          "-c",
+          `(while true; do date +%s%N > ${ticks}.tmp; mv ${ticks}.tmp ${ticks}; sleep 0.1; done) & wait`,
+        ],
       });
       const exit = await started.exited;
       expect(exit.reason).toBe("timeout");
