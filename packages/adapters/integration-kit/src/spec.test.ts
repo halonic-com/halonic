@@ -1,10 +1,44 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { integrationVersion, type SecretPlacement } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
+import {
+  type Integration,
+  type IntegrationTool,
+  integrationVersion,
+  type SecretPlacement,
+} from "@halonicjs/ports";
+import type { Infer } from "@halonicjs/schema-kit";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectSpecFile } from "@halonicjs/testing-spec/node";
-import { expect, it } from "vitest";
-import { jsonSchemaOf, type SpecName, specId, specNames } from "./spec.ts";
+import { expect, expectTypeOf, it } from "vitest";
+import {
+  type integration,
+  jsonSchemaOf,
+  type SpecName,
+  type secretPlacement,
+  specId,
+  specNames,
+  type tool,
+} from "./spec.ts";
+
+type Defined<T> = T extends unknown ? { [K in keyof T]-?: Exclude<T[K], undefined> } : never;
+type Mutual<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type RequiredKeys<T> = T extends unknown
+  ? { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T]
+  : never;
+
+/**
+ * `true` when the schema's type and the ports type have the same keys, the same value types
+ * and the same required keys, and the ports type fits the schema. (The schema's optional keys
+ * also accept `undefined`, which JSON can't carry, so the other direction can't be exact.)
+ */
+type Same<Schema, Port> =
+  Mutual<Defined<Schema>, Defined<Port>> extends true
+    ? Mutual<RequiredKeys<Schema>, RequiredKeys<Port>> extends true
+      ? [Port] extends [Schema]
+        ? true
+        : false
+      : false
+    : false;
 
 function specPath(spec: SpecName): string {
   return join(import.meta.dirname, "..", "spec", `${spec}.schema.json`);
@@ -41,5 +75,16 @@ verifies("integration-kit.spec-files", () => {
       "header",
       "form",
     ]);
+  });
+
+  typeTest("describes the same data as the types in ports", () => {
+    expectTypeOf<Same<Infer<typeof tool>, IntegrationTool>>().toEqualTypeOf<true>();
+    expectTypeOf<Same<Infer<typeof secretPlacement>, SecretPlacement>>().toEqualTypeOf<true>();
+    type Data = Infer<typeof integration>;
+    expectTypeOf<
+      Same<Omit<Data, "tools">, Omit<Integration, "connect" | "tools">>
+    >().toEqualTypeOf<true>();
+    expectTypeOf<Same<Data["tools"][number], Integration["tools"][number]>>().toEqualTypeOf<true>();
+    expectTypeOf<keyof Data>().toEqualTypeOf<Exclude<keyof Integration, "connect">>();
   });
 });

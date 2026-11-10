@@ -1,14 +1,15 @@
 import { integrationVersion } from "@halonicjs/ports";
 import { JSON_SCHEMA_DRAFT, type JsonSchema, s, toJsonSchema } from "@halonicjs/schema-kit";
+import { namePattern } from "./policy.ts";
 
 /** Where the `$id` of each integration interface spec starts. Nothing is hosted there yet. */
 export const SPEC_ID_BASE = "https://halonic.com/spec/integration-kit";
 
-const name = s.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/);
+const name = s.string().regex(namePattern);
 const version = s.string().regex(/^\d+\.\d+\.\d+$/);
 
 /** The data an integration hands the host to describe a tool: the shape of `IntegrationTool`. */
-const tool = s
+export const tool = s
   .object({
     name: s.string().min(1),
     description: s.string(),
@@ -19,10 +20,10 @@ const tool = s
   .strict();
 
 /** What an integration package exports as data: the `Integration` without its `connect` function. */
-const integration = s.object({ name, version, tools: s.array(tool) }).strict();
+export const integration = s.object({ name, version, tools: s.array(tool) }).strict();
 
 /** Where the host puts a secret in a request: the shape of `SecretPlacement`. */
-const secretPlacement = s.discriminatedUnion("as", [
+export const secretPlacement = s.discriminatedUnion("as", [
   s.object({ secret: s.string().min(1), as: s.literal("bearer") }).strict(),
   s
     .object({
@@ -54,7 +55,8 @@ export function specId(spec: SpecName): string {
 
 /**
  * The JSON Schema (2020-12) of one data shape of the integration interface:
- * what an integration may hand the host. The host rejects anything else.
+ * what an integration may hand the host. The files describe the shapes for
+ * people and tools outside this repo; the host does not validate against them.
  *
  * @example
  * jsonSchemaOf("secret-placement")["$id"];

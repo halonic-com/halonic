@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3394 (moved from core/format, HAL-1664, now that a second package has a spec file; it can't live in core/schema-kit, where core code may not import Node or test helpers)
 
-The test utility `expectSpecFile(path, schema)`, from `@halonicjs/testing-spec`, shall pass only when the file at `path` holds exactly `schema`, pretty-printed as JSON with two spaces and a final newline. If the file is missing or differs, then it shall fail and say which. It shall write the file first only when `SPEC_WRITE=1` is set and `CI` is not, or when the caller passes `write: true`. Production code never imports it.
+The test utility `expectSpecFile(path, schema)`, from `@halonicjs/testing-spec/node`, shall pass only when the file at `path` holds exactly `schema`, pretty-printed as JSON with two spaces and a final newline. If the file is missing or differs, then it shall fail and say which. It shall write the file first only when `SPEC_WRITE=1` is set and `CI` is not, or when the caller passes `write: true`. Production code never imports it.
 
 ## Examples
 
