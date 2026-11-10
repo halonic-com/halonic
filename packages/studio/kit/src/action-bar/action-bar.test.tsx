@@ -94,6 +94,11 @@ verifies("kit.action-bar", () => {
     expect((container.firstElementChild as HTMLElement).children).toHaveLength(1);
   });
 
+  it.each([null, false, true, ""])("draws nothing extra for an empty lead (%j)", (lead) => {
+    const { container } = render(<ActionBar lead={lead} rows={[[{ label: "Try it" }]]} />);
+    expect((container.firstElementChild as HTMLElement).children).toHaveLength(1);
+  });
+
   it("calls a button's onClick", async () => {
     const onReject = vi.fn();
     const { container } = render(

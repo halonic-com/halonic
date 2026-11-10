@@ -41,7 +41,8 @@ export interface ActionBarProps {
   /**
    * An optional row on top of everything else in the bar, drawn as it's given: the review row
    * (component specs 15.4, rev. 47), with ‹ and › and "The assistant changed 3 things here". The
-   * page draws the row; the bar keeps it in the same box, so it's one bar, not two (0.2).
+   * page draws the row; the bar keeps it in the same box, so it's one bar, not two (0.2). `null`,
+   * `false` and `""` draw nothing, so `lead={hasChanges && <ReviewRow />}` leaves no gap.
    */
   readonly lead?: ReactNode;
   /**
@@ -50,8 +51,8 @@ export interface ActionBarProps {
    */
   readonly rows: readonly ActionBarRow[];
   /**
-   * An optional line right above the buttons, under `lead`, never shortened: "Sending is off until you connect
-   * Gmail." in `warning`.
+   * An optional line right above the buttons, under `lead`, never shortened: "Sending is off until
+   * you connect Gmail." in `warning`.
    */
   readonly note?: { readonly text: string; readonly tone?: ActionBarNoteTone };
   /**
@@ -97,7 +98,7 @@ export function ActionBar({ lead, rows, note, whileTyping = "ride" }: ActionBarP
       data-while-typing={whileTyping}
       className="action-bar flex flex-col gap-2 border-t border-border bg-surface px-4 pt-3 pb-safe"
     >
-      {lead === undefined ? null : <div>{lead}</div>}
+      {isEmpty(lead) ? null : <div>{lead}</div>}
       {note === undefined ? null : (
         <p className={`text-small wrap-break-word ${noteTones[note.tone ?? "muted"]}`}>
           {note.text}
@@ -138,6 +139,11 @@ export function ActionBar({ lead, rows, note, whileTyping = "ride" }: ActionBarP
       ))}
     </div>
   );
+}
+
+/** What React draws as nothing: the bar then leaves out the lead's wrapper and its gap. */
+function isEmpty(node: ReactNode): boolean {
+  return node === undefined || node === null || typeof node === "boolean" || node === "";
 }
 
 /**
