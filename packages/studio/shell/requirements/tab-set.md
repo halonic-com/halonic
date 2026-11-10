@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1290 (T2); design direction 2 (HAL-49); UX checklist part 1, 1.2 (HAL-1323)
 
-The shell shall keep the window tabs of a workspace in a `TabSet`, which always holds at least one tab and exactly one active tab. Each tab shall keep its own history of places, with Back and Forward; Back and Forward shall skip places another tab shows now, and do nothing when no other place is left. When a place is opened here, the shell shall show it in the active tab after the current place and drop that tab's Forward places. When a place is opened in a new tab, the shell shall add the tab right after the active one and keep the active tab. If another tab already shows the place being opened, here or in a new tab, then the shell shall make that tab active (here) or leave the tabs as they are (new tab), instead of opening a copy; Home is the one place several tabs may show. A new tab shall start on Home at the end of the strip and become active. When the active tab closes, the shell shall make the tab to its right active, or else the one to its left; when the last tab closes, the shell shall leave one tab on Home. The shell shall bring back the last closed tab, with its history, in its old place, for the last 20 closed tabs. The shell shall move a tab to any place in the strip, activate the next or previous tab with wrap-around, and activate the tab at a position, where the last position stands for the last tab. When a place is renamed, every tab that shows it or has it in its history, closed tabs included, shall show the new title.
+The shell shall keep the window tabs of a workspace in a `TabSet`, which always holds at least one tab and exactly one active tab. Each tab shall keep its own history of places, with Back and Forward; Back and Forward shall move exactly one place in the active tab's history, even when another tab shows that place, and shall do nothing when there is no place behind or ahead; the shell shall tell whether a tab has a place behind it and ahead of it. When a place is opened here, the shell shall show it in the active tab after the current place and drop that tab's Forward places; when the active tab already shows that place, nothing shall change. When a place is opened in a new tab, the shell shall add the tab right after the active one and keep the active tab. If another tab already shows the place being opened, here or in a new tab, then the shell shall make that tab active (here) or leave the tabs as they are and report that no tab was added (new tab), instead of opening a copy; the active tab counts first when several tabs show the place. Home is the one place several tabs may show. A new tab shall start on Home at the end of the strip and become active. When the active tab closes, the shell shall make the tab to its right active, or else the one to its left; when the last tab closes, the shell shall leave one tab on Home. The shell shall bring back the last closed tab, with its history, in its old place, for the last 20 closed tabs. The shell shall move a tab to any place in the strip, activate the next or previous tab with wrap-around, and activate the tab at a position, where the last position stands for the last tab. When a place is renamed, every tab that shows it or has it in its history, closed tabs included, shall show the new title.
 
 ## Examples
 
@@ -16,10 +16,19 @@ The shell shall keep the window tabs of a workspace in a `TabSet`, which always 
   then the tab shows "Workflows" and Forward does nothing.
 - Given tab 1 on "Sorter" with "Home" and "Agents" behind it, and tab 2 on "Agents",
   when the user goes Back in tab 1,
-  then tab 1 shows "Home" and stays active; Back again does nothing.
+  then tab 1 shows "Agents" and stays active; Back again shows "Home".
+- Given a new tab on Home,
+  when the toolbar asks,
+  then Back and Forward have nowhere to go; after "Agents" is opened here, Back has.
+- Given one tab on Home,
+  when Home is opened here,
+  then nothing changes and Back still has nowhere to go.
 - Given tab 1 on "Agents" and tab 2 on "Support reply", with tab 1 active,
   when "Support reply" is opened here,
   then tab 2 becomes active and no tab is added.
+- Given tab 1 on "Agents" and tab 2 on "Support reply", with tab 1 active,
+  when "Support reply" is opened in a new tab,
+  then no tab is added, tab 1 stays active and the caller is told no tab was added.
 - Given tabs "Agents", "Sorter", "Writer" with "Sorter" active,
   when "Sorter" closes,
   then the strip reads "Agents", "Writer" with "Writer" active; Ctrl Shift T brings "Sorter" back between them, active.

@@ -1,6 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
+  canGoBack,
+  canGoForward,
   currentLocation,
   homeLocation,
   reopenableTabs,
@@ -54,27 +56,63 @@ verifies("shell.tab-set", () => {
     expect(tabs.back()).toBe(false);
   });
 
-  it("skips places another tab shows when going Back and Forward", () => {
+  it("goes exactly one step Back and Forward, even onto a place another tab shows", () => {
     const tabs = new TabSet();
     tabs.openHere(agents);
     tabs.openHere(sorter);
     tabs.openInNewTab(agents);
     expect(tabs.back()).toBe(true);
+    expect(strip(tabs)).toEqual(["*Agents", "Agents"]);
+    expect(tabs.back()).toBe(true);
     expect(strip(tabs)).toEqual(["*Home", "Agents"]);
     expect(tabs.back()).toBe(false);
     expect(tabs.forward()).toBe(true);
-    expect(strip(tabs)).toEqual(["*Sorter", "Agents"]);
+    expect(strip(tabs)).toEqual(["*Agents", "Agents"]);
   });
 
-  it("does nothing on Back when every earlier place shows in another tab", () => {
-    const tabs = tabsOn(agents, sorter);
-    tabs.activateAt(1);
-    tabs.openHere(writer);
+  it("goes Back onto Home while another tab shows Home", () => {
+    const tabs = new TabSet();
+    tabs.openHere(agents);
+    tabs.newTab();
     tabs.activateAt(0);
-    tabs.openInNewTab(sorter);
-    tabs.activateAt(-1);
+    expect(tabs.back()).toBe(true);
+    expect(strip(tabs)).toEqual(["*Home", "Home"]);
+  });
+
+  it("stays in the active tab when two tabs show the place being opened", () => {
+    const tabs = new TabSet();
+    tabs.openHere(agents);
+    tabs.openHere(sorter);
+    tabs.openInNewTab(agents);
+    tabs.back();
+    const active = tabs.active.id;
+    expect(tabs.openInNewTab(agents)).toEqual({ tab: tabs.active, added: false });
+    tabs.openHere(agents);
+    expect(tabs.active.id).toBe(active);
+    expect(strip(tabs)).toEqual(["*Agents", "Agents"]);
+  });
+
+  it("says whether the active tab can go Back and Forward", () => {
+    const tabs = new TabSet();
+    expect(canGoBack(tabs.active)).toBe(false);
+    expect(canGoForward(tabs.active)).toBe(false);
+    tabs.openHere(agents);
+    expect(canGoBack(tabs.active)).toBe(true);
+    expect(canGoForward(tabs.active)).toBe(false);
+    tabs.back();
+    expect(canGoBack(tabs.active)).toBe(false);
+    expect(canGoForward(tabs.active)).toBe(true);
+  });
+
+  it("changes nothing when the active tab already shows the place opened here", () => {
+    const tabs = new TabSet();
+    const before = tabs.state;
+    tabs.openHere(homeLocation);
+    expect(tabs.state).toBe(before);
     expect(tabs.back()).toBe(false);
-    expect(strip(tabs)).toEqual(["Agents", "Sorter", "*Writer"]);
+    tabs.openHere(agents);
+    tabs.openHere(agents);
+    expect(tabs.active.history.map((place) => place.title)).toEqual(["Home", "Agents"]);
   });
 
   it("drops Forward when a place opens after going back", () => {
@@ -93,8 +131,15 @@ verifies("shell.tab-set", () => {
     const tabs = tabsOn(agents, supportReply);
     tabs.openHere(supportReply);
     expect(strip(tabs)).toEqual(["Agents", "*Support reply"]);
-    expect(tabs.openInNewTab(agents).id).toBe(tabs.state.tabs[0]?.id);
-    expect(tabs.state.tabs).toHaveLength(2);
+    expect(tabs.openInNewTab(agents)).toEqual({ tab: tabs.state.tabs[0], added: false });
+    expect(strip(tabs)).toEqual(["Agents", "*Support reply"]);
+  });
+
+  it("says it added a tab when the place wasn't open", () => {
+    const tabs = tabsOn(agents);
+    const opened = tabs.openInNewTab(sorter);
+    expect(opened.added).toBe(true);
+    expect(opened.tab).toBe(tabs.state.tabs[1]);
   });
 
   it("lets several tabs show Home", () => {
@@ -102,6 +147,8 @@ verifies("shell.tab-set", () => {
     tabs.newTab();
     tabs.openHere(homeLocation);
     expect(strip(tabs)).toEqual(["Home", "*Home"]);
+    tabs.openInNewTab(homeLocation);
+    expect(strip(tabs)).toEqual(["Home", "*Home", "Home"]);
   });
 
   it("opens a new tab right after the active one and keeps the active tab", () => {

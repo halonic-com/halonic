@@ -112,8 +112,11 @@ export { createShell, type Shell, type ShellOptions } from "./shell.ts";
 export { ShellError } from "./shell-error.ts";
 export type { Studio } from "./studio.ts";
 export {
+  canGoBack,
+  canGoForward,
   currentLocation,
   homeLocation,
+  type OpenedTab,
   reopenableTabs,
   type TabLocation,
   TabSet,
