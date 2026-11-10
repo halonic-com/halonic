@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2607; the `Vcs` port's hardening list; the desktop's `git-guard` (`repo_config.rs`)
 
-When the git adapter runs a git call in a repository, it shall first list the repository's config again and neutralise every program it names: it shall blank the filters the repository and every repository nested in it as a gitlink define, send its merge drivers to a conflict, send its ssh and signing programs back to git's defaults, and give every call that shows diffs (`diff`, `log`, `show`, `whatchanged`) `--no-ext-diff --no-textconv`, so its external diff, diff commands and textconv programs don't run. It shall refuse a repository whose own config sets `branch.<name>.mergeOptions`, `include.path` or `includeIf.<condition>.path`, and a git that ignores config given in the environment.
+When the git adapter runs a git call in a repository, it shall first list the repository's config again and neutralise every program it names: it shall blank the filters the repository and every repository nested in it as a gitlink define, send its merge drivers to a conflict, send its ssh and signing programs back to git's defaults, blank its interactive diff filter and trailer commands, and give every call that shows diffs (`diff`, `log`, `show`, `whatchanged`) `--no-ext-diff --no-textconv` after its other options, so its external diff, diff commands and textconv programs don't run. It shall refuse a repository whose own config sets `branch.<name>.mergeOptions`, `include.path` or `includeIf.<condition>.path`, and a git that ignores config given in the environment.
 
 ## Examples
 

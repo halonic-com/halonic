@@ -11,7 +11,7 @@ import {
   neutralisePrograms,
   parseConfigListing,
 } from "./repo-config.ts";
-import { checkSubcommand, withoutDiffPrograms } from "./repository-args.ts";
+import { checkOptions, checkSubcommand, withoutDiffPrograms } from "./repository-args.ts";
 import {
   checkAlternates,
   checkLocated,
@@ -72,10 +72,11 @@ export class Repository {
    * Checks the repository again, then runs git in it, hardened, with what
    * neutralises its own config.
    *
-   * @throws Error when the subcommand isn't one the adapter runs, the folder is no longer a repository, or a check fails
+   * @throws Error when the subcommand isn't one the adapter runs, an option names a file, the folder is no longer a repository, or a check fails
    */
   async run(call: RepositoryCall): Promise<GitResult> {
     checkSubcommand(call.args);
+    checkOptions(call.args);
     // The workspace can change between calls, and a call such as `checkout`
     // or `merge` can change what the next one reads, so every call checks.
     const neutralising = await this.#check();
@@ -191,8 +192,8 @@ interface Nesting {
 }
 
 /**
- * Adds the filter names of every repository nested in the one at `folder`
- * as a gitlink, and of those nested in them in turn. Each nested
+ * Adds the filter names of every repository nested in the one at `folder`,
+ * as a gitlink or not yet tracked, and of those nested in them in turn. Each nested
  * repository's git files must be inside the workspace too.
  */
 async function addNestedFilterNames(
@@ -204,7 +205,10 @@ async function addNestedFilterNames(
 ): Promise<void> {
   const index = await runner.run({ cwd: folder, args: [...located, "ls-files", "--stage", "-z"] });
   if (index.code !== 0) throw gitError(["ls-files"], index);
-  for (const path of gitlinks(index.stdout)) {
+  // `add --all` adds an untracked one as a gitlink too, and reads its git folder to do so.
+  const untracked = await runner.run({ cwd: folder, args: [...located, ...untrackedArgs] });
+  if (untracked.code !== 0) throw gitError(["ls-files"], untracked);
+  for (const path of [...gitlinks(index.stdout), ...untrackedRepositories(untracked.stdout)]) {
     const nested = join(folder, path);
     // A submodule that isn't checked out has no `.git`, and git doesn't look into it.
     if ((await kindOf(join(nested, ".git"))) === "missing") continue;
@@ -217,6 +221,18 @@ async function addNestedFilterNames(
     for (const entry of filterNames(await listConfig(runner, real))) names.add(entry);
     await addNestedFilterNames(runner, real, [], names, nesting);
   }
+}
+
+/** What lists the untracked files that aren't ignored, and the untracked nested repositories. */
+const untrackedArgs = ["ls-files", "--others", "--exclude-standard", "-z"];
+
+/** The untracked nested repositories in the output of {@link untrackedArgs}: git lists each as a folder, with a `/` at the end. */
+function untrackedRepositories(listing: Buffer): string[] {
+  return listing
+    .toString("utf8")
+    .split("\0")
+    .filter((path) => path.endsWith("/"))
+    .map((path) => path.slice(0, -1));
 }
 
 /** The paths of the gitlinks in the output of `ls-files --stage -z`: mode 160000. */

@@ -23,6 +23,8 @@ const programKeys: readonly ConfigEntry[] = [
   ["gpg.x509.program", "gpgsm"],
   ["gpg.ssh.program", "ssh-keygen"],
   ["gpg.ssh.defaultKeyCommand", ""],
+  // Unset by default; blank, `add -p` fails instead of running it.
+  ["interactive.diffFilter", ""],
 ];
 
 /**
@@ -129,7 +131,8 @@ export function blankFilters(names: readonly string[]): ConfigEntry[] {
 
 /**
  * Config that neutralises every other program the repository's own config
- * names: its merge drivers report a conflict, and each key in
+ * names: its merge drivers report a conflict, its trailer commands are
+ * blanked (a blank one fails, and the commit goes on), and each key in
  * {@link programKeys} and {@link remoteProgramKeys} goes back to git's
  * default.
  */
@@ -140,6 +143,11 @@ export function neutralisePrograms(entries: readonly ListedConfig[]): ConfigEntr
     const merge = subsectionKey(entry.key, "merge");
     if (merge?.name.toLowerCase() === "driver") {
       overrides.set(`merge.${merge.subsection}.driver`, conflictMergeDriver);
+    }
+    const trailer = subsectionKey(entry.key, "trailer");
+    const trailerName = trailer?.name.toLowerCase();
+    if (trailer !== null && (trailerName === "command" || trailerName === "cmd")) {
+      overrides.set(`trailer.${trailer.subsection}.${trailerName}`, "");
     }
     const remote = subsectionKey(entry.key, "remote");
     const fallback = remoteProgramKeys.find(([name]) => name === remote?.name.toLowerCase());

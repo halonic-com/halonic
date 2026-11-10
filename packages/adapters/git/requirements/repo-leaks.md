@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2669 (reviews of #765 and #766); the desktop's `git-guard` (`repository.rs`)
 
-The git adapter shall refuse a repository whose own config could send git's traffic somewhere else or let others read it: `url.<base>.insteadOf` and `pushInsteadOf`, and `http.sslVerify`, `http.sslCAInfo` and `http.sslCAPath`, also for one URL. It shall refuse every `hook.<name>.*` key, which newer git runs as a hook. It shall send each remote's `uploadpack` and `receivepack` back to git's defaults on every call. It shall refuse a repository nested as a gitlink whose git folders are outside the workspace, and say which alternate objects folder is missing when one is. It shall run only the git subcommands it uses itself, so a subcommand such as `blame` or `stash` can't start a program the repository names.
+The git adapter shall refuse a repository whose own config could send git's traffic somewhere else or let others read it: `url.<base>.insteadOf` and `pushInsteadOf`, and `http.sslVerify`, `http.sslCAInfo` and `http.sslCAPath`, also for one URL. It shall refuse every `hook.<name>.*` key, which newer git runs as a hook. It shall send each remote's `uploadpack` and `receivepack` back to git's defaults on every call. It shall refuse a repository nested as a gitlink, or nested and not yet tracked, whose git folders are outside the workspace, and say which alternate objects folder is missing when one is. It shall run only the git subcommands it uses itself, so a subcommand such as `blame` or `stash` can't start a program the repository names, and refuse an option that reads or writes a file it names, such as `--output` or `config --file`.
 
 ## Examples
 

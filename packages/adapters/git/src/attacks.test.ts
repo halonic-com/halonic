@@ -1,5 +1,5 @@
 import { appendFile, mkdir, readdir, rm, symlink, writeFile } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { plantedHooks } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
@@ -137,6 +137,30 @@ verifies("git.repo-config", () => {
       await vcs.checkout("main");
       expect(await plant.ran()).toBe(false);
     });
+
+    it("neutralises the programs a later option or a commit trailer would bring back", async () => {
+      const { folder, plant } = await planted();
+      await plant.config("diff.external");
+      await plant.config("diff.planted.textconv");
+      await plant.attributes("* diff=planted");
+      await plant.config("trailer.planted.command");
+      await plant.config("trailer.planted.cmd");
+      await plant.config("interactive.diffFilter");
+      await plant.config("color.ui", "always");
+      const repository = await open(folder);
+      await writeFile(join(folder, "a.yaml"), "2\n");
+      const calls: readonly (readonly string[])[] = [
+        ["diff", "--ext-diff"],
+        ["diff", "--textconv", "--", "a.yaml"],
+        ["log", "-p", "--ext-diff"],
+        ["show", "--textconv", "--end-of-options", "HEAD"],
+        ["add", "-p"],
+        ["commit", "--allow-empty", "--trailer=planted=1", "--message=Trailer"],
+      ];
+      // Some of them fail on the blanked program; only that none ran counts.
+      for (const args of calls) await repository.run({ args });
+      expect(await plant.ran()).toBe(false);
+    });
   });
 });
 
@@ -228,6 +252,34 @@ verifies("git.repo-leaks", () => {
           "The git adapter doesn't run git",
         );
       }
+    });
+
+    it("refuses an option that reads or writes a file it names, also abbreviated", async () => {
+      const folder = await repositoryWith(scratch);
+      const repository = await open(folder);
+      const outside = join(await scratch.folder(), "planted");
+      const refused: readonly (readonly string[])[] = [
+        ["log", `--output=${outside}`],
+        ["diff", "--output", outside],
+        ["config", `--file=${outside}`, "a.b", "c"],
+        ["config", `--fil=${outside}`, "a.b", "c"],
+        ["config", "-f", outside, "a.b", "c"],
+        ["commit", "--allow-empty", `-F${outside}`],
+        ["commit", "--allow-empty", "-aF", outside],
+        ["commit", "--allow-empty", `--templ=${outside}`],
+        ["add", `--pathspec-from-file=${outside}`],
+        ["cat-file", "--textconv", "HEAD:a.yaml"],
+      ];
+      for (const args of refused) {
+        await expect(repository.run({ args }), args.join(" ")).rejects.toThrow(
+          "The git adapter doesn't pass",
+        );
+      }
+      // After `--` it is a path, not an option.
+      await expect(
+        repository.run({ args: ["ls-files", "--", "--output=x"] }),
+      ).resolves.toBeDefined();
+      expect(await readdir(dirname(outside))).toEqual([]);
     });
 
     it("passes a path that looks like an option only as a path", async () => {
@@ -336,6 +388,25 @@ verifies("git.repository", () => {
       const nested = await nestRepository(folder, "vendor");
       await writeFile(join(nested, ".git", "commondir"), `${join(elsewhere, ".git")}\n`);
       await expect(Repository.open(await runner(), folder)).rejects.toThrow("nested at");
+    });
+
+    it("refuses an untracked nested repository whose .git file names a git folder outside", async () => {
+      const elsewhere = await repositoryWith(scratch);
+      const folder = await repositoryWith(scratch);
+      await mkdir(join(folder, "deep", "vendor"), { recursive: true });
+      await writeFile(
+        join(folder, "deep", "vendor", ".git"),
+        `gitdir: ${join(elsewhere, ".git")}\n`,
+      );
+      await expect(Repository.open(await runner(), folder)).rejects.toThrow("nested at");
+    });
+
+    it("allows an untracked nested repository with its git folder inside", async () => {
+      const folder = await repositoryWith(scratch);
+      await nestRepository(folder, "vendor");
+      await plainGit(folder, ["reset", "--quiet", "--", "vendor"]);
+      const vcs = new GitVcs(folder, { runner: await runner(), author: testAuthor });
+      await expect(vcs.snapshot()).resolves.toMatch(/^[0-9a-f]{40}$/u);
     });
 
     it("refuses a nested repository behind a .git link to a folder outside", async () => {
