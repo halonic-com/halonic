@@ -30,4 +30,5 @@ HAL-4369.
 
 ## Covers
 
+- cli.run
 - apps/cli/requirements/run.md
