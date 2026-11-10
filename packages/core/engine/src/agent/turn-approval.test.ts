@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import { call, callAnswer, ScriptedModel, textAnswer } from "../testing/scripted-model.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
 import { type AgentTurnOutcome, runAgentTurn, runModelTurn } from "./run-model-turn.ts";
-import type { ApprovalAnswer } from "./turn-approval.ts";
+import type { TurnAnswer } from "./turn-approval.ts";
 import { halonicTool, secretsWith, steppingClock } from "./turn-test-kit.test-helper.ts";
 
 /** Asks a person about every call to `publish`; every other call runs. */
@@ -13,7 +13,7 @@ const askAboutPublish: CallChecker = (_tool, toolCall) =>
   toolCall.name === "publish" ? { kind: "ask" } : { kind: "run" };
 
 /** A run's turn on scripted answers, with `lookup` and `publish`, which count their runs. */
-async function agentTurn(answers: ChatResponse[], resumeFrom?: ApprovalAnswer, maxRounds = 6) {
+async function agentTurn(answers: ChatResponse[], resumeFrom?: TurnAnswer, maxRounds = 6) {
   const ran: string[] = [];
   const tool = (name: string) =>
     halonicTool(name, async () => {
@@ -157,5 +157,23 @@ verifies("engine.turn-approval-stop", () => {
     });
 
     await expect(turn).rejects.toThrow("which only a run can wait for");
+  });
+});
+
+verifies("engine.connector-effects", () => {
+  it("goes on with the result of the call the engine made, without making it again", async () => {
+    const resume = savedStop((await agentTurn([lookupThenPublish])).outcome);
+    const { model, outcome, ran } = await agentTurn([textAnswer("Posted")], {
+      resume,
+      result: "Posted on the board",
+      outcome: "ok",
+    });
+
+    expect(ran).toEqual(["lookup"]);
+    expect(model.requests[0]?.messages.slice(-2)).toEqual([
+      { role: "tool", toolCallId: "p1", name: "publish", content: "Posted on the board" },
+      { role: "tool", toolCallId: "c2", name: "lookup", content: "lookup done" },
+    ]);
+    expect(outcome).toMatchObject({ kind: "answered", result: { content: "Posted" } });
   });
 });

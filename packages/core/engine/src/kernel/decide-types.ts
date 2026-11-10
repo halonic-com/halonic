@@ -8,9 +8,10 @@ import type {
   RunParent,
   RunTrigger,
   ToolOutcome,
+  ToolRisk,
 } from "@halonicjs/events";
 import type { Agent, Collection, Workflow } from "@halonicjs/format";
-import type { ResumeAfterApproval, RunState } from "./run-state.ts";
+import type { ResumeAfterStop, RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
 // from outside comes in here: the time with every input, and a new id with
@@ -64,11 +65,16 @@ export interface HarnessResult {
   readonly output: unknown;
 }
 
-/** What a tool call returned, and how it ended. */
+/**
+ * What a connector call a `call-tool` effect made returned, and how it
+ * ended: `unknown` when it broke off without an answer.
+ */
 export interface ToolResult {
   readonly type: "tool";
   readonly result: string;
   readonly outcome: ToolOutcome;
+  /** The tool's risk as its listing gives it, for `tool.result`; absent when it gives none. */
+  readonly risk?: ToolRisk;
 }
 
 /**
@@ -83,8 +89,27 @@ export interface ApprovalNeeded {
   readonly resume: AgentResume;
 }
 
-/** What a model call for a state's agent gives: its answer, or a stop for an approval. */
-export type ModelCallResult = ModelResult | ApprovalNeeded;
+/**
+ * The agent stopped before a connector call that can change things. The
+ * engine records `effect.requested` first, then makes the call itself with
+ * a `call-tool` effect, and the agent goes on from `resume` with its result.
+ */
+export interface EffectNeeded {
+  readonly type: "effect";
+  /** The connector's id in the workspace. */
+  readonly connector: string;
+  /** The tool as the model named it. */
+  readonly tool: string;
+  readonly args: unknown;
+  /** Where the agent stopped; the call to make is `resume.calls[0]`. */
+  readonly resume: AgentResume;
+}
+
+/**
+ * What a model call for a state's agent gives: its answer, or a stop for an
+ * approval or for a connector call that can change things.
+ */
+export type ModelCallResult = ModelResult | ApprovalNeeded | EffectNeeded;
 
 /** An effect `decide` asked for has finished. */
 export interface EffectDoneInput extends InputBase {
@@ -138,8 +163,8 @@ export interface CallModelEffect {
   readonly state: string;
   readonly agent: string;
   readonly prompt: string;
-  /** Set when the agent goes on after a person answered its approval. */
-  readonly resume?: ResumeAfterApproval;
+  /** Set when the agent goes on after a stop: a person's answer, or a connector call's result. */
+  readonly resume?: ResumeAfterStop;
 }
 
 /** The harnesses that start a program for the agent: every harness but Halonic's own loop. */
@@ -160,14 +185,23 @@ export interface RunHarnessEffect {
   readonly prompt: string;
 }
 
-/** Call a tool. A tool that changes things gets the key `<runId>:<callId>`. */
+/**
+ * Make a connector call that can change things, as its `effect.requested`
+ * asked, with the key `<runId>:<callId>`. A call that breaks off without
+ * an answer, or takes longer than `timeoutMs`, gives the outcome `unknown`.
+ */
 export interface CallToolEffect {
   readonly type: "call-tool";
   readonly callId: string;
   readonly idempotencyKey: string;
+  readonly state: string;
   readonly agent: string;
+  readonly connector: string;
+  /** The tool as the model named it. */
   readonly tool: string;
   readonly args: unknown;
+  /** How long to wait for the connector's answer, as its `connector.started` says. */
+  readonly timeoutMs: number;
 }
 
 /**

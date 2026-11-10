@@ -21,6 +21,7 @@ export type {
   Effect,
   EffectDoneInput,
   EffectFailedInput,
+  EffectNeeded,
   HarnessResult,
   ModelCallResult,
   ModelResult,
@@ -46,11 +47,17 @@ export type {
   StateStep,
 } from "./kernel/registry.ts";
 export {
+  type RequestedEffect,
+  type ResumeAfterEffect,
+  skippedEffectResult,
+} from "./kernel/requested-effect.ts";
+export {
   type ChildRun,
   evolve,
   foldRun,
   type PendingCall,
   type ResumeAfterApproval,
+  type ResumeAfterStop,
   type RunState,
   type WaitingApproval,
 } from "./kernel/run-state.ts";

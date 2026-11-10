@@ -22,9 +22,9 @@ import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { runCalls, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
 import {
-  type ApprovalAnswer,
   goOnAfterApproval,
   stopAt,
+  type TurnAnswer,
   type TurnStart,
   type TurnStopped,
 } from "./turn-approval.ts";
@@ -63,8 +63,8 @@ export interface ModelTurnInput {
  * call back to a caller, and the place to go on from after an approval.
  */
 export interface AgentTurnInput extends Omit<ModelTurnInput, "callerTools"> {
-  /** Where the turn stopped for a person's OK, and their answer; absent for a new turn. */
-  readonly resumeFrom?: ApprovalAnswer;
+  /** Where the turn stopped, and the person's answer or the call's result; absent for a new turn. */
+  readonly resumeFrom?: TurnAnswer;
 }
 
 /** How a run's model turn ended: with an answer, or at a call that waits for a person's OK. */
@@ -117,10 +117,7 @@ export function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutcome> {
   return turnLoop({ ...input, callerTools: [] }, input.resumeFrom);
 }
 
-async function turnLoop(
-  input: ModelTurnInput,
-  resumeFrom?: ApprovalAnswer,
-): Promise<AgentTurnOutcome> {
+async function turnLoop(input: ModelTurnInput, resumeFrom?: TurnAnswer): Promise<AgentTurnOutcome> {
   const tools = await collectTurnTools(input);
   const models = new ModelChain(input.model, input.secrets, input.agent, input.log);
   const context: ToolCallContext = {

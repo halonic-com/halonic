@@ -14,6 +14,12 @@ import {
 } from "../../kernel/registry.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
 import { answerApproval, askForApproval } from "./approval.ts";
+import {
+  answersUnknownEffect,
+  answerUnknownEffect,
+  requestEffect,
+  takeToolResult,
+} from "./effect.ts";
 
 /**
  * A plain `task` state runs its agent once on entry: it asks for one model
@@ -23,14 +29,20 @@ import { answerApproval, askForApproval } from "./approval.ts";
  * an answer that isn't one of its options fails the run with
  * `answer-not-an-option`. When the agent stops at a tool call that needs a
  * person's OK, the state waits for `approve` or `reject`, then the agent goes
- * on with the answer. Methods, conversations, artifacts and signals join with
+ * on with the answer. When it stops before a connector call that can change
+ * things, the engine records the call and makes it, and the agent goes on
+ * with the result; see `effect.ts`. Methods, conversations, artifacts and signals join with
  * the agent loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
   type: "task",
   enter: startAgent,
   onInput: (context, input) => {
-    if (input.type === "send") return answerApproval(context, input);
+    if (input.type === "send") {
+      return answersUnknownEffect(context, input)
+        ? answerUnknownEffect(context, input)
+        : answerApproval(context, input);
+    }
     return takeCallResult(context, input);
   },
 };
@@ -76,6 +88,9 @@ function takeCallResult(context: StateContext, input: DecideInput): StateStep {
   if (input.type !== "effect-done") {
     return nothing;
   }
+  if (input.result.type === "tool") {
+    return takeToolResult(context, input, input.result);
+  }
   if (pending === null || pending.state !== context.stateId || pending.callId !== input.callId) {
     return nothing;
   }
@@ -85,8 +100,8 @@ function takeCallResult(context: StateContext, input: DecideInput): StateStep {
       return finishAgent(context, pending, input.result.output);
     case "approval":
       return askForApproval(context, pending, input.result);
-    case "tool":
-      return nothing;
+    case "effect":
+      return requestEffect(context, pending, input.result);
   }
 }
 

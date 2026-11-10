@@ -3,8 +3,9 @@
 // (`AgentResume`) the run log keeps, so a run goes on after a restart. It
 // holds the conversation and the calls still to handle, never a key.
 
-import type { AgentResume, LoggedToolCall } from "@halonicjs/events";
+import type { AgentResume, LoggedToolCall, ToolOutcome } from "@halonicjs/events";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
+import { passResultToModel } from "./pass-result-to-model.ts";
 import {
   carryOutCall,
   refuseCall,
@@ -32,6 +33,20 @@ export interface ApprovalAnswer {
   readonly comment?: string;
 }
 
+/**
+ * Where a turn stopped before a connector call that can change things, and
+ * the call's result once the engine made it. Its outcome is `unknown` when
+ * the call broke off and a person chose to go on without it.
+ */
+export interface EffectAnswer {
+  readonly resume: AgentResume;
+  readonly result: string;
+  readonly outcome: ToolOutcome;
+}
+
+/** What a stopped turn goes on with: a person's answer, or the result of the call it stopped at. */
+export type TurnAnswer = ApprovalAnswer | EffectAnswer;
+
 /** The turn stopped, and why. */
 export interface TurnStopped {
   readonly kind: "stopped";
@@ -54,7 +69,8 @@ export type TurnStart =
 /**
  * Goes on from where a turn stopped: the waiting call runs when the person
  * approved it, and the model gets the refusal as its result when they
- * didn't. The other calls of that answer are then checked and run in
+ * didn't. After a connector call the engine made, the model gets its
+ * result. The other calls of that answer are then checked and run in
  * order, so the turn can stop again at the next one that needs an OK.
  *
  * @throws when `resume` names no waiting call
@@ -62,7 +78,7 @@ export type TurnStart =
 export async function goOnAfterApproval(
   context: ToolCallContext,
   tools: TurnTools,
-  answer: ApprovalAnswer,
+  answer: TurnAnswer,
 ): Promise<TurnStart> {
   const { resume } = answer;
   // The engine wrote these messages from ChatMessage values when the turn stopped.
@@ -106,11 +122,19 @@ async function answerWaitingCall(
   context: ToolCallContext,
   tools: TurnTools,
   call: ToolCall,
-  answer: ApprovalAnswer,
+  answer: TurnAnswer,
 ): Promise<ChatMessage> {
   const tool = tools.byName.get(call.name);
   if (tool === undefined) {
     return refuseUnoffered(context, call);
+  }
+  if ("result" in answer) {
+    return {
+      role: "tool",
+      toolCallId: call.id,
+      name: call.name,
+      content: passResultToModel(tool, answer.result),
+    };
   }
   if (!answer.approved) {
     return refuseCall(context, tool.source, call, rejection(answer.comment));

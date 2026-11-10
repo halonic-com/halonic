@@ -7,9 +7,12 @@ const toolCall: CallToolEffect = {
   type: "call-tool",
   callId: "call-1",
   idempotencyKey: "run_1:call-1",
+  state: "draft",
   agent: "writer",
+  connector: "mail",
   tool: "send-mail",
   args: {},
+  timeoutMs: 60_000,
 };
 
 // No built state asks for a tool call yet, so the start's step asks for one here.

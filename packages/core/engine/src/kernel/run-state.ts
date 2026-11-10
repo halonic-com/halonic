@@ -1,5 +1,12 @@
 import type { AgentResume, RunEvent, RunKind, RunParent, RunStatus } from "@halonicjs/events";
 import {
+  type RequestedEffect,
+  type ResumeAfterEffect,
+  receiveEvent,
+  requestEffect,
+  takeEffectResult,
+} from "./requested-effect.ts";
+import {
   type BranchEnd,
   branchOfCall,
   endBranch,
@@ -9,7 +16,8 @@ import {
 
 /**
  * The model call a task state waits on: the one its `agent.started` asked
- * for, or the one that goes on after a person answered an approval.
+ * for, or the one that goes on after a person answered an approval or a
+ * connector call that can change things has its result.
  */
 export interface PendingCall {
   /** `call-<n>`, unique in the run. An `effect-done` input names it. */
@@ -18,9 +26,12 @@ export interface PendingCall {
   readonly agent: string;
   /** What the call asks the agent, so the executor can carry it out from the state alone. */
   readonly prompt: string;
-  /** Set when the agent goes on after an approval: where it stopped, and the answer. */
-  readonly resume?: ResumeAfterApproval;
+  /** Set when the agent goes on after a stop: where it stopped, and the answer. */
+  readonly resume?: ResumeAfterStop;
 }
+
+/** Where an agent goes on from after it stopped, and what answers the call it stopped at. */
+export type ResumeAfterStop = ResumeAfterApproval | ResumeAfterEffect;
 
 /** Where an agent stopped for a person's OK, and what the person answered. */
 export interface ResumeAfterApproval {
@@ -86,6 +97,8 @@ export interface RunState {
   /** How many call ids the run has handed out; the next one is `call-<calls + 1>`. */
   readonly calls: number;
   readonly pendingCall: PendingCall | null;
+  /** The connector call that can change things the run has asked for, with no result yet. */
+  readonly effect: RequestedEffect | null;
   /**
    * The child run the run waits on, from `workflow.started` until its
    * `workflow.finished`. While the child waits, so does the run, and an
@@ -164,6 +177,7 @@ function startedState(event: RunEvent): RunState {
     context: {},
     calls: 0,
     pendingCall: null,
+    effect: null,
     child: null,
     parallel: null,
     lastSeq: event.seq,
@@ -173,6 +187,7 @@ function startedState(event: RunEvent): RunState {
 /** What an ended run no longer waits on. */
 const ended = {
   pendingCall: null,
+  effect: null,
   child: null,
   parallel: null,
   accepts: [],
@@ -200,6 +215,7 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "run.waiting":
       return { ...state, status: "waiting", accepts: event.events };
     case "event.received":
+      return receiveEvent(state, event.event);
     case "timer.fired":
       return { ...state, status: "running", accepts: [] };
     case "workflow.started":
@@ -213,6 +229,10 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
       return requestApproval(state, event);
     case "approval.resolved":
       return resolveApproval(state, event);
+    case "effect.requested":
+      return requestEffect(state, event);
+    case "tool.result":
+      return takeEffectResult(state, event);
     case "run.completed":
       return { ...state, ...ended, status: "completed", context: event.context };
     case "run.failed":
