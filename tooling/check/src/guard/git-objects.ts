@@ -35,3 +35,28 @@ export function gitObjects(root: string): GitObjects {
     readFile: (commit, path) => optional(() => git("cat-file", "blob", at(commit, path))),
   };
 }
+
+/**
+ * The files `head` changes, adds or deletes since its merge base with
+ * `base`, by name only: no diff driver or textconv runs.
+ */
+export function changedFiles(root: string, base: string, head: string): readonly string[] {
+  if (!commitPattern.test(base) || !commitPattern.test(head)) {
+    throw new Error(`Not full commit IDs: ${base} ${head}`);
+  }
+  const git = (...args: string[]): string =>
+    execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const mergeBase = git("merge-base", base, head).trim();
+  return git(
+    "diff",
+    "--name-only",
+    "--no-renames",
+    "--no-ext-diff",
+    "--no-textconv",
+    "-z",
+    mergeBase,
+    head,
+  )
+    .split("\0")
+    .filter(Boolean);
+}

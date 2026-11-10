@@ -226,6 +226,20 @@ pull request's own code, hooks and pnpm config would run while the private
 key is loaded. Read the note with `git show <pull request head>:decisions/<branch>.md`,
 and sign exactly the text above.
 
+**The note check runs in its own workflow**, `.github/workflows/guard-notes.yml`,
+on `pull_request_target` and in the merge queue. GitHub runs that file
+from the base branch, so a pull request can't edit or remove it, and the
+job runs only the base's code: the pull request's head is fetched as git
+objects and only read, with no install, cache or secret. It fails a change
+under the guard's own paths (`.github/`, `tooling/check/` with its
+`approvers.json`, `packages/testing/spec/`,
+`packages/testing/parity/allowed-differences.json`,
+`tooling/config/src/vitest-preset.ts`, `turbo.json`) unless the note is
+`user-visible`, lists that path as written here and its signature verifies.
+So an agent key alone can't loosen the guard or add a signer. It also
+checks any note's signature again in the merge queue, against the queue
+base's `approvers.json`. It only reports until user-visible approvals exist.
+
 **CI runs the guard and `trace` from the merge base's copy** of
 `tooling/check`, not the pull request's, so a pull request can't weaken
 the checks that judge it. The merge base's test results are the guard's

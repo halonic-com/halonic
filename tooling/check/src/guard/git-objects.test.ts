@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, test } from "vitest";
-import { gitObjects } from "./git-objects.ts";
+import { changedFiles, gitObjects } from "./git-objects.ts";
 
 const root = mkdtempSync(join(tmpdir(), "git-objects-"));
 const git = (...args: string[]): string =>
@@ -36,5 +36,13 @@ verifies("check.guard-signed-notes", () => {
     expect(objects.hasCommit("HEAD")).toBe(false);
     expect(objects.hasCommit("f".repeat(40))).toBe(false);
     expect(() => objects.listFiles("--output=x")).toThrow(/full commit ID/);
+  });
+
+  test("lists the files a later commit changes, adds or deletes since the merge base", () => {
+    writeFileSync(join(root, "src/b.ts"), "export const b = 2;\n");
+    rmSync(join(root, "src/a.ts"));
+    git("add", "--all");
+    git("commit", "--quiet", "--no-verify", "-m", "two");
+    expect(changedFiles(root, commit, git("rev-parse", "HEAD"))).toEqual(["src/a.ts", "src/b.ts"]);
   });
 });
