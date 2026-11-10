@@ -69,6 +69,26 @@ export {
   type PageErrorBoundaryProps,
   pageStoppedWords,
 } from "./page/page-error-boundary.tsx";
+export {
+  compareNameMatches,
+  matchName,
+  type NameMatch,
+  type NameMatchRank,
+  nameMatchRanks,
+} from "./palette/name-match.ts";
+export {
+  itemLocationKey,
+  type PaletteContent,
+  type PaletteGroup,
+  type PaletteGroupId,
+  type PaletteRow,
+  type PaletteSources,
+  type PaletteTarget,
+  paletteGroupRows,
+  paletteGroups,
+  paletteGroupTitles,
+} from "./palette/palette-groups.ts";
+export { type FoundItems, searchProviders } from "./palette/search-providers.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
   CommandContribution,

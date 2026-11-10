@@ -177,6 +177,30 @@ Forward keys and the path's tooltips come in later pull requests.
 <ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>
 ```
 
+## Ctrl K palette
+
+The palette's content is worked out without a DOM (design-search 2, component specs 24.3), and the
+dialog that shows it comes in a later pull request. `paletteGroups` takes the words, the open tabs'
+places, the recent places, what the search providers found and the commands. With nothing typed it
+gives Open tabs, then Recent places that no tab shows. With words typed it gives "Agents, workflows
+and more" (open and recent places and found items whose name matches, each once) and Actions (the
+commands whose title matches). `nothingFound` says when the "Nothing matches" line shows. Each
+group keeps its best 5 rows, ordered by `matchName`: the whole name, then its start, then a word's
+start, then anywhere, and among equals the more recently opened. A row a tab shows has `open`, so
+it says "Switch to tab". A source that isn't built adds no group.
+
+`matchName` reads the words as plain text, never as a pattern, so `workspace.yaml`, `{ input` and
+`(EU)` find exactly that (`search.files.plain-text-is-literal`). Case doesn't matter, and there's no
+typo matching. Its `start` and `end` say which characters to highlight.
+
+`searchProviders` asks every `search.addProvider` provider with its own feature's context and waits
+for all of them. One that fails sets `failed` without hiding what the others found.
+
+```ts
+const found = await searchProviders(words, shell.contributions.search.providers(), contextFor);
+const content = paletteGroups({ words, openTabs, recent, found: found.results, actions });
+```
+
 ## Status bar and toasts
 
 The status bar shows state only: spend, the branch, the problems count. `StatusBarItems` draws the
