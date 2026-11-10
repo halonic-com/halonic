@@ -4,6 +4,7 @@
 // baseline back. Nothing here commits, pushes or makes anything live.
 
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
+import { type FileWriter, ReviewWriteHook } from "./review-hook.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type {
   ItemToReview,
@@ -39,8 +40,16 @@ type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
 export class ReviewService {
   private readonly files: ReviewFiles;
 
+  /**
+   * The write hook (`app.review-other-writes-merge`): give it to the
+   * workspace's `ReviewingDefinitionStore`, so every other write to a file
+   * with changes to review moves its baseline along.
+   */
+  readonly writer: FileWriter;
+
   constructor(options: ReviewServiceOptions) {
     this.files = new ReviewFiles(options);
+    this.writer = new ReviewWriteHook(this.files);
   }
 
   /**

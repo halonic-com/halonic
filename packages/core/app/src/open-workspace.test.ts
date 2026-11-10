@@ -2,7 +2,7 @@ import type { Digest } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { openWorkspace, reviewServiceKey } from "./open-workspace.ts";
+import { openWorkspace, reviewServiceKey, workspaceFilesKey } from "./open-workspace.ts";
 import { reviewRecordPath } from "./review-record.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 
@@ -44,6 +44,37 @@ verifies("app.review-record", () => {
     await review.accept({ kind: "file", path: clerk });
     expect(reviewRecords.files.size).toBe(0);
     expect(await store.version()).toBe(versionWritten);
+    await scope.close();
+  });
+});
+
+verifies("app.review-other-writes-merge", () => {
+  it("sends an opened workspace's saves through the review service's write hook", async () => {
+    const store = new TestDefinitionStore(
+      { [clerk]: "name: Clerk\nrole: files\nmodel: fast\n" },
+      digest,
+    );
+    const scope = openWorkspace({
+      store,
+      reviewRecords: new TestDefinitionStore({}, digest),
+      digest,
+      onListenerError: (error) => {
+        throw error;
+      },
+    });
+    const review = scope.services.get(reviewServiceKey);
+    await review.propose({
+      path: clerk,
+      content: "name: Clerk\nrole: files\nmodel: smart\n",
+      expected: await contentDigest("name: Clerk\nrole: files\nmodel: fast\n", digest),
+      card: { chatId: "c1", cardId: "k1" },
+    });
+    const files = scope.services.get(workspaceFilesKey);
+    files.change("Renamed the agent", { [clerk]: "name: Clerk 2\nrole: files\nmodel: smart\n" });
+    await files.save();
+    // The rename went into the baseline, so only the assistant's model change is left to review.
+    const changes = await review.changesIn(clerk);
+    expect(changes?.parts.map((part) => part.added)).toEqual([["model: smart\n"]]);
     await scope.close();
   });
 });
