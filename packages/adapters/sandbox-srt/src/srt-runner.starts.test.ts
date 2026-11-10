@@ -24,6 +24,7 @@ const request = {
   cwd: "/w",
   launcherEnv: {},
   programEnv: {},
+  withoutSrtEnv: false,
 };
 
 verifies("sandbox-srt.session", () => {
@@ -75,6 +76,31 @@ verifies("sandbox-srt.session", () => {
       } finally {
         await rm(work, { recursive: true, force: true });
       }
+    });
+
+    it("starts a program without network from an empty environment, with only its own variables", async () => {
+      // Windows has no `env`; its command line is checked in srt-runner.test.ts.
+      if (process.platform === "win32") return expect(process.platform).toBe("win32");
+      const commandOf = async (withoutSrtEnv: boolean): Promise<string[]> => {
+        spawned.length = 0;
+        const run = { ...request, programEnv: { TMPDIR: "/t" }, withoutSrtEnv };
+        await expect(
+          srtRunner.run({ ...run, program: "/bin/node", args: ["r.js"] }),
+        ).rejects.toThrow(/never starts a process/);
+        const [, args] = spawned[0] as [string, string[]];
+        return args.slice(args.indexOf("--") + 1);
+      };
+      expect(await commandOf(true)).toEqual([
+        "env",
+        "-i",
+        "TMPDIR=/t",
+        expect.stringMatching(/^HALONIC_SRT_RUN=/),
+        "/bin/node",
+        "r.js",
+      ]);
+      expect((await commandOf(false)).slice(0, 2)).toEqual(["env", "TMPDIR=/t"]);
+      // The other tests expect nothing started; they may run after this one.
+      spawned.length = 0;
     });
   });
 });

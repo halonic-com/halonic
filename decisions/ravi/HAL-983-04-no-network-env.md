@@ -1,0 +1,28 @@
+# Decision: a session without network gets none of srt's variables
+
+- Approval: the I5 design approved on [HAL-958](/HAL/issues/HAL-958#document-design) (section 9: with network set to none, `sandbox-srt` drops srt's proxy variables, so the runner's environment holds only its own); the package owner (Liam) approves this note in review
+- Kind: internal
+- Task: HAL-983
+
+## What changes
+
+`sandbox-srt.session` gains one promise and one example: when a profile reaches no network (no
+bridge and no allowed site), the program and the fence probe start with none of what
+sandbox-runtime sets inside the fence, only the session's own variables. On Linux and macOS the
+runner uses `env -i`; on Windows, where nothing empties the environment, it removes srt's proxy
+variables with `set "NAME="`. With a bridge or an allowed site nothing changes.
+
+Every existing promise and example stays as it was. No example was removed or weakened.
+
+## Why
+
+The fenced runner for local integrations gets no network (`bridge: null`, no sites). srt still
+set its proxy variables inside the fence, pointing at a proxy that refuses everything. They open
+nothing, but the design says the runner's environment holds only `TMPDIR` and what Halonic gives
+it, so an integration can't read where srt's proxy listens. The probe starts the same way as the
+programs, so the fence proof covers the environment they really get. This follows the approved
+design, so the note is internal.
+
+## Covers
+
+- sandbox-srt.session

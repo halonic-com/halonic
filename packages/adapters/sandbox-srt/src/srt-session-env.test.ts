@@ -96,4 +96,28 @@ verifies("sandbox-srt.session", () => {
       expect(programEnv(profile({ env: { [name]: "x" } }), {})[name]).toBe("x");
     });
   });
+
+  describe("a session that reaches no network", () => {
+    const withoutSrtEnv = async (network: SandboxProfile["network"]) => {
+      const { runner, runs, probes } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile({ network }));
+      await session.start(command);
+      const seen = [probes[0]?.withoutSrtEnv, runs[0]?.request.withoutSrtEnv];
+      await session.close();
+      return seen;
+    };
+
+    it("starts the probe and the program without srt's variables", async () => {
+      expect(await withoutSrtEnv({ bridge: null, allowedSites: [] })).toEqual([true, true]);
+    });
+
+    it("keeps srt's proxy variables when there is a bridge or an allowed site", async () => {
+      const bridge = { host: "127.0.0.1", port: 4100 };
+      expect(await withoutSrtEnv({ bridge, allowedSites: [] })).toEqual([false, false]);
+      expect(await withoutSrtEnv({ bridge: null, allowedSites: ["*.npmjs.org"] })).toEqual([
+        false,
+        false,
+      ]);
+    });
+  });
 });

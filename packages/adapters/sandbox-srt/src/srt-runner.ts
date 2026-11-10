@@ -38,7 +38,23 @@ export interface RunRequest {
   launcherEnv: Record<string, string>;
   /** The variables the program gets on top of what srt sets inside the fence (its proxy variables). Set inside the fence, never for the launcher. */
   programEnv: Record<string, string>;
+  /**
+   * When true, the program gets none of what srt sets inside the fence, only
+   * `programEnv`: for a session that reaches no network, where srt's proxy
+   * variables lead nowhere. On Windows, where nothing can empty the
+   * environment, the proxy variables are removed.
+   */
+  withoutSrtEnv: boolean;
 }
+
+/** The proxy variables srt sets inside the fence, which a program without network must not get. */
+export const srtProxyVariables: readonly string[] = [
+  "http_proxy",
+  "https_proxy",
+  "all_proxy",
+  "no_proxy",
+  "grpc_proxy",
+].flatMap((name) => [name, name.toUpperCase()]);
 
 /**
  * Starts programs inside the fence. A test hands the session a fake one;
@@ -81,6 +97,10 @@ function quoteForCmd(value: string): string {
  * The variables are set inside the fence, so none of them reaches the launcher.
  */
 export function windowsCommandLine(request: RunRequest): string {
+  // `set "NAME="` removes a variable in cmd.exe.
+  const removes = request.withoutSrtEnv
+    ? srtProxyVariables.map((name) => `set ${quoteForCmd(`${name}=`)}`)
+    : [];
   const sets = Object.entries(request.programEnv).map(([name, value]) => {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
       throw new Error(`a variable name that is not plain: ${name}`);
@@ -88,7 +108,7 @@ export function windowsCommandLine(request: RunRequest): string {
     return `set ${quoteForCmd(`${name}=${value}`)}`;
   });
   const program = [request.program, ...request.args].map(quoteForCmd).join(" ");
-  return [...sets, program].join(" && ");
+  return [...removes, ...sets, program].join(" && ");
 }
 
 /** Ends `pid` and everything under it. Windows has no process groups and no SIGTERM: `taskkill /T /F` is the only way, so there is no grace period. */
@@ -126,8 +146,10 @@ export const srtRunner: Runner = {
       : [
           "--",
           // `env` sets the program's variables inside the fence, so none of them reaches the launcher.
-          // It keeps what srt sets there (the proxy variables the program reaches the network by).
+          // It keeps what srt sets there (the proxy variables the program reaches the network by),
+          // unless the session reaches no network: then `-i` starts from an empty environment.
           "env",
+          ...(request.withoutSrtEnv ? ["-i"] : []),
           ...Object.entries(request.programEnv).map(([name, value]) => `${name}=${value}`),
           marker,
           request.program,

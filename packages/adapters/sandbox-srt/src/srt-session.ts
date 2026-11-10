@@ -23,19 +23,14 @@ import {
 } from "./git-folder-check.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
-import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
+import { nodePaths, type Runner, type RunningProgram, srtProxyVariables } from "./srt-runner.ts";
 
 /**
  * Variables sandbox-runtime reads from its own environment to find a parent
  * proxy. For that traffic it skips the check against private and loopback
  * addresses, so the launcher never gets them, whoever set them.
  */
-const proxyVariables = new Set(
-  ["http_proxy", "https_proxy", "all_proxy", "no_proxy", "grpc_proxy"].flatMap((name) => [
-    name,
-    name.toUpperCase(),
-  ]),
-);
+const proxyVariables = new Set(srtProxyVariables);
 
 /**
  * What a variable name may be. `env` runs without `-i`, so a name that starts
@@ -182,6 +177,15 @@ export function programEnv(
   return env;
 }
 
+/**
+ * Whether the profile reaches no network at all: no bridge and no allowed
+ * site. Its programs then get none of what srt sets inside the fence, so no
+ * proxy variable names a way out (I5 design, HAL-958 section 9).
+ */
+function reachesNoNetwork(profile: SandboxProfile): boolean {
+  return profile.network.bridge === null && profile.network.allowedSites.length === 0;
+}
+
 /** Whether `child` is `parent` or inside it. */
 function isInside(parent: string, child: string): boolean {
   const path = relative(parent, child);
@@ -293,6 +297,7 @@ export class SrtSession implements SandboxSession {
         launcherEnv: launcherEnv(profile, process.env, folder),
         // The probe gets none of the profile's variables: it proves the fence, not the program's setup.
         programEnv: baseEnv(profile, process.env, folder),
+        withoutSrtEnv: reachesNoNetwork(profile),
       });
       const remaining = {
         ...profile,
@@ -342,6 +347,7 @@ export class SrtSession implements SandboxSession {
       cwd,
       launcherEnv: this.#launcherEnv,
       programEnv: this.#programEnv,
+      withoutSrtEnv: reachesNoNetwork(this.profile),
     });
     const started: Started = { program, stopped: false, timedOut: false };
     this.#started.add(started);

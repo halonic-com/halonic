@@ -46,6 +46,8 @@ export interface FenceProofInput {
   workingFolder: string;
   launcherEnv: Record<string, string>;
   programEnv: Record<string, string>;
+  /** Whether the probe, like the session's programs, gets none of what srt sets inside the fence. */
+  withoutSrtEnv: boolean;
 }
 
 /** Collects what comes out of a stream, as text. */
@@ -125,6 +127,7 @@ async function runProbe(
     cwd: input.workingFolder,
     launcherEnv: input.launcherEnv,
     programEnv: input.programEnv,
+    withoutSrtEnv: input.withoutSrtEnv,
   });
   const timer = setTimeout(() => probe.killTree(), probeTimeoutMs);
   try {

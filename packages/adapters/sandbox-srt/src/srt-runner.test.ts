@@ -45,6 +45,7 @@ describe("windowsCommandLine", () => {
     cwd: "tools\\work",
     launcherEnv: {},
     programEnv: { PATH: "tools\\bin;tools\\Program Files (x86)\\t", NAME: "a value" },
+    withoutSrtEnv: false,
     ...overrides,
   });
 
@@ -53,6 +54,19 @@ describe("windowsCommandLine", () => {
       'set "PATH=tools\\bin;tools\\Program Files (x86)\\t" && set "NAME=a value" && ' +
         '"tools\\Program Files\\nodejs\\node.exe" "tools\\work\\a b.cjs" "x&y" "dir\\\\"',
     );
+  });
+
+  it("first removes srt's proxy variables for a session without network", () => {
+    const line = windowsCommandLine(request({ withoutSrtEnv: true, programEnv: {} }));
+    expect(line.startsWith('set "http_proxy=" && set "HTTP_PROXY=" && ')).toBe(true);
+    for (const name of ["HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "GRPC_PROXY", "https_proxy"]) {
+      expect(line).toContain(`set "${name}=" && `);
+    }
+    expect(
+      line.endsWith(
+        '"tools\\Program Files\\nodejs\\node.exe" "tools\\work\\a b.cjs" "x&y" "dir\\\\"',
+      ),
+    ).toBe(true);
   });
 
   it.each([

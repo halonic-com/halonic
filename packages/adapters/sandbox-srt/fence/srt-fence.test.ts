@@ -259,7 +259,7 @@ describe("SrtSandbox with the real fence", () => {
     }
   });
 
-  it("without a bridge, reaches no loopback port, directly or through the proxy", async () => {
+  it("without a bridge, reaches no loopback port and gets no proxy variable", async () => {
     let connections = 0;
     const server = await new Promise<Server>((resolve) => {
       const listening = createServer((_request, response) => response.end("reached"));
@@ -287,6 +287,9 @@ describe("SrtSandbox with the real fence", () => {
       expect(await ask("")).not.toBe("reached");
       expect(await ask('-x "$HTTP_PROXY"')).not.toBe("reached");
       expect(connections).toBe(0);
+      const env = await unbridged.start({ program: "env", args: [] });
+      const [variables] = await Promise.all([read(env.stdout), env.exited]);
+      expect(variables).not.toMatch(/^[a-z_]*proxy=/im);
     } finally {
       await unbridged.close();
       server.close();

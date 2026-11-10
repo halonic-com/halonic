@@ -114,7 +114,7 @@ setTimeout(() => done("blocked"), 5000);
     expect(await readFile(join(work, "made.txt"), "utf8")).toBe("x");
   });
 
-  it("without a bridge, reaches no loopback port, directly or through the proxy", async () => {
+  it("without a bridge, reaches no loopback port and gets no proxy variable", async () => {
     const before = connections;
     const unbridged = await sandbox.open({
       ...profile(),
@@ -125,7 +125,7 @@ setTimeout(() => done("blocked"), 5000);
       const out = await runScript(
         "no-bridge.cjs",
         `const net = require("node:net");
-const result = {};
+const result = { proxyVariables: Object.keys(process.env).filter((name) => /proxy$/i.test(name)) };
 const report = () => { console.log(JSON.stringify(result)); process.exit(0); };
 const finish = () => { if ("direct" in result && "proxy" in result) report(); };
 process.on("uncaughtException", (error) => { result.error = String(error); report(); });
@@ -153,6 +153,7 @@ setTimeout(() => { result.direct ??= "blocked"; result.proxy ??= "refused"; repo
       );
       const result = JSON.parse(out.split(/\r?\n/).pop() ?? "");
       expect(result.error).toBeUndefined();
+      expect(result.proxyVariables).toEqual([]);
       expect(result.direct).toBe("blocked");
       expect(result.proxy).not.toBe("reached");
       expect(connections).toBe(before);
