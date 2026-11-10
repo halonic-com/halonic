@@ -1,9 +1,13 @@
 {
-  "//": "Lock files and whether each is stale, read by the Rust run lock (crates/run-lock) and fs-node's run-lock.test.ts, so both judge a lock alike. 'now' is the time of judging; 'thisHost' is this computer's name; only the ids in 'runningPids' run. A case's file was last changed at 'changedAt', or at 'now' when it has none. 'record' is a record and its text exactly as both write it.",
+  "//": "Lock files and whether each is stale, read by the Rust run lock (crates/run-lock) and fs-node's run-lock.test.ts, so both judge a lock alike. 'now' is the time of judging; 'thisHost' is this computer's name; the process probe says only the ids in 'runningPids' run. Some of those are above 2147483647, the largest id Node's process.kill takes: both must judge such an id as no running process before they ask the probe. A case's file was last changed at 'changedAt', or at 'now' when it has none. 'record' is a record and its text exactly as both write it.",
   "now": "2026-11-10T12:00:00.000Z",
   "thisHost": "this-computer",
   "runningPids": [
-    4242
+    4242,
+    2147483647,
+    2147483648,
+    4294967296,
+    9007199254740991
   ],
   "record": {
     "pid": 4242,
@@ -55,6 +59,16 @@
     {
       "name": "too far in the future, from a clock that was off",
       "text": "{\"version\":1,\"pid\":5151,\"host\":\"another-computer\",\"takenAt\":\"2026-11-10T12:00:10.001Z\"}",
+      "stale": true
+    },
+    {
+      "name": "the largest process id process.kill takes, running",
+      "text": "{\"version\":1,\"pid\":2147483647,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "stale": false
+    },
+    {
+      "name": "a process id above 31 bits names no process, even when the probe says it runs",
+      "text": "{\"version\":1,\"pid\":2147483648,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
       "stale": true
     },
     {

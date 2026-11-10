@@ -16,6 +16,12 @@ pub const STALE_AFTER_MS: i64 = 10_000;
 /// JavaScript's `Number.MAX_SAFE_INTEGER`.
 const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
 
+/// The largest process id Node's `process.kill` takes (`i32::MAX`). It
+/// refuses larger ids, so a lock that names one counts as held by no running
+/// process. Every id [`is_stale`] asks about is in `1..=MAX_PROCESS_ID`, so it
+/// fits an `i32` for `kill` and is never a negative process group id.
+const MAX_PROCESS_ID: i64 = i32::MAX as i64;
+
 /// A valid record: the writer's process id and host name, and when it took
 /// the lock, as written.
 #[derive(Debug, PartialEq)]
@@ -128,9 +134,10 @@ pub fn is_stale(
         return true;
     }
     match &found.record {
-        // An id above `u32::MAX` names no process; Node refuses it too.
         Some(record) if Some(record.host.as_str()) == this_host => {
-            !u32::try_from(record.pid).is_ok_and(process_runs)
+            let runs =
+                record.pid <= MAX_PROCESS_ID && u32::try_from(record.pid).is_ok_and(process_runs);
+            !runs
         }
         _ => false,
     }

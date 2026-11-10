@@ -8,6 +8,12 @@ import { isMissing } from "./links.ts";
 /** How long to wait before trying again to take a lock another writer holds. */
 const retryDelayMs = 15;
 
+/**
+ * The largest process id `process.kill` takes (2³¹ − 1). It refuses larger
+ * ids, so a lock that names one is judged as held by no running process.
+ */
+const maxProcessId = 2 ** 31 - 1;
+
 /** A lock file as found on disk. */
 export interface FoundLock {
   /** The file's text, as the writer that took the lock wrote it. */
@@ -132,9 +138,11 @@ export function isStale(
   if (!(Math.abs(now - takenAt) <= runLockStaleAfterMs)) {
     return true;
   }
-  return (
-    found.record !== null && found.record.host === here.host && !here.processRuns(found.record.pid)
-  );
+  if (found.record === null || found.record.host !== here.host) {
+    return false;
+  }
+  const { pid } = found.record;
+  return !(pid <= maxProcessId && here.processRuns(pid));
 }
 
 /** Whether a process with this id runs on this computer. */
