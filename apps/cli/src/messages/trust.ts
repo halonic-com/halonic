@@ -1,6 +1,6 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
-import { type Phrase, phrase } from "./phrase.ts";
+import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** Where an unpinned program downloads its code from: npm for `npx`, PyPI for `uvx` and `pipx run`. */
@@ -15,8 +15,8 @@ export interface ProgramChanges {
 /**
  * The sentences of `halonic trust [--dir <folder>]` (cli-output 1.7, 1.9 and
  * 3.5), in the content and order of Studio's trust check. In 0.1 the check
- * covers connectors only, so there are no sections for models, budgets or
- * sending without asking. Dates come in as the output writes them, such as
+ * covers connectors and harness agents only, so there are no sections for
+ * models, budgets or sending without asking. Dates come in as the output writes them, such as
  * "3 Nov". Wherever a fix names `halonic trust`, `dir` is the user's own
  * `--dir`, so the command works where they typed it.
  */
@@ -53,6 +53,19 @@ export const trustMessages = defineMessages("trust", {
   /** The secrets a program gets, after its command: "gets the secret GMAIL_TOKEN". */
   getsSecrets: (names: readonly string[]) =>
     phrase`gets the ${names.length === 1 ? "secret" : "secrets"} ${listed(names)}`,
+  /**
+   * A harness agent's row under Programs, after the agent's id: the program
+   * it starts, the folder it writes in and the sites it reaches. Placeholder
+   * words from P7 on HAL-2264 until the board answers it.
+   *
+   * @example
+   * trustMessages.harnessAgent("Claude Code", ["api.example.net"], "files/reports");
+   * // "Claude Code · writes in files/reports · reaches api.example.net"
+   */
+  harnessAgent: (harness: string, allowedSites: readonly string[], workingFolder?: string) =>
+    workingFolder === undefined
+      ? phrase`${harness} ${markPart("separator")} ${reaches(allowedSites)}`
+      : phrase`${harness} ${markPart("separator")} writes in ${dim(workingFolder)} ${markPart("separator")} ${reaches(allowedSites)}`,
   /** Under a program whose version isn't pinned, with a ! (decided from the command alone). */
   notPinned: (registry: PackageRegistry) =>
     phrase`Can download new code from ${registry} when it starts: version not pinned.`,
@@ -110,6 +123,23 @@ function changeList(changes: ProgramChanges): string {
       : undefined,
   ].filter((part) => part !== undefined);
   return parts.join(" and ");
+}
+
+/** The most sites a harness agent's row names before "and 3 more" (P7). */
+const shownSites = 10;
+
+/**
+ * "reaches api.example.net, *.docs.example.com", or "reaches only Halonic"
+ * for an agent with no allowed sites. Past {@link shownSites}, the rest are
+ * counted: "reaches a, b, … and 3 more".
+ */
+function reaches(allowedSites: readonly string[]): Phrase {
+  if (allowedSites.length === 0) {
+    return phrase`reaches only Halonic`;
+  }
+  const shown = allowedSites.slice(0, shownSites).join(", ");
+  const hidden = allowedSites.length - shownSites;
+  return hidden > 0 ? phrase`reaches ${shown} and ${hidden} more` : phrase`reaches ${shown}`;
 }
 
 /** "A", "A and B", "A, B and C". */

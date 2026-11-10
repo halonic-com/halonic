@@ -125,3 +125,38 @@ describe("trust's sentences", () => {
     );
   });
 });
+
+describe("a harness agent's row under Programs (P7 placeholders)", () => {
+  it("names the program, the folder it writes in and the sites it reaches", () => {
+    const row = trustMessages.harnessAgent(
+      "Claude Code",
+      ["api.example.net", "*.docs.example.com"],
+      "files/reports",
+    );
+    expect(row.key).toBe("trust.harnessAgent");
+    expect(words(row)).toBe(
+      "Claude Code · writes in files/reports · reaches api.example.net, *.docs.example.com",
+    );
+  });
+
+  it("leaves out the folder when it's the default", () => {
+    expect(words(trustMessages.harnessAgent("Codex", ["api.example.net"]))).toBe(
+      "Codex · reaches api.example.net",
+    );
+  });
+
+  it("says it reaches only Halonic when it has no allowed sites", () => {
+    expect(words(trustMessages.harnessAgent("Codex", []))).toBe("Codex · reaches only Halonic");
+  });
+
+  it("names up to 10 sites, then counts the rest", () => {
+    const sites = Array.from({ length: 13 }, (_, index) => `s${index + 1}.example.net`);
+    const shown = sites.slice(0, 10).join(", ");
+    expect(words(trustMessages.harnessAgent("Codex", sites))).toBe(
+      `Codex · reaches ${shown} and 3 more`,
+    );
+    expect(words(trustMessages.harnessAgent("Codex", sites.slice(0, 10)))).toBe(
+      `Codex · reaches ${shown}`,
+    );
+  });
+});
