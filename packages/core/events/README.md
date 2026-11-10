@@ -15,8 +15,14 @@ optional and come with a requirement.
 - Model fallback: `llm.skipped` says a model alias was skipped before any call
   and which alias comes next (`ModelSkipReason`, requirement `llm-skipped`).
   `llm.response.toolCallAsText` marks an answer that wrote a tool call as text
-  instead of making it (requirement `tool-call-as-text`). `RunFailureReason`
-  also names `model-missing` and `model-no-tools`.
+  instead of making it (requirement `tool-call-as-text`).
+- `run.failed` and `RunFailureReason`: `reason` says why a run failed
+  (requirement `run-failed-reason`), for example `model-missing`,
+  `model-no-tools`, `harness-unavailable` or `sandbox-start-failed`.
+  `sandbox-not-ready` means the sandbox check failed before the step started;
+  `sandboxReason` then gives the `Sandbox` port's reason code, such as
+  `bubblewrap-missing` (requirement `run-failed-sandbox-not-ready`). A reader
+  that doesn't know a code reads it as `other`.
 - `summarize(events)`: folds a run's events into a `RunSummary`. Every run
   store uses it.
 - `upgradeEvent(raw)` and `parseEventLine(line)`: read stored events,

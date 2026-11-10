@@ -125,3 +125,12 @@ Three optional agent fields say how an agent runs in another program
   labels. Addresses in any notation and local names (`.local`, `.internal`,
   `.arpa` and the like) fail. `asciiAllowedSites(sites)` gives the stored form: lowercase,
   Punycode, each once.
+
+## Workflow tests
+
+A test case in `workflows/<id>.test.yaml` scripts everything a run would reach outside the
+workflow: `mocks` (model replies per agent), `tools` (connector tool results), `events` and the
+optional `programs` (requirement `workflow-test-programs`). `programs` maps an agent id to a list of
+results for the programs that agent starts, used in the order the engine starts them. A result is a
+string (the program's text), `{ output: <any value> }` or `{ fails: "<message>" }` with a
+non-empty message. Any other shape fails. Tests never start a real program.

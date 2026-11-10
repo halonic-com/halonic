@@ -29,8 +29,10 @@ a task state saves its answer.
 
 ## Known gaps
 
-- A test file can't script a program step's result yet, so a step that would start a program
-  fails its case with `unscripted-program` (HAL-4248). The runner tells such a step by the run's
+- A test file can now script a program step's results (the case's `programs` key, in
+  `@halonicjs/format`), but the runner doesn't read it yet, because nothing in it starts a run
+  (HAL-4215, HAL-4248). Once it does, a step that would start a program with no scripted result
+  fails its case with `unscripted-program`. The runner tells such a step by the run's
   `harness-unavailable` failure reason, never by the engine's error text.
 
 ## Example
