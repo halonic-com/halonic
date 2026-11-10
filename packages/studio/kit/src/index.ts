@@ -71,6 +71,14 @@ export {
 } from "./field/field.tsx";
 export { FormRows, type FormRowsProps } from "./field/form-rows.tsx";
 export {
+  FilterChips,
+  type FilterChipsOneOf,
+  type FilterChipsProps,
+  type FilterChipsToggles,
+  type FilterOption,
+  type FilterToggle,
+} from "./filter-chips/filter-chips.tsx";
+export {
   type GridCellProps,
   type GridNavigation,
   type GridPosition,

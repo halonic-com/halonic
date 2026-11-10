@@ -1184,6 +1184,45 @@ size; icon buttons are fine.
 way: the icon button's name, a hint under a disabled control. Focus from an external keyboard still
 shows it.
 
+## FilterChips
+
+A row of chips that filters a list (component specs 15.7), on both sizes. It wraps onto a second
+line and never scrolls sideways: when a row gets too full, the answer is a picker chip, not a
+scrolling row.
+
+```tsx
+// One-of, a radio group: the hub filter, when it's the page's only filter.
+<FilterChips
+  label="Hub"
+  options={[
+    { value: "all", label: "All" },
+    { value: "acme", label: "acme" },
+  ]}
+  value={hub}
+  onChange={setHub}
+/>;
+
+// On/off, toggle buttons with aria-pressed: Runs' Test runs.
+<FilterChips
+  label="Filters"
+  toggles={[{ label: "Test runs", pressed: testRuns, onChange: setTestRuns }]}
+/>;
+```
+
+- Off is a `surface` pill with a `border-control` edge and `fg-muted` text. On is `accent-soft`
+  with `accent-text` at 500 and a **12px check** before the label, so on and off differ in shape
+  too (23 A11).
+- 28px on desktop; 32px with a 48px hit area on a phone or a touch screen. 16px between wrapped
+  lines keeps two lines' hit areas apart.
+- One-of chips are native radios that share a name: one Tab stop, the arrow keys move the choice.
+  The row shows the `value` it's given, so a screen that puts the old filter back shows it.
+- An `unavailable` toggle stays focusable, keeps its state in `fg-disabled`, ignores presses and
+  points at the `id` of the visible hint that says why.
+- With one hub, the feature hides the hub filter; the kit doesn't decide that.
+
+The picker chip ("Hub: All hubs ⌄", which opens the picker sheet on a phone and a Menu on desktop)
+comes in its own pull request, after the PickerSheet.
+
 ## Field
 
 A label, a control and a line under it: the hint, or the error in its place. The Field gives the
