@@ -2,7 +2,6 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
 
 use super::Turns;
 
@@ -30,21 +29,23 @@ fn run_store_turns_forget_a_run_whose_turn_panicked() {
 }
 
 #[test]
-fn run_store_turns_keep_a_run_while_another_turn_waits() {
-    let turns = Turns::default();
+fn run_store_turns_forget_a_run_once_overlapping_turns_end() {
+    let turns = &Turns::default();
     let (started, wait_for_start) = mpsc::channel();
     let (finish, wait_for_finish) = mpsc::channel::<()>();
     thread::scope(|scope| {
-        scope.spawn(|| {
+        // The channel's ends move into the first turn's thread.
+        scope.spawn(move || {
             turns.take(Path::new("r1.lock"), || {
                 started.send(()).unwrap();
                 wait_for_finish.recv().unwrap();
             });
         });
         wait_for_start.recv().unwrap();
+        // The second turn starts while the first holds the run, so it waits
+        // unless the first has already ended; either way the run is
+        // forgotten only once both have.
         let waiting = scope.spawn(|| turns.take(Path::new("r1.lock"), || "second"));
-        // Give the second turn time to start waiting on the first.
-        thread::sleep(Duration::from_millis(50));
         finish.send(()).unwrap();
         assert_eq!(waiting.join().unwrap(), "second");
     });
