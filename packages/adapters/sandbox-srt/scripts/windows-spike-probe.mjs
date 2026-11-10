@@ -360,7 +360,6 @@ Write-Output ("token-switch " + [Sw]::Go(${port}))
 }
 
 // ---- Group 4: which agent tools break --------------------------------------
-const programFiles = process.env.ProgramFiles ?? "";
 const systemRoot = process.env.SystemRoot ?? "";
 // The git probe is a node program, so the shell's quoting of `echo x> f` is out
 // of the picture; the redirect has its own probe in the list below.
@@ -380,14 +379,6 @@ for (const [k, r] of steps) console.log(k + " " + r.code + " " + r.text.replace(
 process.exit(steps.some(([, r]) => r.code !== 0) ? 1 : 0);
 `,
 );
-// Git for Windows ships curl next to git: <root>\cmd\git.exe and <root>\mingw64\bin\curl.exe.
-const gitPaths = spawnSync("where", ["git"], { encoding: "utf8" })
-  .stdout.split(/\r?\n/)
-  .filter(Boolean);
-const gitForWindowsCurl = [
-  ...gitPaths.map((g) => win32.join(dirname(dirname(g)), "mingw64", "bin", "curl.exe")),
-  win32.join(programFiles, "Git", "mingw64", "bin", "curl.exe"),
-].find((path) => existsSync(path));
 const tools = [
   [
     "node: HTTPS fetch",
@@ -426,19 +417,7 @@ const tools = [
   ["cmd.exe: dir and echo", `cmd /c "dir /b && echo ok"`],
   ["ripgrep or findstr over the work folder", `findstr /s /m "x" *`],
 ];
-if (gitForWindowsCurl) {
-  tools.push([
-    "OpenSSL curl (Git for Windows)",
-    `"${gitForWindowsCurl}" -sS -f -m 20 -o NUL https://example.com`,
-  ]);
-} else {
-  record(
-    "tools",
-    "OpenSSL curl (Git for Windows)",
-    "INFO",
-    `no curl.exe next to git (${gitPaths.join(", ") || "git not found"}); skipped`,
-  );
-}
+// Git for Windows curl is not probed: windows-2025 has no curl.exe next to git (HAL-3831).
 for (const [name, command] of tools) {
   const control = outsideSrt(command, 120_000);
   if (control.code !== 0) {
