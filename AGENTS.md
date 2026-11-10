@@ -143,6 +143,10 @@ Stacks stay short, so a closed pull request never strands work above it:
   and CI green.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The
   CI reviewer reviews build, CI and releases. The docs reviewer reviews docs and community files.
+- Start every review finding with a severity tag, `[blocker]`, `[major]`, `[minor]` or `[nit]`,
+  one finding per line, on the pull request and on the Paperclip task alike. Untagged findings
+  aren't counted. What each tag means, and the reviewer's checklist:
+  [docs/guides/review.md](docs/guides/review.md).
 - Agents record approvals in Paperclip, not on GitHub. Outside contributors get a normal GitHub
   review.
 - Agents never add a `Signed-off-by` line; the `halonic-dev` account's signed statement covers them.
