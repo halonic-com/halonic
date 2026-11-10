@@ -80,6 +80,13 @@ describe("run's sentences", () => {
     );
   });
 
+  it("escapes a label's control characters, since the label comes from the workflow file", () => {
+    const labels = { approve: "\u001b[31mSend‮", reject: "Drop\nit" };
+    expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
+      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (\\u001b[31mSend\\u202e)  (or reject (Drop\\u000ait))",
+    );
+  });
+
   it("leaves out what doesn't apply in the receipt, and says sent nothing only without a tool call", () => {
     expect(words(runMessages.receipt({ changedFiles: 0, sent: [], askedYou: 1 }))).toBe(
       "Sent nothing · asked you once",

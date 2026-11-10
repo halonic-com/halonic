@@ -1,3 +1,4 @@
+import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { money } from "./money.ts";
@@ -84,7 +85,8 @@ function joinedFacts(facts: readonly string[]): Phrase {
 /**
  * "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject)".
  * Three or more events read "(or reject, hold or skip)" (revision 37). The event stays, since it is
- * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072).
+ * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072). A label is the
+ * author's free text, so it is escaped (cli-output section 5).
  */
 function answerLine(
   runId: string,
@@ -92,13 +94,17 @@ function answerLine(
   dir: string | undefined,
   labels: Readonly<Record<string, string>>,
 ): Phrase {
-  const labelled = (event: string) => {
+  const labelOf = (event: string) => {
     const label = labels[event];
+    return label === undefined ? undefined : printable(label);
+  };
+  const labelled = (event: string) => {
+    const label = labelOf(event);
     return label === undefined ? event : `${event} (${label})`;
   };
   const [first = "", ...others] = events;
   const command = `${suggestedCommand("runs send", dir, runId)} ${first}`;
-  const firstLabel = labels[first];
+  const firstLabel = labelOf(first);
   const line =
     firstLabel === undefined
       ? phrase`Answer in Studio's Inbox, or here: ${command}`
