@@ -629,6 +629,6 @@
     "old": "784f78d's runner started a parallel state's branches, logged their agent.started and agent.finished events, and wrote their context.updated results and the output map in the order the file lists them (the base fixture's invoice: vendor, then amount).",
     "new": "The engine does all of these in name order (amount, then vendor). Only the order of sibling branch entries inside one parallel state differs: the set of branches, each branch's own events, every result and the final output are the same.",
     "why": "Runs keep their definitions as canonical JSON (HAL-186 decision 5), which sorts keys, so the file's order is gone when a run reads them. Each branch writes only under its own name, so the order changes the log, not a result. Decided by Liam on HAL-3703; if a fixture shows a result that depends on branch order, this entry no longer applies and the question goes back to him.",
-    "status": "proposed"
+    "status": "signed-off"
   }
 ]
