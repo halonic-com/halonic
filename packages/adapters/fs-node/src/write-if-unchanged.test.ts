@@ -6,9 +6,6 @@ import { afterAll, describe, expect, it } from "vitest";
 import { FolderDefinitionStore } from "./definition-store.ts";
 import { removeTempFolders, tempFolder, writeFiles } from "./temp-folder.test-helper.ts";
 
-/** Fails on Windows today: POSIX modes (HAL-4364). */
-const itUnlessWindows = it.skipIf(process.platform === "win32");
-
 afterAll(removeTempFolders);
 
 const digest = {
@@ -81,15 +78,16 @@ verifies("fs-node.write-is-whole-or-nothing", () => {
       expect(await readFile(join(root, "hubs/a.yaml/x.yaml"), "utf8")).toBe("1");
     });
 
-    itUnlessWindows(
-      "[platform:win32] HAL-4364: keeps the permissions of the file it replaces",
-      async () => {
-        const { root, store } = await folderWith({ "run.sh": "echo 1\n" });
-        await chmod(join(root, "run.sh"), 0o755);
-        await store.write("run.sh", "echo 2\n");
-        expect((await stat(join(root, "run.sh"))).mode & 0o777).toBe(0o755);
-      },
-    );
+    it("keeps the permissions of the file it replaces", async () => {
+      const { root, store } = await folderWith({ "run.sh": "echo 1\n" });
+      const file = join(root, "run.sh");
+      await chmod(file, 0o755);
+      // Windows has no execute bit: its modes only say read-only or not, so the script reads 0o666.
+      const before = (await stat(file)).mode & 0o777;
+      expect(before).toBe(process.platform === "win32" ? 0o666 : 0o755);
+      await store.write("run.sh", "echo 2\n");
+      expect((await stat(file)).mode & 0o777).toBe(before);
+    });
 
     it("never lets a reader see half a file while it is rewritten", async () => {
       // Large texts, so a write that isn't whole would be caught in the middle.
