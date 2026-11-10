@@ -4,6 +4,7 @@ import type { ChatResponse, Clock, RecordStore, ScheduledTimer } from "@halonicj
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
+import type { Budget } from "../budget/budget.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { NotingScheduler } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
@@ -89,6 +90,8 @@ export interface RunsSetup {
   readonly collections?: Readonly<Record<string, Collection>>;
   /** Where runs keep their definitions; new and empty when left out. Share it to restart on the same store. */
   readonly blobs?: KernelBlobs;
+  /** The workspace's budget; none when left out. */
+  readonly budget?: Budget;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -122,6 +125,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       scheduler,
       ids: fixedIds(),
       ...(harnesses === undefined ? {} : { harnesses }),
+      ...(setup.budget === undefined ? {} : { budget: async () => setup.budget }),
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);

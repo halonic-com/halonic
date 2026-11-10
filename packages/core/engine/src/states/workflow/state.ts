@@ -18,7 +18,7 @@ export const maxChildDepth = 5;
  * tells it each time it waits or ends: while the child waits, so does this
  * run, with the child's events; when the child completes, its context goes
  * to `output` and the state finishes with `done`; when it fails, so does
- * this run.
+ * this run. A child its budget stopped stops this run for its budget too.
  */
 export const workflowState: StateHandler<"workflow"> = {
   type: "workflow",
@@ -75,11 +75,11 @@ function childMoved({ run, stateId, state }: StateContext, input: ChildInput): S
   }
   const events: DecidedEvent[] = [finished(child, input.status, input)];
   if (input.status === "failed") {
-    return {
-      events,
-      effects: [],
-      outcome: { type: "fail", error: `Workflow "${child.workflow}" failed: ${input.error}` },
-    };
+    const error = `Workflow "${child.workflow}" failed: ${input.error}`;
+    // Only a budget stop goes up as it is: any other failure of the child
+    // is an error of this run's state.
+    const reason = input.reason === "budget" ? { reason: input.reason } : {};
+    return { events, effects: [], outcome: { type: "fail", error, ...reason } };
   }
   if (state.output !== undefined) {
     events.push({ type: "context.updated", key: state.output, value: input.context });

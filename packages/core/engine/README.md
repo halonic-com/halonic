@@ -185,6 +185,21 @@ engine leaves it as it is. It returns the ids of the runs it ended (requirement
 `engine.end-interrupted-runs`). It assumes one engine per run store, and waking a parent that waits
 on a run it ended is the run kernel's job (HAL-186).
 
+## Budgets
+
+`step` keeps runs to the workspace's `budget` when its ports have a `BudgetCheck`; the local
+executor builds one when its `runs` options give `budget()`, which it reads before every paid call,
+so a raised budget counts at once. Before `step` stores a decision that asks for a model call or a
+harness run, it works out the spend from the run store's summaries: the run spend is the `cost` of
+the top-level run and every child run under it, and the month spend the `cost` of every run that
+started in the same calendar month (UTC). A call the person's subscription paid for is never in a
+summary's `cost`, so it never counts. At or over a limit, `step` stores the decided events, then
+`run.failed` with reason `budget` and the error `Run budget reached: 0.60 of 0.50 EUR spent.` or
+`Monthly budget reached: 0.60 of 0.50 EUR spent this month.`, and asks for no call. The kernel sets the
+reason itself; it never comes from `runFailureReasonOf`. A parent whose child a budget stopped
+fails with reason `budget` too, its error wrapped as `Workflow "reply" failed: …`. The run's own
+model calls don't write `llm.response` to its log yet, so for now only harness calls count.
+
 ## Example
 
 Run one chat turn through the local executor, with a model that calls a server's tool once. The

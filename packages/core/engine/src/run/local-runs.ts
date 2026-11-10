@@ -16,6 +16,9 @@ import type {
   StartRunRequest,
 } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
+import type { Budget } from "../budget/budget.ts";
+import type { BudgetCheck } from "../budget/keep-to-budget.ts";
+import { spendOf } from "../budget/spend.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog } from "../harness/serial-run-log.ts";
@@ -67,6 +70,12 @@ export interface LocalRunsOptions {
    * at its harness step with an error that names the `run-harness` effect.
    */
   readonly harnesses?: HarnessRunsOptions;
+  /**
+   * The workspace's run and monthly budget as it is now, read before every
+   * model call and harness run; `undefined` sets none. Without it, no budget
+   * stops a run.
+   */
+  budget?(): Promise<Budget | undefined>;
 }
 
 /**
@@ -101,6 +110,13 @@ function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["type"]> 
   return new Set(built);
 }
 
+/** The budget check of runs in `options.store`, when the options give a budget. */
+function budgetCheckOf(options: LocalRunsOptions): BudgetCheck | undefined {
+  const budget = options.budget;
+  if (budget === undefined) return undefined;
+  return { budget, spend: (run, at) => spendOf(options.store, run, at) };
+}
+
 /** Runs workflows in this process for the local executor. */
 export class LocalRuns {
   readonly #options: LocalRunsOptions;
@@ -109,6 +125,7 @@ export class LocalRuns {
   readonly #feed: RunFeed;
   readonly #startDeadlines: StartDeadlines;
   readonly #builtEffects: ReadonlySet<Effect["type"]>;
+  readonly #budget: BudgetCheck | undefined;
   /** The calls being carried out now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
   readonly #harnessCalls = new LiveHarnessCalls();
@@ -125,6 +142,7 @@ export class LocalRuns {
     this.#feed = new RunFeed(options.store);
     this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
     this.#builtEffects = builtEffectsOf(options);
+    this.#budget = budgetCheckOf(options);
   }
 
   /**
@@ -340,7 +358,12 @@ export class LocalRuns {
 
   /** Steps the run with the input, tells the subscribers, and carries out or schedules the effects. */
   async #record(runId: string, input: DecideInput): Promise<void> {
-    const ports = { runs: this.#options.store, blobs: this.#options.blobs };
+    const { store, blobs } = this.#options;
+    const ports = {
+      runs: store,
+      blobs,
+      ...(this.#budget === undefined ? {} : { budget: this.#budget }),
+    };
     const { run, events, effects } = await step(ports, runId, input);
     if (events.length > 0) this.#feed.notify(runId);
     const unbuilt = effects.find((effect) => !this.#builtEffects.has(effect.type));

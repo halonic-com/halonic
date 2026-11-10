@@ -1,6 +1,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { BlobStore, RunStore } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
+import { type BudgetCheck, keepToBudget } from "../budget/keep-to-budget.ts";
 import { checkRunTakes, decide, tellParent } from "./decide.ts";
 import type { DecidedEvent, DecideInput, Decision, Effect } from "./decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kept-definitions.ts";
@@ -26,6 +27,8 @@ interface StoredSnapshot {
 export interface StepPorts {
   readonly runs: Pick<RunStore, "append" | "events" | "snapshot">;
   readonly blobs: Pick<BlobStore, "get">;
+  /** Keeps runs to their budget; without it, no budget stops a run. */
+  readonly budget?: BudgetCheck;
 }
 
 /** What one `step` did. */
@@ -67,7 +70,9 @@ export async function readRun(
  * returns, because they are only safe once the events are stored.
  *
  * A run whose definitions are missing from the blob store fails with an
- * error that says so. It never falls back to the workspace's files.
+ * error that says so. It never falls back to the workspace's files. With
+ * `budget`, a decision that asks for a paid call while a budget is reached
+ * stores its events and then fails the run with the reason `budget`.
  *
  * @throws InputRefused when the run can't take the input; nothing is stored
  * @throws when a starting run's definitions are missing, or the log kept
@@ -80,7 +85,11 @@ export async function step(
 ): Promise<StepResult> {
   for (let attempt = 1; attempt <= maxStepAttempts; attempt += 1) {
     const run = await readRun(ports.runs, runId);
-    const decision = await decideWithDefinitions(ports, run, input);
+    const decided = await decideWithDefinitions(ports, run, input);
+    const decision =
+      ports.budget === undefined
+        ? decided
+        : await keepToBudget(ports.budget, runId, run, decided, input.at);
     if (decision.events.length === 0) {
       // Only an input that doesn't start a run can decide nothing, so `run` is set.
       return { run: run as RunState, events: [], effects: decision.effects };

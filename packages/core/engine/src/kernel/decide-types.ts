@@ -114,7 +114,12 @@ export interface EffectFailedInput extends InputBase {
 export type ChildRunNow =
   | { readonly status: "waiting"; readonly events: readonly string[] }
   | { readonly status: "completed"; readonly context: Record<string, unknown> }
-  | { readonly status: "failed"; readonly error: string };
+  | {
+      readonly status: "failed";
+      readonly error: string;
+      /** Why the child failed, from its `run.failed`; absent when it gave none. */
+      readonly reason?: RunFailureReason;
+    };
 
 /** A child run a `workflow` state started waits or has ended. */
 export type ChildInput = InputBase & {
