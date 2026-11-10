@@ -1,17 +1,11 @@
 import type { ProgramExit, RunningProgram } from "./program.ts";
 
-/** How long a program gets after each step of {@link stopProgram} before the next one. */
-export const stopGraceMs = 2000;
-
 /**
  * Stops a program as the MCP spec describes for stdio: close its input and
- * wait, then ask it to end and wait, then force it. Every step reaches the
- * programs it started too, such as the server under `npx`.
+ * wait `graceMs`, then ask it to end and wait again, then force it. Every
+ * step reaches the programs it started too, such as the server under `npx`.
  */
-export async function stopProgram(
-  program: RunningProgram,
-  graceMs = stopGraceMs,
-): Promise<ProgramExit> {
+export async function stopProgram(program: RunningProgram, graceMs: number): Promise<ProgramExit> {
   program.endInput();
   if (await endsWithin(program, graceMs)) return program.exited;
   program.signal("terminate");

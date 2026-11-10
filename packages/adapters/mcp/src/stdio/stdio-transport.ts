@@ -32,7 +32,8 @@ export const defaultStdioLimits: StdioLimits = {
  * request by id. A request or notification from the server goes to the
  * oldest waiting request, whose session handles it. With no request
  * waiting, a notification is dropped and a request is answered here: `ping`
- * succeeds and anything else is refused, as the session would.
+ * succeeds and anything else is refused, as the session would. A
+ * cancelled request fails on its own; the session and the program go on.
  *
  * The session ends, failing every waiting request and stopping the
  * program, when a request isn't answered in time, the program sends a line
@@ -65,11 +66,19 @@ export class StdioTransport implements McpTransport {
       () => this.#end(notAnsweredInTime(message.method, this.#limits.requestTimeoutMs)),
       this.#limits.requestTimeoutMs,
     );
+    // A cancel fails this request only. The session and the program carry
+    // on, and the session tells the server it can stop working on it.
+    const cancel = () => {
+      this.#waiting.delete(message.id);
+      queue.fail(new McpError("unavailable", "The request was cancelled."));
+    };
+    signal?.addEventListener?.("abort", cancel);
     try {
       await this.#write(message);
       yield* queue.read();
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener?.("abort", cancel);
       this.#waiting.delete(message.id);
     }
   }
@@ -113,7 +122,10 @@ export class StdioTransport implements McpTransport {
     const id = answerId(value);
     if (id !== undefined) {
       // An answer to an id nobody waits for is stale; the session ignores those too.
-      this.#waiting.get(id)?.finish(value);
+      const queue = this.#waiting.get(id);
+      // Answered, so it is no longer the oldest: later messages go to the next one.
+      this.#waiting.delete(id);
+      queue?.finish(value);
       return;
     }
     const oldest = this.#waiting.values().next().value;
@@ -144,7 +156,12 @@ export class StdioTransport implements McpTransport {
     if (this.#ended !== undefined) return;
     this.#ended = error;
     for (const queue of this.#waiting.values()) queue.fail(error);
-    this.#stopped = stopProgram(this.#program, this.#limits.stopGraceMs).then(() => undefined);
+    // `RunningProgram` promises not to throw while stopping; this guards the
+    // Node process against an unhandled rejection if a starter breaks that.
+    this.#stopped = stopProgram(this.#program, this.#limits.stopGraceMs).then(
+      () => undefined,
+      () => undefined,
+    );
   }
 }
 

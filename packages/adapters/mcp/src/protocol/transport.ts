@@ -1,13 +1,16 @@
 import type { OutgoingMessage } from "./json-rpc.ts";
 
 /**
- * The parts of an `AbortSignal` the session uses: it only reads `aborted`
- * and passes the signal on. A real `AbortSignal` fits. It is narrowed so
- * this folder needs no Web or Node types, and an integration can import it
- * as it is.
+ * The parts of an `AbortSignal` the session and transports use: the session
+ * reads `aborted`, and a transport that waits on a shared stream listens
+ * for the abort so it can stop waiting. A real `AbortSignal` fits. It is
+ * narrowed so this folder needs no Web or Node types, and an integration
+ * can import it as it is.
  */
 export interface AbortSignalLike {
   readonly aborted: boolean;
+  addEventListener?(type: "abort", listener: () => void): void;
+  removeEventListener?(type: "abort", listener: () => void): void;
 }
 
 /**

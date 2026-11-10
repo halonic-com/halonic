@@ -51,6 +51,22 @@ verifies("mcp.stdio-transport", () => {
       await transport.close();
     });
 
+    it("gives a message after an answer to the next waiting request, not the answered one", async () => {
+      const { program, transport } = connected();
+      const first = collect(transport.send(request(1)));
+      const second = collect(transport.send(request(2)));
+      await vi.waitFor(() => expect(program.received).toHaveLength(2));
+      const changed = { jsonrpc: "2.0", method: "notifications/tools/list_changed" };
+      program.sendRaw(
+        `${JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} })}\n${JSON.stringify(changed)}\n`,
+      );
+      program.send({ jsonrpc: "2.0", id: 1, result: { again: true } });
+      program.send({ jsonrpc: "2.0", id: 2, result: {} });
+      expect(await first).toEqual([{ jsonrpc: "2.0", id: 1, result: {} }]);
+      expect(await second).toEqual([changed, { jsonrpc: "2.0", id: 2, result: {} }]);
+      await transport.close();
+    });
+
     it("answers ping and refuses other requests while no request waits", async () => {
       const { program, transport } = connected();
       program.send({ jsonrpc: "2.0", method: "notifications/message", params: {} });
@@ -72,6 +88,40 @@ verifies("mcp.stdio-transport", () => {
       program.sendRaw('{"jsonrpc":"2.0",');
       program.sendRaw('"id":1,"result":{"t":"é"}}\r\n');
       expect(await answer).toEqual([{ jsonrpc: "2.0", id: 1, result: { t: "é" } }]);
+      await transport.close();
+    });
+  });
+
+  describe("cancelling a request", () => {
+    it("fails only the cancelled call, so the program and the session go on", async () => {
+      const program = new FakeProgram(launch, (message, fake) => {
+        const { id, method } = message;
+        if (method === "initialize") {
+          fake.send({
+            jsonrpc: "2.0",
+            id,
+            result: { protocolVersion: "2025-11-25", capabilities: {} },
+          });
+        } else if (method === "tools/list") {
+          fake.send({ jsonrpc: "2.0", id, result: { tools: [] } });
+        }
+      });
+      // The `initialize` answer is longer than the 64 bytes the other tests allow.
+      const transport = new StdioTransport(program, { ...limits, maxMessageBytes: 1024 });
+      const session = new McpSession(transport, { clientInfo: { name: "halonic", version: "0" } });
+      await session.initialize();
+      const controller = new AbortController();
+      const call = session.callTool("notes_search", {}, controller.signal);
+      await vi.waitFor(() =>
+        expect(program.received.some((message) => message.method === "tools/call")).toBe(true),
+      );
+      controller.abort();
+      await expect(call).rejects.toThrow("The request was cancelled.");
+      await vi.waitFor(() =>
+        expect(program.received.at(-1)).toMatchObject({ method: "notifications/cancelled" }),
+      );
+      expect(program.running).toBe(true);
+      expect(await session.listTools()).toEqual([]);
       await transport.close();
     });
   });
