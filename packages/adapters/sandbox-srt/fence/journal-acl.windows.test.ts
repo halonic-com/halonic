@@ -31,7 +31,7 @@ function run(
 
 const other = "halonic_acl_probe";
 // Not a secret: a throwaway account on a throwaway runner, deleted afterwards.
-const otherPassword = "Pr0be!-Halonic-8812";
+const otherPassword = "Pr0be!Hal-8812";
 
 /** Runs a command line as the second account; its exit code, or -1 when it could not start. */
 async function asOther(commandLine: string): Promise<number> {
