@@ -85,6 +85,21 @@ verifies("cli.progress", () => {
     ]);
   });
 
+  it("gives a wait of a minute or more in minutes and seconds", () => {
+    const clock = manualClock();
+    const line = recordedLine();
+    const progress = startProgress(draftReply, { live: true, line, clock });
+    progress.waitingFor("Anthropic");
+    clock.advance(59_000);
+    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (59 s)");
+    clock.advance(1_000);
+    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (1 min)");
+    clock.advance(287_000);
+    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (5 min 47 s)");
+    clock.advance(13_000);
+    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (6 min)");
+  });
+
   it("goes back to what it's doing when news comes in", () => {
     const clock = manualClock();
     const line = recordedLine();
