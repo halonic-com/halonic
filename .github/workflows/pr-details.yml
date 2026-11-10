@@ -22,7 +22,8 @@ jobs:
   details:
     name: Pull request details
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Waits for the CI run to end: its slowest jobs allow 40 minutes, plus queue time.
+    timeout-minutes: 75
     permissions:
       actions: write
       contents: read
@@ -30,8 +31,11 @@ jobs:
       - name: New base
         if: github.event.changes.base
         run: echo "::notice title=New base::CI ran against the old base. Push a commit to run it against the new one; the merge queue checks against main either way."
+      # The base's title check, not the pull request's own: this job holds a token
+      # that can re-run workflows.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
           sparse-checkout: tooling/check
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -54,10 +58,17 @@ jobs:
             exit 0
           fi
           details='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down"]'
+          # A job that is running may have read the old details, so wait for all
+          # three to end (or the whole run, if one of them never starts).
+          while [ "$(gh run view "$run" --json status,jobs --jq "
+            .status != \"completed\" and
+            ([.jobs[] | select((.name | IN($details[])) and .status != \"completed\")] | length > 0)
+          ")" = "true" ]; do
+            sleep 30
+          done
           failed=$(gh run view "$run" --json jobs \
             --jq "[.jobs[] | select(.conclusion == \"failure\" and (.name | IN($details[])))] | length")
           if [ "$failed" = "0" ]; then
-            # Jobs that haven't started yet read the current details themselves.
             echo "No title, leak or coverage-floor job failed in CI run $run: nothing to re-run."
             exit 0
           fi
