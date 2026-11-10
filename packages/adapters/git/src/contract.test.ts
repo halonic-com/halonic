@@ -84,13 +84,22 @@ const refusal =
 const isRefusal = (error: { message: string; actual?: string }): boolean =>
   refusal.test(error.message) || refusal.test(error.actual ?? "");
 
+/**
+ * Marks the running case as one that must fail, as `it.fails` would. Vitest
+ * types `fails` read-only, but its runner reads it only after the test body
+ * and the `onTestFailed` hooks, so a `beforeEach` may still set it.
+ */
+function expectFailure(task: { readonly fails?: boolean | undefined }, fails: boolean): void {
+  (task as { fails?: boolean }).fails = fails;
+}
+
 beforeEach(({ task, onTestFailed }) => {
   if (!notOnGitYet.some(([name]) => matches(name, task.name))) return;
-  task.fails = true;
+  expectFailure(task, true);
   onTestFailed(({ task: failed }) => {
     const errors = failed.result?.errors ?? [];
     // Any other failure is a real one: keep it.
-    if (errors.length === 0 || !errors.every(isRefusal)) failed.fails = false;
+    if (errors.length === 0 || !errors.every(isRefusal)) expectFailure(failed, false);
   });
 });
 
