@@ -4,13 +4,13 @@
 
 import type { Collection } from "@halonicjs/format";
 import type { Clock, RecordChange, RecordStore } from "@halonicjs/ports";
+import { optionalStringArg } from "../tool-args.ts";
 import {
   type CollectionRecord,
   currentRecords,
   filterRecords,
   viewRecords,
 } from "./record-query.ts";
-import { optionalStringArg } from "../tool-args.ts";
 import { checkRecord, type RecordValues } from "./record-values.ts";
 
 /** What `find` takes: a `where`, a view's name and the most records to give. */
