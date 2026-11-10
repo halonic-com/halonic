@@ -1,64 +1,46 @@
+/// <reference types="vite/client" />
 import type { PartSection } from "../state-table.tsx";
-import { actionBarSection } from "./action-bar.tsx";
-import { buttonSection } from "./button.tsx";
-import { cardSection } from "./card.tsx";
-import { checkboxSection } from "./checkbox.tsx";
-import { colourPopoverSection } from "./colour-popover.tsx";
-import { commandBoxSection } from "./command-box.tsx";
-import { copyButtonSection } from "./copy-button.tsx";
-import { disclosureSection } from "./disclosure.tsx";
-import { externalLinkSection } from "./external-link.tsx";
-import { fieldSection } from "./field.tsx";
-import { filterChipsSection } from "./filter-chips.tsx";
-import { formRowsSection } from "./form-rows.tsx";
-import { headerBadgeSection } from "./header-badge.tsx";
-import { iconTileSection } from "./icon-tile.tsx";
-import { inputLeadingSection } from "./input-leading.tsx";
-import { kbdSection } from "./kbd.tsx";
-import { lineFrameSection } from "./line-frame.tsx";
-import { listSection } from "./list.tsx";
-import { menuSection } from "./menu.tsx";
-import { radioSection } from "./radio.tsx";
-import { selectSection } from "./select.tsx";
-import { sliderSection } from "./slider.tsx";
-import { statusChipSection } from "./status-chip.tsx";
-import { switchSection } from "./switch.tsx";
-import { tabsSection } from "./tabs.tsx";
-import { tooltipSection } from "./tooltip.tsx";
-import { viewOnlyLineSection } from "./view-only-line.tsx";
-import { windowSection } from "./window.tsx";
 
 /**
- * Every part on main, in spec order, which is also the states sheet's order. A part gets its
- * section when it lands on main.
+ * Every file in this folder exports one part's section, named `…Section`. Vite finds them, so a
+ * new part adds its file and edits nothing shared (HAL-3626).
  */
-export const SECTIONS: readonly PartSection[] = [
-  buttonSection,
-  fieldSection,
-  inputLeadingSection,
-  colourPopoverSection,
-  selectSection,
-  tabsSection,
-  listSection,
-  cardSection,
-  statusChipSection,
-  checkboxSection,
-  switchSection,
-  kbdSection,
-  disclosureSection,
-  viewOnlyLineSection,
-  lineFrameSection,
-  actionBarSection,
-  menuSection,
-  tooltipSection,
-  filterChipsSection,
-  commandBoxSection,
-  sliderSection,
-  formRowsSection,
-  radioSection,
-  headerBadgeSection,
-  copyButtonSection,
-  externalLinkSection,
-  windowSection,
-  iconTileSection,
-];
+const modules = import.meta.glob<Record<string, unknown>>("./*.tsx", { eager: true });
+
+/** The section a file exports. A file with none, or more than one, is a mistake. */
+function sectionOf(file: string, module: Record<string, unknown>): PartSection {
+  const sections = Object.entries(module).filter(([name]) => name.endsWith("Section"));
+  if (sections.length !== 1 || sections[0] === undefined) {
+    throw new Error(`${file} must export exactly one …Section, not ${sections.length}`);
+  }
+  return sections[0][1] as PartSection;
+}
+
+/** "15.6, 18.4" → [15, 6]: the first spec section, as numbers. */
+function specKey(section: PartSection): number[] {
+  const first = section.number.split(",")[0] ?? "";
+  return first
+    .trim()
+    .split(".")
+    .map((part) => Number(part));
+}
+
+function bySpec(a: PartSection, b: PartSection): number {
+  const left = specKey(a);
+  const right = specKey(b);
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const difference = (left[i] ?? 0) - (right[i] ?? 0);
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+  return a.id.localeCompare(b.id);
+}
+
+/**
+ * Every part on main, in spec order: by the first spec section in its number, then by id. A
+ * part gets its section when it lands on main.
+ */
+export const SECTIONS: readonly PartSection[] = Object.entries(modules)
+  .map(([file, module]) => sectionOf(file, module))
+  .sort(bySpec);

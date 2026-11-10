@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -126,6 +126,18 @@ describe("the states page", () => {
 
     const one = renderToStaticMarkup(<StatesPage only="field" />);
     expect([...one.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1])).toEqual(["field"]);
+  });
+
+  it("finds every section file by itself, and orders them by spec section", () => {
+    const files = readdirSync(path.join(statesFolder, "sections"))
+      .filter((name) => name.endsWith(".tsx"))
+      .map((name) => name.replace(/\.tsx$/, ""));
+    expect(SECTIONS.map((section) => section.id).sort()).toEqual(files.sort());
+
+    const ids = SECTIONS.map((section) => section.id);
+    expect(ids.slice(0, 4)).toEqual(["button", "field", "colour-popover", "input-leading"]);
+    expect(ids.indexOf("action-bar")).toBeLessThan(ids.indexOf("disclosure"));
+    expect(ids.indexOf("radio")).toBeLessThan(ids.indexOf("form-rows"));
   });
 
   it("draws every row once light and once dark", () => {
