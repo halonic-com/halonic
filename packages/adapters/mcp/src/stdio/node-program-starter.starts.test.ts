@@ -112,17 +112,16 @@ verifies("mcp.program-starter", () => {
       await expect(nodeProgramStarter.start(launch)).rejects.toThrow("was not found");
     });
 
-    it.skipIf(process.platform === "win32")(
-      "refuses a bare name found in a skill's scripts/ folder on the PATH",
-      async () => {
-        const scripts = join(folder, "skills/acme/scripts");
-        await mkdir(scripts, { recursive: true });
-        await writeFile(join(scripts, "acme-server"), "#!/bin/sh\n");
-        await chmod(join(scripts, "acme-server"), 0o755);
-        const launch = { ...node(""), program: "acme-server", env: { PATH: scripts } };
-        await expect(nodeProgramStarter.start(launch)).rejects.toThrow(skillScriptsRefusal);
-      },
-    );
+    it("refuses a bare name found in a skill's scripts/ folder on the PATH", async () => {
+      // Windows looks only for an .exe; the refusal comes before anything starts.
+      const fileName = process.platform === "win32" ? "acme-server.exe" : "acme-server";
+      const scripts = join(folder, "skills/acme/scripts");
+      await mkdir(scripts, { recursive: true });
+      await writeFile(join(scripts, fileName), "#!/bin/sh\n");
+      await chmod(join(scripts, fileName), 0o755);
+      const launch = { ...node(""), program: "acme-server", env: { PATH: scripts } };
+      await expect(nodeProgramStarter.start(launch)).rejects.toThrow(skillScriptsRefusal);
+    });
 
     it.skipIf(process.platform === "win32")(
       "stops the programs it started too, even when they ignore SIGTERM",
