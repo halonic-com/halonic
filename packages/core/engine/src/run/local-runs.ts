@@ -280,14 +280,10 @@ export class LocalRuns {
       );
     }
     const effect = { ...call, harness };
-    const log = new SerialRunLog(this.#options.store, run.runId, run.lastSeq, this.#clock);
-    const limits = this.#startDeadlines.of(run.runId, call.callId);
-    return runHarnessCall(
-      harnesses,
-      { effect, runId: run.runId, hubId: run.hubId, agent },
-      log,
-      limits,
-    );
+    const { runId, hubId, lastSeq } = run;
+    const log = new SerialRunLog(this.#options.store, runId, call.callId, lastSeq, this.#clock);
+    const limits = this.#startDeadlines.of(runId, call.callId);
+    return runHarnessCall(harnesses, { effect, runId, hubId, agent }, log, limits);
   }
 
   /** As {@link LocalRuns.#record}, but an input the run no longer takes changes nothing. */

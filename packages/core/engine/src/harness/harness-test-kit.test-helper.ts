@@ -77,6 +77,8 @@ export class FakeHarness implements Harness {
   events: HarnessEvent[] = [];
   error: Error | undefined;
   silent = false;
+  /** How many event streams ran their own clean-up, as a generator's `finally` does when it is ended. */
+  streamsCleanedUp = 0;
   readonly tasks: HarnessTask[] = [];
   readonly #steps: FakeStep[];
 
@@ -98,14 +100,21 @@ export class FakeHarness implements Harness {
     const { events, error, silent } = this;
     const steps = this.#steps;
     const cancelled = Promise.withResolvers<void>();
+    const cleanedUp = () => {
+      this.streamsCleanedUp += 1;
+    };
     return {
       async *[Symbol.asyncIterator]() {
-        if (silent) {
-          await cancelled.promise;
-          throw new Error("The run was cancelled.");
+        try {
+          if (silent) {
+            await cancelled.promise;
+            throw new Error("The run was cancelled.");
+          }
+          yield* events;
+          if (error !== undefined) throw error;
+        } finally {
+          cleanedUp();
         }
-        yield* events;
-        if (error !== undefined) throw error;
       },
       send: async () => {},
       cancel: async () => {

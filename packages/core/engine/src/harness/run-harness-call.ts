@@ -10,7 +10,6 @@ import {
   addHarnessEnvironment,
   type Harness,
   type HarnessEvent,
-  type HarnessRun,
   type OpenHarnessBridge,
   RunFailureError,
   type Sandbox,
@@ -24,6 +23,8 @@ import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./sta
 export interface HarnessEventLog {
   /** @throws when the event can't be stored; the call stops there */
   append(event: RunEventBody): Promise<void>;
+  /** Resolves once every append given so far has been stored or has failed. */
+  settled(): Promise<void>;
 }
 
 /** One harness call: the effect `decide` asked for, the run it belongs to and the agent's file. */
@@ -42,6 +43,10 @@ export interface HarnessCall {
  * agent's placement isn't ready, the call fails before anything starts.
  * Neither start waits for ever: `limits` ends the sandbox's opening and the
  * wait for the harness's first event when their time is up.
+ *
+ * It returns, or throws, only once the harness run, the session and the
+ * bridge have stopped, in that order, and every event they reported is in
+ * the log.
  *
  * @returns the `output` of the agent's own `agent.finished`
  * @throws RunFailureError `sandbox-start-failed` when the sandbox doesn't open in time, or
@@ -95,16 +100,22 @@ export async function runHarnessCall(
         ...(call.agent.model === undefined ? {} : { model: call.agent.model }),
       };
       const run = harness.start(task, session, bridge);
+      const events = run[Symbol.asyncIterator]();
       try {
-        return await followRun(started, run, timeoutMs);
+        return await followRun(started, events, timeoutMs);
       } finally {
         await run.cancel();
+        // Only after `cancel()`: the port then ends the stream, so a read
+        // still waiting settles and `return()` doesn't wait behind it. A
+        // harness written as a generator runs its own clean-up here.
+        await events.return?.();
       }
     } finally {
       await session.close();
     }
   } finally {
     await bridge.close();
+    await log.settled();
   }
 }
 
@@ -182,10 +193,9 @@ async function openSandbox(
  */
 async function followRun(
   { harness, call, log, limits }: StartedCall,
-  run: HarnessRun,
+  events: AsyncIterator<HarnessEvent>,
   timeoutMs: number,
 ): Promise<unknown> {
-  const events = run[Symbol.asyncIterator]();
   let next: IteratorResult<HarnessEvent>;
   try {
     next = await limits.within({

@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
 import { finished, harnessPorts, startLimits } from "./harness-test-kit.test-helper.ts";
-import { type HarnessCall, runHarnessCall } from "./run-harness-call.ts";
+import { type HarnessCall, type HarnessEventLog, runHarnessCall } from "./run-harness-call.ts";
 
 const call: HarnessCall = {
   effect: {
@@ -19,14 +19,17 @@ const call: HarnessCall = {
   agent: { ...writerAgent("claude-code"), instructions: "Write short mails.", model: "sonnet" },
 };
 
+/** A log that stores nothing, except where `append` says. */
+function logOf(append: (event: RunEventBody) => Promise<void>): HarnessEventLog {
+  return { append, settled: async () => {} };
+}
+
 /** Runs the call on the ports, and keeps what it wrote to the log. */
 async function runOn(ports: ReturnType<typeof harnessPorts>, limits = startLimits().limits) {
   const written: RunEventBody[] = [];
-  const log = {
-    append: async (event: RunEventBody) => {
-      written.push(event);
-    },
-  };
+  const log = logOf(async (event) => {
+    written.push(event);
+  });
   try {
     return { output: await runHarnessCall(ports.options, call, log, limits), written };
   } catch (error) {
@@ -127,6 +130,31 @@ verifies("engine.run-harness", () => {
     ]);
   });
 
+  it("ends the harness's event stream after its result, so the harness's own clean-up runs", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("ok")];
+
+    await runOn(ports);
+
+    expect(ports.harness.streamsCleanedUp).toBe(1);
+  });
+
+  it("returns only once the log has stored every event, after the bridge is closed", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("ok")];
+    const order: string[] = [];
+    const log: HarnessEventLog = {
+      append: async () => {},
+      settled: async () => {
+        order.push(`log.settled after ${ports.steps.at(-1)}`);
+      },
+    };
+
+    await runHarnessCall(ports.options, call, log, startLimits().limits);
+
+    expect(order).toEqual(["log.settled after bridge.close"]);
+  });
+
   it("runs on this computer through the launcher's session when a person chose that", async () => {
     const ports = harnessPorts();
     ports.placeOnThisComputer();
@@ -169,11 +197,9 @@ verifies("engine.run-harness-failures", () => {
 
   it("closes the sandbox when sandbox.opened can't be written", async () => {
     const ports = harnessPorts();
-    const log = {
-      append: async (event: RunEventBody) => {
-        if (event.type === "sandbox.opened") throw new Error("The disk is full.");
-      },
-    };
+    const log = logOf(async (event) => {
+      if (event.type === "sandbox.opened") throw new Error("The disk is full.");
+    });
 
     await expect(runHarnessCall(ports.options, call, log, startLimits().limits)).rejects.toThrow(
       "The disk is full.",
