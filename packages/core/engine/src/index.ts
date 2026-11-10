@@ -51,6 +51,12 @@ export {
   step,
 } from "./kernel/step.ts";
 export {
+  type LocalEngine,
+  type LocalEngineOptions,
+  type LocalEngineScheduler,
+  localEngine,
+} from "./local-engine.ts";
+export {
   defaultMaxRounds,
   LocalExecutor,
   type LocalExecutorOptions,
