@@ -30,6 +30,8 @@ export interface RunDefinitions {
   readonly workflow: WorkflowDefinition | undefined;
   /** The agent with this id in the run's hub; `undefined` when it's gone. */
   readonly agent: (agentId: string) => AgentDefinition | undefined;
+  /** The model alias an agent without its own runs on: the hub's default, else the workspace's. */
+  readonly defaultModel?: string;
 }
 
 /**
@@ -42,10 +44,11 @@ export function runViewDefinitions(loaded: LoadedWorkspace, summary: RunSummary)
   if (workflow === undefined) {
     return { workflow, agent: () => undefined };
   }
-  const { agents } = definitionsOf(loaded, summary.hubId);
+  const { agents, defaultModel } = definitionsOf(loaded, summary.hubId);
   return {
     workflow,
     agent: (agentId) => (Object.hasOwn(agents, agentId) ? agents[agentId] : undefined),
+    ...(defaultModel === undefined ? {} : { defaultModel }),
   };
 }
 
@@ -77,7 +80,7 @@ export function stepLines(
  * a line printed while the run goes never needs widening (cli-output 3.4,
  * "Live, in a terminal"). They come from the workflow's definition: each
  * step's name with the widest mark, and what runs it, "Writer · smart".
- * An end state is no step, so it doesn't count.
+ * An end of the workflow is not a step, so it doesn't count.
  */
 export interface StepColumns {
   /** One row per step of the workflow, for {@link columnsAs}; never printed. */
@@ -198,9 +201,10 @@ function markOf(step: RunStep): Mark {
 
 /**
  * What ran the step: its agent's name and model alias, "Writer · smart".
- * The alias is the method's own when the step calls one. An agent that's no
- * longer in the workspace is named by its id; a step without an agent has
- * no facts. All of it comes from workspace files, so it is made printable
+ * The alias is the method's own when the step calls one, else the agent's,
+ * else the default of its hub or workspace, as the engine picks it. With no
+ * alias at all the line names only the agent. An agent that's no longer in
+ * the workspace is named by its id; a step without an agent has no facts. All of it comes from workspace files, so it is made printable
  * (cli-output section 5).
  */
 function agentFacts(
@@ -216,7 +220,10 @@ function agentFacts(
     return [printable(agentId)];
   }
   const method = definitions.workflow?.states[stateId]?.method;
-  const model = (method === undefined ? undefined : agent.methods[method]?.model) ?? agent.model;
+  const model =
+    (method === undefined ? undefined : agent.methods[method]?.model) ??
+    agent.model ??
+    definitions.defaultModel;
   const facts = model === undefined ? [agent.name] : [agent.name, model];
   return facts.map(printable);
 }

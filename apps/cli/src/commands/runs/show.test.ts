@@ -152,7 +152,7 @@ verifies("cli.commands.runs.show", () => {
       expect(io.stdout).toEqual([
         "Mail triage in acme · run 0a0b0c · started 10:20, finished 10:20",
         "",
-        "✓ Read the email   Writer   1 s",
+        "✓ Read the email   Writer · default   1 s",
         "",
         "✓ Mail triage finished in 18 s.",
         "  Sent nothing",
@@ -180,7 +180,7 @@ verifies("cli.commands.runs.show", () => {
       expect(io.stdout).toEqual([
         "\\u001b[31mMail\\u202e triage in acme · run 0a0b0c · started 10:20, finished 10:20",
         "",
-        "✓ Read the email   \\u001b[2JWriter   1 s",
+        "✓ Read the email   \\u001b[2JWriter · default   1 s",
         "",
         "✓ \\u001b[31mMail\\u202e triage finished in 18 s.",
         "  Sent nothing",
@@ -228,7 +228,7 @@ verifies("cli.commands.runs.show", () => {
       expect(io.stdout).toEqual([
         "Mail triage in acme · run 0a0b0d · started 10:20, still running",
         "",
-        "◌ Read the email   Writer · running since 10:20",
+        "◌ Read the email   Writer · default · running since 10:20",
       ]);
     });
   });

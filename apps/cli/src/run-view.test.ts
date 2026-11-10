@@ -282,6 +282,28 @@ verifies("cli.run-view", () => {
     ]);
   });
 
+  it("names an agent without its own model by the default alias, and by its name alone with none", () => {
+    const events = logOf([
+      ["14:00:00", entered("read")],
+      ["14:00:00", agentStarted("read", "writer")],
+      ...finishedAt("14:00:01"),
+    ]);
+    const summary = summarizeOrThrow(events);
+    const { model: _, ...withoutModel } = agents["writer"] as AgentDefinition;
+    const writer = withoutModel as AgentDefinition;
+    const linesWith = (defaults: Partial<RunDefinitions>) =>
+      stepLines(
+        events,
+        summary,
+        { workflow: supportReply, agent: () => writer, ...defaults },
+        clock,
+      ).map((line) => plainText(line).replace(/ {2,}/g, " "));
+    expect(linesWith({ defaultModel: "default" })).toEqual([
+      "✓ Read the email Writer · default 1 s",
+    ]);
+    expect(linesWith({})).toEqual(["✓ Read the email Writer 1 s"]);
+  });
+
   it("names an agent that's no longer in the workspace by its id, and gives the end state no line", () => {
     const events = logOf([
       ["14:00:00", entered("read")],

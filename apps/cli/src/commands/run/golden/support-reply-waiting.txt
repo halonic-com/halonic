@@ -3,9 +3,9 @@ exit 0
 stdout:
   Running Support reply in acme \e[2m·\e[22m run 01jd8q
   
-  \e[32m✓\e[39m Read the email        Writer   1 s
-  \e[32m✓\e[39m Classify it           Sorter   1 s
-  \e[32m✓\e[39m Draft a reply         Writer   1 s
+  \e[32m✓\e[39m Read the email        Writer \e[2m·\e[22m default   1 s
+  \e[32m✓\e[39m Classify it           Sorter \e[2m·\e[22m default   1 s
+  \e[32m✓\e[39m Draft a reply         Writer \e[2m·\e[22m default   1 s
   \e[33m!\e[39m Approve this reply?   waiting for you since 14:01
   
   \e[33m!\e[39m Waiting for you: Approve this reply?
@@ -17,9 +17,9 @@ exit 0
 stdout:
   Running Support reply in acme · run 01jd8q
   
-  ✓ Read the email        Writer   1 s
-  ✓ Classify it           Sorter   1 s
-  ✓ Draft a reply         Writer   1 s
+  ✓ Read the email        Writer · default   1 s
+  ✓ Classify it           Sorter · default   1 s
+  ✓ Draft a reply         Writer · default   1 s
   ! Approve this reply?   waiting for you since 14:01
   
   ! Waiting for you: Approve this reply?

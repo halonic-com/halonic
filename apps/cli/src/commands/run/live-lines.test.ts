@@ -56,11 +56,19 @@ beforeEach(async () => {
   } finally {
     await engine.close();
   }
-  // A provider for the live line to name; the run itself only used the test model.
+  // A provider for the live line to name, and the Writer on its "smart" alias,
+  // as cli-output 3.4 shows them; the run itself only used the test model.
   await writeFile(
     join(acme, "providers/anthropic.yaml"),
     "id: anthropic\nname: Anthropic\ntype: anthropic\nsecret: anthropic\n",
   );
+  const models = await readFile(join(acme, "models.yaml"), "utf8");
+  await writeFile(
+    join(acme, "models.yaml"),
+    `${models}  smart:\n    provider: anthropic\n    model: a-model\n`,
+  );
+  const writer = join(acme, "hubs/support/agents/writer.agent.yaml");
+  await writeFile(writer, `${await readFile(writer, "utf8")}model: smart\n`);
   workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
 });
 
@@ -110,13 +118,13 @@ verifies("cli.run-live", () => {
     expect(context.seen).toEqual([
       ["ahead", `Running Support reply in acme · run ${shortRunId(waiting.summary.id)}`],
       // The live line adds "◌ ", so its facts line up with the ✓ lines.
-      ["progress", "Read the email        Writer"],
+      ["progress", "Read the email        Writer · smart"],
       ["ahead", ""],
-      ["ahead", "✓ Read the email        Writer   1 s"],
-      ["progress", "Classify it           Sorter"],
-      ["ahead", "✓ Classify it           Sorter   1 s"],
-      ["progress", "Draft a reply         Writer"],
-      ["ahead", "✓ Draft a reply         Writer   1 s"],
+      ["ahead", "✓ Read the email        Writer · smart     1 s"],
+      ["progress", "Classify it           Sorter · default"],
+      ["ahead", "✓ Classify it           Sorter · default   1 s"],
+      ["progress", "Draft a reply         Writer · smart"],
+      ["ahead", "✓ Draft a reply         Writer · smart     1 s"],
       ["progress", "Approve this reply?"],
     ]);
   });
@@ -148,7 +156,9 @@ verifies("cli.run-live", () => {
     const live = liveLines(context, facts());
     follow(live.onEvent, [...untilAgentOf("draft"), llmRequest("anthropic")]);
     clock.advance(12_000);
-    expect(line.seen.at(-1)).toBe("◌ Draft a reply         Writer · waiting for Anthropic (12 s)");
+    expect(line.seen.at(-1)).toBe(
+      "◌ Draft a reply         Writer · smart · waiting for Anthropic (12 s)",
+    );
   });
 
   it("takes the live line away when the follow ends mid-step", () => {
@@ -158,7 +168,7 @@ verifies("cli.run-live", () => {
     follow(live.onEvent, untilAgentOf("draft"));
     clock.advance(2_000);
     live.end();
-    expect(line.seen).toEqual(["◌ Draft a reply         Writer", "(cleared)"]);
+    expect(line.seen).toEqual(["◌ Draft a reply         Writer · smart", "(cleared)"]);
   });
 });
 
