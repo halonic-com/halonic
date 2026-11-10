@@ -3,18 +3,11 @@
  * Chromium and Firefox; WebKitGTK and Safari still draw it through their own pseudo-element
  * (component specs 18.1). It sits next to the Disclosure so theme.css stays under the size limit;
  * theme.css imports it.
- *
- * In forced colours a browser may paint a summary in the link colour. The row isn't a link, so
- * it keeps the text colour, and the chevron inherits it.
  */
 @utility summary-plain {
   list-style: none;
 
   &::-webkit-details-marker {
     display: none;
-  }
-
-  @media (forced-colors: active) {
-    color: CanvasText;
   }
 }

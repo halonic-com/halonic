@@ -119,8 +119,15 @@ verifies("kit.disclosure", () => {
   });
 
   it("keeps the row in the text colour in forced colours, not the link colour", async () => {
-    const css = await buildCss(["summary-plain"]);
-    expect(css).toMatch(/@media \(forced-colors: active\)\s*\{\s*color:\s*CanvasText;/);
+    const { container } = render(<Disclosure summary="Budget">Text</Disclosure>);
+    const css = await buildCss(parts(container).summary.className.split(" "));
+    // Every rule has the same weight, so the one written last wins: CanvasText after text-fg.
+    const textColour = css.indexOf("color: var(--color-fg);");
+    const forcedColour = css.search(
+      /@media \(forced-colors: active\)\s*\{\s*\.forced-colors\\:text-\\\[CanvasText\\\]\s*\{\s*color:\s*CanvasText;/,
+    );
+    expect(textColour).toBeGreaterThan(-1);
+    expect(forcedColour).toBeGreaterThan(textColour);
   });
 
   it("treats an empty label as none", () => {
