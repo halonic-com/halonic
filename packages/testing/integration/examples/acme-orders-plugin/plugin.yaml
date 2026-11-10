@@ -1,0 +1,45 @@
+# A sample plugin for the made-up Acme shop (see examples/acme). Every host,
+# order and value in it is invented; no real service or key is involved.
+id: acme-orders
+version: 1.0.0
+sdk: 1
+name: Acme orders
+description: Looks up orders in the Acme shop.
+backend:
+  # The built JavaScript module that exports the Integration. This one is
+  # written by hand, so it needs no build step.
+  entry: backend/index.js
+  hosts: [api.acme.example]
+  secrets:
+    acme-key:
+      purpose: Reads your orders in the Acme shop
+      hosts: [api.acme.example]
+      as: bearer
+  tools:
+    - name: find-order
+      description: Finds one order by its number.
+      risk: read
+      untrusted: true
+      arguments: { order: "The order number, such as A-1001." }
+    - name: open-orders
+      description: Lists the orders that haven't shipped yet.
+      risk: read
+      untrusted: true
+ui:
+  settings:
+    acme-key:
+      { label: Acme API key, type: secret, secret: acme-key, help: From your Acme account page. }
+  commands:
+    - id: find-order
+      title: Find an Acme order
+      tool: find-order
+      form:
+        order: { label: Order number, type: text, required: true }
+      show: text
+  cards:
+    - id: open-orders
+      title: Open orders
+      tool: open-orders
+      args: {}
+      show: markdown
+  panel: { title: Acme orders }

@@ -1,0 +1,48 @@
+{
+  "format": "halonic.recording/1",
+  "integration": "acme-orders",
+  "scenario": "open-orders",
+  "scrubReport": [
+    {
+      "rule": "secret",
+      "path": "request.headers.authorization",
+      "count": 1
+    }
+  ],
+  "exchanges": [
+    {
+      "transport": "http",
+      "request": {
+        "method": "GET",
+        "url": "https://api.acme.example/v1/orders?status=open",
+        "headers": {
+          "authorization": "Bearer <scrubbed:secret>"
+        },
+        "body": {
+          "kind": "empty"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": {
+          "kind": "json",
+          "value": {
+            "orders": [
+              {
+                "id": "A-1002",
+                "status": "packing",
+                "total": "€12.00"
+              },
+              {
+                "id": "A-1003",
+                "status": "paid",
+                "total": "€61.25"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

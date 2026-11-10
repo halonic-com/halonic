@@ -124,6 +124,10 @@ describePluginConformance({
 });
 ```
 
+[`examples/acme-orders-plugin`](examples/acme-orders-plugin/README.md) is a complete sample, with
+example data only: a backend, a `ui` block and its recordings. `src/sample-plugin.test.ts` runs the
+suite on it, loading the backend from its `entry`.
+
 The published suite depends on `yaml`, the library behind our own YAML reader, to read `plugin.yaml`.
 
 Recordings are `halonic.recording/1` files, as `pnpm record` writes them in
