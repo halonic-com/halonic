@@ -3,6 +3,7 @@ import { link, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
+import { type BusySystem, nodeBusySystem, retryWhileBusy } from "./busy-retry.ts";
 import { isMissing } from "./links.ts";
 
 /** How long to wait before trying again to take a lock another writer holds. */
@@ -29,33 +30,40 @@ export interface FoundLock {
  * to the run at the same time. Follows the rules `RunLockRecord` in
  * `@halonicjs/ports` sets out, which the Tauri adapter follows too: waits
  * while another writer holds the lock, removes a stale one, and releases
- * the lock once `work` has settled.
+ * the lock once `work` has settled. On Windows, each file step that fails
+ * because another writer is deleting or holding the lock file right now is
+ * tried again (see `retryWhileBusy`).
  *
  * @param file - the lock file, `<runId>.lock` in an existing folder
+ * @param system - the platform and clock the busy retries use; tests play Windows with it
  */
-export async function withRunLock<T>(file: string, work: () => Promise<T>): Promise<T> {
-  const ownText = await takeLock(file);
+export async function withRunLock<T>(
+  file: string,
+  work: () => Promise<T>,
+  system: BusySystem = nodeBusySystem,
+): Promise<T> {
+  const ownText = await takeLock(file, system);
   try {
     return await work();
   } finally {
-    await releaseLock(file, ownText);
+    await retryWhileBusy(() => releaseLock(file, ownText), system);
   }
 }
 
 /** Takes the lock, waiting as long as a live writer holds it, and gives the text written into it. */
-async function takeLock(file: string): Promise<string> {
+async function takeLock(file: string, system: BusySystem): Promise<string> {
   while (true) {
     const ownText = JSON.stringify(ownRecord());
-    if (await createExclusive(file, ownText)) {
+    if (await retryWhileBusy(() => createExclusive(file, ownText), system)) {
       return ownText;
     }
-    const found = await readLock(file);
+    const found = await retryWhileBusy(() => readLock(file), system);
     if (found === null) {
       // Released between our create and our read: try again straight away.
       continue;
     }
     if (isStale(found, Date.now())) {
-      await removeStale(file, found.text);
+      await removeStale(file, found.text, system);
       continue;
     }
     await sleep(retryDelayMs);
@@ -162,11 +170,15 @@ function processRuns(pid: number): boolean {
  * removed it and taken a fresh lock since it was read, so the lock is moved
  * aside first and checked: when it isn't the stale one any more, it is put
  * back, unless a third writer has taken the lock by then.
+ *
+ * Each file call is retried on its own while Windows reports it busy, not
+ * the whole removal: retrying the whole would rename again after a failed
+ * check, find no lock, and so remove the lock it moved aside unchecked.
  */
-async function removeStale(file: string, staleText: string): Promise<void> {
+async function removeStale(file: string, staleText: string, system: BusySystem): Promise<void> {
   const aside = `${file}.${randomUUID()}.stale`;
   try {
-    await rename(file, aside);
+    await retryWhileBusy(() => rename(file, aside), system);
   } catch (error) {
     if (isMissing(error)) {
       return;
@@ -174,11 +186,11 @@ async function removeStale(file: string, staleText: string): Promise<void> {
     throw error;
   }
   try {
-    if ((await readFile(aside, "utf8")) !== staleText) {
-      await putBack(aside, file);
+    if ((await retryWhileBusy(() => readFile(aside, "utf8"), system)) !== staleText) {
+      await retryWhileBusy(() => putBack(aside, file), system);
     }
   } finally {
-    await rm(aside, { force: true });
+    await retryWhileBusy(() => rm(aside, { force: true }), system);
   }
 }
 
@@ -196,7 +208,8 @@ async function putBack(aside: string, file: string): Promise<void> {
 /**
  * Removes the lock, but only while it holds `ownText`: when this writer took
  * so long that another removed its lock as stale, the lock now belongs to
- * that other writer.
+ * that other writer. The caller retries it whole while Windows reports it
+ * busy, so the lock isn't left behind for other writers to wait on.
  */
 async function releaseLock(file: string, ownText: string): Promise<void> {
   const found = await readLock(file);

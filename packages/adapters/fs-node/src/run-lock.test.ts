@@ -5,15 +5,22 @@ import { hostname } from "node:os";
 import { join } from "node:path";
 import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, afterEach, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import type { BusySystem } from "./busy-retry.ts";
 import { isStale, parseRecord, withRunLock } from "./run-lock.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
+
+/** The lock's file calls a test can make fail as busy. */
+type BusyCall = "create" | "readFile" | "rename" | "rm";
 
 /**
  * Hooks into the lock's file calls, to play another writer at the moment
  * that matters. `beforeRename` and `beforeLink`: run once before the next
  * rename or link. `onWait`: runs instead of each wait for a held lock.
  * `failNextCreate`: the next exclusive create fails as if the file were there.
+ * `busy`: per call (`create`, `readFile`, `rename`, `rm`), the error codes
+ * its next calls fail with in turn, as Windows fails them while another
+ * writer deletes or holds the file.
  */
 const hooks = vi.hoisted(() => ({
   beforeRename: undefined as ((from: string) => Promise<void>) | undefined,
@@ -21,6 +28,14 @@ const hooks = vi.hoisted(() => ({
   onWait: undefined as (() => Promise<void>) | undefined,
   failNextCreate: false,
   waits: 0,
+  busy: {} as Partial<Record<BusyCall, string[]>>,
+  /** Throws the next code planted for `call` in `busy`, if any. */
+  throwIfBusy(call: BusyCall): void {
+    const code = hooks.busy[call]?.shift();
+    if (code !== undefined) {
+      throw Object.assign(new Error(`${code}: operation not permitted, ${call}`), { code });
+    }
+  },
 }));
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -28,6 +43,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   return {
     ...fs,
     rename: async (from: string, to: string) => {
+      hooks.throwIfBusy("rename");
       const beforeRename = hooks.beforeRename;
       hooks.beforeRename = undefined;
       await beforeRename?.(from);
@@ -40,12 +56,23 @@ vi.mock("node:fs/promises", async (importOriginal) => {
       return await fs.link(from, to);
     },
     writeFile: (async (file: string, text: string, options: { flag?: string }) => {
-      if (options?.flag === "wx" && hooks.failNextCreate) {
-        hooks.failNextCreate = false;
-        throw Object.assign(new Error("EEXIST: file already exists"), { code: "EEXIST" });
+      if (options?.flag === "wx") {
+        hooks.throwIfBusy("create");
+        if (hooks.failNextCreate) {
+          hooks.failNextCreate = false;
+          throw Object.assign(new Error("EEXIST: file already exists"), { code: "EEXIST" });
+        }
       }
       return await fs.writeFile(file, text, options);
     }) as typeof fs.writeFile,
+    readFile: (async (...args: Parameters<typeof fs.readFile>) => {
+      hooks.throwIfBusy("readFile");
+      return await fs.readFile(...args);
+    }) as typeof fs.readFile,
+    rm: async (...args: Parameters<typeof fs.rm>) => {
+      hooks.throwIfBusy("rm");
+      return await fs.rm(...args);
+    },
   };
 });
 
@@ -63,6 +90,7 @@ afterEach(() => {
   hooks.onWait = undefined;
   hooks.failNextCreate = false;
   hooks.waits = 0;
+  hooks.busy = {};
 });
 
 const iso = (time: number) => new Date(time).toISOString();
@@ -115,6 +143,24 @@ function freeLockAfter(file: string, held = 0): void {
       await rm(file, { force: true });
     }
   };
+}
+
+/**
+ * A system on `platform` for the lock's busy retries, whose clock moves on
+ * only when it waits. Counts its waits apart from the waits for a held lock.
+ */
+function busySystem(platform: string): BusySystem & { busyWaits: number } {
+  let clock = 0;
+  const system = {
+    platform,
+    busyWaits: 0,
+    now: () => clock,
+    async wait(ms: number) {
+      system.busyWaits += 1;
+      clock += ms;
+    },
+  };
+  return system;
 }
 
 verifies("fs-node.run-store-lock", () => {
@@ -239,6 +285,67 @@ verifies("fs-node.run-store-lock", () => {
     const held = await withRunLock(file, async () => await readFile(file, "utf8"));
     expect(Object.keys(JSON.parse(held))).toEqual(Object.keys(JSON.parse(text)));
     expect(JSON.parse(held).takenAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  describe("on Windows, while another writer deletes or holds the lock file", () => {
+    it("tries the create again while Windows denies access to a delete-pending lock", async () => {
+      const file = await lockFile();
+      hooks.busy.create = ["EPERM", "EPERM"];
+      const windows = busySystem("win32");
+      expect(await withRunLock(file, async () => "done", windows)).toBe("done");
+      expect(windows.busyWaits).toBe(2);
+      expect(hooks.waits).toBe(0);
+    });
+
+    it("tries the read again while another program has the lock open", async () => {
+      const file = await lockFile(JSON.stringify(record(process.pid)));
+      hooks.busy.readFile = ["EBUSY"];
+      freeLockAfter(file);
+      const windows = busySystem("win32");
+      await withRunLock(file, async () => {}, windows);
+      expect(windows.busyWaits).toBe(1);
+    });
+
+    it("tries moving a stale lock aside again while Windows refuses the rename", async () => {
+      const file = await lockFile(JSON.stringify(record(exitedPid())));
+      hooks.busy.rename = ["EPERM"];
+      const windows = busySystem("win32");
+      await withRunLock(file, async () => {}, windows);
+      expect(windows.busyWaits).toBe(1);
+      expect(hooks.waits).toBe(0);
+    });
+
+    it("tries the release again, so the lock isn't left behind", async () => {
+      const file = await lockFile();
+      const windows = busySystem("win32");
+      await withRunLock(
+        file,
+        async () => {
+          hooks.busy.rm = ["EPERM", "EBUSY"];
+        },
+        windows,
+      );
+      expect(windows.busyWaits).toBe(2);
+      await expect(readFile(file, "utf8")).rejects.toThrow("ENOENT");
+    });
+
+    it("fails without running the work once the lock stays refused past the limit", async () => {
+      const file = await lockFile();
+      hooks.busy.create = Array(1_000).fill("EPERM");
+      const work = vi.fn(async () => {});
+      await expect(withRunLock(file, work, busySystem("win32"))).rejects.toThrow("EPERM");
+      expect(work).not.toHaveBeenCalled();
+    });
+
+    it("fails at once off Windows, where EPERM is a real refusal", async () => {
+      const file = await lockFile();
+      hooks.busy.create = ["EPERM"];
+      const linux = busySystem("linux");
+      const work = vi.fn(async () => {});
+      await expect(withRunLock(file, work, linux)).rejects.toThrow("EPERM");
+      expect(linux.busyWaits).toBe(0);
+      expect(work).not.toHaveBeenCalled();
+    });
   });
 
   it("fails without running the work when the lock's folder is missing", async () => {

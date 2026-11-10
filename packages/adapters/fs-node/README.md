@@ -63,7 +63,9 @@ and passes the shared `DefinitionStore` contract suite.
   rules are `RunLockRecord` in `@halonicjs/ports`, which the Tauri adapter
   follows too. An append waits while another writer holds the lock, and
   removes a lock left by a crash: one whose process no longer runs on this
-  computer, or one older than `runLockStaleAfterMs` (10 seconds).
+  computer, or one older than `runLockStaleAfterMs` (10 seconds). On
+  Windows, a lock step that fails with `EPERM` or `EBUSY`, as it does while
+  another writer deletes the lock file, is tried again for up to 2 seconds.
 - **Limits:** a log survives a crash of the program, not of the machine: there
   is no `fsync`, so after a power cut the last appends may be gone. If the
   program crashes in the middle of an append of several events, the first
