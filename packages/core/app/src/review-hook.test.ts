@@ -60,6 +60,15 @@ verifies("app.review-other-writes-merge", () => {
     expect(changes[0]?.beforeStart).toBe(2);
   });
 
+  it("carries an edit on the line next to the assistant's change into the baseline, and keeps that change to review", async () => {
+    const { inner, store, baseline } = await withAssistantChange();
+    await store.write(path, lines({ 3: "line 3 by the assistant", 4: "line 4 by the person" }));
+    expect(await baseline()).toBe(lines({ 4: "line 4 by the person" }));
+    const changes = diffLines((await baseline()) ?? "", inner.files.get(path) ?? "");
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.beforeStart).toBe(2);
+  });
+
   it("takes an edit inside the assistant's change as accepting it", async () => {
     const { store, review, baseline } = await withAssistantChange();
     await store.write(path, lines({ 3: "line 3 by the person" }));

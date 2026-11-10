@@ -95,9 +95,12 @@ export class ReviewWriteHook implements FileWriter {
    * The record after a write from `before` to `after`: a three-way merge
    * with the file before as base, the baseline as ours and the file after
    * as theirs. Where they conflict, the write wins, so an edit inside one
-   * of the assistant's changes takes it over. A write that creates or
-   * deletes the whole file is the person's decision on all of it, so the
-   * baseline becomes the file and the record goes.
+   * of the assistant's changes takes it over. Changes that only touch don't
+   * conflict, as in catch-up, so an edit on the line next to one of the
+   * assistant's changes keeps that change to review. A write that creates or
+   * deletes the whole file, or edits a file the assistant created, is the
+   * person's decision on all of it, so the baseline becomes the file and the
+   * record goes.
    */
   private async moved(
     record: ReviewRecord,
@@ -107,9 +110,12 @@ export class ReviewWriteHook implements FileWriter {
     if (before === null || after === null) {
       return this.files.seeing({ ...record, baseline: after }, after);
     }
-    const merged = mergedText(mergeLines(before, record.baseline ?? "", after), "theirs");
-    // A new file stays new as long as the merge left nothing of it.
-    const baseline = record.baseline === null && merged === "" ? null : merged;
-    return this.files.seeing({ ...record, baseline }, after);
+    if (record.baseline === null) {
+      // A write that changes nothing or empties the file leaves it new.
+      const baseline = after === before || after === "" ? null : after;
+      return this.files.seeing({ ...record, baseline }, after);
+    }
+    const regions = mergeLines(before, record.baseline, after, { touchingConflicts: false });
+    return this.files.seeing({ ...record, baseline: mergedText(regions, "theirs") }, after);
   }
 }
