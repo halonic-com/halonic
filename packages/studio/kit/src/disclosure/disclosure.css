@@ -1,0 +1,13 @@
+/*
+ * A Disclosure's summary without the browser's own triangle. `list-style: none` hides it in
+ * Chromium and Firefox; WebKitGTK and Safari still draw it through their own pseudo-element
+ * (component specs 18.1). It sits next to the Disclosure so theme.css stays under the size limit;
+ * theme.css imports it.
+ */
+@utility summary-plain {
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+}

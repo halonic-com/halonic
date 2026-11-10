@@ -36,6 +36,7 @@
 @import "./checkbox/checkbox.css";
 @import "./switch/switch.css";
 @import "./radio/radio.css";
+@import "./disclosure/disclosure.css";
 @import "./theme-utilities.css";
 @import "./theme-safe-area.css";
 

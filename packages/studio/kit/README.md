@@ -534,6 +534,33 @@ where the rows' text does. The "·" is hidden from screen readers, which hear a 
 it moves onto its own line, and a detail too long even for that wraps. Use `stacked` in a narrow
 column, such as the 208px Settings nav.
 
+## Disclosure
+
+A row that opens more in place: "How the budget works". It's a native `<details>`, so the
+browser opens and closes it with a click, Enter and Space, and screen readers hear whether it's
+open.
+
+```tsx
+<Disclosure summary="How the budget works">Budgets reset on the first of each month.</Disclosure>;
+<Disclosure label="What's in it" summary="3 items" tone="value">
+  Sorter, Inbox sort and Weekly summary.
+</Disclosure>;
+```
+
+| Prop          | What it is                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `summary`     | The row's words. They wrap; they're never cut                                                      |
+| `tone`        | `label` (the default) in `text-body-strong`, or `value` in `text-body`                             |
+| `defaultOpen` | Open when it first renders; after that the user opens and closes it                                |
+| `label`       | A caption above the row, for a summary that's only a value                                         |
+| `children`    | What opens, in `text-small` `fg-muted` in the 16px inset. Nothing clickable goes in the row itself |
+
+The row is at least 48px, padded 0 16px, with a 20px chevron in `fg-subtle` at the right: down
+when closed, up when open, flipped with no animation. Hover is `surface-subtle` and focus is the
+inset ring. A `label` is shown above the row and hidden from screen readers, which hear it inside
+the row instead: "What's in it, 3 items, collapsed". The Disclosure draws no lines of its own; in
+a flush List it takes the List's line like any row.
+
 ## List
 
 A group of rows: agents, routines, runs, files in a picker. The screen gives the rows as data; the
