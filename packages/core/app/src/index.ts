@@ -139,6 +139,13 @@ export {
   shortRunIdLength,
 } from "./run-history.ts";
 export {
+  type RunnerFence,
+  type RunnerFenceInputs,
+  type RunnerUnfencedReason,
+  runnerFence,
+  runnerUnfencedReasons,
+} from "./runner-fence.ts";
+export {
   type Disposable,
   ServiceError,
   type ServiceKey,
