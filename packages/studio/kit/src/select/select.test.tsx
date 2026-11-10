@@ -296,6 +296,38 @@ verifies("kit.select", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("shows an unavailable option's reason under it in the sheet", async () => {
+    const withReason: readonly SelectOption[] = [
+      { value: "sonnet", label: "Sonnet" },
+      { value: "gpt", label: "GPT-5", disabled: true, reason: "Only models Claude Code can use" },
+    ];
+    const { container } = onPhone(
+      <Select aria-label="Model" options={withReason} value="sonnet" onChange={ignore} />,
+    );
+    await click(container.querySelector("button") as HTMLButtonElement);
+    const gpt = radioNamed(dialogOf(container), "GPT-5");
+    expect(gpt.disabled).toBe(true);
+    const line = document.getElementById(gpt.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe("Only models Claude Code can use");
+  });
+
+  it("says what's missing in the sheet when there are no options", async () => {
+    const { container } = onPhone(
+      <Select
+        aria-label="Model"
+        options={[]}
+        value=""
+        onChange={ignore}
+        placeholder="Choose a model"
+        emptyText="No models yet. Add a provider in Settings."
+      />,
+    );
+    await click(container.querySelector("button") as HTMLButtonElement);
+    const sheet = dialogOf(container);
+    expect(sheet.querySelector('input[type="radio"]')).toBeNull();
+    expect(sheet.textContent).toContain("No models yet. Add a provider in Settings.");
+  });
+
   it("shows the placeholder and the error on the phone button", () => {
     const { container } = onPhone(
       <Field label="Model" error="smart no longer exists. Choose another model.">

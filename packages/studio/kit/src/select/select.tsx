@@ -12,6 +12,11 @@ export interface SelectOption {
   readonly label: string;
   /** Stays in the list, greyed, and can't be picked. */
   readonly disabled?: boolean;
+  /**
+   * Why a `disabled` option can't be picked: "Needs an Anthropic key." The phone's picker sheet
+   * shows it under the option; the desktop's native list has no room for it.
+   */
+  readonly reason?: string;
 }
 
 export interface SelectProps {
@@ -33,6 +38,8 @@ export interface SelectProps {
   readonly name?: string;
   /** The name, for a Select outside a Field. Inside one the Field's label names it. */
   readonly "aria-label"?: string;
+  /** The phone's picker sheet with no options: what's missing and where to add it. */
+  readonly emptyText?: string;
   /** The control you focus: the `<select>` on desktop, the picker button on a phone. */
   readonly ref?: Ref<HTMLElement>;
 }
@@ -70,6 +77,7 @@ export function Select({
   disabled,
   name,
   "aria-label": ariaLabel,
+  emptyText = "",
   ref,
 }: SelectProps) {
   const field = useFieldControl();
@@ -114,6 +122,7 @@ export function Select({
           options={options}
           value={picked?.value}
           onChange={onChange}
+          emptyText={emptyText}
           controlRef={ref}
         />
       ) : (
@@ -156,13 +165,15 @@ interface PickerButtonProps {
   /** The picked value, or `undefined` while the placeholder shows. */
   readonly value: string | undefined;
   readonly onChange: (value: string) => void;
+  readonly emptyText: string;
   readonly controlRef: Ref<HTMLElement> | undefined;
 }
 
 /**
  * The phone's field: a button that looks like the phone Input and opens the picker sheet, titled
  * with the Field's label. A pick saves at once and closes it; Close keeps the value. Either way
- * focus goes back to the button. An unavailable option stays listed and can't be picked.
+ * focus goes back to the button. An unavailable option stays listed, with its reason under it,
+ * and can't be picked.
  */
 function PickerButton({
   label,
@@ -173,6 +184,7 @@ function PickerButton({
   options,
   value,
   onChange,
+  emptyText,
   controlRef,
 }: PickerButtonProps) {
   const field = useFieldControl();
@@ -187,8 +199,8 @@ function PickerButton({
   const choices: readonly PickerOption[] = options.map((option) => ({
     value: option.value,
     label: option.label,
-    // A Select's option has no reason to show, so its row has no second line.
-    ...(option.disabled === true ? { unavailable: { reason: "" } } : {}),
+    // Without a reason, the unavailable option's row has no second line.
+    ...(option.disabled === true ? { unavailable: { reason: option.reason ?? "" } } : {}),
   }));
 
   return (
@@ -222,7 +234,7 @@ function PickerButton({
           title={field?.label ?? ariaLabel ?? ""}
           options={choices}
           value={value}
-          empty=""
+          empty={emptyText}
           onPick={(picked) => {
             setOpen(false);
             onChange(picked);

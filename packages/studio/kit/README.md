@@ -1442,11 +1442,12 @@ it.
 
 | Prop          | What it is                                                                      |
 | ------------- | ------------------------------------------------------------------------------- |
-| `options`     | `{ value, label, disabled? }` in list order. A `disabled` one is listed, greyed |
+| `options`     | `{ value, label, disabled?, reason? }` in list order. A `disabled` one is grey  |
 | `value`       | The picked value                                                                |
 | `onChange`    | Called with the new value as soon as the user picks it                          |
 | `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked    |
 | `size`        | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen   |
+| `emptyText`   | The phone's picker sheet with no options: what's missing and where to add it    |
 | `ref`         | The control you focus: the `<select>`, or the picker button on a phone          |
 
 | State    | What shows                                                                               |
@@ -1467,8 +1468,10 @@ Field's label and then the value, so a screen reader hears "Model, Sonnet", and 
 it. It's the only control rendered; with a `name`, a hidden input carries the value for a form that
 posts, except while the Select is unavailable, as a disabled select isn't posted. The button opens the **PickerSheet** titled with the label (`aria-haspopup="dialog"`). A pick
 is saved at once and closes it, Close keeps the value, and either way focus goes back to the button.
-A `disabled` option is listed and can't be picked. A Field error shows as the `danger` edge and
-reaches screen readers through the button's description, since a button can't be `aria-invalid`.
+A `disabled` option is listed and can't be picked, with its `reason` under it ("Only models
+Claude Code can use"); the desktop's native list has no room for a reason. With no options, the
+sheet shows `emptyText` instead: "No models yet. Add a provider in Settings." A Field error shows
+as the `danger` edge and reaches screen readers through the button's description, since a button can't be `aria-invalid`.
 
 ## CopyButton
 
