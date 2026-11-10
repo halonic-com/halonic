@@ -25,7 +25,8 @@ verifies("kit.line-frame-action", () => {
     const { button } = renderStrip();
     expect(button.type).toBe("button");
     expect(button.textContent).toBe("Turn on");
-    for (const name of ["ml-auto", "text-accent-text", "font-medium", "hover:underline"]) {
+    expect(button.className.split(" ")).not.toContain("ml-auto");
+    for (const name of ["text-accent-text", "font-medium", "hover:underline"]) {
       expect(button.className.split(" ")).toContain(name);
     }
   });

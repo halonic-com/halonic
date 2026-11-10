@@ -29,7 +29,7 @@ export interface LineFrameProps {
  * does; hover underlines it, and on touch its 48px hit area is a pseudo-element.
  */
 const actionClasses = [
-  "ml-auto max-w-full flex-none rounded-xs text-left text-small font-medium text-accent-text",
+  "max-w-full flex-none rounded-xs text-left text-small font-medium text-accent-text",
   "hover:underline focus-ring phone:hit-touch touch:hit-touch",
 ].join(" ");
 
@@ -60,6 +60,8 @@ export function LineFrame({ icon, muted = false, action, children }: LineFramePr
         <p className="min-w-0 flex-1 wrap-break-word">{children}</p>
       ) : (
         // The text and the action wrap as one group, so a long text pushes the action under it.
+        // The text grows to fill the row, which keeps the action at the right; an `ml-auto` on the
+        // action would also push it to the right once it has wrapped.
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">
           <p className="min-w-0 flex-[1_1_10rem] wrap-break-word">{children}</p>
           <button type="button" className={actionClasses} onClick={action.onClick}>

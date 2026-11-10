@@ -66,9 +66,12 @@ const boxStateClasses = {
   // Only on an empty box: a checked one keeps its primary edge.
   hoverable: "border-border-control hover:border-fg-muted group-hover/checkbox:border-fg-muted",
   invalid: "border-danger",
-  // 45%, and GrayText at full strength in high contrast, as an unavailable Button.
-  unavailable:
-    "cursor-not-allowed border-fg-disabled opacity-45 contrast-more:opacity-60 forced-colors:opacity-100",
+  // 45%, and GrayText at full strength in high contrast, as an unavailable Button. A checked or
+  // mixed box keeps its primary fill but not its primary edge, which the state variants would win.
+  unavailable: [
+    "cursor-not-allowed border-fg-disabled checked:border-fg-disabled indeterminate:border-fg-disabled",
+    "opacity-45 contrast-more:opacity-60 forced-colors:opacity-100",
+  ].join(" "),
 } as const;
 
 /** The check or the dash, on top of the box. It shows only while the box is checked or mixed. */

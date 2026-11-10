@@ -117,6 +117,8 @@ verifies("kit.checkbox", () => {
     expect(box.className).toContain("opacity-45");
     expect(box.className).toContain("contrast-more:opacity-60");
     expect(box.className).toContain("border-fg-disabled");
+    expect(box.className).toContain("checked:border-fg-disabled");
+    expect(box.className).toContain("indeterminate:border-fg-disabled");
     act(() => box.focus());
     expect(document.activeElement).toBe(box);
     await click(box);

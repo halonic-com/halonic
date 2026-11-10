@@ -70,6 +70,8 @@ verifies("kit.radio", () => {
     expect(picked?.className).toContain("border-border-control");
     expect(picked?.className).toContain("bg-surface");
     expect(picked?.className).toContain("mt-0.5");
+    // A phone's label lines are 24px high, so the 16px circle sits 4px down there.
+    expect(picked?.className).toContain("phone:mt-1");
     expect(picked?.className).toContain(
       "checked:border-5 checked:border-primary checked:bg-on-primary",
     );
