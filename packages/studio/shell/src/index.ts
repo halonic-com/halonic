@@ -131,5 +131,6 @@ export {
   type TabSetState,
   type WindowTab,
 } from "./tabs/tab-set.ts";
+export { WindowTabStrip, type WindowTabStripProps } from "./tabs/window-tab-strip.tsx";
 export { loadView, type ViewRef } from "./view.ts";
 export type { WorkspaceContext } from "./workspace-context.ts";

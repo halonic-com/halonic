@@ -1,0 +1,177 @@
+// @vitest-environment jsdom
+
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, describe, expect, it } from "vitest";
+import { render, unmountAll } from "../test-support/render.tsx";
+import { currentLocation, type TabLocation, TabSet } from "./tab-set.ts";
+import { WindowTabStrip } from "./window-tab-strip.tsx";
+
+const agents: TabLocation = { key: "agents", title: "Agents" };
+const sorter: TabLocation = { key: "agent/acme/sorter", title: "Sorter", kind: "agent" };
+const reply: TabLocation = { key: "workflow/acme/reply", title: "Support reply", kind: "workflow" };
+
+afterEach(unmountAll);
+
+/** A strip over tabs on Agents, Sorter and Support reply, with Sorter active. */
+function renderStrip(options: { needsYou?: (location: TabLocation) => boolean } = {}) {
+  const tabs = new TabSet();
+  tabs.openHere(agents);
+  tabs.openInNewTab(reply);
+  tabs.openInNewTab(sorter);
+  tabs.activate(tabs.state.tabs[1]?.id ?? "");
+  const opened: string[] = [];
+  const container = render(
+    <WindowTabStrip
+      tabs={tabs}
+      needsYou={options.needsYou}
+      onNewTab={(tab) => opened.push(tab.id)}
+    />,
+  );
+  return { tabs, container, opened };
+}
+
+function tabElements(container: HTMLElement): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>('[role="tab"]')];
+}
+
+function names(container: HTMLElement): string[] {
+  return tabElements(container).map((tab) => tab.getAttribute("aria-label") ?? "");
+}
+
+function titles(tabs: TabSet): string[] {
+  return tabs.state.tabs.map((tab) => currentLocation(tab).title);
+}
+
+function press(target: Element, key: string, modifiers: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent("keydown", {
+    key,
+    bubbles: true,
+    cancelable: true,
+    ...modifiers,
+  });
+  act(() => {
+    target.dispatchEvent(event);
+  });
+  return event;
+}
+
+function click(target: Element | null | undefined): void {
+  act(() => {
+    target?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+verifies("shell.window-tab-strip", () => {
+  describe("WindowTabStrip", () => {
+    it("is a tablist named Open tabs, each tab named by its place and kind", () => {
+      const { container } = renderStrip();
+      expect(container.querySelector('[role="tablist"]')?.getAttribute("aria-label")).toBe(
+        "Open tabs",
+      );
+      expect(names(container)).toEqual(["Agents", "Sorter, agent", "Support reply, workflow"]);
+      const selected = tabElements(container).map((tab) => tab.getAttribute("aria-selected"));
+      expect(selected).toEqual(["false", "true", "false"]);
+    });
+
+    it("adds needs you to the name and shows the dot only on a tab whose item waits", () => {
+      const { container } = renderStrip({ needsYou: (location) => location.key === reply.key });
+      expect(names(container)[2]).toBe("Support reply, workflow, needs you");
+      const dots = tabElements(container).map((tab) => tab.querySelector(".bg-warning") !== null);
+      expect(dots).toEqual([false, false, true]);
+    });
+
+    it("is one Tab stop: only the active tab is in the Tab order", () => {
+      const { container } = renderStrip();
+      const order = tabElements(container).map((tab) => tab.tabIndex);
+      expect(order).toEqual([-1, 0, -1]);
+      const closeButtons = container.querySelectorAll<HTMLElement>('[aria-label^="Close "]');
+      expect([...closeButtons].map((button) => button.tabIndex)).toEqual([-1, -1, -1]);
+    });
+
+    it("moves the focus with the arrow keys and opens a tab with Enter or Space", () => {
+      const { tabs, container } = renderStrip();
+      const [first, second, third] = tabElements(container);
+      act(() => second?.focus());
+      press(second as HTMLElement, "ArrowRight");
+      expect(document.activeElement).toBe(third);
+      expect(third?.tabIndex).toBe(0);
+      expect(currentLocation(tabs.active).title).toBe("Sorter");
+      press(third as HTMLElement, "ArrowRight");
+      expect(document.activeElement).toBe(third);
+      press(third as HTMLElement, "Enter");
+      expect(currentLocation(tabs.active).title).toBe("Support reply");
+      press(third as HTMLElement, "ArrowLeft");
+      press(second as HTMLElement, "ArrowLeft");
+      expect(document.activeElement).toBe(first);
+      press(first as HTMLElement, " ");
+      expect(currentLocation(tabs.active).title).toBe("Agents");
+    });
+
+    it("closes the focused tab with Delete and keeps the focus in the strip", () => {
+      const { tabs, container } = renderStrip();
+      const second = tabElements(container)[1] as HTMLElement;
+      act(() => second.focus());
+      press(second, "Delete");
+      expect(titles(tabs)).toEqual(["Agents", "Support reply"]);
+      expect(currentLocation(tabs.active).title).toBe("Support reply");
+      expect(document.activeElement?.getAttribute("aria-label")).toBe("Support reply, workflow");
+    });
+
+    it("moves the focused tab with Ctrl Shift PageUp and PageDown, focus on it", () => {
+      const { tabs, container } = renderStrip();
+      const second = tabElements(container)[1] as HTMLElement;
+      act(() => second.focus());
+      press(second, "PageDown", { ctrlKey: true, shiftKey: true });
+      expect(titles(tabs)).toEqual(["Agents", "Support reply", "Sorter"]);
+      expect(document.activeElement?.getAttribute("aria-label")).toBe("Sorter, agent");
+      press(document.activeElement as HTMLElement, "PageUp", { ctrlKey: true, shiftKey: true });
+      press(document.activeElement as HTMLElement, "PageUp", { ctrlKey: true, shiftKey: true });
+      expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
+    });
+
+    it("leaves other keys and modified arrows to the window", () => {
+      const { container } = renderStrip();
+      const second = tabElements(container)[1] as HTMLElement;
+      expect(press(second, "ArrowRight", { altKey: true }).defaultPrevented).toBe(false);
+      expect(press(second, "PageDown", { ctrlKey: true }).defaultPrevented).toBe(false);
+      expect(press(second, "a").defaultPrevented).toBe(false);
+    });
+
+    it("opens a tab on click and closes one with its close button, named after it", () => {
+      const { tabs, container } = renderStrip();
+      click(tabElements(container)[0]);
+      expect(currentLocation(tabs.active).title).toBe("Agents");
+      click(container.querySelector('[aria-label="Close Support reply"]'));
+      expect(titles(tabs)).toEqual(["Agents", "Sorter"]);
+      expect(currentLocation(tabs.active).title).toBe("Agents");
+    });
+
+    it("shows the close button on the active tab, and on the others only on hover or focus", () => {
+      const { container } = renderStrip();
+      const hidden = [...container.querySelectorAll('[aria-label^="Close "]')].map((button) =>
+        button.className.split(" ").includes("invisible"),
+      );
+      expect(hidden).toEqual([true, false, true]);
+    });
+
+    it("opens a new tab on Home at the end with + and tells the frame", () => {
+      const { tabs, container, opened } = renderStrip();
+      click(container.querySelector('[aria-label="New tab"]'));
+      expect(titles(tabs)).toEqual(["Agents", "Sorter", "Support reply", "Home"]);
+      expect(opened).toEqual([tabs.active.id]);
+    });
+
+    it("follows the tab set, so a renamed item's tab shows its new name at once", () => {
+      const { tabs, container } = renderStrip();
+      act(() => tabs.rename(sorter.key, "Mail sorter"));
+      expect(names(container)[1]).toBe("Mail sorter, agent");
+    });
+
+    it("uses no fg-subtle on a tab, which falls below 4.5:1 on the hovered tab", () => {
+      const { container } = renderStrip({ needsYou: () => true });
+      const classes = [...container.querySelectorAll("*")].map((element) => element.className);
+      expect(classes.filter((name) => String(name).includes("fg-subtle"))).toEqual([]);
+    });
+  });
+});

@@ -22,6 +22,7 @@ look up services its feature lists in `needs`.
 | `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry`  |
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
 | `TabSet`                        | a workspace's window tabs, each with Back and Forward      | `shell.tab-set`           |
+| `WindowTabStrip`                | the window tabs in the title bar, one Tab stop             | `shell.window-tab-strip`  |
 | `ShellFrame`                    | the window's frame: layers, live regions, Esc              | `shell.frame`             |
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
@@ -57,6 +58,20 @@ its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T)
 last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab.
 
 The strip reads `tabs.state` and `subscribe`s; every change makes a new state.
+
+`WindowTabStrip` draws them in the title bar (component specs 24.5): a `tablist` named "Open tabs"
+that is one Tab stop. ← and → move the focus, Enter or Space opens the focused tab, Delete closes
+it, and Ctrl Shift PageUp and PageDown move it. A tab is named "Support reply, workflow", plus
+", needs you" with the 6px dot when `needsYou` says its item waits for a person. Tabs are 200px
+and shrink together to 96px, then the strip scrolls with the active tab kept in view. The ✕ keeps
+its place on every tab and shows on the active one, on hover and on keyboard focus. **+** opens a
+new tab on Home and calls `onNewTab`, so the frame can open Ctrl K there. Nothing on a tab is
+`fg-subtle`. The window-wide keys (Ctrl T, Ctrl W, Ctrl Tab, …), dragging, the tab menu and the
+tooltips come in later pull requests.
+
+```tsx
+<ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
+```
 
 ## The frame
 

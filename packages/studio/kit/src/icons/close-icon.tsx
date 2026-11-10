@@ -1,6 +1,6 @@
 /**
- * The close mark: a ✕, outline style, in the text colour. Used by a Dialog's close button, whose
- * label says what it closes.
+ * The close mark: a ✕, outline style, in the text colour. Used by a Dialog's close button and a
+ * window tab's, whose label says what it closes.
  */
 export function CloseIcon() {
   return (

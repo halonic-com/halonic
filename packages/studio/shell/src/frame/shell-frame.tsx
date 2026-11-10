@@ -78,7 +78,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
       className={`flex h-dvh flex-col text-fg ${desktop ? "bg-halo-frame px-2 pb-2" : "bg-surface"}`}
     >
       {desktop ? (
-        <header className="flex h-titlebar shrink-0 items-center gap-2 px-2">
+        <header className="flex h-titlebar shrink-0 items-end gap-0.5 ps-1">
           {props.titleBar}
         </header>
       ) : null}
