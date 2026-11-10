@@ -1,4 +1,5 @@
 import type { Coordination } from "@halonicjs/ports";
+import type { SkipReason as CatchUpReason } from "@halonicjs/routines";
 import { queueLostKey, shortHash, skipsKeyByHash } from "./routine-ids.ts";
 
 /**
@@ -8,7 +9,7 @@ import { queueLostKey, shortHash, skipsKeyByHash } from "./routine-ids.ts";
  * `busy` (the last run was still going, or the queue was full). `changed`: a
  * queued time whose routine was turned off or rescheduled before it started.
  */
-export type SkipReason = "missed" | "latest" | "cap" | "window" | "busy" | "changed";
+export type SkipReason = CatchUpReason | "busy" | "changed";
 
 /** Due times of one routine a tick dropped for one reason, to add to its records. */
 export interface SkippedTimes {
@@ -47,8 +48,8 @@ const maxAttempts = 3;
  * A skip continues the newest row when the reason is the same, it comes after
  * that row's newest time and no run of the routine was due in between
  * (`lastRun`, the due time of its last started run, read before this tick
- * started anything). A skip the newest row already holds, as when two hosts
- * record the same tick, adds nothing.
+ * started anything). A skip a row of the same reason already holds, as when
+ * a tick is recorded twice, adds nothing, also when the tick added two rows.
  */
 export function addSkips(
   rows: readonly SkipRecord[],
@@ -59,10 +60,10 @@ export function addSkips(
   const next = [...rows];
   const oldestFirst = [...skips].sort((a, b) => a.from.getTime() - b.from.getTime());
   for (const skip of oldestFirst) {
-    const newest = next[0];
-    if (newest?.reason === skip.reason && skip.to.getTime() <= Date.parse(newest.to)) {
+    if (next.some((row) => holds(row, skip))) {
       continue;
     }
+    const newest = next[0];
     if (newest !== undefined && continues(newest, skip, lastRun)) {
       next[0] = merged(newest, skip, decidedAt);
     } else {
@@ -70,6 +71,14 @@ export function addSkips(
     }
   }
   return next.slice(0, MAX_SKIP_RECORDS);
+}
+
+function holds(row: SkipRecord, skip: SkippedTimes): boolean {
+  return (
+    row.reason === skip.reason &&
+    Date.parse(row.from) <= skip.from.getTime() &&
+    skip.to.getTime() <= Date.parse(row.to)
+  );
 }
 
 function continues(row: SkipRecord, skip: SkippedTimes, lastRun: Date | null): boolean {
@@ -179,14 +188,16 @@ export class SkipRecords {
   }
 }
 
-const reasons: ReadonlySet<string> = new Set<SkipReason>([
-  "missed",
-  "latest",
-  "cap",
-  "window",
-  "busy",
-  "changed",
-]);
+// A record, so a reason added to the routines package fails the typecheck until it's listed here.
+const knownReasons: Record<SkipReason, true> = {
+  missed: true,
+  latest: true,
+  cap: true,
+  window: true,
+  busy: true,
+  changed: true,
+};
+const reasons: ReadonlySet<string> = new Set(Object.keys(knownReasons));
 
 /**
  * Reads what {@link SkipRecords.add} wrote. Only the scheduler writes it, so

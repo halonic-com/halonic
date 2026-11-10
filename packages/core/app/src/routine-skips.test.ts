@@ -69,6 +69,14 @@ verifies("app.skip-records", () => {
     expect(addSkips(rows, [cap], null, monday)).toEqual(rows);
   });
 
+  it("adds nothing when a tick with two ranges is recorded twice", () => {
+    const window = skip("window", "2026-10-25T19:00Z", "2026-11-02T08:00Z", 182);
+    const cap = skip("cap", "2026-11-02T09:00Z", "2026-11-05T04:00Z", 68);
+    const rows = addSkips([], [cap, window], null, monday);
+    expect(addSkips(rows, [cap, window], null, monday)).toEqual(rows);
+    expect(addSkips(rows, [window], null, monday)).toEqual(rows);
+  });
+
   it("keeps the minimum mark when rows merge", () => {
     const counted = { ...skip("missed", "2026-11-01T00:00Z", "2026-11-08T00:00Z", 10_000) };
     const rows = addSkips([], [{ ...counted, countIsMinimum: true }], null, monday);

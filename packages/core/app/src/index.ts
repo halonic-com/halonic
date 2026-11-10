@@ -168,6 +168,7 @@ export {
   type RoutineTime,
   type ScheduledRun,
 } from "./routine-scheduler.ts";
+export type { SkipReason, SkipRecord } from "./routine-skips.ts";
 export {
   defaultRunListLimit,
   type RunDetail,

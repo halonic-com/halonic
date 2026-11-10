@@ -1,7 +1,7 @@
 import {
   DEFAULT_TICK_POLICY,
   type DueRun,
-  due,
+  dueWithSkips,
   type PlacedRoutine,
   routineKey,
   routineStart,
@@ -25,7 +25,7 @@ export interface WorkspaceRoutineSchedulerOptions
 }
 
 /**
- * The routine scheduler of a workspace, with the tick function `due` of
+ * The routine scheduler of a workspace, with the tick function `dueWithSkips` of
  * `@halonicjs/routines`, each routine's `overlap` setting, and
  * {@link startOfDueRun}, which fills in the `{{trigger.at}}` and
  * `{{trigger.lastRun}}` placeholders.
@@ -45,7 +45,7 @@ export function workspaceRoutineScheduler(
     ...options,
     policy: options.policy ?? DEFAULT_TICK_POLICY,
     keyOf: routineKey,
-    due,
+    due: dueWithSkips,
     startOf: startOfDueRun,
     overlapOf: (run) => run.placed.routine.overlap,
   });
