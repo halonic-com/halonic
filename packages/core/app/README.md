@@ -10,53 +10,54 @@ Everything belongs to **one open workspace** (`WorkspaceScope`) and is
 disposed with it, because one window can hold several workspaces.
 Device-wide settings such as the theme live outside any scope.
 
-| Part                        | What it does                                                                                                                   | Requirement                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
-| `CommandBus`                | typed commands, exactly one handler each                                                                                       | `app.command-bus`                |
-| `EventBus`                  | typed events, listeners in order, one failing listener stops nothing                                                           | `app.event-bus`                  |
-| `ServiceRegistry`           | services by typed key, disposed newest first                                                                                   | `app.service-registry`           |
-| `WorkspaceScope`            | the three above for one workspace, closed together                                                                             | `app.workspace-scope`            |
-| `WorkspaceFiles`            | unsaved changes by path, `save()` through the `DefinitionStore`                                                                | `app.workspace-save`             |
-| `UndoHistory`               | one workspace-wide undo, 200 steps, typing in one file is one step                                                             | `app.workspace-undo`             |
-| `openWorkspace`             | a scope with the files service and `workspace.save`, `undo`, `redo`                                                            | `app.workspace-save`             |
-| `RoutineScheduler`          | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                                                  | `app.routine-scheduler`          |
-| `RoutineOverlap`            | what a routine does with a due time while its run is going: skip, queue or allow                                               | `app.routine-overlap`            |
-| `QueuedTimes`               | a routine's queued due times (count, first, last), read with `RoutineScheduler.queuedTimes()` without a tick                   | `app.scheduler-reads-queue`      |
-| `SkipRecord`                | a routine's skipped due times with the reason, read with `RoutineScheduler.skippedTimes(key)`; late runs get `trigger.catchUp` | `app.scheduler-keeps-skips`      |
-| `workspaceRoutineScheduler` | a `RoutineScheduler` on the real routines tick, filling `{{trigger.at}}` and `{{trigger.lastRun}}`                             | `app.workspace-routines`         |
-| `placedRoutines`            | every routine file of a loaded workspace with its hub, for the routine scheduler's `routines`                                  | `app.placed-routines`            |
-| `ChatService`               | chat outside a run: model turns through `RunExecutor.chatTurn`, the chat's tools run here, results fed back                    | `app.chat-turn-loop`             |
-| `defaultTurnLimit`          | an answer makes at most 16 model turns unless given 1 to 64, and runs the last turn's tools before it stops                    | `app.chat-turn-limit`            |
-| `ChatAnswerRequest.signal`  | Stop: passed on to the model turn and tools, a late model answer dropped, the calls left get a "Not run" result                | `app.chat-stop`                  |
-| `ChatAnswerEnd`             | a failed or stopped answer says whether a tool already ran, which decides "Try again"                                          | `app.chat-failure`               |
-| `ChatAnswerListener`        | each model turn, tool call and added message as it happens, for the chat's status line                                         | `app.chat-progress`              |
-| `AgentPlacement`            | where an agent's harness runs: a sandbox unless a person chose this computer for the file as it is now                         | `app.agent-placement`            |
-| `RunHistory.listRuns`       | the newest real runs that match a filter, 20 unless a limit says otherwise, and how many match in all                          | `app.run-list`                   |
-| `RunHistory.showRun`        | one run, real or test, by its full or short id: the summary worked out from its log, and the log, oldest first                 | `app.run-show`                   |
-| `RunHistory.findRun`        | the run a typed id points to: the full id or the short id (`shortRunId`), in any case; none, or several with the same end      | `app.run-short-id`               |
-| `RunHistory.hasTestRuns`    | whether a workspace has test runs, so an empty run list can say it has only those                                              | `app.run-list-facts`             |
-| `RunHistory.madeToolCalls`  | whether a run's log has a tool call, so the list can say a run sent nothing                                                    | `app.run-list-facts`             |
-| `lookUpWorkflow`            | the workflow a typed id or `hub/id` points to; none, or several hubs with that id                                              | `app.workflow-lookup`            |
-| `WorkflowRuns.startRun`     | starts the workflow a typed id or `hub/id` points to and follows the run; none or several start nothing                        | `app.run-start`                  |
-| `WorkflowRuns.follow`       | a run's whole log until it ends or waits after a `seq`, missing no event; a signal stops following                             | `app.run-follow`                 |
-| `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only            | `app.connection-settings`        |
-| `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals   | `ports.untrusted-tool-listings`  |
-| `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                  | `ports.untrusted-tool-listings`  |
-| `listedToolsNotice`         | the fixed system prompt line saying an outside server wrote the fenced tool texts, when a listed tool is offered               | `ports.untrusted-tool-listings`  |
-| `checkToolCall`             | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs                                  | `ports.untrusted-tool-listings`  |
-| `checkOutsideRunCall`       | a connector call from chat runs only if the lists allow it, sending is on for `send`, and `checkToolCall` wouldn't ask         | `app.outside-run-connector-gate` |
-| `refusalStatusLine`         | one line of plain text for a refusal in the integration status, never for the model                                            | `ports.untrusted-tool-listings`  |
-| `fenceUntrusted`            | puts outside text inside the untrusted fence, which holds when the text holds its markers                                      | `ports.untrusted-tool-listings`  |
-| `checkPinVersion`           | refuses a `ConnectorPin` whose version isn't one exact version, such as a tag (`latest`) or a range (`^2.3.1`)                 | `app.connector-pin-version`      |
-| `checkResolvedVersion`      | refuses a resolved package or version other than the pin's                                                                     | `app.connector-pin-version`      |
-| `readPackageSpec`           | reads `name@1.2.3` (npm) or `name==1.2.3` (PyPI), and refuses no version, a tag, a range, a URL or a git source                | `app.connector-pin-spec`         |
-| `isPackageRunner`           | whether a command starts `npx`, `uvx` or another runner, any folder, case and ending, or via a shell; 10c's `unpinned` too     | `app.package-runner-launch`      |
-| `checkPackageRunnerLaunch`  | refuses an inexact pin, a pin on a shell or other non-runner, and a pinned launch whose args or `env` could change what runs   | `app.package-runner-launch`      |
-| `revertParts`               | sets some parts of an item's YAML back to a reference (latest version, assistant's baseline or run's base), keeping the rest   | `app.revert-parts`               |
-| `describeWorkflowChange`    | one line per changed step or workflow field, each with the parts to undo it and the lines that can't be undone before it       | `app.change-line-parts`          |
-| `describeAgentChange`       | one line per changed agent field or method, each with its part; instructions, access and sandbox marked important              | `app.change-line-important`      |
-| `describeRoutineChange`     | one line per changed routine field, each with its part; what it runs marked important                                          | `app.change-line-important`      |
-| `describeItemChange`        | any kind: the workflow, agent or routine describer, or one "Changed", "New" or "Deleted" line without parts                    | `app.change-parts-cut`           |
+| Part                        | What it does                                                                                                                    | Requirement                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `CommandBus`                | typed commands, exactly one handler each                                                                                        | `app.command-bus`                |
+| `EventBus`                  | typed events, listeners in order, one failing listener stops nothing                                                            | `app.event-bus`                  |
+| `ServiceRegistry`           | services by typed key, disposed newest first                                                                                    | `app.service-registry`           |
+| `WorkspaceScope`            | the three above for one workspace, closed together                                                                              | `app.workspace-scope`            |
+| `WorkspaceFiles`            | unsaved changes by path, `save()` through the `DefinitionStore`                                                                 | `app.workspace-save`             |
+| `UndoHistory`               | one workspace-wide undo, 200 steps, typing in one file is one step                                                              | `app.workspace-undo`             |
+| `openWorkspace`             | a scope with the files service and `workspace.save`, `undo`, `redo`                                                             | `app.workspace-save`             |
+| `RoutineScheduler`          | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up                                                   | `app.routine-scheduler`          |
+| `RoutineOverlap`            | what a routine does with a due time while its run is going: skip, queue or allow                                                | `app.routine-overlap`            |
+| `QueuedTimes`               | a routine's queued due times (count, first, last), read with `RoutineScheduler.queuedTimes()` without a tick                    | `app.scheduler-reads-queue`      |
+| `SkipRecord`                | a routine's skipped due times with the reason, read with `RoutineScheduler.skippedTimes(key)`; late runs get `trigger.catchUp`  | `app.scheduler-keeps-skips`      |
+| `workspaceRoutineScheduler` | a `RoutineScheduler` on the real routines tick, filling `{{trigger.at}}` and `{{trigger.lastRun}}`                              | `app.workspace-routines`         |
+| `placedRoutines`            | every routine file of a loaded workspace with its hub, for the routine scheduler's `routines`                                   | `app.placed-routines`            |
+| `ChatService`               | chat outside a run: model turns through `RunExecutor.chatTurn`, the chat's tools run here, results fed back                     | `app.chat-turn-loop`             |
+| `defaultTurnLimit`          | an answer makes at most 16 model turns unless given 1 to 64, and runs the last turn's tools before it stops                     | `app.chat-turn-limit`            |
+| `ChatAnswerRequest.signal`  | Stop: passed on to the model turn and tools, a late model answer dropped, the calls left get a "Not run" result                 | `app.chat-stop`                  |
+| `ChatAnswerEnd`             | a failed or stopped answer says whether a tool already ran, which decides "Try again"                                           | `app.chat-failure`               |
+| `ChatAnswerListener`        | each model turn, tool call and added message as it happens, for the chat's status line                                          | `app.chat-progress`              |
+| `AgentPlacement`            | where an agent's harness runs: a sandbox unless a person chose this computer for the file as it is now                          | `app.agent-placement`            |
+| `RunHistory.listRuns`       | the newest real runs that match a filter, 20 unless a limit says otherwise, and how many match in all                           | `app.run-list`                   |
+| `RunHistory.showRun`        | one run, real or test, by its full or short id: the summary worked out from its log, and the log, oldest first                  | `app.run-show`                   |
+| `RunHistory.findRun`        | the run a typed id points to: the full id or the short id (`shortRunId`), in any case; none, or several with the same end       | `app.run-short-id`               |
+| `RunHistory.hasTestRuns`    | whether a workspace has test runs, so an empty run list can say it has only those                                               | `app.run-list-facts`             |
+| `RunHistory.madeToolCalls`  | whether a run's log has a tool call, so the list can say a run sent nothing                                                     | `app.run-list-facts`             |
+| `RunEvents.sendEvent`       | sends an event to a run only while it waits for it, answering the oldest waiting item; refuses with `RunEventRefused` otherwise | `app.run-send`                   |
+| `lookUpWorkflow`            | the workflow a typed id or `hub/id` points to; none, or several hubs with that id                                               | `app.workflow-lookup`            |
+| `WorkflowRuns.startRun`     | starts the workflow a typed id or `hub/id` points to and follows the run; none or several start nothing                         | `app.run-start`                  |
+| `WorkflowRuns.follow`       | a run's whole log until it ends or waits after a `seq`, missing no event; a signal stops following                              | `app.run-follow`                 |
+| `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only             | `app.connection-settings`        |
+| `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals    | `ports.untrusted-tool-listings`  |
+| `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                   | `ports.untrusted-tool-listings`  |
+| `listedToolsNotice`         | the fixed system prompt line saying an outside server wrote the fenced tool texts, when a listed tool is offered                | `ports.untrusted-tool-listings`  |
+| `checkToolCall`             | refuses arguments the offered parameters don't name, and asks before a tool above `read` runs                                   | `ports.untrusted-tool-listings`  |
+| `checkOutsideRunCall`       | a connector call from chat runs only if the lists allow it, sending is on for `send`, and `checkToolCall` wouldn't ask          | `app.outside-run-connector-gate` |
+| `refusalStatusLine`         | one line of plain text for a refusal in the integration status, never for the model                                             | `ports.untrusted-tool-listings`  |
+| `fenceUntrusted`            | puts outside text inside the untrusted fence, which holds when the text holds its markers                                       | `ports.untrusted-tool-listings`  |
+| `checkPinVersion`           | refuses a `ConnectorPin` whose version isn't one exact version, such as a tag (`latest`) or a range (`^2.3.1`)                  | `app.connector-pin-version`      |
+| `checkResolvedVersion`      | refuses a resolved package or version other than the pin's                                                                      | `app.connector-pin-version`      |
+| `readPackageSpec`           | reads `name@1.2.3` (npm) or `name==1.2.3` (PyPI), and refuses no version, a tag, a range, a URL or a git source                 | `app.connector-pin-spec`         |
+| `isPackageRunner`           | whether a command starts `npx`, `uvx` or another runner, any folder, case and ending, or via a shell; 10c's `unpinned` too      | `app.package-runner-launch`      |
+| `checkPackageRunnerLaunch`  | refuses an inexact pin, a pin on a shell or other non-runner, and a pinned launch whose args or `env` could change what runs    | `app.package-runner-launch`      |
+| `revertParts`               | sets some parts of an item's YAML back to a reference (latest version, assistant's baseline or run's base), keeping the rest    | `app.revert-parts`               |
+| `describeWorkflowChange`    | one line per changed step or workflow field, each with the parts to undo it and the lines that can't be undone before it        | `app.change-line-parts`          |
+| `describeAgentChange`       | one line per changed agent field or method, each with its part; instructions, access and sandbox marked important               | `app.change-line-important`      |
+| `describeRoutineChange`     | one line per changed routine field, each with its part; what it runs marked important                                           | `app.change-line-important`      |
+| `describeItemChange`        | any kind: the workflow, agent or routine describer, or one "Changed", "New" or "Deleted" line without parts                     | `app.change-parts-cut`           |
 
 ## Example
 
