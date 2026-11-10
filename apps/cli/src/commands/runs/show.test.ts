@@ -15,6 +15,7 @@ import {
   storeRuns as storeAcmeRuns,
   today,
   waiting,
+  writeFiles,
 } from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { runsCommandWith } from "./command.ts";
@@ -97,6 +98,76 @@ verifies("cli.commands.runs.show", () => {
       expect(io.stdout[0]).toBe(
         "Support reply in acme · test run a1b2c3 · started 10:31, finished 10:31",
       );
+    });
+  });
+
+  describe("the steps and the receipt", () => {
+    /** Mail triage: Writer reads the email, then the run ends. */
+    const mailTriage = [
+      "id: mail-triage",
+      "name: Mail triage",
+      "initial: read",
+      "states:",
+      "  read:",
+      "    description: Read the email",
+      "    agent: writer",
+      "    on:",
+      "      - to: done",
+      "  done:",
+      "    type: final",
+      "",
+    ].join("\n");
+
+    const triaged = (id: string, after: NonNullable<StoredRun["after"]>): StoredRun => ({
+      id,
+      workflowId: "mail-triage",
+      start: today("10:20:00"),
+      after: [
+        [today("10:20:00"), { type: "state.entered", state: "read" }],
+        [today("10:20:00"), { type: "agent.started", state: "read", agent: "writer", prompt: "" }],
+        ...after,
+      ],
+    });
+
+    beforeEach(async () => {
+      await writeFiles(acme, {
+        "hubs/support/workflows/mail-triage.workflow.yaml": mailTriage,
+        "hubs/support/agents/writer.agent.yaml":
+          "id: writer\nname: Writer\ninstructions: Read it.\n",
+      });
+    });
+
+    it("prints a finished run as a finished halonic run ends", async () => {
+      await storeRuns(
+        triaged("run_mfx3k2a1_0a0b0c", [
+          [today("10:20:01"), { type: "state.entered", state: "done" }],
+          [today("10:20:18"), { type: "run.completed", state: "done", context: {} }],
+        ]),
+      );
+
+      const { code, io } = await showIn(acme, "0a0b0c");
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout).toEqual([
+        "Mail triage in acme · run 0a0b0c · started 10:20, finished 10:20",
+        "",
+        "✓ Read the email   Writer   1 s",
+        "",
+        "✓ Mail triage finished in 18 s.",
+        "  Sent nothing",
+      ]);
+    });
+
+    it("ends a running run with the step it is in", async () => {
+      await storeRuns(triaged("run_mfx3k2a1_0a0b0d", []));
+
+      const { io } = await showIn(acme, "0a0b0d");
+
+      expect(io.stdout).toEqual([
+        "Mail triage in acme · run 0a0b0d · started 10:20, still running",
+        "",
+        "◌ Read the email   Writer · running since 10:20",
+      ]);
     });
   });
 

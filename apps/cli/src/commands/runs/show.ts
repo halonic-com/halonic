@@ -1,13 +1,14 @@
 // `halonic runs show <run-id>`: what one run did, read from its run log
 // (cli-output 3.4, C174 on HAL-2000). A thin command over `RunHistory`, the
 // service the Studio's run page reads too: this file finds the run by the id
-// the user typed, and turns its summary into the heading. It never prints
+// the user typed, and prints the heading, the step lines and, once the run
+// has finished, its receipt (`run-view.ts`, shared with `halonic run`). It never prints
 // where the run log is (Liam, HAL-1984). The words are the catalogue's
 // (`runsMessages`).
 
 import { hubWorkflows, type RunDetail, RunHistory, shortRunId, workflowIn } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
-import { loadWorkspace } from "@halonicjs/workspace";
+import { definitionsOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -16,10 +17,13 @@ import {
   UsageError,
 } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
-import type { Phrase } from "../../messages/phrase.ts";
+import { duration } from "../../messages/duration.ts";
+import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
+import { runMessages } from "../../messages/run.ts";
 import { runsMessages, type ShownEnd } from "../../messages/runs.ts";
 import { startedInWords } from "../../messages/runs-list.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
+import { type RunDefinitions, receiptOf, stepLines } from "../../run-view.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import type { RunListSetup } from "./list.ts";
@@ -59,14 +63,19 @@ export async function showRun(
         runsMessages.severalRunsFix(dir),
       );
     case "one": {
-      const workflows = hubWorkflows(await loadWorkspace(workspace.store));
-      const { summary } = lookup.run;
-      const title =
-        workflowIn(workflows, summary.hubId, summary.workflowId)?.name ?? summary.workflowId;
+      const { run } = lookup;
+      const definitions = runDefinitions(await loadWorkspace(workspace.store), run.summary);
+      const title = definitions.workflow?.name ?? run.summary.workflowId;
+      const clock = setup.clock();
+      const steps = stepLines(run.events, run.summary, definitions, clock);
       return {
         exitCode: exitCode.ok,
-        lines: [heading(lookup.run, title, workspace, setup.clock())],
-        json: { events: lookup.run.events },
+        lines: [
+          heading(run, title, workspace, clock),
+          ...(steps.length === 0 ? [] : [[], ...steps]),
+          ...ending(run, title),
+        ],
+        json: { events: run.events },
       };
     }
   }
@@ -79,6 +88,43 @@ function oneRunId(input: CommandInput): string {
     throw new UsageError(runsMessages.showTakesOneRunId(input.positionals));
   }
   return runId;
+}
+
+/**
+ * The definitions the run's steps are named by, from its own hub. A hub
+ * that's no longer in the workspace leaves the workflow and its agents
+ * unknown, so the steps are named by their ids.
+ */
+function runDefinitions(loaded: LoadedWorkspace, summary: RunSummary): RunDefinitions {
+  const workflow = workflowIn(hubWorkflows(loaded), summary.hubId, summary.workflowId);
+  if (workflow === undefined) {
+    return { workflow, agent: () => undefined };
+  }
+  const { agents } = definitionsOf(loaded, summary.hubId);
+  return {
+    workflow,
+    agent: (agentId) => (Object.hasOwn(agents, agentId) ? agents[agentId] : undefined),
+  };
+}
+
+/**
+ * What follows the step lines of a finished run: "✓ Support reply finished
+ * in 18 s." and the receipt under it, as a finished `halonic run` ends. A
+ * running run ends with its step lines. A failed or stopped run's ✕ lines
+ * and a waiting run's lines come with `run`'s own (HAL-2742).
+ */
+function ending(run: RunDetail, title: string): Phrase[] {
+  const { summary } = run;
+  if (summary.status !== "completed") {
+    return [];
+  }
+  const took = Date.parse(summary.endedAt ?? summary.updatedAt) - Date.parse(summary.startedAt);
+  const receipt = runMessages.receipt(receiptOf(run.events, summary)).phrase;
+  return [
+    [],
+    phrase`${markPart("done")} ${runMessages.finished(title, duration(took)).phrase}`,
+    ...(receipt.length === 0 ? [] : [phrase`  ${receipt}`]),
+  ];
 }
 
 /** "Support reply in acme · run 01jd8q · started 14:01, finished 14:02". */

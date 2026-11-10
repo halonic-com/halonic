@@ -4,13 +4,19 @@
 - Since: 0.1.0
 - Source: HAL-2742; C174 on HAL-2000 and HAL-1984; the CLI output design on HAL-1981 (cli-output section 3.4, "`halonic runs show <run-id>`" and "Which id", revisions 24 to 38), approved by the board on HAL-2123
 
-The `halonic runs show <run-id>` command shall show one run of the workspace, real or test, found by its short id or its full id in any case. It shall start with the heading: the workflow's title, the workspace, "run" or "test run" with the short id, when it started and how it ended, with times written by the list's When rule. With `--json`, it shall give the run's events, oldest first, with full ids. It shall never print where the run log is. It shall exit 0 for any run it shows, failed or not. An unknown id shall stop with "There's no run" and the way to the list (`not_found`); a short id that two runs end in shall stop with the way to the full ids (`invalid_input`); no run id or more than one shall be a usage error. Every suggested command shall keep the user's `--dir`.
+The `halonic runs show <run-id>` command shall show one run of the workspace, real or test, found by its short id or its full id in any case. It shall start with the heading: the workflow's title, the workspace, "run" or "test run" with the short id, when it started and how it ended, with times written by the list's When rule. After the heading and a blank line it shall print one line per step the run reached, as `cli.run-view` lines them up; a finished run shall then end as a finished `halonic run` does, with "✓ <title> finished in <duration>." and the receipt indented under it. With `--json`, it shall give the run's events, oldest first, with full ids. It shall never print where the run log is. It shall exit 0 for any run it shows, failed or not. An unknown id shall stop with "There's no run" and the way to the list (`not_found`); a short id that two runs end in shall stop with the way to the full ids (`invalid_input`); no run id or more than one shall be a usage error. Every suggested command shall keep the user's `--dir`.
 
 ## Examples
 
 - Given a run of Support reply that finished at 10:31,
   when `halonic runs show a1b2c3` is run,
   then it starts with "Support reply in acme · run a1b2c3 · started 10:31, finished 10:31" and exits 0.
+- Given a run of Mail triage whose step Read the email took 1 s and that finished in 18 s without a tool call,
+  when `halonic runs show 0a0b0c` is run,
+  then after the heading it prints "", "✓ Read the email Writer 1 s", "", "✓ Mail triage finished in 18 s." and " Sent nothing".
+- Given a run still in its step Read the email since 10:20,
+  when `halonic runs show 0a0b0d` is run,
+  then it ends with "◌ Read the email Writer · running since 10:20".
 - Given a run that failed yesterday at 16:41,
   when `halonic runs show 01jd6m` is run,
   then its heading ends "started yesterday 16:40, failed yesterday 16:41", on stdout, and it exits 0.
