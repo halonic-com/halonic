@@ -98,7 +98,9 @@ verifies("app.run-list", () => {
       await expect(history.listRuns({}, limit)).rejects.toThrow(RangeError);
     });
   });
+});
 
+verifies("app.run-list-facts", () => {
   describe("hasTestRuns", () => {
     it("says the workspace has test runs when it has only those", async () => {
       const store = new MemoryRuns();

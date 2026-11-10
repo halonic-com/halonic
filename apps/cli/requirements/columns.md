@@ -10,7 +10,7 @@ When the `halonic` command prints lines in columns, it shall make each column as
 
 - Given the rows "✓ Done", "01jd8q" and "! Needs you", "01jd9a",
   when they are printed in a stream that shows the Unicode marks,
-  then the lines read "✓ Done        01jd8q" and "! Needs you   01jd9a".
+  then the lines read `✓ Done        01jd8q` and `! Needs you   01jd9a`.
 - Given the rows "✓ Done", "01jd8q" and "◌ Running", "01jd9c",
   when they are printed in a stream that isn't UTF-8, where ✓ reads "ok" and ◌ reads "..",
-  then the lines read "ok Done      01jd8q" and ".. Running   01jd9c", and the ids still line up.
+  then the lines read `ok Done      01jd8q` and `.. Running   01jd9c`, and the ids still line up.

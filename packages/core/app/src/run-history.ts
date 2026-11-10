@@ -89,7 +89,7 @@ export class RunHistory {
 
   /**
    * Whether the workspace has test runs, which the list never shows, so an
-   * empty list can say "only test runs" (requirement `app.run-list`).
+   * empty list can say "only test runs" (requirement `app.run-list-facts`).
    */
   async hasTestRuns(): Promise<boolean> {
     return (await this.#runs.list({ kind: "test" })).length > 0;
@@ -97,7 +97,8 @@ export class RunHistory {
 
   /**
    * Whether the run's log has a tool call. A run "sent nothing" only when it
-   * made none (cli-output 3.4, revision 32); the summary doesn't say.
+   * made none (cli-output 3.4, revision 32); the summary doesn't say
+   * (requirement `app.run-list-facts`).
    *
    * @example
    * await history.madeToolCalls("run_mfx3k2a1_a1b2c3d4"); // true
