@@ -30,7 +30,8 @@ export default {
   async fetch(request, env) {
     // Spend check first: when paused, nothing else (auth, R2) runs.
     if (!(await checkSpend(env, "turbo-cache"))) return spendOffResponse();
-    if (!(await authorized(request, await readToken(env)))) return json({ error: "unauthorized" }, 401);
+    if (!(await authorized(request, await readToken(env))))
+      return json({ error: "unauthorized" }, 401);
     const { pathname } = new URL(request.url);
     const { method } = request;
 
