@@ -25,8 +25,9 @@ const noTerminal = () =>
     "Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
   );
 
-function ask(terminal: QuestionTerminal, allowed = true): Promise<boolean> {
+function ask(terminal: QuestionTerminal, allowed = true, yes = false): Promise<boolean> {
   return askYesNo(trust.question(), {
+    yes,
     canAsk: allowed,
     terminal,
     render: (message: Message) => plainText(message.phrase),
@@ -81,5 +82,28 @@ verifies("cli.questions", () => {
     const terminal = typing("y");
     await expect(ask(terminal, false)).rejects.toThrow("there's no terminal to ask you");
     expect(terminal.written).toEqual([]);
+  });
+
+  describe("with --yes", () => {
+    /** A terminal that fails the test if anything is asked or read. */
+    const untouched: QuestionTerminal = {
+      write: (text) => expect.unreachable(`wrote ${JSON.stringify(text)}`),
+      readLine: () => expect.unreachable("read stdin"),
+    };
+
+    it("takes yes without asking, even in a terminal", async () => {
+      expect(await ask(untouched, canAsk(inputs()), true)).toBe(true);
+    });
+
+    it("prints no question text with --json", async () => {
+      expect(await ask(untouched, canAsk(inputs({ json: true })), true)).toBe(true);
+    });
+
+    it("still refuses without a terminal when --yes isn't given", async () => {
+      const allowed = canAsk(inputs({ stdinIsTerminal: false }));
+      await expect(ask(untouched, allowed, false)).rejects.toThrow(
+        "there's no terminal to ask you",
+      );
+    });
   });
 });

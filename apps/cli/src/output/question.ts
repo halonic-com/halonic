@@ -30,6 +30,12 @@ export interface QuestionTerminal {
 }
 
 export interface AskOptions {
+  /**
+   * Whether the command's `--yes` already answered the question. The
+   * command decides it: `trust` counts `--yes` only with a matching
+   * `--fingerprint` (cli-output 1.7).
+   */
+  readonly yes: boolean;
   /** Whether a question may be asked, from {@link canAsk}. */
   readonly canAsk: boolean;
   readonly terminal: QuestionTerminal;
@@ -48,11 +54,17 @@ export interface AskOptions {
  * Asks a yes-or-no question with `[y/N]` (cli-output 1.7) and returns
  * whether the answer was yes. No is the careful default: only "y" or "yes"
  * count as yes, and an empty line or the end of stdin is no. When
- * {@link AskOptions.canAsk} is false it asks nothing and throws the refusal.
+ * {@link AskOptions.yes} is true it asks nothing and returns yes, even in a
+ * terminal, so a script that passes `--yes` never waits on stdin. Otherwise,
+ * when {@link AskOptions.canAsk} is false, it asks nothing and throws the
+ * refusal.
  *
  * @param question - the question, such as "Trust Acme on this computer?"
  */
 export async function askYesNo(question: Message, options: AskOptions): Promise<boolean> {
+  if (options.yes) {
+    return true;
+  }
   if (!options.canAsk) {
     throw options.refusal();
   }
