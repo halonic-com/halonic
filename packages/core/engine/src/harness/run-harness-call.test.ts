@@ -167,6 +167,18 @@ verifies("engine.run-harness-failures", () => {
     expect(ports.steps).toEqual(["bridge.open", "bridge.close"]);
   });
 
+  it("closes the sandbox when sandbox.opened can't be written", async () => {
+    const ports = harnessPorts();
+    const log = {
+      append: async (event: RunEventBody) => {
+        if (event.type === "sandbox.opened") throw new Error("The disk is full.");
+      },
+    };
+
+    await expect(runHarnessCall(ports.options, call, log)).rejects.toThrow("The disk is full.");
+    expect(ports.steps).toEqual(["bridge.open", "sandbox.open", "session.close", "bridge.close"]);
+  });
+
   it("fails with harness-start-failed when the program fails before its first event", async () => {
     const ports = harnessPorts();
     ports.harness.error = new Error("claude: command not found");

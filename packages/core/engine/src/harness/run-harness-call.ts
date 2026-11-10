@@ -131,12 +131,18 @@ async function openSandbox(
       { cause: error },
     );
   }
-  const view = sandboxOpenedView(session.profile, {
-    strength: sandbox.capabilities().strength,
-    home: options.home,
-    deniedGroups,
-  });
-  await log.append({ type: "sandbox.opened", state, agent, sandbox: view });
+  try {
+    const view = sandboxOpenedView(session.profile, {
+      strength: sandbox.capabilities().strength,
+      home: options.home,
+      deniedGroups,
+    });
+    await log.append({ type: "sandbox.opened", state, agent, sandbox: view });
+  } catch (error) {
+    // The caller closes only a session it got back.
+    await session.close();
+    throw error;
+  }
   return session;
 }
 
