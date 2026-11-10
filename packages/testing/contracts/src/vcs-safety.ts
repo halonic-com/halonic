@@ -82,24 +82,21 @@ function optionLikeCases(make: MakeVcs): void {
     expect(await files.read("keep.yaml")).toBe("keep\n");
   });
 
-  // One history for every message, so `--amend` can be caught replacing a commit: a few
-  // dozen git processes in a row. That takes about 1 s on a laptop but over 5 s on cold,
-  // uncached CI runners (HAL-3828), so this waits longer than vitest's 5 s.
-  it("commits a message that is a git option as the message", { timeout: 20_000 }, async () => {
+  // One repository per message, so each test runs only a few git commands and stays well inside
+  // its time limit on a busy CI runner.
+  it.each(optionLikeMessages)("commits the message %j as the message", async (message) => {
     const { vcs, files } = await make.repo({ "a.yaml": "0\n" });
     const [first] = await vcs.log(1);
-    for (const [index, message] of optionLikeMessages.entries()) {
-      await files.write("a.yaml", `${index + 1}\n`);
-      await vcs.stage(["a.yaml"]);
-      const hash = await vcs.commit(message);
-      const [latest] = await vcs.log(1);
-      expect(latest, message).toMatchObject({ hash, message });
-      expect(latest?.author, message).not.toContain("Mallory");
-    }
-    // `--amend` must not have replaced a commit: every one is still there.
-    const all = await vcs.log(optionLikeMessages.length + 5);
-    expect(all).toHaveLength(optionLikeMessages.length + 1);
-    expect(all.at(-1)).toEqual(first);
+    await files.write("a.yaml", "1\n");
+    await vcs.stage(["a.yaml"]);
+    const hash = await vcs.commit(message);
+
+    const all = await vcs.log(5);
+    expect(all[0]).toMatchObject({ hash, message });
+    expect(all[0]?.author).not.toContain("Mallory");
+    // `--amend` must not have replaced the first commit: it's still there, unchanged.
+    expect(all).toHaveLength(2);
+    expect(all[1]).toEqual(first);
   });
 }
 
