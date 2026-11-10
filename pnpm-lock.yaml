@@ -274,6 +274,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/adapter-env-secrets':
+        specifier: workspace:*
+        version: link:../../packages/adapters/env-secrets
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node

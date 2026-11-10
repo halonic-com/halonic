@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `run` and `runs` from cli-output 3.4 at revision 24, with the team's calls on HAL-2703; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703; the sentences of `doctor` and the sandbox check from cli-output 3.7 and 3.8 at revision 24, with sandbox-screens 3.1 and the team's calls on HAL-2703 (HAL-2676); the sentences of the `halonic runs` list from cli-output 3.4 at revision 28 (HAL-2739); a failed test's other expectations from cli-output 3.3 at revision 23 (HAL-2676, HAL-2690)
+- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `run` and `runs` from cli-output 3.4 at revision 24, with the team's calls on HAL-2703; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703; the sentences of `doctor` and the sandbox check from cli-output 3.7 and 3.8 at revision 24, with sandbox-screens 3.1 and the team's calls on HAL-2703 (HAL-2676); the sentences of the `halonic runs` list from cli-output 3.4 at revision 28 (HAL-2739); a failed test's other expectations from cli-output 3.3 at revision 23 (HAL-2676, HAL-2690); a failed run's line 1 for every settled 15.3 reason from cli-output 3.4 at revision 23 (HAL-2676, HAL-2690)
 
 The `halonic` command shall take every sentence it shows the user from the CLI's message catalogue, where the sentence has a key made of its area and its name, such as `usage.unknownCommand`. A sentence shall have the same words in a terminal, through a pipe and in `--json`: colour, bold, dim and the marks' plain-text stand-ins shall be the only difference.
 
@@ -44,6 +44,9 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given `halonic runs --status failed --workflow support-reply` in acme, which matches no run,
   when its two lines are made,
   then line 1 reads "No failed runs of support-reply in acme." and line 2, dimmed, "See every run with halonic runs." (cli-output 3.4).
+- Given a run of Support reply that reached its own budget of €5.00 in the step Draft reply, with an estimated €5.08 spent,
+  when its two lines are made,
+  then they read "Support reply stopped in the step Draft reply: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Raise the budget in models.yaml.", because a run's budget doesn't reset (cli-output 3.4 revision 23).
 - Given `halonic trust` without a terminal and without `--yes --fingerprint`,
   when its refusal is made,
   then line 1 reads "Acme isn't trusted on this computer yet, and there's no terminal to ask you." and line 2 names the flags, with the user's own `--dir` (cli-output 1.7 and 3.5).
