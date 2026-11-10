@@ -112,13 +112,17 @@ verifies("engine.local-chat-turn", () => {
     await expect(executor.chatTurn(request)).rejects.toThrow("no model with alias fast");
   });
 
-  describe("runs, which the kernel adds later", () => {
+  describe("without runs", () => {
     const { executor } = executorOn(new ScriptedModel([]));
+    const start = { hubId: "acme", workflowId: "reply", input: {} };
 
     it("rejects starts and sends", async () => {
-      await expect(executor.start()).rejects.toThrow("can't start runs yet");
-      await expect(executor.startAgent()).rejects.toThrow("can't startAgent runs yet");
-      await expect(executor.send()).rejects.toThrow("can't send runs yet");
+      await expect(executor.start(start)).rejects.toThrow("runs chat turns only");
+      await expect(executor.startAgent()).rejects.toThrow("can't start agent runs yet");
+      await expect(executor.send("run_1", "approve")).rejects.toThrow("runs chat turns only");
+      await expect(
+        executor.onTimer({ key: "run_1", timerId: "call:call-1", at: "" }),
+      ).resolves.toBeUndefined();
     });
 
     it("closes a subscription with an error after it returns, never throwing", async () => {
@@ -129,7 +133,7 @@ verifies("engine.local-chat-turn", () => {
       executor.subscribe("run_2", 0, listener).close();
       await Promise.resolve();
       expect(closed.map((error) => error?.message)).toEqual([
-        "The local executor can't subscribe runs yet; it only runs chat turns for now.",
+        "This local executor runs chat turns only: it was created without `runs`.",
       ]);
     });
   });

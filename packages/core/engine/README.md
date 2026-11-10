@@ -9,7 +9,9 @@ loop of one model turn, which the local chat turn runs.
 
 | Part                 | What it does                                                                                                                 | Requirement                                                                         |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `LocalExecutor`      | the `RunExecutor` that runs the engine in this process; for now it runs chat turns only                                      | `engine.local-chat-turn`                                                            |
+| `LocalExecutor`      | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs                       | `engine.local-chat-turn`, `engine.local-runs`                                       |
+|                      | streams a run's events from the store to `subscribe`, in order, and closes the stream once the run has ended                 | `engine.local-run-subscribe`                                                        |
+|                      | fails a run whose call fails, with the reason `runFailureReasonOf` gives the error                                           | `engine.run-call-fails`                                                             |
 | `runModelTurn`       | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again    | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return`                    |
 |                      | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name         | `engine.turn-round-limit`, `engine.turn-tool-names`                                 |
 |                      | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
@@ -80,19 +82,30 @@ carries `snapshotVersion`, and one that doesn't fit the log is ignored. A run re
 only from the blob its `definitionsVersion` names; when that blob is missing the run fails, and the
 engine never falls back to the workspace's files.
 
+The local executor drives `step`. `start` and `send` record the input and set a `Scheduler` timer
+for each effect, then return; the run goes on when the timer is due, so the scheduler's listener
+forwards its timers to `LocalExecutor.onTimer`. A model call is carried out from the run's state
+(`pendingCall` keeps the prompt), so it survives a restart, and a timer that is late or delivered
+twice changes nothing. A failed call becomes an `effect-failed` input, and the run fails with the
+reason `runFailureReasonOf` gives. For now a run's model call sends the state's prompt to its agent's
+model without tools; tools, the agent's own prompt and the run log of the call come with the agent
+loop. `subscribe` reads every event from the store, after each append the executor makes; it
+assumes one engine per run store, as `endInterruptedRuns` does.
+
 Each folder in `src/states` exports `<folder>State` from its `state.ts`. `pnpm discover` lists
 them in `src/generated/states.ts`, typed against `StateRegistry`, so a missing or extra folder
 fails typecheck. The registry covers `BuiltStateType`, the types built so far (`task`, `final`);
 it widens as each state lands, until it is the format's whole `StateType` union. A run that enters
 a type not built yet fails with a clear error.
 
-On start, the engine calls `endInterruptedRuns` once: each run it lost when it stopped (status
-`running`) ends with `run.failed`, reason `interrupted`, the state the run was in, the time of the
-start and the text `interruptedError`. Waiting runs (for an event, a timer or a child run) stay as
-they are. Status and last event come from one read of the log; if the log moves on while the
-engine ends a run, something still writes to it, so the engine leaves it as it is. It returns the
-ids of the runs it ended (requirement `engine.end-interrupted-runs`). It assumes one engine per
-run store, and waking a parent that waits on a run it ended is the run kernel's job (HAL-186).
+Before it starts or resumes its first run, the local executor calls `endInterruptedRuns` once:
+each run it lost when it stopped (status `running`) ends with `run.failed`, reason `interrupted`,
+the state the run was in, the time of the start and the text `interruptedError`. Waiting runs (for
+an event, a timer or a child run) stay as they are. Status and last event come from one read of
+the log; if the log moves on while the engine ends a run, something still writes to it, so the
+engine leaves it as it is. It returns the ids of the runs it ended (requirement
+`engine.end-interrupted-runs`). It assumes one engine per run store, and waking a parent that waits
+on a run it ended is the run kernel's job (HAL-186).
 
 ## Example
 
