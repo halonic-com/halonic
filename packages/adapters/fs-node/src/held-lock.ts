@@ -15,6 +15,7 @@ import {
   isStale,
   ownRecord,
   readLock,
+  readTakenLock,
   releaseLock,
   removeStale,
 } from "./run-lock.ts";
@@ -100,13 +101,13 @@ export async function holdLock(file: string, options: HoldLockOptions): Promise<
   };
   const renewOnce = async () => {
     try {
-      const renewed = await renew(file, ownText, system);
-      if (renewed === null) {
+      const renewal = await renew(file, ownText, system);
+      if ("lostBecause" in renewal) {
         released = true;
-        options.onLost(new Error(`The lock ${file} was taken over by another process.`));
+        options.onLost(new Error(`The lock ${file} ${renewal.lostBecause}.`));
         return;
       }
-      ownText = renewed;
+      ownText = renewal.renewedText;
     } catch (error) {
       options.onRenewError(error);
     }
@@ -136,7 +137,7 @@ async function takeOrRefuse(file: string, system: BusySystem): Promise<string> {
     if (await retryWhileBusy(() => createExclusive(file, ownText), system)) {
       return ownText;
     }
-    const found = await retryWhileBusy(() => readLock(file), system);
+    const found = await readTakenLock(file, system);
     if (found === null) {
       // Released between our create and our read: try again straight away.
       continue;
@@ -148,20 +149,30 @@ async function takeOrRefuse(file: string, system: BusySystem): Promise<string> {
   }
 }
 
+/** A renewal's outcome: the lock's new text, or why the lock was lost. */
+type Renewal = { renewedText: string } | { lostBecause: string };
+
 /**
  * Writes this process's record into the lock again, with `takenAt` now, and
- * gives its text; or `null` when the lock doesn't hold `ownText` any more.
- * The new record replaces the old one whole, by a rename, so another
- * process never reads half of it.
+ * gives its text; or why the lock is lost: it doesn't hold `ownText` any
+ * more, or it is older than the stale limit. The new record
+ * replaces the old one whole, by a rename, so another process never reads
+ * half of it.
  *
- * Between the check and the rename, another process could remove the lock
- * as stale and take it. It may only once this process has missed its
- * renewals for the whole stale limit, three renewals in a row.
+ * A lock older than the stale limit (this process missed its renewals, say
+ * while the computer slept) may be in the middle of being taken over by
+ * another process right now. Renewing it could overwrite that process's
+ * fresh lock, so it is given up instead, and removed while it is still
+ * this process's.
  */
-async function renew(file: string, ownText: string, system: BusySystem): Promise<string | null> {
+async function renew(file: string, ownText: string, system: BusySystem): Promise<Renewal> {
   const found = await retryWhileBusy(() => readLock(file), system);
   if (found?.text !== ownText) {
-    return null;
+    return { lostBecause: "was taken over by another process" };
+  }
+  if (isStale(found, Date.now())) {
+    await retryWhileBusy(() => releaseLock(file, ownText), system);
+    return { lostBecause: "wasn't renewed within the stale limit, so it was given up" };
   }
   const renewedText = JSON.stringify(ownRecord());
   const next = `${file}.${randomUUID()}.renew`;
@@ -171,5 +182,5 @@ async function renew(file: string, ownText: string, system: BusySystem): Promise
   } finally {
     await rm(next, { force: true });
   }
-  return renewedText;
+  return { renewedText };
 }

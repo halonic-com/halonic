@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4032; `RunLockRecord` in the `RunStore` port
+- Source: HAL-4032; HAL-4062; `RunLockRecord` in the `RunStore` port
 
-The `holdLock` function shall take a lock file for as long as one process holds it, such as the one engine of a workspace, with an exclusive create and a `RunLockRecord` as JSON, as the run store's lock does (`fs-node.run-store-lock`). It shall remove a stale lock as the port's rules allow, and refuse with a `LockHeldError` that names the holder when a live process holds the lock, without waiting. While it holds the lock, it shall renew it every third of `runLockStaleAfterMs`, writing its record again with `takenAt` now and replacing the file whole, so the lock never counts as stale while its holder runs. When the lock doesn't hold its record any more, another process has taken it over: it shall stop renewing and tell the holder the lock is lost. A renewal that fails shall be reported and tried again at the next one. Releasing shall stop the renewals and remove the lock only while it holds its own record.
+The `holdLock` function shall take a lock file for as long as one process holds it, such as the one engine of a workspace, with an exclusive create and a `RunLockRecord` as JSON, as the run store's lock does (`fs-node.run-store-lock`). It shall remove a stale lock as the port's rules allow, and refuse with a `LockHeldError` that names the holder when a live process holds the lock, without waiting. While it holds the lock, it shall renew it every third of `runLockStaleAfterMs`, writing its record again with `takenAt` now and replacing the file whole, so the lock never counts as stale while its holder runs. When the lock doesn't hold its record any more, another process has taken it over: it shall stop renewing and tell the holder the lock is lost. When its own record is already older than `runLockStaleAfterMs` at a renewal, as after the computer slept, another process may be taking it over, so it shall remove its lock while it still holds its own record, stop renewing and tell the holder the lock is lost, instead of renewing it (HAL-4062). A renewal that fails shall be reported and tried again at the next one. Releasing shall stop the renewals and remove the lock only while it holds its own record.
 
 ## Examples
 

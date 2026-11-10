@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
-import { type RunLockRecord, runLockFormat } from "@halonicjs/ports";
+import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -149,6 +149,36 @@ verifies("fs-node.held-lock", () => {
     await lock.release();
     expect(await readFile(file, "utf8")).toBe(other);
   });
+
+  it("gives up its lock as lost when it missed renewing it for the stale limit", async () => {
+    const file = await lockFile();
+    const lock = await hold(file);
+    const taken = await heldRecord(file);
+    // The computer slept past the stale limit, so another process may be taking it over now.
+    vi.useFakeTimers({
+      toFake: ["Date"],
+      now: Date.parse(taken.takenAt) + runLockStaleAfterMs + 1,
+    });
+
+    await renewNow();
+
+    expect(lost).toEqual([
+      new Error(`The lock ${file} wasn't renewed within the stale limit, so it was given up.`),
+    ]);
+    expect(planned).toHaveLength(1);
+    await expect(readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+    await lock.release();
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "fails instead of trying for ever when the lock is a link to a missing file",
+    async () => {
+      const file = await lockFile();
+      await symlink(join(file, "..", "missing"), file);
+
+      await expect(hold(file)).rejects.toThrow("is a link to a file that isn't there");
+    },
+  );
 
   it("reports a failed renewal and tries again at the next one", async () => {
     const file = await lockFile();
