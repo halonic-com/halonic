@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
+import { verifies } from "../verifies.ts";
 import { expectSpecFile } from "./spec-file.ts";
-import { verifies } from "./verifies.ts";
 
 const schema = { type: "object", properties: { name: { type: "string" } } };
 

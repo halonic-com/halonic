@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expectSpecFile, verifies } from "@halonicjs/testing-spec";
+import { verifies } from "@halonicjs/testing-spec";
+import { expectSpecFile } from "@halonicjs/testing-spec/node";
 import { expect, it } from "vitest";
 import { jsonSchemaOf, type KindName, kindNames, SCHEMA_VERSION } from "./index.ts";
 import { specName } from "./json-schema.ts";

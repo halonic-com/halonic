@@ -4,7 +4,7 @@ Links tests to requirement IDs with verifies(), records which requirements ran a
 
 - **Layer:** testing
 - **Owner:** julian
-- **Public API:** `verifies`, `requirementIdPattern`, `typeTest`, `expectSpecFile`
+- **Public API:** `verifies`, `requirementIdPattern`, `typeTest`; `expectSpecFile` from `@halonicjs/testing-spec/node` (it needs Node)
 
 `verifies(id, body)` is `describe` with the requirement ID as its title. It
 also tags every test inside with the ID, and Vitest writes that tag into its
