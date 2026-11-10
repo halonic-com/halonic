@@ -85,8 +85,9 @@ function joinedFacts(facts: readonly string[]): Phrase {
 /**
  * "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject)".
  * Three or more events read "(or reject, hold or skip)" (revision 37). The event stays, since it is
- * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072). A label is the
- * author's free text, so it is escaped (cli-output section 5).
+ * what the user types; a label follows it, as in "approve (Send reply)" (HAL-4072). A label that
+ * only repeats its event, as "Approve" for approve, is left out (HAL-4190). A label is the author's
+ * free text, so it is escaped (cli-output section 5).
  */
 function answerLine(
   runId: string,
@@ -96,7 +97,7 @@ function answerLine(
 ): Phrase {
   const labelOf = (event: string) => {
     const label = labels[event];
-    return label === undefined ? undefined : printable(label);
+    return label === undefined || repeatsEvent(label, event) ? undefined : printable(label);
   };
   const labelled = (event: string) => {
     const label = labelOf(event);
@@ -113,6 +114,16 @@ function answerLine(
     return line;
   }
   return phrase`${line}  ${dim(`(or ${listInWords(others.map(labelled), "or")})`)}`;
+}
+
+/**
+ * Whether a label says nothing its event doesn't: the two match apart from case, spaces, dashes and
+ * underscores, as "Needs changes" and needs_changes do. Nothing looser, so "Send it" for approve
+ * still shows (HAL-4190).
+ */
+function repeatsEvent(label: string, event: string): boolean {
+  const bare = (text: string) => text.toLowerCase().replace(/[\s_-]/g, "");
+  return bare(label) === bare(event);
 }
 
 /** "Changed 1 file · sent 1 email · asked you once · estimated cost €0.004". */

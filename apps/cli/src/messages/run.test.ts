@@ -80,6 +80,28 @@ describe("run's sentences", () => {
     );
   });
 
+  it("leaves out a label that only repeats its event, apart from case, spaces, dashes and underscores", () => {
+    const repeats = { approve: "Approve", reject: "REJECT", needs_changes: "Needs changes" };
+    expect(
+      words(
+        runMessages.answerHere(
+          "01jd8q",
+          ["approve", "reject", "needs_changes"],
+          undefined,
+          repeats,
+        ),
+      ),
+    ).toBe(
+      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve  (or reject or needs_changes)",
+    );
+    const differs = { approve: "Send it", "needs-changes": "Needs change" };
+    expect(
+      words(runMessages.answerHere("01jd8q", ["approve", "needs-changes"], undefined, differs)),
+    ).toBe(
+      "Answer in Studio's Inbox, or here: halonic runs send 01jd8q approve (Send it)  (or needs-changes (Needs change))",
+    );
+  });
+
   it("escapes a label's control characters, since the label comes from the workflow file", () => {
     const labels = { approve: "\u001b[31mSend\u202e", reject: "Drop\nit" };
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(

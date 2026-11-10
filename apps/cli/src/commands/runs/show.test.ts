@@ -244,6 +244,30 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("leaves out a label that only repeats its event", async () => {
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "review" }],
+          [
+            today("10:41:00"),
+            {
+              type: "run.waiting",
+              state: "review",
+              events: ["approve", "needs_changes"],
+              labels: { approve: "Send it", needs_changes: "Needs changes" },
+            },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.at(-1)).toBe(
+        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send it)  (or needs_changes)",
+      );
+    });
+
     it("ends a running run with the step it is in", async () => {
       await storeRuns(triaged("run_mfx3k2a1_0a0b0d", []));
 
