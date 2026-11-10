@@ -33,6 +33,20 @@ verifies("kit.popover-position", () => {
     expect(place(button(20, 100), menu, view, { gap: 4, align: "end" }).left).toBe(20);
   });
 
+  it("centres it under the trigger with center, still keeping 8px from the edges", () => {
+    const centred = { gap: 4, align: "center" } as const;
+    // The button's centre is at 116, so the 200px popover starts at 16.
+    expect(place(button(100, 100), menu, view, centred)).toEqual({
+      top: 136,
+      left: 16,
+      maxHeight: undefined,
+      side: "below",
+    });
+    expect(place(button(10, 100), menu, view, centred).left).toBe(8);
+    expect(place(button(770, 100), menu, view, centred).left).toBe(592);
+    expect(place(button(100, 500), menu, view, centred)).toMatchObject({ top: 346, left: 16 });
+  });
+
   it("keeps 8px from the window's edges when neither side fits", () => {
     const narrow = { width: 220, height: 600 };
     expect(place(button(100, 100), menu, narrow, below).left).toBe(12);
@@ -60,10 +74,16 @@ verifies("kit.popover-position", () => {
     const popover = document.createElement("div");
     trigger.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 50, width: 32, height: 32 });
     popover.getBoundingClientRect = () => DOMRect.fromRect({ width: 180, height: 120 });
+    // jsdom lays nothing out, so the root's client size is 0 unless a test sets it.
+    const root = document.documentElement;
+    Object.defineProperty(root, "clientWidth", { configurable: true, value: 800 });
+    Object.defineProperty(root, "clientHeight", { configurable: true, value: 600 });
     placePopover(popover, trigger, below);
     expect(popover.style.top).toBe("86px");
     expect(popover.style.left).toBe("40px");
     expect(popover.style.maxHeight).toBe("");
     expect(popover.dataset["side"]).toBe("below");
+    Reflect.deleteProperty(root, "clientWidth");
+    Reflect.deleteProperty(root, "clientHeight");
   });
 });

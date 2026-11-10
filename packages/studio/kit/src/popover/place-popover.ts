@@ -8,8 +8,8 @@
 /** How far a popover stays from every edge of the window. */
 export const EDGE_GAP = 8;
 
-/** Where a popover lines up with its trigger: their left edges, or their right edges. */
-export type PopoverAlign = "start" | "end";
+/** Where a popover lines up with its trigger: left edges, right edges, or centres. */
+export type PopoverAlign = "start" | "end" | "center";
 
 export interface PlaceOptions {
   /** Space between the trigger and the popover. */
@@ -56,13 +56,18 @@ export function place(trigger: Box, size: Size, view: Size, options: PlaceOption
 }
 
 function horizontal(trigger: Box, width: number, windowWidth: number, align: PopoverAlign): number {
+  const clamp = (left: number) =>
+    Math.max(EDGE_GAP, Math.min(left, windowWidth - EDGE_GAP - width));
+  if (align === "center") {
+    // Whole pixels, so the text doesn't blur.
+    return clamp(Math.round((trigger.left + trigger.right - width) / 2));
+  }
   const fromLeft = trigger.left;
   const fromRight = trigger.right - width;
   const fits = (left: number) => left >= EDGE_GAP && left + width <= windowWidth - EDGE_GAP;
   // The asked side, else the other side, else as close as the edges allow.
   const [first, second] = align === "start" ? [fromLeft, fromRight] : [fromRight, fromLeft];
-  const left = fits(first) || !fits(second) ? first : second;
-  return Math.max(EDGE_GAP, Math.min(left, windowWidth - EDGE_GAP - width));
+  return clamp(fits(first) || !fits(second) ? first : second);
 }
 
 /**
@@ -72,7 +77,9 @@ function horizontal(trigger: Box, width: number, windowWidth: number, align: Pop
 export function placePopover(popover: HTMLElement, trigger: Element, options: PlaceOptions): void {
   popover.style.maxHeight = "";
   const { width, height } = popover.getBoundingClientRect();
-  const view = { width: innerWidth, height: innerHeight };
+  // The root's client size leaves out a page scrollbar, so a popover never ends up under one.
+  const { clientWidth, clientHeight } = document.documentElement;
+  const view = { width: clientWidth, height: clientHeight };
   const placement = place(trigger.getBoundingClientRect(), { width, height }, view, options);
   popover.style.top = `${placement.top}px`;
   popover.style.left = `${placement.left}px`;
