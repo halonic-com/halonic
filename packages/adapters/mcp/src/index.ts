@@ -1,6 +1,7 @@
 // The public API of @halonicjs/adapter-mcp. Internal code imports by relative path.
 // The protocol is also its own entry, `./protocol`, which integrations import instead.
 
+export { type LaunchFolders, nodeLaunchFolders } from "./pinned/launch-folders.ts";
 export {
   type AbortSignalLike,
   type ClientInfo,
