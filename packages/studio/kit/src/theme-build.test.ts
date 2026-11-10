@@ -143,7 +143,10 @@ describe("theme.css built by Tailwind: the Switch", () => {
 describe("theme.css built by Tailwind: the Slider", () => {
   it("draws a 6px track, filled primary up to --slider-fill, and a 16px thumb in a 2px surface-raised ring, in each engine", async () => {
     const css = await buildCss(["slider"]);
-    const desktop = css.slice(css.indexOf(".slider {"), css.indexOf("@media (width < 600px)"));
+    const desktop = css.slice(
+      css.indexOf(".slider {"),
+      css.indexOf("@media (forced-colors: active)"),
+    );
     expect(desktop).toMatch(
       /&::-webkit-slider-runnable-track \{[^}]*height: 6px;[^}]*var\(--color-primary\) var\(--slider-fill\)[^}]*var\(--color-surface-muted\)[^}]*var\(--color-border-control\)/,
     );

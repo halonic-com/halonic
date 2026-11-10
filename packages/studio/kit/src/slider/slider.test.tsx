@@ -135,6 +135,42 @@ verifies("kit.slider", () => {
     expect(onCommit).toHaveBeenCalledTimes(2);
   });
 
+  it("saves a held key once when focus leaves before it's let go, and the next drag saves too", () => {
+    const onCommit = vi.fn();
+    const { container } = render(<Opacity onCommit={onCommit} step={5} />);
+    const range = rangeIn(container);
+    act(() => {
+      range.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", repeat: true, bubbles: true }),
+      );
+    });
+    move(range, 45);
+    letGo(range);
+    expect(onCommit).not.toHaveBeenCalled();
+    // Tab or a click elsewhere: the keyup goes to another element.
+    act(() => {
+      range.dispatchEvent(new FocusEvent("blur"));
+    });
+    expect(onCommit.mock.calls).toEqual([[45]]);
+    move(range, 70);
+    letGo(range);
+    expect(onCommit.mock.calls).toEqual([[45], [70]]);
+  });
+
+  it("saves nothing for a key held at the end of the range", () => {
+    const onCommit = vi.fn();
+    const { container } = render(<Opacity onCommit={onCommit} value={100} />);
+    const range = rangeIn(container);
+    // At the end the browser moves nothing, so no change fires.
+    act(() => {
+      range.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", repeat: true, bubbles: true }),
+      );
+      range.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true }));
+    });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
   it("keeps the same ref callback across renders and sets the caller's ref", () => {
     const ref = vi.fn();
     const { rerender } = render(

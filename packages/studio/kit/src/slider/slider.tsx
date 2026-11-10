@@ -75,7 +75,8 @@ const unavailableClasses = "opacity-45 contrast-more:opacity-60 forced-colors:op
 /**
  * Calls `onCommit` on the browser's own `change`, which fires when a drag lets go and on every key
  * step: exactly when a pick is saved. React's onChange is the `input` event, so it can't tell.
- * A held key is one pick, not one per repeat: its repeats wait, and save once when it's let go.
+ * A held key is one pick, not one per repeat: its repeats wait, and save once when it's let go or
+ * focus leaves the slider.
  * Returns a stable ref callback for the range input, which also sets the caller's `ref`.
  */
 function useCommitOnPick(
@@ -94,9 +95,14 @@ function useCommitOnPick(
     if (element === null) {
       return;
     }
+    // A held key's steps wait in `pending` and save once when it's let go, or when focus leaves
+    // first and the keyup goes elsewhere. Held at an end it moves nothing, so it saves nothing.
     let holding = false;
+    let pending = false;
     const change = () => {
-      if (!holding) {
+      if (holding) {
+        pending = true;
+      } else {
         commit(Number(element.value));
       }
     };
@@ -105,19 +111,22 @@ function useCommitOnPick(
         holding = true;
       }
     };
-    const keyUp = () => {
-      if (holding) {
-        holding = false;
+    const letGo = () => {
+      holding = false;
+      if (pending) {
+        pending = false;
         commit(Number(element.value));
       }
     };
     element.addEventListener("change", change);
     element.addEventListener("keydown", keyDown);
-    element.addEventListener("keyup", keyUp);
+    element.addEventListener("keyup", letGo);
+    element.addEventListener("blur", letGo);
     return () => {
       element.removeEventListener("change", change);
       element.removeEventListener("keydown", keyDown);
-      element.removeEventListener("keyup", keyUp);
+      element.removeEventListener("keyup", letGo);
+      element.removeEventListener("blur", letGo);
     };
   }, []);
   return useCallback(

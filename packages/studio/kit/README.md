@@ -1019,7 +1019,8 @@ screen reader behaviour. Put it in a Field, whose label names it.
 
 **Saving.** A drag shows each value at once through `onChange` and saves once, when you let go.
 The arrow keys, Page Up and Down, Home and End save on every step, because each one is a pick.
-A held key is one pick: its repeats move the thumb but wait, and it saves once when let go.
+A held key is one pick: its repeats move the thumb but wait, and it saves once when let go, or
+when focus leaves first. Held at an end, it moves nothing and saves nothing.
 Both come from the browser's own `change` event. **A failed save** puts the thumb back: pass the
 old `value`. Outside a modal Dialog the screen says so with a toast; inside one (Settings) it sets
 the Field's `error`, as for the Switch.
@@ -1029,7 +1030,8 @@ stay 6px and 16px, with no grab area round the thumb, so no track shows past its
 it 16px from the screen edges (the page's inset does), out of Android's back-gesture area.
 
 **Browsers.** The desktop webviews are Chromium and WebKit, which have no pseudo-element for the
-filled part, so the track paints it as a gradient up to `--slider-fill`, which the Slider sets.
+filled part, so the track paints it as a gradient up to the thumb's centre, from the 0 to 1
+`--slider-ratio` the Slider sets.
 Served Studio can open in Firefox, which gets `::-moz-range-progress`.
 
 ## RadioGroup
