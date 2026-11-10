@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -89,6 +89,28 @@ verifies("sandbox-host.program-probe-node", () => {
         path: join(dir, "broken"),
         error: "broken was found but couldn't be started.",
       });
+    });
+
+    it("refuses a path such as skills/x/scripts/run.sh, and never starts a file by its path", async () => {
+      const folder = join(dir, "skills", "x", "scripts");
+      await mkdir(folder, { recursive: true });
+      await writeFile(join(folder, "run.sh"), "#!/bin/sh\necho ran\n");
+      await chmod(join(folder, "run.sh"), 0o755);
+      for (const name of [
+        "skills/x/scripts/run.sh",
+        join(folder, "run.sh"),
+        "./hello",
+        "..\\hello",
+      ]) {
+        expect(await probe().ask(name, [])).toEqual({ status: "missing" });
+      }
+    });
+
+    it("looks only in absolute PATH folders, so a skill's scripts folder on a relative PATH is skipped", async () => {
+      const answer = await createProgramProbe({
+        env: { PATH: "skills/x/scripts:scripts:" },
+      }).ask("run.sh", []);
+      expect(answer).toEqual({ status: "missing" });
     });
   });
 });
