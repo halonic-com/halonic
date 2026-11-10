@@ -430,7 +430,9 @@ and `cargo-deny check advisories` on the Tauri shell weekly, including every pul
 It also runs **mutation testing** every night: Stryker on
 `workflow`, `routines`, `schema-kit` and `yaml`, for each package that has
 code. The score per package goes into the job summary. It only reports for
-now; see [tooling/mutation](../../tooling/mutation/README.md).
+now; see [tooling/mutation](../../tooling/mutation/README.md). To run it on a
+branch without running Stryker locally, start `.github/workflows/mutation.yml`:
+`gh workflow run mutation.yml --ref <branch> -f packages=<folder>`.
 
 `.github/workflows/cargo-lock.yml` runs only by hand. It regenerates the
 Tauri shell's `Cargo.lock` for a branch, for anyone without a Rust

@@ -21,6 +21,16 @@ pnpm exec node tooling/mutation/src/cli/mutation.ts                       # ever
 pnpm exec node tooling/mutation/src/cli/mutation.ts packages/core/yaml    # one target
 ```
 
+To run it on your branch in CI instead of locally, use the manual workflow
+(`.github/workflows/mutation.yml`):
+
+```sh
+gh workflow run mutation.yml --ref <branch> -f packages=packages/core/yaml
+```
+
+`packages` takes one or more target folders separated by spaces; leave it out
+for every target. The table lands in the run's job summary.
+
 A package is skipped ("no code yet") until it has a source file other
 than its tests and `src/index.ts`. For now the run only reports: a low
 score never fails, only a Stryker run that breaks does. Once the scores

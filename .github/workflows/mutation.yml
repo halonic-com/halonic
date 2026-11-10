@@ -1,0 +1,44 @@
+# Mutation testing on demand, for a branch. Agents run it here instead of
+# locally: gh workflow run mutation.yml --ref <branch> -f packages=<folder>
+# The nightly run stays in scheduled.yml.
+
+name: Mutation testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: Package folders to mutate, separated by spaces, for example packages/core/yaml. Empty runs every target.
+        required: false
+        default: ""
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    # Report only, like the nightly run: the score per package goes into the
+    # job summary. Only a broken Stryker run, or a folder that isn't a mutation
+    # target, fails.
+    name: Mutation testing (report only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Stryker on the chosen packages
+        env:
+          # Passed through the environment, never into the script text. The
+          # runner rejects anything that isn't a known mutation target.
+          PACKAGES: ${{ inputs.packages }}
+        run: |
+          # shellcheck disable=SC2086 # the input is a space-separated list
+          pnpm exec node tooling/mutation/src/cli/mutation.ts $PACKAGES
