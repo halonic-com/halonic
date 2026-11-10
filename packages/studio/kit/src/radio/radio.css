@@ -1,0 +1,19 @@
+/*
+ * A Radio's circle in Windows high-contrast mode, which drops fills: a picked circle draws its
+ * 5px ring in Highlight round a Canvas centre, so the circle itself shows the choice. An option
+ * that can't be picked greys to GrayText. It sits next to the RadioGroup so theme.css stays under
+ * the size limit; theme.css imports it.
+ */
+@utility radio-forced {
+  @media (forced-colors: active) {
+    &:checked {
+      forced-color-adjust: none;
+      border-color: Highlight;
+      background-color: Canvas;
+    }
+
+    &:disabled {
+      border-color: GrayText;
+    }
+  }
+}

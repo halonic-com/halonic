@@ -9,6 +9,7 @@ import { formRowsSection } from "./form-rows.tsx";
 import { iconTileSection } from "./icon-tile.tsx";
 import { kbdSection } from "./kbd.tsx";
 import { listSection } from "./list.tsx";
+import { radioSection } from "./radio.tsx";
 import { statusChipSection } from "./status-chip.tsx";
 import { switchSection } from "./switch.tsx";
 import { tabsSection } from "./tabs.tsx";
@@ -29,6 +30,7 @@ export const SECTIONS: readonly PartSection[] = [
   switchSection,
   kbdSection,
   formRowsSection,
+  radioSection,
   copyButtonSection,
   externalLinkSection,
   windowSection,
