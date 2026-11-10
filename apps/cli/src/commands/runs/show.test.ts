@@ -202,7 +202,7 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
-    it("writes the author's label after each answer that has one", async () => {
+    it("writes the author's label after each answer, unless it only repeats the event", async () => {
       await storeRuns({
         ...waiting,
         after: [
@@ -212,8 +212,8 @@ verifies("cli.commands.runs.show", () => {
             {
               type: "run.waiting",
               state: "review",
-              events: ["approve", "reject"],
-              labels: { approve: "Send reply", reject: "Discard" },
+              events: ["approve", "reject", "needs_changes"],
+              labels: { approve: "Send reply", reject: "Discard", needs_changes: "Needs changes" },
             },
           ],
         ],
@@ -222,7 +222,7 @@ verifies("cli.commands.runs.show", () => {
       const { io } = await showIn(acme, "09d9a0");
 
       expect(io.stdout.at(-1)).toBe(
-        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send reply)  (or reject (Discard))",
+        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send reply)  (or reject (Discard) or needs_changes)",
       );
     });
 
@@ -242,30 +242,6 @@ verifies("cli.commands.runs.show", () => {
         "",
         "! Waiting for you: \\u001b[2J\\u001b[31mApprove\\u202e this reply?",
       ]);
-    });
-
-    it("leaves out a label that only repeats its event", async () => {
-      await storeRuns({
-        ...waiting,
-        after: [
-          [today("10:40:30"), { type: "state.entered", state: "review" }],
-          [
-            today("10:41:00"),
-            {
-              type: "run.waiting",
-              state: "review",
-              events: ["approve", "needs_changes"],
-              labels: { approve: "Send it", needs_changes: "Needs changes" },
-            },
-          ],
-        ],
-      });
-
-      const { io } = await showIn(acme, "09d9a0");
-
-      expect(io.stdout.at(-1)).toBe(
-        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send it)  (or needs_changes)",
-      );
     });
 
     it("ends a running run with the step it is in", async () => {
