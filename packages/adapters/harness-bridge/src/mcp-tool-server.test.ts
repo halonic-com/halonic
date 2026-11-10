@@ -1,4 +1,6 @@
 import type {
+  BridgeApprovalDecision,
+  BridgeApprovalRequest,
   BridgeEvent,
   BridgeToolCheck,
   BridgeToolResult,
@@ -29,6 +31,8 @@ interface FakeTools {
   check?: (name: string) => BridgeToolCheck;
   call?: (name: string, args: Record<string, unknown>) => Promise<BridgeToolResult>;
   list?: () => Promise<ToolDefinition[]>;
+  /** How a person answers a call that needs an OK; approves it unless given. */
+  decide?: (request: BridgeApprovalRequest) => Promise<BridgeApprovalDecision>;
 }
 
 /** A server over fake tools, with the events it records and the calls that ran. */
@@ -44,12 +48,19 @@ function serverWith(fake: FakeTools = {}) {
     },
   };
   const recorder = { record: async (event: BridgeEvent) => void recorded.push(event) };
-  const server = new McpToolServer({ agent: "writer", tools, recorder });
+  const asked: BridgeApprovalRequest[] = [];
+  const approvals = {
+    request: async (request: BridgeApprovalRequest) => {
+      asked.push(request);
+      return fake.decide?.(request) ?? { approved: true };
+    },
+  };
+  const server = new McpToolServer({ agent: "writer", tools, recorder, approvals });
   const ask = (message: unknown) =>
     server.answerBytes(encodeUtf8(JSON.stringify(message)), {
       signal: new AbortController().signal,
     });
-  return { server, ask, recorded, ran };
+  return { server, ask, recorded, ran, asked };
 }
 
 function request(method: string, params?: Record<string, unknown>) {
@@ -176,14 +187,6 @@ verifies("harness-bridge.mcp", () => {
       expect(recorded).toEqual([]);
     });
 
-    it("refuses a call that needs a person's OK, until the bridge can ask", async () => {
-      const { ask, recorded, ran } = serverWith({ check: () => ({ kind: "ask" }) });
-      const reply = await ask(callTool("post_comment", { body: "hi" }));
-      expect(reply).toMatchObject({ result: { isError: true } });
-      expect(ran).toEqual([]);
-      expect(recorded).toEqual([]);
-    });
-
     it.each([
       ["no name", callTool(undefined)],
       ["arguments that aren't an object", callTool("read_issue", "3")],
@@ -191,6 +194,70 @@ verifies("harness-bridge.mcp", () => {
       const { ask, ran } = serverWith();
       expect(await ask(message)).toMatchObject({ error: { code: rpcErrorCodes.invalidParams } });
       expect(ran).toEqual([]);
+    });
+  });
+});
+
+verifies("harness-bridge.approvals", () => {
+  describe("tools/call that needs a person's OK", () => {
+    const needsOk = { check: (): BridgeToolCheck => ({ kind: "ask" }) };
+
+    it("asks with the tool and its arguments, then runs and records an approved call", async () => {
+      const { ask, asked, ran, recorded } = serverWith(needsOk);
+      const reply = await ask(callTool("post_comment", { body: "hi" }));
+      expect(asked).toEqual([
+        { callId: expect.stringMatching(/^bridge-/), tool: "post_comment", args: { body: "hi" } },
+      ]);
+      expect(ran).toEqual(["post_comment"]);
+      expect(reply).toMatchObject({ result: { content: [{ text: "ran post_comment" }] } });
+      expect(recorded.map((event) => event.type)).toEqual(["tool.called", "tool.result"]);
+    });
+
+    it("gives every question its own call id", async () => {
+      const { ask, asked } = serverWith(needsOk);
+      await ask(callTool("post_comment"));
+      await ask(callTool("post_comment"));
+      expect(new Set(asked.map((request) => request.callId)).size).toBe(2);
+    });
+
+    it.each([
+      [undefined, "Refused: a person rejected the call"],
+      ["", "Refused: a person rejected the call"],
+      ["not on Fridays", "Refused: a person rejected the call and wrote: not on Fridays"],
+    ])("doesn't run or record a rejected call (comment %j)", async (comment, text) => {
+      const { ask, ran, recorded } = serverWith({
+        ...needsOk,
+        decide: async () => ({ approved: false, ...(comment === undefined ? {} : { comment }) }),
+      });
+      const reply = await ask(callTool("post_comment", { body: "hi" }));
+      expect(reply).toMatchObject({ result: { content: [{ text }], isError: true } });
+      expect(ran).toEqual([]);
+      expect(recorded).toEqual([]);
+    });
+
+    it("doesn't run a call whose wait ended, and hides why it ended", async () => {
+      const { ask, ran, recorded } = serverWith({
+        ...needsOk,
+        decide: () => Promise.reject(new Error("run_1 was cancelled at /secret")),
+      });
+      const reply = await ask(callTool("post_comment"));
+      expect(reply).toMatchObject({
+        result: {
+          content: [{ text: "Refused: the wait for a person's OK ended without an answer" }],
+          isError: true,
+        },
+      });
+      expect(JSON.stringify(reply)).not.toContain("/secret");
+      expect(ran).toEqual([]);
+      expect(recorded).toEqual([]);
+    });
+
+    it("never asks about a call the check lets run or refuses", async () => {
+      const allowed = serverWith();
+      await allowed.ask(callTool("read_issue"));
+      const refused = serverWith({ check: () => ({ kind: "refused", reason: "off" }) });
+      await refused.ask(callTool("read_issue"));
+      expect([...allowed.asked, ...refused.asked]).toEqual([]);
     });
   });
 });

@@ -29,6 +29,7 @@ async function answerMcpMessage(context: BridgeRequestContext): Promise<void> {
     agent: run.agentId,
     tools: run.tools,
     recorder: run.recorder,
+    approvals: run.approvals,
   });
   const reply = await server.answerBytes(await context.readBody(), { signal });
   if (reply === null) {

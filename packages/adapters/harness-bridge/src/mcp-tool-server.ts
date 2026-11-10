@@ -1,10 +1,12 @@
 import type {
+  BridgeApprovals,
   BridgeRecorder,
   BridgeToolResult,
   BridgeTools,
   ToolDefinition,
 } from "@halonicjs/ports";
 import { decodeUtf8, isPlainObject } from "@halonicjs/std";
+import { askForApproval, refusalReason } from "./approval.ts";
 import {
   type RequestId,
   type RpcMessage,
@@ -28,19 +30,14 @@ export const supportedMcpVersions = ["2025-11-25", "2025-06-18", "2025-03-26"] a
  */
 const internalMessage = "Something went wrong in Halonic while answering this request.";
 
-/**
- * What the program reads for a call that needs a person's OK. Asking for it
- * comes with the bridge's approvals (build plan B7); until then such a call
- * doesn't run.
- */
-const needsApprovalReason = "this call needs a person's OK, and the bridge can't ask for one yet";
-
 /** What an {@link McpToolServer} serves, and where it records the calls. */
 export interface McpToolServerOptions {
   /** The agent the recorded events name. */
   agent: string;
   tools: BridgeTools;
   recorder: BridgeRecorder;
+  /** Where a call that needs a person's OK asks for it. */
+  approvals: BridgeApprovals;
 }
 
 /**
@@ -51,12 +48,14 @@ export interface McpToolServerOptions {
  *
  * Every call is checked by {@link BridgeTools.check} first, so the agent's
  * `allow` and `approve` lists, "allow sending" and the workspace's trust
- * apply as in the built-in loop. A refused call doesn't run and isn't
- * recorded; the program gets the reason as the call's error result. A call
- * that runs is recorded as `tool.called` and `tool.result`.
+ * apply as in the built-in loop. A call that needs a person's OK waits for
+ * it through the run's approvals. A refused call, or one a person rejected
+ * or that got no answer, doesn't run and isn't recorded; the program gets
+ * the reason as the call's error result. A call that runs is recorded as
+ * `tool.called` and `tool.result`.
  *
  * @example
- * const server = new McpToolServer({ agent, tools, recorder });
+ * const server = new McpToolServer({ agent, tools, recorder, approvals });
  * const reply = await server.answerText(line, { signal });
  * if (reply !== null) write(JSON.stringify(reply));
  */
@@ -136,16 +135,17 @@ export class McpToolServer {
       return rpcError(id, rpcErrorCodes.invalidParams, "A tool's arguments must be an object.");
     }
     const check = await this.#options.tools.check(name, args);
-    switch (check.kind) {
-      case "refused":
-        return rpcResult(id, toolCallResult(`Refused: ${check.reason}`, true));
-      case "ask":
-        return rpcResult(id, toolCallResult(`Refused: ${needsApprovalReason}`, true));
-      case "run": {
-        const { result, outcome } = await this.#runTool(name, args, signal);
-        return rpcResult(id, toolCallResult(result, outcome !== "ok"));
+    if (check.kind === "refused") {
+      return rpcResult(id, toolCallResult(`Refused: ${check.reason}`, true));
+    }
+    if (check.kind === "ask") {
+      const answer = await askForApproval(this.#options.approvals, { tool: name, args }, signal);
+      if (answer.kind !== "approved") {
+        return rpcResult(id, toolCallResult(`Refused: ${refusalReason(answer)}`, true));
       }
     }
+    const { result, outcome } = await this.#runTool(name, args, signal);
+    return rpcResult(id, toolCallResult(result, outcome !== "ok"));
   }
 
   /** Runs a call the check let through, recording it before and after. */

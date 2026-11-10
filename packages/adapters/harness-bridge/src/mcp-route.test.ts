@@ -1,5 +1,7 @@
 import {
+  type BridgeApprovals,
   type BridgeEvent,
+  type BridgeToolCheck,
   harnessBridgeTokenHeader,
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
@@ -14,22 +16,41 @@ afterEach(async () => {
   await Promise.all(opened.splice(0).map((bridge) => bridge.close()));
 });
 
-/** A bridge whose run offers one tool, `read_issue`, and keeps what it records. */
-async function openWithTools() {
+/** How the run's check and approvals answer; each part left out lets the call run. */
+interface RunWith {
+  check?: BridgeToolCheck;
+  approvals?: BridgeApprovals;
+  signal?: AbortSignal;
+}
+
+/** A bridge whose run offers one tool, `read_issue`, and keeps what it records and runs. */
+async function openWithTools(run: RunWith = {}) {
   const recorded: BridgeEvent[] = [];
+  const ran: string[] = [];
   const server = new NodeHarnessBridgeServer({ secrets: { get: async () => null } });
   const bridge = await server.open({
-    ...fakeRun(),
+    ...fakeRun(run.signal),
     recorder: { record: async (event) => void recorded.push(event) },
     tools: {
       list: async () => [{ name: "read_issue", description: "Reads one issue.", parameters: {} }],
-      check: async () => ({ kind: "run" }),
-      call: async () => ({ result: "issue 3 is open", outcome: "ok" }),
+      check: async () => run.check ?? { kind: "run" },
+      call: async (name) => {
+        ran.push(name);
+        return { result: "issue 3 is open", outcome: "ok" };
+      },
     },
+    ...(run.approvals === undefined ? {} : { approvals: run.approvals }),
   });
   opened.push(bridge);
-  return { bridge, recorded };
+  return { bridge, recorded, ran };
 }
+
+const callReadIssue = {
+  jsonrpc: "2.0",
+  id: 3,
+  method: "tools/call",
+  params: { name: "read_issue", arguments: { number: 3 } },
+};
 
 /** Sends one MCP message as Claude Code does, with the run token. */
 async function post(
@@ -124,5 +145,48 @@ verifies("harness-bridge.mcp", () => {
     const { bridge } = await openWithTools();
     const response = await fetch(`${bridge.url}/mcp`, { method: "POST", body: "{}" });
     expect(response.status).toBe(401);
+  });
+});
+
+verifies("harness-bridge.approvals", () => {
+  it("waits for a person's OK through the run's approvals, then runs the call", async () => {
+    const { bridge, ran } = await openWithTools({
+      check: { kind: "ask" },
+      approvals: { request: async () => ({ approved: true }) },
+    });
+    const called = await post(bridge, callReadIssue);
+    expect(JSON.parse(called.text)).toMatchObject({ result: { isError: false } });
+    expect(ran).toEqual(["read_issue"]);
+  });
+
+  it("ends the wait when the run ends, and doesn't run the call", async () => {
+    const run = new AbortController();
+    let waiting: (signal: AbortSignal) => void = () => {};
+    const asked = new Promise<AbortSignal>((resolve) => {
+      waiting = resolve;
+    });
+    const { bridge, ran, recorded } = await openWithTools({
+      check: { kind: "ask" },
+      signal: run.signal,
+      approvals: {
+        // Like the engine's: rejects once the signal aborts, and not before.
+        request: (_request, { signal }) => {
+          waiting(signal);
+          return new Promise((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+          });
+        },
+      },
+    });
+    const called = post(bridge, callReadIssue).catch(() => "the reply broke off");
+    const waitSignal = await asked;
+    expect(waitSignal.aborted).toBe(false);
+
+    run.abort();
+    await bridge.close();
+    expect(waitSignal.aborted).toBe(true);
+    await called;
+    expect(ran).toEqual([]);
+    expect(recorded).toEqual([]);
   });
 });
