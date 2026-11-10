@@ -8,8 +8,9 @@ each test's result as data: passed or failed, why it failed, and the runs it mad
 - **Public API:** `@halonicjs/test-runner`
 
 The runner has no adapters, files or network of its own. The caller passes everything in
-(`TestDeps`): the scripted model each case talks to, fresh stores for each case, and the clock each
-case's test clock starts from. `halonic test` passes the mock model and in-memory stores; the parity
+(`TestDeps`): the scripted model each case talks to, fresh stores for each case, the clock each
+case's test clock starts from, and, when it has any, Halonic's own tools the runs offer
+(`halonicTools`, such as knowledge search). `halonic test` passes the mock model and in-memory stores; the parity
 checks pass a fixed clock.
 
 A result never holds printed text. Each failure (`TestFailure`) carries what the CLI needs for its
@@ -21,14 +22,16 @@ shape of the parity recordings.
 filter the run takes: hub, workflow and name, each matched exactly. Parsing `--filter` into
 those is the CLI's job.
 
-Running the tests comes in the next pull request (HAL-4215).
+Running the tests comes in the next pull request (HAL-4215): for now the package lists cases and
+defines the types and the dependencies a run takes, and nothing in it starts a run. The `artifacts`
+expectation will be checked against the run's `artifact.created` events, which the engine logs when
+a task state saves its answer.
 
 ## Known gaps
 
-- An `artifacts` expectation can't pass yet: it is checked against the run's `artifact.created`
-  events, and the engine doesn't emit them yet (HAL-4247).
 - A test file can't script a program step's result yet, so a step that would start a program
-  fails its case with `unscripted-program` (HAL-4248).
+  fails its case with `unscripted-program` (HAL-4248). The runner tells such a step by the run's
+  `harness-unavailable` failure reason, never by the engine's error text.
 
 ## Example
 

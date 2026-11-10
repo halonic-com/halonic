@@ -10,7 +10,9 @@ Our own MCP client for programs on the person's computer.
   (HAL-2544); until then they are refused.
 - `src/pinned/` holds `findRunner`, which finds a pinned connector's runner and its Node from the
   app's own environment (its `PATH`, on macOS the login shell's, then the usual install folders)
-  and refuses a relative path. It isn't wired into the launcher yet.
+  and refuses a relative path. The login shell runs without `-i` and for 5 seconds at most, so a
+  runner that only `.zshrc` puts on the `PATH` (nvm, fnm) may not be found; the refusal then asks for
+  the runner's full path. It isn't wired into the launcher yet.
 
 ## How a program is started and stopped
 

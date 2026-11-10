@@ -30,7 +30,7 @@ loop of one model turn, which the local chat turn runs.
 |                      | with `LargeResultsTurnLog` round it, keeps a tool result over 256 KB in the blob store and its start in the log                                                                                                   | `engine.large-results-to-blobs`                                                     |
 | `agentKnowledge`     | builds the providers of an agent's `knowledge` sources through the factory of each one's `provider` type; a run's agent and a chat turn's agent get them as `knowledge_search` and `knowledge_read`               | `engine.agent-knowledge`                                                            |
 | `withKnowledgeFirst` | for `mode: auto` sources, searches the task text before the first model call, adds the best passages, fenced, to the prompt and logs `knowledge.searched`                                                         | `engine.knowledge-auto`                                                             |
-| `knowledgeTools`     | the read-only tools `knowledge_search` and `knowledge_read` over an agent's sources, with the text fenced as `knowledgeHitForModel` gives it; exported, but no turn offers them yet                               | `engine.knowledge-tools`                                                            |
+| `knowledgeTools`     | the read-only tools `knowledge_search` and `knowledge_read` over an agent's sources, with the text fenced as `knowledgeHitForModel` gives it; offered to a run's agents and subagents and to a chat turn's agent                               | `engine.knowledge-tools`                                                            |
 | `HalonicTool`        | one of Halonic's own tools: its definition and how to run it                                                                                                                                                      | `engine.turn-runs-tool-calls`                                                       |
 | `AgentMemory`        | (internal) an agent's notes, by title, in the `RecordStore` collection `agent-memory/<agentId>`                                                                                                                   | `engine.agent-memory-records`                                                       |
 | `memoryTools`        | (internal) `memory_list`, `_save` and `_forget`; offered in a chat turn of an agent when `memory` is set                                                                                                          | `engine.agent-memory-tools`                                                         |
@@ -143,12 +143,16 @@ for each effect, then return; the run goes on when the timer is due, so the sche
 forwards its timers to `LocalExecutor.onTimer`. A model call is carried out from the run's state
 (`pendingCall` keeps the prompt), and a timer that is late or delivered twice changes nothing. A
 run still waiting on a call when the engine stops is `running`, so the next start ends it as
-`interrupted`. An effect the executor can't carry out yet (a tool call, a harness run) fails the run
-with reason `error` rather than leaving it going with no timer. A failed call becomes an `effect-failed` input, and the run fails with the
+`interrupted`. An effect the executor can't carry out yet fails the run rather than leaving it going with no
+timer: a harness run with reason `harness-unavailable`, a tool call with reason `error`. A failed call becomes an `effect-failed` input, and the run fails with the
 reason `runFailureReasonOf` gives. For now a run's model call sends the state's prompt to its agent's
 model with Halonic's tools and the tools its file grants; the agent's own prompt and the run log
 of the call come with the agent loop. `subscribe` reads every event from the store, after each append the executor makes; it
 assumes one engine per run store, as `endInterruptedRuns` does.
+
+A cancelled run fails with the error "The run was cancelled.", and a harness call a cancel stops
+with "The run was cancelled while the agent was working.". A cancel of a run that doesn't exist is
+refused with `There's no run "<id>".`.
 
 Each folder in `src/states` exports `<folder>State` from its `state.ts`. `pnpm discover` lists
 them in `src/generated/states.ts`, typed against `StateRegistry`, so a missing or extra folder

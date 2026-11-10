@@ -113,7 +113,7 @@ useWindowKeys({
 ```
 
 `TabPages` draws the tabs' pages in the frame's `main` (UX checklist 1.2, a11y A3 and E2). The
-pages of the last five active tabs (`mountedTabLimit`) stay mounted, the others hidden and inert,
+pages of the last five active tabs (`mountedTabLimit`, chosen by `mountedTabIds`) stay mounted, the others hidden and inert,
 so switching back keeps half-typed text. Each page is its own scroller. On a switch the page gets
 back its scroll and its last focus, or else focus goes to its `h1`, as for an older tab whose page
 was drawn afresh. While the focus is on a tab in the strip it stays there. A tab that moves on to
