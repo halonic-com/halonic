@@ -1,39 +1,71 @@
 import { lstat, readFile, rename } from "node:fs/promises";
-import { isAbsolute, join, normalize, sep } from "node:path";
+import { isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { gitlinkPaths, parseIndex } from "./git-index.ts";
 
 /** What a gitlink's `.git` was at session start: absent, a folder, a link or a file and its text. */
 type DotGit = string;
 
+/** A repository whose index `git status` in the working folder reads. */
+interface Repository {
+  /** Its checkout, relative to the working folder: "" for the working folder itself. */
+  readonly checkout: string;
+  /** Its git folder, as the checkout's `.git` named it at session start. */
+  readonly gitFolder: string;
+}
+
 /** The nested repositories of a working folder's index, as they were at session start. */
 export interface NestedGitSnapshot {
   readonly workingFolder: string;
+  /** The working folder's repository, then each checked-out submodule, nested ones too. */
+  readonly repositories: readonly Repository[];
+  /** Each gitlink of those repositories, relative to the working folder, and what its `.git` is. */
   readonly dotGits: ReadonlyMap<string, DotGit>;
 }
 
 /**
  * Records each gitlink in `<workingFolder>/.git/index` (and its shared index,
- * when the index is split) and what its `.git` is. Nothing is recorded when
- * `.git` is not a real folder (a linked worktree or a submodule) or has no index.
+ * when the index is split) and what its `.git` is, then does the same in the
+ * index of each submodule that is checked out, since `git status` looks into
+ * those too. Nothing is recorded when `.git` is not a real folder (a linked
+ * worktree or a submodule) or has no index.
  *
- * @throws when the index can't be read, since its gitlinks can't be checked then.
+ * @throws when an index can't be read, since its gitlinks can't be checked then.
  */
 export async function snapshotNestedGit(workingFolder: string): Promise<NestedGitSnapshot | null> {
-  const paths = await gitlinks(workingFolder).catch((error: unknown) => {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `can't read the git index in ${workingFolder} (${reason}), so its submodules can't be ` +
-        "checked at session end. Run `git status` there to check the index, then open the session again.",
-    );
-  });
-  if (paths === null) return null;
+  const top = { checkout: "", gitFolder: join(workingFolder, ".git") };
+  if ((await lstat(top.gitFolder).catch(() => null))?.isDirectory() !== true) return null;
+  const repositories: Repository[] = [];
   const dotGits = new Map<string, DotGit>();
-  for (const path of paths) dotGits.set(path, await describe(workingFolder, path));
-  return { workingFolder, dotGits };
+  const seen = new Set<string>();
+  const queue: Repository[] = [top];
+  // Each submodule found is pushed onto the queue, so the loop reaches nested ones too.
+  for (const repository of queue) {
+    if (seen.has(repository.gitFolder)) continue;
+    seen.add(repository.gitFolder);
+    const paths = await gitlinks(repository.gitFolder).catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      const checkout = join(workingFolder, repository.checkout);
+      throw new Error(
+        `can't read the git index in ${checkout} (${reason}), so its submodules can't be ` +
+          "checked at session end. Run `git status` there to check the index, then open the session again.",
+      );
+    });
+    // A submodule's git folder that isn't there: `git status` has no index to read there either.
+    if (paths === null) continue;
+    repositories.push(repository);
+    for (const path of paths) {
+      const checkout = join(repository.checkout, path);
+      const dotGit = await describe(workingFolder, checkout);
+      dotGits.set(checkout, dotGit);
+      const gitFolder = submoduleGitFolder(join(workingFolder, checkout), dotGit);
+      if (gitFolder !== null) queue.push({ checkout, gitFolder });
+    }
+  }
+  return { workingFolder, repositories, dotGits };
 }
 
 /**
- * Moves aside the `.git` of each gitlink the program added to the index, or
+ * Moves aside the `.git` of each gitlink the program added to an index, or
  * whose `.git` it made or changed. `git status` in the working folder looks
  * into every gitlink with a `.git` and reads that repository's settings, so a
  * repository the program made could run a command (`core.fsmonitor`) on the
@@ -42,11 +74,13 @@ export async function snapshotNestedGit(workingFolder: string): Promise<NestedGi
  *
  * This covers a submodule that is not checked out at session start too: its
  * `.git` can't be denied (git refuses the empty file the fence would put
- * there), so one the program writes is undone here. The gitlinks recorded at
- * start count even when the program took them out of the index or broke it,
- * since restoring the index would bring them back.
+ * there), so one the program writes is undone here. That holds for a nested
+ * submodule in a checked-out one as well, found through the checked-out
+ * one's own index in its git folder. The gitlinks recorded at start count
+ * even when the program took them out of an index or broke it, since
+ * restoring the index would bring them back.
  *
- * @returns the `.git` paths it moved aside and those it could not (or the
+ * @returns the `.git` paths it moved aside and those it could not (or an
  *   index, when it can't be read), relative to the working folder.
  */
 export async function undoNestedGit(
@@ -54,10 +88,14 @@ export async function undoNestedGit(
 ): Promise<{ undone: string[]; failed: string[] }> {
   const undone: string[] = [];
   const failed: string[] = [];
-  const now = await gitlinks(snapshot.workingFolder).catch(() => null);
-  // An index this reader can't read any more is itself a change it can't vouch for.
-  if (now === null) failed.push(join(".git", "index"));
-  const paths = new Set([...snapshot.dotGits.keys(), ...(now ?? [])]);
+  const paths = new Set(snapshot.dotGits.keys());
+  for (const repository of snapshot.repositories) {
+    const now = await gitlinks(repository.gitFolder).catch(() => null);
+    // An index this reader can't read any more is itself a change it can't vouch for.
+    if (now === null)
+      failed.push(relative(snapshot.workingFolder, join(repository.gitFolder, "index")));
+    for (const path of now ?? []) paths.add(join(repository.checkout, path));
+  }
   for (const path of paths) {
     const current = await describe(snapshot.workingFolder, path);
     if (current === "absent" || current === snapshot.dotGits.get(path)) continue;
@@ -73,8 +111,20 @@ export async function undoNestedGit(
   return { undone, failed };
 }
 
-async function gitlinks(workingFolder: string): Promise<string[] | null> {
-  const gitFolder = join(workingFolder, ".git");
+/**
+ * The git folder of a checked-out submodule, from what its `.git` was at
+ * session start: the folder itself, or the one a `gitdir:` file names
+ * (usually `.git/modules/<name>` of the repository above). Null when it is
+ * not checked out.
+ */
+function submoduleGitFolder(checkout: string, dotGit: DotGit): string | null {
+  if (dotGit === "folder") return join(checkout, ".git");
+  const gitdir = /^file:gitdir: ([^\n]+)/.exec(dotGit)?.[1]?.replace(/\r$/, "");
+  return gitdir === undefined ? null : resolve(checkout, gitdir);
+}
+
+/** The gitlinks in a git folder's index, or null when the git folder is not a real folder. */
+async function gitlinks(gitFolder: string): Promise<string[] | null> {
   if ((await lstat(gitFolder).catch(() => null))?.isDirectory() !== true) return null;
   const index = await readPlainFile(join(gitFolder, "index"));
   if (index === null) return [];

@@ -19,25 +19,30 @@ afterEach(async () => {
   await rm(work, { recursive: true, force: true });
 });
 
-async function writeIndex(paths: string[]): Promise<void> {
+/** Writes the index of the git folder at `gitFolder` (the working folder's own by default). */
+async function writeIndex(paths: string[], gitFolder = ".git"): Promise<void> {
   const entries = [
     { path: "README.md", mode: fileMode },
     ...paths.map((path) => ({ path, mode: gitlinkMode })),
   ];
-  await writeFile(join(work, ".git", "index"), index(entries));
+  await mkdir(join(work, gitFolder), { recursive: true });
+  await writeFile(join(work, gitFolder, "index"), index(entries));
 }
 
 const sharedId = "ab".repeat(20);
 
 /** A split index the way `git update-index --split-index` leaves one: the gitlinks only in the shared index. */
-async function writeSplitIndex(paths: string[], options = { shared: true }): Promise<void> {
-  const shared = paths.map((path) => ({ path, mode: gitlinkMode }));
-  if (options.shared) {
-    await writeFile(join(work, ".git", `sharedindex.${sharedId}`), index(shared));
+async function writeSplitIndex(
+  paths: string[],
+  { shared = true, gitFolder = ".git" } = {},
+): Promise<void> {
+  if (shared) {
+    const entries = paths.map((path) => ({ path, mode: gitlinkMode }));
+    await writeFile(join(work, gitFolder, `sharedindex.${sharedId}`), index(entries));
   }
   const link: Link = { id: sharedId };
   await writeFile(
-    join(work, ".git", "index"),
+    join(work, gitFolder, "index"),
     index([{ path: "README.md", mode: fileMode }], 2, 20, link),
   );
 }
@@ -309,6 +314,143 @@ verifies("sandbox-srt.session", () => {
           undone: [join("docs", ".git")],
           failed: [join(".git", "index")],
         });
+      });
+    });
+
+    describe("in a submodule nested in a checked-out one", () => {
+      const modules = join(".git", "modules", "docs");
+
+      /** `docs` checked out the way `git submodule update` leaves it, with `theme` in its index only. */
+      beforeEach(async () => {
+        await writeIndex(["docs"]);
+        await writeIndex(["theme"], modules);
+        await mkdir(join(work, "docs", "theme"), { recursive: true });
+        await writeFile(join(work, "docs", ".git"), "gitdir: ../.git/modules/docs\n");
+      });
+
+      it("moves aside a .git planted in the nested one that is not checked out", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository(join("docs", "theme"));
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", "theme", ".git")],
+          failed: [],
+        });
+        expect(existsSync(join(work, "docs", "theme", ".git"))).toBe(false);
+        expect(existsSync(join(work, "docs", ".git"))).toBe(true);
+      });
+
+      it("moves aside the .git of a gitlink the program added to the submodule's index", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository(join("docs", "fonts"));
+        await writeIndex(["theme", "fonts"], modules);
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", "fonts", ".git")],
+          failed: [],
+        });
+      });
+
+      it("moves aside one planted two submodules deep", async () => {
+        const theme = join(modules, "modules", "theme");
+        await writeIndex(["fonts"], theme);
+        await writeFile(
+          join(work, "docs", "theme", ".git"),
+          "gitdir: ../../.git/modules/docs/modules/theme\r\n",
+        );
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository(join("docs", "theme", "fonts"));
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", "theme", "fonts", ".git")],
+          failed: [],
+        });
+      });
+
+      it("moves aside one planted in a submodule whose .git is a folder", async () => {
+        await rm(join(work, "docs", ".git"));
+        await writeIndex(["theme"], join("docs", ".git"));
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository(join("docs", "theme"));
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", "theme", ".git")],
+          failed: [],
+        });
+      });
+
+      it("moves aside one whose gitlink is only in the submodule's shared index", async () => {
+        await writeSplitIndex([], { gitFolder: modules });
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository(join("docs", "theme"));
+        await writeSplitIndex(["theme"], { gitFolder: modules });
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", "theme", ".git")],
+          failed: [],
+        });
+      });
+
+      it("reports the submodule's index when its shared index is missing at session end", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await writeSplitIndex(["theme"], { shared: false, gitFolder: modules });
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [],
+          failed: [join(modules, "index")],
+        });
+      });
+
+      it("still moves it aside when the program also broke the submodule's index", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await plantRepository(join("docs", "theme"));
+        await writeFile(join(work, modules, "index"), "garbage");
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", "theme", ".git")],
+          failed: [join(modules, "index")],
+        });
+      });
+
+      it("reports the submodule's index when the program put a link in place of its git folder", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        await rm(join(work, modules), { recursive: true });
+        await symlink(join(work, ".git"), join(work, modules));
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [],
+          failed: [join(modules, "index")],
+        });
+      });
+
+      it("leaves the submodules alone when the program did not touch them", async () => {
+        const snapshot = await snapshotNestedGit(work);
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({ undone: [], failed: [] });
+      });
+
+      it("says what to do when the submodule's index can't be read at session start", async () => {
+        await writeFile(join(work, modules, "index"), "garbage");
+        await expect(snapshotNestedGit(work)).rejects.toThrow(
+          `can't read the git index in ${join(work, "docs")} (not a git index)`,
+        );
+      });
+
+      it("reads nothing more for a submodule whose git folder is not there", async () => {
+        await writeFile(join(work, "docs", ".git"), "gitdir: ../.git/modules/gone\n");
+        const snapshot = await snapshotNestedGit(work);
+        expect(snapshot?.repositories.map((repository) => repository.checkout)).toEqual([""]);
+      });
+
+      it("reads a submodule's index once when two checkouts name the same git folder", async () => {
+        await writeIndex(["docs", "copy"]);
+        await mkdir(join(work, "copy"));
+        await writeFile(join(work, "copy", ".git"), "gitdir: ../.git/modules/docs\n");
+        const snapshot = await snapshotNestedGit(work);
+        expect(snapshot?.repositories.map((repository) => repository.checkout)).toEqual([
+          "",
+          "docs",
+        ]);
       });
     });
 

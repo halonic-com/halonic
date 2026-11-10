@@ -77,3 +77,72 @@ describe("a program planting a repository in a submodule that is not checked out
     expect(existsSync(marker)).toBe(false);
   });
 });
+
+describe("a program planting a repository in a submodule nested in a checked-out one", () => {
+  let base: string;
+  let work: string;
+  let marker: string;
+
+  /** Git as a user runs it; `protocol.file.allow` lets a submodule come from a local folder. */
+  function git(cwd: string, ...args: string[]): void {
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "-c",
+        "protocol.file.allow=always",
+        ...args,
+      ],
+      { cwd, stdio: "ignore" },
+    );
+  }
+
+  beforeEach(async () => {
+    base = await mkdtemp(join(tmpdir(), "srt-git-attack-"));
+    work = join(base, "work");
+    marker = join(base, "pwned");
+    for (const name of ["theme", "docs", "work"]) await mkdir(join(base, name));
+    git(join(base, "theme"), "init", "--quiet");
+    git(join(base, "theme"), "commit", "--quiet", "--allow-empty", "-m", "theme");
+    git(join(base, "docs"), "init", "--quiet");
+    git(join(base, "docs"), "submodule", "add", "--quiet", join(base, "theme"), "theme");
+    git(join(base, "docs"), "commit", "--quiet", "-m", "docs");
+    git(work, "init", "--quiet");
+    // `docs` is checked out; its own submodule `theme` is not, so `docs/theme` has no `.git`.
+    git(work, "submodule", "add", "--quiet", join(base, "docs"), "docs");
+  });
+
+  afterEach(async () => {
+    await rm(base, { recursive: true, force: true });
+  });
+
+  it("can't make the user's next git status run a command", async () => {
+    const session = await sandbox.open({
+      workingFolder: work,
+      tempFolder: join(base, "temp"),
+      settingsFolder: null,
+      readOnlyPaths: [],
+      deniedPaths: [],
+      env: { HOME: join(base, "temp") },
+      network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+      timeLimitMs: 120_000,
+    });
+    const blocks: string[] = [];
+    session.onBlocked((block) => blocks.push(block.kind === "file" ? block.path : block.kind));
+    const folder = "docs/theme/.git";
+    const plant =
+      `mkdir -p ${folder}/objects ${folder}/refs && echo 'ref: refs/heads/main' > ${folder}/HEAD && ` +
+      `printf '[core]\\n\\tfsmonitor = touch ${marker}\\n' > ${folder}/config`;
+    const started = await session.start({ program: "sh", args: ["-c", `cd ${work} && ${plant}`] });
+    await started.exited;
+    expect(existsSync(join(work, "docs", "theme", ".git"))).toBe(true);
+    await session.close();
+    expect(existsSync(join(work, "docs", "theme", ".git"))).toBe(false);
+    expect(blocks).toContain(join(work, "docs", "theme", ".git"));
+    git(work, "status", "--porcelain");
+    expect(existsSync(marker)).toBe(false);
+  });
+});
