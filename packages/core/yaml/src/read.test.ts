@@ -186,3 +186,26 @@ verifies("yaml.read-unsupported", () => {
     expect(problemOf("{ { a: 1 }: x }\n")).toMatchObject({ kind: "unsupported", col: 3 });
   });
 });
+
+verifies("yaml.read-limits", () => {
+  it("reports the library's own stack overflow as too deep, with the limit it was given", () => {
+    // A limit this high lets the file past the token pass, so the `yaml`
+    // library itself runs out of call stack and says so.
+    const text = "[".repeat(5000) + "]".repeat(5000);
+    const read = readYaml(text, { maxDepth: 10_000_000, maxLength: 100_000_000 });
+    expect(read).toMatchObject({
+      ok: false,
+      error: {
+        kind: "too-deep",
+        message:
+          "Lists and maps nest more than 10000000 levels deep. Workspace files never need that many; look for a runaway structure.",
+      },
+    });
+  });
+
+  it("counts the line of a too-deep problem past earlier lines", () => {
+    const read = readYaml("a: 1\nb: [[[]]]\n", { maxDepth: 2, maxLength: 100 });
+    // The top-level map is the first level, so the second list is the one past the limit.
+    expect(read).toMatchObject({ ok: false, error: { kind: "too-deep", line: 2, col: 5 } });
+  });
+});
