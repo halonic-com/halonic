@@ -230,6 +230,7 @@ export {
   trustStoreVersion,
 } from "./trust-store.ts";
 export {
+  checkCommitId,
   type Vcs,
   type VcsChange,
   type VcsCommit,

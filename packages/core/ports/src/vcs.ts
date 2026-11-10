@@ -1,5 +1,25 @@
 /** Version of the {@link Vcs} port. A breaking change bumps it and comes with an ADR. */
-export const vcsVersion = 1;
+export const vcsVersion = 2;
+
+/** A full commit id: 40 (SHA-1) or 64 (SHA-256) lowercase hex characters. */
+const commitIdPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
+
+/**
+ * Refuses a version that isn't a full commit id, the only kind of version a
+ * {@link Vcs} method takes. A branch name, `HEAD`, `@{-1}` or a short id would
+ * be resolved by git against whatever the repository holds at that moment,
+ * and a name starting with `-` would be read as an option; a caller only ever
+ * holds ids that `snapshot`, `commit` or `log` gave it.
+ *
+ * @throws RangeError naming the version
+ */
+export function checkCommitId(version: string): void {
+  if (!commitIdPattern.test(version)) {
+    throw new RangeError(
+      `Invalid version ${JSON.stringify(version)}: give a full commit id (40 or 64 lowercase hex characters).`,
+    );
+  }
+}
 
 /** How a file differs from the last commit. */
 export type VcsFileStatus =
@@ -180,6 +200,42 @@ export interface Vcs {
    *   to `x` as `x/y` or the other way round, which git refuses
    */
   createBranch(name: string): Promise<void>;
+  /**
+   * Commits the workspace's files as they are on disk now, new files
+   * included, and returns the commit's id. Files the repository ignores and
+   * private entries (see `DefinitionSource`) are left out, so a `.env` with
+   * a key never reaches a worktree. The commit's parent is the current
+   * commit, if any. Neither HEAD, the branch, the index nor the working tree
+   * changes: the commit is on no branch.
+   *
+   * @throws when the folder isn't a repository
+   */
+  snapshot(): Promise<string>;
+  /**
+   * A file's text at a commit, or `null` when the commit has no such file.
+   * Never reads the working tree or the index.
+   *
+   * @throws RangeError for a version that isn't a full commit id (see
+   *   {@link checkCommitId}) or a path the port refuses
+   * @throws when the repository has no such commit: `Unknown version <id>`
+   */
+  readAt(version: string, path: string): Promise<string | null>;
+  /**
+   * Every file under `dir` at a commit (the whole workspace without one),
+   * recursively, as sorted paths relative to the workspace folder, private
+   * entries left out; `null` when the commit has no file under `dir`.
+   *
+   * @throws as {@link Vcs.readAt}
+   */
+  listAt(version: string, dir?: string): Promise<string[] | null>;
+  /**
+   * Moves a file or folder in the working tree and, where the repository
+   * tracks it, in the index too (`git mv`), so its history follows it. An
+   * untracked file just moves.
+   *
+   * @throws when `from` doesn't exist or `to` already does; nothing changes
+   */
+  rename(from: string, to: string): Promise<void>;
   /** Make the folder a repository, ignoring `.studio`, the folder Halonic keeps its runtime data in. */
   init(): Promise<void>;
   /** The remote names, such as "origin". */

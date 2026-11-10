@@ -107,3 +107,30 @@ verifies("memory.dry-run-vcs", () => {
     expect((await real.status()).isRepo).toBe(false);
   });
 });
+
+verifies("memory.dry-run-vcs-versions", () => {
+  it("records a rename and leaves the files where they are", async () => {
+    const { real, files } = await changedRepository();
+    const dryRun = new DryRunVcs(real);
+    await dryRun.rename("a.yaml", "b.yaml");
+    expect(dryRun.changes()).toEqual([{ kind: "rename", from: "a.yaml", to: "b.yaml" }]);
+    expect(await files.list()).toEqual(["a.yaml"]);
+  });
+
+  it("refuses a private path and a folder that isn't a repository, recording nothing", async () => {
+    const { real } = await changedRepository();
+    await expect(new DryRunVcs(real).rename("a.yaml", ".git/x")).rejects.toThrow(RangeError);
+    const notRepo = new DryRunVcs(new MemoryVcs(new MemoryDefinitionStore({ "a.yaml": "1\n" })));
+    await expect(notRepo.rename("a.yaml", "b.yaml")).rejects.toThrow("not a repository");
+    expect(notRepo.changes()).toEqual([]);
+  });
+
+  it("reads snapshots and versions through", async () => {
+    const { real } = await changedRepository();
+    const dryRun = new DryRunVcs(real);
+    const snapshot = await dryRun.snapshot();
+    expect(await dryRun.readAt(snapshot, "a.yaml")).toBe("2\n");
+    expect(await dryRun.listAt(snapshot)).toEqual(["a.yaml"]);
+    expect(dryRun.changes()).toEqual([]);
+  });
+});

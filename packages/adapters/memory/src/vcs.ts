@@ -1,10 +1,11 @@
-import type {
-  Clock,
-  DefinitionStore,
-  Vcs,
-  VcsChange,
-  VcsCommit,
-  VcsStatus,
+import {
+  type Clock,
+  checkCommitId,
+  type DefinitionStore,
+  type Vcs,
+  type VcsChange,
+  type VcsCommit,
+  type VcsStatus,
 } from "@halonicjs/ports";
 import { ManualClock } from "./clock.ts";
 import { unifiedDiff } from "./line-diff.ts";
@@ -161,16 +162,50 @@ export class MemoryVcs implements Vcs {
     const repo = this.#requireRepo();
     // Like git, which aborts on an empty message.
     if (message.trim() === "") throw new Error("The commit message is empty.");
-    const parent = headCommit(repo);
     if (sameTree(headTree(repo), repo.index)) throw new Error("Nothing is staged.");
-    const tree: Tree = new Map(repo.index);
-    const date = this.#clock.now().toISOString();
-    const hash = (
-      await sha256Hex(JSON.stringify([parent, [...tree], this.#author, date, message]))
-    ).slice(0, 40);
-    repo.commits.set(hash, { hash, parent, tree, author: this.#author, date, message });
+    const hash = await this.#storeCommit(repo, new Map(repo.index), message);
     repo.branches.set(repo.head, hash);
     return hash;
+  }
+
+  async snapshot(): Promise<string> {
+    const repo = this.#requireRepo();
+    // `list()` already leaves out private entries; nothing else is ignored here.
+    const tree = new Map<string, string>();
+    for (const path of await this.#files.list()) tree.set(path, await this.#readListed(path));
+    return this.#storeCommit(repo, tree, "Snapshot of the saved files");
+  }
+
+  async readAt(version: string, path: string): Promise<string | null> {
+    checkCommitId(version);
+    checkVcsPath(path);
+    return this.#treeAt(version).get(path) ?? null;
+  }
+
+  async listAt(version: string, dir?: string): Promise<string[] | null> {
+    checkCommitId(version);
+    if (dir !== undefined) checkVcsPath(dir);
+    const paths = [...this.#treeAt(version).keys()].sort();
+    if (dir === undefined) return paths;
+    const inside = paths.filter((path) => path.startsWith(`${dir}/`));
+    return inside.length === 0 ? null : inside;
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    checkVcsPath(from);
+    checkVcsPath(to);
+    const repo = this.#requireRepo();
+    const moves = await this.#renamedPaths(from, to);
+    for (const [oldPath, newPath] of moves) {
+      await this.#files.write(newPath, await this.#readListed(oldPath));
+      await this.#files.remove(oldPath);
+      // Like `git mv`: the index entry moves as it is, staged changes and all.
+      const indexed = repo.index.get(oldPath);
+      if (indexed !== undefined) {
+        repo.index.delete(oldPath);
+        repo.index.set(newPath, indexed);
+      }
+    }
   }
 
   async log(limit: number): Promise<VcsCommit[]> {
@@ -262,6 +297,42 @@ export class MemoryVcs implements Vcs {
     return this.#repo;
   }
 
+  /** Stores a commit of `tree` on top of the current commit, on no branch, and returns its hash. */
+  async #storeCommit(repo: Repository, tree: Tree, message: string): Promise<string> {
+    const parent = headCommit(repo);
+    const date = this.#clock.now().toISOString();
+    const hash = (
+      await sha256Hex(JSON.stringify([parent, [...tree], this.#author, date, message]))
+    ).slice(0, 40);
+    repo.commits.set(hash, { hash, parent, tree, author: this.#author, date, message });
+    return hash;
+  }
+
+  /** The files of the commit `version`; throws when the repository has no such commit. */
+  #treeAt(version: string): Tree {
+    const commit = this.#requireRepo().commits.get(version);
+    if (commit === undefined) throw new Error(`Unknown version ${version}.`);
+    return commit.tree;
+  }
+
+  /**
+   * Each path to move, old to new: `from` itself when it is a file, or every
+   * file under it when it is a folder.
+   *
+   * @throws when `from` doesn't exist, `to` already does or is inside `from`
+   */
+  async #renamedPaths(from: string, to: string): Promise<Map<string, string>> {
+    // Like git, which can't move a folder into itself.
+    if (to.startsWith(`${from}/`)) throw new Error(`${from} can't move into itself.`);
+    if ((await this.#files.read(to)) !== null || (await this.#files.list(to)).length > 0) {
+      throw new Error(`${to} already exists.`);
+    }
+    if ((await this.#files.read(from)) !== null) return new Map([[from, to]]);
+    const inside = await this.#files.list(from);
+    if (inside.length === 0) throw new Error(`There is no ${from} to rename.`);
+    return new Map(inside.map((path) => [path, `${to}${path.slice(from.length)}`]));
+  }
+
   #requireRepo(): Repository {
     if (this.#repo === null) throw new Error("The folder is not a repository.");
     return this.#repo;
@@ -271,6 +342,13 @@ export class MemoryVcs implements Vcs {
     const contents = new Map<string, string | null>();
     for (const path of paths) contents.set(path, await this.#files.read(path));
     return contents;
+  }
+
+  /** The text of a file that was just listed; throws when another writer removed it meanwhile. */
+  async #readListed(path: string): Promise<string> {
+    const content = await this.#files.read(path);
+    if (content === null) throw new Error(`${path} was removed while it was being read.`);
+    return content;
   }
 
   async #unstaged(repo: Repository): Promise<VcsChange[]> {

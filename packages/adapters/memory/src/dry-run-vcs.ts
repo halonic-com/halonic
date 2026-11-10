@@ -9,6 +9,7 @@ export type PlannedVcsChange =
     }
   | { readonly kind: "commit"; readonly message: string }
   | { readonly kind: "checkout" | "createBranch"; readonly branch: string }
+  | { readonly kind: "rename"; readonly from: string; readonly to: string }
   | { readonly kind: "init" | "pull" | "push" };
 
 /**
@@ -18,7 +19,9 @@ export type PlannedVcsChange =
  * would have happened, as Compose's `pkg/dryrun` does for its service.
  *
  * Unlike the dry-run definition store, reads don't show the recorded changes:
- * `status`, `diff`, `log` and `branches` describe the real repository. Git's
+ * `status`, `diff`, `log`, `branches`, `readAt` and `listAt` describe the
+ * real repository. `snapshot` is read through too: it adds a commit on no
+ * branch and changes neither the working tree, the index nor a branch. Git's
  * state is too large to replay in memory, and `push` reaches another machine.
  * So the `Vcs` contract, which expects a commit to show up in the log, does
  * not apply.
@@ -58,6 +61,25 @@ export class DryRunVcs implements Vcs {
 
   remotes(): Promise<string[]> {
     return this.#source.remotes();
+  }
+
+  snapshot(): Promise<string> {
+    return this.#source.snapshot();
+  }
+
+  readAt(version: string, path: string): Promise<string | null> {
+    return this.#source.readAt(version, path);
+  }
+
+  listAt(version: string, dir?: string): Promise<string[] | null> {
+    return this.#source.listAt(version, dir);
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    checkVcsPath(from);
+    checkVcsPath(to);
+    await this.#checkRepository();
+    this.#record({ kind: "rename", from, to });
   }
 
   async stage(paths: string[]): Promise<void> {
