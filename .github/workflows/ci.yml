@@ -127,6 +127,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           filter: blob:none
+      - name: DRY RUN forced failure (HAL-4253)
+        run: sleep 45; exit 1
       - uses: $/.github/actions/setup
       - id: pr
         uses: $/.github/actions/pull-request
@@ -1248,7 +1250,7 @@ jobs:
   # checkout), so the write permission below is only used by the `gh` calls here.
   fail-fast:
     name: Cancel the run on the first failure
-    if: github.event_name == 'merge_group'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 45 # longer than the longest job (tauri-windows, android: 40)
     permissions:
@@ -1284,7 +1286,7 @@ jobs:
     # job still fails it. In a merge-queue run nothing replaces the run, but
     # fail-fast (above) cancels it when a job fails. There ci-ok runs
     # anyway and reports that failure at once.
-    if: ${{ github.event_name == 'merge_group' || !cancelled() }}
+    if: ${{ always() }}
     needs:
       [
         fail-fast,
