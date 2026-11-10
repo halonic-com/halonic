@@ -1,3 +1,5 @@
+import { isPlainObject } from "./plain-data.ts";
+
 /** What a secret value is replaced with wherever a scrubber finds it. */
 export const secretRemoved = "[secret removed]";
 
@@ -83,6 +85,26 @@ export class SecretScrubber {
       }
       scrubbed += secretRemoved;
       while (at < text.length && hidden[at]) at += 1;
+    }
+    return scrubbed;
+  }
+
+  /**
+   * A copy of JSON-shaped data with {@link scrub} applied to every string in
+   * it, object keys included, at any depth. Numbers, booleans, `null` and
+   * anything that isn't a string, an array or a plain object are kept as
+   * they are. The value given is not changed.
+   *
+   * @example
+   * scrubber.scrubValue({ headers: [`Bearer ${token}`] }); // { headers: ["Bearer [secret removed]"] }
+   */
+  scrubValue(value: unknown): unknown {
+    if (typeof value === "string") return this.scrub(value);
+    if (Array.isArray(value)) return value.map((item) => this.scrubValue(item));
+    if (!isPlainObject(value)) return value;
+    const scrubbed: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      scrubbed[this.scrub(key)] = this.scrubValue(item);
     }
     return scrubbed;
   }

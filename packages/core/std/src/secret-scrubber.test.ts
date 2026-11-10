@@ -83,6 +83,28 @@ verifies("std.secret-scrubber", () => {
     scrubber.remember(token);
     expect(scrubber.scrub(`${token} second-made-up`)).toBe(`${secretRemoved} ${secretRemoved}`);
   });
+
+  describe("scrubValue", () => {
+    it("scrubs every string of nested data, keys included, and keeps the rest", () => {
+      const value = {
+        command: `curl -H "x-key: ${token}"`,
+        [token]: [1, true, null, { deeper: `a ${token}` }],
+      };
+      expect(scrubberFor(token).scrubValue(value)).toEqual({
+        command: `curl -H "x-key: ${secretRemoved}"`,
+        [secretRemoved]: [1, true, null, { deeper: `a ${secretRemoved}` }],
+      });
+      expect(value.command).toContain(token);
+    });
+
+    it("scrubs a string given on its own, and keeps what isn't plain data", () => {
+      const scrubber = scrubberFor(token);
+      expect(scrubber.scrubValue(token)).toBe(secretRemoved);
+      const date = new Date(0);
+      expect(scrubber.scrubValue(date)).toBe(date);
+      expect(scrubber.scrubValue(undefined)).toBeUndefined();
+    });
+  });
 });
 
 describe("secretTextForms", () => {

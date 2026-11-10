@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { HarnessEvent } from "@halonicjs/ports";
+import { secretRemoved } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { SignInError } from "./sign-in.ts";
@@ -152,8 +153,25 @@ verifies("harness-claude-code.stream-json", () => {
       const result = `API Error: 401 bad header ${bridgeToken}`;
       const { error } = readAll([resultLine({ is_error: true, result })]);
       expect((error as Error).message).toBe(
-        "Claude Code stopped with an error: API Error: 401 bad header [run token]",
+        `Claude Code stopped with an error: API Error: 401 bad header ${secretRemoved}`,
       );
+    });
+
+    it.each([
+      "Not logged in users see the landing page first.",
+      "Authentication required: I added a check to every route.",
+      "Login expired sessions now redirect.\nRun /login to try it.",
+    ])("finishes as usual when a successful answer begins like a sign-in message: %j", (text) => {
+      expect(readAll([resultLine({ result: text })])).toEqual({
+        events: [{ type: "agent.finished", agent: "writer", output: text }],
+      });
+    });
+
+    it("hides the bridge token in the final output", () => {
+      const { events } = readAll([resultLine({ result: `The header is ${bridgeToken}.` })]);
+      expect(events).toEqual([
+        { type: "agent.finished", agent: "writer", output: `The header is ${secretRemoved}.` },
+      ]);
     });
 
     it("finishes with empty output when the result has no text", () => {
@@ -244,6 +262,46 @@ verifies("harness-claude-code.stream-json", () => {
         JSON.stringify({ type: "assistant" }),
       ];
       expect(readAll(lines)).toEqual({ events: [] });
+    });
+
+    it("hides the bridge token in a call's args and result, and in a subagent's prompt and output", () => {
+      const header = `x-halonic-run: ${bridgeToken}`;
+      const lines = [
+        toolUse("toolu_env", "Bash", { command: "env", env: { ANTHROPIC_CUSTOM_HEADERS: header } }),
+        toolResult("toolu_env", `HOME=/home\nANTHROPIC_CUSTOM_HEADERS=${header}`),
+        toolUse("toolu_sub", "Agent", { subagent_type: "Explore", prompt: `Use ${bridgeToken}` }),
+        toolResult("toolu_sub", [{ type: "text", text: `Found ${JSON.stringify(bridgeToken)}` }]),
+      ];
+      const { events } = readAll(lines);
+      expect(JSON.stringify(events)).not.toContain(bridgeToken);
+      const hidden = `x-halonic-run: ${secretRemoved}`;
+      expect(events).toEqual([
+        {
+          type: "tool.called",
+          agent: "writer",
+          tool: "Bash",
+          args: { command: "env", env: { ANTHROPIC_CUSTOM_HEADERS: hidden } },
+        },
+        {
+          type: "tool.result",
+          agent: "writer",
+          tool: "Bash",
+          result: `HOME=/home\nANTHROPIC_CUSTOM_HEADERS=${hidden}`,
+          outcome: "ok",
+        },
+        {
+          type: "agent.started",
+          agent: "Explore",
+          prompt: `Use ${secretRemoved}`,
+          parent: "writer",
+        },
+        {
+          type: "agent.finished",
+          agent: "Explore",
+          output: `Found "${secretRemoved}"`,
+          parent: "writer",
+        },
+      ]);
     });
 
     it("gives a call without input empty args, and a subagent without a prompt an empty one", () => {

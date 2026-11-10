@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { findSignInProblem, SignInError } from "./sign-in.ts";
+import { findSignInMessage, findSignInProblem, SignInError } from "./sign-in.ts";
 
 verifies("harness-claude-code.sign-in-expired", () => {
   describe("findSignInProblem", () => {
@@ -19,6 +19,24 @@ verifies("harness-claude-code.sign-in-expired", () => {
       "",
     ])("finds no sign-in problem in %j", (line) => {
       expect(findSignInProblem(line)).toBeUndefined();
+    });
+  });
+
+  describe("findSignInMessage", () => {
+    it.each([
+      ["Login expired · Please run /login", "sign-in-expired"],
+      [" Not logged in · Please run /login\n", "signed-out"],
+    ])("reads the whole message %j as %s", (text, problem) => {
+      expect(findSignInMessage(text)).toBe(problem);
+    });
+
+    it.each([
+      "Not logged in users see the landing page first.",
+      "Authentication required · Sign in again to continue",
+      "Login expired sessions now redirect.\nRun /login",
+      "Please run /login",
+    ])("finds no sign-in message in the answer %j", (text) => {
+      expect(findSignInMessage(text)).toBeUndefined();
     });
   });
 

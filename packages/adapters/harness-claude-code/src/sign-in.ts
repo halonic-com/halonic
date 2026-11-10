@@ -58,6 +58,22 @@ export function findSignInProblem(line: string): SignInProblem | undefined {
   return signInMessages.find(({ start }) => text.startsWith(start))?.problem;
 }
 
+/**
+ * Like {@link findSignInProblem}, but only when the text is Claude Code's
+ * whole sign-in message: one line that ends with its hint to run `/login`.
+ * For text that may be the agent's own answer, such as a successful result,
+ * where an answer that begins "Not logged in…" mustn't end the run.
+ *
+ * @example
+ * findSignInMessage("Not logged in · Please run /login"); // "signed-out"
+ * findSignInMessage("Not logged in users see the landing page."); // undefined
+ */
+export function findSignInMessage(text: string): SignInProblem | undefined {
+  const message = text.trim();
+  if (message.includes("\n") || !message.endsWith("/login")) return undefined;
+  return findSignInProblem(message);
+}
+
 /** What a person reads for each problem, with the one thing to do. */
 const signInSentences: Readonly<Record<SignInProblem, string>> = {
   "signed-out": "Claude Code isn't signed in on this computer. Sign in with `claude auth login`.",

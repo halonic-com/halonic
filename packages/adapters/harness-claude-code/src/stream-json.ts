@@ -1,6 +1,7 @@
 import type { HarnessEvent } from "@halonicjs/ports";
+import { SecretScrubber } from "@halonicjs/std";
 import { isBridgeTool } from "./bridge-tools.ts";
-import { findSignInProblem, SignInError } from "./sign-in.ts";
+import { findSignInMessage, findSignInProblem, SignInError } from "./sign-in.ts";
 import { type ContentBlock, parseStreamJsonLine, type StreamJsonLine } from "./stream-json-line.ts";
 
 /**
@@ -16,7 +17,7 @@ const defaultSubagentType = "general-purpose";
 export interface StreamJsonReaderOptions {
   /** The task agent's id: the `agent` of its own events and the `parent` of its subagents. */
   agentId: string;
-  /** The run's bridge token. An error never contains it, even when Claude Code printed it. */
+  /** The run's bridge token. No event or error contains it, even when Claude Code printed it. */
   bridgeToken: string;
 }
 
@@ -47,6 +48,8 @@ interface OpenSubagent {
  * - Model calls go through the bridge, so the reader reports none.
  * - Line types it doesn't know are skipped, so a newer Claude Code can add
  *   some.
+ * - The bridge token is removed from every event and error. It is in
+ *   Claude Code's environment, so a tool call such as `env` can print it.
  *
  * @example
  * const reader = new StreamJsonReader({ agentId: "writer", bridgeToken: bridge.token });
@@ -57,7 +60,8 @@ interface OpenSubagent {
  */
 export class StreamJsonReader {
   readonly #agentId: string;
-  readonly #bridgeToken: string;
+  /** Removes the bridge token from what the reader reports. */
+  readonly #scrubber = new SecretScrubber();
   /** Tool calls by their id, until their result arrives. */
   readonly #openCalls = new Map<string, OpenCall>();
   /** Subagents by the id of the call that started them, until it returns. */
@@ -68,7 +72,7 @@ export class StreamJsonReader {
 
   constructor(options: StreamJsonReaderOptions) {
     this.#agentId = options.agentId;
-    this.#bridgeToken = options.bridgeToken;
+    this.#scrubber.remember(options.bridgeToken);
   }
 
   /** Whether the reader has read the `result` line and reported the final `agent.finished`. */
@@ -79,7 +83,7 @@ export class StreamJsonReader {
   /**
    * Reads the next line Claude Code printed.
    *
-   * @returns the events the line stands for, often none
+   * @returns the events the line stands for, often none; none holds the bridge token
    * @throws SignInError when Claude Code couldn't call the model for want of a sign-in
    * @throws Error when the line isn't stream-json or the run ended with an error; the message never holds the bridge token
    */
@@ -87,7 +91,7 @@ export class StreamJsonReader {
     if (this.#finished || line.trim() === "") return [];
     const parsed = parseStreamJsonLine(line);
     if (parsed === undefined) throw this.#notStreamJson(line);
-    return this.#eventsOf(parsed);
+    return this.#eventsOf(parsed).map((event) => this.#withoutToken(event));
   }
 
   #eventsOf(line: StreamJsonLine): HarnessEvent[] {
@@ -154,11 +158,12 @@ export class StreamJsonReader {
 
   /** The final `agent.finished`, or the error the run ends with. */
   #finish(result: Extract<StreamJsonLine, { type: "result" }>): HarnessEvent {
-    const signInProblem = findSignInProblem(result.text);
+    const failed = result.isError || result.subtype.startsWith("error");
+    // A successful result is the agent's answer, which may begin "Not logged
+    // in…" for reasons of its own, so only the whole sign-in message counts.
+    const signInProblem = failed ? findSignInProblem(result.text) : findSignInMessage(result.text);
     if (signInProblem !== undefined) throw new SignInError(signInProblem);
-    if (result.isError || result.subtype.startsWith("error")) {
-      throw new Error(this.#withoutToken(failureSentence(result)));
-    }
+    if (failed) throw new Error(this.#scrubber.scrub(failureSentence(result)));
     this.#finished = true;
     return { type: "agent.finished", agent: this.#agentId, output: result.text };
   }
@@ -176,9 +181,11 @@ export class StreamJsonReader {
     );
   }
 
-  #withoutToken(text: string): string {
-    if (this.#bridgeToken === "") return text;
-    return text.split(this.#bridgeToken).join("[run token]");
+  /** The event with the bridge token removed from every string in it: prompts, args, results and output. */
+  #withoutToken(event: HarnessEvent): HarnessEvent {
+    // `scrubValue` changes only the text of strings and keeps the shape, so
+    // the copy is still the same kind of event.
+    return this.#scrubber.scrubValue(event) as HarnessEvent;
   }
 }
 
