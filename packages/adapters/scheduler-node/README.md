@@ -100,6 +100,20 @@ export async function runExample(): Promise<{
   or cancels during the call stays as the listener left it.
 - **Tick:** `onTick` about once a minute. A long gap gives one tick, not one
   per missed minute: the listener catches up. A tick that rejects isn't retried.
+- **Input rules:** a key or timer id over 256 UTF-8 bytes, or a time that
+  isn't a valid time, makes `schedule` reject with a `RangeError` and change
+  nothing.
+- **Wake-ups:** the scheduler wakes itself with `setTimer`, set for the earlier
+  of the next due timer and the next tick, so nothing has to call it. After
+  `close` it sets no more wake-ups and delivers nothing more, and `close`
+  resolves once the deliveries in progress have settled.
+- **Start-up:** the scheduler compacts the collection when it starts, so
+  delivered, cancelled and replaced timers leave the store. If the store
+  fails the compaction, it still starts from the timers it read and reports
+  no error.
+- **Foreign records:** when the collection holds a record that isn't a timer
+  this scheduler wrote, every call rejects with an error that names the
+  record, nothing is delivered, and the collection is left as it is.
 - **Errors:** every error the scheduler handles itself goes to `reportError`,
   with the timer, `"tick"` or `"wake-up"` as its source.
 - **One process, one scheduler:** memory is the scheduler's working copy,
