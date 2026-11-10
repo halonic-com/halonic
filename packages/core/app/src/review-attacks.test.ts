@@ -149,6 +149,7 @@ verifies("app.assistant-untrusted-items-only", () => {
         baseline: fast,
         card: k1,
         seen: await digestOf(smart),
+        seenText: smart,
         writtenUntrusted: true,
       },
     });

@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: AI changes 1.1 and 1.10 (HAL-3228); Liam's engine answer, point 1 (HAL-3267); save model 1.7 (`DefinitionStore.write` with `expected`, HAL-3247); HAL-3277
+- Source: AI changes 1.1 and 1.10 (HAL-3228); Liam's engine answer, point 1 (HAL-3267); save model 1.7 (`DefinitionStore.write` with `expected`, HAL-3247); HAL-3277; catch-up, HAL-3964
 
-When the chat assistant writes a file, the review service shall write it through `DefinitionStore.write` with `expected` set to the digest of the text the model last read in that chat, and, on that file's first write, keep the text from before the write as the file's baseline (none for a new file). It shall record the card that wrote it and the file's digest after the write. A later write shall keep the baseline, and a write that makes the file its baseline again shall remove the record. If the file isn't what the model read, it shall write nothing, change no record and give the current text. If the file changed outside Halonic since its record was made, it shall write nothing and hold the file for Compare. A write from another card shall take the file over and name the card it replaced.
+When the chat assistant writes a file, the review service shall write it through `DefinitionStore.write` with `expected` set to the digest of the text the model last read in that chat, and, on that file's first write, keep the text from before the write as the file's baseline (none for a new file). It shall record the card that wrote it and the file's digest after the write. A later write shall keep the baseline, and a write that makes the file its baseline again shall remove the record. If the file isn't what the model read, it shall write nothing, change no record and give the current text. If the file changed outside Halonic since it was last seen, it shall first catch up as in `app.review-outside-changes-merge`, and if it can't, write nothing and hold the file for Compare. A write from another card shall take the file over and name the card it replaced.
 
 ## Examples
 
@@ -17,7 +17,7 @@ When the chat assistant writes a file, the review service shall write it through
 - Given the person changed the file after the model read it,
   when the assistant writes,
   then nothing is written, there is no record and the model gets the current text.
-- Given a record and a file changed by another editor since,
+- Given a record and a file whose changed line another editor changed since,
   when the assistant writes,
   then nothing is written and the file is held for Compare.
 - Given no `agents/clerk.agent.yaml`,

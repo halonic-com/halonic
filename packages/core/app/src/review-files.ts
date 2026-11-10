@@ -37,6 +37,9 @@ export interface ReviewServiceOptions {
   readonly trash?: Trash;
 }
 
+/** The fields of a record about the file as last seen. */
+export type LastSeen = Pick<ReviewRecord, "seen" | "seenText">;
+
 interface ReviewEvents {
   changed: { readonly paths: readonly string[] };
 }
@@ -186,6 +189,17 @@ export class ReviewFiles {
       }
     }
     return this.putFile(record.path, record.seen, record.baseline);
+  }
+
+  /** What a record keeps of the file as last seen: its digest and, unless it is gone, its text. */
+  async lastSeen(text: string | null): Promise<LastSeen> {
+    return text === null ? { seen: "absent" } : { seen: await this.digestOf(text), seenText: text };
+  }
+
+  /** `record` with the file as last seen now `text`, so the text of a file that is gone isn't kept. */
+  async seeing(record: ReviewRecord, text: string | null): Promise<ReviewRecord> {
+    const { seenText: _earlier, ...rest } = record;
+    return { ...rest, ...(await this.lastSeen(text)) };
   }
 
   /** The digest the store compares, or `"absent"` for no file. */

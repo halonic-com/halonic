@@ -90,7 +90,7 @@ async function rejectPart(
   if (!(await files.putFile(record.path, record.seen, text))) {
     return "held";
   }
-  const after = await files.keep({ ...record, seen: await files.digestOf(text) });
+  const after = await files.keep(await files.seeing(record, text));
   return {
     path: record.path,
     record: { before: record, after },

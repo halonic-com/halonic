@@ -30,6 +30,13 @@ export interface ReviewRecord {
    * it was deleted. A file that no longer matches was changed outside Halonic.
    */
   readonly seen: ExpectedContent;
+  /**
+   * The file's text as last seen, matching `seen`; left out when the file
+   * is gone. It is the base for taking in a change made outside Halonic
+   * (`app.review-outside-changes-merge`). A record from before it was kept
+   * has none, so such a change stays held for Compare.
+   */
+  readonly seenText?: string;
   /** Set when the assistant deleted the file: its entry in the trash, to put it back from. */
   readonly trashed?: { readonly trashId: string };
   /**
@@ -63,6 +70,7 @@ export function serializeReviewRecord(record: ReviewRecord): string {
     baseline: record.baseline,
     card: { chatId: record.card.chatId, cardId: record.card.cardId },
     seen: record.seen,
+    ...(record.seenText === undefined ? {} : { seenText: record.seenText }),
     ...(record.trashed === undefined ? {} : { trashed: { trashId: record.trashed.trashId } }),
     ...(record.writtenUntrusted === true ? { writtenUntrusted: true } : {}),
   };
@@ -92,7 +100,7 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   if (!isPlainObject(json)) {
     return err("it isn't a JSON object");
   }
-  const { format, path, baseline, card: cardJson, seen, trashed, writtenUntrusted } = json;
+  const { format, path, baseline, card: cardJson, seen } = json;
   if (format !== reviewRecordFormat) {
     return err(`its format isn't ${reviewRecordFormat}`);
   }
@@ -109,24 +117,40 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   if (!isSeenDigest(seen)) {
     return err("its seen digest isn't a sha256 digest or absent");
   }
+  const optional = readOptionalFields(json, seen);
+  if (!optional.ok) {
+    return optional;
+  }
+  return ok({ path, baseline, card, seen, ...optional.value });
+}
+
+/** The fields a record has only sometimes. */
+type OptionalFields = Pick<ReviewRecord, "seenText" | "trashed" | "writtenUntrusted">;
+
+/** Reads the fields of a record's JSON that may be left out, each only when it is there. */
+function readOptionalFields(
+  json: Record<string, unknown>,
+  seen: ExpectedContent,
+): Result<OptionalFields, string> {
+  const { seenText, trashed, writtenUntrusted } = json;
+  if (seenText !== undefined && (typeof seenText !== "string" || seen === "absent")) {
+    return err("its seenText isn't the text of a file that exists");
+  }
   if (writtenUntrusted !== undefined && writtenUntrusted !== true) {
     return err("its writtenUntrusted isn't true");
   }
-  const record: ReviewRecord = {
-    path,
-    baseline,
-    card,
-    seen,
+  const fields: OptionalFields = {
+    ...(typeof seenText === "string" ? { seenText } : {}),
     ...(writtenUntrusted === true ? { writtenUntrusted } : {}),
   };
   if (trashed === undefined) {
-    return ok(record);
+    return ok(fields);
   }
   const trashId = isPlainObject(trashed) ? trashed["trashId"] : undefined;
   if (typeof trashId !== "string" || trashId === "") {
     return err("its trashed entry has no trashId");
   }
-  return ok({ ...record, trashed: { trashId } });
+  return ok({ ...fields, trashed: { trashId } });
 }
 
 /** Whether a value from a record is a path the review service could have written a record for. */

@@ -3,6 +3,7 @@
 // rejects what it wrote. Accept changes only the record; Reject writes the
 // baseline back. Nothing here commits, pushes or makes anything live.
 
+import { catchUp } from "./review-catch-up.ts";
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
 import { type FileWriter, ReviewWriteHook } from "./review-hook.ts";
 import { decidePart, fileReview } from "./review-parts.ts";
@@ -220,20 +221,28 @@ export class ReviewService {
   /**
    * Compares each file with its record, when the workspace opens or the
    * watcher reports files changed outside Halonic (`app.review-on-open`).
-   * A file that isn't as last seen is held for Compare: its file and record
-   * stay as they are. A record that can't be read is removed.
+   * A file that isn't as last seen is caught up when the change doesn't
+   * touch the assistant's (`app.review-outside-changes-merge`), and held
+   * for Compare otherwise: its file and record stay as they are. A record
+   * that can't be read is removed.
    *
    * @param paths - only these files, as a watch batch names them; all files when left out
    */
   async check(paths?: readonly string[]): Promise<ReviewCheck> {
     const { records, dropped } = await this.files.list(paths);
     const held: string[] = [];
-    for (const record of records) {
-      const seen = await this.files.turn(record.path, async () =>
-        this.files.digestOf(await this.files.store.read(record.path)),
-      );
-      if (seen !== record.seen) {
-        held.push(record.path);
+    for (const { path } of records) {
+      // The record is read again in the file's turn: a save since the
+      // listing may have moved it, and catching up from the old one would
+      // undo that.
+      const caught = await this.files.turn(path, async () => {
+        const record = await this.files.read(path);
+        return record === null
+          ? null
+          : catchUp(this.files, record, await this.files.store.read(path));
+      });
+      if (caught === "held") {
+        held.push(path);
       }
     }
     this.files.changed(dropped.flatMap(({ path }) => (path === null ? [] : [path])));

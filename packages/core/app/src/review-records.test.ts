@@ -48,6 +48,14 @@ verifies("app.review-record", () => {
       expect(await records.read(clerk.path)).toEqual({ status: "found", record: clerk });
     });
 
+    it("keeps the text as last seen, and reads a record without it as before", async () => {
+      const { records } = setUp();
+      const withText: ReviewRecord = { ...clerk, seenText: "name: Clerk\nmodel: smart\n" };
+      await records.save(withText);
+      expect(await records.read(clerk.path)).toEqual({ status: "found", record: withText });
+      expect(parseReviewRecord(serializeReviewRecord(clerk))).toEqual({ ok: true, value: clerk });
+    });
+
     it("gives a file `a` and a file in a folder `a.json` different records", async () => {
       const { records } = setUp();
       await records.save({ ...clerk, path: "a" });
@@ -128,6 +136,16 @@ verifies("app.review-record", () => {
         "its seen digest isn't a sha256 digest or absent",
       ],
       ["an empty trash entry", editedRecord({ trashed: {} }), "its trashed entry has no trashId"],
+      [
+        "a seen text that isn't text",
+        editedRecord({ seenText: 3 }),
+        "its seenText isn't the text of a file that exists",
+      ],
+      [
+        "a seen text for a file that is gone",
+        editedRecord({ seen: "absent", seenText: "name: Clerk\n" }),
+        "its seenText isn't the text of a file that exists",
+      ],
     ])("counts %s as unreadable", async (_name, text, reason) => {
       expect(parseReviewRecord(text)).toEqual({ ok: false, error: reason });
     });

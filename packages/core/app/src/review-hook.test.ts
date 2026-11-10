@@ -105,11 +105,11 @@ verifies("app.review-other-writes-merge", () => {
 
   it("leaves the record alone and keeps the file held when it changed outside Halonic first", async () => {
     const { inner, store, review, baseline } = await withAssistantChange();
-    // Someone outside Halonic changes line 9 on disk, then the editor saves an edit to line 6.
-    inner.files.set(path, lines({ 3: "line 3 by the assistant", 9: "line 9 outside" }));
+    // Someone outside Halonic changes line 3 too, then the editor saves an edit to line 6.
+    inner.files.set(path, lines({ 3: "line 3 outside", 9: "line 9 outside" }));
     await store.write(
       path,
-      lines({ 3: "line 3 by the assistant", 6: "line 6 by the person", 9: "line 9 outside" }),
+      lines({ 3: "line 3 outside", 6: "line 6 by the person", 9: "line 9 outside" }),
     );
     expect(await baseline()).toBe(lines());
     const found = await review.changesIn(path);
@@ -131,7 +131,8 @@ verifies("app.review-other-writes-merge", () => {
     if (read.status !== "found") {
       throw new Error("no record");
     }
-    await records.save({ ...read.record, baseline: lines(), seen: "absent" });
+    const { seenText: _gone, ...kept } = read.record;
+    await records.save({ ...kept, baseline: lines(), seen: "absent" });
     await store.remove(path);
     expect(await baseline()).toBe(lines());
   });

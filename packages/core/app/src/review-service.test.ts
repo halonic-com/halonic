@@ -55,7 +55,13 @@ verifies("app.review-assistant-writes", () => {
     expect(store.files.get(clerk)).toBe(smart);
     expect(await records.read(clerk)).toEqual({
       status: "found",
-      record: { path: clerk, baseline: fast, card: k1, seen: await digestOf(smart) },
+      record: {
+        path: clerk,
+        baseline: fast,
+        card: k1,
+        seen: await digestOf(smart),
+        seenText: smart,
+      },
     });
   });
 

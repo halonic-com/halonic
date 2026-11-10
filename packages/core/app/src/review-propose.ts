@@ -4,6 +4,7 @@
 // of HAL-65 section F, rules A and B, before they touch the store.
 
 import type { ExpectedContent } from "@halonicjs/ports";
+import { catchUp } from "./review-catch-up.ts";
 import type { ReviewFiles } from "./review-files.ts";
 import { proposalRefusal } from "./review-gate.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
@@ -35,7 +36,7 @@ export function proposeWrite(files: ReviewFiles, write: ProposedWrite): Promise<
       ...recordFields(record, before, trusted),
       path: write.path,
       card: write.card,
-      seen: await files.digestOf(write.content),
+      ...(await files.lastSeen(write.content)),
     });
     return writtenOutcome(
       files,
@@ -127,7 +128,8 @@ type CheckedBefore =
 /**
  * Whether the assistant may change the file: the store must serve the
  * path, the file must hold what the model read, and, with a record, what
- * Halonic last saw (else it waits for Compare).
+ * Halonic last saw, once a change from outside is caught up
+ * (`app.review-outside-changes-merge`; else it waits for Compare).
  */
 async function checkBefore(
   files: ReviewFiles,
@@ -138,12 +140,14 @@ async function checkBefore(
   if (before === refused) {
     return { status: "refused", reason: "not-allowed" };
   }
-  const record = await files.read(path);
-  const digestBefore = await files.digestOf(before);
-  if (digestBefore !== expected) {
+  const found = await files.read(path);
+  if ((await files.digestOf(before)) !== expected) {
     return { status: "changed-on-disk", current: before };
   }
-  if (record !== null && record.seen !== digestBefore) {
+  // A change made outside Halonic is taken in first, as before a person's
+  // save; one that touches the assistant's holds the file for Compare.
+  const record = found === null ? null : await catchUp(files, found, before);
+  if (record === "held") {
     return { status: "held" };
   }
   return { status: "ready", record, before };

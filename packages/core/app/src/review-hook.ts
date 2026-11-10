@@ -5,6 +5,7 @@
 
 import type { WriteOptions, WriteResult } from "@halonicjs/ports";
 import { mergedText, mergeLines } from "@halonicjs/std";
+import { catchUp } from "./review-catch-up.ts";
 import type { ReviewFiles } from "./review-files.ts";
 import type { ReviewRecord } from "./review-record.ts";
 
@@ -32,6 +33,7 @@ export class ReviewWriteHook implements FileWriter {
         return this.files.store.write(path, content, options);
       }
       const before = await this.files.store.read(path);
+      await this.catchUp(path, before);
       const result = await this.files.store.write(path, content, options);
       if (result.status === "written") {
         await this.moveBaseline(path, before, content);
@@ -51,9 +53,22 @@ export class ReviewWriteHook implements FileWriter {
         // Already gone: nothing is removed, so the record stays as it is.
         return;
       }
+      await this.catchUp(path, before);
       await this.files.store.remove(path);
       await this.moveBaseline(path, before, null);
     });
+  }
+
+  /**
+   * Takes in a change made outside Halonic since the file was last seen
+   * (`app.review-outside-changes-merge`), so this write can move the
+   * baseline on from it.
+   */
+  private async catchUp(path: string, current: string | null): Promise<void> {
+    const record = await this.files.read(path);
+    if (record !== null) {
+      await catchUp(this.files, record, current);
+    }
   }
 
   private async moveBaseline(
@@ -66,9 +81,10 @@ export class ReviewWriteHook implements FileWriter {
       return;
     }
     if ((await this.files.digestOf(before)) !== record.seen) {
-      // The file changed outside Halonic before this write. Merging from it
-      // would count that change as the assistant's, so the record stays as
-      // it is and the file stays held for Compare (AI changes 1.10).
+      // The file changed outside Halonic before this write, in a way catch-up
+      // couldn't take in. Merging from it would count that change as the
+      // assistant's, so the record stays as it is and the file stays held for
+      // Compare (AI changes 1.10).
       return;
     }
     await this.files.keep(await this.moved(record, before, after));
@@ -88,13 +104,12 @@ export class ReviewWriteHook implements FileWriter {
     before: string | null,
     after: string | null,
   ): Promise<ReviewRecord> {
-    const seen = await this.files.digestOf(after);
     if (before === null || after === null) {
-      return { ...record, baseline: after, seen };
+      return this.files.seeing({ ...record, baseline: after }, after);
     }
     const merged = mergedText(mergeLines(before, record.baseline ?? "", after), "theirs");
     // A new file stays new as long as the merge left nothing of it.
     const baseline = record.baseline === null && merged === "" ? null : merged;
-    return { ...record, baseline, seen };
+    return this.files.seeing({ ...record, baseline }, after);
   }
 }
