@@ -102,9 +102,9 @@ impl TrustState {
     /// Marks a dialog as showing until the guard drops, or refuses as
     /// `busy` when one already is.
     fn start_asking(&self) -> Result<Asking<'_>, TrustRefusal> {
-        let started = self
-            .asking
-            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire);
+        let started =
+            self.asking
+                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire);
         if started.is_err() {
             return Err(TrustRefusal::new(
                 "busy",
@@ -134,12 +134,15 @@ fn record_location(record: &Value) -> Result<&str, TrustRefusal> {
             format!("a trust record may hold at most {MAX_RECORD_BYTES} bytes"),
         ));
     }
-    record.get("location").and_then(Value::as_str).ok_or_else(|| {
-        TrustRefusal::new(
-            "invalid_record",
-            "a trust record must be an object with a location",
-        )
-    })
+    record
+        .get("location")
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            TrustRefusal::new(
+                "invalid_record",
+                "a trust record must be an object with a location",
+            )
+        })
 }
 
 /// The canonical folder for a location that must already be canonical, in

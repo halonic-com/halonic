@@ -16,8 +16,7 @@ struct Scratch(PathBuf);
 
 impl Scratch {
     fn new(name: &str) -> Self {
-        let root =
-            std::env::temp_dir().join(format!("trust-grants-{name}-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("trust-grants-{name}-{}", std::process::id()));
         // A crashed earlier run may have left it; it is ours to clear.
         let _ = fs::remove_dir_all(&root);
         for folder in ["work/acme/hubs", "work/acme-evil", "work/other/skills"] {
@@ -84,10 +83,12 @@ impl Shell {
         answer: bool,
     ) -> (Result<(), &'static str>, Vec<String>) {
         let mut asked = Vec::new();
-        let result = self.state.grant(&self.store, &self.folders, record, |question| {
-            asked.push(question.to_owned());
-            answer
-        });
+        let result = self
+            .state
+            .grant(&self.store, &self.folders, record, |question| {
+                asked.push(question.to_owned());
+                answer
+            });
         (result.map_err(|refusal| refusal.kind()), asked)
     }
 
@@ -133,7 +134,10 @@ fn trust_grants_ask_about_any_other_folder_showing_its_path() {
     let shell = Shell::with_acme_picked("other-folder");
     for folder in ["work/other", "work/acme-evil"] {
         let location = shell.location(folder);
-        assert!(!shell.is_open(&location), "{folder} is open before the grant");
+        assert!(
+            !shell.is_open(&location),
+            "{folder} is open before the grant"
+        );
         let (result, asked) = shell.grant(&location, true);
         assert_eq!(result, Ok(()), "{folder}");
         assert_eq!(asked, [question_text(&location)], "{folder}");
@@ -241,15 +245,19 @@ fn trust_grants_show_one_dialog_at_a_time() {
     let evil = shell.location("work/acme-evil");
     let hubs = shell.location("work/acme/hubs");
     let mut while_asking = Vec::new();
-    let result = shell.state.grant(&shell.store, &shell.folders, &record(&other), |_| {
-        // While the question is open, another question or the folder dialog
-        // is refused at once; a grant that needs no question goes through.
-        while_asking.push(shell.grant(&evil, true).0);
-        let picked = shell.state.pick(&shell.folders, || panic!("no dialog while one is open"));
-        while_asking.push(picked.map(|_| ()).map_err(|refusal| refusal.kind()));
-        while_asking.push(shell.grant(&hubs, true).0);
-        true
-    });
+    let result = shell
+        .state
+        .grant(&shell.store, &shell.folders, &record(&other), |_| {
+            // While the question is open, another question or the folder dialog
+            // is refused at once; a grant that needs no question goes through.
+            while_asking.push(shell.grant(&evil, true).0);
+            let picked = shell
+                .state
+                .pick(&shell.folders, || panic!("no dialog while one is open"));
+            while_asking.push(picked.map(|_| ()).map_err(|refusal| refusal.kind()));
+            while_asking.push(shell.grant(&hubs, true).0);
+            true
+        });
     assert!(result.is_ok());
     assert_eq!(while_asking, [Err("busy"), Err("busy"), Ok(())]);
     assert!(!shell.is_saved(&evil));

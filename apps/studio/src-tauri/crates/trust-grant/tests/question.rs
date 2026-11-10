@@ -35,5 +35,9 @@ fn trust_grants_name_the_location_and_file_of_an_unreadable_record() {
     assert_eq!(answer["file"], file.display().to_string());
     let invalid = serde_json::to_value(TrustRefusal::from(TrustError::InvalidRecord))
         .expect("a refusal serialises");
-    assert_eq!(invalid.as_object().map(|fields| fields.len()), Some(2), "{invalid}");
+    assert_eq!(
+        invalid.as_object().map(|fields| fields.len()),
+        Some(2),
+        "{invalid}"
+    );
 }
