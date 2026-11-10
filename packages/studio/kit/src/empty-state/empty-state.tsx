@@ -1,5 +1,6 @@
 import type { ReactNode, Ref } from "react";
 import { Button, type ButtonSize } from "../button/button.tsx";
+import { inlineLinkClasses } from "../external-link/external-link.tsx";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 
 /**
@@ -43,6 +44,7 @@ interface Nothing extends EmptyStateBase {
   readonly action?: EmptyStateAction;
   /** An optional second way in: "Start from a template". */
   readonly secondaryAction?: EmptyStateAction;
+  readonly link?: never;
 }
 
 /** Something couldn't load, in the space it would have filled. */
@@ -55,6 +57,11 @@ interface CentredError extends EmptyStateBase {
   /** Try again. */
   readonly action?: EmptyStateAction;
   readonly secondaryAction?: never;
+  /**
+   * A quieter step after the button, drawn as an inline link: "Copy details" when a page stopped
+   * working or the engine didn't start (microcopy 22 F1 and F14).
+   */
+  readonly link?: EmptyStateAction;
 }
 
 /**
@@ -122,10 +129,13 @@ export function EmptyState(props: EmptyStateProps) {
         {isShown(props.description) ? (
           <p className="text-body text-fg-muted">{props.description}</p>
         ) : null}
-        {props.action !== undefined || props.secondaryAction !== undefined ? (
-          <div className="mt-1.5 flex flex-wrap justify-center gap-2">
+        {props.action !== undefined ||
+        props.secondaryAction !== undefined ||
+        props.link !== undefined ? (
+          <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2">
             {actionButton(props.action, primary, "md")}
             {actionButton(props.secondaryAction, "secondary", "md")}
+            {actionLink(props.link)}
           </div>
         ) : null}
       </div>
@@ -186,6 +196,23 @@ function actionButton(
     <Button variant={variant} size={size} busy={action.busy === true} onClick={action.onClick}>
       {action.label}
     </Button>
+  );
+}
+
+/** The error's quieter step, after its button: an inline link that runs `onClick`. */
+function actionLink(link: EmptyStateAction | undefined): ReactNode {
+  if (link === undefined) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      className={`text-body ${inlineLinkClasses}`}
+      aria-busy={link.busy === true}
+      onClick={link.onClick}
+    >
+      {link.label}
+    </button>
   );
 }
 

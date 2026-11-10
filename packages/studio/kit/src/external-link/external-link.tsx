@@ -30,7 +30,7 @@ interface ExternalLinkToRequestedAddress {
 export type ExternalLinkProps = ExternalLinkToAddress | ExternalLinkToRequestedAddress;
 
 /** The inline link style: accent text, underlined on hover (base component specs, 17.1). */
-const linkClasses = [
+export const inlineLinkClasses = [
   "rounded-xs text-accent-text underline-offset-2 hover:underline focus-ring",
   "touch:hit-touch phone:inline-flex phone:min-h-touch phone:items-center",
 ].join(" ");
@@ -82,7 +82,7 @@ function LinkToAddress({ href, children }: ExternalLinkToAddress) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={linkClasses}
+      className={inlineLinkClasses}
       onClick={open}
       onAuxClick={open}
     >
@@ -117,7 +117,7 @@ function LinkToRequestedAddress({ href, children, onError }: ExternalLinkToReque
   }
 
   return (
-    <button type="button" className={linkClasses} aria-busy={opening} onClick={open}>
+    <button type="button" className={inlineLinkClasses} aria-busy={opening} onClick={open}>
       <LinkText>{children}</LinkText>
     </button>
   );

@@ -161,7 +161,33 @@ verifies("kit.empty-state", () => {
     const icon = <EmptyState tone="error" icon={<AgentIcon />} title="Couldn't load" />;
     // @ts-expect-error An error has one button: Try again.
     const second = <EmptyState tone="error" title="Couldn't load" secondaryAction={go} />;
-    expect([start, icon, second]).toHaveLength(3);
+    // @ts-expect-error Only a centred error has a link.
+    const nothingLink = <EmptyState title="No runs yet" link={go} />;
+    // @ts-expect-error A section error has only Try again.
+    const sectionLink = <EmptyState tone="error" align="start" title="Couldn't load" link={go} />;
+    expect([start, icon, second, nothingLink, sectionLink]).toHaveLength(5);
+  });
+
+  it("draws a centred error's link as an inline link after its button", async () => {
+    const onReload = vi.fn();
+    const onCopy = vi.fn();
+    const { container } = render(
+      <EmptyState
+        tone="error"
+        title="This page stopped working"
+        action={{ label: "Reload page", onClick: onReload }}
+        link={{ label: "Copy details", onClick: onCopy }}
+      />,
+    );
+    const [reload, copy] = buttons(container) as [HTMLButtonElement, HTMLButtonElement];
+    expect(reload.textContent).toBe("Reload page");
+    expect(copy.textContent).toBe("Copy details");
+    expect(copy.className).toContain("text-body");
+    expect(copy.className).toContain("text-accent-text underline-offset-2 hover:underline");
+    expect(copy.parentElement?.className).toContain("items-center");
+    await click(copy);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onReload).not.toHaveBeenCalled();
   });
 
   it("lets code focus its title, which draws no ring", () => {
