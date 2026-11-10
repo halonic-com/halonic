@@ -157,6 +157,8 @@ describe("a program trying to get out of the fence", () => {
       const started = await limited.start({ program: "sh", args: ["-c", "sleep 300 & wait"] });
       const exit = await started.exited;
       expect(exit.reason).toBe("timeout");
+      // The program's end shows before the session finishes shutting down; close waits for that.
+      await limited.close();
       expect(limited.fence).toEqual({ state: "stopped" });
     } finally {
       await limited.close();
