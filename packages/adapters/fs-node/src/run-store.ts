@@ -23,11 +23,13 @@ import {
   type RunFilter,
   type RunSnapshot,
   type RunStore,
+  startedAtOrAfter,
 } from "@halonicjs/ports";
 import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
 import { withRunLock } from "./run-lock.ts";
 import { parseRunLog, type RunLog } from "./run-log.ts";
+import { readLogStart } from "./run-log-start.ts";
 
 const logSuffix = ".jsonl";
 const snapshotSuffix = ".snapshot.json";
@@ -56,7 +58,8 @@ interface LogEnd {
  * Run logs as files in one folder: `<runId>.jsonl` holds the run's events,
  * one per line, and only ever grows; `<runId>.snapshot.json` caches the
  * engine's state and may be deleted at any time. The list is worked out
- * from the logs on every call, so deleting a log removes the run.
+ * from the logs on every call, so deleting a log removes the run. A list
+ * filtered by `startedSince` reads only the first line of an older run's log.
  *
  * Appends and reads of one run go one at a time, so a reader in this
  * process never sees an append that is still being written or cut back.
@@ -167,12 +170,24 @@ export class FolderRunStore implements RunStore {
   async list(filter: RunFilter = {}): Promise<RunSummary[]> {
     const summaries: RunSummary[] = [];
     for (const runId of await this.#runIds()) {
+      if (await this.#startedBefore(runId, filter.startedSince)) continue;
       const summary = summarize(await this.events(runId));
       if (summary !== null && matchesRunFilter(summary, filter)) {
         summaries.push(summary);
       }
     }
     return summaries.sort(compareRunSummaries);
+  }
+
+  /**
+   * Whether the run started before `since`, told from its log's first line
+   * alone, so `list` reads the logs of only the runs it may give.
+   */
+  async #startedBefore(runId: string, since: string | undefined): Promise<boolean> {
+    if (since === undefined) return false;
+    const file = this.#file(runId, logSuffix);
+    const startedAt = await this.#queue.run(runId, () => readLogStart(file));
+    return startedAt !== undefined && !startedAtOrAfter(startedAt, since);
   }
 
   async #readSnapshot(runId: string): Promise<RunSnapshot | null> {

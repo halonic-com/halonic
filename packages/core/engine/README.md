@@ -192,8 +192,10 @@ executor builds one when its `runs` options give `budget()`, which it reads befo
 so a raised budget counts at once. Before `step` stores a decision that asks for a model call or a
 harness run, it works out the spend from the run store's summaries: the run spend is the `cost` of
 the top-level run and every child run under it, and the month spend the `cost` of every run that
-started in the same calendar month (UTC). A call the person's subscription paid for is never in a
-summary's `cost`, so it never counts. At or over a limit, `step` stores the decided events, then
+started in the same calendar month (UTC). It lists only the runs that started since the earlier of
+the month's start and the top-level run's start (`RunFilter.startedSince`), so a paid call doesn't
+cost a read of every run the workspace ever had. A call the person's subscription paid for is never
+in a summary's `cost`, so it never counts. At or over a limit, `step` stores the decided events, then
 `run.failed` with reason `budget` and the error `Run budget reached: 0.60 of 0.50 EUR spent.` or
 `Monthly budget reached: 0.60 of 0.50 EUR spent this month.`, and asks for no call. The kernel sets the
 reason itself; it never comes from `runFailureReasonOf`. A parent whose child a budget stopped

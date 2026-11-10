@@ -45,7 +45,8 @@ and passes the shared `DefinitionStore` contract suite.
   through a temporary file and a rename. Delete it at any time; the engine
   then replays the log.
 - **List:** worked out from the logs on every call, with no cache. Deleting
-  a `.jsonl` removes the run.
+  a `.jsonl` removes the run. With `startedSince`, a run that started
+  earlier costs a read of its log's first line, not of the whole log.
 - **Failed appends:** an append that fails, for example on a full disk,
   cuts the log back to where it was and stores nothing.
 - **Crashes:** an event counts once its line break is written. A torn last

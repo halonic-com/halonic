@@ -189,6 +189,7 @@ export {
   runLockFormat,
   runLockStaleAfterMs,
   runStoreVersion,
+  startedAtOrAfter,
 } from "./run-store.ts";
 export {
   type Sandbox,

@@ -238,6 +238,36 @@ verifies("fs-node.run-store-files", () => {
   });
 });
 
+verifies("fs-node.run-store-started-since", () => {
+  it("reads only the first line of a run that started before startedSince", async () => {
+    const root = await tempFolder();
+    const store = new FolderRunStore(root);
+    await store.append("old", 0, [started("old"), entered("old", 2)]);
+    await store.append("new", 0, [{ ...started("new"), at: "2026-02-01T00:00:00.000Z" }]);
+    const log = join(root, "old.jsonl");
+    const [first = "", ...rest] = (await readFile(log, "utf8")).split("\n");
+    // Pad the first line past one read, and break a later line a whole read would trip on.
+    const padded = JSON.stringify({ ...JSON.parse(first), input: { note: "x".repeat(9000) } });
+    await writeFile(log, [padded, "{broken", ...rest.slice(1)].join("\n"));
+    const readsBefore = logReads.count;
+
+    const listed = await store.list({ startedSince: "2026-02-01T00:00:00.000Z" });
+
+    expect(listed.map((summary) => summary.id)).toEqual(["new"]);
+    expect(logReads.count - readsBefore).toBe(1);
+  });
+
+  it("reads a log whole when its first line can't tell when it started", async () => {
+    const root = await tempFolder();
+    const store = new FolderRunStore(root);
+    await writeFile(join(root, "r1.jsonl"), "{broken\n");
+
+    await expect(store.list({ startedSince: "2026-01-01T00:00:00.000Z" })).rejects.toThrow(
+      "Broken run log r1.jsonl, line 1",
+    );
+  });
+});
+
 verifies("fs-node.run-store-recovery", () => {
   it("skips a torn last line, and cuts it off before the next append", async () => {
     const { root, store } = await storeWithRun();

@@ -60,6 +60,11 @@ export function runStoreContract(
       emptyStatusCases(make, settle);
     });
   });
+  verifies("contracts.run-store-started-since", () => {
+    describe(`RunStore startedSince: ${name}`, () => {
+      startedSinceCases(make, settle);
+    });
+  });
   const makeShared = options.makeShared;
   if (makeShared !== undefined) {
     verifies("contracts.run-store-shared", () => {
@@ -256,6 +261,24 @@ function emptyStatusCases(make: MakeRunStore, settle: (store: RunStore) => Promi
       (await store.list(filter)).map((summary) => summary.id);
     expect(await ids({ status: [] })).toEqual(["test", "ran"]);
     expect(await ids({ status: [], kind: "run" })).toEqual(["ran"]);
+  });
+}
+
+function startedSinceCases(make: MakeRunStore, settle: (store: RunStore) => Promise<void>): void {
+  it("lists only the runs that started at or after startedSince", async () => {
+    const store = await make();
+    await store.append("jan", 0, [started("jan", { at: "2026-01-31T23:59:59.999Z" })]);
+    await store.append("feb", 0, [started("feb", { at: "2026-02-01T00:00:00.000Z" })]);
+    await store.append("mar", 0, [
+      started("mar", { at: "2026-03-01T00:00:00.000Z", kind: "test" }),
+    ]);
+    await settle(store);
+    const ids = async (filter: Parameters<RunStore["list"]>[0]) =>
+      (await store.list(filter)).map((summary) => summary.id);
+    expect(await ids({ startedSince: "2026-02-01T00:00:00.000Z" })).toEqual(["mar", "feb"]);
+    expect(await ids({ startedSince: "2026-02-01T01:00:00+01:00" })).toEqual(["mar", "feb"]);
+    expect(await ids({ startedSince: "2026-02-01T00:00:00.000Z", kind: "run" })).toEqual(["feb"]);
+    expect(await ids({ startedSince: "2026-04-01T00:00:00.000Z" })).toEqual([]);
   });
 }
 

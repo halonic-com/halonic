@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 import type { RunState } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
@@ -42,5 +42,25 @@ verifies("engine.budget-stops", () => {
     const spend = await spendOf(runs, await stateOf(runs, "run_3"), at);
 
     expect(spend).toEqual({ run: 0.5, month: 0.5 });
+  });
+
+  it("lists only this month's runs, and a whole run that started last month", async () => {
+    const runs = new KernelRuns();
+    putSpentRun(runs, "run_0", { startedAt: "2025-11-30T08:00:00.000Z", cost: 5 });
+    putSpentRun(runs, "run_1", { startedAt: "2025-12-31T23:00:00.000Z", cost: 0.25 });
+    const parent = { runId: "run_1", state: "check", depth: 1 };
+    putSpentRun(runs, "run_1.2", { startedAt: "2026-01-01T00:30:00.000Z", cost: 0.125, parent });
+    putSpentRun(runs, "run_2", { startedAt: "2026-01-02T08:00:00.000Z", cost: 1 });
+    const list = vi.spyOn(runs, "list");
+
+    const child = await spendOf(runs, await stateOf(runs, "run_1.2"), at);
+    const plain = await spendOf(runs, await stateOf(runs, "run_2"), at);
+
+    expect(child).toEqual({ run: 0.375, month: 1.125 });
+    expect(plain).toEqual({ run: 1, month: 1.125 });
+    expect(list.mock.calls).toEqual([
+      [{ startedSince: "2025-12-31T23:00:00.000Z" }],
+      [{ startedSince: "2026-01-01T00:00:00.000Z" }],
+    ]);
   });
 });

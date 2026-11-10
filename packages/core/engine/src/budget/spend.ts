@@ -17,8 +17,11 @@ const maxParentHops = 64;
  * top-level run and of every child run under it. The month counts every run
  * that started in the same calendar month (UTC) as `at`.
  *
- * It reads the store's list, which may lag the log for a short time in a
- * cloud store; the local stores are always up to date.
+ * It lists only the runs that started since the earlier of the month's
+ * start and the top-level run's start, since a child run starts after its
+ * parent: the cost of a paid call doesn't grow with the workspace's history.
+ * The list may lag the log for a short time in a cloud store; the local
+ * stores are always up to date.
  *
  * @param at - the ISO time of the input being decided
  */
@@ -27,12 +30,15 @@ export async function spendOf(
   run: RunState,
   at: string,
 ): Promise<Spend> {
-  const summaries = await runs.list();
   const month = at.slice(0, 7);
+  const monthStart = `${month}-01T00:00:00.000Z`;
+  const top = await topRunOf(runs, run);
+  const topStart = (await runs.get(top))?.startedAt ?? at;
+  const since = Date.parse(topStart) < Date.parse(monthStart) ? topStart : monthStart;
+  const summaries = await runs.list({ startedSince: since });
   const monthSpend = summaries
     .filter((summary) => summary.startedAt.slice(0, 7) === month)
     .reduce((total, summary) => total + summary.cost, 0);
-  const top = await topRunOf(runs, run);
   return { run: treeCost(summaries, top), month: monthSpend };
 }
 

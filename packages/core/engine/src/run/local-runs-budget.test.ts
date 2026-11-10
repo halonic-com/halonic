@@ -7,9 +7,10 @@ import {
   putSpentRun,
   type SpentRun,
 } from "../budget/budget-test-kit.test-helper.ts";
-import { KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
+import { finished, harnessPorts } from "../harness/harness-test-kit.test-helper.ts";
+import { KernelRuns, replyWorkflow, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
 import { textAnswer } from "../testing/scripted-model.ts";
-import { runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
+import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
 /** The writer drafts a reply, then drafts it again: two model calls. */
 const draftTwice: Workflow = {
@@ -87,6 +88,30 @@ verifies("engine.budget-stops", () => {
       "run.failed",
     ]);
     expect(model.requests).toHaveLength(0);
+    expect(scheduler.timers.size).toBe(0);
+  });
+
+  it("stops a run before its harness run once the month's budget is reached", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("Dear support")];
+    const runs = new KernelRuns();
+    putSpentRun(runs, "run_0", { startedAt: thisMonth, cost: 0.6 });
+    const { executor, scheduler } = runsOn([], runs, {
+      agents: { writer: writerAgent("claude-code") },
+      harnesses: ports.options,
+      budget: monthly,
+    });
+
+    const run = await executor.start(replyStart);
+
+    expect(run).toMatchObject({ status: "failed", state: "draft", reason: "budget" });
+    expect(typesOf(runs.logs.get("run_1"))).toEqual([
+      "run.started",
+      "state.entered",
+      "agent.started",
+      "run.failed",
+    ]);
+    expect(ports.steps).toEqual([]);
     expect(scheduler.timers.size).toBe(0);
   });
 

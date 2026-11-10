@@ -53,6 +53,9 @@ verifies("ports.run-store-checks", () => {
     expect(matchesRunFilter(run, { status: "failed" })).toBe(false);
     expect(matchesRunFilter(run, { workflowId: "other" })).toBe(false);
     expect(matchesRunFilter(run, { kind: "test" })).toBe(false);
+    expect(matchesRunFilter(run, { startedSince: "2026-01-01T00:00:00Z" })).toBe(true);
+    expect(matchesRunFilter(run, { startedSince: "2026-01-01T01:00:00+02:00" })).toBe(true);
+    expect(matchesRunFilter(run, { startedSince: "2026-01-01T00:00:00.001Z" })).toBe(false);
   });
 
   it("orders summaries newest start first, then by run id", () => {

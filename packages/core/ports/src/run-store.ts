@@ -19,6 +19,12 @@ export interface RunFilter {
    * watchdog. An empty list is no status filter, the same as leaving it out.
    */
   status?: RunStatus | readonly RunStatus[];
+  /**
+   * An ISO time: only runs that started at or after it. A store that keeps
+   * each run in its own log can then skip a log by its first line, so a
+   * month's runs cost a read of that month's logs, not of every log.
+   */
+  startedSince?: string;
 }
 
 /**
@@ -178,8 +184,18 @@ export function matchesRunFilter(summary: RunSummary, filter: RunFilter): boolea
     (filter.hubId === undefined || summary.hubId === filter.hubId) &&
     (filter.workflowId === undefined || summary.workflowId === filter.workflowId) &&
     (filter.kind === undefined || summary.kind === filter.kind) &&
-    (statuses.length === 0 || statuses.includes(summary.status))
+    (statuses.length === 0 || statuses.includes(summary.status)) &&
+    (filter.startedSince === undefined || startedAtOrAfter(summary.startedAt, filter.startedSince))
   );
+}
+
+/**
+ * Whether a run that started at `startedAt` is in a list filtered by
+ * `startedSince`. Both are ISO times; they are compared as times, so an
+ * offset or a missing fraction of a second doesn't change the answer.
+ */
+export function startedAtOrAfter(startedAt: string, since: string): boolean {
+  return Date.parse(startedAt) >= Date.parse(since);
 }
 
 /** Orders summaries as {@link RunStore.list} returns them: newest start time first, then by run id. */
