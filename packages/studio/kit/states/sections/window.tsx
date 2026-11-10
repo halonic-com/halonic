@@ -37,7 +37,8 @@ export const windowSection: PartSection = {
   number: "26.1",
   name: "WindowBar and Window",
   order: "kit 26.1 · a bar on its own, then the bar in a frame",
-  notApplicable: "hover, focus, disabled (not interactive; its buttons have their own)",
+  notApplicable:
+    "hover, focus, disabled (not interactive; its buttons and its scrolling content have their own)",
   rows: [
     {
       name: "Default",

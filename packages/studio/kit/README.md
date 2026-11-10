@@ -858,8 +858,10 @@ a 12px radius, named by its title. It adds no padding, so its content sets its o
 
 The window clips its content to its rounded corners, so content wider than the window scrolls
 itself: give it `overflow-x-auto`, and `tabIndex={0}` so a keyboard user can focus it and scroll
-with the arrow keys. Its focus ring is `focus-ring-inset`, which stays inside the clip. The bar
-isn't clipped, so the focus ring of an action in it shows in full, also in high-contrast mode.
+with the arrow keys. Biome flags `tabIndex` on a `<pre>` (`noNoninteractiveTabindex`), so add a
+`biome-ignore` with that reason, as the states page does. Its focus ring is `focus-ring-inset`,
+which stays inside the clip. The bar isn't clipped, so the focus ring of an action in it shows in
+full, also in high-contrast mode.
 
 Each `Window` is a region landmark named by its title, so screen-reader users can jump to it. Use
 one or a few per page.
