@@ -1,7 +1,11 @@
 // A hostile runner's request that is too large, or whose refusal would be
 // too large to send back (HAL-4354, found by the attack tests on HAL-4338).
 
-import { createLimitedHttpClient, RequestLog } from "@halonicjs/adapter-integration-kit";
+import {
+  createLimitedHttpClient,
+  IntegrationRefusedError,
+  RequestLog,
+} from "@halonicjs/adapter-integration-kit";
 import type { IntegrationHttpClient } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -15,7 +19,7 @@ import {
 import { connectRunner } from "./connect-runner.ts";
 import type { RunnerLimits } from "./limits.ts";
 
-/** The kit's real client for an integration with a long name, which its refusals repeat. */
+/** The kit's real client for an integration with a long name. */
 function realKitClient(): IntegrationHttpClient {
   return createLimitedHttpClient({
     policy: {
@@ -84,11 +88,13 @@ verifies("integration-runner.requests", () => {
     });
 
     it("answers with the kit's code and a short message when the kit's message doesn't fit", async () => {
-      // Without the 32 KiB cap, the kit itself refuses the name and repeats it in full.
-      const { options, runner, connection, call } = await runningCall(realKitClient(), {
-        maxRequestHeadBytes: Number.POSITIVE_INFINITY,
+      // The kit shortens the names it repeats, so a kit whose message is
+      // larger than a frame stands in for any refusal that still grows.
+      const kit = fakeKitClient(() => {
+        throw new IntegrationRefusedError("secret-not-declared", "x".repeat(maxFrameBytes));
       });
-      await runner.send(fullFrameWithHugeSecretName(call));
+      const { options, runner, connection, call } = await runningCall(kit);
+      await runner.send(fetchFrame(call, {}));
       const answer = await runner.next();
       expect(answer).toEqual({
         type: "error",
