@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -30,8 +31,9 @@ function run(
 }
 
 const other = "halonic_acl_probe";
-// Not a secret: a throwaway account on a throwaway runner, deleted afterwards.
-const otherPassword = "Pr0be!Hal-8812";
+// A new password every run, so a leftover account never has a known one. The
+// fixed prefix keeps it within Windows' complexity rules.
+const otherPassword = `Aa1!${randomBytes(12).toString("hex")}`;
 
 /** Runs a command line as the second account; its exit code, or -1 when it could not start. */
 async function asOther(commandLine: string): Promise<number> {
@@ -70,6 +72,7 @@ describe("the journal folder on Windows", () => {
   beforeAll(async () => {
     base = await mkdtemp(join(tmpdir(), "halonic-journal-acl-"));
     folder = join(base, "sandbox-journals");
+    await run("net.exe", ["user", other, "/delete"]); // a leftover from an earlier run, if any
     const added = await run("net.exe", ["user", other, otherPassword, "/add"]);
     expect(added.code, `net user: ${added.stdout} ${added.stderr}`).toBe(0);
     await prepareJournalFolder(folder);
