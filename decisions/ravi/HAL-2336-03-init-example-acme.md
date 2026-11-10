@@ -4,6 +4,7 @@
 - Task: HAL-2336, step 3; the words come from cli-output 3.1 ("The Acme example"), approved by the board on HAL-2123
 - Approval: the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:epEWyoadj7OFC+oQ1SII9q0sxUJ2oFZr/C0OrquxYTynLbuWwCSphlzX8YZDerjIDeMe4dQC+xxT4RfQRXIpDA==
 
 ## What changes
 
