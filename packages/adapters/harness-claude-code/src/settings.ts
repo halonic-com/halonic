@@ -78,7 +78,7 @@ function jsonFile(value: object): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-/** Where the harness writes the settings files: the agent's settings folder on disk, or a fake in tests. */
+/** Where the harness writes its files (the settings folder, and a run's instructions file): this computer's disk, or a fake in tests. */
 export interface SettingsFolderWriter {
   /** The file's text, or `null` when there is no such file. */
   read(path: string): Promise<string | null>;

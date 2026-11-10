@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   addHarnessEnvironment,
   type HarnessBridge,
@@ -67,6 +68,12 @@ function openSession(program: FakeProgram): FakeSandboxSession {
   return new FakeSandboxSession({ profile: { ...engineProfile, env }, program });
 }
 
+/** The texts of the files written to the agent's settings folder, leaving out the run's own files. */
+function settingsFolderTexts(files: MemorySettingsFolder): string[] {
+  const folder = engineProfile.settingsFolder ?? "";
+  return [...files.files].filter(([path]) => path.startsWith(folder)).map(([, text]) => text);
+}
+
 async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error?: unknown }> {
   const events: HarnessEvent[] = [];
   try {
@@ -76,6 +83,48 @@ async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error
   }
   return { events };
 }
+
+verifies("harness-claude-code.command", () => {
+  describe("claudeCodeHarness: instructions", () => {
+    it("writes the instructions to the session's temp folder and names that file", async () => {
+      const settings = new MemorySettingsFolder();
+      const session = openSession(claudeFinishing);
+      await readAll(newHarness(settings).start(task, session, bridge));
+
+      const instructionsFile = join(engineProfile.tempFolder, "halonic-instructions.md");
+      expect(settings.files.get(instructionsFile)).toBe(task.instructions);
+      const args = session.started[0]?.args ?? [];
+      expect(args[args.indexOf("--append-system-prompt-file") + 1]).toBe(instructionsFile);
+    });
+
+    // Windows caps a whole command line at 32,767 characters.
+    it("keeps long instructions off the command line", async () => {
+      const instructions = "Answer in one short sentence. ".repeat(1_400);
+      const settings = new MemorySettingsFolder();
+      const session = openSession(claudeFinishing);
+      await readAll(newHarness(settings).start({ ...task, instructions }, session, bridge));
+
+      const command = session.started[0];
+      const commandLine = [command?.program, ...(command?.args ?? [])].join(" ");
+      expect(instructions.length).toBeGreaterThan(40_000);
+      expect(commandLine.length).toBeLessThan(32_767);
+      expect(settings.files.get(join(engineProfile.tempFolder, "halonic-instructions.md"))).toBe(
+        instructions,
+      );
+    });
+
+    it("writes no instructions file when the agent's file sets none", async () => {
+      const settings = new MemorySettingsFolder();
+      const session = openSession(claudeFinishing);
+      await readAll(newHarness(settings).start({ ...task, instructions: "" }, session, bridge));
+
+      expect(
+        [...settings.files.keys()].some((path) => path.startsWith(engineProfile.tempFolder)),
+      ).toBe(false);
+      expect(session.started[0]?.args).not.toContain("--append-system-prompt-file");
+    });
+  });
+});
 
 verifies("harness-claude-code.start", () => {
   describe("claudeCodeHarness: start", () => {
@@ -94,14 +143,20 @@ verifies("harness-claude-code.start", () => {
 
     it("writes the settings folder before claude starts", async () => {
       const settings = new MemorySettingsFolder();
-      let filesWhenStarted = 0;
+      let filesWhenStarted: string[] = [];
       const session = openSession(async (io) => {
-        filesWhenStarted = settings.files.size;
+        filesWhenStarted = [...settings.files.keys()];
         return claudeFinishing(io);
       });
       await readAll(newHarness(settings).start(task, session, bridge));
 
-      expect(filesWhenStarted).toBe(2);
+      expect(filesWhenStarted).toEqual(
+        expect.arrayContaining(
+          Object.keys(claudeCodeSettingsFiles()).map((name) =>
+            join(engineProfile.settingsFolder ?? "", name),
+          ),
+        ),
+      );
       const settingsJson = [...settings.files].find(([path]) => path.endsWith("settings.json"));
       expect(JSON.parse(settingsJson?.[1] ?? "{}")).toMatchObject({
         permissions: { deny: ["WebFetch", "WebSearch"] },
@@ -122,8 +177,8 @@ verifies("harness-claude-code.start", () => {
       });
       await readAll(newHarness(thisComputerMode).start(task, thisComputer, bridge));
 
-      expect([...thisComputerMode.files.values()]).toEqual([...sandboxMode.files.values()]);
-      expect([...sandboxMode.files.values()]).toEqual(Object.values(claudeCodeSettingsFiles()));
+      expect(settingsFolderTexts(thisComputerMode)).toEqual(settingsFolderTexts(sandboxMode));
+      expect(settingsFolderTexts(sandboxMode)).toEqual(Object.values(claudeCodeSettingsFiles()));
     });
 
     it("ends Claude Code's input after its result, and ends the stream once it has exited", async () => {

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type {
   HarnessBridge,
   HarnessEvent,
@@ -9,7 +10,12 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import { SecretScrubber } from "@halonicjs/std";
-import { claudeCodeCommand, userMessageLine } from "./command.ts";
+import {
+  claudeCodeCommand,
+  hasInstructions,
+  instructionsFileName,
+  userMessageLine,
+} from "./command.ts";
 import { outputTail, streamJsonLines } from "./output.ts";
 import { type SettingsFolderWriter, writeClaudeCodeSettings } from "./settings.ts";
 import { findSignInProblem, SignInError } from "./sign-in.ts";
@@ -20,7 +26,7 @@ const keptErrorCharacters = 4_096;
 
 /** What a {@link ClaudeCodeRun} needs besides the task, the session and the bridge. */
 export interface ClaudeCodeRunOptions {
-  /** Writes the agent's settings folder before Claude Code starts. */
+  /** Writes the agent's settings folder and the run's instructions file before Claude Code starts. */
   settings: SettingsFolderWriter;
 }
 
@@ -78,8 +84,11 @@ export class ClaudeCodeRun implements HarnessRun {
       throw new Error("Claude Code needs a settings folder, and the sandbox profile has none.");
     }
     await writeClaudeCodeSettings(folder, settings);
+    const instructionsFile = await this.#writeInstructions(session.profile.tempFolder, settings);
     if (this.#cancelled) throw cancelledError();
-    const process = await session.start(claudeCodeCommand(this.#task, folder));
+    const process = await session.start(
+      claudeCodeCommand(this.#task, { settingsFolder: folder, instructionsFile }),
+    );
     const input = process.stdin.getWriter();
     const errorTail = outputTail(process.stderr, keptErrorCharacters).catch(() => "");
     // Not awaited: a program that ends at once fails this write, and its
@@ -88,6 +97,21 @@ export class ClaudeCodeRun implements HarnessRun {
       .write(new TextEncoder().encode(userMessageLine(this.#task.prompt)))
       .catch(() => undefined);
     return { process, input, errorTail };
+  }
+
+  /**
+   * Writes the agent's instructions to the session's temp folder, which is
+   * the run's own, unlike the settings folder its runs share. Returns the
+   * file, or `null` when the agent's file sets no instructions.
+   */
+  async #writeInstructions(
+    tempFolder: string,
+    writer: SettingsFolderWriter,
+  ): Promise<string | null> {
+    if (!hasInstructions(this.#task)) return null;
+    const path = join(tempFolder, instructionsFileName);
+    await writer.write(path, this.#task.instructions);
+    return path;
   }
 
   async *[Symbol.asyncIterator](): AsyncIterator<HarnessEvent> {

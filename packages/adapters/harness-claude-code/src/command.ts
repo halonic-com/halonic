@@ -3,6 +3,22 @@ import type { HarnessTask, SandboxCommand } from "@halonicjs/ports";
 import { claudeProgram } from "./detect.ts";
 import { mcpSettingsFile, permissionPromptTool } from "./settings.ts";
 
+/** The file in the session's temp folder that holds the agent's instructions; Claude Code reads it with `--append-system-prompt-file`. */
+export const instructionsFileName = "halonic-instructions.md";
+
+/** The files {@link claudeCodeCommand} names. */
+export interface ClaudeCodeFiles {
+  /** The agent's settings folder, which all its runs share. */
+  settingsFolder: string;
+  /** The file that holds this run's instructions, or `null` when the agent's file sets none. */
+  instructionsFile: string | null;
+}
+
+/** Whether the agent's file sets instructions, so the run writes them to {@link instructionsFileName}. */
+export function hasInstructions(task: HarnessTask): boolean {
+  return task.instructions.trim() !== "";
+}
+
 /**
  * The command that runs Claude Code for one task (requirement
  * `harness-claude-code.command`):
@@ -16,13 +32,16 @@ import { mcpSettingsFile, permissionPromptTool } from "./settings.ts";
  *   add servers past Halonic.
  * - `--permission-prompt-tool`: a tool call that needs an OK goes to the
  *   bridge, which asks the person through Halonic's approvals.
- * - `--model` and `--append-system-prompt` from the agent's file, when it
- *   sets them.
+ * - `--model` from the agent's file, when it sets one.
+ * - `--append-system-prompt-file` with the agent's instructions, when its
+ *   file sets them.
  *
- * The prompt itself goes on standard input, never in the arguments: a
- * process's arguments are visible to every program on the computer.
+ * Neither the prompt nor the instructions go in the arguments: a process's
+ * arguments are visible to every program on the computer, and Windows caps
+ * a whole command line at 32,767 characters, which a long agent file would
+ * pass. The prompt goes on standard input, the instructions in a file.
  */
-export function claudeCodeCommand(task: HarnessTask, settingsFolder: string): SandboxCommand {
+export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): SandboxCommand {
   const args = [
     "-p",
     "--input-format",
@@ -31,13 +50,14 @@ export function claudeCodeCommand(task: HarnessTask, settingsFolder: string): Sa
     "stream-json",
     "--verbose",
     "--mcp-config",
-    join(settingsFolder, mcpSettingsFile),
+    join(files.settingsFolder, mcpSettingsFile),
     "--strict-mcp-config",
     "--permission-prompt-tool",
     permissionPromptTool,
   ];
   if (task.model !== undefined) args.push("--model", task.model);
-  if (task.instructions.trim() !== "") args.push("--append-system-prompt", task.instructions);
+  if (files.instructionsFile !== null)
+    args.push("--append-system-prompt-file", files.instructionsFile);
   return { program: claudeProgram, args };
 }
 

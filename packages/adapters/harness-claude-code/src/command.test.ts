@@ -2,9 +2,12 @@ import { join } from "node:path";
 import type { HarnessTask } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { claudeCodeCommand, userMessageLine } from "./command.ts";
+import { claudeCodeCommand, hasInstructions, userMessageLine } from "./command.ts";
 
-const settingsFolder = join("agents", "writer", "settings");
+const files = {
+  settingsFolder: join("agents", "writer", "settings"),
+  instructionsFile: join("sessions", "one", "temp", "halonic-instructions.md"),
+};
 
 const task: HarnessTask = {
   runId: "run-1",
@@ -18,7 +21,7 @@ const task: HarnessTask = {
 verifies("harness-claude-code.command", () => {
   describe("claudeCodeCommand", () => {
     it("runs claude in stream-json mode with only the bridge's MCP server and its permission tool", () => {
-      expect(claudeCodeCommand(task, settingsFolder)).toEqual({
+      expect(claudeCodeCommand(task, files)).toEqual({
         program: "claude",
         args: [
           "-p",
@@ -28,28 +31,38 @@ verifies("harness-claude-code.command", () => {
           "stream-json",
           "--verbose",
           "--mcp-config",
-          join(settingsFolder, "halonic-mcp.json"),
+          join(files.settingsFolder, "halonic-mcp.json"),
           "--strict-mcp-config",
           "--permission-prompt-tool",
           "mcp__halonic__approve_permission",
           "--model",
           "claude-sonnet-5-5",
-          "--append-system-prompt",
-          "Answer in one short sentence.",
+          "--append-system-prompt-file",
+          files.instructionsFile,
         ],
       });
     });
 
-    it("keeps the prompt out of the arguments", () => {
-      expect(claudeCodeCommand(task, settingsFolder).args.join(" ")).not.toContain(task.prompt);
+    it("keeps the prompt and the instructions out of the arguments", () => {
+      const commandLine = claudeCodeCommand(task, files).args.join(" ");
+
+      expect(commandLine).not.toContain(task.prompt);
+      expect(commandLine).not.toContain(task.instructions);
     });
 
-    it("leaves out the model and the instructions when the agent's file sets none", () => {
+    it("leaves out the model and the instructions file when there are none", () => {
       const { model: _model, ...withoutModel } = task;
-      const { args } = claudeCodeCommand({ ...withoutModel, instructions: " \n" }, settingsFolder);
+      const { args } = claudeCodeCommand(withoutModel, { ...files, instructionsFile: null });
 
       expect(args).not.toContain("--model");
-      expect(args).not.toContain("--append-system-prompt");
+      expect(args).not.toContain("--append-system-prompt-file");
+    });
+  });
+
+  describe("hasInstructions", () => {
+    it("is false for instructions that are only blank space", () => {
+      expect(hasInstructions(task)).toBe(true);
+      expect(hasInstructions({ ...task, instructions: " \n" })).toBe(false);
     });
   });
 
