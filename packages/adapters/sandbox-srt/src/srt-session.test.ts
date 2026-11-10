@@ -121,6 +121,10 @@ verifies("sandbox-srt.session", () => {
   });
 
   describe("the launcher environment", () => {
+    /** On Windows the launcher's temp folder is set as TEMP and TMP too (the system variables are the host's, so a test host has none). */
+    const windowsTemp = () =>
+      process.platform === "win32" ? { TEMP: join(base, "temp"), TMP: join(base, "temp") } : {};
+
     it("is the host's absolute PATH and the temp folder, and nothing from the profile or the host", () => {
       const env = launcherEnv(
         profile({ env: { HOME: "/h", PATH: "/evil", NODE_OPTIONS: "-r x" } }),
@@ -129,7 +133,11 @@ verifies("sandbox-srt.session", () => {
           SECRET: "x",
         },
       );
-      expect(env).toEqual({ PATH: "/usr/bin:/bin", TMPDIR: join(base, "temp") });
+      expect(env).toEqual({
+        PATH: "/usr/bin:/bin",
+        TMPDIR: join(base, "temp"),
+        ...windowsTemp(),
+      });
     });
 
     it("drops relative PATH entries and entries the program can write", () => {
@@ -148,7 +156,7 @@ verifies("sandbox-srt.session", () => {
     });
 
     it("has no PATH when the host has none", () => {
-      expect(launcherEnv(profile(), {})).toEqual({ TMPDIR: join(base, "temp") });
+      expect(launcherEnv(profile(), {})).toEqual({ TMPDIR: join(base, "temp"), ...windowsTemp() });
     });
   });
 
