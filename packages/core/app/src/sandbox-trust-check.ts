@@ -92,7 +92,11 @@ export interface TrustCanary {
    * would. Its time limit is the check's.
    */
   profile(): Promise<SandboxProfile>;
-  /** Runs the probe program in the open canary session and reports what it found. */
+  /**
+   * Runs the probe program in the open canary session and reports what it
+   * found. It must settle within the profile's `timeLimitMs`, and throw when
+   * the time runs out, so a canary that hangs ends as `other`.
+   */
   probe(session: SandboxSession): Promise<CanaryFindings>;
 }
 

@@ -1,7 +1,7 @@
 import type { SandboxCheck, SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, expectTypeOf, it } from "vitest";
+import { expect, expectTypeOf, it, vi } from "vitest";
 import {
   type MxcDefault,
   type MxcState,
@@ -47,12 +47,16 @@ interface Machine {
   /** What each canary run finds, in turn; the last one repeats. */
   canary?: CanaryFindings[];
   default?: MxcDefault;
+  /** Each canary probe waits for this before it reports. */
+  probeGate?: () => Promise<void>;
 }
 
-/** A choice over fake backends, and how many trust checks MXC ran. */
+/** A choice over fake backends, how many trust checks MXC ran, and the most that ran at once. */
 function machine(setup: Machine = {}) {
   const findings = setup.canary ?? [clean];
   let checks = 0;
+  let running = 0;
+  let mostAtOnce = 0;
   const srt: SandboxBackend = {
     id: "srt",
     offered: async () => true,
@@ -73,7 +77,14 @@ function machine(setup: Machine = {}) {
       profile: async () => profile,
       probe: async () => {
         checks += 1;
-        return findings[Math.min(checks, findings.length) - 1] ?? clean;
+        running += 1;
+        mostAtOnce = Math.max(mostAtOnce, running);
+        try {
+          await setup.probeGate?.();
+          return findings[Math.min(checks, findings.length) - 1] ?? clean;
+        } finally {
+          running -= 1;
+        }
       },
     },
   };
@@ -82,7 +93,7 @@ function machine(setup: Machine = {}) {
     backends: [srt, mxc],
     ...(setup.default === undefined ? {} : { mxcDefault: setup.default }),
   });
-  return { choice, trustChecks: () => checks };
+  return { choice, trustChecks: () => checks, mostAtOnce: () => mostAtOnce };
 }
 
 verifies("app.sandbox-choice", () => {
@@ -187,6 +198,29 @@ verifies("app.sandbox-choice", () => {
   });
 
   it("runs one trust check at a time", async () => {
+    let release = () => {};
+    const firstProbe = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let probes = 0;
+    const { choice, trustChecks, mostAtOnce } = machine({
+      probeGate: () => (++probes === 1 ? firstProbe : Promise.resolve()),
+    });
+
+    const started = choice.start({ mxc: "on" });
+    const changed = choice.settingsChanged({ mxc: "on" });
+    await vi.waitFor(() => expect(trustChecks()).toBe(1));
+    // The first probe is still pending, so the second check waits its turn.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(trustChecks()).toBe(1);
+
+    release();
+    await Promise.all([started, changed]);
+    expect(trustChecks()).toBe(2);
+    expect(mostAtOnce()).toBe(1);
+  });
+
+  it("keeps a failed check for this start when two triggers arrive together", async () => {
     const { choice, trustChecks } = machine({ canary: [tooStrict] });
     await Promise.all([choice.start({ mxc: "on" }), choice.settingsChanged({ mxc: "on" })]);
     expect(trustChecks()).toBe(1);
