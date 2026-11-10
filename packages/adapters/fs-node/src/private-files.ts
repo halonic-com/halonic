@@ -22,7 +22,7 @@ export async function makePrivateFolder(folder: string): Promise<void> {
  * Windows junction, and opens with `O_NOFOLLOW` where the system has it, so
  * a link put there in between is refused too.
  *
- * Only a plain file with one name is read. A hard link is a second name for
+ * Only a plain file without a second name is read. A hard link is a second name for
  * a file that may sit in a workspace, so it is refused like a symbolic link;
  * a store writes through a rename, so its own files always have one name.
  * Anything else, such as a folder or a named pipe, is refused too, and the
@@ -63,14 +63,22 @@ export async function readUnlinkedFile(file: string): Promise<string> {
 /** Read only, without following a link or waiting on a named pipe, where the system has those flags. */
 const readFlags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);
 
-/** Throws unless `entry` is a plain file with no other name. */
-function refuseUnlessPlain(file: string, entry: Stats): void {
+/**
+ * Throws unless `entry` is a plain file with no other name.
+ *
+ * A file with no name at all passes: a `grant` that renames over the file or
+ * a `revoke` that deletes it between the open and the check leaves the open
+ * file with none. No workspace can reach a file without a name, so reading
+ * it is as safe as reading one with a single name, and refusing it would
+ * fail a valid `get` or a whole `list` (Liam, HAL-3052).
+ */
+export function refuseUnlessPlain(file: string, entry: Stats): void {
   if (!entry.isFile()) {
     throw new RangeError(
       `${JSON.stringify(file)} isn't a plain file: the store reads only plain files.`,
     );
   }
-  if (entry.nlink !== 1) {
+  if (entry.nlink > 1) {
     throw new RangeError(
       `${JSON.stringify(file)} is a hard link: the store doesn't read a file with another name.`,
     );
