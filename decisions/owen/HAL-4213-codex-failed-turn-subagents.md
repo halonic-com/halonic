@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4213](/HAL/issues/HAL-4213)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AyULoa2YHxVm65EgDrKE1k7LvOrro7IHQ3qda/2OrSIxpV6DftKAUKF5ctt+tQc0kL9+5vDymDtMBGR6hReQCQ==
 
 Liam's review of PR #1308 (HAL-4144) noted that a failed or interrupted
 task-agent turn ended the run with its error without finishing the
