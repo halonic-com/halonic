@@ -1,0 +1,32 @@
+{
+  "name": "@halonicjs/adapter-sandbox-host",
+  "private": true,
+  "type": "module",
+  "description": "The launcher: finds programs on this machine and asks them short questions (the ProgramProbe port) with Node, as the sandbox will start them.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  }
+}
