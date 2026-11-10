@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
+import { type ChildProcessByStdio, spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import { delimiter, join } from "node:path";
+import type { Readable } from "node:stream";
 import type { ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
 
 const defaultTimeoutMs = 5_000;
@@ -79,6 +80,16 @@ function run(
   timeoutMs: number,
 ): Promise<ProgramProbeResult> {
   return new Promise((resolve) => {
+    const cantStart: ProgramProbeResult = {
+      status: "failed",
+      path,
+      error: `${name} was found but couldn't be started.`,
+    };
+    const child = start(path, args, env);
+    if (child === null) {
+      resolve(cantStart);
+      return;
+    }
     const out = new Capture();
     const err = new Capture();
     let settled = false;
@@ -102,13 +113,6 @@ function run(
       }
     };
 
-    const child = spawn(path, [...args], {
-      shell: false,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true,
-      detached: process.platform !== "win32",
-    });
     const timer = setTimeout(() => {
       killGroup();
       settle({
@@ -120,15 +124,32 @@ function run(
 
     child.stdout.on("data", (chunk: Buffer) => out.add(chunk));
     child.stderr.on("data", (chunk: Buffer) => err.add(chunk));
-    child.on("error", () => {
-      settle({ status: "failed", path, error: `${name} was found but couldn't be started.` });
-    });
+    child.on("error", () => settle(cantStart));
     // The program is done; stop anything it left behind so the pipes can close.
     child.on("exit", killGroup);
     child.on("close", (code) => {
       settle({ status: "ran", path, code, stdout: out.text(), stderr: err.text() });
     });
   });
+}
+
+/** Windows throws from `spawn` for an image it can't start; POSIX reports that as an `error` event. */
+function start(
+  path: string,
+  args: readonly string[],
+  env: Record<string, string>,
+): ChildProcessByStdio<null, Readable, Readable> | null {
+  try {
+    return spawn(path, [...args], {
+      shell: false,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      detached: process.platform !== "win32",
+    });
+  } catch {
+    return null;
+  }
 }
 
 /** Keeps the first {@link maxOutputBytes} bytes and drops the rest. */

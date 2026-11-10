@@ -96,13 +96,10 @@ verifies("sandbox-host.program-probe-node", () => {
 
     it("fails, without throwing, when the program can't be started", async () => {
       const answer = await probe().ask(brokenName, []);
-      // Windows refuses a bad image when it spawns (the probe then answers with the name);
-      // POSIX reports it afterwards (the probe then answers with the path it found).
-      const windows = process.platform === "win32";
       expect(answer).toEqual({
         status: "failed",
-        path: windows ? brokenName : join(dir, brokenFile),
-        error: `${brokenName} ${windows ? "couldn't be asked." : "was found but couldn't be started."}`,
+        path: join(dir, brokenFile),
+        error: `${brokenName} was found but couldn't be started.`,
       });
     });
   });
