@@ -32,7 +32,8 @@ characters of the SHA-256 of the workspace's real path. The key is internal: alw
 `workspaceFolders`, never build the path. `workspaceFolders` throws a `RangeError` for a path that isn't
 absolute. `runsFolder(deploymentId)` throws one for a deployment id that isn't 1 to 64 lowercase
 letters, digits, `-` or `_` starting with a letter or digit, or that is a Windows device name
-(`con`, `nul`, `com1`, …).
+(`con`, `nul`, `com1`, …). `isDeploymentId` and `checkDeploymentId` apply the same rule for code that
+hands a deployment id to something else that builds the folder, such as the desktop shell.
 
 | Folder                   | Holds                                   |
 | ------------------------ | --------------------------------------- |

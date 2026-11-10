@@ -77,6 +77,16 @@ verifies("fs-tauri.run-store", () => {
       expect(String(error)).toContain("/workspaces/other is not an opened folder");
     });
 
+    it("refuses an unsafe deployment id when it is made, since it becomes a folder name", () => {
+      const shell = new FakeRunShell({ opened: [acme] });
+      for (const deployment of ["../nightly", "Nightly", "", "con", "a".repeat(65)]) {
+        expect(() => new TauriRunStore(shell, acme, { deployment }), deployment).toThrow(
+          RangeError,
+        );
+      }
+      expect(shell.calls).toEqual([]);
+    });
+
     it("refuses an unsafe run id before asking the shell", async () => {
       const shell = new FakeRunShell({ opened: [acme] });
       const store = new TauriRunStore(shell, acme);
@@ -143,6 +153,7 @@ verifies("fs-tauri.run-store", () => {
     it("gives each other refusal its error kind", async () => {
       const expected: Record<Exclude<RunRefusalKind, "broken_log">, string> = {
         folder_not_open: "denied",
+        invalid_deployment: "internal",
         invalid_run_id: "internal",
         invalid_lines: "internal",
         io: "unavailable",
@@ -209,7 +220,7 @@ verifies("fs-tauri.run-store", () => {
 });
 
 describe("the fake run shell", () => {
-  it("refuses a command the shell doesn't have, an unsafe run id, and lines that aren't whole", async () => {
+  it("refuses a command the shell doesn't have, unsafe ids, and lines that aren't whole", async () => {
     const shell = new FakeRunShell({ opened: [acme] });
     const folder = { workspace: acme, deployment: null };
     await expect(shell.invoke("run_open", { ...folder, runId: "r1" })).rejects.toBe(
@@ -217,6 +228,10 @@ describe("the fake run shell", () => {
     );
     await expect(shell.invoke("run_events", { ...folder, runId: "../r1" })).rejects.toMatchObject({
       kind: "invalid_run_id",
+    });
+    const unsafeDeployment = { workspace: acme, deployment: "../nightly", runId: "r1" };
+    await expect(shell.invoke("run_events", unsafeDeployment)).rejects.toMatchObject({
+      kind: "invalid_deployment",
     });
     for (const lines of ["{}", "{}\n\n"]) {
       const args = { ...folder, runId: "r1", expectedSeq: 0, lines, snapshot: null };

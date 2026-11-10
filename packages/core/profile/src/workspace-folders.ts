@@ -157,8 +157,22 @@ function withoutVerbatimPrefix(path: string): string {
   return path.startsWith("\\\\?\\") ? path.slice("\\\\?\\".length) : path;
 }
 
-function checkDeploymentId(deploymentId: string): void {
-  if (!deploymentIdPattern.test(deploymentId) || windowsDeviceNames.test(deploymentId)) {
+/**
+ * Whether `deploymentId` names a deployment's folder safely: what
+ * `runsFolder` takes, and what a shell that works out the folder itself
+ * checks before it is given the id.
+ */
+export function isDeploymentId(deploymentId: string): boolean {
+  return deploymentIdPattern.test(deploymentId) && !windowsDeviceNames.test(deploymentId);
+}
+
+/**
+ * Checks a deployment id as {@link isDeploymentId} does.
+ *
+ * @throws RangeError when the id isn't a deployment id
+ */
+export function checkDeploymentId(deploymentId: string): void {
+  if (!isDeploymentId(deploymentId)) {
     throw new RangeError(
       `Not a deployment id: ${JSON.stringify(deploymentId)}. Use 1 to 64 lowercase letters, digits, '-' or '_', starting with a letter or digit, and not a name Windows keeps for a device.`,
     );

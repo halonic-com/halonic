@@ -56,8 +56,16 @@ Studio, gets the last row: `unavailable`, and the text of its failure is dropped
 
 `new TauriRunStore(shell, workspace, { deployment, onSnapshotError })` names the run folder by the
 workspace, a folder the person opened in the shell, and optionally a deployment. The shell works out
-the folder (`<profile>/workspaces/<key>/runs`, as `runsFolder` in `@halonicjs/profile` does) and
-refuses a workspace that isn't open in it. The page never names a path.
+the folder as `runsFolder` in `@halonicjs/profile` does, and refuses a workspace that isn't open in
+it. The page never names a path.
+
+| Runs                      | Folder                                             |
+| ------------------------- | -------------------------------------------------- |
+| the workspace's own       | `<profile>/workspaces/<key>/runs`                  |
+| one deployment's (`<id>`) | `<profile>/workspaces/<key>/deployments/<id>/runs` |
+
+The deployment id becomes a folder name, so the constructor throws a `RangeError` for one that
+`isDeploymentId` in `@halonicjs/profile` refuses, and the shell checks it with the same rule.
 
 Only the file work happens in the shell (`crates/run-store`). Everything else happens here, with the
 `RunStore` port's rules that `fs-node` uses too: checking an append and the run id, writing events
@@ -65,14 +73,15 @@ as log lines (`formatLogLines`) and reading them back (`parseLogLines`), the sna
 the summaries `list` works out on every call. A snapshot the shell couldn't write doesn't fail the
 append; its reason goes to `onSnapshotError`.
 
-| The shell says    | The adapter rejects with                                        |
-| ----------------- | --------------------------------------------------------------- |
-| `broken_log`      | an `Error` with the shell's message, as `FolderRunStore` throws |
-| `folder_not_open` | a `KindedError` `denied`                                        |
-| `invalid_run_id`  | a `KindedError` `internal` (the page checks run ids first)      |
-| `invalid_lines`   | a `KindedError` `internal` (the page writes the lines)          |
-| `io`              | a `KindedError` `unavailable`, with the shell's message         |
-| anything else     | a `KindedError` `unavailable`, without its text                 |
+| The shell says       | The adapter rejects with                                          |
+| -------------------- | ----------------------------------------------------------------- |
+| `broken_log`         | an `Error` with the shell's message, as `FolderRunStore` throws   |
+| `folder_not_open`    | a `KindedError` `denied`                                          |
+| `invalid_deployment` | a `KindedError` `internal` (the page checks deployment ids first) |
+| `invalid_run_id`     | a `KindedError` `internal` (the page checks run ids first)        |
+| `invalid_lines`      | a `KindedError` `internal` (the page writes the lines)            |
+| `io`                 | a `KindedError` `unavailable`, with the shell's message           |
+| anything else        | a `KindedError` `unavailable`, without its text                   |
 
 The package exports `runCommands`, `runRefusalKinds` and `isRunRefusal`. The tests run the run-store
 contract against a fake shell; that the shell and the CLI take turns on one lock is proved on real

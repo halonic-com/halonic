@@ -1,4 +1,5 @@
 import { isRunId } from "@halonicjs/ports";
+import { isDeploymentId } from "@halonicjs/profile";
 import type { ShellCall } from "./fake-shell.test-helper.ts";
 import type { RunRefusal, RunRefusalKind } from "./run-commands.ts";
 import type { TauriShell } from "./shell.ts";
@@ -13,7 +14,8 @@ interface RunFiles {
  * A shell that answers the `run_*` commands as the Rust shell does, written
  * out on its own rather than from the adapter: a run folder per workspace
  * and deployment, each run's log kept as text and its snapshot as the text
- * the page sent. It answers only for a workspace in `opened`, appends only
+ * the page sent. It answers only for a workspace in `opened` and a safe
+ * deployment id, appends only
  * whole lines when the log ends at `expectedSeq`, and a new run drops an
  * old snapshot. Calls take turns, as the run lock makes them.
  *
@@ -67,7 +69,11 @@ export class FakeRunShell implements TauriShell {
     if (!this.opened.includes(workspace)) {
       throw refusal("folder_not_open", `${workspace} is not an opened folder`);
     }
-    const folder = this.#folder(workspace, (args["deployment"] as string | null) ?? null);
+    const deployment = (args["deployment"] as string | null) ?? null;
+    if (deployment !== null && !isDeploymentId(deployment)) {
+      throw refusal("invalid_deployment", `unsafe deployment id ${deployment}`);
+    }
+    const folder = this.#folder(workspace, deployment);
     if (command === "run_logs") {
       return [...folder.keys()]
         .sort((left, right) => (left < right ? -1 : 1))

@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { joinPath } from "./native-path.ts";
 import type { ProfileFolder } from "./profile-folder.ts";
-import { workspaceFolders } from "./workspace-folders.ts";
+import { checkDeploymentId, isDeploymentId, workspaceFolders } from "./workspace-folders.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
 const digest: Digest = {
@@ -123,6 +123,8 @@ verifies("profile.workspace-folders", () => {
       async (deploymentId) => {
         const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
         expect(() => folders.runsFolder(deploymentId)).toThrow(RangeError);
+        expect(() => checkDeploymentId(deploymentId)).toThrow(RangeError);
+        expect(isDeploymentId(deploymentId)).toBe(false);
       },
     );
 
@@ -131,6 +133,7 @@ verifies("profile.workspace-folders", () => {
       expect(folders.runsFolder(deploymentId)).toBe(
         `${folders.folder}/deployments/${deploymentId}/runs`,
       );
+      expect(isDeploymentId(deploymentId)).toBe(true);
     });
   });
 });

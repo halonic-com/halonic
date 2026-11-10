@@ -12,13 +12,17 @@ import {
   type RunSnapshot,
   type RunStore,
 } from "@halonicjs/ports";
+import { checkDeploymentId } from "@halonicjs/profile";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { isRunRefusal, type RunRefusalKind, runCommands } from "./run-commands.ts";
 import type { TauriShell } from "./shell.ts";
 
 /** Where a {@link TauriRunStore} keeps its runs, and a hook for snapshots that couldn't be written. */
 export interface TauriRunStoreOptions {
-  /** The deployment whose runs these are; left out for the workspace's own runs. */
+  /**
+   * The deployment whose runs these are, kept in the workspace's
+   * `deployments/<id>/runs`; left out for the workspace's own `runs`.
+   */
   deployment?: string;
   /**
    * Called when an append stored its events but the shell couldn't write
@@ -51,8 +55,12 @@ export class TauriRunStore implements RunStore {
    * @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__`
    * @param workspace - the workspace folder, as the person opened it in the shell
    * @param options - the deployment, and a hook for snapshots that couldn't be written
+   * @throws RangeError when the deployment isn't a deployment id, since it becomes a folder name
    */
   constructor(shell: TauriShell, workspace: string, options: TauriRunStoreOptions = {}) {
+    if (options.deployment !== undefined) {
+      checkDeploymentId(options.deployment);
+    }
     this.#shell = shell;
     this.#folder = { workspace, deployment: options.deployment ?? null };
     this.#onSnapshotError = options.onSnapshotError ?? (() => {});
@@ -142,7 +150,8 @@ export class TauriRunStore implements RunStore {
 /** How a surface should respond to each refusal other than `broken_log`. */
 const errorKinds: Readonly<Record<Exclude<RunRefusalKind, "broken_log">, ErrorKind>> = {
   folder_not_open: "denied",
-  // The page checked the run id and wrote the lines, so a refusal is our bug.
+  // The page checked the ids and wrote the lines, so a refusal is our bug.
+  invalid_deployment: "internal",
   invalid_run_id: "internal",
   invalid_lines: "internal",
   io: "unavailable",

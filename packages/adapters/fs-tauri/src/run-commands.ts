@@ -5,8 +5,12 @@
  * as `runsFolder` in `@halonicjs/profile` does, and keeps the files as
  * `FolderRunStore` in `fs-node` keeps them. The page never names a path.
  *
- * Every call takes `{ workspace, deployment }`, `deployment` being `null`
- * for the workspace's own runs, plus the arguments below.
+ * Every call takes `{ workspace, deployment }`, plus the arguments below.
+ * The run folder is `<profile>/workspaces/<key>/runs` for the workspace's
+ * own runs (`deployment` is `null`), and
+ * `<profile>/workspaces/<key>/deployments/<deployment>/runs` for one
+ * deployment's. Since the deployment id becomes a folder name, the shell
+ * checks it with the rule of `isDeploymentId` in `@halonicjs/profile`.
  */
 export const runCommands = {
   /**
@@ -30,6 +34,8 @@ export const runCommands = {
 export const runRefusalKinds = [
   /** The workspace isn't a folder the person opened in the shell. */
   "folder_not_open",
+  /** The deployment id isn't one `isDeploymentId` allows. The page checks it first. */
+  "invalid_deployment",
   /** The log's lines aren't UTF-8 text; the message names the log. */
   "broken_log",
   /** The run id isn't one the `RunStore` port allows. The page checks it first. */
