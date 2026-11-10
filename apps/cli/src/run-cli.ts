@@ -13,11 +13,9 @@ import { exitCodeFor } from "./exit-code-for.ts";
 import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
 import { commandHelp, commandWords, lastOf, overallHelp, usageLine } from "./help.ts";
 import { usageMessages } from "./messages/general.ts";
-import { type Phrase, renderPhrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
-import { paintFor } from "./output/paint.ts";
+import { type Printer, printerFor } from "./output/printer.ts";
 import { decideStyle, type Environment } from "./output/style.ts";
-import { printError } from "./print-error.ts";
 import { readInput } from "./read-input.ts";
 import { noSecrets, rememberedSecrets } from "./remembered-secrets.ts";
 
@@ -52,15 +50,11 @@ export interface CliSetup {
   readonly secrets?: Secrets;
 }
 
-/** Where the CLI writes phrases: results to stdout, everything else to stderr (cli-output section 2). */
-interface Streams {
-  out(line: Phrase): void;
-  err(line: Phrase): void;
-}
-
 /**
  * Runs one `halonic` command line and returns the exit code. Output goes
  * through `io`, so tests run the CLI in-process and read what it printed.
+ * With `--json` anywhere before a `--`, stdout gets one JSON document, also
+ * for a wrong command line (cli-output 1.8); the exit code is the same.
  *
  * @param args - the command line after `halonic`, with global options such
  *   as `--debug` anywhere in it
@@ -74,10 +68,13 @@ export async function runCli(
   setup: CliSetup = {},
 ): Promise<ExitCode> {
   const { options, args: commandLine } = readGlobalOptions(args);
-  const streams = streamsFor(io, setup.terminal ?? pipes, options);
+  const printer = printerFor(io, {
+    json: options.json,
+    ...stylesFor(setup.terminal ?? pipes, options),
+  });
   const [name, ...commandArgs] = commandLine;
   if (name === undefined || name === "help") {
-    printLines(streams.out, overallHelp(commands));
+    printer.lines(overallHelp(commands));
     return name === undefined && !options.help ? exitCode.usage : exitCode.ok;
   }
   const command = commands.find((candidate) => candidate.name === name);
@@ -90,29 +87,30 @@ export async function runCli(
       near === undefined
         ? usageMessages.unknownCommand(name)
         : usageMessages.unknownCommandNear(name, near);
-    printError(new UsageError(problem, usageMessages.seeEveryCommand()), streams.err);
+    printer.error(new UsageError(problem, usageMessages.seeEveryCommand()), {});
     return exitCode.usage;
   }
   const found = findSubcommand([command], commandArgs);
   if (found instanceof UsageError) {
-    printError(found, streams.err);
+    printer.error(found, {});
     return exitCode.usage;
   }
   const { path, args: pathArgs } = found;
   if (options.help) {
-    printLines(streams.out, commandHelp(path));
+    printer.lines(commandHelp(path));
     return exitCode.ok;
   }
   if (lastOf(path).run === undefined) {
     // A command that only hands off, such as `halonic plugin` on its own: show what it hands off to.
-    printLines(streams.out, commandHelp(path));
+    printer.lines(commandHelp(path));
     return exitCode.usage;
   }
   const scrubber = new SecretScrubber();
   const context: CommandContext = {
+    cwd: io.cwd,
     secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
   };
-  return runCommand(path, pathArgs, io, context, streams, options, scrubber);
+  return runCommand(path, pathArgs, context, printer, options, scrubber);
 }
 
 /** A command line read down to the command that runs. */
@@ -145,9 +143,8 @@ function findSubcommand(path: CommandPath, args: readonly string[]): FoundComman
 async function runCommand(
   path: CommandPath,
   args: readonly string[],
-  io: CliIo,
   context: CommandContext,
-  streams: Streams,
+  printer: Printer,
   options: GlobalOptions,
   scrubber: SecretScrubber,
 ): Promise<ExitCode> {
@@ -160,10 +157,15 @@ async function runCommand(
     if (command.subcommands !== undefined && word !== undefined) {
       throw wordAfterOptions(path, word);
     }
-    return await (command.run?.(input, io, context) ?? exitCode.usage);
+    if (command.run === undefined) {
+      return exitCode.usage;
+    }
+    const result = await command.run(input, context);
+    printer.result(result);
+    return result.exitCode;
   } catch (error) {
     // The CLI's one top-level catch: every error a command throws ends here.
-    printError(error, streams.err, {
+    printer.error(error, {
       usage: usageLine(path),
       ...(input !== undefined && command.action !== undefined
         ? { action: command.action(input) }
@@ -175,8 +177,8 @@ async function runCommand(
   }
 }
 
-/** Each stream with its own style: stdout may be a pipe while stderr is still a terminal. */
-function streamsFor(io: CliIo, terminal: Terminal, options: GlobalOptions): Streams {
+/** Each stream's style: stdout may be a pipe while stderr is still a terminal. */
+function stylesFor(terminal: Terminal, options: GlobalOptions) {
   const styleFor = (isTerminal: boolean) =>
     decideStyle({
       env: terminal.env,
@@ -185,12 +187,7 @@ function streamsFor(io: CliIo, terminal: Terminal, options: GlobalOptions): Stre
       noColor: options.noColor,
       json: options.json,
     });
-  const outPaint = paintFor(styleFor(terminal.stdoutIsTerminal));
-  const errPaint = paintFor(styleFor(terminal.stderrIsTerminal));
-  return {
-    out: (line) => io.out(renderPhrase(line, outPaint)),
-    err: (line) => io.err(renderPhrase(line, errPaint)),
-  };
+  return { out: styleFor(terminal.stdoutIsTerminal), err: styleFor(terminal.stderrIsTerminal) };
 }
 
 /**
@@ -228,10 +225,4 @@ function wordAfterOptions(path: CommandPath, word: string): UsageError {
     usageMessages.subcommandPlacement(word, commandWords(path)),
     usageLine([...path, subcommand]),
   );
-}
-
-function printLines(print: (line: Phrase) => void, lines: readonly Phrase[]): void {
-  for (const line of lines) {
-    print(line);
-  }
 }

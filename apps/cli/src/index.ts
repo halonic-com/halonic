@@ -4,6 +4,8 @@ export {
   type CliOption,
   type CommandInput,
   type CommandRegistry,
+  type CommandResult,
+  type JsonFields,
   type OptionValue,
   UsageError,
 } from "./command.ts";

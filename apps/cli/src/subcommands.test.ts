@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type CliCommand, UsageError } from "./command.ts";
+import { type CliCommand, type CommandResult, UsageError } from "./command.ts";
 import { exitCode } from "./exit-code.ts";
 import { defineMessages } from "./messages/define.ts";
 import { phrase } from "./messages/phrase.ts";
@@ -18,19 +18,27 @@ const runsMessages = defineMessages("runs", {
   pluginListSummary: () => phrase`List the plugins`,
 });
 
+/** A result with one line for stdout and nothing for `--json`. */
+function oneLine(line: string): CommandResult {
+  return { exitCode: exitCode.ok, lines: [phrase`${line}`], json: {} };
+}
+
+const nothing: CommandResult = { exitCode: exitCode.ok, lines: [], json: {} };
+
 /** `runs show <run-id>`: prints the id it was given, or refuses without one. */
 const showCommand: CliCommand = {
   name: "show",
   usage: "<run-id>",
   summary: runsMessages.showSummary(),
   options: { events: { type: "boolean", description: runsMessages.showEvents() } },
-  async run(input, io) {
+  async run(input) {
     const [runId] = input.positionals;
     if (runId === undefined) {
       throw new UsageError(runsMessages.whichRun());
     }
-    io.out(input.options["events"] === true ? `Run ${runId} with its events` : `Run ${runId}`);
-    return exitCode.ok;
+    return oneLine(
+      input.options["events"] === true ? `Run ${runId} with its events` : `Run ${runId}`,
+    );
   },
 };
 
@@ -39,7 +47,7 @@ const sendCommand: CliCommand = {
   usage: "<run-id> <event>",
   summary: runsMessages.sendSummary(),
   options: {},
-  run: async () => exitCode.ok,
+  run: async () => nothing,
 };
 
 /** `runs`: lists runs itself, and hands `show` and `send` to its subcommands. */
@@ -49,9 +57,8 @@ const runsCommand: CliCommand = {
   summary: runsMessages.summary(),
   options: { limit: { type: "string", valueName: "n", description: runsMessages.limit() } },
   subcommands: [showCommand, sendCommand],
-  async run(input, io) {
-    io.out(`The ${String(input.options["limit"] ?? "20")} newest runs`);
-    return exitCode.ok;
+  async run(input) {
+    return oneLine(`The ${String(input.options["limit"] ?? "20")} newest runs`);
   },
 };
 
@@ -67,7 +74,7 @@ const pluginCommand: CliCommand = {
       usage: "",
       summary: runsMessages.pluginListSummary(),
       options: {},
-      run: async () => exitCode.ok,
+      run: async () => nothing,
     },
   ],
 };
