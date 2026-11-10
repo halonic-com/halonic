@@ -25,11 +25,15 @@ any failed step refuses the start before a secret is read or a folder is created
    package document, PyPI's JSON API), with a 15-second limit. `checkResolvedVersion` refuses any
    other package or version.
 3. The runner starts with the pin's version added to its arguments (`pinnedRunnerArgs`), in a new
-   empty folder in the system's temporary folder. `HOME`, the config, cache and temporary folder
-   variables point at it, so no `.npmrc`, `uv.toml` or cache of the person's or the workspace's is
-   read, and each launch downloads the package afresh.
+   folder in the system's temporary folder. The folder holds only an empty `package.json`, so npm
+   doesn't look for a project above it (on Linux, `/tmp` is writable by anyone), and an empty npm
+   config. `HOME`, the config, cache and temporary folder variables point at it, so no `.npmrc`,
+   `uv.toml` or cache of the person's or the workspace's is read, and each launch downloads the
+   package afresh.
 4. Inherited package-manager and language variables are dropped and the registry is set from
-   `registryUrl`. An inherited proxy, certificate or preload stays: that's the person's machine.
+   `registryUrl`. npm's user and global config point at the folder's empty config, uv and pip read
+   no config file, and uv downloads no Python. An inherited proxy, certificate or preload stays:
+   that's the person's machine.
 5. The folder is deleted when the connector closes.
 
 A package runner without a pin starts as configured, like any program the person trusted.
