@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useCallback, useSyncExternalStore } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { currentLocation, type TabLocation, TabSet } from "../tabs/tab-set.ts";
@@ -14,9 +14,21 @@ const reply: TabLocation = { key: "workflow/acme/reply", title: "Support reply",
 
 afterEach(unmountAll);
 
-/** A toolbar over one tab that went from Home to Workflows to Support reply. */
-function renderToolbar(props: Partial<ToolbarProps> = {}) {
-  const tabs = new TabSet();
+/** A page as the frame shows it: a `main` whose `h1` is the active tab's place. */
+function Page({ tabs }: { readonly tabs: TabSet }) {
+  useSyncExternalStore(
+    useCallback((listener) => tabs.subscribe(listener), [tabs]),
+    () => tabs.state,
+  );
+  return (
+    <main>
+      <h1>{currentLocation(tabs.active).title}</h1>
+    </main>
+  );
+}
+
+/** A toolbar over one tab that went from Home to Workflows to Support reply, above its page. */
+function renderToolbar(props: Partial<ToolbarProps> = {}, tabs = new TabSet()) {
   tabs.openHere(workflows);
   tabs.openHere(reply);
   const timers = new FakeTimers();
@@ -30,6 +42,7 @@ function renderToolbar(props: Partial<ToolbarProps> = {}) {
   const container = render(
     <Toolbar tabs={tabs} announcer={announcer} parentsOf={parentsOf} {...props} />,
   );
+  render(<Page tabs={tabs} />);
   /** What was read out once the announcer's flush has run. */
   const announced = () => {
     timers.advance(0);
@@ -73,6 +86,51 @@ verifies("shell.toolbar", () => {
       expect(pathText(container)).toBe("Workflows");
       click(button(container, "Forward"));
       expect(pathText(container)).toBe("Workflows/Support reply");
+    });
+
+    it("moves focus to the new page's h1 after Back and after Forward (a11y A3)", () => {
+      const { container } = renderToolbar();
+      const back = button(container, "Back");
+      back.focus();
+      click(back);
+      expect(document.activeElement?.tagName).toBe("H1");
+      expect(document.activeElement?.textContent).toBe("Workflows");
+
+      button(container, "Forward").focus();
+      click(button(container, "Forward"));
+      expect(document.activeElement?.textContent).toBe("Support reply");
+    });
+
+    it("leaves focus on Back or Forward when there's nowhere to go", () => {
+      const { container } = renderToolbar();
+      const forward = button(container, "Forward");
+      forward.focus();
+      click(forward);
+      expect(document.activeElement).toBe(forward);
+    });
+
+    it("subscribes to the tab set once, not again on every render", () => {
+      const tabs = new TabSet();
+      let subscribed = 0;
+      const subscribe = tabs.subscribe.bind(tabs);
+      tabs.subscribe = (listener) => {
+        subscribed += 1;
+        return subscribe(listener);
+      };
+      const { container } = renderToolbar({}, tabs);
+      const before = subscribed;
+      click(button(container, "Back"));
+      click(button(container, "Forward"));
+      expect(subscribed).toBe(before);
+    });
+
+    it("shortens every part of the path with an ellipsis, and the place keeps the most room", () => {
+      const { container } = renderToolbar();
+      const [parent, current] = [...container.querySelectorAll("nav li")];
+      expect(parent?.className).toContain("min-w-0 max-w-48 shrink-4");
+      expect(parent?.querySelector("a")?.className).toContain("min-w-0 truncate");
+      expect(current?.className).toContain("min-w-0 flex-auto");
+      expect(current?.querySelector('[aria-current="page"]')?.className).toContain("truncate");
     });
 
     it("keeps Back and Forward in the Tab order when there's nowhere to go, and says why", () => {
@@ -127,7 +185,9 @@ verifies("shell.toolbar", () => {
 
     it("leaves the tabs as they are on a Ctrl-click on a part a tab shows, and says so", () => {
       const { tabs, container, announced } = renderToolbar();
-      tabs.openInNewTab(workflows);
+      act(() => {
+        tabs.openInNewTab(workflows);
+      });
       const before = tabs.state;
       click(container.querySelector("nav a"), { metaKey: true });
       expect(tabs.state).toBe(before);

@@ -1,6 +1,7 @@
 import { BackIcon, Button, ForwardIcon } from "@halonicjs/studio-kit";
-import { type MouseEvent, type ReactNode, useId, useSyncExternalStore } from "react";
+import { type MouseEvent, type ReactNode, useCallback, useId, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
+import { useHistoryMoves } from "../tabs/history-moves.ts";
 import { currentLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
 
 /** Props for {@link Toolbar}. */
@@ -33,10 +34,10 @@ export interface ToolbarProps {
  * <ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>
  */
 export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: ToolbarProps) {
-  const state = useSyncExternalStore(
-    (listener) => tabs.subscribe(listener),
-    () => tabs.state,
-  );
+  // One `subscribe` per tab set, so React doesn't subscribe again on every render.
+  const subscribe = useCallback((listener: () => void) => tabs.subscribe(listener), [tabs]);
+  const state = useSyncExternalStore(subscribe, () => tabs.state);
+  const moves = useHistoryMoves(tabs);
   const location = currentLocation(tabs.active);
   const parents = parentsOf?.(location) ?? [];
 
@@ -56,23 +57,19 @@ export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: Toolb
 
   return (
     <>
-      <HistoryButton direction="back" available={state.canGoBack} onClick={() => tabs.back()} />
-      <HistoryButton
-        direction="forward"
-        available={state.canGoForward}
-        onClick={() => tabs.forward()}
-      />
+      <HistoryButton direction="back" available={state.canGoBack} onClick={moves.back} />
+      <HistoryButton direction="forward" available={state.canGoForward} onClick={moves.forward} />
       <nav aria-label="Location" className="min-w-0 flex-1">
         <ol className="flex min-w-0 items-center gap-1.5 text-small">
           {parents.map((part) => (
-            <li key={part.key} className="flex shrink-0 items-center gap-1.5">
+            <li key={part.key} className={pathLayout.parent}>
               <PathLink part={part} onOpen={openPart} />
-              <span aria-hidden="true" className="text-fg-muted">
+              <span aria-hidden="true" className="shrink-0 text-fg-muted">
                 /
               </span>
             </li>
           ))}
-          <li className="min-w-0">
+          <li className={pathLayout.current}>
             <span aria-current="page" className="block truncate text-fg">
               {location.title}
             </span>
@@ -84,6 +81,16 @@ export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: Toolb
     </>
   );
 }
+
+/**
+ * How the path shares a narrow toolbar (a narrow window, or text at 200%): every part shortens
+ * with "…" rather than push another out. A parent is at most 192px and gives up its room four
+ * times as fast as the place itself, so the place the user is on keeps the most room.
+ */
+const pathLayout = {
+  parent: "flex min-w-0 max-w-48 shrink-4 items-center gap-1.5",
+  current: "min-w-0 flex-auto",
+} as const;
 
 /** What Back and Forward are called, and why they can't be used. */
 const historyWords = {
@@ -140,7 +147,7 @@ function PathLink({ part, onOpen }: PathLinkProps) {
   return (
     <a
       href={`#${part.key}`}
-      className="rounded-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline focus-ring"
+      className="min-w-0 truncate rounded-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline focus-ring"
       onClick={(event) => open(event, event.ctrlKey || event.metaKey)}
       onAuxClick={(event) => {
         if (event.button === middleButton) {
