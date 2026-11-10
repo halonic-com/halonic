@@ -14,17 +14,38 @@ export interface FailedCall {
   host: string | undefined;
 }
 
-/** How much of the vendor's own error text goes into the message. */
+/** How much of the vendor's own error text the error keeps. */
 const maxVendorText = 300;
 
 /**
+ * The vendor's own error text, shortened, as the `cause` of a
+ * {@link ModelCallError}. It stays out of the message, which Studio and the
+ * command line show: microcopy 1.4 allows no quoted outside text there. The
+ * cause is for `--debug` and Copy details.
+ */
+export class VendorErrorText extends Error {
+  override readonly name = "VendorErrorText";
+  /** The HTTP status the text came with. */
+  readonly status: number;
+
+  /**
+   * @param status - the HTTP status the text came with
+   * @param text - the vendor's text, already shortened and checked for keys
+   */
+  constructor(status: number, text: string) {
+    super(text);
+    this.status = status;
+  }
+}
+
+/**
  * The {@link ModelCallError} for an HTTP error reply with `status` and body
- * `text`.
+ * `text`. The message ends in the status, such as "(HTTP 400)".
  *
- * The vendor's own text is kept, shortened, so the run log says what went
- * wrong, except after 401 or 403, whenever it holds something shaped like a
- * key, and whenever it holds `key`, the key the call was sent with. A proxy
- * may use keys that look like nothing in particular.
+ * The vendor's own text goes on the error's `cause`, shortened, except after
+ * 401 or 403, whenever it holds something shaped like a key, and whenever it
+ * holds `key`, the key the call was sent with. A proxy may use keys that look
+ * like nothing in particular.
  */
 export function errorForStatus(
   status: number,
@@ -32,25 +53,30 @@ export function errorForStatus(
   call: FailedCall,
   key: string,
 ): ModelCallError {
+  const http = `HTTP ${status}`;
   if (status === 401 || status === 403) {
-    return new ModelCallError("refused", `${call.providerId} turned the key away (HTTP ${status})`);
+    return new ModelCallError("refused", `${call.providerId} didn't accept the key (${http})`);
   }
-  const detail = withVendorText(`HTTP ${status}`, errorTextIn(text), key);
+  const vendorText = vendorMessage(text, key);
+  const options = vendorText === "" ? {} : { cause: new VendorErrorText(status, vendorText) };
   if (status === 404) {
     return new ModelCallError(
       "model-missing",
-      `${call.providerId} has no model "${call.model}" (${detail})`,
+      `${call.providerId} doesn't have the model "${call.model}" (${http})`,
+      options,
     );
   }
   return new ModelCallError(
     "refused",
-    `${call.providerId} refused the call to model "${call.model}" (${detail})`,
+    `${call.providerId} refused the call to the model "${call.model}" (${http})`,
+    options,
   );
 }
 
 /** The {@link ModelCallError} when the provider couldn't be reached. */
 export function errorForNetwork(cause: unknown, call: FailedCall): ModelCallError {
-  return new ModelCallError("offline", `${call.providerId} could not be reached`, {
+  const where = call.host === undefined ? "" : ` at ${call.host}`;
+  return new ModelCallError("offline", `Halonic couldn't reach ${call.providerId}${where}`, {
     cause,
     ...(call.host === undefined ? {} : { host: call.host }),
   });
@@ -60,7 +86,7 @@ export function errorForNetwork(cause: unknown, call: FailedCall): ModelCallErro
 export function errorForReply(cause: unknown, call: FailedCall): ModelCallError {
   return new ModelCallError(
     "refused",
-    `${call.providerId} answered model "${call.model}" in a format we can't read`,
+    `${call.providerId} answered for the model "${call.model}" in a form Halonic can't read`,
     { cause },
   );
 }
@@ -69,18 +95,21 @@ export function errorForReply(cause: unknown, call: FailedCall): ModelCallError 
 export function errorForSize(cause: BodyTooLargeError, call: FailedCall): ModelCallError {
   return new ModelCallError(
     "refused",
-    `${call.providerId} answered model "${call.model}" with more than ${cause.maxBytes} bytes`,
+    `${call.providerId}'s answer for the model "${call.model}" was over ${megabytes(cause.maxBytes)}, more than Halonic reads`,
     { cause },
   );
 }
 
-/** `label: text`, with the vendor's text shortened; only `label` when the text is empty or may hold a key. */
-function withVendorText(label: string, text: string, key: string): string {
-  const message = text.replace(/\s+/g, " ").trim();
-  if (message === "" || mayHoldKey(message, key)) return label;
-  const shortened =
-    message.length > maxVendorText ? `${message.slice(0, maxVendorText)}…` : message;
-  return `${label}: ${shortened}`;
+/** `bytes` in whole megabytes, as a user reads a limit: 10 MiB is "10 MB". */
+function megabytes(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
+
+/** The error text in an Anthropic error body, shortened; "" when it may hold a key. */
+function vendorMessage(text: string, key: string): string {
+  const message = errorTextIn(text).replace(/\s+/g, " ").trim();
+  if (mayHoldKey(message, key)) return "";
+  return message.length > maxVendorText ? `${message.slice(0, maxVendorText)}…` : message;
 }
 
 /** `{ type: "error", error: { message } }` from Anthropic, or the body itself. */

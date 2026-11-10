@@ -3,6 +3,7 @@ import { chatRequest, llmProviderContract, textAnswer } from "@halonicjs/testing
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { AnthropicProvider, type AnthropicProviderOptions } from "./anthropic-provider.ts";
+import { VendorErrorText } from "./call-error.ts";
 import { ScriptedVendor } from "./test/scripted-vendor.ts";
 
 /** A provider in front of a fresh scripted vendor. The key is a made-up test value. */
@@ -15,6 +16,11 @@ function providerWith(options: Partial<AnthropicProviderOptions> = {}) {
     ...options,
   });
   return { vendor, provider };
+}
+
+/** The vendor's own text on `error`'s cause, or undefined when it has none. */
+function vendorTextOf(error: Error): string | undefined {
+  return error.cause instanceof VendorErrorText ? error.cause.message : undefined;
 }
 
 /** What `call` fails with, and the vendor, after `script` sets the vendor up. */
@@ -102,50 +108,66 @@ verifies("model-anthropic.call-errors", () => {
     type: "error",
     error: { type, message },
   });
-  const cases: Array<[string, (vendor: ScriptedVendor) => void, ModelCallErrorReason, RegExp]> = [
+  // [what, vendor script, reason, message, the vendor's text on `cause`]
+  const cases: Array<
+    [string, (vendor: ScriptedVendor) => void, ModelCallErrorReason, RegExp, string | undefined]
+  > = [
     [
-      "a turned away key",
+      "a key it doesn't accept",
       (v) => v.replyNext(403, vendorError("permission_error", "Your key test-key-1 can't")),
       "refused",
-      /^acme turned the key away \(HTTP 403\)$/,
+      /^acme didn't accept the key \(HTTP 403\)$/,
+      undefined,
     ],
     [
       "a missing model",
       (v) => v.replyNext(404, vendorError("not_found_error", "model: acme-small")),
       "model-missing",
-      /has no model "acme-small" \(HTTP 404: model: acme-small\)$/,
+      /^acme doesn't have the model "acme-small" \(HTTP 404\)$/,
+      "model: acme-small",
     ],
     [
       "an overload",
       (v) => v.replyNext(529, vendorError("overloaded_error", "Overloaded")),
       "refused",
-      /\(HTTP 529: Overloaded\)$/,
+      /^acme refused the call to the model "acme-small" \(HTTP 529\)$/,
+      "Overloaded",
     ],
     [
       "an error body in another format",
       (v) => v.replyNext(502, { detail: "busy" }),
       "refused",
-      /HTTP 502: \{"detail":"busy"\}\)$/,
+      /\(HTTP 502\)$/,
+      '{"detail":"busy"}',
     ],
     [
       "a key in the vendor's text",
       (v) => v.replyNext(500, vendorError("api_error", `bad key ${keyShapedText}`)),
       "refused",
       /\(HTTP 500\)$/,
+      undefined,
     ],
-    ["no network", (v) => v.unreachableNext(), "offline", /could not be reached/],
+    [
+      "no network",
+      (v) => v.unreachableNext(),
+      "offline",
+      /^Halonic couldn't reach acme at api\.anthropic\.com$/,
+      undefined,
+    ],
     [
       "a reply in another format",
       (v) => v.replyNext(200, { result: "hi" }),
       "refused",
-      /format we can't read/,
+      /^acme answered for the model "acme-small" in a form Halonic can't read$/,
+      undefined,
     ],
   ];
-  for (const [what, script, reason, message] of cases) {
+  for (const [what, script, reason, message, vendorText] of cases) {
     it(`fails with ${reason} on ${what}, and closes the call`, async () => {
       const { error, vendor } = await failureOf(script, chat);
       expect(isModelCallError(error) && error.reason).toBe(reason);
       expect(error.message).toMatch(message);
+      expect(vendorTextOf(error)).toBe(vendorText);
       expect(vendor.calls().open).toBe(0);
     });
   }
@@ -170,6 +192,7 @@ verifies("model-anthropic.call-error-details", () => {
     vendor.replyNext(500, { type: "error", error: { message: "bad key proxy-0123" } });
     const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
     expect(isModelCallError(error) && error.message).toMatch(/\(HTTP 500\)$/);
+    expect(vendorTextOf(error as Error)).toBeUndefined();
   });
 
   it("names the host that couldn't be reached, without the path", async () => {
@@ -178,13 +201,21 @@ verifies("model-anthropic.call-error-details", () => {
     const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
     expect(isModelCallError(error) && error.host).toBe("localhost:8080");
   });
+  it("says only the provider when the address gives no host", async () => {
+    const { vendor, provider } = providerWith({ baseUrl: "not an address" });
+    vendor.unreachableNext();
+    const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
+    expect(isModelCallError(error) && error.message).toBe("Halonic couldn't reach acme");
+  });
 });
 
 verifies("model-anthropic.reply-size", () => {
   it("fails with refused on a reply over 10 MiB, and stops reading it", async () => {
     const { error, vendor } = await failureOf((v) => v.floodNext(), chat);
     expect(isModelCallError(error) && error.reason).toBe("refused");
-    expect(error.message).toMatch(/with more than 10485760 bytes$/);
+    expect(error.message).toMatch(
+      /^acme's answer for the model "acme-small" was over 10 MB, more than Halonic reads$/,
+    );
     expect(vendor.calls().open).toBe(0);
   });
 
@@ -203,7 +234,9 @@ verifies("model-anthropic.reply-size", () => {
       http: { fetch: async () => huge },
       key: async () => "test-key-1",
     });
-    await expect(provider.chat(chatRequest())).rejects.toThrow(/with more than 10485760 bytes$/);
+    await expect(provider.chat(chatRequest())).rejects.toThrow(
+      /^acme's answer for the model "acme-small" was over 10 MB, more than Halonic reads$/,
+    );
     expect(cancelled).toBe(true);
   });
 });

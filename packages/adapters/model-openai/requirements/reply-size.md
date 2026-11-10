@@ -10,4 +10,4 @@ The OpenAI-compatible provider shall read at most 10 MiB of a reply. When a repl
 
 - Given the server answers with a body that never ends,
   when `chat` fails,
-  then the error says `refused`, its message ends in "with more than 10485760 bytes", and the call is closed.
+  then the error says `refused`, its message ends in "was over 10 MB, more than Halonic reads", and the call is closed.

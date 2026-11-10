@@ -21,4 +21,4 @@ const model = new OpenAiCompatibleProvider({
 const answer = await model.chat({ model: "qwen3", messages: [{ role: "user", content: "Hi" }] });
 ```
 
-A failed call throws a `ModelCallError` whose reason says why: `refused` (401, 403 and other errors), `model-missing` (404), `model-no-tools`, or `offline`, which names the host that didn't answer. The message keeps the server's own error text, never after 401 or 403, where OpenAI repeats part of the key, and never when it holds the key. A reply over 10 MiB fails with `refused`.
+A failed call throws a `ModelCallError` whose reason says why: `refused` (401, 403 and other errors), `model-missing` (404), `model-no-tools`, or `offline`, which names the host that didn't answer. The message ends in the HTTP status. The server's own error text is not in it: it goes on the error's `cause`, for `--debug`, never after 401 or 403, where OpenAI repeats part of the key, and never when it holds the key. A reply over 10 MiB fails with `refused`.

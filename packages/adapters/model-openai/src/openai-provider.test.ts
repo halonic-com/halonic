@@ -2,6 +2,7 @@ import { isModelCallError, type ModelCallErrorReason } from "@halonicjs/ports";
 import { chatRequest, llmProviderContract, textAnswer } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
+import { VendorErrorText } from "./call-error.ts";
 import {
   OpenAiCompatibleProvider,
   type OpenAiCompatibleProviderOptions,
@@ -19,6 +20,11 @@ function providerWith(options: Partial<OpenAiCompatibleProviderOptions> = {}) {
     ...options,
   });
   return { vendor, provider };
+}
+
+/** The vendor's own text on `error`'s cause, or undefined when it has none. */
+function vendorTextOf(error: Error): string | undefined {
+  return error.cause instanceof VendorErrorText ? error.cause.message : undefined;
 }
 
 /** The error `chat` fails with after `script` sets up the vendor. */
@@ -72,56 +78,73 @@ verifies("model-openai.endpoint", () => {
 });
 
 verifies("model-openai.call-errors", () => {
-  const cases: Array<[string, (vendor: ScriptedVendor) => void, ModelCallErrorReason, RegExp]> = [
+  // [what, vendor script, reason, message, the vendor's text on `cause`]
+  const cases: Array<
+    [string, (vendor: ScriptedVendor) => void, ModelCallErrorReason, RegExp, string | undefined]
+  > = [
     [
-      "a turned away key",
+      "a key it doesn't accept",
       (v) => v.replyNext(401, { error: { message: "Incorrect API key provided: sk-abc" } }),
       "refused",
-      /^acme turned the key away \(HTTP 401\)$/,
+      /^acme didn't accept the key \(HTTP 401\)$/,
+      undefined,
     ],
     [
       "a missing model",
       (v) => v.replyNext(404, { error: 'model "acme-small" not found' }),
       "model-missing",
-      /has no model "acme-small".*not found/,
+      /^acme doesn't have the model "acme-small" \(HTTP 404\)$/,
+      'model "acme-small" not found',
     ],
     [
       "a model without tools",
       (v) => v.replyNext(400, { error: "acme-small does not support tools" }),
       "model-no-tools",
-      /can't call tools/,
+      /^"acme-small" on acme can't use tools, and this call offered tools \(HTTP 400\)$/,
+      "acme-small does not support tools",
     ],
     [
       "a rate limit",
       (v) => v.replyNext(429, { error: { message: "Slow down" } }),
       "refused",
-      /HTTP 429: Slow down\)$/,
+      /^acme refused the call to the model "acme-small" \(HTTP 429\)$/,
+      "Slow down",
     ],
     [
       "an error body in another format",
       (v) => v.replyNext(502, { detail: "busy" }),
       "refused",
-      /HTTP 502: \{"detail":"busy"\}\)$/,
+      /\(HTTP 502\)$/,
+      '{"detail":"busy"}',
     ],
     [
       "a key in the vendor's text",
       (v) => v.replyNext(500, { error: "bad key sk-Abcdefghijklmnop1234" }),
       "refused",
       /\(HTTP 500\)$/,
+      undefined,
     ],
-    ["no network", (v) => v.unreachableNext(), "offline", /could not be reached/],
+    [
+      "no network",
+      (v) => v.unreachableNext(),
+      "offline",
+      /^Halonic couldn't reach acme at acme\.test$/,
+      undefined,
+    ],
     [
       "a reply in another format",
       (v) => v.replyNext(200, { result: "hi" }),
       "refused",
-      /format we can't read/,
+      /^acme answered for the model "acme-small" in a form Halonic can't read$/,
+      undefined,
     ],
   ];
-  for (const [what, script, reason, message] of cases) {
+  for (const [what, script, reason, message, vendorText] of cases) {
     it(`fails with ${reason} on ${what}, and closes the call`, async () => {
       const { error, vendor } = await failureOf(script);
       expect(isModelCallError(error) && error.reason).toBe(reason);
       expect(error.message).toMatch(message);
+      expect(vendorTextOf(error)).toBe(vendorText);
       expect(vendor.calls().open).toBe(0);
     });
   }
@@ -173,6 +196,7 @@ verifies("model-openai.call-error-details", () => {
     vendor.replyNext(500, { error: { message: "bad key proxy-0123" } });
     const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
     expect(isModelCallError(error) && error.message).toMatch(/\(HTTP 500\)$/);
+    expect(vendorTextOf(error as Error)).toBeUndefined();
   });
 
   it("names the host that couldn't be reached, without the path", async () => {
@@ -183,13 +207,21 @@ verifies("model-openai.call-error-details", () => {
     const offline = await local.provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
     expect(isModelCallError(offline) && offline.host).toBe("localhost:11434");
   });
+  it("says only the provider when the address gives no host", async () => {
+    const { vendor, provider } = providerWith({ baseUrl: "not an address" });
+    vendor.unreachableNext();
+    const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
+    expect(isModelCallError(error) && error.message).toBe("Halonic couldn't reach acme");
+  });
 });
 
 verifies("model-openai.reply-size", () => {
   it("fails with refused on a reply over 10 MiB, and stops reading it", async () => {
     const { error, vendor } = await failureOf((v) => v.floodNext());
     expect(isModelCallError(error) && error.reason).toBe("refused");
-    expect(error.message).toMatch(/with more than 10485760 bytes$/);
+    expect(error.message).toMatch(
+      /^acme's answer for the model "acme-small" was over 10 MB, more than Halonic reads$/,
+    );
     expect(vendor.calls().open).toBe(0);
   });
 
@@ -204,7 +236,9 @@ verifies("model-openai.reply-size", () => {
     });
     const huge = new Response(body, { headers: { "content-length": String(11 * 1024 * 1024) } });
     const { provider } = providerWith({ http: { fetch: async () => huge } });
-    await expect(provider.chat(chatRequest())).rejects.toThrow(/with more than 10485760 bytes$/);
+    await expect(provider.chat(chatRequest())).rejects.toThrow(
+      /^acme's answer for the model "acme-small" was over 10 MB, more than Halonic reads$/,
+    );
     expect(cancelled).toBe(true);
   });
 });
