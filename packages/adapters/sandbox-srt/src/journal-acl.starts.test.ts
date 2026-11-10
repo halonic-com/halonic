@@ -23,7 +23,11 @@ verifies("sandbox-srt.session", () => {
   describe("what the journal ACL starts", () => {
     it("is only whoami.exe and icacls.exe from the system folder, never a skill's scripts (HAL-3896)", async () => {
       await restrictToThisUser("journals");
-      expect(started.map((s) => s.file.split(/[\\/]/).pop())).toEqual(["whoami.exe", "icacls.exe"]);
+      expect(started.map((s) => s.file.split(/[\\/]/).pop())).toEqual([
+        "whoami.exe",
+        "icacls.exe",
+        "icacls.exe",
+      ]);
       expect(started.every((s) => /system32/i.test(s.file))).toBe(true);
     });
   });

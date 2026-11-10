@@ -19,7 +19,20 @@ describe("restrictToThisUser", () => {
           "*S-1-5-21-1-2-3-1001:(OI)(CI)F",
         ],
       },
+      {
+        file: "icacls.exe",
+        args: ["journals\\sandbox-journals", "/remove:g", "*S-1-5-18", "*S-1-5-32-544"],
+      },
     ]);
+  });
+
+  it("keeps the system's entry when the current user is the system", async () => {
+    const calls: string[][] = [];
+    await restrictToThisUser("journals", async (_file, args) => {
+      calls.push(args);
+      return { stdout: '"nt authority\\system","S-1-5-18"' };
+    });
+    expect(calls.at(-1)).toEqual(["journals", "/remove:g", "*S-1-5-32-544"]);
   });
 
   it("throws, and starts no icacls, when the SID can't be read", async () => {

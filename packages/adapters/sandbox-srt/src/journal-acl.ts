@@ -1,5 +1,8 @@
 import { execFile } from "node:child_process";
 
+/** The SIDs of the system and of the Administrators group, which a new folder's default access list names. */
+const defaultEntries = ["S-1-5-18", "S-1-5-32-544"];
+
 /** What {@link restrictToThisUser} starts; a test hands in a fake. */
 export type RunProgram = (file: string, args: string[]) => Promise<{ stdout: string }>;
 
@@ -36,4 +39,10 @@ export async function restrictToThisUser(
   const sid = /"(S-1-[0-9-]+)"/.exec(stdout)?.[1];
   if (sid === undefined) throw new Error("the current user's SID could not be read");
   await start("icacls.exe", [folder, "/inheritance:r", "/grant:r", `*${sid}:(OI)(CI)F`]);
+  // A new folder also carries the entries of the user's default access list (the system and the
+  // administrators); `/grant:r` leaves those, so take them off unless one of them is this user.
+  const others = defaultEntries.filter((entry) => entry !== sid);
+  if (others.length > 0) {
+    await start("icacls.exe", [folder, "/remove:g", ...others.map((entry) => `*${entry}`)]);
+  }
 }
