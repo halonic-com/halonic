@@ -112,6 +112,19 @@ export function providerAddress(provider: Provider): string | undefined {
   return defaultAddresses[provider.type];
 }
 
+/**
+ * The API address of a model server on this computer whose provider file
+ * gives no `baseUrl`, from the same table as {@link providerAddress}, or
+ * `undefined` when its type has no default address.
+ *
+ * @example
+ * defaultLocalBaseUrl("ollama"); // "http://localhost:11434/v1"
+ */
+export function defaultLocalBaseUrl(type: string): string | undefined {
+  const address = defaultAddresses[type];
+  return address === undefined ? undefined : `http://${address}/v1`;
+}
+
 /** The root's aliases, then each hub's that adds an alias or points one elsewhere. */
 function workspaceAliases(workspace: LoadedWorkspace): AliasProvider[] {
   const hubs = [...new Set(filesOf(workspace, "hub").map((file) => file.hub))];

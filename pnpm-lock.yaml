@@ -286,6 +286,15 @@ importers:
       '@halonicjs/adapter-harness-codex':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-model-anthropic':
+        specifier: workspace:*
+        version: link:../../packages/adapters/model-anthropic
+      '@halonicjs/adapter-model-mock':
+        specifier: workspace:*
+        version: link:../../packages/adapters/model-mock
+      '@halonicjs/adapter-model-openai':
+        specifier: workspace:*
+        version: link:../../packages/adapters/model-openai
       '@halonicjs/adapter-sandbox-host':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-host
@@ -298,6 +307,9 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../packages/core/engine
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../packages/core/events
