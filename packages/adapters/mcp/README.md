@@ -24,6 +24,11 @@ Our own MCP client for programs on the person's computer.
 - **Process starts** happen in one file, `src/stdio/node-program-starter.ts`, listed in
   `tooling/check/process-starters.json`. Everything else talks to the `ProgramStarter` seam, so the
   connector's tests use an in-process fake program.
+- **Where `findRunner` looks on Windows**, after the app's `PATH`: Node's folder under
+  `%ProgramFiles%`, npm's under `%APPDATA%`, Volta's `Volta\bin` under `%LOCALAPPDATA%`, then
+  Scoop's `scoop\shims`, `.local\bin` and `.cargo\bin` under the home folder. Variable names are
+  read in any letter case. Scoop's shims are `.exe` files, so they start directly. The launcher
+  that uses this is still to come (HAL-2544, #1279 and #1281).
 
 - **Layer:** adapters
 - **Owner:** tomas

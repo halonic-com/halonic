@@ -1,8 +1,10 @@
 # @halonicjs/adapter-http-kit
 
 The address classes for outgoing requests: which class an IP address is in, and which addresses a
-host of each class may reach. Plain code with Web types, so the Node transport, the integration
-kit and the Worker share one rule.
+host of each class may reach. Plain code with Web types, so the integration kit, a Node transport
+and the Worker can share one rule. Today only the integration kit uses it (`classifyAddress`, to
+tell a loopback host from the rest); no Node transport checks DNS answers with
+`addressAllowedFor` yet.
 
 - **Layer:** adapters
 - **Owner:** ravi
@@ -49,7 +51,7 @@ Check a DNS answer for a public host. The code lives in
 ```ts
 import { addressAllowedFor, classifyAddress } from "@halonicjs/adapter-http-kit";
 
-/** Checks a DNS answer for a public host the way the Node transport does: every address, not only the first. */
+/** Checks a DNS answer for a public host the way a transport should: every address, not only the first. */
 export function runExample(): { allowed: string[]; refused: { address: string; class: string }[] } {
   // An answer that mixes a public address with a private and a mapped loopback one.
   const answer = ["93.184.215.14", "10.0.0.5", "::ffff:127.0.0.1"];
