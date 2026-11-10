@@ -196,6 +196,53 @@ verifies("mcp.pinned-launcher", () => {
       expect(launch.env).not.toHaveProperty("PATH");
     });
 
+    describe("on Windows, where a variable's name has no letter case", () => {
+      const place: PinnedPlace = {
+        folder: windowsPath("C", "launch-4"),
+        runner: {
+          program: windowsPath("C", "Acme", "npx.cmd"),
+          leadingArgs: [],
+          pathFolders: [windowsPath("C", "Acme")],
+        },
+        platform: "win32",
+      };
+
+      it("lets a connector's PATH replace an inherited Path, and puts the runner's folders first on it", () => {
+        const connector = { ...npx(), env: { PATH: windowsPath("C", "Tools") } };
+        const launch = pinnedLaunch(
+          connector,
+          npmPin,
+          { Path: windowsPath("C", "Windows") },
+          place,
+        );
+        expect(launch.env["PATH"]).toBe(`${windowsPath("C", "Acme")};${windowsPath("C", "Tools")}`);
+        expect(launch.env).not.toHaveProperty("Path");
+      });
+
+      it("lets the launch's TEMP replace a connector's Temp", () => {
+        const connector = { ...npx(), env: { Temp: windowsPath("C", "Tools", "tmp") } };
+        const launch = pinnedLaunch(connector, npmPin, {}, place);
+        expect(launch.env["TEMP"]).toBe(place.folder);
+        expect(launch.env).not.toHaveProperty("Temp");
+      });
+    });
+
+    it("keeps variables that differ only in letter case apart off Windows", () => {
+      const connector = { ...npx(), env: { Path: "/acme/tools", Temp: "/acme/tools/tmp" } };
+      const { env } = pinnedLaunch(
+        connector,
+        npmPin,
+        { PATH: "/usr/bin" },
+        at("/acme/launch-5", "npx"),
+      );
+      expect(env).toMatchObject({
+        PATH: "/acme/bin:/usr/bin",
+        Path: "/acme/tools",
+        TEMP: "/acme/launch-5",
+        Temp: "/acme/tools/tmp",
+      });
+    });
+
     it("points a PyPI runner's index at the registry's simple API, with no other config and no Python download", () => {
       const { env, args } = pinnedLaunch(uvx, pypiPin, inherited, at("/acme/launch-2", "uvx"));
       expect(args).toEqual(["mail-mcp@2.3.1"]);

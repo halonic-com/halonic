@@ -28,7 +28,8 @@ const folderVariables = [
  * the launcher inherits, without the package-manager and language variables
  * (`app.package-manager-variable`), with the connector's own `env`, which
  * `checkPackageRunnerLaunch` has checked, then the launch folder and the
- * pin's registry, which nothing before can change.
+ * pin's registry, which nothing before can change. On Windows a later
+ * variable replaces an earlier one in any letter case (see {@link mergedEnv}).
  *
  * An inherited proxy, certificate or preload stays: those are the person's
  * own machine settings, such as a company proxy (`ports/connector-client.ts`).
@@ -38,14 +39,37 @@ export function pinnedEnv(
   inheritedEnv: Readonly<Record<string, string>>,
   connectorEnv: Readonly<Record<string, string>>,
   folder: string,
+  platform: NodeJS.Platform,
 ): Record<string, string> {
-  const env: Record<string, string> = {};
-  for (const [name, value] of Object.entries(inheritedEnv)) {
-    if (!isPackageManagerVariable(name) && !isFolderVariable(name)) env[name] = value;
+  const kept = Object.entries(inheritedEnv).filter(
+    ([name]) => !isPackageManagerVariable(name) && !isFolderVariable(name),
+  );
+  const launchFolders = folderVariables.map((name): Variable => [name, folder]);
+  const registry = Object.entries(registryEnv(pin, folder));
+  return mergedEnv([kept, Object.entries(connectorEnv), launchFolders, registry], platform);
+}
+
+/** One environment variable, as its name and value. */
+type Variable = readonly [name: string, value: string];
+
+/**
+ * `layers` of variables merged in order, a later variable replacing an
+ * earlier one of the same name. Windows reads a name in any letter case, so
+ * there `PATH` replaces `Path` and one key per name is kept: with both,
+ * Node passes on only one of them, which need not be the one
+ * {@link withFoldersFirst} puts the runner's folders on.
+ */
+function mergedEnv(
+  layers: readonly (readonly Variable[])[],
+  platform: NodeJS.Platform,
+): Record<string, string> {
+  const windows = platform === "win32";
+  const byName = new Map<string, Variable>();
+  for (const variable of layers.flat()) {
+    const [name] = variable;
+    byName.set(windows ? name.toUpperCase() : name, variable);
   }
-  Object.assign(env, connectorEnv);
-  for (const name of folderVariables) env[name] = folder;
-  return Object.assign(env, registryEnv(pin, folder));
+  return Object.fromEntries(byName.values());
 }
 
 /**

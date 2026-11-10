@@ -61,7 +61,7 @@ export function pinnedLaunch(
   place: PinnedPlace,
 ): ProgramLaunch {
   const { folder, runner, platform } = place;
-  const env = pinnedEnv(pin, inheritedEnv, transport.env, folder);
+  const env = pinnedEnv(pin, inheritedEnv, transport.env, folder, platform);
   return {
     program: runner.program,
     args: [...runner.leadingArgs, ...pinnedRunnerArgs(pin, transport.command, transport.args)],
