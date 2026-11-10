@@ -4,6 +4,7 @@
 - Task: HAL-3814; the plan for `halonic run`, PR A, approved on HAL-3895
 - Approval: the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AHEPaqgHxnHZJrBJKprpUoGmM8brr1QAUNhR93oFHpVr+EHCD+/BudF4c6Qx3GsN5218Z8a1x8Ydp2qNCQpXBg==
 
 ## What changes
 
