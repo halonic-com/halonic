@@ -10,7 +10,7 @@ export const Provider = s
     version,
     id,
     name: s.string().optional(),
-    /** Adapter type, one of anthropic, openai-compatible or mock (for tests). */
+    /** Adapter type: anthropic, openai, openai-compatible, ollama, lmstudio, or mock (for tests). */
     type: s.string().min(1),
     baseUrl: s.string().url().optional(),
     /** The name of the secret that holds the API key. */

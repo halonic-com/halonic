@@ -1,5 +1,12 @@
 // The public API of @halonicjs/adapter-model-openai. Everything else in src/ is internal.
 export {
+  lmStudioFactory,
+  ollamaFactory,
+  openAiCompatibleFactory,
+  openAiFactories,
+  openAiFactory,
+} from "./factories.ts";
+export {
   OpenAiCompatibleProvider,
   type OpenAiCompatibleProviderOptions,
 } from "./openai-provider.ts";

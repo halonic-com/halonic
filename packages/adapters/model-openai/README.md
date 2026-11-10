@@ -7,7 +7,36 @@ The model provider for OpenAI's chat completions API and the servers that copy i
 - **Runtime:** any
 - **Public API:** `@halonicjs/adapter-model-openai`
 
-## Example
+## Provider types
+
+A workspace picks the server with a provider's `type`. Each type has a factory; all of them make the same provider and only fill in what the YAML leaves out.
+
+| `type`              | Address when `baseUrl` is left out | Key                                      |
+| ------------------- | ---------------------------------- | ---------------------------------------- |
+| `openai`            | `https://api.openai.com/v1`        | needed; asks for `max_completion_tokens` |
+| `openai-compatible` | none, `baseUrl` is required        | only when `secret` is set                |
+| `ollama`            | `http://localhost:11434/v1`        | only when `secret` is set                |
+| `lmstudio`          | `http://localhost:1234/v1`         | only when `secret` is set                |
+
+```yaml
+# providers/local.yaml
+id: local
+type: ollama
+local: true
+```
+
+The key is read from the secret named by `secret` on every call and goes only into the `Authorization` header. A call fails with `no-key`, before anything is sent, when that secret isn't set, or when an `openai` provider names no secret. `openai-compatible`, `ollama` and `lmstudio` at the same address send the same requests.
+
+Ollama cuts every prompt to its context length, 4096 tokens unless the server is started with `OLLAMA_CONTEXT_LENGTH` set higher. The chat completions API can't change it per call, so set it on the server for agents with long instructions or many tools.
+
+```ts
+import { openAiFactories } from "@halonicjs/adapter-model-openai";
+
+const factory = openAiFactories.find((each) => each.type === config.type);
+const model = factory?.create(config, { secrets, http: { fetch } });
+```
+
+## Using the provider directly
 
 ```ts
 import { OpenAiCompatibleProvider } from "@halonicjs/adapter-model-openai";
