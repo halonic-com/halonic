@@ -281,7 +281,11 @@ export interface Vcs {
    * @throws when there is no worktree with that id: `Unknown worktree <id>`
    */
   removeWorktree(id: string): Promise<void>;
-  /** The worktrees this adapter added that still exist, oldest first. */
+  /**
+   * The worktrees this adapter added that still exist, oldest first.
+   *
+   * @throws when the folder isn't a repository
+   */
   listWorktrees(): Promise<VcsWorktree[]>;
   /**
    * Every file that differs between a commit and a worktree's files as they
@@ -301,8 +305,13 @@ export interface Vcs {
    * `applyPatch(hunk, { reverse: true })`. All or nothing: when any part of
    * it doesn't apply cleanly, nothing changes.
    *
-   * @throws RangeError when the patch names a path the port refuses
-   * @throws when it doesn't apply cleanly: `The change no longer matches the file.`
+   * @throws RangeError for a patch that would be refused whatever the files
+   *   hold: one that names a path the port refuses, one that does more than
+   *   edit, create or delete a plain text file's lines (a binary change, a
+   *   mode change, a symbolic link, a gitlink, a rename or a copy), or one
+   *   that can't be read
+   * @throws when it is fine but no longer applies cleanly: `The change no
+   *   longer matches the file.` The Studio offers to refresh only this one.
    */
   applyPatch(patch: string, options?: VcsApplyOptions): Promise<void>;
   /** Make the folder a repository, ignoring `.studio`, the folder Halonic keeps its runtime data in. */

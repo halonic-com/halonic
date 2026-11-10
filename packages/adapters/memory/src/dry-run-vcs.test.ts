@@ -183,7 +183,7 @@ verifies("memory.dry-run-vcs-worktrees", () => {
     await expect(dryRun.applyPatch(unifiedDiff(".env", null, "KEY=x\n"))).rejects.toThrow(
       RangeError,
     );
-    await expect(dryRun.applyPatch("not a patch")).rejects.toThrow("can't be read");
+    await expect(dryRun.applyPatch("not a patch")).rejects.toThrow(RangeError);
     expect(dryRun.changes()).toEqual([]);
   });
 });

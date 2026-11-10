@@ -260,10 +260,12 @@ export class MemoryVcs implements Vcs {
   }
 
   async removeWorktree(id: string): Promise<void> {
+    this.#requireRepo();
     this.#worktrees.remove(id);
   }
 
   async listWorktrees(): Promise<VcsWorktree[]> {
+    this.#requireRepo();
     return this.#worktrees.list();
   }
 

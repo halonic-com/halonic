@@ -49,6 +49,12 @@ verifies("memory.vcs-worktrees", () => {
       await expect(vcs.addWorktree("HEAD")).rejects.toThrow(RangeError);
       await expect(vcs.diffBetween("HEAD", "worktree-1")).rejects.toThrow(RangeError);
     });
+
+    it("refuse a folder that isn't a repository, even to list them", async () => {
+      const vcs = new MemoryVcs(new MemoryDefinitionStore());
+      await expect(vcs.listWorktrees()).rejects.toThrow("not a repository");
+      await expect(vcs.removeWorktree("worktree-1")).rejects.toThrow("not a repository");
+    });
   });
 
   it("lists what a worktree added, changed and deleted, sorted, with diffs", async () => {
