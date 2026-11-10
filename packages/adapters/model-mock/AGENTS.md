@@ -4,7 +4,7 @@ Owner: liam · Layer: adapters · Read the root `AGENTS.md` first; this file add
 
 ## Scope
 
-The scripted mock model: replies and tool calls from a test's script, never the network. Used by `halonic test`, `type: mock` providers, the engine's tests and the parity run.
+The scripted mock model: replies and tool calls from a test's script, never the network. Meant for `halonic test`, `type: mock` providers, the engine's tests and the parity run.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

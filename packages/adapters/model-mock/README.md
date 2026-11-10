@@ -1,6 +1,6 @@
 # @halonicjs/adapter-model-mock
 
-The scripted mock model. It answers each agent from a script, turns `tool:<name> <json>` lines into tool calls, and never touches the network, so `halonic test`, the engine's tests and the parity run give the same event log every time. A workspace can also use it as a provider with `type: mock`.
+The scripted mock model. It answers each agent from a script, turns `tool:<name> <json>` lines into tool calls, and never touches the network, so a run gives the same event log every time. It is meant for `halonic test`, the engine's tests and the parity run; no package depends on it yet. A workspace can also use it as a provider with `type: mock`.
 
 - **Layer:** adapters
 - **Owner:** liam
@@ -10,10 +10,13 @@ The scripted mock model. It answers each agent from a script, turns `tool:<name>
 ## How a script works
 
 - A script maps an agent id to its replies, used in order. The key `*` holds the replies for agents with no script of their own.
-- An agent whose own script has run out gets the fallback, not a `*` reply. The default fallback echoes the last user message; the test runner passes one that answers empty text.
+- An agent whose own script has run out gets the fallback, not a `*` reply. The default fallback, `echoLastUserMessage`, echoes the last user message (empty text when there is none). Pass your own `FallbackReply` as the third constructor argument; a provider made from `providers/*.yaml` always uses the default.
 - A reply whose every non-blank line is `tool:<name> <arguments>` asks for those tools. Arguments that aren't a JSON object are passed on as `{ input: <text> }`. Call ids count up per model: `mock_call_1`, `mock_call_2` …
 - Usage is about four characters a token, rounded up, as in the old mock, so recorded event logs and budget tests keep their numbers.
+- The model reports `tools` and `jsonOutput` support, no `vision`, and no streaming.
 - `remaining()` gives the replies left per agent, and `requests` keeps every request, so a test can check it used its whole script.
+
+A provider whose `options.script` is not a map from agent id to a list of text replies is refused with an error that names the provider and the agent id. Without `options.script`, every agent gets its last user message echoed.
 
 As a workspace provider:
 
