@@ -27,6 +27,12 @@ function vendorTextOf(error: Error): string | undefined {
   return isVendorErrorText(error.cause) ? error.cause.message : undefined;
 }
 
+/** The status on `error`'s vendor text; throws when the error has no vendor text. */
+function vendorStatusOf(error: Error): number | undefined {
+  if (!isVendorErrorText(error.cause)) throw new Error("the error has no vendor text");
+  return error.cause.status;
+}
+
 /** The error `chat` fails with after `script` sets up the vendor. */
 async function failureOf(script: (vendor: ScriptedVendor) => void, request = chatRequest()) {
   const { vendor, provider } = providerWith();
@@ -405,6 +411,8 @@ verifies("model-openai.call-errors", () => {
     expect(isModelCallError(error) && error.reason).toBe("refused");
     expect(error.message).toBe('acme stopped the answer from the model "acme-small" with an error');
     expect(vendorTextOf(error)).toBe("The server had an error while processing your request");
+    // The 200 the call was taken with isn't the error's status.
+    expect(vendorStatusOf(error)).toBeUndefined();
   });
 
   it("ends a stream with out-of-credit when its error event says the credit is used up", async () => {
@@ -413,6 +421,7 @@ verifies("model-openai.call-errors", () => {
     );
     expect(isModelCallError(error) && error.reason).toBe("out-of-credit");
     expect(vendorTextOf(error)).toBe("You exceeded your current quota");
+    expect(vendorStatusOf(error)).toBeUndefined();
   });
 
   it("drops the text of an error event that holds the call's own key", async () => {

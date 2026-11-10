@@ -112,9 +112,9 @@ export function errorForStatus(
 /**
  * Whether the account has no credit left: a 402 (DeepSeek, Together,
  * OpenRouter, Mistral), or a body whose type or code says so, whatever the
- * status.
+ * status. A streamed error event has no status, so only its body decides.
  */
-function isOutOfCredit(status: number, vendor: VendorError): boolean {
+function isOutOfCredit(status: number | undefined, vendor: VendorError): boolean {
   if (status === 402) return true;
   return [vendor.type, vendor.code].some(
     (value) => value !== undefined && outOfCreditCodes.has(value),
@@ -172,7 +172,8 @@ function megabytes(bytes: number): string {
  * The {@link ModelCallError} for an error the server sent as a streamed event
  * after it took the call: `out-of-credit` when the event says so, as for an
  * error reply, and `refused` otherwise. The vendor's text goes on the `cause`
- * as in {@link errorForStatus}, with the 200 the call was taken with.
+ * as in {@link errorForStatus}, without a status: the 200 the call was taken
+ * with doesn't describe the error, and we don't map error types to statuses.
  */
 export function errorForStreamedError(
   event: string,
@@ -181,9 +182,9 @@ export function errorForStreamedError(
 ): ModelCallError {
   const vendor = vendorErrorIn(event);
   const vendorText = shortened(vendor.message, key);
-  const options = vendorText === "" ? {} : { cause: new VendorErrorText(200, vendorText) };
+  const options = vendorText === "" ? {} : { cause: new VendorErrorText(undefined, vendorText) };
   const stopped = `${call.providerId} stopped the answer from the model "${call.model}"`;
-  if (isOutOfCredit(200, vendor)) {
+  if (isOutOfCredit(undefined, vendor)) {
     return new ModelCallError(
       "out-of-credit",
       `${stopped} because the account has no credit left or reached its limit`,
