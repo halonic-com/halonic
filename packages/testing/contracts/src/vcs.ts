@@ -5,9 +5,10 @@ import { vcsHardenedCases } from "./vcs-hardened.ts";
 import type { MakeVcs } from "./vcs-harness.ts";
 import { changesOf, lines } from "./vcs-helpers.ts";
 import { vcsHistoryCases } from "./vcs-history.ts";
+import { linePatch } from "./vcs-patch-inputs.ts";
 import { vcsRemoteCases } from "./vcs-remote.ts";
 import { vcsSafetyCases } from "./vcs-safety.ts";
-import { linePatch, unknownCommit } from "./vcs-version-inputs.ts";
+import { unknownCommit } from "./vcs-version-inputs.ts";
 import { vcsVersionContracts } from "./vcs-versions.ts";
 
 /**

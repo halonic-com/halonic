@@ -6,12 +6,8 @@ import {
   plantedHooks,
   unsafeVcsPaths,
 } from "./vcs-harness.ts";
-import {
-  invalidCommitRefs,
-  unknownCommit,
-  unsafePatches,
-  unsupportedPatches,
-} from "./vcs-version-inputs.ts";
+import { unsafePatches, unsupportedPatches } from "./vcs-patch-inputs.ts";
+import { invalidCommitRefs, unknownCommit } from "./vcs-version-inputs.ts";
 
 describe("Vcs safety lists (contracts.vcs-safety)", () => {
   // The suite is only as strong as these lists: each kind of input from the port doc is in them.

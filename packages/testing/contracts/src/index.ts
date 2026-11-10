@@ -198,9 +198,5 @@ export {
   type VcsHarness,
   validBranchNames,
 } from "./vcs-harness.ts";
-export {
-  invalidCommitRefs,
-  linePatch,
-  unknownCommit,
-  unsafePatches,
-} from "./vcs-version-inputs.ts";
+export { linePatch, unsafePatches } from "./vcs-patch-inputs.ts";
+export { invalidCommitRefs, unknownCommit } from "./vcs-version-inputs.ts";

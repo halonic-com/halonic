@@ -1,14 +1,9 @@
 import { expect, it } from "vitest";
 import { type MakeVcs, optionLikePaths, patternLikePaths, unsafeVcsPaths } from "./vcs-harness.ts";
 import { changesOf, stateOf } from "./vcs-helpers.ts";
+import { deletePatch, linePatch } from "./vcs-patch-inputs.ts";
 import { vcsPatchSafetyCases } from "./vcs-patch-safety.ts";
-import {
-  deletePatch,
-  invalidCommitRefs,
-  linePatch,
-  privateWorkspaceFiles,
-  unknownCommit,
-} from "./vcs-version-inputs.ts";
+import { invalidCommitRefs, privateWorkspaceFiles, unknownCommit } from "./vcs-version-inputs.ts";
 
 /**
  * The safety part of the {@link Vcs} contract for port version 2: worktrees
