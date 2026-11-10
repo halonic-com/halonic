@@ -7,7 +7,7 @@ request, by severity tag (see
 
 - **Layer:** tooling
 - **Owner:** julian
-- **Public API:** `@halonicjs/tooling-metrics` (`findingsIn`, `severityOf`, `findingsTable`, `createReader`, `reviewFindings`)
+- **Public API:** `@halonicjs/tooling-metrics` (`findingsIn`, `severityOf`, `findingsTable`, `addCounts`, `noFindings`, `severities`, `createReader`, `mergedPullRequests`, `reviewFindings`, `reviewTexts`, `nextLink`, `gitHubApi`)
 - **Requirements:** `metrics.tagged-findings`, `metrics.findings-per-pull-request`
 
 ## Review findings per pull request
@@ -22,6 +22,7 @@ It prints one row per pull request merged in the window (`--until` is left
 out), with its `[blocker]`, `[major]`, `[minor]` and `[nit]` findings and a
 total row. `--json` prints the rows as JSON instead, with the titles;
 `--repo owner/name` reads another repository (default `halonic-com/halonic`).
+Both dates are required. The token comes from `GH_TOKEN`, or `GITHUB_TOKEN` when that is not set.
 
 What counts:
 

@@ -166,7 +166,9 @@ For every file the old loader read, in the base and in every case, the
 compare takes the old result from `recorded.json` and the new one from
 `parseFile`, and compares them exactly: pass or fail, then each error's key
 path, code, line and column, in order. Nothing is dropped or rounded. A YAML
-syntax error is compared by its line and column, with the code `syntax`.
+syntax error is compared by its line and column, with the code `syntax` and
+the path `[]` on both sides. Warnings are left out, and a new result that isn't
+ok fails even when it holds only warnings.
 Errors the old loader found between files (an unknown agent, a workflow rule)
 are kept with the file for the report and compared on their own, below.
 
@@ -225,6 +227,9 @@ behave differently from the old one. Each entry has:
   fixture file (`case` and `file`, or a folder for an old layout) with its
   `old` and `new` messages (`severity` and `message`) written out in full and
   in order. It is judged the same way as `fixtures`
+
+Every fixture, the base's valid file of each kind and at least one invalid case
+per kind, has a recording from the reference commit.
 
 The compare code, `src/allowed-differences.ts` and `allowed-differences.json`
 are guarded: a change could make parity pass by comparing less.
@@ -322,3 +327,20 @@ export function runExample(): string[] {
   ];
 }
 ```
+
+## Requirements
+
+- [`parity.fixtures-cover-every-kind`](requirements/fixtures-cover-every-kind.md)
+- [`parity.case-description-checked`](requirements/case-description-checked.md)
+- [`parity.compose-case-workspace`](requirements/compose-case-workspace.md)
+- [`parity.line-verdict`](requirements/line-verdict.md)
+- [`parity.record-only-from-reference`](requirements/record-only-from-reference.md)
+- [`parity.recording-is-machine-free`](requirements/recording-is-machine-free.md)
+- [`parity.runner-traces-old-loader`](requirements/runner-traces-old-loader.md)
+- [`parity.runner-records-test-run-logs`](requirements/runner-records-test-run-logs.md)
+- [`parity.runner-records-cli-output`](requirements/runner-records-cli-output.md)
+- [`parity.compare-exact`](requirements/compare-exact.md)
+- [`parity.compare-loader-checks`](requirements/compare-loader-checks.md)
+- [`parity.compare-runs-on-fixtures`](requirements/compare-runs-on-fixtures.md)
+- [`parity.allowed-differences-checked`](requirements/allowed-differences-checked.md)
+- [`parity.allowed-fixture-differences`](requirements/allowed-fixture-differences.md)

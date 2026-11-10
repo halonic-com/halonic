@@ -6,12 +6,17 @@ Helpers for scenario-style tests: `eventually()` checks until the state is right
 - **Owner:** julian
 - **Public API:** `eventually`, `keepOnFailure`, `trustedWorkspace`, `trustedWorkspaceGrantedAt`
 
-`eventually(check, { within, every, wait })` runs `check` at once and, while
+`eventually(check, { within, every, wait, intent })` runs `check` at once and, while
 it throws, waits `every` milliseconds and checks again. `within` is the sum of
 the waits, not a wall-clock limit: a slow machine runs exactly the same
 checks as a fast one, and Vitest's test timeout stays the wall-clock backstop.
 Pass your fake world's step as `wait` so the wait moves fake time; without
-it, `eventually` waits on a real timer.
+it, `eventually` waits on a real timer. It runs `floor(within / every) + 1`
+checks at most, and returns the value of the first one that doesn't throw. If
+none passes, it rejects with an error that names the `intent` (what must become
+true, in words) and the number of checks, with the last check's error as its
+`cause`. It rejects with a `RangeError`, without running `check`, when `every`
+isn't a finite number above 0 or `within` is less than `every` or not finite.
 
 Use `eventually` when the intent is "at some point within X". When the intent
 is "not before T, and exactly at T", wait the exact time and check once
@@ -24,9 +29,11 @@ fails, it writes what `collect` returned as JSON to
 tag in `test-results/vitest.json`. If `collect` throws, the file records
 that error and the test keeps its own. A test file or test name that isn't
 already a safe folder name, or is longer than 120 characters, gets a short
-hash of the whole name at the end, so two tests never share a folder. Give
-each `keepOnFailure` in a test its own name: a second call with the same
-name throws.
+hash of the whole name at the end, so two tests never share a folder. The
+`directory` option changes the folder. `name` must be lowercase words joined
+by dashes, such as `timer-records`, or the call throws; give each
+`keepOnFailure` in a test its own name, because a second call with the same
+name throws too.
 
 `trustedWorkspace(location, { connectors, commandPaths })` returns a memory
 `TrustStore` that already trusts one workspace. Its record holds the
@@ -78,3 +85,9 @@ export async function runExample() {
 ```
 
 Add the package as a `devDependency` (`"@halonicjs/testing-scenario": "workspace:*"`).
+
+## Requirements
+
+- [`scenario.eventually`](requirements/eventually.md)
+- [`scenario.keep-on-failure`](requirements/keep-on-failure.md)
+- [`scenario.trusted-workspace`](requirements/trusted-workspace.md)

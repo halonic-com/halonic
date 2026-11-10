@@ -16,8 +16,9 @@ Node, Workers and in the browser.
 | `startGoogleSignIn`        | makes the `state` and PKCE pair, keeps them as the account's pending sign-in and returns the auth URL                                                     |
 | `finishGoogleSignIn`       | reads Google's callback, exchanges the code, checks the ID token and the account, saves the refresh token, checks each service and returns a typed result |
 | `checkGoogleServicesAgain` | refreshes the access token with the saved refresh token and checks each service again, for "Check again"                                                  |
-| `revokeGoogleSignIn`       | revokes the account's refresh token at Google and removes it from the `TokenStore`                                                                        |
-| `createPendingSignIns`     | the server's pending sign-ins, in memory; create one per server and pass it in like a port                                                                |
+| `revokeGoogleSignIn`       | revokes the account's refresh token at Google and removes it from the `TokenStore`, whether or not Google confirms                                        |
+| `googleRevokeEndpoint`     | Google's revoke endpoint URL, as a constant                                                                                                               |
+| `createPendingSignIns`     | the server's pending sign-ins, in memory, at most one per account; one older than 10 minutes counts as none. Create one per server and pass it in like a port |
 | `createPkcePair`           | a new PKCE verifier (32 random bytes, 43 base64url characters) and its S256 challenge (RFC 7636)                                                          |
 | `pkceChallenge`            | the S256 challenge for a verifier                                                                                                                         |
 | `createState`              | a new `state` (32 random bytes, 43 base64url characters)                                                                                                  |
@@ -45,8 +46,10 @@ revokes it, because revoking would end the new token too.
 any integration code runs:
 
 1. **Account.** The ID token's verified e-mail must be the connector's
-   address (`account` at start). For another account the result is
-   `wrongAccount` and nothing is saved. Nothing is revoked either: that
+   address (`account` at start, compared without regard to case). For another
+   account the result is `wrongAccount` and nothing is saved. When Google has
+   not verified the e-mail, the result is `idTokenRefused`, even for the
+   connector's own address. Nothing is revoked either: that
    address may be another connector on the same client.
 2. **Save** the refresh token.
 3. **Each service, in order.** `scopeNotGranted` when the user unticked one
@@ -55,9 +58,10 @@ any integration code runs:
    `checkFailed` or `unreachable`.
 
 The access token goes only into the check's `Authorization` header. A check
-URL must be `https` on one of the service's own `googleApis` hosts or on
-`www.googleapis.com`, Google's shared API host (no user name, password or
-other port); `startGoogleSignIn` refuses any other with a `RangeError`, before
+URL must be `https` on one of the service's own `googleApis` hosts (not
+`storage.googleapis.com`) or on `www.googleapis.com`, Google's shared API
+host, with a path that starts with the name of one of the service's APIs (no
+user name, password or other port); `startGoogleSignIn` refuses any other with a `RangeError`, before
 the user goes to Google. A check follows no redirect and gives up after 10 seconds.
 
 ## Check again

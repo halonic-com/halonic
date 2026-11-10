@@ -8,8 +8,8 @@ only check that notices a test whose assertions were hollowed out.
 
 - **Layer:** tooling
 - **Owner:** mateo
-- **Public API:** `@halonicjs/tooling-mutation` (`scoreOf`, `summaryTable`, `hasCode`, `strykerConfig`, `mutationTargets`)
-- **Requirements:** `mutation.score-per-package`, `mutation.only-packages-with-code`
+- **Public API:** `@halonicjs/tooling-mutation` (`scoreOf`, `summaryTable`, `belowFloor`, `mutationFloors`, `hasCode`, `strykerConfig`, `sandboxEnv`, `mutationTargets`, `parityFixturesVariable`)
+- **Requirements:** `mutation.score-per-package`, `mutation.only-packages-with-code`, `mutation.floor-per-package`, `mutation.parity-fixtures-in-sandbox`
 
 ## Running it
 
@@ -33,10 +33,13 @@ for every target. The table lands in the run's job summary.
 
 A package is skipped ("no code yet") until it has a source file other than its
 tests and `src/index.ts`. A package with a floor fails the run when its score
-is under it, and so does a Stryker run that breaks. The floors live in
+is under it or when it has no mutants to score, and so does a Stryker run that breaks. The floors live in
 `mutationFloors` in `src/score.ts` (`packages/core/schema-kit`: 98%,
 `packages/core/yaml`: 85%) and can only go up. Packages without a floor only
 report; they get one once their score is stable.
 
 Stryker's own `stryker.config.*` files aren't used: the runner writes the
-config for each package into a temporary folder (see `src/targets.ts`).
+config for each package into a temporary folder (see `src/targets.ts`). It also
+sets `HALONIC_PARITY_FIXTURES` to `packages/testing/parity/fixtures`, so a
+test that reads the parity fixtures finds them although Stryker runs it from
+a copy of the package.
