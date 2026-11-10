@@ -31,10 +31,7 @@ The `halonic runs show <run-id>` command shall show one run of the workspace, re
   then its heading ends "started 10:40, waiting for you since 10:41".
 - Given that run waiting at its step Approve this reply? for approve or reject,
   when `halonic runs show 09d9a0` is run,
-  then it ends with `! Waiting for you: Approve this reply?` and `  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve  (or reject)`.
-- Given that run's answers labelled Send reply for approve and Discard for reject,
-  when `halonic runs show 09d9a0` is run,
-  then it ends with `  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send reply)  (or reject (Discard))`.
+  then it ends with `! Waiting for you: Approve this reply?` and `  Answer in Studio's Inbox.`.
 - Given a test run,
   when `halonic runs show a1b2c3` is run,
   then its heading says "test run a1b2c3".
