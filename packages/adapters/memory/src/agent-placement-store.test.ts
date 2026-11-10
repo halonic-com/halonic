@@ -15,6 +15,15 @@ verifies("memory.agent-placement-store", () => {
     );
   });
 
+  it("refuses a placement with a field a placement doesn't have, naming its key", async () => {
+    const store = new MemoryAgentPlacementStore();
+    const extra = { ...agentPlacement(coder.location, coder.agent), sandbox: false };
+    await store.save(extra);
+    await expect(store.get(coder)).rejects.toThrow(
+      'The placement for the agent "coder" in "/workspaces/acme" isn\'t a valid placement.',
+    );
+  });
+
   it("refuses to damage a placement it doesn't hold", async () => {
     const store = new MemoryAgentPlacementStore();
     expect(() => store.damage(coder)).toThrow(
