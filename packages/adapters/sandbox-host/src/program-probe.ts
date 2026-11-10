@@ -85,7 +85,20 @@ function run(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      // A child that outlived the program may still hold the pipes and would keep the launcher alive.
+      child.stdout.destroy();
+      child.stderr.destroy();
       resolve(result);
+    };
+    const killGroup = () => {
+      try {
+        // On POSIX the program leads its own process group, so this also stops what it forked.
+        if (child.pid !== undefined && process.platform !== "win32")
+          process.kill(-child.pid, "SIGKILL");
+        else child.kill("SIGKILL");
+      } catch {
+        // Already gone.
+      }
     };
 
     const child = spawn(path, [...args], {
@@ -93,9 +106,10 @@ function run(
       env,
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
+      detached: process.platform !== "win32",
     });
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
+      killGroup();
       settle({
         status: "failed",
         path,
@@ -108,6 +122,8 @@ function run(
     child.on("error", () => {
       settle({ status: "failed", path, error: `${name} was found but couldn't be started.` });
     });
+    // The program is done; stop anything it left behind so the pipes can close.
+    child.on("exit", killGroup);
     child.on("close", (code) => {
       settle({ status: "ran", path, code, stdout: out.text(), stderr: err.text() });
     });
