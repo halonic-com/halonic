@@ -50,7 +50,8 @@ export interface RevertPartsProblem {
  *
  * When the result reads the same as the reference, the reference's text is
  * given back as it is, so an item whose every change was undone is clean,
- * not just equal.
+ * not just equal. The cost: a comment, blank line or spacing changed since
+ * the reference is dropped then too, because no part describes it.
  *
  * @param current - the item's YAML text to change
  * @param reference - the YAML text to take the parts from

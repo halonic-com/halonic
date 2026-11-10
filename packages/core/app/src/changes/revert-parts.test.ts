@@ -125,6 +125,12 @@ verifies("app.revert-parts", () => {
     expect(reverted(current, reference, ["model"])).toBe(reference);
   });
 
+  it("drops a comment added since the reference when the result reads the same", () => {
+    const current = lines("# picks the model", "name: Classifier", "model: large");
+    const reference = lines("name: Classifier", "model: small");
+    expect(reverted(current, reference, ["model"])).toBe(reference);
+  });
+
   it("says which text it couldn't read", () => {
     expect(revertParts("a: [", "a: 1\n", [["a"]])).toMatchObject({
       ok: false,
@@ -153,8 +159,21 @@ verifies("app.revert-parts-three-references", () => {
     );
   });
 
-  it("gives the same result for Undo this change against the latest version", () => {
-    expect(reverted(file, baseline, ["schedule"])).toBe(reverted(file, baseline, ["schedule"]));
+  it("undoes one change against the latest version and keeps the others", () => {
+    const latest = lines("name: Daily summary", "# when it runs", "schedule: Weekdays 08:00");
+    const working = lines(
+      "name: Daily summary",
+      "# when it runs",
+      "schedule: Weekdays 07:00",
+      "notify: me",
+    );
+    expect(reverted(working, latest, ["notify"])).toBe(
+      lines("name: Daily summary", "# when it runs", "schedule: Weekdays 07:00"),
+    );
+    expect(reverted(working, latest, ["schedule"], ["notify"])).toBe(latest);
+  });
+
+  it("gives the reference's text once every changed part is reverted", () => {
     expect(reverted(file, baseline, ["schedule"], ["enabled"])).toBe(baseline);
   });
 });
