@@ -129,6 +129,19 @@ describe("the states page", () => {
     expect(markup.match(/scheme-light/g)).toHaveLength(rows);
     expect(markup.match(/scheme-dark/g)).toHaveLength(rows);
   });
+
+  it("stacks FormRows light above dark, so each copy is wide enough for its side labels", () => {
+    const markup = renderToStaticMarkup(<StatesPage only="form-rows" />);
+    expect(markup).toContain("Light, then dark");
+    // Each cell says which theme it is, as on a phone.
+    expect(markup.match(/<p class="mb-2 text-caption[^"]*">(Light|Dark)<\/p>/g)).toHaveLength(6);
+    expect(markup).toContain("flex min-w-0 flex-1 phone:flex-col flex-col");
+    expect(markup).toMatch(/border-t scheme-dark/);
+
+    const sideBySide = renderToStaticMarkup(<StatesPage only="button" />);
+    expect(sideBySide).not.toContain("Light, then dark");
+    expect(sideBySide).not.toMatch(/border-t scheme-dark/);
+  });
 });
 
 /** A class name as it appears in a CSS selector: Tailwind escapes : . / and brackets. */

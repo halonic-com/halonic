@@ -28,6 +28,11 @@ export interface PartSection {
   readonly order: string;
   /** The states the part doesn't have, with the reason in brackets. */
   readonly notApplicable: string;
+  /**
+   * Light above dark, each the table's full width, instead of side by side. For a part whose
+   * layout needs the room: FormRows only puts its labels beside the values from 46.5rem.
+   */
+  readonly stacked?: boolean;
   readonly rows: readonly StateRow[];
 }
 
@@ -64,6 +69,7 @@ export function forcedState(row: StateRow, phone: boolean): string | undefined {
 /** The part's heading, its two lines, and a table with one row per state. */
 export function StateTable({ section }: { readonly section: PartSection }) {
   const phone = usePhoneLayout();
+  const stacked = section.stacked === true;
   return (
     <section id={section.id} className="flex flex-col gap-3 border-t border-border pt-6">
       <h2 className="flex gap-3 text-heading phone:px-4">
@@ -77,16 +83,36 @@ export function StateTable({ section }: { readonly section: PartSection }) {
       <div className="overflow-hidden rounded-md border border-border phone:rounded-none phone:border-x-0">
         <div className="flex phone:hidden">
           <p className={`w-32 shrink-0 px-4 py-2 ${caption}`}>State</p>
-          <p className={`min-w-0 flex-1 border-l border-border px-4 py-2 ${caption}`}>Light</p>
-          <p className={`min-w-0 flex-1 border-l border-border px-4 py-2 ${caption}`}>Dark</p>
+          {stacked ? (
+            <p className={`min-w-0 flex-1 border-l border-border px-4 py-2 ${caption}`}>
+              Light, then dark
+            </p>
+          ) : (
+            <>
+              <p className={`min-w-0 flex-1 border-l border-border px-4 py-2 ${caption}`}>Light</p>
+              <p className={`min-w-0 flex-1 border-l border-border px-4 py-2 ${caption}`}>Dark</p>
+            </>
+          )}
         </div>
         {section.rows.map((row) => (
           <div key={row.name} className="flex border-t border-border phone:flex-col">
             <p className={`w-32 shrink-0 p-4 phone:w-auto phone:pb-2 ${caption}`}>
               {row.force === "hover" && phone ? "Pressed" : row.name}
             </p>
-            <ThemeCell row={row} scheme="light" forced={forcedState(row, phone)} />
-            <ThemeCell row={row} scheme="dark" forced={forcedState(row, phone)} />
+            <div className={`flex min-w-0 flex-1 phone:flex-col ${stacked ? "flex-col" : ""}`}>
+              <ThemeCell
+                row={row}
+                scheme="light"
+                forced={forcedState(row, phone)}
+                stacked={stacked}
+              />
+              <ThemeCell
+                row={row}
+                scheme="dark"
+                forced={forcedState(row, phone)}
+                stacked={stacked}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -100,13 +126,15 @@ interface ThemeCellProps {
   readonly row: StateRow;
   readonly scheme: "light" | "dark";
   readonly forced: string | undefined;
+  /** Light above dark: the dark cell gets a line on top, and both say which they are. */
+  readonly stacked?: boolean;
 }
 
 /**
  * One copy of a row, light or dark. The tokens are light-dark() values, so color-scheme alone
  * makes the cell dark: a light patch in a dark cell is a real bug.
  */
-function ThemeCell({ row, scheme, forced }: ThemeCellProps) {
+function ThemeCell({ row, scheme, forced, stacked = false }: ThemeCellProps) {
   const copies = useRef<HTMLDivElement>(null);
   const { target } = row;
 
@@ -127,9 +155,9 @@ function ThemeCell({ row, scheme, forced }: ThemeCellProps) {
 
   return (
     <div
-      className={`min-w-0 flex-1 border-l border-border bg-surface p-4 text-fg phone:border-l-0 phone:border-t ${schemeClasses[scheme]}`}
+      className={`min-w-0 flex-1 border-l border-border bg-surface p-4 text-fg phone:border-l-0 phone:border-t ${stacked && scheme === "dark" ? "border-t" : ""} ${schemeClasses[scheme]}`}
     >
-      <p className={`mb-2 hidden phone:block ${caption}`}>
+      <p className={`${stacked ? "mb-2" : "mb-2 hidden phone:block"} ${caption}`}>
         {scheme === "light" ? "Light" : "Dark"}
       </p>
       <div
