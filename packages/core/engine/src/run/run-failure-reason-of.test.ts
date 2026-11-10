@@ -2,6 +2,7 @@ import { ModelCallError, RunFailureError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
+import { SandboxNotReadyError } from "./sandbox-not-ready-error.ts";
 
 /** An error as another copy of `@halonicjs/ports` would build it: same name and fields, other class. */
 function fromOtherCopy(name: string, fields: Record<string, unknown>): Error {
@@ -76,6 +77,18 @@ verifies("engine.run-failure-reason-of", () => {
       const error = fromOtherCopy("RunFailureError", { failure: "sandbox-start-failed" });
       expect(runFailureReasonOf(error)).toEqual({ reason: "sandbox-start-failed" });
     });
+  });
+
+  it("gives sandbox-not-ready with the check's code for the engine's own refusal", () => {
+    expect(runFailureReasonOf(new SandboxNotReadyError("bubblewrap-missing", "writer"))).toEqual({
+      reason: "sandbox-not-ready",
+      sandboxReason: "bubblewrap-missing",
+    });
+  });
+
+  it("doesn't take sandbox-not-ready from an error that only copies the name", () => {
+    const error = fromOtherCopy("SandboxNotReadyError", { sandboxReason: "windows" });
+    expect(runFailureReasonOf(error)).toEqual({ reason: "error" });
   });
 
   it("gives disk-full for a Node error with the code ENOSPC", () => {

@@ -4,6 +4,7 @@ import { StopSource } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
+import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import {
   finished,
   harnessPorts,
@@ -194,7 +195,8 @@ verifies("engine.run-harness", () => {
 
     const { error, written } = await runOn(ports);
 
-    expect(String(error)).toContain("bubblewrap-missing");
+    expect(error).toBeInstanceOf(SandboxNotReadyError);
+    expect(error).toMatchObject({ sandboxReason: "bubblewrap-missing" });
     expect(written).toEqual([]);
     expect(ports.steps).toEqual([]);
   });

@@ -114,6 +114,8 @@ export interface ToolNoun {
  * - `model-out-of-memory`: the machine running the model ran out of memory for it.
  * - `disk-full`: there was no disk space left to write what the run needed.
  * - `interrupted`: the engine stopped while the run was going, and found it on its next start.
+ * - `sandbox-not-ready`: the sandbox check failed, so the step that needs the sandbox didn't
+ *   start; `run.failed` gives the check's reason code in `sandboxReason`.
  * - `sandbox-start-failed`: the sandbox check had passed, but the sandbox didn't start for this run.
  * - `harness-start-failed`: the harness program failed to start for this run, or didn't send its
  *   first event within its time limit (60 s by default).
@@ -136,6 +138,7 @@ export type RunFailureReason =
   | "model-out-of-memory"
   | "disk-full"
   | "interrupted"
+  | "sandbox-not-ready"
   | "sandbox-start-failed"
   | "harness-start-failed"
   | "key-refused"

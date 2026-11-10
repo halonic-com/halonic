@@ -21,6 +21,7 @@ import {
 } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
+import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import type { HarnessAgent, HarnessRunsOptions } from "./harness-host.ts";
 import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
@@ -103,7 +104,8 @@ export interface HarnessCall {
  *   `harness-start-failed` when the host has no such harness, or it fails or sends nothing
  *   before its first event is due
  * @throws `stop.reason` when `stop` is told to stop
- * @throws when the sandbox isn't ready, the run doesn't take an approval it asks for, or it ends without a result
+ * @throws SandboxNotReadyError when the sandbox check fails, before anything starts
+ * @throws when the run doesn't take an approval it asks for, or it ends without a result
  */
 export async function runHarnessCall(
   options: HarnessRunsOptions,
@@ -125,9 +127,7 @@ export async function runHarnessCall(
   const sandbox = options.sandboxes[await options.placement.where(agent)];
   const check = await sandbox.check();
   if (!check.ok) {
-    throw new Error(
-      `The sandbox isn't ready (${check.reason}), so agent "${effect.agent}" didn't start. Halonic never runs it without one.`,
-    );
+    throw new SandboxNotReadyError(check.reason, effect.agent);
   }
   const started: StartedCall = { options, call, harness, log, approvals, limits, stop };
   // The bridge's events (model and tool calls) carry no state.

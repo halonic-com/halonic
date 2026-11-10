@@ -24,6 +24,7 @@ verifies("events.run-failed-reason", () => {
       | "model-out-of-memory"
       | "disk-full"
       | "interrupted"
+      | "sandbox-not-ready"
       | "sandbox-start-failed"
       | "harness-start-failed"
       | "key-refused"
@@ -67,6 +68,20 @@ verifies("events.run-failed-model-out-of-memory", () => {
 verifies("events.run-failed-disk-full", () => {
   typeTest("has a reason for a full disk", () => {
     expectTypeOf<IsReason<"disk-full">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-sandbox-not-ready", () => {
+  typeTest("names why the sandbox can't start, by the port's code", () => {
+    expectTypeOf<IsReason<"sandbox-not-ready">>().toEqualTypeOf<true>();
+    expectTypeOf<EventOf<"run.failed">["sandboxReason"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "sandbox-not-ready";
+      sandboxReason: string;
+    }>().toExtend<EventOf<"run.failed">>();
   });
 });
 

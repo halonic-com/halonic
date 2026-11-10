@@ -312,6 +312,9 @@ export type RunEventBody =
    * `reason`: why the run failed (requirement `events.run-failed-reason`); absent in older logs.
    * `host`: with `model-unreachable` only, the host and port that didn't answer, such as
    * `localhost:11434` (requirement `events.run-failed-model-unreachable`).
+   * `sandboxReason`: with `sandbox-not-ready` only, why the sandbox can't start, as the `Sandbox`
+   * port's reason code, such as `bubblewrap-missing` (requirement `events.run-failed-sandbox-not-ready`).
+   * A reader that doesn't know the code reads it as `other`.
    * `providerText`: the model provider's own error text, for `--debug` and Copy details only
    * (requirement `events.provider-text`); absent in older logs and when it gave none.
    */
@@ -321,6 +324,7 @@ export type RunEventBody =
       error: string;
       reason?: RunFailureReason;
       host?: string;
+      sandboxReason?: string;
       providerText?: ProviderText;
     };
 

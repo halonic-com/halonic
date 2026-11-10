@@ -1,10 +1,15 @@
 import type { RunFailureReason } from "@halonicjs/events";
 import { isModelCallError, isRunFailureError, type ModelCallErrorReason } from "@halonicjs/ports";
+import { SandboxNotReadyError } from "./sandbox-not-ready-error.ts";
 
-/** Why a run failed, as `run.failed` records it: the reason, and the host for `model-unreachable`. */
+/**
+ * Why a run failed, as `run.failed` records it: the reason, the host for
+ * `model-unreachable`, and the sandbox's reason code for `sandbox-not-ready`.
+ */
 export interface RunFailure {
   reason: RunFailureReason;
   host?: string;
+  sandboxReason?: string;
 }
 
 /**
@@ -32,6 +37,8 @@ const reasonOfModelCall = {
  *   host for `offline`. `no-key` is `key-refused`, and `refused` is
  *   `error`: the message says what went wrong.
  * - a `RunFailureError` from an adapter gives its own failure;
+ * - the engine's own `SandboxNotReadyError` is `sandbox-not-ready`, with
+ *   the check's reason code;
  * - a Node error with the code `ENOSPC` is `disk-full`, so a store or sandbox
  *   that writes files needs no wrapping;
  * - an aborted call (an `AbortError`, as `fetch` throws when its signal
@@ -51,6 +58,9 @@ export function runFailureReasonOf(error: unknown): RunFailure {
   }
   if (isRunFailureError(error)) {
     return { reason: error.failure };
+  }
+  if (error instanceof SandboxNotReadyError) {
+    return { reason: "sandbox-not-ready", sandboxReason: error.sandboxReason };
   }
   if (!(error instanceof Error)) {
     return { reason: "error" };

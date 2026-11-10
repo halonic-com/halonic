@@ -113,6 +113,35 @@ verifies("engine.run-harness-failures", () => {
       reason: "harness-start-failed",
     });
   });
+
+  it("fails the run with sandbox-not-ready and the check's code when the sandbox can't start", async () => {
+    const ports = harnessPorts();
+    ports.sandbox.check = async () => ({
+      ok: false,
+      reason: "user-namespaces-restricted",
+      missing: ["unprivileged user namespaces are restricted by AppArmor"],
+    });
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      reason: "sandbox-not-ready",
+    });
+    const failed = runs.logs.get("run_1")?.at(-1);
+    expect(failed).toMatchObject({
+      type: "run.failed",
+      reason: "sandbox-not-ready",
+      sandboxReason: "user-namespaces-restricted",
+    });
+    expect(JSON.stringify(failed)).not.toContain("AppArmor");
+    expect(ports.steps).toEqual([]);
+  });
 });
 
 verifies("engine.harness-start-limits", () => {

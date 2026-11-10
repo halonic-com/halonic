@@ -206,6 +206,27 @@ verifies("engine.run-call-fails", () => {
     ]);
     expect(run).toMatchObject({ status: "failed", pendingCall: null });
   });
+
+  it("puts the sandbox's reason code on run.failed", () => {
+    const notReady: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:05.000Z",
+      callId: "call-1",
+      error: "The sandbox can't start on this computer.",
+      reason: "sandbox-not-ready",
+      sandboxReason: "bubblewrap-missing",
+    };
+    const { decisions } = play(reply, [startInput, notReady]);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "draft",
+        error: "The sandbox can't start on this computer.",
+        reason: "sandbox-not-ready",
+        sandboxReason: "bubblewrap-missing",
+      },
+    ]);
+  });
 });
 
 verifies("engine.provider-text", () => {

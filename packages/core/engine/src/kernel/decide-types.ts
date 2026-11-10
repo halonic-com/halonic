@@ -133,6 +133,8 @@ export interface EffectFailedInput extends InputBase {
   readonly reason: RunFailureReason;
   /** The host that couldn't be reached, for `model-unreachable`. */
   readonly host?: string;
+  /** Why the sandbox can't start, as the `Sandbox` port's code, for `sandbox-not-ready`. */
+  readonly sandboxReason?: string;
   /** The model provider's own error text, for `--debug` and Copy details only. */
   readonly providerText?: ProviderText;
 }

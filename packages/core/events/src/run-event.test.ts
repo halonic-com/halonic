@@ -141,6 +141,8 @@ verifies("events.run-log-contract", () => {
       reason?: RunFailureReason;
       // Added after the reference by events.run-failed-model-unreachable (HAL-1728).
       host?: string;
+      // Added after the reference by events.run-failed-sandbox-not-ready (HAL-1709).
+      sandboxReason?: string;
       // Added after the reference by events.provider-text (HAL-3119).
       providerText?: ProviderText;
     }>();

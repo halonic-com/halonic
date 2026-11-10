@@ -189,13 +189,14 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
   if (callOf(run, input.callId) === null) {
     return { events: [], effects: [] };
   }
-  const { error, reason, host, providerText } = input;
+  const { error, reason, host, sandboxReason, providerText } = input;
   const failed: DecidedEvent = {
     type: "run.failed",
     state: run.state,
     error,
     reason,
     ...(host === undefined ? {} : { host }),
+    ...(sandboxReason === undefined ? {} : { sandboxReason }),
     ...(providerText === undefined ? {} : { providerText }),
   };
   return { events: [failed], effects: tellParent({ ...run, status: "failed" }) };

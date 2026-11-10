@@ -159,6 +159,8 @@ export function runFailureOf(
     case "model-out-of-memory":
     case "disk-full":
     case "interrupted":
+    // Worded from its sandbox code in HAL-1709's CLI pull request.
+    case "sandbox-not-ready":
     case "sandbox-start-failed":
     case "harness-start-failed":
     case "harness-unavailable":
