@@ -36,6 +36,7 @@ import { runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
+import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
 import { runViewDefinitions } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
@@ -78,6 +79,7 @@ export async function runWorkflow(
 ): Promise<CommandResult | StoppedResult> {
   const typed = oneWorkflow(input);
   const dir = await openWorkspaceDir(input, context);
+  const workspaceName = printable(dir.name);
   const typedDir = givenDir(input, dir);
   const workspace = await loadWorkspace(dir.store);
   await checkRunTrust(dir, workspace, setup.trust(), typedDir);
@@ -99,7 +101,7 @@ export async function runWorkflow(
     const run = await followWithEvents(
       engine,
       workspace,
-      dir.name,
+      workspaceName,
       typed,
       runInput,
       events,
@@ -107,7 +109,7 @@ export async function runWorkflow(
     );
     return runResult(run, {
       workspace,
-      workspaceName: dir.name,
+      workspaceName,
       dir: typedDir,
       clock: setup.clock(),
     });

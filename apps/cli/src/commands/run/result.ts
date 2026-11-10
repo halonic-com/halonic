@@ -16,6 +16,7 @@ import { workspaceModelsOf } from "../../run-failure-of.ts";
 import { runSteps } from "../../run-steps.ts";
 import type { RunClock } from "../../run-times.ts";
 import { type RunDefinitions, runViewDefinitions, stepLines } from "../../run-view.ts";
+import { workflowTitle } from "../runs/listed-run.ts";
 import { showEnding } from "../runs/show-ending.ts";
 
 /** What the result is about besides the run. */
@@ -40,7 +41,7 @@ export interface RunResultFacts {
 export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult {
   const { summary, events } = run;
   const definitions = runViewDefinitions(facts.workspace, summary);
-  const title = definitions.workflow?.name ?? summary.workflowId;
+  const title = workflowTitle(definitions.workflow, summary);
   const runId = shortRunId(summary.id);
   const steps = stepLines(events, summary, definitions, facts.clock);
   const heading = runMessages.heading(title, facts.workspaceName, runId).phrase;
