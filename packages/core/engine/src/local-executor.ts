@@ -108,6 +108,7 @@ export class LocalExecutor implements RunExecutor {
     }
     this.options = options;
     this.maxRounds = maxRounds;
+    const connectorCalls = options.runs?.connectorCalls;
     this.runs =
       options.runs === undefined
         ? undefined
@@ -115,7 +116,10 @@ export class LocalExecutor implements RunExecutor {
             options.runs,
             options.clock,
             (run, call) => this.callModel(run, call),
-            (effect) => makeConnectorCall(options.connectors, effect),
+            connectorCalls === undefined
+              ? undefined
+              : (effect) =>
+                  makeConnectorCall(options.connectors, effectBoundary(connectorCalls), effect),
           );
   }
 

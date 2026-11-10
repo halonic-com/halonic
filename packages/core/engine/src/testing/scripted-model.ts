@@ -1,6 +1,7 @@
 import type {
   ChatRequest,
   ChatResponse,
+  ConnectorCallOptions,
   ConnectorClient,
   ConnectorTool,
   LlmProvider,
@@ -69,6 +70,8 @@ export function call(id: string, name: string, args: Record<string, unknown> = {
 /** A connector that lists fixed tools and answers calls with a function, recording each call. */
 export class ScriptedConnector implements ConnectorClient {
   readonly calls: { name: string; args: Record<string, unknown> }[] = [];
+  /** The idempotency key each call came with, in the order of `calls`. */
+  readonly idempotencyKeys: (string | undefined)[] = [];
   readonly id: string;
   private readonly tools: ConnectorTool[] | Error;
   private readonly answer: (name: string, args: Record<string, unknown>) => string;
@@ -94,8 +97,13 @@ export class ScriptedConnector implements ConnectorClient {
     return this.tools;
   }
 
-  async callTool(name: string, args: Record<string, unknown>): Promise<string> {
+  async callTool(
+    name: string,
+    args: Record<string, unknown>,
+    options?: ConnectorCallOptions,
+  ): Promise<string> {
     this.calls.push({ name, args });
+    this.idempotencyKeys.push(options?.idempotencyKey);
     return this.answer(name, args);
   }
 

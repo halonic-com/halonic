@@ -49,13 +49,18 @@ export function effectBoundary(calls: RunConnectorCalls): EffectBoundary {
 
 /**
  * Makes the call a `call-tool` effect asks for, on the connector of that
- * id, under the name its server listed the tool under. When the connector
- * or tool can't be found, the call wasn't made, so its outcome is `error`.
- * When the call itself fails, the connector may have done the work before
- * it failed, so its outcome is `unknown`, and the run waits for a person.
+ * id, under the name its server listed the tool under, with the effect's
+ * idempotency key, which is the same on every attempt. A tool labelled
+ * `send` passes the "allow sending" check again first, because a person
+ * may retry a call after sending was switched off. When the connector or
+ * tool can't be found, sending is off or the arguments aren't an object,
+ * the call isn't made, so its outcome is `error`. When the call itself
+ * fails, the connector may have done the work before it failed, so its
+ * outcome is `unknown`, and the run waits for a person.
  */
 export async function makeConnectorCall(
   connectors: readonly ConnectorClient[],
+  boundary: EffectBoundary,
   effect: CallToolEffect,
 ): Promise<ToolResult> {
   const connector = connectors.find((connected) => connected.id === effect.connector);
@@ -67,14 +72,25 @@ export async function makeConnectorCall(
     halonicTools: [],
     connectors: [connector],
   });
+  // The effect names the tool as the model saw it. Once HAL-998 renames
+  // tools whose names clash, that name and the listed one can differ, so
+  // the call goes out under `listedName`.
   const tool = tools.byName.get(effect.tool);
   if (tool?.kind !== "server") {
     return notMade(`the connector "${effect.connector}" no longer offers ${effect.tool}`);
   }
+  if (tool.risk === "send") {
+    const sending = await boundary.checkSending(effect.connector);
+    if (!sending.allowed) return notMade(sending.reason);
+  }
+  if (!isPlainObject(effect.args)) {
+    return notMade(`the arguments of ${effect.tool} aren't an object`);
+  }
   const risk = tool.risk === undefined ? {} : { risk: tool.risk };
-  const args = isPlainObject(effect.args) ? effect.args : {};
   try {
-    const result = await connector.callTool(tool.listedName, args);
+    const result = await connector.callTool(tool.listedName, effect.args, {
+      idempotencyKey: effect.idempotencyKey,
+    });
     return { type: "tool", result, outcome: "ok", ...risk };
   } catch (error) {
     return { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...risk };

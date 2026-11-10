@@ -183,10 +183,34 @@ verifies("engine.unknown-outcome", () => {
     await scheduler.runDue();
 
     expect(mail.calls).toHaveLength(2);
+    expect(mail.idempotencyKeys).toEqual(["run_1:call-4", "run_1:call-4"]);
     const keys = eventsOf(runs.logs.get("run_1"), "effect.requested").map(
       (event) => event.type === "effect.requested" && event.idempotencyKey,
     );
     expect(keys).toEqual(["run_1:call-4", "run_1:call-4"]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("doesn't make the call on retry when sending was switched off since, and gives the model the reason", async () => {
+    const { executor, scheduler, runs, mail, model, settings } = await waitingForOk(() => {
+      throw new Error("connection reset");
+    });
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+    settings.check = sendingOff;
+
+    await executor.send("run_1", "retry", undefined, { callId: "call-4" });
+    await scheduler.runDue();
+
+    expect(mail.calls).toHaveLength(1);
+    expect(eventsOf(runs.logs.get("run_1"), "tool.result")).toMatchObject([
+      { outcome: "unknown" },
+      {
+        outcome: "error",
+        result: expect.stringContaining('sending is off for the connector "mail"'),
+      },
+    ]);
+    expect(lastResult(model)).toContain('sending is off for the connector "mail"');
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 
