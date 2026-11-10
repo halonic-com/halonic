@@ -114,9 +114,7 @@ export class FileRecordStore implements RecordStore {
       const bytes = await intactEnd(handle);
       await handle.truncate(bytes);
       before.push({ file, bytes });
-      // One write may take only part of the lines and still succeed; writeFile
-      // writes until all of them are in, still at the end because of O_APPEND.
-      await handle.writeFile(lines, "utf8");
+      await writeAll(handle, file, new TextEncoder().encode(lines));
     } finally {
       await handle.close();
     }
@@ -178,6 +176,25 @@ async function intactEnd(handle: FileHandle): Promise<number> {
   const bytes = new Uint8Array(size);
   const { bytesRead } = await handle.read(bytes, 0, size, 0);
   return bytes.subarray(0, bytesRead).lastIndexOf(lineBreak) + 1;
+}
+
+/**
+ * Writes all of `bytes`, at the end because the handle is opened with
+ * O_APPEND. One write may take only part of them and still succeed, so it
+ * writes again from where the last one stopped. A write that takes nothing
+ * fails the append rather than trying forever.
+ */
+async function writeAll(handle: FileHandle, file: string, bytes: Uint8Array): Promise<void> {
+  let written = 0;
+  while (written < bytes.length) {
+    const { bytesWritten } = await handle.write(bytes, written, bytes.length - written);
+    if (bytesWritten === 0) {
+      throw new Error(
+        `Couldn't append to record log ${JSON.stringify(file)}: the system took none of the last ${bytes.length - written} bytes.`,
+      );
+    }
+    written += bytesWritten;
+  }
 }
 
 /**

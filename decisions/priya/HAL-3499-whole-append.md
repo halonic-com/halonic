@@ -14,13 +14,14 @@ Two sentences of the requirement get more exact; nothing it promised before is t
   moment before the store cuts them back. The requirement now says so.
 - New: "An append shall write all of its lines, or fail." The store made one write call and ignored
   how many bytes it took, so a short write left a torn tail that the next append cut off, and the
-  change was lost without an error. It now uses `FileHandle.writeFile`, which writes until all
-  bytes are in.
+  change was lost without an error. It now writes again from where the last write stopped until
+  all bytes are in, and fails the append (which is then cut back) if a write takes nothing.
 
 ## Tests
 
-No test was weakened or removed. One test was added: with every write taking at most 10 bytes,
-an append still stores its whole line. It failed before the fix.
+No test was weakened or removed. Two tests were added: with every write taking at most 10 bytes,
+an append still stores its whole line over several writes (this failed before the fix); and when
+a write takes nothing, the append fails and the log keeps only what it held before.
 
 ## Covers
 

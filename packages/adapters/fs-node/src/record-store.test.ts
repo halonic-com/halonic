@@ -59,18 +59,22 @@ async function newStore(): Promise<{ root: string; store: FileRecordStore }> {
 }
 
 /**
- * Makes every `FileHandle.write` take at most 10 bytes and report success,
- * as a write to a network drive or one cut short by a signal may. The caller
- * restores the returned spy.
+ * Makes every `FileHandle.write` take at most `limit` bytes of the part it is
+ * asked to write and report success, as a write to a network drive or one cut
+ * short by a signal may. The caller restores the returned spy.
  */
-async function writeAtMostTenBytesPerCall(): Promise<MockInstance<FileHandle["write"]>> {
+async function writeAtMostPerCall(limit: number): Promise<MockInstance<FileHandle["write"]>> {
   const probe = await open(join(await tempFolder(), "probe"), "w");
   const fileHandle: Pick<FileHandle, "write"> = Object.getPrototypeOf(probe);
   await probe.close();
   const write: (this: FileHandle, bytes: Uint8Array) => Promise<unknown> = fileHandle.write;
-  function shortWrite(this: FileHandle, data: unknown) {
-    const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : (data as Buffer);
-    return write.call(this, bytes.subarray(0, 10));
+  function shortWrite(
+    this: FileHandle,
+    bytes: Uint8Array,
+    offset = 0,
+    length = bytes.length - offset,
+  ) {
+    return write.call(this, bytes.subarray(offset, offset + Math.min(length, limit)));
   }
   return vi.spyOn(fileHandle, "write").mockImplementation(shortWrite as FileHandle["write"]);
 }
@@ -216,11 +220,29 @@ verifies("fs-node.record-store-files", () => {
 
     it("stores the whole append when the system writes only part of it at a time", async () => {
       const { root, store } = await newStore();
-      const shortWrite = await writeAtMostTenBytesPerCall();
+      const shortWrite = await writeAtMostPerCall(10);
       try {
         await store.append([change("leads", "1", "add", { name: "Ada" })]);
+        expect(shortWrite.mock.calls.length).toBeGreaterThan(1);
       } finally {
         shortWrite.mockRestore();
+      }
+
+      expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
+        line(change("leads", "1", "add", { name: "Ada" })),
+      );
+    });
+
+    it("fails an append the system writes nothing of, and stores none of it", async () => {
+      const { root, store } = await newStore();
+      await store.append([change("leads", "1", "add", { name: "Ada" })]);
+      const noWrite = await writeAtMostPerCall(0);
+      try {
+        await expect(
+          store.append([change("leads", "2", "add", { name: "Grace" })]),
+        ).rejects.toThrow(/took none of the last/);
+      } finally {
+        noWrite.mockRestore();
       }
 
       expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
