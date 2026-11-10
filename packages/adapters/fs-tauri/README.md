@@ -19,7 +19,7 @@ The `TrustStore` and `RunStore` ports for the Studio desktop app.
 ## Who opens a folder
 
 Trust and the folders git may use are one list. A grant that the shell saves also adds its folder to
-the shell's opened folders (`OpenedFolders` in `crates/git-guard`), the only places git and the file
+the shell's opened folders (`OpenedFolders` in `apps/studio/src-tauri/crates/git-guard`), the only places git and the file
 commands work.
 
 The page never decides which folder that is. The shell saves a grant only for a folder the person
@@ -48,8 +48,9 @@ from then on.
 | anything else       | a `KindedError` `unavailable`, without its text                                                                              |
 
 The shell's refusals have the shape `{ kind, message, location?, file? }`. The package exports
-`trustCommands` (the four command names), `trustRefusalKinds` and `isTrustRefusal`, which tells a refusal
-from an IPC or permission failure. A page without the `desktop-trust` capability, such as the served
+`TauriShell` (the `invoke` the adapter needs), `trustCommands` (the four command names),
+`trustRefusalKinds`, the types `TrustRefusal` and `TrustRefusalKind`, and `isTrustRefusal`, which
+tells a refusal from an IPC or permission failure. A page without the `desktop-trust` capability, such as the served
 Studio, gets the last row: `unavailable`, and the text of its failure is dropped.
 
 ## Runs
@@ -67,11 +68,12 @@ it. The page never names a path.
 The deployment id becomes a folder name, so the constructor throws a `RangeError` for one that
 `isDeploymentId` in `@halonicjs/profile` refuses, and the shell checks it with the same rule.
 
-Only the file work happens in the shell (`crates/run-store`). Everything else happens here, with the
+Only the file work happens in the shell (`apps/studio/src-tauri/crates/run-store`). Everything else happens here, with the
 `RunStore` port's rules that `fs-node` uses too: checking an append and the run id, writing events
 as log lines (`formatLogLines`) and reading them back (`parseLogLines`), the snapshot's `seq`, and
 the summaries `list` works out on every call. A snapshot the shell couldn't write doesn't fail the
-append; its reason goes to `onSnapshotError`.
+append; its reason goes to `onSnapshotError`, which must not throw. A stored snapshot that isn't one,
+or is ahead of the log, reads as `null`, so the engine replays the log.
 
 | The shell says       | The adapter rejects with                                          |
 | -------------------- | ----------------------------------------------------------------- |
@@ -83,9 +85,12 @@ append; its reason goes to `onSnapshotError`.
 | `io`                 | a `KindedError` `unavailable`, with the shell's message           |
 | anything else        | a `KindedError` `unavailable`, without its text                   |
 
-The package exports `runCommands`, `runRefusalKinds` and `isRunRefusal`. The tests run the run-store
+An answer that isn't the command's also rejects with `unavailable`, without text.
+
+The package exports `TauriRunStore`, `TauriRunStoreOptions`, `runCommands`, `runRefusalKinds`, the
+types `RunRefusal` and `RunRefusalKind`, and `isRunRefusal`. The tests run the run-store
 contract against a fake shell; that the shell and the CLI take turns on one lock is proved on real
-files by the Rust tests of `crates/run-store` and `crates/run-lock`.
+files by the Rust tests of `crates/run-store` and `crates/run-lock` (in `apps/studio/src-tauri`).
 
 ## Example
 
