@@ -97,8 +97,8 @@ crosses a neighbour's middle. The tab menu and the tooltips come in later pull r
 `useWindowKeys` binds the window-wide keys in the desktop app only: Ctrl T opens a tab (and calls
 `onNewTab`, as **+** does), Ctrl W closes the active one, Ctrl Shift T reopens the last closed one,
 Ctrl Tab and Ctrl Shift Tab cycle, Ctrl 1–8 go to that tab and Ctrl 9 to the last, and F6 moves the
-focus to the toasts. On macOS it's Cmd instead of Ctrl, except for Ctrl Tab. In served Studio and on
-a phone the browser owns these keys, so nothing is bound and **+**, ✕ and the tab menu do the work. A
+focus to the toasts. On macOS it's Cmd instead of Ctrl, except for Ctrl Tab. In served Studio the
+browser owns these keys and the Android app binds none either, so **+**, ✕ and the tab menu do the work. A
 key is left alone while a modal dialog is open, while an input method composes, or when the page
 already handled it. `windowKeyFor` is the headless reading of a press.
 

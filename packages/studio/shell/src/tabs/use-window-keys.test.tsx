@@ -187,7 +187,7 @@ verifies("shell.window-keys", () => {
     expect(focused).toBe(1);
   });
 
-  it("binds nothing in served Studio or on a phone", () => {
+  it("binds nothing in served Studio or in the Android app", () => {
     for (const host of ["served", "phone"] as const) {
       const tabs = tabsOn(agents, sorter);
       bindKeys(tabs, { host });
