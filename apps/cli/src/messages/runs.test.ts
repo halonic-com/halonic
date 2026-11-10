@@ -28,7 +28,7 @@ verifies("cli.messages", () => {
 describe("runs's sentences", () => {
   it("has the summary", () => {
     expect(words(runsMessages.summary())).toBe(
-      "Show what a run did, or answer a run that's waiting for you",
+      "List runs, show what one did, or answer one that's waiting for you",
     );
   });
 
