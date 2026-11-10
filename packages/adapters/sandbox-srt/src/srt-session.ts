@@ -105,6 +105,20 @@ async function refuseSkillScript(program: string, cwd: string): Promise<void> {
   }
 }
 
+/** A path with a `skills/<name>/scripts` part, in either slash style. */
+const skillScripts = /(^|[\\/])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/;
+
+/**
+ * Whether the program, an argument or the folder it starts in points under a
+ * skill's `scripts/` folder, as written or resolved against `cwd`. Halonic
+ * never runs those files (HAL-188).
+ */
+function touchesSkillScripts(cwd: string, program: string, args: readonly string[]): boolean {
+  return [cwd, program, ...args].some(
+    (part) => skillScripts.test(part) || skillScripts.test(resolve(cwd, part)),
+  );
+}
+
 /** One started program: what the session tracks to stop it and to say why it ended. */
 interface Started {
   program: RunningProgram;
@@ -220,6 +234,9 @@ export class SrtSession implements SandboxSession {
       throw new Error(`the program must start inside the working folder, not in ${cwd}`);
     }
     await refuseSkillScript(command.program, cwd);
+    if (touchesSkillScripts(cwd, command.program, command.args)) {
+      throw new Error("Halonic never runs a file under a skill's scripts/ folder");
+    }
     const program = await this.#runner.run({
       settingsPath: this.#settingsPath,
       program: command.program,
