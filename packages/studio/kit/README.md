@@ -1773,6 +1773,9 @@ Without a `ClipboardProvider`, parts copy with `navigator.clipboard`, which need
 context, and fall back to the browser's copy command for a phone that reaches the computer over
 plain http. Without a `ToastStoreProvider`, a part has no toasts and says what happened itself.
 
+A part outside the kit that copies or toasts the same way reads them with `useWriteClipboard()`
+and `useToastStore()` (which is `null` without a provider), such as the shell's Copy details.
+
 A Dialog also gives the parts inside it its own polite region, because toasts wait while a
 dialog is open: a part says "Copied" there instead.
 
