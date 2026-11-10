@@ -202,7 +202,8 @@ licence as the rest of Halonic.
 Halonic is built with agentic engineering: AI agents write much of the code,
 tests and docs. Today the agents run on [Paperclip](https://github.com/paperclipai/paperclip),
 and we are moving that work step by step onto Halonic itself. That is why
-Paperclip shows up in the commit history.
+commits come from the shared `halonic-dev` account, name a task such as
+`HAL-1234`, and list the AI model as co-author.
 
 There are always people in the loop:
 
@@ -215,8 +216,7 @@ There are always people in the loop:
 
 ## AI-assisted contributions
 
-Halonic is itself built by a team of AI agents, with people deciding what
-ships. So AI tools are welcome here, with these rules:
+As described above, AI tools are welcome here, with these rules:
 
 - **You are responsible for every line you submit.** You must have run the
   change, understood it, and be able to explain it in review.
