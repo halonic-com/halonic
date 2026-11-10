@@ -37,6 +37,17 @@ and passes the shared `DefinitionStore` contract suite.
   scanner, an editor or the search indexer can hold the file open for a
   moment, and the rename fails with `EPERM` or `EBUSY`; the store tries it
   again five times over about a third of a second before the write fails.
+- **Watching:** `watch(listener)` reports changes made outside Halonic, as
+  the port says. It hears the folder through `node:fs.watch`, recursive, and
+  waits until the folder has been quiet for 100 ms, so a checkout arrives as
+  one batch. It then reads each path the events named once and reports it as
+  `changed` or `removed`. The store's own writes and removes are never
+  reported, nor are its temporary files; an event that names no entry makes
+  it check every file. `FolderStoreWatchOptions`, the constructor's third
+  argument, sets `quietMs` and `events` (a `FolderEvents` function, for
+  tests). If the system can't watch the folder, for example because Linux
+  has used up `fs.inotify.max_user_watches`, the error says which limit it
+  is. `close()` on the returned watch stops it.
 
 ## Runs in a folder
 
