@@ -1447,6 +1447,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std
+      '@halonicjs/workflow':
+        specifier: workspace:*
+        version: link:../workflow
       '@halonicjs/workspace':
         specifier: workspace:*
         version: link:../workspace
