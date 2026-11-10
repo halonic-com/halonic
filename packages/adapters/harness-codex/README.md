@@ -17,8 +17,9 @@ address as `-c` settings, starts an ephemeral thread in the working folder
 (with the agent's model and instructions, when its file sets them) and a
 turn with the prompt, and turns what Codex sends into run events. Once the
 turn completes, it stops Codex and ends with the agent's answer. `send`
-passes a person's answer into the running turn (`turn/steer`). `cancel`
-stops Codex and everything it started.
+passes a person's answer into the running turn (`turn/steer`) and a
+decision back to Codex's approval request. `cancel` stops Codex and
+everything it started.
 
 It also exports `detectCodex`, `codexEnvironment` (with its `CodexFolders`
 type) and the constants around them (`codexProgram`, `codexRunTokenVariable`,
