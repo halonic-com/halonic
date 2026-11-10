@@ -107,6 +107,49 @@ verifies("engine.parallel-state", () => {
     expect(run?.status).toBe("completed");
   });
 
+  // The parity fixture's invoice lists `vendor` before `amount`; the old runner kept that
+  // order, the engine uses name order (allowed difference parallel-branch-name-order).
+  it("runs and logs branches in name order, not in the file's order", () => {
+    const checks = researchWorkflow({
+      branches: {
+        vendor: { agent: "reviewer", input: "Vendor" },
+        amount: { agent: "checker", input: "Amount" },
+      },
+      output: "checks",
+    });
+    const { log } = play(checks, [start, answer("call-1", "a"), answer("call-2", "v")]);
+    expect(
+      bodies(log, 0).flatMap((event) => {
+        if (event.type === "context.updated") {
+          return [[event.type, event.key]];
+        }
+        return event.branch === undefined ? [] : [[event.type, event.branch]];
+      }),
+    ).toEqual([
+      ["agent.started", "amount"],
+      ["agent.started", "vendor"],
+      ["agent.finished", "amount"],
+      ["agent.finished", "vendor"],
+      ["context.updated", "amount"],
+      ["context.updated", "vendor"],
+      ["context.updated", "checks"],
+    ]);
+  });
+
+  it("writes the same results whichever branch ends first", () => {
+    const joined = (first: DecideInput, second: DecideInput) =>
+      bodies(play(researchWorkflow(), [start, first, second]).log, 6);
+    const notesFirst = joined(answer("call-1", "n"), answer("call-2", "w"));
+    const webFirst = joined(answer("call-2", "w"), answer("call-1", "n"));
+    expect(webFirst).toEqual(notesFirst);
+    // Each branch writes only its own key; `output` gets them all as one map, last.
+    expect(notesFirst.slice(0, 3)).toEqual([
+      { type: "context.updated", key: "notes", value: "n" },
+      { type: "context.updated", key: "web", value: "w" },
+      { type: "context.updated", key: "findings", value: { notes: "n", web: "w" } },
+    ]);
+  });
+
   it("ignores a second answer to a branch that has ended", () => {
     const { decisions } = play(researchWorkflow(), [
       start,

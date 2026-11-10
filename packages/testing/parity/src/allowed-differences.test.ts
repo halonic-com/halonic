@@ -128,6 +128,7 @@ verifies("parity.allowed-differences-checked", () => {
       "workspace.file-places",
       "routines.cron-rejects-bad-expressions",
       "format.connector-approve-all",
+      "engine.parallel-state",
     ]);
   });
 

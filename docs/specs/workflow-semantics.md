@@ -141,9 +141,11 @@ and is saved by a person.
 A state with `type: parallel` starts every branch at once and waits for all of
 them. Branches are declared as `branches: { name: { agent, input } }`.
 
-- **Order.** Branches start, and their results are written, in name order. A
+- **Order.** Branches run and are logged in name order, whatever their order
+  in the file: they start, and their results are written, in name order. A
   run keeps its definitions as canonical JSON, which doesn't keep the order of
-  the file.
+  the file. The results don't depend on the order, because each branch writes
+  only under its own name.
 - **Results.** Each result is written to the context under its branch name, in
   name order, once every branch has ended. With `output`, the results are also
   stored as one map. A failed branch gives `{ error }`.
