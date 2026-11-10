@@ -3,6 +3,7 @@
 
 import type { ExpectedContent } from "@halonicjs/ports";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
+import type { DroppedReviewRecord } from "./review-records.ts";
 
 /** What the assistant's `propose_file` asks to write. */
 export interface ProposedWrite {
@@ -59,4 +60,18 @@ export interface ReviewOutcome {
    * last seen. They wait for Compare (AI changes 1.10).
    */
   readonly held: readonly string[];
+}
+
+/** A file with changes to review, and the card it belongs to. */
+export interface ItemToReview {
+  readonly path: string;
+  readonly card: ReviewCard;
+}
+
+/** What `ReviewService.check` found. */
+export interface ReviewCheck {
+  /** Files changed outside Halonic since they were last seen. They keep their changes to review and wait for Compare. */
+  readonly held: readonly string[];
+  /** Records that couldn't be read and were removed: those files' changes are ordinary changes now. */
+  readonly dropped: readonly DroppedReviewRecord[];
 }

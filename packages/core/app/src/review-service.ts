@@ -8,8 +8,10 @@ import { contentDigest, KeyedQueue, type Sha256 } from "@halonicjs/std";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import { ReviewRecords } from "./review-records.ts";
 import type {
+  ItemToReview,
   ProposedWrite,
   ProposeOutcome,
+  ReviewCheck,
   ReviewedFile,
   ReviewOutcome,
   ReviewStep,
@@ -153,6 +155,39 @@ export class ReviewService {
       }
     }
     return { step: { files: done }, held };
+  }
+
+  /**
+   * The files with changes to review, sorted by path, with the card each
+   * belongs to (`app.review-items-to-review`). Create version leaves them
+   * out, and Changes marks their rows.
+   */
+  async itemsWithChangesToReview(): Promise<readonly ItemToReview[]> {
+    const { records } = await this.records.all();
+    return records.map(({ path, card }) => ({ path, card }));
+  }
+
+  /**
+   * Compares each file with its record, when the workspace opens or the
+   * watcher reports files changed outside Halonic (`app.review-on-open`).
+   * A file that isn't as last seen is held for Compare: its file and record
+   * stay as they are. A record that can't be read is removed.
+   *
+   * @param paths - only these files, as a watch batch names them; all files when left out
+   */
+  async check(paths?: readonly string[]): Promise<ReviewCheck> {
+    const { records, dropped } =
+      paths === undefined ? await this.records.all() : await this.records.some(paths);
+    const held: string[] = [];
+    for (const record of records) {
+      const seen = await this.queue.run(record.path, async () =>
+        this.digestOf(await this.store.read(record.path)),
+      );
+      if (seen !== record.seen) {
+        held.push(record.path);
+      }
+    }
+    return { held, dropped };
   }
 
   /** Runs a decision on every file the target covers, each in its file's turn. */
