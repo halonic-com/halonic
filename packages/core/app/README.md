@@ -27,6 +27,7 @@ Device-wide settings such as the theme live outside any scope.
 | `ChatAnswerRequest.signal`  | Stop: passed on to the model turn and tools, a late model answer dropped, the calls left get a "Not run" result              | `app.chat-stop`                  |
 | `ChatAnswerEnd`             | a failed or stopped answer says whether a tool already ran, which decides "Try again"                                        | `app.chat-failure`               |
 | `ChatAnswerListener`        | each model turn, tool call and added message as it happens, for the chat's status line                                       | `app.chat-progress`              |
+| `AgentPlacement`            | where an agent's harness runs: a sandbox unless a person chose this computer for the file as it is now                       | `app.agent-placement`            |
 | `ConnectionSettings`        | each connector's "allow sending", off without settings; only a person changes it, tool calls get the read side only          | `app.connection-settings`        |
 | `readToolListing`           | the tools a server lists, checked, rebuilt and named `<source>__<name>`, with their texts marked untrusted, and the refusals | `ports.untrusted-tool-listings`  |
 | `toolForModel`              | the tool definition the model gets, with every text a server wrote inside the untrusted fence                                | `ports.untrusted-tool-listings`  |

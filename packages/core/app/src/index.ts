@@ -1,5 +1,16 @@
 // The public API of @halonicjs/app. Everything else in src/ is internal.
 export {
+  AgentPlacement,
+  type AgentPlacementOptions,
+  agentFingerprint,
+  agentFingerprintPrefix,
+  type PlacementAnswer,
+  type PlacementReader,
+  type PlacementRefusal,
+  type PlacementSubject,
+  type SandboxReason,
+} from "./agent-placement.ts";
+export {
   type ChatAnswer,
   type ChatAnswerEnd,
   type ChatAnswerListener,
