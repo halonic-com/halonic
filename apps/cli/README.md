@@ -30,6 +30,11 @@ agent set to "On this computer" gets one `!` line instead. No option will skip i
 loader and the engine land. `halonic --help` lists the commands and the options every command
 takes (`--debug`, `--help`); `halonic <command> --help` shows one command's arguments and options.
 
+The CLI shows a path with the system's separator (`.\acme` on Windows). `halonic trust --list`
+shows each trusted folder from the current folder's real path, because a trust record holds the
+folder's real path: through a link, or a Windows short name such as `RUNNER~1`, `./acme` still
+shows as `./acme`, not as `../../…/acme`.
+
 ## Exit codes
 
 | Code | Meaning                                                                  |
