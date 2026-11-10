@@ -24,8 +24,9 @@ pub fn question_text(location: &str) -> String {
 
 /// A path as the question shows it, so it can't mislead the person about
 /// which folder they trust: a path longer than [`MAX_SHOWN_CHARS`] is
-/// shortened in the middle, and every control or text-direction character
-/// is written out as `\u{…}`, so it can't hide or reorder parts of the path.
+/// shortened in the middle, and every control, invisible or text-direction
+/// character is written out as `\u{…}`, so it can't hide or reorder parts
+/// of the path.
 pub fn shown_path(path: &str) -> String {
     let characters: Vec<char> = path.chars().collect();
     if characters.len() <= MAX_SHOWN_CHARS {
@@ -50,17 +51,22 @@ fn visible(characters: &[char]) -> String {
         .collect()
 }
 
-/// Control characters, and the invisible characters that change how text
-/// around them is shown: direction marks, embeddings, overrides, isolates,
-/// zero-width spaces and joiners, and the byte order mark.
+/// Control characters, and the characters that are invisible or change
+/// how text around them is shown: the soft hyphen, the Mongolian vowel
+/// separator, direction marks, embeddings, overrides, isolates, zero-width
+/// spaces and joiners, the line and paragraph separators, the byte order
+/// mark and the interlinear annotation marks.
 fn is_hidden(character: char) -> bool {
     character.is_control()
         || matches!(
             character,
-            '\u{061c}'
+            '\u{00ad}'
+                | '\u{061c}'
+                | '\u{180e}'
                 | '\u{200b}'..='\u{200f}'
-                | '\u{202a}'..='\u{202e}'
+                | '\u{2028}'..='\u{202e}'
                 | '\u{2060}'..='\u{2069}'
                 | '\u{feff}'
+                | '\u{fff9}'..='\u{fffb}'
         )
 }

@@ -12,6 +12,10 @@ fn trust_grants_show_hidden_characters_and_shorten_long_paths_in_the_middle() {
         shown_path("/work/acme\u{202e}dm.exe\n/x\u{200b}"),
         "/work/acme\\u{202e}dm.exe\\u{000a}/x\\u{200b}"
     );
+    assert_eq!(
+        shown_path("/a\u{2028}b\u{2029}c\u{00ad}d\u{180e}e\u{fff9}f\u{fffb}"),
+        "/a\\u{2028}b\\u{2029}c\\u{00ad}d\\u{180e}e\\u{fff9}f\\u{fffb}"
+    );
     assert_eq!(shown_path("/work/Café"), "/work/Café");
     let long = format!("/{}/acme-final", "a".repeat(1000));
     let shown = shown_path(&long);

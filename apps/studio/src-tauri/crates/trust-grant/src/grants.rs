@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
@@ -19,6 +20,9 @@ pub struct TrustState {
     /// The folders the person picked in the folder dialog, canonical. Only
     /// these spare a question: a folder a grant opened doesn't.
     picked: Mutex<Vec<PathBuf>>,
+    /// The entry each pick or grant added to the opened folders, by its
+    /// location, so revoking closes that exact entry.
+    opened: Mutex<HashMap<String, PathBuf>>,
     /// Whether a dialog is showing. The shell shows one at a time, so the
     /// page can't stack them.
     asking: AtomicBool,
@@ -41,7 +45,7 @@ impl TrustState {
             return Ok(None);
         };
         let (canonical, location) = canonical_folder(&chosen)?;
-        open(folders, &canonical)?;
+        self.open(folders, &location, &canonical);
         let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
         if !picked.contains(&canonical) {
             picked.push(canonical);
@@ -52,6 +56,11 @@ impl TrustState {
     /// Saves the record and opens its folder, if the person chose the
     /// folder: it is inside a folder they picked, or `ask` showed them the
     /// question and they said yes. `ask` gets the question's text.
+    ///
+    /// The folder that opens is the canonical path checked before asking,
+    /// not the location canonicalised again: the page can run git while the
+    /// question shows, and a link it swaps in by then mustn't change which
+    /// folder opens.
     pub fn grant(
         &self,
         store: &FileTrustStore,
@@ -71,26 +80,44 @@ impl TrustState {
             }
         }
         store.grant(record)?;
-        open(folders, &canonical)
+        self.open(folders, location, &canonical);
+        Ok(())
     }
 
-    /// Closes the folder and deletes its record, so git refuses the folder
-    /// at once. A picked folder no longer spares a question. The folder is
-    /// closed first: if deleting the record fails, nothing stays open.
+    /// Closes the folder a pick or grant opened for the location and
+    /// deletes its record. The exact entry that opened is closed, not the
+    /// location canonicalised again, so a link swapped in since can't close
+    /// another folder instead. A picked folder no longer spares a question.
+    /// The folder is closed first: if deleting the record fails, nothing
+    /// stays open.
+    ///
+    /// Git refuses the folder at once, unless a folder still open holds it:
+    /// a picked folder above it, or a folder opened on its own above it.
     pub fn revoke(
         &self,
         store: &FileTrustStore,
         folders: &OpenedFolders,
         location: &str,
     ) -> Result<(), TrustRefusal> {
-        let folder = Path::new(location);
-        folders.close(folder);
-        // Canonicalised as `OpenedFolders::close` does it.
-        let closed = std::fs::canonicalize(folder).unwrap_or_else(|_| folder.to_owned());
-        let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
-        picked.retain(|picked| *picked != closed);
-        drop(picked);
+        let opened = self
+            .opened
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(location);
+        if let Some(entry) = opened {
+            folders.close_canonical(&entry);
+            let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
+            picked.retain(|picked| *picked != entry);
+        }
         Ok(store.revoke(location)?)
+    }
+
+    /// Opens a checked, canonical folder for git and the file commands as
+    /// it is, and remembers the entry under its location for revoking.
+    fn open(&self, folders: &OpenedFolders, location: &str, canonical: &Path) {
+        folders.open_canonical(canonical.to_owned());
+        let mut opened = self.opened.lock().unwrap_or_else(PoisonError::into_inner);
+        opened.insert(location.to_owned(), canonical.to_owned());
     }
 
     fn is_picked(&self, canonical: &Path) -> bool {
@@ -180,15 +207,4 @@ fn canonical_folder(folder: &Path) -> Result<(PathBuf, String), TrustRefusal> {
         .into_string()
         .map_err(|_| unreadable())?;
     Ok((canonical, plain))
-}
-
-/// Opens a folder for git and the file commands. Opening fails only when the
-/// folder is gone or can't be read.
-fn open(folders: &OpenedFolders, canonical: &Path) -> Result<(), TrustRefusal> {
-    folders.open(canonical).map_err(|error| {
-        TrustRefusal::new(
-            "folder_unreadable",
-            format!("the folder can't be opened: {error}"),
-        )
-    })
 }

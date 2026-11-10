@@ -208,6 +208,50 @@ fn trust_grants_judge_a_link_by_where_it_leads() {
     assert_eq!(asked, [question_text(&other)]);
 }
 
+/// Swaps the scratch folder `folder` for a link to `target`, as the page
+/// could with `git switch` in a folder it may already run git in.
+#[cfg(unix)]
+fn swap_for_link(scratch: &Scratch, folder: &str, target: &str) {
+    fs::remove_dir_all(scratch.path(folder)).expect("the folder is removed");
+    std::os::unix::fs::symlink(scratch.path(target), scratch.path(folder))
+        .expect("the link can be made");
+}
+
+#[cfg(unix)]
+#[test]
+fn trust_grants_open_the_checked_folder_even_if_a_link_is_swapped_in_while_asking() {
+    let shell = Shell::with_acme_picked("swap-while-asking");
+    fs::create_dir_all(shell.scratch.path("home")).expect("home can be made");
+    let other = shell.location("work/other");
+    let result = shell
+        .state
+        .grant(&shell.store, &shell.folders, &record(&other), |_| {
+            swap_for_link(&shell.scratch, "work/other", "home");
+            true
+        });
+    assert!(result.is_ok());
+    assert!(!shell.is_open(&shell.location("home")));
+}
+
+#[cfg(unix)]
+#[test]
+fn trust_grants_revoke_the_folder_that_opened_even_if_a_link_is_swapped_in() {
+    let shell = Shell::with_acme_picked("swap-before-revoke");
+    let other = shell.location("work/other");
+    assert_eq!(shell.grant(&other, true).0, Ok(()));
+    swap_for_link(&shell.scratch, "work/other", "work/acme");
+    shell.revoke(&other);
+    assert!(!shell.is_saved(&other));
+    // The picked folder the link leads to stays open and picked.
+    let hubs = shell.location("work/acme/hubs");
+    assert!(shell.is_open(&hubs));
+    assert!(shell.grant(&hubs, true).1.is_empty());
+    // And the folder that opened is closed.
+    fs::remove_file(shell.scratch.path("work/other")).expect("the link is removed");
+    fs::create_dir(shell.scratch.path("work/other")).expect("the folder is made again");
+    assert!(!shell.is_open(&other));
+}
+
 #[test]
 fn trust_grants_refuse_a_folder_that_doesnt_exist_or_is_a_file() {
     let shell = Shell::with_acme_picked("not-a-folder");
