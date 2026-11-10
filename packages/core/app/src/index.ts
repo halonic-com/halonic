@@ -186,6 +186,16 @@ export {
   runnerUnfencedReasons,
 } from "./runner-fence.ts";
 export {
+  type CanaryFindings,
+  runTrustCheck,
+  type TrustCanary,
+  type TrustCheckFailure,
+  type TrustCheckLeak,
+  type TrustCheckResult,
+  trustCheckFailures,
+  trustCheckLeaks,
+} from "./sandbox-trust-check.ts";
+export {
   type Disposable,
   ServiceError,
   type ServiceKey,
