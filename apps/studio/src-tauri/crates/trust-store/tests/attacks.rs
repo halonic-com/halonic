@@ -10,7 +10,7 @@ use std::fs;
 use std::path::Path;
 
 use halonic_trust_store::{FileTrustStore, TrustError};
-use support::{Scratch, file_for, grant, locations, node_file_names, record};
+use support::{Scratch, file_for, grant, locations, node_file_names, record, records_in};
 
 /// The files in a folder, by name.
 fn names_in(folder: &Path) -> Vec<String> {
@@ -59,7 +59,7 @@ fn trust_files_keep_hostile_locations_inside_the_folder() {
 
     // `list` reads each location back from the start of its file, so a
     // newline or a NUL in a location must be written escaped.
-    let listed = store.list().unwrap();
+    let listed = records_in(&store).unwrap();
     let mut expected: Vec<&str> = known
         .iter()
         .map(|(location, _)| location.as_str())
@@ -129,7 +129,7 @@ fn trust_files_refuse_files_that_are_not_one_whole_record() {
         );
         match store.list() {
             Err(error) => assert_eq!(error.kind(), "unreadable", "list: {case}"),
-            Ok(records) => panic!("list: {case} was read as {records:?}"),
+            Ok(listing) => panic!("list: {case} was read as {listing:?}"),
         }
         grant(&store, location, "hfp1:bb");
         assert_eq!(store.get(location), Ok(Some(record(location, "hfp1:bb"))));
@@ -171,7 +171,10 @@ fn trust_files_leave_a_temporary_file_fs_node_left_behind() {
         .with_extension("json.0b5c4f3e-8d2a-4c1e-9f6b-7a3d2e1c0b9a.tmp");
     fs::write(&leftover, "{\n  \"location\": \"/workspaces/zeta\"").unwrap();
 
-    assert_eq!(locations(&store.list().unwrap()), ["/workspaces/acme"]);
+    assert_eq!(
+        locations(&records_in(&store).unwrap()),
+        ["/workspaces/acme"]
+    );
     assert_eq!(store.get("/workspaces/zeta"), Ok(None));
     assert!(leftover.is_file());
 }
@@ -187,7 +190,11 @@ fn trust_files_trust_nothing_under_a_profile_that_is_a_file() {
     let store = FileTrustStore::new(profile.join("trust"));
 
     assert!(!matches!(store.get("/workspaces/acme"), Ok(Some(_))));
-    assert!(store.list().map_or(true, |records| records.is_empty()));
+    assert!(
+        store
+            .list()
+            .map_or(true, |listing| listing.records.is_empty())
+    );
     let refused = store
         .grant(&record("/workspaces/acme", "hfp1:aa"))
         .unwrap_err();
@@ -259,7 +266,7 @@ fn trust_files_stay_whole_while_others_write() {
         if let Some(found) = store.get("/workspaces/acme").unwrap() {
             whole(&found);
         }
-        for found in store.list().unwrap() {
+        for found in records_in(&store).unwrap() {
             whole(&found);
         }
     }
