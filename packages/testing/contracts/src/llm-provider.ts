@@ -1,4 +1,10 @@
-import type { ChatRequest, ChatResponse, ChatStreamEvent, LlmProvider } from "@halonicjs/ports";
+import {
+  type ChatRequest,
+  type ChatResponse,
+  type ChatStreamEvent,
+  isModelCallError,
+  type LlmProvider,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -21,7 +27,11 @@ export interface LlmProviderHarness {
   answerNext(answer: ScriptedAnswer): void;
   /** Makes the next call wait until its signal aborts. A streamed call first yields `partialText`. */
   hangNext(partialText: string): void;
-  /** Makes the vendor refuse the next call, as it would an expired key. */
+  /**
+   * Makes the vendor refuse the next call for no reason the provider names
+   * more closely, as it would a request it won't take. The provider rejects
+   * with a `ModelCallError` whose reason is `refused`.
+   */
   refuseNext(): void;
   /** How many calls have reached the vendor, and how many of them are still open. */
   calls(): { started: number; open: number };
@@ -117,14 +127,15 @@ function failureCases(make: MakeLlmProvider): void {
   it("rejects when the vendor refuses the call", async () => {
     const harness = await make();
     harness.refuseNext();
-    await expect(harness.provider.chat(chatRequest())).rejects.toThrow();
+    await expectRefused(harness.provider.chat(chatRequest()));
     expect(harness.calls().open).toBe(0);
   });
 
   it("rejects an already aborted call without reaching the vendor", async () => {
     const harness = await make();
     harness.answerNext(textAnswer);
-    await expect(harness.provider.chat(chatRequest(AbortSignal.abort()))).rejects.toThrow();
+    const stop = callerStop();
+    await expect(harness.provider.chat(chatRequest(AbortSignal.abort(stop)))).rejects.toBe(stop);
     expect(harness.calls().started).toBe(0);
   });
 
@@ -134,8 +145,9 @@ function failureCases(make: MakeLlmProvider): void {
     const controller = new AbortController();
     const answering = harness.provider.chat(chatRequest(controller.signal));
     await vi.waitFor(() => expect(harness.calls().started).toBe(1));
-    controller.abort();
-    await expect(answering).rejects.toThrow();
+    const stop = callerStop();
+    controller.abort(stop);
+    await expect(answering).rejects.toBe(stop);
     expect(harness.calls().open).toBe(0);
   });
 }
@@ -190,7 +202,7 @@ function streamFailureCases(make: MakeLlmProvider): void {
     const harness = await make();
     harness.refuseNext();
     const events: ChatStreamEvent[] = [];
-    await expect(readInto(stream(harness.provider, chatRequest()), events)).rejects.toThrow();
+    await expectRefused(readInto(stream(harness.provider, chatRequest()), events));
     expect(events.filter((event) => event.type === "done")).toEqual([]);
     expect(harness.calls().open).toBe(0);
   });
@@ -198,8 +210,9 @@ function streamFailureCases(make: MakeLlmProvider): void {
   it("ends an already aborted stream with an error, without reaching the vendor", async () => {
     const harness = await make();
     harness.answerNext(textAnswer);
-    const aborted = stream(harness.provider, chatRequest(AbortSignal.abort()));
-    await expect(readAll(aborted)).rejects.toThrow();
+    const stop = callerStop();
+    const aborted = stream(harness.provider, chatRequest(AbortSignal.abort(stop)));
+    await expect(readAll(aborted)).rejects.toBe(stop);
     expect(harness.calls().started).toBe(0);
   });
 
@@ -210,8 +223,9 @@ function streamFailureCases(make: MakeLlmProvider): void {
     const events: ChatStreamEvent[] = [];
     const reading = readInto(stream(harness.provider, chatRequest(controller.signal)), events);
     await vi.waitFor(() => expect(joined(events, "text")).toBe("Hel"));
-    controller.abort();
-    await expect(reading).rejects.toThrow();
+    const stop = callerStop();
+    controller.abort(stop);
+    await expect(reading).rejects.toBe(stop);
     expect(events.filter((event) => event.type === "done")).toEqual([]);
     expect(harness.calls().open).toBe(0);
   });
@@ -220,15 +234,16 @@ function streamFailureCases(make: MakeLlmProvider): void {
     const harness = await make();
     harness.hangNext("Hel");
     const controller = new AbortController();
+    const stop = callerStop();
     const events: ChatStreamEvent[] = [];
     const reading = (async () => {
       for await (const event of stream(harness.provider, chatRequest(controller.signal))) {
         events.push(event);
         // The signal aborts before the provider resumes, so it must notice it already has.
-        controller.abort();
+        controller.abort(stop);
       }
     })();
-    await expect(reading).rejects.toThrow();
+    await expect(reading).rejects.toBe(stop);
     expect(joined(events, "text")).toBe("Hel");
     expect(events.filter((event) => event.type === "done")).toEqual([]);
     expect(harness.calls().open).toBe(0);
@@ -238,17 +253,39 @@ function streamFailureCases(make: MakeLlmProvider): void {
     const harness = await make();
     harness.answerNext(textAnswer);
     const controller = new AbortController();
+    const stop = callerStop();
     const events: ChatStreamEvent[] = [];
     const reading = (async () => {
       for await (const event of stream(harness.provider, chatRequest(controller.signal))) {
         events.push(event);
-        controller.abort();
+        controller.abort(stop);
       }
     })();
-    await expect(reading).rejects.toThrow();
+    await expect(reading).rejects.toBe(stop);
     expect(events.filter((event) => event.type === "done")).toEqual([]);
     expect(harness.calls().open).toBe(0);
   });
+}
+
+/**
+ * Expects `call` to reject with a `ModelCallError` for `refused`. A
+ * crash, such as a TypeError, is not a refusal.
+ */
+async function expectRefused(call: Promise<unknown>): Promise<void> {
+  const error: unknown = await call.then(
+    () => expect.fail("The call went through, but the vendor refused it."),
+    (rejection: unknown) => rejection,
+  );
+  expect(isModelCallError(error), `expected a ModelCallError, got ${String(error)}`).toBe(true);
+  expect((error as { reason: unknown }).reason).toBe("refused");
+}
+
+/**
+ * A fresh reason for the caller to abort with. A provider rejects with this
+ * very reason, so a crash on the way out doesn't pass for an abort.
+ */
+function callerStop(): Error {
+  return new Error("The caller stopped the call.");
 }
 
 /** Checks a response says what was scripted, and that its replay is JSON data. */

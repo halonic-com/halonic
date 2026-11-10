@@ -51,9 +51,9 @@ llmProviderContract(
       answerNext: (answer) => vendor.answerNext(answer),
       hangNext: () => vendor.hangNext(),
       refuseNext: () =>
-        vendor.replyNext(401, {
+        vendor.replyNext(400, {
           type: "error",
-          error: { type: "authentication_error", message: "invalid x-api-key" },
+          error: { type: "invalid_request_error", message: "max_tokens: too large" },
         }),
       calls: () => vendor.calls(),
     };

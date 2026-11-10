@@ -1,9 +1,10 @@
-import type {
-  ChatRequest,
-  ChatResponse,
-  ChatStreamEvent,
-  LlmCapabilities,
-  LlmProvider,
+import {
+  type ChatRequest,
+  type ChatResponse,
+  type ChatStreamEvent,
+  type LlmCapabilities,
+  type LlmProvider,
+  ModelCallError,
 } from "@halonicjs/ports";
 import { copyJson } from "./copy.ts";
 
@@ -109,7 +110,9 @@ export class ScriptedLlmProvider implements LlmProvider {
  * Each step is taken once, so its answer goes out without another copy.
  */
 function answerOf(step: Step): ChatResponse {
-  if (step.kind !== "answer") throw new Error("The scripted model refused the call.");
+  if (step.kind !== "answer") {
+    throw new ModelCallError("refused", "The scripted model refused the call.");
+  }
   return step.answer;
 }
 

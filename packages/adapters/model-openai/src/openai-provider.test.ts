@@ -43,7 +43,7 @@ llmProviderContract(
       provider,
       answerNext: (answer) => vendor.answerNext(answer),
       hangNext: () => vendor.hangNext(),
-      refuseNext: () => vendor.replyNext(401, { error: { message: "Incorrect API key provided" } }),
+      refuseNext: () => vendor.replyNext(400, { error: { message: "max_tokens is too large" } }),
       calls: () => vendor.calls(),
     };
   },
