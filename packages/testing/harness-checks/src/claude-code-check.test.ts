@@ -73,6 +73,7 @@ function fakeOpener(opened: Opened[]): (options: BridgeSandboxOptions) => Promis
       },
     };
     return {
+      bridgeUrl: "http://127.0.0.1:41817",
       run: async (command: SandboxCommand) => answers[command.args[0] ?? ""]?.() ?? ran(127),
       requests,
       denied,
