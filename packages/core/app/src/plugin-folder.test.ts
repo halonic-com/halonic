@@ -169,9 +169,34 @@ verifies("app.plugin-folder", () => {
     }
   });
 
+  it("runs the manifest's checks before it reads any other file", async () => {
+    const reader = new TestFolderReader().putFiles({
+      "weather-old/plugin.yaml": weatherManifest,
+      "weather-old/backend/index.js": "",
+    });
+    const reads: string[] = [];
+    reader.beforeRead = (path) => reads.push(path);
+    await problemsOf(reader, "weather-old");
+    expect(reads).toEqual(["weather-old/plugin.yaml"]);
+  });
+
+  it("counts the bytes it reads, and stops once a file grew past the limit", async () => {
+    const reader = weatherFolder();
+    const reads: string[] = [];
+    reader.beforeRead = (path) => {
+      reads.push(path);
+      if (path === "weather/assets/icon.bin")
+        reader.putFiles({ [path]: new Uint8Array(MAX_PLUGIN_BYTES) });
+    };
+    expect(await problemsOf(reader)).toEqual([expect.objectContaining({ code: "too-large" })]);
+    expect(reads).not.toContain("weather/backend/index.js");
+  });
+
   it("says when a file was removed while it was read", async () => {
     const reader = weatherFolder();
-    reader.beforeRead = (path) => reader.remove(path);
+    reader.beforeRead = (path) => {
+      if (path === "weather/assets/icon.bin") reader.remove(path);
+    };
     expect(await problemsOf(reader)).toEqual([
       expect.objectContaining({ code: "changed-while-read", file: "assets/icon.bin" }),
     ]);

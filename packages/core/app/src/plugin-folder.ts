@@ -61,7 +61,8 @@ const noTokensMessage =
 /**
  * Reads the plugin folder `folder` of `reader`, the profile's plugin folder.
  * It lists the folder and refuses it on its listing alone (size, links,
- * special files) before reading any bytes.
+ * special files) before reading any bytes, then reads the manifest and runs
+ * its checks before reading any other file.
  *
  * @param reader - the profile's plugin folder
  * @param digest - for the SHA-256 of every file
@@ -85,30 +86,68 @@ export async function readPluginFolder(
   );
   if (manifests.length !== 1) return err([manifestCountProblem(manifests.length)]);
   const [manifestName] = manifests as [ManifestName];
+  const paths = files.map((file) => inFolder(file.path, folder));
 
-  const hashes: PluginFileHash[] = [];
-  let manifestBytes: Uint8Array | undefined;
-  for (const file of files) {
-    const path = inFolder(file.path, folder);
-    const bytes = await reader.read(file.path);
-    if (bytes === null) return err([changedWhileReadProblem(path)]);
-    if (path === manifestName) manifestBytes = bytes;
-    hashes.push({ path, sha256: bytesToHex(await digest.sha256(bytes)) });
-  }
-
+  // The manifest first, and its checks before any other file is read, so a
+  // plugin they refuse is never hashed (HAL-4352 review).
+  const hashing = new HashingReader(reader, digest, folder);
+  const manifestBytes = await hashing.read(manifestName);
+  if (!manifestBytes.ok) return err([manifestBytes.error]);
   // Parsed from the bytes that were hashed, so the manifest trusted is the one checked.
-  const parsed = parseManifest(manifestName, decodeUtf8(manifestBytes ?? new Uint8Array()));
+  const parsed = parseManifest(manifestName, decodeUtf8(manifestBytes.value));
   if (!parsed.ok) return err(parsed.error);
   const plugin = parsed.value;
-  const fileSet = new Set(hashes.map((file) => file.path));
-  const checked = pluginProblems(plugin, folder, fileSet).map((problem) =>
+  const checked = pluginProblems(plugin, folder, new Set(paths)).map((problem) =>
     inManifest(manifestName, problem),
   );
   if (checked.length > 0) return err(checked);
 
+  for (const path of paths) {
+    if (path === manifestName) continue;
+    const read = await hashing.read(path);
+    if (!read.ok) return err([read.error]);
+  }
+
   const location = await reader.locationOf(folder);
   if (location === null) return err([changedWhileReadProblem("")]);
-  return ok({ location, plugin, files: hashes });
+  return ok({ location, plugin, files: hashing.hashes() });
+}
+
+/**
+ * Reads files of one plugin folder and keeps the hash of each. It counts
+ * the bytes it read, because the listing's sizes can be out of date: a file
+ * that grew after the listing stops the reads that follow it once the
+ * folder's files pass the limit.
+ */
+class HashingReader {
+  readonly #reader: FolderReader;
+  readonly #digest: Digest;
+  readonly #folder: string;
+  readonly #hashes = new Map<string, string>();
+  #bytesRead = 0;
+
+  constructor(reader: FolderReader, digest: Digest, folder: string) {
+    this.#reader = reader;
+    this.#digest = digest;
+    this.#folder = folder;
+  }
+
+  /** The bytes of `path`, from the plugin folder, hashed; or why they can't be used. */
+  async read(path: string): Promise<Result<Uint8Array, PluginProblem>> {
+    const bytes = await this.#reader.read(`${this.#folder}/${path}`);
+    if (bytes === null) return err(changedWhileReadProblem(path));
+    this.#bytesRead += bytes.length;
+    if (this.#bytesRead > MAX_PLUGIN_BYTES) return err(tooLargeProblem());
+    this.#hashes.set(path, bytesToHex(await this.#digest.sha256(bytes)));
+    return ok(bytes);
+  }
+
+  /** The hash of every file read, sorted by path in plain code-unit order, as the port lists them. */
+  hashes(): PluginFileHash[] {
+    return [...this.#hashes]
+      .sort(([left], [right]) => (left < right ? -1 : 1))
+      .map(([path, sha256]) => ({ path, sha256 }));
+  }
 }
 
 /** Problems the listing alone shows: past a limit, or a link or special file anywhere (checks 6 and 7). */
@@ -125,14 +164,7 @@ function listingProblems(entries: readonly FolderEntry[], folder: string): Plugi
     (total, entry) => total + (entry.kind === "file" ? entry.size : 0),
     0,
   );
-  if (bytes > MAX_PLUGIN_BYTES) {
-    return [
-      folderProblem(
-        "too-large",
-        `The plugin folder's files come to more than ${MAX_PLUGIN_BYTES / (1024 * 1024)} MB, the most a plugin may have. A .git folder inside it counts too: install the plugin without it.`,
-      ),
-    ];
-  }
+  if (bytes > MAX_PLUGIN_BYTES) return [tooLargeProblem()];
   return entries.flatMap((entry): PluginProblem[] => {
     const file = inFolder(entry.path, folder);
     if (entry.kind === "link") {
@@ -155,6 +187,13 @@ function listingProblems(entries: readonly FolderEntry[], folder: string): Plugi
     }
     return [];
   });
+}
+
+function tooLargeProblem(): PluginProblem {
+  return folderProblem(
+    "too-large",
+    `The plugin folder's files come to more than ${MAX_PLUGIN_BYTES / (1024 * 1024)} MB, the most a plugin may have. A .git folder inside it counts too: install the plugin without it.`,
+  );
 }
 
 function manifestCountProblem(count: number): PluginProblem {

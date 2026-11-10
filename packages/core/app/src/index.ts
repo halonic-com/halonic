@@ -161,6 +161,13 @@ export {
   type PluginProblem,
   readPluginFolder,
 } from "./plugin-folder.ts";
+export {
+  type BrokenPlugin,
+  type PluginEntry,
+  PluginService,
+  type PluginServiceOptions,
+  type ReadPlugin,
+} from "./plugin-service.ts";
 export type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";
 export {
   type PluginFileChanges,
