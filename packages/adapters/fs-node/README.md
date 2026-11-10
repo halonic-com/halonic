@@ -37,6 +37,14 @@ and passes the shared `DefinitionStore` contract suite.
   scanner, an editor or the search indexer can hold the file open for a
   moment, and the rename fails with `EPERM` or `EBUSY`; the store tries it
   again five times over about a third of a second before the write fails.
+  A file it replaces keeps its permissions, such as a script's execute bit.
+  Windows has no execute bit (its modes only say read-only or not), so
+  there a file keeps the mode it had, and a test checks that on Windows too.
+- **Write if unchanged:** `write(path, content, { expected })` writes only
+  when the file is still what `expected` says, and otherwise returns
+  `changed-on-disk` with the current file. Writes to one path run one after
+  another, but a program outside Halonic can still change the file in the
+  few milliseconds between the check and the rename.
 - **Watching:** `watch(listener)` reports changes made outside Halonic, as
   the port says. It hears the folder through `node:fs.watch`, recursive, and
   waits until the folder has been quiet for 100 ms, so a checkout arrives as
@@ -177,7 +185,8 @@ inside a workspace. It passes the shared `TrustStore` contract suite.
   different lone surrogates apart too.
 - **Writes** go to a temporary file that is renamed over the record, so a
   reader sees the old record or the new one. The folder is created with
-  mode `700` and each file with `600`.
+  mode `700` and each file with `600`. Windows ignores these modes; the
+  profile folder's own permissions protect the files there.
 - **Damage:** each file starts with its location. When a record can't be
   read, `get` and `list` throw with that location, and `revoke` deletes the
   file without reading it. When not even the location can be read, `list`
@@ -257,6 +266,9 @@ fingerprint each plugin's files exactly. It passes the shared
   system has it) and check that the open handle is the same regular file
   `lstat` saw, so a file swapped for a link or a pipe in between is refused.
 - **Order:** paths use `/` and are sorted by code unit on every system.
+- **One level:** `entries(dir, { recursive: false })` lists only what is
+  directly under `dir` (or the root); the default lists everything below it,
+  up to `limit`.
 
 ## Records in the profile
 
@@ -313,7 +325,10 @@ holds for as long as it runs, such as the one engine of a workspace. It
 writes the run lock's record (`RunLockRecord`) and judges a stale lock the
 same way, so the lock of a crashed holder is taken over. A lock that a
 live process holds is refused at once with a `LockHeldError` naming that
-process; it never waits. The holder renews its lock every
+process; it never waits. When many processes start at once on a free
+or a stale lock, never two hold it at the same time and each of the others
+is refused with `LockHeldError`, which a test with real processes checks
+(HAL-4236). The holder renews its lock every
 `heldLockRenewEveryMs` (a third of the 10 seconds after which a lock is
 stale) by writing its record again with `takenAt` now. When another
 process has taken the lock over, because this one missed its renewals for

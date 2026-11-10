@@ -19,12 +19,20 @@ planted at a gitlink, reporting each as a refused write.
 On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
 (the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
 program, argument or variable with a double quote, a percent sign, a line break or a NUL is refused
-rather than quoted wrongly. The launcher itself, which runs outside the fence, gets only the
-system and user-folder variables `cmd.exe` and srt need (`SystemRoot`, `ComSpec`, `PATHEXT`,
-`USERPROFILE`, `APPDATA` and the like, read in any letter case), the safe host `PATH`, and the
-session's temp folder as `TEMP`, `TMP` and `TMPDIR`. The program gets the profile's variables and
-the sandbox account's own `TEMP`. The `sandbox-windows` CI job runs the fence through a session
-(`pnpm test:fence:windows`).
+rather than quoted wrongly. The fence probe is therefore a script file in the session's temp folder,
+not `node -e`. The launcher itself, which runs outside the fence, gets only the system and
+user-folder variables `cmd.exe` and srt need (`SystemRoot`, `ComSpec`, `PATHEXT`, `USERPROFILE`,
+`APPDATA` and the like, read in any letter case), the safe host `PATH`, and the session's temp
+folder as `TEMP`, `TMP` and `TMPDIR`. The program gets the profile's variables and the sandbox
+account's own `TEMP`.
+
+The `sandbox-windows` CI job proves the fence twice on a real Windows machine after srt's one-time
+install: first with plain canary probes (`scripts/windows-fence-probe.mjs`), then through a session
+(`pnpm test:fence:windows`). The session test needs the session to report `fenced`, the program to
+see the hidden file, the blocked port and its own variables as the profile says, and `kill` to end
+its process tree. It works outside the user's profile, because the sandbox account can't look
+inside the profile of the user who ran the install. The same fence tests for Linux and macOS run
+with `pnpm test:fence`.
 
 ## Exports
 

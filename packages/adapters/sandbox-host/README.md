@@ -21,6 +21,9 @@ This package is built in steps (HAL-193). So far it has the real `ProgramProbe`
 - stops what the program started once it has ended or been stopped, on POSIX by ending its process
   group. Windows is left for later, and a child that starts its own session can escape: that is the
   sandbox's job;
+- stops a probe that is still running when the launcher exits or gets Ctrl-C (`SIGINT`) or `SIGTERM`,
+  because the probe has its own process group and the signal wouldn't reach it. If nothing else in
+  the launcher listens for that signal, it is raised again so the launcher still ends;
 - never throws.
 
 Starting the sandboxed program follows later.
