@@ -1,114 +1,13 @@
-import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
-import * as fsPromises from "node:fs/promises";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
-import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Runner, RunningProgram, RunRequest } from "./srt-runner.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
+import { command, fakeRunner, fenced, linux, makeProfile } from "./srt-session.test-helper.ts";
 import { launcherEnv, programEnv } from "./srt-session.ts";
-
-vi.mock("node:fs/promises", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs/promises")>();
-  return { ...actual, mkdtemp: vi.fn(actual.mkdtemp) };
-});
-
-const linux = {
-  platform: "linux" as const,
-  insideContainer: async () => false,
-  hasBubblewrap: async () => true,
-  userNamespacesRestricted: async () => false,
-  hasSeatbelt: async () => true,
-};
-
-type Exit = { code: number | null; signal: string | null };
-
-/** A program a test controls: it ends when `end` is called or it is killed. */
-interface FakeRun {
-  request: RunRequest;
-  killed: boolean;
-  end(code: number | null): void;
-  program: RunningProgram;
-}
-
-function stream(text: string): ReadableStream<Uint8Array> {
-  return new ReadableStream({
-    start(controller) {
-      if (text !== "") controller.enqueue(new TextEncoder().encode(text));
-      controller.close();
-    },
-  });
-}
-
-/** How the fake fence answers the fence probe. */
-interface Probe {
-  control: string;
-  canary: string;
-  port: string;
-  /** Really connects to the canary port, as a leaking fence would let a program do. */
-  leak?: boolean;
-  /** Writes this instead of a report. */
-  garbage?: string;
-  launchFails?: boolean;
-}
-
-const fenced: Probe = { control: "readable", canary: "hidden", port: "blocked" };
-
-/** A runner whose probe answers as told and whose other programs the test ends. */
-function fakeRunner(probe: Probe = fenced) {
-  const runs: FakeRun[] = [];
-  const probes: RunRequest[] = [];
-  const runner: Runner = {
-    async run(request) {
-      if (request.args[0] === "-e") {
-        probes.push(request);
-        if (probe.launchFails) throw new Error("spawn bwrap ENOENT");
-        if (probe.leak) {
-          const port = Number(request.args[4]);
-          await new Promise<void>((resolve) => {
-            // The canary server hangs up on whoever it reaches, so waiting for
-            // the close means it has already seen this connection.
-            const socket = connect({ host: "127.0.0.1", port });
-            socket.on("error", () => {});
-            socket.on("close", () => resolve());
-          });
-        }
-        return {
-          stdin: new WritableStream(),
-          stdout: stream(probe.garbage ?? `${JSON.stringify(probe)}\n`),
-          stderr: stream(""),
-          ended: Promise.resolve({ code: 0, signal: null }),
-          killTree: () => {},
-        };
-      }
-      let finish: (exit: Exit) => void = () => {};
-      const ended = new Promise<Exit>((resolve) => {
-        finish = resolve;
-      });
-      const run: FakeRun = {
-        request,
-        killed: false,
-        end: (code) => finish({ code, signal: null }),
-        program: {
-          stdin: new WritableStream(),
-          stdout: stream(""),
-          stderr: stream(""),
-          ended,
-          killTree: () => {
-            run.killed = true;
-            finish({ code: null, signal: "SIGKILL" });
-          },
-        },
-      };
-      runs.push(run);
-      return run.program;
-    },
-  };
-  return { runner, runs, probes };
-}
 
 let base: string;
 
@@ -122,21 +21,7 @@ afterEach(async () => {
   await rm(base, { recursive: true, force: true });
 });
 
-function profile(overrides: Partial<SandboxProfile> = {}): SandboxProfile {
-  return {
-    workingFolder: join(base, "work"),
-    tempFolder: join(base, "temp"),
-    settingsFolder: null,
-    readOnlyPaths: [],
-    deniedPaths: [],
-    env: { HOME: "/nowhere" },
-    network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
-    timeLimitMs: 60_000,
-    ...overrides,
-  };
-}
-
-const command = { program: "echo", args: ["hi"] };
+const profile = (overrides: Partial<SandboxProfile> = {}) => makeProfile(base, overrides);
 
 verifies("sandbox-srt.session", () => {
   describe("SrtSandbox.open", () => {
@@ -299,74 +184,6 @@ verifies("sandbox-srt.session", () => {
         LD_PRELOAD: "/x.so",
       });
       await session.close();
-    });
-  });
-
-  describe("the private settings folder", () => {
-    it("is never on the PATH of the launcher or the program", () => {
-      const folder = join(tmpdir(), "halonic-srt-x");
-      const host = { PATH: ["/usr/bin", folder, join(folder, "canary"), "/bin"].join(delimiter) };
-      const env = programEnv(
-        profile({ env: { PATH: `${folder}${delimiter}/opt/bin` } }),
-        host,
-        folder,
-      );
-      expect(env["PATH"]).toBe("/opt/bin");
-      expect(launcherEnv(profile(), host, folder)["PATH"]).toBe(`/usr/bin${delimiter}/bin`);
-    });
-
-    it("is not on the PATH any request of a session carries", async () => {
-      const { runner, runs, probes } = fakeRunner();
-      // Make the session's folder known in advance, so it can be put on the PATH.
-      const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
-      vi.mocked(fsPromises.mkdtemp).mockResolvedValueOnce(folder);
-      vi.stubEnv("PATH", ["/usr/bin", folder].join(delimiter));
-      const session = await new SrtSandbox(linux, runner).open(profile({ env: { PATH: folder } }));
-      await session.start(command);
-      expect(probes.length).toBeGreaterThan(0);
-      for (const request of [...probes, ...runs.map((run) => run.request)]) {
-        for (const path of [request.launcherEnv["PATH"], request.programEnv["PATH"]]) {
-          expect(path?.split(delimiter) ?? []).not.toContain(folder);
-        }
-      }
-      await session.close();
-    });
-
-    it("is not reachable through a relative entry of the profile's PATH", async () => {
-      const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
-      const relativeEntry = join("..", "..", folder);
-      const given = [relativeEntry, "bin", "/opt/bin"].join(delimiter);
-      const env = programEnv(profile({ env: { PATH: given } }), {}, folder);
-      expect(env["PATH"]).toBe(["bin", "/opt/bin"].join(delimiter));
-      await rm(folder, { recursive: true, force: true });
-    });
-
-    it("is not on the PATH under its resolved name either", async () => {
-      const real = await mkdtemp(join(tmpdir(), "halonic-srt-"));
-      const link = `${real}-link`;
-      symlinkSync(real, link, "junction"); // a junction needs no rights on Windows
-      // The folder is known by its link, but the PATH names the real folder.
-      const env = programEnv(profile({ env: { PATH: `${real}${delimiter}/opt/bin` } }), {}, link);
-      expect(env["PATH"]).toBe("/opt/bin");
-      await rm(link, { force: true });
-      await rm(real, { recursive: true, force: true });
-    });
-  });
-
-  describe("the profile's variable names", () => {
-    it.each(["--unset=HTTP_PROXY", "-i", "1A", "A=B", "A B", "", "A-B"])(
-      "rejects the name %j before anything runs",
-      async (name) => {
-        const { runner, probes } = fakeRunner();
-        const open = new SrtSandbox(linux, runner).open(profile({ env: { [name]: "x" } }));
-        await expect(open).rejects.toThrow(/not plain/);
-        expect(probes).toEqual([]);
-        expect(() => programEnv(profile({ env: { [name]: "x" } }), {})).toThrow(/not plain/);
-      },
-    );
-
-    it.each(["HOME", "_x", "Foo_9"])("accepts the name %s", (name) => {
-      expect(programEnv(profile({ env: { [name]: "x" } }), {})[name]).toBe("x");
     });
   });
 
