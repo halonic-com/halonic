@@ -23,6 +23,8 @@ export {
   type UnreadableApproval,
   type WaitingTool,
 } from "./approve-listed-tools.ts";
+export { joinLinesThatNeedEachOther } from "./changes/change-needs.ts";
+export { describeWorkflowChange } from "./changes/describe-workflow.ts";
 export {
   type ChangeLine,
   type ItemPath,
