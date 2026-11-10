@@ -195,7 +195,8 @@ export class SrtSession implements SandboxSession {
     this.#programEnv = programEnv(profile, process.env, folder);
     this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
     this.#timer.unref();
-    const abort = () => void this.close();
+    // Nobody awaits the abort handler, so a failed undo has no caller to reach there: `close()` reports it.
+    const abort = () => void this.close().catch(() => undefined);
     signal?.addEventListener("abort", abort, { once: true });
     this.#detach = () => signal?.removeEventListener("abort", abort);
     if (signal?.aborted) abort();

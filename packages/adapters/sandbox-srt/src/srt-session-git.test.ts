@@ -110,20 +110,47 @@ verifies("sandbox-srt.session", () => {
       expect(blocks).toEqual([]);
     });
 
-    it("still reports the refused write, then rejects close(), when an undo fails", async () => {
-      const linked = join(git, "worktrees", "feature");
-      const commondir = join(linked, "commondir");
-      await writeFile(commondir, "../..\n");
-      const { session, blocks } = await open();
-      await writeFile(commondir, "../elsewhere\n");
-      await chmod(linked, 0o500);
-      try {
-        await expect(session.close()).rejects.toThrow(commondir);
-      } finally {
-        await chmod(linked, 0o700);
-      }
-      expect(blocks).toEqual([{ kind: "file", path: commondir, access: "write" }]);
-    });
+    it.skipIf(process.getuid?.() === 0)(
+      "still reports the refused write, then rejects close(), when an undo fails",
+      async () => {
+        const linked = join(git, "worktrees", "feature");
+        const commondir = join(linked, "commondir");
+        await writeFile(commondir, "../..\n");
+        const { session, blocks } = await open();
+        await writeFile(commondir, "../elsewhere\n");
+        await chmod(linked, 0o500);
+        try {
+          await expect(session.close()).rejects.toThrow(commondir);
+        } finally {
+          await chmod(linked, 0o700);
+        }
+        expect(blocks).toEqual([{ kind: "file", path: commondir, access: "write" }]);
+      },
+    );
+
+    it.skipIf(process.getuid?.() === 0)(
+      "touches nothing under a link it could not turn back into a folder",
+      async () => {
+        const outside = join(base, "outside");
+        await mkdir(outside);
+        await writeFile(join(outside, "commondir"), "outside\n");
+        const linked = join(git, "worktrees", "feature");
+        const commondir = join(linked, "commondir");
+        await writeFile(commondir, "../..\n");
+        const { session } = await open();
+        await rm(linked, { recursive: true });
+        await symlink(outside, linked);
+        const worktrees = join(git, "worktrees");
+        await chmod(worktrees, 0o500);
+        try {
+          await expect(session.close()).rejects.toThrow(linked);
+        } finally {
+          await chmod(worktrees, 0o700);
+        }
+        expect(readFileSync(join(outside, "commondir"), "utf8")).toBe("outside\n");
+        expect(lstatSync(linked).isSymbolicLink()).toBe(true);
+      },
+    );
 
     it("does nothing when the working folder has no git folder", async () => {
       await rm(git, { recursive: true });

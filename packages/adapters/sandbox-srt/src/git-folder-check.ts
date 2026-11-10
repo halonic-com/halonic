@@ -57,6 +57,22 @@ async function isRealFolder(path: string): Promise<boolean> {
 }
 
 /**
+ * Whether every folder from `gitFolder` down to the folder holding `path` is a
+ * real folder right now. If not, something above `path` is a link or a file, and
+ * anything done to `path` would go through it.
+ */
+async function parentsAreReal(gitFolder: string, path: string): Promise<boolean> {
+  const chain: string[] = [];
+  for (let dir = dirname(path); dir.length >= gitFolder.length; dir = dirname(dir)) {
+    chain.push(dir);
+    if (dir === gitFolder) break;
+  }
+  if (chain.at(-1) !== gitFolder) return false;
+  for (const dir of chain) if (!(await isRealFolder(dir))) return false;
+  return true;
+}
+
+/**
  * Makes `path` a real folder again if the program swapped it for a link or a
  * file: the link itself is removed (never followed), and the folder is
  * recreated when it existed at session start.
@@ -106,14 +122,23 @@ export async function restoreGitFolder(
   // program may have swapped one for a link to a folder outside the working folder.
   // Fix those first, so nothing below is written or deleted through a link.
   const worktrees = join(snapshot.gitFolder, "worktrees");
+  // A folder it could not fix stays a link, so nothing under it is touched: it is reported as failed.
   const fixed = async (path: string): Promise<void> => {
     try {
+      if (path !== snapshot.gitFolder && !(await parentsAreReal(snapshot.gitFolder, path))) {
+        failed.push(path);
+        return;
+      }
       if (await fixFolder(path, snapshot.folders.has(path))) undone.push(path);
     } catch {
       failed.push(path);
     }
   };
   await fixed(snapshot.gitFolder);
+  if (!(await isRealFolder(snapshot.gitFolder))) {
+    for (const path of snapshot.originals.keys()) failed.push(path);
+    return { undone, failed: [...new Set(failed)] };
+  }
   await fixed(worktrees);
   const current = (await isRealFolder(worktrees)) ? await readdir(worktrees).catch(() => []) : [];
   const known = [...snapshot.folders].filter((f) => dirname(f) === worktrees);
@@ -127,6 +152,10 @@ export async function restoreGitFolder(
   for (const path of paths) {
     const original = snapshot.originals.get(path) ?? ({ kind: "absent" } as const);
     try {
+      if (!(await parentsAreReal(snapshot.gitFolder, path))) {
+        failed.push(path);
+        continue;
+      }
       if (same(original, await read(path))) continue;
       await rm(path, { recursive: true, force: true });
       if (original.kind === "file") {
@@ -141,5 +170,5 @@ export async function restoreGitFolder(
     }
   }
   // `failed` is reported to the session like `undone`: either way the program touched the file.
-  return { undone, failed };
+  return { undone, failed: [...new Set(failed)] };
 }
