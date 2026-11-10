@@ -1,7 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import type { ClaudeCodeFindings, PromptOutcome } from "./claude-code-check.ts";
+import type { ClaudeCodeFindings } from "./claude-code-check.ts";
 import type { TappedRequest } from "./header-tap.ts";
+import type { PromptOutcome } from "./prompt-outcome.ts";
 import { claudeCodeReport, hostsOf, promptVerdict, requestsText } from "./report.ts";
 
 const signInHeaders = ["authorization", "x-api-key"];

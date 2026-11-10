@@ -1,5 +1,6 @@
-import type { ClaudeCodeFindings, PromptOutcome } from "./claude-code-check.ts";
+import type { ClaudeCodeFindings } from "./claude-code-check.ts";
 import type { TappedRequest } from "./header-tap.ts";
+import type { PromptOutcome, RefreshOutcome } from "./prompt-outcome.ts";
 
 /** The check's answer for one harness: does its sign-in go through the bridge, or does the agent need provider hosts? */
 export type Verdict =
@@ -53,28 +54,16 @@ export function hostsOf(denied: readonly string[]): string[] {
 /** The headers Claude Code can send a sign-in in. */
 const claudeSignInHeaders = ["authorization", "x-api-key"];
 
+/** One row of a report: the question and its answer. */
+export type ReportRow = [question: string, answer: string];
+
 /**
- * The Claude Code report as Markdown, safe to paste into a task: names,
- * paths, hosts, status codes and present or absent, never a value.
+ * A harness's report as Markdown, safe to paste into a task: names, paths,
+ * hosts, status codes and present or absent, never a value.
  */
-export function claudeCodeReport(findings: ClaudeCodeFindings, machine: Machine): string {
-  const signIn = promptVerdict(findings.prompt, claudeSignInHeaders);
-  const rows: [string, string][] = [
-    ["Computer", `${machine.platform} ${machine.arch}`],
-    ["Claude Code", findings.version ?? "didn't answer `claude --version` inside srt"],
-    ["`.credentials.json` in the settings folder", findings.storage.credentialsFile],
-    ['Keychain entries named "Claude Code…"', keychainText(findings.storage.keychainServices)],
-    ["`CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`)", findings.oauthTokenVariable],
-    ["Signed in, outside the sandbox", findings.signedInOutside],
-    ["Signed in, inside srt", findings.signedInInside],
-    ["Prompt through the bridge", promptText(findings.prompt)],
-    ["Requests at the bridge", requestsText(findings.prompt.requests)],
-    ["Hosts the sandbox refused", deniedText(findings.prompt.denied)],
-    ["Sign-in path", verdictText(signIn)],
-    ["Refresh path", refreshText(findings.refresh)],
-  ];
+export function harnessReport(harness: string, rows: readonly ReportRow[]): string {
   return [
-    "### Harness sign-in check: Claude Code",
+    `### Harness sign-in check: ${harness}`,
     "",
     "| Question | Answer |",
     "|---|---|",
@@ -83,7 +72,49 @@ export function claudeCodeReport(findings: ClaudeCodeFindings, machine: Machine)
   ].join("\n");
 }
 
-function keychainText(services: string[] | null): string {
+/** What a harness's report says about its paths. */
+export interface PathFindings {
+  prompt: PromptOutcome;
+  refresh: RefreshOutcome;
+  /** The headers the harness can send a sign-in in. */
+  signInHeaders: readonly string[];
+  /** Why the refresh couldn't be forced, when it couldn't. */
+  refreshNotPossible: string;
+}
+
+/** The rows every harness's report ends with: the prompt, what reached the bridge, and both verdicts. */
+export function pathRows(findings: PathFindings): ReportRow[] {
+  const signIn = promptVerdict(findings.prompt, findings.signInHeaders);
+  return [
+    ["Prompt through the bridge", promptText(findings.prompt)],
+    ["Requests at the bridge", requestsText(findings.prompt.requests)],
+    ["Hosts the sandbox refused", deniedText(findings.prompt.denied)],
+    ["Sign-in path", verdictText(signIn)],
+    ["Refresh path", refreshText(findings)],
+  ];
+}
+
+/** The Claude Code report as Markdown. */
+export function claudeCodeReport(findings: ClaudeCodeFindings, machine: Machine): string {
+  return harnessReport("Claude Code", [
+    ["Computer", `${machine.platform} ${machine.arch}`],
+    ["Claude Code", findings.version ?? "didn't answer `claude --version` inside srt"],
+    ["`.credentials.json` in the settings folder", findings.storage.credentialsFile],
+    ['Keychain entries named "Claude Code…"', keychainText(findings.storage.keychainServices)],
+    ["`CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`)", findings.oauthTokenVariable],
+    ["Signed in, outside the sandbox", findings.signedInOutside],
+    ["Signed in, inside srt", findings.signedInInside],
+    ...pathRows({
+      prompt: findings.prompt,
+      refresh: findings.refresh,
+      signInHeaders: claudeSignInHeaders,
+      refreshNotPossible: "the sign-in isn't in `.credentials.json`, so its expiry can't be set",
+    }),
+  ]);
+}
+
+/** The Keychain entries a report lists, or why there are none. */
+export function keychainText(services: string[] | null): string {
   if (services === null) return "not macOS";
   return services.length === 0 ? "none" : services.map((name) => `\`${name}\``).join(", ");
 }
@@ -122,12 +153,10 @@ function verdictText(verdict: Verdict): string {
   }
 }
 
-function refreshText(refresh: ClaudeCodeFindings["refresh"]): string {
+function refreshText({ refresh, signInHeaders, refreshNotPossible }: PathFindings): string {
   if (refresh === "not-forced") return "not checked (run again with `--expire-sign-in`)";
-  if (refresh === "not-possible") {
-    return "not checked: the sign-in isn't in `.credentials.json`, so its expiry can't be set";
-  }
-  const verdict = promptVerdict(refresh, claudeSignInHeaders);
+  if (refresh === "not-possible") return `not checked: ${refreshNotPossible}`;
+  const verdict = promptVerdict(refresh, signInHeaders);
   const facts = `${promptText(refresh)}; requests: ${requestsText(refresh.requests)}; refused: ${deniedText(refresh.denied)}`;
   if (verdict.kind === "needs-allowed-sites") {
     return `**goes straight to ${verdict.hosts.map((host) => `\`${host}\``).join(", ")}**, which the sandbox refused (${facts})`;

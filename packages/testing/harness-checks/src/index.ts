@@ -7,13 +7,21 @@ export {
   type CheckFolders,
   openBridgeSandbox,
 } from "./bridge-sandbox.ts";
-export {
-  type ClaudeCodeFindings,
-  checkClaudeCode,
-  type PromptOutcome,
-  type SignedIn,
-} from "./claude-code-check.ts";
+export { type ClaudeCodeFindings, checkClaudeCode } from "./claude-code-check.ts";
 export { deniedHost, deniedHostsRunner } from "./denied-hosts.ts";
 export { type HeaderTap, openHeaderTap, type TappedRequest } from "./header-tap.ts";
-export { claudeCodeReport, promptVerdict, type Verdict } from "./report.ts";
+export type {
+  PromptOutcome,
+  PromptResult,
+  RefreshOutcome,
+  SignedIn,
+} from "./prompt-outcome.ts";
+export {
+  claudeCodeReport,
+  harnessReport,
+  pathRows,
+  promptVerdict,
+  type ReportRow,
+  type Verdict,
+} from "./report.ts";
 export { type ClaudeSignInStorage, claudeSignInStorage, type Keychain } from "./sign-in-storage.ts";

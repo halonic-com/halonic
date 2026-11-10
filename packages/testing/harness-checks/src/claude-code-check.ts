@@ -4,17 +4,19 @@ import {
   claudeCodeEnvironment,
   claudeProgram,
   findSignInProblem,
-  type SignInProblem,
 } from "@halonicjs/adapter-harness-claude-code";
 import { harnessBridgeTokenHeader, type SandboxCommand } from "@halonicjs/ports";
 import { readVersion } from "@halonicjs/std";
+import type { BridgeSandbox, BridgeSandboxOptions, CheckedRun } from "./bridge-sandbox.ts";
 import {
-  type BridgeSandbox,
-  type BridgeSandboxOptions,
-  type CheckedRun,
-  openBridgeSandbox,
-} from "./bridge-sandbox.ts";
-import type { TappedRequest } from "./header-tap.ts";
+  type OpenSandbox,
+  type PromptOutcome,
+  type PromptResult,
+  promptOutcome,
+  type RefreshOutcome,
+  type SignedIn,
+  withSandbox,
+} from "./prompt-outcome.ts";
 import {
   type ClaudeSignInStorage,
   claudeCredentialsFile,
@@ -27,22 +29,6 @@ export const oauthTokenVariable = "CLAUDE_CODE_OAUTH_TOKEN";
 
 /** The headers that can carry a sign-in or key to Anthropic, and the bridge's own. */
 export const claudeWatchedHeaders = ["authorization", "x-api-key", harnessBridgeTokenHeader];
-
-/** Whether Claude Code says someone is signed in; `unknown` when its answer can't be read. */
-export type SignedIn = "yes" | "no" | "unknown";
-
-/** How one prompt through the bridge went, in facts a report may print. */
-export interface PromptOutcome {
-  /** `answered`: it finished; otherwise why not, as far as the check can tell. */
-  result: "answered" | SignInProblem | "timed-out" | "failed";
-  exitCode: number | null;
-  /** What reached the bridge, by path and header name. */
-  requests: TappedRequest[];
-  /** The `host:port` of each connection the sandbox refused. */
-  denied: string[];
-  /** How many model calls the bridge answered and recorded. */
-  modelCalls: number;
-}
 
 /** What the Claude Code check found. Nothing in it is a sign-in, a token or a person's account. */
 export interface ClaudeCodeFindings {
@@ -59,11 +45,10 @@ export interface ClaudeCodeFindings {
   prompt: PromptOutcome;
   /**
    * The same prompt with the sign-in's expiry set in the past, on a copy of
-   * the settings folder, so Claude Code refreshes first. `not-forced` when
-   * the check wasn't asked to; `not-possible` when the sign-in isn't in
+   * the settings folder. `not-possible` when the sign-in isn't in
    * `.credentials.json` (the Keychain's can't be changed safely).
    */
-  refresh: PromptOutcome | "not-forced" | "not-possible";
+  refresh: RefreshOutcome;
 }
 
 /** Runs a program outside the sandbox, as the person, and gives back its exit code and output. */
@@ -90,7 +75,7 @@ export interface ClaudeCodeCheckOptions {
   /** How long one prompt may take before the check stops it. */
   promptTimeoutMs: number;
   /** Opens the bridge and the sandbox; the real ones unless a test gives others. */
-  openSandbox?: (options: BridgeSandboxOptions) => Promise<BridgeSandbox>;
+  openSandbox?: OpenSandbox;
 }
 
 /** How long `claude auth status` and `claude --version` may take. */
@@ -129,7 +114,7 @@ export async function checkClaudeCode(
     return {
       version: version.exit.code === 0 ? versionIn(version.stdout) : null,
       signedInInside: signedIn(status.exit.code, status.stdout),
-      prompt: await promptOutcome(sandbox, options.promptTimeoutMs),
+      prompt: await claudePrompt(sandbox, options.promptTimeoutMs),
     };
   });
   return {
@@ -147,14 +132,14 @@ export async function checkClaudeCode(
 async function refreshOutcome(
   options: ClaudeCodeCheckOptions,
   storage: ClaudeSignInStorage,
-): Promise<ClaudeCodeFindings["refresh"]> {
+): Promise<RefreshOutcome> {
   if (!options.expireSignIn) return "not-forced";
   if (storage.credentialsFile === "absent") return "not-possible";
   const copy = join(options.scratchFolder, "settings-expired");
   await cp(options.settingsFolder, copy, { recursive: true });
   if (!(await expireCredentials(join(copy, claudeCredentialsFile)))) return "not-possible";
   return inSandbox(options, copy, "refresh", (sandbox) =>
-    promptOutcome(sandbox, options.promptTimeoutMs),
+    claudePrompt(sandbox, options.promptTimeoutMs),
   );
 }
 
@@ -178,15 +163,14 @@ export async function expireCredentials(file: string, now = Date.now()): Promise
   return true;
 }
 
-/** Opens a bridge and a sandbox for one settings folder, runs `use`, and closes both. */
-async function inSandbox<T>(
+/** Opens a bridge and a sandbox for Claude Code with one settings folder, runs `use`, and closes both. */
+function inSandbox<T>(
   options: ClaudeCodeCheckOptions,
   settingsFolder: string,
   name: string,
   use: (sandbox: BridgeSandbox) => Promise<T>,
 ): Promise<T> {
-  const open = options.openSandbox ?? openBridgeSandbox;
-  const sandbox = await open({
+  const sandbox: BridgeSandboxOptions = {
     provider: "anthropic",
     watched: claudeWatchedHeaders,
     environment: (bridge, folders) => claudeCodeEnvironment(bridge, folders),
@@ -194,33 +178,16 @@ async function inSandbox<T>(
     scratchFolder: join(options.scratchFolder, name),
     allowedSites: [],
     extraEnv: tokenEnv(options),
-  });
-  try {
-    return await use(sandbox);
-  } finally {
-    await sandbox.close();
-  }
+  };
+  return withSandbox(sandbox, use, options.openSandbox);
 }
 
-async function promptOutcome(sandbox: BridgeSandbox, timeoutMs: number): Promise<PromptOutcome> {
-  // Only what the prompt itself caused, not the quick questions before it.
-  const before = {
-    requests: sandbox.requests.length,
-    denied: sandbox.denied.length,
-    modelCalls: sandbox.modelCalls,
-  };
-  const run = await sandbox.run(prompt, timeoutMs);
-  return {
-    result: promptResult(run),
-    exitCode: run.exit.code,
-    requests: sandbox.requests.slice(before.requests),
-    denied: sandbox.denied.slice(before.denied),
-    modelCalls: sandbox.modelCalls - before.modelCalls,
-  };
+function claudePrompt(sandbox: BridgeSandbox, timeoutMs: number): Promise<PromptOutcome> {
+  return promptOutcome(sandbox, prompt, timeoutMs, promptResult);
 }
 
 /** How the prompt ended: answered, a sign-in problem Claude Code printed, stopped, or another failure. */
-export function promptResult(run: CheckedRun): PromptOutcome["result"] {
+export function promptResult(run: CheckedRun): PromptResult {
   if (run.exit.timedOut) return "timed-out";
   if (run.exit.code === 0 && !resultIsError(run.stdout)) return "answered";
   const lines = [
