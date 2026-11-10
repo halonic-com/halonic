@@ -1,6 +1,14 @@
 {
   "//": "Files that may start processes or run code in a new thread. See docs/guides/checks.md (process-starts).",
   "starters": {
+    "apps/agent-host/scripts/build.ts": {
+      "reason": "Build tooling (pnpm build:sea), run in CI and by hand, never shipped. It starts only Node with --build-sea and, on macOS, codesign, both with fixed arguments on files it wrote to dist/. It never loads a skill.",
+      "scriptsTest": "apps/agent-host/src/scripts.starts.test.ts"
+    },
+    "apps/agent-host/scripts/smoke.ts": {
+      "reason": "Smoke tooling (pnpm smoke:sea), run in CI after the build, never shipped. It starts only the agent host it just built in dist/, with no arguments. It never loads a skill.",
+      "scriptsTest": "apps/agent-host/src/scripts.starts.test.ts"
+    },
     "packages/adapters/sandbox-host/src/program-probe.ts": {
       "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and looks only in absolute PATH folders of the launcher's environment, which no skill sets.",
       "scriptsTest": "packages/adapters/sandbox-host/src/program-probe.attack.test.ts"
