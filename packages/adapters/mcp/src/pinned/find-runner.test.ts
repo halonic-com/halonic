@@ -79,6 +79,18 @@ verifies("mcp.runner-lookup", () => {
       });
     });
 
+    it("refuses a relative command with a folder, without looking for it", async () => {
+      const search = computer(["/acme/app/bin/uvx", "/acme/app/npx"], {
+        platform: "linux",
+        path: "/acme/app",
+      });
+      for (const command of ["bin/uvx", "./npx", "../app/npx"]) {
+        expect(await findRunner(command, "pypi", search)).toEqual({
+          refused: `"${command}" is a path relative to the folder the app runs in; give its full path or just the program's name`,
+        });
+      }
+    });
+
     it("refuses, by name, a runner or a node it can't find", async () => {
       const none = computer([], { platform: "linux", path: "/usr/bin" });
       expect(await findRunner("npx", "npm", none)).toEqual({
@@ -140,6 +152,49 @@ verifies("mcp.runner-lookup", () => {
           leadingArgs: [],
           pathFolders: [windowsPath("D", "acme", ".local", "bin")],
         },
+      });
+    });
+
+    it("starts npm's npx.cmd with the node.exe it finds when there's none next to it", async () => {
+      const appDataNpm = windowsPath("C", "Users", "acme", "AppData", "Roaming", "npm");
+      const search = computer(
+        [
+          `${appDataNpm}\\npx.cmd`,
+          `${appDataNpm}\\node_modules\\npm\\bin\\npx-cli.js`,
+          `${nodejs}\\node.cmd`,
+          `${nodejs}\\node.exe`,
+        ],
+        { platform: "win32", path: `${appDataNpm};${nodejs}` },
+      );
+      expect(await findRunner("npx", "npm", search)).toEqual({
+        found: {
+          program: `${nodejs}\\node.exe`,
+          leadingArgs: [`${appDataNpm}\\node_modules\\npm\\bin\\npx-cli.js`],
+          pathFolders: [appDataNpm, nodejs],
+        },
+      });
+    });
+
+    it("tries a full path without an ending with each PATHEXT ending, and refuses a relative one", async () => {
+      const tools = windowsPath("C", "tools");
+      const search = computer([`${tools}\\uvx.exe`], { platform: "win32", path: "" });
+      expect(await findRunner(`${tools}\\uvx`, "pypi", search)).toMatchObject({
+        found: { program: `${tools}\\uvx.exe` },
+      });
+      for (const command of ["tools\\uvx", "\\tools\\uvx", "C:uvx"]) {
+        expect(await findRunner(command, "pypi", search)).toMatchObject({
+          refused: expect.stringContaining("is a path relative to the folder the app runs in"),
+        });
+      }
+    });
+
+    it("takes a PATH folder in quotes, as some installers write it", async () => {
+      const search = computer([`${nodejs}\\uvx.exe`], {
+        platform: "win32",
+        path: `"${nodejs}"`,
+      });
+      expect(await findRunner("uvx", "pypi", search)).toMatchObject({
+        found: { program: `${nodejs}\\uvx.exe` },
       });
     });
   });

@@ -52,8 +52,17 @@ export function uniqueFolders(folders: readonly string[], platform: NodeJS.Platf
   });
 }
 
+/**
+ * The folders in a `PATH`. On Windows, some installers write a folder in
+ * quotes (`"%ProgramFiles%\nodejs"`), which Windows itself accepts, so
+ * the quotes come off.
+ */
 function split(list: string, platform: NodeJS.Platform): string[] {
-  return list.split(platform === "win32" ? ";" : ":").filter((folder) => folder !== "");
+  if (platform !== "win32") return list.split(":").filter((folder) => folder !== "");
+  return list
+    .split(";")
+    .map((folder) => folder.replace(/^"(.*)"$/, "$1"))
+    .filter((folder) => folder !== "");
 }
 
 function installFolders(sources: FolderSources, path: typeof posix): string[] {

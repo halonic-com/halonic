@@ -35,11 +35,15 @@ const shellEndings = new Set([".bat", ".cmd"]);
 /**
  * Finds a pinned connector's runner, and for an npm runner the `node` it
  * needs, in the app's own environment only (`programFolders`), never in
- * the connector's `env`. A command with a folder is taken as written.
+ * the connector's `env`. A command with a folder must be a full path, since
+ * a relative one would depend on the folder the app happens to run in; on
+ * Windows it is tried with the `%PATHEXT%` endings too.
  *
  * On Windows, npm installs `npx` and `npm` as `.cmd` files, which Node
  * can't start without a shell. The launcher starts the `node.exe` next to
- * them with npm's own CLI script instead. Any other `.cmd` or `.bat` runner
+ * them with npm's own CLI script instead, or, like the `.cmd` file itself,
+ * the `node` it finds in the folders when there is none next to them (as
+ * in `%APPDATA%\npm` after `npm i -g npm`). Any other `.cmd` or `.bat` runner
  * is refused: a shell could read the arguments as commands. `uvx.exe` and
  * the other real programs start directly.
  *
@@ -52,10 +56,15 @@ export async function findRunner(
   search: RunnerSearch,
 ): Promise<RunnerLookup> {
   const path = search.platform === "win32" ? win32 : posix;
+  if (namesFolder(command, search.platform) && !isFullPath(command, search.platform)) {
+    return {
+      refused: `"${command}" is a path relative to the folder the app runs in; give its full path or just the program's name`,
+    };
+  }
   const folders = await programFolders(search);
   const runner = await locate(command, folders, search);
   if (runner === undefined) return { refused: `couldn't find "${command}" on this computer` };
-  const mapped = await withoutShell(runner, search);
+  const mapped = await withoutShell(runner, folders, search);
   if ("refused" in mapped) return mapped;
   if (registry === "pypi") return mapped;
   const node = await locate("node", [path.dirname(runner), ...folders], search);
@@ -69,24 +78,39 @@ export async function findRunner(
   return { found: { ...mapped.found, pathFolders } };
 }
 
-/** The full path of a program: as written when it names a folder, else the first match in `folders`. */
+/** Whether `command` names a folder or a drive, such as `./npx`, `bin/uvx` or `C:uvx`, rather than just a program. */
+function namesFolder(command: string, platform: NodeJS.Platform): boolean {
+  return /[\\/]/.test(command) || (platform === "win32" && /^[a-z]:/i.test(command));
+}
+
+/**
+ * Whether `command` is a full path. On Windows that means a drive letter,
+ * a colon and a backslash, or a network share: `\tools\uvx` and `C:uvx`
+ * still depend on the drive or folder the app runs in.
+ */
+function isFullPath(command: string, platform: NodeJS.Platform): boolean {
+  if (platform !== "win32") return posix.isAbsolute(command);
+  return /^[a-z]:[\\/]/i.test(command) || /^[\\/]{2}[^\\/]/.test(command);
+}
+
+/** The full path of a program: tried as written when it names a folder, else the first match in `folders`. */
 async function locate(
   name: string,
   folders: readonly string[],
   search: RunnerSearch,
 ): Promise<string | undefined> {
   const path = search.platform === "win32" ? win32 : posix;
-  if (/[\\/]/.test(name)) return (await search.isProgram(name)) ? name : undefined;
-  for (const folder of folders) {
+  const places = namesFolder(name, search.platform) ? [""] : folders;
+  for (const folder of places) {
     for (const file of candidates(name, search)) {
-      const full = path.join(folder, file);
+      const full = folder === "" ? file : path.join(folder, file);
       if (await search.isProgram(full)) return full;
     }
   }
   return undefined;
 }
 
-/** The file names a bare program name may have: itself on macOS and Linux, with an ending on Windows. */
+/** The file names a program may have: itself on macOS and Linux, and on Windows with an ending unless it has one. */
 function candidates(name: string, search: RunnerSearch): string[] {
   if (search.platform !== "win32") return [name];
   if (win32.extname(name) !== "") return [name];
@@ -98,7 +122,11 @@ function candidates(name: string, search: RunnerSearch): string[] {
 }
 
 /** How to start `runner` without a shell, or why it can't be. */
-async function withoutShell(runner: string, search: RunnerSearch): Promise<RunnerLookup> {
+async function withoutShell(
+  runner: string,
+  folders: readonly string[],
+  search: RunnerSearch,
+): Promise<RunnerLookup> {
   const path = search.platform === "win32" ? win32 : posix;
   const folder = path.dirname(runner);
   const ending = path.extname(runner).toLowerCase();
@@ -107,13 +135,32 @@ async function withoutShell(runner: string, search: RunnerSearch): Promise<Runne
   }
   const name = path.basename(runner, path.extname(runner)).toLowerCase();
   if (name === "npx" || name === "npm") {
-    const node = path.join(folder, "node.exe");
     const script = path.join(folder, "node_modules", "npm", "bin", `${name}-cli.js`);
-    if ((await search.isProgram(node)) && (await search.isFile(script))) {
+    const node = (await search.isFile(script)) ? await npmNode(folder, folders, search) : undefined;
+    if (node !== undefined) {
       return { found: { program: node, leadingArgs: [script], pathFolders: [folder] } };
     }
   }
   return {
     refused: `"${path.basename(runner)}" starts only through a shell, which Halonic doesn't use for a pinned connector`,
   };
+}
+
+/**
+ * The `node.exe` that npm's `.cmd` runner in `folder` would start: the one
+ * next to it, else the first one in `folders`. A `node` that is itself a
+ * `.cmd` or `.bat` doesn't count, since it too would need a shell.
+ */
+async function npmNode(
+  folder: string,
+  folders: readonly string[],
+  search: RunnerSearch,
+): Promise<string | undefined> {
+  const beside = win32.join(folder, "node.exe");
+  if (await search.isProgram(beside)) return beside;
+  const found = await locate("node", folders, search);
+  if (found === undefined || !directEndings.has(win32.extname(found).toLowerCase())) {
+    return undefined;
+  }
+  return found;
 }
