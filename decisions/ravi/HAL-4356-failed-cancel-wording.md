@@ -20,11 +20,13 @@ alone would hide that the run goes on. There is no cancel command yet, so it poi
 "May go on" rather than "goes on", because a run that ended just before the cancel came also
 reports a cancel that didn't work. A cancelled run says what it said before.
 
-The requirement gains one sentence and one example. Nothing else in it changes. `runs send`
-follows through the same helper, `followUntilStopped`, so it gives the same line.
+The requirement gains one sentence and one example. Nothing else in it changes. Today only
+`halonic run` follows through `followUntilStopped`, so only it gives this line. `runs send` gets
+it once it moves onto that shared helper (HAL-4025).
 
 This is wording on behaviour the board already approved (cli-output 1.5), which the team decides
-(board, HAL-2282), so the note is internal. The words are checked with the designer on HAL-4356.
+(board, HAL-2282), so the note is internal. The designer checked and approved the words on
+HAL-4369.
 
 ## Covers
 
