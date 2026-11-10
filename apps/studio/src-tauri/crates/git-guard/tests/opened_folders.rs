@@ -162,7 +162,10 @@ fn opened_folders_names_a_missing_alternate() {
     let expected = std::fs::canonicalize(sandbox.acme.join(".git/objects/info/alternates"))
         .expect("the alternates file exists");
     assert_eq!(file, expected.display().to_string());
-    assert!(alternate.ends_with("gone/.git/objects"), "{alternate}");
+    assert!(
+        std::path::Path::new(&alternate).ends_with(std::path::Path::new("gone/.git/objects")),
+        "{alternate}"
+    );
 }
 
 #[cfg(unix)]
