@@ -3,6 +3,7 @@ import {
   type DefinitionSource,
   type DefinitionStore,
   type DefinitionWatch,
+  type DefinitionWatchListener,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -103,7 +104,7 @@ export class DryRunDefinitionStore implements DefinitionStore {
    * Reports nothing: a dry run's changes are its own, and the store under it
    * is only read, so it may have no watch.
    */
-  async watch(): Promise<DefinitionWatch> {
+  async watch(_listener: DefinitionWatchListener): Promise<DefinitionWatch> {
     return { close: async () => {} };
   }
 
