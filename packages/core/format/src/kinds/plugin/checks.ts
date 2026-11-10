@@ -6,13 +6,18 @@ import type { KindCheckProblem } from "../../kind.ts";
 import { checkIntegrationSheet } from "../integration/kind.ts";
 import { backendSheet } from "./backend.ts";
 import { declaredSecrets, declaredTools, duplicates, inTwoParts, problem } from "./problems.ts";
-import type { Plugin, PluginLocalTool } from "./schema.ts";
+import {
+  MAX_PLUGIN_ID_LENGTH,
+  MAX_PLUGIN_SECRET_NAME_LENGTH,
+  type Plugin,
+  type PluginLocalTool,
+} from "./schema.ts";
 import { uiProblems } from "./ui-checks.ts";
 
 /**
  * The rules over several fields of a plugin: it has a backend or local
- * tools, its backend passes the integration sheet's checks and starts no
- * program, no id is used twice, no tool or secret name is in two parts, a
+ * tools, its id and secret names aren't too long, its backend passes the
+ * integration sheet's checks and starts no program, no id is used twice, no tool or secret name is in two parts, a
  * local tool's environment names its own secrets and the plugin's settings,
  * and its `ui` names what the plugin declares.
  *
@@ -22,6 +27,7 @@ import { uiProblems } from "./ui-checks.ts";
 export function checkPlugin(plugin: Plugin): KindCheckProblem[] {
   return [
     ...partProblems(plugin),
+    ...lengthProblems(plugin),
     ...backendProblems(plugin),
     ...localToolProblems(plugin),
     ...inTwoParts(plugin, declaredTools(plugin), "tool-twice", "tool"),
@@ -37,6 +43,25 @@ function partProblems(plugin: Plugin): KindCheckProblem[] {
   }
   const message = "a plugin needs a backend or localTools; ui alone has nothing to call";
   return [problem(plugin, "no-part", [], message)];
+}
+
+/**
+ * Halonic keeps each secret under a name made of the plugin's id and the
+ * secret's name, which must fit the `Secrets` port's 128 characters.
+ */
+function lengthProblems(plugin: Plugin): KindCheckProblem[] {
+  const problems: KindCheckProblem[] = [];
+  if (plugin.id.length > MAX_PLUGIN_ID_LENGTH) {
+    const message = `the id is ${plugin.id.length} characters long; use at most ${MAX_PLUGIN_ID_LENGTH}`;
+    problems.push(problem(plugin, "id-too-long", ["id"], message));
+  }
+  for (const secret of declaredSecrets(plugin)) {
+    if (secret.name.length > MAX_PLUGIN_SECRET_NAME_LENGTH) {
+      const message = `the secret name ${secret.name} is ${secret.name.length} characters long; use at most ${MAX_PLUGIN_SECRET_NAME_LENGTH}`;
+      problems.push(problem(plugin, "secret-name-too-long", secret.path, message));
+    }
+  }
+  return problems;
 }
 
 /**

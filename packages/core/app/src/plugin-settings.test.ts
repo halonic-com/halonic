@@ -63,6 +63,21 @@ verifies("app.plugin-settings", () => {
     expect(await records.changes(pluginSettingsCollection)).toEqual([]);
   });
 
+  it("counts only the values given, never a name every object has, as a required one", async () => {
+    const { settings } = setup();
+    const named = pluginFrom(
+      weatherManifest
+        .replace("    root: {", "    constructor: {")
+        .replace("{ setting: root }", "{ setting: constructor }"),
+    );
+    const saved = await settings.save(named, {});
+    expect(saved.ok).toBe(false);
+    if (saved.ok) return;
+    expect(saved.error).toEqual([
+      { setting: "constructor", message: "fill this in: it is required" },
+    ]);
+  });
+
   it("forgets one plugin's values and compacts them out, keeping the others", async () => {
     const { records, settings } = setup();
     const rain = pluginFrom(weatherManifest.replace("id: weather", "id: rain"));

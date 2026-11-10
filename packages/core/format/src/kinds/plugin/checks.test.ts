@@ -145,6 +145,24 @@ verifies("format.plugin-checks", () => {
     ).toEqual(["localTools.0.secrets.example-key secret-twice"]);
   });
 
+  it("fails an id or a secret name too long to name the stored secret", () => {
+    const longId = `w${"x".repeat(48)}`;
+    const longSecret = `k${"y".repeat(64)}`;
+    expect(
+      found(
+        `id: ${longId}`,
+        ...head.slice(1),
+        ...backend.map((line) => line.replace("example-key", longSecret)),
+      ),
+    ).toEqual(["id id-too-long", `backend.secrets.${longSecret} secret-name-too-long`]);
+    const longest = yaml(
+      `id: ${"w".repeat(48)}`,
+      ...head.slice(1),
+      ...backend.map((line) => line.replace("example-key", "k".repeat(64))),
+    );
+    expect(checkPlugin(parsedValue("plugin", longest))).toEqual([]);
+  });
+
   describe("gives a local tool only its own secrets and the plugin's settings", () => {
     const withEnv = (...lines: string[]) => [
       ...head,

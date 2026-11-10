@@ -175,6 +175,16 @@ const Start = s
     }
   });
 
+/**
+ * The longest a plugin's id may be. Halonic keeps a plugin's secrets under a
+ * name made of its id and the secret's name, and a secret name is at most
+ * 128 characters (ADR 2026-11-09-plugins, section 3).
+ */
+export const MAX_PLUGIN_ID_LENGTH = 48;
+
+/** The longest a secret a plugin declares may be named, for the same reason. */
+export const MAX_PLUGIN_SECRET_NAME_LENGTH = 64;
+
 /** An environment variable's name, such as `ACME_ROOT`. */
 export const ENV_NAME_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
 

@@ -193,6 +193,15 @@ verifies("app.plugin-service", () => {
     expect((await loadOne(service, "weather")).status).toBe("new");
   });
 
+  it("gives the names a plugin's secrets are kept under", async () => {
+    const { service } = setup();
+    const weather = await loadOne(service, "weather");
+    expect(service.secretNames(weather.plugin)).toEqual({
+      "example-key": "plugin__weather__example-key",
+      "acme-key": "plugin__weather__acme-key",
+    });
+  });
+
   it("gives no plugins for an empty plugin folder, and fails only when it can't be listed", async () => {
     expect(await setup(new TestFolderReader()).service.load()).toEqual([]);
     const unlisted = new TestFolderReader();

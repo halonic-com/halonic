@@ -2,14 +2,15 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1734, the plugins ADR (`docs/adr/2026-11-09-plugins.md`, Accepted, sections 1.1, 1.4 and 1.5)
+- Source: HAL-1734, the plugins ADR (`docs/adr/2026-11-09-plugins.md`, Accepted, sections 1.1, 1.4, 1.5 and 3); HAL-4540 (the length limits, so a plugin's stored secret names fit `Secrets`)
 
-When a `plugin.yaml` passes its schema, the format shall fail it unless it has a `backend` or `localTools`, its backend passes the integration sheet's own checks and doesn't need `process`, no local tool id, tool name within one local tool, command id or card id is listed twice, no tool name and no secret name is in two parts, every local tool `env` secret names one of that tool's own secrets, every `env` setting names a setting that isn't a `secret` field, every local tool secret goes only to hosts in that tool's `network`, every `secret` field names a secret the backend or a local tool declares, every choice's `default` is one of its `choices`, every command and card names a tool the plugin declares, and a plugin with cards has a panel; and `backendSheet` and `pluginFromIntegrationSheet`, offered by the main entry point and by `@halonicjs/format/integration`, shall convert between a plugin's backend and an integration sheet without losing anything.
+When a `plugin.yaml` passes its schema, the format shall fail it unless it has a `backend` or `localTools`, its id is at most 48 characters and every secret it declares is named in at most 64, its backend passes the integration sheet's own checks and doesn't need `process`, no local tool id, tool name within one local tool, command id or card id is listed twice, no tool name and no secret name is in two parts, every local tool `env` secret names one of that tool's own secrets, every `env` setting names a setting that isn't a `secret` field, every local tool secret goes only to hosts in that tool's `network`, every `secret` field names a secret the backend or a local tool declares, every choice's `default` is one of its `choices`, every command and card names a tool the plugin declares, and a plugin with cards has a panel; and `backendSheet` and `pluginFromIntegrationSheet`, offered by the main entry point and by `@halonicjs/format/integration`, shall convert between a plugin's backend and an integration sheet without losing anything.
 
 ## Examples
 
 - Given the weather plugin from the ADR, when it is parsed, then it passes with no problem.
 - Given a plugin with only `id`, `version`, `sdk` and `name`, or with only `ui`, when it is parsed, then it fails with `no-part` at the root.
+- Given an id of 49 characters and a backend secret named in 65, when it is parsed, then it fails with `id-too-long` at `id` and `secret-name-too-long` at the secret; 48 and 64 pass.
 - Given a backend secret for a host the backend doesn't declare, when it is parsed, then it fails with `secret-host-not-declared` under `backend`, as an `integration.yaml` would.
 - Given a backend with `needs: [process]`, when it is parsed, then it fails with `needs-process` at `backend.needs.0`, with a message that points to `localTools`.
 - Given a local tool id, a tool name in one local tool, a command id or a card id listed twice, when it is parsed, then it fails with `duplicate` at the second one.
@@ -25,6 +26,7 @@ When a `plugin.yaml` passes its schema, the format shall fail it unless it has a
 
 ## Deliberate limits in v0.1
 
+- Halonic keeps a plugin's secrets under a name built from its id and the secret's name (`app.plugin-secret-names`). The two limits keep that name within the 128 characters of `Secrets`.
 - A local tool gets only its own secrets, never the backend's or another local tool's, so a secret reaches only the program it was declared for. Secret names are unique across parts, so a `secret` field fills exactly one.
 - A local tool's `network` has only fixed hosts, so its secrets do too; a host from a setting is the backend's way.
 - Whether the backend's code matches its sheet needs the code. The integration kit checks it when the plugin loads (`integration-kit.plugin-backend`), not here.

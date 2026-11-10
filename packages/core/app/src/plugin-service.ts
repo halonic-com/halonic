@@ -23,6 +23,7 @@ import {
   trustedPluginUi,
 } from "./plugin-contributions.ts";
 import { type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
+import { pluginSecretNames } from "./plugin-secret-names.ts";
 import {
   type PluginSettingProblem,
   PluginSettings,
@@ -79,7 +80,7 @@ export interface PluginServiceOptions {
  * Finds, checks and trusts the plugins in the profile's plugin folder.
  *
  * @example
- * const plugins = new PluginService({ plugins: folderReader, digest, trust });
+ * const plugins = new PluginService({ plugins: folderReader, digest, trust, records, clock });
  * const entries = await plugins.load();
  * for (const entry of entries) {
  *   if (entry.status === "broken") showProblems(entry.folder, entry.problems);
@@ -196,8 +197,23 @@ export class PluginService {
   }
 
   /**
+   * The name each secret the plugin declares is kept under in `Secrets`, by
+   * the declared name, such as `plugin__weather__weather-key` for
+   * `weather-key`. The loader and a local tool's `env` read a secret by this
+   * name, and the host that removes the plugin deletes these names, so a
+   * plugin never reads a secret stored for something else.
+   *
+   * @param plugin - a plugin {@link load} read
+   */
+  secretNames(plugin: Plugin): Record<string, string> {
+    return pluginSecretNames(plugin);
+  }
+
+  /**
    * Deletes the setting values of the plugin `id`, for removing the plugin.
-   * Its trust and its secrets aren't touched here.
+   * Its trust isn't touched here, and neither are its secrets: `Secrets` is
+   * read-only in core, so the host deletes the {@link secretNames} with its
+   * own secret writer first, and says so when one can't be deleted.
    */
   async forget(id: string): Promise<void> {
     await this.#settings.forget(id);
