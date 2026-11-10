@@ -261,6 +261,23 @@ verifies("kit.list", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it("does nothing on a middle click with Shift or Alt held", async () => {
+    const onOpen = vi.fn();
+    const onOpenInNewTab = vi.fn();
+    const { container } = render(
+      <List label="Runs" rows={agents} onOpen={onOpen} onOpenInNewTab={onOpenInNewTab} />,
+    );
+    for (const modifier of [{ shiftKey: true }, { altKey: true }]) {
+      await act(async () => {
+        mainCell(container, 0).dispatchEvent(
+          new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1, ...modifier }),
+        );
+      });
+    }
+    expect(onOpenInNewTab).not.toHaveBeenCalled();
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it("does nothing on a modified Enter or click when there's no new tab to open", async () => {
     const onOpen = vi.fn();
     const { container } = render(<List label="Files" rows={agents} onOpen={onOpen} />);

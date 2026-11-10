@@ -16,6 +16,7 @@ import {
 import { click, render, unmountAll } from "../test/render.tsx";
 import { Dialog } from "./dialog.tsx";
 import type { DialogProps } from "./dialog-props.ts";
+import { useModalPolite } from "./modal-regions.tsx";
 
 beforeEach(() => {
   fakeDialogPage();
@@ -150,6 +151,26 @@ verifies("kit.dialog-form-sheet", () => {
   it("tells the parts inside that they're in a form sheet", () => {
     function Probe() {
       return <span data-testid="probe">{String(useInFormSheet())}</span>;
+    }
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <Dialog
+          title="New agent"
+          form
+          confirm={{ label: "Create agent", busyLabel: "Creating…" }}
+          onConfirm={() => undefined}
+          onCancel={() => undefined}
+        >
+          <Probe />
+        </Dialog>
+      </PresentationProvider>,
+    );
+    expect(container.querySelector('[data-testid="probe"]')?.textContent).toBe("true");
+  });
+
+  it("gives the parts inside the sheet's polite region, so a CommandBox there needn't toast", () => {
+    function Probe() {
+      return <span data-testid="probe">{String(useModalPolite() !== null)}</span>;
     }
     const { container } = render(
       <PresentationProvider presentation="phone">

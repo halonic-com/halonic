@@ -5,6 +5,7 @@ import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
 import { fieldBoxClasses } from "../input/field-box.ts";
 import { TextArea } from "../input/text-area.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
+import { useInFormSheet } from "../sheet/in-form-sheet.ts";
 import { TextSheet } from "../text-sheet/text-sheet.tsx";
 
 export interface LongTextProps {
@@ -40,7 +41,9 @@ export interface LongTextProps {
  */
 export function LongText(props: LongTextProps) {
   const phone = usePresentation() === "phone";
-  if (!phone) {
+  // In a form sheet it stays a textarea, so a sheet of typing never opens over another.
+  const inFormSheet = useInFormSheet();
+  if (!phone || inFormSheet) {
     return (
       <TextArea
         value={props.value}

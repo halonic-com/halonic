@@ -82,14 +82,15 @@ export function SheetFrame(props: SheetFrameProps) {
   );
   return (
     <dialog ref={dialog} aria-labelledby={titleId} className={sheetFrameClasses} {...events}>
-      {props.onSubmit === undefined ? (
-        content
-      ) : (
-        <form className="contents" noValidate onSubmit={props.onSubmit}>
-          {content}
-        </form>
-      )}
-      <ModalRegions />
+      <ModalRegions>
+        {props.onSubmit === undefined ? (
+          content
+        ) : (
+          <form className="contents" noValidate onSubmit={props.onSubmit}>
+            {content}
+          </form>
+        )}
+      </ModalRegions>
     </dialog>
   );
 }

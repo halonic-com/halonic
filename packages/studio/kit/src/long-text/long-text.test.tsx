@@ -4,6 +4,7 @@ import { act, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Field } from "../field/field.tsx";
 import { PresentationProvider } from "../presentation/presentation.tsx";
+import { InFormSheetContext } from "../sheet/in-form-sheet.ts";
 import { buttonNamed, fakeDialogPage, restoreDialogPage } from "../test/dialogs.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
 import { LongText, type LongTextProps } from "./long-text.tsx";
@@ -51,6 +52,18 @@ function described(element: Element): string[] {
 verifies("kit.long-text", () => {
   it("is the kit's TextArea on desktop", () => {
     const { container } = render(<Instructions />);
+    expect(container.querySelector("textarea")?.value).toBe("Sort the inbox.");
+    expect(folded(container)).toBeNull();
+  });
+
+  it("stays a textarea on a phone inside a form sheet", () => {
+    const { container } = render(
+      onPhone(
+        <InFormSheetContext value={true}>
+          <Instructions />
+        </InFormSheetContext>,
+      ),
+    );
     expect(container.querySelector("textarea")?.value).toBe("Sort the inbox.");
     expect(folded(container)).toBeNull();
   });

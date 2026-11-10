@@ -45,11 +45,13 @@ export function rowHandlers<Id extends string>({
         onToggle?.(id);
       }
     },
-    // A middle click opens a new tab, as on a link.
+    // A middle click opens a new tab, as on a link; with Shift or Alt held it does nothing.
     onAuxClick: (event: MouseEvent<HTMLTableCellElement>) => {
       if (event.button === 1 && !isUnavailable && onOpen !== undefined) {
         event.preventDefault();
-        onOpenInNewTab?.(id);
+        if (!(event.shiftKey || event.altKey)) {
+          onOpenInNewTab?.(id);
+        }
       }
     },
     onKeyDown: (event: KeyboardEvent<HTMLTableCellElement>) => {
