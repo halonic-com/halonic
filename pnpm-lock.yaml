@@ -339,6 +339,27 @@ importers:
         specifier: workspace:*
         version: link:../../packages/studio/services
     devDependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/fs-node
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../packages/adapters/memory
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../packages/core/engine
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../packages/core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../packages/core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../packages/core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../packages/core/std
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../packages/studio/kit
