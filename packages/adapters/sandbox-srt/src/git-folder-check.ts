@@ -9,7 +9,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { submoduleGitFolders } from "./git-deny-paths.ts";
 
 /** What one `commondir` file was when the session started: its content, its link target, or nothing. */
@@ -110,6 +110,67 @@ export async function snapshotGitFolder(workingFolder: string): Promise<GitFolde
     if (await isRealFolder(dirname(path))) folders.add(dirname(path));
   }
   return { gitFolder, originals, folders };
+}
+
+/** What a linked worktree's own `commondir` says: its git folder's parent's parent, the main `.git`. */
+const linkedCommondir = "../..";
+
+/** The text of a `commondir` file if there is one, else `null`; a link or a folder there gives a text that matches nothing. */
+async function commondirText(path: string): Promise<string | null> {
+  const stat = await lstat(path).catch(() => null);
+  if (stat === null) return null;
+  if (!stat.isFile()) return "(not a file)";
+  return (await readFile(path, "utf8")).trim();
+}
+
+/** The git folder a linked worktree's or submodule's `.git` file leads to, or `null` when it is not a plain `gitdir:` line. */
+async function gitdirOf(workingFolder: string, dotGit: string): Promise<string | null> {
+  const text = await readFile(dotGit, "utf8").catch(() => "");
+  const target = /^gitdir:[ \t]*(.+?)\r?$/m.exec(text)?.[1];
+  return target === undefined ? null : resolve(workingFolder, target);
+}
+
+/**
+ * Checks, with no snapshot to compare to, that the working folder's git folder has
+ * no `commondir` it should not have. Git reads config and hooks from the folder a
+ * `commondir` names, and a snapshot taken now would keep one a program planted in an
+ * earlier session as the state to restore, so the session must not open on it:
+ *
+ * - the main `.git` folder has no `commondir`;
+ * - each linked worktree's folder in it, and the git folder a linked worktree's or a
+ *   submodule's `.git` file leads to, has none or says `../..`;
+ * - a submodule's git folder in `.git/modules` has none.
+ *
+ * @throws when one is found, naming it, so the session doesn't open.
+ */
+export async function checkCommondirs(workingFolder: string): Promise<void> {
+  const dotGit = join(workingFolder, ".git");
+  const stat = await lstat(dotGit).catch(() => null);
+  const wrong: string[] = [];
+  const expect = async (path: string, allowed: readonly (string | null)[]) => {
+    const text = await commondirText(path);
+    if (!allowed.includes(text)) wrong.push(path);
+  };
+  if (stat?.isDirectory()) {
+    await expect(join(dotGit, "commondir"), [null]);
+    const worktrees = join(dotGit, "worktrees");
+    const names = (await isRealFolder(worktrees)) ? await readdir(worktrees).catch(() => []) : [];
+    for (const name of names) {
+      await expect(join(worktrees, name, "commondir"), [null, linkedCommondir]);
+    }
+    for (const module of await submoduleGitFolders(dotGit)) {
+      await expect(join(module, "commondir"), [null]);
+    }
+  } else if (stat?.isFile()) {
+    const gitFolder = await gitdirOf(workingFolder, dotGit);
+    if (gitFolder !== null) await expect(join(gitFolder, "commondir"), [null, linkedCommondir]);
+  }
+  if (wrong.length > 0) {
+    throw new Error(
+      `a commondir that redirects git's settings is in ${wrong.join(", ")}. A program could ` +
+        "have planted it, and the sandbox can't tell. Check the file, delete it, then open the session again.",
+    );
+  }
 }
 
 /** Puts one `commondir` file back. Throws, writing nothing, when a folder above it is no longer a real folder. */

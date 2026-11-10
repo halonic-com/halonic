@@ -86,6 +86,26 @@ verifies("cli.commands.doctor.check-this-computer", () => {
     ]);
   });
 
+  it("recovers what a crashed session left before it checks", async () => {
+    const order: string[] = [];
+    const base = machine();
+    const computer: DoctorMachine = {
+      ...base,
+      recoverSandbox: async () => void order.push("recover"),
+      sandbox: {
+        ...base.sandbox,
+        check: async () => {
+          order.push("check");
+          return { ok: true, reason: null, missing: [] };
+        },
+      },
+    };
+
+    await runCli(["doctor"], captureIo(folder), [createDoctorCommand(() => computer)]);
+
+    expect(order).toEqual(["recover", "check"]);
+  });
+
   it("checks the workspace's trust and asks its model server what it has loaded", async () => {
     writeAcme();
     const io = captureIo(folder);

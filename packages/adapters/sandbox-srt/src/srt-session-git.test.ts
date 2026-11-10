@@ -47,16 +47,17 @@ verifies("sandbox-srt.session", () => {
     });
 
     it("restores a commondir the program changed or deleted", async () => {
-      const main = join(git, "commondir");
-      const linked = join(git, "worktrees", "feature", "commondir");
-      await writeFile(main, "..\n");
-      await writeFile(linked, "../..\n");
+      const changed = join(git, "worktrees", "feature", "commondir");
+      const deleted = join(git, "worktrees", "other", "commondir");
+      await mkdir(join(git, "worktrees", "other"));
+      await writeFile(changed, "../..\n");
+      await writeFile(deleted, "../..\n");
       const { session, blocks } = await open();
-      await writeFile(main, "../elsewhere\n");
-      await rm(linked);
+      await writeFile(changed, "../elsewhere\n");
+      await rm(deleted);
       await session.close();
-      expect(readFileSync(main, "utf8")).toBe("..\n");
-      expect(readFileSync(linked, "utf8")).toBe("../..\n");
+      expect(readFileSync(changed, "utf8")).toBe("../..\n");
+      expect(readFileSync(deleted, "utf8")).toBe("../..\n");
       expect(blocks).toHaveLength(2);
     });
 
@@ -126,7 +127,6 @@ verifies("sandbox-srt.session", () => {
       const module = join(git, "modules", "docs");
       await mkdir(module, { recursive: true });
       await writeFile(join(module, "HEAD"), "ref: refs/heads/main\n");
-      await writeFile(join(module, "commondir"), "../..\n");
       const { session } = await open();
       await rm(module, { recursive: true });
       await symlink(outside, module);
@@ -144,11 +144,11 @@ verifies("sandbox-srt.session", () => {
     });
 
     it("leaves an unchanged commondir alone and says nothing", async () => {
-      const main = join(git, "commondir");
-      await writeFile(main, "..\n");
+      const linked = join(git, "worktrees", "feature", "commondir");
+      await writeFile(linked, "../..\n");
       const { session, blocks } = await open();
       await session.close();
-      expect(readFileSync(main, "utf8")).toBe("..\n");
+      expect(readFileSync(linked, "utf8")).toBe("../..\n");
       expect(blocks).toEqual([]);
     });
 

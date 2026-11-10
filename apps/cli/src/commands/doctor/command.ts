@@ -37,6 +37,7 @@ export function createDoctorCommand(machine: () => DoctorMachine): CliCommand {
       const given = givenDir(input);
       const workspace = await readWorkspace(workspaceDir(input, context.cwd), given !== undefined);
       const computer = machine();
+      await computer.recoverSandbox?.();
       const doctor = await doctorService(computer, context.secrets, workspace);
       const report = await doctor.check(workspace?.workspace ?? null);
       const lines = doctorReportLines(report, {

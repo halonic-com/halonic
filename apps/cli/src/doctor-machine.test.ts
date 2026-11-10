@@ -1,10 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DoctorWorkspace } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type DoctorMachine, doctorService, nodeDoctorMachine } from "./doctor-machine.ts";
+import {
+  type DoctorMachine,
+  doctorService,
+  nodeDoctorMachine,
+  sandboxJournalFolder,
+} from "./doctor-machine.ts";
 import { noSecrets } from "./remembered-secrets.ts";
 
 let profile: string;
@@ -128,5 +133,45 @@ describe("nodeDoctorMachine", () => {
 
     expect(computer.system).toMatch(/^(Linux|macOS|Windows|\w+) \w+$/);
     expect(computer.harnesses.map((harness) => harness.id)).toEqual(["claude-code", "codex"]);
+  });
+});
+
+describe("nodeDoctorMachine recovery", () => {
+  it("undoes the commondir a crashed session's journal names, from the profile's journal folder", async () => {
+    const home = process.env["HALONIC_HOME"];
+    process.env["HALONIC_HOME"] = profile;
+    try {
+      const gitFolder = join(profile, "work", ".git");
+      mkdirSync(gitFolder, { recursive: true });
+      writeFileSync(join(gitFolder, "commondir"), "../elsewhere\n");
+      const journals = sandboxJournalFolder({ platform: "linux", root: profile });
+      mkdirSync(journals, { mode: 0o700 });
+      writeFileSync(
+        join(journals, "crashed.json"),
+        JSON.stringify({
+          pid: 2 ** 22 + 1,
+          gitFolder,
+          originals: [[join(gitFolder, "commondir"), { kind: "absent" }]],
+          folders: [gitFolder],
+        }),
+        { mode: 0o600 },
+      );
+
+      await nodeDoctorMachine().recoverSandbox?.();
+
+      expect(existsSync(join(gitFolder, "commondir"))).toBe(false);
+      expect(existsSync(join(journals, "crashed.json"))).toBe(false);
+    } finally {
+      if (home === undefined) delete process.env["HALONIC_HOME"];
+      else process.env["HALONIC_HOME"] = home;
+    }
+  });
+});
+
+describe("sandboxJournalFolder", () => {
+  it("is a folder of the profile, not the shared temp folder", () => {
+    expect(sandboxJournalFolder({ platform: "linux", root: profile })).toBe(
+      join(profile, "sandbox-journals"),
+    );
   });
 });

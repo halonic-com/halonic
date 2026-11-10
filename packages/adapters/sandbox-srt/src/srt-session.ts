@@ -15,6 +15,7 @@ import type {
 import { proveFence } from "./fence-proof.ts";
 import { gitPathsToDeny } from "./git-deny-paths.ts";
 import {
+  checkCommondirs,
   type GitFolderSnapshot,
   restoreGitFolder,
   snapshotGitFolder,
@@ -223,6 +224,7 @@ export class SrtSession implements SandboxSession {
     const startedAt = Date.now();
     assertVariableNames(profile);
     await mkdir(profile.tempFolder, { recursive: true });
+    await checkCommondirs(profile.workingFolder);
     const git = {
       folder: await snapshotGitFolder(profile.workingFolder),
       nested: await snapshotNestedGit(profile.workingFolder),
