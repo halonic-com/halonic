@@ -7,6 +7,7 @@ import type {
 import { KindedError } from "@halonicjs/std";
 import { anthropicRoute } from "./anthropic-route.ts";
 import { openBridge } from "./bridge.ts";
+import { mcpRoutes } from "./mcp-route.ts";
 import { openAiRoute } from "./openai-route.ts";
 import type { Fetch, UpstreamLimits } from "./pass-through.ts";
 import type { BodyLimits } from "./read-body.ts";
@@ -77,10 +78,10 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
       fetch: options.fetch ?? globalThis.fetch,
       limits: { ...defaultUpstreamLimits, ...options.upstreamLimits },
     };
-    // The MCP endpoint comes with a later step of the build plan.
     this.#routes = [
       anthropicRoute({ secrets: options.secrets, ...upstream }),
       openAiRoute({ secrets: options.secrets, ...upstream }),
+      ...mcpRoutes(),
     ];
   }
 

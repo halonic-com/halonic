@@ -6,8 +6,8 @@ the `x-halonic-run-token` header. It passes the program's model
 requests on to the provider's one fixed host: Anthropic's (`POST
 /v1/messages`) to `https://api.anthropic.com` and OpenAI's (`POST
 /v1/responses`) to `https://api.openai.com`, so keys, integrations and
-approvals stay outside the sandbox. Serving Halonic's tools over MCP comes
-with a later step of the build plan; the bridge doesn't serve it yet.
+approvals stay outside the sandbox. It also serves Halonic's tools for the
+run's agent over MCP at `/mcp`.
 
 - **Layer:** adapters
 - **Owner:** owen
@@ -51,12 +51,20 @@ try {
   and records the call's tokens at a cost of 0, paid by the subscription.
   The run token is read only from `x-halonic-run-token`, never from
   `authorization`.
+- **MCP.** `POST /mcp` speaks MCP's streamable HTTP transport, one JSON-RPC
+  message per request with one JSON reply: `initialize`, `ping`, `tools/list`
+  and `tools/call`, backed by the run's `BridgeTools`. Each call is checked
+  first, by the same rules as the built-in loop; a refused call doesn't run
+  and the program reads `Refused: <reason>`. A call that runs is recorded as
+  `tool.called` and `tool.result`. A call that needs a person's OK is
+  refused until the bridge can ask for approvals (build plan B7). `GET /mcp`
+  gets a 405: the bridge sends no messages of its own.
 - **Closing.** `close()` refuses new requests, aborts the ones in flight and
   resolves once they have ended or the close time limit has passed. Closing
   twice is safe.
 
 The rules are in `requirements/`: `server.md`, `pass-through.md`,
-`anthropic.md`, `openai.md`, `sign-in.md` and `spend.md`.
+`anthropic.md`, `openai.md`, `sign-in.md`, `spend.md` and `mcp.md`.
 
 ## Options
 
