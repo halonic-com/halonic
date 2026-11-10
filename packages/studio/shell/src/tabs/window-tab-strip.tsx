@@ -6,6 +6,7 @@ import {
   type ReactNode,
   type RefObject,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -14,6 +15,7 @@ import { useNarrowWindow } from "../frame/frame-effects.ts";
 import { OpenTabsMenu } from "./open-tabs-menu.tsx";
 import { dragTargetIndex, TAB_DRAG_THRESHOLD, type TabSpan } from "./tab-drag.ts";
 import { currentLocation, type TabLocation, type TabSet, type WindowTab } from "./tab-set.ts";
+import { type TabMenuActions, useWindowTabMenu, WindowTabMenu } from "./window-tab-menu.tsx";
 
 /**
  * Finds the window tab strip, which a page can tell from a `tablist` of its own (a kit `Tabs`) by
@@ -35,8 +37,9 @@ export interface WindowTabStripProps {
 
 /**
  * The window tabs in the title bar (component specs 24.5): one `tablist` named "Open tabs" and one
- * Tab stop. ← and → move the focus, Enter or Space opens the focused tab, Delete closes it, and
- * Ctrl Shift PageUp and PageDown move it. Dragging a tab moves it too, with no motion: it jumps
+ * Tab stop. ← and → move the focus, Enter or Space opens the focused tab, Delete closes it,
+ * Ctrl Shift PageUp and PageDown move it, and Shift F10 or the Menu key opens its tab menu, as a
+ * right-click does. Dragging a tab moves it too, with no motion: it jumps
  * to its new place as the pointer crosses a neighbour's middle. Tabs are 200px, shrink together
  * to 96px, and then the strip scrolls sideways with the active tab kept in view. **+** after the
  * last tab opens a new tab on Home.
@@ -61,14 +64,30 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
   const rovingId = state.tabs.find((tab) => tab.id === focusedId)?.id ?? state.activeId;
   const startDrag = useTabDrag(tabs, elements);
   const narrow = useNarrowWindow();
+  const menu = useWindowTabMenu();
 
   useEffect(() => {
     elements.current.get(state.activeId)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [state.activeId]);
 
+  // A tab that isn't drawn yet, such as one just reopened, gets the focus once it is.
+  const pendingFocus = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    const tabId = pendingFocus.current;
+    if (tabId !== undefined && elements.current.has(tabId)) {
+      pendingFocus.current = undefined;
+      elements.current.get(tabId)?.focus();
+    }
+  });
+
   const focusTab = (tabId: string) => {
     setFocusedId(tabId);
-    elements.current.get(tabId)?.focus();
+    const element = elements.current.get(tabId);
+    if (element === undefined) {
+      pendingFocus.current = tabId;
+    } else {
+      element.focus();
+    }
   };
 
   const onBlur = (event: FocusEvent<HTMLDivElement>) => {
@@ -83,6 +102,10 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
       return;
     }
     event.preventDefault();
+    if (key === "menu") {
+      menu.openBelow(rovingId, elements.current.get(rovingId));
+      return;
+    }
     const focusNext = runStripKey(tabs, rovingId, key);
     if (focusNext !== undefined) {
       focusTab(focusNext);
@@ -98,6 +121,20 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
     );
   }
 
+  const menuActions: TabMenuActions = {
+    close: (tabId) => {
+      const focusNext = runStripKey(tabs, tabId, "close");
+      if (focusNext !== undefined) {
+        focusTab(focusNext);
+      }
+    },
+    closeOthers: (tabId) => tabs.closeOthers(tabId),
+    reopenClosed: () => {
+      tabs.reopenClosed();
+      focusTab(tabs.state.activeId);
+    },
+  };
+
   return (
     <>
       <div
@@ -107,6 +144,7 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
         className={stripClasses}
         onKeyDown={onKeyDown}
         onBlur={onBlur}
+        onContextMenu={menu.onContextMenu}
       >
         {state.tabs.map((tab) => (
           <WindowTabView
@@ -130,6 +168,7 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
           />
         ))}
       </div>
+      <WindowTabMenu tabs={tabs} target={menu.target} actions={menuActions} onClose={menu.close} />
       <NewTabButton tabs={tabs} onNewTab={onNewTab} />
     </>
   );
@@ -242,7 +281,7 @@ function spanOf(element: HTMLElement | undefined): TabSpan {
 }
 
 /** What a key does in the strip, or `undefined` when the strip leaves it alone. */
-type StripKey = "previous" | "next" | "activate" | "close" | "move-left" | "move-right";
+type StripKey = "previous" | "next" | "activate" | "close" | "move-left" | "move-right" | "menu";
 
 function stripKey(event: KeyboardEvent): StripKey | undefined {
   const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
@@ -254,6 +293,10 @@ function stripKey(event: KeyboardEvent): StripKey | undefined {
   if (ctrlShift && event.key === "PageDown") {
     return "move-right";
   }
+  const onlyShift = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+  if (onlyShift && event.key === "F10") {
+    return "menu";
+  }
   if (!plain) {
     return undefined;
   }
@@ -263,6 +306,7 @@ function stripKey(event: KeyboardEvent): StripKey | undefined {
     Enter: "activate",
     " ": "activate",
     Delete: "close",
+    ContextMenu: "menu",
   };
   return keys[event.key];
 }
@@ -272,7 +316,11 @@ function stripKey(event: KeyboardEvent): StripKey | undefined {
  * `undefined` when it stays. After a close the focus goes to the tab that became active, or to
  * the one now in the closed tab's place.
  */
-function runStripKey(tabs: TabSet, tabId: string, key: StripKey): string | undefined {
+function runStripKey(
+  tabs: TabSet,
+  tabId: string,
+  key: Exclude<StripKey, "menu">,
+): string | undefined {
   const before = tabs.state;
   const index = before.tabs.findIndex((tab) => tab.id === tabId);
   switch (key) {

@@ -75,7 +75,9 @@ the active one and returns `{ tab, added }`. A place open in another tab is neve
 say it is already open. Home is the exception, because every new tab (`newTab`, + and Ctrl T) starts
 there. Closing the active tab activates the one to its right, else
 its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T) brings back the
-last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab, closed ones too. `back` and `forward` return `false`
+last of up to 20 closed tabs with their history. `closeOthers` keeps one tab and closes the rest,
+which Ctrl Shift T brings back one by one in their places; `canReopenClosed` says whether any can
+come back. `rename` updates a place's title in every tab, closed ones too. `back` and `forward` return `false`
 at either end. `activate`, `cycle` (Ctrl Tab, wraps), `activateAt` (`-1` is the last tab), `move` and
 `close` do what they say.
 
@@ -89,7 +91,15 @@ and shrink together to 96px, then the strip scrolls with the active tab kept in 
 its place on every tab and shows on the active one, on hover and on keyboard focus. **+** opens a
 new tab on Home and calls `onNewTab`, so the frame can open Ctrl K there. Nothing on a tab is
 `fg-subtle`. Dragging a tab moves it, with no motion: it jumps to its new place as the pointer
-crosses a neighbour's middle. The tab menu and the tooltips come in later pull requests.
+crosses a neighbour's middle.
+
+**The tab menu** opens with Shift F10 or the Menu key below the focused tab, with focus on its first
+item, or with a right-click at the pointer, without making that tab active. It's the kit's
+`ContextMenu`, named after the tab's title, with **Close**, **Close other tabs** (unusable on the
+only tab) and **Reopen closed tab** (unusable until a tab has closed). After Close the focus goes to
+the tab that took its place; after Reopen, to the reopened tab. It shows no keys yet: the desktop
+app's Ctrl W and Ctrl Shift T get their hints with the shell's Kbd helper. The tooltips come in a
+later pull request.
 
 In a narrow window (600 to 899px) the strip folds the tabs into one header badge, "3 open tabs ▾",
 with **+** after it (component specs 24.5 T5). It shows the 6px dot and says "3 open tabs, 1 needs

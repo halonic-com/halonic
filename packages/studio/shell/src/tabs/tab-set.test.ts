@@ -216,6 +216,28 @@ verifies("shell.tab-set", () => {
     expect(tabs.state.tabs).toHaveLength(reopenableTabs + 1);
   });
 
+  it("closes every other tab, keeps that one active, and brings them back in their places", () => {
+    const tabs = tabsOn(agents, sorter, writer, supportReply);
+    expect(tabs.canReopenClosed).toBe(false);
+    tabs.closeOthers(tabs.state.tabs[1]?.id ?? "");
+    expect(strip(tabs)).toEqual(["*Sorter"]);
+    expect(tabs.canReopenClosed).toBe(true);
+    tabs.reopenClosed();
+    expect(strip(tabs)).toEqual(["*Agents", "Sorter"]);
+    tabs.reopenClosed();
+    tabs.reopenClosed();
+    expect(strip(tabs)).toEqual(["Agents", "Sorter", "Writer", "*Support reply"]);
+    expect(tabs.canReopenClosed).toBe(false);
+  });
+
+  it("leaves a lone tab alone when asked to close the others", () => {
+    const tabs = tabsOn(agents);
+    const before = tabs.state;
+    tabs.closeOthers(tabs.active.id);
+    expect(tabs.state).toBe(before);
+    expect(tabs.canReopenClosed).toBe(false);
+  });
+
   it("moves a tab anywhere in the strip", () => {
     const tabs = tabsOn(agents, sorter, writer);
     tabs.move(tabs.state.tabs[2]?.id ?? "", 0);

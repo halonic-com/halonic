@@ -156,8 +156,7 @@ export class TabSet {
     if (tab === undefined) {
       return;
     }
-    this.closed.push({ tab, index });
-    this.closed.splice(0, Math.max(0, this.closed.length - reopenableTabs));
+    this.remember(tab, index);
     const tabs = this.current.tabs.filter((other) => other.id !== tabId);
     if (tabs.length === 0) {
       const home = this.createTab(homeLocation);
@@ -169,6 +168,29 @@ export class TabSet {
         ? (tabs[Math.min(index, tabs.length - 1)] as WindowTab).id
         : this.current.activeId;
     this.update({ tabs, activeId });
+  }
+
+  /**
+   * Closes every tab but `tabId`, which becomes active (the tab menu's Close other tabs). Ctrl
+   * Shift T brings them back one by one, leftmost first, each in its old place.
+   */
+  closeOthers(tabId: string): void {
+    if (this.tab(tabId) === undefined || this.current.tabs.length === 1) {
+      return;
+    }
+    // From the right, so each one's index still holds when the ones left of it come back first.
+    const others = this.current.tabs.map((tab, index) => ({ tab, index }));
+    for (const { tab, index } of others.reverse()) {
+      if (tab.id !== tabId) {
+        this.remember(tab, index);
+      }
+    }
+    this.update({ tabs: this.current.tabs.filter((tab) => tab.id === tabId), activeId: tabId });
+  }
+
+  /** Whether a closed tab can come back, so the tab menu can show Reopen closed tab as unusable. */
+  get canReopenClosed(): boolean {
+    return this.closed.length > 0;
   }
 
   /**
@@ -247,6 +269,12 @@ export class TabSet {
     }
     this.replace(tab.id, { ...tab, position });
     return true;
+  }
+
+  /** Keeps a closed tab and its place for Ctrl Shift T, forgetting the oldest beyond the limit. */
+  private remember(tab: WindowTab, index: number): void {
+    this.closed.push({ tab, index });
+    this.closed.splice(0, Math.max(0, this.closed.length - reopenableTabs));
   }
 
   private createTab(location: TabLocation): WindowTab {
