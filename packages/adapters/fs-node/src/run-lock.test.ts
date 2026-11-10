@@ -104,6 +104,8 @@ const sharedCases = JSON.parse(
     "utf8",
   ),
 ) as {
+  staleAfterMs: number;
+  takeoverStaleAfterMs: number;
   now: string;
   thisHost: string;
   runningPids: number[];
@@ -326,6 +328,11 @@ verifies("fs-node.run-store-lock", () => {
       await writeFile(file, other, "utf8");
     });
     expect(await readFile(file, "utf8")).toBe(other);
+  });
+
+  it("uses the same stale limits as the Rust run lock", () => {
+    expect(runLockStaleAfterMs).toBe(sharedCases.staleAfterMs);
+    expect(runLockTakeoverStaleAfterMs).toBe(sharedCases.takeoverStaleAfterMs);
   });
 
   it.each(sharedCases.cases)("judges the shared case: $name", ({ text, changedAt, stale }) => {
