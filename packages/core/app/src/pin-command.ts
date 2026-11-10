@@ -27,6 +27,11 @@ export interface RunnerWords {
   readonly command: string | undefined;
   /** The words after the command word, which `npx` and `uvx` pass on to it. */
   readonly passedOn: readonly string[];
+  /**
+   * The words of `passedOn` before a `--`, which `npm exec` still reads as
+   * its own options. Empty when a `--` comes before the command word.
+   */
+  readonly late: readonly string[];
   /** The first package option among `options`, such as `-p` or `--from`. */
   readonly packageOption: string | undefined;
   /**
@@ -66,15 +71,14 @@ export function readRunnerWords(
   }
   const options = words.slice(0, index);
   const passedOn = words.slice(index + 1);
-  const read = passedOn.indexOf("--") === -1 ? passedOn : passedOn.slice(0, passedOn.indexOf("--"));
+  const late = afterDashes ? [] : wordsBeforeDashes(passedOn);
   return {
     options,
     command: words[index],
     passedOn,
+    late,
     packageOption: options.map(optionName).find((name) => packageOptions.has(name)),
-    lateOption: afterDashes
-      ? undefined
-      : read.map(optionName).find((name) => packageOptions.has(name)),
+    lateOption: late.map(optionName).find((name) => packageOptions.has(name)),
   };
 }
 
@@ -148,8 +152,14 @@ export function leadingName(registry: PinRegistry, word: string): string {
   return /^[A-Za-z0-9._-]*/.exec(word)?.[0] ?? "";
 }
 
+/** The words before the first `--`, or all of them without one. */
+function wordsBeforeDashes(words: readonly string[]): readonly string[] {
+  const dashes = words.indexOf("--");
+  return dashes === -1 ? words : words.slice(0, dashes);
+}
+
 /** The option a word sets, before any `=`, or the word itself. */
-function optionName(word: string): string {
+export function optionName(word: string): string {
   return word.startsWith("-") ? (word.split("=", 1)[0] ?? word) : word;
 }
 

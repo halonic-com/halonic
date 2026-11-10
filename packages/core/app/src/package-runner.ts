@@ -7,6 +7,7 @@ import type { ConnectorPin, ConnectorTransport } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import { checkPinVersion, isSamePackage, type PinRegistry } from "./connector-pin.ts";
 import { readPackageSpec } from "./package-spec.ts";
+import { checkAllowedOptions } from "./pin-allowed-options.ts";
 import {
   checkCommandWord,
   leadingName,
@@ -126,7 +127,9 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
  * `readRunnerWords` finds it, must be the pin's package, or with `-p`,
  * `--package`, `--from`, `--with` or `--spec` before it, the pin's own
  * program. A package option after the command word, before a `--`, is
- * refused, because runners differ on whether they read it.
+ * refused, because runners differ on whether they read it. Before the
+ * command word, and for `npm` after it up to a `--`, the runner may only
+ * set the few options `checkAllowedOptions` allows.
  *
  * @returns the pin to start, `null` for a transport without one, or the
  *   reason to refuse
@@ -183,9 +186,14 @@ function checkRunnerWords(
       `the command sets ${options.join(", ")}, which could fetch the pinned package from somewhere other than ${pin.registryUrl}`,
     );
   }
-  const runner = readRunnerWords(runnerSubcommandsOf(program), words);
+  const subcommands = runnerSubcommandsOf(program);
+  const runner = readRunnerWords(subcommands, words);
   const named = checkNamedPackages(pin, words, runner);
-  return named.ok ? checkCommandWord(pin, runner) : named;
+  if (!named.ok) {
+    return named;
+  }
+  const commandWord = checkCommandWord(pin, runner);
+  return commandWord.ok ? checkAllowedOptions(pin, program, subcommands, runner) : commandWord;
 }
 
 /**

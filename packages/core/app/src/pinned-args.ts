@@ -28,7 +28,7 @@ export function pinnedRunnerArgs(
 ): string[] {
   const program = programName(command);
   const runner = readRunnerWords(runnerSubcommandsOf(program), args);
-  const options = runner.options.map((word, index) => pinnedOption(pin, runner.options, index));
+  const options = runner.options.map((_, index) => pinnedOption(pin, runner.options, index));
   if (runner.command === undefined) {
     return options;
   }

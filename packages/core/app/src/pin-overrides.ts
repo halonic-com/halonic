@@ -15,11 +15,14 @@ interface VariableGroup {
  * config file or another cache, a folder whose config or installed packages
  * the runner reads, a requirements file, a host it may reach without TLS,
  * or another proxy or certificate. Compared in lowercase, before any `=`.
+ * `--reg` is npm's shortened `--registry`; the other shortened spellings
+ * are refused by `checkAllowedOptions`, which allows only a few options.
  * `-i` and `-f` are the short forms of `--index-url` and `--find-links`;
  * `-c` stands for npm's `-C` (`--prefix`) and pnpm's `-C` (`--dir`).
  */
 const registryOptions = new Set([
   "--registry",
+  "--reg",
   "--userconfig",
   "--globalconfig",
   "--cache",
