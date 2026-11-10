@@ -1,5 +1,5 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxBlock } from "@halonicjs/ports";
@@ -108,6 +108,21 @@ verifies("sandbox-srt.session", () => {
       await session.close();
       expect(readFileSync(main, "utf8")).toBe("..\n");
       expect(blocks).toEqual([]);
+    });
+
+    it("still reports the refused write, then rejects close(), when an undo fails", async () => {
+      const linked = join(git, "worktrees", "feature");
+      const commondir = join(linked, "commondir");
+      await writeFile(commondir, "../..\n");
+      const { session, blocks } = await open();
+      await writeFile(commondir, "../elsewhere\n");
+      await chmod(linked, 0o500);
+      try {
+        await expect(session.close()).rejects.toThrow(commondir);
+      } finally {
+        await chmod(linked, 0o700);
+      }
+      expect(blocks).toEqual([{ kind: "file", path: commondir, access: "write" }]);
     });
 
     it("does nothing when the working folder has no git folder", async () => {

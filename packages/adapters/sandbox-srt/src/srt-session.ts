@@ -309,30 +309,37 @@ export class SrtSession implements SandboxSession {
   async #expire(): Promise<void> {
     this.#timedOut ||= this.#closing === null;
     this.#closing ??= this.#shutDown(true);
-    await this.#closing;
+    // Nobody awaits the timer, so a failed undo has no caller to reach there: `close()` reports it.
+    await this.#closing.catch(() => undefined);
   }
 
   async #shutDown(timedOut: boolean): Promise<void> {
     clearTimeout(this.#timer);
     this.#detach();
     await Promise.all([...this.#started].map((started) => this.#stop(started, timedOut)));
-    await this.#checkGitFolder();
+    const failed = await this.#checkGitFolder();
     this.#fence = { state: "stopped" };
     this.#listeners.clear();
     await rm(this.#folder, { recursive: true, force: true });
+    if (failed.length > 0) {
+      throw new Error(`Could not undo a change to the git folder: ${failed.join(", ")}`);
+    }
   }
 
   /**
    * Undoes a `commondir` file the program added or changed in the working
    * folder's git folder, once nothing it started is left to change it again,
    * and reports each one as a refused write.
+   *
+   * @returns the paths it could not undo, so `close()` can reject with them.
    */
-  async #checkGitFolder(): Promise<void> {
-    if (this.#gitFolder === null) return;
+  async #checkGitFolder(): Promise<string[]> {
+    if (this.#gitFolder === null) return [];
     const { undone, failed } = await restoreGitFolder(this.#gitFolder);
     for (const path of [...undone, ...failed]) {
       for (const listener of this.#listeners) listener({ kind: "file", path, access: "write" });
     }
+    return failed;
   }
 
   async #stop(started: Started, timedOut = false): Promise<void> {
