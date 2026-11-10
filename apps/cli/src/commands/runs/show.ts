@@ -6,9 +6,9 @@
 // where the run log is (Liam, HAL-1984). The words are the catalogue's
 // (`runsMessages`).
 
-import { hubWorkflows, type RunDetail, RunHistory, shortRunId, workflowIn } from "@halonicjs/app";
+import { type RunDetail, RunHistory, shortRunId } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
-import { definitionsOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { loadWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -23,7 +23,7 @@ import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
 import { workspaceModelsOf } from "../../run-failure-of.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
-import { type RunDefinitions, stepLines } from "../../run-view.ts";
+import { runViewDefinitions, stepLines } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import type { RunListSetup } from "./list.ts";
@@ -68,7 +68,7 @@ export async function showRun(
     case "one": {
       const { run } = lookup;
       const loaded = await loadWorkspace(workspace.store);
-      const definitions = runDefinitions(loaded, run.summary);
+      const definitions = runViewDefinitions(loaded, run.summary);
       const title = workflowTitle(definitions.workflow, run.summary);
       const clock = setup.clock();
       const steps = stepLines(run.events, run.summary, definitions, clock);
@@ -98,23 +98,6 @@ function oneRunId(input: CommandInput): string {
     throw new UsageError(runsMessages.showTakesOneRunId(input.positionals.map(printable)));
   }
   return runId;
-}
-
-/**
- * The definitions the run's steps are named by, from its own hub. A hub
- * that's no longer in the workspace leaves the workflow and its agents
- * unknown, so the steps are named by their ids.
- */
-function runDefinitions(loaded: LoadedWorkspace, summary: RunSummary): RunDefinitions {
-  const workflow = workflowIn(hubWorkflows(loaded), summary.hubId, summary.workflowId);
-  if (workflow === undefined) {
-    return { workflow, agent: () => undefined };
-  }
-  const { agents } = definitionsOf(loaded, summary.hubId);
-  return {
-    workflow,
-    agent: (agentId) => (Object.hasOwn(agents, agentId) ? agents[agentId] : undefined),
-  };
 }
 
 /** "Support reply in acme · run 01jd8q · started 14:01, finished 14:02". */

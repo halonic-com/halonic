@@ -95,7 +95,10 @@ export class WorkflowRuns {
    * @param options - `signal` stops following; aborted before the start, nothing starts.
    *   `onEvent` sees each event while the run goes, as for {@link WorkflowRuns.follow}
    * @throws what the executor's `start` throws, such as for a refused input
-   * @throws RunFollowStopped when `options.signal` stops the follow
+   * @throws the signal's reason, an `AbortError` by default, when
+   *   `options.signal` was aborted before the start: nothing started
+   * @throws RunFollowStopped when `options.signal` stops the follow, also
+   *   while `start` is still in flight, with no events yet
    *
    * @example
    * await workflowRuns.startRun(workspace, "support-reply", { ticket: 42 });

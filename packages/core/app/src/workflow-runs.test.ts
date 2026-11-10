@@ -80,7 +80,8 @@ verifies("app.run-start", () => {
       { signal },
     );
 
-    await expect(start).rejects.toThrow();
+    // An `AbortError`, not `RunFollowStopped`: nothing started, so there is no run to name.
+    await expect(start).rejects.toMatchObject({ name: "AbortError" });
     expect(executor.starts).toEqual([]);
   });
 });

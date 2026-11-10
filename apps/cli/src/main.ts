@@ -1,3 +1,4 @@
+import { EnvSecrets } from "@halonicjs/adapter-env-secrets";
 import { profileFolder } from "@halonicjs/profile";
 import { commands } from "./generated/commands.ts";
 import { LineReader } from "./output/line-reader.ts";
@@ -30,6 +31,8 @@ process.exitCode = await runCli(
       },
       ...(process.stdin.isTTY === true ? { questions: stdinQuestions() } : {}),
     },
+    // `runCli` wraps it, so every key a command reads is scrubbed from what it prints.
+    secrets: new EnvSecrets(process.env),
     stop: {
       signals: process,
       exitNow: exitOnceWritten([process.stdout, process.stderr], (code) => process.exit(code)),

@@ -3,6 +3,11 @@ import { defineMessages } from "./define.ts";
 import { money } from "./money.ts";
 import { markPart, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
+import { trustMessages } from "./trust.ts";
+import { countInWords } from "./words.ts";
+
+/** "Nothing ran.": the fail-closed promise when `run` was refused before its first step (cli-output 1.3). */
+const nothingRan = phrase`Nothing ran.`;
 
 /** Things a run sent, of one kind, such as 1 email: the count and the noun's two forms. */
 export interface SentItems {
@@ -37,7 +42,34 @@ export const runMessages = defineMessages("run", {
   /** What `run` was doing, for "✕ Couldn't run support-reply: …". */
   action: (workflow: string) => phrase`run ${workflow}`,
   /** The end of line 1 when `run` was refused before its first step. */
-  nothingRan: () => phrase`Nothing ran.`,
+  nothingRan: () => nothingRan,
+  /** `--input`'s line in the help. */
+  inputOption: () => phrase`The run's input: a JSON file, or the JSON itself.`,
+  /** `--event`'s line in the help. */
+  eventOption: () =>
+    phrase`What to answer when the run waits for you, such as approve. One per wait, in order.`,
+  /** No workflow, or more than one, on the command line (exit 2). */
+  takesOneWorkflow: (given: readonly string[]) =>
+    given.length === 0
+      ? phrase`halonic run needs a workflow.`
+      : phrase`halonic run takes one workflow, and you gave ${countInWords(given.length)}: ${given.join(", ")}.`,
+  /** The reason after "Couldn't run support-reply:" when `--input` names no file and isn't JSON. */
+  noInputFile: (path: string) => phrase`there's no file ${path}.`,
+  /** The same, when the file or the text isn't JSON; `source` is the file, or left out for the text. */
+  inputNotJson: (source?: string) =>
+    source === undefined
+      ? phrase`the input isn't valid JSON.`
+      : phrase`${source} isn't valid JSON.`,
+  /** The same, when the JSON is a list, a string or a number. */
+  inputNotAnObject: () => phrase`the input must be a JSON object.`,
+  /** The fix under every `--input` problem. */
+  inputFix: () => phrase`Pass a JSON object, in a file or as text: --input '{"mail": "Hi"}'`,
+  /** Line 1's reason when the workspace was never trusted here: F16, then "Nothing ran." (exit 3). */
+  notTrusted: (workspace: string) =>
+    phrase`${trustMessages.notTrustedYet(workspace).phrase} ${nothingRan}`,
+  /** The same, when it changed since it was trusted. */
+  changedSinceTrusted: (workspace: string) =>
+    phrase`${workspace} changed since you trusted it. ${nothingRan}`,
 
   heading: (title: string, workspace: string, runId: string) =>
     phrase`Running ${title} in ${workspace} ${markPart("separator")} run ${runId}`,

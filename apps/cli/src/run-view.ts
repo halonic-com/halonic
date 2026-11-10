@@ -5,9 +5,10 @@
 // words are the catalogue's (`runMessages`, `runsMessages`), so this file
 // holds no text.
 
-import { shortRunId, type WorkflowDefinition } from "@halonicjs/app";
+import { hubWorkflows, shortRunId, type WorkflowDefinition, workflowIn } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { KindValues } from "@halonicjs/format";
+import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { columns } from "./messages/columns.ts";
 import { duration } from "./messages/duration.ts";
 import type { Phrase } from "./messages/phrase.ts";
@@ -29,6 +30,23 @@ export interface RunDefinitions {
   readonly workflow: WorkflowDefinition | undefined;
   /** The agent with this id in the run's hub; `undefined` when it's gone. */
   readonly agent: (agentId: string) => AgentDefinition | undefined;
+}
+
+/**
+ * The definitions the run's steps are named by, from its own hub. A hub
+ * that's no longer in the workspace leaves the workflow and its agents
+ * unknown, so the steps are named by their ids.
+ */
+export function runViewDefinitions(loaded: LoadedWorkspace, summary: RunSummary): RunDefinitions {
+  const workflow = workflowIn(hubWorkflows(loaded), summary.hubId, summary.workflowId);
+  if (workflow === undefined) {
+    return { workflow, agent: () => undefined };
+  }
+  const { agents } = definitionsOf(loaded, summary.hubId);
+  return {
+    workflow,
+    agent: (agentId) => (Object.hasOwn(agents, agentId) ? agents[agentId] : undefined),
+  };
 }
 
 /**
