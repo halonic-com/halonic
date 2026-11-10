@@ -223,8 +223,21 @@ block the merge.
 **Signing.** The approver signs only from a clean worktree of
 `origin/main`, never from the pull request's checkout: there the
 pull request's own code, hooks and pnpm config would run while the private
-key is loaded. Read the note with `git show <pull request head>:decisions/<branch>.md`,
-and sign exactly the text above.
+key is loaded.
+
+```sh
+git fetch origin && git worktree add --detach ../sign origin/main
+cd ../sign && pnpm decision sign <pull request number>
+```
+
+`pnpm decision sign` refuses any other checkout. It reads the note and the
+covered files from git's objects at the pull request's head (as
+`git show <head>:decisions/<branch>.md` would), prints exactly the text it
+signs and then the `- Signature:` line. The author adds that line under
+`- Kind:` and pushes. The key comes from `PAPERCLIP_AGENT_PRIVATE_KEY`, and
+the tool never writes it anywhere. It refuses a note that is already signed,
+malformed or already on `main`, and a key that `approvers.json` doesn't pin
+for the note's kind.
 
 **The note check runs in its own workflow**, `.github/workflows/guard-notes.yml`,
 on `pull_request_target` and in the merge queue. On `pull_request_target`

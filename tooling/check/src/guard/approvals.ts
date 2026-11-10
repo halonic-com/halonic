@@ -91,14 +91,24 @@ function verifyNote(
   } catch (error) {
     return notApproved(`the base branch's ${approversFile} can't be read: ${String(error)}`);
   }
+  const signed = noteSignedText(note, split.unsigned, pull, git);
+  const verdict = verifySigned(signed, split.keyId, split.signature, note.kind, pinned);
+  return verdict.ok ? { approved: true } : notApproved(verdict.reason);
+}
+
+/** The text a signature on `note` must sign for this pull request (see {@link signedText}). */
+export function noteSignedText(
+  note: DecisionNote,
+  unsigned: string,
+  pull: PullRequest,
+  git: GitObjects,
+): string {
   const paths = coveredPaths(note.covers, git, pull.head, pull.base);
-  const signed = signedText({
+  return signedText({
     repo: pull.repo,
     pr: pull.number,
     kind: note.kind,
-    unsigned: split.unsigned,
+    unsigned,
     objects: coveredObjects(paths, git, pull.head),
   });
-  const verdict = verifySigned(signed, split.keyId, split.signature, note.kind, pinned);
-  return verdict.ok ? { approved: true } : notApproved(verdict.reason);
 }
