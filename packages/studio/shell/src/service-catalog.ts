@@ -7,7 +7,7 @@ export interface ServiceLookup {
   /**
    * The service for a key.
    *
-   * @throws ShellError when the feature doesn't list the key in `needs`
+   * @throws ShellError when the feature lists the key in neither `needs` nor `provides`
    */
   get<Service>(key: ServiceKey<Service>): Service;
 }

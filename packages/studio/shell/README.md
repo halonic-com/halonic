@@ -1,7 +1,9 @@
 # @halonicjs/studio-shell
 
-The Studio's feature registry and the contribution points features plug into. Headless: no React
-here yet, only the typed registry and its rules, so features can be built against it.
+The Studio's feature registry and the contribution points features plug into, with the window's
+frame and the parts inside it. The registry, the points and the window's state (announcer, close
+stack, engine, save state, tabs) have no React; `ShellFrame`, `WindowTabStrip`, `Toolbar`,
+`ToolbarSaveNote`, `StatusBarItems`, `EngineLine` and `SidebarResizeEdge` are React components.
 
 - **Layer:** studio
 - **Owner:** elena
@@ -15,7 +17,8 @@ feature's `register` once, after the features whose services it needs. Any probl
 Services belong to one open workspace, so a feature gives a _factory_ for each service. Each time
 a workspace opens, `shell.services.instantiate(registry)` builds them into that workspace's
 registry (such as `ServiceRegistry` from `@halonicjs/app`), in dependency order. A factory can only
-look up services its feature lists in `needs`.
+look up services its feature lists in `needs` or `provides`; a service of its own feature is built
+first, and a cycle between them throws a `ShellError`.
 
 | Part                            | What it does                                               | Requirement               |
 | ------------------------------- | ---------------------------------------------------------- | ------------------------- |
@@ -38,8 +41,8 @@ look up services its feature lists in `needs`.
 
 The shell adds Home itself. The other sidebar places come from features through `places.add`,
 naming one of the fixed places (`sidebarPlaces`: Home, Inbox, Agents, Workflows, Routines, Library,
-Runs, Changes); a feature that adds Home gets a `ShellError`. The shell lists them in that order and leaves out a place no feature added, so a place whose feature hasn't
-landed is simply not there. The shell owns each place's name and icon (`placeNames`), so a feature
+Runs, Changes); a feature that adds Home gets a `ShellError`. The shell lists them in that order and
+leaves out a place no feature added, so a place whose feature hasn't landed is simply not there. The shell owns each place's name and icon (`placeNames`), so a feature
 gives only the place, its view and its `signal`: the count or running dot, with the words a screen
 reader hears after the name. `showPlace` gives what the sidebar shows, with nothing for a zero
 (`shell.sidebar-places`).
@@ -68,15 +71,17 @@ Forward, like a browser tab, that move exactly one place; `state.canGoBack` and
 nothing when the tab shows it already; `openInNewTab` (a Ctrl-click) adds a tab right after it, keeps
 the active one and returns `{ tab, added }`. A place open in another tab is never opened twice:
 `openHere` switches to that tab, and `openInNewTab` returns it with `added: false` so the strip can
-say it is already open. Home is the exception, because every new tab
-(`newTab`, + and Ctrl T) starts there. Closing the active tab activates the one to its right, else
+say it is already open. Home is the exception, because every new tab (`newTab`, + and Ctrl T) starts
+there. Closing the active tab activates the one to its right, else
 its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T) brings back the
-last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab.
+last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab, closed ones too. `back` and `forward` return `false`
+at either end. `activate`, `cycle` (Ctrl Tab, wraps), `activateAt` (`-1` is the last tab), `move` and
+`close` do what they say.
 
 The strip reads `tabs.state` and `subscribe`s; every change makes a new state.
 
 `WindowTabStrip` draws them in the title bar (component specs 24.5): a `tablist` named "Open tabs"
-that is one Tab stop. ← and → move the focus, Enter or Space opens the focused tab, Delete closes
+that is one Tab stop. `iconFor` gives a tab's 16px icon. ← and → move the focus, Enter or Space opens the focused tab, Delete closes
 it, and Ctrl Shift PageUp and PageDown move it. A tab is named "Support reply, workflow", plus
 ", needs you" with the 6px dot when `needsYou` says its item waits for a person. Tabs are 200px
 and shrink together to 96px, then the strip scrolls with the active tab kept in view. The ✕ keeps
@@ -101,8 +106,10 @@ The parts inside read the layout with the kit's `usePresentation()`.
 The frame also does the window-wide wiring once: it sets `<html lang>` (the Tabs hyphenate), mounts
 the announcer's two live regions, routes every kit Dialog's regions to the announcer, tells the
 announcer when the window has focus, passes Esc to the close stack, and shows `shell.toasts` in
-one `ToastRegion` over the sidebar and the page, so a toast never covers the status bar. An Esc inside an open
-`<dialog>` is left to the dialog, which cancels itself, so one press never closes two layers.
+one `ToastRegion` over the sidebar and the page, so a toast never covers the status bar. An Esc
+inside an open `<dialog>` is left to the dialog, which cancels itself, so one press never closes two
+layers. An Esc that ends an input method's composition is ignored. `phoneQuery` and
+`usePresentationFromWidth` are the width check the frame uses.
 
 ```tsx
 <ShellFrame
@@ -112,7 +119,7 @@ one `ToastRegion` over the sidebar and the page, so a toast never covers the sta
   toasts={shell.toasts}
   language="en"
 >
-  <HomePage />
+  {page}
 </ShellFrame>;
 ```
 
@@ -123,10 +130,11 @@ then the path as a `nav` named "Location", then the header badges and the save s
 gives the places above a tab's place, so a workflow reads "Workflows / Support reply"; each of
 them is a link that opens in the active tab, or in a new tab on a Ctrl-click or a middle-click,
 announced as "Opened Workflows in a new tab." (or "Workflows is already open in a tab.", with the
-tabs left as they are). With nowhere to go, Back and Forward stay in the Tab order as
-unavailable, and screen readers hear "Nothing to go back to". The badge slot takes no room when
-it's empty. There's no Assistant button until the Assistant (T14) lands; the save state
-itself, the window-wide Back and Forward keys and the path's tooltips come in later pull requests.
+tabs left as they are). Back and Forward move focus to the new page's `h1`. With nowhere to go, they
+stay in the Tab order as unavailable, and screen readers hear "Nothing to go back to" or "Nothing to
+go forward to". The `badges` slot and the `saveState` slot (see `ToolbarSaveNote`) take no room when
+they're empty. There's no Assistant button until the Assistant (T14) lands; the window-wide Back and
+Forward keys and the path's tooltips come in later pull requests.
 
 ```tsx
 <ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>
@@ -233,8 +241,8 @@ return are announced; the start and failure texts wait for the approved wording 
 
 A screen that saves a file passes the error to `saveFailureFor`, the one place that reads write
 error codes, and words its message from the reason: `disk-full` (`ENOSPC`, `EDQUOT`),
-`not-writable` (`EACCES`, `EPERM`, `EROFS`), `in-use` (`EBUSY`, which includes the Windows sharing
-violation) or `failed` for anything else. The code and the original message stay in the result for
+`not-writable` (`EACCES`, `EPERM`, `EROFS`), `in-use` (`EBUSY`, and the Windows
+`ERROR_SHARING_VIOLATION` and `ERROR_LOCK_VIOLATION`) or `failed` for anything else. The code and the original message stay in the result for
 Copy details; they never go on screen (rule 4 of the failure-path guide).
 
 ## Save state
@@ -270,13 +278,14 @@ announceSaveNotes(workspace.saving, shell.announcer);
 
 ## Error messages
 
-A screen with no text of its own for a failure passes the error and its "Couldn't…" title to
-`errorMessageFor`, the one place the Studio turns an error kind into words (microcopy 22 F13).
-The kind picks the body and the one action, which the screen wires up. A kinded error's message is
-the body unless the screen says more, such as the missing item's kind or the service that didn't
-answer. An `internal` error never shows its message: the body is "Halonic ran into a problem it
-can't explain yet." with **Copy details**. A `conflict` offers **Load the latest** only when the
-item has no unsaved edits; a file's own **Keep mine / Load theirs** wins over this message.
+A screen with no text of its own for a failure passes the error and an `ErrorContext` to
+`errorMessageFor(error, context)`, the one place the Studio turns an error kind into words
+(microcopy 22 F13). The context holds the screen's "Couldn't…" `title` and what it knows, such as
+the missing item's kind or the service that didn't answer. The kind picks the body and the one
+action, which the screen wires up. A kinded error's message is the body unless the screen says
+more. An `internal` error never shows its message: the body is "Halonic ran into a problem it can't
+explain yet." with **Copy details**. A `conflict` offers **Load the latest** only when the item has
+no unsaved edits; a file's own **Keep mine / Load theirs** wins over this message.
 
 ## Resource numbers
 
@@ -289,7 +298,73 @@ and throws a `ShellError` rather than pass on a number it can't trust.
 It reads at once, then once a minute, timed from the end of the last read. A run, a download or a
 model pull calls `check("run" | "download" | "model-pull")` before it starts; a check joins a read
 that is already under way. Each reading has `lowDisk`, true below 1 GB free (`lowDiskBytes`).
-Where Studio shows these numbers waits on the board (HAL-1720), so this is the data only.
+`latest` is the last reading, `on("resources", listener)` hears each new one and `stop()` ends the
+watch: nothing is read after it. A failed minute's read goes to `onError` and is read again the next
+minute; a failed `check` rejects. Where Studio shows these numbers waits on the board (HAL-1720), so
+this is the data only.
+
+## Contribution points
+
+A feature adds contributions through the points on the `Studio` that `register` receives. Each
+contribution is a plain object (an object literal, not a class instance), and its id is letters,
+digits and dashes joined by dots, such as `agents.new`. The shell lists them by `order`, then `id`,
+and records the feature that added each (`Registered`). A bad id, a repeated id or adding after
+`register` returned throws a `ShellError` naming the features.
+
+- **Layout** (`shell.layout-points`): `itemKinds.add`, `explorer.addGroup`, `explorer.addSection`
+  and `itemPage.addSection`. An item page section names a kind some feature adds, and the section's
+  feature uses the page's feature only through its `api.ts` (`shell.feature-isolation`).
+- **Frame** (`shell.frame-points`): `cards.add`, `panelWindows.add`, `statusBar.add`,
+  `titleBar.add`, `phoneBar.add` and `settings.add`, with `places.add` and `home.addCard` above.
+- **Commands** (`shell.commands`, `shell.keybindings`): `commands.add`, `keybindings.add`,
+  `search.addProvider` and `persist`, which a feature calls at most once. A binding's `when` joins
+  contexts with `&&`, each optionally `!`; of the bindings that hold, the one with the most
+  conditions wins. `Mod` is `Cmd` when `createShell` gets `platform: "macos"`, else `Ctrl`.
+  `shell.contributions.keybindings.resolve(keys, activeContexts)` finds the binding.
+
+A view is a `ViewRef`: the name of a named export and a `load` that imports its module. `loadView`
+takes the export, and throws a `ShellError` listing what the module does export when the name isn't
+there (`shell.view-loading`).
+
+## Other exports
+
+The rest of `src/index.ts`, by area; the types are what the parts above take and return.
+
+- **Announcer:** `createAnnouncer`, `announceQuietMs` (2 s), `Announcer`, `AnnouncerOptions`,
+  `AnnounceOptions`, `Politeness`, `LiveRegion`, `LiveRegions`, `AnnouncerTimers`.
+- **Close stack:** `createCloseStack`, `closeLayerKinds` (the ranks, in closing order),
+  `CloseStack`, `CloseLayer`, `CloseLayerKind`, `EscapePress`.
+- **Engine:** `createShellEngine`, `ShellEngine`, `ShellEngineState`, `EngineConnectionEvent`,
+  `EngineConnectionListener`, `EngineStartEvent`, `EngineStartFailure`,
+  `EngineStartFailureReason`, `EngineLauncher`, `EngineProcess`, `EngineProcessEvents`,
+  `EngineSupervisor`, `engineAnswerTimeoutMs` (30 s), `engineRestartDelayMs` (2 s),
+  `engineRestartWindowMs` (60 s), `engineWords`, `EngineWords`, `StudioHost`, `EngineLineProps`.
+- **Frame:** `ShellFrameProps`, `StatusBarItemsProps`, `StatusBarItemProps` (what an item's view
+  gets: `context`), `HomeCardProps`.
+- **Sidebar:** `SidebarResizeEdgeProps`, `clampSidebarWidth`, `SIDEBAR_MIN_WIDTH`,
+  `SIDEBAR_MAX_WIDTH`, `SIDEBAR_DEFAULT_WIDTH`.
+- **Tabs and toolbar:** `TabLocation`, `WindowTab`, `TabSetState`, `OpenedTab`, `homeLocation`,
+  `currentLocation`, `reopenableTabs` (20), `WindowTabStripProps`, `ToolbarProps`.
+- **Save:** `SaveReason`, `SaveFailure`, `SaveNote`, `SavingItem`, `couldNotSaveText`,
+  `SaveNoteWords`, `SaveNoteMark`, `SaveNoteAction`, `saveNoteActionLabels`,
+  `ToolbarSaveNoteProps`, `SAVING_AFTER_MS` (300 ms).
+- **Resources:** `ResourceWatch`, `ResourceWatchOptions`, `ResourceReading`, `ResourceListener`,
+  `ResourceCheckReason`, `resourceCheckIntervalMs` (1 min), `lowDiskBytes`, `EngineResourceReport`,
+  `ChildProcessUsage`, `LoadedModel`.
+- **Errors:** `ErrorContext`, `ErrorMessage`, `ErrorAction`, `RulePlace`.
+- **Features:** `Feature`, `FeatureDefinition`, `Shell`, `ShellOptions`, `Studio`, `ServiceKey`,
+  `ServiceTarget`, `ServiceFactory`, `ServiceLookup`, `FeatureServices`, `WorkspaceContext`,
+  `ViewRef`, `ShellError`.
+- **Points:** `FramePoints`, `FrameContributions`, `LayoutPoints`, `LayoutContributions`,
+  `CommandPoints`, `CommandContributions`, `Point`, `Ordered`, `Contributed`, `Registered`,
+  `KeyboardPlatform`, and the contribution types: `CardContribution`, `PanelWindowContribution`,
+  `BarItemContribution`, `PhoneBarContribution`, `SettingsSectionContribution`,
+  `PlaceContribution`, `PlaceSignal`, `PlaceName`, `ShownPlace`, `SidebarPlace`,
+  `HomeCardContribution`, `HomePoint`, `HomeSection`, `ItemKindContribution`, `ItemRef`,
+  `ItemAction`, `TabBehaviour`, `TabDescription`, `ExplorerGroupContribution`, `ExplorerItem`,
+  `ExplorerSectionContribution`, `ItemPageSectionContribution`, `CommandContribution`,
+  `KeybindingContribution`, `SearchProviderContribution`, `SearchResult`, `PersistContribution`,
+  `PersistedSession`.
 
 ## End-to-end tests
 
