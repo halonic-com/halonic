@@ -32,6 +32,7 @@ import {
   unstagedChanges,
 } from "./vcs-repository.ts";
 
+/** Options for {@link MemoryVcs}; each one is optional. */
 export interface MemoryVcsOptions {
   /** Where commit dates come from. A new {@link ManualClock} by default. */
   clock?: Clock;
