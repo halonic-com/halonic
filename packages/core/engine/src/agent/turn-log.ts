@@ -1,10 +1,12 @@
 import type { RunEventBody } from "@halonicjs/events";
 
-/** The run log events a model turn writes. */
+/** The run log events a model turn writes, with the `agent.*` events of the subagents it hands tasks to. */
 export type TurnEvent = Extract<
   RunEventBody,
   {
     type:
+      | "agent.started"
+      | "agent.finished"
       | "llm.request"
       | "llm.response"
       | "llm.skipped"

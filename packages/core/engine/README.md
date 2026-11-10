@@ -31,7 +31,8 @@ loop of one model turn, which the local chat turn runs.
 | `memoryTools`        | (internal) `memory_list`, `_save` and `_forget`; offered in a chat turn of an agent when `memory` is set                      | `engine.agent-memory-tools`                                                         |
 | `halonicSource`      | the source id `"halonic"` that refusals name for Halonic's tools; `callerSource` (`"caller"`) is the same for the caller's    | `engine.turn-refusals-as-data`                                                      |
 | `ModelTurnInput`     | what `runModelTurn` takes, and `ModelTurnResult`, which it returns: the answer, the turn's messages, refusals and skips       | `engine.local-chat-turn`                                                            |
-| `TurnEvent`          | one event a `TurnLog` takes (the `llm.*` and `tool.*` events above)                                                           | `engine.turn-logs-events`                                                           |
+| `TurnEvent`          | one event a `TurnLog` takes: the `llm.*` and `tool.*` events above, and a subagent's `agent.*` events                         | `engine.turn-logs-events`                                                           |
+| `subagentTools`      | a `delegate_<id>` tool per subagent of the hub, which runs the subagent's turn on a task, down to depth 3                     | `engine.subagent-tools`                                                             |
 | `RunState`           | what the kernel knows about a run: a fold of its events by `evolve` (or `foldRun`), stored as the run's snapshot              | `engine.run-state-fold`                                                             |
 | `DecideInput`        | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`, `effect-failed`, `child`), each with its time         | (types only)                                                                        |
 | `Effect`             | what `decide` asks `step` to do after appending: call a model or a tool, start a child run, tell the parent, set a timer      | (types only)                                                                        |
@@ -57,6 +58,14 @@ result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `too
 first 2,000 characters as `result` and the blob as `resultBlob` (requirement
 `engine.large-results-to-blobs`). The model still gets the whole result. Runs wrap their log this
 way once they call tools (step 4(c) of the HAL-186 plan).
+
+An agent with `subagents` gets a `delegate_<id>` tool for each one in its hub (`subagentTools`).
+The caller's `runSubagent` runs the subagent's own turn one level deeper, and the tool logs
+`agent.started` and `agent.finished` around it, naming the delegating agent as `parent`. At depth 3
+an agent gets no `delegate_` tools, so agents that delegate to each other stop there. The agent's
+instructions get `delegationHint`, since a subagent never sees the conversation. A run's agent gets
+these tools once runs call tools (step 4(c) of the HAL-186 plan); that step also holds back
+approval tools from a subagent, which can't pause the run.
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.

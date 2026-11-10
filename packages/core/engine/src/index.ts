@@ -86,3 +86,11 @@ export {
   runLogTools,
   unknownRunText,
 } from "./tools/run-log/run-log-tools.ts";
+export {
+  type DelegatedTask,
+  defaultMaxDelegationDepth,
+  delegateToolName,
+  delegationHint,
+  type SubagentToolsOptions,
+  subagentTools,
+} from "./tools/subagents/subagent-tools.ts";
