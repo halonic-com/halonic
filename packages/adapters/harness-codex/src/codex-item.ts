@@ -45,7 +45,6 @@ export type CodexItem =
       id: string;
       tool: string;
       status: ItemStatus;
-      senderThreadId: string;
       receiverThreadIds: string[];
       prompt: string;
     }
@@ -104,7 +103,6 @@ export function parseCodexItem(value: unknown): CodexItem | undefined {
         id,
         tool: text(value["tool"]),
         status: statusOf(value["status"]),
-        senderThreadId: text(value["senderThreadId"]),
         receiverThreadIds: texts(value["receiverThreadIds"]),
         prompt: text(value["prompt"]),
       };

@@ -128,6 +128,51 @@ verifies("harness-codex.subagents", () => {
       ]);
     });
 
+    it("finishes the subagents still working when the task agent finishes, newest first", () => {
+      const nested = {
+        ...spawn,
+        id: "spawn-2",
+        senderThreadId: "thread-helper",
+        receiverThreadIds: ["thread-nested"],
+        prompt: "Read monday.md.",
+      };
+      const unfinished = "The task agent finished before this subagent did.";
+      const { events, error } = readAll([
+        item("item/completed", spawn),
+        { method: "item/completed", params: { threadId: "thread-helper", item: nested } },
+        done,
+      ]);
+      expect(error).toBeUndefined();
+      expect(events).toEqual([
+        started("subagent", "Read the notes."),
+        { ...started("subagent-2", "Read monday.md."), parent: "subagent" },
+        { ...finished("subagent-2", unfinished), parent: "subagent" },
+        finished("subagent", unfinished),
+        { type: "agent.finished", agent: "writer", output: "" },
+      ]);
+    });
+
+    it("doesn't start a subagent with a task it was sent while it was still working", () => {
+      const followup = {
+        ...spawn,
+        id: "send-1",
+        tool: "sendInput",
+        status: "inProgress",
+        prompt: "Read tuesday.md too.",
+      };
+      const { events } = readAll([
+        item("item/completed", spawn),
+        item("item/started", followup),
+        helperTurnCompleted({ status: "completed" }),
+        { method: "turn/started", params: { threadId: "thread-helper", turn: { id: "turn-3" } } },
+      ]);
+      expect(events).toEqual([
+        started("subagent", "Read the notes."),
+        finished("subagent", ""),
+        started("subagent", ""),
+      ]);
+    });
+
     it("skips a spawn that started no thread, and Codex's other subagent calls", () => {
       const { events } = readAll([
         item("item/started", { ...spawn, status: "inProgress", receiverThreadIds: [] }),

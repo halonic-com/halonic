@@ -43,9 +43,12 @@ type ToolOutcome = NonNullable<Extract<HarnessEvent, { type: "tool.result" }>["o
  */
 const subagentName = "subagent";
 
+/** The output of a subagent still working when the task agent finished. */
+const unfinishedSentence = "The task agent finished before this subagent did.";
+
 /**
- * The Codex tools that give a subagent its next task. The prompt is kept
- * until the subagent's next turn starts.
+ * The Codex tools that give a subagent its next task. For a subagent that
+ * has finished, the prompt is kept until its next turn starts.
  */
 const nextTaskTools: ReadonlySet<string> = new Set(["sendInput", "followupTask"]);
 
@@ -194,12 +197,16 @@ export class AppServerEventReader {
     ];
   }
 
-  /** Keeps the task a `sendInput` or `followupTask` gives a subagent, for its next turn. */
+  /**
+   * Keeps the task a `sendInput` or `followupTask` gives a subagent that has
+   * finished, for its next turn. A subagent still working takes the task
+   * into the turn it is on, so the task is not its next start's prompt.
+   */
   #keepNextTask(item: Extract<CodexItem, { type: "collabAgentToolCall" }>): void {
     if (!nextTaskTools.has(item.tool)) return;
     for (const receiver of item.receiverThreadIds) {
       const subagent = this.#agents.get(receiver);
-      if (subagent !== undefined) subagent.nextPrompt = item.prompt;
+      if (subagent !== undefined && !subagent.running) subagent.nextPrompt = item.prompt;
     }
   }
 
@@ -240,20 +247,44 @@ export class AppServerEventReader {
 
   /**
    * The `agent.finished` of the turn. The task agent's is the run's final
-   * event, or the error the run ends with. A subagent whose turn failed
-   * finishes with what went wrong as its output, and the run goes on: the
-   * task agent hears of it from Codex and decides what to do.
+   * event, or the error the run ends with; the subagents still working
+   * finish just before it. A subagent whose turn failed finishes with what
+   * went wrong as its output, and the run goes on: the task agent hears of
+   * it from Codex and decides what to do.
    */
   #turnCompleted(agent: AgentThread, turn: unknown): HarnessEvent[] {
     const status = isPlainObject(turn) ? turn["status"] : undefined;
     if (agent.parent === undefined) {
       if (status !== "completed") throw this.#filter.error(failureSentence(turn));
-      return [{ type: "agent.finished", agent: agent.name, output: agent.answer }];
+      return [
+        ...this.#unfinishedSubagents(),
+        { type: "agent.finished", agent: agent.name, output: agent.answer },
+      ];
     }
     if (!agent.running) return [];
     agent.running = false;
     const output = status === "completed" ? agent.answer : failureSentence(turn);
     return [{ type: "agent.finished", agent: agent.name, output, parent: agent.parent }];
+  }
+
+  /**
+   * The `agent.finished` of each subagent still working when the task agent
+   * finished, so every `agent.started` has its end. The newest finishes
+   * first, so a subagent's subagent finishes before it.
+   */
+  #unfinishedSubagents(): HarnessEvent[] {
+    const events: HarnessEvent[] = [];
+    for (const agent of [...this.#agents.values()].reverse()) {
+      if (agent.parent === undefined || !agent.running) continue;
+      agent.running = false;
+      events.push({
+        type: "agent.finished",
+        agent: agent.name,
+        output: unfinishedSentence,
+        parent: agent.parent,
+      });
+    }
+    return events;
   }
 }
 
