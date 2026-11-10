@@ -1,6 +1,7 @@
 import type { DefinitionStore, Digest } from "@halonicjs/ports";
 import type { ListenerErrorHandler } from "./event-bus.ts";
 import { ReviewService } from "./review-service.ts";
+import { ReviewingDefinitionStore } from "./reviewing-store.ts";
 import { serviceKey } from "./service-registry.ts";
 import { WorkspaceFiles } from "./workspace-files.ts";
 import { WorkspaceScope, type WorkspaceScopeOptions } from "./workspace-scope.ts";
@@ -55,11 +56,7 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
     location: options.store.location,
     onListenerError: options.onListenerError,
   });
-  const files = scope.services.provide(
-    workspaceFilesKey,
-    new WorkspaceFiles(options.store, scope.events),
-  );
-  scope.services.provide(
+  const review = scope.services.provide(
     reviewServiceKey,
     new ReviewService({
       store: options.store,
@@ -69,6 +66,10 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
       onListenerError: options.onListenerError,
     }),
   );
+  // Everything but the review service writes through the review service's
+  // write hook, so a reviewed file's baseline moves along with every edit.
+  const store = new ReviewingDefinitionStore(options.store, review.writer);
+  const files = scope.services.provide(workspaceFilesKey, new WorkspaceFiles(store, scope.events));
   scope.commands.register("workspace.save", () => files.save());
   scope.commands.register("workspace.undo", () => files.undo());
   scope.commands.register("workspace.redo", () => files.redo());
