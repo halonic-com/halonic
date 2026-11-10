@@ -1,3 +1,4 @@
+import { isSecretName } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -44,6 +45,18 @@ verifies("google-setup.store-names", () => {
 
   it("fits the longest ref into the token name limit", () => {
     expect(stagedClientSecretName(`g${"a".repeat(106)}`)).toHaveLength(128);
+  });
+
+  // These are the only names of a Google client secret: a connector file's
+  // `client` forms none (`format.secret-names`). They follow the same
+  // `Secrets` name rule as every name a file gives.
+  it("builds names that follow the Secrets name rule, up to the longest ref", () => {
+    const longestRef = `g${"a".repeat(106)}`;
+    for (const ref of ["gclient_1", longestRef]) {
+      for (const name of [clientSecretName, stagedClientSecretName, refreshTokenName]) {
+        expect(isSecretName(name(ref)), name(ref)).toBe(true);
+      }
+    }
   });
 
   it("refuses a bad ref before the store reads or writes anything", async () => {

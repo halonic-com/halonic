@@ -148,7 +148,7 @@ export type ConnectorTransport =
        */
       pin?: ConnectorPin;
     }
-  /** Built-in Gmail and Drive for one account; `client` names the OAuth client secrets. */
+  /** Built-in Gmail and Drive for one account; `client` names no secret. */
   | { kind: "google"; account: string; client: string };
 
 /** A connector as the workspace configures it. */
