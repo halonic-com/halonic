@@ -36,6 +36,17 @@ verifies("model-openai.replies", () => {
     expect(answer.toolCalls.map((call) => call.id)).toEqual(["call_0", "call_1"]);
   });
 
+  it("numbers streamed calls from 0 when the server's numbering starts later", () => {
+    const reply = new StreamedReply();
+    const events = reply.add(
+      toolCallChunk([{ index: 2, id: "c", function: { name: "search", arguments: "{}" } }]),
+    );
+    expect(events).toEqual([
+      { type: "tool-call", index: 0, id: "c", name: "search", arguments: "{}" },
+    ]);
+    expect(reply.response().toolCalls).toEqual([{ id: "c", name: "search", arguments: {} }]);
+  });
+
   it("takes streamed arguments sent as an object as they are", () => {
     const reply = new StreamedReply();
     const events = reply.add(

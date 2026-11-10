@@ -6,6 +6,7 @@ import {
   OpenAiCompatibleProvider,
   type OpenAiCompatibleProviderOptions,
 } from "./openai-provider.ts";
+import { ReplyFormatError } from "./reply.ts";
 import { ScriptedVendor } from "./test/scripted-vendor.ts";
 
 /** A provider in front of a fresh scripted vendor. */
@@ -322,13 +323,17 @@ verifies("model-openai.reply-size", () => {
 
 verifies("model-openai.call-errors", () => {
   /** The error a stream ends with when the server answers with `body`. */
-  async function streamFailureOf(body: ReadableStream<Uint8Array> | string): Promise<Error> {
+  async function streamFailureOf(
+    body: ReadableStream<Uint8Array> | string,
+    key?: () => Promise<string>,
+  ): Promise<Error> {
     const http = { fetch: async () => new Response(body) };
     const provider = new OpenAiCompatibleProvider({
       id: "acme",
       type: "openai",
       baseUrl: "http://acme.test/v1",
       http,
+      ...(key === undefined ? {} : { key }),
     });
     try {
       for await (const _event of provider.stream(chatRequest())) {
@@ -356,5 +361,38 @@ verifies("model-openai.call-errors", () => {
     });
     const error = await streamFailureOf(dropped);
     expect(isModelCallError(error) && error.reason).toBe("offline");
+  });
+
+  it("ends a stream with refused, and the vendor's text as its cause, on an error event after a 200", async () => {
+    const error = await streamFailureOf(
+      'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n' +
+        'data: {"error":{"message":"The server had an error while processing your request"}}\n\n',
+    );
+    expect(isModelCallError(error) && error.reason).toBe("refused");
+    expect(error.message).toBe('acme stopped the answer from the model "acme-small" with an error');
+    expect(vendorTextOf(error)).toBe("The server had an error while processing your request");
+  });
+
+  it("ends a stream with out-of-credit when its error event says the credit is used up", async () => {
+    const error = await streamFailureOf(
+      'data: {"error":{"message":"You exceeded your current quota","type":"insufficient_quota"}}\n\n',
+    );
+    expect(isModelCallError(error) && error.reason).toBe("out-of-credit");
+    expect(vendorTextOf(error)).toBe("You exceeded your current quota");
+  });
+
+  it("drops the text of an error event that holds the call's own key", async () => {
+    const event = 'data: {"error":{"message":"bad key proxy-0123"}}\n\n';
+    const error = await streamFailureOf(event, async () => "proxy-0123");
+    expect(isModelCallError(error) && error.reason).toBe("refused");
+    expect(vendorTextOf(error)).toBeUndefined();
+  });
+
+  it("ends a stream with refused, as chat() does, when the server sends no chunks", async () => {
+    // A server that ignores `stream: true` sends one whole reply; chat() can't read it either.
+    const error = await streamFailureOf('{"error":"not found"}');
+    expect(isModelCallError(error) && error.reason).toBe("refused");
+    expect(isModelCallError(error) && error.cause).toBeInstanceOf(ReplyFormatError);
+    expect(isModelCallError(await streamFailureOf(""))).toBe(true);
   });
 });

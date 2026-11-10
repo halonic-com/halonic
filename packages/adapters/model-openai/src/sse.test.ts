@@ -44,6 +44,10 @@ verifies("model-openai.stream", () => {
     expect(await dataIn(["event: x\ndata: a\ndata:b\n\n", "data: c"])).toEqual(["a\nb", "c"]);
   });
 
+  it("ends lines at a lone \\r, and at a \\r\\n split across reads", async () => {
+    expect(await dataIn(["data: a\r\rdata: b\r", "\ndata: c\r\n\r\n"])).toEqual(["a", "b\nc"]);
+  });
+
   it("cancels the body when the reader stops early", async () => {
     const { body, state } = bodyOf(["data: 1\n\n", "data: 2\n\n"]);
     for await (const _data of readSseData(body)) break;

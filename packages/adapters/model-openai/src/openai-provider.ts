@@ -5,19 +5,21 @@ import type {
   HttpClient,
   LlmCapabilities,
   LlmProvider,
+  ModelCallError,
 } from "@halonicjs/ports";
 import {
   errorForNetwork,
   errorForReply,
   errorForSize,
   errorForStatus,
+  errorForStreamedError,
   type FailedCall,
 } from "./call-error.ts";
 import { BodyTooLargeError, readTextWithin } from "./read-body.ts";
 import { ReplyFormatError, readReply } from "./reply.ts";
 import { type MaxTokensField, toWireBody } from "./request.ts";
 import { readSseData } from "./sse.ts";
-import { StreamedReply } from "./stream-reply.ts";
+import { StreamedErrorEvent, StreamedReply } from "./stream-reply.ts";
 
 /** The largest reply read, 10 MiB, as `integration-kit` allows a response by default. */
 const maxReplyBytes = 10 * 1024 * 1024;
@@ -108,11 +110,14 @@ export class OpenAiCompatibleProvider implements LlmProvider {
   /**
    * Streams the answer as the server writes it. An abort ends the stream
    * with the signal's reason, even when it comes while the caller handles
-   * an event; stopping early closes the call.
+   * an event; stopping early closes the call. An error event from the
+   * server, or a stream without chunks, fails rather than ending with an
+   * empty answer.
    */
   async *stream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
-    const { response, call } = await this.#call(request, true);
+    const { response, call, key } = await this.#call(request, true);
     const reply = new StreamedReply();
+    let answer: ChatResponse;
     try {
       if (response.body === null) throw new ReplyFormatError("the reply has no body");
       for await (const data of readSseData(response.body)) {
@@ -121,19 +126,23 @@ export class OpenAiCompatibleProvider implements LlmProvider {
           request.signal?.throwIfAborted();
         }
       }
+      answer = reply.response();
     } catch (error) {
       request.signal?.throwIfAborted();
-      const unreadable = error instanceof SyntaxError || error instanceof ReplyFormatError;
-      throw unreadable ? errorForReply(error, call) : errorForNetwork(error, call);
+      throw streamError(error, call, key);
     }
-    yield { type: "done", response: reply.response() };
+    yield { type: "done", response: answer };
   }
 
-  /** Starts a call and gives the reply once the server took it, with what an error needs to know. */
+  /**
+   * Starts a call and gives the reply once the server took it, with what an
+   * error needs to know: the call, and the key so the server's text can be
+   * checked for it.
+   */
   async #call(
     request: ChatRequest,
     stream: boolean,
-  ): Promise<{ response: Response; call: FailedCall }> {
+  ): Promise<{ response: Response; call: FailedCall; key: string | undefined }> {
     request.signal?.throwIfAborted();
     const call: FailedCall = {
       providerId: this.id,
@@ -141,8 +150,9 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       offeredTools: (request.tools?.length ?? 0) > 0,
       host: this.#host,
     };
-    const response = await this.#send(request, stream, call);
-    return { response, call };
+    const key = this.#key === undefined ? undefined : await this.#key();
+    const response = await this.#send(request, { stream, call, key });
+    return { response, call, key };
   }
 
   /**
@@ -150,9 +160,11 @@ export class OpenAiCompatibleProvider implements LlmProvider {
    * signal rejects with its own reason, a network failure as offline, and an
    * error status with what it means.
    */
-  async #send(request: ChatRequest, stream: boolean, call: FailedCall): Promise<Response> {
+  async #send(
+    request: ChatRequest,
+    { stream, call, key }: { stream: boolean; call: FailedCall; key: string | undefined },
+  ): Promise<Response> {
     const headers: Record<string, string> = { "content-type": "application/json" };
-    const key = this.#key === undefined ? undefined : await this.#key();
     if (key !== undefined) headers["authorization"] = `Bearer ${key}`;
     const body = toWireBody(request, { maxTokensField: this.#maxTokensField, stream });
     let response: Response;
@@ -175,6 +187,13 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     request.signal?.throwIfAborted();
     throw errorForStatus(response.status, text, call, key);
   }
+}
+
+/** The {@link ModelCallError} a stream ends with after `error`. */
+function streamError(error: unknown, call: FailedCall, key: string | undefined): ModelCallError {
+  if (error instanceof StreamedErrorEvent) return errorForStreamedError(error.event, call, key);
+  const unreadable = error instanceof SyntaxError || error instanceof ReplyFormatError;
+  return unreadable ? errorForReply(error, call) : errorForNetwork(error, call);
 }
 
 /** The body of an error reply, or "" when it can't be read or is too large. */

@@ -31,9 +31,14 @@ async function* readLines(body: ReadableStream<Uint8Array>): AsyncGenerator<stri
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      const lines = (partLine + decoder.decode(value, { stream: !done })).split(/\r?\n/);
+      let text = partLine + decoder.decode(value, { stream: !done });
+      // A last \r may be the first half of \r\n; keep it until the next read shows.
+      const heldBack = !done && text.endsWith("\r") ? "\r" : "";
+      if (heldBack !== "") text = text.slice(0, -1);
+      // SSE ends a line with \r\n, \n or a lone \r.
+      const lines = text.split(/\r\n|\r|\n/);
       // The last piece may be half a line; keep it for the next read.
-      partLine = lines.pop() ?? "";
+      partLine = (lines.pop() ?? "") + heldBack;
       yield* lines;
       if (done) {
         if (partLine !== "") yield partLine;

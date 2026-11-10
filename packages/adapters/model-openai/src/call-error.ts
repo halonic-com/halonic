@@ -168,6 +168,31 @@ function megabytes(bytes: number): string {
   return `${Math.round(bytes / (1024 * 1024))} MB`;
 }
 
+/**
+ * The {@link ModelCallError} for an error the server sent as a streamed event
+ * after it took the call: `out-of-credit` when the event says so, as for an
+ * error reply, and `refused` otherwise. The vendor's text goes on the `cause`
+ * as in {@link errorForStatus}, with the 200 the call was taken with.
+ */
+export function errorForStreamedError(
+  event: string,
+  call: FailedCall,
+  key: string | undefined,
+): ModelCallError {
+  const vendor = vendorErrorIn(event);
+  const vendorText = shortened(vendor.message, key);
+  const options = vendorText === "" ? {} : { cause: new VendorErrorText(200, vendorText) };
+  const stopped = `${call.providerId} stopped the answer from the model "${call.model}"`;
+  if (isOutOfCredit(200, vendor)) {
+    return new ModelCallError(
+      "out-of-credit",
+      `${stopped} because the account has no credit left or reached its limit`,
+      options,
+    );
+  }
+  return new ModelCallError("refused", `${stopped} with an error`, options);
+}
+
 /** What an error body says: its text, and the type and code when it has them. */
 interface VendorError {
   /** The error text, or the whole body when it isn't in a format we know. */
