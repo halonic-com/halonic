@@ -46,7 +46,7 @@ export const sliderSection: PartSection = {
     {
       name: "Ends of the range",
       copies: () => (
-        <div className="flex flex-col gap-2">
+        <div className="flex w-80 flex-col gap-2 phone:w-full">
           <Opacity value={10} />
           <Opacity value={100} />
         </div>
