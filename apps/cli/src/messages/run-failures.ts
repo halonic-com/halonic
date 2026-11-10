@@ -25,6 +25,13 @@ interface KeyFacts {
   readonly alias: string;
 }
 
+/** How often Halonic asked a busy provider again, and for how long. */
+export interface BusyRetries {
+  readonly tries: number;
+  /** How long it kept trying, as the output writes it, such as "2 minutes". */
+  readonly over: string;
+}
+
 /**
  * Why a run failed, by microcopy 15.3's reasons, with the names each
  * reason's two lines need. Only the reasons whose terminal words are settled
@@ -34,8 +41,8 @@ interface KeyFacts {
  * - the newer ones of HAL-2264 (sandbox-start-failed, harness-start-failed,
  *   model-out-of-memory, disk-full, interrupted) wait for the board;
  * - the sandbox reasons are `sandboxMessages`;
- * - `cancelled` isn't a failure: Ctrl C or SIGTERM prints "Stopped. The run …
- *   was cancelled after the step …" (cli-output 1.5), and `runs show` says
+ * - `cancelled` isn't a failure: Ctrl C or SIGTERM prints "Stopped." with
+ *   `runMessages.cancelledAfter` (cli-output 1.5), and `runs show` says
  *   `runsMessages.showCancelled` for a run cancelled somewhere else.
  */
 export type RunFailure =
@@ -46,9 +53,11 @@ export type RunFailure =
   | {
       readonly reason: "provider-busy";
       readonly provider: string;
-      readonly tries: number;
-      /** How long it kept trying, as the output writes it, such as "2 minutes". */
-      readonly over: string;
+      /**
+       * How often Halonic asked and for how long, only once the engine retries
+       * a busy provider. Left out, the line names no tries (revision 39).
+       */
+      readonly retried?: BusyRetries;
     }
   | {
       readonly reason: "model-unreachable";
@@ -153,11 +162,7 @@ const lineOne = {
       run,
       phrase`${failure.provider} refused the call because the account has no credit left or reached its limit at ${failure.provider}.`,
     ),
-  "provider-busy": (run, failure) =>
-    failedIn(
-      run,
-      phrase`${failure.provider} was busy and asked Halonic to slow down. Halonic tried ${timesInWords(failure.tries)} over ${failure.over}, then stopped.`,
-    ),
+  "provider-busy": (run, failure) => failedIn(run, busyInWords(failure.provider, failure.retried)),
   "model-unreachable": (run, failure) =>
     failedIn(
       run,
@@ -308,6 +313,18 @@ function studioPlace(...places: readonly string[]): Phrase {
   return places.flatMap((place, index) =>
     index === 0 ? [place] : [" ", markPart("studioPath"), " ", place],
   );
+}
+
+/**
+ * "Anthropic was busy and asked Halonic to slow down.", then the tries, which
+ * are named only when they happened (cli-output 3.4, revision 39).
+ */
+function busyInWords(provider: string, retried: BusyRetries | undefined): Phrase {
+  const busy = phrase`${provider} was busy and asked Halonic to slow down.`;
+  if (retried === undefined) {
+    return busy;
+  }
+  return phrase`${busy} Halonic tried ${timesInWords(retried.tries)} over ${retried.over}, then stopped.`;
 }
 
 /** `provider-busy`, `model-timeout` and `tool-timeout`: nothing the user set caused it. */

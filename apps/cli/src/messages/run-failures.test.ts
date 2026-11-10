@@ -72,15 +72,26 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
 
   it("asks to try later for a busy provider, a slow model and a slow tool", () => {
     expect(
-      lines({ reason: "provider-busy", provider: "Anthropic", tries: 3, over: "2 minutes" }),
+      lines({
+        reason: "provider-busy",
+        provider: "Anthropic",
+        retried: { tries: 3, over: "2 minutes" },
+      }),
     ).toEqual([
       "Support reply failed in the step Draft reply: Anthropic was busy and asked Halonic to slow down. Halonic tried 3 times over 2 minutes, then stopped.",
       "Run it again in a few minutes.",
     ]);
     expect(
-      lines({ reason: "provider-busy", provider: "Anthropic", tries: 1, over: "1 minute" })[0],
+      lines({
+        reason: "provider-busy",
+        provider: "Anthropic",
+        retried: { tries: 1, over: "1 minute" },
+      })[0],
     ).toBe(
       "Support reply failed in the step Draft reply: Anthropic was busy and asked Halonic to slow down. Halonic tried once over 1 minute, then stopped.",
+    );
+    expect(lines({ reason: "provider-busy", provider: "Anthropic" })[0]).toBe(
+      "Support reply failed in the step Draft reply: Anthropic was busy and asked Halonic to slow down.",
     );
     expect(lines({ reason: "model-timeout", provider: "Anthropic", within: "5 minutes" })).toEqual([
       "Support reply failed in the step Draft reply: Anthropic didn't start answering within 5 minutes.",

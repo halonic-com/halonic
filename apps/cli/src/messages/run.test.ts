@@ -4,6 +4,7 @@ import { paintFor } from "../output/paint.ts";
 import type { Message } from "./define.ts";
 import { plainText, renderPhrase } from "./phrase.ts";
 import { runMessages } from "./run.ts";
+import { stopMessages } from "./stop.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -32,6 +33,13 @@ describe("run's sentences", () => {
     expect(words(runMessages.summary())).toBe("Run a workflow and follow it step by step");
     expect(words(runMessages.action("support-reply"))).toBe("run support-reply");
     expect(words(runMessages.nothingRan())).toBe("Nothing ran.");
+  });
+
+  it("says what Ctrl C stopped, after Stopped. (cli-output 1.5)", () => {
+    const meaning = runMessages.cancelledAfter("01JD8Q", "Classify").phrase;
+    expect(words(stopMessages.stopped(meaning))).toBe(
+      "Stopped. The run 01JD8Q was cancelled after the step Classify. Nothing after it ran.",
+    );
   });
 
   it("has the live heading and a step's facts, with - for · without UTF-8", () => {
