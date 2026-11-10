@@ -29,21 +29,24 @@ Each package declares its layer and owner in `package.json` (`"halonic": { "laye
 
 ## Commands
 
-| Command                                                                  | What it does                                                                  |
-| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `pnpm install`                                                           | install dependencies (Node and pnpm versions are pinned; don't override them) |
-| `pnpm check [rule …]`                                                    | only the repo checks; takes seconds                                           |
-| `pnpm new package <layer>/<name> --owner <agent> --purpose "<one line>"` | create a package, with its own `AGENTS.md`, that passes every check           |
-| `pnpm new feature <name> --owner <agent> --purpose "<one line>"`         | create a Studio feature and add it to the Studio's feature list               |
-| `pnpm discover`                                                          | rewrite the generated files; `--fix` also repairs the Studio's feature list   |
-| `pnpm who-touches <package>`                                             | list open pull requests that change that package                              |
+| Command                                                                  | What it does                                                                         |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `pnpm install`                                                           | install dependencies (Node and pnpm versions are pinned; don't override them)        |
+| `pnpm check:enqueue`                                                     | the check before you queue a pull request: your branch merged with the latest `main` |
+| `pnpm check [rule …]`                                                    | only the repo checks; takes seconds                                                  |
+| `pnpm new package <layer>/<name> --owner <agent> --purpose "<one line>"` | create a package, with its own `AGENTS.md`, that passes every check                  |
+| `pnpm new feature <name> --owner <agent> --purpose "<one line>"`         | create a Studio feature and add it to the Studio's feature list                      |
+| `pnpm discover`                                                          | rewrite the generated files; `--fix` also repairs the Studio's feature list          |
+| `pnpm who-touches <package>`                                             | list open pull requests that change that package                                     |
 
 Local checks (never plain `pnpm verify` or `pnpm verify --full` on your machine; CI runs them):
 
 - Before you push, check what you changed: `git fetch origin`, then
   `pnpm exec turbo run typecheck lint test --filter=...[origin/main] --concurrency=2`.
 - Before you queue a pull request, typecheck every package on top of the latest `main`:
-  `pnpm exec turbo run typecheck --concurrency=2`.
+  `pnpm exec turbo run typecheck --concurrency=2`, or run `pnpm check:enqueue`: it merges the latest
+  `origin/main`, then checks the lockfile, typechecks every package, runs the `@halonicjs/format`
+  spec tests, the process-starts guard and the requirement guard.
 
 Never create a package or feature by hand; use the generators. Every package has an `AGENTS.md`
 whose owner matches `package.json`; `pnpm check` fails otherwise.

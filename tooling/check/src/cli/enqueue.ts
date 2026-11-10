@@ -69,7 +69,7 @@ function steps(base: string): readonly Step[] {
       label: "requirement guard",
       command: "node",
       args: [
-        join(base, "tooling/check/src/cli/requirement-guard.ts"),
+        "tooling/check/src/cli/requirement-guard.ts",
         "--base",
         base,
         "--branch",
