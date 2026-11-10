@@ -84,6 +84,8 @@ export type TrustCheck =
       readonly grant: TrustGrant;
       /** What the record lost because it was removed. Every list is empty when nothing was. */
       readonly shrunk: TrustShrink;
+      /** When the person trusted it, as ISO text, for "Nothing changed since 3 Nov". */
+      readonly trustedAt: string;
     })
   | (CurrentTrust & { readonly status: "new" })
   | (CurrentTrust & {
@@ -165,14 +167,26 @@ export class TrustService {
       return { status: "new", ...current };
     }
     if (record.fingerprint === current.fingerprint) {
-      return { status: "trusted", ...current, grant: grantOf(record), shrunk: NOTHING_SHRUNK };
+      return {
+        status: "trusted",
+        ...current,
+        grant: grantOf(record),
+        shrunk: NOTHING_SHRUNK,
+        trustedAt: record.grantedAt,
+      };
     }
 
     const trusted = await this.trustedContent(record);
     const changes = trustChanges(trusted ?? { connectors: [] }, current.content);
     if (trusted !== null && changes.onlyRemoves) {
       const shrunk = await this.shrink(record, current, changes);
-      return { status: "trusted", ...current, grant: grantOf(shrunk), shrunk: removedIds(changes) };
+      return {
+        status: "trusted",
+        ...current,
+        grant: grantOf(shrunk),
+        shrunk: removedIds(changes),
+        trustedAt: shrunk.grantedAt,
+      };
     }
     return { status: "changed", ...current, changes, trustedAt: record.grantedAt };
   }

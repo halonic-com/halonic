@@ -115,6 +115,7 @@ verifies("app.trust-service", () => {
     expectStatus(check, "trusted");
     expect(check.grant).toEqual({ location, fingerprint: check.fingerprint });
     expect(check.shrunk).toEqual({ connectors: [], agents: [], integrations: [] });
+    expect(check.trustedAt).toBe("2026-11-09T10:00:00.000Z");
     expect(await store.get(location)).toMatchObject({
       fingerprint: check.fingerprint,
       grantedAt: "2026-11-09T10:00:00.000Z",
@@ -151,6 +152,8 @@ verifies("app.trust-service", () => {
 
     expectStatus(check, "trusted");
     expect(check.shrunk).toEqual({ connectors: ["mail"], agents: [], integrations: [] });
+    // Shrinking keeps the date the person trusted it, not the date it shrank.
+    expect(check.trustedAt).toBe("2026-11-09T10:00:00.000Z");
     expect(check.grant.fingerprint).toBe(check.fingerprint);
     expect(await store.get(location)).toMatchObject({
       fingerprint: check.fingerprint,
