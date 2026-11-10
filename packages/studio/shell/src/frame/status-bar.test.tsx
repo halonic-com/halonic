@@ -7,7 +7,7 @@ import { createAnnouncer } from "../announcer/announcer.ts";
 import { defineFeature } from "../feature.ts";
 import type { BarItemContribution } from "../points/frame.ts";
 import { createShell } from "../shell.ts";
-import { quietConsoleErrors, reportedShellError } from "../test-support/console-errors.ts";
+import { reportedShellError } from "../test-support/console-errors.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
@@ -15,7 +15,7 @@ import { type StatusBarItemProps, StatusBarItems } from "./status-bar.tsx";
 
 beforeEach(() => {
   // React logs every error a boundary catches; in the failure tests that is the point.
-  quietConsoleErrors();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
@@ -97,7 +97,9 @@ verifies("shell.status-bar", () => {
     );
     expect(shown).toEqual(["main for branch-feature"]);
     expect(container.querySelector("main")?.textContent).toBe("The rest of the frame");
-    expect(reportedShellError()?.message).toContain('"SpendItem"');
+    expect(reportedShellError(vi.mocked(console.error).mock.calls)?.message).toContain(
+      '"SpendItem"',
+    );
   });
 
   it("shows nothing for an item whose view fails to import, and keeps the others", async () => {

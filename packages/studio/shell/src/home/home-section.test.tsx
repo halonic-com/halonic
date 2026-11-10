@@ -6,7 +6,7 @@ import { act, use } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { HomeCardContribution, HomeSection } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
-import { quietConsoleErrors, reportedShellError } from "../test-support/console-errors.ts";
+import { reportedShellError } from "../test-support/console-errors.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { HomePage } from "./home-page.tsx";
@@ -14,7 +14,7 @@ import { HomePage } from "./home-page.tsx";
 beforeEach(() => {
   vi.useFakeTimers();
   // React logs every error a boundary catches; here the failures are the point.
-  quietConsoleErrors();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
@@ -214,6 +214,8 @@ verifies("shell.home-states", () => {
     expect(sectionNamed(container, "Needs you").querySelector("p")?.textContent).toBe(
       "2 waiting rows",
     );
-    expect(reportedShellError()?.message).toContain('"RecentRunsCard"');
+    expect(reportedShellError(vi.mocked(console.error).mock.calls)?.message).toContain(
+      '"RecentRunsCard"',
+    );
   });
 });
