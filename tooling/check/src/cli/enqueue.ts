@@ -48,7 +48,7 @@ function steps(base: string): readonly Step[] {
     {
       label: "frozen lockfile",
       command: "pnpm",
-      args: ["install", "--frozen-lockfile", "--offline", "--ignore-scripts"],
+      args: ["install", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
     },
     {
       label: "typecheck, every package",
