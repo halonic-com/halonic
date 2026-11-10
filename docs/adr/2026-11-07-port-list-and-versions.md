@@ -64,7 +64,9 @@ milliseconds as numbers, so every runtime can keep them as they are.
     the run log doesn't change (HAL-186 decision 5)
   - the "effect requested" record that marks an outcome as unknown after a
     crash
-  - the blob hash reference for payloads over 256 KB
+  - the blob hash reference for payloads over 256 KB, which is now
+    `tool.result.resultBlob` in `@halonicjs/events` (HAL-1533): tool results
+    are where large payloads come from
 - A live-progress channel (tokens, "typing") and cancelling a run. The old
   Studio has neither, so there is no parity gap; both can come later as
   optional methods.

@@ -8,6 +8,7 @@ export type {
   RunParent,
   RunStatus,
   RunTrigger,
+  StoredBlob,
   ToolNoun,
   ToolOutcome,
   ToolRisk,

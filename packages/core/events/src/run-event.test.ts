@@ -8,6 +8,7 @@ import type {
   RunKind,
   RunParent,
   RunTrigger,
+  StoredBlob,
   ToolNoun,
   ToolOutcome,
   ToolRisk,
@@ -207,6 +208,8 @@ verifies("events.run-log-contract", () => {
       // Added after the reference by events.tool-result-risk (HAL-2831).
       risk?: ToolRisk;
       noun?: ToolNoun;
+      // Added after the reference by events.tool-result-blob (HAL-1533).
+      resultBlob?: StoredBlob;
     }>();
     expectTypeOf<EventOf<"approval.requested">>().toEqualTypeOf<{
       type: "approval.requested";
@@ -427,5 +430,29 @@ verifies("events.sandbox-blocked", () => {
       block: LoggedSandboxBlock;
       count: number;
     }>();
+  });
+});
+
+verifies("events.tool-result-blob", () => {
+  typeTest("keeps a large result's hash, size and media type", () => {
+    expectTypeOf<StoredBlob>().toEqualTypeOf<{ hash: string; size: number; mediaType: string }>();
+    expectTypeOf<EventOf<"tool.result">["resultBlob"]>().toEqualTypeOf<StoredBlob | undefined>();
+  });
+
+  typeTest("takes a result with its start and a blob, and one without a blob", () => {
+    expectTypeOf({
+      type: "tool.result",
+      agent: "clerk",
+      tool: "export",
+      result: "id,amount\n1,12.50",
+      outcome: "ok",
+      resultBlob: { hash: "a".repeat(64), size: 300_000, mediaType: "text/plain" },
+    } as const).toExtend<EventOf<"tool.result">>();
+    expectTypeOf({
+      type: "tool.result",
+      agent: "clerk",
+      tool: "export",
+      result: "id,amount",
+    } as const).toExtend<EventOf<"tool.result">>();
   });
 });

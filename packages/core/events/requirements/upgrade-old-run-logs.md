@@ -29,3 +29,6 @@ When a stored `run.started` event has `projectId` or `flowId` and not the new na
 - Given a run log written before `tool.result.risk` and `tool.result.noun` existed,
   when each line is parsed,
   then every `tool.result` is read exactly as written, with neither field added.
+- Given a run log written before `tool.result.resultBlob` existed,
+  when each line is parsed,
+  then every `tool.result` is read exactly as written, without `resultBlob`.

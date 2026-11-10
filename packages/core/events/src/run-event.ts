@@ -6,6 +6,7 @@ import type {
   RunKind,
   RunParent,
   RunTrigger,
+  StoredBlob,
   ToolNoun,
   ToolOutcome,
   ToolRisk,
@@ -160,6 +161,9 @@ export type RunEventBody =
    * from its integration's sheet when the call ends (requirement
    * `events.tool-result-risk`). Each is absent in older logs, and `risk` and
    * `noun` for a tool without a sheet.
+   * `resultBlob`: set when the result was too large for the log; `result`
+   * then holds only its start, and the whole result is in the blob store
+   * (requirement `events.tool-result-blob`).
    */
   | {
       type: "tool.result";
@@ -169,6 +173,7 @@ export type RunEventBody =
       outcome?: ToolOutcome;
       risk?: ToolRisk;
       noun?: ToolNoun;
+      resultBlob?: StoredBlob;
     }
   /** A connector tool call that needs a person's OK; the run waits for "approve" or "reject". */
   | {

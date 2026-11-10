@@ -41,6 +41,14 @@ verifies("events.upgrade-old-run-logs", () => {
     }
   });
 
+  it("adds no blob to a tool result written before it", () => {
+    const results = lines.map(parseEventLine).filter((event) => event.type === "tool.result");
+    expect(results).toHaveLength(2);
+    for (const result of results) {
+      expect(result).not.toHaveProperty("resultBlob");
+    }
+  });
+
   it("summarizes a log written before the engine's fields as before", () => {
     expect(summarize(lines.map(parseEventLine))).toStrictEqual({
       id: "r-acme",

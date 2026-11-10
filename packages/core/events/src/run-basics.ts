@@ -54,6 +54,19 @@ export interface RunParent {
 export type ToolOutcome = "ok" | "error" | "unknown";
 
 /**
+ * Where a payload too large for the run log is kept: the hash of its bytes
+ * in the run's blob store, their size and their media type. The same shape
+ * as `BlobRef` in `@halonicjs/ports`, which this package may not import.
+ */
+export interface StoredBlob {
+  /** Lowercase hex SHA-256 of the bytes. */
+  hash: string;
+  /** In bytes. */
+  size: number;
+  mediaType: string;
+}
+
+/**
  * What a tool can do, as its integration's sheet says: `read` changes
  * nothing, `write` changes data, `send` reaches people outside. The same
  * values as `ToolRisk` in `@halonicjs/ports`.

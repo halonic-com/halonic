@@ -24,6 +24,7 @@ loop of one model turn, which the local chat turn runs.
 | `runFailureReasonOf` | the one place an error becomes the reason, and the host, that a `run.failed` event records                                    | `engine.run-failure-reason-of`, `engine.model-failure-stops`                        |
 | `TurnLog`            | where a turn writes `llm.request`, `llm.response`, `llm.skipped`, `llm.fallback`, `tool.called` and `tool.result`             | `engine.turn-logs-events`                                                           |
 | `RunStoreTurnLog`    | a `TurnLog` that appends those events to a run's log in a `RunStore`                                                          | `engine.turn-logs-events`                                                           |
+|                      | with `LargeResultsTurnLog` round it, keeps a tool result over 256 KB in the blob store and its start in the log               | `engine.large-results-to-blobs`                                                     |
 | `HalonicTool`        | one of Halonic's own tools: its definition and how to run it                                                                  | `engine.turn-runs-tool-calls`                                                       |
 | `AgentMemory`        | (internal) an agent's notes, by title, in the `RecordStore` collection `agent-memory/<agentId>`                               | `engine.agent-memory-records`                                                       |
 | `memoryTools`        | (internal) `memory_list`, `_save` and `_forget`; offered in a chat turn of an agent when `memory` is set                      | `engine.agent-memory-tools`                                                         |
@@ -47,6 +48,12 @@ loop of one model turn, which the local chat turn runs.
 | `runLogTools`        | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model         | `engine.run-log-tools`                                                              |
 | `wait` state         | records `run.waiting` and sets its timers; a sent event writes `lastEvent` and moves on, a due timer moves on `after <delay>` | `engine.wait-state`, `engine.wait-timers`                                           |
 | `InputRefused`       | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused    | `engine.decide-refusals`, `engine.decision-callid-must-match`                       |
+
+A run's turn writes through a `LargeResultsTurnLog` wrapped round its `RunStoreTurnLog`. A tool
+result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `tool.result` keeps the
+first 2,000 characters as `result` and the blob as `resultBlob` (requirement
+`engine.large-results-to-blobs`). The model still gets the whole result. Runs wrap their log this
+way once they call tools (step 4(c) of the HAL-186 plan).
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
