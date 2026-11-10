@@ -76,6 +76,7 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 | `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter`            |
 | the halo                                                 | `bg-halo-frame`, `-tint`, `-wash`, `-line`        |
 | the halo on a start screen                               | `bg-halo-spot`, `shadow-halo-glow`                |
+| a hovered window tab, over the frame                     | `bg-tab-hover`                                    |
 | the workflow canvas                                      | `bg-canvas-grid`                                  |
 | the focus ring (keyboard focus only)                     | `focus-ring`, `focus-ring-inset` for list rows    |
 | a selected row's mark                                    | `selected-bar`, `selected-forced`                 |
@@ -143,6 +144,8 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
   agreed set, and the shell's layout sizes keep their values, so a change is visible in review;
 - the halo utilities are exactly six, hold no hard-coded colour, and keep text at 4.5:1 with each
   of the four frame colour presets;
+- `bg-tab-hover` is `surface` at 45% over the frame, and `fg`, `fg-muted` and `accent-text` keep
+  4.5:1 on it at both ends of the frame with each preset;
 - the agent orb's edges keep 3:1 and text keeps 4.5:1 on the stack shades, and each shade is darker
   than the card in front;
 - the focus rings never remove the outline, so they show in Windows high-contrast mode;

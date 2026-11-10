@@ -90,6 +90,18 @@
 }
 
 /*
+ * A hovered inactive window tab (component specs 24.5): `surface` at 45%, laid over the window
+ * frame that shows through the tab. A layer, not a colour token: every colour token is a plain
+ * light-dark() pair, and this one only means something on top of bg-halo-frame.
+ */
+@utility bg-tab-hover {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--color-surface) 45%, transparent),
+    color-mix(in srgb, var(--color-surface) 45%, transparent)
+  );
+}
+
+/*
  * The spot behind a start screen's heading and box (desktop start screen, Welcome on a computer):
  * one aria-hidden element. Tint strength, not frame strength, so text on it keeps 4.5:1 with every
  * frame colour preset. The mask only shapes it, it isn't a colour.

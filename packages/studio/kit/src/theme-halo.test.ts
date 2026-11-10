@@ -142,3 +142,36 @@ verifies("kit.halo-start-screen", () => {
     }
   });
 });
+
+verifies("kit.tab-hover", () => {
+  describe("theme.css bg-tab-hover", () => {
+    const body = blockBody(css, "@utility bg-tab-hover").replace(/\s+/g, " ").trim();
+    const layer = "color-mix(in srgb, var(--color-surface) 45%, transparent)";
+
+    it("is one layer of surface at 45%, so the frame under the tab shows through", () => {
+      expect(body).toBe(`background-image: linear-gradient( ${layer}, ${layer} );`);
+    });
+
+    /** A hovered tab at one end of the frame: surface at 45% over the frame there. */
+    function hover(preset: Preset, end: End, mode: Mode): Rgba {
+      const surface = colourToken("surface", mode);
+      return blend({ ...surface, alpha: 0.45 }, frame(preset, end, mode));
+    }
+
+    const cases = presets.flatMap((preset) =>
+      (["blue", "violet"] as const).map((end) => ({ preset, end, name: preset.name })),
+    );
+
+    for (const mode of ["light", "dark"] as const) {
+      it.each(cases)(
+        `keeps a hovered tab readable at the frame's $end end with the $name preset in ${mode} mode`,
+        ({ preset, end }) => {
+          for (const foreground of ["fg", "fg-muted", "accent-text"]) {
+            const ratio = contrastRatio(colourToken(foreground, mode), hover(preset, end, mode));
+            expect(ratio, `${foreground}: ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(text);
+          }
+        },
+      );
+    }
+  });
+});
