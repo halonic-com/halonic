@@ -7,6 +7,7 @@ import { contentDigest, KeyedQueue } from "@halonicjs/std";
 import { EventBus, type ListenerErrorHandler } from "./event-bus.ts";
 import type { ReviewRecord } from "./review-record.ts";
 import { type ReviewRecordList, ReviewRecords } from "./review-records.ts";
+import type { Trash } from "./review-types.ts";
 
 /** What the review service needs from the host. */
 export interface ReviewServiceOptions {
@@ -32,6 +33,8 @@ export interface ReviewServiceOptions {
    * records throws that error, which suits tests.
    */
   readonly onListenerError?: ListenerErrorHandler;
+  /** Where the assistant's deletes go. Without one, the assistant can't delete files. */
+  readonly trash?: Trash;
 }
 
 interface ReviewEvents {
@@ -55,6 +58,7 @@ export class ReviewFiles {
    */
   private readonly recordAccess = new KeyedQueue();
   private readonly events: EventBus<ReviewEvents>;
+  private readonly trashBin: Trash | undefined;
   /**
    * The paths with a record, read once, so a write to any other file costs
    * no extra read. `null` until first read. It only changes inside a
@@ -68,6 +72,19 @@ export class ReviewFiles {
     this.digest = options.digest;
     this.records = new ReviewRecords(options.records, options.digest);
     this.events = new EventBus<ReviewEvents>(options.onListenerError);
+    this.trashBin = options.trash;
+  }
+
+  /**
+   * The trash the assistant's deletes go to.
+   *
+   * @throws Error when the host gave none
+   */
+  trash(): Trash {
+    if (this.trashBin === undefined) {
+      throw new Error("This workspace has no trash, so the assistant can't delete files.");
+    }
+    return this.trashBin;
   }
 
   /** Runs `work` once the work queued before it for the same file is done. */
@@ -153,6 +170,22 @@ export class ReviewFiles {
     }
     await this.store.remove(path);
     return true;
+  }
+
+  /**
+   * Puts a file back to its record's baseline, if it is still as last
+   * seen: from the trash when the record names an entry that is still
+   * there, by writing the baseline otherwise. Gives `false`, changing
+   * nothing, when the file moved on or something is at its path again.
+   */
+  async putBaseline(record: ReviewRecord): Promise<boolean> {
+    if (record.trashed !== undefined) {
+      const restored = await this.trash().restore(record.trashed.trashId);
+      if (restored.status !== "missing") {
+        return restored.status === "done";
+      }
+    }
+    return this.putFile(record.path, record.seen, record.baseline);
   }
 
   /** The digest the store compares, or `"absent"` for no file. */

@@ -17,6 +17,43 @@ export interface ProposedWrite {
   readonly card: ReviewCard;
 }
 
+/** What the assistant's `propose_delete` asks to delete. */
+export interface ProposedDelete {
+  readonly path: string;
+  /** The digest of the file as the model last read it in this chat. */
+  readonly expected: ExpectedContent;
+  /** The chat card the delete belongs to. */
+  readonly card: ReviewCard;
+}
+
+/**
+ * Halonic's own trash, in the app data folder, not the system's (Elena's,
+ * T5). The assistant's deletes go there, so Reject can put a file back
+ * as it was.
+ */
+export interface Trash {
+  /** Moves the file into the trash, if it still holds `expected`. */
+  moveToTrash(
+    path: string,
+    expected?: ExpectedContent,
+  ): Promise<
+    | { readonly status: "done"; readonly trashId: string }
+    | { readonly status: "changed-on-disk"; readonly current: string | null }
+  >;
+  /**
+   * Puts a file back where it was. `occupied`: something is at that path
+   * now, and nothing was overwritten. `missing`: the trash no longer has
+   * that entry, such as after it was put back once already.
+   */
+  restore(
+    trashId: string,
+  ): Promise<
+    | { readonly status: "done" }
+    | { readonly status: "occupied"; readonly current: string }
+    | { readonly status: "missing" }
+  >;
+}
+
 /** One file in a {@link ReviewStep}. `null` means no record, or no file. */
 export interface ReviewedFile {
   readonly path: string;
@@ -94,6 +131,8 @@ export interface FileReview {
   readonly baseline: string | null;
   /** The digest of the text the parts were worked out from. Pass it back with a part target. */
   readonly seen: ExpectedContent;
+  /** The assistant deleted the file: it is accepted or rejected as a whole, so it has no parts. */
+  readonly deleted: boolean;
   /** The changes to review, as line changes from the baseline to that text, in order. */
   readonly parts: readonly LineChange[];
 }
