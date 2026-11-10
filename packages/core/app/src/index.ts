@@ -92,6 +92,13 @@ export {
   type ScheduledRun,
 } from "./routine-scheduler.ts";
 export {
+  defaultRunListLimit,
+  type RunDetail,
+  RunHistory,
+  type RunList,
+  type RunListFilter,
+} from "./run-history.ts";
+export {
   type Disposable,
   ServiceError,
   type ServiceKey,
