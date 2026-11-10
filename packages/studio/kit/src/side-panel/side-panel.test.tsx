@@ -38,8 +38,11 @@ verifies("kit.side-panel", () => {
     expect(aside.className).toContain("flex h-full min-h-0 flex-col bg-surface");
     expect(aside.className).toContain("border-s");
     expect(aside.className).not.toContain("w-");
-    expect(header?.className).toContain("min-h-12");
+    expect(aside.className).not.toMatch(/rounded|shadow/);
+    expect(header?.className).toContain("h-12");
+    expect(header?.className).toContain("pr-2.5 pl-4");
     expect(header?.className).toContain("border-b");
+    expect(title.className).toContain("truncate");
     expect(title.className).toContain("text-section");
     expect(title.getAttribute("tabindex")).toBe("-1");
     expect(title.className).toContain("outline-none");
@@ -47,17 +50,13 @@ verifies("kit.side-panel", () => {
     expect(body?.className).not.toContain("bg-halo-wash");
   });
 
-  it("takes a label that names the region, a side, the floating look and the halo", () => {
-    const { container, rerender } = render(
-      panel({ label: "Assistant", halo: true, facing: "end" }),
-    );
+  it("takes a label that names the region, a side and the halo", () => {
+    const { container } = render(panel({ label: "Assistant", halo: true, facing: "end" }));
     const { aside, body } = parts(container);
     expect(aside.getAttribute("aria-label")).toBe("Assistant");
     expect(aside.hasAttribute("aria-labelledby")).toBe(false);
     expect(aside.className).toContain("border-e");
     expect(body?.className).toContain("bg-halo-wash");
-    rerender(panel({ floating: true }));
-    expect(parts(container).aside.className).toContain("rounded-md border");
   });
 
   it("puts the shell's actions right of the title and the footer under a divider", () => {
@@ -69,7 +68,7 @@ verifies("kit.side-panel", () => {
     );
     const { header, footer } = parts(container);
     expect(header?.lastElementChild?.textContent).toBe("Close Sort the inbox");
-    expect(footer?.className).toContain("flex justify-end gap-2 border-t");
+    expect(footer?.className).toContain("flex items-center justify-end gap-2 border-t px-4 py-2.5");
     expect(footer?.textContent).toBe("Run step");
   });
 
@@ -77,7 +76,15 @@ verifies("kit.side-panel", () => {
     const { container } = render(panel({ loading: "Loading Sort the inbox" }));
     const { body } = parts(container);
     expect(body?.getAttribute("aria-busy")).toBe("true");
-    expect(body?.querySelectorAll(".bg-surface-muted").length).toBeGreaterThan(0);
+    const pairs = [...(body?.firstElementChild?.children ?? [])];
+    expect(pairs.length).toBeGreaterThan(0);
+    for (const pair of pairs) {
+      expect(pair.className).toContain("gap-2");
+      expect([...pair.children].map((bar) => bar.className.match(/h-2(\.5)?/)?.[0])).toEqual([
+        "h-2.5",
+        "h-2",
+      ]);
+    }
     expect(body?.textContent).toBe("");
     expect(container.querySelector('[role="status"]')?.textContent).toBe("Loading Sort the inbox");
   });
@@ -135,7 +142,8 @@ verifies("kit.side-panel", () => {
       expect(header?.className).toContain("pt-safe");
       const back = header?.firstElementChild;
       expect(back?.getAttribute("aria-label")).toBe("Back");
-      expect(title.className).toContain("truncate text-heading");
+      expect(title.className).toContain("truncate");
+      expect(title.className).toContain("text-heading");
       expect(footer?.className).toContain("pb-safe");
       if (back !== null && back !== undefined) {
         await click(back);

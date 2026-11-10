@@ -25,8 +25,6 @@ export interface SidePanelProps {
   readonly halo?: boolean;
   /** Which side faces the main view and gets the 1px line. `start` (the default) for a panel on the right. */
   readonly facing?: "start" | "end";
-  /** Floats in the window frame: a line all round and a 12px radius. */
-  readonly floating?: boolean;
   /**
    * Gets focus instead of the title when the panel opens, for a panel you open to type in (the
    * assistant's composer). Ignored on a phone, where it would open the keyboard at once.
@@ -36,7 +34,12 @@ export interface SidePanelProps {
   readonly onClose: () => void;
 }
 
-const lines: readonly SkeletonBarWidth[] = ["2/5", "full", "7/10", "1/2"];
+/** Title and meta bar widths, one pair per line of the loading body. */
+const lines: readonly (readonly [SkeletonBarWidth, SkeletonBarWidth])[] = [
+  ["2/5", "7/10"],
+  ["1/2", "full"],
+  ["1/3", "3/5"],
+];
 
 /**
  * The frame every side panel shares: header, scrolling body, optional footer. It fills what the
@@ -80,7 +83,7 @@ export function SidePanel(props: SidePanelProps) {
           className={
             sheet
               ? "flex flex-wrap gap-2 border-t px-4 pt-3 pb-safe"
-              : "flex justify-end gap-2 border-t px-4 py-3"
+              : "flex items-center justify-end gap-2 border-t px-4 py-2.5"
           }
         >
           {props.footer}
@@ -104,7 +107,7 @@ function PanelHeader({ props, sheet, titleId, title }: PanelHeaderProps) {
       className={
         sheet
           ? "flex min-h-phone-bar items-center gap-1 border-b px-1 pt-safe"
-          : "flex min-h-12 items-center gap-2 border-b pr-2 pl-4"
+          : "flex h-12 items-center gap-2 border-b pr-2.5 pl-4"
       }
     >
       {sheet ? (
@@ -120,7 +123,7 @@ function PanelHeader({ props, sheet, titleId, title }: PanelHeaderProps) {
         ref={title}
         id={titleId}
         tabIndex={-1}
-        className={`min-w-0 flex-1 outline-none ${sheet ? "truncate text-heading" : "wrap-break-word text-section"}`}
+        className={`min-w-0 flex-1 truncate outline-none ${sheet ? "text-heading" : "text-section"}`}
       >
         {props.title}
       </h2>
@@ -135,18 +138,18 @@ function edge(props: SidePanelProps, sheet: boolean): string {
   if (sheet) {
     return "";
   }
-  if (props.floating === true) {
-    return "rounded-md border";
-  }
   return props.facing === "end" ? "border-e" : "border-s";
 }
 
-/** Still skeleton lines, the same bars as a List's skeleton rows. */
+/** Still skeleton lines, the same bars as a List's skeleton rows: a title bar over a meta bar. */
 function LoadingLines() {
   return (
-    <div className="flex flex-col gap-3">
-      {lines.map((width) => (
-        <SkeletonBar key={width} kind="title" width={width} />
+    <div className="flex flex-col gap-4">
+      {lines.map(([title, meta]) => (
+        <div key={title} className="flex flex-col gap-2">
+          <SkeletonBar kind="title" width={title} />
+          <SkeletonBar kind="meta" width={meta} />
+        </div>
       ))}
     </div>
   );
