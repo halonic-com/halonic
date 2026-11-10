@@ -17,7 +17,9 @@ import { usageMessages } from "./messages/general.ts";
 import type { Phrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
 import { type Printer, printerFor } from "./output/printer.ts";
-import { decideStyle, type Environment } from "./output/style.ts";
+import { type Clock, terminalLine } from "./output/progress.ts";
+import { type SharedLine, sharedLine } from "./output/shared-line.ts";
+import { decideStyle, type Environment, type OutputStyle } from "./output/style.ts";
 import { readInput } from "./read-input.ts";
 import { noSecrets, rememberedSecrets } from "./remembered-secrets.ts";
 
@@ -31,6 +33,19 @@ export interface Terminal {
   readonly stdoutIsTerminal: boolean;
   /** Whether stderr is a terminal. */
   readonly stderrIsTerminal: boolean;
+  /**
+   * Writes to stderr as it is, without a newline, and says how wide the
+   * terminal is: what a live ◌ line needs to draw over itself. Without it,
+   * no live line is drawn.
+   */
+  readonly stderr?: LiveStream;
+}
+
+/** The terminal stream a live line draws on, as `process.stderr` offers it. */
+export interface LiveStream {
+  write(text: string): void;
+  /** The terminal's width, such as `process.stderr.columns`, or `undefined` when it doesn't say. */
+  columns(): number | undefined;
 }
 
 /** Two pipes and an empty environment: plain text with the Unicode marks, as tests read it. */
@@ -50,6 +65,8 @@ export interface CliSetup {
    * loads is scrubbed from the errors the CLI prints; no command sees this one.
    */
   readonly secrets?: Secrets;
+  /** The clock live lines count on; the computer's own when left out, a hand-moved one in tests. */
+  readonly clock?: Clock;
 }
 
 /**
@@ -73,11 +90,38 @@ export async function runCli(
   const { options, args: commandLine } = readGlobalOptions(args);
   // Made before the printer, so the printer removes every secret a command loads.
   const scrubber = new SecretScrubber();
+  const terminal = setup.terminal ?? pipes;
+  const styles = stylesFor(terminal, options);
+  const liveLine = liveLineOf(terminal, styles.err);
   const printer = printerFor(io, {
     json: options.json,
-    ...stylesFor(setup.terminal ?? pipes, options),
+    ...styles,
     scrubber,
+    ...(liveLine === undefined ? {} : { liveLine }),
+    ...(setup.clock === undefined ? {} : { clock: setup.clock }),
   });
+  try {
+    return await runCommandLine(commandLine, io, commands, setup, { printer, options, scrubber });
+  } finally {
+    // A step that forgot to end its live line doesn't leave it on the screen.
+    printer.close();
+  }
+}
+
+/** What `runCli` made for one command line, before any command runs. */
+interface Prepared {
+  readonly printer: Printer;
+  readonly options: GlobalOptions;
+  readonly scrubber: SecretScrubber;
+}
+
+async function runCommandLine(
+  commandLine: readonly string[],
+  io: CliIo,
+  commands: readonly CliCommand[],
+  setup: CliSetup,
+  { printer, options, scrubber }: Prepared,
+): Promise<ExitCode> {
   const [name, ...commandArgs] = commandLine;
   if (name === undefined && !options.help) {
     return noCommandToRun(printer, options, overallHelp(commands), usageMessages.seeEveryCommand());
@@ -114,6 +158,7 @@ export async function runCli(
   const context: CommandContext = {
     cwd: io.cwd,
     secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
+    progress: (doing) => printer.progress(doing),
   };
   return runCommand(path, pathArgs, context, printer, options);
 }
@@ -210,6 +255,17 @@ async function runCommand(
     });
     return exitCodeFor(errorKindOf(error));
   }
+}
+
+/** The live line on stderr, when stderr has live lines and a way to draw them. */
+function liveLineOf(terminal: Terminal, style: OutputStyle): SharedLine | undefined {
+  const { stderr } = terminal;
+  if (!style.live || stderr === undefined) {
+    return undefined;
+  }
+  return sharedLine(
+    terminalLine({ write: (text) => stderr.write(text), style, columns: () => stderr.columns() }),
+  );
 }
 
 /** Each stream's style: stdout may be a pipe while stderr is still a terminal. */

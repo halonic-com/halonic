@@ -16,6 +16,10 @@ process.exitCode = await runCli(
       platform: process.platform,
       stdoutIsTerminal: process.stdout.isTTY === true,
       stderrIsTerminal: process.stderr.isTTY === true,
+      stderr: {
+        write: (text) => process.stderr.write(text),
+        columns: () => process.stderr.columns,
+      },
     },
   },
 );

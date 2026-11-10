@@ -2,6 +2,7 @@ import type { Secrets } from "@halonicjs/ports";
 import type { ExitCode } from "./exit-code.ts";
 import type { Message } from "./messages/define.ts";
 import { type Phrase, plainText } from "./messages/phrase.ts";
+import type { Progress } from "./output/progress.ts";
 
 /** Where the CLI writes and which folder it works from, passed in so tests can capture both. */
 export interface CliIo {
@@ -24,6 +25,13 @@ export interface CommandContext {
    * adapter.
    */
   readonly secrets: Secrets;
+  /**
+   * Starts the live ◌ line of a step that may take a while (cli-output 1.5),
+   * such as "Draft reply". End it before the step's finished line is
+   * returned; `runCli` takes it away when the command ends in any case.
+   * Through a pipe, with `--json` or in CI it draws nothing.
+   */
+  progress(doing: Phrase): Progress;
 }
 
 /** One option a command accepts, such as `--hub <id>`. */
@@ -106,9 +114,8 @@ export interface CliCommand {
   readonly subcommands?: readonly CliCommand[];
   /**
    * Runs the command and returns what it did; `runCli` prints it. The
-   * result is only the end: what happens while it runs, a live ◌ line, a
-   * run's JSON Lines events or a yes-or-no question, comes in through the
-   * context as a progress sink and an `ask` function the printer owns (Liam,
+   * result is only the end: what happens while it runs, such as a live ◌
+   * line, goes through the context, whose functions the printer owns (Liam,
    * HAL-2194). A command never writes to `CliIo` itself. A command that only
    * hands off to its subcommands, such as `plugin`, leaves it out: `halonic
    * plugin` on its own then prints its help and exits with 2, as `halonic`

@@ -3,40 +3,13 @@ import { expect, it, vi } from "vitest";
 import { defineMessages } from "../messages/define.ts";
 import { phrase, plainText } from "../messages/phrase.ts";
 import { progressMessages } from "../messages/progress.ts";
-import { type Clock, type LiveLine, startProgress, systemClock, terminalLine } from "./progress.ts";
+import { manualClock } from "../test/manual-clock.ts";
+import { type LiveLine, startProgress, systemClock, terminalLine } from "./progress.ts";
 
 const steps = defineMessages("test", {
   draftReply: () => phrase`Draft reply`,
 });
 const draftReply = steps.draftReply().phrase;
-
-/** A clock that only moves when the test says so, firing each timer it passes. */
-function manualClock(): Clock & { advance(ms: number): void } {
-  let now = 0;
-  const timers = new Set<{ readonly ms: number; next: number; readonly tick: () => void }>();
-  return {
-    now: () => now,
-    every(ms, tick) {
-      const timer = { ms, next: now + ms, tick };
-      timers.add(timer);
-      return () => timers.delete(timer);
-    },
-    advance(ms) {
-      const until = now + ms;
-      for (;;) {
-        const due = [...timers].filter((timer) => timer.next <= until);
-        const first = due.sort((a, b) => a.next - b.next)[0];
-        if (first === undefined) {
-          break;
-        }
-        now = first.next;
-        first.next += first.ms;
-        first.tick();
-      }
-      now = until;
-    },
-  };
-}
 
 /** A live line that keeps what it was told: each drawn line as plain text, and "(cleared)". */
 function recordedLine(): LiveLine & { readonly seen: string[] } {
