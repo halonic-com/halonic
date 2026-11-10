@@ -31,6 +31,7 @@
 /* The selection and high-contrast utilities (selected-bar, selected-forced, the forced disabled
    colours) live in their own file. */
 @import "./theme-selection.css";
+@import "./theme-lines.css";
 @import "./checkbox/checkbox.css";
 @import "./switch/switch.css";
 
@@ -42,21 +43,6 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-}
-
-/*
- * A line with no colour class takes the soft border token, not the text colour. Tailwind's
- * preflight sets `border: 0 solid`, which leaves currentColor: a divider that forgot its
- * `border-border` would draw near-black in light and near-white in dark, and ignore more contrast.
- */
-@layer base {
-  *,
-  ::before,
-  ::after,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-border);
-  }
 }
 
 @theme static {
