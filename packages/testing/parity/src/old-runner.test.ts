@@ -7,6 +7,8 @@ import type { OldResult } from "./recording.ts";
 import { fakeOldRepo } from "./test/fake-old-repo.ts";
 import { TestFolders } from "./test-folders.ts";
 
+const itUnlessWindows = it.skipIf(process.platform === "win32");
+
 // The tests start git and Node processes, which can take longer than 5 s on a busy machine.
 vi.setConfig({ testTimeout: 30_000 });
 
@@ -102,15 +104,18 @@ verifies("parity.runner-traces-old-loader", () => {
     ]);
   });
 
-  it("runs the old validate on the workspace with the old repo's tsx", async () => {
-    const { clone } = fakeOldRepo(folders);
-    const [result] = await runOld(clone, [
-      { id: "flat", files: { "workspace.yaml": "id: acme\n" } },
-    ]);
-    expect(result?.validate.exitCode).toBe(1);
-    expect(result?.validate.stdout).toMatch(/^checked \/.*\/flat\n$/);
-    expect(result?.validate.stderr).toBe("1 problem\n");
-  });
+  itUnlessWindows(
+    "[platform:win32] HAL-4549: runs the old validate on the workspace with the old repo's tsx",
+    async () => {
+      const { clone } = fakeOldRepo(folders);
+      const [result] = await runOld(clone, [
+        { id: "flat", files: { "workspace.yaml": "id: acme\n" } },
+      ]);
+      expect(result?.validate.exitCode).toBe(1);
+      expect(result?.validate.stdout).toMatch(/^checked \/.*\/flat\n$/);
+      expect(result?.validate.stderr).toBe("1 problem\n");
+    },
+  );
 
   it("maps grouped and legacy-grouped files to the loader's flat paths", async () => {
     const { clone } = fakeOldRepo(folders);
@@ -257,7 +262,7 @@ verifies("parity.runner-records-test-run-logs", () => {
 });
 
 verifies("parity.runner-records-cli-output", () => {
-  it("runs the old CLI calls a job asks for", async () => {
+  itUnlessWindows("[platform:win32] HAL-4549: runs the old CLI calls a job asks for", async () => {
     const { clone } = fakeOldRepo(folders);
     const [result] = await runOld(clone, [
       {

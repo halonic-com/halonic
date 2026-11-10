@@ -6,6 +6,8 @@ import { fakeOldRepo } from "../test/fake-old-repo.ts";
 import { TestFolders } from "../test-folders.ts";
 import { main, type StartRunner } from "./record.ts";
 
+const itUnlessWindows = it.skipIf(process.platform === "win32");
+
 // The tests start git and Node processes, which can take longer than 5 s on a busy machine.
 vi.setConfig({ testTimeout: 30_000 });
 
@@ -56,115 +58,135 @@ function recording(folder: string): Recording {
 }
 
 describe("parity.recording-is-machine-free", () => {
-  it("writes a recording for every case, with the scratch folder replaced", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
-    expect(printed).toContain("Recorded 3 case(s) from the old repo.");
+  itUnlessWindows(
+    "[platform:win32] HAL-4549: writes a recording for every case, with the scratch folder replaced",
+    () => {
+      const { clone, head } = fakeOldRepo(folders);
+      const fixtureFolder = fixtures();
+      expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+      expect(printed).toContain("Recorded 3 case(s) from the old repo.");
 
-    const base = recording(join(fixtureFolder, "base"));
-    expect(base.reference).toBe("784f78d");
-    expect(base.valid).toBe(true);
-    expect(base.files.map((f) => [f.file, f.status])).toEqual([
-      ["agent.yaml", "pass"],
-      ["tests.yaml", "pass"],
-      ["workspace.yaml", "pass"],
-    ]);
-    expect(base.validate).toEqual({
-      exitCode: 1,
-      stdout: "checked <workspace>\n",
-      stderr: "1 problem\n",
-    });
-    const text = readFileSync(join(fixtureFolder, "base/recorded.json"), "utf8");
-    expect(text).toBe(`${JSON.stringify(base, null, 2)}\n`);
-  });
+      const base = recording(join(fixtureFolder, "base"));
+      expect(base.reference).toBe("784f78d");
+      expect(base.valid).toBe(true);
+      expect(base.files.map((f) => [f.file, f.status])).toEqual([
+        ["agent.yaml", "pass"],
+        ["tests.yaml", "pass"],
+        ["workspace.yaml", "pass"],
+      ]);
+      expect(base.validate).toEqual({
+        exitCode: 1,
+        stdout: "checked <workspace>\n",
+        stderr: "1 problem\n",
+      });
+      const text = readFileSync(join(fixtureFolder, "base/recorded.json"), "utf8");
+      expect(text).toBe(`${JSON.stringify(base, null, 2)}\n`);
+    },
+  );
 
-  it("records only the cases asked for, and leaves the line notes alone", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    const argv = ["--old", clone, "--case", "agent/bad-name"];
-    expect(main(argv, { fixtures: fixtureFolder, reference: head })).toBe(0);
-    expect(printed).toContain("Recorded 1 case(s) from the old repo.");
-    expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/recorded.json"))).toBe(true);
-    expect(existsSync(join(fixtureFolder, "base/recorded.json"))).toBe(false);
-    expect(existsSync(join(fixtureFolder, "old-line-notes.json"))).toBe(false);
-  });
+  itUnlessWindows(
+    "[platform:win32] HAL-4549: records only the cases asked for, and leaves the line notes alone",
+    () => {
+      const { clone, head } = fakeOldRepo(folders);
+      const fixtureFolder = fixtures();
+      const argv = ["--old", clone, "--case", "agent/bad-name"];
+      expect(main(argv, { fixtures: fixtureFolder, reference: head })).toBe(0);
+      expect(printed).toContain("Recorded 1 case(s) from the old repo.");
+      expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/recorded.json"))).toBe(true);
+      expect(existsSync(join(fixtureFolder, "base/recorded.json"))).toBe(false);
+      expect(existsSync(join(fixtureFolder, "old-line-notes.json"))).toBe(false);
+    },
+  );
 });
 
 describe("parity.runner-records-test-run-logs", () => {
-  it("writes run logs for the base's workflow tests, and for no case", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
-    const text = readFileSync(join(fixtureFolder, "base/run-logs.json"), "utf8");
-    const runLogs = JSON.parse(text) as RunLogs;
-    expect(text).toBe(`${JSON.stringify(runLogs, null, 2)}\n`);
-    expect(runLogs.clock).toBe("2026-01-01T00:00:00.000Z");
-    expect(runLogs.tests.map((t) => [t.name, t.passed, t.runs.map((r) => r.id)])).toEqual([
-      ["plain", true, ["test_1"]],
-    ]);
-    expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/run-logs.json"))).toBe(false);
-  });
+  itUnlessWindows(
+    "[platform:win32] HAL-4549: writes run logs for the base's workflow tests, and for no case",
+    () => {
+      const { clone, head } = fakeOldRepo(folders);
+      const fixtureFolder = fixtures();
+      expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+      const text = readFileSync(join(fixtureFolder, "base/run-logs.json"), "utf8");
+      const runLogs = JSON.parse(text) as RunLogs;
+      expect(text).toBe(`${JSON.stringify(runLogs, null, 2)}\n`);
+      expect(runLogs.clock).toBe("2026-01-01T00:00:00.000Z");
+      expect(runLogs.tests.map((t) => [t.name, t.passed, t.runs.map((r) => r.id)])).toEqual([
+        ["plain", true, ["test_1"]],
+      ]);
+      expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/run-logs.json"))).toBe(false);
+    },
+  );
 });
 
 describe("parity.runner-records-cli-output", () => {
-  it("writes the old CLI calls on the base, with the IDs renamed, and on no case", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    const cliCalls = [{ name: "nested run", args: ["run", "<workspace>", "nested"] }];
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head, cliCalls })).toBe(0);
-    const text = readFileSync(join(fixtureFolder, "base/cli.json"), "utf8");
-    const cli = JSON.parse(text) as CliRecording;
-    expect(text).toBe(`${JSON.stringify(cli, null, 2)}\n`);
-    expect(cli.clock).toBe("2026-01-01T00:00:00.000Z");
-    expect(cli.calls.map((c) => [c.name, c.exitCode, c.stdout, c.stored])).toEqual([
-      [
-        "nested run",
+  itUnlessWindows(
+    "[platform:win32] HAL-4549: writes the old CLI calls on the base, with the IDs renamed, and on no case",
+    () => {
+      const { clone, head } = fakeOldRepo(folders);
+      const fixtureFolder = fixtures();
+      const cliCalls = [{ name: "nested run", args: ["run", "<workspace>", "nested"] }];
+      expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head, cliCalls })).toBe(
         0,
-        "Run run_1: completed  (saved in <workspace>/.studio/runs)\n",
-        ["runs/run_1.jsonl", "runs/run_2.jsonl"],
-      ],
-    ]);
-    expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/cli.json"))).toBe(false);
-  });
+      );
+      const text = readFileSync(join(fixtureFolder, "base/cli.json"), "utf8");
+      const cli = JSON.parse(text) as CliRecording;
+      expect(text).toBe(`${JSON.stringify(cli, null, 2)}\n`);
+      expect(cli.clock).toBe("2026-01-01T00:00:00.000Z");
+      expect(cli.calls.map((c) => [c.name, c.exitCode, c.stdout, c.stored])).toEqual([
+        [
+          "nested run",
+          0,
+          "Run run_1: completed  (saved in <workspace>/.studio/runs)\n",
+          ["runs/run_1.jsonl", "runs/run_2.jsonl"],
+        ],
+      ]);
+      expect(existsSync(join(fixtureFolder, "cases/agent/bad-name/cli.json"))).toBe(false);
+    },
+  );
 
-  it("writes no CLI recording when no calls are given", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
-    expect(existsSync(join(fixtureFolder, "base/cli.json"))).toBe(false);
-  });
+  itUnlessWindows(
+    "[platform:win32] HAL-4549: writes no CLI recording when no calls are given",
+    () => {
+      const { clone, head } = fakeOldRepo(folders);
+      const fixtureFolder = fixtures();
+      expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+      expect(existsSync(join(fixtureFolder, "base/cli.json"))).toBe(false);
+    },
+  );
 });
 
 describe("parity.line-verdict", () => {
-  it("records each case's verdict and lists only the differing lines in the notes", () => {
-    const { clone, head } = fakeOldRepo(folders);
-    const fixtureFolder = fixtures();
-    expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
+  itUnlessWindows(
+    "[platform:win32] HAL-4549: records each case's verdict and lists only the differing lines in the notes",
+    () => {
+      const { clone, head } = fakeOldRepo(folders);
+      const fixtureFolder = fixtures();
+      expect(main(["--old", clone], { fixtures: fixtureFolder, reference: head })).toBe(0);
 
-    const badName = recording(join(fixtureFolder, "cases/agent/bad-name"));
-    expect(badName.valid).toBe(false);
-    expect(badName.files).toEqual([
-      expect.objectContaining({ file: "agent.yaml", status: "fail", schema: "agent" }),
-    ]);
-    expect(badName.line).toEqual({ expected: 2, recorded: 1, verdict: "different" });
-    const gone = recording(join(fixtureFolder, "cases/workspace/gone"));
-    expect(gone.line).toEqual({ expected: null, recorded: null, verdict: "same" });
+      const badName = recording(join(fixtureFolder, "cases/agent/bad-name"));
+      expect(badName.valid).toBe(false);
+      expect(badName.files).toEqual([
+        expect.objectContaining({ file: "agent.yaml", status: "fail", schema: "agent" }),
+      ]);
+      expect(badName.line).toEqual({ expected: 2, recorded: 1, verdict: "different" });
+      const gone = recording(join(fixtureFolder, "cases/workspace/gone"));
+      expect(gone.line).toEqual({ expected: null, recorded: null, verdict: "same" });
 
-    const notes: unknown = JSON.parse(
-      readFileSync(join(fixtureFolder, "old-line-notes.json"), "utf8"),
-    );
-    expect(notes).toEqual([
-      {
-        case: "agent/bad-name",
-        about: "a name that is no number",
-        file: "agent.yaml",
-        expected: 2,
-        recorded: 1,
-        verdict: "different",
-      },
-    ]);
-  });
+      const notes: unknown = JSON.parse(
+        readFileSync(join(fixtureFolder, "old-line-notes.json"), "utf8"),
+      );
+      expect(notes).toEqual([
+        {
+          case: "agent/bad-name",
+          about: "a name that is no number",
+          file: "agent.yaml",
+          expected: 2,
+          recorded: 1,
+          verdict: "different",
+        },
+      ]);
+    },
+  );
 });
 
 describe("parity.record-only-from-reference", () => {
