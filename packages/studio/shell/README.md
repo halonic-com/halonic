@@ -450,11 +450,12 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 
 ## End-to-end tests
 
-What jsdom can't show, such as a tab dragged with a real pointer, is checked in a real Chromium
-with Playwright. Each part under test has a page in `e2e/pages` that renders it with the kit's real
+What jsdom can't show, such as a tab dragged with a real pointer, is checked in real Chromium and
+WebKit with Playwright (Tauri uses WebKit on macOS and Linux, WebView2 on Windows). Every spec runs
+in both projects. Each part under test has a page in `e2e/pages` that renders it with the kit's real
 CSS; `vite.config.ts` builds those pages, and the tests are `e2e/*.spec.ts`. `pnpm e2e` builds the
 pages, serves them with `vite preview` and runs the tests. Only CI's `e2e` job runs them, because
-only it has the browser: don't run them on the shared runner (HAL-2418). Read the result with
+only it has the browsers: don't run them on the shared runner (HAL-2418). Read the result with
 `gh pr checks`; a failed run uploads its report and traces as the `e2e-report` artifact.
 
 ## Example
