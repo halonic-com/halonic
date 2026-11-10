@@ -1,6 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { checkPublicWorkspacePath, checkWorkspacePath, isPrivateWorkspacePath } from "./index.ts";
+import {
+  checkPublicWorkspacePath,
+  checkWorkspacePath,
+  isPrivateWorkspacePath,
+  segmentAsOpened,
+} from "./index.ts";
 
 // The contract suite runs these rules through every adapter; this checks the shared helpers on their own.
 verifies("ports.workspace-path-checks", () => {
@@ -32,5 +37,15 @@ verifies("ports.workspace-path-checks", () => {
     expect(isPrivateWorkspacePath("GIT~1/config")).toBe(true);
     expect(isPrivateWorkspacePath(".env::$DATA")).toBe(true);
     expect(isPrivateWorkspacePath("hubs/.git. /config")).toBe(true);
+  });
+});
+
+verifies("ports.segment-as-opened", () => {
+  it("gives a segment the way the private rule compares it", () => {
+    expect(segmentAsOpened(".Halonic")).toBe(".halonic");
+    expect(segmentAsOpened(".halonic. .")).toBe(".halonic");
+    expect(segmentAsOpened(".hal\u200Conic")).toBe(".halonic");
+    expect(segmentAsOpened(".\u017Ftudio")).toBe(".studio");
+    expect(segmentAsOpened("review")).toBe("review");
   });
 });

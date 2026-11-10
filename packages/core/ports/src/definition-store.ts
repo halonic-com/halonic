@@ -118,17 +118,34 @@ export function isPrivateWorkspacePath(path: string): boolean {
   return path.split("/").some(isPrivateSegment);
 }
 
+/**
+ * A path segment the way Windows and macOS would open it, as the private
+ * rule above compares names: without the code points HFS+ ignores, with
+ * case folded as any file system might fold it, and without trailing dots
+ * and spaces. Another folder a store or decorator keeps to itself compares
+ * names the same way, so `.Halonic./x` can't get round a check for
+ * `.halonic/x`.
+ *
+ * @example
+ * segmentAsOpened(".G\u200CIT. "); // ".git"
+ */
+export function segmentAsOpened(segment: string): string {
+  return (
+    segment
+      .replace(hfsIgnored, "")
+      // Upper case first, so letters that fold to ASCII on some file system match
+      // too: a long s to `s`, an `st` ligature to `st`, a dotless i to `i`.
+      .toUpperCase()
+      .toLowerCase()
+      .replace(/[. ]+$/u, "")
+  );
+}
+
 function isPrivateSegment(segment: string): boolean {
   if (segment.includes(":") || /~\d/u.test(segment)) {
     return true;
   }
-  const name = segment
-    .replace(hfsIgnored, "")
-    // Upper case first, so letters that fold to ASCII on some file system match
-    // too: a long s to `s`, an `st` ligature to `st`, a dotless i to `i`.
-    .toUpperCase()
-    .toLowerCase()
-    .replace(/[. ]+$/u, "");
+  const name = segmentAsOpened(segment);
   return (
     name === ".git" ||
     name === ".studio" ||

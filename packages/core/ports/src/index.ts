@@ -49,6 +49,7 @@ export {
   type DefinitionStore,
   definitionStoreVersion,
   isPrivateWorkspacePath,
+  segmentAsOpened,
 } from "./definition-store.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {
