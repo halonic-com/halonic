@@ -156,10 +156,13 @@ export {
   type Resources,
 } from "./resource-report.ts";
 export type { ReviewCard, ReviewRecord } from "./review-record.ts";
+export type { DroppedReviewRecord } from "./review-records.ts";
 export { ReviewService, type ReviewServiceOptions } from "./review-service.ts";
 export type {
+  ItemToReview,
   ProposedWrite,
   ProposeOutcome,
+  ReviewCheck,
   ReviewedFile,
   ReviewOutcome,
   ReviewStep,
