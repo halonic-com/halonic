@@ -101,8 +101,11 @@ export function doctorProvider(provider: Provider): DoctorProvider | undefined {
   return { ...named, runs: "without-a-key" };
 }
 
-/** "localhost:11434": the host and port of `baseUrl`, never its path. */
-function providerAddress(provider: Provider): string | undefined {
+/**
+ * "localhost:11434": the host and port of `baseUrl`, never its path, or else
+ * the default address of the provider's type.
+ */
+export function providerAddress(provider: Provider): string | undefined {
   if (provider.baseUrl !== undefined) {
     return new URL(provider.baseUrl).host;
   }
