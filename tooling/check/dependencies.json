@@ -115,7 +115,8 @@
     "@types/react": {
       "category": "dev-tooling",
       "allowedIn": [
-        "@halonicjs/studio-kit"
+        "@halonicjs/studio-kit",
+        "@halonicjs/studio-shell"
       ],
       "layers": [
         "studio"
@@ -125,7 +126,8 @@
     "@types/react-dom": {
       "category": "dev-tooling",
       "allowedIn": [
-        "@halonicjs/studio-kit"
+        "@halonicjs/studio-kit",
+        "@halonicjs/studio-shell"
       ],
       "layers": [
         "studio"
@@ -181,6 +183,7 @@
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/studio-kit",
+        "@halonicjs/studio-shell",
         "@halonicjs/app-studio"
       ],
       "layers": [
@@ -192,7 +195,8 @@
     "react": {
       "category": "studio-framework",
       "allowedIn": [
-        "@halonicjs/studio-kit"
+        "@halonicjs/studio-kit",
+        "@halonicjs/studio-shell"
       ],
       "layers": [
         "studio"
@@ -213,7 +217,8 @@
     "react-dom": {
       "category": "studio-framework",
       "allowedIn": [
-        "@halonicjs/studio-kit"
+        "@halonicjs/studio-kit",
+        "@halonicjs/studio-shell"
       ],
       "layers": [
         "studio"

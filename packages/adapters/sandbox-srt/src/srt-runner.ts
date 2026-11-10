@@ -1,5 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { Readable, Writable } from "node:stream";
 
 /** A program running inside the fence, as the session sees it. */
@@ -38,6 +40,40 @@ export interface Runner {
   run(request: RunRequest): Promise<RunningProgram>;
 }
 
+/** A path with a `skills/<name>/scripts` part, in either slash style. */
+const skillScripts = /(^|[\\/])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/;
+
+export const skillScriptsRefusal = "Halonic never runs a file under a skill's scripts/ folder";
+
+/**
+ * Whether one part of a start points under a skill's `scripts/` folder: as
+ * written, resolved against `cwd`, or through symbolic links to where the file
+ * really is, so a link elsewhere doesn't hide a skill's script.
+ */
+async function pointsAtSkillScripts(cwd: string, part: string): Promise<boolean> {
+  const path = resolve(cwd, part);
+  if (skillScripts.test(part) || skillScripts.test(path)) return true;
+  // A part that isn't a file there (a bare name, a flag) has no link to follow.
+  const real = await realpath(path).catch(() => path);
+  return skillScripts.test(real);
+}
+
+/**
+ * Whether the program, an argument or the folder it starts in points under a
+ * skill's `scripts/` folder, as written, resolved against `cwd` or through
+ * symbolic links. Halonic never runs those files (HAL-188, HAL-3011).
+ */
+export async function touchesSkillScripts(
+  cwd: string,
+  program: string,
+  args: readonly string[],
+): Promise<boolean> {
+  for (const part of [cwd, program, ...args]) {
+    if (await pointsAtSkillScripts(cwd, part)) return true;
+  }
+  return false;
+}
+
 /** Where the `srt` command line of sandbox-runtime lives. */
 function srtCliPath(): string {
   return createRequire(import.meta.url).resolve("@anthropic-ai/sandbox-runtime/dist/cli.js");
@@ -54,11 +90,15 @@ function launched(child: ChildProcess): Promise<void> {
 /**
  * One `srt` process per program. Each has its own proxy and its own settings,
  * so sessions never share state, and ending the program is ending a process
- * group. The program is passed as separate arguments; srt quotes them for the
+ * group. It refuses a skill's `scripts/` files before anything starts. The program is passed as separate arguments; srt quotes them for the
  * shell it runs inside the fence.
  */
 export const srtRunner: Runner = {
   async run(request) {
+    // Checked here too, not only in the session, so no caller of the runner gets round it.
+    if (await touchesSkillScripts(request.cwd, request.program, request.args)) {
+      throw new Error(skillScriptsRefusal);
+    }
     const child = spawn(
       process.execPath,
       [

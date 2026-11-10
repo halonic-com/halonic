@@ -10,7 +10,7 @@ export const Provider = s
     version,
     id,
     name: s.string().optional(),
-    /** Adapter type, such as openai-compatible, anthropic, gemini, cloudflare or mock. */
+    /** Adapter type, one of anthropic, openai-compatible or mock (for tests). */
     type: s.string().min(1),
     baseUrl: s.string().url().optional(),
     /** The name of the secret that holds the API key. */

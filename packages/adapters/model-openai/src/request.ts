@@ -33,7 +33,7 @@ interface WireTool {
 export function toWireBody(request: ChatRequest, options: RequestOptions): Record<string, unknown> {
   const body: Record<string, unknown> = {
     // `extra` goes first, so it can add vendor settings but never replace ours.
-    ...request.params?.extra,
+    ...withoutLengthFields(request.params?.extra),
     model: request.model,
     messages: request.messages.map(toWireMessage),
     ...wireParams(request.params ?? {}, options),
@@ -82,13 +82,26 @@ function toWireTool(tool: ToolDefinition): WireTool {
   };
 }
 
-/** The sampling settings that are set, under their wire names. */
+/**
+ * `extra` without either length field: the length comes from `maxTokens`, in
+ * the one field the provider takes, and some vendors refuse a call with both.
+ */
+function withoutLengthFields(extra: ChatParams["extra"]): Record<string, unknown> {
+  const {
+    max_tokens: _maxTokens,
+    max_completion_tokens: _maxCompletionTokens,
+    ...rest
+  } = extra ?? {};
+  return rest;
+}
+
+/** The sampling settings that are set, under their wire names. An empty `stop` list is left out. */
 function wireParams(params: ChatParams, options: RequestOptions): Record<string, unknown> {
   const wire: Record<string, unknown> = {
     temperature: params.temperature,
     top_p: params.topP,
     [options.maxTokensField]: params.maxTokens,
-    stop: params.stop,
+    stop: params.stop?.length === 0 ? undefined : params.stop,
     reasoning_effort: params.reasoningEffort,
   };
   return Object.fromEntries(Object.entries(wire).filter(([, value]) => value !== undefined));

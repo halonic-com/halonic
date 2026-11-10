@@ -1,0 +1,34 @@
+name: Current pull request
+description: >-
+  Reads the pull request's current title, body, branch and labels from the API
+  and writes them to a file shaped like the event file. A merge group and a
+  re-run then check today's text and labels, not those from when the run
+  started. The job needs `pull-requests: read`.
+outputs:
+  event-path:
+    description: The file, or empty for a push to main (no pull request).
+    value: ${{ steps.read.outputs.event-path }}
+runs:
+  using: composite
+  steps:
+    - id: read
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        NUMBER: ${{ github.event.pull_request.number }}
+        REF: ${{ github.ref }}
+      run: |
+        if [ -z "$NUMBER" ]; then
+          # A merge group's branch is gh-readonly-queue/<base>/pr-<number>-<sha>.
+          # With group size 1 that is the only pull request in the group.
+          NUMBER=$(sed -nE 's#^refs/heads/gh-readonly-queue/.+/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<< "$REF")
+        fi
+        if [ -z "$NUMBER" ]; then
+          echo "event-path=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        file="$RUNNER_TEMP/pull-request-event.json"
+        gh api "repos/$REPO/pulls/$NUMBER" \
+          --jq '{pull_request: {title, body, head: {ref: .head.ref}, labels: [.labels[] | {name}]}}' > "$file"
+        echo "event-path=$file" >> "$GITHUB_OUTPUT"

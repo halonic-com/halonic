@@ -31,7 +31,7 @@ loop of one model turn, which the local chat turn runs.
 | `ModelTurnInput`     | what `runModelTurn` takes, and `ModelTurnResult`, which it returns: the answer, the turn's messages, refusals and skips       | `engine.local-chat-turn`                                                            |
 | `TurnEvent`          | one event a `TurnLog` takes (the `llm.*` and `tool.*` events above)                                                           | `engine.turn-logs-events`                                                           |
 | `RunState`           | what the kernel knows about a run: a fold of its events by `evolve` (or `foldRun`), stored as the run's snapshot              | `engine.run-state-fold`                                                             |
-| `DecideInput`        | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`, `effect-failed`), each with its time                  | (types only)                                                                        |
+| `DecideInput`        | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`, `effect-failed`, `child`), each with its time         | (types only)                                                                        |
 | `Effect`             | what `decide` asks `step` to do after appending: call a model or a tool, start a child run, tell the parent, set a timer      | (types only)                                                                        |
 | `decide`             | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take                            | `engine.decide-refusals`                                                            |
 | `InputRefused`       | what `decide` throws for an input the run can't take; its `code` (a `RefusalCode`) says why, and nothing is recorded          | `engine.decide-refusals`                                                            |
@@ -47,6 +47,8 @@ loop of one model turn, which the local chat turn runs.
 | `runLogTools`        | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model         | `engine.run-log-tools`                                                              |
 | `wait` state         | records `run.waiting` and sets its timers; a sent event writes `lastEvent` and moves on, a due timer moves on `after <delay>` | `engine.wait-state`, `engine.wait-timers`                                           |
 | `InputRefused`       | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused    | `engine.decide-refusals`, `engine.decision-callid-must-match`                       |
+| `workflow` state     | starts a child run from the run's kept workflows, waits while it waits, writes its context to `output` or fails with it       | `engine.workflow-state`                                                             |
+| `tellParent`         | (internal) the `tell-parent` effect a child run's step asks for when the child waits or ends                                  | `engine.child-tells-parent`                                                         |
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
@@ -115,6 +117,16 @@ them in `src/generated/states.ts`, typed against `StateRegistry`, so a missing o
 fails typecheck. The registry covers `BuiltStateType`, the types built so far (`task`, `wait`, `final`);
 it widens as each state lands, until it is the format's whole `StateType` union. A run that enters
 a type not built yet fails with a clear error.
+
+A `workflow` state runs another workflow of the hub as a child run, from the `workflows` the run
+kept with its definitions; a run kept without them can't start one. The child's id is the parent's
+id and the `seq` of the state's `state.entered` (`run_1.2`), so `decide` needs no id generator and a
+start asked for twice finds the same child. Child runs nest at most 5 deep (`maxChildDepth`). A
+child's step that leaves it waiting, completed or failed asks to tell its parent (`tell-parent`);
+the effect runner reads how the child is then and gives the parent a `child` input. While the child
+waits, the parent records `run.waiting` with `child` and the child's events, and refuses an event
+sent to itself: the executor passes such an event to the child. The local executor carries out
+`start-child` and `tell-parent` in a following change; until then a run that reaches one fails.
 
 A `wait` state's timers are keyed by the `seq` of the `state.entered` that set them, so a timer
 left over from an earlier visit to the state changes nothing; leaving a state doesn't cancel its

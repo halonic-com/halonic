@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { jsonSchemaOf, kindNames } from "@halonicjs/format";
 import { type CliCommand, UsageError } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
-import { markPart, phrase, plainText } from "../../messages/phrase.ts";
+import { markPart, phrase } from "../../messages/phrase.ts";
 import { schemaMessages } from "../../messages/schema.ts";
 import { shownPath } from "../../shown-path.ts";
 
@@ -17,12 +17,11 @@ export const schemaCommand: CliCommand = {
   summary: schemaMessages.summary(),
   action: () => schemaMessages.action(),
   options: {},
-  async run(input, io) {
+  async run(input, context) {
     if (input.positionals.length > 1) {
       throw new UsageError(schemaMessages.tooManyFolders(input.positionals.map(shownName)));
     }
-    const folder = input.positionals[0] ?? defaultSchemaFolder;
-    const target = resolve(io.cwd, folder);
+    const target = resolve(context.cwd, input.positionals[0] ?? defaultSchemaFolder);
     await mkdir(target, { recursive: true });
     const kinds = kindNames();
     for (const kind of kinds) {
@@ -31,9 +30,15 @@ export const schemaCommand: CliCommand = {
         `${JSON.stringify(jsonSchemaOf(kind), null, 2)}\n`,
       );
     }
-    const wrote = schemaMessages.wrote(kinds.length, shownPath(io.cwd, target));
-    io.out(plainText(phrase`${markPart("done")} ${wrote.phrase}`));
-    return exitCode.ok;
+    const files = kinds.map(schemaFileName);
+    const folder = shownPath(context.cwd, target);
+    const wrote = schemaMessages.wrote(files.length, folder);
+    return {
+      exitCode: exitCode.ok,
+      lines: [phrase`${markPart("done")} ${wrote.phrase}`],
+      // The fields the CLI reference lists for `halonic schema --json`.
+      json: { folder, files, count: files.length },
+    };
   },
 };
 

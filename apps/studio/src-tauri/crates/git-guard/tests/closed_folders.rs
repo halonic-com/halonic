@@ -64,3 +64,25 @@ fn closed_folders_closes_a_deleted_folder_by_its_recorded_path() {
     std::fs::create_dir(&acme).expect("acme is made again");
     assert_eq!(folders.check(&acme), Err(GitError::FolderNotOpened));
 }
+
+#[cfg(unix)]
+#[test]
+fn closed_folders_closes_a_checked_path_even_if_a_link_is_swapped_in() {
+    let temporary = TemporaryFolder::new();
+    let acme = temporary.folder("acme");
+    let beta = temporary.folder("beta");
+    let checked = std::fs::canonicalize(&acme).expect("acme canonicalises");
+    let folders = OpenedFolders::new();
+    folders.open_canonical(checked.clone());
+    folders.open(&beta).expect("beta opens");
+
+    // acme becomes a link to beta before it is closed.
+    std::fs::remove_dir(&acme).expect("acme is removed");
+    std::os::unix::fs::symlink(&beta, &acme).expect("the link is made");
+    folders.close_canonical(&checked);
+
+    assert!(folders.check(&beta).is_ok(), "beta stays open");
+    std::fs::remove_file(&acme).expect("the link is removed");
+    std::fs::create_dir(&acme).expect("acme is made again");
+    assert_eq!(folders.check(&acme), Err(GitError::FolderNotOpened));
+}

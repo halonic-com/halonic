@@ -1,7 +1,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { BlobStore, RunStore } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
-import { checkRunTakes, decide } from "./decide.ts";
+import { checkRunTakes, decide, tellParent } from "./decide.ts";
 import type { DecidedEvent, DecideInput, Decision, Effect } from "./decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kept-definitions.ts";
 import { foldRun, type RunState } from "./run-state.ts";
@@ -11,7 +11,7 @@ import { foldRun, type RunState } from "./run-state.ts";
  * changes shape: a snapshot of another version is ignored and the run is
  * folded from its log again, because a snapshot is only a cache (C53).
  */
-export const snapshotVersion = 3;
+export const snapshotVersion = 4;
 
 /** How often `step` reads the run again after losing a race before it gives up. */
 export const maxStepAttempts = 10;
@@ -122,7 +122,7 @@ async function decideWithDefinitions(
         reason: "error",
       },
     ],
-    effects: [],
+    effects: tellParent({ ...run, status: "failed" }),
   };
 }
 

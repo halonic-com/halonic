@@ -11,6 +11,8 @@ export { decide } from "./kernel/decide.ts";
 export type {
   CallModelEffect,
   CallToolEffect,
+  ChildInput,
+  ChildRunNow,
   Decide,
   DecidedEvent,
   DecideInput,
@@ -41,7 +43,13 @@ export type {
   StateRegistry,
   StateStep,
 } from "./kernel/registry.ts";
-export { evolve, foldRun, type PendingCall, type RunState } from "./kernel/run-state.ts";
+export {
+  type ChildRun,
+  evolve,
+  foldRun,
+  type PendingCall,
+  type RunState,
+} from "./kernel/run-state.ts";
 export {
   maxStepAttempts,
   readRun,

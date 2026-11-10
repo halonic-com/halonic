@@ -43,7 +43,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `Scheduler`               | `scheduler.ts`                 | 1       | run timers and the routine tick; timers may arrive late or twice                                      | `scheduler`                                              |
 | `Secrets`                 | `secrets.ts`                   | 1       | configured secrets, read-only                                                                         | `secrets`                                                |
 | `TokenStore`              | `token-store.ts`               | 1       | secrets the server writes itself, such as refresh tokens                                              | `token-store`                                            |
-| `ToolApprovalStore`       | `tool-approval-store.ts`       | 1       | approved listed tools in the user's profile, by workspace, source and name; `gateToolListing` decides | `tool-approval-store` (with first adapter)               |
+| `ToolApprovalStore`       | `tool-approval-store.ts`       | 1       | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter)               |
 | `TrustStore`              | `trust-store.ts`               | 1       | trust records in the user's profile, by location and fingerprint; `TrustService` decides              | `trust-store`                                            |
 | `Vcs`                     | `vcs.ts`                       | 1       | version control of the workspace folder                                                               | `vcs`, `vcs-safety`, `vcs-hardened` (with first adapter) |
 

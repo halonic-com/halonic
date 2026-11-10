@@ -6,7 +6,7 @@ use std::time::Instant;
 use crate::check_args::{CheckedCall, check_args};
 use crate::error::GitError;
 use crate::limited_run::{GitOutput, Limits, run_limited};
-use crate::opened_folders::{OpenedFolders, canonical, for_git};
+use crate::opened_folders::{OpenedFolders, canonical, plain_path};
 use crate::repo_config::{
     ConfigEntry, add_repository_filters, blank_filters, check_listing, check_refused_keys,
     has_command_entry, neutralise_programs, parse_listing,
@@ -312,7 +312,7 @@ impl GitRunner {
         remove_git_variables(&mut command, std::env::vars_os().map(|(name, _)| name));
         command.envs(HARDENING_ENVIRONMENT.iter().copied());
         let mut config: Vec<(OsString, OsString)> =
-            vec![(HOOKS_PATH.into(), for_git(&self.empty_hooks_folder))];
+            vec![(HOOKS_PATH.into(), plain_path(&self.empty_hooks_folder))];
         config.extend(
             HARDENING_CONFIG
                 .iter()
@@ -327,9 +327,9 @@ impl GitRunner {
         command.arg("--no-pager");
         if let Some(repository) = repository {
             let mut git_dir = OsString::from("--git-dir=");
-            git_dir.push(for_git(&repository.git_dir));
+            git_dir.push(plain_path(&repository.git_dir));
             let mut work_tree = OsString::from("--work-tree=");
-            work_tree.push(for_git(&repository.top));
+            work_tree.push(plain_path(&repository.top));
             command.arg(git_dir).arg(work_tree);
         }
         command

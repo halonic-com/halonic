@@ -8,6 +8,7 @@ import type {
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { refuseRealNetwork } from "./connector-network.ts";
 
 /**
  * The tools the contract's test server offers over `http` and `stdio`: one
@@ -111,7 +112,8 @@ export type ConnectorKind = ConnectorConfig["transport"]["kind"];
  * The contract every {@link ConnectorFactory} adapter passes, for the
  * transport kind it serves: the trust-grant rules of
  * `ports.connector-trust-enforcement`, tools passed through as the server
- * wrote them, calls, and closing.
+ * wrote them, calls, and closing. No case may reach the real network:
+ * a connector reaches its service only through the context's `http`.
  */
 export function connectorClientContract(
   name: string,
@@ -120,6 +122,7 @@ export function connectorClientContract(
 ): void {
   verifies("contracts.connector-client", () => {
     describe(`ConnectorClient contract: ${name} (${kind})`, () => {
+      refuseRealNetwork();
       commonCases(kind, make);
       if (kind === "http" || kind === "stdio") serverCases(make);
       if (kind === "http") httpCases(make);

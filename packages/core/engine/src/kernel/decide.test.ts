@@ -224,7 +224,7 @@ verifies("engine.state-registry", () => {
   typeTest("lists every built state type, typed against the registry", () => {
     expectTypeOf(states).toMatchTypeOf<StateRegistry>();
     expectTypeOf(states.task).toEqualTypeOf<StateHandler<"task">>();
-    expectTypeOf<keyof typeof states>().toEqualTypeOf<"final" | "task" | "wait">();
+    expectTypeOf<keyof typeof states>().toEqualTypeOf<"final" | "task" | "wait" | "workflow">();
   });
 
   it("fails a run that enters a state type the engine can't run yet", () => {

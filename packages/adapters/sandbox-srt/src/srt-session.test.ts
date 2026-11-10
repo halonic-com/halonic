@@ -331,7 +331,7 @@ verifies("sandbox-srt.session", () => {
         "../work/skills/x/scripts/run.sh",
       ]) {
         await expect(session.start({ program, args: [] })).rejects.toThrow(
-          /doesn't start a skill's scripts/,
+          /skill's scripts\/ folder/,
         );
       }
       expect(runs).toHaveLength(before);
@@ -346,21 +346,55 @@ verifies("sandbox-srt.session", () => {
       await writeFile(join(scripts, "run.sh"), "#!/bin/sh\n");
       await symlink(join(scripts, "run.sh"), join(base, "work", "innocent"));
       await expect(session.start({ program: "./innocent", args: [] })).rejects.toThrow(
-        /doesn't start a skill's scripts/,
+        /skill's scripts\/ folder/,
       );
+      await expect(session.start({ program: "sh", args: ["innocent"] })).rejects.toThrow(
+        /skill's scripts\/ folder/,
+      );
+      await symlink(scripts, join(base, "work", "tools"));
+      await expect(
+        session.start({ program: "sh", args: ["run.sh"], cwd: "tools" }),
+      ).rejects.toThrow(/skill's scripts\/ folder/);
       expect(runs).toHaveLength(0);
       await session.close();
     });
 
-    it("still starts bare names and other programs with a path", async () => {
+    it("still starts bare names and paths that only look like a skill's scripts", async () => {
       const { runner, runs } = fakeRunner();
       const session = await new SrtSandbox(linux, runner).open(profile());
       await session.start({ program: "scripts", args: [] });
       await session.start({ program: "./tools/scripts/run.sh", args: [] });
       await session.start({ program: "skills/x/SKILL.md", args: [] });
-      expect(runs).toHaveLength(3);
+      await session.start({ program: "node", args: ["scripts/build.js", "skills/mail/SKILL.md"] });
+      expect(runs).toHaveLength(4);
       await session.close();
     });
+
+    it.each([
+      ["an absolute program", { program: "/w/library/skills/mail/scripts/send", args: [] }],
+      ["a relative program", { program: "library/skills/mail/scripts/send", args: [] }],
+      ["a Windows-style program", { program: "skills\\mail\\scripts\\send.ps1", args: [] }],
+      ["the script folder itself", { program: "ls", args: ["library/skills/mail/scripts"] }],
+      ["a script as an argument", { program: "node", args: ["skills/mail/scripts/send.js"] }],
+      [
+        "a relative script from the skill",
+        { program: "sh", args: ["./scripts/send"], cwd: "skills/mail" },
+      ],
+      [
+        "a start inside the script folder",
+        { program: "sh", args: ["send"], cwd: "skills/mail/scripts" },
+      ],
+      ["a way round with ..", { program: "../work/skills/mail/scripts/send", args: [] }],
+    ])(
+      "refuses %s under a skill's scripts/ folder and starts nothing (HAL-188)",
+      async (_, bad) => {
+        const { runner, runs } = fakeRunner();
+        const session = await new SrtSandbox(linux, runner).open(profile());
+        await expect(session.start(bad)).rejects.toThrow(/skill's scripts\/ folder/);
+        expect(runs).toEqual([]);
+        await session.close();
+      },
+    );
 
     it("throws once the session is closed", async () => {
       const { runner } = fakeRunner();

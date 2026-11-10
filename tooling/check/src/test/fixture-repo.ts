@@ -105,6 +105,8 @@ export function writeFixtureRepo(
     options.overridesAllowed ??
       readFileSync(join(realRoot, "tooling/check/overrides-allowed.json"), "utf8"),
   );
+  // Empty, because the real list names files that a fixture repo doesn't have.
+  write("tooling/check/process-starters.json", JSON.stringify({ starters: {} }));
   write(
     "package.json",
     JSON.stringify(manifestFor("@halonicjs/root", "tooling", { exports: undefined })),

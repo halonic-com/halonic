@@ -35,6 +35,7 @@ typecheck, lint and test for the packages your change affects.
 | `versions`             | the Studio app's version in `apps/studio/src-tauri/tauri.conf.json`, the `[workspace.package]` table of its `Cargo.toml` or a workspace crate in `Cargo.lock` differs from `apps/studio/package.json`, or a crate sets its own version instead of `version.workspace = true`. Fix with `pnpm version:sync`                                                                                                                                                                                                                                                                 |
 | `invisible-characters` | docs, code, config or tests hold a character nobody can see: a format character (zero-width, bidi control, tag letter, byte order mark), a variation selector, or a control character other than tab, line feed and carriage return. Emoji with their joiners and selectors, and other visible non-ASCII such as umlauts or CJK, are fine. Write such a character as an escape (`\u202E`) in code; name it in words in docs                                                                                                                                                |
 | `readme-examples`      | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block                                                                                                                                                                                                                                                                                         |
+| `process-starts`       | a product file imports `child_process`, `worker_threads` or `cluster` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry is stale, has no reason or names no existing test. See [process-starts](#process-starts)                                                                                                                                                                                                                                                                 |
 
 ### The DCO sign-off
 
@@ -81,6 +82,40 @@ no range and skips it. To check your branch yourself:
 DCO_RANGE=origin/main..HEAD pnpm check dco
 ```
 
+### process-starts
+
+Halonic never runs a file under a skill's `scripts/` folder (HAL-188). Any
+code that can start a process could break that, so every such file is
+listed and reviewed. `process-starts` fails when a source file imports
+`child_process`, `worker_threads` or `cluster` (with or without `node:`)
+and isn't listed under `starters` in `tooling/check/process-starters.json`.
+A load the check can't follow counts too, in every layer: `import(x)` or
+`require(x)` with a computed name, `createRequire` and
+`process.getBuiltinModule` could load these modules under any name.
+Tests and the testing and tooling packages are exempt: they never ship.
+Tool config files such as `vitest.config.ts` aren't, because shipped code
+could import one.
+
+To let a file start processes, add an entry with its repo-relative path:
+
+```json
+{
+  "starters": {
+    "packages/adapters/<name>/src/launch.ts": {
+      "reason": "Starts stdio connectors the user configured.",
+      "scriptsTest": "packages/adapters/<name>/src/launch.test.ts"
+    }
+  }
+}
+```
+
+`reason` says why the file needs to start processes, and `scriptsTest` is
+an existing test file that shows it refuses to start a file under a
+skill's `scripts/` folder. An entry needs Liam's review. The rule also
+fails when an entry's file no longer exists or no longer imports any of
+these modules (or loads one the check can't follow), so remove the entry
+with the code.
+
 ## `trace`: requirements and their tests
 
 `pnpm check trace` reads every `requirements/*.md` file,
@@ -114,8 +149,8 @@ is `agents.explorer.filter-by-hub`.
 ## Requirement guard: nothing that works may break
 
 The requirement guard compares a pull request with its merge
-base (in the merge queue, the queue's base), including both sides' test
-results. It fails on any of these, unless the branch's decision note
+base, including both sides' test results. It runs on pull requests only:
+the merge queue holds the same change, so it would give the same verdict. It fails on any of these, unless the branch's decision note
 covers it:
 
 | Change                                                                                                                           | The note lists       |
@@ -247,7 +282,8 @@ the pull request changes with its floor at the merge base (where the branch left
 the target branch), and fails if a value went down or was removed (`pnpm check:coverage-floors <base> <head>`).
 New packages and packages with no floor on the target branch pass. If lowering
 a floor is deliberate, the maintainer adds the `coverage-floor-lowered` label
-to the pull request and the check passes.
+to the pull request; the "PR details" workflow then re-runs the check, which
+passes.
 
 To run one test file without the floor: `pnpm exec vitest run <file> --coverage.enabled=false`.
 
@@ -449,29 +485,45 @@ for every other job and fails if any failed. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
-On a pull request, the `Changed areas` job decides which of those jobs run
-from the pull request's diff. In the merge queue it reads the whole
-group's diff against the `main` commit the group is built on. If that diff
-holds only docs and tests (Markdown, `docs/`, `apps/docs/`, test and spec
-files, Rust `_tests.rs` files, and `test`, `tests`, `fixtures` and
-snapshot folders), the same area rules apply as on a pull request, so a
-README-only group skips Tauri, Android and Playwright. Any other file, an
-empty diff or a diff that can't be read runs every job. On `main` every
-job runs.
+CI starts when a pull request is opened, reopened or gets new commits, not
+when its title, body or labels change: that would cancel the run in progress
+and build everything again. `.github/workflows/pr-details.yml` handles those
+changes. It checks the new title and, if CI's title, leak or coverage-floor
+job failed, re-runs CI's failed jobs, which read the pull request's current
+title, body and labels. The merge queue checks the title and runs the leak
+guard again before a pull request merges. After changing a pull request's
+base, push a commit so CI runs against the new base.
 
-| Job                          | What                                                                                                                                                      |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies                   |
-| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                                     |
-| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                                             |
-| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash                                                                        |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` it then runs `trace`; on a pull request it hands its test results to the guard job |
-| Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                              |
-| Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results   |
-| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                        |
-| Tauri shell (Rust checks)    | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny`                        |
-| Tauri shell on Windows       | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths                                              |
-| End-to-end, docs             | stubs that run only when their area changes; real once the Studio and `apps/docs` exist                                                                   |
+On a pull request, the `Changed areas` job decides which of those jobs run
+from the pull request's diff. In the merge queue it reads the group's diff
+against the commit the group is built on (`main`, or the entry ahead of it
+in the queue) and applies the same area rules, so a group that doesn't
+touch `apps/studio/src-tauri` skips Tauri and Android. Each entry ahead
+checks its own areas before it merges. An empty diff or a diff that can't
+be read runs every job. On `main` every job runs, so a gap in the area
+rules still shows there ([broken-main.md](broken-main.md)).
+
+The merge queue reruns what a newer base can break: the fast gates, the
+leak guard and secret scan, the build with `trace` (from the queued
+change's own copy, as on `main`) and the area jobs. It leaves out what
+depends only on the pull request itself and already passed on it: the
+title and coverage-floor checks, the merge base's tests and the
+requirement guard, and the workflow lint unless the group changes
+`.github/`.
+
+| Job                          | What                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fast gates                   | pull request title, `pnpm check` (with the DCO sign-off), licences, formatting, the feature list, `pnpm audit` for shipped dependencies                 |
+| Leak guard                   | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code                                   |
+| Secret scan                  | `gitleaks` over the pull request's commits, checksum-verified                                                                                           |
+| Workflow lint                | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes                     |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does      |
+| Merge base's tests           | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline                                            |
+| Requirement guard            | pull requests only: `trace` and the requirement guard, run from the merge base's copy with the merge base's dependencies, over both sides' test results |
+| Empty package and feature    | when tooling changes: `pnpm new package`, `pnpm new feature`, `pnpm verify --full`                                                                      |
+| Tauri shell (Rust checks)    | when `apps/studio/src-tauri` changes: `rustfmt`, `clippy` and `cargo test` for the shell and its crates on Linux, and `cargo-deny`                      |
+| Tauri shell on Windows       | when `apps/studio/src-tauri` changes: `clippy` and `cargo test` again on Windows, for the Windows-only paths                                            |
+| End-to-end, docs             | stubs that run only when their area changes; real once the Studio and `apps/docs` exist                                                                 |
 
 `.github/workflows/scheduled.yml` runs the advisories, the lockfile and
 the licence check daily, and the full leak guard and secret scan over the whole history

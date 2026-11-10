@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1534, plan HAL-186 ("Agent memory as runtime data")
+- Source: HAL-1534, HAL-3079, plan HAL-186 ("Agent memory as runtime data")
 
-The engine shall give an agent's model three Halonic tools for its memory: `memory_list` gives every note with its title and text, `memory_save` keeps a note under a title, and `memory_forget` removes the note with a title. A call with a missing or non-string argument shall fail, so the model gets the error. When the local executor has a memory store and a chat turn names an agent, the turn shall offer that agent's memory tools after the other Halonic tools; a turn without an agent, or an executor without a store, offers none.
+The engine shall give an agent's model three Halonic tools for its memory: `memory_list` gives every note with its title and text, `memory_save` keeps a note under a title, and `memory_forget` removes the note with a title and names it as it was saved. A call with a missing or non-string argument, or a save the memory refuses, shall fail, so the model gets the error. When the local executor has a memory store and a chat turn names an agent, the turn shall offer that agent's memory tools after the other Halonic tools; a turn without an agent, or an executor without a store, offers none.
 
 ## Examples
 

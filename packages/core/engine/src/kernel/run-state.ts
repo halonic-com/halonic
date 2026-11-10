@@ -10,6 +10,13 @@ export interface PendingCall {
   readonly prompt: string;
 }
 
+/** The child run a `workflow` state started and waits on: the one its `workflow.started` named. */
+export interface ChildRun {
+  readonly runId: string;
+  readonly state: string;
+  readonly workflow: string;
+}
+
 /**
  * What the kernel knows about a run: a fold of its events by {@link evolve}.
  * Plain JSON data, so it can be stored as the run's snapshot and thrown away
@@ -49,6 +56,12 @@ export interface RunState {
   /** How many call ids the run has handed out; the next one is `call-<calls + 1>`. */
   readonly calls: number;
   readonly pendingCall: PendingCall | null;
+  /**
+   * The child run the run waits on, from `workflow.started` until its
+   * `workflow.finished`. While the child waits, so does the run, and an
+   * event sent to the run goes to the child.
+   */
+  readonly child: ChildRun | null;
   /** The `seq` of the last event folded in. The next append expects it. */
   readonly lastSeq: number;
 }
@@ -111,12 +124,13 @@ function startedState(event: RunEvent): RunState {
     context: {},
     calls: 0,
     pendingCall: null,
+    child: null,
     lastSeq: event.seq,
   };
 }
 
 /** What an ended run no longer waits on. */
-const ended = { pendingCall: null, accepts: [], approvals: [] } as const;
+const ended = { pendingCall: null, child: null, accepts: [], approvals: [] } as const;
 
 function applyEvent(state: RunState, event: RunEvent): RunState {
   switch (event.type) {
@@ -139,8 +153,14 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
       return { ...state, status: "waiting", accepts: event.events };
     case "event.received":
     case "timer.fired":
-    case "workflow.finished":
       return { ...state, status: "running", accepts: [] };
+    case "workflow.started":
+      return {
+        ...state,
+        child: { runId: event.childRunId, state: event.state, workflow: event.workflow },
+      };
+    case "workflow.finished":
+      return { ...state, status: "running", accepts: [], child: null };
     case "approval.requested":
       return { ...state, approvals: [...state.approvals, event.callId] };
     case "approval.resolved":

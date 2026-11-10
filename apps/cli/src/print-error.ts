@@ -1,8 +1,9 @@
-import { errorKindOf, type SecretScrubber } from "@halonicjs/std";
+import { type ErrorKind, errorKindOf, type SecretScrubber } from "@halonicjs/std";
 import { UsageError } from "./command.ts";
 import type { Message } from "./messages/define.ts";
 import { errorMessages } from "./messages/general.ts";
-import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
+import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
+import { outputVersion } from "./output/json.ts";
 
 /** How deep `--debug` follows `cause`, so a cause that points back at itself still ends. */
 const maxCauses = 10;
@@ -52,33 +53,98 @@ export function printError(
   print: (line: Phrase) => void,
   context: PrintErrorContext = {},
 ): void {
-  const scrub: Scrub = (text) => context.scrubber?.scrub(text) ?? text;
-  for (const line of errorLines(error, context, scrub)) {
+  for (const line of errorLines(reportOf(error, context))) {
     print(line);
   }
-  if (context.debug === true) {
-    for (const line of debugLines(error, scrub)) {
-      print(line);
-    }
+  printDebug(error, print, context);
+}
+
+/** The `--json` document of a failed command (cli-output 1.8). */
+export interface ErrorDocument {
+  readonly outputVersion: typeof outputVersion;
+  readonly ok: false;
+  readonly error: {
+    /** The error's kind, or `usage` for a wrong command line. */
+    readonly kind: ErrorKind | "usage";
+    /** The error's detailed code, left out when it has none. */
+    readonly code?: string;
+    /** The reason, the same sentence as line 1 without "Couldn't …:". */
+    readonly message: string;
+    /** The one fix, the same sentence as line 2, left out when there is none. */
+    readonly fix?: string;
+  };
+}
+
+/**
+ * The error as `--json` gives it (cli-output 1.8): the same report as
+ * {@link printError}'s lines, so a script reads the same words, scrubbed the
+ * same way. A bug's own text stays out here too.
+ */
+export function errorDocument(error: unknown, context: PrintErrorContext = {}): ErrorDocument {
+  const report = reportOf(error, context);
+  return {
+    outputVersion,
+    ok: false,
+    error: {
+      kind: report.kind,
+      ...(report.code === undefined ? {} : { code: report.code }),
+      message: plainText(report.reason),
+      ...(report.fix === undefined ? {} : { fix: plainText(report.fix) }),
+    },
+  };
+}
+
+/** With `--debug`, the error's own text, causes and stack; nothing without it. */
+export function printDebug(
+  error: unknown,
+  print: (line: Phrase) => void,
+  context: PrintErrorContext = {},
+): void {
+  if (context.debug !== true) {
+    return;
+  }
+  for (const line of debugLines(error, scrubFor(context))) {
+    print(line);
   }
 }
 
-/** The ✕ line, then the fix line and the docs line when the error has them. */
-function errorLines(error: unknown, context: PrintErrorContext, scrub: Scrub): Phrase[] {
+/** What an error says, scrubbed, before it is shaped as lines or as JSON. */
+interface ErrorReport {
+  readonly kind: ErrorKind | "usage";
+  /** The reason on its own, without the command's action. */
+  readonly reason: Phrase;
+  /** Line 1: the reason after "Couldn't *action*:", or alone for a wrong command line. */
+  readonly firstLine: Phrase;
+  readonly fix: Phrase | undefined;
+  readonly docs: string | undefined;
+  readonly code: string | undefined;
+}
+
+function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
+  const scrub = scrubFor(context);
   if (error instanceof UsageError) {
     const fix = error.fixMessage ?? context.usage;
     const problem = scrubPhrase(error.problem.phrase, scrub);
-    return [
-      failedLine(problem),
-      ...fixLines(fix === undefined ? undefined : scrubPhrase(fix.phrase, scrub)),
-    ];
+    return {
+      kind: "usage",
+      reason: problem,
+      firstLine: problem,
+      fix: fix === undefined ? undefined : scrubPhrase(fix.phrase, scrub),
+      docs: undefined,
+      code: undefined,
+    };
   }
-  if (errorKindOf(error) === "internal") {
+  const kind = errorKindOf(error);
+  if (kind === "internal") {
     const reason = errorMessages.internal().phrase;
-    return [
-      failedLine(withAction(reason, context)),
-      ...fixLines(errorMessages.internalFix().phrase),
-    ];
+    return {
+      kind,
+      reason,
+      firstLine: withAction(reason, context),
+      fix: errorMessages.internalFix().phrase,
+      docs: undefined,
+      code: undefined,
+    };
   }
   const field = (name: TextField) => {
     const text = textField(error, name);
@@ -86,16 +152,30 @@ function errorLines(error: unknown, context: PrintErrorContext, scrub: Scrub): P
   };
   const reason = phrase`${field("message") ?? ""}`;
   const fix = field("fix");
-  const docs = field("docs");
-  const code = field("code");
-  const lines = [
-    failedLine(withAction(reason, context)),
-    ...fixLines(fix === undefined ? undefined : phrase`${fix}`),
-  ];
-  if (docs !== undefined) {
-    lines.push(phrase`  ${errorMessages.more(docs, code).phrase}`);
+  return {
+    kind,
+    reason,
+    firstLine: withAction(reason, context),
+    fix: fix === undefined ? undefined : phrase`${fix}`,
+    docs: field("docs"),
+    code: field("code"),
+  };
+}
+
+/** The ✕ line, then the fix line and the docs line when the error has them. */
+function errorLines(report: ErrorReport): Phrase[] {
+  const lines = [phrase`${markPart("failed")} ${report.firstLine}`];
+  if (report.fix !== undefined) {
+    lines.push(phrase`  ${report.fix}`);
+  }
+  if (report.docs !== undefined) {
+    lines.push(phrase`  ${errorMessages.more(report.docs, report.code).phrase}`);
   }
   return lines;
+}
+
+function scrubFor(context: PrintErrorContext): Scrub {
+  return (text) => context.scrubber?.scrub(text) ?? text;
 }
 
 /** The phrase with the loaded secrets replaced in each of its texts. */
@@ -106,14 +186,6 @@ function scrubPhrase(value: Phrase, scrub: Scrub): Phrase {
     }
     return "text" in part ? { ...part, text: scrub(part.text) } : part;
   });
-}
-
-function failedLine(text: Phrase): Phrase {
-  return phrase`${markPart("failed")} ${text}`;
-}
-
-function fixLines(fix: Phrase | undefined): Phrase[] {
-  return fix === undefined ? [] : [phrase`  ${fix}`];
 }
 
 /** "Couldn't *action*: *reason*" when the command named its action, else the reason alone. */

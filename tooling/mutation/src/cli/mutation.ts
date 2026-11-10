@@ -71,6 +71,12 @@ function mutate(root: string, target: string, workFolder: string): PackageResult
 function main(argv: readonly string[]): number {
   const root = findRepoRoot();
   const selected = argv.filter((argument) => !argument.startsWith("-"));
+  if (selected.length === 0 && argv.length > 0) {
+    console.error(
+      "Only flags given, no package folders. Pass folders, or no arguments for every target.",
+    );
+    return 2;
+  }
   const unknown = selected.filter((target) => !mutationTargets.includes(target));
   if (unknown.length > 0) {
     console.error(

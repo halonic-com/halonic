@@ -44,6 +44,32 @@ verifies("model-openai.replies", () => {
     expect(readReply(body)).toMatchObject({ reasoning: "Look it up.", finishReason: "tool_calls" });
   });
 
+  it("keeps `length` on tool calls, since their arguments may be cut off", () => {
+    const calls = [toolCall("call_1", "search", '{"q":"ac')];
+    const body = replyWith({ content: null, tool_calls: calls }, "length");
+    expect(readReply(body).finishReason).toBe("length");
+    expect(readFinishReason("content_filter", true)).toBe("other");
+  });
+
+  it("takes arguments sent as an object as they are", () => {
+    const call = {
+      id: "call_1",
+      type: "function",
+      function: { name: "search", arguments: { q: "acme" } },
+    };
+    const answer = readReply(replyWith({ content: null, tool_calls: [call] }, "tool_calls"));
+    expect(answer.toolCalls[0]?.arguments).toEqual({ q: "acme" });
+  });
+
+  it("numbers tool calls the server sent without an id", () => {
+    const calls = [
+      { type: "function", function: { name: "search", arguments: "{}" } },
+      { id: "", type: "function", function: { name: "close", arguments: "{}" } },
+    ];
+    const answer = readReply(replyWith({ content: null, tool_calls: calls }, "tool_calls"));
+    expect(answer.toolCalls.map((call) => call.id)).toEqual(["call_0", "call_1"]);
+  });
+
   it("passes tool arguments that aren't a JSON object on as input", () => {
     expect(parseArguments('{"q": "acme"')).toEqual({ input: '{"q": "acme"' });
     expect(parseArguments("[1,2]")).toEqual({ input: "[1,2]" });

@@ -1,7 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { steppingClock } from "../../agent/turn-test-kit.test-helper.ts";
-import { AgentMemory, agentMemoryCollection, maxNoteText } from "./agent-memory.ts";
+import {
+  AgentMemory,
+  agentMemoryCollection,
+  maxMemoryText,
+  maxNotes,
+  maxNoteText,
+} from "./agent-memory.ts";
 import { memoryRecords } from "./memory-records.test-helper.ts";
 
 function memoryOf(agentId: string, records = memoryRecords(), runId?: string) {
@@ -55,8 +61,8 @@ verifies("engine.agent-memory-records", () => {
     const { memory, records } = memoryOf("clerk");
     await memory.save("Refunds", "Ask for the order number");
 
-    expect(await memory.forget("REFUNDS")).toBe(true);
-    expect(await memory.forget("Refunds")).toBe(false);
+    expect(await memory.forget("REFUNDS")).toBe("Refunds");
+    expect(await memory.forget("Refunds")).toBeUndefined();
     expect(records.log.map((change) => change.op)).toEqual(["add", "remove"]);
     expect(await memory.notes()).toEqual([]);
   });
@@ -69,6 +75,55 @@ verifies("engine.agent-memory-records", () => {
 
     expect((await clerk.notes()).map((note) => note.title)).toEqual(["Billing", "Shipping"]);
     expect(await memoryOf("scout", records).memory.notes()).toEqual([]);
+  });
+
+  it("lists titles by code point, whatever the host's language", async () => {
+    const { memory } = memoryOf("clerk");
+    for (const title of ["\u{1F600} smile", "\uFB01 ligature", "apple", "Zebra", "\u00C9clair"]) {
+      await memory.save(title, "text");
+    }
+
+    expect((await memory.notes()).map((note) => note.title)).toEqual([
+      "Zebra",
+      "apple",
+      "\u00C9clair",
+      "\uFB01 ligature",
+      "\u{1F600} smile",
+    ]);
+  });
+
+  it("refuses a new title past the most notes, but still replaces one", async () => {
+    const { memory, records } = memoryOf("clerk");
+    for (let i = 0; i < maxNotes; i++) {
+      await memory.save(`Note ${i}`, "text");
+    }
+
+    await expect(memory.save("One more", "text")).rejects.toThrow(
+      `You already keep ${maxNotes} notes, the most allowed. Forget a note you no longer need`,
+    );
+    expect(records.log).toHaveLength(maxNotes);
+    await memory.save("note 7", "new text");
+    expect(records.log.at(-1)?.op).toBe("update");
+    await memory.forget("Note 0");
+    await memory.save("One more", "text");
+    expect(await memory.notes()).toHaveLength(maxNotes);
+  });
+
+  it("refuses a save that takes the texts together past the limit", async () => {
+    const { memory, records } = memoryOf("clerk");
+    const quarter = maxMemoryText / 4;
+    for (const title of ["A", "B", "C", "D"]) {
+      await memory.save(title, "x".repeat(quarter));
+    }
+
+    await expect(memory.save("E", "x")).rejects.toThrow(
+      `Your notes would hold ${maxMemoryText + 1} characters, more than the ${maxMemoryText} allowed.`,
+    );
+    expect(records.log).toHaveLength(4);
+    await memory.save("a", "y".repeat(quarter));
+    await memory.save("a", "short");
+    await memory.save("E", "x".repeat(quarter - 5));
+    expect(records.log).toHaveLength(7);
   });
 
   it("leaves out a record that isn't a note", async () => {

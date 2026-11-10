@@ -33,6 +33,7 @@ export {
   providerChoices,
   type WorkspaceChoices,
 } from "./loader.ts";
+export { pluginLoadProblems } from "./plugin-load.ts";
 export {
   allowedUrl,
   type DeclaredPlacement,

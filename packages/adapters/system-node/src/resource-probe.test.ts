@@ -2,10 +2,13 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { execPath, pid } from "node:process";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { beforeAll, expect, it } from "vitest";
 import { NodeResourceProbe, systemProcessTable } from "./resource-probe.ts";
+import { warmProcessTable, windowsRetry } from "./warm-process-table.test-helper.ts";
 
 verifies("system-node.resource-probe", () => {
+  beforeAll(warmProcessTable, 30_000);
+
   it("reads the memory and process table it is given", async () => {
     const probe = new NodeResourceProbe({
       enginePid: 10,
@@ -29,8 +32,12 @@ verifies("system-node.resource-probe", () => {
 
   // The reader for this machine; CI runs it on Linux, macOS and Windows. On Windows it starts
   // PowerShell and asks WMI, which took 1.8 to over 5 s on CI runners, so the test waits as long
-  // as the reader may take (15 s) and a little more.
-  it("lists a process this one started, by its real pid", { timeout: 20_000 }, async () => {
+  // as the reader may take (15 s) and a little more. On Windows it is warmed up first and gets one
+  // retry (HAL-3230); a reader that hangs twice still fails.
+  it("lists a process this one started, by its real pid", {
+    timeout: 20_000,
+    retry: windowsRetry,
+  }, async () => {
     const child = spawn(execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
     try {
       await once(child, "spawn");

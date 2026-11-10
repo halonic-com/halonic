@@ -238,6 +238,9 @@ As described above, AI tools are welcome here, with these rules:
 1. The automated checks run.
 2. A reviewer reads the change. Changes to tests, requirements, security, build
    or docs also get a review from the person who looks after that area.
+   Every finding starts with a severity tag: `[blocker]`, `[major]`,
+   `[minor]` or `[nit]`. The tags and the reviewer's checklist are in
+   [docs/guides/review.md](docs/guides/review.md).
 3. A maintainer approves and merges. Pull requests merge one at a time, so
    `main` always passes its checks.
 

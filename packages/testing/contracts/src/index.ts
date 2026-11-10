@@ -23,6 +23,7 @@ export {
   type MakeConnector,
   type ReachedCall,
 } from "./connector-client.ts";
+export { type FetchTrap, trapFetch } from "./connector-network.ts";
 export {
   connectorPinContract,
   type MakePinnedConnector,

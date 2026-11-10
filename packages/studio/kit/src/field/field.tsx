@@ -6,6 +6,8 @@ import { type FormRowsKind, useFormRows } from "./form-rows.tsx";
 export interface FieldControl {
   /** The control's `id`, which the label points at. */
   readonly id: string;
+  /** The label's `id`, for a group that a label can't point at: `aria-labelledby` (RadioGroup). */
+  readonly labelId: string;
   /** The `id` of the hint or the error under the control, for `aria-describedby`. */
   readonly describedBy: string | undefined;
   /** True while the Field shows an error: the control sets `aria-invalid`. */
@@ -73,12 +75,14 @@ export function Field({
   const rows = useFormRows();
   const id = useId();
   const controlId = `${id}-control`;
+  const labelId = `${id}-label`;
   const lineId = `${id}-line`;
   const invalid = isShown(error);
   const hasLine = invalid || isShown(hint);
 
   const control: FieldControl = {
     id: controlId,
+    labelId,
     describedBy: hasLine ? lineId : undefined,
     invalid,
     required,
@@ -87,7 +91,7 @@ export function Field({
   const side = (layout ?? (rows === undefined ? "stack" : "side")) === "side";
   const look = side ? SIDE[rows ?? "sheet"] : undefined;
   const fieldLabel = (
-    <label htmlFor={controlId} className={labelClass(hideLabel, look, align)}>
+    <label id={labelId} htmlFor={controlId} className={labelClass(hideLabel, look, align)}>
       {label}
       {/* Hidden from screen readers, which already hear "required" from aria-required. */}
       {required ? (

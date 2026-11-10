@@ -14,6 +14,7 @@ import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
 import { checkNames } from "./names.ts";
 import { checkPackages } from "./packages.ts";
+import { checkProcessStarts } from "./process-starts.ts";
 import { checkReadmeExamples } from "./readme-examples.ts";
 import { checkTrace } from "./trace.ts";
 import { checkVersions } from "./versions.ts";
@@ -31,6 +32,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "file-size": checkFileSize,
   lockfile: checkLockfile,
   "absolute-paths": checkAbsolutePaths,
+  "process-starts": checkProcessStarts,
   "invisible-characters": checkInvisibleCharacters,
   "readme-examples": checkReadmeExamples,
   versions: checkVersions,

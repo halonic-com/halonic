@@ -96,6 +96,11 @@ export {
   type PresentationProviderProps,
   usePresentation,
 } from "./presentation/presentation.tsx";
+export {
+  RadioGroup,
+  type RadioGroupProps,
+  type RadioOption,
+} from "./radio/radio-group.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
 export { SidePanel, type SidePanelProps } from "./side-panel/side-panel.tsx";
 export {

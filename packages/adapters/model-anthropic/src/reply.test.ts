@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { ReplyFormatError, readReply, readStopReason } from "./reply.ts";
+import { ReplyFormatError, readReply, readStopReason, readUsage } from "./reply.ts";
 
 /** A Messages API reply holding `content`, recorded in the shape the API sends. */
 function replyWith(content: unknown[], stopReason: string): Record<string, unknown> {
@@ -108,5 +108,44 @@ verifies("model-anthropic.replies", () => {
     });
     expect(() => readReply({ type: "message" })).toThrow(ReplyFormatError);
     expect(() => readReply("Hi")).toThrow(ReplyFormatError);
+  });
+});
+
+verifies("model-anthropic.reply-cache-usage", () => {
+  it("gives cache reads and writes as their own counts, apart from the input", () => {
+    const usage = {
+      input_tokens: 40,
+      output_tokens: 9,
+      cache_read_input_tokens: 9_000,
+      cache_creation_input_tokens: 1_200,
+    };
+    expect(readUsage(usage)).toEqual({
+      inputTokens: 40,
+      outputTokens: 9,
+      cacheReadTokens: 9_000,
+      cacheWriteTokens: 1_200,
+    });
+  });
+
+  it("leaves a cache count out when there was none, or when it isn't a count", () => {
+    expect(
+      readUsage({
+        input_tokens: 40,
+        output_tokens: 9,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: null,
+      }),
+    ).toEqual({ inputTokens: 40, outputTokens: 9 });
+    expect(readUsage({ input_tokens: 1, output_tokens: 1, cache_read_input_tokens: "5" })).toEqual({
+      inputTokens: 1,
+      outputTokens: 1,
+    });
+    expect(
+      readUsage({ input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 7 }),
+    ).toEqual({
+      inputTokens: 1,
+      outputTokens: 1,
+      cacheWriteTokens: 7,
+    });
   });
 });

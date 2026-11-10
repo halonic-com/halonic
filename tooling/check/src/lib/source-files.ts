@@ -57,6 +57,14 @@ export function namesTestFile(path: string): boolean {
 }
 
 /**
+ * True when a path relative to a package's folder names one of its tool config
+ * files (such as `vitest.config.ts`), with or without its file ending.
+ */
+export function namesToolConfig(pathInPackage: string): boolean {
+  return /^(?:\.\/)?[^/]+\.config(?:\.[cm]?[jt]s)?$/.test(pathInPackage);
+}
+
+/**
  * Parses a file with the TypeScript parser (not a regex) and
  * returns its imports and functions.
  */

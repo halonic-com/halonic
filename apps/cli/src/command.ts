@@ -1,9 +1,9 @@
 import type { Secrets } from "@halonicjs/ports";
 import type { ExitCode } from "./exit-code.ts";
 import type { Message } from "./messages/define.ts";
-import { plainText } from "./messages/phrase.ts";
+import { type Phrase, plainText } from "./messages/phrase.ts";
 
-/** Where a command writes and which folder it works from, passed in so tests can capture both. */
+/** Where the CLI writes and which folder it works from, passed in so tests can capture both. */
 export interface CliIo {
   /** The folder relative paths are resolved from. */
   readonly cwd: string;
@@ -13,8 +13,10 @@ export interface CliIo {
   err(line: string): void;
 }
 
-/** What `runCli` hands a command besides its input and io. */
+/** What `runCli` hands a command besides its input. */
 export interface CommandContext {
+  /** The folder relative paths are resolved from. */
+  readonly cwd: string;
   /**
    * The secrets store, wrapped by `runCli` so every value it hands out is
    * scrubbed from the errors the CLI prints. Pass this one on to anything
@@ -48,6 +50,31 @@ export interface CommandInput {
 }
 
 /**
+ * The fields a command adds to its `--json` document (cli-output 1.8), as the
+ * CLI reference lists them. `runCli` sets `outputVersion`, `ok` and `error`,
+ * so a command can't.
+ */
+export type JsonFields = Readonly<Record<string, unknown>> & {
+  readonly outputVersion?: never;
+  readonly ok?: never;
+  readonly error?: never;
+};
+
+/**
+ * What a command did, for `runCli` to print: the lines for a person, or the
+ * fields for `--json`. A command returns this and prints nothing, so every
+ * command gets the same colour, marks and `--json` (the thin-command rule).
+ */
+export interface CommandResult {
+  /** The exit code; with 0 the `--json` document says `"ok": true`. */
+  readonly exitCode: ExitCode;
+  /** The result lines for stdout, in the catalogue's words, painted for the stream. Not printed with `--json`. */
+  readonly lines: readonly Phrase[];
+  /** The command's own `--json` fields. */
+  readonly json: JsonFields;
+}
+
+/**
  * A `halonic` command. Each lives in `src/commands/<name>/command.ts` and
  * exports `<name>Command`; `pnpm discover` lists them (see `discover` in
  * `package.json`), and the help is made
@@ -78,15 +105,20 @@ export interface CliCommand {
    */
   readonly subcommands?: readonly CliCommand[];
   /**
-   * Runs the command. A command that only hands off to its subcommands, such
-   * as `plugin`, leaves it out: `halonic plugin` on its own then prints its
-   * help and exits with 2, as `halonic` on its own does.
+   * Runs the command and returns what it did; `runCli` prints it. The
+   * result is only the end: what happens while it runs, a live ◌ line, a
+   * run's JSON Lines events or a yes-or-no question, comes in through the
+   * context as a progress sink and an `ask` function the printer owns (Liam,
+   * HAL-2194). A command never writes to `CliIo` itself. A command that only
+   * hands off to its subcommands, such as `plugin`, leaves it out: `halonic
+   * plugin` on its own then prints its help and exits with 2, as `halonic`
+   * on its own does.
    *
    * @throws UsageError when the arguments are wrong. Any other error ends the
    *   command with the exit code of its kind (1 when it has none), and
    *   `printError` prints it; the command never prints an error itself.
    */
-  run?(input: CommandInput, io: CliIo, context: CommandContext): Promise<ExitCode>;
+  run?(input: CommandInput, context: CommandContext): Promise<CommandResult>;
 }
 
 /**

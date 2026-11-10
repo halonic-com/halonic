@@ -1,8 +1,10 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
-import type { ChatResponse, Clock, ScheduledTimer, Scheduler } from "@halonicjs/ports";
+import type { ChatResponse, Clock, ScheduledTimer } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
+import type { HarnessRunsOptions } from "../harness/harness-host.ts";
+import { NotingScheduler } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
@@ -12,21 +14,8 @@ import { ScriptedModel } from "../testing/scripted-model.ts";
  * ignoring their times: the run tests are about the order of steps, not
  * the clock.
  */
-export class TestScheduler implements Scheduler {
-  readonly timers = new Map<string, ScheduledTimer>();
+export class TestScheduler extends NotingScheduler {
   onTimer: (timer: ScheduledTimer) => Promise<void> = async () => {};
-
-  async schedule(key: string, timerId: string, at: string): Promise<void> {
-    this.timers.set(JSON.stringify([key, timerId]), { key, timerId, at });
-  }
-
-  async cancel(key: string, timerId: string): Promise<void> {
-    this.timers.delete(JSON.stringify([key, timerId]));
-  }
-
-  async pending(key: string): Promise<ScheduledTimer[]> {
-    return [...this.timers.values()].filter((timer) => timer.key === key);
-  }
 
   /**
    * Delivers every timer set until none is left, each `times` times at once,
@@ -40,6 +29,16 @@ export class TestScheduler implements Scheduler {
         await Promise.all(Array.from({ length: times }, () => this.onTimer({ ...timer })));
       }
     }
+  }
+
+  /**
+   * Delivers one timer once it is set, and resolves when its delivery has.
+   * A test uses it to deliver a timer while another delivery still runs.
+   */
+  async deliver(key: string, timerId: string): Promise<void> {
+    const timer = await this.waitFor(key, timerId);
+    await this.cancel(key, timerId);
+    await this.onTimer({ ...timer });
   }
 }
 
@@ -77,13 +76,15 @@ export interface RunsSetup {
   readonly clock?: Clock;
   /** The hub's agents; none when left out. */
   readonly agents?: Readonly<Record<string, Agent>>;
+  /** The ports for its agents' harness runs; none when left out. */
+  readonly harnesses?: HarnessRunsOptions;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
 export function runsOn<Runs extends KernelRuns = KernelRuns>(
   answers: (ChatResponse | Error)[],
   runs: Runs = new KernelRuns() as Runs,
-  { workflow = replyWorkflow, clock = steppingClock(), agents }: RunsSetup = {},
+  { workflow = replyWorkflow, clock = steppingClock(), agents, harnesses }: RunsSetup = {},
 ) {
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
@@ -99,6 +100,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       blobs: new KernelBlobs(),
       scheduler,
       ids: fixedIds(),
+      ...(harnesses === undefined ? {} : { harnesses }),
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
         if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);

@@ -10,7 +10,8 @@ describe("renderAgentsMd", () => {
     expect(text).toContain("# @halonicjs/std");
     expect(text).toContain("Owner: maya · Layer: core · ");
     expect(text).toContain("Small utilities.");
-    expect(text).toContain("`pnpm turbo run test --filter=@halonicjs/std`");
+    expect(text).toContain("`pnpm exec turbo run test --filter=@halonicjs/std -- --maxWorkers=2`");
+    expect(text).not.toContain("| `pnpm verify`");
     expect(text).not.toContain("{{");
   });
 

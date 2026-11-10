@@ -1,14 +1,5 @@
+import type { TauriIpc } from "@halonicjs/studio-services";
 import type { ConnectBridge, ConnectResult } from "./bridge.ts";
-
-/**
- * Tauri's IPC entry point. The shell puts it on every page it loads; with
- * `withGlobalTauri` off it is the only Tauri object the page sees. The
- * capability decides what it may call: `connect`, and opening the release
- * page.
- */
-export interface TauriInternals {
-  invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;
-}
 
 /** Where "Open release page" goes. The capability allows only this address. */
 export const releasePage = "https://github.com/halonic-com/halonic/releases/latest";
@@ -19,8 +10,11 @@ export interface PageWindow {
   readonly location: Pick<Location, "assign">;
 }
 
-/** The bridge for the real app: each call goes to the shell. */
-export function tauriBridge(internals: TauriInternals, page: PageWindow): ConnectBridge {
+/**
+ * The bridge for the real app: each call goes to the shell. The capability
+ * decides what it may call: `connect`, and opening the release page.
+ */
+export function tauriBridge(internals: TauriIpc, page: PageWindow): ConnectBridge {
   return {
     // The shell's answer has the page's ConnectResult shape (halonic-connect).
     connect: async (address) => (await internals.invoke("connect", { address })) as ConnectResult,

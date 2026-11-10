@@ -65,6 +65,33 @@ verifies("model-openai.request", () => {
     });
   });
 
+  it("sends one length field, whatever extra says, and no empty stop list", () => {
+    const body = toWireBody(
+      {
+        model: "acme-small",
+        messages: [{ role: "user", content: "Hi" }],
+        params: {
+          maxTokens: 50,
+          stop: [],
+          extra: { max_tokens: 9, max_completion_tokens: 9, seed: 7 },
+        },
+      },
+      { maxTokensField: "max_completion_tokens" },
+    );
+    expect(body).toEqual({
+      seed: 7,
+      model: "acme-small",
+      messages: [{ role: "user", content: "Hi" }],
+      max_completion_tokens: 50,
+      stream: false,
+    });
+    const withStop = toWireBody(
+      { model: "acme-small", messages: [], params: { stop: ["END"] } },
+      plain,
+    );
+    expect(withStop["stop"]).toEqual(["END"]);
+  });
+
   it("keeps the text of an assistant turn, with or without tool calls", () => {
     const call = { id: "call_0", name: "search", arguments: {} };
     const body = toWireBody(

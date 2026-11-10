@@ -54,27 +54,66 @@ verifies("shell.tab-set", () => {
     expect(tabs.back()).toBe(false);
   });
 
-  it("skips places another tab shows when going Back and Forward", () => {
+  it("goes Back and Forward exactly one place, even to a place another tab shows", () => {
     const tabs = new TabSet();
     tabs.openHere(agents);
     tabs.openHere(sorter);
     tabs.openInNewTab(agents);
     expect(tabs.back()).toBe(true);
+    expect(strip(tabs)).toEqual(["*Agents", "Agents"]);
+    expect(tabs.back()).toBe(true);
     expect(strip(tabs)).toEqual(["*Home", "Agents"]);
     expect(tabs.back()).toBe(false);
     expect(tabs.forward()).toBe(true);
-    expect(strip(tabs)).toEqual(["*Sorter", "Agents"]);
+    expect(strip(tabs)).toEqual(["*Agents", "Agents"]);
   });
 
-  it("does nothing on Back when every earlier place shows in another tab", () => {
-    const tabs = tabsOn(agents, sorter);
-    tabs.activateAt(1);
-    tabs.openHere(writer);
+  it("goes Back to Home while another tab is on Home", () => {
+    const tabs = new TabSet();
+    tabs.openHere(sorter);
+    tabs.newTab();
     tabs.activateAt(0);
-    tabs.openInNewTab(sorter);
-    tabs.activateAt(-1);
+    expect(tabs.back()).toBe(true);
+    expect(strip(tabs)).toEqual(["*Home", "Home"]);
+  });
+
+  it("tells whether the active tab can go Back and Forward", () => {
+    const tabs = new TabSet();
+    expect(tabs.state).toMatchObject({ canGoBack: false, canGoForward: false });
+    tabs.openHere(agents);
+    expect(tabs.state).toMatchObject({ canGoBack: true, canGoForward: false });
+    tabs.back();
+    expect(tabs.state).toMatchObject({ canGoBack: false, canGoForward: true });
+    tabs.newTab();
+    expect(tabs.state).toMatchObject({ canGoBack: false, canGoForward: false });
+    tabs.activateAt(0);
+    expect(tabs.state).toMatchObject({ canGoBack: false, canGoForward: true });
+  });
+
+  it("does nothing when the place the active tab shows is opened here", () => {
+    const tabs = new TabSet();
+    tabs.openHere(homeLocation);
+    expect(tabs.active.history).toEqual([homeLocation]);
+    tabs.openHere(agents);
+    const before = tabs.state;
+    tabs.openHere(agents);
+    expect(tabs.state).toBe(before);
+    expect(tabs.back()).toBe(true);
     expect(tabs.back()).toBe(false);
-    expect(strip(tabs)).toEqual(["Agents", "Sorter", "*Writer"]);
+  });
+
+  it("prefers the active tab when it and another tab show the place being opened", () => {
+    const tabs = new TabSet();
+    tabs.openHere(agents);
+    tabs.openHere(sorter);
+    tabs.openInNewTab(agents);
+    tabs.back();
+    expect(strip(tabs)).toEqual(["*Agents", "Agents"]);
+    const active = tabs.active;
+    tabs.openHere(agents);
+    expect(tabs.active).toBe(active);
+    expect(tabs.openInNewTab(agents)).toEqual({ tab: active, added: false });
+    expect(tabs.active.position).toBe(1);
   });
 
   it("drops Forward when a place opens after going back", () => {
@@ -93,8 +132,17 @@ verifies("shell.tab-set", () => {
     const tabs = tabsOn(agents, supportReply);
     tabs.openHere(supportReply);
     expect(strip(tabs)).toEqual(["Agents", "*Support reply"]);
-    expect(tabs.openInNewTab(agents).id).toBe(tabs.state.tabs[0]?.id);
     expect(tabs.state.tabs).toHaveLength(2);
+  });
+
+  it("tells whether a new tab was added or a tab already showed the place", () => {
+    const tabs = tabsOn(agents, supportReply);
+    const before = tabs.state;
+    expect(tabs.openInNewTab(supportReply)).toEqual({ tab: tabs.state.tabs[1], added: false });
+    expect(tabs.state).toBe(before);
+    const opened = tabs.openInNewTab(sorter);
+    expect(opened).toEqual({ tab: tabs.state.tabs[1], added: true });
+    expect(strip(tabs)).toEqual(["*Agents", "Sorter", "Support reply"]);
   });
 
   it("lets several tabs show Home", () => {

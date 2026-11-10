@@ -1,6 +1,6 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { delimiter, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
 import type {
   SandboxBlockListener,
   SandboxCommand,
@@ -12,7 +12,12 @@ import type {
 } from "@halonicjs/ports";
 import { proveFence } from "./fence-proof.ts";
 import { buildSrtConfig } from "./srt-config.ts";
-import type { Runner, RunningProgram } from "./srt-runner.ts";
+import {
+  type Runner,
+  type RunningProgram,
+  skillScriptsRefusal,
+  touchesSkillScripts,
+} from "./srt-runner.ts";
 
 /**
  * Variables sandbox-runtime reads from its own environment to find a parent
@@ -78,31 +83,6 @@ export function programEnv(
 function isInside(parent: string, child: string): boolean {
   const path = relative(parent, child);
   return path === "" || (!path.startsWith("..") && !isAbsolute(path));
-}
-
-/** Whether the path is a file in the `scripts/` folder of a skill (`skills/<name>/scripts/...`). */
-function inSkillScripts(path: string): boolean {
-  const parts = path.split(sep);
-  return parts.some(
-    (part, i) => part === "skills" && parts[i + 2] === "scripts" && i + 3 < parts.length,
-  );
-}
-
-/**
- * Refuses a program that is a skill's script. The program is resolved the way
- * the fence will find it: against the working folder when it has a slash, and
- * through symbolic links when the file is there. A bare name is looked up on
- * the fence's `PATH`, which is never a skill's folder.
- */
-async function refuseSkillScript(program: string, cwd: string): Promise<void> {
-  if (!/[\\/]/.test(program)) return;
-  const path = resolve(cwd, program);
-  const real = await realpath(path).catch(() => path);
-  if (inSkillScripts(path) || inSkillScripts(real)) {
-    throw new Error(
-      `the sandbox doesn't start a skill's scripts: ${program} is in a skill's scripts folder`,
-    );
-  }
 }
 
 /** One started program: what the session tracks to stop it and to say why it ended. */
@@ -219,7 +199,9 @@ export class SrtSession implements SandboxSession {
     if (!isInside(resolve(this.profile.workingFolder), cwd)) {
       throw new Error(`the program must start inside the working folder, not in ${cwd}`);
     }
-    await refuseSkillScript(command.program, cwd);
+    if (await touchesSkillScripts(cwd, command.program, command.args)) {
+      throw new Error(skillScriptsRefusal);
+    }
     const program = await this.#runner.run({
       settingsPath: this.#settingsPath,
       program: command.program,

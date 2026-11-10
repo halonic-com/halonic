@@ -35,9 +35,10 @@ export const WorkspaceSettings = s
       .strict()
       .default({ localOnly: false }),
     /**
-     * Spending limits in `currency`, counted from model prices. A run stops
-     * when it would go over; with the monthly limit reached, no new run
-     * starts until the next month (UTC).
+     * Spending limits in `currency`, counted from model prices. Not enforced
+     * in 0.1: nothing reads `perRun` or `monthly` yet. `currency` names the
+     * currency the prices in `models.yaml` are written in; Halonic doesn't
+     * convert between currencies.
      */
     budget: s
       .object({

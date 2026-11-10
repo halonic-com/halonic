@@ -46,6 +46,8 @@ export {
   type RulePlace,
 } from "./errors/error-message.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
+export { phoneQuery, usePresentationFromWidth } from "./frame/frame-effects.ts";
+export { ShellFrame, type ShellFrameProps } from "./frame/shell-frame.tsx";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
   CommandContribution,
@@ -122,6 +124,7 @@ export type { Studio } from "./studio.ts";
 export {
   currentLocation,
   homeLocation,
+  type OpenedTab,
   reopenableTabs,
   type TabLocation,
   TabSet,

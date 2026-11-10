@@ -139,3 +139,17 @@ describe("theme.css built by Tailwind: the Switch", () => {
     expect(forced).toMatch(/\[aria-disabled="true"\] \+ \* \{\s*background-color: GrayText;/);
   });
 });
+
+describe("theme.css built by Tailwind: the Radio", () => {
+  it("draws a picked circle's 5px ring, in Highlight round a Canvas centre in high contrast", async () => {
+    const css = await buildCss(["checked:border-5", "radio-forced"]);
+    expect(css).toMatch(
+      /\.checked\\:border-5:checked \{\s*border-style: var\(--tw-border-style\);\s*border-width: 5px;/,
+    );
+    const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(forced).toMatch(
+      /:checked \{\s*forced-color-adjust: none;\s*border-color: Highlight;\s*background-color: Canvas;/,
+    );
+    expect(forced).toMatch(/:disabled \{\s*border-color: GrayText;/);
+  });
+});

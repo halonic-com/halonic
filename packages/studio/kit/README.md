@@ -833,6 +833,60 @@ round it (`hit-touch`).
 inside one (Settings), where toasts wait, the Switch sits in a Field and the screen sets the
 Field's `error` until the next change, and announces it.
 
+## RadioGroup
+
+One choice out of a few, shown all at once: how agents look things up, the ways to connect. For a
+long list, use a Select. A `role="radiogroup"` of native radios, so Tab reaches the group once,
+the arrow keys move the choice and Space picks. Put it in a Field: the Field's label names the
+group and its hint or error sits under it.
+
+```tsx
+<Field label="Connect with" error={connectError}>
+  <RadioGroup
+    value={way}
+    onChange={setWay}
+    options={[
+      { value: "address", label: "Web address", field: <Input value={address} onChange={…} /> },
+      { value: "command", label: "Local command", note: "Runs a program on this computer." },
+      { value: "docker", label: "Docker image", note: "Needs Docker.", unavailable: true },
+    ]}
+  />
+</Field>;
+```
+
+| Prop       | What it is                                                             |
+| ---------- | ---------------------------------------------------------------------- |
+| `options`  | `{ value, label, note?, field?, unavailable? }` for each choice        |
+| `value`    | The picked option's value, or `null` while none is picked              |
+| `onChange` | Called with the value the user picks                                   |
+| `label`    | Its name outside a Field. In a Field the Field's label names the group |
+
+An option's **`note`** is a line under its label in `fg-subtle`: what it means, or why it can't be
+picked. An **`unavailable`** option needs one. Its **`field`** shows under its label, 24px in, only
+while it's picked; the screen keeps what was typed in the others. A radio is named by its label's
+words alone and described by its note, so a screen reader reads the note once.
+
+| State         | What shows                                                                                               |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| Default       | A 16px circle with a `border-control` edge on `surface`, 2px down to line up with the label's first line |
+| Picked        | A 5px `primary` ring round an `on-primary` centre                                                        |
+| Hover         | An empty edge turns `fg-muted`, a ring `primary-hover`, over the circle or its label                     |
+| Focus         | The standard ring round the circle                                                                       |
+| Unavailable   | Circle and words at 45% (60% for more contrast), the note at full strength. Listed; the arrows skip it   |
+| Error         | In a Field with an error and nothing picked: a `danger` edge on every circle and the Field's error line  |
+| High contrast | A picked circle's ring in `Highlight` (`radio-forced`); an unavailable one `GrayText`                    |
+
+Options are 8px apart, 12px while the picked option shows a field. **On a phone or a touch
+screen** every option is at least 48px high, label included, and the options are 0px apart,
+because the rows' height gives the space.
+
+**Unavailable is native `disabled` here**, the one exception to 23 A1 in the kit, because the
+arrow keys must skip the option. Its reason is always its note, which describes it.
+
+**Saving at once** (Knowledge's lookup mode): the group shows the `value` it's given, so a screen
+that puts the old value back after a failed save shows the old choice. The screen says so with a
+toast, or with the Field's `error` in a modal Dialog, as for the Switch.
+
 ## Kbd
 
 A keyboard shortcut in a menu, the command palette or a tooltip: one box per key.
