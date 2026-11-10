@@ -102,7 +102,7 @@ verifies("git.hardened", () => {
     // Linux and Windows: macOS has neither /proc nor a way to tell a zombie
     // from a running program without starting `ps`.
     it.runIf(process.platform === "linux" || process.platform === "win32")(
-      "stops every program it started, too, past its time limit",
+      "[platform:darwin] can't tell a zombie from a running program: stops every program it started, too, past its time limit",
       async () => {
         const folder = await mkdtemp(join(tmpdir(), "halonic-adapter-git-"));
         try {
