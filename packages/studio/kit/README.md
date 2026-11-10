@@ -484,6 +484,51 @@ width a tab renders at 40px with a 48px hit area.
 **In high contrast** the selected tab keeps an edge: forced colours drops its fill and shadow and
 paints the transparent outline instead. A disabled tab turns `GrayText` (`text-forced-disabled`).
 
+## PickerSheet
+
+The phone's picker (component specs 15.3): a full-screen sheet with **Close** at the top left and
+the field's label as its title. It's what the Select becomes on a phone, what the filter chips'
+picker opens, and the chat's model chip and the "add" pickers use it too. Mount it to open it and
+unmount it to close it; focus starts on the title and goes back to the opener.
+
+```tsx
+{
+  picking ? (
+    <PickerSheet
+      title="Model"
+      options={[
+        { value: "sonnet", label: "Sonnet", description: "€3 per million words in" },
+        { value: "opus", label: "Opus", unavailable: { reason: "Needs an Anthropic key." } },
+      ]}
+      value={model}
+      empty="No models yet. Add a provider in Settings."
+      onPick={(next) => {
+        save(next);
+        setPicking(false);
+      }}
+      onClose={() => setPicking(false)}
+    />
+  ) : null;
+}
+```
+
+- The options are **native radios** in one radio group (`appearance: none`), so screen readers
+  hear a radio group. A row is padded 8px 16px, 56px with a description, 48px without; the picked
+  option has a 20px `accent` check at the right.
+- **A tap, Enter or Space picks**: `onPick` once, and the screen saves (as on desktop) and unmounts
+  the sheet. **The arrow keys only move the check.** Browsers fire `click` on the radio an arrow
+  moves to, so a click in the same task as an arrow key isn't a pick.
+- **Close, Escape and Android back** call `onClose`. Nothing was picked, so the field keeps its
+  value.
+- An `unavailable` option stays listed, native `disabled` (the one place the kit uses it, 23 A1),
+  with its reason as its description. Never hide an option.
+- `explanation` is a line at the top ("Only models that Claude Code can use."). From 11 options
+  (`PICKER_SEARCH_FROM`) a search field narrows the list by name. With no options, `empty` says
+  what's missing and where to add it.
+
+The frame (full screen at `--app-height`, the phone top bar, the Dialog's modal focus, Escape and
+live regions) is shared with the text and form sheets.
+
 ## Presentation
 
 How the Studio is laid out: `desktop` or `phone`. The shell reads the width once, with
