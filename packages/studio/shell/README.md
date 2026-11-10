@@ -88,11 +88,27 @@ and shrink together to 96px, then the strip scrolls with the active tab kept in 
 its place on every tab and shows on the active one, on hover and on keyboard focus. **+** opens a
 new tab on Home and calls `onNewTab`, so the frame can open Ctrl K there. Nothing on a tab is
 `fg-subtle`. Dragging a tab moves it, with no motion: it jumps to its new place as the pointer
-crosses a neighbour's middle. The window-wide keys (Ctrl T, Ctrl W, Ctrl Tab, …), the tab menu and
-the tooltips come in later pull requests.
+crosses a neighbour's middle. The tab menu and the tooltips come in later pull requests.
 
 ```tsx
 <ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
+```
+
+`useWindowKeys` binds the window-wide keys in the desktop app only: Ctrl T opens a tab (and calls
+`onNewTab`, as **+** does), Ctrl W closes the active one, Ctrl Shift T reopens the last closed one,
+Ctrl Tab and Ctrl Shift Tab cycle, Ctrl 1–8 go to that tab and Ctrl 9 to the last, and F6 moves the
+focus to the toasts. On macOS it's Cmd instead of Ctrl, except for Ctrl Tab. In served Studio and on
+a phone the browser owns these keys, so nothing is bound and **+**, ✕ and the tab menu do the work. A
+key is left alone while a modal dialog is open, while an input method composes, or when the page
+already handled it. `windowKeyFor` is the headless reading of a press.
+
+```tsx
+useWindowKeys({
+  host: "desktop-app",
+  platform: "windows",
+  tabs: workspace.tabs,
+  toasts: shell.toasts,
+});
 ```
 
 ## The frame

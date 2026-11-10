@@ -61,7 +61,7 @@ export function useEscapeClosesTopLayer(closeStack: CloseStack): void {
  * opens with `showModal()`, so any open one is modal. (`:modal` would say so directly, but jsdom
  * doesn't know it.)
  */
-function isModalDialogOpen(): boolean {
+export function isModalDialogOpen(): boolean {
   return document.querySelector("dialog[open]") !== null;
 }
 

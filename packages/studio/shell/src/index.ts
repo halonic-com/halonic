@@ -175,6 +175,8 @@ export {
   type TabSetState,
   type WindowTab,
 } from "./tabs/tab-set.ts";
+export { useWindowKeys, type WindowKeysOptions } from "./tabs/use-window-keys.ts";
+export { type PressedKey, type WindowKey, windowKeyFor } from "./tabs/window-keys.ts";
 export { WindowTabStrip, type WindowTabStripProps } from "./tabs/window-tab-strip.tsx";
 export { Toolbar, type ToolbarProps } from "./toolbar/toolbar.tsx";
 export {
