@@ -29,7 +29,7 @@ export interface CommandContext {
   readonly secrets: Secrets;
   /**
    * Starts the live ◌ line of a step that may take a while (cli-output 1.5),
-   * such as "Draft reply". End it before the step's finished line is
+   * such as "Draft a reply". End it before the step's finished line is
    * returned; `runCli` takes it away when the command ends in any case.
    * Through a pipe, with `--json` or in CI it draws nothing.
    */

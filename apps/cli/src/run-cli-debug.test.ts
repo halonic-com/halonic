@@ -11,7 +11,7 @@ import { manualClock } from "./test/manual-clock.ts";
 
 const retryMessages = defineMessages("retry", {
   summary: () => phrase`Draft a reply, retrying a timer once`,
-  draftReply: () => phrase`Draft reply`,
+  draftReply: () => phrase`Draft a reply`,
   timerRetried: (reason: string) =>
     phrase`timer of step Draft a reply failed, try 2 of 3: ${reason}`,
   drafted: () => phrase`Drafted the reply.`,
@@ -100,10 +100,10 @@ verifies("cli.debug-lines", () => {
     });
 
     expect(seen).toEqual([
-      "live (erase)◌ Draft reply",
+      "live (erase)◌ Draft a reply",
       "live (erase)",
       "err timer of step Draft a reply failed, try 2 of 3: refused [secret removed]",
-      "live (erase)◌ Draft reply",
+      "live (erase)◌ Draft a reply",
       "live (erase)",
       "out Drafted the reply.",
     ]);

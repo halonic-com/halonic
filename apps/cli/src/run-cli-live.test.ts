@@ -10,7 +10,7 @@ import { manualClock } from "./test/manual-clock.ts";
 
 const draftMessages = defineMessages("draft", {
   summary: () => phrase`Draft a reply`,
-  draftReply: () => phrase`Draft reply`,
+  draftReply: () => phrase`Draft a reply`,
   drafted: () => phrase`Drafted the reply.`,
 });
 
@@ -64,10 +64,10 @@ verifies("cli.progress", () => {
     const terminal = terminalWith(screen);
     await runCli(["draft"], screen.io, [draftCommand(clock)], { terminal, clock });
     expect(screen.seen).toEqual([
-      "live (erase)◌ Draft reply",
+      "live (erase)◌ Draft a reply",
       "live (erase)",
       "out Drafted the reply.",
-      "live (erase)◌ Draft reply",
+      "live (erase)◌ Draft a reply",
       "live (erase)",
     ]);
   });
@@ -107,6 +107,6 @@ verifies("cli.stop", () => {
       stop: { signals, exitNow: () => {} },
     });
     expect(code).toBe(130);
-    expect(screen.seen).toEqual(["live (erase)◌ Draft reply", "live (erase)", "err Stopped."]);
+    expect(screen.seen).toEqual(["live (erase)◌ Draft a reply", "live (erase)", "err Stopped."]);
   });
 });

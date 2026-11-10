@@ -6,10 +6,10 @@ import { money } from "./money.ts";
 import { plainText, renderPhrase } from "./phrase.ts";
 import { type FailedRun, type RunFailure, runFailedLines } from "./run-failures.ts";
 
-const draftReply: FailedRun = { title: "Support reply", step: "Draft reply", runId: "01JD8Q" };
+const draftReply: FailedRun = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
 
 /** Line 1 and line 2 of a failed run as plain words, with the run in the step `step`. */
-function lines(failure: RunFailure, step = "Draft reply", dir?: string): [string, string] {
+function lines(failure: RunFailure, step = "Draft a reply", dir?: string): [string, string] {
   const { message, fix } = runFailedLines({ ...draftReply, step, dir }, failure);
   return [plainText(message.phrase), plainText(fix.phrase)];
 }
@@ -26,18 +26,18 @@ verifies("cli.messages", () => {
     expect(message.key).toBe("runFailed.key-refused");
     expect(fix.key).toBe("runFailedFix.key-refused");
     expect(lines(failure)).toEqual([
-      "Support reply failed in the step Draft reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
+      "Support reply failed in the step Draft a reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
       "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again.",
     ]);
   });
 
   it("says a run budget stopped the run, and only a monthly one resets (revision 23)", () => {
     expect(lines({ reason: "budget", per: "run", budget: 5, spent: 5.08 })).toEqual([
-      "Support reply stopped in the step Draft reply: this run reached its budget of €5.00 (estimated €5.08 spent).",
+      "Support reply stopped in the step Draft a reply: this run reached its budget of €5.00 (estimated €5.08 spent).",
       "Raise the budget in models.yaml.",
     ]);
     expect(lines({ reason: "budget", per: "month", budget: 50, resetsOn: "1 Dec" })).toEqual([
-      "Support reply stopped in the step Draft reply: this month's estimated spend reached its budget of €50.00.",
+      "Support reply stopped in the step Draft a reply: this month's estimated spend reached its budget of €50.00.",
       "Raise the budget in models.yaml, or wait until it resets on 1 Dec.",
     ]);
   });
@@ -52,7 +52,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       alias: "smart",
     };
     expect(lines(failure)).toEqual([
-      "Support reply failed in the step Draft reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
+      "Support reply failed in the step Draft a reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
       "Add the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again.",
     ]);
   });
@@ -65,7 +65,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       "Sign in again in Studio (Library › Gmail), then run again.",
     ]);
     expect(lines({ reason: "out-of-credit", provider: "OpenAI" })).toEqual([
-      "Support reply failed in the step Draft reply: OpenAI refused the call because the account has no credit left or reached its limit at OpenAI.",
+      "Support reply failed in the step Draft a reply: OpenAI refused the call because the account has no credit left or reached its limit at OpenAI.",
       "Add credit at OpenAI, then run again. This isn't your Halonic budget.",
     ]);
   });
@@ -78,7 +78,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
         retried: { tries: 3, over: "2 minutes" },
       }),
     ).toEqual([
-      "Support reply failed in the step Draft reply: Anthropic was busy and asked Halonic to slow down. Halonic tried 3 times over 2 minutes, then stopped.",
+      "Support reply failed in the step Draft a reply: Anthropic was busy and asked Halonic to slow down. Halonic tried 3 times over 2 minutes, then stopped.",
       "Run it again in a few minutes.",
     ]);
     expect(
@@ -88,13 +88,13 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
         retried: { tries: 1, over: "1 minute" },
       })[0],
     ).toBe(
-      "Support reply failed in the step Draft reply: Anthropic was busy and asked Halonic to slow down. Halonic tried once over 1 minute, then stopped.",
+      "Support reply failed in the step Draft a reply: Anthropic was busy and asked Halonic to slow down. Halonic tried once over 1 minute, then stopped.",
     );
     expect(lines({ reason: "provider-busy", provider: "Anthropic" })[0]).toBe(
-      "Support reply failed in the step Draft reply: Anthropic was busy and asked Halonic to slow down.",
+      "Support reply failed in the step Draft a reply: Anthropic was busy and asked Halonic to slow down.",
     );
     expect(lines({ reason: "model-timeout", provider: "Anthropic", within: "5 minutes" })).toEqual([
-      "Support reply failed in the step Draft reply: Anthropic didn't start answering within 5 minutes.",
+      "Support reply failed in the step Draft a reply: Anthropic didn't start answering within 5 minutes.",
       "Run it again in a few minutes.",
     ]);
     expect(
@@ -105,7 +105,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
         localAddress: "localhost:11434",
       })[0],
     ).toBe(
-      "Support reply failed in the step Draft reply: Ollama didn't start answering at localhost:11434 within 5 minutes. It may still be loading the model.",
+      "Support reply failed in the step Draft a reply: Ollama didn't start answering at localhost:11434 within 5 minutes. It may still be loading the model.",
     );
     expect(
       lines(
@@ -143,7 +143,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       local: false,
     };
     expect(lines(cloud)).toEqual([
-      "Support reply failed in the step Draft reply: Halonic couldn't reach Anthropic at api.anthropic.com for the model alias smart.",
+      "Support reply failed in the step Draft a reply: Halonic couldn't reach Anthropic at api.anthropic.com for the model alias smart.",
       "Check your internet connection, then run again.",
     ]);
   });
@@ -218,27 +218,27 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     const report =
       "Run it again with --debug to see the details, and report it: https://github.com/halonic-com/halonic/issues";
     expect(lines({ reason: "error", message: "The reply template is empty." })).toEqual([
-      "Support reply failed in the step Draft reply. Halonic can't tell the cause yet: The reply template is empty.",
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet: The reply template is empty.",
       report,
     ]);
     expect(lines({ reason: "error" })).toEqual([
-      "Support reply failed in the step Draft reply. Halonic can't tell the cause yet.",
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet.",
       report,
     ]);
     expect(lines({ reason: "error", message: "  " })[0]).toBe(
-      "Support reply failed in the step Draft reply. Halonic can't tell the cause yet.",
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet.",
     );
     expect(lines({ reason: "error", message: "The template has no body" })[0]).toBe(
-      "Support reply failed in the step Draft reply. Halonic can't tell the cause yet: The template has no body.",
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet: The template has no body.",
     );
     expect(lines({ reason: "error", message: "Is the template empty?" })[0]).toBe(
-      "Support reply failed in the step Draft reply. Halonic can't tell the cause yet: Is the template empty?",
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet: Is the template empty?",
     );
     expect(lines({ reason: "error", message: "The template is empty!" })[0]).toBe(
-      "Support reply failed in the step Draft reply. Halonic can't tell the cause yet: The template is empty!",
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet: The template is empty!",
     );
     expect(lines({ reason: "internal" })).toEqual([
-      "Support reply failed in the step Draft reply. Halonic can't tell the cause yet.",
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet.",
       report,
     ]);
   });

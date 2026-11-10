@@ -36,7 +36,7 @@ export const testMessages = defineMessages("test", {
   /** `states` failed: the steps the test expected, then the ones the run went through, in order. */
   wentElsewhere: (expected: readonly string[], actual: readonly string[]) =>
     phrase`Expected the run to go through ${listInWords(expected)}, but it went through ${listInWords(actual)}.`,
-  /** `status` failed: "Expected the run to finish, but it failed in the step Draft reply.", the step in bold. */
+  /** `status` failed: "Expected the run to finish, but it failed in the step Draft a reply.", the step in bold. */
   endedOtherwise: (expected: TestStatus, actual: RunOutcome) =>
     phrase`Expected the run ${expectedStatusWords[expected]}, but ${outcomeInWords(actual)}.`,
   /** `context` failed for one field, named by its path as the test file writes it. Values as compact JSON. */

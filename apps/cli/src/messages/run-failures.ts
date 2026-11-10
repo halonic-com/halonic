@@ -147,7 +147,7 @@ type ByReason = {
 
 /**
  * Line 1 by reason (cli-output 3.4, revisions 5 and 23): the Studio sentence
- * after "Support reply failed in the step Draft reply:", without what line 2
+ * after "Support reply failed in the step Draft a reply:", without what line 2
  * already says. `budget` says "stopped", because the run kept to a limit the
  * user set; `error` and `internal` have a full stop after the step, because
  * "Halonic can't tell the cause yet" is the reason.
@@ -304,7 +304,7 @@ function failedIn(run: FailedRun, reason: Phrase): Phrase {
   return phrase`${run.title} failed in the step ${run.step}: ${reason}`;
 }
 
-/** "Support reply failed in the step Draft reply. Halonic can't tell the cause yet." */
+/** "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet." */
 function cantTellCause(run: FailedRun, end: "." | ":" = "."): Phrase {
   return phrase`${run.title} failed in the step ${run.step}. Halonic can't tell the cause yet${end}`;
 }

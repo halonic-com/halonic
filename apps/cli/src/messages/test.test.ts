@@ -59,24 +59,24 @@ describe("test's sentences", () => {
     ]);
     expect(testMessages.someFailed(2, 1, 0.9).phrase).toContainEqual(bold("1 failed"));
     expect(
-      testMessages.endedOtherwise("completed", { status: "failed", step: "Draft reply" }).phrase,
-    ).toContainEqual(bold("Draft reply"));
+      testMessages.endedOtherwise("completed", { status: "failed", step: "Draft a reply" }).phrase,
+    ).toContainEqual(bold("Draft a reply"));
   });
 
   it("has a sentence for each other expectation, from cli-output 3.3 revision 23", () => {
     expect(
       words(
         testMessages.wentElsewhere(
-          ["Read mail", "Classify", "Draft reply", "Closed"],
-          ["Read mail", "Classify", "Draft reply", "Send reply"],
+          ["Read mail", "Classify", "Draft a reply", "Closed"],
+          ["Read mail", "Classify", "Draft a reply", "Send reply"],
         ),
       ),
     ).toBe(
-      "Expected the run to go through Read mail, Classify, Draft reply and Closed, but it went through Read mail, Classify, Draft reply and Send reply.",
+      "Expected the run to go through Read mail, Classify, Draft a reply and Closed, but it went through Read mail, Classify, Draft a reply and Send reply.",
     );
     expect(
-      words(testMessages.endedOtherwise("completed", { status: "failed", step: "Draft reply" })),
-    ).toBe("Expected the run to finish, but it failed in the step Draft reply.");
+      words(testMessages.endedOtherwise("completed", { status: "failed", step: "Draft a reply" })),
+    ).toBe("Expected the run to finish, but it failed in the step Draft a reply.");
     expect(words(testMessages.otherValue("ticket.status", "closed", "open"))).toBe(
       'Expected ticket.status to be "closed" when the run ended, but it was "open".',
     );

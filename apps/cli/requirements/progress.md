@@ -11,15 +11,15 @@ The `halonic` command shall show a step that takes a while on one live line of a
 - Given a terminal and a step that ends after 0.8 seconds,
   when it runs,
   then no ◌ line is shown.
-- Given a terminal and the step "Draft reply" that has waited on Anthropic for 12 seconds,
+- Given a terminal and the step "Draft a reply" that has waited on Anthropic for 12 seconds,
   when the line is drawn,
-  then it reads "◌ Draft reply · waiting for Anthropic (12 s)".
+  then it reads "◌ Draft a reply · waiting for Anthropic (12 s)".
 - Given a pipe and a step that takes 30 seconds,
   when it runs,
   then nothing is written for it until its finished line.
-- Given a terminal 32 columns wide and the step "Draft reply" that has waited on Anthropic for 12 seconds,
+- Given a terminal 32 columns wide and the step "Draft a reply" that has waited on Anthropic for 12 seconds,
   when the line is drawn,
-  then it reads "◌ Draft reply · waiting for An…".
-- Given a terminal, a step whose live line "◌ Draft reply" is shown, and the result line "Drafted the reply.",
+  then it reads "◌ Draft a reply · waiting for An…".
+- Given a terminal, a step whose live line "◌ Draft a reply" is shown, and the result line "Drafted the reply.",
   when the result is printed,
-  then the live line is erased, "Drafted the reply." is written, and "◌ Draft reply" is drawn again below it.
+  then the live line is erased, "Drafted the reply." is written, and "◌ Draft a reply" is drawn again below it.

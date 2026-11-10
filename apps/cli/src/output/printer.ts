@@ -49,7 +49,7 @@ export interface Printer {
    * Starts the live ◌ line of a step on stderr (cli-output 1.5). Without a
    * live line, such as through a pipe or with `--json`, it draws nothing.
    *
-   * @param doing - what the step is doing, such as "Draft reply"
+   * @param doing - what the step is doing, such as "Draft a reply"
    */
   progress(doing: Phrase): Progress;
   /**

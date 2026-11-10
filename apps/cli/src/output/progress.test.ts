@@ -7,7 +7,7 @@ import { manualClock } from "../test/manual-clock.ts";
 import { type LiveLine, startProgress, systemClock, terminalLine } from "./progress.ts";
 
 const steps = defineMessages("test", {
-  draftReply: () => phrase`Draft reply`,
+  draftReply: () => phrase`Draft a reply`,
 });
 const draftReply = steps.draftReply().phrase;
 
@@ -37,7 +37,7 @@ verifies("cli.progress", () => {
     const progress = startProgress(draftReply, { live: true, line, clock });
     clock.advance(5_000);
     progress.end();
-    expect(line.seen).toEqual(["◌ Draft reply", "(cleared)"]);
+    expect(line.seen).toEqual(["◌ Draft a reply", "(cleared)"]);
   });
 
   it("says what it's waiting for after 10 seconds of waiting, and for how long", () => {
@@ -47,13 +47,13 @@ verifies("cli.progress", () => {
     clock.advance(2_000);
     progress.waitingFor("Anthropic");
     clock.advance(9_000);
-    expect(line.seen).toEqual(["◌ Draft reply"]);
+    expect(line.seen).toEqual(["◌ Draft a reply"]);
     clock.advance(3_000);
     expect(line.seen).toEqual([
-      "◌ Draft reply",
-      "◌ Draft reply · waiting for Anthropic (10 s)",
-      "◌ Draft reply · waiting for Anthropic (11 s)",
-      "◌ Draft reply · waiting for Anthropic (12 s)",
+      "◌ Draft a reply",
+      "◌ Draft a reply · waiting for Anthropic (10 s)",
+      "◌ Draft a reply · waiting for Anthropic (11 s)",
+      "◌ Draft a reply · waiting for Anthropic (12 s)",
     ]);
   });
 
@@ -63,13 +63,13 @@ verifies("cli.progress", () => {
     const progress = startProgress(draftReply, { live: true, line, clock });
     progress.waitingFor("Anthropic");
     clock.advance(59_000);
-    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (59 s)");
+    expect(line.seen.at(-1)).toBe("◌ Draft a reply · waiting for Anthropic (59 s)");
     clock.advance(1_000);
-    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (1 min)");
+    expect(line.seen.at(-1)).toBe("◌ Draft a reply · waiting for Anthropic (1 min)");
     clock.advance(287_000);
-    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (5 min 47 s)");
+    expect(line.seen.at(-1)).toBe("◌ Draft a reply · waiting for Anthropic (5 min 47 s)");
     clock.advance(13_000);
-    expect(line.seen.at(-1)).toBe("◌ Draft reply · waiting for Anthropic (6 min)");
+    expect(line.seen.at(-1)).toBe("◌ Draft a reply · waiting for Anthropic (6 min)");
   });
 
   it("goes back to what it's doing when news comes in", () => {
@@ -79,7 +79,7 @@ verifies("cli.progress", () => {
     progress.waitingFor("Anthropic");
     clock.advance(10_000);
     progress.waitingFor(undefined);
-    expect(line.seen.at(-1)).toBe("◌ Draft reply");
+    expect(line.seen.at(-1)).toBe("◌ Draft a reply");
   });
 
   it("draws nothing at all without live lines, as in a pipe or with CI set", () => {
@@ -100,7 +100,7 @@ verifies("cli.progress", () => {
     progress.end();
     clock.advance(20_000);
     progress.waitingFor("Anthropic");
-    expect(line.seen).toEqual(["◌ Draft reply", "(cleared)"]);
+    expect(line.seen).toEqual(["◌ Draft a reply", "(cleared)"]);
   });
 
   it("draws over the line in a terminal without a newline, in the stream's marks", () => {
@@ -114,14 +114,14 @@ verifies("cli.progress", () => {
     line.draw(progressMessages.waiting(draftReply, "Anthropic", 12));
     line.clear();
     expect(written).toEqual([
-      "\r\u001b[2K.. Draft reply - waiting for Anthropic (12 s)",
+      "\r\u001b[2K.. Draft a reply - waiting for Anthropic (12 s)",
       "\r\u001b[2K",
     ]);
   });
 
   it("cuts the line to the terminal's width, less one column, at each draw", () => {
     const written: string[] = [];
-    let columns = 32;
+    let columns = 34;
     const line = terminalLine({
       write: (text) => written.push(text),
       style: { colour: false, live: true, unicode: true },
@@ -132,8 +132,8 @@ verifies("cli.progress", () => {
     columns = 80;
     line.draw(waiting);
     expect(written).toEqual([
-      "\r\u001b[2K◌ Draft reply · waiting for An…",
-      "\r\u001b[2K◌ Draft reply · waiting for Anthropic (12 s)",
+      "\r\u001b[2K◌ Draft a reply · waiting for An…",
+      "\r\u001b[2K◌ Draft a reply · waiting for Anthropic (12 s)",
     ]);
   });
 
@@ -142,12 +142,12 @@ verifies("cli.progress", () => {
     const line = terminalLine({
       write: (text) => written.push(text),
       style: { colour: true, live: true, unicode: false },
-      columns: () => 44,
+      columns: () => 46,
     });
     line.draw(progressMessages.waiting(draftReply, "Anthropic", 125));
-    // 43 characters: the dimmed time is cut inside its dim, which still ends, and "..." ends the line.
+    // 45 characters: the dimmed time is cut inside its dim, which still ends, and "..." ends the line.
     expect(written).toEqual([
-      "\r\u001b[2K.. Draft reply \u001b[2m-\u001b[22m waiting for Anthropic \u001b[2m(\u001b[22m...",
+      "\r\u001b[2K.. Draft a reply \u001b[2m-\u001b[22m waiting for Anthropic \u001b[2m(\u001b[22m...",
     ]);
   });
 
@@ -159,7 +159,7 @@ verifies("cli.progress", () => {
       columns: () => undefined,
     });
     line.draw(progressMessages.waiting(draftReply, "Anthropic", 347));
-    expect(written).toEqual(["\r\u001b[2K◌ Draft reply · waiting for Anthropic (5 min 47 s)"]);
+    expect(written).toEqual(["\r\u001b[2K◌ Draft a reply · waiting for Anthropic (5 min 47 s)"]);
   });
 
   it("ticks on the computer's own clock until stopped, without keeping Node running", () => {

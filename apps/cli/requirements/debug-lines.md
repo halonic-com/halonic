@@ -17,6 +17,6 @@ When a command passes a debug line while it runs, such as a retry that may still
 - Given the same command with `--json --debug`,
   when it runs,
   then stdout is one JSON document and the debug line is on stderr.
-- Given a terminal showing the live line "◌ Draft reply" and `--debug`,
+- Given a terminal showing the live line "◌ Draft a reply" and `--debug`,
   when the command passes a debug line,
-  then the live line is erased, the debug line written, and "◌ Draft reply" drawn again below it.
+  then the live line is erased, the debug line written, and "◌ Draft a reply" drawn again below it.

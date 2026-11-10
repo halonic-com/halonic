@@ -105,10 +105,10 @@ const silent: Progress = { waitingFor: () => {}, end: () => {} };
  * Starts the live line of a step (cli-output 1.5). For its first second it
  * shows nothing, then one ◌ line with what it's doing. When the step has been
  * waiting on the same thing for 10 seconds, the line says what and for how
- * long: "◌ Draft reply · waiting for Anthropic (12 s)". There's no spinner:
+ * long: "◌ Draft a reply · waiting for Anthropic (12 s)". There's no spinner:
  * the line changes only when its words do.
  *
- * @param doing - what the step is doing, in the present tense, such as "Draft reply"
+ * @param doing - what the step is doing, in the present tense, such as "Draft a reply"
  */
 export function startProgress(doing: Phrase, options: ProgressOptions): Progress {
   if (!options.live) {

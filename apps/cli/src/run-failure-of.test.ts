@@ -85,7 +85,7 @@ function log(...bodies: RunEventBody[]): RunEvent[] {
 /** Line 2 of the failure, as plain words. */
 function fixLine(failure: RunFailure | undefined): string {
   if (failure === undefined) throw new Error("expected a failure");
-  const run = { title: "Support reply", step: "Draft reply", runId: "01JD8Q" };
+  const run = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
   return plainText(runFailedLines(run, failure).fix.phrase);
 }
 
@@ -331,14 +331,14 @@ verifies("cli.run-failed-sandbox", () => {
     };
     const failure = runFailureOf(failed, undefined);
     if (failure === undefined) throw new Error("expected a failure");
-    const run = { title: "Support reply", step: "Draft reply", runId: "01JD8Q" };
+    const run = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
     const { message, fix } = runFailedLines(run, failure);
     return [plainText(message.phrase), plainText(fix.phrase)];
   }
 
   it("words the run from its code, in the words of a run the check refused", () => {
     expect(linesOf("bubblewrap-missing")).toEqual([
-      "Support reply failed in the step Draft reply: the sandbox can't start on this computer.",
+      "Support reply failed in the step Draft a reply: the sandbox can't start on this computer.",
       plainText(sandboxMessages.refusedFix("bubblewrap-missing").phrase),
     ]);
   });

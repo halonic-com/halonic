@@ -6,7 +6,7 @@ import type { LiveLine } from "./progress.ts";
 import { sharedLine } from "./shared-line.ts";
 
 const steps = defineMessages("test", {
-  draftReply: () => phrase`◌ Draft reply`,
+  draftReply: () => phrase`◌ Draft a reply`,
 });
 
 /** What reached the screen, in order: each drawn line, "(cleared)", and each other line written. */
@@ -26,10 +26,10 @@ verifies("cli.progress", () => {
     line.draw(steps.draftReply());
     line.around(() => terminal.seen.push("! Anthropic is slow today."));
     expect(terminal.seen).toEqual([
-      "draw ◌ Draft reply",
+      "draw ◌ Draft a reply",
       "(cleared)",
       "! Anthropic is slow today.",
-      "draw ◌ Draft reply",
+      "draw ◌ Draft a reply",
     ]);
   });
 
@@ -38,8 +38,8 @@ verifies("cli.progress", () => {
     const line = sharedLine(terminal);
     line.draw(steps.draftReply());
     line.clear();
-    line.around(() => terminal.seen.push("✓ Draft reply"));
-    expect(terminal.seen).toEqual(["draw ◌ Draft reply", "(cleared)", "✓ Draft reply"]);
+    line.around(() => terminal.seen.push("✓ Draft a reply"));
+    expect(terminal.seen).toEqual(["draw ◌ Draft a reply", "(cleared)", "✓ Draft a reply"]);
   });
 
   it("takes the line away for good when the command ends", () => {
@@ -49,6 +49,6 @@ verifies("cli.progress", () => {
     line.close();
     line.draw(steps.draftReply());
     line.around(() => terminal.seen.push("✓ Done"));
-    expect(terminal.seen).toEqual(["draw ◌ Draft reply", "(cleared)", "✓ Done"]);
+    expect(terminal.seen).toEqual(["draw ◌ Draft a reply", "(cleared)", "✓ Done"]);
   });
 });

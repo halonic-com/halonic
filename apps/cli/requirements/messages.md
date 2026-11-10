@@ -29,7 +29,7 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given a `halonic test` run that expected the file reply.md and saved only summary.md,
   when the failure for its `artifacts` is made,
   then it reads "Expected the run to save reply.md, but it didn't. It saved summary.md.", and summary.md isn't a failure of its own, because `artifacts` means "at least these" (cli-output 3.3, HAL-2690).
-- Given a run of Support reply whose step Draft reply failed because OpenAI refused the key in the secret openai-key,
+- Given a run of Support reply whose step Draft a reply failed because OpenAI refused the key in the secret openai-key,
   when its two lines are made,
   then line 1 names the secret and its variable, HALONIC_SECRET_OPENAI_KEY, and line 2 reads "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again." (cli-output 3.4).
 - Given a finished run that changed 1 file, sent 1 email, asked once and spent an estimated €0.004,
@@ -44,9 +44,9 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given `halonic runs --status failed --workflow support-reply` in acme, which matches no run,
   when its two lines are made,
   then line 1 reads "No failed runs of support-reply in acme." and line 2, dimmed, "See every run with halonic runs." (cli-output 3.4).
-- Given a run of Support reply that reached its own budget of €5.00 in the step Draft reply, with an estimated €5.08 spent,
+- Given a run of Support reply that reached its own budget of €5.00 in the step Draft a reply, with an estimated €5.08 spent,
   when its two lines are made,
-  then they read "Support reply stopped in the step Draft reply: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Raise the budget in models.yaml.", because a run's budget doesn't reset (cli-output 3.4 revision 23).
+  then they read "Support reply stopped in the step Draft a reply: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Raise the budget in models.yaml.", because a run's budget doesn't reset (cli-output 3.4 revision 23).
 - Given `halonic trust` without a terminal and without `--yes --fingerprint`,
   when its refusal is made,
   then line 1 reads "Acme isn't trusted on this computer yet, and there's no terminal to ask you." and line 2 names the flags, with the user's own `--dir` (cli-output 1.7 and 3.5).
