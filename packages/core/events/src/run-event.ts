@@ -153,6 +153,26 @@ export type RunEventBody =
       connector: string;
       timeoutMs: number;
     }
+  /**
+   * A step is about to make a connector call that can change things
+   * (requirement `events.effect-requested`). Written before the call, so a
+   * call with this record and no `tool.result` may or may not have done its
+   * work. `callId`: the engine's id for the call, `call-<n>`, unique in the
+   * run. `idempotencyKey`: `<runId>:<callId>`, the same when a person has
+   * the call tried again. `resume`: where the agent goes on once the call
+   * has a result.
+   */
+  | {
+      type: "effect.requested";
+      state: string;
+      agent: string;
+      connector: string;
+      tool: string;
+      args: unknown;
+      callId: string;
+      idempotencyKey: string;
+      resume: AgentResume;
+    }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
   /**
