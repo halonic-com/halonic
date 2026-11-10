@@ -105,7 +105,11 @@ verifies("app.review-accept-reject-change", () => {
     await review.propose({ path, content: byAssistant, expected: "absent", card: k1 });
     const seen = (await review.changesIn(path))?.seen ?? "absent";
     const outcome = await review.accept({ kind: "change", path, parts: [["model"]], seen });
-    expect(outcome).toMatchObject({ status: "cant-separate", path });
+    expect(outcome).toEqual({
+      status: "cant-separate",
+      path,
+      message: "An agent created this file, so you accept or reject it as a whole.",
+    });
     expect(await review.itemsWithChangesToReview()).toEqual([{ path, card: k1 }]);
   });
 
@@ -117,7 +121,11 @@ verifies("app.review-accept-reject-change", () => {
       parts: [],
       seen: (await changes()).seen,
     });
-    expect(outcome).toMatchObject({ status: "cant-separate", path });
+    expect(outcome).toEqual({
+      status: "cant-separate",
+      path,
+      message: "This change is one piece, so you accept or reject it as a whole.",
+    });
   });
 
   it("can't decide a change on its own when the file doesn't read as YAML", async () => {
@@ -131,7 +139,11 @@ verifies("app.review-accept-reject-change", () => {
     });
     const seen = (await review.changesIn(path))?.seen ?? "absent";
     const outcome = await review.reject({ kind: "change", path, parts: [["name"]], seen });
-    expect(outcome).toMatchObject({ status: "cant-separate", path });
+    expect(outcome).toEqual({
+      status: "cant-separate",
+      path,
+      message: "Couldn't split this change into parts, so accept or reject it as a whole.",
+    });
     expect(store.files.get(path)).toBe("name: [Ticket triage\n");
   });
 

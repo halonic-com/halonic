@@ -114,17 +114,20 @@ function decidedChange(
     message,
   });
   if (record.baseline === null) {
-    return cantSeparate("The assistant created this file, so it is decided as a whole.");
+    return cantSeparate("An agent created this file, so you accept or reject it as a whole.");
   }
   if (target.parts.length === 0) {
-    return cantSeparate("This change has no parts of its own.");
+    return cantSeparate("This change is one piece, so you accept or reject it as a whole.");
   }
   const reverted =
     decision === "accept"
       ? revertParts(record.baseline, current, target.parts)
       : revertParts(current, record.baseline, target.parts);
   if (!reverted.ok) {
-    return cantSeparate(`The change couldn't be taken apart: ${reverted.error.message}`);
+    // The person can't act on the parser's error, so it stays off the screen.
+    return cantSeparate(
+      "Couldn't split this change into parts, so accept or reject it as a whole.",
+    );
   }
   return { status: "text", text: reverted.value };
 }
