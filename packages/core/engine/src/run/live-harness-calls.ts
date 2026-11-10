@@ -54,10 +54,12 @@ export class LiveHarnessCalls {
    * Stops the run's calls going on, and resolves once each has stopped its
    * harness run, session and bridge. Later calls of the run are not refused:
    * a cancelled run records none.
+   *
+   * @param message - the `error` the calls stop with; a cancelled run's when left out
    */
-  async stop(runId: string): Promise<void> {
+  async stop(runId: string, message = runCancelledMessage): Promise<void> {
     const calls = [...this.#calls].filter((call) => call.runId === runId);
-    await stopCalls(calls, runCancelledMessage);
+    await stopCalls(calls, message);
   }
 
   /**
