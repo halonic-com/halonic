@@ -61,6 +61,12 @@ export type { Provider } from "./kinds/provider/schema.ts";
 export type { Routine, RoutineTarget, RoutineTrigger } from "./kinds/routine/schema.ts";
 export type { Runtime } from "./kinds/runtime/schema.ts";
 export type { Skill } from "./kinds/skill/schema.ts";
+export {
+  type PathLookup,
+  type ProgramStart,
+  skillScriptsRefusal,
+  touchesSkillScripts,
+} from "./kinds/skill/scripts-folder.ts";
 export type {
   Branch,
   StateType,

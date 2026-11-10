@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Readable, Writable } from "node:stream";
 import { promisify } from "node:util";
+import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 
 /** A program running inside the fence, as the session sees it. */
 export interface RunningProgram {
@@ -42,42 +43,8 @@ export interface Runner {
   run(request: RunRequest): Promise<RunningProgram>;
 }
 
-/**
- * A path with a `skills/<name>/scripts` part, in either slash style and any
- * letter case, since macOS and Windows file systems ignore case.
- */
-const skillScripts = /(^|[\\/])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/i;
-
-export const skillScriptsRefusal = "Halonic never runs a file under a skill's scripts/ folder";
-
-/**
- * Whether one part of a start points under a skill's `scripts/` folder: as
- * written, resolved against `cwd`, or through symbolic links to where the file
- * really is, so a link elsewhere doesn't hide a skill's script.
- */
-async function pointsAtSkillScripts(cwd: string, part: string): Promise<boolean> {
-  const path = resolve(cwd, part);
-  if (skillScripts.test(part) || skillScripts.test(path)) return true;
-  // A part that isn't a file there (a bare name, a flag) has no link to follow.
-  const real = await realpath(path).catch(() => path);
-  return skillScripts.test(real);
-}
-
-/**
- * Whether the program, an argument or the folder it starts in points under a
- * skill's `scripts/` folder, as written, resolved against `cwd` or through
- * symbolic links. Halonic never runs those files (HAL-188, HAL-3011).
- */
-export async function touchesSkillScripts(
-  cwd: string,
-  program: string,
-  args: readonly string[],
-): Promise<boolean> {
-  for (const part of [cwd, program, ...args]) {
-    if (await pointsAtSkillScripts(cwd, part)) return true;
-  }
-  return false;
-}
+/** Node's way to find where a path leads, for the shared skill `scripts/` check. */
+export const nodePaths: PathLookup = { resolve, realpath };
 
 /** Where the `srt` command line of sandbox-runtime lives. */
 function srtCliPath(): string {
@@ -101,7 +68,7 @@ function launched(child: ChildProcess): Promise<void> {
 export const srtRunner: Runner = {
   async run(request) {
     // Checked here too, not only in the session, so no caller of the runner gets round it.
-    if (await touchesSkillScripts(request.cwd, request.program, request.args)) {
+    if (await touchesSkillScripts(request, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
     const marker = `HALONIC_SRT_RUN=${randomUUID()}`;

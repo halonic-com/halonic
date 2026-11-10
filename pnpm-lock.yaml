@@ -799,6 +799,9 @@ importers:
       '@anthropic-ai/sandbox-runtime':
         specifier: 'catalog:'
         version: 0.0.81
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

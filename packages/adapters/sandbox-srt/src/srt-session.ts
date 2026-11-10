@@ -2,6 +2,7 @@ import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
+import { skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 import type {
   SandboxBlockListener,
   SandboxCommand,
@@ -16,12 +17,7 @@ import { gitPathsToDeny } from "./git-deny-paths.ts";
 import { type GitFolderSnapshot, restoreGitFolder, snapshotGitFolder } from "./git-folder-check.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
-import {
-  type Runner,
-  type RunningProgram,
-  skillScriptsRefusal,
-  touchesSkillScripts,
-} from "./srt-runner.ts";
+import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
 
 /**
  * Variables sandbox-runtime reads from its own environment to find a parent
@@ -272,7 +268,9 @@ export class SrtSession implements SandboxSession {
     if (!isInside(resolve(this.profile.workingFolder), cwd)) {
       throw new Error(`the program must start inside the working folder, not in ${cwd}`);
     }
-    if (await touchesSkillScripts(cwd, command.program, command.args)) {
+    if (
+      await touchesSkillScripts({ cwd, program: command.program, args: command.args }, nodePaths)
+    ) {
       throw new Error(skillScriptsRefusal);
     }
     const program = await this.#runner.run({

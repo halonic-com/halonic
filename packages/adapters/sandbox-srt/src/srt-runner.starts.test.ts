@@ -37,6 +37,10 @@ verifies("sandbox-srt.session", () => {
         { program: "SKILLS\\mail\\Scripts\\send.ps1", args: [] },
       ],
       ["a script as an argument", { program: "node", args: ["skills/mail/scripts/send.js"] }],
+      [
+        "a script joined to an option with = (HAL-3628)",
+        { program: "node", args: ["--require=skills/mail/scripts/send.js"] },
+      ],
       ["a relative script", { program: "sh", args: ["./scripts/send"], cwd: "/w/skills/mail" }],
       [
         "a start inside the script folder",

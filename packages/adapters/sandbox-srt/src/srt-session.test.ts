@@ -261,6 +261,9 @@ verifies("sandbox-srt.session", () => {
       await expect(session.start({ program: "sh", args: ["innocent"] })).rejects.toThrow(
         /skill's scripts\/ folder/,
       );
+      await expect(
+        session.start({ program: "node", args: ["--require=innocent"] }),
+      ).rejects.toThrow(/skill's scripts\/ folder/);
       await symlink(scripts, join(base, "work", "tools"));
       await expect(
         session.start({ program: "sh", args: ["run.sh"], cwd: "tools" }),
@@ -286,6 +289,10 @@ verifies("sandbox-srt.session", () => {
       ["a Windows-style program", { program: "skills\\mail\\scripts\\send.ps1", args: [] }],
       ["the script folder itself", { program: "ls", args: ["library/skills/mail/scripts"] }],
       ["a script as an argument", { program: "node", args: ["skills/mail/scripts/send.js"] }],
+      [
+        "a script joined to an option with = (HAL-3628)",
+        { program: "node", args: ["--require=skills/mail/scripts/send.js"] },
+      ],
       [
         "a relative script from the skill",
         { program: "sh", args: ["./scripts/send"], cwd: "skills/mail" },
