@@ -492,6 +492,9 @@ importers:
 
   packages/adapters/fs-tauri:
     dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../core/events
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

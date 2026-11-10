@@ -4,7 +4,7 @@ Owner: priya · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-The TrustStore port over the Studio shell's trust_* commands, sharing one trust folder with the CLI and one opened-folder list with git.
+The TrustStore and RunStore ports over the Studio shell's trust_* and run_* commands, sharing the trust folder and the run folders with the CLI and one opened-folder list with git.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

@@ -1,9 +1,15 @@
 # @halonicjs/adapter-fs-tauri
 
-The `TrustStore` port for the Studio desktop app: every call goes to the shell's `trust_get`,
-`trust_list`, `trust_grant` or `trust_revoke` command. The shell keeps the records in the `trust`
-folder of the profile, laid out as `FileTrustStore` in `fs-node` lays it out, so the CLI and the
-desktop app read and write the same records.
+The `TrustStore` and `RunStore` ports for the Studio desktop app.
+
+- `TauriTrustStore`: every call goes to the shell's `trust_get`, `trust_list`, `trust_grant` or
+  `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
+  as `FileTrustStore` in `fs-node` lays it out, so the CLI and the desktop app read and write the
+  same records.
+- `TauriRunStore`: every call goes to the shell's `run_append`, `run_events`, `run_snapshot` or
+  `run_logs` command. The shell keeps the runs in the profile's run folder for the workspace, laid
+  out as `FolderRunStore` in `fs-node` lays it out, and holds the run's lock file while it appends,
+  so of a CLI and the desktop app appending with the same `expectedSeq`, exactly one wins.
 
 - **Layer:** adapters
 - **Owner:** priya
@@ -45,6 +51,32 @@ The shell's refusals have the shape `{ kind, message, location?, file? }`. The p
 `trustCommands` (the four command names), `trustRefusalKinds` and `isTrustRefusal`, which tells a refusal
 from an IPC or permission failure. A page without the `desktop-trust` capability, such as the served
 Studio, gets the last row: `unavailable`, and the text of its failure is dropped.
+
+## Runs
+
+`new TauriRunStore(shell, workspace, { deployment, onSnapshotError })` names the run folder by the
+workspace, a folder the person opened in the shell, and optionally a deployment. The shell works out
+the folder (`<profile>/workspaces/<key>/runs`, as `runsFolder` in `@halonicjs/profile` does) and
+refuses a workspace that isn't open in it. The page never names a path.
+
+Only the file work happens in the shell (`crates/run-store`). Everything else happens here, with the
+`RunStore` port's rules that `fs-node` uses too: checking an append and the run id, writing events
+as log lines (`formatLogLines`) and reading them back (`parseLogLines`), the snapshot's `seq`, and
+the summaries `list` works out on every call. A snapshot the shell couldn't write doesn't fail the
+append; its reason goes to `onSnapshotError`.
+
+| The shell says    | The adapter rejects with                                        |
+| ----------------- | --------------------------------------------------------------- |
+| `broken_log`      | an `Error` with the shell's message, as `FolderRunStore` throws |
+| `folder_not_open` | a `KindedError` `denied`                                        |
+| `invalid_run_id`  | a `KindedError` `internal` (the page checks run ids first)      |
+| `invalid_lines`   | a `KindedError` `internal` (the page writes the lines)          |
+| `io`              | a `KindedError` `unavailable`, with the shell's message         |
+| anything else     | a `KindedError` `unavailable`, without its text                 |
+
+The package exports `runCommands`, `runRefusalKinds` and `isRunRefusal`. The tests run the run-store
+contract against a fake shell; that the shell and the CLI take turns on one lock is proved on real
+files by the Rust tests of `crates/run-store` and `crates/run-lock`.
 
 ## Example
 
