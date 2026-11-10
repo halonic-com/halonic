@@ -2,7 +2,7 @@ name: Setup
 description: Installs pnpm (version from packageManager), Node (from devEngines) and the dependencies, with a frozen lockfile.
 inputs:
   cache:
-    description: Whether to restore the pnpm store from the cache. The Windows runner can't read a restored store (Access is denied on an optional dependency), so the sandbox job turns it off there.
+    description: Whether to restore the pnpm store from the cache. On Windows a restored store is broken, because the symlinks in the store's `links/` folder don't survive the Windows cache archive, so the install fails with Access is denied. The sandbox and agent host jobs turn it off there.
     default: "true"
 runs:
   using: composite

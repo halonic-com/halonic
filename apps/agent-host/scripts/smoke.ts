@@ -6,7 +6,7 @@ import { executableName } from "../src/build-sea.ts";
 
 /**
  * Runs the built executable and checks what it prints, then reports its size.
- * `pnpm smoke:sea` runs after `pnpm build`, on every system CI checks.
+ * `pnpm smoke:sea` runs after `pnpm build:sea`, on every system CI checks.
  */
 const packageDirectory = join(import.meta.dirname, "..");
 const { version } = JSON.parse(readFileSync(join(packageDirectory, "package.json"), "utf8")) as {
