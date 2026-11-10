@@ -1,5 +1,6 @@
 import type { Path } from "@halonicjs/schema-kit";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
+import { checkKeysIn } from "../../shared/key-in-value.ts";
 import { checkSecretName, looksLikeKey } from "../../shared/secret-name.ts";
 import { Connector } from "./schema.ts";
 
@@ -13,7 +14,11 @@ export const connectorKind: FileKind<Connector> = {
     { scope: "workspace-and-hub", folder: "library/connectors", name: "<id>.connector.yaml" },
   ],
   idFromPlace: "fallback",
-  check: (connector) => [...checkSecretNames(connector), ...checkApprovedTools(connector)],
+  check: (connector) => [
+    ...checkSecretNames(connector),
+    ...checkPastedKeys(connector),
+    ...checkApprovedTools(connector),
+  ],
 };
 
 /**
@@ -53,6 +58,46 @@ function checkGoogleClient(connector: Connector): KindCheckProblem | undefined {
     return undefined;
   }
   return checkSecretName(connector.transport.google.client, ["transport", "google", "client"]);
+}
+
+/**
+ * HTTP headers and a local program's `env` and `args` take any text, so a
+ * key pasted there would be saved in the file. The connector's `secret` and
+ * `secretEnv` name the secrets instead.
+ */
+function checkPastedKeys(connector: Connector): KindCheckProblem[] {
+  const { transport } = connector;
+  if ("http" in transport) {
+    return checkKeysIn(transport.http.headers, ["transport", "http", "headers"], "header");
+  }
+  if ("stdio" in transport) {
+    const path: Path = ["transport", "stdio"];
+    return [
+      ...checkKeysIn(transport.stdio.env, [...path, "env"], "env"),
+      ...transport.stdio.args.flatMap((arg, index) => {
+        const [name, value] = argument(arg, transport.stdio.args[index - 1]);
+        return checkKeysIn(value, [...path, "args", index], "arg", name);
+      }),
+    ];
+  }
+  return [];
+}
+
+/**
+ * An argument's value and the option it belongs to: `--api-key=…` and
+ * `--api-key …` both name the value, so a key without a known format is
+ * still caught after a flag that says it is one.
+ *
+ * @example
+ * argument("--token=abc", undefined); // ["--token", "abc"]
+ * argument("abc", "--token"); // ["--token", "abc"]
+ */
+function argument(arg: string, before: string | undefined): readonly [string | undefined, string] {
+  const equals = arg.indexOf("=");
+  if (arg.startsWith("-") && equals > 0) {
+    return [arg.slice(0, equals), arg.slice(equals + 1)];
+  }
+  return [before?.startsWith("-") ? before : undefined, arg];
 }
 
 /** A tool that needs approval but isn't in `tools.allow` is never offered, so say so. */
