@@ -37,6 +37,7 @@ jobs:
       tauri: ${{ steps.diff.outputs.tauri }}
       sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
       sandbox: ${{ steps.diff.outputs.sandbox }}
+      windows: ${{ steps.diff.outputs.windows }}
       android: ${{ steps.diff.outputs.android }}
       agent_host: ${{ steps.diff.outputs.agent_host }}
       studio: ${{ steps.diff.outputs.studio }}
@@ -59,6 +60,7 @@ jobs:
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-srt/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
+            "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/connect/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
             "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|package\.json$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
@@ -957,18 +959,27 @@ jobs:
     # the system, so what holds on Linux can still break on macOS or Windows.
     # On Windows the git adapter runs only its process test, the one place
     # its Windows tree kill runs; its other tests don't pass there yet
-    # (HAL-3889). Typecheck and tests only; lint and build don't depend on the platform. The
+    # (HAL-3889, HAL-4332). Typecheck and tests only; lint and build don't depend on the platform. The
     # filters are globs so a package that doesn't exist yet (sandbox-host)
     # is no error. A test that can't run on a system skips itself with a
     # reason (`it.skipIf(...)`, for example bwrap on macOS): never a
     # failure, never a silent pass. Turbo runs with its loose environment
     # here: with the strict one, Windows PowerShell (which the process-table
     # tests start) gets too few variables and hangs until it is stopped.
+    #
+    # The Windows leg also runs the tests of the other packages that touch
+    # paths, files and processes (HAL-4348, step 1 of HAL-4343). Pull requests
+    # and merge groups run the listed packages that changed or depend on a
+    # changed one; a push to main runs the whole list plus the parity and
+    # integration kits. A test that fails there today skips itself with
+    # `it.skipIf(process.platform === 'win32')` and a reason naming its task.
+    # The job name is a required check (#1352): don't rename it without a
+    # ruleset change.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
-    if: needs.changes.outputs.sandbox == 'true'
+    if: needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: read
     strategy:
@@ -977,31 +988,115 @@ jobs:
         include:
           - { name: macOS, os: macos-15 }
           - { name: Windows, os: windows-2025 }
+    env:
+      # The macOS leg has work only when the sandbox area changed; the
+      # Windows leg runs for either area.
+      RUN_SANDBOX: ${{ needs.changes.outputs.sandbox == 'true' }}
+      RUN_LIST: ${{ matrix.name == 'Windows' || needs.changes.outputs.sandbox == 'true' }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Windows needs the history for Turbo's `[base]` filter.
+      - if: env.RUN_LIST == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: $/.github/actions/setup
+          fetch-depth: ${{ runner.os == 'Windows' && 0 || 1 }}
+      - if: env.RUN_LIST == 'true'
+        uses: $/.github/actions/setup
         with:
           cache: ${{ runner.os != 'Windows' }}
       - name: Typecheck and test
+        if: env.RUN_SANDBOX == 'true'
         shell: bash
         run: >
           pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
       - name: Git adapter, typecheck and test
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && env.RUN_SANDBOX == 'true'
         shell: bash
         run: >
           pnpm exec turbo run typecheck test --env-mode=loose --output-logs=new-only
           --filter=@halonicjs/adapter-git
       - name: Git adapter, typecheck and the process test
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && env.RUN_SANDBOX == 'true'
         shell: bash
         run: |
           pnpm exec turbo run typecheck --env-mode=loose --output-logs=new-only --filter=@halonicjs/adapter-git
           pnpm --filter=@halonicjs/adapter-git exec vitest run --coverage.enabled=false src/node/run-process.test.ts
+      # Which of the listed packages to test. On a push to main, all of them
+      # and the two test kits. On a pull request or in a merge group, the
+      # listed packages among those Turbo says changed or depend on a changed
+      # package since the base commit. A change to the workflow or the setup
+      # action runs the whole list (no package changed, the job itself did),
+      # and so does anything that goes wrong in the selection.
+      - id: select
+        if: runner.os == 'Windows'
+        name: Select the packages
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          list="@halonicjs/adapter-fs-node @halonicjs/adapter-harness-kit @halonicjs/adapter-harness-claude-code @halonicjs/adapter-harness-codex @halonicjs/adapter-mcp @halonicjs/workspace @halonicjs/app"
+          if [ "$EVENT" = "push" ]; then
+            list="$list @halonicjs/testing-parity @halonicjs/testing-integration"
+            picked="$list"
+            echo "Push to main: the whole list and the test kits."
+          else
+            picked="$list"
+            if [ -n "$BASE" ] && ! git diff --name-only "$BASE...HEAD" | grep -qE '^(\.github/workflows/ci\.yml$|\.github/actions/)'; then
+              if changed=$(pnpm exec turbo ls --filter="...[$BASE]" --output=json | node -e '
+                const out = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                console.log(out.packages.items.map((p) => p.name).join(" "));
+              '); then
+                picked=""
+                for name in $list; do
+                  case " $changed " in *" $name "*) picked="$picked $name" ;; esac
+                done
+                echo "Changed packages and their dependents, among the list: ${picked:-none}"
+              else
+                echo "::warning title=Windows packages::Turbo could not list the changed packages; running the whole list."
+              fi
+            fi
+          fi
+          filters=""
+          for name in $picked; do filters="$filters --filter=$name"; done
+          echo "filters=$filters" >> "$GITHUB_OUTPUT"
+      - name: Test the Windows packages
+        if: runner.os == 'Windows' && steps.select.outputs.filters != ''
+        shell: bash
+        env:
+          FILTERS: ${{ steps.select.outputs.filters }}
+          HALONIC_TEST_TIMEOUT: "30000"
+        run: pnpm exec turbo run test --continue --env-mode=loose --output-logs=new-only --summarize $FILTERS
+      # Per package test time, from the Turbo run summary, so the numbers in
+      # the windows-coverage document come from real runs.
+      - name: Test time per package
+        if: always() && runner.os == 'Windows' && steps.select.outputs.filters != ''
+        shell: bash
+        run: |
+          node -e '
+            const fs = require("fs");
+            const dir = ".turbo/runs";
+            const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
+            if (files.length === 0) process.exit(0);
+            const latest = files.map((f) => dir + "/" + f).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+            const run = JSON.parse(fs.readFileSync(latest, "utf8"));
+            const rows = run.tasks
+              .filter((t) => t.task === "test" && t.execution && t.execution.endTime)
+              .map((t) => ({
+                name: t.package,
+                seconds: (t.execution.endTime - t.execution.startTime) / 1000,
+                result: t.execution.exitCode === 0 ? "passed" : "failed",
+                cache: t.cache && t.cache.status,
+              }))
+              .sort((a, b) => b.seconds - a.seconds);
+            const total = rows.reduce((sum, r) => sum + r.seconds, 0);
+            const lines = ["### Windows test time per package", "", "| Package | Seconds | Result | Cache |", "|---|---:|---|---|"];
+            for (const r of rows) lines.push(`| ${r.name} | ${r.seconds.toFixed(1)} | ${r.result} | ${r.cache} |`);
+            lines.push("", `Sum of the packages: ${total.toFixed(1)} s. Whole Turbo run: ${((run.execution.endTime - run.execution.startTime) / 1000).toFixed(1)} s.`);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          '
 
   sandbox-windows:
     # The sandbox fence probes on a real Windows machine (HAL-1919): a hidden
