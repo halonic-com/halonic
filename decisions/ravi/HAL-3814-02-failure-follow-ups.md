@@ -4,6 +4,7 @@
 - Task: HAL-3814; the review of #1155 on HAL-3841, and #1156 (HAL-2184)
 - Approval: the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PvnhcRgpIpIMG+whoOgxmM7C0hrkhwsvaqP2NcEfD9p8ohIBPmVZvXUaYcAsFBwWcG+OeD8n2W2XlmrznQzcBQ==
 
 ## What changes
 
