@@ -80,11 +80,15 @@ export async function runWorkflow(
   try {
     const events = eventsOf(input);
     const place = { workspace, name: workspaceName, dir: typedDir };
-    const followed = await followUntilStopped(engine, workspace, (signal) =>
-      followWithEvents(engine, place, typed, runInput, events, {
-        signal,
-        onEvent: live.onEvent,
-      }),
+    const followed = await followUntilStopped(
+      engine,
+      workspace,
+      (signal) =>
+        followWithEvents(engine, place, typed, runInput, events, {
+          signal,
+          onEvent: live.onEvent,
+        }),
+      typedDir,
     );
     if ("stopped" in followed) {
       return followed;

@@ -1,4 +1,4 @@
-import type { HubUses, KindName, KindValues } from "@halonicjs/format";
+import type { Connector, HubUses, KindName, KindValues } from "@halonicjs/format";
 import type { Digest } from "@halonicjs/ports";
 import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
 import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
@@ -86,10 +86,11 @@ export function definitionsOf(workspace: LoadedWorkspace, hubId: string): HubDef
 }
 
 /**
- * What a new run starts with: the workflow it runs, and the hub's agents,
- * workflows, collections and knowledge sources. It has the shape of the
- * engine's `RunDefinitions`, built here so the CLI and the test runner
- * build it the same way.
+ * What a new run starts with: the workflow it runs, the hub's agents,
+ * workflows, collections and knowledge sources, and the `tools` lists of
+ * the connectors it can see. It has the shape of the engine's
+ * `RunDefinitions`, built here so the CLI and the test runner build it the
+ * same way.
  */
 export interface RunStartDefinitions {
   readonly workflow: KindValues["workflow"];
@@ -97,12 +98,17 @@ export interface RunStartDefinitions {
   readonly workflows: ById<"workflow">;
   readonly collections: ById<"collection">;
   readonly knowledge: ById<"knowledge">;
+  /**
+   * Each connector's `tools` lists by its id, and nothing else of its file:
+   * a run needs only what its agents are offered, not how to connect.
+   */
+  readonly connectorTools: Readonly<Record<string, Connector["tools"]>>;
 }
 
 /**
  * The definitions a new run of `workflowId` in `hubId` starts with, as the
- * workspace has them now: the workflow, and the hub's agents, workflows,
- * collections and knowledge sources.
+ * workspace has them now: the workflow, the hub's agents, workflows,
+ * collections and knowledge sources, and its connectors' `tools` lists.
  *
  * @param workspace - the loaded workspace
  * @param hubId - the hub the run is in
@@ -111,7 +117,7 @@ export interface RunStartDefinitions {
  *
  * @example
  * runDefinitionsOf(workspace, "support", "support-reply");
- * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {}, knowledge: {} }
+ * // { workflow: { id: "support-reply", … }, agents: { writer: …, sorter: … }, workflows: { … }, collections: {}, knowledge: {}, connectorTools: { mail: { allow: ["search"], approve: [] } } }
  */
 export function runDefinitionsOf(
   workspace: LoadedWorkspace,
@@ -129,6 +135,10 @@ export function runDefinitionsOf(
     workflows: hub.workflows,
     collections: hub.collections,
     knowledge: hub.knowledge,
+    // `fromEntries` defines each key, so a connector named "__proto__" stays one.
+    connectorTools: Object.fromEntries(
+      Object.entries(hub.connectors).map(([id, connector]) => [id, connector.tools]),
+    ),
   };
 }
 

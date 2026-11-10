@@ -132,6 +132,12 @@ export const runMessages = defineMessages("run", {
   /** After "Stopped." when Ctrl C or SIGTERM stopped the run in this shell (cli-output 1.5). */
   cancelledAfter: (runId: string, step: string) =>
     phrase`The run ${runId} was cancelled after the step ${step}. Nothing after it ran.`,
+  /**
+   * After "Stopped." when Ctrl C or SIGTERM stopped following the run but
+   * couldn't cancel it, so it may go on (HAL-4356).
+   */
+  notCancelled: (runId: string, dir?: string) =>
+    phrase`The run ${runId} wasn't cancelled, only no longer followed, so it may go on. See where it is: ${suggestedCommand("runs show", dir, runId)}`,
 });
 
 function joinedFacts(facts: readonly string[]): Phrase {

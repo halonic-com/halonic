@@ -120,6 +120,28 @@ verifies("workspace.run-definitions", () => {
     expect(Object.keys(definitions.workflows)).toEqual(["invoice"]);
     expect(definitions.collections).toEqual({});
     expect(definitions.knowledge).toEqual({});
+    expect(definitions.connectorTools).toEqual({});
+  });
+
+  it("starts a run with the tools lists of the connectors the hub can see, and none of their transport", async () => {
+    const tracker = [
+      "transport:",
+      "  http:",
+      "    url: https://tracker.example.com/mcp",
+      "tools:",
+      "  allow: [search_issues, create_issue]",
+      "  approve: [create_issue]",
+      "",
+    ].join("\n");
+    const workspace = await load({
+      "hubs/billing/library/connectors/tracker.connector.yaml": tracker,
+    });
+
+    const definitions = runDefinitionsOf(workspace, "billing", "invoice");
+
+    expect(definitions.connectorTools).toEqual({
+      tracker: { allow: ["search_issues", "create_issue"], approve: ["create_issue"] },
+    });
   });
 
   it("refuses a workflow the hub doesn't have, naming the hub and the workflow", async () => {

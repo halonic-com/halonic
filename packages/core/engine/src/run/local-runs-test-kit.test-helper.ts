@@ -1,5 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { Agent, Collection, KnowledgeSource, Workflow } from "@halonicjs/format";
+import type { Agent, Collection, Connector, KnowledgeSource, Workflow } from "@halonicjs/format";
 import type {
   ChatResponse,
   Clock,
@@ -107,6 +107,11 @@ export interface RunsSetup {
   readonly budget?: Budget;
   /** The connected servers; none when left out. */
   readonly connectors?: readonly ConnectorClient[];
+  /**
+   * The `tools` lists of the connector files the hub can see, by id; a file
+   * with no `allow` for each of `connectors` when left out.
+   */
+  readonly connectorTools?: Readonly<Record<string, Connector["tools"]>>;
   /** The knowledge sources the hub can see; none when left out. */
   readonly knowledge?: Readonly<Record<string, KnowledgeSource>>;
   /** How the executor builds agents' knowledge sources; it builds none when left out. */
@@ -131,6 +136,9 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     knowledge,
     blobs = new KernelBlobs(),
   } = setup;
+  const connectorTools =
+    setup.connectorTools ??
+    Object.fromEntries((setup.connectors ?? []).map(({ id }) => [id, { approve: [] }]));
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
   const definitionsAsked: string[] = [];
@@ -163,6 +171,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
           ...(workflows === undefined ? {} : { workflows }),
           ...(collections === undefined ? {} : { collections }),
           ...(knowledge === undefined ? {} : { knowledge }),
+          connectorTools,
         };
       },
     },

@@ -1,6 +1,7 @@
-// What Ctrl C means while a command follows a run (cli-output 1.5), shared
-// by `halonic run` and `halonic runs send` (HAL-4025): the run stops being
-// followed, and the command says after which step it was cancelled.
+// What Ctrl C means while a command follows a run (cli-output 1.5), used by
+// `halonic run`, and by `halonic runs send` once it moves here (HAL-4025):
+// the run stops being followed, and the command says after which step it was
+// cancelled, or that it couldn't be cancelled (HAL-4356).
 
 import { RunFollowStopped, shortRunId } from "@halonicjs/app";
 import { type RunEvent, summarize } from "@halonicjs/events";
@@ -18,6 +19,8 @@ import type { WorkspaceEngine } from "./workspace-engine.ts";
  * failing throws its last error.
  *
  * @param follow - starts or follows the run with `signal`, such as `WorkflowRuns.follow`
+ * @param dir - the user's own `--dir`, repeated in the command a run that
+ *   wasn't cancelled suggests
  * @throws the stuck step's last error, when a run's step keeps failing
  * @throws AbortError on Ctrl C before the run started: `runCli` prints "Stopped."
  *
@@ -31,6 +34,7 @@ export async function followUntilStopped<T>(
   engine: Pick<WorkspaceEngine, "signal" | "stuck">,
   workspace: LoadedWorkspace,
   follow: (signal: AbortSignal) => Promise<T>,
+  dir?: string,
 ): Promise<T | StoppedResult> {
   try {
     return await follow(engine.signal);
@@ -39,7 +43,7 @@ export async function followUntilStopped<T>(
       throw engine.stuck.reason;
     }
     if (error instanceof RunFollowStopped) {
-      return stoppedResult(error.events, workspace);
+      return stoppedResult(error, workspace, dir);
     }
     throw error;
   }
@@ -49,19 +53,31 @@ export async function followUntilStopped<T>(
  * What stopping with Ctrl C meant for the run (cli-output 1.5): "The run
  * 01jd8q was cancelled after the step Classify it. Nothing after it ran."
  * A run stopped before it finished a step, or before it started, says only
- * "Stopped.".
+ * "Stopped.". A run the engine couldn't cancel goes on in the store, so it
+ * says so and how to see it, whatever step it was at (HAL-4356).
+ *
+ * @param dir - the user's own `--dir`, repeated in the suggested command
  */
 export function stoppedResult(
-  events: readonly RunEvent[],
+  stopped: Pick<RunFollowStopped, "runId" | "events" | "cancelled">,
   workspace: LoadedWorkspace,
+  dir?: string,
 ): StoppedResult {
+  const { events } = stopped;
   const summary = summarize(events);
+  const json = summary === null ? {} : { run: summary, events };
+  if (!stopped.cancelled) {
+    return {
+      stopped: true,
+      meaning: runMessages.notCancelled(shortRunId(stopped.runId), dir).phrase,
+      json,
+    };
+  }
   if (summary === null) {
-    return { stopped: true, json: {} };
+    return { stopped: true, json };
   }
   const definitions = runViewDefinitions(workspace, summary);
   const lastDone = runSteps(events, summary).findLast((step) => step.end.kind === "done");
-  const json = { run: summary, events };
   if (lastDone === undefined) {
     return { stopped: true, json };
   }
