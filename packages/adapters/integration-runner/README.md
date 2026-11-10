@@ -18,6 +18,9 @@ This package is built in steps (HAL-983). So far it has the protocol on both sid
   this integration, and a body is read one piece per `pull`.
   - Anything outside the protocol stops the runner and is reported through `onBlocked`. A kit
     refusal on the kit's leak list is reported there too.
+  - Every request gets an answer. A refusal too large for a frame is replaced by a short fixed
+    message, and a request or body piece Halonic cannot answer stops the runner (`protocol`)
+    rather than leaving it waiting.
   - Tool results, tool errors and stderr pass through the kit's secret filter.
 - **The limits** (`defaultRunnerLimits`):
   - at most 8 requests in flight;
@@ -30,6 +33,9 @@ This package is built in steps (HAL-983). So far it has the protocol on both sid
 - **The runner's side, `serveRunner`:** it gives the integration `http`, `settings` and `wait`,
   but no `tokens`. `http` sends each request as a frame. A body the kit would refuse is refused
   before it crosses, and so is a request made outside a tool call.
+
+The tests include attack cases: a runner that sends malformed, oversize or out-of-order frames
+must be stopped with exactly one block, or answered without stopping, and never make Halonic throw.
 
 Not done yet: starting the runner through the `Sandbox` port, building the runner into one file,
 Node's permission flags and the module hook.

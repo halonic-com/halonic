@@ -22,18 +22,24 @@ shape of the parity recordings.
 filter the run takes: hub, workflow and name, each matched exactly. Parsing `--filter` into
 those is the CLI's job.
 
-Running the tests comes in the next pull request (HAL-4215): for now the package lists cases and
-defines the types and the dependencies a run takes, and nothing in it starts a run. The `artifacts`
-expectation will be checked against the run's `artifact.created` events, which the engine logs when
-a task state saves its answer.
+Checking a case's `expect` against its runs is in the package (`checkExpectations`, internal for
+now, not exported). It gives one failure, as data, for each part that doesn't match, in the order
+the CLI says them: `final` (not when `states` or `status` failed too), `states`, `status`,
+`context` by dotted path (the run may set more keys; arrays must be equal), `artifacts` (at least
+the listed files, checked against the runs' `artifact.created` events) and, when `expect` sets no
+status, an unexpected failed run. A step that would start a program, which the run reports as
+`harness-unavailable`, gives only an `unscripted-program` failure naming that step.
+
+Running the tests comes in the next pull request (HAL-4215): for now the package lists cases,
+checks expectations and defines the types and the dependencies a run takes, but nothing in it
+starts a run.
 
 ## Known gaps
 
-- A test file can now script a program step's results (the case's `programs` key, in
+- A test file can script a program step's results (the case's `programs` key, in
   `@halonicjs/format`), but the runner doesn't read it yet, because nothing in it starts a run
-  (HAL-4215, HAL-4248). Once it does, a step that would start a program with no scripted result
-  fails its case with `unscripted-program`. The runner tells such a step by the run's
-  `harness-unavailable` failure reason, never by the engine's error text.
+  (HAL-4215, HAL-4248). The runner tells a step that would start an unscripted program by the
+  run's `harness-unavailable` failure reason, never by the engine's error text.
 
 ## Example
 
