@@ -163,6 +163,26 @@ verifies("ports.send-call-id", () => {
   });
 });
 
+verifies("ports.run-cancel", () => {
+  typeTest("keeps cancel optional, so an executor without it still fits the port", () => {
+    const withoutCancel = {
+      id: "older",
+      start: async () => ({}) as RunSummary,
+      startAgent: async () => ({}) as RunSummary,
+      send: async () => ({}) as RunSummary,
+      subscribe: () => ({ close: () => {} }),
+      chatTurn: async () => ({}) as Awaited<ReturnType<RunExecutor["chatTurn"]>>,
+    };
+    expectTypeOf(withoutCancel).toExtend<RunExecutor>();
+  });
+
+  typeTest("cancels a run by its id and gives its summary", () => {
+    expectTypeOf<NonNullable<RunExecutor["cancel"]>>().toEqualTypeOf<
+      (runId: string) => Promise<RunSummary>
+    >();
+  });
+});
+
 verifies("ports.chat-turn-signal", () => {
   const request: ChatTurnRequest = { hubId: "hub-1", messages: [], tools: [] };
 

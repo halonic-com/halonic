@@ -239,6 +239,22 @@ export interface RunExecutor {
    */
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription;
   /**
+   * Cancels a run that hasn't ended, as Ctrl C or a Stop button asks: it
+   * ends with `run.failed` and `reason: "cancelled"`, and so does the child
+   * run it waits on. A run that waits ends too. What the run was doing
+   * stops where the executor can stop it; anything it still finishes is
+   * recorded nowhere. A run that has already ended is left as it is, so a
+   * cancel that comes just after the end is not an error.
+   *
+   * A remote executor forwards it to the host. Optional, so the port keeps
+   * version 1, as for `connection`: a caller without it can only stop
+   * following the run.
+   *
+   * @returns the run's summary after the cancel
+   * @throws when the run doesn't exist
+   */
+  cancel?(runId: string): Promise<RunSummary>;
+  /**
    * One chat turn outside any run. Served mode forwards it to the host,
    * which has the provider keys, like a run. `request.signal` may cancel it.
    *

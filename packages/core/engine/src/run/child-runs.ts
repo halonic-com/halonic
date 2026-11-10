@@ -84,3 +84,22 @@ export async function receiverOf(
   }
   return receiver;
 }
+
+/**
+ * The run and the child runs it waits on, all the way down, the run first:
+ * the runs a cancel of `runId` ends. A run with no log gives none.
+ */
+export async function runAndChildren(
+  runs: Pick<RunStore, "events" | "snapshot">,
+  runId: string,
+): Promise<string[]> {
+  const chain: string[] = [];
+  let next: string | undefined = runId;
+  while (next !== undefined && chain.length <= maxChildDepth) {
+    const run = await readRun(runs, next);
+    if (run === null) break;
+    chain.push(next);
+    next = run.child?.runId;
+  }
+  return chain;
+}

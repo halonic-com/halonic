@@ -75,7 +75,7 @@ export class LocalHarnessCalls {
     );
     const log = new SerialRunLog(store, runId, waitedOn, lastSeq, clock, item?.item ?? null);
     const limits = startDeadlines.of(runId, call.callId);
-    return this.#live.run((stop) => {
+    return this.#live.run(runId, (stop) => {
       const approvals = this.#approvalsOf(runId, call.agent, waitedOn, stop);
       const harnessCall = { effect, runId, hubId, agent };
       return runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
@@ -90,6 +90,11 @@ export class LocalHarnessCalls {
    */
   answer(runId: string, effect: AnswerHarnessEffect): boolean {
     return this.#answers.give(runId, effect);
+  }
+
+  /** Stops the run's harness calls going on, and resolves once each has stopped all it started. */
+  stop(runId: string): Promise<void> {
+    return this.#live.stop(runId);
   }
 
   /** Stops every harness call going on, and resolves once each has stopped all it started. */

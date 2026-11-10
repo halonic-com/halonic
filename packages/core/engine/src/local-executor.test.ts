@@ -116,10 +116,11 @@ verifies("engine.local-chat-turn", () => {
     const { executor } = executorOn(new ScriptedModel([]));
     const start = { hubId: "acme", workflowId: "reply", input: {} };
 
-    it("rejects starts and sends", async () => {
+    it("rejects starts, sends and cancels", async () => {
       await expect(executor.start(start)).rejects.toThrow("runs chat turns only");
       await expect(executor.startAgent()).rejects.toThrow("can't start agent runs yet");
       await expect(executor.send("run_1", "approve")).rejects.toThrow("runs chat turns only");
+      await expect(executor.cancel("run_1")).rejects.toThrow("runs chat turns only");
       await expect(
         executor.onTimer({ key: "run_1", timerId: "call:call-1", at: "" }),
       ).resolves.toBeUndefined();

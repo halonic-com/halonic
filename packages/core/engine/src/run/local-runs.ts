@@ -2,7 +2,12 @@
 // then carries out the effects through the scheduler, so a run moves on one
 // step per timer, and a timer that is late or repeated changes nothing.
 
-import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
+import {
+  type RunEvent,
+  type RunFailureReason,
+  type RunSummary,
+  summarize,
+} from "@halonicjs/events";
 import type {
   Clock,
   RunEventListener,
@@ -28,7 +33,7 @@ import { InputRefused } from "../kernel/input-refused.ts";
 import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import { callOf, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
-import { childNow, childStart, receiverOf } from "./child-runs.ts";
+import { childNow, childStart, receiverOf, runAndChildren } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
@@ -56,6 +61,9 @@ export type CallTool = (effect: CallToolEffect) => Promise<ToolResult>;
  */
 export const harnessGoneError =
   "The engine stopped while the harness waited for an answer, so the harness can't go on.";
+
+/** The `error` of a run someone cancelled; screens word the reason themselves. */
+export const cancelledError = "Someone cancelled the run.";
 
 /** The longest run id, in UTF-8 bytes, because it is a `Scheduler` key. */
 const maxRunIdBytes = 256;
@@ -189,6 +197,26 @@ export class LocalRuns {
       ...(payload === undefined ? {} : { payload }),
       ...(options?.callId === undefined ? {} : { callId: options.callId }),
     });
+    return this.#summary(runId);
+  }
+
+  /**
+   * Cancels a run that hasn't ended, and the child run it waits on, all the
+   * way down: each ends with `run.failed` and `reason: "cancelled"`, the run
+   * first, so it doesn't take its child's end for its own failure. Their
+   * harness calls are stopped; a model or connector call going on finishes,
+   * and the run takes its result no more. A run that has ended stays as it is.
+   *
+   * @throws InputRefused when the run doesn't exist
+   */
+  async cancel(runId: string): Promise<RunSummary> {
+    await this.#ready();
+    const runs = await runAndChildren(this.#options.store, runId);
+    if (runs.length === 0) throw new InputRefused("engine.run-unknown", `No run "${runId}".`);
+    for (const id of runs) {
+      await this.#fail(id, cancelledError, "cancelled");
+      await this.#harnessCalls.stop(id);
+    }
     return this.#summary(runId);
   }
 
@@ -427,7 +455,7 @@ export class LocalRuns {
   }
 
   /** Ends a run that hasn't ended with `run.failed`, reading again when another write got there first. */
-  async #fail(runId: string, error: string): Promise<void> {
+  async #fail(runId: string, error: string, reason: RunFailureReason = "error"): Promise<void> {
     const store = this.#options.store;
     for (;;) {
       const summary = summarize(await store.events(runId));
@@ -439,7 +467,7 @@ export class LocalRuns {
         type: "run.failed",
         state: summary.state,
         error,
-        reason: "error",
+        reason,
       };
       if ((await store.append(runId, summary.lastSeq, [failed])).ok) break;
     }

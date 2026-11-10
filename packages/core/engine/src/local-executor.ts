@@ -158,6 +158,16 @@ export class LocalExecutor implements RunExecutor {
       : this.runs.send(runId, event, payload, options);
   }
 
+  /**
+   * Ends the run, and the child run it waits on, with `reason: "cancelled"`,
+   * and stops their harness calls. A run that has ended stays as it is.
+   *
+   * @throws InputRefused when the run doesn't exist
+   */
+  cancel(runId: string): Promise<RunSummary> {
+    return this.runs === undefined ? Promise.reject(noRuns()) : this.runs.cancel(runId);
+  }
+
   /** As the port asks, it doesn't throw: the listener's `onClose` gets any error after this returns. */
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
     if (this.runs !== undefined) {

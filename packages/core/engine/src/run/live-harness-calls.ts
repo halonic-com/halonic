@@ -1,13 +1,18 @@
 // The harness calls an engine is running, so that when it stops, every
-// program they started stops with it (failure path, rule 2).
+// program they started stops with it (failure path, rule 2), and when a run
+// is cancelled, its own programs stop.
 
 import { type StopSignal, StopSource } from "@halonicjs/std";
 
 /** The `error` a harness call stops with when the engine stops while it runs. */
 export const engineStoppedMessage = "The engine stopped while the harness ran.";
 
+/** The `error` a harness call stops with when its run is cancelled while it runs. */
+export const runCancelledMessage = "The run was cancelled while the harness ran.";
+
 /** One harness call going on now. */
 interface LiveCall {
+  readonly runId: string;
   readonly source: StopSource;
   /** Settles once the call has stopped everything it started. */
   readonly done: Promise<void>;
@@ -19,16 +24,18 @@ export class LiveHarnessCalls {
   #stopped = false;
 
   /**
-   * Runs one harness call with a signal that is told to stop when the engine stops.
+   * Runs one harness call of the run with a signal that is told to stop when
+   * the engine stops or the run is cancelled.
    *
    * @throws an engine-stopped error, before starting anything, once {@link LiveHarnessCalls.stopAll} was called
    * @throws what the call throws
    */
-  async run<T>(call: (stop: StopSignal) => Promise<T>): Promise<T> {
+  async run<T>(runId: string, call: (stop: StopSignal) => Promise<T>): Promise<T> {
     if (this.#stopped) throw new Error(engineStoppedMessage);
     const source = new StopSource();
     const result = call(source.signal);
     const live: LiveCall = {
+      runId,
       source,
       done: result.then(
         () => {},
@@ -44,15 +51,29 @@ export class LiveHarnessCalls {
   }
 
   /**
+   * Stops the run's calls going on, and resolves once each has stopped its
+   * harness run, session and bridge. Later calls of the run are not refused:
+   * a cancelled run records none.
+   */
+  async stop(runId: string): Promise<void> {
+    const calls = [...this.#calls].filter((call) => call.runId === runId);
+    await stopCalls(calls, runCancelledMessage);
+  }
+
+  /**
    * Stops every call going on, and resolves once each has stopped its
    * harness run, session and bridge. Calls after this are refused.
    */
   async stopAll(): Promise<void> {
     this.#stopped = true;
-    const calls = [...this.#calls];
-    for (const call of calls) {
-      call.source.stop(new Error(engineStoppedMessage));
-    }
-    await Promise.all(calls.map((call) => call.done));
+    await stopCalls([...this.#calls], engineStoppedMessage);
   }
+}
+
+/** Tells each call to stop with `message`, and resolves once all have stopped. */
+async function stopCalls(calls: readonly LiveCall[], message: string): Promise<void> {
+  for (const call of calls) {
+    call.source.stop(new Error(message));
+  }
+  await Promise.all(calls.map((call) => call.done));
 }
