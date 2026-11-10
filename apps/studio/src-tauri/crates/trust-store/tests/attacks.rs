@@ -7,10 +7,9 @@
 mod support;
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use halonic_trust_store::{FileTrustStore, TrustError};
-use serde_json::Value;
 use support::{Scratch, file_for, grant, locations, node_file_names, record};
 
 /// The files in a folder, by name.
@@ -201,6 +200,7 @@ fn trust_files_trust_nothing_under_a_profile_that_is_a_file() {
 #[test]
 fn trust_files_make_every_folder_they_create_owner_only() {
     use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
 
     let scratch = Scratch::new("parents");
     let profile = scratch.path().join("profile");
@@ -223,6 +223,8 @@ fn trust_files_stay_whole_while_others_write() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::thread;
+
+    use serde_json::Value;
 
     const ROUNDS: usize = 100;
     let scratch = Scratch::new("writers");
