@@ -1,6 +1,7 @@
 import {
   checkPackageRunnerLaunch,
   checkResolvedVersion,
+  pinnedRunnerArgs,
   type StdioTransport,
 } from "@halonicjs/app";
 import type { ConnectorPin, HttpClient } from "@halonicjs/ports";
@@ -91,8 +92,8 @@ export interface Spawn {
 /**
  * What a real launcher spawns for a `stdio` connector, on top of the
  * environment it inherits. Without a pin, the command as configured. With
- * one, the first argument naming the pin's package names it at the pin's
- * version, inherited variables that `app.package-runner-launch` blocks are
+ * one, the runner's words name the pin's package at its version, as
+ * `pinnedRunnerArgs` writes them for a real launcher, inherited variables that `app.package-runner-launch` blocks are
  * dropped, and the registry is set from `registryUrl`.
  */
 export function spawnFor(
@@ -105,30 +106,9 @@ export function spawnFor(
   const kept = Object.entries(inheritedEnv).filter(([name]) => !isBlockedVariable(name));
   return {
     command,
-    args: pinnedArgs(args, pin),
+    args: pinnedRunnerArgs(pin, command, args),
     env: { ...Object.fromEntries(kept), ...env, ...registryEnv(pin) },
   };
-}
-
-function pinnedArgs(args: readonly string[], pin: ConnectorPin): string[] {
-  const first = args.findIndex((arg) => namesPackage(arg, pin));
-  const exact =
-    pin.registry === "npm" ? `${pin.package}@${pin.version}` : `${pin.package}==${pin.version}`;
-  return args.map((arg, index) => (index === first ? exact : arg));
-}
-
-function namesPackage(arg: string, pin: ConnectorPin): boolean {
-  if (pin.registry === "npm") {
-    const at = arg.indexOf("@", arg.startsWith("@") ? 1 : 0);
-    return (at === -1 ? arg : arg.slice(0, at)) === pin.package;
-  }
-  // The name runs up to the first character a PyPI name can't hold.
-  const name = arg.replace(/[^A-Za-z0-9._-].*$/s, "");
-  return pypiName(name) === pypiName(pin.package);
-}
-
-function pypiName(name: string): string {
-  return name.toLowerCase().replaceAll(/[-_.]+/g, "-");
 }
 
 /** The registry setting for a pin: uv reads `UV_DEFAULT_INDEX`, pip and pipx `PIP_INDEX_URL`. */

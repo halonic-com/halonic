@@ -154,4 +154,13 @@ export const packageOptionCommands: readonly OverridingCommand[] = [
     args: ["--yes", "exec", "--package=@acme/mail-mcp@2.3.1", "--", "mail-mcp", "--inbox", "work"],
   },
   { registry: "pypi", command: "pipx", args: ["run", "--spec", "mail-mcp==2.3.1", "mail-mcp"] },
+  // A package option without a version: the launcher adds the pin's, not the newest.
+  {
+    registry: "npm",
+    command: "npm",
+    args: ["exec", "--package=@acme/mail-mcp", "--", "mail-mcp"],
+  },
+  { registry: "npm", command: "npx", args: ["-y", "-p", "@acme/mail-mcp", "mail-mcp"] },
+  { registry: "pypi", command: "uvx", args: ["--from", "mail-mcp", "mail-mcp"] },
+  { registry: "pypi", command: "pipx", args: ["run", "--spec", "mail-mcp", "mail-mcp"] },
 ];

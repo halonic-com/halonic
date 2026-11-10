@@ -69,4 +69,20 @@ verifies("memory.connector-client", () => {
       "mail-mcp",
     ]);
   });
+
+  it("names the pinned version in a bare package option, not only in a positional word", () => {
+    const transport = {
+      ...npx(),
+      command: "npm",
+      args: ["exec", "--package=mail-mcp", "--", "mail-mcp", "--inbox", "work"],
+    };
+    expect(spawnFor(transport, transport.pin, {}).args).toEqual([
+      "exec",
+      "--package=mail-mcp@2.3.1",
+      "--",
+      "mail-mcp",
+      "--inbox",
+      "work",
+    ]);
+  });
 });
