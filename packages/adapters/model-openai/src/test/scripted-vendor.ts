@@ -13,6 +13,8 @@ export interface ReceivedCall {
 type Step =
   | { kind: "reply"; status: number; body: unknown }
   | { kind: "hang" }
+  | { kind: "stall"; status: number }
+  | { kind: "flood" }
   | { kind: "unreachable" };
 
 /**
@@ -39,6 +41,16 @@ export class ScriptedVendor implements HttpClient {
   /** Keeps the next call waiting until its signal aborts. */
   hangNext(): void {
     this.#steps.push({ kind: "hang" });
+  }
+
+  /** Answers the next call with `status`, then sends no body until its signal aborts. */
+  stallNext(status: number): void {
+    this.#steps.push({ kind: "stall", status });
+  }
+
+  /** Answers the next call with 200 and a body that never ends, 1 MiB at a time. */
+  floodNext(): void {
+    this.#steps.push({ kind: "flood" });
   }
 
   /** Fails the next call as a network failure would. */
@@ -68,10 +80,9 @@ export class ScriptedVendor implements HttpClient {
       this.#open -= 1;
       throw init.signal?.reason;
     }
-    return new Response(this.#body(JSON.stringify(step.body)), {
-      status: step.status,
-      headers: { "content-type": "application/json" },
-    });
+    if (step.kind === "stall") return jsonResponse(step.status, this.#stalled(init.signal));
+    if (step.kind === "flood") return jsonResponse(200, this.#flooded());
+    return jsonResponse(step.status, this.#body(JSON.stringify(step.body)));
   }
 
   /** A body that closes the call once it is read to the end or cancelled. */
@@ -90,6 +101,38 @@ export class ScriptedVendor implements HttpClient {
       cancel: close,
     });
   }
+
+  /** A body that waits for `signal` to abort, then fails with its reason. */
+  #stalled(signal: AbortSignal | null | undefined): ReadableStream<Uint8Array> {
+    const close = (): void => {
+      this.#open -= 1;
+    };
+    return new ReadableStream({
+      async pull(controller) {
+        await untilAborted(signal);
+        close();
+        controller.error(signal?.reason);
+      },
+      cancel: close,
+    });
+  }
+
+  /** A body that never ends, and closes the call once it is cancelled. */
+  #flooded(): ReadableStream<Uint8Array> {
+    return new ReadableStream({
+      pull: (controller) => controller.enqueue(floodPiece),
+      cancel: () => {
+        this.#open -= 1;
+      },
+    });
+  }
+}
+
+/** One piece of a flooded body. */
+const floodPiece = new Uint8Array(1024 * 1024).fill(0x20);
+
+function jsonResponse(status: number, body: ReadableStream<Uint8Array>): Response {
+  return new Response(body, { status, headers: { "content-type": "application/json" } });
 }
 
 /** `answer` in the chat completions wire format, with reasoning as LM Studio sends it. */

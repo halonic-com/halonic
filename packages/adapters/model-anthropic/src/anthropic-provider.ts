@@ -5,7 +5,14 @@ import type {
   LlmCapabilities,
   LlmProvider,
 } from "@halonicjs/ports";
-import { errorForNetwork, errorForReply, errorForStatus, type FailedCall } from "./call-error.ts";
+import {
+  errorForNetwork,
+  errorForReply,
+  errorForSize,
+  errorForStatus,
+  type FailedCall,
+} from "./call-error.ts";
+import { BodyTooLargeError, readTextWithin } from "./read-body.ts";
 import { readReply } from "./reply.ts";
 import { toWireBody } from "./request.ts";
 
@@ -23,6 +30,12 @@ function apiRoot(baseUrl: string): string {
 
 /** The Messages API version every call asks for. */
 const apiVersion = "2023-06-01";
+
+/** The largest reply read, 10 MiB, as `integration-kit` allows a response by default. */
+const maxReplyBytes = 10 * 1024 * 1024;
+
+/** The largest error reply read: only its first few hundred characters reach the message. */
+const maxErrorBytes = 64 * 1024;
 
 /** Settings for an {@link AnthropicProvider}. */
 export interface AnthropicProviderOptions {
@@ -70,6 +83,8 @@ export class AnthropicProvider implements LlmProvider {
     streaming: false,
   };
   readonly #endpoint: string;
+  /** The endpoint's host and port, for an `offline` error. */
+  readonly #host: string | undefined;
   readonly #http: HttpClient;
   readonly #key: () => Promise<string>;
 
@@ -77,6 +92,7 @@ export class AnthropicProvider implements LlmProvider {
     this.id = options.id;
     this.type = options.type ?? "anthropic";
     this.#endpoint = `${apiRoot(options.baseUrl ?? anthropicBaseUrl)}/v1/messages`;
+    this.#host = hostOf(this.#endpoint);
     this.#http = options.http;
     this.#key = options.key;
   }
@@ -87,9 +103,10 @@ export class AnthropicProvider implements LlmProvider {
     const response = await this.#send(request, call);
     let body: unknown;
     try {
-      body = await response.json();
+      body = JSON.parse(await readTextWithin(response, maxReplyBytes));
     } catch (error) {
       request.signal?.throwIfAborted();
+      if (error instanceof BodyTooLargeError) throw errorForSize(error, call);
       throw errorForReply(error, call);
     }
     try {
@@ -100,7 +117,7 @@ export class AnthropicProvider implements LlmProvider {
   }
 
   #failedCall(request: ChatRequest): FailedCall {
-    return { providerId: this.id, model: request.model };
+    return { providerId: this.id, model: request.model, host: this.#host };
   }
 
   /**
@@ -109,10 +126,11 @@ export class AnthropicProvider implements LlmProvider {
    * error status with what it means.
    */
   async #send(request: ChatRequest, call: FailedCall): Promise<Response> {
+    const key = await this.#key();
     const headers = {
       "content-type": "application/json",
       "anthropic-version": apiVersion,
-      "x-api-key": await this.#key(),
+      "x-api-key": key,
     };
     let response: Response;
     try {
@@ -128,16 +146,28 @@ export class AnthropicProvider implements LlmProvider {
       request.signal?.throwIfAborted();
       throw errorForNetwork(error, call);
     }
-    if (!response.ok) throw errorForStatus(response.status, await textOrEmpty(response), call);
-    return response;
+    if (response.ok) return response;
+    const text = await textOrEmpty(response);
+    // Reading the body ends early when the signal aborts; the caller gets the abort, not the status.
+    request.signal?.throwIfAborted();
+    throw errorForStatus(response.status, text, call, key);
   }
 }
 
-/** The body of an error reply, or "" when it can't be read. */
+/** The body of an error reply, or "" when it can't be read or is too large. */
 async function textOrEmpty(response: Response): Promise<string> {
   try {
-    return await response.text();
+    return await readTextWithin(response, maxErrorBytes);
   } catch {
     return "";
+  }
+}
+
+/** The host and port of `url`, or undefined when it doesn't parse. */
+function hostOf(url: string): string | undefined {
+  try {
+    return new URL(url).host;
+  } catch {
+    return undefined;
   }
 }

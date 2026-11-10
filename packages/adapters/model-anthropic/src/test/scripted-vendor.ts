@@ -15,6 +15,8 @@ type Step =
   | { kind: "answer"; answer: Omit<ChatResponse, "replay"> }
   | { kind: "reply"; status: number; body: unknown }
   | { kind: "hang" }
+  | { kind: "stall"; status: number }
+  | { kind: "flood" }
   | { kind: "unreachable" };
 
 /** How many bytes the body sends at a time, so characters split across chunks. */
@@ -46,6 +48,16 @@ export class ScriptedVendor implements HttpClient {
     this.#steps.push({ kind: "hang" });
   }
 
+  /** Answers the next call with `status`, then sends no body until its signal aborts. */
+  stallNext(status: number): void {
+    this.#steps.push({ kind: "stall", status });
+  }
+
+  /** Answers the next call with 200 and a body that never ends, 1 MiB at a time. */
+  floodNext(): void {
+    this.#steps.push({ kind: "flood" });
+  }
+
   /** Fails the next call as a network failure would. */
   unreachableNext(): void {
     this.#steps.push({ kind: "unreachable" });
@@ -69,6 +81,8 @@ export class ScriptedVendor implements HttpClient {
       this.#open -= 1;
       throw init.signal?.reason;
     }
+    if (step.kind === "stall") return this.#stalled(step.status, init.signal);
+    if (step.kind === "flood") return this.#flooded();
     const reply = step.kind === "reply" ? step : { status: 200, body: wireMessage(step.answer) };
     return this.#response(reply.status, JSON.stringify(reply.body));
   }
@@ -96,7 +110,37 @@ export class ScriptedVendor implements HttpClient {
     });
     return new Response(body, { status, headers: { "content-type": "application/json" } });
   }
+
+  /** A response whose body waits for `signal` to abort, then fails with its reason. */
+  #stalled(status: number, signal: AbortSignal | null | undefined): Response {
+    const close = (): void => {
+      this.#open -= 1;
+    };
+    const body = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        await untilAborted(signal);
+        close();
+        controller.error(signal?.reason);
+      },
+      cancel: close,
+    });
+    return new Response(body, { status, headers: { "content-type": "application/json" } });
+  }
+
+  /** A 200 response whose body never ends, and closes the call once it is cancelled. */
+  #flooded(): Response {
+    const body = new ReadableStream<Uint8Array>({
+      pull: (controller) => controller.enqueue(floodPiece),
+      cancel: () => {
+        this.#open -= 1;
+      },
+    });
+    return new Response(body, { status: 200, headers: { "content-type": "application/json" } });
+  }
 }
+
+/** One piece of a flooded body. */
+const floodPiece = new Uint8Array(1024 * 1024).fill(0x20);
 
 function untilAborted(signal: AbortSignal | null | undefined): Promise<void> {
   return new Promise((resolve) => {

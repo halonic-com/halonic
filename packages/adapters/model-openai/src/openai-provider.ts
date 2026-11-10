@@ -5,9 +5,22 @@ import type {
   LlmCapabilities,
   LlmProvider,
 } from "@halonicjs/ports";
-import { errorForNetwork, errorForReply, errorForStatus, type FailedCall } from "./call-error.ts";
+import {
+  errorForNetwork,
+  errorForReply,
+  errorForSize,
+  errorForStatus,
+  type FailedCall,
+} from "./call-error.ts";
+import { BodyTooLargeError, readTextWithin } from "./read-body.ts";
 import { readReply } from "./reply.ts";
 import { type MaxTokensField, toWireBody } from "./request.ts";
+
+/** The largest reply read, 10 MiB, as `integration-kit` allows a response by default. */
+const maxReplyBytes = 10 * 1024 * 1024;
+
+/** The largest error reply read: only its first few hundred characters reach the message. */
+const maxErrorBytes = 64 * 1024;
 
 /** Settings for an {@link OpenAiCompatibleProvider}. */
 export interface OpenAiCompatibleProviderOptions {
@@ -54,6 +67,8 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     streaming: false,
   };
   readonly #endpoint: string;
+  /** The endpoint's host and port, for an `offline` error. */
+  readonly #host: string | undefined;
   readonly #http: HttpClient;
   readonly #key: (() => Promise<string>) | undefined;
   readonly #maxTokensField: MaxTokensField;
@@ -62,6 +77,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     this.id = options.id;
     this.type = options.type;
     this.#endpoint = `${options.baseUrl.replace(/\/+$/, "")}/chat/completions`;
+    this.#host = hostOf(this.#endpoint);
     this.#http = options.http;
     this.#key = options.key;
     this.#maxTokensField = options.maxTokensField ?? "max_tokens";
@@ -73,19 +89,15 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       providerId: this.id,
       model: request.model,
       offeredTools: (request.tools?.length ?? 0) > 0,
+      host: this.#host,
     };
     const response = await this.#send(request, call);
-    if (!response.ok) {
-      const text = await textOrEmpty(response);
-      // An abort while the error text was read fails with the abort's reason.
-      request.signal?.throwIfAborted();
-      throw errorForStatus(response.status, text, call);
-    }
     let body: unknown;
     try {
-      body = await response.json();
+      body = JSON.parse(await readTextWithin(response, maxReplyBytes));
     } catch (error) {
       request.signal?.throwIfAborted();
+      if (error instanceof BodyTooLargeError) throw errorForSize(error, call);
       throw errorForReply(error, call);
     }
     try {
@@ -95,13 +107,19 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     }
   }
 
-  /** Sends the call. An aborted signal rejects with its own reason, any other failure as offline. */
+  /**
+   * Sends the call and gives the reply once its status is OK. An aborted
+   * signal rejects with its own reason, a network failure as offline, and an
+   * error status with what it means.
+   */
   async #send(request: ChatRequest, call: FailedCall): Promise<Response> {
     const headers: Record<string, string> = { "content-type": "application/json" };
-    if (this.#key !== undefined) headers["authorization"] = `Bearer ${await this.#key()}`;
+    const key = this.#key === undefined ? undefined : await this.#key();
+    if (key !== undefined) headers["authorization"] = `Bearer ${key}`;
     const body = toWireBody(request, { maxTokensField: this.#maxTokensField });
+    let response: Response;
     try {
-      return await this.#http.fetch(this.#endpoint, {
+      response = await this.#http.fetch(this.#endpoint, {
         method: "POST",
         headers,
         body: JSON.stringify(body),
@@ -113,14 +131,28 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       request.signal?.throwIfAborted();
       throw errorForNetwork(error, call);
     }
+    if (response.ok) return response;
+    const text = await textOrEmpty(response);
+    // Reading the body ends early when the signal aborts; the caller gets the abort, not the status.
+    request.signal?.throwIfAborted();
+    throw errorForStatus(response.status, text, call, key);
   }
 }
 
-/** The body of an error reply, or "" when it can't be read. */
+/** The body of an error reply, or "" when it can't be read or is too large. */
 async function textOrEmpty(response: Response): Promise<string> {
   try {
-    return await response.text();
+    return await readTextWithin(response, maxErrorBytes);
   } catch {
     return "";
+  }
+}
+
+/** The host and port of `url`, or undefined when it doesn't parse. */
+function hostOf(url: string): string | undefined {
+  try {
+    return new URL(url).host;
+  } catch {
+    return undefined;
   }
 }

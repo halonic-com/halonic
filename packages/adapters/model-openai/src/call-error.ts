@@ -1,5 +1,6 @@
 import { ModelCallError } from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
+import type { BodyTooLargeError } from "./read-body.ts";
 
 /** The call that failed, for the error message. */
 export interface FailedCall {
@@ -8,6 +9,8 @@ export interface FailedCall {
   model: string;
   /** Whether the request offered the model tools. */
   offeredTools: boolean;
+  /** The server's host and port, such as `localhost:11434`; undefined when the address doesn't parse. */
+  host: string | undefined;
 }
 
 /** How much of the vendor's own error text goes into the message. */
@@ -23,10 +26,17 @@ const noToolsWording =
  *
  * The vendor's own text is kept, shortened, so the run log says what went
  * wrong, except after 401 or 403 (OpenAI repeats part of a wrong key there)
- * and whenever it holds something shaped like a key.
+ * whenever it holds something shaped like a key, and whenever it holds `key`,
+ * the key the call was sent with. Local servers and proxies may use keys that
+ * look like nothing in particular.
  */
-export function errorForStatus(status: number, text: string, call: FailedCall): ModelCallError {
-  const vendorText = status === 401 || status === 403 ? "" : vendorMessage(text);
+export function errorForStatus(
+  status: number,
+  text: string,
+  call: FailedCall,
+  key: string | undefined,
+): ModelCallError {
+  const vendorText = status === 401 || status === 403 ? "" : vendorMessage(text, key);
   const detail = vendorText === "" ? `HTTP ${status}` : `HTTP ${status}: ${vendorText}`;
   if (status === 401 || status === 403) {
     return new ModelCallError("refused", `${call.providerId} turned the key away (${detail})`);
@@ -51,7 +61,10 @@ export function errorForStatus(status: number, text: string, call: FailedCall): 
 
 /** The {@link ModelCallError} when the provider couldn't be reached at all. */
 export function errorForNetwork(cause: unknown, call: FailedCall): ModelCallError {
-  return new ModelCallError("offline", `${call.providerId} could not be reached`, { cause });
+  return new ModelCallError("offline", `${call.providerId} could not be reached`, {
+    cause,
+    ...(call.host === undefined ? {} : { host: call.host }),
+  });
 }
 
 /** The {@link ModelCallError} for a reply that isn't in the chat completions format. */
@@ -63,10 +76,19 @@ export function errorForReply(cause: unknown, call: FailedCall): ModelCallError 
   );
 }
 
+/** The {@link ModelCallError} for a reply larger than the provider reads. */
+export function errorForSize(cause: BodyTooLargeError, call: FailedCall): ModelCallError {
+  return new ModelCallError(
+    "refused",
+    `${call.providerId} answered model "${call.model}" with more than ${cause.maxBytes} bytes`,
+    { cause },
+  );
+}
+
 /** The error text in an OpenAI-style error body, shortened; "" when it may hold a key. */
-function vendorMessage(text: string): string {
+function vendorMessage(text: string, key: string | undefined): string {
   const message = errorTextIn(text).replace(/\s+/g, " ").trim();
-  if (findSecretShape(message) !== undefined) return "";
+  if (mayHoldKey(message, key)) return "";
   return message.length > maxVendorText ? `${message.slice(0, maxVendorText)}…` : message;
 }
 
@@ -82,4 +104,10 @@ function errorTextIn(text: string): string {
   if (typeof error === "string") return error;
   if (isPlainObject(error) && typeof error["message"] === "string") return error["message"];
   return text;
+}
+
+/** Whether `text` holds the call's own `key` or something shaped like a key. */
+function mayHoldKey(text: string, key: string | undefined): boolean {
+  if (key !== undefined && key !== "" && text.includes(key)) return true;
+  return findSecretShape(text) !== undefined;
 }
