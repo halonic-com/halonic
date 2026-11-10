@@ -11,9 +11,21 @@ secrets and approvals stay in Halonic.
 - **Public API:** `@halonicjs/adapter-harness-codex`
 
 So far it has `detectCodex` and `codexEnvironment`, and, inside the package,
-the reader that turns the notifications of `codex app-server` into run
-events. Starting a run (`start`, `send`, `cancel`) follows (HAL-194 build
-plan, D3).
+the client that talks to `codex app-server` and the reader that turns its
+notifications into run events. Starting a run (`start`, `send`, `cancel`)
+follows (HAL-194 build plan, D3).
+
+## Talking to `codex app-server`
+
+Codex runs as `codex app-server`, which speaks JSON-RPC over its standard
+input and output, one JSON object per line and without the `jsonrpc` field.
+`AppServerClient` opens with `initialize` and `initialized`, matches answers
+to requests by id, hands Codex's notifications and its own requests (such as
+approvals) on in order, and answers those. A line that isn't JSON-RPC stops
+the reading with an error that never quotes it, and no error holds the
+bridge token. The protocol was checked with
+`codex app-server generate-json-schema` and a recorded session of Codex
+0.166.0.
 
 ## Reading Codex's notifications
 
