@@ -10,7 +10,14 @@
 // exit code is always 0 unless the harness itself breaks. The per-probe
 // results go to the job summary and to windows-spike-results.json.
 import { spawn, spawnSync } from "node:child_process";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve, win32 } from "node:path";
@@ -187,31 +194,50 @@ record(
 );
 
 // ---- Group 2: process containment ------------------------------------------
+// The child writes a "started" file before it spawns the detached grandchild:
+// piped stdout from a short-lived process is not a reliable signal on Windows.
+// The same program also runs outside srt as a control, where the grandchild
+// must survive; if it doesn't, the probe itself is broken.
 {
-  const marker = join(work, "orphan.txt");
   const child = script(
     "orphan.mjs",
     `import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
-const p = spawn(process.execPath, ["-e", "setTimeout(() => require('fs').writeFileSync(${JSON.stringify(marker)}, 'alive'), 8000)"], { detached: true, stdio: "ignore" });
+const prefix = process.argv[2];
+writeFileSync(prefix + ".started", "yes");
+const p = spawn(process.execPath, ["-e", "setTimeout(() => require('fs').writeFileSync(" + JSON.stringify(prefix + ".alive") + ", 'alive'), 8000)"], { detached: true, stdio: "ignore" });
 p.unref();
 console.log("started");
 `,
   );
-  const run = inSrt(`"${node}" "${child}"`);
+  const markIn = join(work, "orphan-srt");
+  const markOut = join(work, "orphan-control");
+  const [inRun] = await Promise.all([
+    inSrtAsync(`"${node}" "${child}" "${markIn}"`),
+    outsideSrtAsync(`"${node}" "${child}" "${markOut}"`),
+  ]);
   await new Promise((done) => setTimeout(done, 12_000));
-  let alive = false;
-  try {
-    alive = readFileSync(marker, "utf8") === "alive";
-  } catch {}
-  const started = run.out.includes("started");
+  const started = existsSync(`${markIn}.started`);
+  const alive = existsSync(`${markIn}.alive`);
+  const controlOk = existsSync(`${markOut}.started`) && existsSync(`${markOut}.alive`);
   let orphanStatus = "INCONCLUSIVE";
-  if (started) orphanStatus = alive ? "FAIL" : "PASS";
+  let detail;
+  if (!started) {
+    detail = `the child never started inside srt (exit ${inRun.code}): ${tail(inRun.err || inRun.out)}`;
+  } else if (!controlOk) {
+    detail =
+      "the control outside srt did not leave a surviving detached child, so the probe cannot tell";
+  } else {
+    orphanStatus = alive ? "FAIL" : "PASS";
+    detail = alive
+      ? "the detached child outlived srt"
+      : "the child did not outlive srt (the control outside srt did)";
+  }
   record(
     "processes",
     "a detached child is still killed with the session (job object)",
     orphanStatus,
-    alive ? "the detached child outlived srt" : "the child did not outlive srt",
+    detail,
   );
 }
 
@@ -288,39 +314,47 @@ Write-Output ("token-switch " + [Sw]::Go(${port}))
 `,
 );
 {
+  const name = "token switch: anonymous token before connect";
+  const command = `powershell -NoProfile -ExecutionPolicy Bypass -File "${tokenPs}"`;
+  const says = (out) => {
+    if (out.includes("token-switch reached")) return "reached";
+    if (out.includes("token-switch blocked")) return "blocked";
+    return "unknown";
+  };
+  // Control first: outside srt, the same script must reach the canary. If
+  // Winsock itself refuses the anonymous token, a "blocked" inside srt proves
+  // nothing about srt.
+  const controlBefore = connections;
+  const control = await outsideSrtAsync(command);
+  const controlReached = connections - controlBefore;
   const before = connections;
-  const run = await inSrtAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tokenPs}"`);
+  const run = await inSrtAsync(command);
   const reached = connections - before;
-  let childSays = "unknown";
-  if (run.out.includes("token-switch reached")) childSays = "reached";
-  else if (run.out.includes("token-switch blocked")) childSays = "blocked";
-  if (childSays === "reached" && reached === 0) {
+  const childSays = says(run.out);
+  if (controlReached === 0 || says(control.out) !== "reached") {
     record(
       "network",
-      "token switch: anonymous token before connect",
+      name,
       "INCONCLUSIVE",
-      "the child says it connected but the canary saw nothing",
+      `control outside srt did not reach the canary (${controlReached} connection(s); ${tail(control.out || control.err)}), so Windows itself may refuse the anonymous token. Inside srt: ${reached} connection(s); ${tail(run.out || run.err)}`,
     );
   } else if (run.out.includes("no-switch")) {
-    record(
-      "network",
-      "token switch: anonymous token before connect",
-      "INCONCLUSIVE",
-      tail(run.out),
-    );
+    record("network", name, "INCONCLUSIVE", tail(run.out));
   } else if (!run.out.includes("token-switch")) {
+    record("network", name, "INCONCLUSIVE", `probe did not run: ${tail(run.err || run.out)}`);
+  } else if (childSays === "reached" && reached === 0) {
     record(
       "network",
-      "token switch: anonymous token before connect",
+      name,
       "INCONCLUSIVE",
-      `probe did not run: ${tail(run.err || run.out)}`,
+      "the child says it connected but the canary saw nothing",
     );
   } else {
     record(
       "network",
-      "token switch: anonymous token before connect",
+      name,
       childSays === "blocked" && reached === 0 ? "PASS" : "FAIL",
-      `${reached} connection(s) reached the canary port; ${tail(run.out)}`,
+      `control outside srt reached the canary; inside srt ${reached} connection(s); ${tail(run.out)}`,
     );
   }
 }
@@ -328,6 +362,32 @@ Write-Output ("token-switch " + [Sw]::Go(${port}))
 // ---- Group 4: which agent tools break --------------------------------------
 const programFiles = process.env.ProgramFiles ?? "";
 const systemRoot = process.env.SystemRoot ?? "";
+// The git probe is a node program, so the shell's quoting of `echo x> f` is out
+// of the picture; the redirect has its own probe in the list below.
+const gitChild = script(
+  "git-commit.mjs",
+  `import { spawnSync } from "node:child_process";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+const dir = join(process.cwd(), "tool-repo-" + process.pid);
+mkdirSync(dir);
+const git = (...a) => { const p = spawnSync("git", a, { cwd: dir, encoding: "utf8" }); return { code: p.status, text: (p.stdout + p.stderr).trim() }; };
+const steps = [["init", git("init", "-q")]];
+writeFileSync(join(dir, "f"), "x");
+steps.push(["file", { code: 0, text: readFileSync(join(dir, "f"), "utf8") }]);
+steps.push(["email", git("config", "user.email", "a@b.c")], ["name", git("config", "user.name", "t")], ["add", git("add", "f")], ["commit", git("commit", "-q", "-m", "m")], ["log", git("log", "--oneline")]);
+for (const [k, r] of steps) console.log(k + " " + r.code + " " + r.text.replace(/\\r?\\n/g, " / "));
+process.exit(steps.some(([, r]) => r.code !== 0) ? 1 : 0);
+`,
+);
+// Git for Windows ships curl next to git: <root>\cmd\git.exe and <root>\mingw64\bin\curl.exe.
+const gitPaths = spawnSync("where", ["git"], { encoding: "utf8" })
+  .stdout.split(/\r?\n/)
+  .filter(Boolean);
+const gitForWindowsCurl = [
+  ...gitPaths.map((g) => win32.join(dirname(dirname(g)), "mingw64", "bin", "curl.exe")),
+  win32.join(programFiles, "Git", "mingw64", "bin", "curl.exe"),
+].find((path) => existsSync(path));
 const tools = [
   [
     "node: HTTPS fetch",
@@ -338,13 +398,10 @@ const tools = [
     `python -c "import urllib.request,sys; urllib.request.urlopen('https://example.com',timeout=20)"`,
   ],
   ["git: ls-remote over HTTPS", `git ls-remote https://github.com/halonic-com/halonic.git HEAD`],
+  ["git: init, add, commit in the work folder", `"${node}" "${gitChild}"`],
   [
-    "git: init, add, commit in the work folder",
-    `git init -q tool-repo && cd tool-repo && git config user.email a@b.c && git config user.name t && echo x> f && git add f && git commit -q -m m && git status --short`,
-  ],
-  [
-    "OpenSSL curl (Git for Windows)",
-    `"${win32.join(programFiles, "Git", "mingw64", "bin", "curl.exe")}" -sS -f -m 20 -o NUL https://example.com`,
+    "cmd redirect: echo x> f writes the file",
+    `del /q "${join(work, "echo-probe.txt")}" 2>nul & echo x> "${join(work, "echo-probe.txt")}" && type "${join(work, "echo-probe.txt")}"`,
   ],
   [
     "curl.exe (Windows built-in, schannel)",
@@ -369,6 +426,19 @@ const tools = [
   ["cmd.exe: dir and echo", `cmd /c "dir /b && echo ok"`],
   ["ripgrep or findstr over the work folder", `findstr /s /m "x" *`],
 ];
+if (gitForWindowsCurl) {
+  tools.push([
+    "OpenSSL curl (Git for Windows)",
+    `"${gitForWindowsCurl}" -sS -f -m 20 -o NUL https://example.com`,
+  ]);
+} else {
+  record(
+    "tools",
+    "OpenSSL curl (Git for Windows)",
+    "INFO",
+    `no curl.exe next to git (${gitPaths.join(", ") || "git not found"}); skipped`,
+  );
+}
 for (const [name, command] of tools) {
   const control = outsideSrt(command, 120_000);
   if (control.code !== 0) {
