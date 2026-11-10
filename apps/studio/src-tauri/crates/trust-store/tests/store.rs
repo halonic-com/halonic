@@ -5,7 +5,7 @@
 mod support;
 
 use halonic_trust_store::TrustError;
-use support::{Scratch, locations, record};
+use support::{Scratch, grant, locations, record};
 
 #[test]
 fn trust_files_start_empty_and_give_back_every_field() {
@@ -14,21 +14,27 @@ fn trust_files_start_empty_and_give_back_every_field() {
     assert_eq!(store.get("/workspaces/acme"), Ok(None));
     assert_eq!(store.list(), Ok(Vec::new()));
 
-    store.grant(&record("/workspaces/acme", "hfp1:aa")).unwrap();
+    grant(&store, "/workspaces/acme", "hfp1:aa");
     assert_eq!(
         store.get("/workspaces/acme"),
         Ok(Some(record("/workspaces/acme", "hfp1:aa")))
     );
-    assert_eq!(store.list(), Ok(vec![record("/workspaces/acme", "hfp1:aa")]));
+    assert_eq!(
+        store.list(),
+        Ok(vec![record("/workspaces/acme", "hfp1:aa")])
+    );
 }
 
 #[test]
 fn trust_files_replace_a_record_and_revoke_it() {
     let scratch = Scratch::new("replace");
     let store = scratch.store();
-    store.grant(&record("/workspaces/acme", "hfp1:old")).unwrap();
-    store.grant(&record("/workspaces/acme", "hfp1:new")).unwrap();
-    assert_eq!(store.list(), Ok(vec![record("/workspaces/acme", "hfp1:new")]));
+    grant(&store, "/workspaces/acme", "hfp1:old");
+    grant(&store, "/workspaces/acme", "hfp1:new");
+    assert_eq!(
+        store.list(),
+        Ok(vec![record("/workspaces/acme", "hfp1:new")])
+    );
 
     store.revoke("/workspaces/acme").unwrap();
     assert_eq!(store.get("/workspaces/acme"), Ok(None));
@@ -42,18 +48,25 @@ fn trust_files_replace_a_record_and_revoke_it() {
 fn trust_files_compare_locations_exactly_as_given() {
     let scratch = Scratch::new("exact");
     let store = scratch.store();
-    store.grant(&record("/workspaces/acme", "hfp1:aa")).unwrap();
-    for other in ["/workspaces/acme/", "/Workspaces/acme", "/workspaces/./acme"] {
+    grant(&store, "/workspaces/acme", "hfp1:aa");
+    for other in [
+        "/workspaces/acme/",
+        "/Workspaces/acme",
+        "/workspaces/./acme",
+    ] {
         assert_eq!(store.get(other), Ok(None), "{other}");
     }
 
     // "café" as one code point and as "e" plus a combining accent.
     let composed = "/workspaces/caf\u{e9}";
     let decomposed = "/workspaces/cafe\u{301}";
-    store.grant(&record(composed, "hfp1:composed")).unwrap();
+    grant(&store, composed, "hfp1:composed");
     assert_eq!(store.get(decomposed), Ok(None));
-    store.grant(&record(decomposed, "hfp1:decomposed")).unwrap();
-    assert_eq!(store.get(composed), Ok(Some(record(composed, "hfp1:composed"))));
+    grant(&store, decomposed, "hfp1:decomposed");
+    assert_eq!(
+        store.get(composed),
+        Ok(Some(record(composed, "hfp1:composed")))
+    );
     assert_eq!(store.list().map(|records| records.len()), Ok(3));
 }
 
@@ -71,7 +84,7 @@ fn trust_files_list_by_utf16_code_unit() {
         "/hubs/shared",
     ];
     for location in granted {
-        store.grant(&record(location, "hfp1:aa")).unwrap();
+        grant(&store, location, "hfp1:aa");
     }
     let listed = store.list().unwrap();
     assert_eq!(
@@ -90,8 +103,8 @@ fn trust_files_list_by_utf16_code_unit() {
 fn trust_files_name_the_location_of_a_record_that_cant_be_read() {
     let scratch = Scratch::new("damaged");
     let store = scratch.store();
-    store.grant(&record("/workspaces/acme", "hfp1:aa")).unwrap();
-    store.grant(&record("/workspaces/zeta", "hfp1:aa")).unwrap();
+    grant(&store, "/workspaces/acme", "hfp1:aa");
+    grant(&store, "/workspaces/zeta", "hfp1:aa");
     let file = support::file_for(&scratch, "/workspaces/acme");
     let text = std::fs::read_to_string(&file).unwrap();
     std::fs::write(&file, &text[..text.len() / 2]).unwrap();
@@ -109,7 +122,7 @@ fn trust_files_name_the_location_of_a_record_that_cant_be_read() {
     );
 
     // Granting it again replaces it; revoking deletes it unread.
-    store.grant(&record("/workspaces/acme", "hfp1:again")).unwrap();
+    grant(&store, "/workspaces/acme", "hfp1:again");
     assert_eq!(
         store.get("/workspaces/acme"),
         Ok(Some(record("/workspaces/acme", "hfp1:again")))

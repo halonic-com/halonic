@@ -57,10 +57,16 @@ impl fmt::Display for TrustError {
                 file.display()
             ),
             TrustError::InvalidRecord => {
-                write!(formatter, "a trust record must be an object with a location")
+                write!(
+                    formatter,
+                    "a trust record must be an object with a location"
+                )
             }
             TrustError::Io { message } => {
-                write!(formatter, "the trust records could not be read or written: {message}")
+                write!(
+                    formatter,
+                    "the trust records could not be read or written: {message}"
+                )
             }
         }
     }

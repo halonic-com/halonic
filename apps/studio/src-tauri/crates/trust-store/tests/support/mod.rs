@@ -66,6 +66,13 @@ pub fn record(location: &str, fingerprint: &str) -> Value {
     })
 }
 
+/// Grants the full record for `location`, which must succeed.
+pub fn grant(store: &FileTrustStore, location: &str, fingerprint: &str) {
+    store
+        .grant(&record(location, fingerprint))
+        .expect("the record is saved");
+}
+
 /// The locations of a list of records, in order.
 pub fn locations(records: &[Value]) -> Vec<&str> {
     records

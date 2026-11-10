@@ -9,7 +9,7 @@ use std::path::Path;
 
 use halonic_trust_store::{FileTrustStore, TrustError};
 use serde_json::Value;
-use support::{Scratch, file_for, locations, record};
+use support::{Scratch, file_for, grant, locations, record};
 
 /// Records `FileTrustStore` in `fs-node` wrote, kept byte for byte.
 const WRITTEN_BY_FS_NODE: &str = concat!(
@@ -26,9 +26,9 @@ fn trust_files_name_each_file_by_the_hash_of_its_location_with_the_location_firs
         .unwrap();
 
     let file = file_for(&scratch, "/Workspaces/Café");
-    assert!(file.ends_with(
-        "a47c4600542f1f0e56aedc0ccf0d69ab2aaca89accf3ea63a7d0cd172535da7e.json"
-    ));
+    assert!(
+        file.ends_with("a47c4600542f1f0e56aedc0ccf0d69ab2aaca89accf3ea63a7d0cd172535da7e.json")
+    );
     let text = fs::read_to_string(&file).unwrap();
     assert!(text.starts_with("{\n  \"location\": \"/Workspaces/Café\",\n  \""));
     assert!(text.ends_with("\n}\n"));
@@ -72,7 +72,7 @@ fn trust_files_write_what_fs_node_writes_for_the_same_record() {
 fn trust_files_leave_other_files_alone() {
     let scratch = Scratch::new("others");
     let store = scratch.store();
-    store.grant(&record("/workspaces/acme", "hfp1:aa")).unwrap();
+    grant(&store, "/workspaces/acme", "hfp1:aa");
     let trust = scratch.path().join("trust");
     fs::write(trust.join("notes.txt"), "kept").unwrap();
     let leftover = file_for(&scratch, "/workspaces/zeta").with_extension("json.1-2-3.tmp");
@@ -86,8 +86,8 @@ fn trust_files_leave_other_files_alone() {
 fn trust_files_name_the_file_when_its_location_cant_be_read() {
     let scratch = Scratch::new("unnamed");
     let store = scratch.store();
-    store.grant(&record("/workspaces/acme", "hfp1:aa")).unwrap();
-    store.grant(&record("/workspaces/zeta", "hfp1:aa")).unwrap();
+    grant(&store, "/workspaces/acme", "hfp1:aa");
+    grant(&store, "/workspaces/zeta", "hfp1:aa");
 
     // acme's record copied over zeta's file: its location isn't the one the
     // file is named for, so it can't name another location.
