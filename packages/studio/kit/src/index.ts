@@ -84,6 +84,13 @@ export {
   type ListHeadingProps,
 } from "./list-heading/list-heading.tsx";
 export {
+  Menu,
+  type MenuEntry,
+  type MenuItem,
+  type MenuProps,
+  type MenuTriggerProps,
+} from "./menu/menu.tsx";
+export {
   type Presentation,
   PresentationProvider,
   type PresentationProviderProps,

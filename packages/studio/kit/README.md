@@ -853,6 +853,55 @@ names the shortcut instead, from the same keys: `keyShortcutsLabel(["Ctrl", "T"]
 </button>;
 ```
 
+## Menu
+
+A short list of actions that opens from a button: a row's ⋮ More button, the title bar, a sidebar
+or window-tab menu. Pass the button as `trigger` and spread the props it gets on it: they name the
+menu and let the browser open it. Divide groups with `"divider"`.
+
+```tsx
+<Menu
+  trigger={(props) => (
+    <Button {...props} variant="ghost" icon={<MoreIcon />} label="More actions for Sorter" />
+  )}
+  entries={[
+    { id: "open", label: "Open", keys: ["Ctrl", "O"], onSelect: open },
+    { id: "rename", label: "Rename…", onSelect: rename },
+    "divider",
+    { id: "delete", label: "Delete agent", danger: true, onSelect: remove },
+  ]}
+/>;
+```
+
+| Prop      | What it is                                                                       |
+| --------- | -------------------------------------------------------------------------------- |
+| `trigger` | Renders the button that opens it; a kit `Button` takes every prop it gets        |
+| `entries` | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
+|           | `icon`, `keys`, `danger`, `disabled` or `unavailable: { reason }`                |
+| `align`   | `start` (the default) lines up with the trigger's left edge, `end` its right     |
+
+| State            | What shows                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------- |
+| Default          | `surface-raised`, radius 12px, `shadow-2`, 4px padding, at least 180px wide; 32px items     |
+| Hover and active | The item under the pointer or the keyboard has focus and the `surface-muted` fill; no ring  |
+| Danger           | `danger` text, always last, below a divider                                                 |
+| Disabled         | `fg-disabled`; still listed, but the arrow keys and type-to-find skip it                    |
+| Unavailable      | Label and icon at 45%, its reason underneath at full strength; in the arrow order, no Enter |
+| Error            | None: an action that fails reports through a toast                                          |
+
+It's a native `popover`, so it sits on top of everything and closes on an outside click. The kit
+places it 4px below the trigger, above it when there's no room, and 8px from the window's edges
+(`src/popover/place-popover.ts`; CSS anchor positioning isn't reliable in every webview yet). It
+fades in over 120ms. Focus starts on the first item. The arrows, Home, End and typed letters move
+it; Enter, Space or a click picks an item; Escape and Tab close the menu. Focus goes back to the
+trigger before `onSelect` runs, so a Dialog the item opens returns focus there.
+
+A shortcut shows as a Kbd and is named with `aria-keyshortcuts`. An `unavailable` item's reason is
+the item's description.
+
+**On a phone and under a coarse pointer** items are 48px with a 20px icon. On a phone shortcuts are
+hidden. It stays a popover menu, not a sheet.
+
 ## Field
 
 A label, a control and a line under it: the hint, or the error in its place. The Field gives the
