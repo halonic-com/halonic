@@ -207,7 +207,12 @@ export function statusYouMeant(given: string): StatusFilter | undefined {
   );
 }
 
-function startedInWords(started: StartedAt): string {
+/**
+ * When a run started or ended, as the When column writes it: "10:31",
+ * "yesterday 16:40", "3 Nov 09:12" or "3 Mar 2025". `runs show`'s heading
+ * writes its times the same way (cli-output 3.4, revision 31).
+ */
+export function startedInWords(started: StartedAt): string {
   switch (started.day) {
     case "today":
       return started.time;

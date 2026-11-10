@@ -8,13 +8,9 @@ import type { RunSummary } from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
 import { money } from "../../messages/money.ts";
 import type { Phrase } from "../../messages/phrase.ts";
-import {
-  type DueAt,
-  type ListedStatus,
-  runsListMessages,
-  type StartedAt,
-} from "../../messages/runs-list.ts";
+import { type ListedStatus, runsListMessages } from "../../messages/runs-list.ts";
 import { stepName } from "../../messages/step-name.ts";
+import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
 
 /**
  * Finds a run's workflow in the workspace, by its hub and id. `undefined`
@@ -45,14 +41,6 @@ export interface ListedRun {
   readonly when: Phrase;
 }
 
-/** The clock and time zone the When column is written in. */
-export interface ListClock {
-  /** The time the list is printed, so "today" and "yesterday" are right. */
-  readonly now: Date;
-  /** An IANA time zone such as "Europe/Amsterdam"; the computer's own by default. */
-  readonly timeZone?: string;
-}
-
 /**
  * The row of one run.
  *
@@ -60,7 +48,7 @@ export interface ListClock {
  * listedRun({ summary, madeToolCalls: true }, findWorkflow, { now: new Date() });
  * // { status: "done", runId: "01jd8q", workflow: "Support reply", what: […"Estimated cost €0.004"], when: […"10:31 · took 18 s"] }
  */
-export function listedRun(run: RunToList, findWorkflow: FindWorkflow, clock: ListClock): ListedRun {
+export function listedRun(run: RunToList, findWorkflow: FindWorkflow, clock: RunClock): ListedRun {
   const { summary } = run;
   const workflow = findWorkflow(summary.hubId, summary.workflowId);
   return {
@@ -104,7 +92,7 @@ function waitsForTheUser(summary: RunSummary): boolean {
 }
 
 /** A ◌ Waiting run: for its child run, until its timer, or else in its step. */
-function waitingWhat(summary: RunSummary, step: string, clock: ListClock): Phrase {
+function waitingWhat(summary: RunSummary, step: string, clock: RunClock): Phrase {
   if (summary.waitingOn !== null) {
     return runsListMessages.waitingForChildRun(shortRunId(summary.waitingOn)).phrase;
   }
@@ -121,7 +109,7 @@ function isStopped(summary: RunSummary): boolean {
 function whatColumn(
   run: RunToList,
   workflow: WorkflowDefinition | undefined,
-  clock: ListClock,
+  clock: RunClock,
 ): Phrase {
   const { summary } = run;
   const step = currentStepName(summary, workflow);
@@ -203,84 +191,11 @@ function currentStepName(summary: RunSummary, workflow: WorkflowDefinition | und
   return stepName(stateId, workflow?.states[stateId]?.description);
 }
 
-function whenColumn(summary: RunSummary, clock: ListClock): Phrase {
+function whenColumn(summary: RunSummary, clock: RunClock): Phrase {
   const started = startedAt(new Date(summary.startedAt), clock);
   if (summary.endedAt === null) {
     return runsListMessages.when(started).phrase;
   }
   const took = Date.parse(summary.endedAt) - Date.parse(summary.startedAt);
   return runsListMessages.when(started, duration(took)).phrase;
-}
-
-/**
- * When a run started, as the When column writes it: today's time, yesterday,
- * a day this year, or a day in an earlier year, all in the list's time zone.
- */
-export function startedAt(start: Date, clock: ListClock): StartedAt {
-  const day = calendarDay(start, clock.timeZone);
-  const today = calendarDay(clock.now, clock.timeZone);
-  const time = clockTime(start.toISOString(), clock);
-  if (sameDay(day, today)) {
-    return { day: "today", time };
-  }
-  const yesterday = calendarDay(new Date(clock.now.getTime() - dayInMs), clock.timeZone);
-  if (sameDay(day, yesterday)) {
-    return { day: "yesterday", time };
-  }
-  const date = { day: day.day, month: day.month };
-  if (day.year === today.year) {
-    return { day: "thisYear", date, time };
-  }
-  return { day: "earlier", date, year: day.year };
-}
-
-/**
- * When a waiting run's timer is due, as the What column writes it: today's
- * time, tomorrow, or a later day, in the list's time zone.
- */
-export function dueAt(due: Date, clock: ListClock): DueAt {
-  const day = calendarDay(due, clock.timeZone);
-  const time = clockTime(due.toISOString(), clock);
-  if (sameDay(day, calendarDay(clock.now, clock.timeZone))) {
-    return { day: "today", time };
-  }
-  const tomorrow = calendarDay(new Date(clock.now.getTime() + dayInMs), clock.timeZone);
-  if (sameDay(day, tomorrow)) {
-    return { day: "tomorrow", time };
-  }
-  return { day: "later", date: { day: day.day, month: day.month }, time };
-}
-
-const dayInMs = 24 * 60 * 60 * 1000;
-
-interface YearDay {
-  readonly year: number;
-  readonly month: number;
-  readonly day: number;
-}
-
-function sameDay(a: YearDay, b: YearDay): boolean {
-  return a.year === b.year && a.month === b.month && a.day === b.day;
-}
-
-function calendarDay(date: Date, timeZone: string | undefined): YearDay {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((each) => each.type === type)?.value);
-  return { year: part("year"), month: part("month"), day: part("day") };
-}
-
-/** "10:31": hours and minutes on a 24-hour clock, in the list's time zone. */
-function clockTime(iso: string, clock: ListClock): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: clock.timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(iso));
 }
