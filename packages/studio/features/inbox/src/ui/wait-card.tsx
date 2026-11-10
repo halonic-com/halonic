@@ -33,10 +33,12 @@ type CardState =
   | { readonly kind: "answered"; readonly event: string; readonly at: Date };
 
 /**
- * An answer's button label: "Approve" and "Reject", else the event's name in words with a
- * capital first letter, `needs_info` as "Needs info".
+ * An answer's label, on its button and in the decided line alike: the step's own label when it
+ * has one, with hidden characters marked, else "Approve" and "Reject", else the event's name in
+ * words with a capital first letter, `needs_info` as "Needs info".
  */
-export function answerLabel(event: string): string {
+export function answerLabel(event: string, own?: string): string {
+  if (own !== undefined && own.trim() !== "") return markedName(own.trim());
   const words = event.replace(/[-_]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
@@ -49,13 +51,17 @@ function busyLabel(event: string): string {
 
 /**
  * The decided Callout of a wait step (mc 5). Its reject is the step's own answer, so it says
- * nothing about a tool call or the agent; any other answer names the button you pressed.
+ * nothing about a tool call or the agent. Any other answer, and any answer the step labels
+ * itself, names the button you pressed with the same word (HAL-4008).
  */
-export function answeredText(event: string, at: Date): string {
+export function answeredText(event: string, at: Date, own?: string): string {
   const time = decidedAt(at);
-  if (event === "approve") return `Approved by you at ${time}. The run continues.`;
-  if (event === "reject") return `Rejected by you at ${time}.`;
-  return `You chose ${answerLabel(event)} at ${time}.`;
+  const label = answerLabel(event, own);
+  if (label === answerLabel(event)) {
+    if (event === "approve") return `Approved by you at ${time}. The run continues.`;
+    if (event === "reject") return `Rejected by you at ${time}.`;
+  }
+  return `You chose ${label} at ${time}.`;
 }
 
 /**
@@ -119,13 +125,19 @@ export function WaitCard(props: WaitCardProps) {
       </div>
       {state.kind === "answered" ? (
         <DecidedBar
-          text={answeredText(state.event, state.at)}
+          text={answeredText(state.event, state.at, item.answerLabels[state.event])}
           next={next}
           back={back}
           callout={answered}
         />
       ) : (
-        <AnswerBar accepts={item.accepts} state={state} guard={guard} onAnswer={answer} />
+        <AnswerBar
+          accepts={item.accepts}
+          labels={item.answerLabels}
+          state={state}
+          guard={guard}
+          onAnswer={answer}
+        />
       )}
     </section>
   );
@@ -133,6 +145,7 @@ export function WaitCard(props: WaitCardProps) {
 
 interface AnswerBarProps {
   readonly accepts: readonly string[];
+  readonly labels: Readonly<Record<string, string>>;
   readonly state: Exclude<CardState, { kind: "answered" }>;
   readonly guard: DecisionGuard;
   readonly onAnswer: (event: string) => void;
@@ -143,7 +156,7 @@ interface AnswerBarProps {
  * row under it, none red (flow-inbox 5.1, first-run 4.3). While one is sent it is busy and the
  * others ignore presses but keep focus.
  */
-function AnswerBar({ accepts, state, guard, onAnswer }: AnswerBarProps) {
+function AnswerBar({ accepts, labels, state, guard, onAnswer }: AnswerBarProps) {
   const [first, ...others] = accepts;
   const failed = state.kind === "open" ? state.failed : null;
   const answerButton = (event: string, primary: boolean) => (
@@ -155,7 +168,7 @@ function AnswerBar({ accepts, state, guard, onAnswer }: AnswerBarProps) {
       busyLabel={busyLabel(event)}
       onClick={() => onAnswer(event)}
     >
-      {answerLabel(event)}
+      {answerLabel(event, labels[event])}
     </Button>
   );
   return (

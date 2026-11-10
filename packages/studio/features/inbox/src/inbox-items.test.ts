@@ -54,6 +54,7 @@ verifies("inbox.items", () => {
         title: "Approve this reply?",
         body: reply,
         accepts: ["approve", "reject"],
+        answerLabels: {},
         since: "2026-11-10T10:40:00.000Z",
         movesOnAt: "2026-11-12T10:40:00.000Z",
       },
