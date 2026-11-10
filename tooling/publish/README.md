@@ -63,7 +63,7 @@ yet, whenever a push to `main` changes `packages/adapters/integration-kit/packag
 and so is a run by hand with `dry_run` off (it is on by default, and then
 the run builds and checks the tarballs and stops short of `npm publish`).
 npm trusts the workflow's own identity, so no token exists, and the run only
-*stages* the version: it isn't public until a person approves it on npmjs.com.
+_stages_ the version: it isn't public until a person approves it on npmjs.com.
 Releases need the board's yes: ask through a task for
 Chief, and merge or run only once the user has approved.
 
