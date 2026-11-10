@@ -24,10 +24,21 @@ interface Unavailable {
 export class SrtSandbox implements Sandbox {
   readonly #machine: Machine;
   readonly #runner: Runner;
+  readonly #journalFolder: string | null;
 
-  constructor(machine: Machine = systemMachine, runner: Runner = srtRunner) {
+  /**
+   * @param journalFolder where each session keeps its `commondir` snapshot so
+   *   `recoverGitFolders` can undo it after a host crash. Give a folder only this
+   *   user can write (it is created with mode 0700); without one, nothing is kept.
+   */
+  constructor(
+    machine: Machine = systemMachine,
+    runner: Runner = srtRunner,
+    journalFolder: string | null = null,
+  ) {
     this.#machine = machine;
     this.#runner = runner;
+    this.#journalFolder = journalFolder;
   }
 
   async check(): Promise<SandboxCheck> {
@@ -51,7 +62,10 @@ export class SrtSandbox implements Sandbox {
     if (!isLoopback(profile.network.bridge.host)) {
       throw new Error(`the bridge must be a loopback address, not ${profile.network.bridge.host}`);
     }
-    return SrtSession.open(profile, this.#runner, options);
+    return SrtSession.open(profile, this.#runner, {
+      ...options,
+      journalFolder: this.#journalFolder,
+    });
   }
 
   /** The first reason, in the order the port lists them, because its fix comes first. */

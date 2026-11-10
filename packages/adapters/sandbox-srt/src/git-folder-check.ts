@@ -1,4 +1,5 @@
 import {
+  chmod,
   lstat,
   mkdir,
   readdir,
@@ -8,7 +9,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join, sep } from "node:path";
 import { submoduleGitFolders } from "./git-deny-paths.ts";
 
 /** What one `commondir` file was when the session started: its content, its link target, or nothing. */
@@ -180,9 +181,6 @@ export async function restoreGitFolder(
   return { undone, failed: [...new Set(failed)] };
 }
 
-/** The file in a session's private folder that keeps its snapshot, so a crash does not lose it. */
-export const journalName = "git-folder.json";
-
 type OriginalJson =
   | { kind: "file"; data: string; mode: number }
   | { kind: "link"; target: string }
@@ -196,15 +194,42 @@ interface Journal {
   folders: string[];
 }
 
+const posix = process.platform !== "win32";
+
+/** Whether `stat` is owned by this user and cannot be written by group or others (always true on Windows, which has neither). */
+function ownedAndClosed(stat: { uid: number; mode: number }): boolean {
+  if (!posix) return true;
+  return stat.uid === process.getuid?.() && (stat.mode & 0o022) === 0;
+}
+
 /**
- * Keeps the snapshot on disk, in the session's private folder. The fence hides that
- * folder from the program, so the program cannot change what a recovery restores.
+ * Makes the folder that keeps the journals: a real folder (never a link) that only
+ * this user can write, mode 0700. Throws when one is there that is not safe to use,
+ * so a session never keeps a journal where another user could change it.
+ */
+export async function prepareJournalFolder(folder: string): Promise<void> {
+  await mkdir(folder, { recursive: true, mode: 0o700 });
+  const stat = await lstat(folder);
+  if (!stat.isDirectory() || !ownedAndClosed(stat)) {
+    throw new Error(`the journal folder ${folder} is not a private folder of this user`);
+  }
+  if (posix) await chmod(folder, 0o700);
+}
+
+/**
+ * Keeps the snapshot on disk, in the journal folder, so a host crash does not lose it.
+ * The folder is not the session's own: the session adds it to the paths the fence hides,
+ * so the program cannot change what a recovery restores.
+ *
+ * @returns the journal's path, for `removeJournal` once the session has closed.
  */
 export async function writeJournal(
-  sessionFolder: string,
+  journalFolder: string,
+  name: string,
   snapshot: GitFolderSnapshot,
   pid = process.pid,
-): Promise<void> {
+): Promise<string> {
+  await prepareJournalFolder(journalFolder);
   const originals = [...snapshot.originals].map(([path, o]): [string, OriginalJson] => [
     path,
     o.kind === "file" ? { kind: "file", data: o.data.toString("base64"), mode: o.mode } : o,
@@ -215,7 +240,9 @@ export async function writeJournal(
     originals,
     folders: [...snapshot.folders],
   };
-  await writeFile(join(sessionFolder, journalName), JSON.stringify(journal), { mode: 0o600 });
+  const path = join(journalFolder, `${name}.json`);
+  await writeFile(path, JSON.stringify(journal), { mode: 0o600 });
+  return path;
 }
 
 function alive(pid: number): boolean {
@@ -228,44 +255,97 @@ function alive(pid: number): boolean {
 }
 
 /**
+ * The paths a journal may name: its git folder (absolute, named `.git`), the `commondir`
+ * of that folder or of one of its worktrees, and the folders on the way. A journal naming
+ * anything else is not one of ours, so recovery must not write or delete through it.
+ */
+function inScope(journal: Journal): boolean {
+  const { gitFolder } = journal;
+  if (typeof gitFolder !== "string" || !isAbsolute(gitFolder) || basename(gitFolder) !== ".git") {
+    return false;
+  }
+  const worktrees = join(gitFolder, "worktrees");
+  const worktreeFolder = (path: unknown): boolean =>
+    typeof path === "string" &&
+    path.startsWith(worktrees + sep) &&
+    !path.slice(worktrees.length + 1).includes(sep) &&
+    basename(path) !== ".." &&
+    basename(path) !== ".";
+  const commondir = (path: unknown): boolean =>
+    typeof path === "string" &&
+    basename(path) === "commondir" &&
+    (dirname(path) === gitFolder || worktreeFolder(dirname(path)));
+  const folder = (path: unknown): boolean =>
+    path === gitFolder || path === worktrees || worktreeFolder(path);
+  return (
+    Number.isInteger(journal.pid) &&
+    Array.isArray(journal.originals) &&
+    Array.isArray(journal.folders) &&
+    journal.originals.every(
+      (entry) => Array.isArray(entry) && commondir(entry[0]) && typeof entry[1]?.kind === "string",
+    ) &&
+    journal.folders.every(folder)
+  );
+}
+
+/** Reads one journal if it is safe to act on: ours, not a link, not writable by others, and in scope. */
+async function readJournal(path: string): Promise<Journal | null> {
+  try {
+    const stat = await lstat(path);
+    if (!stat.isFile() || !ownedAndClosed(stat)) return null;
+    const journal = JSON.parse(await readFile(path, "utf8")) as Journal;
+    return inScope(journal) ? journal : null;
+  } catch {
+    return null;
+  }
+}
+
+function toSnapshot(journal: Journal): GitFolderSnapshot {
+  return {
+    gitFolder: journal.gitFolder,
+    originals: new Map(
+      journal.originals.map(([path, o]) => [
+        path,
+        o.kind === "file" ? { kind: "file", data: Buffer.from(o.data, "base64"), mode: o.mode } : o,
+      ]),
+    ),
+    folders: new Set(journal.folders),
+  };
+}
+
+/**
  * Undoes the `commondir` changes of sessions whose host process died before it could
- * close them: for each `halonic-srt-*` folder under `root` with a journal whose process
- * is gone, it runs the same link-safe restore as a close, then removes the folder.
- * A folder with a journal it cannot read or restore is left in place.
+ * close them: for each journal in `journalFolder` whose process is gone, it runs the same
+ * link-safe restore as a close, then removes the journal. A journal it cannot restore is
+ * left in place.
+ *
+ * Nothing is read from a journal folder that is a link or is not this user's alone, and a
+ * journal that is a link, belongs to someone else, can be written by others, or names
+ * a path outside its git folder's `commondir` files is skipped.
+ *
+ * A pid that another process has reused counts as a live host, so that session is left
+ * for a later recovery: the failure is a missed undo, never a wrong one. Two hosts
+ * recovering at once is fine: the restore is the same each time, and a journal that is
+ * already gone is skipped.
  *
  * @returns the files it undid and the ones it could not undo.
  */
 export async function recoverGitFolders(
-  root: string,
+  journalFolder: string,
 ): Promise<{ undone: string[]; failed: string[] }> {
   const undone: string[] = [];
   const failed: string[] = [];
-  const names = await readdir(root).catch(() => []);
-  for (const name of names.filter((n) => n.startsWith("halonic-srt-"))) {
-    const folder = join(root, name);
-    let journal: Journal;
-    try {
-      journal = JSON.parse(await readFile(join(folder, journalName), "utf8")) as Journal;
-    } catch {
-      continue;
-    }
-    if (journal.pid === process.pid || alive(journal.pid)) continue;
-    const snapshot: GitFolderSnapshot = {
-      gitFolder: journal.gitFolder,
-      originals: new Map(
-        journal.originals.map(([path, o]) => [
-          path,
-          o.kind === "file"
-            ? { kind: "file", data: Buffer.from(o.data, "base64"), mode: o.mode }
-            : o,
-        ]),
-      ),
-      folders: new Set(journal.folders),
-    };
-    const result = await restoreGitFolder(snapshot);
+  const stat = await lstat(journalFolder).catch(() => null);
+  if (stat === null || !stat.isDirectory() || !ownedAndClosed(stat)) return { undone, failed };
+  const names = await readdir(journalFolder).catch(() => []);
+  for (const name of names.filter((n) => n.endsWith(".json"))) {
+    const path = join(journalFolder, name);
+    const journal = await readJournal(path);
+    if (journal === null || journal.pid === process.pid || alive(journal.pid)) continue;
+    const result = await restoreGitFolder(toSnapshot(journal));
     undone.push(...result.undone);
     failed.push(...result.failed);
-    if (result.failed.length === 0) await rm(folder, { recursive: true, force: true });
+    if (result.failed.length === 0) await rm(path, { force: true });
   }
   return { undone, failed };
 }

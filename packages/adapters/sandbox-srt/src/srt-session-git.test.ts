@@ -210,20 +210,16 @@ verifies("sandbox-srt.session", () => {
     });
 
     describe("after a host crash", () => {
-      let sessions: string;
-      let previous: string | undefined;
+      let journals: string;
 
-      beforeEach(async () => {
-        previous = process.env.TMPDIR;
-        sessions = join(base, "sessions");
-        await mkdir(sessions);
-        process.env.TMPDIR = sessions;
+      beforeEach(() => {
+        journals = join(base, "journals");
       });
 
-      afterEach(() => {
-        if (previous === undefined) delete process.env.TMPDIR;
-        else process.env.TMPDIR = previous;
-      });
+      async function openJournaled() {
+        const { runner } = fakeRunner();
+        return new SrtSandbox(linux, runner, journals).open(makeProfile(base));
+      }
 
       /** Makes the open session look like one whose host process died. */
       function orphan(): string {
@@ -231,34 +227,61 @@ verifies("sandbox-srt.session", () => {
           "-e",
           "process.stdout.write(String(process.pid))",
         ]);
-        const folder = join(sessions, readdirSync(sessions)[0] as string);
-        const file = join(folder, "git-folder.json");
+        const file = join(journals, readdirSync(journals)[0] as string);
         const journal = JSON.parse(readFileSync(file, "utf8"));
         writeFileSync(file, JSON.stringify({ ...journal, pid: Number(dead.stdout.toString()) }));
-        return folder;
+        return file;
       }
 
-      it("undoes a commondir the program planted and removes the session folder", async () => {
+      it("undoes a commondir the program planted and removes the journal", async () => {
         const commondir = join(git, "commondir");
         const linked = join(git, "worktrees", "feature", "commondir");
         await writeFile(linked, "../..\n");
-        await open();
+        await openJournaled();
         await writeFile(commondir, "../elsewhere\n");
         await writeFile(linked, "../elsewhere\n");
-        const folder = orphan();
-        const result = await recoverGitFolders(sessions);
+        const file = orphan();
+        const result = await recoverGitFolders(journals);
         expect(existsSync(commondir)).toBe(false);
         expect(readFileSync(linked, "utf8")).toBe("../..\n");
         expect(result.undone.sort()).toEqual([commondir, linked].sort());
         expect(result.failed).toEqual([]);
-        expect(existsSync(folder)).toBe(false);
+        expect(existsSync(file)).toBe(false);
       });
 
       it("leaves the session of a live host process alone", async () => {
         const commondir = join(git, "commondir");
-        await open();
+        await openJournaled();
         await writeFile(commondir, "../elsewhere\n");
-        expect(await recoverGitFolders(sessions)).toEqual({ undone: [], failed: [] });
+        expect(await recoverGitFolders(journals)).toEqual({ undone: [], failed: [] });
+        expect(existsSync(commondir)).toBe(true);
+      });
+
+      it("removes the journal when the session closes cleanly", async () => {
+        const session = await openJournaled();
+        await session.close();
+        expect(readdirSync(journals)).toEqual([]);
+      });
+
+      it("leaves a planted path outside the git folder alone", async () => {
+        await openJournaled();
+        const victim = join(base, "victim.txt");
+        await writeFile(victim, "keep");
+        const file = orphan();
+        const journal = JSON.parse(readFileSync(file, "utf8"));
+        journal.originals.push([victim, { kind: "absent" }]);
+        writeFileSync(file, JSON.stringify(journal));
+        expect(await recoverGitFolders(journals)).toEqual({ undone: [], failed: [] });
+        expect(readFileSync(victim, "utf8")).toBe("keep");
+      });
+
+      it.skipIf(process.platform === "win32")("skips a journal that others can write", async () => {
+        const commondir = join(git, "commondir");
+        await openJournaled();
+        await writeFile(commondir, "../elsewhere\n");
+        const file = orphan();
+        await chmod(file, 0o666);
+        expect(await recoverGitFolders(journals)).toEqual({ undone: [], failed: [] });
         expect(existsSync(commondir)).toBe(true);
       });
     });
