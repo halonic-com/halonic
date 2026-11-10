@@ -47,7 +47,12 @@ export {
   type RulePlace,
 } from "./errors/error-message.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
-export { phoneQuery, usePresentationFromWidth } from "./frame/frame-effects.ts";
+export {
+  narrowQuery,
+  phoneQuery,
+  useNarrowWindow,
+  usePresentationFromWidth,
+} from "./frame/frame-effects.ts";
 export { ShellFrame, type ShellFrameProps } from "./frame/shell-frame.tsx";
 export {
   type StatusBarItemProps,

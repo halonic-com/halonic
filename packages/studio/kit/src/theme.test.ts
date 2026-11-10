@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PHONE_MAX_WIDTH } from "./index.ts";
+import { PHONE_MAX_WIDTH, WIDE_MIN_WIDTH } from "./index.ts";
 import { contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
 import {
   backgroundToken,
@@ -391,6 +391,11 @@ describe("theme.css on a phone", () => {
     const variantWidth = /@custom-variant phone \(@media \(width < (\d+)px\)\);/.exec(css)?.[1];
     expect(Number(variantWidth)).toBe(PHONE_MAX_WIDTH);
     expect(PHONE_MAX_WIDTH).toBe(600);
+  });
+
+  it("exports the same width the wide: breakpoint uses", () => {
+    expect(themeTokens.get("--breakpoint-wide")).toBe(`${WIDE_MIN_WIDTH}px`);
+    expect(WIDE_MIN_WIDTH).toBe(900);
   });
 
   it("keeps the touch sizes", () => {

@@ -111,6 +111,13 @@ inside an open `<dialog>` is left to the dialog, which cancels itself, so one pr
 layers. An Esc that ends an input method's composition is ignored. `phoneQuery` and
 `usePresentationFromWidth` are the width check the frame uses.
 
+In a narrow window (600 to 899px, `useNarrowWindow`) the sidebar folds into a Places button at the
+toolbar's left. It opens the same sidebar as a 264px drawer over the scrim, with focus on the
+current place; a pick, Esc, the scrim or the button closes it again (component specs 24.4). The
+drawer is a `drawer` layer in the close stack. The sidebar fills the drawer there, and
+`SidebarResizeEdge` hides itself. Widening the window docks the sidebar again without remounting
+it.
+
 ```tsx
 <ShellFrame
   announcer={shell.announcer}
@@ -177,6 +184,7 @@ keyboard focus. Drag it, or Tab to it and use the window-splitter keys: ← and 
 180px, End 640px, Enter 264px (a double-click does the same). It's a `separator` named "Resize
 sidebar" whose value a screen reader reads, so it sends nothing to the announcer. The sidebar owns
 the width: `onResize` follows every move, `onResizeEnd` saves once the key or pointer is released.
+The narrow window has no edge.
 
 ```tsx
 <nav id="sidebar" style={{ width }}>…</nav>
@@ -205,7 +213,7 @@ readers ignore everything outside an `aria-modal` dialog.
 `shell.closeStack` is the window's one close stack. A menu, dialog, card or panel registers with
 `closeStack.open({ kind, close })` when it opens and calls the returned function when it closes.
 The frame passes Esc to `closeStack.escape(event)` and Android's Back to `closeStack.back()`; both
-close the first layer by rank (inline edit, menu, tooltip, dialog or sheet, summary drawer,
+close the first layer by rank (inline edit, menu, tooltip, dialog or sheet, drawer,
 stacked card, docked card, maximise, side panel), and within a rank the one opened last. Both
 return `false` when nothing was open, so the key goes on. A layer can refuse by returning `false`
 from `close`, and the side panel passes `isActive` so it only counts while focus is inside it.

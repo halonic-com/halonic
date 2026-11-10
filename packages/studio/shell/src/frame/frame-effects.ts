@@ -1,5 +1,10 @@
-import { isComposing, PHONE_MAX_WIDTH, type Presentation } from "@halonicjs/studio-kit";
-import { useEffect, useSyncExternalStore } from "react";
+import {
+  isComposing,
+  PHONE_MAX_WIDTH,
+  type Presentation,
+  WIDE_MIN_WIDTH,
+} from "@halonicjs/studio-kit";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { CloseStack } from "../close-stack/close-stack.ts";
 
@@ -11,18 +16,37 @@ export const phoneQuery = `(width < ${PHONE_MAX_WIDTH}px)`;
  * `PHONE_MAX_WIDTH` gets the phone layout without a reload, and widened gets the desktop back.
  */
 export function usePresentationFromWidth(): Presentation {
-  const isPhone = useSyncExternalStore(subscribeToPhoneQuery, readPhoneQuery, () => false);
-  return isPhone ? "phone" : "desktop";
+  return useMediaQuery(phoneQuery) ? "phone" : "desktop";
 }
 
-function subscribeToPhoneQuery(onChange: () => void): () => void {
-  const query = window.matchMedia(phoneQuery);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
+/** The media query for the narrow window and the phone: narrower than `WIDE_MIN_WIDTH`. */
+export const narrowQuery = `(width < ${WIDE_MIN_WIDTH}px)`;
+
+/**
+ * Whether the desktop window is narrow (600 to 899px), following every change. There the sidebar
+ * folds into the Places drawer and has no resize edge (component specs 24.4). Always false on a
+ * phone, which has its own layout.
+ */
+export function useNarrowWindow(): boolean {
+  const narrow = useMediaQuery(narrowQuery);
+  const presentation = usePresentationFromWidth();
+  return narrow && presentation === "desktop";
 }
 
-function readPhoneQuery(): boolean {
-  return window.matchMedia(phoneQuery).matches;
+function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = window.matchMedia(query);
+      list.addEventListener("change", onChange);
+      return () => list.removeEventListener("change", onChange);
+    },
+    [query],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
 }
 
 /**

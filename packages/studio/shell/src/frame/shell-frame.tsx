@@ -18,6 +18,7 @@ import {
   useWindowFocusForAnnouncer,
 } from "./frame-effects.ts";
 import { FrameRegions } from "./frame-regions.tsx";
+import { PlacesButton, SidebarSlot, usePlacesDrawer } from "./sidebar-slot.tsx";
 
 /** Props for {@link ShellFrame}. */
 export interface ShellFrameProps {
@@ -35,7 +36,10 @@ export interface ShellFrameProps {
   readonly titleBar?: ReactNode;
   /** The toolbar's content on the desktop: Back and Forward, the path, Saved. */
   readonly toolbar?: ReactNode;
-  /** The sidebar on the desktop. It sets its own width. */
+  /**
+   * The sidebar on the desktop. It sets its own width on a wide window; in a narrow window
+   * (`useNarrowWindow`) it fills the 264px Places drawer the toolbar's Places button opens.
+   */
   readonly sidebar?: ReactNode;
   /** The status bar's content on the desktop. */
   readonly statusBar?: ReactNode;
@@ -48,6 +52,8 @@ export interface ShellFrameProps {
  * title bar on the halo, then the panel set into the halo with a 12px radius, holding three rows:
  * the toolbar, the sidebar beside the page, and the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
  * shows the page only, with no window tabs and no status bar; the phone's own bars come later.
+ * In a narrow window (600 to 899px) the sidebar folds into the Places drawer, opened by a Places
+ * button at the toolbar's left.
  * While the engine isn't answering, its one line sits over the sidebar and the page, under the
  * toolbar on the desktop and at the top on a phone.
  *
@@ -93,6 +99,7 @@ export function ShellFrame(props: ShellFrameProps) {
  */
 function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentation }) {
   const desktop = props.presentation === "desktop";
+  const drawer = usePlacesDrawer(props.sidebar !== undefined);
   return (
     <div
       data-layout={props.presentation}
@@ -108,13 +115,28 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
       >
         {desktop ? (
           <div className="flex h-toolbar shrink-0 items-center gap-1 border-b border-border px-2">
+            {drawer.narrow ? (
+              <PlacesButton open={drawer.open} onToggle={drawer.toggle} ref={drawer.button} />
+            ) : null}
             {props.toolbar}
           </div>
         ) : null}
         <EngineLine engine={props.engine} />
         <div className="relative flex min-h-0 flex-1">
-          {desktop ? props.sidebar : null}
-          <main className="min-w-0 flex-1 overflow-auto">{props.children}</main>
+          {desktop ? (
+            <SidebarSlot
+              narrow={drawer.narrow}
+              open={drawer.open}
+              closeStack={props.closeStack}
+              onClose={drawer.close}
+              button={drawer.button}
+            >
+              {props.sidebar}
+            </SidebarSlot>
+          ) : null}
+          <main className="min-w-0 flex-1 overflow-auto" inert={drawer.open}>
+            {props.children}
+          </main>
           <ToastRegion store={props.toasts} />
         </div>
         {desktop ? (

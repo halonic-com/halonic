@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type PointerEvent, useRef, useState } from "react";
+import { useNarrowWindow } from "../frame/frame-effects.ts";
 import {
   clampSidebarWidth,
   SIDEBAR_DEFAULT_WIDTH,
@@ -46,6 +47,8 @@ export function SidebarResizeEdge({
   onResize,
   onResizeEnd,
 }: SidebarResizeEdgeProps) {
+  // The narrow window's drawer is always 264px wide, so it has no edge.
+  const narrow = useNarrowWindow();
   const drag = useRef<Drag | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
   // The width last asked for: a release saves it even before the sidebar has drawn it.
@@ -118,6 +121,10 @@ export function SidebarResizeEdge({
     resize(SIDEBAR_DEFAULT_WIDTH);
     onResizeEnd(SIDEBAR_DEFAULT_WIDTH);
   };
+
+  if (narrow) {
+    return null;
+  }
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: an <hr> can't take the focus, and a window splitter must.

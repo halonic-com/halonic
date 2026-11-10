@@ -122,6 +122,7 @@ export { ChevronDownIcon } from "./icons/chevron-down-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
 export { ForwardIcon } from "./icons/forward-icon.tsx";
 export { InfoIcon } from "./icons/info-icon.tsx";
+export { MenuIcon } from "./icons/menu-icon.tsx";
 export {
   PlaceIcon,
   type PlaceIconName,
@@ -234,3 +235,10 @@ export const packageName = "@halonicjs/studio-kit";
  * equal.
  */
 export const PHONE_MAX_WIDTH = 600;
+
+/**
+ * From this width (in CSS pixels) the desktop shows its full layout; between `PHONE_MAX_WIDTH`
+ * and this it is the narrow window, with the sidebar as a drawer (component specs 24.4). The same
+ * width as `--breakpoint-wide` in theme.css, kept equal by a test.
+ */
+export const WIDE_MIN_WIDTH = 900;

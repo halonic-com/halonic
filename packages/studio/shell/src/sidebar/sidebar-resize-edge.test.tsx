@@ -2,12 +2,24 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { SidebarResizeEdge } from "./sidebar-resize-edge.tsx";
 import { sidebarWidthForKey } from "./sidebar-width.ts";
 
-afterEach(unmountAll);
+let media: FakeMediaQueries;
+let uninstall: () => void;
+
+beforeEach(() => {
+  media = new FakeMediaQueries(1440);
+  uninstall = media.install();
+});
+
+afterEach(() => {
+  unmountAll();
+  uninstall();
+});
 
 /** The edge beside a sidebar that follows it, recording each width it saved. */
 function renderEdge(startWidth = 264) {
@@ -188,5 +200,14 @@ verifies("shell.sidebar-resize", () => {
     expect(line.className).toContain("group-focus-visible:opacity-100");
     expect(line.className).toContain("group-data-dragging:opacity-100");
     expect(line.className).toContain("forced-colors:bg-[Highlight]");
+  });
+
+  it("isn't there in a narrow window, where the sidebar is the 264px drawer, and comes back wider", () => {
+    renderEdge();
+    act(() => media.resize(800));
+    expect(document.querySelector('[role="separator"]')).toBeNull();
+
+    act(() => media.resize(1024));
+    expect(document.querySelector('[role="separator"]')).not.toBeNull();
   });
 });
