@@ -3,7 +3,7 @@
 The Studio app. It holds the Studio's feature list: one
 `"@halonicjs/studio-feature-<name>": "workspace:*"` dependency per feature,
 kept in step with `packages/studio/features/` by `pnpm discover --fix` and
-checked by `pnpm check features`. Vite comes later.
+checked by `pnpm check features`. Vite builds only the Android app's own page (`connect.html`).
 
 - **Layer:** apps
 - **Owner:** elena
