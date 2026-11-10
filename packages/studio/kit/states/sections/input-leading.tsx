@@ -52,7 +52,12 @@ export const inputLeadingSection: PartSection = {
     { name: "Default", copies: () => <Colour /> },
     { name: "Hover", force: "hover", target: ".focus-field", copies: () => <Colour /> },
     { name: "Focus on the button", force: "focus", target: "button", copies: () => <Colour /> },
-    { name: "Focus in the text", force: "focus", target: ".focus-field", copies: () => <Colour /> },
+    {
+      name: "Focus in the text",
+      force: "focus",
+      target: "[data-field-text]",
+      copies: () => <Colour />,
+    },
     {
       name: "Error",
       copies: () => <Colour value="#3B8BF" error="Use six digits, like #3B8BFF." />,

@@ -24,13 +24,15 @@ export interface InputLeadingButton {
 /**
  * A 24px hit area centred on the 16px glyph, 4px from the box's left edge: the box's 10px padding
  * less 6px. The box's 8px gap then starts the text 36px in. On a phone the hit area is the 48px
- * square at the left of the 48px box, and the text starts right after it. No fill of its own: a
- * hover is the box's edge. Its focus is the general ring, so it can't be mistaken for the text's.
+ * square at the left of the 48px box: it pulls back the box's 12px padding and reaches over its
+ * 1px edge, so it's 48 by 48 from the outer edge, and the 8px gap starts the text at 56px, clear of
+ * the button's focus ring. No fill of its own: a hover is the box's edge. Its focus is the general
+ * ring, so it can't be mistaken for the text's.
  */
 const buttonClasses = [
   "-ml-1.5 inline-grid size-6 shrink-0 cursor-pointer place-items-center rounded-xs focus-ring",
   "disabled:cursor-not-allowed disabled:opacity-45",
-  "phone:-mr-2 phone:-ml-3 phone:h-auto phone:w-touch phone:self-stretch",
+  "phone:-my-px phone:-ml-3.25 phone:h-auto phone:w-touch phone:self-stretch",
 ].join(" ");
 
 /**

@@ -47,16 +47,19 @@ verifies("kit.input-leading-button", () => {
     expect(text.tabIndex).toBe(0);
   });
 
-  it("has a 24px hit area 4px from the box's edge, with the text 8px after it, and 48px on a phone", () => {
+  it("has a 24px hit area 4px from the box's edge, with the text 8px after it, and 48 by 48 on a phone", () => {
     const { button } = colourField();
     // The box pads 10px; -6px puts the hit area 4px from its edge, and its gap-2 starts the text.
     expect(button.className).toContain("-ml-1.5 inline-grid size-6");
     expect((button.parentElement as HTMLElement).className).toContain(
       "gap-2 rounded-sm border px-2.5",
     );
-    expect(button.className).toContain("phone:-ml-3 phone:h-auto phone:w-touch phone:self-stretch");
-    // On a phone the box's 8px gap is taken back, so the text starts at 48px.
-    expect(button.className).toContain("phone:-mr-2");
+    // On a phone it pulls back the 12px padding and the 1px edge, top and bottom too: 48 by 48
+    // from the box's outer edge. The box's 8px gap stays, so the text starts at 56px.
+    expect(button.className).toContain(
+      "phone:-my-px phone:-ml-3.25 phone:h-auto phone:w-touch phone:self-stretch",
+    );
+    expect(button.className).not.toContain("-mr-");
   });
 
   it("shows the general focus ring, while the box's accent edge follows only the text", () => {

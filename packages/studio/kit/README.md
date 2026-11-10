@@ -1351,7 +1351,7 @@ colour field's swatch, which opens its popover. The type takes one or the other,
 
 The kit draws the slot, the hit area and the focus; the feature draws what's inside. The hit area
 is 24px square, 4px from the box's left edge, and the text starts 8px after it (36px in). On a
-phone it's the 48px square at the left of the box, and the text starts at 48px. The button has the
+phone it's the 48px square at the left of the box, over its edge, and the text starts at 56px. The button has the
 general focus ring, and the box's `accent` edge shows only while the text has focus, so you can
 always tell which of the two you're on. It has no fill of its own: a hover is the box's. While the
 Input is disabled or read-only, the button is disabled too, its glyph at 45%.
