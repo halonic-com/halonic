@@ -99,13 +99,16 @@ verifies("kit.picker-sheet", () => {
     expect((haiku.parentElement as HTMLElement).querySelector(".text-accent")).toBeNull();
   });
 
-  it("draws 56px rows with a description and 48px rows without, padded 8px 16px", () => {
+  it("draws 56px rows with a description and 48px rows without, padded 8px 16px, each lined", () => {
     const { container } = render(picker());
     const sonnet = radioNamed(container, "Sonnet");
     const haiku = radioNamed(container, "Haiku");
     expect((sonnet.parentElement as HTMLElement).className).toContain("min-h-14");
     expect((sonnet.parentElement as HTMLElement).className).toContain("px-4 py-2");
     expect((haiku.parentElement as HTMLElement).className).toContain("min-h-touch");
+    // A 1px line under each row, the last one too.
+    expect((sonnet.parentElement as HTMLElement).className).toContain("border-b border-border");
+    expect((haiku.parentElement as HTMLElement).className).toContain("border-b border-border");
     expect(
       document.getElementById(sonnet.getAttribute("aria-describedby") ?? "")?.textContent,
     ).toBe("€3 per million words in");

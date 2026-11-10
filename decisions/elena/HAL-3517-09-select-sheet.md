@@ -23,6 +23,10 @@ the error still reaches screen readers through `aria-describedby`, and the test 
 The phone LongText's button (`kit.long-text`, from #1054) drops it the same way: its requirement
 sentence, the code and its test (Liam's and Sofia's reviews on HAL-3680 and HAL-3663).
 
+From Noah's visual check (HAL-3699, frames T1-F31 and F35): the phone Select's chevron is 20px,
+like the folded LongText's (desktop stays 16px), and `kit.picker-sheet` draws a 1px `border` line
+under each row, the last one too, as F31 does. Both requirement sentences and their tests say so.
+
 ## Why
 
 The follow-ups from the Select's review (HAL-3567, #1040) were planned for when the Select moves
@@ -33,4 +37,5 @@ picker.
 
 - kit.select
 - kit.long-text
+- kit.picker-sheet
 - packages/studio/kit/src/select/select.test.tsx

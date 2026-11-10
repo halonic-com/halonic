@@ -77,6 +77,7 @@ verifies("kit.select", () => {
     expect(chevron.getAttribute("aria-hidden")).toBe("true");
     expect(chevron.className).toContain("text-fg-muted");
     expect(chevron.className).toContain("pointer-events-none");
+    expect(chevron.className).toContain("size-icon-sm");
   });
 
   it("calls onChange with the value the user picks", () => {
@@ -213,6 +214,9 @@ verifies("kit.select", () => {
     expect(line?.textContent).toBe("Used by new agents");
     expect(boxOf(button)).toContain("phone:min-h-touch");
     expect(button.className).toContain("phone:text-input-touch");
+    // 20px, like the folded LongText's chevron.
+    const chevron = button.parentElement?.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(chevron.className).toContain("size-icon-md");
   });
 
   it("renders only the button on a phone, with a hidden input for a form that posts", () => {

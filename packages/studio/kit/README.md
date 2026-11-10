@@ -583,8 +583,8 @@ unmount it to close it; focus starts on the title and goes back to the opener.
 ```
 
 - The options are **native radios** in one radio group (`appearance: none`), so screen readers
-  hear a radio group. A row is padded 8px 16px, 56px with a description, 48px without; the picked
-  option has a 20px `accent` check at the right.
+  hear a radio group. A row is padded 8px 16px, 56px with a description, 48px without, with a
+  1px line under it (the last row too); the picked option has a 20px `accent` check at the right.
 - **A tap, Enter or Space picks**: `onPick` once, and the screen saves (as on desktop) and unmounts
   the sheet. **The arrow keys only move the check.** Browsers fire `click` on the radio an arrow
   moves to, so a click in the same task as an arrow key isn't a pick.
@@ -1384,7 +1384,8 @@ There's no read-only Select: a native select has none, and a view-only page show
 text. A list with icons, descriptions or search is a different component, not a Select.
 
 **On a phone** (the `phone` presentation) the Select is a **picker button** instead, never the
-browser's menu: 48px high with 16px text and the chevron, like the phone Input. It's named by the
+browser's menu: 48px high with 16px text and a 20px chevron, like the phone Input and the folded
+LongText. It's named by the
 Field's label and then the value, so a screen reader hears "Model, Sonnet", and the label points at
 it. It's the only control rendered; with a `name`, a hidden input carries the value for a form that
 posts, except while the Select is unavailable, as a disabled select isn't posted. The button opens the **PickerSheet** titled with the label (`aria-haspopup="dialog"`). A pick

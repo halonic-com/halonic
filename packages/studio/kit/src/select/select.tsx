@@ -134,8 +134,9 @@ export function Select({
           {list}
         </select>
       )}
+      {/* 20px on a phone, like the folded LongText's chevron; 16px on desktop. */}
       <span
-        className="pointer-events-none absolute end-2.5 top-1/2 inline-grid size-icon-sm -translate-y-1/2 place-items-center text-fg-muted *:size-full phone:end-3"
+        className={`pointer-events-none absolute end-2.5 top-1/2 inline-grid ${phone ? "size-icon-md" : "size-icon-sm"} -translate-y-1/2 place-items-center text-fg-muted *:size-full phone:end-3`}
         aria-hidden="true"
       >
         <ChevronDownIcon />

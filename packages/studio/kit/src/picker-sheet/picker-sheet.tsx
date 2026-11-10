@@ -154,9 +154,9 @@ interface PickerRowProps<Value extends string> {
 }
 
 /**
- * A `dense` flush List row: padded 8px 16px, 56px with a description line and 48px without. The
- * radio itself is the row's target and carries its fill and focus ring; the words sit above it
- * and let taps through. The picked option has a 20px `accent` check at the right edge.
+ * A `dense` flush List row: padded 8px 16px, 56px with a description line and 48px without, with a
+ * 1px `border` line under it, the last row too. The radio itself is the row's target and carries
+ * its fill and focus ring; the words sit above it and let taps through. The picked option has a 20px `accent` check at the right edge.
  */
 function PickerRow<Value extends string>(props: PickerRowProps<Value>) {
   const labelId = useId();
@@ -168,7 +168,7 @@ function PickerRow<Value extends string>(props: PickerRowProps<Value>) {
   const unavailable = option.unavailable !== undefined;
   return (
     <div
-      className={`relative flex items-center gap-3 px-4 py-2 ${description === undefined ? "min-h-touch" : "min-h-14"}`}
+      className={`relative flex items-center gap-3 border-b border-border px-4 py-2 ${description === undefined ? "min-h-touch" : "min-h-14"}`}
     >
       <input
         type="radio"
