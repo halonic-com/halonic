@@ -40,5 +40,6 @@ alone. One test was added for the review folder, on Linux and Windows.
 
 ## Covers
 
+- app.review-hidden
 - app.review-record
 - profile.workspace-folders
