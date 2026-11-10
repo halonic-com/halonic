@@ -1,0 +1,205 @@
+import {
+  addHarnessEnvironment,
+  type HarnessBridge,
+  type HarnessEvent,
+  type HarnessRun,
+  type HarnessTask,
+  type SandboxProfile,
+} from "@halonicjs/ports";
+import { type FakeProgram, FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
+import {
+  assistantLine,
+  claudeAnswering,
+  claudeFailing,
+  claudeFinishing,
+  MemorySettingsFolder,
+  successLine,
+  userMessageText,
+} from "./fake-claude.test-helper.ts";
+import { claudeCodeHarness } from "./harness.ts";
+import { claudeCodeSettingsFiles } from "./settings.ts";
+import { SignInError } from "./sign-in.ts";
+
+/** A probe the run cases never ask: they don't call `detect`. */
+const unusedProbe = {
+  ask: async () => {
+    throw new Error("The run cases don't detect Claude Code");
+  },
+};
+
+function newHarness(settings = new MemorySettingsFolder()) {
+  return claudeCodeHarness({ probe: unusedProbe, settings });
+}
+
+const task: HarnessTask = {
+  runId: "run-1",
+  hubId: "acme",
+  agentId: "writer",
+  instructions: "Answer in one short sentence.",
+  prompt: "Name a colour of the sea.",
+  model: "claude-sonnet-5-5",
+};
+
+const bridge: HarnessBridge = {
+  url: "http://127.0.0.1:4100",
+  token: `made-up-token-${crypto.randomUUID()}`,
+};
+
+const engineProfile: SandboxProfile = {
+  workingFolder: "/agents/writer/work",
+  tempFolder: "/sessions/one/temp",
+  settingsFolder: "/agents/writer/settings",
+  readOnlyPaths: [],
+  deniedPaths: [],
+  env: { PATH: "/usr/bin", HOME: "/agents/writer/home" },
+  network: { bridge: { host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+  timeLimitMs: 60_000,
+};
+
+/** A session opened the way the engine opens one, running `program` as `claude`. */
+function openSession(program: FakeProgram): FakeSandboxSession {
+  const env = addHarnessEnvironment(
+    engineProfile.env,
+    newHarness().environment?.(bridge, engineProfile) ?? {},
+  );
+  return new FakeSandboxSession({ profile: { ...engineProfile, env }, program });
+}
+
+async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error?: unknown }> {
+  const events: HarnessEvent[] = [];
+  try {
+    for await (const event of run) events.push(event);
+  } catch (error) {
+    return { events, error };
+  }
+  return { events };
+}
+
+verifies("harness-claude-code.start", () => {
+  describe("claudeCodeHarness: start", () => {
+    it("sends the prompt as the first user message, never in the arguments", async () => {
+      let received: string | undefined;
+      const session = openSession(async (io) => {
+        received = userMessageText(await io.readLine());
+        io.write(`${successLine("Teal.")}\n`);
+        return 0;
+      });
+      await readAll(newHarness().start(task, session, bridge));
+
+      expect(received).toBe("Name a colour of the sea.");
+      expect(session.started[0]?.args.join(" ")).not.toContain(task.prompt);
+    });
+
+    it("writes the settings folder before claude starts", async () => {
+      const settings = new MemorySettingsFolder();
+      let filesWhenStarted = 0;
+      const session = openSession(async (io) => {
+        filesWhenStarted = settings.files.size;
+        return claudeFinishing(io);
+      });
+      await readAll(newHarness(settings).start(task, session, bridge));
+
+      expect(filesWhenStarted).toBe(2);
+      const settingsJson = [...settings.files].find(([path]) => path.endsWith("settings.json"));
+      expect(JSON.parse(settingsJson?.[1] ?? "{}")).toMatchObject({
+        permissions: { deny: ["WebFetch", "WebSearch"] },
+      });
+    });
+
+    // The engine runs an agent "on this computer" through another Sandbox,
+    // the launcher's unfenced one, with a profile of its own. The harness
+    // can't tell the two apart, so the settings, and the web tools they
+    // deny, are the same (decision 7, HAL-2076).
+    it("writes the same settings in sandbox and this-computer mode", async () => {
+      const sandboxMode = new MemorySettingsFolder();
+      await readAll(newHarness(sandboxMode).start(task, openSession(claudeFinishing), bridge));
+      const thisComputerMode = new MemorySettingsFolder();
+      const thisComputer = new FakeSandboxSession({
+        profile: { ...engineProfile, workingFolder: "/projects/notes" },
+        program: claudeFinishing,
+      });
+      await readAll(newHarness(thisComputerMode).start(task, thisComputer, bridge));
+
+      expect([...thisComputerMode.files.values()]).toEqual([...sandboxMode.files.values()]);
+      expect([...sandboxMode.files.values()]).toEqual(Object.values(claudeCodeSettingsFiles()));
+    });
+
+    it("ends Claude Code's input after its result, and ends the stream once it has exited", async () => {
+      const session = openSession(claudeFinishing);
+      const { events } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(events.at(-1)).toMatchObject({ type: "agent.finished", output: "Teal." });
+      expect(session.running).toBe(0);
+    });
+
+    it("passes a person's answer on as the next user message", async () => {
+      const received: (string | undefined)[] = [];
+      const session = openSession(async (io) => {
+        received.push(userMessageText(await io.readLine()));
+        io.write(`${assistantLine("Which sea?")}\n`);
+        received.push(userMessageText(await io.readLine()));
+        io.write(`${successLine("Teal.")}\n`);
+        return 0;
+      });
+      const run = newHarness().start(task, session, bridge);
+      const reading = readAll(run);
+      await session.whenStarted();
+      await run.send({ type: "answer", text: "The North Sea." });
+
+      expect((await reading).events.at(-1)).toMatchObject({ output: "Teal." });
+      expect(received).toEqual(["Name a colour of the sea.", "The North Sea."]);
+    });
+
+    it("refuses an approval decision: Claude Code asks for approvals through the bridge", async () => {
+      const session = openSession(idleProgram);
+      const run = newHarness().start(task, session, bridge);
+      const reading = readAll(run);
+      await session.whenStarted();
+
+      await expect(
+        run.send({ type: "approval", callId: "call-1", approved: true }),
+      ).rejects.toThrow('No approval with call id "call-1" is waiting');
+      await run.cancel();
+      await reading;
+    });
+
+    it("ends with a SignInError when Claude Code says on standard error that no one is signed in", async () => {
+      const session = openSession(claudeFailing("Not logged in · Please run /login"));
+      const { error } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(error).toBeInstanceOf(SignInError);
+      expect(error).toMatchObject({ problem: "signed-out" });
+    });
+
+    it("says how Claude Code ended, with the last line it printed and without the token", async () => {
+      const session = openSession(claudeFailing(`warming up\nrefused ${bridge.token}`));
+      const { error } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(String(error)).toContain("Claude Code stopped with exit code 1 before it finished");
+      expect(String(error)).toContain("refused");
+      expect(String(error)).not.toContain(bridge.token);
+    });
+
+    it("ends with an error when the profile has no settings folder, and starts nothing", async () => {
+      const session = new FakeSandboxSession({
+        profile: { ...engineProfile, settingsFolder: null },
+        program: claudeFinishing,
+      });
+      const { error } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(String(error)).toContain("Claude Code needs a settings folder");
+      expect(session.started).toEqual([]);
+    });
+
+    it("stops claude when the reader stops reading early", async () => {
+      const call = { type: "tool_use", id: "toolu_1", name: "Bash", input: { command: "ls" } };
+      const line = { type: "assistant", message: { role: "assistant", content: [call] } };
+      const session = openSession(claudeAnswering([JSON.stringify(line)]));
+      for await (const _event of newHarness().start(task, session, bridge)) break;
+
+      expect(session.running).toBe(0);
+    });
+  });
+});
