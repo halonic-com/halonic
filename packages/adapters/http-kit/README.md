@@ -2,9 +2,9 @@
 
 The address classes for outgoing requests: which class an IP address is in, and which addresses a
 host of each class may reach. Plain code with Web types, so the integration kit, a Node transport
-and the Worker can share one rule. Today only the integration kit uses it (`classifyAddress`, to
-tell a loopback host from the rest); no Node transport checks DNS answers with
-`addressAllowedFor` yet.
+and the Worker can share one rule. Today only the integration kit uses it (`parseIpAddress` and
+`classifyAddress`, to tell a loopback or private-network host from the rest); no Node transport
+checks DNS answers with `addressAllowedFor` yet.
 
 - **Layer:** adapters
 - **Owner:** ravi
