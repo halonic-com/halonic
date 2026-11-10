@@ -22,6 +22,17 @@ export function useFieldControl(): FieldControl | undefined {
   return useContext(FieldControlContext);
 }
 
+/** A currency or a unit outside the box, before it (component specs 18.2). */
+export interface FieldPrefix {
+  /** What's shown: "€", from `Intl.NumberFormat(…).formatToParts`. Screen readers skip it. */
+  readonly symbol: string;
+  /**
+   * What screen readers hear after the label instead: "in euros", from the message catalogue.
+   * The Field never guesses it from the symbol, because the currency can change.
+   */
+  readonly name: string;
+}
+
 export interface FieldProps {
   /** Always there, above the control. It's the control's name: "Name", "Model". */
   readonly label: string;
@@ -34,6 +45,11 @@ export interface FieldProps {
    * counts as none, so a screen can start its error state at `""`.
    */
   readonly error?: string | null;
+  /**
+   * A symbol outside the box, 8px before it: "€". The label gets its `name` as hidden text, so
+   * the control is read "Per run, in euros". The hint and error still start at the Field's edge.
+   */
+  readonly prefix?: FieldPrefix;
   /** Adds the word "Required" after the label. No asterisk. */
   readonly required?: boolean;
   /**
@@ -67,6 +83,7 @@ export function Field({
   hint,
   error,
   required = false,
+  prefix,
   layout,
   align = "control",
   wide = false,
@@ -93,6 +110,7 @@ export function Field({
   const fieldLabel = (
     <label id={labelId} htmlFor={controlId} className={labelClass(hideLabel, look, align)}>
       {label}
+      {prefix === undefined ? null : <span className="sr-only">{`, ${prefix.name}`}</span>}
       {/* Hidden from screen readers, which already hear "required" from aria-required. */}
       {required ? (
         <span className="text-fg-subtle" aria-hidden="true">
@@ -104,7 +122,13 @@ export function Field({
   );
   const value = (
     <>
-      <FieldControlContext value={control}>{children}</FieldControlContext>
+      {prefix === undefined ? (
+        <FieldControlContext value={control}>{children}</FieldControlContext>
+      ) : (
+        <PrefixRow symbol={prefix.symbol} controlId={controlId}>
+          <FieldControlContext value={control}>{children}</FieldControlContext>
+        </PrefixRow>
+      )}
       <FieldLine id={lineId} hint={hint} error={error} />
     </>
   );
@@ -192,6 +216,32 @@ function labelClass(
   }
   const nudge = align === "control" ? ` ${look.nudge}` : "";
   return `text-caption text-fg-muted ${look.label}${nudge}`;
+}
+
+/**
+ * The symbol 8px before the box, centred on it, and the box taking the rest of the row. Only the
+ * control is in the row: the hint and the error go under it, from the Field's left edge.
+ */
+function PrefixRow({
+  symbol,
+  controlId,
+  children,
+}: {
+  symbol: string;
+  controlId: string;
+  children: ReactNode;
+}) {
+  // Like the label, the symbol is part of the target: tapping it focuses the control. Keyboard
+  // and screen reader users reach the control itself; the label already says the symbol's name.
+  const focusControl = () => document.getElementById(controlId)?.focus();
+  return (
+    <div className="flex items-center gap-2">
+      <span aria-hidden="true" className="shrink-0 text-body text-fg-muted" onClick={focusControl}>
+        {symbol}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
 }
 
 /** The line under the control: the error with its icon, else the hint, else nothing. */

@@ -1020,12 +1020,25 @@ them by hand.
 | `hint`      | A short line under the control in `fg-subtle`                               |
 | `error`     | A sentence that says what to do: "Give the agent a name." Replaces the hint |
 | `required`  | Writes "Required" after the label in `fg-subtle`. No asterisk               |
+| `prefix`    | `{ symbol, name }`: a currency outside the box, such as "€", "in euros"     |
 
 Screen readers hear "required" once, from the control's `aria-required`: the visible word is
 hidden from them.
 
 The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
 control of your own can read the Field through `useFieldControl()`.
+
+A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
+tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
+label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
+the symbol. Pass both parts: the symbol from `Intl.NumberFormat(…).formatToParts`, the name from
+the message catalogue. The Field never guesses the name, because the currency can change.
+
+```tsx
+<Field label="Per run" prefix={{ symbol: "€", name: "in euros" }}>
+  <Input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
+</Field>;
+```
 
 ## FormRows
 

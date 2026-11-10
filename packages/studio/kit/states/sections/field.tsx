@@ -10,7 +10,10 @@ interface FieldsProps {
   readonly errors?: boolean;
 }
 
-/** The sheet's three fields: an empty Input with its placeholder, a filled one, a TextArea. */
+/**
+ * The sheet's four fields: an empty Input with its placeholder, a filled one, a TextArea, and an
+ * amount with its currency outside the box.
+ */
 function Fields({ disabled = false, readOnly = false, errors = false }: FieldsProps) {
   const control = { disabled, readOnly };
   return (
@@ -39,16 +42,24 @@ function Fields({ disabled = false, readOnly = false, errors = false }: FieldsPr
           {...control}
         />
       </Field>
+      <Field
+        label="Per run"
+        hint="Most you will spend on one run"
+        error={errors ? "Enter an amount above 0" : null}
+        prefix={{ symbol: "€", name: "in euros" }}
+      >
+        <Input defaultValue="5,00" {...control} />
+      </Field>
     </div>
   );
 }
 
 export const fieldSection: PartSection = {
   id: "field",
-  number: "2, 3",
+  number: "2, 3, 18.2",
   name: "Field and Input",
   order:
-    "kit 2, 3 · top to bottom: an empty Input with its placeholder, a filled Input, a TextArea",
+    "kit 2, 3, 18.2 · top to bottom: an empty Input with its placeholder, a filled Input, a TextArea, an amount with its currency (prefix)",
   notApplicable: "busy (buttons only)",
   rows: [
     { name: "Default", copies: () => <Fields /> },

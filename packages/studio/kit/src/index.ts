@@ -53,6 +53,7 @@ export {
 export {
   Field,
   type FieldControl,
+  type FieldPrefix,
   type FieldProps,
   useFieldControl,
 } from "./field/field.tsx";
