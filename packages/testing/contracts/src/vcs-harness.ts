@@ -1,15 +1,42 @@
-import type { DefinitionStore, Vcs } from "@halonicjs/ports";
+import type { DefinitionStore, Vcs, VcsWorktree } from "@halonicjs/ports";
 import type { DefinitionFiles } from "./definition-store.ts";
 import { privateDefinitionPaths, unsafeDefinitionPaths } from "./definition-store.ts";
 
 /**
  * One workspace folder under test: its version control, and its files as an
  * editor changes them. Writing through `files` changes the working tree, the
- * same way the Studio's editors do.
+ * same way the Studio's editors do. `files.location` is the workspace folder,
+ * in the same form as the `path` of a worktree `vcs` adds.
  */
 export interface VcsHarness {
   vcs: Vcs;
   files: DefinitionStore;
+  /**
+   * The files of a worktree `vcs` added, as an agent or the assistant
+   * working there changes them.
+   */
+  worktreeFiles(worktree: VcsWorktree): DefinitionStore;
+  /**
+   * Writes a private entry, such as `.env`, into a worktree's folder, the way
+   * a program running there could. `worktreeFiles` refuses private paths, as
+   * every store does, so the cases need this to check they never come back.
+   */
+  writePrivate(worktree: VcsWorktree, path: string, content: string): Promise<void>;
+  /**
+   * Writes a private entry, such as `.env`, into the workspace folder and
+   * commits it on the current branch, as a repository cloned from someone
+   * who committed their `.env` holds it. The port refuses to stage one, so
+   * the cases need this to check HEAD tracking it changes nothing.
+   */
+  commitPrivate(path: string, content: string): Promise<void>;
+  /** A private entry's content in the workspace folder; `null` when it isn't there. */
+  readPrivate(path: string): Promise<string | null>;
+  /**
+   * Full ids, in the repository's object format, of objects in `commit`
+   * that aren't commits: for git, its tree and a file's blob. An adapter
+   * whose versions are only commits, such as the memory one, gives none.
+   */
+  nonCommitIds(commit: string): Promise<string[]>;
   /**
    * Plants code that git would run on its own in this folder's repository.
    * An adapter that drives git must give it for every repository and clone,
@@ -47,6 +74,12 @@ export interface PlantGitCode {
    * local remotes.
    */
   localRemote(): Promise<void>;
+  /**
+   * Rewrites the `.git` file in `worktree`'s folder to point at a repository
+   * planted outside it, whose config sets `core.fsmonitor` to a program that
+   * leaves the mark (HAL-3188). Whatever runs in a worktree can do this.
+   */
+  worktreeGitFile(worktree: VcsWorktree): Promise<void>;
   /** Whether any planted code has run. */
   ran(): Promise<boolean>;
 }
@@ -66,7 +99,11 @@ export interface MakeVcs {
    * one, gives a folder that is not a repository.
    */
   nested(files: DefinitionFiles): Promise<VcsHarness>;
-  /** A repository on branch `main`, with `files` in one commit and no remote. */
+  /**
+   * A repository on branch `main`, with `files` in one commit and no remote.
+   * A private entry in `files`, such as `.env`, is in the folder, untracked
+   * and not ignored.
+   */
   repo(files: DefinitionFiles): Promise<VcsHarness>;
   /**
    * Two clones of one new remote called `origin`. Each is on `main`, tracks

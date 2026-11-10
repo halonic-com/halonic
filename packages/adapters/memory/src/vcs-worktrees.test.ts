@@ -68,6 +68,30 @@ verifies("memory.vcs-worktrees", () => {
     expect(await files.list()).toEqual(["a.yaml", "c.yaml", "d.yaml"]);
   });
 
+  it("never brings a private entry HEAD tracks into a worktree, a diff or the status", async () => {
+    const { vcs, files } = await repoWith({ "a.yaml": "1\n" });
+    files.writePrivate(".env", "KEY=1\n");
+    const head = await vcs.commitPrivate(".env", "KEY=1\n");
+    const worktree = await vcs.addWorktree(head);
+    const changed = vcs.worktreeFiles(worktree.id);
+    expect(changed.snapshot()).toEqual({ "a.yaml": "1\n" });
+
+    changed.writePrivate(".env", "KEY=2\n");
+    await changed.write("a.yaml", "2\n");
+    const diffs = await vcs.diffBetween(head, worktree.id);
+    expect(diffs.map(({ path, status }) => ({ path, status }))).toEqual([
+      { path: "a.yaml", status: "modified" },
+    ]);
+    expect((await vcs.status()).changes).toEqual([]);
+  });
+
+  it("refuses to write or commit a path that isn't private through the test hooks", async () => {
+    const { vcs, files } = await repoWith({ "a.yaml": "1\n" });
+    expect(() => files.writePrivate("a.yaml", "2\n")).toThrow(RangeError);
+    await expect(vcs.commitPrivate("a.yaml", "2\n")).rejects.toThrow(RangeError);
+    expect(files.snapshot()).toEqual({ "a.yaml": "1\n" });
+  });
+
   describe("applyPatch", () => {
     it("applies a patch to the working tree only, and reverses it", async () => {
       const { vcs, files } = await repoWith({ "a.yaml": "1\n" });

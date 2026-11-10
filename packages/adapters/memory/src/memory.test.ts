@@ -147,22 +147,47 @@ coordinationContract("memory", async () => {
   return { coordination: new MemoryCoordination(clock), clock };
 });
 
+/**
+ * The Vcs suite's view of a memory Vcs over `store`. Private entries go
+ * straight into the stores, as a program in the folder could write them.
+ */
+function memoryHarness(vcs: MemoryVcs, store: MemoryDefinitionStore): VcsHarness {
+  return {
+    vcs,
+    files: store,
+    worktreeFiles: (worktree) => vcs.worktreeFiles(worktree.id),
+    async writePrivate(worktree, path, content) {
+      vcs.worktreeFiles(worktree.id).writePrivate(path, content);
+    },
+    async commitPrivate(path, content) {
+      store.writePrivate(path, content);
+      await vcs.commitPrivate(path, content);
+    },
+    readPrivate: async (path) => store.snapshot()[path] ?? null,
+    // Every memory version is a commit; there are no trees or blobs to name.
+    nonCommitIds: async () => [],
+  };
+}
+
 /** A repository on `main` holding `files` in one commit, as the Vcs suite asks for. */
-async function memoryRepo(
-  files: Readonly<Record<string, string>>,
-): Promise<{ vcs: MemoryVcs; files: MemoryDefinitionStore }> {
+async function memoryRepo(files: Readonly<Record<string, string>>): Promise<VcsHarness> {
   const store = new MemoryDefinitionStore(files);
+  return memoryHarness(await committed(store), store);
+}
+
+/** A new repository over `store`, with every file it lists in one commit on `main`. */
+async function committed(store: MemoryDefinitionStore): Promise<MemoryVcs> {
   const vcs = new MemoryVcs(store);
   await vcs.init();
   await vcs.stage(await store.list());
   await vcs.commit("Initial commit");
-  return { vcs, files: store };
+  return vcs;
 }
 
 /** A folder that is not a repository; memory has no parent folders, so this is also the nested one. */
 async function memoryFolder(files: Readonly<Record<string, string>>): Promise<VcsHarness> {
   const store = new MemoryDefinitionStore(files);
-  return { vcs: new MemoryVcs(store), files: store };
+  return memoryHarness(new MemoryVcs(store), store);
 }
 
 /**
@@ -185,6 +210,9 @@ function recordedPlant(leaks: boolean): PlantGitCode {
     async localRemote() {
       planted.push("local remote");
     },
+    async worktreeGitFile(worktree) {
+      planted.push(`worktree .git file ${worktree.id}`);
+    },
     async ran() {
       return leaks && planted.length > 0;
     },
@@ -202,12 +230,12 @@ function memoryVcs(plant?: () => PlantGitCode): MakeVcs {
     repo: async (files) => withPlant(await memoryRepo(files)),
     async clones(files) {
       const remote = new MemoryRemote();
-      const seed = await memoryRepo(files);
-      seed.vcs.addRemote("origin", remote);
-      await seed.vcs.push();
+      const seed = await committed(new MemoryDefinitionStore(files));
+      seed.addRemote("origin", remote);
+      await seed.push();
       const cloneOf = async (): Promise<VcsHarness> => {
         const store = new MemoryDefinitionStore();
-        return withPlant({ vcs: await MemoryVcs.clone(remote, store), files: store });
+        return withPlant(memoryHarness(await MemoryVcs.clone(remote, store), store));
       };
       return [await cloneOf(), await cloneOf()];
     },
