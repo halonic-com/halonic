@@ -14,8 +14,11 @@ import {
 import { checkOptions, checkSubcommand, withoutDiffPrograms } from "./repository-args.ts";
 import {
   checkAlternates,
+  checkGitPaths,
   checkLocated,
   checkNestedInside,
+  gitPathArgs,
+  gitPaths,
   locateNestedArgs,
   outsideFolder,
 } from "./repository-location.ts";
@@ -126,10 +129,13 @@ export class Repository {
         "--show-toplevel",
         "--git-dir",
         "--git-common-dir",
+        ...gitPathArgs,
       ],
     });
     if (located.code !== 0) return null;
-    await checkLocated(this.#top, this.#gitDir, located.stdout.toString("utf8"));
+    const lines = located.stdout.toString("utf8").split("\n");
+    await checkLocated(this.#top, this.#gitDir, lines.slice(0, 3));
+    await checkGitPaths(this.#top, this.#gitDir, lines.slice(3, 3 + gitPaths.length));
     await checkAlternates(this.#top, join(this.#gitDir, "objects"), 0);
     return neutralisingConfig(this.#runner, this.#top, this.#gitDir);
   }

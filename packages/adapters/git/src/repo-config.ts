@@ -83,7 +83,8 @@ export function checkRefusedKeys(entries: readonly ListedConfig[]): void {
  *   from a file the workspace can change, or only once a `checkout` or
  *   `merge` has run, after the listing the call was checked against.
  * - `url.<base>.insteadOf` and `pushInsteadOf`, which send `pull` and
- *   `push` to another server than the remote the person sees.
+ *   `push` to another server than the remote the person sees, and
+ *   `remote.<name>.pushurl`, which sends `push` there.
  * - `http.sslVerify`, `http.sslCAInfo` and `http.sslCAPath`, also per URL
  *   (`http.<url>.sslVerify`), which turn the certificate check off or
  *   trust the repository's own authority. With either, a proxy or anyone
@@ -99,6 +100,7 @@ function isRefusedKey(key: string): boolean {
   if (subsectionKey(key, "branch")?.name.toLowerCase() === "mergeoptions") return true;
   const url = subsectionKey(key, "url")?.name.toLowerCase();
   if (url === "insteadof" || url === "pushinsteadof") return true;
+  if (subsectionKey(key, "remote")?.name.toLowerCase() === "pushurl") return true;
   return weakensCertificateCheck(lower);
 }
 

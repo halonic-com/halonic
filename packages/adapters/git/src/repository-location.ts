@@ -1,4 +1,4 @@
-import { readFile, realpath } from "node:fs/promises";
+import { lstat, readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
 // Where a repository's git files are: all of them must be inside the
@@ -15,8 +15,12 @@ export function outsideFolder(top: string): Error {
 }
 
 /** The folder must be the top, with its own `.git` folder as both git folders, not a linked worktree or a `gitdir:` file. */
-export async function checkLocated(top: string, gitDir: string, stdout: string): Promise<void> {
-  const [shownTop, shownGitDir, shownCommonDir] = stdout.split("\n").map((line) => line.trimEnd());
+export async function checkLocated(
+  top: string,
+  gitDir: string,
+  lines: readonly string[],
+): Promise<void> {
+  const [shownTop, shownGitDir, shownCommonDir] = lines.map((line) => line.trimEnd());
   for (const [shown, expected] of [
     [shownTop, top],
     [shownGitDir, gitDir],
@@ -25,6 +29,58 @@ export async function checkLocated(top: string, gitDir: string, stdout: string):
     if (shown === undefined || shown === "" || (await realpath(shown)) !== expected) {
       throw outsideFolder(top);
     }
+  }
+}
+
+/**
+ * The files and folders in the git folder that git reads and writes. Any of
+ * them can be a link, which git follows: to another repository's `objects`
+ * or `refs`, a call reads and writes there.
+ */
+export const gitPaths: readonly string[] = [
+  "objects",
+  "refs",
+  "logs",
+  "info",
+  "index",
+  "packed-refs",
+];
+
+/** What asks git where each of {@link gitPaths} is, after the rest of a `rev-parse --path-format=absolute`. */
+export const gitPathArgs: readonly string[] = gitPaths.flatMap((name) => ["--git-path", name]);
+
+/**
+ * Each of {@link gitPaths}, as git names it in `lines`, must really be in
+ * the git folder; a link that stays in it is fine. One that doesn't exist
+ * yet is fine too, unless it is a link: git would follow it on creating it.
+ *
+ * @throws Error when one of them is a link that leads outside the git folder, or nowhere
+ */
+export async function checkGitPaths(
+  top: string,
+  gitDir: string,
+  lines: readonly string[],
+): Promise<void> {
+  for (const line of lines) {
+    const path = line.trimEnd();
+    const real = path === "" ? null : await realGitPath(path);
+    if (real === null || !isInside(gitDir, real)) throw outsideFolder(top);
+  }
+}
+
+/** The real path of `path`, `path` itself when nothing is there, or `null` for a link that leads nowhere. */
+async function realGitPath(path: string): Promise<string | null> {
+  try {
+    return await realpath(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  try {
+    await lstat(path);
+    return null;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return path;
+    throw error;
   }
 }
 
