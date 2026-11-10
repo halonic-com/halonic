@@ -155,6 +155,35 @@ pnpm exec node ../merge-base/tooling/check/src/cli/requirement-guard.ts --base .
 Biome's `noSkippedTests` and `noFocusedTests` and Vitest's
 `expect.requireAssertions` back the guard up on every run.
 
+## Sharing Turbo's cache between checkouts
+
+Turbo keeps the results of typecheck, lint, test and build in a local cache,
+keyed by the package's inputs, so an unchanged package is a cache hit. By
+default each checkout has its own cache in `node_modules/.cache/turbo`. On a
+machine with many checkouts (agents' worktrees, say), set `TURBO_CACHE_DIR` to
+one folder for all of them and they share the results: `pnpm verify` needs no
+other change, because Turbo reads the variable itself.
+
+Parallel runs may write to the same folder. Each entry is stored under a name made from its hash, and two runs that
+build the same package write the same content. We tried six cold runs at once
+on the same hashes, and runs that started while others were still writing, and
+every restored output matched its checksum. Nothing in this setup is known to
+guard against a run killed halfway through a write; if a restore ever looks
+wrong, delete that entry's files.
+
+The folder grows, so prune it:
+
+```sh
+TURBO_CACHE_DIR=/path/to/turbo-cache pnpm turbo:prune             # entries unused for 7 days
+TURBO_CACHE_DIR=/path/to/turbo-cache pnpm turbo:prune --days 3 --dry-run
+```
+
+An entry's last use is its newest access or modification time, so on a
+filesystem that doesn't record access times an entry goes 7 days after it was
+written, and the next run rebuilds it. A run that reads an entry while it is
+deleted just misses and rebuilds. CI keeps its own cache setup in
+`ci.yml` and doesn't read this variable from outside.
+
 ## Coverage floors
 
 Every package keeps its coverage floor in its own `package.json`, and the

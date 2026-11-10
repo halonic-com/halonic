@@ -111,6 +111,9 @@ you spot become a new task.
   package's tests, `pnpm check`). Then push and let CI (`ci-ok`) give the verdict. Run
   `pnpm verify --full` only when the task needs it. Local tests use two workers; set
   `HALONIC_TEST_WORKERS` to change that.
+- Turbo's cache can be shared between worktrees on one machine: when `TURBO_CACHE_DIR` is set,
+  `pnpm verify` uses it, and a package another worktree already checked is a cache hit. Don't
+  set it per worktree. `pnpm turbo:prune` deletes entries unused for 7 days.
 - Fill in the template: requirements, how you tested, docs, changeset (or "None"), and the AI tool
   and model you used. Agents leave the sign-off box unticked (see Review).
 - Docs change in the same pull request as the behaviour.
