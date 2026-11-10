@@ -1,6 +1,7 @@
 import {
   type Clock,
   checkCommitId,
+  checkProposalRef,
   checkWorkspacePath,
   type DefinitionStore,
   isPrivateWorkspacePath,
@@ -8,6 +9,8 @@ import {
   type VcsApplyOptions,
   type VcsChange,
   type VcsCommit,
+  type VcsCommitVersionOptions,
+  type VcsCommitWorktreeOptions,
   type VcsFileDiff,
   type VcsStatus,
   type VcsWorktree,
@@ -15,11 +18,13 @@ import {
 import { ManualClock } from "./clock.ts";
 import type { MemoryDefinitionStore } from "./definition-store.ts";
 import { unifiedDiff } from "./line-diff.ts";
+import { readAll, readListed, readTree } from "./read-files.ts";
 import { sha256Hex } from "./sha256.ts";
 import { patchedFiles } from "./text-patch.ts";
 import { checkBranchName, checkVcsPath } from "./vcs-input.ts";
 import {
   clashingBranch,
+  commitOf,
   copyCommits,
   countMissing,
   headCommit,
@@ -38,6 +43,7 @@ import {
   treeOf,
   unstagedChanges,
 } from "./vcs-repository.ts";
+import { indexAfterVersion, versionScope, versionTree } from "./vcs-version-scope.ts";
 import { MemoryWorktrees } from "./vcs-worktrees.ts";
 
 /** Options for {@link MemoryVcs}; each one is optional. */
@@ -135,7 +141,7 @@ export class MemoryVcs implements Vcs {
   async stage(paths: string[]): Promise<void> {
     paths.forEach(checkVcsPath);
     const repo = this.#requireRepo();
-    const contents = await this.#readAll(paths);
+    const contents = await readAll(this.#files, paths);
     for (const [path, content] of contents) {
       if (content === null && !repo.index.has(path)) {
         throw new Error(`Nothing to stage at ${JSON.stringify(path)}.`);
@@ -178,12 +184,50 @@ export class MemoryVcs implements Vcs {
     return hash;
   }
 
+  async commitVersion(options: VcsCommitVersionOptions): Promise<string> {
+    const scope = versionScope(options);
+    const repo = this.#requireRepo();
+    if (options.message.trim() === "") throw new Error("The commit message is empty.");
+    const head = headTree(repo);
+    const tree = versionTree(head, await readTree(this.#files), scope);
+    if (sameTree(head, tree)) throw new Error("Nothing to commit: every change is left out.");
+    const hash = await this.#storeCommit(repo, tree, options.message);
+    repo.branches.set(repo.head, hash);
+    repo.index = indexAfterVersion(repo.index, tree, scope);
+    return hash;
+  }
+
   async snapshot(): Promise<string> {
     const repo = this.#requireRepo();
-    // `list()` already leaves out private entries; nothing else is ignored here.
-    const tree = new Map<string, string>();
-    for (const path of await this.#files.list()) tree.set(path, await this.#readListed(path));
+    const tree = await readTree(this.#files);
     return this.#storeCommit(repo, tree, "Snapshot of the saved files");
+  }
+
+  async commitWorktreeTo(
+    worktreeId: string,
+    ref: string,
+    options: VcsCommitWorktreeOptions,
+  ): Promise<string> {
+    checkProposalRef(ref);
+    checkCommitId(options.parent);
+    const repo = this.#requireRepo();
+    this.#treeAt(options.parent);
+    const tree = await readTree(this.#worktrees.files(worktreeId));
+    if (repo.proposals.has(ref)) throw new Error(`The ref ${ref} already exists.`);
+    const hash = await this.#storeCommit(repo, tree, `Proposal ${ref}`, options.parent);
+    repo.proposals.set(ref, hash);
+    return hash;
+  }
+
+  async readRef(ref: string): Promise<string | null> {
+    checkProposalRef(ref);
+    return this.#requireRepo().proposals.get(ref) ?? null;
+  }
+
+  async deleteRef(ref: string): Promise<void> {
+    checkProposalRef(ref);
+    const repo = this.#requireRepo();
+    if (!repo.proposals.delete(ref)) throw new Error(`There is no ref ${ref}.`);
   }
 
   async readAt(version: string, path: string): Promise<string | null> {
@@ -210,7 +254,7 @@ export class MemoryVcs implements Vcs {
     const repo = this.#requireRepo();
     const moves = await this.#renamedPaths(from, to);
     for (const [oldPath, newPath] of moves) {
-      await this.#files.write(newPath, await this.#readListed(oldPath));
+      await this.#files.write(newPath, await readListed(this.#files, oldPath));
       await this.#files.remove(oldPath);
       // Like `git mv`: the index entry moves as it is, staged changes and all.
       const indexed = repo.index.get(oldPath);
@@ -300,6 +344,15 @@ export class MemoryVcs implements Vcs {
     return hash;
   }
 
+  /**
+   * A commit's parents and every path it holds, private entries included,
+   * for tests to check commits on no branch. Not part of the port.
+   */
+  commitDetails(hash: string): { parents: string[]; paths: string[] } {
+    const { parent, tree } = commitOf(this.#requireRepo().commits, hash);
+    return { parents: parent === null ? [] : [parent], paths: [...tree.keys()].sort() };
+  }
+
   async applyPatch(patch: string, options: VcsApplyOptions = {}): Promise<void> {
     this.#requireRepo();
     const results = await patchedFiles(patch, options.reverse === true, checkVcsPath, (path) =>
@@ -365,9 +418,13 @@ export class MemoryVcs implements Vcs {
     return this.#repo;
   }
 
-  /** Stores a commit of `tree` on top of the current commit, on no branch, and returns its hash. */
-  async #storeCommit(repo: Repository, tree: Tree, message: string): Promise<string> {
-    const parent = headCommit(repo);
+  /** Stores a commit of `tree` on top of `parent` (the current commit), on no branch, and returns its hash. */
+  async #storeCommit(
+    repo: Repository,
+    tree: Tree,
+    message: string,
+    parent = headCommit(repo),
+  ): Promise<string> {
     const date = this.#clock.now().toISOString();
     const hash = (
       await sha256Hex(JSON.stringify([parent, [...tree], this.#author, date, message]))
@@ -406,23 +463,10 @@ export class MemoryVcs implements Vcs {
     return this.#repo;
   }
 
-  async #readAll(paths: string[]): Promise<Map<string, string | null>> {
-    const contents = new Map<string, string | null>();
-    for (const path of paths) contents.set(path, await this.#files.read(path));
-    return contents;
-  }
-
-  /** The text of a file that was just listed; throws when another writer removed it meanwhile. */
-  async #readListed(path: string): Promise<string> {
-    const content = await this.#files.read(path);
-    if (content === null) throw new Error(`${path} was removed while it was being read.`);
-    return content;
-  }
-
   async #unstaged(repo: Repository): Promise<VcsChange[]> {
     // The store never lists a private entry, so one HEAD tracks would look deleted.
     const tracked = new Map([...repo.index].filter(([path]) => !isPrivateWorkspacePath(path)));
-    return unstagedChanges(tracked, await this.#readAll(await this.#files.list()));
+    return unstagedChanges(tracked, await readAll(this.#files, await this.#files.list()));
   }
 
   /** Refuses to switch to the tree `to` over changes it would lose; see {@link switchProblem}. */

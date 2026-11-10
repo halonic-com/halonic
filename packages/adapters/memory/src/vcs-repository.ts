@@ -30,6 +30,8 @@ export interface Repository {
   upstreams: Map<string, Upstream>;
   /** What each remote branch was at the last pull or push, by "origin/main". */
   tracking: Map<string, string>;
+  /** Proposal ref, such as `refs/halonic/proposals/run-1`, to its commit. Never a branch. */
+  proposals: Map<string, string>;
 }
 
 /** A remote that `MemoryVcs` repositories push to and pull from, like a bare repository. */
@@ -48,6 +50,7 @@ export function newRepository(branch: string): Repository {
     remotes: new Map(),
     upstreams: new Map(),
     tracking: new Map(),
+    proposals: new Map(),
   };
 }
 

@@ -1,5 +1,11 @@
 import { TrustService } from "@halonicjs/app";
-import type { ConnectorTool, ConnectorTransport, Digest, HttpClient } from "@halonicjs/ports";
+import {
+  type ConnectorTool,
+  type ConnectorTransport,
+  type Digest,
+  type HttpClient,
+  isPrivateWorkspacePath,
+} from "@halonicjs/ports";
 import {
   agentPlacementStoreContract,
   blobStoreContract,
@@ -166,6 +172,8 @@ function memoryHarness(vcs: MemoryVcs, store: MemoryDefinitionStore): VcsHarness
     readPrivate: async (path) => store.snapshot()[path] ?? null,
     // Every memory version is a commit; there are no trees or blobs to name.
     nonCommitIds: async () => [],
+    parentsOf: async (commit) => vcs.commitDetails(commit).parents,
+    privateAt: async (commit) => vcs.commitDetails(commit).paths.filter(isPrivateWorkspacePath),
   };
 }
 

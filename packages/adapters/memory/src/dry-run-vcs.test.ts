@@ -187,3 +187,58 @@ verifies("memory.dry-run-vcs-worktrees", () => {
     expect(dryRun.changes()).toEqual([]);
   });
 });
+
+verifies("memory.dry-run-vcs-commits", () => {
+  const ref = "refs/halonic/proposals/run-1";
+
+  it("records versions and proposals, and changes nothing", async () => {
+    const { real } = await changedRepository();
+    const before = { status: await real.status(), log: await real.log(5) };
+    const snapshot = await real.snapshot();
+    const worktree = await real.addWorktree(snapshot);
+    const dryRun = new DryRunVcs(real);
+
+    expect(
+      await dryRun.commitVersion({ message: "Create version", include: ["a.yaml"], exclude: [] }),
+    ).toBe("dry-run:commit-1");
+    expect(await dryRun.commitVersion({ message: "Everything", exclude: [] })).toBe(
+      "dry-run:commit-2",
+    );
+    expect(await dryRun.commitWorktreeTo(worktree.id, ref, { parent: snapshot })).toBe(
+      "dry-run:proposal-1",
+    );
+    await dryRun.deleteRef(ref);
+
+    expect(dryRun.changes()).toEqual([
+      { kind: "commitVersion", message: "Create version", include: ["a.yaml"], exclude: [] },
+      { kind: "commitVersion", message: "Everything", exclude: [] },
+      { kind: "commitWorktreeTo", worktreeId: worktree.id, ref, parent: snapshot },
+      { kind: "deleteRef", ref },
+    ]);
+    expect(await dryRun.readRef(ref)).toBeNull();
+    expect(await real.status()).toEqual(before.status);
+    expect(await real.log(5)).toEqual(before.log);
+  });
+
+  it("refuses bad paths, refs and parents, recording nothing", async () => {
+    const { real } = await changedRepository();
+    const snapshot = await real.snapshot();
+    const dryRun = new DryRunVcs(real);
+
+    await expect(dryRun.commitVersion({ message: "x", exclude: [".env"] })).rejects.toThrow(
+      RangeError,
+    );
+    await expect(dryRun.commitVersion({ message: "x", include: [], exclude: [] })).rejects.toThrow(
+      RangeError,
+    );
+    await expect(dryRun.commitVersion({ message: "", exclude: [] })).rejects.toThrow(/empty/);
+    await expect(dryRun.deleteRef("refs/heads/main")).rejects.toThrow(RangeError);
+    await expect(dryRun.commitWorktreeTo("w", "HEAD", { parent: snapshot })).rejects.toThrow(
+      RangeError,
+    );
+    await expect(dryRun.commitWorktreeTo("w", ref, { parent: "a".repeat(40) })).rejects.toThrow(
+      /Unknown version/,
+    );
+    expect(dryRun.changes()).toEqual([]);
+  });
+});
