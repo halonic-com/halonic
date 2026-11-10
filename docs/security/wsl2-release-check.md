@@ -57,7 +57,7 @@ interop enabled: yes
 drvfs mount: 9p rw,noatime,aname=drvfs;path=C:\;uid=0;gid=0;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=
 
 == 1. private file on /mnt/c ==
-1a cat from WSL: PASS (inside srt: cat: <C: drive>/Users/Public/halonic-wsl2-check.B2KmHg/private.txt: Permission denied )
+1a cat from WSL: PASS (inside srt: cat: <C: drive>/<public folder>/halonic-wsl2-check.B2KmHg/private.txt: Permission denied )
 
 == 2. Windows programs through interop ==
 2a cmd.exe type: PASS (inside srt: <3>WSL (2 - ) ERROR: UtilBindVsockAnyPort:309: socket failed 1 )
@@ -78,7 +78,7 @@ interop enabled: no
 drvfs mount: 9p rw,noatime,aname=drvfs;path=C:\;uid=0;gid=0;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=
 
 == 1. private file on /mnt/c ==
-1a cat from WSL: PASS (inside srt: cat: <C: drive>/Users/Public/halonic-wsl2-check.wUFoQP/private.txt: Permission denied )
+1a cat from WSL: PASS (inside srt: cat: <C: drive>/<public folder>/halonic-wsl2-check.wUFoQP/private.txt: Permission denied )
 
 == 2. Windows programs through interop ==
 2 interop: SKIPPED, interop is off; the start-up check needs no change
@@ -89,7 +89,7 @@ EXIT=0
 
 Notes:
 
-- The `/mnt/c` prefix in the marker file path is shown as `<C: drive>` below; nothing else in the output was changed.
+- The `/mnt/c` prefix in the marker file path is shown as `<C: drive>`, and the Public folder name as `<public folder>`, below; nothing else in the output was changed.
 
 - For the interop-off run, interop was turned off in that distro's
   `/etc/wsl.conf` and only that distro was restarted (`wsl --terminate Ubuntu`).
