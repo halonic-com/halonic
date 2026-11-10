@@ -70,7 +70,12 @@ export function proposeDelete(files: ReviewFiles, remove: ProposedDelete): Promi
       return moved;
     }
     const fields = recordFields(record, before, trusted);
-    const deleted: ReviewRecord = { ...fields, path: remove.path, card: remove.card, seen: "absent" };
+    const deleted: ReviewRecord = {
+      ...fields,
+      path: remove.path,
+      card: remove.card,
+      seen: "absent",
+    };
     const after = await files.keep(
       fields.baseline === before ? { ...deleted, trashed: { trashId: moved.trashId } } : deleted,
     );
