@@ -22,6 +22,8 @@ export interface RunLogToolsOptions {
 export const noRunsText = "No runs in that period.";
 /** What `read_run` answers for a run that isn't there, or is in another hub. */
 export const unknownRunText = "Unknown run.";
+/** What `read_run` answers for a run with no events it shows. */
+export const noEventsText = "No events yet.";
 
 const statuses: readonly RunStatus[] = ["completed", "failed", "waiting", "running"];
 const dayMs = 86_400_000;
@@ -43,7 +45,7 @@ function listRunsTool(options: RunLogToolsOptions): HalonicTool {
     definition: {
       name: "list_runs",
       description:
-        "Lists earlier runs, newest first: id, workflow, trigger, status, start, duration, model calls, tokens, cost, error. Filter by days back, workflow or status.",
+        "Lists earlier runs, newest first: id, workflow, trigger, status, start, duration, tokens, cost, error. Filter by days back, workflow or status.",
       parameters: {
         type: "object",
         properties: {
@@ -97,7 +99,8 @@ function readRunTool(options: RunLogToolsOptions): HalonicTool {
       if (summary === null || summary.hubId !== options.hubId) {
         return unknownRunText;
       }
-      return runLines(await options.runs.events(runId)).join("\n");
+      const lines = runLines(await options.runs.events(runId));
+      return lines.length === 0 ? noEventsText : lines.join("\n");
     },
   };
 }

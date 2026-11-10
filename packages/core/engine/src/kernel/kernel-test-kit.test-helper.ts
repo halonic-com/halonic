@@ -5,6 +5,7 @@ import {
   type AppendResult,
   type BlobRef,
   type BlobStore,
+  compareRunSummaries,
   matchesRunFilter,
   type RunFilter,
   type RunSnapshot,
@@ -64,9 +65,11 @@ export class KernelRuns implements RunStore {
 
   async list(filter: RunFilter = {}): Promise<RunSummary[]> {
     const summaries = [...this.logs.values()].map((log) => summarize(log));
-    return summaries.filter(
-      (summary): summary is RunSummary => summary !== null && matchesRunFilter(summary, filter),
-    );
+    return summaries
+      .filter(
+        (summary): summary is RunSummary => summary !== null && matchesRunFilter(summary, filter),
+      )
+      .sort(compareRunSummaries);
   }
 }
 

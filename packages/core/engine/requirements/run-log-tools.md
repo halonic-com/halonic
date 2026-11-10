@@ -8,7 +8,7 @@ The engine shall give an agent with `runLogs: true` two read-only tools, `list_r
 
 `list_runs` shall list the hub's runs (not test runs) that started within the last `days` days (1 to 90, default 7), newest first, at most `limit` of them (1 to 200, default 50), filtered by `workflow` and `status` when given, and leaving out the run the agent is in. Each run shall be one line of id, workflow, trigger, status, start, duration, tokens, cost and error, joined with `|`. When no run matches, it shall answer `No runs in that period.`
 
-`read_run` shall show the run with the given `runId` one event per line: states, agents, model calls with tokens, cost and latency, tool calls and results cut to 200 characters, approvals, waits and the end. When the run doesn't exist or belongs to another hub, it shall answer `Unknown run.`
+`read_run` shall show the run with the given `runId` one event per line: states, agents, model calls with tokens, cost and latency, tool calls and results cut to 200 characters, approvals, waits and the end. When the run has none of these events yet, it shall answer `No events yet.` When the run doesn't exist or belongs to another hub, it shall answer `Unknown run.`
 
 When an argument has the wrong type or is out of range, the tool shall fail with an error that names the argument.
 

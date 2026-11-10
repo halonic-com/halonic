@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { HalonicTool } from "../../agent/turn-tools.ts";
 import { KernelRuns } from "../../kernel/kernel-test-kit.test-helper.ts";
-import { noRunsText, runLogTools, unknownRunText } from "./run-log-tools.ts";
+import { noEventsText, noRunsText, runLogTools, unknownRunText } from "./run-log-tools.ts";
 
 const now = "2026-11-10T09:00:00.000Z";
 
@@ -50,10 +50,6 @@ verifies("engine.run-log-tools", () => {
   describe("list_runs", () => {
     it("lists the hub's runs as lines, without other hubs' runs or the current run", async () => {
       const runs = new KernelRuns();
-      storeRun(runs, "r-2", "2026-11-09T10:00:00.000Z", [
-        started("acme"),
-        { type: "state.entered", state: "draft" },
-      ]);
       storeRun(runs, "r-1", "2026-11-09T08:00:00.000Z", [
         started("acme"),
         {
@@ -69,6 +65,10 @@ verifies("engine.run-log-tools", () => {
         { type: "run.failed", state: "draft", error: "The model was refused" },
       ]);
       storeRun(runs, "r-9", "2026-11-09T09:00:00.000Z", [started("globex")]);
+      storeRun(runs, "r-2", "2026-11-09T10:00:00.000Z", [
+        started("acme"),
+        { type: "state.entered", state: "draft" },
+      ]);
       storeRun(runs, "r-now", "2026-11-10T08:59:00.000Z", [started("acme")]);
 
       const text = await call(toolsFor(runs, "r-now").listRuns);
@@ -196,6 +196,13 @@ verifies("engine.run-log-tools", () => {
       expect(await call(readRun, { runId: "r-9" })).toBe(unknownRunText);
       expect(await call(readRun, { runId: "r-404" })).toBe(unknownRunText);
       await expect(call(readRun, {})).rejects.toThrow('"runId" is required');
+    });
+
+    it("answers that there are no events yet for a run with none to show", async () => {
+      const runs = new KernelRuns();
+      storeRun(runs, "r-1", "2026-11-09T09:00:00.000Z", [started("acme")]);
+
+      expect(await call(toolsFor(runs).readRun, { runId: "r-1" })).toBe(noEventsText);
     });
 
     it("ends a failed run with its error", async () => {
