@@ -36,7 +36,7 @@ export interface OwnParts {
    * key in capitals given as a lower-case method only shows up here.
    */
   readonly sentMethod?: string;
-  /** As the integration or a redirect's `Location` wrote it, resolved against `base`. */
+  /** As the integration wrote it, or a redirect's `Location`, resolved against `base`. */
   readonly url: string;
   readonly base?: URL;
   readonly headers?: Headers;
@@ -47,24 +47,48 @@ export interface OwnParts {
  * Refuses the request as `secret-in-request` when the integration's own
  * method, as given or as sent, URL, headers or body hold a secret value in any form the filter
  * knows. Runs before placement, so a secret the kit puts in is never counted.
- * Runs on every redirect hop too, because a server can put a value it was
- * sent into the next `Location`.
  */
 export function refuseCarriedSecrets(
   policy: IntegrationPolicy,
   forms: SecretForms,
   parts: OwnParts,
 ): void {
-  if (forms.longest === 0) return;
-  const headerLines = [...(parts.headers ?? [])].map(([name, value]) => `${name}: ${value}`);
-  const url = [parts.url, withEscapesDecoded(parts.url), parsed(parts.url, parts.base)];
-  const texts = [parts.method ?? "", parts.sentMethod ?? "", ...url, ...headerLines];
-  if (texts.some((text) => holds(text, forms)) || bodyHolds(parts.body ?? null, forms)) {
+  if (carriesSecret(forms, parts)) {
     throw new SecretInRequestError(policy, {
       method: shown((parts.method ?? "GET").toUpperCase(), forms),
       host: shown(hostOf(parts.url, parts.base), forms),
     });
   }
+}
+
+/**
+ * Refuses a redirect as `secret-in-redirect` when its `Location` holds a
+ * secret value, so the kit doesn't follow it: a server can put a value it
+ * was sent into the next URL. The server chose that URL, not the
+ * integration, so this is not one of the `leakAttemptCodes`. The
+ * message names the two hosts only, with any secret removed.
+ */
+export function refuseRedirectCarryingSecrets(
+  policy: IntegrationPolicy,
+  forms: SecretForms,
+  location: string,
+  from: URL,
+): void {
+  if (carriesSecret(forms, { url: location, base: from })) {
+    throw new IntegrationRefusedError(
+      "secret-in-redirect",
+      `${policy.name}: ${from.host} redirected to ${shown(hostOf(location, from), forms)} with the value of a secret in the URL, so the kit didn't follow it`,
+    );
+  }
+}
+
+/** Whether the parts hold a secret value in any form the filter knows. */
+function carriesSecret(forms: SecretForms, parts: OwnParts): boolean {
+  if (forms.longest === 0) return false;
+  const headerLines = [...(parts.headers ?? [])].map(([name, value]) => `${name}: ${value}`);
+  const url = [parts.url, withEscapesDecoded(parts.url), parsed(parts.url, parts.base)];
+  const texts = [parts.method ?? "", parts.sentMethod ?? "", ...url, ...headerLines];
+  return texts.some((text) => holds(text, forms)) || bodyHolds(parts.body ?? null, forms);
 }
 
 /** The forms of the secret values, matched raw and in every encoding the filter knows. */

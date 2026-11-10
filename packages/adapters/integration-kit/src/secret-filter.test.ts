@@ -173,8 +173,8 @@ verifies("integration-kit.secret-filter", () => {
           .fetch("https://api.example.com/start", { auth: bearer })
           .then((response) => response.text())
           .catch((thrown: unknown) => thrown);
-        // The secret-in-request check refuses a Location that holds the key before the kit follows it.
-        expect(error).toMatchObject({ code: "secret-in-request" });
+        // The secret check refuses a Location that holds the key before the kit follows it.
+        expect(error).toMatchObject({ code: "secret-in-redirect" });
         expect(`${String(error)} ${(error as Error).stack}`).not.toContain(key);
       },
     );
@@ -198,7 +198,7 @@ verifies("integration-kit.secret-filter", () => {
       const error = await http
         .fetch("https://api.example.com/start", { auth: bearer })
         .catch((thrown: unknown) => thrown);
-      expect(error).toMatchObject({ code: "secret-in-request" });
+      expect(error).toMatchObject({ code: "secret-in-redirect" });
       expect(`${String(error)} ${(error as Error).stack}`).not.toContain(key);
     });
 

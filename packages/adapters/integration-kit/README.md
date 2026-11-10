@@ -214,7 +214,9 @@ integration never holds it, and the host keeps the request log.
 - **Secrets can't be carried out.** A request whose method, URL, headers or
   body holds a secret value the kit didn't place there itself, in any of
   those forms, is refused as `secret-in-request`, to every host, including
-  the one the secret is declared for, and on every redirect hop. The URL and
+  the one the secret is declared for. A redirect whose `Location` holds one
+  is not followed and is refused as `secret-in-redirect`: the server chose
+  that URL, not the integration. The URL and
   a text body are also read with their percent-escapes undone, so a value
   encoded only in part is found. The message and the log name the host
   only, never the value. This catches a value carried as it is or in those
@@ -245,7 +247,8 @@ secret, a header or a form field shows the name in quotes, escaped and cut at 50
 huge name can't make a huge message. The codes in
 `leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`, host
 side only) mean the integration tried to get a secret out; the bridge should pause the
-connector on any of them. Every other code is an ordinary mistake.
+connector on any of them. Every other code is an ordinary mistake, or, like
+`secret-in-redirect`, something the server did.
 
 ## Loading an integration
 

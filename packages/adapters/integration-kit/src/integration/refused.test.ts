@@ -19,6 +19,7 @@ const expectedKinds: Record<RefusalCode, ErrorKind> = {
   "secret-not-configured": "denied",
   "too-many-redirects": "denied",
   "secret-in-request": "denied",
+  "secret-in-redirect": "denied",
   "token-not-declared": "denied",
 };
 
