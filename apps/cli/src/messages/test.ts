@@ -1,6 +1,6 @@
 import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
-import { bold, dim, markPart, phrase } from "./phrase.ts";
+import { bold, dim, markPart, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /**
@@ -26,7 +26,7 @@ export const testMessages = defineMessages("test", {
   /** `states` failed: the steps the test expected, then the ones the run went through, in order. */
   wentElsewhere: (expected: readonly string[], actual: readonly string[]) =>
     phrase`Expected the run to go through ${listInWords(expected)}, but it went through ${listInWords(actual)}.`,
-  /** `status` failed: "Expected the run to finish, but it failed in the step Draft reply." */
+  /** `status` failed: "Expected the run to finish, but it failed in the step Draft reply.", the step in bold. */
   endedOtherwise: (expected: TestStatus, actual: RunOutcome) =>
     phrase`Expected the run ${expectedStatusWords[expected]}, but ${outcomeInWords(actual)}.`,
   /** `context` failed for one field, named by its path as the test file writes it. Values as compact JSON. */
@@ -79,15 +79,18 @@ const expectedStatusWords: Record<TestStatus, string> = {
   failed: "to fail",
 };
 
-/** The step tells the user where to look; why it failed stays in --verbose and --json. */
-function outcomeInWords(outcome: RunOutcome): string {
+/**
+ * The step, in bold as in {@link testMessages.endedElsewhere}, tells the user
+ * where to look; why it failed stays in --verbose and --json.
+ */
+function outcomeInWords(outcome: RunOutcome): Phrase {
   switch (outcome.status) {
     case "completed":
-      return "it finished";
+      return phrase`it finished`;
     case "waiting":
-      return `it's waiting for an answer in the step ${outcome.step}`;
+      return phrase`it's waiting for an answer in the step ${bold(outcome.step)}`;
     case "failed":
-      return `it failed in the step ${outcome.step}`;
+      return phrase`it failed in the step ${bold(outcome.step)}`;
   }
 }
 
