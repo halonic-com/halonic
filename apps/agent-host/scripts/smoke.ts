@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { executableName } from "../src/build-sea.ts";
+import { executableName } from "../src/build/build-sea.ts";
 
 /**
  * Runs the built executable and checks what it prints, then reports its size.

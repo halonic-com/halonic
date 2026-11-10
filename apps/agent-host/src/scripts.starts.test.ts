@@ -18,6 +18,11 @@ vi.mock("node:fs", () => ({
   readFileSync: (path: string) =>
     path.endsWith("package.json") ? '{ "version": "1.2.3" }' : "const x: number = 1;\n",
 }));
+// Collecting the payload reads the repo; this test is only about what starts.
+vi.mock("./build/payload.ts", () => ({
+  collectPayload: () => ({ files: [], packages: {} }),
+  payloadManifest: () => ({ digest: "0", packages: {}, files: [] }),
+}));
 
 const packageDirectory = join(import.meta.dirname, "..");
 const dist = join(packageDirectory, "dist");

@@ -1,4 +1,5 @@
 import { stripTypeScriptTypes } from "node:module";
+import type { Payload } from "./payload.ts";
 
 /**
  * Builds the agent host as one executable with Node's own single-executable
@@ -16,20 +17,29 @@ export function executableName(platform: NodeJS.Platform): string {
 
 /**
  * Turns the TypeScript entry point into the plain JavaScript Node embeds, and
- * puts the version in front of it. Node removes the types itself.
+ * puts each constant in front of it as `const NAME = <JSON>;`, such as the
+ * version. Node removes the types itself.
  */
-export function bundleEntry(source: string, version: string): string {
-  return `const HALONIC_AGENT_HOST_VERSION = ${JSON.stringify(version)};\n${stripTypeScriptTypes(source)}`;
+export function bundleEntry(source: string, constants: Readonly<Record<string, unknown>>): string {
+  const declarations = Object.entries(constants).map(
+    ([name, value]) => `const ${name} = ${JSON.stringify(value)};\n`,
+  );
+  return `${declarations.join("")}${stripTypeScriptTypes(source)}`;
 }
 
-/** The settings file `node --build-sea` reads. */
-export function seaConfig(bundlePath: string, outputPath: string): string {
+/**
+ * The settings file `node --build-sea` reads. Each payload file becomes an
+ * asset whose key is its payload path.
+ */
+export function seaConfig(bundlePath: string, outputPath: string, payload: Payload): string {
+  const assets = Object.fromEntries(payload.files.map(({ path, source }) => [path, source]));
   return `${JSON.stringify(
     {
       main: bundlePath,
       mainFormat: "module",
       output: outputPath,
       disableExperimentalSEAWarning: true,
+      assets,
     },
     null,
     2,
