@@ -102,6 +102,18 @@ verifies("cli.commands.init.create-workspace", () => {
       expect(readdirSync(join(folder, "acme"))).toEqual(["notes.txt"]);
     });
 
+    it("says this folder, not ., when the current folder has files in it", async () => {
+      writeFileSync(join(folder, "notes.txt"), "Mine.\n");
+
+      const { code, io } = await initIn(folder);
+
+      expect(code).toBe(exitCode.conflict);
+      expect(io.stderr[0]).toBe(
+        "✕ Couldn't create the workspace in this folder: the folder isn't empty.",
+      );
+      expect(readdirSync(folder)).toEqual(["notes.txt"]);
+    });
+
     it("refuses more than one folder name", async () => {
       const { code, io } = await initIn(folder, "acme", "demo");
 

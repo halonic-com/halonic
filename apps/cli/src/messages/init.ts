@@ -19,6 +19,8 @@ export const initMessages = defineMessages("init", {
   summary: () => phrase`Create a workspace, or a copy of the Acme example`,
   /** What `init` was doing, for "✕ Couldn't create the workspace in ./acme: …". */
   action: (folder: string) => phrase`create the workspace in ${folder}`,
+  /** `init` with no folder, in the folder the user is in, where a path would only be ".". */
+  actionHere: () => phrase`create the workspace in this folder`,
 
   created: (name: string, folder: string) =>
     phrase`Created the workspace ${name} in ${bold(folder)}.`,

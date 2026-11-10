@@ -30,7 +30,12 @@ export const initCommand: CliCommand = {
   name: "init",
   usage: "[folder]",
   summary: initMessages.summary(),
-  action: (input, context) => initMessages.action(initFolder(input, context.cwd).shown),
+  action: (input, context) => {
+    const folder = initFolder(input, context.cwd);
+    return folder.root === resolve(context.cwd)
+      ? initMessages.actionHere()
+      : initMessages.action(printable(folder.shown));
+  },
   options: {},
   async run(input, context) {
     if (input.positionals.length > 1) {
