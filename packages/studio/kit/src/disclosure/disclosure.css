@@ -5,7 +5,8 @@
  * theme.css imports it.
  *
  * In forced colours a browser may paint a summary in the link colour. The row isn't a link, so
- * it keeps the text colour, and the chevron inherits it.
+ * it keeps the text colour, and the chevron inherits it. Tailwind writes this utility before
+ * `text-fg`, which the summary also has, so the selector names the class twice to win over it.
  */
 @utility summary-plain {
   list-style: none;
@@ -15,6 +16,8 @@
   }
 
   @media (forced-colors: active) {
-    color: CanvasText;
+    &.summary-plain {
+      color: CanvasText;
+    }
   }
 }

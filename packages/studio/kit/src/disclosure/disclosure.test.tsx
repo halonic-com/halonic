@@ -119,8 +119,12 @@ verifies("kit.disclosure", () => {
   });
 
   it("keeps the row in the text colour in forced colours, not the link colour", async () => {
-    const css = await buildCss(["summary-plain"]);
-    expect(css).toMatch(/@media \(forced-colors: active\)\s*\{\s*color:\s*CanvasText;/);
+    const css = await buildCss(["summary-plain", "text-fg"]);
+    // Tailwind writes `.summary-plain` before `.text-fg`, so the summary's `text-fg` would win on order
+    // alone. Naming the class twice (`.summary-plain.summary-plain`) makes the rule weigh more.
+    expect(css).toMatch(
+      /@media \(forced-colors: active\)\s*\{\s*&\.summary-plain\s*\{\s*color:\s*CanvasText;/,
+    );
   });
 
   it("treats an empty label as none", () => {
