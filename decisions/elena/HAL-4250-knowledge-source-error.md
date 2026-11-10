@@ -4,6 +4,7 @@
   [HAL-4250](/HAL/issues/HAL-4250), including the update of `engine.agent-knowledge`; the
   maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oJbyoKpXl9Fp8/8DlU/LCDyR8y2Ni1dc4XKyvZy7g2qa8TAwDgXgDz27M6dUsD5e3DSABxXH8tcvc0lYFBJCAg==
 - Task: HAL-4250
 
 ## What changes
