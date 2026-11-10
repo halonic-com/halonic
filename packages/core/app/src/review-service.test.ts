@@ -22,7 +22,11 @@ const k1 = { chatId: "c1", cardId: "k1" };
 
 function setUp(files: Record<string, string> = { [clerk]: fast }) {
   const store = new TestDefinitionStore(files, digest);
-  return { store, review: new ReviewService({ store, digest }), records: new ReviewRecords(store) };
+  return {
+    store,
+    review: new ReviewService({ store, digest }),
+    records: new ReviewRecords(store, digest),
+  };
 }
 
 const digestOf = (text: string) => contentDigest(text, digest);
@@ -236,6 +240,42 @@ verifies("app.review-accept-reject-all", () => {
       "b.yaml",
       "c.yaml",
     ]);
-    expect(store.files.has(reviewRecordPath("c.yaml"))).toBe(true);
+    expect(store.files.has(await reviewRecordPath("c.yaml", digest))).toBe(true);
+  });
+});
+
+verifies("app.review-accept-reject-file", () => {
+  it("tells listeners which files' records changed, and only when one did", async () => {
+    const { review } = setUp();
+    const heard: (readonly string[])[] = [];
+    const stop = review.onDidChange((paths) => heard.push(paths));
+    await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
+    const { step } = await review.accept({ kind: "file", path: clerk });
+    await review.restore(step, "before");
+    await review.reject({ kind: "file", path: triage });
+    stop();
+    await review.accept({ kind: "file", path: clerk });
+    expect(heard).toEqual([[clerk], [clerk], [clerk]]);
+  });
+
+  it("reports a listener's error without failing the change", async () => {
+    const store = new TestDefinitionStore({ [clerk]: fast }, digest);
+    const errors: unknown[] = [];
+    const review = new ReviewService({
+      store,
+      digest,
+      onListenerError: (error) => errors.push(error),
+    });
+    review.onDidChange(() => {
+      throw new Error("a faulty panel");
+    });
+    const outcome = await review.propose({
+      path: clerk,
+      content: smart,
+      expected: await digestOf(fast),
+      card: k1,
+    });
+    expect(outcome.status).toBe("written");
+    expect(errors).toHaveLength(1);
   });
 });
