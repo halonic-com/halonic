@@ -48,13 +48,26 @@ verifies("app.review-on-open", () => {
 
   it("removes a record that can't be read, so that file's changes are ordinary ones", async () => {
     const { store, review } = await withChanges();
-    store.files.set(reviewRecordPath(clerk), '{"format":1,');
+    const recordFile = await reviewRecordPath(clerk, digest);
+    store.files.set(recordFile, '{"format":1,');
     expect(await review.check()).toEqual({
       held: [],
-      dropped: [{ path: clerk, reason: "it isn't valid JSON" }],
+      dropped: [{ path: null, reason: "it isn't valid JSON" }],
     });
     expect(store.files.get(clerk)).toBe("model: smart\n");
-    expect(store.files.has(reviewRecordPath(clerk))).toBe(false);
+    expect(store.files.has(recordFile)).toBe(false);
+  });
+
+  it("names the dropped file when a watch batch names it", async () => {
+    const { store, review } = await withChanges();
+    store.files.set(await reviewRecordPath(clerk, digest), "[]");
+    const heard: (readonly string[])[] = [];
+    review.onDidChange((paths) => heard.push(paths));
+    expect(await review.check([clerk])).toEqual({
+      held: [],
+      dropped: [{ path: clerk, reason: "it isn't a JSON object" }],
+    });
+    expect(heard).toEqual([[clerk]]);
   });
 
   it("checks only the files a watch batch names, and skips Halonic's own data", async () => {

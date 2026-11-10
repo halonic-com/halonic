@@ -3,8 +3,9 @@
 // rejects what it wrote. Accept changes only the record; Reject writes the
 // baseline back. Nothing here commits, pushes or makes anything live.
 
-import type { DefinitionStore, ExpectedContent } from "@halonicjs/ports";
-import { contentDigest, KeyedQueue, type Sha256 } from "@halonicjs/std";
+import type { DefinitionStore, Digest, ExpectedContent } from "@halonicjs/ports";
+import { contentDigest, KeyedQueue } from "@halonicjs/std";
+import { EventBus, type ListenerErrorHandler } from "./event-bus.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import { ReviewRecords } from "./review-records.ts";
 import type {
@@ -20,10 +21,24 @@ import type {
 
 /** What {@link ReviewService} needs from the host. */
 export interface ReviewServiceOptions {
-  /** The workspace's files. The records are kept in it too, under `.halonic/review/`. */
+  /**
+   * The workspace's store underneath its `ReviewingDefinitionStore`: the
+   * records are kept in it under `.halonic/review/`, and the service's own
+   * writes don't go through the write hook.
+   */
   readonly store: DefinitionStore;
-  /** Hashes file text for the write-if-unchanged check. */
-  readonly digest: Sha256;
+  /** Hashes file text for the write-if-unchanged check, and names the records. */
+  readonly digest: Digest;
+  /**
+   * Receives the error of an {@link ReviewService.onDidChange} listener
+   * that threw, so the change itself still succeeds. Without it, the call
+   * that changed the records throws that error, which suits tests.
+   */
+  readonly onListenerError?: ListenerErrorHandler;
+}
+
+interface ReviewEvents {
+  changed: { readonly paths: readonly string[] };
 }
 
 type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
@@ -46,14 +61,27 @@ type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
  */
 export class ReviewService {
   private readonly store: DefinitionStore;
-  private readonly digest: Sha256;
+  private readonly digest: Digest;
   private readonly records: ReviewRecords;
   private readonly queue = new KeyedQueue();
+  private readonly events: EventBus<ReviewEvents>;
 
   constructor(options: ReviewServiceOptions) {
     this.store = options.store;
     this.digest = options.digest;
-    this.records = new ReviewRecords(options.store);
+    this.records = new ReviewRecords(options.store, options.digest);
+    this.events = new EventBus<ReviewEvents>(options.onListenerError);
+  }
+
+  /**
+   * Calls `listener` with the files whose record changed, after every write,
+   * Accept, Reject, restore and check that changed one, so the item bar, the
+   * Changes rows and the chat cards update without asking again.
+   *
+   * @returns a function that removes the listener
+   */
+  onDidChange(listener: (paths: readonly string[]) => void): () => void {
+    return this.events.on("changed", ({ paths }) => listener(paths));
   }
 
   /**
@@ -89,6 +117,7 @@ export class ReviewService {
       });
       const replaced = record !== null && !sameCard(record.card, write.card) ? record.card : null;
       const file = { before, after: write.content };
+      this.changed([write.path]);
       return {
         status: "written",
         step: { files: [{ path: write.path, record: { before: record, after }, file }] },
@@ -154,6 +183,7 @@ export class ReviewService {
         held.push(entry.path);
       }
     }
+    this.changed(done.map((file) => file.path));
     return { step: { files: done }, held };
   }
 
@@ -187,6 +217,7 @@ export class ReviewService {
         held.push(record.path);
       }
     }
+    this.changed(dropped.flatMap(({ path }) => (path === null ? [] : [path])));
     return { held, dropped };
   }
 
@@ -205,6 +236,7 @@ export class ReviewService {
         done.push(result);
       }
     }
+    this.changed(done.map((file) => file.path));
     return { step: { files: done }, held };
   }
 
@@ -220,6 +252,12 @@ export class ReviewService {
           : record.card.chatId === target.chatId,
       )
       .map((record) => record.path);
+  }
+
+  private changed(paths: readonly string[]): void {
+    if (paths.length > 0) {
+      this.events.emit("changed", { paths });
+    }
   }
 
   /** Saves a record, or removes it when the baseline is the file again: then nothing is left to review. */
