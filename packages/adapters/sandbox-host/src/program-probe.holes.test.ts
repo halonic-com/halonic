@@ -43,14 +43,16 @@ async function launchWithHangingProbe(
   how: string,
   ownHandlerLog?: string,
 ): Promise<{ launcher: ChildProcess; pid: number; exited: Promise<unknown> }> {
-  const pidFile = join(dir, `launcher-${how}.pid`);
-  await script(`hang-${how}`, `echo $$ > ${pidFile}; sleep 30`);
+  // One name per launch: a pid file left by an earlier launch would be read as this one's.
+  const name = `${how}${ownHandlerLog ? "-own-handler" : ""}`;
+  const pidFile = join(dir, `launcher-${name}.pid`);
+  await script(`hang-${name}`, `echo $$ > ${pidFile}; sleep 30`);
   const probeUrl = new URL("./program-probe.ts", import.meta.url).href;
   const ending =
     how === "exit" ? "setTimeout(() => process.exit(0), 300);" : "setInterval(() => {}, 1000);";
   const code = `
     import { createProgramProbe } from ${JSON.stringify(probeUrl)};
-    createProgramProbe({ env: { PATH: ${JSON.stringify(`${dir}:/usr/bin:/bin`)} } }).ask(${JSON.stringify(`hang-${how}`)}, []);
+    createProgramProbe({ env: { PATH: ${JSON.stringify(`${dir}:/usr/bin:/bin`)} } }).ask(${JSON.stringify(`hang-${name}`)}, []);
     ${
       ownHandlerLog
         ? `import { appendFileSync } from "node:fs";
