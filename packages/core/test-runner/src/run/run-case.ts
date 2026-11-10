@@ -90,19 +90,38 @@ export async function runCase(toRun: CaseToRun, deps: TestDeps): Promise<CaseRun
       }
     }
   } catch (error) {
-    stopped.push({
-      kind: "error",
-      message: error instanceof Error ? error.message : String(error),
-    });
-  } finally {
-    await executor.close();
+    stopped.push(engineError(error));
   }
-  return {
-    runId,
-    runs: runId === null ? [] : await runsFrom(stores.runs, runId),
-    stopped,
-    script: [...tools.failures(), ...unusedReplies(model)],
-  };
+  const runs = await closeAndRead(executor, stores.runs, runId, stopped);
+  return { runId, runs, stopped, script: [...tools.failures(), ...unusedReplies(model)] };
+}
+
+/**
+ * Closes the case's engine and reads its runs back. A late store or close
+ * error fails this case too, into `stopped`, never the cases after it.
+ */
+async function closeAndRead(
+  executor: LocalExecutor,
+  store: RunStore,
+  runId: string | null,
+  stopped: TestFailure[],
+): Promise<TestRun[]> {
+  try {
+    await executor.close();
+  } catch (error) {
+    stopped.push(engineError(error));
+  }
+  try {
+    return runId === null ? [] : await runsFrom(store, runId);
+  } catch (error) {
+    stopped.push(engineError(error));
+    return [];
+  }
+}
+
+/** An engine error as a failure of the case. */
+function engineError(error: unknown): TestFailure {
+  return { kind: "error", message: error instanceof Error ? error.message : String(error) };
 }
 
 type TestEvent = WorkflowTestCase["events"][number];
@@ -122,8 +141,7 @@ interface Engine {
  */
 async function deliver(event: TestEvent, engine: Engine): Promise<TestFailure | undefined> {
   if (typeof event === "object" && "advance" in event) {
-    engine.clock.advance(parseDuration(event.advance));
-    await settle(engine.scheduler);
+    await advance(engine, parseDuration(event.advance));
     return undefined;
   }
   const [name, payload] =
@@ -139,6 +157,25 @@ async function deliver(event: TestEvent, engine: Engine): Promise<TestFailure | 
   }
   await settle(engine.scheduler);
   return undefined;
+}
+
+/**
+ * Moves the test clock on by `ms`, stopping at each timer due on the way, so
+ * every timer fires at its own time and one it sets counts from then, as in
+ * real time.
+ */
+async function advance(engine: Engine, ms: number): Promise<void> {
+  const target = engine.clock.now().getTime() + ms;
+  for (
+    let next = engine.scheduler.nextAt();
+    next !== undefined && next <= target;
+    next = engine.scheduler.nextAt()
+  ) {
+    engine.clock.advanceTo(next);
+    await settle(engine.scheduler);
+  }
+  engine.clock.advanceTo(target);
+  await settle(engine.scheduler);
 }
 
 /** Delivers every timer due now. A run that keeps setting due timers is an error, not a hang. */

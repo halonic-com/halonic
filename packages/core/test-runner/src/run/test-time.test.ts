@@ -13,6 +13,15 @@ verifies("test-runner.run-tests", () => {
 
       expect(clock.now().toISOString()).toBe("2026-11-10T09:01:00.000Z");
     });
+
+    it("moves on to a later time, and never back", () => {
+      const clock = new TestClock(start);
+
+      clock.advanceTo(Date.parse("2026-11-11T09:00:00.000Z"));
+      clock.advanceTo(start.getTime());
+
+      expect(clock.now().toISOString()).toBe("2026-11-11T09:00:00.000Z");
+    });
   });
 
   describe("TestScheduler", () => {
@@ -35,6 +44,16 @@ verifies("test-runner.run-tests", () => {
       clock.advance(5 * 60_000);
       await scheduler.runDue();
       expect(delivered).toEqual(["now", "later"]);
+    });
+
+    it("tells when the earliest pending timer is due, due or not", async () => {
+      const scheduler = new TestScheduler(new TestClock(start));
+      expect(scheduler.nextAt()).toBeUndefined();
+
+      await scheduler.schedule("run", "later", "2026-11-12T09:00:00.000Z");
+      await scheduler.schedule("run", "sooner", "2026-11-11T09:00:00.000Z");
+
+      expect(scheduler.nextAt()).toBe(Date.parse("2026-11-11T09:00:00.000Z"));
     });
 
     it("delivers the due timers a delivery sets, and gives up on one that never stops", async () => {

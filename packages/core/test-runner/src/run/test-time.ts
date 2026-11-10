@@ -18,6 +18,11 @@ export class TestClock implements Clock {
   advance(ms: number): void {
     this.#now += ms;
   }
+
+  /** Moves the clock on to `time`; a time already past leaves it where it is. */
+  advanceTo(time: number): void {
+    this.#now = Math.max(this.#now, time);
+  }
 }
 
 /**
@@ -64,12 +69,22 @@ export class TestScheduler implements Scheduler {
     return this.#nextDue() === undefined;
   }
 
+  /** When the earliest pending timer is due, or `undefined` when none is pending. */
+  nextAt(): number | undefined {
+    const next = this.#earliest();
+    return next === undefined ? undefined : Date.parse(next.at);
+  }
+
   #nextDue(): ScheduledTimer | undefined {
-    const now = this.#clock.now().getTime();
+    const next = this.#earliest();
+    if (next === undefined || Date.parse(next.at) > this.#clock.now().getTime()) return undefined;
+    return next;
+  }
+
+  #earliest(): ScheduledTimer | undefined {
     let next: ScheduledTimer | undefined;
     for (const timer of this.#timers.values()) {
-      const at = Date.parse(timer.at);
-      if (at <= now && (next === undefined || at < Date.parse(next.at))) next = timer;
+      if (next === undefined || Date.parse(timer.at) < Date.parse(next.at)) next = timer;
     }
     return next;
   }

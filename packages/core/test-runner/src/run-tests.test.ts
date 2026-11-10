@@ -67,6 +67,40 @@ verifies("test-runner.run-tests", () => {
       expect(suite.tests[2]?.runs[0]?.summary.startedAt).toBe("2026-11-10T09:00:00.000Z");
     });
 
+    it("fires each timer at its own time within one advance", async () => {
+      const input = await testInput(
+        workflow(
+          "reminder",
+          `id: reminder
+name: Reminder
+initial: a
+states:
+  a: { type: wait, on: [{ to: b, after: 1d }] }
+  b: { type: wait, on: [{ to: c, after: 1d }] }
+  c: { type: final }
+`,
+        ),
+        testFile(
+          "reminder",
+          `workflow: reminder
+cases:
+  - name: both timers fire in one advance
+    events: [{ advance: 2d }]
+    expect: { final: c }
+`,
+        ),
+      );
+
+      const [test] = (await runWorkspaceTests(input, fakeDeps())).tests;
+
+      expect(test?.failures).toEqual([]);
+      const fired = (test?.runs[0]?.events ?? []).filter((event) => event.type === "timer.fired");
+      expect(fired.map((event) => event.at)).toEqual([
+        "2026-11-11T09:00:00.000Z",
+        "2026-11-12T09:00:00.000Z",
+      ]);
+    });
+
     it("runs only the cases the filter keeps", async () => {
       const input = await testInput(workflow("approval", approvalWorkflow), approvalTests);
 
@@ -256,6 +290,34 @@ cases:
         runs: [],
         failures: [{ kind: "error", message: "The disk is full." }],
       });
+    });
+
+    it("fails a case whose runs can't be read back, and runs the cases after it", async () => {
+      const input = await testInput(workflow("approval", approvalWorkflow), approvalTests);
+      // The engine reads a run's log from a known position; only reading it
+      // back whole, after the case, fails.
+      class UnreadableRunStore extends FakeRunStore {
+        override async events(runId: string, afterSeq?: number): Promise<RunEvent[]> {
+          if (afterSeq === undefined) throw new Error("The log is unreadable.");
+          return super.events(runId, afterSeq);
+        }
+      }
+
+      const suite = await runWorkspaceTests(
+        input,
+        fakeDeps({
+          stores: () => ({ runs: new UnreadableRunStore(), blobs: new FakeBlobStore() }),
+        }),
+      );
+
+      expect(suite.tests).toHaveLength(3);
+      for (const test of suite.tests) {
+        expect(test).toMatchObject({
+          runId: "test_1",
+          runs: [],
+          failures: [{ kind: "error", message: "The log is unreadable." }],
+        });
+      }
     });
 
     it("gives every agent the case's scripted model, made from its mocks", async () => {

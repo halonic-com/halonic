@@ -43,6 +43,7 @@ export class ScriptedTools {
 
   #client(id: string, connector: Connector): ConnectorClient {
     const { allow = [], approve } = connector.tools;
+    // Connector ids hold no dots, so `<id>.` never matches another connector's keys.
     const scripted = [...this.#queues.keys()]
       .filter((key) => key.startsWith(`${id}.`))
       .map((key) => key.slice(id.length + 1));
