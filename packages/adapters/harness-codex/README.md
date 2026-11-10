@@ -10,12 +10,21 @@ secrets and approvals stay in Halonic.
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-harness-codex`
 
-So far it exports `detectCodex`, `codexEnvironment` (with its `CodexFolders`
+`codexHarness({ probe })` is the `Harness` the host offers for
+`harness: codex`. A run writes `config.toml` to the agent's settings folder,
+starts `codex app-server` inside the run's sandbox session with the bridge's
+address as `-c` settings, starts an ephemeral thread in the working folder
+(with the agent's model and instructions, when its file sets them) and a
+turn with the prompt, and turns what Codex sends into run events. Once the
+turn completes, it stops Codex and ends with the agent's answer. `send`
+passes a person's answer into the running turn (`turn/steer`). `cancel`
+stops Codex and everything it started.
+
+It also exports `detectCodex`, `codexEnvironment` (with its `CodexFolders`
 type) and the constants around them (`codexProgram`, `codexRunTokenVariable`,
 `supportedVersions`, `oldestSupportedVersion`). Inside the package, and not
-exported, are the client that talks to `codex app-server` and the reader that
-turns its notifications into run events. Starting a run (`start`, `send`, `cancel`)
-follows (HAL-194 build plan, D3).
+exported, are the client that talks to `codex app-server`, the reader that
+turns its notifications into run events and the `config.toml` text.
 
 ## Talking to `codex app-server`
 
@@ -25,7 +34,9 @@ input and output, one JSON object per line and without the `jsonrpc` field.
 to requests by id, hands Codex's notifications and its own requests (such as
 approvals) on in order, and answers those. A line that isn't JSON-RPC, or is
 longer than 16 MiB, stops the reading with an error that never quotes it, and no error holds the
-bridge token. The protocol was checked with
+bridge token. The run answers a request it doesn't handle, such as
+`item/tool/requestUserInput`, with an error, so Codex never waits. The
+protocol was checked with
 `codex app-server generate-json-schema` and a recorded session of Codex
 0.166.0.
 
@@ -55,12 +66,17 @@ event.
 
 ```ts
 import { addHarnessEnvironment } from "@halonicjs/ports";
-import { codexEnvironment, detectCodex } from "@halonicjs/adapter-harness-codex";
+import { codexHarness } from "@halonicjs/adapter-harness-codex";
 
-const found = await detectCodex(probe);
-if (found.status === "ready") {
-  const env = addHarnessEnvironment(profile.env, codexEnvironment(bridge, profile));
+const codex = codexHarness({ probe });
+if ((await codex.detect()).status === "ready") {
+  const env = addHarnessEnvironment(profile.env, codex.environment?.(bridge, profile) ?? {});
   const session = await sandbox.open({ ...profile, env });
+  const run = codex.start(task, session, bridge);
+  for await (const event of run) {
+    if (event.type === "approval.requested") await run.send(await askPerson(event));
+    else record(event);
+  }
 }
 ```
 
