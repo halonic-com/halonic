@@ -1353,6 +1353,43 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/core/test-runner:
+    dependencies:
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../ports
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../workspace
+      '@halonicjs/yaml':
+        specifier: workspace:*
+        version: link:../yaml
+    devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/core/workflow:
     dependencies:
       '@halonicjs/format':

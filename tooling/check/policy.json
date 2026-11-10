@@ -13,7 +13,8 @@
     "@halonicjs/workspace",
     "@halonicjs/app",
     "@halonicjs/engine",
-    "@halonicjs/google-setup"
+    "@halonicjs/google-setup",
+    "@halonicjs/test-runner"
   ],
   "apiTypes": [
     "@halonicjs/events",

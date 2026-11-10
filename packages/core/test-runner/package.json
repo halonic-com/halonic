@@ -1,0 +1,37 @@
+{
+  "name": "@halonicjs/test-runner",
+  "private": true,
+  "type": "module",
+  "description": "Runs a workspace's workflow tests in an engine it is given, and returns each test's result as data.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/workspace": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "elena",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
