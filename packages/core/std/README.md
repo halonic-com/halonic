@@ -1,6 +1,6 @@
 # @halonicjs/std
 
-In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter, error kinds, a per-key work queue and semver versions.
+In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter, error kinds, a per-key work queue, a stop signal for core code and semver versions.
 
 - **Layer:** core
 - **Owner:** maya
@@ -35,6 +35,9 @@ merges two texts that started from the same base, as git's merge does, and marks
 where both changed the same or touching lines (with `touchingConflicts: false`, only the same
 lines); `mergedText` settles each conflict by taking one side. A changed middle too large to
 compare line by line (`MAX_COMPARED_LINE_PAIRS`) is one change. They serve Compare's "Combine both" and the assistant's changes to review.
+`StopSource` gives out a `StopSignal` and tells it to stop, with a reason:
+what an `AbortController` does, for core code, which sees the Web types but
+can't create their values.
 `readVersion`, `compareVersions` and `isAtLeast` read and order semver
 versions, pre-releases included, such as the version a harness's program
 prints (`0.169.0-alpha.6` comes before `0.169.0`).
