@@ -1,17 +1,20 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RunEvent } from "@halonicjs/events";
-import { agentPlacement, trustRecord } from "@halonicjs/testing-contracts";
+import type { RecordChange } from "@halonicjs/ports";
+import { agentPlacement, connectionSettings, trustRecord } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { FileAgentPlacementStore } from "./agent-placement-store.ts";
+import { FileConnectionSettingsStore } from "./connection-settings-store.ts";
+import { FileRecordStore } from "./record-store.ts";
 import { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 import { FileTrustStore } from "./trust-store.ts";
 
 /**
- * The trust store, the agent placement store and the run store's snapshot
- * on Windows, with a program that holds the target open, as
+ * The trust store, the agent placement store, the connection settings
+ * store, the record store's compact and the run store's snapshot on Windows, with a program that holds the target open, as
  * `definition-store-rename-retry.test.ts` does for the folder definition
  * store: the next `busyRenames` renames fail with `EBUSY` as Windows gives
  * it. Waits between tries are counted, never really waited.
@@ -65,6 +68,11 @@ async function onlyFile(root: string): Promise<string> {
 
 function entered(runId: string, seq: number): RunEvent {
   return { runId, seq, at: "2026-01-01T00:00:02.000Z", type: "state.entered", state: `s${seq}` };
+}
+
+function lead(id: string, op: RecordChange["op"], name: string, second: number): RecordChange {
+  const at = new Date(Date.UTC(2026, 0, 1, 0, 0, second)).toISOString();
+  return { at, collection: "leads", id, op, values: { name } };
 }
 
 /** A run store in a new folder that holds run `r1` with one event and the snapshot `{ step: 1 }`. */
@@ -130,6 +138,76 @@ verifies("fs-node.rename-retry-on-windows", () => {
       ).rejects.toMatchObject({ code: "EBUSY" });
       expect(hooks.waits).toBe(5);
       expect(await store.get(key)).toEqual(agentPlacement(key.location, key.agent, "sha256:aa"));
+      await onlyFile(root);
+    });
+  });
+
+  describe("connection settings store: settings another program holds on Windows", () => {
+    const location = "/workspaces/acme";
+
+    it("saves once the other program lets go of the settings", async () => {
+      const root = await tempFolder();
+      const store = new FileConnectionSettingsStore(root);
+      await store.save(connectionSettings(location, "mail", false));
+      hooks.busyRenames = 2;
+      await store.save(connectionSettings(location, "mail", true));
+      expect(hooks.waits).toBe(2);
+      expect(await store.get({ location, connector: "mail" })).toEqual(
+        connectionSettings(location, "mail", true),
+      );
+      await onlyFile(root);
+    });
+
+    it("fails, keeps the old settings and removes its temporary file when they stay held", async () => {
+      const root = await tempFolder();
+      const store = new FileConnectionSettingsStore(root);
+      await store.save(connectionSettings(location, "mail", false));
+      hooks.busyRenames = 100;
+      await expect(store.save(connectionSettings(location, "mail", true))).rejects.toMatchObject({
+        code: "EBUSY",
+      });
+      expect(hooks.waits).toBe(5);
+      expect(await store.get({ location, connector: "mail" })).toEqual(
+        connectionSettings(location, "mail", false),
+      );
+      await onlyFile(root);
+    });
+  });
+
+  describe("record store: a log another program holds on Windows while it is compacted", () => {
+    // The append starts while the compact runs, so it waits for the compact's
+    // write lock, retries included, and lands on the log the compact leaves.
+    it("compacts once the other program lets go, and an append waiting on it lands after", async () => {
+      const root = await tempFolder();
+      const store = new FileRecordStore(root);
+      await store.append([lead("1", "add", "Ada", 1), lead("1", "update", "Ada L.", 2)]);
+      hooks.busyRenames = 2;
+      await Promise.all([store.compact("leads"), store.append([lead("2", "add", "Grace", 3)])]);
+      expect(hooks.waits).toBe(2);
+      expect(await store.changes("leads")).toEqual([
+        lead("1", "seed", "Ada L.", 2),
+        lead("2", "add", "Grace", 3),
+      ]);
+      await onlyFile(root);
+    });
+
+    it("fails, keeps the old log and removes its temporary file when it stays held, and the waiting append lands on the old log", async () => {
+      const root = await tempFolder();
+      const store = new FileRecordStore(root);
+      await store.append([lead("1", "add", "Ada", 1), lead("1", "update", "Ada L.", 2)]);
+      hooks.busyRenames = 100;
+      const [compacted, appended] = await Promise.allSettled([
+        store.compact("leads"),
+        store.append([lead("2", "add", "Grace", 3)]),
+      ]);
+      expect(compacted).toMatchObject({ status: "rejected", reason: { code: "EBUSY" } });
+      expect(appended).toEqual({ status: "fulfilled", value: undefined });
+      expect(hooks.waits).toBe(5);
+      expect(await store.changes("leads")).toEqual([
+        lead("1", "add", "Ada", 1),
+        lead("1", "update", "Ada L.", 2),
+        lead("2", "add", "Grace", 3),
+      ]);
       await onlyFile(root);
     });
   });

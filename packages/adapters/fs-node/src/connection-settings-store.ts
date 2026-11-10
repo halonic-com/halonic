@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { rename, rm, writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type {
   ConnectionKey,
@@ -8,6 +8,7 @@ import type {
 } from "@halonicjs/ports";
 import { isMissing } from "./links.ts";
 import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
+import { renameOver } from "./rename-over.ts";
 
 /**
  * Each connector's "allow sending" setting as a file in one folder of the
@@ -18,14 +19,15 @@ import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
  * and a long path still fits in a name.
  *
  * A save writes a temporary file and renames it over the settings, so a
- * reader sees the old settings or the new ones, never half of them. The
- * folder must never be inside a workspace: an agent that edits the
- * workspace must not be able to switch sending on. For the same reason
- * settings that are a link, such as one to a file in a workspace, can't be
- * read, and neither can settings copied from another connector, so one
- * connector can't borrow another's "allow sending". Only the files are
- * checked, not the folder: a folder that is itself a link is followed,
- * which is safe only because the folder lives in the profile.
+ * reader sees the old settings or the new ones, never half of them. On
+ * Windows a rename another program briefly blocks is tried again (see
+ * `renameOver`). The folder must never be inside a workspace: an agent
+ * that edits the workspace must not be able to switch sending on. For the
+ * same reason settings that are a link, such as one to a file in a
+ * workspace, can't be read, and neither can settings copied from another
+ * connector, so one connector can't borrow another's "allow sending". Only
+ * the files are checked, not the folder: a folder that is itself a link is
+ * followed, which is safe only because the folder lives in the profile.
  */
 export class FileConnectionSettingsStore implements ConnectionSettingsStore {
   readonly #root: string;
@@ -58,7 +60,7 @@ export class FileConnectionSettingsStore implements ConnectionSettingsStore {
     await makePrivateFolder(this.#root);
     try {
       await writeFile(temporary, text, { encoding: "utf8", mode: 0o600 });
-      await rename(temporary, file);
+      await renameOver(temporary, file);
     } catch (error) {
       await rm(temporary, { force: true });
       throw error;

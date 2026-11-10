@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
-import { open, rename, rm } from "node:fs/promises";
+import { open, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { compactedChanges, type RecordChange, type RecordStore } from "@halonicjs/ports";
 import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
 import { makePrivateFolder, openUnlinkedForAppend, readUnlinkedBytes } from "./private-files.ts";
 import { formatRecordLines, parseRecordLog } from "./record-log.ts";
+import { renameOver } from "./rename-over.ts";
 import { withRunLock } from "./run-lock.ts";
 
 const logSuffix = ".jsonl";
@@ -200,7 +201,10 @@ async function cutBackAll(before: readonly LogBefore[]): Promise<void> {
 
 /**
  * Replaces a log with `text` in one step: a new private file, flushed to
- * disk, renamed over the old one.
+ * disk, renamed over the old one. On Windows a rename another program
+ * briefly blocks is tried again (see `renameOver`); the compact still holds
+ * the write lock while it waits, so an append that waits on the compact
+ * lands on the new log, or on the old one when the rename fails.
  */
 async function replaceFile(file: string, text: string): Promise<void> {
   const temporary = `${file}.${randomUUID()}.tmp`;
@@ -212,7 +216,7 @@ async function replaceFile(file: string, text: string): Promise<void> {
     } finally {
       await handle.close();
     }
-    await rename(temporary, file);
+    await renameOver(temporary, file);
   } catch (error) {
     await rm(temporary, { force: true });
     throw error;
