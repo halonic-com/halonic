@@ -90,7 +90,7 @@ jobs:
           # still run everything. Requirement files stay "code": the guard
           # reads them. An empty or unreadable diff counts as code.
           docs_only='^(docs/|decisions/|\.changeset/.*\.md$|\.github/(ISSUE_TEMPLATE/|CODEOWNERS$|pull_request_template\.md$))|(^|/)(README|AGENTS|CHANGELOG)\.md$'
-          if [ "$EVENT" = "pull_request" ] && [ -n "$changed" ] && ! grep -qvE "$docs_only" <<< "$changed"; then
+          if [ "$EVENT" = "pull_request" ] && [ -n "$changed" ] && [ -z "$(grep -vE "$docs_only" <<< "$changed")" ]; then
             echo "code=false" | tee -a "$GITHUB_OUTPUT"
           else
             echo "code=true" | tee -a "$GITHUB_OUTPUT"
