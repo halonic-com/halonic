@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { chmod, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { TrustService } from "@halonicjs/app";
 import type { Digest } from "@halonicjs/ports";
@@ -155,6 +155,80 @@ verifies("fs-node.trust-store-files", () => {
 
       await expect(store.get("/workspaces/acme")).rejects.toThrow('"/workspaces/acme"');
       await expect(store.list()).rejects.toThrow("can't be read");
+    });
+  });
+
+  // A link could put a record in a file an agent may edit, such as one inside
+  // its workspace, so the agent could trust a workspace itself (HAL-2978).
+  describe.skipIf(process.platform === "win32")("a record that is a link", () => {
+    const acme = "/workspaces/acme";
+
+    /** A valid record for `acme` in a file outside the store's root, such as in a workspace. */
+    async function outsideRecord(): Promise<string> {
+      const outside = join(await tempFolder(), "trust.json");
+      await writeFile(outside, JSON.stringify(trustRecord(acme)), "utf8");
+      return outside;
+    }
+
+    /** A store whose record for `acme` is a link to `target`. */
+    async function linkedStore(target: string): Promise<{ root: string; store: FileTrustStore }> {
+      const root = join(await tempFolder(), "trust");
+      await mkdir(root, { recursive: true });
+      await symlink(target, fileFor(root, acme));
+      return { root, store: new FileTrustStore(root) };
+    }
+
+    it("refuses a link to a valid record outside the folder", async () => {
+      const { root, store } = await linkedStore(await outsideRecord());
+
+      await expect(store.get(acme)).rejects.toThrow(JSON.stringify(acme));
+      await expect(store.list()).rejects.toThrow(JSON.stringify(fileFor(root, acme)));
+    });
+
+    it("says the record is a link", async () => {
+      const { store } = await linkedStore(await outsideRecord());
+
+      await expect(store.get(acme)).rejects.toMatchObject({
+        cause: expect.objectContaining({ message: expect.stringContaining("is a link") }),
+      });
+    });
+
+    it("refuses a link to nothing rather than reading it as no record", async () => {
+      const { store } = await linkedStore(join(await tempFolder(), "gone.json"));
+
+      await expect(store.get(acme)).rejects.toThrow(JSON.stringify(acme));
+      await expect(store.list()).rejects.toThrow("can't be read");
+    });
+
+    it("refuses a link to another record in the folder", async () => {
+      const root = join(await tempFolder(), "trust");
+      const store = new FileTrustStore(root);
+      await store.grant(trustRecord("/workspaces/zeta"));
+      await symlink(fileFor(root, "/workspaces/zeta"), fileFor(root, acme));
+
+      await expect(store.get(acme)).rejects.toThrow(JSON.stringify(acme));
+      expect(await store.get("/workspaces/zeta")).toEqual(trustRecord("/workspaces/zeta"));
+    });
+
+    it("grants over a link without writing through it", async () => {
+      const outside = await outsideRecord();
+      const before = await readFile(outside, "utf8");
+      const { root, store } = await linkedStore(outside);
+
+      await store.grant(trustRecord(acme));
+      expect(await readFile(outside, "utf8")).toBe(before);
+      expect((await lstat(fileFor(root, acme))).isSymbolicLink()).toBe(false);
+      expect((await stat(fileFor(root, acme))).mode & 0o777).toBe(0o600);
+      expect(await store.list()).toEqual([trustRecord(acme)]);
+    });
+
+    it("revokes a link without touching what it points to", async () => {
+      const outside = await outsideRecord();
+      const { root, store } = await linkedStore(outside);
+
+      await store.revoke(acme);
+      expect(await readdir(root)).toEqual([]);
+      expect(JSON.parse(await readFile(outside, "utf8"))).toEqual(trustRecord(acme));
     });
   });
 
