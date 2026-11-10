@@ -34,7 +34,7 @@ verifies("harness-claude-code.command", () => {
           join(files.settingsFolder, "halonic-mcp.json"),
           "--strict-mcp-config",
           "--permission-prompt-tool",
-          "mcp__halonic__approve_permission",
+          "mcp__halonic-approvals__approve_permission",
           "--model",
           "claude-sonnet-5-5",
           "--append-system-prompt-file",

@@ -40,21 +40,28 @@ verifies("harness-claude-code.settings", () => {
 
       expect(await readJson("settings.json")).toEqual({
         sandbox: { enabled: false },
-        permissions: { deny: ["WebFetch", "WebSearch"] },
+        permissions: { allow: ["mcp__halonic"], deny: ["WebFetch", "WebSearch"] },
       });
     });
 
-    it("names the bridge's MCP server from the environment, with no token in any file", async () => {
+    it("names the bridge's MCP servers from the environment, with no token in any file", async () => {
       await writeClaudeCodeSettings(folder, diskSettingsFolder);
 
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: a variable Claude Code fills in, written literally
+      const headers = { "x-halonic-run-token": "${HALONIC_RUN_TOKEN}" };
       expect(await readJson(mcpSettingsFile)).toEqual({
         mcpServers: {
           halonic: {
             type: "http",
             // biome-ignore lint/suspicious/noTemplateCurlyInString: a variable Claude Code fills in, written literally
             url: "${ANTHROPIC_BASE_URL}/mcp",
+            headers,
+          },
+          "halonic-approvals": {
+            type: "http",
             // biome-ignore lint/suspicious/noTemplateCurlyInString: a variable Claude Code fills in, written literally
-            headers: { "x-halonic-run-token": "${HALONIC_RUN_TOKEN}" },
+            url: "${ANTHROPIC_BASE_URL}/mcp/permission-prompt",
+            headers,
           },
         },
       });

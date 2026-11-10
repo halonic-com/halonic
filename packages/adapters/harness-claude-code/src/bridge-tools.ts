@@ -5,7 +5,16 @@
  */
 export const bridgeServerName = "halonic";
 
-const bridgeToolPrefix = `mcp__${bridgeServerName}__`;
+/**
+ * The name Claude Code knows the bridge's permission prompt server by: a
+ * server of its own, at `/mcp/permission-prompt`, with the one tool
+ * `approve_permission`, so no other program finds that tool among Halonic's.
+ */
+export const permissionServerName = "halonic-approvals";
+
+const bridgeToolPrefixes = [bridgeServerName, permissionServerName].map(
+  (server) => `mcp__${server}__`,
+);
 
 /**
  * Whether Claude Code called this tool through the bridge. The bridge
@@ -16,5 +25,5 @@ const bridgeToolPrefix = `mcp__${bridgeServerName}__`;
  * isBridgeTool("Bash"); // false
  */
 export function isBridgeTool(name: string): boolean {
-  return name.startsWith(bridgeToolPrefix);
+  return bridgeToolPrefixes.some((prefix) => name.startsWith(prefix));
 }

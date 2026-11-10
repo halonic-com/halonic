@@ -210,7 +210,7 @@ verifies("harness-claude-code.stream-json", () => {
   describe("tool calls", () => {
     it("reports no call through the bridge, nor its result", () => {
       const lines = [
-        toolUse("toolu_ok", "mcp__halonic__approve_permission", { tool: "Bash" }),
+        toolUse("toolu_ok", "mcp__halonic-approvals__approve_permission", { tool: "Bash" }),
         toolResult("toolu_ok", "allow"),
       ];
       expect(readAll(lines).events).toEqual([]);

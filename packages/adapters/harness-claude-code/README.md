@@ -73,12 +73,17 @@ Halonic's data. Before a run, the harness writes two files there:
 
 - `settings.json` turns Claude Code's own sandbox off, because Halonic's
   sandbox is already around it, and denies `WebFetch` and `WebSearch`, in a
-  sandbox and on this computer alike (decision 7, HAL-2076).
-- `halonic-mcp.json` names the bridge's MCP server, `halonic`, at `/mcp` on
-  the bridge's address. Its address and token header are written as
-  `${ANTHROPIC_BASE_URL}` and `${HALONIC_RUN_TOKEN}`, which Claude Code fills
-  in from its environment, so the files never hold the run token and are the
-  same for every run. A file that already holds the same text is left alone.
+  sandbox and on this computer alike (decision 7, HAL-2076). It allows
+  Halonic's tools (`mcp__halonic`), because the bridge checks them and asks
+  a person itself; asking in Claude Code too would ask twice.
+- `halonic-mcp.json` names the bridge's two MCP servers on the bridge's
+  address: `halonic` at `/mcp`, with Halonic's tools, and `halonic-approvals`
+  at `/mcp/permission-prompt`, with `approve_permission` alone, so Codex,
+  which also uses `/mcp`, never sees that tool. Their address and token
+  header are written as `${ANTHROPIC_BASE_URL}` and `${HALONIC_RUN_TOKEN}`,
+  which Claude Code fills in from its environment, so the files never hold
+  the run token and are the same for every run. A file that already holds the
+  same text is left alone.
 
 ## Supported versions
 
