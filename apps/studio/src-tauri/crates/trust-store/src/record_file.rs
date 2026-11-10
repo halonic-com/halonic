@@ -1,8 +1,8 @@
 //! How one record is kept on disk, exactly as `FileTrustStore` in `fs-node`
 //! keeps it, so either side reads what the other wrote.
 
-use halonic_sha256::sha256;
 use serde_json::{Map, Value};
+use sha2::{Digest, Sha256};
 
 /// The length of a record file's name: 64 hex characters and `.json`.
 const RECORD_FILE_NAME_LENGTH: usize = 64 + ".json".len();
@@ -13,7 +13,11 @@ const RECORD_FILE_NAME_LENGTH: usize = 64 + ".json".len();
 /// keeps two locations apart.
 pub(crate) fn file_name(location: &str) -> String {
     let utf16le: Vec<u8> = location.encode_utf16().flat_map(u16::to_le_bytes).collect();
-    format!("{}.json", sha256(&utf16le).to_hex())
+    let hex: String = Sha256::digest(&utf16le)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    format!("{hex}.json")
 }
 
 /// Whether a name in the folder is a record file. Anything else, such as a

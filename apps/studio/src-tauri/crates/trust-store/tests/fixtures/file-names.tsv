@@ -1,0 +1,14 @@
+# Each location (as JSON) and the file name fs-node's FileTrustStore gives its record, made with Node:
+# createHash("sha256").update(location, "utf16le").digest("hex") + ".json". Rust must give the same names.
+"/workspaces/acme"	4c938081cf4d5d7859513353bd85c945bf61d4696ef270c592c659f873753989.json
+"/Workspaces/acme"	67474d4ca60131fa2e89bf3300ba744f3759168dd36547f43e2ea8a1d50e7473.json
+"/workspaces/acme/"	f2cfb6e4382eced5cb0392546ad1f5c85b62f403bc4d622013bd84bf31320fa0.json
+"/Workspaces/Café"	a47c4600542f1f0e56aedc0ccf0d69ab2aaca89accf3ea63a7d0cd172535da7e.json
+"/workspaces/café"	f7033f9355e31ef459e79d45bec2bb305a9a952ef2007c14405b324e6680db7d.json
+"/workspaces/café"	942a44d545117d8ac6330579a77d89e245594800bd7f4f63a08b7c37b119e058.json
+"/hubs/日本語"	be8021ddb6205261f0c1056a59dcb67e6820ce841738865e427d61d8258ce921.json
+"/hubs/emoji-😀"	33a0e1606b51677cec0646dee16b50e5008b310eb132435c929c308c1d4228f5.json
+"/a￿"	33ac1529975d090bfa9c838e3666bfa83d1fa30b332b7dcd636f489aaca2d654.json
+"/a𐀀"	80e5cf2caeea8c5501cdbb48b699e06af62aa16cda5da760bfc92cd1243175c4.json
+"/workspaces/with space"	302ae4c296c54ebff753607b384345e586965382b69976dba9cfc7c217aa8594.json
+"/workspaces/quote\"and\\slash"	5ae538f29f36bfac92cf8541cabb61f978429b1a7ce64c7f37db7dd201bd6bc0.json

@@ -6,7 +6,6 @@
 
 use std::path::{Path, PathBuf};
 
-use halonic_sha256::sha256;
 use halonic_trust_store::FileTrustStore;
 use serde_json::{Value, json};
 
@@ -40,11 +39,28 @@ impl Drop for Scratch {
     }
 }
 
-/// The file the store keeps the record for `location` in: the SHA-256 of
-/// its UTF-16 code units, worked out here on its own, as `fs-node` does.
+/// Every location in `tests/fixtures/file-names.tsv` with the file name
+/// `fs-node` gives its record, made with Node's `crypto`.
+pub fn node_file_names() -> Vec<(String, String)> {
+    let table = include_str!("../fixtures/file-names.tsv");
+    table
+        .lines()
+        .filter(|line| !line.starts_with('#') && !line.is_empty())
+        .map(|line| {
+            let (location, name) = line.split_once('\t').expect("a tab between the columns");
+            let location: String = serde_json::from_str(location).expect("a JSON string");
+            (location, name.to_owned())
+        })
+        .collect()
+}
+
+/// The file the store keeps the record for `location` in, as `fs-node`
+/// names it. Only locations in the fixture can be looked up.
 pub fn file_for(scratch: &Scratch, location: &str) -> PathBuf {
-    let utf16le: Vec<u8> = location.encode_utf16().flat_map(u16::to_le_bytes).collect();
-    let name = format!("{}.json", sha256(&utf16le).to_hex());
+    let (_, name) = node_file_names()
+        .into_iter()
+        .find(|(known, _)| known == location)
+        .expect("the location is in tests/fixtures/file-names.tsv");
     scratch.path().join("trust").join(name)
 }
 

@@ -1524,8 +1524,8 @@ dependencies = [
 name = "halonic-trust-store"
 version = "0.1.0"
 dependencies = [
- "halonic-sha256",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

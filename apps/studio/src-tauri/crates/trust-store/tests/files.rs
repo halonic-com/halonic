@@ -9,7 +9,7 @@ use std::path::Path;
 
 use halonic_trust_store::TrustError;
 use serde_json::Value;
-use support::{Scratch, file_for, grant, locations, record};
+use support::{Scratch, file_for, grant, locations, node_file_names, record};
 
 /// Records `FileTrustStore` in `fs-node` wrote, kept byte for byte.
 const WRITTEN_BY_FS_NODE: &str = concat!(
@@ -34,6 +34,21 @@ fn trust_files_name_each_file_by_the_hash_of_its_location_with_the_location_firs
     assert!(text.ends_with("\n}\n"));
     let written: Value = serde_json::from_str(&text).unwrap();
     assert_eq!(written, record("/Workspaces/Café", "hfp1:aa"));
+}
+
+#[test]
+fn trust_files_are_named_as_fs_node_names_them() {
+    let scratch = Scratch::new("names");
+    let store = scratch.store();
+    for (location, name) in node_file_names() {
+        grant(&store, &location, "hfp1:aa");
+        let file = scratch.path().join("trust").join(&name);
+        assert!(file.is_file(), "{location:?} should be in {name}");
+        assert_eq!(
+            store.get(&location).unwrap().unwrap()["location"],
+            location.as_str()
+        );
+    }
 }
 
 #[test]
