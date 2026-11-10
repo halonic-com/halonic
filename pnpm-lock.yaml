@@ -697,10 +697,19 @@ importers:
 
   packages/adapters/mcp:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../core/schema-kit
     devDependencies:
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../memory
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

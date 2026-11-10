@@ -1,11 +1,26 @@
 # @halonicjs/adapter-mcp
 
-Our own MCP client for programs on the person's computer. `src/protocol/` holds the MCP session:
-the `initialize` handshake, paged `tools/list` and `tools/call`, over any `McpTransport`.
-`src/stdio/` holds `StdioTransport`, MCP over a local program's standard input and output, with a
-timeout on every request, a size limit on every message, and a stop that closes the program's input,
-then asks it to end, then forces it. The connector that starts a trusted local program comes next
-(HAL-230).
+Our own MCP client for programs on the person's computer.
+
+- `src/protocol/` holds the MCP session: the `initialize` handshake, paged `tools/list` and
+  `tools/call`, over any `McpTransport`.
+- `src/stdio/` holds `McpStdioConnectorFactory`, the `ConnectorFactory` for `stdio` connectors. It
+  starts the program of a trusted workspace on the first call and talks MCP over its standard input
+  and output. Package runners (`npx`, `uvx` …) start through the pinned launcher, which comes next
+  (HAL-2544); until then they are refused.
+
+## How a program is started and stopped
+
+- **Trust first.** Without a trust grant nothing starts and no secret is read.
+- **Secrets** go into the program's environment only, never into its arguments.
+- **Limits** (`defaultStdioLimits`): every request, `initialize` included, has a 60-second timeout,
+  and a message may be at most 4 MiB. Breaking either ends the session and stops the program.
+  Standard error is drained and dropped.
+- **Stopping** closes the program's input, waits 2 seconds, sends SIGTERM to its process group,
+  waits again, then SIGKILL. On Windows, `taskkill /T` ends the process tree.
+- **Process starts** happen in one file, `src/stdio/node-program-starter.ts`, listed in
+  `tooling/check/process-starters.json`. Everything else talks to the `ProgramStarter` seam, so the
+  connector's tests use an in-process fake program.
 
 - **Layer:** adapters
 - **Owner:** tomas
@@ -27,17 +42,29 @@ Two things differ from the original, because of this repo's rules:
 
 `src/protocol/` must stay free of `node:` imports and of transport code, so an integration can use
 it unchanged. A test checks the imports, including that a relative import stays inside the folder.
-Integrations import `@halonicjs/adapter-mcp/protocol`, never the root entry, which will also hold
-the stdio launcher. When the integration kit publishes the protocol, it moves to its own package;
+Integrations import `@halonicjs/adapter-mcp/protocol`, never the root entry, which also holds the
+stdio launcher. When the integration kit publishes the protocol, it moves to its own package;
 with these rules that only moves files and changes this one entry.
+
+## Tool risk in `_meta`
+
+MCP has no field for what a tool can do, so a server may write it in the tool's `_meta`:
+`"com.halonic/risk": "read" | "write" | "send"` and `"com.halonic/untrusted": true`. The connector
+passes them on as the server wrote them. They are only the server's claim: the host treats every
+tool of a `stdio` connector as `write` unless the workspace sets a lower risk.
 
 ## Example
 
 ```ts
-import { McpSession } from "@halonicjs/adapter-mcp/protocol";
+import { McpStdioConnectorFactory, nodeProgramStarter } from "@halonicjs/adapter-mcp";
 
-const session = new McpSession(transport, { clientInfo: { name: "halonic", version: "0.1.0" } });
-await session.initialize();
-const tools = await session.listTools();
-const answer = await session.callTool("search_notes", { query: "invoices" });
+const factory = new McpStdioConnectorFactory({
+  starter: nodeProgramStarter,
+  inheritedEnv: process.env,
+  clientInfo: { name: "halonic", version: "0.1.0" },
+});
+const notes = factory.create(config, context);
+const tools = await notes.listTools();
+const answer = await notes.callTool("search_notes", { query: "invoices" });
+await notes.close();
 ```

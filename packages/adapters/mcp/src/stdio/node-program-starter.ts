@@ -1,0 +1,101 @@
+import { type ChildProcess, spawn } from "node:child_process";
+import { win32 } from "node:path";
+import type { ProgramExit, ProgramStarter, RunningProgram } from "./program.ts";
+import { skillScriptsRefusal, touchesSkillScripts } from "./skill-scripts.ts";
+
+const isWindows = process.platform === "win32";
+
+/**
+ * Starts a stdio connector's program with Node: array arguments, no shell,
+ * and only the environment it is given. It refuses a program, argument or
+ * folder under a skill's `scripts/` folder before anything starts.
+ *
+ * On macOS and Linux the program gets its own process group, so a signal
+ * reaches everything it started, such as the server under `npx`, and
+ * whatever is left of the group is killed once it ends. On Windows,
+ * `taskkill /T` ends the whole process tree.
+ */
+export const nodeProgramStarter: ProgramStarter = {
+  async start(launch) {
+    if (await touchesSkillScripts(launch.cwd, launch.program, launch.args)) {
+      throw new Error(skillScriptsRefusal);
+    }
+    const child = spawn(launch.program, [...launch.args], {
+      cwd: launch.cwd,
+      env: { ...launch.env },
+      stdio: ["pipe", "pipe", "pipe"],
+      detached: !isWindows,
+      windowsHide: true,
+      shell: false,
+    });
+    await launched(child);
+    return runningProgram(child);
+  },
+};
+
+/** Resolves once the child has started, and rejects when it can't be launched. */
+function launched(child: ChildProcess): Promise<void> {
+  return new Promise((resolve, reject) => {
+    child.once("spawn", () => resolve());
+    child.once("error", reject);
+  });
+}
+
+function runningProgram(child: ChildProcess): RunningProgram {
+  const { stdin, stdout, stderr, pid } = child;
+  if (stdin === null || stdout === null || stderr === null || pid === undefined) {
+    throw new Error("The program started without its standard streams.");
+  }
+  // A write to a program that has ended fails in the write's callback; this keeps it from also throwing.
+  stdin.on("error", () => undefined);
+  const exited = new Promise<ProgramExit>((resolve) => {
+    child.once("close", (code, signal) => {
+      // Whatever the program left behind in its group goes with it.
+      signalTree(child, pid, "kill");
+      resolve({ code, signal });
+    });
+  });
+  return {
+    write: (text) =>
+      new Promise((resolve, reject) => {
+        stdin.write(text, (error) => (error ? reject(error) : resolve()));
+      }),
+    endInput: () => stdin.end(),
+    stdout,
+    stderr,
+    exited,
+    signal: (kind) => signalTree(child, pid, kind),
+  };
+}
+
+function signalTree(child: ChildProcess, pid: number, kind: "terminate" | "kill"): void {
+  if (isWindows) {
+    windowsTaskkill(child, pid, kind);
+    return;
+  }
+  try {
+    process.kill(-pid, kind === "kill" ? "SIGKILL" : "SIGTERM");
+  } catch {
+    // The group has already ended.
+  }
+}
+
+/**
+ * Ends a process tree on Windows, with taskkill from the system folder,
+ * never from PATH. Without a known system folder it can only end the
+ * program itself.
+ */
+function windowsTaskkill(child: ChildProcess, pid: number, kind: "terminate" | "kill"): void {
+  const systemRoot = process.env["SystemRoot"] ?? process.env["windir"];
+  if (systemRoot === undefined) {
+    child.kill(kind === "kill" ? "SIGKILL" : "SIGTERM");
+    return;
+  }
+  const args = ["/PID", String(pid), "/T", ...(kind === "kill" ? ["/F"] : [])];
+  const taskkill = spawn(win32.join(systemRoot, "System32", "taskkill.exe"), args, {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  // The tree may already be gone, and then taskkill fails: nothing to do.
+  taskkill.on("error", () => undefined);
+}

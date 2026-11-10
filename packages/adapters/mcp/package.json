@@ -13,9 +13,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

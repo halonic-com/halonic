@@ -23,3 +23,13 @@ export {
   toolMetaKeys,
   toolNamePattern,
 } from "./protocol/index.ts";
+export { nodeProgramStarter } from "./stdio/node-program-starter.ts";
+export type {
+  ProgramExit,
+  ProgramLaunch,
+  ProgramStarter,
+  RunningProgram,
+} from "./stdio/program.ts";
+export { McpStdioConnectorFactory, type McpStdioOptions } from "./stdio/stdio-connector.ts";
+export { defaultStdioLimits, type StdioLimits } from "./stdio/stdio-transport.ts";
+export { ConnectorToolError } from "./stdio/tool-mapping.ts";

@@ -13,6 +13,10 @@
       "reason": "Starts only git, at the absolute path findGit resolved, with array arguments and no shell. Every call runs hardened: hooks point at an empty folder and no user or system config is read.",
       "scriptsTest": "packages/adapters/git/src/skill-scripts.test.ts"
     },
+    "packages/adapters/mcp/src/stdio/node-program-starter.ts": {
+      "reason": "Starts the local program of a stdio MCP connector the person trusted, with array arguments, no shell and only the environment the connector builds, in its own process group so stopping it reaches what it started. On Windows it also starts taskkill from the system folder to end the process tree. It refuses a program, argument or folder under a skill's scripts/ folder, as written or through a symbolic link, before anything starts.",
+      "scriptsTest": "packages/adapters/mcp/src/stdio/node-program-starter.starts.test.ts"
+    },
     "packages/adapters/sandbox-host/src/program-probe.ts": {
       "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and looks only in absolute PATH folders of the launcher's environment, which no skill sets.",
       "scriptsTest": "packages/adapters/sandbox-host/src/program-probe.attack.test.ts"
