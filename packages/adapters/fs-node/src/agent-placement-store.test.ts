@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { AgentPlacementKey } from "@halonicjs/ports";
 import { agentPlacement, agentPlacementStoreContract } from "@halonicjs/testing-contracts";
@@ -119,6 +119,147 @@ verifies("fs-node.agent-placement-store-files", () => {
 
       await expect(store.save(agentPlacement(coder.location, coder.agent))).rejects.toThrow();
       expect((await readdir(root)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+    });
+  });
+});
+
+// Attacks on the files (Julian, HAL-2927). A case marked `it.fails` is a gap
+// the store has today: it goes back to `it` with the fix.
+verifies("fs-node.agent-placement-store-files", () => {
+  describe("attacks on the placement files", () => {
+    /** A store with `coder`'s choice saved, and the root it lives in. */
+    async function saved() {
+      const root = join(await tempFolder(), "placements");
+      const store = new FileAgentPlacementStore(root);
+      await store.save(agentPlacement(coder.location, coder.agent));
+      return { root, store };
+    }
+
+    /** Writes `record` as JSON over `coder`'s file, the way a hand edit would. */
+    async function handEdit(root: string, record: unknown): Promise<void> {
+      await writeFile(fileFor(root, coder), JSON.stringify(record), "utf8");
+    }
+
+    it("refuses a choice copied from the same agent id in another workspace", async () => {
+      const { root, store } = await saved();
+      const other = { location: "/workspaces/other", agent: "coder" };
+      await writeFile(fileFor(root, other), await readFile(fileFor(root, coder), "utf8"), "utf8");
+
+      await expect(store.get(other)).rejects.toThrow('the agent "coder" in "/workspaces/other"');
+    });
+
+    it("refuses a hand edit that points the file at another agent", async () => {
+      const { root, store } = await saved();
+      await handEdit(root, agentPlacement(writer.location, writer.agent));
+
+      await expect(store.get(coder)).rejects.toThrow('the agent "coder" in "/workspaces/acme"');
+    });
+
+    it.each([
+      ["an array", []],
+      [
+        "a location that isn't text",
+        { ...agentPlacement(coder.location, coder.agent), location: 1 },
+      ],
+      ["no agent", { location: coder.location, runsOn: "this-computer" }],
+    ])("refuses a file that holds %s", async (_kind, record) => {
+      const { root, store } = await saved();
+      await handEdit(root, record);
+
+      await expect(store.get(coder)).rejects.toThrow('the agent "coder" in "/workspaces/acme"');
+    });
+
+    // Gap: only `location` and `agent` are checked, so any other shape is
+    // handed to the caller as a placement.
+    it.fails.each([
+      ["a choice other than this computer", { runsOn: "sandbox" }],
+      ["a fingerprint that isn't text", { agentFingerprint: 42 }],
+      ["no fingerprint", { agentFingerprint: undefined }],
+      ["a time that isn't text", { chosenAt: 0 }],
+      ["an extra field a harness could read", { sandbox: false, command: ["sh", "-c", "id"] }],
+    ])("refuses a file with %s", async (_kind, change) => {
+      const { root, store } = await saved();
+      await handEdit(root, { ...agentPlacement(coder.location, coder.agent), ...change });
+
+      await expect(store.get(coder)).rejects.toThrow('the agent "coder" in "/workspaces/acme"');
+    });
+
+    it("names the agent when its file is huge and not JSON", async () => {
+      const { root, store } = await saved();
+      await writeFile(fileFor(root, coder), "{".repeat(8 * 1024 * 1024), "utf8");
+
+      await expect(store.get(coder)).rejects.toThrow('the agent "coder" in "/workspaces/acme"');
+      await store.remove(coder);
+      expect(await store.get(coder)).toBeNull();
+    });
+
+    describe.skipIf(process.platform === "win32")("links and permissions", () => {
+      /** A valid choice for `coder` in a file outside the store's root, such as in a workspace. */
+      async function outsideChoice(): Promise<string> {
+        const outside = join(await tempFolder(), "placement.json");
+        await writeFile(
+          outside,
+          JSON.stringify(agentPlacement(coder.location, coder.agent)),
+          "utf8",
+        );
+        return outside;
+      }
+
+      // Gap: `readFile` follows the link, so a choice can live in a file an
+      // agent may edit, such as one inside its workspace.
+      it.fails("refuses a choice that is a link to a file outside the folder", async () => {
+        const root = join(await tempFolder(), "placements");
+        await mkdir(root, { recursive: true });
+        await symlink(await outsideChoice(), fileFor(root, coder));
+
+        await expect(new FileAgentPlacementStore(root).get(coder)).rejects.toThrow('"coder"');
+      });
+
+      it("saves over a link without writing through it", async () => {
+        const root = join(await tempFolder(), "placements");
+        await mkdir(root, { recursive: true });
+        const outside = await outsideChoice();
+        const before = await readFile(outside, "utf8");
+        await symlink(outside, fileFor(root, coder));
+
+        const store = new FileAgentPlacementStore(root);
+        await store.save(agentPlacement(coder.location, coder.agent, "sha256:new"));
+        expect(await readFile(outside, "utf8")).toBe(before);
+        expect((await lstat(fileFor(root, coder))).isSymbolicLink()).toBe(false);
+        expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
+      });
+
+      it("removes a link without touching what it points to", async () => {
+        const root = join(await tempFolder(), "placements");
+        await mkdir(root, { recursive: true });
+        const outside = await outsideChoice();
+        await symlink(outside, fileFor(root, coder));
+
+        await new FileAgentPlacementStore(root).remove(coder);
+        expect(await readdir(root)).toEqual([]);
+        expect(JSON.parse(await readFile(outside, "utf8"))).toEqual(
+          agentPlacement(coder.location, coder.agent),
+        );
+      });
+
+      it("keeps a file private after it is saved over one anybody could read", async () => {
+        const { root, store } = await saved();
+        await chmod(fileFor(root, coder), 0o666);
+
+        await store.save(agentPlacement(coder.location, coder.agent, "sha256:new"));
+        expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
+      });
+
+      // Gap: `mkdir` sets the mode only on a folder it creates, so a folder
+      // made earlier by something else keeps its permissions.
+      it.fails("makes a folder that was already there private on save", async () => {
+        const root = join(await tempFolder(), "placements");
+        await mkdir(root, { mode: 0o777 });
+        await chmod(root, 0o777);
+
+        await new FileAgentPlacementStore(root).save(agentPlacement(coder.location, coder.agent));
+        expect((await stat(root)).mode & 0o777).toBe(0o700);
+      });
     });
   });
 });

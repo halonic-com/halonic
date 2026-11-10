@@ -40,6 +40,7 @@ export function agentPlacementStoreContract(name: string, make: MakeAgentPlaceme
     describe(`AgentPlacementStore contract: ${name}`, () => {
       storageCases(make);
       keyCases(make);
+      hostileKeyCases(make);
       damageCases(make);
     });
   });
@@ -112,6 +113,82 @@ function keyCases(make: MakeAgentPlacementStore): void {
     for (const other of others) {
       expect(await store.get(other), JSON.stringify(other)).toBeNull();
     }
+  });
+}
+
+/**
+ * Keys an agent's author or a hostile workspace could pick (Julian,
+ * HAL-2927). Each one is saved next to a key it could be mistaken for, and
+ * neither may answer for the other.
+ */
+const lookalikes: ReadonlyArray<readonly [string, AgentPlacementKey, AgentPlacementKey]> = [
+  [
+    "an agent id climbing out with ..",
+    { location: "/workspaces/acme", agent: "../../trust/coder" },
+    { location: "/workspaces/trust", agent: "coder" },
+  ],
+  [
+    "an agent id of only ..",
+    { location: "/workspaces/acme/sub", agent: ".." },
+    { location: "/workspaces/acme", agent: "sub" },
+  ],
+  [
+    "a NUL in the agent id",
+    { location: "/workspaces/acme", agent: "coder\u0000writer" },
+    { location: "/workspaces/acme", agent: "coder" },
+  ],
+  [
+    "a NUL in the location",
+    { location: "/workspaces/acme\u0000/evil", agent: "coder" },
+    { location: "/workspaces/acme", agent: "coder" },
+  ],
+  [
+    "a location ending in / against an agent id starting with one",
+    { location: "/a/", agent: "b" },
+    { location: "/a", agent: "/b" },
+  ],
+  [
+    "a composed é against a decomposed one",
+    { location: "/workspaces/café", agent: "coder" },
+    { location: "/workspaces/café", agent: "coder" },
+  ],
+  [
+    "a Cyrillic о against a Latin o",
+    { location: "/workspaces/acme", agent: "cоder" },
+    { location: "/workspaces/acme", agent: "coder" },
+  ],
+  [
+    "agent ids that differ only in case",
+    { location: "/workspaces/acme", agent: "CODER" },
+    { location: "/workspaces/acme", agent: "coder" },
+  ],
+  [
+    "two lone surrogates",
+    { location: "/workspaces/acme", agent: "\ud800" },
+    { location: "/workspaces/acme", agent: "\udc00" },
+  ],
+  [
+    "a very long agent id against its own start",
+    { location: "/workspaces/acme", agent: "a".repeat(10_000) },
+    { location: "/workspaces/acme", agent: "a".repeat(9_999) },
+  ],
+];
+
+function hostileKeyCases(make: MakeAgentPlacementStore): void {
+  it.each(lookalikes)("keeps %s apart", async (_kind, first, second) => {
+    const { store } = await make();
+    await store.save(agentPlacement(first.location, first.agent, "sha256:first"));
+    expect(await store.get(first)).toEqual(
+      agentPlacement(first.location, first.agent, "sha256:first"),
+    );
+    expect(await store.get(second)).toBeNull();
+
+    await store.save(agentPlacement(second.location, second.agent, "sha256:second"));
+    await store.remove(second);
+    expect(await store.get(first)).toEqual(
+      agentPlacement(first.location, first.agent, "sha256:first"),
+    );
+    expect(await store.get(second)).toBeNull();
   });
 }
 

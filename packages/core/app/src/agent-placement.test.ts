@@ -1,4 +1,4 @@
-import type { AgentPlacementKey, Clock, Digest } from "@halonicjs/ports";
+import type { AgentPlacementKey, AgentPlacementStore, Clock, Digest } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
@@ -190,5 +190,64 @@ verifies("app.agent-placement", () => {
       (name) => name !== "constructor",
     );
     expect(methods.sort()).toEqual(["chooseSandbox", "chooseThisComputer", "where"]);
+  });
+});
+
+// A store that hands back a damaged or borrowed choice must never end in
+// "this computer" (Julian, HAL-2927). A case marked `it.fails` is a gap
+// `where` has today: it goes back to `it` with the fix.
+verifies("app.agent-placement", () => {
+  /** An `AgentPlacement` over a store whose `get` gives whatever `read` gives. */
+  function over(read: () => Promise<unknown>): AgentPlacement {
+    const store: AgentPlacementStore = {
+      get: read as AgentPlacementStore["get"],
+      save: async () => {},
+      remove: async () => {},
+    };
+    return new AgentPlacement({ store, digest, clock: fixedClock("2026-11-10T10:00:00.000Z") });
+  }
+
+  /** A choice for `coderFile` as it is now, with `change` laid over it. */
+  async function choice(change: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
+    return {
+      ...coder,
+      runsOn: "this-computer",
+      agentFingerprint: await agentFingerprint(encodeUtf8(coderFile), digest),
+      chosenAt: "2026-11-10T10:00:00.000Z",
+      ...change,
+    };
+  }
+
+  it.each([
+    ["no fingerprint", { agentFingerprint: undefined }],
+    ["a fingerprint that isn't text", { agentFingerprint: 1 }],
+    ["a fingerprint of only its prefix", { agentFingerprint: "sha256:" }],
+  ])("runs the agent in a sandbox when its choice has %s", async (_kind, change) => {
+    const placement = over(async () => choice(change));
+
+    expect((await placement.where(subject(coderFile))).runsOn).toBe("sandbox");
+  });
+
+  it("runs the agent in a sandbox when the store throws something that isn't an Error", async () => {
+    const placement = over(() => Promise.reject("not an error"));
+
+    expect(await placement.where(subject(coderFile))).toMatchObject({
+      runsOn: "sandbox",
+      reason: "unreadable",
+      error: "not an error",
+    });
+  });
+
+  // Gap: `where` checks only the fingerprint, so a record that says
+  // "sandbox", or one the store hands back for another agent, still lets the
+  // agent out.
+  it.fails.each([
+    ["a choice other than this computer", { runsOn: "sandbox" }],
+    ["another agent's key", { agent: "writer" }],
+    ["another workspace's key", { location: "/workspaces/other" }],
+  ])("runs the agent in a sandbox when the store gives back %s", async (_kind, change) => {
+    const placement = over(async () => choice(change));
+
+    expect((await placement.where(subject(coderFile))).runsOn).toBe("sandbox");
   });
 });
