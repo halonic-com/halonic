@@ -20,8 +20,12 @@ shapes.
 **`Vcs` version 2 adds** `snapshot()`, `readAt(version, path)`,
 `listAt(version, dir?)` and `rename(from, to)`, and the worktree and patch
 methods: `addWorktree(version)`, `removeWorktree(id)`, `listWorktrees()`,
-`diffBetween(version, worktreeId)` and `applyPatch(patch, { reverse })`.
-They landed in two pull requests before any release, under one bump.
+`diffBetween(version, worktreeId)` and `applyPatch(patch, { reverse })`,
+and the methods behind Create version and run proposals (HAL-3267, engine
+answer points 2 and 3): `commitVersion({ message, include?, exclude })`,
+`commitWorktreeTo(worktreeId, ref, { parent })`, `readRef(ref)` and
+`deleteRef(ref)`. They landed in three pull requests before any release,
+under one bump; version 2 is complete with the third (HAL-3354).
 
 **Worktrees live outside the workspace folder**, detached at a version, so
 the Studio's file tree and watcher never see them. Reading one never trusts
@@ -35,6 +39,20 @@ branch names, `HEAD`, `@{-1}`, short ids and anything starting with `-`
 before git runs. Callers hold only ids that `snapshot`, `commit` or `log`
 gave them, so nothing resolves against whatever the repository holds at that
 moment, and no version can be read as an option.
+
+**Create version commits what is on disk, except what it is told to leave
+out**, which keeps its content at HEAD and stays a change. Unlike
+`git commit -- <path>`, which commits the working-tree content of every
+tracked path it names, a left-out file never reaches the version, even when
+it is tracked and changed. Private entries never get in, and the working
+tree is never touched. It refuses when every change is left out, rather
+than making an empty commit.
+
+**A run's proposal lives on a hidden ref**, `refs/halonic/proposals/<id>`,
+and on no branch. `checkProposalRef` refuses every other ref name, so these
+methods can never move a branch or `HEAD`. A ref is created only when it
+doesn't exist yet, so a proposal is never overwritten, and deleting a
+missing ref is refused, so a caller finds out when it deleted the wrong one.
 
 **A snapshot is a commit on no branch** of the files on disk, new files
 included, ignored files and private entries left out. HEAD, the branch, the
@@ -52,8 +70,11 @@ same change; the git adapter (HAL-2607) implements them when it lands.
 - The engine can build a `DefinitionSource` at a commit on `readAt` and
   `listAt` (HAL-3246), and `ProposalService` can start from `snapshot()`
   (HAL-3248).
-- `ports.vcs-commit-ref`, `memory.vcs-versions`, `memory.vcs-worktrees`
-  and the two `memory.dry-run-vcs-*` requirements keep the behaviour true; Julian's `vcs` and
-  `vcs-safety` contract cases (HAL-3265) hold every adapter to it.
+- The Studio's Create version and the run path's proposals (HAL-3248)
+  build on `commitVersion` and the proposal refs.
+- `ports.vcs-commit-ref`, `ports.vcs-proposal-ref`, `memory.vcs-versions`,
+  `memory.vcs-worktrees`, `memory.vcs-commits` and the three
+  `memory.dry-run-vcs-*` requirements keep the behaviour true; Julian's
+  contract cases (HAL-3265, HAL-3317) hold every adapter to it.
 - A snapshot nobody keeps is an unreachable commit; git's own `gc` removes
   it after its usual grace period. A worktree at a snapshot keeps it.
