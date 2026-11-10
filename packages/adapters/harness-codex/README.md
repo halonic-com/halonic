@@ -11,7 +11,9 @@ secrets and approvals stay in Halonic.
 - **Public API:** `@halonicjs/adapter-harness-codex`
 
 `codexHarness({ probe })` is the `Harness` the host offers for
-`harness: codex`. A run writes `config.toml` to the agent's settings folder,
+`harness: codex`. Its options are `probe` (finds `codex`), `settings` (writes
+`config.toml`; this computer's disk when absent) and `halonicVersion` (put in
+the user agent of Codex's requests; `0.0.0` when absent). A run writes `config.toml` to the agent's settings folder,
 starts `codex app-server` inside the run's sandbox session with the bridge's
 address as `-c` settings, starts an ephemeral thread in the working folder
 (with the agent's model and instructions, when its file sets them) and a
@@ -23,7 +25,8 @@ everything it started. It passes the `harness` contract suite, and a recorded
 Codex 0.166.0 run played back through it ends with one `agent.finished`.
 
 It also exports `detectCodex`, `codexEnvironment` (with its `CodexFolders`
-type) and the constants around them (`codexProgram`, `codexRunTokenVariable`,
+type), the `CodexHarnessOptions` and `SettingsFolderWriter` types (the
+latter from `@halonicjs/adapter-harness-kit`) and the constants around them (`codexProgram`, `codexRunTokenVariable`,
 `supportedVersions`, `oldestSupportedVersion`). Inside the package, and not
 exported, are the client that talks to `codex app-server`, the reader that
 turns its notifications into run events and the `config.toml` text.
