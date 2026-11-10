@@ -253,7 +253,8 @@ longest. When an item is deleted or its tab closes, `forget(key)` drops it, with
 saved"), "Saving…" only once a write has run for 300ms, so quick saves don't blink, and the
 problems after a warning or danger mark named "Warning" or "Error", with **Compare** or **Try
 again**. It isn't a live region: `announceSaveNotes(saving, announcer)` reads the note out
-politely, once, when it becomes failed or items not saved, and never for Saving… or Saved.
+politely, once, when it becomes items not saved, and never for Saving… or Saved. It stays quiet
+for a failure too, since the danger toast is an alert that already reads it, with its reason.
 `saveNoteWords` holds the words.
 
 ```tsx

@@ -57,10 +57,11 @@ function countOf(count: number, noun: string, rest: string): string {
 }
 
 /**
- * Reads the save note out politely, once each time it becomes failed or items not saved (UX
- * HAL-3838). Saving and saved are never read: a screen reader hearing "Saved" after every pause in
- * typing is noise. A note that stays failed while its count changes isn't read again. Returns a
- * function that stops it.
+ * Reads the save note out politely, once each time it becomes items not saved (UX HAL-3838).
+ * Failed isn't read: its danger toast is an alert that already reads the failure, with its reason,
+ * so the note would say it twice. Saving and saved are never read: a screen reader hearing "Saved"
+ * after every pause in typing is noise. A note that stays items not saved while its count changes
+ * isn't read again. Returns a function that stops it.
  *
  * @example
  * const stop = announceSaveNotes(workspace.saving, shell.announcer);
@@ -76,6 +77,7 @@ export function announceSaveNotes(saving: SaveState, announcer: Announcer): () =
   });
 }
 
+/** Only items not saved: it has no toast, so the note is the only thing that can say it. */
 function isSpoken(note: SaveNote): boolean {
-  return note.kind === "failed" || note.kind === "items-not-saved";
+  return note.kind === "items-not-saved";
 }

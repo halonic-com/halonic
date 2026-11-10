@@ -61,18 +61,18 @@ verifies("shell.save-note", () => {
       announceSaveNotes(saving, announcer);
     });
 
-    it("reads Couldn't save out politely, once, however many items then fail", async () => {
-      await saving.save(supportReply, failing);
-      await saving.save(sorter, failing);
-      flush();
-      expect(said).toEqual(["polite: Couldn't save Support reply."]);
-    });
-
     it("reads items not saved out once", () => {
       saving.holdForOutsideChange(sorter, () => {});
       saving.holdForOutsideChange(supportReply, () => {});
       flush();
       expect(said).toEqual(["polite: 1 item not saved."]);
+    });
+
+    it("leaves Couldn't save to the toast's alert", async () => {
+      await saving.save(supportReply, failing);
+      await saving.save(sorter, failing);
+      flush();
+      expect(said).toEqual([]);
     });
 
     it("never reads out Saving, Saved or fields not saved", async () => {
@@ -82,17 +82,14 @@ verifies("shell.save-note", () => {
       expect(said).toEqual([]);
     });
 
-    it("reads a failure out again after the item saved in between", async () => {
-      await saving.save(supportReply, failing);
+    it("reads items not saved out again after the hold was released in between", () => {
+      saving.holdForOutsideChange(sorter, () => {});
       // Past the announcer's 2 s, in which it drops the same words.
       timers.advance(2_500);
-      await saving.save(supportReply, () => Promise.resolve());
-      await saving.save(supportReply, failing);
+      saving.releaseHold(sorter.key);
+      saving.holdForOutsideChange(sorter, () => {});
       flush();
-      expect(said).toEqual([
-        "polite: Couldn't save Support reply.",
-        "polite: Couldn't save Support reply.",
-      ]);
+      expect(said).toEqual(["polite: 1 item not saved.", "polite: 1 item not saved."]);
     });
   });
 });
