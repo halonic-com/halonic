@@ -43,6 +43,18 @@
       "reason": "scrypt password hashing: independently audited, no dependencies, runs on every runtime. Approved by the user on 8 Nov 2026 (HAL-10). Only the package that implements the PasswordHasher port uses it.",
       "useInstead": "the PasswordHasher port; for SHA-256 use the hashing port (WebCrypto)"
     },
+    "@playwright/test": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/studio-*",
+        "@halonicjs/app-studio"
+      ],
+      "layers": [
+        "studio",
+        "apps"
+      ],
+      "reason": "Runs the Studio's end-to-end tests in a real Chromium, for what jsdom can't show, such as a tab dragged with a real pointer (UX checklist 1.2). Apache-2.0, tests only. Its browser is installed only in CI's e2e job, never in the runner container. Approved by Liam on HAL-3996 (plan section 7)."
+    },
     "@stryker-mutator/core": {
       "category": "dev-tooling",
       "allowedIn": [

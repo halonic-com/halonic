@@ -736,7 +736,7 @@ jobs:
         run: pnpm verify --full
 
   # Conditional jobs. Each runs only when its area changes, and ci-ok
-  # accepts "skipped". e2e and docs are stubs until the code they check exists.
+  # accepts "skipped". docs is a stub until the code it checks exists.
   tauri:
     # The shell and the crates under apps/studio/src-tauri, with the
     # dependency audit (cargo-deny). The same code builds on Windows in
@@ -1160,14 +1160,36 @@ jobs:
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
   e2e:
+    # What jsdom can't show, in a real Chromium: the shell's pages in
+    # packages/studio/shell/e2e (HAL-3996). The browser is installed here
+    # only, never in the agents' runner container. Playwright's web server
+    # builds the pages and serves them, and stops with the tests.
     name: Studio end-to-end (Playwright)
     needs: changes
     if: needs.changes.outputs.studio == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    permissions: {}
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - run: echo "::notice title=e2e::Not set up yet; arrives with the Studio shell."
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Install Chromium for Playwright
+        working-directory: packages/studio/shell
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Shell end-to-end tests
+        working-directory: packages/studio/shell
+        run: pnpm e2e
+      # The report and traces of a failed run, to step through the failure.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: e2e-report
+          path: packages/studio/shell/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   docs:
     name: Docs build and link check

@@ -76,10 +76,22 @@
   // Approved libraries per package stay in tooling/check/dependencies.json, checked by `pnpm check`.
   "overrides": [
     {
+      // Studio CSS entries set Tailwind up (@source, @custom-variant), like the shell's e2e pages.
+      "includes": [
+        "**/packages/studio/**/*.css"
+      ],
+      "css": {
+        "parser": {
+          "tailwindDirectives": true
+        }
+      }
+    },
+    {
       "includes": [
         "**/vitest.config.ts",
         "**/vitest.fence.config.ts",
         "**/vite.config.ts",
+        "**/playwright.config.ts",
         "**/astro.config.mjs"
       ],
       "linter": {

@@ -289,6 +289,15 @@ model pull calls `check("run" | "download" | "model-pull")` before it starts; a 
 that is already under way. Each reading has `lowDisk`, true below 1 GB free (`lowDiskBytes`).
 Where Studio shows these numbers waits on the board (HAL-1720), so this is the data only.
 
+## End-to-end tests
+
+What jsdom can't show, such as a tab dragged with a real pointer, is checked in a real Chromium
+with Playwright. Each part under test has a page in `e2e/pages` that renders it with the kit's real
+CSS; `vite.config.ts` builds those pages, and the tests are `e2e/*.spec.ts`. `pnpm e2e` builds the
+pages, serves them with `vite preview` and runs the tests. Only CI's `e2e` job runs them, because
+only it has the browser: don't run them on the shared runner (HAL-2418). Read the result with
+`gh pr checks`; a failed run uploads its report and traces as the `e2e-report` artifact.
+
 ## Example
 
 Two features: _routines_ puts a Triggers section on the _agents_ feature's item page, and uses

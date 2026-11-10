@@ -1,0 +1,12 @@
+/*
+ * The e2e pages' CSS entry. It builds the kit's real classes from theme.css, the same way the app
+ * does (see the kit's README), so a part has its real size and layout under the pointer.
+ */
+
+@import "tailwindcss";
+@import "@halonicjs/studio-kit";
+
+@source "../../src";
+@source "../../../kit/src";
+@source ".";
+@source not "../../../**/*.md";
