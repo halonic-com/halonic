@@ -15,6 +15,7 @@ The engine shall log every change with the agent and, in a run, the run's id as 
 The tool shall fail with an error, and change nothing, in these cases:
 
 - the values have problems
+- the id of a new record is blank or starts or ends with a space
 - the id of a new record is taken: `A record "<id>" already exists in <collection>`
 - the record to update doesn't exist: `No record "<id>" in <collection>`
 - the view doesn't exist: `Collection "<id>" has no view "<view>" (views: …)`

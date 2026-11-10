@@ -10,6 +10,7 @@ import {
   filterRecords,
   viewRecords,
 } from "./record-query.ts";
+import { optionalStringArg } from "../tool-args.ts";
 import { checkRecord, type RecordValues } from "./record-values.ts";
 
 /** What `find` takes: a `where`, a view's name and the most records to give. */
@@ -59,7 +60,8 @@ export class CollectionRecords {
   async find(query: RecordQuery = {}): Promise<FoundRecords> {
     const collection = this.#collection;
     const today = this.#now().slice(0, 10);
-    if (query.view !== undefined && collection.views[query.view] === undefined) {
+    // The model chooses the view, so only an own key counts: not `constructor`.
+    if (query.view !== undefined && !Object.hasOwn(collection.views, query.view)) {
       const views = Object.keys(collection.views).join(", ") || "none";
       throw new Error(
         `Collection "${collection.id}" has no view "${query.view}" (views: ${views})`,
@@ -79,18 +81,17 @@ export class CollectionRecords {
    * Adds a record and gives it as stored. Without an `id` in the values, it
    * gets one made from the collection, the time and the count.
    *
-   * @throws Error with every problem with the values, or when the id is taken
+   * @throws Error when the id isn't a string, is blank or has spaces around it,
+   *   with every problem with the values, or when the id is taken
    */
   async add(input: RecordValues): Promise<CollectionRecord> {
+    const givenId = recordIdArg(input);
     const checked = checkRecord(this.#collection, input);
     if (checked.errors.length > 0) {
       throw new Error(checked.errors.join("; "));
     }
     const existing = await this.all();
-    const id =
-      typeof input["id"] === "string" && input["id"] !== ""
-        ? input["id"]
-        : this.#newId(existing.length);
+    const id = givenId ?? this.#newId(existing.length);
     if (existing.some((record) => record.id === id)) {
       throw new Error(`A record "${id}" already exists in ${this.#collection.id}`);
     }
@@ -118,6 +119,10 @@ export class CollectionRecords {
   /**
    * The current records. Seed records whose id never appeared in the log are
    * added first, once: a record that was removed doesn't come back.
+   *
+   * This writes those seed records to the store, so even a `find` can write.
+   * Two reads at the same time can each write the same seeds; that is fine
+   * while a turn runs its tools one at a time.
    */
   async all(): Promise<CollectionRecord[]> {
     const changes = await this.#store.changes(this.#collection.id);
@@ -162,4 +167,19 @@ export class CollectionRecords {
   #now(): string {
     return this.#clock.now().toISOString();
   }
+}
+
+/**
+ * The id the model gave a new record, or `undefined` when it left it out.
+ *
+ * @throws Error when it isn't a string, is blank or has spaces around it
+ */
+function recordIdArg(input: RecordValues): string | undefined {
+  const id = optionalStringArg(input, "id");
+  if (id !== undefined && id.trim() !== id) {
+    throw new Error(
+      `"id" must not be blank or start or end with a space (got ${JSON.stringify(id)})`,
+    );
+  }
+  return id;
 }

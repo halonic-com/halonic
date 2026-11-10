@@ -86,6 +86,18 @@ verifies("engine.record-tools", () => {
       expect(add?.definition.parameters["properties"]).not.toHaveProperty("share");
     });
 
+    it("gives no tools for a collection id that is only an inherited object key", () => {
+      const tools = recordTools({
+        collectionIds: ["constructor", "toString"],
+        collections: {},
+        records: new MemoryRecords(),
+        clock: fixedClock(now, 0),
+        agent: "clerk",
+      });
+
+      expect(tools).toEqual([]);
+    });
+
     it("adds the seed records once, before the first read", async () => {
       const records = new MemoryRecords();
       const { find } = toolsFor(records);
@@ -174,6 +186,22 @@ verifies("engine.record-tools", () => {
         "find",
         { view: "late" },
         'Collection "acme.invoices" has no view "late" (views: open, all)',
+      ],
+      [
+        "find",
+        { view: "constructor" },
+        'Collection "acme.invoices" has no view "constructor" (views: open, all)',
+      ],
+      ["add", { id: 123, supplier: "sup-2", amount: 1 }, '"id" must be a string (got 123)'],
+      [
+        "add",
+        { id: " ", supplier: "sup-2", amount: 1 },
+        '"id" must not be blank or start or end with a space (got " ")',
+      ],
+      [
+        "add",
+        { id: "inv-2 ", supplier: "sup-2", amount: 1 },
+        '"id" must not be blank or start or end with a space (got "inv-2 ")',
       ],
       ["find", { where: "open" }, '"where" must be an object (got "open")'],
       ["find", { limit: 500 }, '"limit" must be from 1 to 200 (got 500)'],

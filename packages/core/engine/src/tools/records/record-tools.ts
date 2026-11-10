@@ -37,7 +37,8 @@ export function recordTools(options: RecordToolsOptions): HalonicTool[] {
     ...(options.runId === undefined ? {} : { runId: options.runId }),
   };
   return options.collectionIds.flatMap((id) => {
-    const collection = options.collections[id];
+    // An own key only: an id such as `constructor` must not find Object.prototype's.
+    const collection = Object.hasOwn(options.collections, id) ? options.collections[id] : undefined;
     if (collection === undefined) {
       return [];
     }
