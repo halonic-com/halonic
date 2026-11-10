@@ -228,7 +228,7 @@ describe("halonic run's refusals", () => {
 
   // Windows has no read permission bits, and root reads any file.
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-    "refuses an input file that can't be read",
+    "[platform:win32] Windows has no read permission bits: refuses an input file that can't be read",
     async () => {
       // Outside the workspace, so only `--input` reads it.
       const input = join(folder, "input.json");
