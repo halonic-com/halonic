@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -101,6 +101,20 @@ verifies("cli.run", () => {
     );
   });
 
+  it("says which --event the run ended before it took", async () => {
+    const { code, io } = await run(
+      "support-reply",
+      ...samsEmail,
+      "--event",
+      "approve",
+      "--event",
+      "reject",
+    );
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout.slice(-2)).toEqual(["", "! Didn't use --event reject: the run ended first."]);
+  });
+
   it("keeps the run where halonic runs reads it", async () => {
     const profile = freshProfile();
     const io = captureIo(acme);
@@ -177,6 +191,35 @@ describe("halonic run's refusals", () => {
       "  Check the file name. It's looked for from the folder you ran the command in.",
     ]);
   });
+
+  it("refuses a folder as the input file, with the input's fix", async () => {
+    const { code, io } = await run("support-reply", "--input", "examples");
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ Couldn't run support-reply: examples is a folder, not a file.",
+      "  Pass a JSON object, in a file or as text, such as --input input.json.",
+    ]);
+  });
+
+  // Windows has no read permission bits, and root reads any file.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "refuses an input file that can't be read",
+    async () => {
+      // Outside the workspace, so only `--input` reads it.
+      const input = join(folder, "input.json");
+      await writeFile(input, "{}");
+      await chmod(input, 0o000);
+
+      const { code, io } = await run("support-reply", "--input", "../input.json");
+
+      expect(code).toBe(exitCode.usage);
+      expect(io.stderr.slice(0, 2)).toEqual([
+        "✕ Couldn't run support-reply: ../input.json can't be read.",
+        "  Check the file's permissions, or pass the JSON as text.",
+      ]);
+    },
+  );
 
   it("refuses an untrusted workspace that reaches a real model, and starts nothing", async () => {
     await writeFile(join(acme, "providers/ollama.yaml"), "id: ollama\ntype: ollama\nlocal: true\n");

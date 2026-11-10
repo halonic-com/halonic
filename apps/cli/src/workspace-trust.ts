@@ -26,15 +26,27 @@ export interface TrustSubjectInput {
  * as the trust check fingerprints them.
  */
 export function trustSubjectOf(input: TrustSubjectInput): TrustSubject {
-  const { workspace } = input;
   return {
     location: input.location,
-    connectors: filesOf(workspace, "connector").map((file) => file.value),
+    ...trustContentInputOf(input.workspace),
     commandPaths: input.commandPaths,
+  };
+}
+
+/**
+ * The connectors, agents and local integrations of the workspace, of the
+ * root and of every hub: what its trust content is built from, apart from
+ * where the programs are on this computer.
+ */
+export function trustContentInputOf(
+  workspace: LoadedWorkspace,
+): Pick<TrustSubject, "connectors" | "agents" | "integrations"> {
+  return {
+    connectors: filesOf(workspace, "connector").map((file) => file.value),
     agents: filesOf(workspace, "agent").map((file) => file.value),
     // A workspace doesn't load its local integrations yet; when it does,
     // they go here with their settings, so every command checks the same
-    // fingerprint.
+    // fingerprint and the trust skip of `run` sees them.
     integrations: [],
   };
 }

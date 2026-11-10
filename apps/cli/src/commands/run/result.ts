@@ -9,7 +9,7 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandResult } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
-import { type Phrase, phrase } from "../../messages/phrase.ts";
+import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
 import { workspaceModelsOf } from "../../run-failure-of.ts";
 import type { RunClock } from "../../run-times.ts";
@@ -25,6 +25,8 @@ export interface RunResultFacts {
   /** The user's own `--dir`, repeated in every command the lines suggest. */
   readonly dir: string | undefined;
   readonly clock: RunClock;
+  /** The `--event`s the run ended before it took, said in one dim line at the end. */
+  readonly unusedEvents?: readonly string[];
 }
 
 /**
@@ -48,6 +50,7 @@ export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult 
       heading,
       ...(steps.length === 0 ? [] : [[], ...steps]),
       ...ending(run, title, definitions, facts),
+      ...unusedEventsLines(facts.unusedEvents ?? []),
     ],
     json: { run: summary, events },
   };
@@ -75,6 +78,14 @@ export function runStepLines(
   clock: RunClock,
 ): Phrase[] {
   return stepLines(events, summary, definitions, clock, stepColumns(definitions));
+}
+
+/** "! Didn't use --event reject: the run ended first.", dim, after a blank line. */
+function unusedEventsLines(events: readonly string[]): Phrase[] {
+  if (events.length === 0) {
+    return [];
+  }
+  return [[], dimmed(phrase`${markPart("needsYou")} ${runMessages.unusedEvents(events).phrase}`)];
 }
 
 /**
