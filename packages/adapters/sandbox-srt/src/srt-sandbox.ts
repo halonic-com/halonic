@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import type {
   Sandbox,
   SandboxCapabilities,
@@ -7,6 +8,8 @@ import type {
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import { type Machine, systemMachine } from "./machine.ts";
+import { type Runner, srtRunner } from "./srt-runner.ts";
+import { SrtSession } from "./srt-session.ts";
 
 /** One reason the sandbox can't start, with the sentence that says what is missing. */
 interface Unavailable {
@@ -20,9 +23,11 @@ interface Unavailable {
  */
 export class SrtSandbox implements Sandbox {
   readonly #machine: Machine;
+  readonly #runner: Runner;
 
-  constructor(machine: Machine = systemMachine) {
+  constructor(machine: Machine = systemMachine, runner: Runner = srtRunner) {
     this.#machine = machine;
+    this.#runner = runner;
   }
 
   async check(): Promise<SandboxCheck> {
@@ -40,13 +45,13 @@ export class SrtSandbox implements Sandbox {
     return { files: "shared", strength: "os" };
   }
 
-  async open(
-    _profile: SandboxProfile,
-    _options?: { signal?: AbortSignal },
-  ): Promise<SandboxSession> {
+  async open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession> {
     const check = await this.check();
     if (!check.ok) throw new Error(`the sandbox can't start: ${check.missing.join("; ")}`);
-    throw new Error("sandbox-srt can't open a session yet (HAL-193, next pull request)");
+    if (!isLoopback(profile.network.bridge.host)) {
+      throw new Error(`the bridge must be a loopback address, not ${profile.network.bridge.host}`);
+    }
+    return SrtSession.open(profile, this.#runner, options);
   }
 
   /** The first reason, in the order the port lists them, because its fix comes first. */
@@ -77,4 +82,12 @@ export class SrtSandbox implements Sandbox {
     }
     return null;
   }
+}
+
+/** Whether `host` is `localhost` or a loopback address (`127.0.0.0/8`, `::1`). */
+function isLoopback(host: string): boolean {
+  const bare = host.replace(/^\[|\]$/g, "");
+  if (bare === "localhost") return true;
+  if (isIP(bare) === 4) return bare.startsWith("127.");
+  return bare === "::1";
 }

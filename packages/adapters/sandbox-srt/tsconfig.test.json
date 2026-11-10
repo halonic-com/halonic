@@ -2,6 +2,8 @@
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
   "include": [
     "src",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "fence",
+    "vitest.fence.config.ts"
   ]
 }

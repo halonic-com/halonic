@@ -78,6 +78,7 @@
     {
       "includes": [
         "**/vitest.config.ts",
+        "**/vitest.fence.config.ts",
         "**/vite.config.ts",
         "**/astro.config.mjs"
       ],

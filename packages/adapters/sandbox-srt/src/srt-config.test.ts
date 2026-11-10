@@ -43,9 +43,29 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
   it("denies read-only paths for writing but not for reading", () => {
     const config = buildSrtConfig(profile({ readOnlyPaths: ["/work/acme/halonic.yaml"] }));
     expect(config.filesystem?.denyRead).toEqual([]);
-    expect(config.filesystem?.denyWrite).toEqual([
-      { path: "/work/acme/halonic.yaml", literal: true },
+    expect(config.filesystem?.denyWrite).toContainEqual({
+      path: "/work/acme/halonic.yaml",
+      literal: true,
+    });
+  });
+
+  it("denies writing the tool settings and hooks inside the working folder", () => {
+    const writes = buildSrtConfig(profile()).filesystem?.denyWrite;
+    expect(writes).toEqual([
+      { path: "/work/acme/.claude/settings.json", literal: true },
+      { path: "/work/acme/.claude/settings.local.json", literal: true },
+      { path: "/work/acme/.codex", literal: true },
+      { path: "/work/acme/.cursor", literal: true },
     ]);
+  });
+
+  it("hides the paths a session adds from reading and writing", () => {
+    const config = buildSrtConfig(profile(), ["/scratch/hs-private"]);
+    expect(config.filesystem?.denyRead).toEqual([{ path: "/scratch/hs-private", literal: true }]);
+    expect(config.filesystem?.denyWrite).toContainEqual({
+      path: "/scratch/hs-private",
+      literal: true,
+    });
   });
 
   it("allows exactly the bridge and the allowed sites on the network", () => {
