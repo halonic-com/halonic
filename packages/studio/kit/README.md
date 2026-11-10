@@ -1801,6 +1801,21 @@ or a product. It's decoration, hidden from screen readers: the words next to it 
 The Empty state keeps its own tile, a `surface` one with a shadow, because it sits on the halo
 wash, where a halo-tinted tile would disappear.
 
+## PlaceIcon
+
+The icon of a sidebar place, named by the place's key: `home`, `inbox`, `agents`, `workflows`,
+`routines`, `library`, `runs` and `changes`. The outline shows by default; `filled` draws the place
+where you are. A filled icon keeps the outline's shape and cuts its inner details out (the inbox's
+tray, the clock's hands), so it reads on the halo tint and in forced colours. It draws in the text
+colour and fills its box, so the caller sizes and colours it. It's hidden from screen readers,
+because the place's name says the same.
+
+```tsx
+<span className="size-icon-md text-accent">
+  <PlaceIcon name="inbox" filled />
+</span>;
+```
+
 ## Toast and ToastRegion
 
 The result of something you did or something that finished in the background: "Agent saved",
