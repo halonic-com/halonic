@@ -57,7 +57,8 @@ Check these on every pull request. The guides for
 - [ ] A new dependency has an entry in `tooling/check/dependencies.json`.
 - [ ] A change to a package's public interface (what its `src/index.ts`
   exports) is meant, and the maintainer reviews it. No generated
-  `api-report.md` exists yet; the reviewer reads the diff. An API report replaces this once we generate one.
+  `api-report.md` exists yet; the reviewer reads the diff. An API report replaces this once we
+  generate one.
 - [ ] The docs change in the same pull request as the behaviour.
 - [ ] The title is `type(scope): summary` (the scope is optional, and the
   100-character limit is for the summary; the `pr-title` check enforces it),

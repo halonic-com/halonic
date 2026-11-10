@@ -10,16 +10,16 @@ this file, and only in a dedicated pull request.
 Halonic is a local-first Studio, engine and CLI for designing, running and supervising AI agent
 workflows. Workspaces are plain files in git. The engine records every run as an event log.
 
-| Layer    | Where                 | May use                                                                                 | Never                                                                                 |
-| -------- | --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| core     | `packages/core/*`     | core packages listed before it in `coreOrder`                                           | third-party code, Node APIs, browser APIs                                             |
-| adapters | `packages/adapters/*` | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                       |
-| host     | `packages/host/*`     | core, Web-standard APIs                                                                 | adapters, Node APIs, third-party code, Studio packages                                |
-| targets  | `packages/targets/*`  | core, adapters, host (a runtime only)                                                   | Studio packages; a runtime using a deploy package; Node APIs outside the Node runtime |
-| studio   | `packages/studio/*`   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages)  |
-| apps     | `apps/*`              | the public entry point of any package                                                   | —                                                                                     |
-| testing  | `packages/testing/*`  | anything                                                                                | being a runtime dependency                                                            |
-| tooling  | `tooling/*`           | other tooling packages                                                                  | being a runtime dependency                                                            |
+| Layer    | Where                 | May use                                                                                 | Never                                                                                                  |
+| -------- | --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| core     | `packages/core/*`     | core packages listed before it in `coreOrder`                                           | third-party code, Node APIs, browser APIs                                                              |
+| adapters | `packages/adapters/*` | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                                        |
+| host     | `packages/host/*`     | core, Web-standard APIs                                                                 | adapters, Node APIs, third-party code, Studio packages                                                 |
+| targets  | `packages/targets/*`  | core, adapters, host (a runtime only)                                                   | Studio packages; a runtime using a deploy package; Node APIs in a runtime other than the Node target's |
+| studio   | `packages/studio/*`   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages)                   |
+| apps     | `apps/*`              | the public entry point of any package                                                   | —                                                                                                      |
+| testing  | `packages/testing/*`  | anything                                                                                | being a runtime dependency                                                                             |
+| tooling  | `tooling/*`           | other tooling packages                                                                  | being a runtime dependency                                                                             |
 
 The API types packages (`core/events`, `core/ports`) use only each other, so Studio, the CLI and
 outside callers get them without the engine ([ADR](docs/adr/2026-11-09-api-types-stand-alone.md)).
@@ -136,7 +136,8 @@ you spot become a new task.
 
 Stacks stay short, so a closed pull request never strands work above it:
 
-- Avoid stacks where you can (HAL-2192). When you need one, it is at most 2 pull requests deep, counting from `main`.
+- Avoid stacks where you can (HAL-2192). When you need one, it is at most 2 pull requests deep,
+  counting from `main`.
 - Open a stack all at once, for one review (see Review). Once that review has started, don't add
   more pull requests on top of the stack. Start a different, independent task instead.
 - When a pull request below yours is closed or replaced, rebase or close everything you have above
@@ -152,8 +153,8 @@ Stacks stay short, so a closed pull request never strands work above it:
   goes back to the same reviewer for that layer only.
 - The maintainer gives final approval only on the core building blocks: `packages/core/*`,
   `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
-  and any change to a package's public interface (what its `src/index.ts` exports; an API report replaces this once we generate one). Everything else merges on
-  the teammates' approvals.
+  and any change to a package's public interface (what its `src/index.ts` exports; an API report
+  replaces this once we generate one). Everything else merges on the teammates' approvals.
 - The last required reviewer merges, in order: the bottom of a stack first, up to date with `main`
   and CI green.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The
