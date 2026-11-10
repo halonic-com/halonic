@@ -7,6 +7,12 @@ export {
 export { blobStoreContract, type MakeBlobStore } from "./blob-store.ts";
 export { type ControlledClock, clockContract, type MakeClock } from "./clock.ts";
 export {
+  type ConnectionSettingsStoreHarness,
+  connectionSettings,
+  connectionSettingsStoreContract,
+  type MakeConnectionSettingsStore,
+} from "./connection-settings-store.ts";
+export {
   brokenToolName,
   type ConnectorHarness,
   type ConnectorKind,

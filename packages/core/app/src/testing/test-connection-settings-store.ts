@@ -18,7 +18,8 @@ export class TestConnectionSettingsStore implements ConnectionSettingsStore {
     if (this.unreadable.has(id)) {
       throw new Error(`the settings of ${id} can't be read`);
     }
-    return this.saved.get(id) ?? null;
+    const settings = this.saved.get(id);
+    return settings === undefined ? null : { ...settings };
   }
 
   async save(settings: ConnectionSettingsRecord): Promise<void> {

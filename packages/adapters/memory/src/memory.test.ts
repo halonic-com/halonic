@@ -5,6 +5,7 @@ import {
   brokenToolName,
   type ConnectorKind,
   clockContract,
+  connectionSettingsStoreContract,
   connectorClientContract,
   contractServerAnswer,
   contractServerTools,
@@ -34,6 +35,7 @@ import {
   ManualClock,
   MemoryAgentPlacementStore,
   MemoryBlobStore,
+  MemoryConnectionSettingsStore,
   MemoryConnectorFactory,
   type MemoryConnectorServer,
   MemoryCoordination,
@@ -78,6 +80,10 @@ agentPlacementStoreContract("memory", async () => {
   return { store, damage: async (key) => store.damage(key) };
 });
 clockContract("memory", async () => new ManualClock());
+connectionSettingsStoreContract("memory", async () => {
+  const store = new MemoryConnectionSettingsStore();
+  return { store, damage: async (key) => store.damage(key) };
+});
 resourceProbeContract("memory", async () => {
   const probe = new MemoryResourceProbe({
     childProcesses: [{ pid: 4242, name: "claude", memoryBytes: 180 * 1024 ** 2 }],
