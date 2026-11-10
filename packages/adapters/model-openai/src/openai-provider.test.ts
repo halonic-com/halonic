@@ -1,8 +1,7 @@
-import { isModelCallError, type ModelCallErrorReason } from "@halonicjs/ports";
+import { isModelCallError, isVendorErrorText, type ModelCallErrorReason } from "@halonicjs/ports";
 import { chatRequest, llmProviderContract, textAnswer } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
-import { VendorErrorText } from "./call-error.ts";
 import {
   OpenAiCompatibleProvider,
   type OpenAiCompatibleProviderOptions,
@@ -24,7 +23,7 @@ function providerWith(options: Partial<OpenAiCompatibleProviderOptions> = {}) {
 
 /** The vendor's own text on `error`'s cause, or undefined when it has none. */
 function vendorTextOf(error: Error): string | undefined {
-  return error.cause instanceof VendorErrorText ? error.cause.message : undefined;
+  return isVendorErrorText(error.cause) ? error.cause.message : undefined;
 }
 
 /** The error `chat` fails with after `script` sets up the vendor. */
@@ -170,6 +169,16 @@ verifies("model-openai.call-errors", () => {
       "refused",
       /^acme refused the call to the model "acme-small" \(HTTP 403\)$/,
       "Country, region, or territory not supported",
+    ],
+    [
+      "a 403 about the model that repeats OpenAI's masked key",
+      (v) =>
+        v.replyNext(403, {
+          error: { message: "Project with key sk-proj-****abcd has no access to model acme-small" },
+        }),
+      "refused",
+      /^acme refused the call to the model "acme-small" \(HTTP 403\)$/,
+      undefined,
     ],
     [
       "a request it turns down",

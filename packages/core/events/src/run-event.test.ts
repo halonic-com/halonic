@@ -4,6 +4,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   ModelSkipReason,
+  ProviderText,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -136,6 +137,8 @@ verifies("events.run-log-contract", () => {
       reason?: RunFailureReason;
       // Added after the reference by events.run-failed-model-unreachable (HAL-1728).
       host?: string;
+      // Added after the reference by events.provider-text (HAL-3119).
+      providerText?: ProviderText;
     }>();
   });
 
@@ -176,6 +179,8 @@ verifies("events.run-log-contract", () => {
       from: string;
       to: string;
       error: string;
+      // Added after the reference by events.provider-text (HAL-3119).
+      providerText?: ProviderText;
     }>();
     expectTypeOf<EventOf<"agent.finished">>().toEqualTypeOf<{
       type: "agent.finished";
@@ -183,6 +188,9 @@ verifies("events.run-log-contract", () => {
       agent: string;
       output: unknown;
       parent?: string;
+      // Added after the reference by events.agent-finished-error (HAL-1536).
+      error?: string;
+      reason?: RunFailureReason;
     }>();
   });
 
@@ -334,6 +342,15 @@ verifies("events.tool-result-risk", () => {
       tool: "lookup",
       result: "[]",
     } as const).toExtend<EventOf<"tool.result">>();
+  });
+});
+
+verifies("events.agent-finished-error", () => {
+  typeTest("says why an agent failed without failing the run", () => {
+    expectTypeOf<EventOf<"agent.finished">["error"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<EventOf<"agent.finished">["reason"]>().toEqualTypeOf<
+      RunFailureReason | undefined
+    >();
   });
 });
 

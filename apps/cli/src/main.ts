@@ -23,6 +23,7 @@ process.exitCode = await runCli(
       },
       ...(process.stdin.isTTY === true ? { questions: stdinQuestions() } : {}),
     },
+    stop: { signals: process, exitNow: (code) => process.exit(code) },
   },
 );
 
@@ -31,6 +32,6 @@ function stdinQuestions() {
   const lines = new LineReader(process.stdin);
   return {
     write: (text: string) => process.stderr.write(text),
-    readLine: () => lines.readLine(),
+    readLine: (signal?: AbortSignal) => lines.readLine(signal),
   };
 }

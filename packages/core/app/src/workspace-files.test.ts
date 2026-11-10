@@ -12,6 +12,8 @@ function open(files: Record<string, string> = { [workflowPath]: workflow }) {
   const store = new TestDefinitionStore(files);
   const scope = openWorkspace({
     store,
+    reviewRecords: new TestDefinitionStore({}),
+    digest: { sha256: async () => new Uint8Array(32) },
     onListenerError: (error) => {
       throw error;
     },

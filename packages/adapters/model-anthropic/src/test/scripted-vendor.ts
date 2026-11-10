@@ -1,5 +1,5 @@
 import type { ChatResponse, HttpClient } from "@halonicjs/ports";
-import { wireMessage } from "./wire-replies.ts";
+import { wireMessage, wirePartialStream, wireStream } from "./wire-replies.ts";
 
 /** A call the vendor received: its address, method, redirect mode, headers and parsed JSON body. */
 export interface ReceivedCall {
@@ -14,17 +14,22 @@ export interface ReceivedCall {
 type Step =
   | { kind: "answer"; answer: Omit<ChatResponse, "replay"> }
   | { kind: "reply"; status: number; body: unknown }
-  | { kind: "hang" }
+  | { kind: "stream"; events: string; end: "close" | "drop" }
+  | { kind: "hang"; partialText: string }
   | { kind: "stall"; status: number }
   | { kind: "flood" }
   | { kind: "unreachable" };
+
+/** How a body ends once it has sent its text: closed, dropped, or failed when the call aborts. */
+type BodyEnd = "close" | "drop" | { abortedBy: AbortSignal | null | undefined };
 
 /** How many bytes the body sends at a time, so characters split across chunks. */
 const chunkSize = 7;
 
 /**
  * A fake Anthropic server behind the {@link HttpClient} port. It plays
- * scripted steps in order, answering in the Messages API's JSON. It counts
+ * scripted steps in order, answering in the Messages API's JSON, or in its
+ * server-sent events when the call asks to stream. It counts
  * the calls still open: a call closes when its body is read to the end or
  * cancelled, or when its signal aborts it before it answers.
  */
@@ -43,9 +48,14 @@ export class ScriptedVendor implements HttpClient {
     this.#steps.push({ kind: "reply", status, body });
   }
 
-  /** Keeps the next call waiting until its signal aborts. */
-  hangNext(): void {
-    this.#steps.push({ kind: "hang" });
+  /** Answers the next call with the server-sent `events` text; `drop` then fails it as a lost connection would. */
+  streamNext(events: string, end: "close" | "drop" = "close"): void {
+    this.#steps.push({ kind: "stream", events, end });
+  }
+
+  /** Keeps the next call waiting until its signal aborts. A streamed call first sends `partialText`. */
+  hangNext(partialText = ""): void {
+    this.#steps.push({ kind: "hang", partialText });
   }
 
   /** Answers the next call with `status`, then sends no body until its signal aborts. */
@@ -76,19 +86,37 @@ export class ScriptedVendor implements HttpClient {
     if (step === undefined) throw new Error("the scripted vendor has no step left");
     if (step.kind === "unreachable") throw new TypeError("fetch failed");
     this.#open += 1;
-    if (step.kind === "hang") {
-      await untilAborted(init.signal);
-      this.#open -= 1;
-      throw init.signal?.reason;
+    const streamed = body["stream"] === true;
+    switch (step.kind) {
+      case "hang":
+        if (streamed) {
+          return this.#response(200, wirePartialStream(step.partialText), {
+            abortedBy: init.signal,
+          });
+        }
+        await untilAborted(init.signal);
+        this.#open -= 1;
+        throw init.signal?.reason;
+      case "stream":
+        return this.#response(200, step.events, step.end);
+      case "reply":
+        return this.#response(step.status, JSON.stringify(step.body), "close");
+      case "stall":
+        return this.#stalled(step.status, init.signal);
+      case "flood":
+        return this.#flooded();
+      case "answer": {
+        const text = streamed ? wireStream(step.answer) : JSON.stringify(wireMessage(step.answer));
+        return this.#response(200, text, "close");
+      }
     }
-    if (step.kind === "stall") return this.#stalled(step.status, init.signal);
-    if (step.kind === "flood") return this.#flooded();
-    const reply = step.kind === "reply" ? step : { status: 200, body: wireMessage(step.answer) };
-    return this.#response(reply.status, JSON.stringify(reply.body));
   }
 
-  /** A response whose body sends `text` in small chunks, and closes the call once it is read or cancelled. */
-  #response(status: number, text: string): Response {
+  /**
+   * A response whose body sends `text` in small chunks and then ends as
+   * `end` says. The call closes once the body is read, cancelled or failed.
+   */
+  #response(status: number, text: string, end: BodyEnd): Response {
     const bytes = new TextEncoder().encode(text);
     let offset = 0;
     let closed = false;
@@ -97,18 +125,26 @@ export class ScriptedVendor implements HttpClient {
       closed = true;
     };
     const body = new ReadableStream<Uint8Array>({
-      pull(controller) {
+      async pull(controller) {
         if (offset < bytes.length) {
           controller.enqueue(bytes.slice(offset, offset + chunkSize));
           offset += chunkSize;
           return;
         }
+        if (end === "close") {
+          close();
+          controller.close();
+          return;
+        }
+        const reason =
+          end === "drop" ? new TypeError("terminated") : await abortReason(end.abortedBy);
         close();
-        controller.close();
+        controller.error(reason);
       },
       cancel: close,
     });
-    return new Response(body, { status, headers: { "content-type": "application/json" } });
+    const type = text.startsWith("event:") ? "text/event-stream" : "application/json";
+    return new Response(body, { status, headers: { "content-type": type } });
   }
 
   /** A response whose body waits for `signal` to abort, then fails with its reason. */
@@ -141,6 +177,11 @@ export class ScriptedVendor implements HttpClient {
 
 /** One piece of a flooded body. */
 const floodPiece = new Uint8Array(1024 * 1024).fill(0x20);
+
+async function abortReason(signal: AbortSignal | null | undefined): Promise<unknown> {
+  await untilAborted(signal);
+  return signal?.reason;
+}
 
 function untilAborted(signal: AbortSignal | null | undefined): Promise<void> {
   return new Promise((resolve) => {

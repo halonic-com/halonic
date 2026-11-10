@@ -32,8 +32,12 @@ tauri-build = { version = "=2.7.4", features = [] }
 halonic-connect = { path = "crates/connect" }
 halonic-git-guard = { path = "crates/git-guard" }
 halonic-keychain = { path = "crates/keychain" }
+halonic-profile = { path = "crates/profile" }
 halonic-secrets = { path = "crates/secrets" }
+halonic-trust-grant = { path = "crates/trust-grant" }
+halonic-trust-store = { path = "crates/trust-store" }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tauri = { version = "=2.12.5", features = [] }
 # The plugins are pinned with tauri, for the same reason. The http plugin
 # is used only from Rust, for its reqwest client (the hello call); it is
@@ -42,10 +46,18 @@ tauri = { version = "=2.12.5", features = [] }
 tauri-plugin-http = { version = "=2.8.3", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-opener = "=2.7.2"
 
+# The native folder picker and the trust question (HAL-2612). rfd is the
+# library tauri-plugin-dialog (plan 7.2) shows its dialogs with; the shell
+# calls it from Rust instead of registering the plugin, whose script would
+# replace `alert` and `confirm` in every page, the served Studio too.
+# Pinned to the version tauri-plugin-dialog 2.8.4 uses; gtk3 is the plugin's
+# default on Linux, and Windows needs common-controls-v6 for custom buttons.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+rfd = { version = "=0.17.2", default-features = false, features = ["gtk3", "common-controls-v6"] }
+
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.
 [dev-dependencies]
-serde_json = "1"
 tauri = { version = "=2.12.5", features = ["test"] }
 
 [lints]

@@ -121,6 +121,73 @@ describe("a program trying to get out of the fence", () => {
     await expect(stat(join(base, "work", ".cursor"))).rejects.toThrow();
   });
 
+  it("can't make git run a command through a submodule's or a worktree's settings", async () => {
+    const repo = join(base, "repo");
+    const module = join(repo, ".git", "modules", "docs");
+    await mkdir(module, { recursive: true });
+    await writeFile(join(repo, ".git", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(module, "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(module, "config"), "[core]\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: repo });
+    try {
+      const attempts = [
+        "printf '[core]\\n\\tfsmonitor = touch pwned\\n' >> .git/modules/docs/config",
+        "mkdir -p .git/modules/docs/hooks && echo x > .git/modules/docs/hooks/post-checkout",
+        "echo x > .git/modules/docs/config.worktree",
+        "printf '[core]\\n\\tfsmonitor = touch pwned\\n' > .git/config.worktree",
+      ];
+      for (const attempt of attempts) {
+        expect((await sh(attempt, planted)).code).not.toBe(0);
+      }
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(module, "config"), "utf8")).toBe("[core]\n");
+    await expect(stat(join(module, "hooks", "post-checkout"))).rejects.toThrow();
+    expect(await readFile(join(repo, ".git", "config.worktree"), "utf8").catch(() => "")).toBe("");
+  });
+
+  it("can't point a linked worktree's .git file at a git folder of its own", async () => {
+    const worktree = join(base, "worktree");
+    await mkdir(worktree, { recursive: true });
+    await writeFile(join(worktree, ".git"), "gitdir: /elsewhere/.git/worktrees/acme\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: worktree });
+    try {
+      expect((await sh("echo 'gitdir: ./evil' > .git", planted)).code).not.toBe(0);
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(worktree, ".git"), "utf8")).toBe(
+      "gitdir: /elsewhere/.git/worktrees/acme\n",
+    );
+  });
+
+  it("can't point a submodule's .git at a git folder of its own, as a file or a folder", async () => {
+    const repo = join(base, "with-submodule");
+    await mkdir(join(repo, ".git", "modules", "docs"), { recursive: true });
+    await mkdir(join(repo, "docs"), { recursive: true });
+    await writeFile(join(repo, ".git", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(repo, ".git", "modules", "docs", "HEAD"), "ref: refs/heads/main\n");
+    await writeFile(join(repo, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+    await writeFile(join(repo, "docs", ".git"), "gitdir: ../.git/modules/docs\n");
+    const planted = await sandbox.open({ ...profile(), workingFolder: repo });
+    try {
+      const attempts = [
+        "echo 'gitdir: ../evil' > docs/.git",
+        "rm -f docs/.git && mkdir docs/.git && echo x > docs/.git/config",
+        "mv docs docs-old && mkdir docs && echo 'gitdir: ../evil' > docs/.git",
+      ];
+      for (const attempt of attempts) {
+        expect((await sh(attempt, planted)).code).not.toBe(0);
+      }
+    } finally {
+      await planted.close();
+    }
+    expect(await readFile(join(repo, "docs", ".git"), "utf8")).toBe(
+      "gitdir: ../.git/modules/docs\n",
+    );
+  });
+
   it("can't reach the network outside the bridge", async () => {
     const { out } = await sh(
       "curl -s --max-time 10 --noproxy '*' http://example.com/ 2>&1; echo \"exit=$?\"",
@@ -160,10 +227,30 @@ describe("a program trying to get out of the fence", () => {
       program: "sh",
       args: [
         "-c",
-        `(setsid sh -c 'while true; do date +%s%N >> ${ticks}; sleep 0.1; done' &) ; sleep 60`,
+        `(perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' sh -c 'while true; do date +%s%N >> ${ticks}; sleep 0.1; done' &) ; sleep 60`,
       ],
     });
     // The program appends, so the file is never empty between two writes. It runs before the kill.
+    await waitForContent(ticks);
+    await started.kill();
+    await started.exited;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const after = await readFile(ticks, "utf8");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(await readFile(ticks, "utf8")).toBe(after);
+  });
+
+  it("kill ends a program that keeps starting new detached children", async () => {
+    const ticks = join(base, "temp", "forking-ticks");
+    const worker = join(base, "temp", "forking-worker.sh");
+    const spawner = join(base, "temp", "forking-spawner.sh");
+    const detach = "perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV'";
+    await writeFile(worker, `while true; do date +%s%N >> ${ticks}; sleep 0.1; done\n`);
+    await writeFile(spawner, `while true; do (${detach} sh ${worker} &); sleep 0.2; done\n`);
+    const started = await session.start({
+      program: "sh",
+      args: ["-c", `(${detach} sh ${spawner} &) ; sleep 60`],
+    });
     await waitForContent(ticks);
     await started.kill();
     await started.exited;

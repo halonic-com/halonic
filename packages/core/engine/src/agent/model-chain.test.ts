@@ -1,4 +1,4 @@
-import { type Clock, ModelCallError, type Secrets } from "@halonicjs/ports";
+import { type Clock, ModelCallError, type Secrets, VendorErrorText } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { LocalExecutor } from "../local-executor.ts";
@@ -317,5 +317,26 @@ verifies("ports.workspace-secrets", () => {
       }),
     ).rejects.toThrow(new RangeError("A workspace can't pick a secret that belongs to Halonic."));
     expect(smart.requests).toEqual([]);
+  });
+});
+
+verifies("engine.provider-text", () => {
+  it("keeps the provider's text on llm.fallback", async () => {
+    const log = new MemoryTurnLog();
+    const cause = new VendorErrorText(502, "upstream connect error");
+    const proxyDown = new ModelCallError("offline", "acme-cloud can't be reached", { cause });
+    const smart = new ScriptedModel([proxyDown], "acme-cloud");
+    const local = new ScriptedModel([textAnswer("From this machine")], "acme-local");
+
+    await runTurnOn(alias("smart", smart, { fallback: [alias("local", local)] }), { log });
+
+    expect(log.events[1]).toEqual({
+      type: "llm.fallback",
+      agent: "clerk",
+      from: "smart",
+      to: "local",
+      error: "offline: acme-cloud can't be reached",
+      providerText: { status: 502, text: "upstream connect error" },
+    });
   });
 });

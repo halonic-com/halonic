@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { TickIcon } from "../icons/tick-icon.tsx";
 import { Kbd } from "../kbd/kbd.tsx";
 import type { MenuItem } from "./menu.tsx";
 
@@ -38,7 +39,10 @@ interface MenuRowProps {
   readonly onPick: () => void;
 }
 
-/** One item of a Menu: a `menuitem` button that the Menu moves focus to. */
+/**
+ * One item of a Menu: a `menuitem` button that the Menu moves focus to, or a `menuitemradio`
+ * when the item has `checked`.
+ */
 export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }: MenuRowProps) {
   const reasonId = useId();
   const disabled = item.disabled === true;
@@ -49,7 +53,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
   return (
     <button
       type="button"
-      role="menuitem"
+      {...roleOf(item)}
       tabIndex={-1}
       aria-disabled={disabled || unavailable ? true : undefined}
       aria-describedby={unavailable ? reasonId : undefined}
@@ -89,8 +93,20 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
           <Kbd keys={item.keys} />
         </span>
       )}
+      {item.checked === true ? (
+        <span className={`${iconSlot} ml-auto text-accent ${faded}`.trim()} aria-hidden="true">
+          <TickIcon />
+        </span>
+      ) : null}
     </button>
   );
+}
+
+/** A plain item, or one choice of several with its state. */
+function roleOf(item: MenuItem) {
+  return item.checked === undefined
+    ? ({ role: "menuitem" } as const)
+    : ({ role: "menuitemradio", "aria-checked": item.checked } as const);
 }
 
 function rowTone(item: MenuItem): keyof typeof toneClasses {

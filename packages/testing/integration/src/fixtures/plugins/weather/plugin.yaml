@@ -1,0 +1,42 @@
+# The weather integration from fixtures/weather.ts as a plugin, with a ui block.
+# The plugin suite's tests copy this folder and break one thing at a time.
+id: weather
+version: 1.0.0
+sdk: 1
+name: Weather
+description: Forecasts for the cities you name.
+backend:
+  entry: backend/index.ts
+  hosts: [api.example.com, cdn.example.com]
+  secrets:
+    weather-key:
+      purpose: API key for the forecast service
+      hosts: [api.example.com]
+      as: header
+      header: x-api-key
+  tools:
+    - name: forecast
+      description: Today's forecast for a city.
+      risk: read
+      untrusted: true
+    - name: save-favourite
+      description: Saves a city as a favourite.
+      risk: write
+      untrusted: false
+ui:
+  settings:
+    weather-key: { label: Forecast key, type: secret, secret: weather-key }
+  commands:
+    - id: forecast
+      title: Show the forecast
+      tool: forecast
+      form:
+        city: { label: City, type: text, required: true }
+      show: text
+  cards:
+    - id: ghent
+      title: Ghent
+      tool: forecast
+      args: { city: Ghent }
+      show: text
+  panel: { title: Weather }

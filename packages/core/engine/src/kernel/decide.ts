@@ -175,13 +175,14 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
   if (run.pendingCall?.callId !== input.callId) {
     return { events: [], effects: [] };
   }
-  const { error, reason, host } = input;
+  const { error, reason, host, providerText } = input;
   const failed: DecidedEvent = {
     type: "run.failed",
     state: run.state,
     error,
     reason,
     ...(host === undefined ? {} : { host }),
+    ...(providerText === undefined ? {} : { providerText }),
   };
   return { events: [failed], effects: tellParent({ ...run, status: "failed" }) };
 }

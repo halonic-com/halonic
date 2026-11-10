@@ -1,0 +1,10 @@
+{
+  "internal": [
+    {
+      "id": "sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM",
+      "holder": "the CTO's Paperclip agent",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHAKPlrCmldmS/Jcp4T5PN2ocup5KekoWTw8E0NnMfpQ=\n-----END PUBLIC KEY-----\n"
+    }
+  ],
+  "user-visible": []
+}

@@ -19,26 +19,28 @@ import {
   summarizeQueue,
   writeQueue,
 } from "./routine-queue.ts";
+import { type SkipRecord, SkipRecords } from "./routine-skips.ts";
+import { type DroppedRange, TickSkips } from "./routine-tick-skips.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
 /**
  * What the scheduler reads of a due run: the routine key, the due time and
  * the kind of trigger. The rest, such as the routine itself, is for `startOf`.
  */
-export type ScheduledRun = Pick<DueRun, "key" | "at" | "trigger">;
+export type ScheduledRun = Pick<DueRun, "key" | "at" | "trigger" | "catchUp">;
 
 /**
- * A tick function such as `due` of `@halonicjs/routines`: the runs to start
- * for the time from `lastTick` (exclusive) up to `now` (inclusive), under a
- * catch-up policy for missed ticks. `lastTick` is `null` on the very first
- * tick of a workspace.
+ * A tick function such as `dueWithSkips` of `@halonicjs/routines`: the runs
+ * to start for the time from `lastTick` (exclusive) up to `now` (inclusive),
+ * under a catch-up policy for missed ticks, and the due times that policy
+ * dropped. `lastTick` is `null` on the very first tick of a workspace.
  */
 export type DueFunction<Routine, Policy, Run extends ScheduledRun> = (
   routines: readonly Routine[],
   lastTick: Date | null,
   now: Date,
   policy: Policy,
-) => readonly Run[];
+) => { runs: readonly Run[]; skipped: readonly DroppedRange[] };
 
 /**
  * How to start a due run: a workflow with its input, or one agent with a
@@ -82,6 +84,8 @@ export interface RoutineTickResult {
    * (`overlap: skip`), or because its queue was full.
    */
   skipped: RoutineTime[];
+  /** Routines whose skipped times this tick could not add to their skip records. */
+  skipsNotSaved: { key: string; error: Error }[];
 }
 
 /**
@@ -138,6 +142,7 @@ const nothing = (): RoutineTickResult => ({
   lastRunNotSaved: [],
   queued: [],
   skipped: [],
+  skipsNotSaved: [],
 });
 
 /**
@@ -177,6 +182,7 @@ export class RoutineScheduler<
   private readonly lastTickKey: string;
   private readonly queueKey: string;
   private readonly lastRuns: LastRuns;
+  private readonly skipRecords: SkipRecords;
   private current: Promise<RoutineTickResult> | null = null;
   private disposed = false;
 
@@ -185,6 +191,7 @@ export class RoutineScheduler<
     this.lastTickKey = lastTickKey(options.workspaceId);
     this.queueKey = queueKey(options.workspaceId);
     this.lastRuns = new LastRuns(options.coordination, options.workspaceId);
+    this.skipRecords = new SkipRecords(options.coordination, options.workspaceId);
   }
 
   /**
@@ -222,7 +229,22 @@ export class RoutineScheduler<
    * stored queue that can't be read counts as empty, as it does for a tick.
    */
   async queuedTimes(): Promise<QueuedTimes[]> {
-    return summarizeQueue(readQueue(await this.options.coordination.read(this.queueKey)));
+    const queue = readQueue(await this.options.coordination.read(this.queueKey));
+    return summarizeQueue(queue ?? new Map());
+  }
+
+  /**
+   * A routine's skipped due times, newest row first, as the ticks recorded
+   * them (see {@link SkipRecords}), without a tick. None for a routine
+   * that never skipped, or was removed.
+   */
+  async skippedTimes(routineKey: string): Promise<SkipRecord[]> {
+    return this.skipRecords.read(routineKey);
+  }
+
+  /** When a tick last found the stored queue unreadable, so its times were lost unlisted; `null` if never. */
+  async lastQueueLoss(): Promise<string | null> {
+    return this.skipRecords.lastQueueLoss();
   }
 
   /**
@@ -248,13 +270,23 @@ export class RoutineScheduler<
     }
     const routineList = await routines();
     // Before the starts, so each last run they store is of a routine the index names.
-    await this.lastRuns.forgetRemoved(routineList.map(keyOf));
+    await this.lastRuns.forgetRemoved(routineList.map(keyOf), (hash) =>
+      this.skipRecords.forget(hash),
+    );
     const storedQueue = await coordination.read(this.queueKey);
-    const plan = await this.plan(routineList, lastTick, now, readQueue(storedQueue));
+    const queue = readQueue(storedQueue);
+    if (storedQueue !== null && queue === null) {
+      await this.skipRecords.queueLost(now);
+    }
+    const skips = new TickSkips();
+    const plan = await this.plan(routineList, lastTick, now, queue ?? new Map(), skips);
+    skips.addTimes(plan.skip, "busy");
     const result: RoutineTickResult = {
       ...nothing(),
       queued: plan.queue.map(timeOf),
       skipped: plan.skip.map(timeOf),
+      // Before the starts, so a skip after this tick's run starts a row of its own.
+      skipsNotSaved: await skips.record(this.skipRecords, this.lastRuns, now),
     };
     for (const run of plan.start) {
       if (this.disposed) {
@@ -303,8 +335,9 @@ export class RoutineScheduler<
     lastTick: Date | null,
     now: Date,
     queue: ReadonlyMap<string, readonly Date[]>,
+    skips: TickSkips,
   ): Promise<OverlapDecision<Run>> {
-    const { due, policy, overlapOf } = this.options;
+    const { due, policy, overlapOf, keyOf } = this.options;
     const waiting = new Map<string, Run[]>();
     const wait = (run: Run): void => {
       const runs = waiting.get(run.key) ?? [];
@@ -313,15 +346,21 @@ export class RoutineScheduler<
       }
       waiting.set(run.key, runs);
     };
+    const keys = new Set(routineList.map(keyOf));
     for (const [key, times] of queue) {
       for (const at of times) {
         const run = this.requeued(routineList, key, at);
         if (run !== undefined) {
           wait(run);
+        } else if (keys.has(key)) {
+          // Turned off or rescheduled; a removed routine's times go without a trace.
+          skips.addTimes([{ key, at }], "changed");
         }
       }
     }
-    for (const run of due(routineList, lastTick, now, policy)) {
+    const { runs, skipped } = due(routineList, lastTick, now, policy);
+    skips.addRanges(skipped);
+    for (const run of runs) {
       wait(run);
     }
     const plan: OverlapDecision<Run> = { start: [], queue: [], skip: [] };
@@ -358,7 +397,7 @@ export class RoutineScheduler<
   private requeued(routineList: readonly Routine[], key: string, at: Date): Run | undefined {
     const { due, policy } = this.options;
     const justBefore = new Date(at.getTime() - 1);
-    return due(routineList, justBefore, at, policy).find(
+    return due(routineList, justBefore, at, policy).runs.find(
       (run) => run.key === key && run.at.getTime() === at.getTime(),
     );
   }
@@ -404,7 +443,12 @@ export class RoutineScheduler<
     // fills a different `lastRun`, but the executor returns the run that
     // exists, so the input it started with stays.
     const what = startOf(run, lastRun);
-    const trigger = { type: run.trigger, routineId: run.key, at: run.at.toISOString() };
+    const trigger = {
+      type: run.trigger,
+      routineId: run.key,
+      at: run.at.toISOString(),
+      ...(run.catchUp === undefined ? {} : { catchUp: run.catchUp }),
+    };
     const runId = this.runIdOf(run);
     return "workflow" in what
       ? executor.start({ ...what.workflow, trigger, runId })

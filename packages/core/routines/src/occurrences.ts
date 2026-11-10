@@ -1,5 +1,5 @@
 import type { RoutineTrigger } from "@halonicjs/format";
-import { nextCronTime } from "./next-cron-time.ts";
+import { cronTimeFinder } from "./next-cron-time.ts";
 import { checkTimeZone, DEFAULT_TIME_ZONE } from "./time-zone.ts";
 
 const DEFAULT_LIMIT = 100;
@@ -23,10 +23,24 @@ export function occurrences(
   if (!("schedule" in trigger)) return [];
   const zone = trigger.timezone ?? timeZone;
   checkTimeZone(zone);
+  return timesBetween(cronTimeFinder(trigger.schedule, zone), from, to, limit);
+}
+
+/**
+ * The times `nextTime` gives after `from` up to and including `to`, oldest
+ * first, at most `limit` of them. Takes a finder from `cronTimeFinder`, so a
+ * caller that walks many windows of one cron builds it once.
+ */
+export function timesBetween(
+  nextTime: (after: Date) => Date | null,
+  from: Date,
+  to: Date,
+  limit: number,
+): Date[] {
   const times: Date[] = [];
   let current = from;
   while (times.length < limit) {
-    const next = nextCronTime(trigger.schedule, current, zone);
+    const next = nextTime(current);
     if (!next || next > to) break;
     times.push(next);
     current = next;

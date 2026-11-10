@@ -5,7 +5,7 @@ const step = 1024;
 
 /**
  * A size as the output writes it: one decimal below 10, whole numbers from
- * 10, in the largest unit that keeps the number at 0.1 or more, so a nearly
+ * 10, counted after rounding so 9.96 GB reads "10 GB", in the largest unit that keeps the number at 0.1 or more, so a nearly
  * full disk reads "0.8 GB free" as the approved line does.
  *
  * @param bytes - a size of zero or more bytes
@@ -23,6 +23,8 @@ export function shownSize(bytes: number): string {
     unit += 1;
   }
   if (value === 0) return `0 ${units[unit]}`;
-  const number = value < 10 ? value.toFixed(1) : Math.round(value).toString();
+  // Rounded to tenths first: 9.96 is 10.0, which is written as a whole number.
+  const tenths = Math.round(value * 10) / 10;
+  const number = tenths < 10 ? tenths.toFixed(1) : Math.round(value).toString();
   return `${number} ${units[unit]}`;
 }

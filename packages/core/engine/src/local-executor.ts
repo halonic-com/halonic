@@ -17,16 +17,18 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
-import { checkRunToolCall } from "./agent/check-run-tool-call.ts";
+import { checkRunToolCall, checkSubagentToolCall } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
-import type { ModelCallResult } from "./kernel/decide-types.ts";
+import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import { LocalRuns, type LocalRunsOptions } from "./run/local-runs.ts";
+import { runAgentTools } from "./run/run-agent-tools.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
 import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
+import type { DelegatedTask } from "./tools/subagents/subagent-tools.ts";
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
 export interface LocalExecutorOptions {
@@ -41,9 +43,10 @@ export interface LocalExecutorOptions {
   /** Halonic's own tools, offered after the caller's. */
   readonly halonicTools: readonly HalonicTool[];
   /**
-   * Where agents keep their notes. With it, a run's model call, and a chat
-   * turn that names an agent, also offer that agent's memory tools, after
-   * the other Halonic tools.
+   * Where agents keep their notes and their collections' records. With it,
+   * a run's model call, and a chat turn that names an agent, also offer that
+   * agent's memory tools, after the other Halonic tools; and a run's agent
+   * with `collections` gets its records tools.
    */
   readonly memory?: RecordStore;
   /** The connected servers, whose tools are offered last. */
@@ -68,6 +71,13 @@ export const defaultRunMaxRounds = 6;
 
 /** The agent name a chat turn's model calls carry when the request names none. */
 const chatAgent = "chat";
+
+/** The run and state a run's model call is for, with the definitions the run started with. */
+interface RunTurn {
+  readonly run: RunState;
+  readonly state: string;
+  readonly definitions: RunDefinitions;
+}
 
 /**
  * The {@link RunExecutor} that runs the engine in this process. It runs chat
@@ -199,8 +209,8 @@ export class LocalExecutor implements RunExecutor {
 
   /**
    * Halonic's tools for a turn: the agent's memory tools come last, when
-   * there is an agent and a store. The run-log, records and subagent tools
-   * an agent's file grants join here (HAL-186 step 4d).
+   * there is an agent and a store. A chat turn gets these only; a run's
+   * agent also gets what its file grants ({@link LocalExecutor.runToolsOf}).
    *
    * @param runId - the run the turn is in, which the agent's notes name; absent in a chat
    */
@@ -219,8 +229,66 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
+   * The tools of an agent in a run: Halonic's tools and its memory tools,
+   * then the run-log, records and subagent tools its kept file grants. An
+   * agent the definitions have no file for gets the first two only.
+   */
+  private runToolsOf(turn: RunTurn, agentId: string, depth: number): readonly HalonicTool[] {
+    const own = this.halonicToolsOf(agentId, turn.run.runId);
+    const agent = agentIn(turn.definitions, agentId);
+    if (agent === undefined || this.options.runs === undefined) {
+      return own;
+    }
+    const granted = runAgentTools({
+      agent,
+      hubId: turn.run.hubId,
+      runId: turn.run.runId,
+      state: turn.state,
+      definitions: turn.definitions,
+      depth,
+      runs: this.options.runs.store,
+      ...(this.options.memory === undefined ? {} : { records: this.options.memory }),
+      clock: this.options.clock,
+      runSubagent: (task) => this.runSubagent(turn, task),
+    });
+    return [...own, ...granted];
+  }
+
+  /**
+   * A subagent's own turn on a task, one level deeper, on its own model and
+   * with its own tools. Its calls are checked as a run's are, except that
+   * one that needs a person's OK is refused ({@link checkSubagentToolCall}).
+   *
+   * @returns the subagent's answer
+   */
+  private async runSubagent(turn: RunTurn, task: DelegatedTask): Promise<string> {
+    const subagent = agentIn(turn.definitions, task.agent);
+    const messages = [{ role: "user" as const, content: task.task }];
+    const model = await this.options.resolveModel({
+      hubId: turn.run.hubId,
+      agentId: task.agent,
+      messages,
+      tools: [],
+    });
+    const result = await runModelTurn({
+      model,
+      secrets: this.options.secrets,
+      messages,
+      callerTools: [],
+      halonicTools: this.runToolsOf(turn, task.agent, task.depth),
+      connectors: [],
+      maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,
+      agent: task.agent,
+      clock: this.options.clock,
+      checkCall: checkSubagentToolCall,
+    });
+    return result.content;
+  }
+
+  /**
    * A run's model call: the state's prompt to its agent's model, with
-   * Halonic's tools and the agent's memory tools, through the same turn
+   * Halonic's tools, the agent's memory tools and the tools its file grants
+   * ({@link LocalExecutor.runToolsOf}), through the same turn
    * loop a chat turn uses. Every call is checked with `checkToolCall`
    * first ({@link checkRunToolCall}), and the agent's `maxSteps` is the
    * round limit. Connectors stay out until the side-effect boundary
@@ -235,7 +303,8 @@ export class LocalExecutor implements RunExecutor {
    * @throws when the run's definitions are gone, as {@link missingDefinitionsError} says
    */
   private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
-    const agent = await this.keptAgent(run, call.agent);
+    const turn: RunTurn = { run, state: call.state, definitions: await this.keptDefinitions(run) };
+    const agent = agentIn(turn.definitions, call.agent);
     const messages = [{ role: "user" as const, content: call.prompt }];
     const model = await this.options.resolveModel({
       hubId: run.hubId,
@@ -247,7 +316,7 @@ export class LocalExecutor implements RunExecutor {
       model,
       secrets: this.options.secrets,
       messages,
-      halonicTools: this.halonicToolsOf(call.agent, run.runId),
+      halonicTools: this.runToolsOf(turn, call.agent, 0),
       connectors: [],
       maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
       agent: call.agent,
@@ -260,11 +329,8 @@ export class LocalExecutor implements RunExecutor {
       : { type: "model", output: outcome.result.content };
   }
 
-  /**
-   * The agent's file in the definitions the run started with, or
-   * `undefined` for a run kept before agents joined its definitions.
-   */
-  private async keptAgent(run: RunState, agentId: string): Promise<Agent | undefined> {
+  /** The definitions the run started with. */
+  private async keptDefinitions(run: RunState): Promise<RunDefinitions> {
     if (this.options.runs === undefined) {
       throw noRuns();
     }
@@ -272,9 +338,17 @@ export class LocalExecutor implements RunExecutor {
     if (definitions === null) {
       throw new Error(missingDefinitionsError(run.definitionsVersion));
     }
-    const agents = definitions.agents ?? {};
-    return Object.hasOwn(agents, agentId) ? agents[agentId] : undefined;
+    return definitions;
   }
+}
+
+/**
+ * The agent's file in a run's definitions, or `undefined` for a run kept
+ * before agents joined its definitions.
+ */
+function agentIn(definitions: RunDefinitions, agentId: string): Agent | undefined {
+  const agents = definitions.agents ?? {};
+  return Object.hasOwn(agents, agentId) ? agents[agentId] : undefined;
 }
 
 function noRuns(): Error {

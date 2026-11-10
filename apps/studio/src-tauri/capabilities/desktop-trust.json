@@ -1,0 +1,20 @@
+{
+  "identifier": "desktop-trust",
+  "description": "On desktop, the app's own page may show the folder picker and keep trust records in the profile through pick_folder and the trust_* commands. A grant opens a folder only when the person picked it or said yes to the shell's own question (crates/trust-grant). It is local only, so the Studio the computer serves gets no trust. Android has no folder picker.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-pick-folder",
+    "allow-trust-get",
+    "allow-trust-list",
+    "allow-trust-grant",
+    "allow-trust-revoke"
+  ]
+}

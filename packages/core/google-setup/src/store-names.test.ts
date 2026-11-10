@@ -47,8 +47,8 @@ verifies("google-setup.store-names", () => {
     expect(stagedClientSecretName(`g${"a".repeat(106)}`)).toHaveLength(128);
   });
 
-  // These are the only names of a Google client secret: a connector file's
-  // `client` forms none (`format.secret-names`). They follow the same
+  // These are the only names of a Google client secret and refresh token: a
+  // connector file's `client` and `secret` form none (`format.secret-names`). They follow the same
   // `Secrets` name rule as every name a file gives.
   it("builds names that follow the Secrets name rule, up to the longest ref", () => {
     const longestRef = `g${"a".repeat(106)}`;

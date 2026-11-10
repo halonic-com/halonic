@@ -1,4 +1,4 @@
-import { ModelCallError } from "@halonicjs/ports";
+import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
 import type { BodyTooLargeError } from "./read-body.ts";
 
@@ -31,25 +31,25 @@ const spendCapCode = "enforced_spend_limit_reached";
 const notTheKeyWording = /countr|region|territor|moderat|flagged|guardrail|model/i;
 
 /**
- * The vendor's own error text, shortened, as the `cause` of a
- * {@link ModelCallError}. It stays out of the message, which Studio and the
- * command line show: microcopy 1.4 allows no quoted outside text there. The
- * cause is for `--debug` and Copy details.
+ * The HTTP status Anthropic sends with each of its error types
+ * (https://docs.anthropic.com/en/api/errors). An `error` event in a stream
+ * has a type but no status, and gets the reason the matching status gets.
  */
-export class VendorErrorText extends Error {
-  override readonly name = "VendorErrorText";
-  /** The HTTP status the text came with. */
-  readonly status: number;
+const statusOfErrorType: Readonly<Record<string, number>> = {
+  invalid_request_error: 400,
+  authentication_error: 401,
+  billing_error: 402,
+  permission_error: 403,
+  not_found_error: 404,
+  request_too_large: 413,
+  rate_limit_error: 429,
+  api_error: 500,
+  timeout_error: 504,
+  overloaded_error: 529,
+};
 
-  /**
-   * @param status - the HTTP status the text came with
-   * @param text - the vendor's text, already shortened and checked for keys
-   */
-  constructor(status: number, text: string) {
-    super(text);
-    this.status = status;
-  }
-}
+/** A masked key, such as OpenAI's `sk-proj-****abcd`: `sk-`, then a star before any space. */
+const maskedKey = /sk-[\w-]*\*/;
 
 /**
  * The {@link ModelCallError} for an HTTP error reply with `status` and body
@@ -61,9 +61,10 @@ export class VendorErrorText extends Error {
  * `refused` for anything else.
  *
  * The vendor's own text goes on the error's `cause`, shortened, except when
- * the key is refused, whenever it holds something shaped like a key, and
- * whenever it holds `key`, the key the call was sent with. A proxy may use
- * keys that look like nothing in particular.
+ * the key is refused, when a 401 or 403 repeats a masked key, whenever it
+ * holds something shaped like a key, and whenever it holds `key`, the key the
+ * call was sent with. A proxy may use keys that look like nothing in
+ * particular.
  */
 export function errorForStatus(
   status: number,
@@ -71,44 +72,85 @@ export function errorForStatus(
   call: FailedCall,
   key: string,
 ): ModelCallError {
-  const http = `HTTP ${status}`;
-  const vendor = vendorErrorIn(text);
-  const refusedCall = `${call.providerId} refused the call to the model "${call.model}" (${http})`;
+  return errorForVendorError(status, vendorErrorIn(text), `HTTP ${status}`, call, key);
+}
+
+/**
+ * The {@link ModelCallError} for an `error` event in a stream the API had
+ * accepted, such as `overloaded_error`. It has the reason
+ * {@link errorForStatus} gives the status of its type, so an overload is
+ * `provider-busy` whether it comes as a 529 or mid-stream; a type we don't
+ * know is `refused`. The message ends in the type, such as
+ * "(overloaded_error)", and the API's text goes on the `cause` under the same
+ * rules as for a status.
+ */
+export function errorForStreamedError(
+  vendorType: string,
+  text: string,
+  call: FailedCall,
+  key: string,
+): ModelCallError {
+  const status = Object.hasOwn(statusOfErrorType, vendorType)
+    ? statusOfErrorType[vendorType]
+    : undefined;
+  // Only a type from the list above reaches the message: no outside text there.
+  const label = status === undefined ? "error event" : vendorType;
+  const vendor: VendorError = { message: text, type: vendorType, detailCode: undefined };
+  return errorForVendorError(status, vendor, label, call, key);
+}
+
+/**
+ * The {@link ModelCallError} for `vendor`, an error the API sent with
+ * `status` (undefined when it gave none we know), as {@link errorForStatus}
+ * describes. `label` closes the message, such as "HTTP 400".
+ */
+function errorForVendorError(
+  status: number | undefined,
+  vendor: VendorError,
+  label: string,
+  call: FailedCall,
+  key: string,
+): ModelCallError {
   const keyRefused = isKeyRefused(status, vendor);
-  const vendorText = keyRefused ? "" : shortened(vendor.message, key);
+  const dropText = keyRefused || namesMaskedKey(status, vendor.message);
+  const vendorText = dropText ? "" : shortened(vendor.message, key);
   const options = vendorText === "" ? {} : { cause: new VendorErrorText(status, vendorText) };
   if (isOutOfCredit(status, vendor)) {
     return new ModelCallError(
       "out-of-credit",
-      `${call.providerId} refused the call to the model "${call.model}" because the account has no credit left or reached its limit (${http})`,
+      `${call.providerId} refused the call to the model "${call.model}" because the account has no credit left or reached its limit (${label})`,
       options,
     );
   }
   if (keyRefused) {
-    return new ModelCallError("key-refused", `${call.providerId} didn't accept the key (${http})`);
+    return new ModelCallError("key-refused", `${call.providerId} didn't accept the key (${label})`);
   }
   if (status === 404) {
     return new ModelCallError(
       "model-missing",
-      `${call.providerId} doesn't have the model "${call.model}" (${http})`,
+      `${call.providerId} doesn't have the model "${call.model}" (${label})`,
       options,
     );
   }
-  if (status === 429 || status >= 500) {
+  if (status !== undefined && (status === 429 || status >= 500)) {
     return new ModelCallError(
       "provider-busy",
-      `${call.providerId} was busy and couldn't take the call to the model "${call.model}" (${http})`,
+      `${call.providerId} was busy and couldn't take the call to the model "${call.model}" (${label})`,
       options,
     );
   }
-  return new ModelCallError("refused", refusedCall, options);
+  return new ModelCallError(
+    "refused",
+    `${call.providerId} refused the call to the model "${call.model}" (${label})`,
+    options,
+  );
 }
 
 /**
  * Whether the account has no credit left: a 402 or a `billing_error`, a 429
  * for the tier's spend cap, or text that says so, whatever the status.
  */
-function isOutOfCredit(status: number, vendor: VendorError): boolean {
+function isOutOfCredit(status: number | undefined, vendor: VendorError): boolean {
   return (
     status === 402 ||
     vendor.type === "billing_error" ||
@@ -117,8 +159,17 @@ function isOutOfCredit(status: number, vendor: VendorError): boolean {
   );
 }
 
+/**
+ * Whether a 401 or 403 repeats a masked key, such as OpenAI's
+ * `sk-proj-****abcd`. `findSecretShape` doesn't spot one, and a 403 that isn't
+ * about the key keeps its text otherwise.
+ */
+function namesMaskedKey(status: number | undefined, message: string): boolean {
+  return (status === 401 || status === 403) && maskedKey.test(message);
+}
+
 /** Whether the API turned the key away: a 401, or a 403 about nothing else. */
-function isKeyRefused(status: number, vendor: VendorError): boolean {
+function isKeyRefused(status: number | undefined, vendor: VendorError): boolean {
   if (status === 401) return true;
   return status === 403 && !notTheKeyWording.test(vendor.message);
 }

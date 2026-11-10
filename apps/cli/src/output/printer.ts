@@ -1,6 +1,7 @@
 import type { SecretScrubber } from "@halonicjs/std";
-import type { CliIo, CommandResult } from "../command.ts";
+import type { CliIo, CommandResult, StoppedResult } from "../command.ts";
 import { type Phrase, phrase, renderPhrase } from "../messages/phrase.ts";
+import { stopMessages } from "../messages/stop.ts";
 import { NotTrustedError } from "../not-trusted.ts";
 import {
   errorDocument,
@@ -41,6 +42,15 @@ export interface Printer {
    * @param doing - what the step is doing, such as "Draft reply"
    */
   progress(doing: Phrase): Progress;
+  /**
+   * A command that Ctrl C or SIGTERM stopped (cli-output 1.5): the live line
+   * goes away, then "Stopped." and what that meant go to stderr, since
+   * they aren't a result. With `--json`, stdout gets the command's document
+   * with `"ok": false` instead, and stderr stays empty. A second signal
+   * prints this with no result: only "Stopped.", or `{ "outputVersion": 1,
+   * "ok": false }`.
+   */
+  stopped(result?: StoppedResult): void;
   /** Takes the live line away for good, when the command has ended. */
   close(): void;
   /**
@@ -48,9 +58,10 @@ export interface Printer {
    * question shows first, and returns whether the answer was yes (see
    * `askYesNo`). A live line is taken away first, so the question and the
    * answer typed after it have the line to themselves. It may be asked again
-   * for a second question.
+   * for a second question. Once `signal` is aborted, a question waiting for
+   * its answer ends and throws (see `askYesNo`).
    */
-  ask(question: Question): Promise<boolean>;
+  ask(question: Question, signal?: AbortSignal): Promise<boolean>;
 }
 
 export interface PrinterOptions {
@@ -101,14 +112,26 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     ...(options.questions ?? nowhereToAsk),
     render: (line) => renderPhrase(line, errPaint),
   };
+  const writeDocument = (result: CommandResult | StoppedResult) => {
+    const scrub = (text: string) => options.scrubber.scrub(text);
+    writeOut(jsonText(scrubbedDocument(resultDocument(result), scrub)));
+  };
   return {
     lines: (lines) => printLines(out, lines),
     result(result) {
       if (options.json) {
-        const scrub = (text: string) => options.scrubber.scrub(text);
-        writeOut(jsonText(scrubbedDocument(resultDocument(result), scrub)));
+        writeDocument(result);
       } else {
         printLines(out, result.lines);
+      }
+    },
+    stopped(result = notSaid) {
+      // The line says the command was interrupted, so it comes after the live line is gone.
+      liveLine?.close();
+      if (options.json) {
+        writeDocument(result);
+      } else {
+        err(stopMessages.stopped(result.meaning).phrase);
       }
     },
     error(error, errorContext) {
@@ -136,12 +159,15 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       });
     },
     close: () => liveLine?.close(),
-    ask(question) {
+    ask(question, signal) {
       liveLine?.clear();
-      return askYesNo(question, asking);
+      return askYesNo(question, asking, signal);
     },
   };
 }
+
+/** A stop the command had no say in, such as a second signal: only "Stopped.". */
+const notSaid: StoppedResult = { stopped: true, json: {} };
 
 /** What a printer without a live line hands `startProgress`, which then draws nothing. */
 const noLine = { draw: () => {}, clear: () => {} };

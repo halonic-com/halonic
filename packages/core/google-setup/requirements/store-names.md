@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-698 (build plan D2); the one source of these names from HAL-2932
+- Source: HAL-698 (build plan D2); the one source of these names from HAL-2932 and HAL-2955
 
-The store shall name the client secret `google-client-<clientRef>`, a staged secret `google-client-<clientRef>-staged` and a Google account's refresh token `google-account-<accountRef>`. It shall accept only refs of lower-case letters and digits in parts joined by single `_`, starting with a letter, not ending in `_staged`, and short enough that every name fits in 128 characters. For any other ref it shall throw a `RangeError` before it reads or writes a token, with a fixed message that doesn't repeat the ref. Every name it builds shall follow the name rule of the `Secrets` port. These are the only names of a Google client secret: a connector file's `client` forms none (`format.secret-names`).
+The store shall name the client secret `google-client-<clientRef>`, a staged secret `google-client-<clientRef>-staged` and a Google account's refresh token `google-account-<accountRef>`. It shall accept only refs of lower-case letters and digits in parts joined by single `_`, starting with a letter, not ending in `_staged`, and short enough that every name fits in 128 characters. For any other ref it shall throw a `RangeError` before it reads or writes a token, with a fixed message that doesn't repeat the ref. Every name it builds shall follow the name rule of the `Secrets` port. These are the only names of a Google client secret and refresh token: a connector file's `client` and `secret` form none (`format.secret-names`).
 
 ## Examples
 

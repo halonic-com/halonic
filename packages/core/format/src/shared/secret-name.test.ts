@@ -148,13 +148,29 @@ verifies("format.secret-names", () => {
       ]);
     });
 
-    it("checks a Google connector's refresh-token secret", () => {
-      const google = yaml(
+    /** A Google connector file with this `secret`, on line 3. */
+    function googleSecretConnector(secret: string): string {
+      return yaml(
         "id: mailbox",
         "transport: { google: { account: desk@example.com } }",
-        `secret: ${keys[0]?.[1]}`,
+        `secret: '${secret}'`,
       );
-      expect(summary(problemsOf("connector", google))).toEqual(["secret secret-looks-like-key 3"]);
+    }
+
+    // The refresh token's name belongs to `google-setup.store-names` alone,
+    // so a Google connector's `secret` must not be read as a secret's name.
+    it("forms no secret name from a Google connector's secret", () => {
+      const parsed = parseFile("connector", googleSecretConnector("mailbox refresh"));
+      expect(parsed.ok && parsed.value.warnings).toEqual([]);
+    });
+
+    it("refuses a pasted key as a Google connector's secret, without repeating it", () => {
+      const key = keys[0]?.[1] ?? "";
+      const text = googleSecretConnector(key);
+      expect(summary(problemsOf("connector", text))).toEqual(["secret secret-looks-like-key 3"]);
+      const parsed = parseFile("connector", text);
+      const messages = parsed.ok ? [] : parsed.error.map(({ message }) => message);
+      expect(messages.join(" ")).not.toContain(key.slice(4, 20));
     });
 
     /** A Google connector file with this `client`, on line 5. */

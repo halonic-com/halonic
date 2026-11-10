@@ -6,6 +6,7 @@ import {
   type CommandContext,
   type CommandInput,
   type CommandPath,
+  type StoppedResult,
   UsageError,
 } from "./command.ts";
 import { type ExitCode, exitCode } from "./exit-code.ts";
@@ -20,6 +21,7 @@ import { type Printer, printerFor } from "./output/printer.ts";
 import { type Clock, terminalLine } from "./output/progress.ts";
 import { canAsk, type QuestionTerminal } from "./output/question.ts";
 import { type SharedLine, sharedLine } from "./output/shared-line.ts";
+import { type SignalSource, type StopWatch, stopExitCode, watchForStop } from "./output/stop.ts";
 import { decideStyle, type Environment, type OutputStyle } from "./output/style.ts";
 import { readInput } from "./read-input.ts";
 import { noSecrets, rememberedSecrets } from "./remembered-secrets.ts";
@@ -74,7 +76,16 @@ export interface CliSetup {
   readonly secrets?: Secrets;
   /** The clock live lines count on; the computer's own when left out, a hand-moved one in tests. */
   readonly clock?: Clock;
+  /**
+   * Where Ctrl C and SIGTERM come from while a command runs, and how the
+   * process ends at once on a second one: `process` and `process.exit`.
+   * Left out, nothing stops a command.
+   */
+  readonly stop?: { readonly signals: SignalSource; exitNow(code: number): void };
 }
+
+/** What a command line ends with: an {@link ExitCode}, or 130 or 143 when Ctrl C or SIGTERM stopped it. */
+export type CliExit = ExitCode | (typeof stopExitCode)[keyof typeof stopExitCode];
 
 /**
  * Runs one `halonic` command line and returns the exit code. Output goes
@@ -93,7 +104,7 @@ export async function runCli(
   io: CliIo,
   commands: readonly CliCommand[],
   setup: CliSetup = {},
-): Promise<ExitCode> {
+): Promise<CliExit> {
   const { options, args: commandLine } = readGlobalOptions(args);
   // Made before the printer, so the printer removes every secret a command loads.
   const scrubber = new SecretScrubber();
@@ -131,7 +142,7 @@ async function runCommandLine(
   commands: readonly CliCommand[],
   setup: CliSetup,
   { printer, options, scrubber }: Prepared,
-): Promise<ExitCode> {
+): Promise<CliExit> {
   const [name, ...commandArgs] = commandLine;
   if (name === undefined && !options.help) {
     return noCommandToRun(printer, options, overallHelp(commands), usageMessages.seeEveryCommand());
@@ -165,13 +176,35 @@ async function runCommandLine(
       usageMessages.seeSubcommands(commandWords(path)),
     );
   }
-  const context: CommandContext = {
-    cwd: io.cwd,
-    secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
-    progress: (doing) => printer.progress(doing),
-    ask: (question) => printer.ask(question),
-  };
-  return runCommand(path, pathArgs, context, printer, options);
+  const watch = watchFor(setup, printer);
+  try {
+    const context: CommandContext = {
+      cwd: io.cwd,
+      secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
+      progress: (doing) => printer.progress(doing),
+      ask: (question) => printer.ask(question, watch.signal),
+      signal: watch.signal,
+    };
+    return await runCommand(path, pathArgs, context, printer, options, watch);
+  } finally {
+    watch.dispose();
+  }
+}
+
+/**
+ * Watches for Ctrl C and SIGTERM while the command runs (cli-output 1.5).
+ * The first aborts the command's signal. A second doesn't wait for the
+ * command: it prints only "Stopped." and ends the process with its own code.
+ */
+function watchFor(setup: CliSetup, printer: Printer): StopWatch {
+  if (setup.stop === undefined) {
+    return { signal: new AbortController().signal, stoppedBy: () => undefined, dispose() {} };
+  }
+  const { signals, exitNow } = setup.stop;
+  return watchForStop(signals, (code) => {
+    printer.stopped();
+    exitNow(code);
+  });
 }
 
 /**
@@ -239,7 +272,8 @@ async function runCommand(
   context: CommandContext,
   printer: Printer,
   options: GlobalOptions,
-): Promise<ExitCode> {
+  watch: StopWatch,
+): Promise<CliExit> {
   const command = lastOf(path);
   let input: CommandInput | undefined;
   try {
@@ -253,9 +287,16 @@ async function runCommand(
       return exitCode.usage;
     }
     const result = await command.run(input, context);
+    if ("stopped" in result) {
+      return stopped(watch, printer, result);
+    }
     printer.result(result);
     return result.exitCode;
   } catch (error) {
+    if (watch.stoppedBy() !== undefined) {
+      // What stopping threw, such as an `AbortError`, is not a problem to report.
+      return stopped(watch, printer);
+    }
     // The CLI's one top-level catch: every error a command throws ends here.
     printer.error(error, {
       usage: usageLine(path),
@@ -285,6 +326,12 @@ function questionsFor(questions: QuestionTerminal, terminal: Terminal, options: 
     canAsk: canAsk({ env: terminal.env, stdinIsTerminal: true, json: options.json }),
     terminal: questions,
   };
+}
+
+/** Prints that the command stopped, and returns the code of the signal that stopped it. */
+function stopped(watch: StopWatch, printer: Printer, result?: StoppedResult): CliExit {
+  printer.stopped(result);
+  return stopExitCode[watch.stoppedBy() ?? "SIGINT"];
 }
 
 /** Each stream's style: stdout may be a pipe while stderr is still a terminal. */

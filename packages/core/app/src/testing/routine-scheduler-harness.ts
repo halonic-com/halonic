@@ -37,7 +37,17 @@ const hourMs = 3_600_000;
  * due time in (lastTick, now], all of them or only the last. Nothing on the
  * first tick.
  */
-const testDue: DueFunction<TestRoutine, Policy, TestRun> = (routines, lastTick, now, policy) => {
+const testDue: DueFunction<TestRoutine, Policy, TestRun> = (routines, lastTick, now, policy) => ({
+  runs: testDueRuns(routines, lastTick, now, policy),
+  skipped: [],
+});
+
+function testDueRuns(
+  routines: readonly TestRoutine[],
+  lastTick: Date | null,
+  now: Date,
+  policy: Policy,
+): TestRun[] {
   if (lastTick === null) {
     return [];
   }
@@ -62,7 +72,7 @@ const testDue: DueFunction<TestRoutine, Policy, TestRun> = (routines, lastTick, 
     );
   }
   return runs;
-};
+}
 
 function startOf(run: TestRun): RoutineStart {
   const hubId = run.key.split("/")[0] ?? "";

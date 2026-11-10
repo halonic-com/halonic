@@ -1,0 +1,271 @@
+// The chat assistant's changes to review (AI changes 1, HAL-3277): the
+// assistant writes straight into the workspace, and the person accepts or
+// rejects what it wrote. Accept changes only the record; Reject writes the
+// baseline back. Nothing here commits, pushes or makes anything live.
+
+import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
+import type { ReviewCard, ReviewRecord } from "./review-record.ts";
+import type {
+  ItemToReview,
+  ProposedWrite,
+  ProposeOutcome,
+  ReviewCheck,
+  ReviewedFile,
+  ReviewOutcome,
+  ReviewStep,
+  ReviewTarget,
+} from "./review-types.ts";
+
+export type { ReviewServiceOptions } from "./review-files.ts";
+
+type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
+
+/**
+ * The assistant's changes to review in one workspace. Each file with
+ * changes to review has a record with its baseline: the file with every
+ * open assistant change rejected. The changes are always the difference
+ * between the baseline and the file, so they never go stale as the person
+ * types.
+ *
+ * Work on one file runs one at a time, so a write and an Accept can't
+ * interleave.
+ *
+ * @example
+ * const review = new ReviewService({ store, records, digest });
+ * await review.propose({ path, content, expected, card: { chatId: "c1", cardId: "k1" } });
+ * const { step } = await review.reject({ kind: "card", card: { chatId: "c1", cardId: "k1" } });
+ * await review.restore(step, "before"); // Undo
+ */
+export class ReviewService {
+  private readonly files: ReviewFiles;
+
+  constructor(options: ReviewServiceOptions) {
+    this.files = new ReviewFiles(options);
+  }
+
+  /**
+   * Calls `listener` with the files whose record changed, after every write,
+   * Accept, Reject, restore and check that changed one, so the item bar, the
+   * Changes rows and the chat cards update without asking again.
+   *
+   * @returns a function that removes the listener
+   */
+  onDidChange(listener: (paths: readonly string[]) => void): () => void {
+    return this.files.onDidChange(listener);
+  }
+
+  /**
+   * Writes the assistant's text into the file (`app.review-assistant-writes`).
+   * The first write keeps the text from before it as the baseline; later
+   * writes keep the baseline. A record that can't be read counts as none:
+   * the text from before this write becomes the baseline and the new record
+   * replaces the unreadable one, so the changes it covered become ordinary
+   * ones. Its loss isn't reported apart from this write's own change.
+   */
+  propose(write: ProposedWrite): Promise<ProposeOutcome> {
+    return this.files.turn(write.path, async () => {
+      const record = await this.files.read(write.path);
+      const before = await this.files.store.read(write.path);
+      const digestBefore = await this.files.digestOf(before);
+      if (digestBefore !== write.expected) {
+        return { status: "changed-on-disk", current: before };
+      }
+      if (record !== null && record.seen !== digestBefore) {
+        return { status: "held" };
+      }
+      const written = await this.files.store.write(write.path, write.content, {
+        expected: write.expected,
+      });
+      if (written.status === "changed-on-disk") {
+        return written;
+      }
+      const baseline = record === null ? before : record.baseline;
+      const after = await this.files.keep({
+        path: write.path,
+        baseline,
+        card: write.card,
+        seen: await this.files.digestOf(write.content),
+      });
+      const replaced = record !== null && !sameCard(record.card, write.card) ? record.card : null;
+      const file = { before, after: write.content };
+      this.files.changed([write.path]);
+      return {
+        status: "written",
+        step: { files: [{ path: write.path, record: { before: record, after }, file }] },
+        replaced,
+      };
+    });
+  }
+
+  /**
+   * Accepts what the target covers: the baseline becomes the file, so its
+   * record goes. The files aren't touched. For a card or a chat, a record
+   * that can't be read is removed without telling the listeners.
+   */
+  accept(target: ReviewTarget): Promise<ReviewOutcome> {
+    return this.decide(target, async (record) => {
+      await this.files.putRecord(record.path, null);
+      return { path: record.path, record: { before: record, after: null } };
+    });
+  }
+
+  /**
+   * Rejects what the target covers: each file gets its baseline back (a
+   * file the assistant created is removed), and its record goes. A file
+   * that changed outside Halonic since it was last seen is left alone and
+   * listed in `held`. For a card or a chat, a record that can't be read is
+   * removed without telling the listeners.
+   */
+  reject(target: ReviewTarget): Promise<ReviewOutcome> {
+    return this.decide(target, async (record) => {
+      const current = await this.files.store.read(record.path);
+      const restored = await this.files.putFile(record.path, record.seen, record.baseline);
+      if (!restored) {
+        return "held";
+      }
+      await this.files.putRecord(record.path, null);
+      return {
+        path: record.path,
+        record: { before: record, after: null },
+        file: { before: current, after: record.baseline },
+      };
+    });
+  }
+
+  /**
+   * Puts the files and records of a step back as they were `before` it
+   * (Undo) or `after` it (Redo). A file that changed since the step is
+   * left alone and listed in `held`, with its record. That includes a
+   * step that only changed the record, such as an Accept: its record comes
+   * back only while the file is still as that record last saw it.
+   */
+  async restore(step: ReviewStep, to: "before" | "after"): Promise<ReviewOutcome> {
+    const from = to === "before" ? "after" : "before";
+    const files = to === "before" ? [...step.files].reverse() : step.files;
+    const done: ReviewedFile[] = [];
+    const held: string[] = [];
+    for (const entry of files) {
+      const restored = await this.files.turn(entry.path, async () => {
+        if (entry.file !== undefined) {
+          const expected = await this.files.digestOf(entry.file[from]);
+          if (!(await this.files.putFile(entry.path, expected, entry.file[to]))) {
+            return false;
+          }
+        } else if (!(await this.stillAsSeen(entry.path, entry.record[to]))) {
+          return false;
+        }
+        await this.files.putRecord(entry.path, entry.record[to]);
+        return true;
+      });
+      if (restored) {
+        done.push(swapSides(entry, to));
+      } else {
+        held.push(entry.path);
+      }
+    }
+    this.files.changed(done.map((file) => file.path));
+    return { step: { files: done }, held };
+  }
+
+  /**
+   * The files with changes to review, sorted by path, with the card each
+   * belongs to (`app.review-items-to-review`). Create version leaves them
+   * out, and Changes marks their rows. A record that can't be read is
+   * removed and left out, without telling the listeners.
+   */
+  async itemsWithChangesToReview(): Promise<readonly ItemToReview[]> {
+    const { records } = await this.files.list();
+    return records.map(({ path, card }) => ({ path, card }));
+  }
+
+  /**
+   * Compares each file with its record, when the workspace opens or the
+   * watcher reports files changed outside Halonic (`app.review-on-open`).
+   * A file that isn't as last seen is held for Compare: its file and record
+   * stay as they are. A record that can't be read is removed.
+   *
+   * @param paths - only these files, as a watch batch names them; all files when left out
+   */
+  async check(paths?: readonly string[]): Promise<ReviewCheck> {
+    const { records, dropped } = await this.files.list(paths);
+    const held: string[] = [];
+    for (const record of records) {
+      const seen = await this.files.turn(record.path, async () =>
+        this.files.digestOf(await this.files.store.read(record.path)),
+      );
+      if (seen !== record.seen) {
+        held.push(record.path);
+      }
+    }
+    this.files.changed(dropped.flatMap(({ path }) => (path === null ? [] : [path])));
+    return { held, dropped };
+  }
+
+  /**
+   * Runs a decision on every file the target covers, each in its file's
+   * turn. The record is read again in that turn, and a file the target no
+   * longer covers is skipped: a write for another card may have taken it
+   * over since the files were listed.
+   */
+  private async decide(target: ReviewTarget, decision: FileDecision): Promise<ReviewOutcome> {
+    const done: ReviewedFile[] = [];
+    const held: string[] = [];
+    for (const path of await this.pathsOf(target)) {
+      const result = await this.files.turn(path, async () => {
+        const record = await this.files.read(path);
+        return record === null || !covers(target, record) ? null : decision(record);
+      });
+      if (result === "held") {
+        held.push(path);
+      } else if (result !== null) {
+        done.push(result);
+      }
+    }
+    this.files.changed(done.map((file) => file.path));
+    return { step: { files: done }, held };
+  }
+
+  private async pathsOf(target: ReviewTarget): Promise<string[]> {
+    if (target.kind === "file") {
+      return [target.path];
+    }
+    const { records } = await this.files.list();
+    return records.filter((record) => covers(target, record)).map((record) => record.path);
+  }
+
+  /** Whether the file is still as `record` last saw it; always for no record. */
+  private async stillAsSeen(path: string, record: ReviewRecord | null): Promise<boolean> {
+    return (
+      record === null ||
+      (await this.files.digestOf(await this.files.store.read(path))) === record.seen
+    );
+  }
+}
+
+/** Whether the target covers the file of `record`. */
+function covers(target: ReviewTarget, record: ReviewRecord): boolean {
+  switch (target.kind) {
+    case "file":
+      return record.path === target.path;
+    case "card":
+      return sameCard(record.card, target.card);
+    case "chat":
+      return record.card.chatId === target.chatId;
+  }
+}
+
+function sameCard(one: ReviewCard, other: ReviewCard): boolean {
+  return one.chatId === other.chatId && one.cardId === other.cardId;
+}
+
+/** The entry for the step a restore made: what was `to` is now its `after`. */
+function swapSides(entry: ReviewedFile, to: "before" | "after"): ReviewedFile {
+  if (to === "after") {
+    return entry;
+  }
+  const record = { before: entry.record.after, after: entry.record.before };
+  if (entry.file === undefined) {
+    return { path: entry.path, record };
+  }
+  return { path: entry.path, record, file: { before: entry.file.after, after: entry.file.before } };
+}

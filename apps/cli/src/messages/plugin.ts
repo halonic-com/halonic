@@ -74,9 +74,7 @@ export const pluginMessages = defineMessages("plugin", {
     hasSecrets
       ? phrase`Remove ${name}? Its settings and the API key you entered are removed from this computer.`
       : phrase`Remove ${name}? Its settings are removed from this computer.`,
-  /** `listedAs` is the version workspaces ask for, such as "1.2". */
-  removed: (name: string, version: string, listedAs: string) =>
-    phrase`Removed ${name} ${version} and its trust. Workspaces that list it will say "install ${name} ${listedAs}" until you add it again.`,
+  removed: (name: string, version: string) => phrase`Removed ${name} ${version} and its trust.`,
   /** Answer No, or Enter: exit 1. */
   notRemoved: (name: string) => phrase`Not removed. ${name} is still added.`,
   /** No terminal, or `CI` set, without `--yes`: exit 2 (F6). */

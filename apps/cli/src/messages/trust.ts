@@ -1,22 +1,44 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
-import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
+import { dim, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** Where an unpinned program downloads its code from: npm for `npx`, PyPI for `uvx` and `pipx run`. */
 export type PackageRegistry = "npm" | "PyPI";
 
-/** How many program rows are marked New and how many Changed since the workspace was trusted. */
-export interface ProgramChanges {
+/** How many rows of one kind are marked New and how many Changed since the workspace was trusted. */
+export interface RowChanges {
   readonly added: number;
   readonly changed: number;
 }
 
+/** The changed rows by kind, in the summary's order: programs, agents, addresses. */
+export interface TrustChangeCounts {
+  readonly programs: RowChanges;
+  /** Counted per agent, not per field (revision 40). */
+  readonly agents: RowChanges;
+  /** HTTP connectors and local integrations, one each however many settings it reads. */
+  readonly addresses: RowChanges;
+}
+
+/**
+ * What the first-time summary counts. Sites are counted once each across all
+ * agents; addresses count every setting address of a local integration.
+ */
+export interface TrustCounts {
+  readonly programs: number;
+  readonly agents: number;
+  readonly secrets: number;
+  readonly addresses: number;
+  readonly sites: number;
+}
+
 /**
  * The sentences of `halonic trust [--dir <folder>]` (cli-output 1.7, 1.9 and
- * 3.5), in the content and order of Studio's trust check. In 0.1 the check
- * covers connectors and harness agents only, so there are no sections for
- * models, budgets or sending without asking. Dates come in as the output writes them, such as
+ * 3.5 at revision 40), in the content and order of Studio's trust check
+ * (microcopy 4.3). In 0.1 the check covers connectors and agents that run in
+ * Claude Code or Codex only, so there are no sections for models, budgets
+ * or sending without asking. Dates come in as the output writes them, such as
  * "3 Nov". Wherever a fix names `halonic trust`, `dir` is the user's own
  * `--dir`, so the command works where they typed it.
  */
@@ -32,18 +54,25 @@ export const trustMessages = defineMessages("trust", {
   changedHeading: (name: string, trustedOn: string) =>
     phrase`What changed in ${name} since you trusted it on ${trustedOn}`,
   /**
-   * Studio's summary sentence, first under the changed heading. It names only
-   * what changed, never a 0 (cli-output 3.5, revision 24). One changed row
-   * carries the date; several are one list, new before changed, without the
-   * date, because the heading already has it. Called only when something
-   * changed.
+   * The first-time summary, under the intro: "Will start 2 programs and 1
+   * agent, pass 1 secret and allow 2 sites." Counts of 0 are left out
+   * (revision 40). Called only when something is counted.
    */
-  changeSummary: (changes: ProgramChanges, trustedOn: string) => {
-    if (changes.added + changes.changed === 1) {
-      const row = changes.added === 1 ? "new program" : "changed program";
-      return phrase`1 ${row} since you trusted this on ${trustedOn}.`;
+  startSummary: (counts: TrustCounts) => phrase`Will ${listed(summaryClauses(counts))}.`,
+  /**
+   * Studio's summary sentence, first under the changed heading. It names only
+   * what changed, never a 0 (cli-output 3.5, revisions 24 and 40). One
+   * changed row carries the date; several are one list, programs, agents,
+   * then addresses, new before changed, without the date, because the
+   * heading already has it. Called only when something changed.
+   */
+  changeSummary: (changes: TrustChangeCounts, trustedOn: string) => {
+    const parts = changeParts(changes);
+    const [only] = parts;
+    if (parts.length === 1 && only?.startsWith("1 ")) {
+      return phrase`${only} since you trusted this on ${trustedOn}.`;
     }
-    return phrase`${changeList(changes)}.`;
+    return phrase`${listed(parts)}.`;
   },
   /** After a row that wasn't there when it was trusted. */
   newRow: () => phrase`New`,
@@ -53,19 +82,45 @@ export const trustMessages = defineMessages("trust", {
   /** The secrets a program gets, after its command: "gets the secret GMAIL_TOKEN". */
   getsSecrets: (names: readonly string[]) =>
     phrase`gets the ${names.length === 1 ? "secret" : "secrets"} ${listed(names)}`,
+  agentsHeading: () => phrase`Agents`,
+  /** The line under the Agents heading. The terminal has no count and no collapsing. */
+  agentsIntro: () => phrase`Agents in this workspace that run in Claude Code or Codex.`,
+  /** The label over an agent's sites, one per line, every one of them. */
+  allowedSites: () => phrase`Allowed sites`,
+  /** The label over an agent's folder, shown only when it isn't `files/agents/<id>`. */
+  workingFolder: () => phrase`Working folder`,
+  /** After a wildcard site, `*.example.com`. */
+  everySiteUnder: (domain: string) => phrase`every site under ${domain}`,
+  /** After a site with a Punycode label (`xn--`). */
+  nonLatin: () => phrase`(non-Latin letters)`,
+  /** The program an agent runs in, as on the agent page: "Claude Code", "Codex". */
+  harnessName: (harness: string) => phrase`${harnessNames.get(harness) ?? harness}`,
+  /** A changed agent's harness: "Claude Code → Codex". */
+  harnessChanged: (before: Phrase, after: Phrase) => phrase`${before} → ${after}`,
+  /** A changed agent's sites: "now also allows a, no longer allows b". */
+  sitesChanged: (added: readonly string[], removed: readonly string[]) => {
+    const now = phrase`now also allows ${added.join(", ")}`;
+    const gone = phrase`no longer allows ${removed.join(", ")}`;
+    if (removed.length === 0) {
+      return now;
+    }
+    return added.length === 0 ? gone : phrase`${now}, ${gone}`;
+  },
+  /** A changed agent's folder: "working folder files/agents/coder → src/app". */
+  workingFolderChanged: (before: string, after: string) =>
+    phrase`working folder ${dim(before)} → ${dim(after)}`,
   /**
-   * A harness agent's row under Programs, after the agent's id: the program
-   * it starts, the folder it writes in and the sites it reaches. Placeholder
-   * words from P7 on HAL-2264 until the board answers it.
-   *
-   * @example
-   * trustMessages.harnessAgent("Claude Code", ["api.example.net"], "files/reports");
-   * // "Claude Code · writes in files/reports · reaches api.example.net"
+   * The section for connectors reached by an address rather than a program,
+   * after Agents, as Studio's Addresses section (microcopy 4.3; team, HAL-3468).
    */
-  harnessAgent: (harness: string, allowedSites: readonly string[], workingFolder?: string) =>
-    workingFolder === undefined
-      ? phrase`${harness} ${markPart("separator")} ${reaches(allowedSites)}`
-      : phrase`${harness} ${markPart("separator")} writes in ${dim(workingFolder)} ${markPart("separator")} ${reaches(allowedSites)}`,
+  addressesHeading: () => phrase`Addresses`,
+  /** A local integration's setting with no address in it yet. */
+  settingNotSet: () => phrase`not set`,
+  /**
+   * A local integration's setting whose URL can't be trusted, such as one
+   * with a password in it: "can't be used: the URL has user info".
+   */
+  settingRefused: (reason: string) => phrase`can't be used: ${reason}`,
   /** Under a program whose version isn't pinned, with a ! (decided from the command alone). */
   notPinned: (registry: PackageRegistry) =>
     phrase`Can download new code from ${registry} when it starts: version not pinned.`,
@@ -114,32 +169,39 @@ export const trustMessages = defineMessages("trust", {
     phrase`Review what it can start, then trust it: ${suggestedCommand("trust", dir)}`,
 });
 
-/** "2 changed programs", "1 new program and 2 changed programs": the parts that aren't 0, new first. */
-function changeList(changes: ProgramChanges): string {
-  const parts = [
-    changes.added > 0 ? counted(changes.added, "new program", "new programs") : undefined,
-    changes.changed > 0
-      ? counted(changes.changed, "changed program", "changed programs")
-      : undefined,
+/** The agent page's names of the harnesses, by the id an agent file writes. */
+const harnessNames: ReadonlyMap<string, string> = new Map([
+  ["claude-code", "Claude Code"],
+  ["codex", "Codex"],
+]);
+
+/** "start 2 programs and 1 agent", "pass 1 secret", …: the clauses whose count isn't 0. */
+function summaryClauses(counts: TrustCounts): string[] {
+  const started = [
+    counts.programs > 0 ? counted(counts.programs, "program", "programs") : undefined,
+    counts.agents > 0 ? counted(counts.agents, "agent", "agents") : undefined,
   ].filter((part) => part !== undefined);
-  return parts.join(" and ");
+  return [
+    started.length > 0 ? `start ${started.join(" and ")}` : undefined,
+    counts.secrets > 0 ? `pass ${counted(counts.secrets, "secret", "secrets")}` : undefined,
+    counts.addresses > 0 ? `list ${counted(counts.addresses, "address", "addresses")}` : undefined,
+    counts.sites > 0 ? `allow ${counted(counts.sites, "site", "sites")}` : undefined,
+  ].filter((part) => part !== undefined);
 }
 
-/** The most sites a harness agent's row names before "and 3 more" (P7). */
-const shownSites = 10;
-
-/**
- * "reaches api.example.net, *.docs.example.com", or "reaches only Halonic"
- * for an agent with no allowed sites. Past {@link shownSites}, the rest are
- * counted: "reaches a, b, … and 3 more".
- */
-function reaches(allowedSites: readonly string[]): Phrase {
-  if (allowedSites.length === 0) {
-    return phrase`reaches only Halonic`;
-  }
-  const shown = allowedSites.slice(0, shownSites).join(", ");
-  const hidden = allowedSites.length - shownSites;
-  return hidden > 0 ? phrase`reaches ${shown} and ${hidden} more` : phrase`reaches ${shown}`;
+/** "1 new program", "2 changed agents", …: the parts that aren't 0, in the summary's order. */
+function changeParts(changes: TrustChangeCounts): string[] {
+  const kinds = [
+    [changes.programs, "program", "programs"],
+    [changes.agents, "agent", "agents"],
+    [changes.addresses, "address", "addresses"],
+  ] as const;
+  return kinds.flatMap(([rows, one, many]) =>
+    [
+      rows.added > 0 ? counted(rows.added, `new ${one}`, `new ${many}`) : undefined,
+      rows.changed > 0 ? counted(rows.changed, `changed ${one}`, `changed ${many}`) : undefined,
+    ].filter((part) => part !== undefined),
+  );
 }
 
 /** "A", "A and B", "A, B and C". */

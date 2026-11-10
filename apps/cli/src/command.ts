@@ -41,9 +41,16 @@ export interface CommandContext {
    * With the question's `yes` set it asks nothing and returns yes; where
    * nobody can answer (no terminal on stdin, `CI` or `--json`) it asks
    * nothing and throws the question's refusal. End a step's live line
-   * before asking.
+   * before asking. Ctrl C or SIGTERM while it waits ends the question and
+   * throws the `AbortError`, as {@link CommandContext.signal} does for any work.
    */
   ask(question: Question): Promise<boolean>;
+  /**
+   * Aborted at the first Ctrl C or SIGTERM (cli-output 1.5). The command
+   * passes it on to what it starts, winds down, and returns a
+   * {@link StoppedResult}.
+   */
+  readonly signal: AbortSignal;
 }
 
 /** One option a command accepts, such as `--hub <id>`. */
@@ -95,6 +102,23 @@ export interface CommandResult {
 }
 
 /**
+ * What a command returns when Ctrl C or SIGTERM stopped it. `runCli` prints
+ * "Stopped." and what stopping meant to stderr, and exits with the signal's
+ * code, 130 or 143, rather than an {@link ExitCode}.
+ */
+export interface StoppedResult {
+  readonly stopped: true;
+  /**
+   * What stopping meant, from the command's area of the catalogue, such as
+   * "The run 01JD8Q was cancelled after the step Classify. Nothing after it
+   * ran." Left out, the line is only "Stopped.".
+   */
+  readonly meaning?: Phrase;
+  /** The command's own `--json` fields, such as the run's status. */
+  readonly json: JsonFields;
+}
+
+/**
  * A `halonic` command. Each lives in `src/commands/<name>/command.ts` and
  * exports `<name>Command`; `pnpm discover` lists them (see `discover` in
  * `package.json`), and the help is made
@@ -138,7 +162,7 @@ export interface CliCommand {
    *   command with the exit code of its kind (1 when it has none), and
    *   `printError` prints it; the command never prints an error itself.
    */
-  run?(input: CommandInput, context: CommandContext): Promise<CommandResult>;
+  run?(input: CommandInput, context: CommandContext): Promise<CommandResult | StoppedResult>;
 }
 
 /**

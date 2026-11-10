@@ -3,6 +3,7 @@ import {
   harnessBridgeTokenHeader,
   type SandboxProfile,
 } from "@halonicjs/ports";
+import { claudeCodeRunTokenVariable } from "./settings.ts";
 
 /** The folders of the sandbox profile the environment points Claude Code at. */
 export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFolder">;
@@ -21,6 +22,10 @@ export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFol
  * - `CLAUDE_CODE_TMPDIR`: the session's own temp folder, fresh per session.
  *   Without it, sessions share one folder under the system temp folder
  *   (HAL-1710, check 3).
+ * - `HALONIC_RUN_TOKEN`: the run token again, for the bridge's MCP server.
+ *   `ANTHROPIC_CUSTOM_HEADERS` covers only model requests, so the MCP
+ *   settings name this variable in the server's header, and the token is
+ *   never written into a file.
  *
  * The values hold the run token. The engine passes them only to the sandbox;
  * nothing here writes them anywhere else.
@@ -39,5 +44,6 @@ export function claudeCodeEnvironment(
     ANTHROPIC_CUSTOM_HEADERS: `${harnessBridgeTokenHeader}: ${bridge.token}`,
     CLAUDE_CONFIG_DIR: folders.settingsFolder,
     CLAUDE_CODE_TMPDIR: folders.tempFolder,
+    [claudeCodeRunTokenVariable]: bridge.token,
   };
 }

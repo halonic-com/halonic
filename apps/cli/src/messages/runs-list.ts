@@ -1,5 +1,6 @@
 import { nearMatch } from "../near-match.ts";
 import type { Mark } from "../output/paint.ts";
+import { type CalendarDay, dayInWords } from "./dates.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -30,13 +31,6 @@ export type GivenFilters =
   | (ListFilters & { readonly status: StatusFilter })
   | (ListFilters & { readonly workflow: string });
 
-/** A day of the year, for a run that didn't start today or yesterday. */
-export interface CalendarDay {
-  readonly day: number;
-  /** 1 for January to 12 for December. */
-  readonly month: number;
-}
-
 /**
  * When a run started, in the computer's own time zone, as the When column
  * writes it. Times are already written as "10:31".
@@ -56,21 +50,6 @@ const statusLooks: Readonly<Record<ListedStatus, { readonly mark: Mark; readonly
     failed: { mark: "failed", word: "Failed" },
     stopped: { mark: "failed", word: "Stopped" },
   };
-
-const shortMonths = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
 
 /**
  * "runs" with what `--status` asked for, as the empty line and the cut-off
@@ -203,10 +182,6 @@ function startedInWords(started: StartedAt): string {
     case "earlier":
       return `${dayInWords(started.date)} ${started.year}`;
   }
-}
-
-function dayInWords(date: CalendarDay): string {
-  return `${date.day} ${shortMonths[date.month - 1]}`;
 }
 
 function runsNamed(filters: ListFilters): string {

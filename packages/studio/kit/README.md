@@ -152,6 +152,42 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
 
 After tuning a colour, run the tests and adjust until they pass.
 
+## ActionBar
+
+The bar an opened page or sheet puts on the bottom edge instead of the bottom navigation: Try it on
+the agent page, the decision bar on an Inbox card, a form sheet's confirming button. It's **the
+last row of the page's column**, under the scroll area, never `position: fixed`, so nothing hides
+behind it and no screen pads its content. A `surface` fill, a `border` line on top, padding 12px
+16px and the safe area at the bottom; it grows with its content.
+
+```tsx
+<ActionBar
+  rows={[
+    [{ label: "Approve", variant: "primary", onClick: approve }],
+    [
+      { label: "Ask for changes", onClick: ask },
+      { label: "Reject", onClick: reject },
+    ],
+  ]}
+/>;
+```
+
+- Every button is `size="touch"` (48px) and full width. Two in a row share it equally with 8px
+  between them, and **stack** in the same order when either label doesn't fit its half (at 320px,
+  "Ask for changes" doesn't).
+- **At most one `primary`, and it comes first.** The bar throws otherwise: it's the screen's
+  mistake, not the user's. Reject is `secondary`, not red: it's a decision.
+- `note` is a line above the buttons in `text-small`, in its tone (`muted`, `warning`, `danger`),
+  never shortened: "Sending is off until you connect Gmail."
+- While one button is `busy`, the others are unavailable, with the busy one as their reason.
+- **When the action can't happen at all, don't render the bar.** A disabled bar looks broken.
+- `whileTyping`: `"ride"` (the default) stays on the keyboard, for a bar that confirms what you
+  type (a form sheet's button, the decision bar). `"hide"` steps aside while a kit text field in
+  the page's scroll area has focus, for a bar about something else (Run now, Try it), so it can't
+  cover the field's error. It's one CSS rule: the shell's page column carries the class `page`, its
+  scroll area `page-scroll`, and the kit's Input and TextArea carry `data-text-entry`. jsdom can't
+  evaluate `:has()`, so the browser check lives with the shell's Playwright tests.
+
 ## Button
 
 The kit's button: a native `<button>`, `type="button"` unless it submits a form.
@@ -517,6 +553,51 @@ width a tab renders at 40px with a 48px hit area.
 
 **In high contrast** the selected tab keeps an edge: forced colours drops its fill and shadow and
 paints the transparent outline instead. A disabled tab turns `GrayText` (`text-forced-disabled`).
+
+## PickerSheet
+
+The phone's picker (component specs 15.3): a full-screen sheet with **Close** at the top left and
+the field's label as its title. It's what the Select becomes on a phone, what the filter chips'
+picker opens, and the chat's model chip and the "add" pickers use it too. Mount it to open it and
+unmount it to close it; focus starts on the title and goes back to the opener.
+
+```tsx
+{
+  picking ? (
+    <PickerSheet
+      title="Model"
+      options={[
+        { value: "sonnet", label: "Sonnet", description: "€3 per million words in" },
+        { value: "opus", label: "Opus", unavailable: { reason: "Needs an Anthropic key." } },
+      ]}
+      value={model}
+      empty="No models yet. Add a provider in Settings."
+      onPick={(next) => {
+        save(next);
+        setPicking(false);
+      }}
+      onClose={() => setPicking(false)}
+    />
+  ) : null;
+}
+```
+
+- The options are **native radios** in one radio group (`appearance: none`), so screen readers
+  hear a radio group. A row is padded 8px 16px, 56px with a description, 48px without; the picked
+  option has a 20px `accent` check at the right.
+- **A tap, Enter or Space picks**: `onPick` once, and the screen saves (as on desktop) and unmounts
+  the sheet. **The arrow keys only move the check.** Browsers fire `click` on the radio an arrow
+  moves to, so a click in the same task as an arrow key isn't a pick.
+- **Close, Escape and Android back** call `onClose`. Nothing was picked, so the field keeps its
+  value.
+- An `unavailable` option stays listed, native `disabled` (the one place the kit uses it, 23 A1),
+  with its reason as its description. Never hide an option.
+- `explanation` is a line at the top ("Only models that Claude Code can use."). From 11 options
+  (`PICKER_SEARCH_FROM`) a search field narrows the list by name. With no options, `empty` says
+  what's missing and where to add it.
+
+The frame (full screen at `--app-height`, the phone top bar, the Dialog's modal focus, Escape and
+live regions) is shared with the text and form sheets.
 
 ## Presentation
 
@@ -991,6 +1072,48 @@ with its own icon; `muted` puts the icon and the text in `fg-muted`.
 <LineFrame icon={<ShareIcon />}>Shared with your team.</LineFrame>;
 ```
 
+## LongText and TextSheet
+
+A long text field: Description, Instructions, an agent step's text. Put it in a `Field` like any
+control.
+
+```tsx
+<Field label="Instructions" hint="What the agent does." error={instructionsError}>
+  <LongText
+    value={instructions}
+    placeholder="Add instructions"
+    onChange={save}
+    onSheetDone={(opened) => {
+      if (opened !== instructions) {
+        toasts.show({
+          tone: "info",
+          title: "Updated the instructions of Mail triage",
+          action: { label: "Undo", onClick: () => save(opened) },
+        });
+      }
+    }}
+  />
+</Field>;
+```
+
+- **On desktop** it's the kit's `TextArea`.
+- **On a phone** the text isn't typed in the page (component specs 3). The field is a button
+  drawn as the phone Input: the text folded after 8 lines and a 20px chevron. Its name is the
+  Field's label and its text is its description. With a Field error the edge is `danger`, so an
+  empty required field shows on the page, not only in the sheet.
+- Pressing it opens the **text sheet**. The sheet has the label as its title and **Done** at the
+  right, with no Close, because it cancels nothing. Then come the Field's hint, its error, and
+  one borderless textarea that fills the screen down to the keyboard. It saves as you type
+  through `onChange`. Done and Android back close it and call `onSheetDone` with the text it
+  opened with. **The toast with Undo is the screen's:** a phone has no Ctrl Z.
+- While the Field has an error, Done and back don't close the sheet: focus moves into the text,
+  so the error is read. A failed save (`saveError`) is a danger Callout above the text, and Done
+  still closes.
+- Inside a form sheet a long field stays a real `TextArea`, so a sheet of typing never opens over
+  another. That switch comes with the Dialog's form sheet.
+
+`TextSheet` is exported on its own too, for a screen that opens one without the folded field.
+
 ## Menu
 
 A short list of actions that opens from a button: a row's ⋮ More button, the title bar, a sidebar
@@ -1015,7 +1138,7 @@ menu and let the browser open it. Divide groups with `"divider"`.
 | --------- | -------------------------------------------------------------------------------- |
 | `trigger` | Renders the button that opens it; a kit `Button` takes every prop it gets        |
 | `entries` | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
-|           | `icon`, `keys`, `danger`, `disabled` or `unavailable: { reason }`                |
+|           | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked`     |
 | `align`   | `start` (the default) lines up with the trigger's left edge, `end` its right     |
 
 | State            | What shows                                                                                  |
@@ -1038,6 +1161,10 @@ trigger before `onSelect` runs, so a Dialog the item opens returns focus there.
 
 A shortcut shows as a Kbd and is named with `aria-keyshortcuts`. An `unavailable` item's reason is
 the item's description.
+
+An item with `checked` is one choice of several, a `menuitemradio` with `aria-checked`: `true` on
+the current one, which shows a 16px `accent` check at the right, `false` on the others. The filter
+chips' picker uses it on desktop, where a phone opens the picker sheet.
 
 **On a phone and under a coarse pointer** items are 48px with a 20px icon, and an unavailable
 item has 12px of padding above and below. On a phone shortcuts are
@@ -1103,12 +1230,25 @@ them by hand.
 | `hint`      | A short line under the control in `fg-subtle`                               |
 | `error`     | A sentence that says what to do: "Give the agent a name." Replaces the hint |
 | `required`  | Writes "Required" after the label in `fg-subtle`. No asterisk               |
+| `prefix`    | `{ symbol, name }`: a currency outside the box, such as "€", "in euros"     |
 
 Screen readers hear "required" once, from the control's `aria-required`: the visible word is
 hidden from them.
 
 The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
 control of your own can read the Field through `useFieldControl()`.
+
+A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
+tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
+label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
+the symbol. Pass both parts: the symbol from `Intl.NumberFormat(…).formatToParts`, the name from
+the message catalogue. The Field never guesses the name, because the currency can change.
+
+```tsx
+<Field label="Per run" prefix={{ symbol: "€", name: "in euros" }}>
+  <Input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
+</Field>;
+```
 
 ## FormRows
 
@@ -1178,6 +1318,40 @@ false.
 (`text-input-touch`), so the browser doesn't zoom in. The trailing button keeps its `sm` look with
 a 48px hit area, so the box stays 48px. **On a touch screen** at desktop width the box is 40px,
 like the Buttons beside it, and the text is 16px too.
+
+**The leading button.** Instead of a `leadingIcon`, the box can start with a small button: the
+colour field's swatch, which opens its popover. The type takes one or the other, never both.
+
+```tsx
+<Field label="First colour" error={hexError}>
+  <Input
+    value={hex}
+    onChange={(event) => setHex(event.target.value)}
+    leadingButton={{
+      label: `Choose the first colour, now ${lastGood}`,
+      onClick: openPopover,
+      expanded: popoverOpen,
+      controls: "first-colour-popover",
+      children: <Swatch colour={lastGood} />,
+    }}
+  />
+</Field>;
+```
+
+| `leadingButton` | What it is                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `label`         | Its name, with the feature's verb and the value read with it                                   |
+| `onClick`       | Called on a click, Enter or Space. The text doesn't take focus                                 |
+| `children`      | The glyph, 16px at most, drawn by the feature; hidden from screen readers                      |
+| `expanded`      | Whether what it opens is open; adds `aria-haspopup="dialog"`. Leave it out if it opens nothing |
+| `controls`      | The `id` of what it opens, set as `aria-controls` while it's open                              |
+
+The kit draws the slot, the hit area and the focus; the feature draws what's inside. The hit area
+is 24px square, 4px from the box's left edge, and the text starts 8px after it (36px in). On a
+phone it's the 48px square at the left of the box, and the text starts at 48px. The button has the
+general focus ring, and the box's `accent` edge shows only while the text has focus, so you can
+always tell which of the two you're on. It has no fill of its own: a hover is the box's. While the
+Input is disabled or read-only, the button is disabled too, its glyph at 45%.
 
 ## TextArea
 
@@ -1282,6 +1456,32 @@ it falls back to selecting the text in a hidden text box and running the browser
 only a `string`, so passing a secret is a type error, and the button throws if one gets through a
 cast. A `SecretText` turned into text by accident shows `[secret]`; only the request that saves it
 calls `reveal()`.
+
+## ClipboardProvider and ToastStoreProvider
+
+Two services the shell sets at its root, so a kit part can copy and confirm without the screen
+passing anything. The CommandBox uses both.
+
+```tsx
+<ClipboardProvider writeClipboard={(text) => desktop.writeClipboard(text)}>
+  <ToastStoreProvider store={toasts}>
+    <App />
+    <ToastRegion store={toasts} />
+  </ToastStoreProvider>
+</ClipboardProvider>;
+```
+
+| Provider             | What it gives                                                        |
+| -------------------- | -------------------------------------------------------------------- |
+| `ClipboardProvider`  | How to copy: Tauri's clipboard. Resolves `true` or `false`, no throw |
+| `ToastStoreProvider` | The window's toast store, the one its `ToastRegion` shows            |
+
+Without a `ClipboardProvider`, parts copy with `navigator.clipboard`, which needs a secure
+context, and fall back to the browser's copy command for a phone that reaches the computer over
+plain http. Without a `ToastStoreProvider`, a part has no toasts and says what happened itself.
+
+A Dialog also gives the parts inside it its own polite region, because toasts wait while a
+dialog is open: a part says "Copied" there instead.
 
 ## ExternalLink
 

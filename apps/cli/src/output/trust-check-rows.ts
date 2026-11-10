@@ -1,0 +1,189 @@
+// The rows of the trust check (cli-output 3.5, revision 40): a program with
+// its command, secrets and ! line, an address, a local integration with the
+// address each of its settings holds, an agent with its sites and folder,
+// and a changed agent's one row per field. `trust-check.ts` puts
+// them in sections.
+
+import { programName } from "@halonicjs/app";
+import { defaultWorkingFolder } from "@halonicjs/format";
+import type {
+  AgentTrustContent,
+  ChangedAgent,
+  ConnectorTrustContent,
+  IntegrationTrustContent,
+} from "@halonicjs/workspace";
+import { columnGap } from "../messages/columns.ts";
+import type { Message } from "../messages/define.ts";
+import { dim, markPart, type Phrase, phrase, visibleLength } from "../messages/phrase.ts";
+import { type PackageRegistry, trustMessages } from "../messages/trust.ts";
+
+/**
+ * The first column: a row's id, at least as wide as cli-output 3.5's example,
+ * so short ids line up the same way. Lines under a row start past it.
+ */
+const firstColumn = 14;
+
+/** Where a section's rows start. */
+export const rowIndent = "  ";
+
+/** Where the lines under a row start: under its second column. */
+const underRow = " ".repeat(rowIndent.length + firstColumn);
+
+/** "  mail-mcp      npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN", then its ! line. */
+export function programRow(
+  connector: ConnectorTrustContent,
+  unpinned: ReadonlySet<string>,
+): Phrase[] {
+  const command = [text(connector.settings["command"]), ...strings(connector.settings["args"])];
+  const lines = [row(connector.id, withSecrets(phrase`${command.join(" ")}`, connector))];
+  if (unpinned.has(connector.id)) {
+    const warning = trustMessages.notPinned(
+      registryOf(text(connector.settings["command"]), command),
+    );
+    lines.push(phrase`${underRow}${markPart("needsYou")} ${warning.phrase}`);
+  }
+  return lines;
+}
+
+/** "  inbox         https://mail.example.com/mcp · gets the secret INBOX_KEY". */
+export function addressRow(connector: ConnectorTrustContent): Phrase {
+  const address =
+    connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
+  return row(connector.id, withSecrets(phrase`${address}`, connector));
+}
+
+/**
+ * "  my-crm        CRM_URL   https://crm.example.com", then one line under it
+ * per further setting, the names padded to the longest (team, HAL-3498).
+ */
+export function integrationRows(integration: IntegrationTrustContent): Phrase[] {
+  const settings = Object.entries(integration.addresses);
+  const width = Math.max(0, ...settings.map(([name]) => name.length));
+  return settings.map(([name, address], index) => {
+    const detail = phrase`${name.padEnd(width + columnGap)}${settingAddress(address)}`;
+    return index === 0 ? row(integration.id, detail) : phrase`${underRow}${detail}`;
+  });
+}
+
+/** The address a setting holds, "not set", or why it can't be trusted. */
+function settingAddress(address: string | null): Phrase {
+  if (address === null) {
+    return trustMessages.settingNotSet().phrase;
+  }
+  const refused = /^‹refused: (.+)›$/u.exec(address)?.[1];
+  return refused === undefined ? phrase`${address}` : trustMessages.settingRefused(refused).phrase;
+}
+
+/** The detail, then "· gets the secret GMAIL_TOKEN" when the connector gets any. */
+function withSecrets(detail: Phrase, connector: ConnectorTrustContent): Phrase {
+  const secrets = secretNames(connector);
+  return secrets.length === 0
+    ? detail
+    : phrase`${detail} ${markPart("separator")} ${trustMessages.getsSecrets(secrets).phrase}`;
+}
+
+/** The agent's id and program, then its sites, every one, and its folder when it isn't the default. */
+export function agentRow(agent: AgentTrustContent): Phrase[] {
+  const lines: [Phrase, Phrase][] = [
+    ...agent.allowedSites.map((site, index): [Phrase, Phrase] => [
+      index === 0 ? trustMessages.allowedSites().phrase : phrase``,
+      shownSite(site),
+    ]),
+    ...(agent.workingFolder === undefined
+      ? []
+      : [
+          [trustMessages.workingFolder().phrase, phrase`${dim(agent.workingFolder)}`] as [
+            Phrase,
+            Phrase,
+          ],
+        ]),
+  ];
+  const width = Math.max(0, ...lines.map(([label]) => visibleLength(label, true)));
+  return [
+    row(agent.id, trustMessages.harnessName(agent.harness).phrase),
+    ...lines.map(([label, value]) => {
+      const padding = " ".repeat(width - visibleLength(label, true) + columnGap);
+      return phrase`${underRow}${label}${padding}${value}`;
+    }),
+  ];
+}
+
+/** One Changed row per field that changed, harness first, then sites, then the folder. */
+export function agentFieldChanges(agent: ChangedAgent): Phrase[] {
+  const { before, after } = agent;
+  const changes: Phrase[] = [];
+  if (before.harness !== after.harness) {
+    const name = (harness: string) => trustMessages.harnessName(harness).phrase;
+    changes.push(trustMessages.harnessChanged(name(before.harness), name(after.harness)).phrase);
+  }
+  const added = after.allowedSites.filter((site) => !before.allowedSites.includes(site));
+  const removed = before.allowedSites.filter((site) => !after.allowedSites.includes(site));
+  if (added.length + removed.length > 0) {
+    changes.push(trustMessages.sitesChanged(added, removed).phrase);
+  }
+  const folder = (content: AgentTrustContent) =>
+    content.workingFolder ?? defaultWorkingFolder(content.id);
+  if (folder(before) !== folder(after)) {
+    changes.push(trustMessages.workingFolderChanged(folder(before), folder(after)).phrase);
+  }
+  return changes;
+}
+
+/** A site in its stored form, with its note: a wildcard names its domain, Punycode is flagged. */
+function shownSite(site: string): Phrase {
+  const notes = [
+    ...(site.startsWith("*.") ? [trustMessages.everySiteUnder(site.slice(2)).phrase] : []),
+    ...(site.split(".").some((label) => label.startsWith("xn--"))
+      ? [trustMessages.nonLatin().phrase]
+      : []),
+  ];
+  return notes.reduce(
+    (shown, note) => phrase`${shown} ${markPart("separator")} ${note}`,
+    phrase`${site}`,
+  );
+}
+
+/** The row's id in the first column, then its detail. */
+export function row(id: string, detail: Phrase): Phrase {
+  return phrase`${rowIndent}${id.padEnd(firstColumn - columnGap)}${" ".repeat(columnGap)}${detail}`;
+}
+
+/** The tag after a row's first line; the lines under it stay as they are. */
+export function tagged(lines: readonly Phrase[], tag: Message): Phrase[] {
+  return lines.map((line, index) => (index === 0 ? withTag(line, tag) : line));
+}
+
+/** The line with a New or Changed tag at its end. */
+export function withTag(line: Phrase, tag: Message): Phrase {
+  return phrase`${line}${" ".repeat(columnGap)}${tag.phrase}`;
+}
+
+/** The secrets a connector gets, by name: its own and the program's `secretEnv`, sorted. */
+export function secretNames(connector: ConnectorTrustContent): string[] {
+  const references = [
+    connector.secret,
+    ...Object.values(record(connector.settings["secretEnv"])),
+  ].filter((value) => typeof value === "string");
+  const names = references.map((reference) => /^‹secret (.+)›$/u.exec(reference)?.[1]);
+  return [...new Set(names.filter((name) => name !== undefined))].sort();
+}
+
+/** PyPI for `uvx`, `uv tool run` and `pipx run`; npm for every other package runner. */
+function registryOf(command: string, words: readonly string[]): PackageRegistry {
+  const python = new Set(["uvx", "uv", "pipx"]);
+  return python.has(programName(command)) || words.some((word) => python.has(programName(word)))
+    ? "PyPI"
+    : "npm";
+}
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
+}
+
+function record(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+}

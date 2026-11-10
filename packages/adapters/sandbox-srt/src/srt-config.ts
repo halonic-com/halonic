@@ -1,11 +1,52 @@
+import { lstatSync, realpathSync } from "node:fs";
 import { isIP } from "node:net";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type { SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
 import type { SandboxProfile } from "@halonicjs/ports";
 
 /** A path the way sandbox-runtime wants a plain path: marked literal, so a `*` in it is never read as a pattern. */
 function literalPath(path: string): { path: string; literal: true } {
   return { path, literal: true };
+}
+
+/**
+ * The real path of `path`, also when it doesn't exist yet: the nearest existing
+ * parent is resolved and the rest is added back. On macOS `/var` and `/tmp` are
+ * symlinks, and Seatbelt matches the real path, so a deny entry for a file that
+ * isn't there yet (`.npmrc`) would never match if it stayed `/var/...`.
+ */
+export function resolveRealPath(path: string): string {
+  // srt doesn't run on Windows, and a POSIX path there would gain a drive letter and add a second entry.
+  if (process.platform === "win32") return path;
+  const missing: string[] = [];
+  let existing = path;
+  for (;;) {
+    try {
+      return join(realpathSync(existing), ...missing.reverse());
+    } catch {
+      const parent = dirname(existing);
+      if (parent === existing) {
+        return path;
+      }
+      missing.push(basename(existing));
+      existing = parent;
+    }
+  }
+}
+
+/** A git worktree's `.git` is a file pointing at the real git folder; rewriting it redirects git (and its hooks). */
+function worktreeGitFile(workingFolder: string): string[] {
+  const dotGit = join(workingFolder, ".git");
+  try {
+    return lstatSync(dotGit).isFile() ? [dotGit] : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Both spellings of each path (as given and resolved), without repeats. */
+function withResolved(paths: string[]): string[] {
+  return [...new Set(paths.flatMap((path) => [path, resolveRealPath(path)]))];
 }
 
 /** The bridge as srt wants a host and port: an IPv6 host goes in brackets (`[::1]:4100`). */
@@ -41,7 +82,11 @@ export const DENIED_RESOLVED_ADDRESSES: readonly string[] = [
  * The list covers only what runs without the user choosing to run project
  * code. It does not cover a git repository the program creates in a subfolder
  * during the session, or project scripts the user runs later (`npm test`,
- * `make`, a build file).
+ * `make`, a build file). Such a repository still runs its settings on the
+ * user's `git status` once the program adds it to the index (HAL-3493).
+ *
+ * The session adds the git files only it can find at start, such as each
+ * submodule's settings (see `gitPathsToDeny`).
  */
 const toolSettingsInWorkingFolder = [
   join(".claude", "settings.json"),
@@ -95,7 +140,9 @@ const toolSettingsInWorkingFolder = [
  * tool settings in the working folder are denied for writing as well.
  *
  * `hiddenPaths` are paths the session adds to hide from the program, such as
- * its own settings and canary folder.
+ * its own settings and canary folder. `gitPaths` are the git files the session
+ * found in the working folder at start (see `gitPathsToDeny`), relative to it,
+ * denied for writing like the tool settings.
  *
  * Only the bridge and the allowed sites are reachable, and an allowed site is
  * refused when its name resolves to a local or private address (such as
@@ -105,9 +152,15 @@ const toolSettingsInWorkingFolder = [
 export function buildSrtConfig(
   profile: SandboxProfile,
   hiddenPaths: string[] = [],
+  gitPaths: string[] = [],
 ): SandboxRuntimeConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
-  const toolSettings = toolSettingsInWorkingFolder.map((path) => join(profile.workingFolder, path));
+  const toolSettings = [
+    ...[...toolSettingsInWorkingFolder, ...gitPaths].map((path) =>
+      join(profile.workingFolder, path),
+    ),
+    ...worktreeGitFile(profile.workingFolder),
+  ];
   const writableFolders = [profile.workingFolder, profile.tempFolder];
   if (profile.settingsFolder !== null) {
     writableFolders.push(profile.settingsFolder);
@@ -121,9 +174,11 @@ export function buildSrtConfig(
       strictAllowlist: true,
     },
     filesystem: {
-      denyRead: hidden.map(literalPath),
-      allowWrite: writableFolders.map(literalPath),
-      denyWrite: [...hidden, ...profile.readOnlyPaths, ...toolSettings].map(literalPath),
+      denyRead: withResolved(hidden).map(literalPath),
+      allowWrite: withResolved(writableFolders).map(literalPath),
+      denyWrite: withResolved([...hidden, ...profile.readOnlyPaths, ...toolSettings]).map(
+        literalPath,
+      ),
     },
   };
 }

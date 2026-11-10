@@ -1,0 +1,72 @@
+name: Guard notes
+
+# The decision-note check, in a workflow a pull request can't change or
+# switch off (HAL-1337). On pull_request_target, GitHub runs this file from
+# the base branch, and the job runs only the base's code: the pull request's
+# head is fetched as git objects and only read. No install, no cache, no
+# secret, a read-only token. It checks that a change to the guard's own
+# paths has a signed user-visible note, and that any note's signature
+# verifies against the base's approvers.json. The test-result comparison
+# stays in ci.yml's guard job.
+#
+# On merge_group, GitHub runs this file from the merge group's commit, which
+# includes the pull request's changes, so a pull request that edits this
+# file runs its own copy in the queue. Only the pull_request_target run is
+# out of the pull request's reach: that is the run to make required, and it
+# fails such an edit because .github/ is a guarded path.
+on:
+  # zizmor: ignore[dangerous-triggers] runs only the base branch's code; the pull request is read as data
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  merge_group:
+
+permissions: {}
+
+concurrency:
+  group: guard-notes-${{ github.event.pull_request.number || github.event.merge_group.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard-notes:
+    name: Decision note and the guard's own paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # The merge queue looks up the queued pull request's head.
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      # Advisory until user-visible approvals exist (HAL-3434): no note
+      # can pass a guarded path yet. Then this line goes and the job
+      # becomes a required check.
+      - name: Check the decision note (base branch's code)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+        run: |
+          if [ -n "$QUEUE_REF" ]; then
+            PR_NUMBER=$(sed -nE 's|^refs/heads/gh-readonly-queue/[^/]+/pr-([0-9]+)-[0-9a-f]+$|\1|p' <<< "$QUEUE_REF")
+            if [ -z "$PR_NUMBER" ]; then
+              echo "::error::Can't read the pull request number from $QUEUE_REF."
+              exit 1
+            fi
+            PR_HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
+            PR_BRANCH=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.ref)
+          fi
+          git fetch --quiet --no-tags origin "$PR_HEAD_SHA"
+          node tooling/check/src/cli/guard-notes.ts --repo "$REPO" --pr "$PR_NUMBER" \
+            --branch "$PR_BRANCH" --head-sha "$PR_HEAD_SHA" --base-sha "$BASE_SHA"

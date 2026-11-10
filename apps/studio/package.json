@@ -11,9 +11,17 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-services": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/adapter-memory": "workspace:*",
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

@@ -61,35 +61,54 @@ export function ModalRegionsProvider({ pushModalRegions, children }: ModalRegion
   return <ModalRegionsContext value={stablePush}>{children}</ModalRegionsContext>;
 }
 
+const ModalPoliteContext = createContext<ModalLiveRegion | null>(null);
+
+/**
+ * The polite region of the modal a part is in, or `null` outside one. For a kit part that
+ * confirms something while toasts wait for the modal to close: the CommandBox's "Copied".
+ */
+export function useModalPolite(): ModalLiveRegion | null {
+  return useContext(ModalPoliteContext);
+}
+
 /**
  * A modal's two visually hidden live regions, given to the announcer while it's mounted. The
  * newest modal is pushed last, so it's the topmost one the announcer writes to. The assertive
- * region has no `role="alert"`, so a screen reader doesn't read it twice.
+ * region has no `role="alert"`, so a screen reader doesn't read it twice. The modal's content
+ * goes in as `children`, which reach the polite region through `useModalPolite()`.
  */
-export function ModalRegions() {
+export function ModalRegions({ children }: { readonly children?: ReactNode }) {
   const push = useContext(ModalRegionsContext);
   const polite = useRef<HTMLDivElement>(null);
   const assertive = useRef<HTMLDivElement>(null);
+  // Texts still waiting for their frame, from the announcer and from the content alike.
+  const [frames] = useState(() => new Set<number>());
+  const [politeRegion] = useState<ModalLiveRegion>(() => ({
+    say: (text) => say(polite, text, frames),
+  }));
+
+  useEffect(() => {
+    return () => {
+      for (const frame of frames) {
+        cancelAnimationFrame(frame);
+      }
+      frames.clear();
+    };
+  }, [frames]);
 
   useEffect(() => {
     if (push === null) {
       return;
     }
-    const frames = new Set<number>();
-    const release = push({
-      polite: { say: (text) => say(polite, text, frames) },
+    return push({
+      polite: politeRegion,
       assertive: { say: (text) => say(assertive, text, frames) },
     });
-    return () => {
-      release();
-      for (const frame of frames) {
-        cancelAnimationFrame(frame);
-      }
-    };
-  }, [push]);
+  }, [push, politeRegion, frames]);
 
   return (
     <>
+      <ModalPoliteContext value={politeRegion}>{children}</ModalPoliteContext>
       <div ref={polite} aria-live="polite" className="sr-only" />
       <div ref={assertive} aria-live="assertive" className="sr-only" />
     </>

@@ -71,7 +71,8 @@ export interface ModelsLine extends DoctorLine {
  * uses it fails, and nothing falls back to the internet by itself. An alias
  * whose provider's key isn't stored is a warning, as an agent's harness that
  * isn't installed is: it stops only what uses that alias. A workspace with
- * no aliases, or no workspace, has no line.
+ * no aliases, or no workspace, has no line, and neither has one whose
+ * aliases all use a provider that needs no key, because it would name nothing.
  *
  * @param providers every provider the aliases use, with what the host found
  * @param aliases the workspace's aliases, in the order of `models.yaml`
@@ -99,12 +100,10 @@ export function modelsLine(
   if (aliases.length === 0) return undefined;
 
   const problems = [...unreachableProblems(providers), ...noKeyProblems(byId, aliases)];
-  return {
-    check: "models",
-    status: modelsStatus(problems),
-    ready: providers.flatMap(providerReport),
-    problems,
-  };
+  const ready = providers.flatMap(providerReport);
+  // Only providers that need no key, such as the mock: a line would name nothing.
+  if (ready.length === 0 && problems.length === 0) return undefined;
+  return { check: "models", status: modelsStatus(problems), ready, problems };
 }
 
 function modelsStatus(problems: readonly ModelProblem[]): ModelsLine["status"] {

@@ -20,6 +20,11 @@ describe("shownSize", () => {
     expect(shownSize(2048)).toBe("2.0 KB");
   });
 
+  it("writes a size that rounds to 10 as a whole number", () => {
+    expect(shownSize(9.96 * gb)).toBe("10 GB");
+    expect(shownSize(9.94 * gb)).toBe("9.9 GB");
+  });
+
   it("stops at TB, and writes nothing as 0 KB", () => {
     expect(shownSize(3 * 1024 ** 5)).toBe("3072 TB");
     expect(shownSize(0)).toBe("0 KB");

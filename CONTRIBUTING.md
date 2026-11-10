@@ -21,8 +21,8 @@ Security problems go to [SECURITY.md](SECURITY.md), never to a public issue.
 ## Setup
 
 > **One check doesn't block yet.** The requirement guard (the test-weakening
-> check) runs on every pull request but only reports, until its approval lookup
-> is live. See [docs/guides/checks.md](docs/guides/checks.md).
+> check) runs on every pull request but only reports, until approvals of
+> user-visible changes exist. See [docs/guides/checks.md](docs/guides/checks.md).
 
 You need:
 

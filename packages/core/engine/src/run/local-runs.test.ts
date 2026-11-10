@@ -1,4 +1,4 @@
-import { ModelCallError } from "@halonicjs/ports";
+import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { textAnswer } from "../testing/scripted-model.ts";
@@ -148,5 +148,35 @@ verifies("engine.run-call-fails", () => {
       reason: "error",
       error: expect.stringContaining("socket hang up"),
     });
+  });
+});
+
+verifies("engine.provider-text", () => {
+  it("keeps the provider's text on run.failed, apart from the message", async () => {
+    const cause = new VendorErrorText(400, "max_tokens is too large");
+    const refused = new ModelCallError("refused", "acme refused the call (HTTP 400)", { cause });
+    const { executor, runs, scheduler } = runsOn([refused]);
+    await executor.start(replyStart);
+
+    await scheduler.runDue();
+
+    expect(runs.logs.get("run_1")?.at(-1)).toMatchObject({
+      type: "run.failed",
+      error: "acme refused the call (HTTP 400)",
+      reason: "error",
+      providerText: { status: 400, text: "max_tokens is too large" },
+    });
+  });
+
+  it("keeps no text from any other cause", async () => {
+    const offline = new ModelCallError("offline", "Halonic couldn't reach acme", {
+      cause: new TypeError("fetch failed"),
+    });
+    const { executor, runs, scheduler } = runsOn([offline]);
+    await executor.start(replyStart);
+
+    await scheduler.runDue();
+
+    expect(runs.logs.get("run_1")?.at(-1)).not.toHaveProperty("providerText");
   });
 });

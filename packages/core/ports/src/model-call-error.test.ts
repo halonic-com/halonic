@@ -3,8 +3,10 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   isModelCallError,
   isModelOutOfMemory,
+  isVendorErrorText,
   ModelCallError,
   type ModelCallErrorReason,
+  VendorErrorText,
 } from "./index.ts";
 
 /** An error as another copy of this package would build it: same name and fields, other class. */
@@ -70,6 +72,42 @@ verifies("ports.model-call-error", () => {
       | "refused"
     >();
     expectTypeOf<ModelCallError["reason"]>().toEqualTypeOf<ModelCallErrorReason>();
+  });
+});
+
+verifies("ports.vendor-error-text", () => {
+  /** A `VendorErrorText` as another copy of this package would build it. */
+  function textFromOtherCopy(fields: Record<string, unknown>): Error {
+    return Object.assign(new Error("from another copy"), { name: "VendorErrorText", ...fields });
+  }
+
+  it("keeps the provider's text and the status it came with", () => {
+    const text = new VendorErrorText(400, "max_tokens is too large");
+    expect(isVendorErrorText(text)).toBe(true);
+    expect(text).toBeInstanceOf(Error);
+    expect(text.name).toBe("VendorErrorText");
+    expect(text.status).toBe(400);
+    expect(text.message).toBe("max_tokens is too large");
+  });
+
+  it("recognises the text from another copy of the package by name and status", () => {
+    expect(isVendorErrorText(textFromOtherCopy({ status: 429 }))).toBe(true);
+  });
+
+  it("keeps the text of a stream error that has no status", () => {
+    const text = new VendorErrorText(undefined, "unknown stream error");
+    expect(isVendorErrorText(text)).toBe(true);
+    expect(text.status).toBeUndefined();
+    expect(isVendorErrorText(textFromOtherCopy({ status: undefined }))).toBe(true);
+  });
+
+  it("turns away anything else", () => {
+    expect(isVendorErrorText(new Error("boom"))).toBe(false);
+    expect(isVendorErrorText(textFromOtherCopy({}))).toBe(false);
+    expect(isVendorErrorText(textFromOtherCopy({ status: "400" }))).toBe(false);
+    expect(isVendorErrorText(textFromOtherCopy({ status: 400.5 }))).toBe(false);
+    expect(isVendorErrorText({ name: "VendorErrorText", status: 400, message: "" })).toBe(false);
+    expect(isVendorErrorText(undefined)).toBe(false);
   });
 });
 

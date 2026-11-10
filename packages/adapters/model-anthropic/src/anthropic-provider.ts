@@ -1,6 +1,7 @@
 import type {
   ChatRequest,
   ChatResponse,
+  ChatStreamEvent,
   HttpClient,
   LlmCapabilities,
   LlmProvider,
@@ -10,11 +11,14 @@ import {
   errorForReply,
   errorForSize,
   errorForStatus,
+  errorForStreamedError,
   type FailedCall,
 } from "./call-error.ts";
-import { BodyTooLargeError, readTextWithin } from "./read-body.ts";
-import { readReply } from "./reply.ts";
+import { BodyTooLargeError, bodyWithin, readTextWithin } from "./read-body.ts";
+import { ReplyFormatError, readReply } from "./reply.ts";
 import { toWireBody } from "./request.ts";
+import { readServerSentEvents } from "./server-sent-events.ts";
+import { MessageStreamReader, StreamedVendorError } from "./stream-reply.ts";
 
 /** Anthropic's own address; the provider adds `/v1/messages`. */
 export const anthropicBaseUrl = "https://api.anthropic.com";
@@ -62,8 +66,8 @@ export interface AnthropicProviderOptions {
 /**
  * A model provider that speaks Anthropic's Messages API
  * (`POST {baseUrl}/v1/messages`) on the {@link HttpClient} port, with no SDK.
- * Tools go over the native `tools` and `tool_use` blocks. Streaming comes in
- * the next pull request of HAL-2921.
+ * Tools go over the native `tools` and `tool_use` blocks, and `stream()`
+ * reads the API's server-sent events.
  *
  * @example
  * const model = new AnthropicProvider({ id: "claude", http: { fetch }, key: readKey });
@@ -80,7 +84,7 @@ export class AnthropicProvider implements LlmProvider {
     // The Messages API has no plain JSON mode, only one that needs a schema.
     jsonOutput: false,
     vision: false,
-    streaming: false,
+    streaming: true,
   };
   readonly #endpoint: string;
   /** The endpoint's host and port, for an `offline` error. */
@@ -100,7 +104,8 @@ export class AnthropicProvider implements LlmProvider {
   async chat(request: ChatRequest): Promise<ChatResponse> {
     request.signal?.throwIfAborted();
     const call = this.#failedCall(request);
-    const response = await this.#send(request, call);
+    const key = await this.#key();
+    const response = await this.#send(request, call, key, { stream: false });
     let body: unknown;
     try {
       body = JSON.parse(await readTextWithin(response, maxReplyBytes));
@@ -116,6 +121,41 @@ export class AnthropicProvider implements LlmProvider {
     }
   }
 
+  /**
+   * Streams the answer as the API writes it, then ends with `done`, which
+   * equals what {@link AnthropicProvider.chat} gives for the same reply.
+   * Stopping early cancels the reply's body, so the call closes. The reply
+   * has the same size limit as in `chat()`.
+   */
+  async *stream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+    request.signal?.throwIfAborted();
+    const call = this.#failedCall(request);
+    const key = await this.#key();
+    const response = await this.#send(request, call, key, { stream: true });
+    const reader = new MessageStreamReader();
+    try {
+      const body = await bodyWithin(response, maxReplyBytes);
+      if (body === null) throw new ReplyFormatError("no body");
+      for await (const event of readServerSentEvents(body)) {
+        for (const piece of reader.read(event.data)) {
+          yield piece;
+          // The caller may have aborted while it handled the piece.
+          request.signal?.throwIfAborted();
+        }
+      }
+    } catch (error) {
+      request.signal?.throwIfAborted();
+      throw errorForStreamFailure(error, call, key);
+    }
+    let answer: ChatResponse;
+    try {
+      answer = reader.finish();
+    } catch (error) {
+      throw errorForReply(error, call);
+    }
+    yield { type: "done", response: answer };
+  }
+
   #failedCall(request: ChatRequest): FailedCall {
     return { providerId: this.id, model: request.model, host: this.#host };
   }
@@ -125,8 +165,12 @@ export class AnthropicProvider implements LlmProvider {
    * signal rejects with its own reason, a network failure as offline, and an
    * error status with what it means.
    */
-  async #send(request: ChatRequest, call: FailedCall): Promise<Response> {
-    const key = await this.#key();
+  async #send(
+    request: ChatRequest,
+    call: FailedCall,
+    key: string,
+    options: { stream: boolean },
+  ): Promise<Response> {
     const headers = {
       "content-type": "application/json",
       "anthropic-version": apiVersion,
@@ -137,7 +181,7 @@ export class AnthropicProvider implements LlmProvider {
       response = await this.#http.fetch(this.#endpoint, {
         method: "POST",
         headers,
-        body: JSON.stringify(toWireBody(request, { stream: false })),
+        body: JSON.stringify(toWireBody(request, options)),
         // A redirect would carry the key to another address.
         redirect: "error",
         ...(request.signal === undefined ? {} : { signal: request.signal }),
@@ -152,6 +196,21 @@ export class AnthropicProvider implements LlmProvider {
     request.signal?.throwIfAborted();
     throw errorForStatus(response.status, text, call, key);
   }
+}
+
+/**
+ * What a stream that failed after it started fails with: the API's own
+ * `error` event, a reply over the size limit, a body we can't read, or else
+ * a dropped connection. `key` is the key the call was sent with, kept out of
+ * the API's text.
+ */
+function errorForStreamFailure(error: unknown, call: FailedCall, key: string): unknown {
+  if (error instanceof StreamedVendorError) {
+    return errorForStreamedError(error.vendorType, error.vendorText, call, key);
+  }
+  if (error instanceof BodyTooLargeError) return errorForSize(error, call);
+  if (error instanceof ReplyFormatError) return errorForReply(error, call);
+  return errorForNetwork(error, call);
 }
 
 /** The body of an error reply, or "" when it can't be read or is too large. */

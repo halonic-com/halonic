@@ -4,7 +4,7 @@ Owner: tomas · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-The Anthropic model adapter: chat calls over the Messages API (`/v1/messages`) on the built-in `fetch`, with no SDK. Streaming and the factory come in the next pull requests of HAL-2921.
+The Anthropic model adapter: chat calls over the Messages API (`/v1/messages`) on the built-in `fetch`, with no SDK, and streaming over server-sent events. The factory comes in a later pull request of HAL-2921.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

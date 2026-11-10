@@ -1,9 +1,13 @@
-import { isModelCallError, ModelCallError, type ModelCallErrorReason } from "@halonicjs/ports";
+import {
+  isModelCallError,
+  isVendorErrorText,
+  ModelCallError,
+  type ModelCallErrorReason,
+} from "@halonicjs/ports";
 import { chatRequest, llmProviderContract, textAnswer } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { AnthropicProvider, type AnthropicProviderOptions } from "./anthropic-provider.ts";
-import { VendorErrorText } from "./call-error.ts";
 import { ScriptedVendor } from "./test/scripted-vendor.ts";
 
 /** A provider in front of a fresh scripted vendor. The key is a made-up test value. */
@@ -20,7 +24,7 @@ function providerWith(options: Partial<AnthropicProviderOptions> = {}) {
 
 /** The vendor's own text on `error`'s cause, or undefined when it has none. */
 function vendorTextOf(error: Error): string | undefined {
-  return error.cause instanceof VendorErrorText ? error.cause.message : undefined;
+  return isVendorErrorText(error.cause) ? error.cause.message : undefined;
 }
 
 /** What `call` fails with, and the vendor, after `script` sets the vendor up. */
@@ -49,7 +53,7 @@ llmProviderContract(
     return {
       provider,
       answerNext: (answer) => vendor.answerNext(answer),
-      hangNext: () => vendor.hangNext(),
+      hangNext: (partialText) => vendor.hangNext(partialText),
       refuseNext: () =>
         vendor.replyNext(400, {
           type: "error",
@@ -58,8 +62,8 @@ llmProviderContract(
       calls: () => vendor.calls(),
     };
   },
-  // Claude's extended thinking gives a summary of its reasoning. Streaming comes next.
-  { streams: false, reasoning: true },
+  // Claude's extended thinking gives a summary of its reasoning.
+  { streams: true, reasoning: true },
 );
 
 verifies("model-anthropic.endpoint", () => {
@@ -200,6 +204,17 @@ verifies("model-anthropic.call-errors", () => {
       "refused",
       /^acme refused the call to the model "acme-small" \(HTTP 403\)$/,
       "This region is not supported",
+    ],
+    [
+      "a 403 about the region that repeats a masked key",
+      (v) =>
+        v.replyNext(
+          403,
+          vendorError("permission_error", "Region not supported for sk-ant-****wxyz"),
+        ),
+      "refused",
+      /^acme refused the call to the model "acme-small" \(HTTP 403\)$/,
+      undefined,
     ],
     [
       "a request it turns down",

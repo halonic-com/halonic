@@ -55,6 +55,12 @@ export interface WorkspaceFolders {
    * such as tokens, is kept elsewhere in the profile, not here.
    */
   recordsFolder(): string;
+  /**
+   * The folder for the assistant's changes to review: one record per file,
+   * with the file's baseline (HAL-3277). They decide what Try it leaves out,
+   * so they are kept here like trust, never in the workspace (HAL-3417).
+   */
+  reviewFolder(): string;
 }
 
 /**
@@ -104,6 +110,9 @@ export async function workspaceFolders(
     },
     recordsFolder(): string {
       return joinPath(profile.platform, folder, "records");
+    },
+    reviewFolder(): string {
+      return joinPath(profile.platform, folder, "review");
     },
   };
 }

@@ -164,3 +164,18 @@ describe("theme.css built by Tailwind: the start screen and canvas utilities", (
     expect(css).toMatch(/\.bg-canvas-grid \{\s*background-color: var\(--color-surface-subtle\);/);
   });
 });
+
+describe("theme.css built by Tailwind: the ActionBar", () => {
+  it("hides a whileTyping='hide' bar in a rule of its own, so an engine without :has() keeps it", async () => {
+    const css = await buildCss([]);
+    const rule =
+      /(^|\})\s*\.page:has\(> \.page-scroll \[data-text-entry\]:focus\) > \.action-bar\[data-while-typing="hide"\] \{\s*display: none;\s*\}/;
+    expect(css).toMatch(rule);
+  });
+
+  it("gives each button half the row less half the 8px gap, and never less than its label", async () => {
+    const css = await buildCss(["basis-[calc(50%-var(--spacing))]", "min-w-fit"]);
+    expect(css).toMatch(/flex-basis: calc\(50% - var\(--spacing\)\);/);
+    expect(css).toMatch(/min-width: fit-content;/);
+  });
+});

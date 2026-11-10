@@ -3,27 +3,8 @@ import { expect, it } from "vitest";
 import { defineMessages } from "../messages/define.ts";
 import { bold, phrase, plainText } from "../messages/phrase.ts";
 import { stopMessages } from "../messages/stop.ts";
-import { type SignalSource, type StopSignal, stopExitCode, watchForStop } from "./stop.ts";
-
-/** A stand-in for `process` that sends a signal when the test says so. */
-function signals(): SignalSource & { send(signal: StopSignal): void; count(): number } {
-  const listeners = new Map<StopSignal, Set<() => void>>();
-  const of = (signal: StopSignal) => listeners.get(signal) ?? new Set();
-  return {
-    on(signal, listener) {
-      listeners.set(signal, of(signal).add(listener));
-    },
-    off(signal, listener) {
-      of(signal).delete(listener);
-    },
-    send(signal) {
-      for (const listener of of(signal)) {
-        listener();
-      }
-    },
-    count: () => [...listeners.values()].reduce((sum, set) => sum + set.size, 0),
-  };
-}
+import { fakeSignals as signals } from "../test/fake-signals.ts";
+import { stopExitCode, watchForStop } from "./stop.ts";
 
 const run = defineMessages("test", {
   cancelled: () =>

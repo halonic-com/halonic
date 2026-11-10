@@ -42,6 +42,7 @@ jobs:
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
       workflows: ${{ steps.diff.outputs.workflows }}
+      code: ${{ steps.diff.outputs.code }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -82,6 +83,17 @@ jobs:
               by_area=true
             fi
             echo "::notice title=Changed areas::Filtered by area: $by_area ($(grep -c . <<< "$changed") files)"
+          fi
+          # Pull requests that change only docs, decisions, READMEs and
+          # repo metadata have no code to test, so the merge base's tests
+          # and the requirement guard skip them. The merge queue and main
+          # still run everything. Requirement files stay "code": the guard
+          # reads them. An empty or unreadable diff counts as code.
+          docs_only='^(docs/|decisions/|\.changeset/.*\.md$|\.github/(ISSUE_TEMPLATE/|CODEOWNERS$|pull_request_template\.md$))|(^|/)(README|AGENTS|CHANGELOG)\.md$'
+          if [ "$EVENT" = "pull_request" ] && [ -n "$changed" ] && [ -z "$(grep -vE "$docs_only" <<< "$changed")" ]; then
+            echo "code=false" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "code=true" | tee -a "$GITHUB_OUTPUT"
           fi
           for area in "${areas[@]}"; do
             name="${area%%=*}"
@@ -398,10 +410,11 @@ jobs:
   # store nor Turbo's cache is restored (a pull request's runs can write both).
   # Pull requests only, like the guard job it feeds: the queue holds the
   # same change, and its base is main or the entry ahead, whose own run
-  # tests it.
+  # tests it. Skipped for docs-only pull requests (the changes job's code output).
   base-tests:
     name: Merge base's tests (no cache)
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -537,8 +550,8 @@ jobs:
   # the merge queue the build job runs trace itself, as on main.
   guard:
     name: Requirements and the requirement guard (merge base's copy)
-    needs: [build, base-tests]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    needs: [changes, build, base-tests]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -630,10 +643,13 @@ jobs:
       - name: Requirements and their tests (trace, merge base's copy)
         working-directory: head
         run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
-      # Advisory for now: the Paperclip approval lookup is a stub that fails
-      # closed, so no decision note can pass yet. Until the Paperclip API
-      # token exists as a CI secret the guard only reports; then this line
-      # goes. Trace above stays blocking.
+      # Advisory for now: a `user-visible` note can't be approved until the
+      # board decides how the user approves (HAL-3434), so the guard only
+      # reports; it turns blocking with that (HAL-1337). Trace above stays
+      # blocking. A note's signature is checked offline against the keys in
+      # the base branch's tooling/check/approvers.json (pull_request.base.sha,
+      # not the commit base-tests may have stepped back to). Both commits
+      # are fetched as objects only: nothing of the pull request runs.
       - name: Requirement guard (merge base's copy)
         if: ${{ !cancelled() }}
         continue-on-error: true
@@ -641,16 +657,22 @@ jobs:
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
           HEAD_BRANCH: ${{ github.head_ref }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           guard="tooling/check/src/cli/requirement-guard.ts"
           [ -n "$BASE_SHA" ] || exit 1
+          git fetch --quiet --no-tags --depth=1 origin "$PR_HEAD_SHA" "$PR_BASE_SHA"
           # Asks the merge base commit itself, not a folder on disk.
           if ! git -C "$BASE_DIR" cat-file -e "$BASE_SHA:$guard" 2>/dev/null; then
             echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
             exit 0
           fi
-          if ! "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH"; then
-            echo "::warning title=requirement-guard::The requirement guard found errors (see this step's log). It reports and doesn't block until the approval lookup is live."
+          if ! "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH" \
+            --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"; then
+            echo "::warning title=requirement-guard::The requirement guard found errors (see this step's log). It reports and doesn't block until user-visible approvals exist (HAL-3434)."
             exit 1
           fi
 
@@ -851,6 +873,28 @@ jobs:
         working-directory: packages/adapters/sandbox-srt
         run: pnpm test:fence
 
+  sandbox-fence-macos:
+    # The same fence tests on macOS, where sandbox-runtime uses Seatbelt
+    # (sandbox-exec, built into the system) instead of bubblewrap, and there
+    # is no process namespace (HAL-3513). Runs on the same changes as the
+    # Linux job. A test that fails here and passes on Linux is a macOS gap
+    # in the fence, not a flaky test. No cache is restored.
+    name: Sandbox fence (Seatbelt)
+    needs: changes
+    if: needs.changes.outputs.sandbox-fence == 'true'
+    runs-on: macos-15
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Fence tests
+        working-directory: packages/adapters/sandbox-srt
+        run: pnpm test:fence
+
   sandbox-os:
     # The sandbox and launcher packages on the other two systems (plan
     # phase 3): they start processes, build paths and read the system, so
@@ -888,6 +932,46 @@ jobs:
           pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
+
+  sandbox-windows:
+    # The sandbox fence probes on a real Windows machine (HAL-1919): a hidden
+    # file and a blocked loopback port, run through srt after its one-time
+    # admin install. The runner's account is an administrator, so the install
+    # needs no prompt. --skip-profile-grant keeps the install to the account
+    # and the network filters; the probes use their own temp folder.
+    #
+    # Report-only for now: continue-on-error, and not in ci-ok's needs, because
+    # no user reaches srt's Windows mode yet (HAL-3656). It becomes required
+    # (drop continue-on-error, add it to ci-ok) in the same PR that lets the
+    # sandbox choice (HAL-3306) use srt on Windows. Each case's pass/fail line
+    # is in the job summary.
+    name: Sandbox fence on Windows (canary probes)
+    needs: changes
+    if: needs.changes.outputs.sandbox-fence == 'true'
+    continue-on-error: true
+    runs-on: windows-2025
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Not the shared setup action: its restored pnpm store fails on Windows
+      # ("Access is denied" on a linked package), so this job installs
+      # without the cache, and only what the sandbox package needs.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - name: Install the dependencies
+        run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-srt..."
+        shell: bash
+      - name: Install the sandbox (srt windows-install)
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js windows-install --skip-profile-grant
+      - name: Canary probes
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node scripts/windows-fence-probe.mjs
 
   agent-host:
     # The agent host as one executable, built with Node's single-executable
@@ -1087,6 +1171,7 @@ jobs:
         tauri,
         tauri-windows,
         sandbox-fence,
+        sandbox-fence-macos,
         sandbox-os,
         agent-host,
         android,

@@ -48,15 +48,16 @@ verifies("harness-claude-code.environment", () => {
         ANTHROPIC_CUSTOM_HEADERS: `x-halonic-run-token: ${bridge.token}`,
         CLAUDE_CONFIG_DIR: "/agents/writer/settings",
         CLAUDE_CODE_TMPDIR: "/sessions/one/temp",
+        HALONIC_RUN_TOKEN: bridge.token,
       });
     });
 
-    it("puts the token only in the header, never in the address", () => {
+    it("puts the token only in the header and the MCP token variable, never in the address", () => {
       const environment = claudeCodeEnvironment(bridge, engineProfile);
       const withToken = Object.entries(environment)
         .filter(([, value]) => value.includes(bridge.token))
         .map(([name]) => name);
-      expect(withToken).toEqual(["ANTHROPIC_CUSTOM_HEADERS"]);
+      expect(withToken).toEqual(["ANTHROPIC_CUSTOM_HEADERS", "HALONIC_RUN_TOKEN"]);
     });
 
     it("gives each session its own temp folder", () => {

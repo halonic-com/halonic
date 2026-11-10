@@ -38,6 +38,7 @@ import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { LiveHarnessCalls } from "./live-harness-calls.ts";
+import { providerTextOf } from "./provider-text-of.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { RunFeed } from "./run-feed.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
@@ -282,12 +283,14 @@ export class LocalRuns {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const failure = runFailureReasonOf(error);
+      const providerText = providerTextOf(error);
       return {
         type: "effect-failed",
         at: this.#now(),
         callId: call.callId,
         error: message,
         ...failure,
+        ...(providerText === undefined ? {} : { providerText }),
       };
     }
   }

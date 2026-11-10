@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
 import { plainText } from "./phrase.ts";
-import { trustMessages } from "./trust.ts";
+import { type TrustCounts, trustMessages } from "./trust.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -61,8 +61,14 @@ describe("trust's sentences", () => {
   });
 
   it("names only what changed in the summary, never a 0", () => {
+    const none = { added: 0, changed: 0 };
     const summary = (added: number, changed: number) =>
-      words(trustMessages.changeSummary({ added, changed }, "3 Nov"));
+      words(
+        trustMessages.changeSummary(
+          { programs: { added, changed }, agents: none, addresses: none },
+          "3 Nov",
+        ),
+      );
     expect([summary(1, 0), summary(0, 1), summary(2, 0), summary(0, 2), summary(1, 2)]).toEqual([
       "1 new program since you trusted this on 3 Nov.",
       "1 changed program since you trusted this on 3 Nov.",
@@ -126,37 +132,82 @@ describe("trust's sentences", () => {
   });
 });
 
-describe("a harness agent's row under Programs (P7 placeholders)", () => {
-  it("names the program, the folder it writes in and the sites it reaches", () => {
-    const row = trustMessages.harnessAgent(
+describe("the trust check's agents and summaries (cli-output 3.5, revision 40)", () => {
+  it("counts what it will start, pass, list and allow, without a 0", () => {
+    const summary = (counts: Partial<TrustCounts>) =>
+      words(
+        trustMessages.startSummary({
+          programs: 0,
+          agents: 0,
+          secrets: 0,
+          addresses: 0,
+          sites: 0,
+          ...counts,
+        }),
+      );
+    expect([
+      summary({ programs: 2, agents: 1, secrets: 3, addresses: 2, sites: 2 }),
+      summary({ agents: 1, sites: 2 }),
+      summary({ agents: 1 }),
+    ]).toEqual([
+      "Will start 2 programs and 1 agent, pass 3 secrets, list 2 addresses and allow 2 sites.",
+      "Will start 1 agent and allow 2 sites.",
+      "Will start 1 agent.",
+    ]);
+  });
+
+  it("counts changed agents after programs, per agent", () => {
+    const changes = (programs: number, agents: number, addresses: number) =>
+      words(
+        trustMessages.changeSummary(
+          {
+            programs: { added: programs, changed: 0 },
+            agents: { added: 0, changed: agents },
+            addresses: { added: 0, changed: addresses },
+          },
+          "3 Nov",
+        ),
+      );
+    expect(changes(1, 1, 1)).toBe("1 new program, 1 changed agent and 1 changed address.");
+    expect(
+      words(
+        trustMessages.changeSummary(
+          {
+            programs: { added: 0, changed: 0 },
+            agents: { added: 1, changed: 0 },
+            addresses: { added: 0, changed: 0 },
+          },
+          "3 Nov",
+        ),
+      ),
+    ).toBe("1 new agent since you trusted this on 3 Nov.");
+  });
+
+  it("has the Agents section's words and the changed agent's rows", () => {
+    expect([
+      words(trustMessages.agentsHeading()),
+      words(trustMessages.agentsIntro()),
+      words(trustMessages.allowedSites()),
+      words(trustMessages.workingFolder()),
+      words(trustMessages.harnessName("claude-code")),
+      words(trustMessages.harnessName("codex")),
+      words(trustMessages.everySiteUnder("example.com")),
+      words(trustMessages.nonLatin()),
+      words(trustMessages.sitesChanged(["registry.npmjs.org"], [])),
+      words(trustMessages.sitesChanged([], ["pypi.org"])),
+      words(trustMessages.workingFolderChanged("files/agents/coder", "src/app")),
+    ]).toEqual([
+      "Agents",
+      "Agents in this workspace that run in Claude Code or Codex.",
+      "Allowed sites",
+      "Working folder",
       "Claude Code",
-      ["api.example.net", "*.docs.example.com"],
-      "files/reports",
-    );
-    expect(row.key).toBe("trust.harnessAgent");
-    expect(words(row)).toBe(
-      "Claude Code · writes in files/reports · reaches api.example.net, *.docs.example.com",
-    );
-  });
-
-  it("leaves out the folder when it's the default", () => {
-    expect(words(trustMessages.harnessAgent("Codex", ["api.example.net"]))).toBe(
-      "Codex · reaches api.example.net",
-    );
-  });
-
-  it("says it reaches only Halonic when it has no allowed sites", () => {
-    expect(words(trustMessages.harnessAgent("Codex", []))).toBe("Codex · reaches only Halonic");
-  });
-
-  it("names up to 10 sites, then counts the rest", () => {
-    const sites = Array.from({ length: 13 }, (_, index) => `s${index + 1}.example.net`);
-    const shown = sites.slice(0, 10).join(", ");
-    expect(words(trustMessages.harnessAgent("Codex", sites))).toBe(
-      `Codex · reaches ${shown} and 3 more`,
-    );
-    expect(words(trustMessages.harnessAgent("Codex", sites.slice(0, 10)))).toBe(
-      `Codex · reaches ${shown}`,
-    );
+      "Codex",
+      "every site under example.com",
+      "(non-Latin letters)",
+      "now also allows registry.npmjs.org",
+      "no longer allows pypi.org",
+      "working folder files/agents/coder → src/app",
+    ]);
   });
 });

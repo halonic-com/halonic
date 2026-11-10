@@ -4,14 +4,8 @@
 // each time, so they never go stale as the person types.
 
 import { isReservedPath } from "@halonicjs/format";
-import { checkWorkspacePath, type Digest } from "@halonicjs/ports";
+import { checkWorkspacePath, type Digest, type ExpectedContent } from "@halonicjs/ports";
 import { bytesToHex, encodeUtf8, err, isPlainObject, ok, type Result } from "@halonicjs/std";
-
-/** The folder only the review service sees: `ReviewingDefinitionStore` hides it from everyone else. */
-export const reviewFolder = ".halonic/review";
-
-/** Where the records live: one file per reviewed file, named by the SHA-256 of its path. */
-export const reviewRecordFolder = `${reviewFolder}/files`;
 
 /** The version of the record's JSON. A record of another version counts as unreadable. */
 const reviewRecordFormat = 1;
@@ -34,15 +28,15 @@ export interface ReviewRecord {
    * The file as last seen: `contentDigest` of its text, or `"absent"` when
    * it was deleted. A file that no longer matches was changed outside Halonic.
    */
-  readonly seen: string;
+  readonly seen: ExpectedContent;
   /** Set when the assistant deleted the file: its entry in the trash, to put it back from. */
   readonly trashed?: { readonly trashId: string };
 }
 
 /**
- * Where the record of a file lives. The name is the SHA-256 of the path, so
- * a file `a` and a folder `a.json` can't clash, and a deep path can't make
- * the name too long for the file system.
+ * The name of a file's record in the records' store. The name is the
+ * SHA-256 of the path, so a file `a` and a folder `a.json` can't clash, and
+ * a deep path can't make the name too long for the file system.
  *
  * @throws RangeError for a path inside a reserved `.halonic/` folder, which has no workspace files to review
  */
@@ -51,7 +45,7 @@ export async function reviewRecordPath(path: string, digest: Digest): Promise<st
     throw new RangeError(`No review record for ${JSON.stringify(path)}: it is Halonic's own data.`);
   }
   const hash = bytesToHex(await digest.sha256(encodeUtf8(path)));
-  return `${reviewRecordFolder}/${hash}.json`;
+  return `${hash}.json`;
 }
 
 /** A record as JSON, the way {@link parseReviewRecord} reads it back. */
@@ -68,6 +62,11 @@ export function serializeReviewRecord(record: ReviewRecord): string {
 }
 
 const digestPattern = /^sha256:[0-9a-f]{64}$/u;
+
+/** Whether a record's `seen` is a `contentDigest` or `"absent"`. */
+function isSeenDigest(seen: unknown): seen is ExpectedContent {
+  return typeof seen === "string" && (seen === "absent" || digestPattern.test(seen));
+}
 
 /**
  * Reads a record that {@link serializeReviewRecord} wrote, checking every
@@ -99,7 +98,7 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   if (card === null) {
     return err("its card has no chatId and cardId");
   }
-  if (typeof seen !== "string" || (seen !== "absent" && !digestPattern.test(seen))) {
+  if (!isSeenDigest(seen)) {
     return err("its seen digest isn't a sha256 digest or absent");
   }
   const record: ReviewRecord = { path, baseline, card, seen };

@@ -67,13 +67,19 @@ export class LastRuns {
    * its time on the other; its next run then gets a `lastRun` of `null`. An
    * index too large for a `Coordination` value (thousands of routines) is not
    * stored, so the times of routines added since are never deleted.
+   *
+   * @param onRemoved - deletes what else is kept for a removed routine, by the hash of its key
    */
-  async forgetRemoved(routineKeys: readonly string[]): Promise<void> {
+  async forgetRemoved(
+    routineKeys: readonly string[],
+    onRemoved?: (keyHash: string) => Promise<void>,
+  ): Promise<void> {
     const stored = await this.coordination.read(this.indexKey);
     const current = new Set(routineKeys.map(shortHash));
     for (const hash of readIndex(stored)) {
       if (!current.has(hash)) {
         await this.delete(lastRunKeyByHash(this.workspaceId, hash));
+        await onRemoved?.(hash);
       }
     }
     const next = writeIndex(current);

@@ -118,6 +118,7 @@ export function TextArea({
         id={field?.id}
         rows={1}
         data-field-text=""
+        data-text-entry=""
         className={`${fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
         // The limit in lines of the text's own height, so it follows the text size
         // (theme-utilities.css).
