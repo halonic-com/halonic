@@ -57,6 +57,7 @@ export class NodeResourceProbe implements ResourceProbe {
   readonly #readProcessTable: ReadProcessTable;
   readonly #maxFilesCounted: number;
 
+  /** @param options - what to read from instead of the real machine; every one is optional */
   constructor(options: NodeResourceProbeOptions = {}) {
     this.#enginePid = options.enginePid ?? pid;
     this.#engineMemory = options.engineMemory ?? memoryUsage.rss;
@@ -64,19 +65,23 @@ export class NodeResourceProbe implements ResourceProbe {
     this.#maxFilesCounted = options.maxFilesCounted ?? defaultMaxFilesCounted;
   }
 
+  /** The engine process's memory in bytes: its resident set. */
   async engineMemory(): Promise<number> {
     return this.#engineMemory();
   }
 
+  /** The processes below the engine's pid, in ascending pid order; the program that read the table is left out. */
   async childProcesses(): Promise<readonly ProcessUsage[]> {
     const table = await this.#readProcessTable();
     return descendantsOf(this.#enginePid, table.rows, table.readerPid);
   }
 
+  /** The bytes of the files under `path`, without following links, and whether the walk finished within `maxFilesCounted`. */
   async folderSize(path: string): Promise<FolderSize> {
     return folderSize(path, this.#maxFilesCounted);
   }
 
+  /** The bytes free on the drive of `path`, or of its nearest existing parent folder. */
   async freeDisk(path: string): Promise<number> {
     return freeDisk(path);
   }

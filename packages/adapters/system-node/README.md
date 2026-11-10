@@ -15,13 +15,24 @@ doctor` and the Studio read these through `ResourceReport` in `core/app`.
 import { NodeResourceProbe } from "@halonicjs/adapter-system-node";
 
 const probe = new NodeResourceProbe();
-const free = await probe.freeDisk(dataFolder);
-const { bytes, complete } = await probe.folderSize(runsFolder);
+const dataFolder = "./data"; // any folder; a path that doesn't exist uses its nearest parent
+const free = await probe.freeDisk(dataFolder); // bytes a program without special rights can use
+const { bytes, complete } = await probe.folderSize(dataFolder); // `complete` is false past the file limit
+const memory = await probe.engineMemory(); // the engine's resident set, in bytes
+const children = await probe.childProcesses(); // the processes below the engine, in pid order
 ```
 
 `new NodeResourceProbe()` passes the shared `ResourceProbe` contract suite
 on the real machine. Every method reads the machine when it's called;
 nothing is cached and nothing polls.
+
+## Options
+
+`new NodeResourceProbe(options)` takes optional `enginePid` (default: this process), `engineMemory`
+(default: `process.memoryUsage.rss`), `readProcessTable` (default: `systemProcessTable()`, which picks
+`/proc`, PowerShell or `ps` for the machine) and `maxFilesCounted` (default: `defaultMaxFilesCounted`).
+Tests pass their own `readProcessTable`, a function that returns `{ rows, readerPid? }`
+(`ProcessTable`, `ReadProcessTable` and `ProcessRow` are exported as types).
 
 ## What it reads, and how
 
