@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123
+- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19 (HAL-2676)
 
 The `halonic` command shall take every sentence it shows the user from the CLI's message catalogue, where the sentence has a key made of its area and its name, such as `usage.unknownCommand`. A sentence shall have the same words in a terminal, through a pipe and in `--json`: colour, bold, dim and the marks' plain-text stand-ins shall be the only difference.
 
@@ -17,3 +17,12 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given `halonic --help`'s exit codes,
   when they are made,
   then they are the four lines of cli-output 1.9, joined by ·, each under 80 columns.
+- Given `halonic init --example acme` and the example's 2 hubs, 3 agents, 2 workflows and 1 routine,
+  when its success lines are made,
+  then they read "Created a copy of the Acme example in ./acme." and "2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key needed" (cli-output 3.1).
+- Given a `halonic validate` that found 2 errors and 1 warning in 2 of 14 files,
+  when its summary line is made,
+  then it reads "2 errors and 1 warning in 2 files. Checked 14 files.", with "2 errors" in bold (cli-output 3.2).
+- Given a `halonic test` run where the test "closes the ticket after a reject" ended in Send reply instead of Closed,
+  when its lines are made,
+  then the failure reads "Expected the run to end in the step Closed, but it ended in Send reply." and the last line "2 passed, 1 failed. 3 tests in 0.9 s." (cli-output 3.3).
