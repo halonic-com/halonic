@@ -40,8 +40,12 @@ const notOnGitYet: readonly (readonly [name: string | RegExp, requirement: strin
   ["makes the first commit of a repository with none", "git.vcs-commits"],
   ["never commits a change under .halonic/review/, whatever .gitignore says", "git.vcs-commits"],
   ["never commits a private entry, even one the repository doesn't ignore", "git.vcs-commits"],
-  // One case per file name that looks like an option or a pattern.
-  [/^reads ".+" in include and exclude as that file only, /u, "git.vcs-commits"],
+  // One case per file name that looks like an option or a pattern. The `*`
+  // and `?` cases carry patternLikeIt's Windows reason first in their name.
+  [
+    /^(?:\[platform:win32\] Windows allows no \* or \? in a file name: )?reads ".+" in include and exclude as that file only, /u,
+    "git.vcs-commits",
+  ],
   [
     "refuses an unsafe or private path in include or exclude, and changes nothing",
     "git.vcs-commits",
