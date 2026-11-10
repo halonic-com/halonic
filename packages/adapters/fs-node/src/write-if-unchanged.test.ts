@@ -84,5 +84,28 @@ verifies("fs-node.write-is-whole-or-nothing", () => {
       await store.write("run.sh", "echo 2\n");
       expect((await stat(join(root, "run.sh"))).mode & 0o777).toBe(0o755);
     });
+
+    it("never lets a reader see half a file while it is rewritten", async () => {
+      // Large texts, so a write that isn't whole would be caught in the middle.
+      const before = "a: 1\n".repeat(50_000);
+      const after = "b: 2\n".repeat(50_000);
+      const { root, store } = await folderWith({ "review.yaml": before });
+      let writing = true;
+      const writer = (async () => {
+        for (let round = 0; round < 40; round += 1) {
+          await store.write("review.yaml", round % 2 === 0 ? after : before);
+        }
+        writing = false;
+      })();
+      let partialReads = 0;
+      while (writing) {
+        const text = await readFile(join(root, "review.yaml"), "utf8");
+        if (text !== before && text !== after) {
+          partialReads += 1;
+        }
+      }
+      await writer;
+      expect(partialReads).toBe(0);
+    });
   });
 });

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { chmod, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   checkPublicWorkspacePath,
@@ -12,6 +12,7 @@ import {
 } from "@halonicjs/ports";
 import { bytesToHex, KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { entryAt, isMissing } from "./links.ts";
+import { renameOver } from "./rename-over.ts";
 
 /** The Web Crypto API that Node has, as the {@link Digest} port. */
 const webCryptoDigest: Digest = {
@@ -35,9 +36,10 @@ const temporaryWriteName = /^\.halonic-write-[0-9a-f-]+\.tmp$/u;
  *
  * A write goes to a temporary file in the same folder that is then renamed
  * over the file, so another program reads the old text or the new, never
- * half of it. Writes to one path run one after another, so the check for
- * `expected` and its write are never split by another write from this
- * store. A program outside Halonic can still change the file between the
+ * half of it; on Windows the rename is tried again while another program
+ * has the file open for a moment. Writes to one path run one after another,
+ * so the check for `expected` and its write are never split by another
+ * write from this store. A program outside Halonic can still change the file between the
  * check and the rename; that gap is a few milliseconds and the watcher
  * reports such a change.
  */
@@ -105,7 +107,7 @@ export class FolderDefinitionStore implements DefinitionStore {
         // A replaced file keeps its permissions, such as a script's execute bit.
         await chmod(temporary, existing.mode & 0o7777);
       }
-      await rename(temporary, file);
+      await renameOver(temporary, file);
     } catch (error) {
       await rm(temporary, { force: true });
       throw error;
