@@ -195,7 +195,10 @@ export class MemoryVcs implements Vcs {
   async listAt(version: string, dir?: string): Promise<string[] | null> {
     checkCommitId(version);
     if (dir !== undefined) checkVcsPath(dir);
-    const paths = [...this.#treeAt(version).keys()].sort();
+    // A commit may track a private entry (see `commitPrivate`); it's never listed.
+    const paths = [...this.#treeAt(version).keys()]
+      .filter((path) => !isPrivateWorkspacePath(path))
+      .sort();
     if (dir === undefined) return paths;
     const inside = paths.filter((path) => path.startsWith(`${dir}/`));
     return inside.length === 0 ? null : inside;
