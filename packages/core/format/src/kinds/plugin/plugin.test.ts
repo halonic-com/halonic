@@ -231,6 +231,43 @@ verifies("format.plugin-file", () => {
       const problems = problemsOf("plugin", packageStart(`${fields} 'http://npm.example.com/'`));
       expect(summary(problems)).toEqual(["localTools.0.start.package.registry invalid_format 7"]);
     });
+
+    it.each([
+      "https://pypi.example.com",
+      "https://pypi.example.com/",
+      "https://example.com/pypi",
+      "https://example.com/simple-mirror",
+      "https://simple.example.com",
+    ])("takes the uvx registry base address %s as written", (address) => {
+      const plugin = parsedValue(
+        "plugin",
+        packageStart(`runner: uvx, name: radar, version: 1.0.0, registry: '${address}'`),
+      );
+      expect(plugin.localTools?.[0]?.start).toMatchObject({ package: { registry: address } });
+    });
+
+    it.each([
+      "https://pypi.example.com/simple",
+      "https://pypi.example.com/simple/",
+      "https://example.com/pypi/simple",
+      "https://example.com/pypi/simple//",
+    ])("refuses the uvx index address %s and asks for the base", (address) => {
+      const problems = problemsOf(
+        "plugin",
+        packageStart(`runner: uvx, name: radar, version: 1.0.0, registry: '${address}'`),
+      );
+      expect(summary(problems)).toEqual(["localTools.0.start.package.registry invalid_format 7"]);
+      expect(problems[0]?.message).toContain("without '/simple'");
+    });
+
+    it("leaves an npx registry ending in /simple alone: npm has no such index", () => {
+      const address = "https://npm.example.com/simple";
+      const plugin = parsedValue(
+        "plugin",
+        packageStart(`runner: npx, name: radar, version: 1.0.0, registry: '${address}'`),
+      );
+      expect(plugin.localTools?.[0]?.start).toMatchObject({ package: { registry: address } });
+    });
   });
 
   describe("starts exactly one of a package and a script", () => {

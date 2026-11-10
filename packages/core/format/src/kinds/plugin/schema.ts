@@ -111,11 +111,25 @@ const pypiPackage = s
     "use a Python package name, such as 'weather-radar'",
   );
 
-/** A package registry; without one the runner's public registry is used. */
-const registry = s
-  .url()
-  .regex(/^https:\/\//, "use an https address for the registry")
-  .optional();
+/**
+ * A package registry's base address, such as `https://registry.npmjs.org` or
+ * `https://pypi.example.com`; without one the runner's public registry is
+ * used. It becomes the pin's `registryUrl`, so it is the base, not an index
+ * inside it: the launcher adds `/simple` for PyPI and the pin check reads
+ * `/pypi/<name>/<version>/json`. A trailing `/` is fine; both drop it.
+ */
+const registry = s.url().regex(/^https:\/\//, "use an https address for the registry");
+
+/**
+ * A PyPI index ends in `/simple`, and that is the address a mirror's docs
+ * give, so it is the likely mistake. It is refused rather than trimmed: the
+ * pin in the trust record is then the address the author wrote, and an
+ * index that isn't under `<base>/simple` is never guessed at.
+ */
+const pypiRegistry = registry.regex(
+  /^(?!https:\/\/[^/]+\/(?:.*\/)?simple\/*$)/,
+  "use the registry's base address, without '/simple': the launcher adds it",
+);
 
 /** A pinned package, started by its runner. The pin goes into the trust record. */
 const PackageStart = s.discriminatedUnion("runner", [
@@ -126,7 +140,7 @@ const PackageStart = s.discriminatedUnion("runner", [
       version: s
         .string()
         .regex(NPM_EXACT_VERSION_PATTERN, "use an exact version, such as '1.2.3', not a range"),
-      registry,
+      registry: registry.optional(),
     })
     .strict(),
   s
@@ -136,7 +150,7 @@ const PackageStart = s.discriminatedUnion("runner", [
       version: s
         .string()
         .regex(PYPI_EXACT_VERSION_PATTERN, "use an exact version, such as '0.4.1', not a range"),
-      registry,
+      registry: pypiRegistry.optional(),
     })
     .strict(),
 ]);
