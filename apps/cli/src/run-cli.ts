@@ -5,12 +5,13 @@ import {
   type CliIo,
   type CommandContext,
   type CommandInput,
+  type CommandPath,
   UsageError,
 } from "./command.ts";
 import { type ExitCode, exitCode } from "./exit-code.ts";
 import { exitCodeFor } from "./exit-code-for.ts";
 import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
-import { commandHelp, overallHelp, usageLine } from "./help.ts";
+import { commandHelp, commandWords, lastOf, overallHelp, usageLine } from "./help.ts";
 import { usageMessages } from "./messages/general.ts";
 import { type Phrase, renderPhrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
@@ -92,19 +93,57 @@ export async function runCli(
     printError(new UsageError(problem, usageMessages.seeEveryCommand()), streams.err);
     return exitCode.usage;
   }
+  const found = findSubcommand([command], commandArgs);
+  if (found instanceof UsageError) {
+    printError(found, streams.err);
+    return exitCode.usage;
+  }
+  const { path, args: pathArgs } = found;
   if (options.help) {
-    printLines(streams.out, commandHelp(command));
+    printLines(streams.out, commandHelp(path));
     return exitCode.ok;
+  }
+  if (lastOf(path).run === undefined) {
+    // A command that only hands off, such as `halonic plugin` on its own: show what it hands off to.
+    printLines(streams.out, commandHelp(path));
+    return exitCode.usage;
   }
   const scrubber = new SecretScrubber();
   const context: CommandContext = {
     secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
   };
-  return runCommand(command, commandArgs, io, context, streams, options, scrubber);
+  return runCommand(path, pathArgs, io, context, streams, options, scrubber);
+}
+
+/** A command line read down to the command that runs. */
+interface FoundCommand {
+  readonly path: CommandPath;
+  /** The arguments after the last command word. */
+  readonly args: readonly string[];
+}
+
+/**
+ * Follows the words after a command into its subcommands, as long as the next
+ * word isn't an option: `runs show 01JD8Q` ends at `show` with `01JD8Q` left.
+ *
+ * @returns the command that runs, or the usage error for a word that isn't
+ *   one of the subcommands
+ */
+function findSubcommand(path: CommandPath, args: readonly string[]): FoundCommand | UsageError {
+  const subcommands = lastOf(path).subcommands ?? [];
+  const [word, ...rest] = args;
+  if (subcommands.length === 0 || word === undefined || word.startsWith("-")) {
+    return { path, args };
+  }
+  const subcommand = subcommands.find((candidate) => candidate.name === word);
+  if (subcommand === undefined) {
+    return unknownSubcommand(path, word);
+  }
+  return findSubcommand([...path, subcommand], rest);
 }
 
 async function runCommand(
-  command: CliCommand,
+  path: CommandPath,
   args: readonly string[],
   io: CliIo,
   context: CommandContext,
@@ -112,14 +151,20 @@ async function runCommand(
   options: GlobalOptions,
   scrubber: SecretScrubber,
 ): Promise<ExitCode> {
+  const command = lastOf(path);
   let input: CommandInput | undefined;
   try {
     input = readInput(command, args);
-    return await command.run(input, io, context);
+    const [word] = input.positionals;
+    // A command with subcommands takes no arguments, so a word after its options names a subcommand.
+    if (command.subcommands !== undefined && word !== undefined) {
+      throw unknownSubcommand(path, word);
+    }
+    return await (command.run?.(input, io, context) ?? exitCode.usage);
   } catch (error) {
     // The CLI's one top-level catch: every error a command throws ends here.
     printError(error, streams.err, {
-      usage: usageLine(command),
+      usage: usageLine(path),
       ...(input !== undefined && command.action !== undefined
         ? { action: command.action(input) }
         : {}),
@@ -146,6 +191,25 @@ function streamsFor(io: CliIo, terminal: Terminal, options: GlobalOptions): Stre
     out: (line) => io.out(renderPhrase(line, outPaint)),
     err: (line) => io.err(renderPhrase(line, errPaint)),
   };
+}
+
+/**
+ * The usage error for a word that isn't one of a command's subcommands, in
+ * the shape of an unknown command with the command's words in front:
+ * `There's no command "runs shwo". Did you mean runs show?`, then where to
+ * see them.
+ */
+function unknownSubcommand(path: CommandPath, word: string): UsageError {
+  const words = commandWords(path);
+  const near = nearMatch(
+    word,
+    (lastOf(path).subcommands ?? []).map((command) => command.name),
+  );
+  const problem =
+    near === undefined
+      ? usageMessages.unknownCommand(`${words} ${word}`)
+      : usageMessages.unknownCommandNear(`${words} ${word}`, `${words} ${near}`);
+  return new UsageError(problem, usageMessages.seeSubcommands(words));
 }
 
 function printLines(print: (line: Phrase) => void, lines: readonly Phrase[]): void {

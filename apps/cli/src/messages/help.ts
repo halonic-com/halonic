@@ -12,6 +12,9 @@ export const helpMessages = defineMessages("help", {
   exitCodes: (line: ExitCodeLine) => exitCodeLine(line),
   commandHelpHint: () =>
     phrase`Run halonic <command> --help for a command's arguments and options.`,
+  /** The last line of the help of a command with subcommands, such as `halonic runs --help`. */
+  subcommandHelpHint: (command: string) =>
+    phrase`Run halonic ${command} <command> --help for a command's arguments and options.`,
   commandUsage: (command: string, usage: string) =>
     phrase`Usage: halonic ${command}${usage === "" ? "" : ` ${usage}`}`,
   optionsHeading: () => phrase`Options:`,

@@ -69,14 +69,31 @@ export interface CliCommand {
   /** The options it accepts, by name without the dashes. */
   readonly options: Readonly<Record<string, CliOption>>;
   /**
-   * Runs the command.
+   * The commands under this one, such as `show` and `send` under `runs`, each
+   * with its own word as `name`. `runCli` hands `halonic runs show <run-id>`
+   * to `show` when the word comes right after `runs`, lists them in
+   * `halonic runs --help`, and gives every command the same usage error for
+   * a word that isn't one of them. A command with subcommands takes no
+   * arguments of its own, only options.
+   */
+  readonly subcommands?: readonly CliCommand[];
+  /**
+   * Runs the command. A command that only hands off to its subcommands, such
+   * as `plugin`, leaves it out: `halonic plugin` on its own then prints its
+   * help and exits with 2, as `halonic` on its own does.
    *
    * @throws UsageError when the arguments are wrong. Any other error ends the
    *   command with the exit code of its kind (1 when it has none), and
    *   `printError` prints it; the command never prints an error itself.
    */
-  run(input: CommandInput, io: CliIo, context: CommandContext): Promise<ExitCode>;
+  run?(input: CommandInput, io: CliIo, context: CommandContext): Promise<ExitCode>;
 }
+
+/**
+ * A command as the user typed it: the top-level command first, then each
+ * subcommand down to the one that runs, such as `runs` then `show`.
+ */
+export type CommandPath = readonly [CliCommand, ...CliCommand[]];
 
 /**
  * Every command by its folder name, as `pnpm discover` writes it to
