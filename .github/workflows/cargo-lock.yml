@@ -3,8 +3,10 @@
 # apps/studio/src-tauri/Cargo.toml:
 #
 #   gh workflow run cargo-lock.yml --ref <branch>
+#   rm apps/studio/src-tauri/Cargo.lock
 #   gh run download <run-id> --name cargo-lock --dir apps/studio/src-tauri
 #
+# (gh run download refuses to overwrite an existing file, hence the rm),
 # then commit the downloaded Cargo.lock. `cargo update --workspace` resolves
 # what the manifests added or changed and keeps every other locked version,
 # so the diff stays small. It never pushes: the lockfile only comes back as
