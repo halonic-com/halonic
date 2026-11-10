@@ -3,7 +3,11 @@ import { isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { gitlinkPaths, parseIndex } from "./git-index.ts";
 import { linkedGitFolder } from "./git-link.ts";
 
-/** What a gitlink's `.git` was at session start: absent, a folder, a file and its text, or a link and its target. */
+/**
+ * What a gitlink's `.git` was at session start: absent, a folder, a file and
+ * its text, or a link and its target (each with its git folder's
+ * `commondir`), or something else.
+ */
 type DotGit = string;
 
 /** A repository whose index `git status` in the working folder reads. */
@@ -125,10 +129,14 @@ async function submoduleGitFolder(
   path: string,
   dotGit: DotGit,
 ): Promise<string | null> {
-  const checkout = join(workingFolder, path);
-  if (dotGit === "folder") return join(checkout, ".git");
   if (dotGit.startsWith("link:"))
     return join(workingFolder, await linkedGitFolder(workingFolder, path));
+  return fileGitFolder(join(workingFolder, path), dotGit);
+}
+
+/** The git folder of a checkout whose `.git` is a folder or a `gitdir:` file, or null. */
+function fileGitFolder(checkout: string, dotGit: DotGit): string | null {
+  if (dotGit.startsWith("folder")) return join(checkout, ".git");
   const gitdir = /^file:gitdir: ([^\n]+)/.exec(dotGit)?.[1]?.replace(/\r$/, "");
   return gitdir === undefined ? null : resolve(checkout, gitdir);
 }
@@ -164,11 +172,30 @@ async function describe(workingFolder: string, path: string): Promise<DotGit> {
   const dotGit = join(workingFolder, path, ".git");
   const stat = await lstat(dotGit).catch(() => null);
   if (stat === null) return "absent";
-  if (stat.isDirectory()) return "folder";
+  if (stat.isDirectory()) return withCommondir(workingFolder, path, "folder");
   // Its target counts, so a link the program points elsewhere is a change.
-  if (stat.isSymbolicLink()) return `link:${await readlink(dotGit)}`;
+  if (stat.isSymbolicLink())
+    return withCommondir(workingFolder, path, `link:${await readlink(dotGit)}`);
   if (!stat.isFile()) return "other";
-  return `file:${await readFile(dotGit, "utf8")}`;
+  return withCommondir(workingFolder, path, `file:${await readFile(dotGit, "utf8")}`);
+}
+
+/**
+ * `dotGit` with its git folder's `commondir`, which sends git to another
+ * folder for the submodule's settings. Read only through real folders inside
+ * the working folder, so a link the program put on the way is never followed.
+ */
+async function withCommondir(workingFolder: string, path: string, dotGit: string): Promise<DotGit> {
+  const checkout = join(workingFolder, path);
+  const target = /^link:(.*)$/s.exec(dotGit)?.[1];
+  const gitFolder =
+    target === undefined ? fileGitFolder(checkout, dotGit) : resolve(checkout, target);
+  if (gitFolder === null) return dotGit;
+  if (!(await insideWithoutLinks(workingFolder, relative(workingFolder, gitFolder)))) return dotGit;
+  const commondir = await readPlainFile(join(gitFolder, "commondir")).catch(
+    () => "not a plain file",
+  );
+  return `${dotGit}\ncommondir:${commondir?.toString() ?? "absent"}`;
 }
 
 /**

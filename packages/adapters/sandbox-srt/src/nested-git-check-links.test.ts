@@ -72,6 +72,17 @@ verifies("sandbox-srt.session", () => {
       });
     });
 
+    it("moves the link aside when the program adds a commondir where it leads, outside .git/modules", async () => {
+      await writeIndex(["theme"], join(".store", "docs"));
+      await relink(join("..", ".store", "docs"));
+      const snapshot = await snapshotNestedGit(work);
+      await plantRepository("evil");
+      await writeFile(join(work, ".store", "docs", "commondir"), "../../evil/.git\n");
+      if (snapshot === null) throw new Error("no snapshot");
+      expect(await undoNestedGit(snapshot)).toEqual({ undone: [join("docs", ".git")], failed: [] });
+      expect(existsSync(join(work, "docs", ".git"))).toBe(false);
+    });
+
     it("moves the link aside when the program points it at another git folder", async () => {
       const snapshot = await snapshotNestedGit(work);
       await plantRepository("evil");

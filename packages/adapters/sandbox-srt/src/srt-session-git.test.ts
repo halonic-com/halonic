@@ -96,6 +96,42 @@ verifies("sandbox-srt.session", () => {
       expect(lstatSync(join(git, "worktrees")).isDirectory()).toBe(true);
     });
 
+    it("deletes a commondir the program added in a submodule's git folder, nested ones too", async () => {
+      const modules = [
+        join(git, "modules", "libs", "acme"),
+        join(git, "modules", "docs", "modules", "theme"),
+      ];
+      for (const folder of modules) {
+        await mkdir(folder, { recursive: true });
+        await writeFile(join(folder, "HEAD"), "ref: refs/heads/main\n");
+      }
+      await writeFile(join(git, "modules", "docs", "HEAD"), "ref: refs/heads/main\n");
+      const { session, blocks } = await open();
+      const planted = modules.map((folder) => join(folder, "commondir"));
+      for (const path of planted) await writeFile(path, "../../elsewhere\n");
+      await session.close();
+      for (const path of planted) expect(existsSync(path)).toBe(false);
+      expect(blocks).toHaveLength(planted.length);
+      for (const path of planted)
+        expect(blocks).toContainEqual({ kind: "file", path, access: "write" });
+    });
+
+    it("does not follow a submodule's git folder swapped for a link", async () => {
+      const outside = join(base, "outside");
+      await mkdir(outside);
+      await writeFile(join(outside, "HEAD"), "ref: refs/heads/main\n");
+      await writeFile(join(outside, "commondir"), "keep\n");
+      const module = join(git, "modules", "docs");
+      await mkdir(module, { recursive: true });
+      await writeFile(join(module, "HEAD"), "ref: refs/heads/main\n");
+      await writeFile(join(module, "commondir"), "../..\n");
+      const { session } = await open();
+      await rm(module, { recursive: true });
+      await symlink(outside, module);
+      await expect(session.close()).rejects.toThrow(join(module, "commondir"));
+      expect(readFileSync(join(outside, "commondir"), "utf8")).toBe("keep\n");
+    });
+
     it("removes a folder named commondir the program planted", async () => {
       const { session, blocks } = await open();
       const planted = join(git, "commondir");

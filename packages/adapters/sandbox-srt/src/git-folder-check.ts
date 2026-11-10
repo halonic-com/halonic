@@ -9,6 +9,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { submoduleGitFolders } from "./git-deny-paths.ts";
 
 /** What one `commondir` file was when the session started: its content, its link target, or nothing. */
 type Original =
@@ -31,6 +32,9 @@ async function commondirPaths(gitFolder: string): Promise<string[]> {
   const worktrees = join(gitFolder, "worktrees");
   const names = (await isRealFolder(worktrees)) ? await readdir(worktrees).catch(() => []) : [];
   for (const name of names) paths.push(join(worktrees, name, "commondir"));
+  // A submodule's git folder reads its settings through a `commondir` too, and
+  // `git status` in the repository goes into each submodule.
+  for (const module of await submoduleGitFolders(gitFolder)) paths.push(join(module, "commondir"));
   return paths;
 }
 

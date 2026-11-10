@@ -93,6 +93,14 @@ async function gitFolderPaths(root: string, gitFolder: string): Promise<string[]
 }
 
 /**
+ * The git folders of the submodules under `<gitFolder>/modules`, nested ones
+ * too, as absolute paths. Links are never followed.
+ */
+export async function submoduleGitFolders(gitFolder: string): Promise<string[]> {
+  return (await moduleFolders(gitFolder, "modules", 0)).map((folder) => join(gitFolder, folder));
+}
+
+/**
  * The git folders of the submodules under `relative`. A submodule's name may
  * hold slashes (`libs/acme`), so a folder without a `HEAD` is searched further.
  */

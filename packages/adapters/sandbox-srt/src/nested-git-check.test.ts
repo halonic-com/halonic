@@ -417,8 +417,9 @@ verifies("sandbox-srt.session", () => {
         await rm(join(work, modules), { recursive: true });
         await symlink(join(work, ".git"), join(work, modules));
         if (snapshot === null) throw new Error("no snapshot");
+        // The link changes what `docs/.git` leads to, so that is moved aside too.
         expect(await undoNestedGit(snapshot)).toEqual({
-          undone: [],
+          undone: [join("docs", ".git")],
           failed: [join(modules, "index")],
         });
       });
