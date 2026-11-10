@@ -322,7 +322,8 @@ When a token refresh is refused, a run must not ask Google again.
   (`client`, `sign-in` or `client-gone`) and the time. A `client` refusal marks every account on that
   client in one write. A later refusal never moves an account to a reason that needs less to fix.
   `mayRefresh(record)` is `false` for a refused record, so there is no retry loop. Only a new sign-in
-  or `setups.clientSecretAccepted(clientRef)` clears a refusal, never the passing of time.
+  clears a refusal, never the passing of time. `setups.clientSecretAccepted(clientRef)` clears only a
+  `client` refusal; a `sign-in` or `client-gone` refusal stays.
 - `connectorState(record, problem, now)` turns a refusal, or an API switched off during a run
   (`ApiDisabled`), into the badge: **Needs sign-in again**, **Needs new secret** or **API off**, each
   with the steps the setup item reopens at. A personal account without the "In production" tick
