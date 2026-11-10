@@ -111,7 +111,14 @@ export async function runExample(): Promise<{
   a `limit` does.
 - **One process:** memory is the adapter's working copy, so two processes
   must not share one collection.
-- **Growth:** an expired lease or a closed window is only replaced when its
-  key is used again, so it stays in memory and in the store's log. Every
-  change is a new log entry. Compacting the log is a follow-up for the
-  file-backed record store.
+- **Start-up clean-up:** when it starts, the adapter removes the leases that
+  have run out and compacts the collection, so released leases, deleted
+  values and replaced entries leave the store. If the store fails the
+  clean-up, the adapter still starts from the state it read and the next
+  start tries again.
+- **Growth:** between starts, an expired lease or a closed window is only
+  replaced when its key is used again, so it stays in memory and in the
+  store's log until the next start. Every change is a new log entry.
+- **Foreign records:** when the collection holds a record this adapter
+  didn't write, every call rejects with an error that names the record, and
+  the collection is left as it is.
