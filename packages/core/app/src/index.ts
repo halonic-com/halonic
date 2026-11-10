@@ -49,6 +49,7 @@ export {
   type EventMap,
   type ListenerErrorHandler,
 } from "./event-bus.ts";
+export { knowledgeDocForModel, knowledgeHitForModel } from "./knowledge-for-model.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 export {
