@@ -103,6 +103,19 @@ function listingCases(make: MakeFolderReader): void {
     expect(await reader.entries(undefined, { limit: 2 })).toHaveLength(3);
     expect(await reader.entries(undefined, { limit: 4 })).toHaveLength(4);
   });
+
+  it("lists only what is directly under a folder when it isn't recursive", async () => {
+    const reader = await make({
+      files: { "acme/plugin.yaml": "id: acme\n", "acme/backend/index.js": "", "top.txt": "" },
+      folders: ["empty"],
+      links: { latest: "acme" },
+    });
+    const paths = async (dir?: string) =>
+      (await reader.entries(dir, { recursive: false })).map((entry) => entry.path);
+    expect(await paths()).toEqual(["acme", "empty", "latest", "top.txt"]);
+    expect(await paths("acme")).toEqual(["acme/backend", "acme/plugin.yaml"]);
+    expect(await reader.entries(undefined, { recursive: false, limit: 1 })).toHaveLength(2);
+  });
 }
 
 function byteCases(make: MakeFolderReader): void {

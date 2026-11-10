@@ -23,6 +23,12 @@ export interface FolderEntriesOptions {
    * entries, which tells the caller the folder went past it.
    */
   readonly limit?: number;
+  /**
+   * `false` lists only the entries directly under the folder, without going
+   * into the folders among them, so a caller can find what a folder holds
+   * without listing everything inside. `true` by default.
+   */
+  readonly recursive?: boolean;
 }
 
 /**
@@ -57,8 +63,8 @@ export interface FolderReader {
   /** Human-readable location of the folder, such as "~/.halonic/plugins" or "memory:plugins". */
   readonly location: string;
   /**
-   * Every entry under `dir`, recursively, links and special files included
-   * but never followed. Paths are relative to the reader's folder, not to
+   * Every entry under `dir`, recursively unless `options.recursive` is
+   * `false`, links and special files included but never followed. Paths are relative to the reader's folder, not to
    * `dir`, and sorted by plain code-unit order (not by locale), so the
    * same folder lists the same on every system. Omit `dir` for the whole
    * folder; `""` is an empty path and is refused like any other unsafe

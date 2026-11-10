@@ -32,8 +32,10 @@ export class MemoryFolderReader implements FolderReader {
       if (this.#entries.get(dir)?.kind !== "folder") return [];
     }
     const prefix = dir === undefined ? "" : `${dir}/`;
+    const recursive = options.recursive ?? true;
     const listed = [...this.#entries]
       .filter(([path]) => path.startsWith(prefix))
+      .filter(([path]) => recursive || !path.slice(prefix.length).includes("/"))
       .sort(([left], [right]) => compareCodeUnits(left, right))
       .map(([path, entry]) => folderEntry(path, entry));
     return options.limit === undefined ? listed : listed.slice(0, options.limit + 1);

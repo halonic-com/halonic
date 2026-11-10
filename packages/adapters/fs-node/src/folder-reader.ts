@@ -52,7 +52,10 @@ export class FileSystemFolderReader implements FolderReader {
       return [];
     }
     const found: FolderEntry[] = [];
-    await this.#walk(start, dir, found, options.limit ?? Number.POSITIVE_INFINITY);
+    await this.#walk(start, dir, found, {
+      limit: options.limit ?? Number.POSITIVE_INFINITY,
+      recursive: options.recursive ?? true,
+    });
     return found.sort((left, right) => compareCodeUnits(left.path, right.path));
   }
 
@@ -92,14 +95,15 @@ export class FileSystemFolderReader implements FolderReader {
 
   /**
    * Adds every entry under `folder` to `found`, depth first, until there are
-   * more than `limit`. `relative` is the folder's path from the root, or
+   * more than `limit`. Without `recursive`, it adds only the entries directly
+   * under `folder`. `relative` is the folder's path from the root, or
    * `undefined` for the root itself.
    */
   async #walk(
     folder: string,
     relative: string | undefined,
     found: FolderEntry[],
-    limit: number,
+    walk: { readonly limit: number; readonly recursive: boolean },
   ): Promise<void> {
     let names: string[];
     try {
@@ -110,13 +114,15 @@ export class FileSystemFolderReader implements FolderReader {
       throw error;
     }
     for (const name of names) {
-      if (found.length > limit) return;
+      if (found.length > walk.limit) return;
       const path = relative === undefined ? name : `${relative}/${name}`;
       const stats = await lstatOrNull(join(folder, name));
       // Gone since `readdir`: it isn't in the folder any more.
       if (stats === null) continue;
       found.push(entryOf(path, stats));
-      if (stats.isDirectory()) await this.#walk(join(folder, name), path, found, limit);
+      if (stats.isDirectory() && walk.recursive) {
+        await this.#walk(join(folder, name), path, found, walk);
+      }
     }
   }
 }
