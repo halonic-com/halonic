@@ -6,7 +6,7 @@ import { expect, expectTypeOf, it } from "vitest";
 import { KernelBlobs, KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 import { call, callAnswer, ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
-import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
+import { agentsUsing, replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
 /** The `mail` connector's `send_mail`, listed with `risk`. */
 function mailTool(name: string, risk: ToolRisk): ConnectorTool {
@@ -36,6 +36,9 @@ const sendingOff: SendingCheck = {
   reason: 'sending is off for the connector "mail"',
 };
 
+/** The reply workflow's writer, whose file lists `mail`. */
+const mailWriter = agentsUsing(["mail"], "writer");
+
 const sendMail = callAnswer(call("m-1", "send_mail", { to: "support" }));
 
 /**
@@ -51,7 +54,12 @@ async function waitingForOk(
   const { connectorCalls, reported, settings } = settingsGiving(check);
   const runs = new KernelRuns();
   const blobs = new KernelBlobs();
-  const setup = runsOn([sendMail, ...after], runs, { connectors: [mail], connectorCalls, blobs });
+  const setup = runsOn([sendMail, ...after], runs, {
+    agents: mailWriter,
+    connectors: [mail],
+    connectorCalls,
+    blobs,
+  });
   await setup.executor.start(replyStart);
   await setup.scheduler.runDue();
   return { ...setup, mail, reported, settings };
@@ -131,6 +139,7 @@ verifies("engine.run-connector-calls", () => {
     const { connectorCalls } = settingsGiving({ allowed: true });
     const answers = [callAnswer(call("s-1", "search", { to: "support" })), textAnswer("Found")];
     const { executor, scheduler, runs } = runsOn(answers, new KernelRuns(), {
+      agents: mailWriter,
       connectors: [mail],
       connectorCalls,
     });
@@ -149,6 +158,7 @@ verifies("engine.run-connector-calls", () => {
   it("offers no connector's tools when the executor has no connector calls", async () => {
     const mail = new ScriptedConnector("mail", [mailTool("search", "read")]);
     const { executor, scheduler, model } = runsOn([textAnswer("Hi")], new KernelRuns(), {
+      agents: mailWriter,
       connectors: [mail],
     });
 
@@ -156,6 +166,60 @@ verifies("engine.run-connector-calls", () => {
     await scheduler.runDue();
 
     expect(model.requests[0]?.tools).toEqual([]);
+  });
+
+  it("offers a run's agent only the tools of the connectors its file lists", async () => {
+    const mail = new ScriptedConnector("mail", [mailTool("search", "read")]);
+    const tracker = new ScriptedConnector("tracker", [mailTool("search_issues", "read")]);
+    const { connectorCalls } = settingsGiving({ allowed: true });
+    const { executor, scheduler, model } = runsOn([textAnswer("Hi")], new KernelRuns(), {
+      agents: mailWriter,
+      connectors: [mail, tracker],
+      connectorCalls,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(model.requests[0]?.tools?.map((tool) => tool.name)).toEqual(["search"]);
+  });
+
+  it.each([
+    ["whose file lists none", agentsUsing([], "writer")],
+    ["the run's definitions have no file for", agentsUsing(["mail"], "checker")],
+  ])("offers no connector's tools to an agent %s", async (_, agents) => {
+    const mail = new ScriptedConnector("mail", [mailTool("search", "read")]);
+    const { connectorCalls } = settingsGiving({ allowed: true });
+    const { executor, scheduler, model } = runsOn([textAnswer("Hi")], new KernelRuns(), {
+      agents,
+      connectors: [mail],
+      connectorCalls,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(model.requests[0]?.tools).toEqual([]);
+  });
+
+  it("doesn't call a connector its agent's file doesn't list, when the model names one of its tools", async () => {
+    const mail = new ScriptedConnector("mail", [mailTool("search", "read")]);
+    const tracker = new ScriptedConnector("tracker", [mailTool("create_issue", "write")]);
+    const { connectorCalls } = settingsGiving({ allowed: true });
+    const answers = [callAnswer(call("c-1", "create_issue", {})), textAnswer("Done")];
+    const { executor, scheduler, runs } = runsOn(answers, new KernelRuns(), {
+      agents: mailWriter,
+      connectors: [mail, tracker],
+      connectorCalls,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(tracker.calls).toEqual([]);
+    const types = typesOf(runs.logs.get("run_1"));
+    expect(types).not.toContain("approval.requested");
+    expect(types).not.toContain("effect.requested");
   });
 });
 

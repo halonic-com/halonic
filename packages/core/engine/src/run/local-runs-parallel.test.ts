@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 import { ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
-import { runsOn } from "./local-runs-test-kit.test-helper.ts";
+import { agentsUsing, runsOn } from "./local-runs-test-kit.test-helper.ts";
 
 /** Two branches whose results go to `findings`; a failed branch gives `{ error }`. */
 const research: Workflow = {
@@ -104,7 +104,12 @@ verifies("engine.parallel-state", () => {
     const { executor, model, runs, scheduler } = runsOn(
       [textAnswer("n"), textAnswer("w")],
       new KernelRuns(),
-      { workflow: research, connectors: [mail], connectorCalls: sendingOn },
+      {
+        workflow: research,
+        agents: agentsUsing(["mail"], "searcher", "reader"),
+        connectors: [mail],
+        connectorCalls: sendingOn,
+      },
     );
     await executor.start(researchStart);
 

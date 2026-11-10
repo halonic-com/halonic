@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import { KernelBlobs, KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 import { call, callAnswer, ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
-import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
+import { agentsUsing, replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
 import { stoppedDuringCall } from "./run-connector-call-runner.ts";
 
 const sendMail: ConnectorTool = {
@@ -37,7 +37,15 @@ function engineOn(
 ) {
   const mail = new ScriptedConnector("mail", [sendMail]);
   if (answer !== undefined) mail.callTool = answer;
-  return { ...runsOn(answers, runs, { connectors: [mail], connectorCalls, blobs }), mail };
+  return {
+    ...runsOn(answers, runs, {
+      agents: agentsUsing(["mail"], "writer"),
+      connectors: [mail],
+      connectorCalls,
+      blobs,
+    }),
+    mail,
+  };
 }
 
 /** Runs the first engine until the call to `send_mail` is recorded, and returns it there. */

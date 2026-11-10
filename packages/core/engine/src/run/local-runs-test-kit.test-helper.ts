@@ -13,7 +13,12 @@ import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { Budget } from "../budget/budget.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { NotingScheduler } from "../harness/harness-test-kit.test-helper.ts";
-import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
+import {
+  KernelBlobs,
+  KernelRuns,
+  replyWorkflow,
+  writerAgent,
+} from "../kernel/kernel-test-kit.test-helper.ts";
 import type { AgentKnowledgeOptions } from "../knowledge/agent-knowledge.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
@@ -164,6 +169,22 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   });
   scheduler.onTimer = (timer) => executor.onTimer(timer);
   return { executor, model, runs, blobs, scheduler, definitionsAsked };
+}
+
+/**
+ * Agents of the `acme` hub with the writer's defaults, each of whose file
+ * lists `connectors`: what a run's agent needs to be offered their tools.
+ *
+ * @example
+ * runsOn(answers, runs, { agents: agentsUsing(["mail"], "writer"), connectors: [mail], connectorCalls });
+ */
+export function agentsUsing(
+  connectors: readonly string[],
+  ...ids: readonly string[]
+): Record<string, Agent> {
+  return Object.fromEntries(
+    ids.map((id) => [id, { ...writerAgent(), id, name: id, connectors: [...connectors] }]),
+  );
 }
 
 /** A start of the reply workflow in the `acme` hub. */

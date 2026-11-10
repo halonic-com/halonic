@@ -2,6 +2,7 @@ import type { ChatTurnRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { halonicTool, secretsWith, steppingClock } from "./agent/turn-test-kit.test-helper.ts";
+import { writerAgent } from "./kernel/kernel-test-kit.test-helper.ts";
 import {
   FakeSource,
   fakeKnowledge,
@@ -81,6 +82,23 @@ verifies("engine.local-chat-turn", () => {
     expect(model.requests[0]?.tools?.map((tool) => tool.name)).toEqual(["pick", "remember"]);
     expect(model.requests[0]?.params).toEqual({ temperature: 0 });
     expect(model.requests[0]?.meta).toEqual({ agentId: "clerk" });
+  });
+
+  it("offers a chat turn whose agent has a file only the servers that file lists", async () => {
+    const model = new ScriptedModel([textAnswer("Hello"), textAnswer("Hi")]);
+    const mail = new ScriptedConnector("mail", [listedTool("lookup")]);
+    const tracker = new ScriptedConnector("tracker", [listedTool("search_issues")]);
+    const clerk = { ...writerAgent(), id: "clerk", name: "Clerk", connectors: ["mail"] };
+    const { executor } = executorOn(model, {
+      connectors: [mail, tracker],
+      chatAgentOf: async ({ agentId }) => (agentId === "clerk" ? clerk : undefined),
+    });
+
+    await executor.chatTurn({ ...request, agentId: "clerk" });
+    await executor.chatTurn(request);
+
+    const names = model.requests.map((each) => (each.tools ?? []).map((tool) => tool.name));
+    expect(names).toEqual([["lookup"], ["lookup", "search_issues"]]);
   });
 
   it("stops at 20 model calls unless told otherwise", async () => {
