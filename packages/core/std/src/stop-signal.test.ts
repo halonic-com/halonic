@@ -36,6 +36,36 @@ verifies("std.stop-signal", () => {
     expect(heard).toEqual(["kept"]);
   });
 
+  it("calls no listener that an earlier listener removed during the stop", () => {
+    const source = new StopSource();
+    const heard: string[] = [];
+    let removeSecond = () => {};
+    source.signal.onStop(() => {
+      heard.push("first");
+      removeSecond();
+    });
+    removeSecond = source.signal.onStop(() => heard.push("second"));
+
+    source.stop(new Error("Stopped."));
+
+    expect(heard).toEqual(["first"]);
+  });
+
+  it("treats the same function added twice as two listeners", () => {
+    const source = new StopSource();
+    let calls = 0;
+    const listener = () => {
+      calls += 1;
+    };
+    const removeFirst = source.signal.onStop(listener);
+    source.signal.onStop(listener);
+
+    removeFirst();
+    source.stop(new Error("Stopped."));
+
+    expect(calls).toBe(1);
+  });
+
   it("calls a listener added after the stop soon after it's added", async () => {
     const source = new StopSource();
     source.stop(new Error("Stopped."));

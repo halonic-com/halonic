@@ -12,7 +12,12 @@ export interface StopSignal {
   throwIfStopped(): void;
   /**
    * Calls `listener` once, when the work is told to stop, or soon after this
-   * returns when it already was. Returns a function that removes it.
+   * returns when it already was. Returns a function that removes it; a
+   * listener removed during the stop, by an earlier listener, isn't called.
+   *
+   * A listener added after the stop runs outside any `stop` call, so if it
+   * throws, nothing catches the error: it becomes an unhandled rejection,
+   * which ends a Node process by default.
    */
   onStop(listener: () => void): () => void;
 }
@@ -76,9 +81,10 @@ export class StopSource {
   /** Calls and removes every listener, like `Emitter.emit` does with errors. */
   #callListeners(): void {
     const listeners = [...this.#listeners];
-    this.#listeners.clear();
     const errors: unknown[] = [];
     for (const listener of listeners) {
+      // A listener that an earlier one removed is skipped, as `AbortSignal` does.
+      if (!this.#listeners.delete(listener)) continue;
       try {
         listener();
       } catch (error) {
