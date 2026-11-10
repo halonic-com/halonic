@@ -1,6 +1,6 @@
 # Decision: the login-shell tests skip on Windows
 
-- Approval: Paperclip task for the review of this pull request (HAL-2544)
+- Approval: Paperclip task HAL-4117 (review of the runner lookup, for HAL-2544)
 - Kind: internal
 
 `login-shell-path.starts.test.ts` starts a stand-in login shell, a POSIX shell script, to show
