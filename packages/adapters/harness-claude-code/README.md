@@ -10,9 +10,21 @@ secrets and approvals stay in Halonic.
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-harness-claude-code`
 
-So far it has `detectClaudeCode` and `claudeCodeEnvironment`; starting a run
-(`start`, `send`, `cancel`) follows with the `stream-json` reader (HAL-194
-build plan, C2 and C3).
+So far it has `detectClaudeCode` and `claudeCodeEnvironment`, and, inside
+the package, the reader that turns Claude Code's `stream-json` output into
+run events. Starting a run (`start`, `send`, `cancel`) follows (HAL-194 build
+plan, C3).
+
+## Reading the output
+
+Claude Code runs with `--output-format stream-json`, one JSON object per line.
+The reader turns a subagent into `agent.started` and `agent.finished` with a
+`parent`, and any other tool call into `tool.called` and `tool.result`. A call
+through the bridge (`mcp__halonic__…`) and every model call are left out: the
+bridge records those. The `result` line is the run's final `agent.finished`;
+an error result ends the run with an error. Line types it doesn't know are
+skipped, so a newer Claude Code can add some, and a line that isn't JSON ends
+the run with an error that never quotes it.
 
 ## Example
 
