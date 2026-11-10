@@ -1505,6 +1505,10 @@ name = "halonic-secrets"
 version = "0.1.0"
 
 [[package]]
+name = "halonic-sha256"
+version = "0.1.0"
+
+[[package]]
 name = "halonic-studio"
 version = "0.1.0"
 dependencies = [
