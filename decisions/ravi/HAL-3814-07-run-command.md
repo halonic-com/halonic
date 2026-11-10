@@ -10,7 +10,8 @@ Acme example on the test model with a fixed clock and fixed ids. Each file holds
 output in the three modes the CLI checklist asks for: colour, `NO_COLOR` and `--json`.
 
 - `support-reply-waiting.txt`: Support reply on Sam's email, waiting at Approve this reply?,
-  with the waiting lines of cli-output 3.4.
+  with the waiting lines of cli-output 3.4. Each answer is followed by its label from the
+  workflow file, as `halonic runs show` writes it (HAL-4072).
 - `support-reply-approved.txt`: the same run with `--event approve`, ending with the receipt
   ("Sent nothing · asked you once") and the run log command.
 

@@ -1,9 +1,9 @@
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import { WorkflowRuns } from "@halonicjs/app";
+import { type RunDetail, WorkflowRuns } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -11,18 +11,20 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
-import { stoppedResult } from "./result.ts";
+import { runResult, stoppedResult } from "./result.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 
 let folder: string;
+let acme: string;
 let workspace: LoadedWorkspace;
+let run: RunDetail;
 let events: readonly RunEvent[];
 
 /** Support reply on Sam's email, run to its wait in the Acme example. */
 beforeEach(async () => {
   folder = await mkdtemp(join(tmpdir(), "halonic-cli-run-stopped-"));
-  const acme = join(folder, "acme");
+  acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
   workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
   const engine = await openLocalEngine({
@@ -43,6 +45,7 @@ beforeEach(async () => {
       input,
     );
     if (started.found !== "one") throw new Error("Support reply didn't start.");
+    run = started.run;
     events = started.run.events;
   } finally {
     await engine.close();
@@ -76,5 +79,26 @@ verifies("cli.run", () => {
 
   it("says only Stopped. when the run hadn't started", () => {
     expect(stoppedResult([], workspace)).toEqual({ stopped: true, json: {} });
+  });
+
+  it("shows an escape code in the workflow's or the folder's name as its code", async () => {
+    const workflowFile = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
+    const workflow = await readFile(workflowFile, "utf8");
+    await writeFile(
+      workflowFile,
+      workflow.replace("name: Support reply", 'name: "\\e[2JSupport reply"'),
+    );
+    const renamed = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+
+    const result = runResult(run, {
+      workspace: renamed,
+      workspaceName: "\u001b[31macme",
+      dir: undefined,
+      clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
+    });
+
+    expect(plainText(result.lines[0] ?? [])).toMatch(
+      /^Running \\u001b\[2JSupport reply in \\u001b\[31macme · run \w{6}$/,
+    );
   });
 });
