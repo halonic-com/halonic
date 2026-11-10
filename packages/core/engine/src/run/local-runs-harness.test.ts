@@ -15,7 +15,7 @@ verifies("engine.local-runs-unbuilt-effect", () => {
 
     const started = await executor.start(replyStart);
 
-    expect(started).toMatchObject({ status: "failed", reason: "error" });
+    expect(started).toMatchObject({ status: "failed", reason: "harness-unavailable" });
     expect(started.error).toContain("run-harness");
     expect(typesOf(runs.logs.get("run_1")).at(-1)).toBe("run.failed");
     expect(scheduler.timers.size).toBe(0);

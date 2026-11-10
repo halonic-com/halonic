@@ -30,6 +30,7 @@ verifies("events.run-failed-reason", () => {
       | "out-of-credit"
       | "provider-busy"
       | "answer-not-an-option"
+      | "harness-unavailable"
     >();
     expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
   });
@@ -108,6 +109,12 @@ verifies("events.run-failed-provider-busy", () => {
 verifies("events.run-failed-answer-not-an-option", () => {
   typeTest("has a reason for an answer that isn't one of the agent's options", () => {
     expectTypeOf<IsReason<"answer-not-an-option">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-harness-unavailable", () => {
+  typeTest("has a reason for a harness step in an engine without harnesses", () => {
+    expectTypeOf<IsReason<"harness-unavailable">>().toEqualTypeOf<true>();
   });
 });
 

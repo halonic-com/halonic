@@ -202,6 +202,8 @@ verifies("cli.run-failure", () => {
       "sandbox-start-failed",
       "harness-start-failed",
       "answer-not-an-option",
+      // `halonic run` has no harnesses in 0.1; the engine's message names the step's effect.
+      "harness-unavailable",
       "error",
     ];
     for (const reason of generalReasons) {

@@ -161,6 +161,7 @@ export function runFailureOf(
     case "interrupted":
     case "sandbox-start-failed":
     case "harness-start-failed":
+    case "harness-unavailable":
     case "answer-not-an-option":
     case "error":
       return generalFailure(failed);

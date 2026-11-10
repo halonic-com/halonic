@@ -380,7 +380,12 @@ export class LocalRuns {
       // The events are stored, so throwing would leave the run going with no
       // timer to move it on. Until the agent loop (4a) carries these out,
       // the run fails and none of its effects are scheduled.
-      await this.#fail(runId, `The local executor can't carry out a ${unbuilt.type} effect yet.`);
+      const reason = unbuilt.type === "run-harness" ? "harness-unavailable" : "error";
+      await this.#fail(
+        runId,
+        `The local executor can't carry out a ${unbuilt.type} effect yet.`,
+        reason,
+      );
       return events;
     }
     for (const effect of effects) {

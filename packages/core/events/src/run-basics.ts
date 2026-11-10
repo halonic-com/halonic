@@ -123,6 +123,8 @@ export interface ToolNoun {
  * - `provider-busy`: the model's provider was overloaded or asked Halonic to slow down.
  * - `answer-not-an-option`: the agent's output is a `choice`, and its answer wasn't one of the
  *   options.
+ * - `harness-unavailable`: the step's agent runs in a harness program, and the engine that ran it
+ *   has no harnesses, as in workflow tests, which never start programs.
  */
 export type RunFailureReason =
   | "budget"
@@ -139,7 +141,8 @@ export type RunFailureReason =
   | "key-refused"
   | "out-of-credit"
   | "provider-busy"
-  | "answer-not-an-option";
+  | "answer-not-an-option"
+  | "harness-unavailable";
 
 /**
  * The model provider's own error text, kept in the run log for `--debug` and
