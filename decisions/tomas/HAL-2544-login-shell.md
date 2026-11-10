@@ -13,9 +13,10 @@ case, runs everywhere. The Windows runner rules run everywhere too, in `find-run
 against a made-up file list.
 
 The pull request also adds `packages/adapters/mcp/src/pinned/login-shell-path.ts` to
-`tooling/check/process-starters.json`, which needs the maintainer's review.
+`tooling/check/process-starters.json`, which needs the maintainer's review. The note covers it as
+`tooling/check/`, the guarded path that file falls under.
 
 ## Covers
 
 - packages/adapters/mcp/src/pinned/login-shell-path.starts.test.ts
-- tooling/check/process-starters.json
+- tooling/check/
