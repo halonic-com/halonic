@@ -7,7 +7,7 @@ The `Vcs` port on the real `git` program, for one workspace folder. git always r
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-git`
 
-This first part is the hardened runner. The repository checks and the `Vcs` itself follow (HAL-2607).
+The hardened runner and the repository checks are in; the `Vcs` itself follows (HAL-2607).
 
 ## Example
 
@@ -31,6 +31,8 @@ console.log(result.code, result.stdout.toString());
 - allows only `https` and `ssh` remotes, with `ssh` itself and no password prompt;
 - runs only in an absolute folder and never looks for a repository above it (`GIT_CEILING_DIRECTORIES`, which git ignores when relative), and finds programs only in the absolute folders of the `PATH`;
 - stops git, and every program it started, past its time or output limit.
+
+Before each call in a repository, the adapter checks that the folder is the repository's root, with all of its git files and alternate objects inside the folder. It then lists the repository's config, blanks the filters it and its nested repositories define, sends merge drivers to a conflict and ssh and signing programs back to git's defaults, and refuses `branch.<name>.mergeOptions`.
 
 The desktop's `git-guard` crate does the same in Rust.
 
