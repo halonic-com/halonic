@@ -199,6 +199,28 @@ verifies("events.summary-cost", () => {
     });
   });
 
+  it("adds up 1-hour cache writes apart from 5-minute ones", () => {
+    const summary = summaryOf(
+      {
+        ...response,
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheWriteTokens: 300,
+          cacheWrite1hTokens: 2_000,
+        },
+        cost: 0.25,
+      },
+      { ...response, usage: { inputTokens: 1, outputTokens: 1, cacheWrite1hTokens: 500 }, cost: 0 },
+    );
+    expect(summary.usage).toEqual({
+      inputTokens: 11,
+      outputTokens: 6,
+      cacheWriteTokens: 300,
+      cacheWrite1hTokens: 2_500,
+    });
+  });
+
   typeTest("marks a subscription call, and is absent otherwise", () => {
     type Response = Extract<RunEventBody, { type: "llm.response" }>;
     expectTypeOf<Response["paidBy"]>().toEqualTypeOf<"subscription" | undefined>();

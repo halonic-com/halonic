@@ -15,8 +15,16 @@ export interface Usage {
   outputTokens: number;
   /** Input tokens read from the provider's prompt cache. Absent when there were none. */
   cacheReadTokens?: number;
-  /** Input tokens written to the provider's prompt cache. Absent when there were none. */
+  /**
+   * Input tokens written to the provider's prompt cache for its short
+   * lifetime (Anthropic: 5 minutes). Absent when there were none.
+   */
   cacheWriteTokens?: number;
+  /**
+   * Input tokens written to the provider's prompt cache for 1 hour, which
+   * costs more than a short write. Absent when there were none.
+   */
+  cacheWrite1hTokens?: number;
 }
 
 /** What started a run. Absent for runs started by hand from a workflow. */

@@ -4,10 +4,12 @@
 - Kind: public interface (`core/ports`, `core/events`, `core/format`)
 
 Anthropic reports the input tokens it read from and wrote to the prompt cache
-apart from the rest, and charges them differently: a cache read costs about a
-tenth of the input price, a 5-minute cache write about 1.25 times it. Counting
-them as plain input, as halonic-com/halonic#769 does, overstates a Claude Code
-run's spend (its reads by about 10 times), so budgets stop runs too early.
+apart from the rest, and charges them differently. What a cache read costs
+depends on the model: 0.1 times the input price on older models, 0.05 times
+on Sonnet 5.5 and Opus 5.5, 0.025 times on Fable 5.1 and 5.2. A 5-minute
+cache write costs 1.25 times the input price. Counting them as plain input,
+as halonic-com/halonic#769 does, overstates a Claude Code run's spend (its
+reads by 10 to 40 times), so budgets stop runs too early.
 Liam asked for this change in his review of #769 and wrote it up as HAL-2688.
 
 What changes:
@@ -25,11 +27,11 @@ Nothing is removed, and no example changes its result: each requirement
 gains a sentence and examples. The run log contract's type test now names
 the two optional `usage` fields; old logs still match it.
 
-Left for later: Anthropic's 1-hour cache writes cost about twice the input
-price, not 1.25 times. One `cacheWrite` price covers the 5-minute writes that
-Claude Code uses today; a second price can come when a harness uses the
-1-hour cache. OpenAI counts its cached tokens inside the prompt tokens; its
-readers can fill `cacheReadTokens` the same way in a later change.
+Left for later: Anthropic's 1-hour cache writes cost twice the input price,
+not 1.25 times. One `cacheWrite` price covers the 5-minute writes that Claude
+Code uses today; HAL-2688-02 adds the 1-hour price. OpenAI counts its cached
+tokens inside the prompt tokens; its readers can fill `cacheReadTokens` the
+same way in a later change.
 
 ## Covers
 

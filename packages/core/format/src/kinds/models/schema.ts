@@ -8,8 +8,10 @@ export const ModelPrice = s
     output: s.number().min(0),
     /** Input tokens read from the provider's prompt cache. Without it they cost `input`. */
     cacheRead: s.number().min(0).optional(),
-    /** Input tokens written to the provider's prompt cache. Without it they cost `input`. */
+    /** Input tokens written to the provider's prompt cache for its short lifetime. Without it they cost `input`. */
     cacheWrite: s.number().min(0).optional(),
+    /** Input tokens written to the provider's prompt cache for 1 hour. Without it they cost `cacheWrite`, then `input`. */
+    cacheWrite1h: s.number().min(0).optional(),
   })
   .strict();
 

@@ -47,4 +47,23 @@ verifies("ports.model-price", () => {
     const plain = { inputTokens: 2_000, outputTokens: 10 };
     expect(priceOf({ input: 3, output: 15 }, usage)).toBe(priceOf({ input: 3, output: 15 }, plain));
   });
+
+  it("prices 1-hour cache writes at their own price", () => {
+    const price = { input: 3, output: 15, cacheWrite: 3.75, cacheWrite1h: 6 };
+    const usage = {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheWriteTokens: 1_000,
+      cacheWrite1hTokens: 1_000,
+    };
+    // 1,000 × 3.75 + 1,000 × 6 = 9,750 per million
+    expect(priceOf(price, usage)).toBe(0.00975);
+  });
+
+  it("prices 1-hour cache writes at the short write price when the model has no 1-hour price", () => {
+    const price = { input: 3, output: 15, cacheWrite: 3.75 };
+    const oneHour = { inputTokens: 100, outputTokens: 10, cacheWrite1hTokens: 1_000 };
+    const short = { inputTokens: 100, outputTokens: 10, cacheWriteTokens: 1_000 };
+    expect(priceOf(price, oneHour)).toBe(priceOf(price, short));
+  });
 });

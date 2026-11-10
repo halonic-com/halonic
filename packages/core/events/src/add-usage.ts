@@ -1,5 +1,8 @@
 import type { Usage } from "./run-basics.ts";
 
+/** The optional token counts of a call that used a prompt cache. */
+const cacheCounts = ["cacheReadTokens", "cacheWriteTokens", "cacheWrite1hTokens"] as const;
+
 /**
  * The tokens of two model calls together. A cache count is in the sum only
  * when one of them has it, so calls without a prompt cache keep their old shape.
@@ -13,10 +16,10 @@ export function addUsage(total: Usage, more: Usage): Usage {
     inputTokens: total.inputTokens + more.inputTokens,
     outputTokens: total.outputTokens + more.outputTokens,
   };
-  const cacheReadTokens = addOptional(total.cacheReadTokens, more.cacheReadTokens);
-  if (cacheReadTokens !== undefined) sum.cacheReadTokens = cacheReadTokens;
-  const cacheWriteTokens = addOptional(total.cacheWriteTokens, more.cacheWriteTokens);
-  if (cacheWriteTokens !== undefined) sum.cacheWriteTokens = cacheWriteTokens;
+  for (const count of cacheCounts) {
+    const added = addOptional(total[count], more[count]);
+    if (added !== undefined) sum[count] = added;
+  }
   return sum;
 }
 

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: old app `packages/core/events/src/index.ts` at commit 784f78d; `llm.response.paidBy` from HAL-2311; `usage` cache tokens from HAL-2688
+- Source: old app `packages/core/events/src/index.ts` at commit 784f78d; `llm.response.paidBy` from HAL-2311; `usage` cache tokens, 1-hour cache writes included, from HAL-2688
 
 The events package shall describe every run log event with the same type name and the same fields, required or optional, as the reference run log, so run logs written by the old repo and by the new one read the same.
 
@@ -19,4 +19,4 @@ The events package shall describe every run log event with the same type name an
   then each is optional and has its own requirement (`events.tool-result-outcome`, `events.run-failed-reason`, `events.approval-resolved-by`, `events.tool-call-as-text`, `events.summary-cost`, `events.run-failed-model-unreachable`), and no reference field changes.
 - Given the reference fields of `usage`, `inputTokens` and `outputTokens`,
   when the events package's `Usage` is compared with them,
-  then it has the same two, required, plus the optional `cacheReadTokens` and `cacheWriteTokens` that came with prompt cache prices (`events.summary-cost`).
+  then it has the same two, required, plus the optional `cacheReadTokens`, `cacheWriteTokens` and `cacheWrite1hTokens` that came with prompt cache prices (`events.summary-cost`).

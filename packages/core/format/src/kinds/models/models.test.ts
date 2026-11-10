@@ -31,10 +31,16 @@ verifies("format.models-file", () => {
       "  smart:",
       "    provider: anthropic",
       "    model: claude-sonnet",
-      "    price: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 }",
+      "    price: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75, cacheWrite1h: 6 }",
     );
     const alias = parsedValue("models", text).aliases["smart"];
-    expect(alias?.price).toEqual({ input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 });
+    expect(alias?.price).toEqual({
+      input: 3,
+      output: 15,
+      cacheRead: 0.3,
+      cacheWrite: 3.75,
+      cacheWrite1h: 6,
+    });
   });
 
   it("refuses a temperature above 2 and a negative price", () => {

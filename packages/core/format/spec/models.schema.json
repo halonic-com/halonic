@@ -86,6 +86,10 @@
               "cacheWrite": {
                 "type": "number",
                 "minimum": 0
+              },
+              "cacheWrite1h": {
+                "type": "number",
+                "minimum": 0
               }
             },
             "required": [

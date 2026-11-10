@@ -263,6 +263,7 @@ verifies("events.run-log-contract", () => {
       outputTokens: number;
       cacheReadTokens?: number;
       cacheWriteTokens?: number;
+      cacheWrite1hTokens?: number;
     }>();
     expectTypeOf<RunTrigger>().toEqualTypeOf<{
       type: "manual" | "schedule" | "every" | "mail" | "signal";
