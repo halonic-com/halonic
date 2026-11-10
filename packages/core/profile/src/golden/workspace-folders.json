@@ -1,0 +1,247 @@
+{
+  "workspaces": [
+    {
+      "name": "Linux path",
+      "platform": "linux",
+      "profile": "/srv/acme/.local/share/halonic",
+      "workspace": "/srv/acme/workspace",
+      "folder": "/srv/acme/.local/share/halonic/workspaces/3a799e428169278421370a605619c6ed",
+      "runs": "/srv/acme/.local/share/halonic/workspaces/3a799e428169278421370a605619c6ed/runs",
+      "stagingRuns": "/srv/acme/.local/share/halonic/workspaces/3a799e428169278421370a605619c6ed/deployments/staging/runs"
+    },
+    {
+      "name": "Linux path with a trailing separator",
+      "platform": "linux",
+      "profile": "/srv/acme/.local/share/halonic",
+      "workspace": "/srv/acme/workspace//",
+      "folder": "/srv/acme/.local/share/halonic/workspaces/3a799e428169278421370a605619c6ed",
+      "runs": "/srv/acme/.local/share/halonic/workspaces/3a799e428169278421370a605619c6ed/runs",
+      "stagingRuns": "/srv/acme/.local/share/halonic/workspaces/3a799e428169278421370a605619c6ed/deployments/staging/runs"
+    },
+    {
+      "name": "Linux keeps case",
+      "platform": "linux",
+      "profile": "/srv/acme/.local/share/halonic",
+      "workspace": "/srv/acme/Workspace",
+      "folder": "/srv/acme/.local/share/halonic/workspaces/2e11244ee8050ad222cdcbc901275649",
+      "runs": "/srv/acme/.local/share/halonic/workspaces/2e11244ee8050ad222cdcbc901275649/runs",
+      "stagingRuns": "/srv/acme/.local/share/halonic/workspaces/2e11244ee8050ad222cdcbc901275649/deployments/staging/runs"
+    },
+    {
+      "name": "Linux keeps Unicode form",
+      "platform": "linux",
+      "profile": "/srv/acme/.local/share/halonic",
+      "workspace": "/srv/acme/Cafe\u0301",
+      "folder": "/srv/acme/.local/share/halonic/workspaces/2fe86cfb00cc65545b8d51f27a37458a",
+      "runs": "/srv/acme/.local/share/halonic/workspaces/2fe86cfb00cc65545b8d51f27a37458a/runs",
+      "stagingRuns": "/srv/acme/.local/share/halonic/workspaces/2fe86cfb00cc65545b8d51f27a37458a/deployments/staging/runs"
+    },
+    {
+      "name": "Linux root",
+      "platform": "linux",
+      "profile": "/srv/acme/.local/share/halonic",
+      "workspace": "/",
+      "folder": "/srv/acme/.local/share/halonic/workspaces/8a5edab282632443219e051e4ade2d1d",
+      "runs": "/srv/acme/.local/share/halonic/workspaces/8a5edab282632443219e051e4ade2d1d/runs",
+      "stagingRuns": "/srv/acme/.local/share/halonic/workspaces/8a5edab282632443219e051e4ade2d1d/deployments/staging/runs"
+    },
+    {
+      "name": "Linux relative path is refused",
+      "platform": "linux",
+      "profile": "/srv/acme/.local/share/halonic",
+      "workspace": "srv/acme/workspace",
+      "folder": null,
+      "runs": null,
+      "stagingRuns": null
+    },
+    {
+      "name": "macOS path already in NFC",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "/srv/acme/caf\u00e9",
+      "folder": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447",
+      "runs": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447/runs",
+      "stagingRuns": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447/deployments/staging/runs"
+    },
+    {
+      "name": "macOS decomposed e with acute",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "/srv/acme/Cafe\u0301",
+      "folder": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447",
+      "runs": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447/runs",
+      "stagingRuns": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447/deployments/staging/runs"
+    },
+    {
+      "name": "macOS composed e with acute, upper case",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "/srv/acme/CAF\u00c9/",
+      "folder": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447",
+      "runs": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447/runs",
+      "stagingRuns": "/srv/acme/Library/Application Support/halonic/workspaces/ed641b38152d6a81467392ccf5f21447/deployments/staging/runs"
+    },
+    {
+      "name": "macOS final capital sigma",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "/srv/acme/\u039f\u0394\u039f\u03a3",
+      "folder": "/srv/acme/Library/Application Support/halonic/workspaces/4d642d663b2e146d713f1e6eb5750b75",
+      "runs": "/srv/acme/Library/Application Support/halonic/workspaces/4d642d663b2e146d713f1e6eb5750b75/runs",
+      "stagingRuns": "/srv/acme/Library/Application Support/halonic/workspaces/4d642d663b2e146d713f1e6eb5750b75/deployments/staging/runs"
+    },
+    {
+      "name": "macOS capital sigma inside a word",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "/srv/acme/\u03a3\u039f\u03a6\u0399\u0391",
+      "folder": "/srv/acme/Library/Application Support/halonic/workspaces/c559fec74feeb888ff498f667b0820a0",
+      "runs": "/srv/acme/Library/Application Support/halonic/workspaces/c559fec74feeb888ff498f667b0820a0/runs",
+      "stagingRuns": "/srv/acme/Library/Application Support/halonic/workspaces/c559fec74feeb888ff498f667b0820a0/deployments/staging/runs"
+    },
+    {
+      "name": "macOS capital I with dot above",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "/srv/acme/\u0130stanbul",
+      "folder": "/srv/acme/Library/Application Support/halonic/workspaces/828e1d6dc00fa25ff26b95ccbf68e699",
+      "runs": "/srv/acme/Library/Application Support/halonic/workspaces/828e1d6dc00fa25ff26b95ccbf68e699/runs",
+      "stagingRuns": "/srv/acme/Library/Application Support/halonic/workspaces/828e1d6dc00fa25ff26b95ccbf68e699/deployments/staging/runs"
+    },
+    {
+      "name": "macOS sharp s",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "/srv/acme/Stra\u00dfe",
+      "folder": "/srv/acme/Library/Application Support/halonic/workspaces/a84bb214f6206c8fe3994cf2748342ce",
+      "runs": "/srv/acme/Library/Application Support/halonic/workspaces/a84bb214f6206c8fe3994cf2748342ce/runs",
+      "stagingRuns": "/srv/acme/Library/Application Support/halonic/workspaces/a84bb214f6206c8fe3994cf2748342ce/deployments/staging/runs"
+    },
+    {
+      "name": "macOS relative path is refused",
+      "platform": "macos",
+      "profile": "/srv/acme/Library/Application Support/halonic",
+      "workspace": "Cafe\u0301",
+      "folder": null,
+      "runs": null,
+      "stagingRuns": null
+    },
+    {
+      "name": "Windows path",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "<drive>\\Work\\Acme",
+      "folder": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2",
+      "runs": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows path in lower case",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "<drive>\\work\\acme",
+      "folder": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2",
+      "runs": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows path in verbatim form",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "\\\\?\\<drive>\\Work\\Acme",
+      "folder": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2",
+      "runs": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows path with forward slashes",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "<drive>/Work/Acme",
+      "folder": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2",
+      "runs": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows path with a trailing separator",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "<drive>\\Work\\Acme\\",
+      "folder": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2",
+      "runs": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\3a66d867bb194a8d54dce626af4efed2\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows drive root",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "<drive>\\",
+      "folder": "<drive>\\halonic\\workspaces\\1836262184c1d1a391699fcbae3c32ce",
+      "runs": "<drive>\\halonic\\workspaces\\1836262184c1d1a391699fcbae3c32ce\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\1836262184c1d1a391699fcbae3c32ce\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows share",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "\\\\server\\share\\Acme",
+      "folder": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4",
+      "runs": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows share in verbatim form",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "\\\\?\\UNC\\server\\share\\Acme",
+      "folder": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4",
+      "runs": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows share in verbatim form, lower case prefix",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "\\\\?\\unc\\server\\share\\Acme",
+      "folder": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4",
+      "runs": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4\\runs",
+      "stagingRuns": "<drive>\\halonic\\workspaces\\25add59ee759aa133dfc366069c34ad4\\deployments\\staging\\runs"
+    },
+    {
+      "name": "Windows path relative to a drive is refused",
+      "platform": "windows",
+      "profile": "<drive>\\halonic",
+      "workspace": "<drive>Work",
+      "folder": null,
+      "runs": null,
+      "stagingRuns": null
+    }
+  ],
+  "deploymentIds": {
+    "accepted": [
+      "staging",
+      "a",
+      "0",
+      "com10",
+      "lpt",
+      "a-b_c",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "refused": [
+      "",
+      "../staging",
+      "Staging",
+      "-staging",
+      "_staging",
+      "stag ing",
+      "con",
+      "prn",
+      "aux",
+      "nul",
+      "com0",
+      "lpt9",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "stag\u00e9"
+    ]
+  }
+}

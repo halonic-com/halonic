@@ -1,17 +1,21 @@
 //! Finds the profile folder exactly as `profileFolder` in `@halonicjs/profile`
 //! does (HAL-2612), so the Studio shell and the CLI share one profile, and
-//! with it one folder of trust records (requirement `profile.trust-folder`).
+//! with it one folder of trust records (requirement `profile.trust-folder`)
+//! and one folder of runs per workspace (`profile.workspace-folders`).
 //!
 //! Paths are plain text joined the platform's way, as in the TypeScript
 //! package, so both can be checked against the same golden cases
-//! (`packages/core/profile/src/golden/profile-folders.json`). The shell
+//! (`packages/core/profile/src/golden/profile-folders.json` and
+//! `workspace-folders.json`). The shell
 //! turns the answer into a `PathBuf` only when it uses it.
 
 mod native_path;
+mod workspace_folders;
 
 use std::fmt;
 
 pub use native_path::{is_absolute_path, join_path, without_trailing_separators};
+pub use workspace_folders::{WorkspaceError, WorkspaceFolders};
 
 /// The name of the folder Halonic adds under the system's user data folder.
 const FOLDER_NAME: &str = "halonic";

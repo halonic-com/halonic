@@ -7,9 +7,18 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
-# No dependencies: paths are plain text here, joined the platform's way, so
-# the answers can be compared with the TypeScript package's character for
-# character.
+# Paths are plain text here, joined the platform's way, so the answers can
+# be compared with the TypeScript package's character for character.
+#
+# A workspace's folder is named from the SHA-256 of its path, and on macOS
+# the path is put in Unicode NFC first, as `workspaceFolders` does. The
+# shell already builds both crates: sha2 through wry and tauri-codegen,
+# icu_normalizer through url and idna. Pinned to the versions in
+# Cargo.lock, so this adds no crate for cargo-deny to audit (approved by
+# Liam on HAL-2719). Only compiled_data, the features url already uses.
+[dependencies]
+icu_normalizer = { version = "=2.4.0", default-features = false, features = ["compiled_data"] }
+sha2 = { version = "=0.10.9", default-features = false }
 
 # serde_json reads the shared golden cases in the tests.
 [dev-dependencies]

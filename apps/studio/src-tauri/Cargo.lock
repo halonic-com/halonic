@@ -1512,7 +1512,9 @@ dependencies = [
 name = "halonic-profile"
 version = "0.1.0"
 dependencies = [
+ "icu_normalizer",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]
