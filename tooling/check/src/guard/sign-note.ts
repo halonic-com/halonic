@@ -18,7 +18,8 @@ export type SignedNote =
  * Signs a pull request's decision note (HAL-1337), reading it and every
  * covered file from git's objects at the pull request's head, as the guard
  * will. Refuses a note that already has a signature line, has a carriage
- * return or doesn't parse, and a key the base doesn't pin for its kind.
+ * return or doesn't parse, a key the base doesn't pin for its kind and a
+ * base whose approvers file can't be read.
  */
 export function signNote(
   pull: PullRequest,
@@ -49,7 +50,12 @@ export function signNote(
     return { ok: false, reason: `${file} is malformed: ${problems.join(" ")}` };
   }
   const keyId = keyIdOf(createPublicKey(createPrivateKey(privateKeyPem)));
-  const pinned = parseApprovers(git.readFile(pull.base, approversFile) ?? "{}");
+  let pinned: ReturnType<typeof parseApprovers>;
+  try {
+    pinned = parseApprovers(git.readFile(pull.base, approversFile) ?? "{}");
+  } catch (error) {
+    return { ok: false, reason: `the base's ${approversFile} can't be read: ${String(error)}` };
+  }
   if (!pinned[parsed.note.kind].some((approver) => approver.id === keyId)) {
     return {
       ok: false,

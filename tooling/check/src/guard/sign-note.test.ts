@@ -83,6 +83,13 @@ verifies("check.decision-sign", () => {
       { ...baseFiles, [noteFile]: note },
       /already on the base/,
     ],
+    [
+      "a broken approvers file on the base",
+      note,
+      cto.privatePem,
+      { ...baseFiles, [approversFile]: "{ not json" },
+      /can't be read/,
+    ],
   ])("refuses %s", (_case, text, privatePem, onBase, reason) => {
     const { signed } = sign(text, privatePem, onBase);
     expect(signed.ok ? "signed" : signed.reason).toMatch(reason);

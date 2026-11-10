@@ -41,6 +41,15 @@ verifies("check.guard-signed-notes", () => {
     expect(objects.objectId(commit, "missing.ts")).toBeUndefined();
   });
 
+  test("reads a file larger than execFileSync's default 1 MB buffer", () => {
+    const { root, git } = repo();
+    const large = `${"x".repeat(2 * 1024 * 1024)}\n`;
+    writeFileSync(join(root, "src/large.txt"), large);
+    git("add", ".");
+    git("commit", "--quiet", "--no-verify", "-m", "large");
+    expect(gitObjects(root).readFile(git("rev-parse", "HEAD"), "src/large.txt")).toBe(large);
+  });
+
   test("takes only full commit IDs, so no argument reads as an option", () => {
     const objects = gitObjects(repo().root);
     expect(objects.hasCommit("HEAD")).toBe(false);
