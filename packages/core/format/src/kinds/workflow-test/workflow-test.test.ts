@@ -52,3 +52,47 @@ verifies("format.workflow-test-file", () => {
     ]);
   });
 });
+
+verifies("format.workflow-test-programs", () => {
+  it("leaves programs out when the case does", () => {
+    const value = parsedValue("workflowTest", yaml("workflow: build", "cases:", "  - name: a"));
+    expect(value.cases[0]).not.toHaveProperty("programs");
+  });
+
+  it("accepts the three kinds of program result, in order", () => {
+    const text = yaml(
+      "workflow: build",
+      "cases:",
+      "  - name: a",
+      "    programs:",
+      "      coder:",
+      "        - Fixed the failing test.",
+      "        - { output: { files: 3, passed: true } }",
+      '        - { fails: "claude-code exited with code 1" }',
+      "      reviewer: [{ output: null }]",
+    );
+    expect(parsedValue("workflowTest", text).cases[0]?.programs).toEqual({
+      coder: [
+        "Fixed the failing test.",
+        { output: { files: 3, passed: true } },
+        { fails: "claude-code exited with code 1" },
+      ],
+      reviewer: [{ output: null }],
+    });
+  });
+
+  it("refuses an empty result, an empty failure and an unknown key", () => {
+    const text = yaml(
+      "workflow: build",
+      "cases:",
+      "  - name: a",
+      "    programs:",
+      "      coder: [{}, { fails: '' }, { output: x, exitCode: 1 }]",
+    );
+    expect(summary(problemsOf("workflowTest", text))).toEqual([
+      "cases.0.programs.coder.0 invalid_union 5",
+      "cases.0.programs.coder.1.fails too_small 5",
+      "cases.0.programs.coder.2 unrecognized_keys 5",
+    ]);
+  });
+});

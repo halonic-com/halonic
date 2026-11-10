@@ -12,6 +12,16 @@ const TestEvent = s.union([
   s.object({ event: s.string().min(1), payload: s.unknown() }).strict(),
 ]);
 
+/**
+ * One scripted program result: the program's text output, any output value
+ * ({ output: { total: 120 } }) or a failure ({ fails: "claude-code exited with code 1" }).
+ */
+const ProgramResult = s.union([
+  s.string(),
+  s.object({ output: s.unknown() }).strict(),
+  s.object({ fails: s.string().min(1) }).strict(),
+]);
+
 /** One test case: the input, the scripted replies, the events and what to expect. */
 export const WorkflowTestCase = s
   .object({
@@ -22,6 +32,11 @@ export const WorkflowTestCase = s
     events: s.array(TestEvent).default([]),
     /** Scripted connector tool results, keyed "<connector>.<tool>". Tests never contact real connectors. */
     tools: s.record(s.string(), s.array(s.string())).default({}),
+    /**
+     * Scripted program results per agent id, used in the order the engine
+     * starts that agent's programs. Tests never start programs.
+     */
+    programs: s.record(s.string(), s.array(ProgramResult)).optional(),
     expect: s
       .object({
         /** The exact sequence of states visited. */

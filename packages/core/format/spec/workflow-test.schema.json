@@ -96,6 +96,45 @@
               }
             }
           },
+          "programs": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "output": {}
+                    },
+                    "required": [
+                      "output"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "fails": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "fails"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          },
           "expect": {
             "default": {},
             "type": "object",
