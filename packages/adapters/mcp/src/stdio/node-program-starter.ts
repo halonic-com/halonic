@@ -56,6 +56,8 @@ function runningProgram(child: ChildProcess): RunningProgram {
     });
   });
   return {
+    // A write waiting on a full pipe still settles: once the program ends,
+    // Node destroys the pipe and fails every pending write's callback.
     write: (text) =>
       new Promise((resolve, reject) => {
         stdin.write(text, (error) => (error ? reject(error) : resolve()));
