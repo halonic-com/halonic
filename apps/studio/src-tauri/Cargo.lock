@@ -1501,6 +1501,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-profile"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "halonic-secrets"
 version = "0.1.0"
 

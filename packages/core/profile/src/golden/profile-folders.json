@@ -1,0 +1,184 @@
+[
+  {
+    "name": "Linux without XDG_DATA_HOME",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {},
+    "profile": "/srv/acme/.local/share/halonic",
+    "trust": "/srv/acme/.local/share/halonic/trust"
+  },
+  {
+    "name": "Linux with an absolute XDG_DATA_HOME",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "XDG_DATA_HOME": "/srv/data"
+    },
+    "profile": "/srv/data/halonic",
+    "trust": "/srv/data/halonic/trust"
+  },
+  {
+    "name": "Linux with a relative XDG_DATA_HOME",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "XDG_DATA_HOME": "data"
+    },
+    "profile": "/srv/acme/.local/share/halonic",
+    "trust": "/srv/acme/.local/share/halonic/trust"
+  },
+  {
+    "name": "Linux with an empty XDG_DATA_HOME",
+    "platform": "linux",
+    "homeFolder": "/srv/acme/",
+    "variables": {
+      "XDG_DATA_HOME": ""
+    },
+    "profile": "/srv/acme/.local/share/halonic",
+    "trust": "/srv/acme/.local/share/halonic/trust"
+  },
+  {
+    "name": "macOS, which ignores XDG_DATA_HOME",
+    "platform": "macos",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "XDG_DATA_HOME": "/srv/data"
+    },
+    "profile": "/srv/acme/Library/Application Support/halonic",
+    "trust": "/srv/acme/Library/Application Support/halonic/trust"
+  },
+  {
+    "name": "Windows with LOCALAPPDATA",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "LOCALAPPDATA": "<drive>\\people\\acme\\AppData\\Local"
+    },
+    "profile": "<drive>\\people\\acme\\AppData\\Local\\halonic",
+    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust"
+  },
+  {
+    "name": "Windows without LOCALAPPDATA",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {},
+    "profile": "<drive>\\people\\acme\\AppData\\Local\\halonic",
+    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust"
+  },
+  {
+    "name": "Windows with a relative LOCALAPPDATA",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "LOCALAPPDATA": "AppData"
+    },
+    "profile": "<drive>\\people\\acme\\AppData\\Local\\halonic",
+    "trust": "<drive>\\people\\acme\\AppData\\Local\\halonic\\trust"
+  },
+  {
+    "name": "Windows with a network-share home",
+    "platform": "windows",
+    "homeFolder": "\\\\files\\people\\acme",
+    "variables": {},
+    "profile": "\\\\files\\people\\acme\\AppData\\Local\\halonic",
+    "trust": "\\\\files\\people\\acme\\AppData\\Local\\halonic\\trust"
+  },
+  {
+    "name": "HALONIC_HOME with a trailing separator",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "HALONIC_HOME": "/srv/halonic/"
+    },
+    "profile": "/srv/halonic",
+    "trust": "/srv/halonic/trust"
+  },
+  {
+    "name": "HALONIC_HOME on macOS",
+    "platform": "macos",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "HALONIC_HOME": "/srv/halonic"
+    },
+    "profile": "/srv/halonic",
+    "trust": "/srv/halonic/trust"
+  },
+  {
+    "name": "HALONIC_HOME as the root",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "HALONIC_HOME": "/"
+    },
+    "profile": "/",
+    "trust": "/trust"
+  },
+  {
+    "name": "HALONIC_HOME on Windows",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "<drive>\\halonic\\"
+    },
+    "profile": "<drive>\\halonic",
+    "trust": "<drive>\\halonic\\trust"
+  },
+  {
+    "name": "HALONIC_HOME as a Windows drive root",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "<drive>\\"
+    },
+    "profile": "<drive>\\",
+    "trust": "<drive>\\trust"
+  },
+  {
+    "name": "an empty HALONIC_HOME counts as unset",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "HALONIC_HOME": ""
+    },
+    "profile": "/srv/acme/.local/share/halonic",
+    "trust": "/srv/acme/.local/share/halonic/trust"
+  },
+  {
+    "name": "a relative HALONIC_HOME is refused",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "HALONIC_HOME": "profile"
+    },
+    "profile": null,
+    "trust": null
+  },
+  {
+    "name": "a drive-relative HALONIC_HOME is refused",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "<drive>halonic"
+    },
+    "profile": null,
+    "trust": null
+  },
+  {
+    "name": "a Unix HALONIC_HOME is refused on Windows",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "/srv/halonic"
+    },
+    "profile": null,
+    "trust": null
+  },
+  {
+    "name": "a relative home is refused",
+    "platform": "linux",
+    "homeFolder": "acme",
+    "variables": {},
+    "profile": null,
+    "trust": null
+  }
+]

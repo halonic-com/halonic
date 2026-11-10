@@ -14,6 +14,9 @@ import {
 /** The name of the folder Halonic adds under the system's user data folder. */
 const folderName = "halonic";
 
+/** The name of the folder in the profile that holds the trust records. */
+const trustFolderName = "trust";
+
 /** What {@link profileFolder} reads from the system; the adapter fills it in. */
 export interface ProfileEnvironment {
   /** The system Halonic runs on. */
@@ -68,6 +71,22 @@ export function profileFolder(environment: ProfileEnvironment): ProfileFolder {
     return { platform, root: withoutTrailingSeparators(platform, chosen) };
   }
   return { platform, root: joinPath(platform, userDataFolder(environment), folderName) };
+}
+
+/**
+ * The folder for the trust records, `trust` in the profile folder. The CLI's
+ * `FileTrustStore` and the desktop shell's trust store both keep their
+ * records there, so a source trusted in one is trusted in the other.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the trust folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * trustFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/trust"
+ */
+export function trustFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, trustFolderName);
 }
 
 /** The system's folder for a person's application data. */
