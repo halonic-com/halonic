@@ -54,10 +54,15 @@ A version is a full commit id (port v2). `snapshot` commits the public files on 
 
 `diffBetween` works on a copy of the worktree's index in its record, so nothing changes, and gives one diff per public file, with `a/` and `b/` prefixes and no renames whatever the repository's config says. `applyPatch` runs `git apply` on the working tree only. First it checks every path twice, as the patch's headers write it and as `git apply --numstat` reads it, and refuses a patch that does more than change a plain file's lines.
 
+## Create version and proposal refs
+
+`commitVersion` builds the version's tree in a temporary index under `.git`, from HEAD: every change on disk goes in, then every change out of scope (outside `include`, under `exclude`, private, or under `.halonic/review`) goes back to HEAD's content. It never runs `git commit -- <paths>`, which would take the working tree's content of every tracked path it names. The commit is made with `commit-tree`, and HEAD moves with `update-ref` from the commit it was at, so a commit made in between is never lost. Then the real index takes the new commit's content for the paths the version changed, so a change left out stays staged as it was.
+
+`commitWorktreeTo` commits a worktree's files the same way, through a temporary index in git's record of the worktree, and creates `refs/halonic/proposals/<id>` only if it isn't there. `readRef` reads exactly that ref with `show-ref --verify`, and `deleteRef` deletes it from the commit it points at. Nothing pushes these refs.
+
 The desktop's `git-guard` crate does the same in Rust.
 
 ## Not yet
 
 - **Pushing to a remote that needs a password.** No credential helper runs, the user's included. Halonic's own helper comes with the keychain work.
 - **The repository's own config, through `GitRunner` alone.** The runner on its own doesn't stop programs the repository's config or `.gitattributes` names, such as a filter or an external diff; only the repository checks do, and `GitVcs` runs every call through them. On a workspace you don't trust, use `GitVcs`, not `GitRunner` directly.
-- **Create version and proposal refs.** `commitVersion`, `commitWorktreeTo`, `readRef` and `deleteRef` refuse until git part 5 of HAL-3245.

@@ -23,6 +23,8 @@ const allowedSubcommands = new Set([
   "commit",
   "commit-tree",
   "config",
+  "diff-index",
+  "diff-tree",
   "for-each-ref",
   "ls-files",
   "ls-tree",
@@ -38,6 +40,7 @@ const allowedSubcommands = new Set([
   "status",
   "switch",
   "symbolic-ref",
+  "update-ref",
   "worktree",
   "write-tree",
 ]);

@@ -23,6 +23,13 @@ import type { GitRunner } from "./git-runner.ts";
 import type { ConfigEntry } from "./hardening.ts";
 import { inPathBatches } from "./path-batches.ts";
 import { gitError, Repository } from "./repository.ts";
+import {
+  checkProposal,
+  commitVersionOf,
+  commitWorktreeOnto,
+  deleteProposalRef,
+  readProposalRef,
+} from "./vcs-commits.ts";
 import { checkBranchNameShape, checkNoFolders, checkVcsPaths } from "./vcs-input.ts";
 import { applyToWorkingTree } from "./vcs-patch.ts";
 import { pullFastForward, pushToUpstream } from "./vcs-remote.ts";
@@ -222,24 +229,27 @@ export class GitVcs implements Vcs {
     await applyToWorkingTree(await this.#repository(), patch, options?.reverse === true);
   }
 
-  async commitVersion(_options: VcsCommitVersionOptions): Promise<string> {
-    throw notOnGitYet("commitVersion");
+  async commitVersion(options: VcsCommitVersionOptions): Promise<string> {
+    return commitVersionOf(await this.#repository(), options, this.#authorConfig());
   }
 
   async commitWorktreeTo(
-    _worktreeId: string,
-    _ref: string,
-    _options: VcsCommitWorktreeOptions,
+    worktreeId: string,
+    ref: string,
+    options: VcsCommitWorktreeOptions,
   ): Promise<string> {
-    throw notOnGitYet("commitWorktreeTo");
+    const repository = await this.#repository();
+    await checkProposal(repository, ref, options.parent);
+    const worktree = await this.#worktrees.usable(repository, worktreeId);
+    return commitWorktreeOnto(repository, worktree, ref, options.parent, this.#authorConfig());
   }
 
-  async readRef(_ref: string): Promise<string | null> {
-    throw notOnGitYet("readRef");
+  async readRef(ref: string): Promise<string | null> {
+    return readProposalRef(await this.#repository(), ref);
   }
 
-  async deleteRef(_ref: string): Promise<void> {
-    throw notOnGitYet("deleteRef");
+  async deleteRef(ref: string): Promise<void> {
+    await deleteProposalRef(await this.#repository(), ref);
   }
 
   async init(): Promise<void> {
@@ -306,15 +316,6 @@ export class GitVcs implements Vcs {
       ["user.useConfigOnly", "true"],
     ];
   }
-}
-
-/**
- * The error of a port v2 method git doesn't have yet: Create version and
- * proposal refs come in part 5 of HAL-3245; until then they refuse, rather
- * than half work. Nothing outside this package builds a `GitVcs` yet.
- */
-function notOnGitYet(method: string): Error {
-  return new Error(`The git Vcs can't ${method} yet (HAL-3245).`);
 }
 
 /** Whether anything is at `path`, a link included. */

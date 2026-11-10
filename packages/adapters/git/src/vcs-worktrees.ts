@@ -108,9 +108,7 @@ export class GitWorktrees {
   async diff(repository: Repository, version: string, id: string): Promise<VcsFileDiff[]> {
     checkCommitId(version);
     await checkKnownVersion(repository, version);
-    const worktree = await this.#known(repository, id);
-    if (!(await isFolder(worktree.folder))) throw unknownWorktree(id);
-    await checkUsable(repository, worktree);
+    const worktree = await this.usable(repository, id);
     const indexFile = join(worktree.gitDir, `halonic-diff-${randomUUID()}.index`);
     const onCopy = (args: readonly string[]): Promise<Buffer> =>
       repository.output({ args, worktree, indexFile, config: diffConfig });
@@ -128,6 +126,19 @@ export class GitWorktrees {
     } finally {
       await rm(indexFile, { force: true });
     }
+  }
+
+  /**
+   * The worktree `id` names, ready for git to run in: its folder is there
+   * and its record passes every check.
+   *
+   * @throws as {@link GitWorktrees.remove}, and when the record was changed
+   */
+  async usable(repository: Repository, id: string): Promise<WorktreeLocation> {
+    const worktree = await this.#known(repository, id);
+    if (!(await isFolder(worktree.folder))) throw unknownWorktree(id);
+    await checkUsable(repository, worktree);
+    return worktree;
   }
 
   /**

@@ -1,6 +1,6 @@
 # git.vcs-commits
 
-- Status: active
+- Status: retired
 - Since: 0.1.0
 - Source: HAL-3245 (`Vcs` port v2, git part 5 to come); HAL-3354; the memory Vcs's `memory.vcs-commits`
 
