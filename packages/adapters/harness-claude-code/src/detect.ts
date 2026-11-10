@@ -1,6 +1,7 @@
 import type { HarnessDetection, ProgramProbe, ProgramProbeResult } from "@halonicjs/ports";
+import { formatVersion, isAtLeast, type Version } from "@halonicjs/std";
 import { saysSignedOut } from "./sign-in.ts";
-import { formatVersion, isAtLeast, type ProgramVersion, readLeadingVersion } from "./version.ts";
+import { readLeadingVersion } from "./version.ts";
 
 /** The program's name, as the launcher finds it. */
 export const claudeProgram = "claude";
@@ -12,7 +13,7 @@ export const claudeProgram = "claude";
  * `CLAUDE_CODE_TMPDIR`), so the floor moves with what the adapter is tested
  * against.
  */
-export const oldestSupportedVersion: ProgramVersion = { major: 2, minor: 1, patch: 311 };
+export const oldestSupportedVersion: Version = { major: 2, minor: 1, patch: 311, prerelease: [] };
 
 /** The supported versions as Studio shows them. */
 export const supportedVersions = `>=${formatVersion(oldestSupportedVersion)}`;
@@ -50,7 +51,7 @@ export async function detectClaudeCode(probe: ProgramProbe): Promise<HarnessDete
  */
 function readVersionAnswer(
   answer: Exclude<ProgramProbeResult, { status: "missing" }>,
-): { version: ProgramVersion } | { error: string } {
+): { version: Version } | { error: string } {
   if (answer.status === "failed") return { error: answer.error };
   if (answer.code === null) return { error: "`claude --version` was stopped before it answered." };
   if (answer.code !== 0) return { error: `\`claude --version\` ended with code ${answer.code}.` };
