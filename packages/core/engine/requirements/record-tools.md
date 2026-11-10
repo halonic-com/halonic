@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1533, step 4(d) of the HAL-186 plan; the old engine's `find_`, `add_` and `update_` tools
 
-For each collection in an agent's `collections` that its hub can see, the engine shall give the agent three tools. Their names use the collection's id, with every character other than a letter, a digit or `_` written as `_`. Each tool shall answer with JSON.
+When an agent has `collections`, the engine shall give it three tools for each one its hub can see. Their names use the collection's id, with every character other than a letter, a digit or `_` written as `_`. Each tool shall answer with JSON.
 
 - `find_<id>` gives `{ records, total? }`: the records that match `where` (`engine.record-filter`), read through `view` when given, at most `limit` of them (1 to 200, default 200). Each record is its `id`, `values` with computed fields filled in, and `updatedAt`.
 - `add_<id>` adds a record with the given values, checked as `engine.record-values` says, and gives it as stored. Without an `id`, the record gets one made from the collection's id, the time and the count.
