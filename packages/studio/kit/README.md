@@ -1029,12 +1029,13 @@ menu and let the browser open it. Divide groups with `"divider"`.
 />;
 ```
 
-| Prop      | What it is                                                                       |
-| --------- | -------------------------------------------------------------------------------- |
-| `trigger` | Renders the button that opens it; a kit `Button` takes every prop it gets        |
-| `entries` | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
-|           | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked`     |
-| `align`   | `start` (the default) lines up with the trigger's left edge, `end` its right     |
+| Prop          | What it is                                                                       |
+| ------------- | -------------------------------------------------------------------------------- |
+| `trigger`     | Renders the button that opens it; a kit `Button` takes every prop it gets        |
+| `entries`     | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
+|               | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked`     |
+| `description` | Optional: a sentence that explains the menu, shown above the items               |
+| `align`       | `start` (the default) lines up with the trigger's left edge, `end` its right     |
 
 | State            | What shows                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------- |
@@ -1060,6 +1061,13 @@ the item's description.
 An item with `checked` is one choice of several, a `menuitemradio` with `aria-checked`: `true` on
 the current one, which shows a 16px `accent` check at the right, `false` on the others. The filter
 chips' picker uses it on desktop, where a phone opens the picker sheet.
+
+A `description` is a sentence that explains the menu, such as the sample chip's "Runs on the
+built-in test model, with scripted replies. No key, no cost." It's the first row, in `text-small`
+`fg-muted`, padded 8px 8px 6px, at most 300px wide and wrapping, with a divider under it. It isn't
+an item: it has no role and can't take focus, so the arrows and type-to-find pass it by. The menu's
+`aria-describedby` points at it, so a screen reader reads it once when the menu opens. It never
+holds a link or a button: anything you can click is an item below it.
 
 **On a phone and under a coarse pointer** items are 48px with a 20px icon, and an unavailable
 item has 12px of padding above and below. On a phone shortcuts are

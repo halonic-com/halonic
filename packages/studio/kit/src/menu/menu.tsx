@@ -55,6 +55,12 @@ export interface MenuProps {
   /** The button that opens the menu, which also names it: a ⋮ "More actions for Sorter". */
   readonly trigger: (props: MenuTriggerProps) => ReactNode;
   readonly entries: readonly MenuEntry[];
+  /**
+   * A sentence that explains the menu, shown above the items and read once when it opens: the
+   * sample chip's "Runs on the built-in test model, with scripted replies. No key, no cost." It
+   * isn't an item: never a link or a button (component specs 20.2).
+   */
+  readonly description?: string | undefined;
   /** Line the menu up with the trigger's left edge (the default) or its right edge. */
   readonly align?: PopoverAlign;
 }
@@ -70,6 +76,9 @@ const menuClasses = [
 ].join(" ");
 
 const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
+
+// Padding 8px 8px 6px, at most 300px wide, wrapping (component specs 20.2).
+const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-muted";
 
 /**
  * A short list of actions that opens from a button: a row's ⋮ More button, a title bar or a
@@ -87,8 +96,9 @@ const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
  *   entries={[{ id: "rename", label: "Rename…", onSelect: rename }, "divider", { id: "delete", label: "Delete agent", danger: true, onSelect: remove }]}
  * />
  */
-export function Menu({ trigger, entries, align = "start" }: MenuProps) {
+export function Menu({ trigger, entries, description, align = "start" }: MenuProps) {
   const menuId = useId();
+  const descriptionId = useId();
   const triggerId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -217,6 +227,7 @@ export function Menu({ trigger, entries, align = "start" }: MenuProps) {
         popover="auto"
         role="menu"
         aria-labelledby={triggerId}
+        aria-describedby={description === undefined ? undefined : descriptionId}
         tabIndex={-1}
         className={menuClasses}
         onKeyDown={onKeyDown}
@@ -228,6 +239,15 @@ export function Menu({ trigger, entries, align = "start" }: MenuProps) {
           }
         }}
       >
+        {description === undefined ? null : (
+          // Not an item: no role, not focusable, so the arrows and type-to-find pass it by.
+          <>
+            <p id={descriptionId} className={descriptionClasses}>
+              {description}
+            </p>
+            <hr className={dividerClasses} />
+          </>
+        )}
         {rows.map((row, position) => {
           if (row === "divider") {
             return <hr key={`divider-${position}`} className={dividerClasses} />;
