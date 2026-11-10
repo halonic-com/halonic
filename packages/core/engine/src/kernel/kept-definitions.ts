@@ -1,3 +1,4 @@
+import type { Agent } from "@halonicjs/format";
 import type { BlobStore } from "@halonicjs/ports";
 import { canonicalJson, decodeUtf8, encodeUtf8, isPlainObject } from "@halonicjs/std";
 import type { RunDefinitions } from "./decide-types.ts";
@@ -57,4 +58,13 @@ export async function readDefinitions(
 /** The error a run fails with when its definitions can't be read. */
 export function missingDefinitionsError(version: string): string {
   return `The definitions this run started with (version ${version}) are missing from the blob store or can't be read, so the run can't go on. It never falls back to the workspace's files as they are now.`;
+}
+
+/**
+ * The agent's file in a run's definitions, or `undefined` for a run kept
+ * before agents joined its definitions.
+ */
+export function agentIn(definitions: RunDefinitions, agentId: string): Agent | undefined {
+  const agents = definitions.agents ?? {};
+  return Object.hasOwn(agents, agentId) ? agents[agentId] : undefined;
 }

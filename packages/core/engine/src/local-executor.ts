@@ -21,10 +21,9 @@ import { checkRunToolCall, checkSubagentToolCall } from "./agent/check-run-tool-
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
-import { type ChatHarnessTurn, ChatHarnessTurns } from "./harness/chat-harness-turns.ts";
-import { isProgramHarness } from "./kernel/agent-call.ts";
+import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
-import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
+import { agentIn, missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import { branchOfCall } from "./kernel/run-branches.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import {
@@ -34,7 +33,12 @@ import {
   noKnowledge,
   openSources,
 } from "./knowledge/agent-knowledge.ts";
-import { effectBoundary, makeConnectorCall, readToolsOf } from "./run/connector-calls.ts";
+import {
+  connectorsOf,
+  effectBoundary,
+  makeConnectorCall,
+  readToolsOf,
+} from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
@@ -481,43 +485,6 @@ export class LocalExecutor implements RunExecutor {
     }
     return definitions;
   }
-}
-
-/**
- * The agent's file in a run's definitions, or `undefined` for a run kept
- * before agents joined its definitions.
- */
-function agentIn(definitions: RunDefinitions, agentId: string): Agent | undefined {
-  const agents = definitions.agents ?? {};
-  return Object.hasOwn(agents, agentId) ? agents[agentId] : undefined;
-}
-
-/**
- * The chat turn as a harness turn, when its agent's file names a harness
- * program; `undefined` when Halonic's own loop runs it.
- */
-function harnessTurnOf(
-  request: ChatTurnRequest,
-  agent: Agent | undefined,
-): ChatHarnessTurn | undefined {
-  const { agentId } = request;
-  const harness = agent?.harness;
-  if (agentId === undefined || agent === undefined || harness === undefined) return undefined;
-  return isProgramHarness(harness) ? { request, agentId, agent, harness } : undefined;
-}
-
-/**
- * The connected servers an agent's file lists under `connectors`, in the
- * executor's order: the only ones its model calls are offered. An agent
- * with no file gets none.
- */
-function connectorsOf(
-  connectors: readonly ConnectorClient[],
-  agent: Agent | undefined,
-): readonly ConnectorClient[] {
-  if (agent === undefined) return [];
-  const listed = new Set(agent.connectors);
-  return connectors.filter((connector) => listed.has(connector.id));
 }
 
 function noRuns(): Error {
