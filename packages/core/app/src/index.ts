@@ -119,6 +119,9 @@ export {
   RunHistory,
   type RunList,
   type RunListFilter,
+  type RunLookup,
+  shortRunId,
+  shortRunIdLength,
 } from "./run-history.ts";
 export {
   type Disposable,
