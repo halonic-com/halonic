@@ -38,6 +38,25 @@ export interface RunTrigger {
   messageId?: string;
   /** Signal triggers: "<runId>:<seq>" of the signal that started this run (one run per signal). */
   signalId?: string;
+  /**
+   * Routine runs that started later than the tick's grace after `at`, such
+   * as after the computer slept or Halonic was closed. Absent for a run that
+   * started on time.
+   */
+  catchUp?: RunCatchUp;
+}
+
+/** How a routine run caught up: what its routine's catch-up rule dropped on the same tick. */
+export interface RunCatchUp {
+  /**
+   * Earlier due times of the routine that the catch-up rule dropped on this
+   * tick: the "run once" rule, the 100 cap and the 7-day window. Only the
+   * first catch-up run of a tick counts them; later ones have 0. Times
+   * skipped because the last run was still going don't count.
+   */
+  skipped: number;
+  /** Set when counting stopped at its limit, so there were at least `skipped`. */
+  countIsMinimum?: true;
 }
 
 /** The run and state that started a child run, and how deep it is (1 = child of a top-level run). */
