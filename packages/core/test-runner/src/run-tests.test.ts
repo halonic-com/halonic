@@ -177,6 +177,46 @@ states:
       expect(test?.failures).toEqual([{ kind: "unscripted-program", step: "code" }]);
     });
 
+    it("checks artifacts against the files the run saved", async () => {
+      const input = await testInput(
+        agent("notifier"),
+        workflow(
+          "notify",
+          `id: notify
+name: Notify
+initial: write
+states:
+  write:
+    type: task
+    agent: notifier
+    input: "Announce it"
+    artifact: { name: note.md }
+    on: [{ to: done }]
+  done: { type: final }
+`,
+        ),
+        testFile(
+          "notify",
+          `workflow: notify
+cases:
+  - name: saves the note
+    mocks: { notifier: [Paid Acme Paper.] }
+    expect: { final: done, artifacts: [note.md] }
+  - name: saves no receipt
+    mocks: { notifier: [Paid Acme Paper.] }
+    expect: { artifacts: [receipt.pdf] }
+`,
+        ),
+      );
+
+      const [saved, missing] = (await runWorkspaceTests(input, fakeDeps())).tests;
+
+      expect(saved?.failures).toEqual([]);
+      expect(missing?.failures).toEqual([
+        { kind: "artifacts", expected: "receipt.pdf", saved: ["note.md"] },
+      ]);
+    });
+
     it("reports scripted replies the runs never asked for", async () => {
       const input = await testInput(
         workflow("approval", approvalWorkflow),
