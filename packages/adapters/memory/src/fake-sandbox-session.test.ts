@@ -90,6 +90,23 @@ verifies("contracts.harness", () => {
       expect(await process.exited).toEqual({ code: null, signal: "SIGKILL", reason: "stopped" });
     });
 
+    it("stops a program whose output the reader cancelled", async () => {
+      const session = new FakeSandboxSession({
+        profile,
+        program: async (io) => {
+          io.write("before\n");
+          await new Promise((resolve) => io.stopped.addEventListener("abort", resolve));
+          io.write("after\n");
+          return 0;
+        },
+      });
+      const process = await session.start(command);
+      await process.stdout.cancel();
+
+      await process.kill();
+      expect(await process.exited).toEqual({ code: null, signal: "SIGKILL", reason: "stopped" });
+    });
+
     it("refuses input once the program has ended, as a closed pipe does", async () => {
       const session = new FakeSandboxSession({ profile, program: async () => 0 });
       const process = await session.start(command);

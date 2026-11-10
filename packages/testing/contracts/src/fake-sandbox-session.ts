@@ -141,6 +141,11 @@ class TextOutput {
       start: (controller) => {
         this.#controller = controller;
       },
+      // A reader that stops early cancels the output, as `readLines` does.
+      // A real stream then takes no more writes and no close, and neither does this one.
+      cancel: () => {
+        this.#ended = true;
+      },
     });
   }
 
