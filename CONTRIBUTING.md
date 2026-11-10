@@ -88,7 +88,7 @@ below it:
 | -------- | --------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
 | core     | `packages/core/*`     | lower core packages                                                 | any third-party package, Node APIs, browser APIs, React |
 | adapters | `packages/adapters/*` | core, Node or browser APIs, approved libraries for that one adapter | Studio packages, other adapters' internals              |
-| host     | `packages/host`       | core, Web-standard APIs                                             | adapters, Node APIs, third-party code, Studio packages  |
+| host     | `packages/host/*`     | core, Web-standard APIs                                             | adapters, Node APIs, third-party code, Studio packages  |
 | targets  | `packages/targets/*`  | core, adapters, host (a runtime only)                               | Studio packages; a runtime using a deploy package       |
 | studio   | `packages/studio/*`   | core, React, Tauri, Vite, approved UI libraries                     | adapters directly, another feature's internals          |
 | apps     | `apps/*`              | the public interface of any package                                 | —                                                       |
