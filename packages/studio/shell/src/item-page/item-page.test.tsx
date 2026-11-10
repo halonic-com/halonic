@@ -100,6 +100,19 @@ verifies("shell.item-page-header", () => {
     expect(header.lastElementChild?.textContent).toBe("Run");
   });
 
+  it("sizes the name field by the name it shows, not by a count of characters", () => {
+    const container = render(<Workflow />);
+    const field = nameField(container);
+    const sizer = field.parentElement?.querySelector("[data-name-sizer]") as HTMLElement;
+    expect(field.hasAttribute("size")).toBe(false);
+    expect(sizer.getAttribute("aria-hidden")).toBe("true");
+    expect(sizer.textContent).toBe("Support reply");
+    typeInto(field, "Intake v2 ");
+    expect(sizer.textContent).toBe("Intake v2 ");
+    typeInto(field, "");
+    expect(sizer.textContent).toBe(" ");
+  });
+
   it("has no ⋮ when the kind has no actions", () => {
     const container = render(<Workflow />);
     expect(container.querySelector('button[aria-label^="More actions"]')).toBeNull();

@@ -62,25 +62,35 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
   };
 
   return (
-    <input
-      type="text"
-      aria-label={label}
-      value={draft}
-      // As wide as the name, so the ⋮ sits right after it.
-      size={Math.max(draft.length, 1)}
-      spellCheck={false}
-      data-text-entry=""
-      className={nameClasses}
-      onChange={(event) => edit(event.target.value)}
-      onKeyDown={onKeyDown}
-      onBlur={keep}
-    />
+    // The field and a hidden copy of its text share one grid cell, so the field is exactly as wide
+    // as the name it shows, up to the room left, and the ⋮ sits right after it. An input's `size`
+    // counts average characters, which comes out too wide or too narrow in a proportional font.
+    <span className="inline-grid min-w-0 max-w-full grid-cols-[minmax(0,auto)]">
+      <span aria-hidden="true" data-name-sizer="" className={sizerClasses}>
+        {draft === "" ? " " : draft}
+      </span>
+      <input
+        type="text"
+        aria-label={label}
+        value={draft}
+        spellCheck={false}
+        data-text-entry=""
+        className={nameClasses}
+        onChange={(event) => edit(event.target.value)}
+        onKeyDown={onKeyDown}
+        onBlur={keep}
+      />
+    </span>
   );
 }
 
 // The title's look, with a 4px inset so the text lines up with the kind label; a quiet fill on hover
 // says it can be edited, and focus is the standard ring.
 const nameClasses = [
-  "min-w-0 max-w-full truncate rounded-xs border-0 bg-transparent px-1 text-section text-fg",
-  "hover:bg-surface-subtle focus:bg-surface focus-ring",
+  "col-start-1 row-start-1 w-full min-w-0 truncate rounded-xs border-0 bg-transparent px-1",
+  "text-section text-fg hover:bg-surface-subtle focus:bg-surface focus-ring",
 ].join(" ");
+
+// The same text, inset and type as the field, kept in the layout but never seen.
+const sizerClasses =
+  "invisible col-start-1 row-start-1 overflow-hidden whitespace-pre px-1 text-section";
