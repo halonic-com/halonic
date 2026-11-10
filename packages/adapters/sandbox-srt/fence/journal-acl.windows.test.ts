@@ -32,8 +32,9 @@ function run(
 
 const other = "halonic_acl_probe";
 // A new password every run, so a leftover account never has a known one. The
-// fixed prefix keeps it within Windows' complexity rules.
-const otherPassword = `Aa1!${randomBytes(12).toString("hex")}`;
+// fixed prefix meets the complexity rules; 12 characters stays under the
+// 14-character limit of `net user`.
+const otherPassword = `Aa1!${randomBytes(4).toString("hex")}`;
 
 /** Runs a command line as the second account; its exit code, or -1 when it could not start. */
 async function asOther(commandLine: string): Promise<number> {
