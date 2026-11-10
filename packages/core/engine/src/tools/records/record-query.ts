@@ -84,7 +84,8 @@ export function viewRecords(
   viewName: string,
   today: string,
 ): ViewedRecords {
-  const view = collection.views[viewName];
+  // Own keys only: `constructor` must not find Object.prototype's.
+  const view = Object.hasOwn(collection.views, viewName) ? collection.views[viewName] : undefined;
   if (view === undefined) {
     return { records: [...records] };
   }

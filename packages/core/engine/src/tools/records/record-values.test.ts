@@ -5,6 +5,21 @@ import { invoices } from "./records-test-kit.test-helper.ts";
 
 verifies("engine.record-values", () => {
   describe("checkRecord", () => {
+    it("refuses an inherited key such as constructor as an unknown field", () => {
+      const checked = checkRecord(invoices, {
+        supplier: "sup-1",
+        amount: 1,
+        due: "2026-11-30",
+        period: "2026-11",
+        status: "open",
+        constructor: 5,
+      });
+
+      expect(checked.errors).toEqual([
+        'Unknown field "constructor" (fields: supplier, note, amount, sharePct, share, due, period, status, disputed)',
+      ]);
+    });
+
     it("brings values into their fields' form and fills in defaults", () => {
       const checked = checkRecord(invoices, {
         id: "inv-1",

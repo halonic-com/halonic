@@ -140,5 +140,10 @@ verifies("engine.record-filter", () => {
       expect(viewRecords(invoices, records, "all", today)).toEqual({ records });
       expect(viewRecords(invoices, records, "missing", today)).toEqual({ records });
     });
+
+    it("treats an inherited key such as constructor as an unknown view", () => {
+      expect(viewRecords(invoices, records, "constructor", today)).toEqual({ records });
+      expect(viewRecords(invoices, records, "toString", today)).toEqual({ records });
+    });
   });
 });

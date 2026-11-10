@@ -78,7 +78,8 @@ function unknownOrComputedKeys(collection: Collection, input: RecordValues): str
   const errors: string[] = [];
   const names = Object.keys(collection.fields).join(", ");
   for (const key of Object.keys(input)) {
-    const field = collection.fields[key];
+    // Own keys only: `constructor` must not find Object.prototype's.
+    const field = Object.hasOwn(collection.fields, key) ? collection.fields[key] : undefined;
     if (key === "id") {
       continue;
     }
