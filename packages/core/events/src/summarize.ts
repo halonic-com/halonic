@@ -114,12 +114,16 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.status = "completed";
       summary.endedAt = event.at;
       summary.context = event.context;
+      summary.approvals = [];
       return;
     case "run.failed":
+      // A run cancelled or stopped by its budget while it waited ends its
+      // approvals without an `approval.resolved`: nobody decided them.
       summary.status = "failed";
       summary.endedAt = event.at;
       summary.error = event.error;
       summary.reason = event.reason ?? null;
+      summary.approvals = [];
       return;
     default:
       return;

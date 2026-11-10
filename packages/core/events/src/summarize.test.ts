@@ -388,6 +388,46 @@ verifies("events.summary-approvals-and-signals", () => {
     expect(summaryOf(requested, { ...resolved, callId: "other" }).approvals).toHaveLength(1);
   });
 
+  it("lists no approvals once a run cancelled while it waited has ended", () => {
+    const cancelled: RunEventBody = {
+      type: "run.failed",
+      state: "s",
+      error: "Cancelled.",
+      reason: "cancelled",
+    };
+    const summary = summaryOf(
+      requested,
+      { type: "run.waiting", state: "s", events: ["approve", "reject"] },
+      cancelled,
+    );
+    expect(summary.approvals).toEqual([]);
+    expect(summary.reason).toBe("cancelled");
+  });
+
+  it("lists no approvals once a budget stop ends a run with two items waiting", () => {
+    const log: RunEvent[] = [
+      ...runLog(),
+      { runId: "r", seq: 2, at: "T2", item: 0, ...requested, callId: "c1" },
+      { runId: "r", seq: 3, at: "T3", item: 1, ...requested, callId: "c2" },
+      {
+        runId: "r",
+        seq: 4,
+        at: "T4",
+        type: "run.failed",
+        state: "s",
+        error: "The run budget is used up.",
+        reason: "budget",
+      },
+    ];
+    expect(summarize(log)?.approvals).toEqual([]);
+  });
+
+  it("lists no approvals once a run has completed", () => {
+    expect(
+      summaryOf(requested, { type: "run.completed", state: "s", context: {} }).approvals,
+    ).toEqual([]);
+  });
+
   it("lists the signals in order, each with its run and sequence number", () => {
     const summary = summaryOf(
       { type: "state.entered", state: "s" },

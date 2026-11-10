@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: old app `summarize` at commit 784f78d
 
-When a run asks for an approval, its summary shall list the waiting tool call, with the time it was asked, its state, and its parallel branch and for-each item (`null` when it has none), until an `approval.resolved` with the same call id removes it. Approvals from several branches of one run are listed together, oldest first. When a run sends signals, its summary shall list them in order, each with the id "<runId>:<seq>".
+When a run asks for an approval, its summary shall list the waiting tool call, with the time it was asked, its state, and its parallel branch and for-each item (`null` when it has none), until an `approval.resolved` with the same call id removes it, or the run ends. A run that ends while it waits, such as one cancelled or stopped by its budget, lists no approvals. Approvals from several branches of one run are listed together, oldest first. When a run sends signals, its summary shall list them in order, each with the id "<runId>:<seq>".
 
 ## Examples
 
@@ -20,6 +20,15 @@ When a run asks for an approval, its summary shall list the waiting tool call, w
 - Given `approval.resolved` with a call id that isn't waiting,
   when it is summarized,
   then the approvals list stays as it was.
+- Given `approval.requested` for "c1", then `run.failed` with reason `cancelled`,
+  when they are summarized,
+  then the approvals list is empty.
+- Given `approval.requested` for "c1" in item 0 and "c2" in item 1, then `run.failed` with reason `budget`,
+  when they are summarized,
+  then the approvals list is empty.
+- Given `approval.requested` for "c1", then `run.completed`,
+  when they are summarized,
+  then the approvals list is empty.
 - Given `signal.sent` "done" as event 4 of run "r",
   when it is summarized,
   then the signals list `{ id: "r:4", name: "done", data, at }`.
