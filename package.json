@@ -20,6 +20,7 @@
     "verify": "node tooling/check/src/cli/verify.ts",
     "check": "node tooling/check/src/cli/check.ts",
     "turbo:prune": "node tooling/check/src/cli/prune-turbo-cache.ts",
+    "check:enqueue": "node tooling/check/src/cli/enqueue.ts",
     "check:leaks": "node tooling/check/src/cli/leaks.ts",
     "check:licences": "node tooling/check/src/cli/licences.ts",
     "check:audit": "node tooling/check/src/cli/audit.ts",

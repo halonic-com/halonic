@@ -1,12 +1,13 @@
 import { resolve } from "node:path";
 import { paperclipApprovals } from "../guard/approvals.ts";
-import { checkRequirementGuard } from "../guard/guard.ts";
+import { checkRequirementGuard, guardChecks } from "../guard/guard.ts";
+import { checkTestRuns } from "../guard/test-runs.ts";
 import { loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 
 const usage =
-  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name>";
+  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name> [--skip-test-runs]";
 
 /**
  * node <merge base>/tooling/check/src/cli/requirement-guard.ts --base <dir> --branch <name>
@@ -15,7 +16,9 @@ const usage =
  * (the current folder), with `--base` pointing at a checkout of the merge
  * base. Both checkouts' tests must have run, so their result files exist.
  * CI runs the merge base's copy of this file, so a pull request can't
- * weaken the guard that checks it.
+ * weaken the guard that checks it. With `--skip-test-runs` it leaves out
+ * the one check that reads test result files, so it runs without the tests
+ * (`pnpm check:enqueue` does that; CI runs the full guard).
  */
 async function main(argv: readonly string[]): Promise<number> {
   const base = flagValue(argv, "--base");
@@ -30,6 +33,9 @@ async function main(argv: readonly string[]): Promise<number> {
     head: loadContext(findRepoRoot()),
     branch,
     approvals: paperclipApprovals,
+    checks: argv.includes("--skip-test-runs")
+      ? guardChecks.filter((check) => check !== checkTestRuns)
+      : guardChecks,
   });
   const annotate = process.env["GITHUB_ACTIONS"] === "true";
   for (const problem of report.problems) {
