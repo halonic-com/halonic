@@ -14,6 +14,7 @@ import {
   isSourceFile,
   isTestFile,
   namesTestFile,
+  namesToolConfig,
   splitBareSpecifier,
 } from "../lib/source-files.ts";
 import { owningPackage, type WorkspacePackage } from "../lib/workspace.ts";
@@ -72,11 +73,6 @@ export function isDevFile(file: string, pkg: WorkspacePackage, layer: Layer | un
 /** The path of `file` relative to its package's folder. */
 function inPackagePath(file: string, pkg: WorkspacePackage): string {
   return pkg.directory === "." ? file : file.slice(pkg.directory.length + 1);
-}
-
-/** True when a resolved import path names a tool config file, with or without its extension. */
-function namesToolConfig(resolved: string, pkg: WorkspacePackage): boolean {
-  return /^[^/]+\.config(?:\.[cm]?[jt]s)?$/.test(inPackagePath(resolved, pkg));
 }
 
 /** The layers whose code must stay free of loads the check can't follow. */
@@ -162,7 +158,7 @@ function relativeImportProblem(site: ImportSite, specifier: string): string | un
   }
   // Config files are dev code: they may import tests and dev tooling, so shipped code
   // that imports one would reach both past this check and process-starts.
-  if (!site.dev && namesToolConfig(resolved, site.pkg)) {
+  if (!site.dev && namesToolConfig(inPackagePath(resolved, site.pkg))) {
     return `"${specifier}" is a tool config file, and only tests and other config files may import it. Move shared values into a source file.`;
   }
   return undefined;

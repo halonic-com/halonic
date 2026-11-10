@@ -13,7 +13,7 @@ import {
   scope,
 } from "../lib/layout.ts";
 import { Report } from "../lib/problems.ts";
-import { namesTestFile } from "../lib/source-files.ts";
+import { namesTestFile, namesToolConfig } from "../lib/source-files.ts";
 import type { WorkspacePackage } from "../lib/workspace.ts";
 
 /**
@@ -298,23 +298,41 @@ function checkExports(
   checkExportTargets(context, pkg, report);
 }
 
-/** Every `exports` target must exist and must not be a test file. */
+/**
+ * Every `exports` target must exist and must be a source file: not a test
+ * file and not a tool config file. Conditional targets are checked too.
+ */
 function checkExportTargets(context: CheckContext, pkg: WorkspacePackage, report: Report): void {
-  const targets =
-    typeof pkg.manifest.exports === "object" && pkg.manifest.exports !== null
-      ? Object.values(pkg.manifest.exports as Record<string, unknown>)
-      : [pkg.manifest.exports];
-  for (const target of targets) {
-    if (typeof target === "string" && !existsSync(join(context.root, pkg.directory, target))) {
+  for (const target of exportTargets(pkg.manifest.exports)) {
+    if (!existsSync(join(context.root, pkg.directory, target))) {
       report.error(pkg.manifestPath, `"exports" points at ${target}, which doesn't exist.`);
     }
-    if (typeof target === "string" && namesTestFile(target)) {
+    if (namesTestFile(target)) {
       report.error(
         pkg.manifestPath,
         `"exports" points at the test file ${target}. Export source files only.`,
       );
     }
+    // Config files are dev code and may import tests, so exporting one would let
+    // shipped code in another package reach past the layers and process-starts checks.
+    if (namesToolConfig(target)) {
+      report.error(
+        pkg.manifestPath,
+        `"exports" points at the tool config file ${target}. Export source files only.`,
+      );
+    }
   }
+}
+
+/** Every file path in an `exports` value, through subpaths, conditions and fallback arrays. */
+function exportTargets(value: unknown): string[] {
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.values(value).flatMap(exportTargets);
+  }
+  return [];
 }
 
 function checkCoreOrder(context: CheckContext, report: Report): void {

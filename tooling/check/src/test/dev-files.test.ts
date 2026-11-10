@@ -72,6 +72,38 @@ describe("tooling/check: what counts as test and config code", () => {
     );
   });
 
+  it("refuses an export that points at a tool config file", () => {
+    const pkg = core({ "vitest.config.ts": "export const x = 1;\n" });
+    const exported = {
+      ...pkg,
+      manifest: { ...pkg.manifest, exports: { ".": "./vitest.config.ts" } },
+    };
+    const problems = runChecks([exported], { coreOrder: ["@halonicjs/std"] });
+    expect(problems.map((problem) => problem.message)).toContain(
+      '"exports" points at the tool config file ./vitest.config.ts. Export source files only.',
+    );
+  });
+
+  it("checks conditional export targets and fallback arrays too", () => {
+    const pkg = core({
+      "src/x.test.ts": "export const x = 1;\n",
+      "vitest.config.ts": "export const x = 1;\n",
+    });
+    const exports = {
+      ".": { types: "./src/index.ts", default: ["./src/x.test.ts", "./vitest.config.ts"] },
+    };
+    const exported = { ...pkg, manifest: { ...pkg.manifest, exports } };
+    const messages = runChecks([exported], { coreOrder: ["@halonicjs/std"] }).map(
+      (problem) => problem.message,
+    );
+    expect(messages).toContain(
+      '"exports" points at the test file ./src/x.test.ts. Export source files only.',
+    );
+    expect(messages).toContain(
+      '"exports" points at the tool config file ./vitest.config.ts. Export source files only.',
+    );
+  });
+
   it("checks files in generated/ folders like any other code", () => {
     expect(layerErrors([core({ "src/generated/fs.ts": readsFiles })])).toHaveLength(1);
   });

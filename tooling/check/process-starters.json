@@ -1,4 +1,9 @@
 {
   "//": "Files that may start processes or run code in a new thread. See docs/guides/checks.md (process-starts).",
-  "starters": {}
+  "starters": {
+    "packages/adapters/system-node/src/run-program.ts": {
+      "reason": "Reads the process table with /bin/ps or Windows PowerShell for halonic doctor's resource report.",
+      "scriptsTest": "packages/adapters/system-node/src/run-program.test.ts"
+    }
+  }
 }
