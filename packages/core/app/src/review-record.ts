@@ -4,10 +4,14 @@
 // each time, so they never go stale as the person types.
 
 import { isReservedPath } from "@halonicjs/format";
-import { err, isPlainObject, ok, type Result } from "@halonicjs/std";
+import { checkWorkspacePath, type Digest } from "@halonicjs/ports";
+import { bytesToHex, encodeUtf8, err, isPlainObject, ok, type Result } from "@halonicjs/std";
 
-/** Where the records live in the workspace. It is inside the reserved `.halonic/` folder, so the loader skips it. */
-export const reviewRecordFolder = ".halonic/review/files";
+/** The folder only the review service sees: `ReviewingDefinitionStore` hides it from everyone else. */
+export const reviewFolder = ".halonic/review";
+
+/** Where the records live: one file per reviewed file, named by the SHA-256 of its path. */
+export const reviewRecordFolder = `${reviewFolder}/files`;
 
 /** The version of the record's JSON. A record of another version counts as unreadable. */
 const reviewRecordFormat = 1;
@@ -36,32 +40,18 @@ export interface ReviewRecord {
 }
 
 /**
- * Where the record of a file lives: its path under
- * {@link reviewRecordFolder}, with `.json` added.
+ * Where the record of a file lives. The name is the SHA-256 of the path, so
+ * a file `a` and a folder `a.json` can't clash, and a deep path can't make
+ * the name too long for the file system.
  *
  * @throws RangeError for a path inside a reserved `.halonic/` folder, which has no workspace files to review
  */
-export function reviewRecordPath(path: string): string {
+export async function reviewRecordPath(path: string, digest: Digest): Promise<string> {
   if (isReservedPath(path)) {
     throw new RangeError(`No review record for ${JSON.stringify(path)}: it is Halonic's own data.`);
   }
-  return `${reviewRecordFolder}/${path}.json`;
-}
-
-/**
- * The file a record path is about, or `null` for a path that can't be a
- * record (a stray file in the folder).
- */
-export function reviewedPath(recordPath: string): string | null {
-  const prefix = `${reviewRecordFolder}/`;
-  if (!recordPath.startsWith(prefix) || !recordPath.endsWith(".json")) {
-    return null;
-  }
-  const path = recordPath.slice(prefix.length, -".json".length);
-  if (path === "" || path.endsWith("/") || isReservedPath(path)) {
-    return null;
-  }
-  return path;
+  const hash = bytesToHex(await digest.sha256(encodeUtf8(path)));
+  return `${reviewRecordFolder}/${hash}.json`;
 }
 
 /** A record as JSON, the way {@link parseReviewRecord} reads it back. */
@@ -83,11 +73,9 @@ const digestPattern = /^sha256:[0-9a-f]{64}$/u;
  * Reads a record that {@link serializeReviewRecord} wrote, checking every
  * field, because a person or a sync tool may have changed the file.
  *
- * @param text - the record file's text
- * @param path - the file the record should be about, from where it lives
  * @returns the record, or what is wrong with it
  */
-export function parseReviewRecord(text: string, path: string): Result<ReviewRecord, string> {
+export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -97,12 +85,12 @@ export function parseReviewRecord(text: string, path: string): Result<ReviewReco
   if (!isPlainObject(json)) {
     return err("it isn't a JSON object");
   }
-  const { format, path: recordedPath, baseline, card: cardJson, seen, trashed } = json;
+  const { format, path, baseline, card: cardJson, seen, trashed } = json;
   if (format !== reviewRecordFormat) {
     return err(`its format isn't ${reviewRecordFormat}`);
   }
-  if (recordedPath !== path) {
-    return err(`it is about ${JSON.stringify(recordedPath)}, not ${JSON.stringify(path)}`);
+  if (!isReviewablePath(path)) {
+    return err("its path isn't a workspace file");
   }
   if (typeof baseline !== "string" && baseline !== null) {
     return err("its baseline isn't text or null");
@@ -123,6 +111,19 @@ export function parseReviewRecord(text: string, path: string): Result<ReviewReco
     return err("its trashed entry has no trashId");
   }
   return ok({ ...record, trashed: { trashId } });
+}
+
+/** Whether a value from a record is a path the review service could have written a record for. */
+function isReviewablePath(path: unknown): path is string {
+  if (typeof path !== "string" || isReservedPath(path)) {
+    return false;
+  }
+  try {
+    checkWorkspacePath(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function readCard(value: unknown): ReviewCard | null {

@@ -1,53 +1,71 @@
+import type { Digest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
   parseReviewRecord,
   type ReviewRecord,
-  reviewedPath,
   reviewRecordPath,
   serializeReviewRecord,
 } from "./review-record.ts";
 import { ReviewRecords } from "./review-records.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 
-const digestOfFile = `sha256:${"a".repeat(64)}`;
+/** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
+const digest: Digest = {
+  async sha256(data) {
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  },
+};
 
 const clerk: ReviewRecord = {
   path: "agents/clerk.agent.yaml",
   baseline: "name: Clerk\nmodel: fast\n",
   card: { chatId: "c1", cardId: "k1" },
-  seen: digestOfFile,
+  seen: `sha256:${"a".repeat(64)}`,
 };
 
-const recordFile = ".halonic/review/files/agents/clerk.agent.yaml.json";
+const notes: ReviewRecord = { ...clerk, path: "agents/notes.agent.yaml", baseline: null };
 
 /** The record's JSON with some fields replaced, as a hand edit would leave it. */
 function editedRecord(changes: Record<string, unknown>): string {
   return JSON.stringify({ ...JSON.parse(serializeReviewRecord(clerk)), ...changes });
 }
 
+function setUp(files: Record<string, string> = {}) {
+  const store = new TestDefinitionStore(files);
+  return { store, records: new ReviewRecords(store, digest) };
+}
+
 verifies("app.review-record", () => {
   describe("keeping a record", () => {
-    it("saves it next to the other records and reads the same record back", async () => {
-      const store = new TestDefinitionStore();
-      const records = new ReviewRecords(store);
+    it("saves it under the SHA-256 of its path and reads the same record back", async () => {
+      const { store, records } = setUp();
       await records.save(clerk);
-      expect([...store.files.keys()]).toEqual([recordFile]);
+      expect([...store.files.keys()]).toEqual([
+        // SHA-256 of "agents/clerk.agent.yaml"; a record name never changes, or records would be lost.
+        ".halonic/review/files/b62cc1248570a14992f451b8a21c641ca5a130095603dc48b2362b6b3c9fa231.json",
+      ]);
       expect(await records.read(clerk.path)).toEqual({ status: "found", record: clerk });
     });
 
+    it("gives a file `a` and a file in a folder `a.json` different records", async () => {
+      const { records } = setUp();
+      await records.save({ ...clerk, path: "a" });
+      await records.save({ ...clerk, path: "a.json/b" });
+      expect((await records.all()).records.map((record) => record.path)).toEqual(["a", "a.json/b"]);
+    });
+
     it("keeps a new file's missing baseline and a deleted file's trash entry", async () => {
-      const records = new ReviewRecords(new TestDefinitionStore());
-      const created: ReviewRecord = { ...clerk, path: "agents/notes.agent.yaml", baseline: null };
+      const { records } = setUp();
       const deleted: ReviewRecord = { ...clerk, seen: "absent", trashed: { trashId: "t-1" } };
-      await records.save(created);
+      await records.save(notes);
       await records.save(deleted);
-      expect(await records.read(created.path)).toEqual({ status: "found", record: created });
+      expect(await records.read(notes.path)).toEqual({ status: "found", record: notes });
       expect(await records.read(deleted.path)).toEqual({ status: "found", record: deleted });
     });
 
     it("says there is none for a file without one, and removing it twice is fine", async () => {
-      const records = new ReviewRecords(new TestDefinitionStore());
+      const { records } = setUp();
       expect(await records.read(clerk.path)).toEqual({ status: "none" });
       await records.save(clerk);
       await records.remove(clerk.path);
@@ -56,11 +74,13 @@ verifies("app.review-record", () => {
     });
 
     it("refuses a record for Halonic's own data", async () => {
-      const records = new ReviewRecords(new TestDefinitionStore());
+      const { records } = setUp();
       await expect(records.save({ ...clerk, path: ".halonic/review/x.yaml" })).rejects.toThrow(
         RangeError,
       );
-      expect(() => reviewRecordPath("hubs/p/.halonic/source.json")).toThrow(RangeError);
+      await expect(reviewRecordPath("hubs/p/.halonic/source.json", digest)).rejects.toThrow(
+        RangeError,
+      );
     });
   });
 
@@ -69,10 +89,11 @@ verifies("app.review-record", () => {
       ["broken JSON", '{"format":1,', "it isn't valid JSON"],
       ["a list", "[]", "it isn't a JSON object"],
       ["another format", editedRecord({ format: 2 }), "its format isn't 1"],
+      ["an unsafe path", editedRecord({ path: "../x" }), "its path isn't a workspace file"],
       [
-        "another path",
-        editedRecord({ path: "agents/other.agent.yaml" }),
-        'it is about "agents/other.agent.yaml", not "agents/clerk.agent.yaml"',
+        "a path in .halonic",
+        editedRecord({ path: ".halonic/x" }),
+        "its path isn't a workspace file",
       ],
       ["a numeric baseline", editedRecord({ baseline: 3 }), "its baseline isn't text or null"],
       ["no card", editedRecord({ card: undefined }), "its card has no chatId and cardId"],
@@ -88,33 +109,51 @@ verifies("app.review-record", () => {
       ],
       ["an empty trash entry", editedRecord({ trashed: {} }), "its trashed entry has no trashId"],
     ])("counts %s as unreadable", async (_name, text, reason) => {
-      const records = new ReviewRecords(new TestDefinitionStore({ [recordFile]: text }));
-      expect(await records.read(clerk.path)).toEqual({ status: "unreadable", reason });
+      expect(parseReviewRecord(text)).toEqual({ ok: false, error: reason });
+    });
+
+    it("counts a record under another file's name as unreadable", async () => {
+      const { records } = setUp({
+        [await reviewRecordPath(clerk.path, digest)]: serializeReviewRecord(notes),
+      });
+      expect(await records.read(clerk.path)).toEqual({
+        status: "unreadable",
+        reason: 'it is about "agents/notes.agent.yaml", which has another record name',
+      });
     });
 
     it("is removed and reported when the records are listed, and the others are listed", async () => {
-      const notes: ReviewRecord = { ...clerk, path: "agents/notes.agent.yaml", baseline: null };
-      const store = new TestDefinitionStore({
-        [recordFile]: '{"format":1,',
-        [reviewRecordPath(notes.path)]: serializeReviewRecord(notes),
+      const broken = `.halonic/review/files/${"0".repeat(64)}.json`;
+      const misplaced = `.halonic/review/files/${"1".repeat(64)}.json`;
+      const { store, records } = setUp({
+        [broken]: '{"format":1,',
+        [misplaced]: serializeReviewRecord(clerk),
+        [await reviewRecordPath(notes.path, digest)]: serializeReviewRecord(notes),
         ".halonic/review/files/README": "a stray file",
       });
-      const listed = await new ReviewRecords(store).all();
-      expect(listed).toEqual({
+      expect(await records.all()).toEqual({
         records: [notes],
-        dropped: [{ path: clerk.path, reason: "it isn't valid JSON" }],
+        dropped: [
+          { path: null, reason: "it isn't valid JSON" },
+          {
+            path: null,
+            reason: 'it is about "agents/clerk.agent.yaml", which has another record name',
+          },
+        ],
       });
-      expect(store.files.has(recordFile)).toBe(false);
+      expect(store.files.has(broken)).toBe(false);
+      expect(store.files.has(misplaced)).toBe(false);
       expect(store.files.has(".halonic/review/files/README")).toBe(true);
     });
 
     it("is removed too when only some files are read, which skips files without a record", async () => {
-      const store = new TestDefinitionStore({ [recordFile]: '{"format":1,' });
-      const listed = await new ReviewRecords(store).some([
+      const recordFile = await reviewRecordPath(clerk.path, digest);
+      const { store, records } = setUp({ [recordFile]: '{"format":1,' });
+      const listed = await records.some([
         "agents/none.agent.yaml",
         clerk.path,
         clerk.path,
-        ".halonic/review/files/x.json",
+        ".halonic/x.json",
       ]);
       expect(listed).toEqual({
         records: [],
@@ -124,20 +163,7 @@ verifies("app.review-record", () => {
     });
   });
 
-  describe("record paths", () => {
-    it("maps a record's place back to its file, and nothing else", () => {
-      expect(reviewedPath(recordFile)).toBe(clerk.path);
-      expect(reviewedPath(".halonic/review/files/.json")).toBeNull();
-      expect(reviewedPath(".halonic/review/files/.halonic/x.json")).toBeNull();
-      expect(reviewedPath(".halonic/review/other/a.yaml.json")).toBeNull();
-      expect(reviewedPath(".halonic/review/files/a.yaml")).toBeNull();
-    });
-
-    it("reads its own JSON back as written", () => {
-      expect(parseReviewRecord(serializeReviewRecord(clerk), clerk.path)).toEqual({
-        ok: true,
-        value: clerk,
-      });
-    });
+  it("reads its own JSON back as written", () => {
+    expect(parseReviewRecord(serializeReviewRecord(clerk))).toEqual({ ok: true, value: clerk });
   });
 });
