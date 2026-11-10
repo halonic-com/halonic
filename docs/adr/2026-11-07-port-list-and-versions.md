@@ -211,6 +211,21 @@ One new port, at version 1:
   and asks again when the reason changes, when the computer passed the
   sandbox check before, and after Take back.
 
+_2026-11-10, proposed on HAL-1735 for the plugin service (plugins P2), approved by Liam on HAL-4038 (decision D1)._
+One new port, at version 1:
+
+- **`FolderReader`:** lists every entry under a folder, with its kind and
+  a file's size, reads a file's bytes and gives an entry's real location
+  (`ports.folder-reader`). A plugin's trust fingerprint covers every byte
+  of every file in its folder, and `DefinitionSource` can't give that: it
+  reads text and hides links, `.git` and `.env` names, which is right for
+  a workspace and wrong for a plugin, whose code could read any of them.
+  So the new port hides nothing, lists links and special files without
+  following them, and sorts by code-unit order with "/" separators, so a
+  fingerprint is the same on every system. It only reads. Adding byte
+  reads and a "show everything" mode to `DefinitionSource` instead would
+  mix two opposite rules on one port.
+
 ## Additive after the freeze: optional hints
 
 _2026-11-10, decided by Liam on HAL-3756, built in HAL-1532 (HAL-186 step 4c, part 4)._

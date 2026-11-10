@@ -60,6 +60,12 @@ export {
 } from "./definition-store.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {
+  type FolderEntriesOptions,
+  type FolderEntry,
+  type FolderReader,
+  folderReaderVersion,
+} from "./folder-reader.ts";
+export {
   addHarnessEnvironment,
   type Harness,
   type HarnessBridge,

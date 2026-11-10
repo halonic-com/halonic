@@ -54,6 +54,12 @@ export {
   idleProgram,
   readText,
 } from "./fake-sandbox-session.ts";
+export {
+  type FolderReaderContractOptions,
+  type FolderTree,
+  folderReaderContract,
+  type MakeFolderReader,
+} from "./folder-reader.ts";
 export { type HarnessContractHarness, harnessContract, type MakeHarness } from "./harness.ts";
 export { idGeneratorContract, type MakeIdGenerator } from "./id-generator.ts";
 export {
