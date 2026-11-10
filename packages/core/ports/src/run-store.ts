@@ -1,4 +1,10 @@
-import type { RunEvent, RunKind, RunStatus, RunSummary } from "@halonicjs/events";
+import {
+  parseEventLine,
+  type RunEvent,
+  type RunKind,
+  type RunStatus,
+  type RunSummary,
+} from "@halonicjs/events";
 
 /** Version of the {@link RunStore} port. A breaking change bumps it and comes with an ADR. */
 export const runStoreVersion = 1;
@@ -179,4 +185,83 @@ export function matchesRunFilter(summary: RunSummary, filter: RunFilter): boolea
 /** Orders summaries as {@link RunStore.list} returns them: newest start time first, then by run id. */
 export function compareRunSummaries(a: RunSummary, b: RunSummary): number {
   return b.startedAt.localeCompare(a.startedAt) || a.id.localeCompare(b.id);
+}
+
+// The run folder's file rules, which every adapter that keeps runs as files
+// in a folder applies: the CLI's `FolderRunStore` in `fs-node` and the
+// desktop app's store in `fs-tauri`, whose shell writes the same files. Bytes
+// stay with the adapters: each finds the log's whole lines and decodes them
+// its own way, then reads them here (HAL-2701).
+
+/** Letters, digits, `_`, `-` and `.`, not starting with a dot, at most 128 characters: a safe file name everywhere. */
+const runIdPattern = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,127}$/u;
+/** Names Windows opens as a device whatever the extension, such as `NUL.jsonl`. */
+const windowsDeviceName = /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/iu;
+
+/** Writes events as run log lines: one JSON event per line, each ending in a line break. */
+export function formatLogLines(events: readonly RunEvent[]): string {
+  return events.map((event) => `${JSON.stringify(event)}\n`).join("");
+}
+
+/**
+ * Reads a run log's whole lines back into events. Every line must hold the
+ * run's next event, numbered from 1. Pass only whole lines, each ending in
+ * a line break: a torn last line, from a crash, is the adapter's to leave
+ * out first.
+ *
+ * @param lines - the log's whole lines, or `""` for an empty log
+ * @param runId - the run the log belongs to
+ * @param file - the log's name, for the error message
+ * @returns the events, in order
+ * @throws Error naming the file and line when a line is broken
+ */
+export function parseLogLines(lines: string, runId: string, file: string): RunEvent[] {
+  if (lines === "") {
+    return [];
+  }
+  if (!lines.endsWith("\n")) {
+    throw new RangeError(`Only whole lines of run log ${file} can be read.`);
+  }
+  return lines
+    .slice(0, -1)
+    .split("\n")
+    .map((line, index) => parseLine(line, index + 1, runId, file));
+}
+
+/**
+ * Whether a run id can be a plain file name in the run folder: 1 to 128
+ * letters, digits, `_`, `-` or `.`, not starting with a dot, and not a name
+ * Windows keeps for a device.
+ */
+export function isRunId(runId: string): boolean {
+  return runIdPattern.test(runId) && !windowsDeviceName.test(runId);
+}
+
+/**
+ * Refuses a run id that couldn't be a plain file name in the run folder:
+ * `..`, a separator, an absolute path, a name Windows keeps for a device.
+ *
+ * @throws RangeError naming the run id
+ */
+export function checkRunId(runId: string): void {
+  if (!isRunId(runId)) {
+    throw new RangeError(
+      `Unsafe run id ${JSON.stringify(runId)}: use 1 to 128 letters, digits, "_", "-" or ".", not starting with ".".`,
+    );
+  }
+}
+
+function parseLine(line: string, seq: number, runId: string, file: string): RunEvent {
+  let event: RunEvent;
+  try {
+    event = parseEventLine(line);
+  } catch (error) {
+    throw new Error(`Broken run log ${file}, line ${seq}: ${(error as Error).message}`);
+  }
+  if (event.runId !== runId || event.seq !== seq) {
+    throw new Error(
+      `Broken run log ${file}, line ${seq}: it holds event ${event.seq} of run ${event.runId}.`,
+    );
+  }
+  return event;
 }

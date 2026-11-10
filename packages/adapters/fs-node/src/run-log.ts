@@ -1,4 +1,5 @@
-import { parseEventLine, type RunEvent } from "@halonicjs/events";
+import type { RunEvent } from "@halonicjs/events";
+import { parseLogLines } from "@halonicjs/ports";
 
 /** A run log as read from disk: its events, and how many of its bytes hold them. */
 export interface RunLog {
@@ -15,8 +16,8 @@ const lineBreak = 0x0a;
  * Reads a run log of one JSON event per line, each line ending in a line
  * break. An event counts only once its line break is written, so whatever
  * follows the last line break is a torn line from a crash and is skipped,
- * even when it happens to be valid JSON. Every complete line must hold the
- * run's next event.
+ * even when it happens to be valid JSON. The whole lines are read with the
+ * port's `parseLogLines`, which the desktop app's store uses too.
  *
  * @param bytes - the log file's contents
  * @param runId - the run the log belongs to
@@ -25,15 +26,8 @@ const lineBreak = 0x0a;
  */
 export function parseRunLog(bytes: Uint8Array, runId: string, file: string): RunLog {
   const intactBytes = bytes.lastIndexOf(lineBreak) + 1;
-  const text = decodeLines(bytes.subarray(0, intactBytes), file);
-  const lines = text === "" ? [] : text.slice(0, -1).split("\n");
-  const events = lines.map((line, index) => parseLine(line, index + 1, runId, file));
+  const events = parseLogLines(decodeLines(bytes.subarray(0, intactBytes), file), runId, file);
   return { events, intactBytes, torn: intactBytes < bytes.length };
-}
-
-/** Writes events as log lines, each ending in a line break. */
-export function formatLogLines(events: readonly RunEvent[]): string {
-  return events.map((event) => `${JSON.stringify(event)}\n`).join("");
 }
 
 /** The whole lines of a log as text, or an error naming the file when they aren't UTF-8. */
@@ -43,19 +37,4 @@ function decodeLines(bytes: Uint8Array, file: string): string {
   } catch {
     throw new Error(`Broken run log ${file}: it is not valid UTF-8 text.`);
   }
-}
-
-function parseLine(line: string, seq: number, runId: string, file: string): RunEvent {
-  let event: RunEvent;
-  try {
-    event = parseEventLine(line);
-  } catch (error) {
-    throw new Error(`Broken run log ${file}, line ${seq}: ${(error as Error).message}`);
-  }
-  if (event.runId !== runId || event.seq !== seq) {
-    throw new Error(
-      `Broken run log ${file}, line ${seq}: it holds event ${event.seq} of run ${event.runId}.`,
-    );
-  }
-  return event;
 }

@@ -15,7 +15,10 @@ import {
   type AppendOptions,
   type AppendResult,
   checkRunAppend,
+  checkRunId,
   compareRunSummaries,
+  formatLogLines,
+  isRunId,
   matchesRunFilter,
   type RunFilter,
   type RunSnapshot,
@@ -24,16 +27,11 @@ import {
 import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
 import { withRunLock } from "./run-lock.ts";
-import { formatLogLines, parseRunLog, type RunLog } from "./run-log.ts";
+import { parseRunLog, type RunLog } from "./run-log.ts";
 
 const logSuffix = ".jsonl";
 const snapshotSuffix = ".snapshot.json";
 const lockSuffix = ".lock";
-
-/** Letters, digits, `_`, `-` and `.`, not starting with a dot, at most 128 characters: a safe file name everywhere. */
-const runIdPattern = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,127}$/u;
-/** Names Windows opens as a device whatever the extension, such as `NUL.jsonl`. */
-const windowsDeviceName = /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/iu;
 
 /** Settings for a {@link FolderRunStore}. */
 export interface FolderRunStoreOptions {
@@ -291,24 +289,6 @@ export class FolderRunStore implements RunStore {
   #file(runId: string, suffix: string): string {
     return join(this.#root, `${runId}${suffix}`);
   }
-}
-
-/**
- * Refuses a run id that couldn't be a plain file name in the run folder:
- * `..`, a separator, an absolute path, a name Windows keeps for a device.
- *
- * @throws RangeError naming the run id
- */
-export function checkRunId(runId: string): void {
-  if (!isRunId(runId)) {
-    throw new RangeError(
-      `Unsafe run id ${JSON.stringify(runId)}: use 1 to 128 letters, digits, "_", "-" or ".", not starting with ".".`,
-    );
-  }
-}
-
-function isRunId(runId: string): boolean {
-  return runIdPattern.test(runId) && !windowsDeviceName.test(runId);
 }
 
 /**
