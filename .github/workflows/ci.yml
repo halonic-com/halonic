@@ -780,8 +780,9 @@ jobs:
         continue-on-error: true
         working-directory: packages/adapters/system-node
         run: |
-          node --input-type=module -e "const m=await import('./src/resource-probe.ts');const t=Date.now();const r=await m.systemProcessTable()();console.log('plain node',Date.now()-t,'ms',r.rows.length)"
-          pnpm exec vitest run src/resource-probe.test.ts --coverage.enabled=false --testTimeout=60000 --reporter=verbose 2>&1 | tail -25
+          pnpm exec vitest run --coverage.enabled=false --testTimeout=60000 --reporter=verbose 2>&1 | grep -E "ms$|Test Files|Tests|FAIL" | tail -50
+          echo ---- with coverage
+          pnpm exec vitest run --testTimeout=60000 2>&1 | grep -E "Test Files|Tests |FAIL|✓|❯" | tail -20
       - name: Typecheck and test
         shell: bash
         run: >
