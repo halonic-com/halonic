@@ -10,7 +10,7 @@ import type {
 } from "@halonicjs/ports";
 import { SecretScrubber } from "@halonicjs/std";
 import { claudeCodeCommand, userMessageLine } from "./command.ts";
-import { outputLines, outputTail } from "./output.ts";
+import { outputTail, streamJsonLines } from "./output.ts";
 import { type SettingsFolderWriter, writeClaudeCodeSettings } from "./settings.ts";
 import { findSignInProblem, SignInError } from "./sign-in.ts";
 import { StreamJsonReader } from "./stream-json.ts";
@@ -103,7 +103,7 @@ export class ClaudeCodeRun implements HarnessRun {
         agentId: this.#task.agentId,
         bridgeToken: this.#bridgeToken,
       });
-      for await (const line of outputLines(started.process.stdout)) {
+      for await (const line of streamJsonLines(started.process.stdout)) {
         const events = reader.read(line);
         if (reader.finished) {
           await this.#finish(started);
