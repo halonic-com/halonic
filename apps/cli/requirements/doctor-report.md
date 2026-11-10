@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2270; cli-output 3.7 with the team's calls of revisions 20 and 24, microcopy L90–L94 (approved by the board on HAL-2123); the Harnesses line's placeholder words from P5 on HAL-2264
 
-`halonic doctor` shall print its heading, an empty line, one line per check in the order Workspace, Models, Sandbox, Harnesses, Disk, then an empty line and the summary. Each check's line shall start with its mark (✓, ! or ✕) and its label in a column, and its other sentences shall be indented under its first word. A check the report leaves out shall print no line. A sandbox that can't start shall show its reason, its fix and `More:` with the docs link and the code under the line. The summary shall give the number of ✕ lines, or "No problems.", then what each ✕ line stops, Models before Sandbox, then the number of ! lines when there are any.
+The `halonic doctor` command shall print its heading, an empty line, one line per check in the order Workspace, Models, Sandbox, Harnesses, Disk, then an empty line and the summary. Each check's line shall start with its mark (✓, ! or ✕) and its label in a column, and its other sentences shall be indented under its first word. A check the report leaves out shall print no line. A sandbox that can't start shall show its reason, its fix and `More:` with the docs link and the code under the line. The summary shall give the number of ✕ lines, or "No problems.", then what each ✕ line stops, Models before Sandbox, then the number of ! lines when there are any.
 
 ## Examples
 
