@@ -19,8 +19,15 @@ import type {
 import { callCost } from "./call-cost.ts";
 import { type CallChecker, checkCallBeforeRun } from "./check-call-before-run.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
-import { runToolCall, type ToolCallContext } from "./run-tool-call.ts";
+import { runCalls, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
+import {
+  type ApprovalAnswer,
+  goOnAfterApproval,
+  stopAt,
+  type TurnStart,
+  type TurnStopped,
+} from "./turn-approval.ts";
 import type { TurnLog } from "./turn-log.ts";
 import { collectTurnTools, type HalonicTool, halonicSource, type TurnTools } from "./turn-tools.ts";
 
@@ -51,6 +58,20 @@ export interface ModelTurnInput {
   readonly checkCall?: CallChecker;
 }
 
+/**
+ * What a run's model turn needs: no caller tools, because a run hands no
+ * call back to a caller, and the place to go on from after an approval.
+ */
+export interface AgentTurnInput extends Omit<ModelTurnInput, "callerTools"> {
+  /** Where the turn stopped for a person's OK, and their answer; absent for a new turn. */
+  readonly resumeFrom?: ApprovalAnswer;
+}
+
+/** How a run's model turn ended: with an answer, or at a call that waits for a person's OK. */
+export type AgentTurnOutcome =
+  | { readonly kind: "answered"; readonly result: ModelTurnResult }
+  | TurnStopped;
+
 /** How a model turn ended. */
 export interface ModelTurnResult extends ChatResponse {
   /** Every assistant and tool message the turn added, ending with the last answer. */
@@ -73,11 +94,34 @@ export interface ModelTurnResult extends ChatResponse {
  * the next model at once; see {@link ModelChain}.
  *
  * @throws {ModelCallError} when no model is left, or with the reason the model gave for any other failure
- * @throws when the log can't be written
+ * @throws when the log can't be written, or the check asks a person, which only a run can wait for
  */
 export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResult> {
+  const outcome = await turnLoop(input);
+  if (outcome.kind === "stopped") {
+    throw new Error(
+      `The turn stopped for a person's OK on ${outcome.stop.tool}, which only a run can wait for.`,
+    );
+  }
+  return outcome.result;
+}
+
+/**
+ * Runs a run's model turn as {@link runModelTurn} does, except that it
+ * stops before a call the check asks a person about. Given `resumeFrom`,
+ * it goes on from that stop with the person's answer.
+ *
+ * @throws as {@link runModelTurn} does, and when `resumeFrom` names no waiting call
+ */
+export function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutcome> {
+  return turnLoop({ ...input, callerTools: [] }, input.resumeFrom);
+}
+
+async function turnLoop(
+  input: ModelTurnInput,
+  resumeFrom?: ApprovalAnswer,
+): Promise<AgentTurnOutcome> {
   const tools = await collectTurnTools(input);
-  const turn: ChatMessage[] = [];
   const models = new ModelChain(input.model, input.secrets, input.agent, input.log);
   const context: ToolCallContext = {
     agent: input.agent,
@@ -85,12 +129,17 @@ export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResu
     check: input.checkCall ?? checkCallBeforeRun,
     ...(input.log === undefined ? {} : { log: input.log }),
   };
+  const start: TurnStart =
+    resumeFrom === undefined
+      ? { kind: "ask-model", history: input.messages, turn: [], round: 1 }
+      : await goOnAfterApproval(context, tools, resumeFrom);
+  if (start.kind === "stopped") {
+    return start;
+  }
+  const { history, turn } = start;
   let usage: Usage = { inputTokens: 0, outputTokens: 0 };
-  for (let round = 1; ; round++) {
-    const { response, answeredBy } = await askModel(input, models, tools, [
-      ...input.messages,
-      ...turn,
-    ]);
+  for (let round = start.round; ; round++) {
+    const { response, answeredBy } = await askModel(input, models, tools, [...history, ...turn]);
     usage = addUsage(usage, response.usage);
     const ended = {
       ...response,
@@ -102,25 +151,24 @@ export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResu
     };
     if (response.toolCalls.length === 0) {
       turn.push(assistantMessage(response, response.toolCalls));
-      return ended;
+      return answered(ended);
     }
     if (round >= input.maxRounds) {
-      return endAtRoundLimit(ended, tools, input.maxRounds);
+      return answered(endAtRoundLimit(ended, tools, input.maxRounds));
     }
     turn.push(assistantMessage(response, response.toolCalls));
-    const callerCalls: ToolCall[] = [];
-    for (const call of response.toolCalls) {
-      const tool = tools.byName.get(call.name);
-      if (tool?.kind === "caller") {
-        callerCalls.push(call);
-        continue;
-      }
-      turn.push(await runToolCall(context, tool, call));
+    const step = await runCalls(context, tools, response.toolCalls, turn);
+    if (step.kind === "ask") {
+      return stopAt(step.waiting, [...history, ...turn], round);
     }
-    if (callerCalls.length > 0) {
-      return { ...ended, toolCalls: callerCalls, finishReason: "tool_calls" };
+    if (step.callerCalls.length > 0) {
+      return answered({ ...ended, toolCalls: step.callerCalls, finishReason: "tool_calls" });
     }
   }
+}
+
+function answered(result: ModelTurnResult): AgentTurnOutcome {
+  return { kind: "answered", result };
 }
 
 async function askModel(
