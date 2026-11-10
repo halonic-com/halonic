@@ -143,9 +143,22 @@ export class MessageStreamReader {
   #addMessageDelta(data: Record<string, unknown>): void {
     const delta = recordOf(data["delta"]);
     // The usage here counts the whole answer so far; it updates what message_start said.
-    const usage = { ...recordOf(this.#message["usage"]), ...recordOf(data["usage"]) };
+    const usage = { ...recordOf(this.#message["usage"]), ...countsOf(data["usage"]) };
     this.#message = { ...this.#message, ...delta, usage };
   }
+}
+
+/**
+ * The usage fields that hold a number. `message_delta` may send `null` for a
+ * count it doesn't update, such as `input_tokens`; that must not overwrite
+ * what `message_start` said.
+ */
+function countsOf(value: unknown): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const [field, count] of Object.entries(recordOf(value))) {
+    if (typeof count === "number") counts[field] = count;
+  }
+  return counts;
 }
 
 /** Adds `text` to a block's `field`, and gives it on as a piece of our `type`. */

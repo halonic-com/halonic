@@ -123,6 +123,37 @@ verifies("model-anthropic.stream", () => {
     expect(reader.finish().usage).toEqual({ inputTokens: 30, outputTokens: 9 });
   });
 
+  it("keeps message_start's counts where message_delta's usage sends null", () => {
+    const reader = new MessageStreamReader();
+    readAll(reader, [
+      {
+        type: "message_start",
+        message: {
+          ...(messageStart["message"] as Data),
+          usage: {
+            input_tokens: 25,
+            output_tokens: 1,
+            cache_read_input_tokens: 40,
+            cache_creation_input_tokens: 12,
+          },
+        },
+      },
+      {
+        type: "message_delta",
+        delta: { stop_reason: "end_turn" },
+        usage: {
+          input_tokens: null,
+          output_tokens: 9,
+          cache_read_input_tokens: null,
+          cache_creation_input_tokens: null,
+        },
+      },
+      { type: "message_stop" },
+    ]);
+    // The cache counts aren't read into our usage yet; this keeps passing once they are.
+    expect(reader.finish().usage).toMatchObject({ inputTokens: 25, outputTokens: 9 });
+  });
+
   it("gives text a block starts with, and no piece for empty text", () => {
     const reader = new MessageStreamReader();
     const pieces = readAll(reader, [
