@@ -6,10 +6,11 @@
 name: CI
 
 on:
-  # "edited" re-runs the terms guard and the title check when a title or
-  # body changes; "labeled" and "unlabeled" re-run the coverage-floor check.
+  # Not "edited", "labeled" or "unlabeled": each would cancel the run in
+  # progress and start every job again. pr-details.yml handles those: it
+  # re-runs the title, leak and coverage-floor jobs here when they failed.
   pull_request:
-    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
   merge_group:
   push:
     branches: [main]
@@ -94,6 +95,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      pull-requests: read
     steps:
       # The whole history (without file contents), so the DCO rule can
       # read every commit of the pull request.
@@ -103,10 +105,15 @@ jobs:
           fetch-depth: 0
           filter: blob:none
       - uses: $/.github/actions/setup
-      # Reads the title from $GITHUB_EVENT_PATH: an `env:` block is printed in the log.
+      - id: pr
+        uses: $/.github/actions/pull-request
+      # Reads the title from a file: an `env:` block is printed in the log.
+      # The merge queue checks it again, as the title may have changed since.
       - name: Pull request title
-        if: github.event_name == 'pull_request'
-        run: pnpm check:pr-title
+        if: steps.pr.outputs.event-path != ''
+        env:
+          PR_EVENT: ${{ steps.pr.outputs.event-path }}
+        run: GITHUB_EVENT_PATH="$PR_EVENT" pnpm check:pr-title
       # Plain check leaves out trace; the build job runs it after the tests.
       # The DCO rule checks the pull request's own commits. A merge queue
       # or a push to main only holds commits that passed it here.
@@ -143,6 +150,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -152,8 +160,12 @@ jobs:
         with:
           node-version: "26"
           package-manager-cache: false
+      # The title, body and branch as they are now, also in the merge queue.
+      - id: pr
+        uses: $/.github/actions/pull-request
       - name: Scan the change
         env:
+          PR_EVENT: ${{ steps.pr.outputs.event-path }}
           HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
           HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && github.event.pull_request.head.repo.fork != true && github.event.pull_request.user.login != 'dependabot[bot]' && 'true' || 'false' }}
           EVENT: ${{ github.event_name }}
@@ -181,7 +193,7 @@ jobs:
             else
               guard="$PWD"
             fi
-            node "$guard/tooling/check/src/cli/leaks.ts" \
+            GITHUB_EVENT_PATH="$PR_EVENT" node "$guard/tooling/check/src/cli/leaks.ts" \
               --allowed-phrases "$guard/tooling/check/terms-allowed-phrases.txt" \
               --allow-file "$guard/tooling/check/leak-allow.txt" \
               --range "$BASE..$HEAD"
@@ -199,6 +211,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -208,8 +221,12 @@ jobs:
         with:
           node-version: "26"
           package-manager-cache: false
+      # The labels as they are now, so a re-run sees a label added since.
+      - id: pr
+        uses: $/.github/actions/pull-request
       - name: Compare floors with the base
         env:
+          PR_EVENT: ${{ steps.pr.outputs.event-path }}
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -217,9 +234,9 @@ jobs:
           script=tooling/check/src/cli/coverage-floors.ts
           # The pull request that adds this script has no base copy to run.
           if [ -f "$RUNNER_TEMP/base/$script" ]; then
-            node "$RUNNER_TEMP/base/$script" "$BASE" "$HEAD"
+            GITHUB_EVENT_PATH="$PR_EVENT" node "$RUNNER_TEMP/base/$script" "$BASE" "$HEAD"
           else
-            node "$script" "$BASE" "$HEAD"
+            GITHUB_EVENT_PATH="$PR_EVENT" node "$script" "$BASE" "$HEAD"
           fi
 
   gitleaks:

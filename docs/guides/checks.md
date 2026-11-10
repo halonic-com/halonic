@@ -226,7 +226,8 @@ the pull request changes with its floor at the merge base (where the branch left
 the target branch), and fails if a value went down or was removed (`pnpm check:coverage-floors <base> <head>`).
 New packages and packages with no floor on the target branch pass. If lowering
 a floor is deliberate, the maintainer adds the `coverage-floor-lowered` label
-to the pull request and the check passes.
+to the pull request; the "PR details" workflow then re-runs the check, which
+passes.
 
 To run one test file without the floor: `pnpm exec vitest run <file> --coverage.enabled=false`.
 
@@ -427,6 +428,15 @@ and on `main`. The only required check is `ci-ok`: it always runs, waits
 for every other job and fails if any failed. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
+
+CI starts when a pull request is opened, reopened or gets new commits, not
+when its title, body or labels change: that would cancel the run in progress
+and build everything again. `.github/workflows/pr-details.yml` handles those
+changes. It checks the new title and, if CI's title, leak or coverage-floor
+job failed, re-runs CI's failed jobs, which read the pull request's current
+title, body and labels. The merge queue checks the title and runs the leak
+guard again before a pull request merges. After changing a pull request's
+base, push a commit so CI runs against the new base.
 
 On a pull request, the `Changed areas` job decides which of those jobs run
 from the pull request's diff. In the merge queue it reads the whole
