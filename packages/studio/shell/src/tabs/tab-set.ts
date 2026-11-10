@@ -177,48 +177,62 @@ export class TabSet {
       return;
     }
     const tabs = this.current.tabs.filter((other) => other.id !== tabId);
-    tabs.splice(Math.max(0, Math.min(index, tabs.length)), 0, tab);
+    const target = Math.max(0, Math.min(index, tabs.length));
+    if (target === this.indexOf(tabId)) {
+      return;
+    }
+    tabs.splice(target, 0, tab);
     this.update({ ...this.current, tabs });
   }
 
-  /** Goes back in the active tab's history. Returns `false` when there's nothing to go back to. */
+  /**
+   * Goes back in the active tab's history, past places another tab shows now. Returns `false` when
+   * there's nothing to go back to.
+   */
   back(): boolean {
     return this.step(-1);
   }
 
-  /** Goes forward in the active tab's history. Returns `false` when there's nothing ahead. */
+  /**
+   * Goes forward in the active tab's history, past places another tab shows now. Returns `false`
+   * when there's nothing ahead.
+   */
   forward(): boolean {
     return this.step(1);
   }
 
-  /** Gives a place a new title everywhere it appears, so a renamed item's tab follows at once. */
+  /**
+   * Gives a place a new title everywhere it appears, closed tabs included, so a renamed item's tab
+   * follows at once and comes back with the new title.
+   */
   rename(key: string, title: string): void {
-    const tabs = this.current.tabs.map((tab) =>
-      tab.history.some((location) => location.key === key)
-        ? {
-            ...tab,
-            history: tab.history.map((place) => (place.key === key ? { ...place, title } : place)),
-          }
-        : tab,
-    );
-    this.update({ ...this.current, tabs });
+    for (const entry of this.closed) {
+      entry.tab = renamed(entry.tab, key, title);
+    }
+    const tabs = this.current.tabs.map((tab) => renamed(tab, key, title));
+    if (tabs.some((tab, index) => tab !== this.current.tabs[index])) {
+      this.update({ ...this.current, tabs });
+    }
   }
 
+  /**
+   * Moves the active tab through its history, skipping places another tab shows now: stopping
+   * there would show the same place twice, and switching to that tab would leave this tab's
+   * Back stuck on it.
+   */
   private step(direction: 1 | -1): boolean {
     const tab = this.active;
-    const position = tab.position + direction;
-    const location = tab.history[position];
-    if (location === undefined) {
-      return false;
+    for (let position = tab.position + direction; ; position += direction) {
+      const location = tab.history[position];
+      if (location === undefined) {
+        return false;
+      }
+      const open = this.tabShowing(location.key);
+      if (open === undefined || open.id === tab.id) {
+        this.replace(tab.id, { ...tab, position });
+        return true;
+      }
     }
-    const open = this.tabShowing(location.key);
-    if (open !== undefined && open.id !== tab.id) {
-      // Going back to a place another tab shows now would open it twice; switch to it instead.
-      this.activate(open.id);
-      return true;
-    }
-    this.replace(tab.id, { ...tab, position });
-    return true;
   }
 
   private createTab(location: TabLocation): WindowTab {
@@ -265,4 +279,13 @@ export class TabSet {
       listener();
     }
   }
+}
+
+/** `tab` with `key` retitled in its history; the same tab when the place isn't in it. */
+function renamed(tab: WindowTab, key: string, title: string): WindowTab {
+  if (!tab.history.some((place) => place.key === key && place.title !== title)) {
+    return tab;
+  }
+  const history = tab.history.map((place) => (place.key === key ? { ...place, title } : place));
+  return { ...tab, history };
 }

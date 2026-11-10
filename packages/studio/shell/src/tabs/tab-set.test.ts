@@ -54,6 +54,29 @@ verifies("shell.tab-set", () => {
     expect(tabs.back()).toBe(false);
   });
 
+  it("skips places another tab shows when going Back and Forward", () => {
+    const tabs = new TabSet();
+    tabs.openHere(agents);
+    tabs.openHere(sorter);
+    tabs.openInNewTab(agents);
+    expect(tabs.back()).toBe(true);
+    expect(strip(tabs)).toEqual(["*Home", "Agents"]);
+    expect(tabs.back()).toBe(false);
+    expect(tabs.forward()).toBe(true);
+    expect(strip(tabs)).toEqual(["*Sorter", "Agents"]);
+  });
+
+  it("does nothing on Back when every earlier place shows in another tab", () => {
+    const tabs = tabsOn(agents, sorter);
+    tabs.activateAt(1);
+    tabs.openHere(writer);
+    tabs.activateAt(0);
+    tabs.openInNewTab(sorter);
+    tabs.activateAt(-1);
+    expect(tabs.back()).toBe(false);
+    expect(strip(tabs)).toEqual(["Agents", "Sorter", "*Writer"]);
+  });
+
   it("drops Forward when a place opens after going back", () => {
     const tabs = new TabSet();
     tabs.openHere(agents);
@@ -178,6 +201,15 @@ verifies("shell.tab-set", () => {
     expect(tabs.active.history[1]).toEqual({ ...mailTriage, title: "Triage" });
   });
 
+  it("brings back a closed tab with a place's new title", () => {
+    const mailTriage = { key: "agent/acme/mail-triage", title: "Mail triage", kind: "agent" };
+    const tabs = tabsOn(agents, mailTriage);
+    tabs.close(tabs.state.tabs[1]?.id ?? "");
+    tabs.rename(mailTriage.key, "Triage");
+    tabs.reopenClosed();
+    expect(strip(tabs)).toEqual(["Agents", "*Triage"]);
+  });
+
   it("tells subscribers about every change with a new state", () => {
     const tabs = new TabSet();
     const before = tabs.state;
@@ -187,6 +219,9 @@ verifies("shell.tab-set", () => {
     });
     tabs.openHere(agents);
     tabs.activate(tabs.active.id);
+    tabs.move(tabs.active.id, 0);
+    tabs.rename(agents.key, agents.title);
+    tabs.rename(sorter.key, "Sorter 2");
     stop();
     tabs.openHere(sorter);
     expect(changes).toBe(1);
