@@ -343,7 +343,7 @@ verifies("integration-runner.requests", () => {
       const { runner, connection, call, wire } = await runningCall(redirect);
       await runner.send(fetchFrame(call, { auth: [{ secret: "bearer-key", as: "bearer" }] }));
       const answer = await runner.next();
-      expect(answer).toMatchObject({ type: "error", id: 0, code: "secret-in-request" });
+      expect(answer).toMatchObject({ type: "error", id: 0, code: "secret-in-redirect" });
       expect(visible(answer)).not.toContain(fakeSecret);
       expect(wire).toHaveLength(1);
       await connection.close();
