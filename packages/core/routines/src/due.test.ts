@@ -266,6 +266,113 @@ verifies("routines.due", () => {
     PROPERTY_TIMEOUT,
   );
 
+  describe("at the edges of a window", () => {
+    const hourlyAt = (catchUp: Routine["catchUp"]) => placed(hourly, catchUp);
+    const hourlyEvery = (catchUp: Routine["catchUp"]) => placed({ every: "1h" }, catchUp);
+
+    it("counts a time exactly at now, and one exactly the grace period late, for catchUp none", () => {
+      for (const make of [hourlyAt, hourlyEvery]) {
+        const routine = make("none");
+        expect(
+          times(due([routine], at("2026-11-03T09:30:00Z"), at("2026-11-03T10:00:00Z"))),
+        ).toEqual(["2026-11-03T10:00:00.000Z"]);
+        expect(
+          times(due([routine], at("2026-11-03T09:30:00Z"), at("2026-11-03T10:01:00Z"))),
+        ).toEqual(["2026-11-03T10:00:00.000Z"]);
+        expect(due([routine], at("2026-11-03T09:30:00Z"), at("2026-11-03T10:01:00.001Z"))).toEqual(
+          [],
+        );
+      }
+    });
+
+    it("counts a time exactly at now for catchUp last", () => {
+      for (const make of [hourlyAt, hourlyEvery]) {
+        const runs = due([make("last")], at("2026-11-03T10:30:00Z"), at("2026-11-03T11:00:00Z"));
+        expect(times(runs)).toEqual(["2026-11-03T11:00:00.000Z"]);
+      }
+    });
+
+    it("does not give a time at the last tick again, for any catchUp setting", () => {
+      for (const make of [hourlyAt, hourlyEvery]) {
+        for (const catchUp of ["none", "last", "all"] as const) {
+          const runs = due([make(catchUp)], at("2026-11-03T09:00:00Z"), at("2026-11-03T09:30:00Z"));
+          expect(runs).toEqual([]);
+        }
+      }
+    });
+
+    it("does not give a time inside the grace period that an earlier tick already covered", () => {
+      for (const make of [hourlyAt, hourlyEvery]) {
+        const runs = due([make("none")], at("2026-11-03T10:00:10Z"), at("2026-11-03T10:00:30Z"));
+        expect(runs).toEqual([]);
+      }
+    });
+
+    it("gives nothing when no time falls in a window shorter than two minutes", () => {
+      // 11:00 is before the last tick; it must not be found by looking back past it.
+      const runs = due([hourlyAt("last")], at("2026-11-03T11:00:10Z"), at("2026-11-03T11:01:40Z"));
+      expect(runs).toEqual([]);
+    });
+
+    it("gives the newest of several close times for catchUp last on a schedule", () => {
+      const burst = { schedule: "0-5 * * * *", timezone: "UTC" };
+      const runs = due(
+        [placed(burst, "last")],
+        at("2026-11-03T08:00:00Z"),
+        at("2026-11-03T09:30:00Z"),
+      );
+      expect(times(runs)).toEqual(["2026-11-03T09:05:00.000Z"]);
+      const early = due(
+        [placed(burst, "last")],
+        at("2026-11-03T08:00:00Z"),
+        at("2026-11-03T09:03:30Z"),
+      );
+      expect(times(early)).toEqual(["2026-11-03T09:03:00.000Z"]);
+    });
+
+    it("names the trigger each run came from", () => {
+      const [schedule] = due(
+        [hourlyAt("last")],
+        at("2026-11-03T09:30:00Z"),
+        at("2026-11-03T10:10:00Z"),
+      );
+      const [every] = due(
+        [hourlyEvery("last")],
+        at("2026-11-03T09:30:00Z"),
+        at("2026-11-03T10:10:00Z"),
+      );
+      expect(schedule?.trigger).toBe("schedule");
+      expect(every?.trigger).toBe("every");
+    });
+
+    it("stops an interval walk at the window limit, keeping the oldest times", () => {
+      // 10,080 minutes are in the window; the walk lists at most 10,000.
+      const policy = { ...DEFAULT_TICK_POLICY, graceMs: DEFAULT_TICK_POLICY.maxCatchUpAgeMs };
+      const runs = due(
+        [placed({ every: "1m" }, "none")],
+        at("2026-11-01T00:00:00Z"),
+        at("2026-11-10T00:00:00Z"),
+        policy,
+      );
+      expect(runs).toHaveLength(10_000);
+      expect(runs[0]?.at.toISOString()).toBe("2026-11-03T00:00:00.000Z");
+    });
+
+    it("lets an error that isn't a bad trigger reach the caller", () => {
+      const broken = placed({ every: 5 });
+      expect(() => due([broken], at("2026-11-03T08:00:00Z"), at("2026-11-03T09:00:00Z"))).toThrow(
+        TypeError,
+      );
+    });
+
+    it("breaks a tie on time and key by keeping the order of the list", () => {
+      const first = placed({ every: "1h" }, "last", true, "same");
+      const second = placed({ every: "1h" }, "last", true, "same");
+      const runs = due([first, second], at("2026-11-03T08:10:00Z"), at("2026-11-03T09:10:00Z"));
+      expect(runs.map((run) => run.placed)).toEqual([first, second]);
+    });
+  });
+
   it("orders by time, then key", () => {
     const runs = due(
       [placed({ every: "1h" }, "last", true, "b"), placed({ every: "1h" }, "last", true, "a")],
@@ -273,6 +380,12 @@ verifies("routines.due", () => {
       at("2026-11-03T09:10:00Z"),
     );
     expect(runs.map((run) => run.key)).toEqual(["h/a", "h/b"]);
+    const sorted = due(
+      [placed({ every: "1h" }, "last", true, "a"), placed({ every: "1h" }, "last", true, "b")],
+      at("2026-11-03T08:10:00Z"),
+      at("2026-11-03T09:10:00Z"),
+    );
+    expect(sorted.map((run) => run.key)).toEqual(["h/a", "h/b"]);
   });
 });
 
