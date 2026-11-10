@@ -1,8 +1,8 @@
 // Carries out one `run-harness` effect: it finds where the agent runs, opens
 // the run's bridge and sandbox, starts the harness in them and writes what
-// the harness reports to the run's log. It gives back the agent's result;
-// `decide` writes the task's own `agent.finished` from it, as it does for a
-// model's answer. Whatever the harness started is stopped before it returns,
+// the harness reports, and what its sandbox refused, to the run's log. It
+// gives back the agent's result; `decide` writes the task's own
+// `agent.finished` from it, as it does for a model's answer. Whatever the harness started is stopped before it returns,
 // and also when the engine stops it on the way.
 
 import { type RunEventBody, sandboxOpenedView } from "@halonicjs/events";
@@ -18,6 +18,7 @@ import {
 } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
+import { BlockedAccesses } from "./blocked-accesses.ts";
 import type { HarnessAgent, HarnessRunsOptions } from "./harness-host.ts";
 import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
 import { unlessStopped } from "./unless-stopped.ts";
@@ -48,6 +49,10 @@ export interface HarnessCall {
  * wait for the harness's first event when their time is up. When `stop` is
  * told to stop, as it is when the engine stops, the call stops the harness run,
  * closes the session and the bridge, and throws.
+ *
+ * Each access the sandbox refuses is counted, and written to the log as
+ * `sandbox.blocked`: a target's first block at once, and its total when the
+ * session has closed, unless the engine stopped the call.
  *
  * It returns, or throws, only once the harness run, the session and the
  * bridge have stopped, in that order, and every event they reported is in
@@ -91,6 +96,12 @@ export async function runHarnessCall(
   );
   try {
     const session = await openSandbox(started, sandbox, bridge);
+    const blocked = new BlockedAccesses(
+      log,
+      { state: effect.state, agent: effect.agent },
+      options.home,
+    );
+    const stopReports = session.onBlocked((block) => blocked.note(block));
     try {
       const timeoutMs = startTimeoutOf(options, "harness");
       await log.append({
@@ -121,6 +132,9 @@ export async function runHarnessCall(
       }
     } finally {
       await session.close();
+      stopReports();
+      // The step ends here. When the engine stopped it, the run records nothing more.
+      if (!stop.stopped) await blocked.writeTotals();
     }
   } finally {
     await bridge.close();

@@ -7,6 +7,8 @@ import type {
   HarnessTask,
   OpenHarnessBridge,
   Sandbox,
+  SandboxBlock,
+  SandboxBlockListener,
   SandboxCheck,
   SandboxProfile,
   SandboxSession,
@@ -47,6 +49,8 @@ export class FakeSandbox implements Sandbox {
   /** When set, `open` waits for it, as a sandbox that is slow to start would. */
   openHeld: Promise<void> | undefined;
   readonly profiles: SandboxProfile[] = [];
+  /** Who hears the blocks of the sessions still open. */
+  readonly #listeners = new Set<SandboxBlockListener>();
   readonly #placement: Placement;
   readonly #steps: FakeStep[];
 
@@ -65,17 +69,33 @@ export class FakeSandbox implements Sandbox {
     this.#steps.push(`${this.#placement}.open`);
     this.profiles.push(profile);
     const steps = this.#steps;
+    const listeners = this.#listeners;
     return {
       profile,
       fence: { state: "fenced" },
       start: async () => {
         throw new Error("The fake sandbox starts no program.");
       },
-      onBlocked: () => () => {},
+      onBlocked: (listener) => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
       close: async () => {
         steps.push("session.close");
       },
     };
+  }
+
+  /** Reports `block` to whoever listens on its sessions, as the fence does when it refuses an access. */
+  block(block: SandboxBlock): void {
+    for (const listener of this.#listeners) listener(block);
+  }
+
+  /** How many listeners still hear this sandbox's blocks. */
+  get listening(): number {
+    return this.#listeners.size;
   }
 }
 
@@ -91,6 +111,8 @@ export class FakeHarness implements Harness {
   events: HarnessEvent[] = [];
   error: Error | undefined;
   hangs = false;
+  /** When set, runs once the program has started, before it reports its events. */
+  whileRunning: (() => void) | undefined;
   /** How many event streams ran their own clean-up, as a generator's `finally` does when it is ended. */
   streamsCleanedUp = 0;
   readonly tasks: HarnessTask[] = [];
@@ -111,7 +133,7 @@ export class FakeHarness implements Harness {
   start(task: HarnessTask): HarnessRun {
     this.tasks.push(task);
     this.#steps.push("harness.start");
-    const { events, error, hangs } = this;
+    const { events, error, hangs, whileRunning } = this;
     const steps = this.#steps;
     const cancelled = Promise.withResolvers<void>();
     const cleanedUp = () => {
@@ -120,6 +142,7 @@ export class FakeHarness implements Harness {
     return {
       async *[Symbol.asyncIterator]() {
         try {
+          whileRunning?.();
           yield* events;
           if (hangs) {
             await cancelled.promise;

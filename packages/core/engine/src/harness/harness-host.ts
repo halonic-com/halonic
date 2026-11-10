@@ -80,7 +80,7 @@ export interface HarnessRunsOptions {
   readonly harnesses: Readonly<Partial<Record<ProgramHarness, Harness>>>;
   readonly bridges: HarnessBridgeHost;
   readonly profiles: HarnessProfileBuilder;
-  /** The person's home folder, so `sandbox.opened` shows paths in it with `~`; `null` when unknown. */
+  /** The person's home folder, so `sandbox.opened` and `sandbox.blocked` show paths in it with `~`; `null` when unknown. */
   readonly home: string | null;
   /**
    * How long each start may take, in milliseconds: the sandbox's opening and
