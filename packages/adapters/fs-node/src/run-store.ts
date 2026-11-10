@@ -27,7 +27,7 @@ import {
 import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
 import { renameOver } from "./rename-over.ts";
-import { withRunLock } from "./run-lock.ts";
+import { type LockedOutcome, settleUnderRunLock } from "./run-lock.ts";
 import { parseRunLog, type RunLog } from "./run-log.ts";
 import { readLogStart } from "./run-log-start.ts";
 
@@ -44,6 +44,14 @@ export interface FolderRunStoreOptions {
    * It must not throw, or the append rejects although its events are stored.
    */
   onSnapshotError?: (runId: string, error: unknown) => void;
+  /**
+   * Called when an append stored its events but couldn't remove the run's
+   * lock afterwards. The append still succeeds; other writers to the run
+   * wait until the lock left behind is older than `runLockStaleAfterMs`.
+   * Log it as a warning. It must not throw, or the append rejects although
+   * its events are stored.
+   */
+  onLockReleaseError?: (runId: string, error: unknown) => void;
 }
 
 /** Where a run's log ends, as this store last read or wrote it. */
@@ -72,6 +80,7 @@ interface LogEnd {
 export class FolderRunStore implements RunStore {
   readonly #root: string;
   readonly #onSnapshotError: (runId: string, error: unknown) => void;
+  readonly #onLockReleaseError: (runId: string, error: unknown) => void;
   readonly #queue = new KeyedQueue();
   /**
    * Where each log ended after this store's last append to it, so the next
@@ -83,11 +92,12 @@ export class FolderRunStore implements RunStore {
 
   /**
    * @param root - the folder for the run files; created on the first append
-   * @param options - a hook for snapshots that couldn't be written
+   * @param options - hooks for snapshots that couldn't be written and locks that couldn't be removed
    */
   constructor(root: string, options: FolderRunStoreOptions = {}) {
     this.#root = resolve(root);
     this.#onSnapshotError = options.onSnapshotError ?? (() => {});
+    this.#onLockReleaseError = options.onLockReleaseError ?? (() => {});
   }
 
   async append(
@@ -107,10 +117,29 @@ export class FolderRunStore implements RunStore {
         : JSON.stringify({ seq: lastSeq, state: options.snapshot } satisfies RunSnapshot);
     return await this.#queue.run(runId, async () => {
       await mkdir(this.#root, { recursive: true });
-      return await withRunLock(this.#file(runId, lockSuffix), () =>
+      const outcome = await settleUnderRunLock(this.#file(runId, lockSuffix), () =>
         this.#appendLocked(runId, expectedSeq, lastSeq, lines, snapshot),
       );
+      return this.#afterRelease(runId, outcome);
     });
+  }
+
+  /**
+   * The append's answer once the lock is let go. When the lock couldn't be
+   * released but the events are stored, the append still succeeds: failing
+   * it would make the caller retry and conflict with its own events, as the
+   * Studio shell's run store also avoids. A conflict stored nothing, so
+   * there the release error is the answer.
+   */
+  #afterRelease(runId: string, outcome: LockedOutcome<AppendResult>): AppendResult {
+    if (outcome.released) {
+      return outcome.result;
+    }
+    if (!outcome.result.ok) {
+      throw outcome.releaseError;
+    }
+    this.#onLockReleaseError(runId, outcome.releaseError);
+    return outcome.result;
   }
 
   /**

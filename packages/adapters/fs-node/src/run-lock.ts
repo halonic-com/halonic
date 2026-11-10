@@ -42,12 +42,51 @@ export async function withRunLock<T>(
   work: () => Promise<T>,
   system: BusySystem = nodeBusySystem,
 ): Promise<T> {
-  const ownText = await takeLock(file, system);
-  try {
-    return await work();
-  } finally {
-    await retryWhileBusy(() => releaseLock(file, ownText), system);
+  const outcome = await settleUnderRunLock(file, work, system);
+  if (!outcome.released) {
+    throw outcome.releaseError;
   }
+  return outcome.result;
+}
+
+/**
+ * What `work` gave under a run lock, and whether the lock could be
+ * released afterwards. A lock left behind blocks other writers only until
+ * it is older than `runLockStaleAfterMs`.
+ */
+export type LockedOutcome<T> =
+  | { result: T; released: true }
+  | { result: T; released: false; releaseError: unknown };
+
+/**
+ * Runs `work` under the run lock `file`, like {@link withRunLock}, but keeps
+ * its result when the lock can't be released afterwards, so the caller can
+ * tell work that was done from work that wasn't. When `work` throws, the
+ * lock is released and the error passed on, as `withRunLock` does.
+ *
+ * @param file - the lock file, `<runId>.lock` in an existing folder
+ * @param system - the platform and clock the busy retries use; tests play Windows with it
+ */
+export async function settleUnderRunLock<T>(
+  file: string,
+  work: () => Promise<T>,
+  system: BusySystem = nodeBusySystem,
+): Promise<LockedOutcome<T>> {
+  const ownText = await takeLock(file, system);
+  const release = () => retryWhileBusy(() => releaseLock(file, ownText), system);
+  let result: T;
+  try {
+    result = await work();
+  } catch (error) {
+    await release();
+    throw error;
+  }
+  try {
+    await release();
+  } catch (releaseError) {
+    return { result, released: false, releaseError };
+  }
+  return { result, released: true };
 }
 
 /** Takes the lock, waiting as long as a live writer holds it, and gives the text written into it. */

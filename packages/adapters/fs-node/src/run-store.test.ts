@@ -24,10 +24,20 @@ const failingWrite = vi.hoisted(() => ({
 /** How many times a run log has been read whole. */
 const logReads = vi.hoisted(() => ({ count: 0 }));
 
+/** When set, removing a lock file fails with this error code, as a folder that turned read-only would. */
+const failingRelease = vi.hoisted(() => ({ code: undefined as string | undefined }));
+
 vi.mock("node:fs/promises", async (importOriginal) => {
   const fs = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...fs,
+    rm: (async (file: string, ...rest: []) => {
+      const code = failingRelease.code;
+      if (code !== undefined && String(file).endsWith(".lock")) {
+        throw Object.assign(new Error(`${code}: permission denied, rm`), { code });
+      }
+      return await fs.rm(file, ...rest);
+    }) as typeof fs.rm,
     readFile: (async (file: string, ...rest: []) => {
       if (String(file).endsWith(".jsonl")) {
         logReads.count += 1;
@@ -56,6 +66,7 @@ afterEach(() => {
   failingWrite.hold = undefined;
   failingWrite.onBytesOut = undefined;
   failingWrite.onWrite = undefined;
+  failingRelease.code = undefined;
 });
 
 runStoreContract("folder", async () => new FolderRunStore(await tempFolder()), {
@@ -408,5 +419,26 @@ verifies("fs-node.run-store-lock", () => {
       host: hostname(),
       takenAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u),
     });
+  });
+});
+
+verifies("fs-node.run-store-lock-release", () => {
+  it("answers a stored append as stored when its lock can't be removed, and reports it", async () => {
+    const { root } = await storeWithRun();
+    const failures: [string, unknown][] = [];
+    const store = new FolderRunStore(root, {
+      onLockReleaseError: (runId, error) => failures.push([runId, error]),
+    });
+    failingRelease.code = "EACCES";
+    expect(await store.append("r1", 3, [entered("r1", 4)])).toEqual({ ok: true, lastSeq: 4 });
+    expect(failures).toEqual([["r1", expect.objectContaining({ code: "EACCES" })]]);
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3, 4]);
+  });
+
+  it("fails a conflicting append with the release error, since it stored nothing", async () => {
+    const { store } = await storeWithRun();
+    failingRelease.code = "EACCES";
+    await expect(store.append("r1", 1, [entered("r1", 2)])).rejects.toThrow("EACCES");
+    expect(seqs(await store.events("r1"))).toEqual([1, 2, 3]);
   });
 });

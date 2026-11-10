@@ -7,7 +7,7 @@ import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonic
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import type { BusySystem } from "./busy-retry.ts";
-import { isStale, parseRecord, withRunLock } from "./run-lock.ts";
+import { isStale, parseRecord, settleUnderRunLock, withRunLock } from "./run-lock.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
 /** The lock's file calls a test can make fail as busy. */
@@ -353,5 +353,38 @@ verifies("fs-node.run-store-lock", () => {
     const work = vi.fn(async () => {});
     await expect(withRunLock(file, work)).rejects.toThrow("ENOENT");
     expect(work).not.toHaveBeenCalled();
+  });
+
+  describe("when the lock can't be removed after the work", () => {
+    it("keeps the work's result, with the release error", async () => {
+      const file = await lockFile();
+      const outcome = await settleUnderRunLock(file, async () => {
+        hooks.busy.rm = ["EACCES"];
+        return "done";
+      });
+      expect(outcome).toEqual({
+        result: "done",
+        released: false,
+        releaseError: expect.objectContaining({ code: "EACCES" }),
+      });
+    });
+
+    it("fails with the release error when only the result is wanted", async () => {
+      const file = await lockFile();
+      const work = async () => {
+        hooks.busy.rm = ["EACCES"];
+        return "done";
+      };
+      await expect(withRunLock(file, work)).rejects.toThrow("EACCES");
+    });
+  });
+
+  it("releases the lock and passes the work's error on", async () => {
+    const file = await lockFile();
+    const work = async () => {
+      throw new Error("work failed");
+    };
+    await expect(settleUnderRunLock(file, work)).rejects.toThrow("work failed");
+    await expect(readFile(file, "utf8")).rejects.toThrow("ENOENT");
   });
 });
