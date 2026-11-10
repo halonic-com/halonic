@@ -1,4 +1,4 @@
-import { mkdir, symlink, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
@@ -100,13 +100,8 @@ verifies("git.repo-config", () => {
 
     it("blanks the filters of a repository nested in it as a gitlink", async () => {
       const folder = await repositoryWith(scratch);
-      const nested = join(folder, "vendor");
-      await writeFiles(nested, { "b.yaml": "1\n" });
-      await plainGit(nested, ["init", "--quiet", "--template="]);
-      await plainGit(nested, ["add", "--all"]);
-      await plainGit(nested, ["commit", "--quiet", "--message=Nested"]);
-      await plainGit(nested, ["config", "filter.nested.clean", "planted"]);
-      await plainGit(folder, ["add", "vendor"]);
+      await nestRepository(folder, "vendor");
+      await plainGit(join(folder, "vendor"), ["config", "filter.nested.clean", "planted"]);
 
       expect(await configIn(await open(folder), "filter.nested.clean")).toBe("");
     });
@@ -197,8 +192,66 @@ const identity = [
   ["user.email", testAuthor.email],
 ] as const;
 
+/** Makes `path` in `folder` a repository of its own, with one commit, added to `folder` as a gitlink. */
+async function nestRepository(folder: string, path: string): Promise<void> {
+  const nested = join(folder, path);
+  await writeFiles(nested, { "b.yaml": "1\n" });
+  await plainGit(nested, ["init", "--quiet", "--template="]);
+  await plainGit(nested, ["add", "--all"]);
+  await plainGit(nested, ["commit", "--quiet", "--message=Nested"]);
+  await plainGit(folder, ["add", path]);
+}
+
 /** A new repository with a plant in it, whose program lives outside the repository. */
 async function planted(): Promise<{ folder: string; plant: Plant }> {
   const folder = await repositoryWith(scratch);
   return { folder, plant: plantIn(folder, await scratch.folder(), []) };
 }
+
+verifies("git.repo-leaks", () => {
+  describe("the repository", () => {
+    it("runs only the subcommands the adapter uses", async () => {
+      const repository = await open(await repositoryWith(scratch));
+      for (const args of [["blame", "a.yaml"], ["stash", "show", "-p"], []]) {
+        await expect(repository.run({ args }), args.join(" ")).rejects.toThrow(
+          "The git adapter doesn't run git",
+        );
+      }
+    });
+
+    it("says which alternate is missing", async () => {
+      const folder = await repositoryWith(scratch);
+      await mkdir(join(folder, ".git", "objects", "info"), { recursive: true });
+      await writeFile(join(folder, ".git", "objects", "info", "alternates"), "missing-objects\n");
+      await expect(Repository.open(await runner(), folder)).rejects.toThrow(
+        /missing-objects, which doesn't exist/u,
+      );
+    });
+
+    it("refuses a nested repository whose .git file points outside the workspace", async () => {
+      const elsewhere = await repositoryWith(scratch);
+      const folder = await repositoryWith(scratch);
+      await nestRepository(folder, "vendor");
+      await rm(join(folder, "vendor", ".git"), { recursive: true });
+      await writeFile(join(folder, "vendor", ".git"), `gitdir: ${join(elsewhere, ".git")}\n`);
+      await expect(Repository.open(await runner(), folder)).rejects.toThrow("nested at");
+    });
+
+    it("accepts a nested .git file that points inside the workspace, as a submodule's does", async () => {
+      const folder = await repositoryWith(scratch);
+      await nestRepository(folder, "vendor");
+      await rename(join(folder, "vendor", ".git"), join(folder, ".git", "vendor-git"));
+      await writeFile(join(folder, "vendor", ".git"), "gitdir: ../.git/vendor-git\n");
+      await expect(open(folder)).resolves.toBeInstanceOf(Repository);
+    });
+
+    // git 2.47 runs no config hook; newer git does, whatever core.hooksPath
+    // says. Refusing the keys covers both, so this holds on every git.
+    it("refuses a repository whose config sets a config hook", async () => {
+      const folder = await repositoryWith(scratch);
+      await plainGit(folder, ["config", "hook.planted.command", "planted"]);
+      await plainGit(folder, ["config", "hook.planted.event", "pre-commit"]);
+      await expect(Repository.open(await runner(), folder)).rejects.toThrow("hook.planted");
+    });
+  });
+});

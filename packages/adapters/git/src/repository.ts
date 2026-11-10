@@ -1,5 +1,5 @@
-import { lstat, readFile, realpath } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { lstat, realpath } from "node:fs/promises";
+import { join } from "node:path";
 import type { GitResult, GitRunner } from "./git-runner.ts";
 import type { ConfigEntry } from "./hardening.ts";
 import {
@@ -11,9 +11,14 @@ import {
   neutralisePrograms,
   parseConfigListing,
 } from "./repo-config.ts";
-
-/** git reads alternates five deep; so does the check. */
-const maxAlternateDepth = 5;
+import { checkSubcommand, withoutDiffPrograms } from "./repository-args.ts";
+import {
+  checkAlternates,
+  checkLocated,
+  checkNestedInside,
+  locateNestedArgs,
+  outsideFolder,
+} from "./repository-location.ts";
 
 /** A call in a checked repository. */
 export interface RepositoryCall {
@@ -67,9 +72,10 @@ export class Repository {
    * Checks the repository again, then runs git in it, hardened, with what
    * neutralises its own config.
    *
-   * @throws Error when the folder is no longer a repository, or a check fails
+   * @throws Error when the subcommand isn't one the adapter runs, the folder is no longer a repository, or a check fails
    */
   async run(call: RepositoryCall): Promise<GitResult> {
+    checkSubcommand(call.args);
     // The workspace can change between calls, and a call such as `checkout`
     // or `merge` can change what the next one reads, so every call checks.
     const neutralising = await this.#check();
@@ -128,21 +134,6 @@ export class Repository {
   }
 }
 
-/** The subcommands that show diffs, and so would run the repository's diff programs. */
-const showsDiffs = new Set(["diff", "log", "show", "whatchanged"]);
-
-/**
- * `args` with `--no-ext-diff --no-textconv` after the subcommand when it
- * shows diffs, so `diff.external`, `diff.<driver>.command` and
- * `diff.<driver>.textconv` don't run. Blanking them instead would make git
- * fail with "cannot run".
- */
-function withoutDiffPrograms(args: readonly string[]): readonly string[] {
-  const [subcommand, ...rest] = args;
-  if (subcommand === undefined || !showsDiffs.has(subcommand)) return args;
-  return [subcommand, "--no-ext-diff", "--no-textconv", ...rest];
-}
-
 /** An error for a git call that failed, with git's message. */
 export function gitError(args: readonly string[], result: GitResult): Error {
   const message = result.stderr.trim().replace(/^(?:fatal|error): /u, "");
@@ -156,52 +147,6 @@ async function kindOf(path: string): Promise<"missing" | "folder" | "other"> {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return "missing";
     throw error;
   }
-}
-
-function outsideFolder(top: string): Error {
-  return new Error(
-    `The repository at ${top} keeps its git files outside the folder, which Halonic doesn't allow.`,
-  );
-}
-
-/** The folder must be the top, with its own `.git` folder as both git folders, not a linked worktree or a `gitdir:` file. */
-async function checkLocated(top: string, gitDir: string, stdout: string): Promise<void> {
-  const [shownTop, shownGitDir, shownCommonDir] = stdout.split("\n").map((line) => line.trimEnd());
-  for (const [shown, expected] of [
-    [shownTop, top],
-    [shownGitDir, gitDir],
-    [shownCommonDir, gitDir],
-  ] as const) {
-    if (shown === undefined || shown === "" || (await realpath(shown)) !== expected) {
-      throw outsideFolder(top);
-    }
-  }
-}
-
-/** Every folder an `objects/info/alternates` file names must be inside the workspace, and so must theirs. */
-async function checkAlternates(top: string, objects: string, depth: number): Promise<void> {
-  let contents: string;
-  try {
-    contents = await readFile(join(objects, "info", "alternates"), "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-    throw error;
-  }
-  for (const line of contents.split("\n").map((each) => each.trimEnd())) {
-    if (line === "" || line.startsWith("#")) continue;
-    const alternate = await realpath(resolve(objects, line));
-    if (!isInside(top, alternate)) {
-      throw new Error(
-        `The repository at ${top} reads objects from outside the folder, which Halonic doesn't allow.`,
-      );
-    }
-    if (depth < maxAlternateDepth) await checkAlternates(top, alternate, depth + 1);
-  }
-}
-
-function isInside(folder: string, path: string): boolean {
-  const fromFolder = relative(folder, path);
-  return fromFolder === "" || (!fromFolder.startsWith("..") && !isAbsolute(fromFolder));
 }
 
 /**
@@ -218,7 +163,8 @@ async function neutralisingConfig(
   const entries = await listConfig(runner, top, gitDir);
   checkRefusedKeys(entries);
   const filters = new Set(filterNames(entries));
-  await addNestedFilterNames(runner, top, [`--git-dir=${gitDir}`], filters, new Set([top]));
+  const nesting = { top, visited: new Set([top]) };
+  await addNestedFilterNames(runner, top, [`--git-dir=${gitDir}`], filters, nesting);
   return [...blankFilters([...filters]), ...neutralisePrograms(entries)];
 }
 
@@ -238,16 +184,23 @@ async function listConfig(
   return entries;
 }
 
+/** The workspace's top folder, and the nested repositories already read. */
+interface Nesting {
+  top: string;
+  visited: Set<string>;
+}
+
 /**
  * Adds the filter names of every repository nested in the one at `folder`
- * as a gitlink, and of those nested in them in turn.
+ * as a gitlink, and of those nested in them in turn. Each nested
+ * repository's git files must be inside the workspace too.
  */
 async function addNestedFilterNames(
   runner: GitRunner,
   folder: string,
   located: readonly string[],
   names: Set<string>,
-  visited: Set<string>,
+  nesting: Nesting,
 ): Promise<void> {
   const index = await runner.run({ cwd: folder, args: [...located, "ls-files", "--stage", "-z"] });
   if (index.code !== 0) throw gitError(["ls-files"], index);
@@ -256,10 +209,13 @@ async function addNestedFilterNames(
     // A submodule that isn't checked out has no `.git`, and git doesn't look into it.
     if ((await kindOf(join(nested, ".git"))) === "missing") continue;
     const real = await realpath(nested);
-    if (visited.has(real)) continue;
-    visited.add(real);
+    if (nesting.visited.has(real)) continue;
+    nesting.visited.add(real);
+    const located = await runner.run({ cwd: real, args: locateNestedArgs });
+    if (located.code !== 0) throw gitError(locateNestedArgs, located);
+    await checkNestedInside(nesting.top, real, located.stdout.toString("utf8"));
     for (const entry of filterNames(await listConfig(runner, real))) names.add(entry);
-    await addNestedFilterNames(runner, real, [], names, visited);
+    await addNestedFilterNames(runner, real, [], names, nesting);
   }
 }
 

@@ -201,3 +201,26 @@ verifies("git.vcs", () => {
     });
   });
 });
+
+verifies("git.vcs-private-status", () => {
+  describe("private files in the status", () => {
+    it("leaves out an unignored .env, whatever its case, and lists the rest", async () => {
+      const folder = await repositoryWith(scratch, { "sub/a.yaml": "1\n" });
+      await writeFiles(folder, {
+        "sub/a.yaml": "2\n",
+        "sub/.env": "TOKEN=planted\n",
+        ".ENV.local": "TOKEN=planted\n",
+        ".envrc": "export TOKEN=planted\n",
+      });
+      expect((await (await vcsAt(folder)).status()).changes).toEqual([
+        { path: "sub/a.yaml", status: "modified", staged: false },
+      ]);
+    });
+
+    it("leaves out a rename from a private file", async () => {
+      const folder = await repositoryWith(scratch, { ".env": "TOKEN=planted\n", "a.yaml": "1\n" });
+      await plainGit(folder, ["mv", ".env", "b.yaml"]);
+      expect((await (await vcsAt(folder)).status()).changes).toEqual([]);
+    });
+  });
+});

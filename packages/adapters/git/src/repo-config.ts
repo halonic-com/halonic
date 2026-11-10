@@ -25,6 +25,16 @@ const programKeys: readonly ConfigEntry[] = [
   ["gpg.ssh.defaultKeyCommand", ""],
 ];
 
+/**
+ * Keys naming the program at the other end of a remote, per remote, and
+ * git's default. `pull` and `push` name the program themselves too; this
+ * covers every other call that reaches a remote.
+ */
+const remoteProgramKeys: readonly ConfigEntry[] = [
+  ["uploadpack", "git-upload-pack"],
+  ["receivepack", "git-receive-pack"],
+];
+
 /** A merge driver that always reports a conflict; git runs it through its shell, which has `exit` built in. */
 const conflictMergeDriver = "exit 1";
 
@@ -70,11 +80,31 @@ export function checkRefusedKeys(entries: readonly ListedConfig[]): void {
  * - `include.path` and `includeIf.<condition>.path`, which bring in config
  *   from a file the workspace can change, or only once a `checkout` or
  *   `merge` has run, after the listing the call was checked against.
+ * - `url.<base>.insteadOf` and `pushInsteadOf`, which send `pull` and
+ *   `push` to another server than the remote the person sees.
+ * - `http.sslVerify`, `http.sslCAInfo` and `http.sslCAPath`, also per URL
+ *   (`http.<url>.sslVerify`), which turn the certificate check off or
+ *   trust the repository's own authority. With either, a proxy or anyone
+ *   on the network reads what git sends. A per-URL key beats the same key
+ *   from the adapter, so it can't be overridden.
+ * - Every `hook.<name>.*` key: newer git runs `hook.<name>.command` as a
+ *   hook, and nothing says `core.hooksPath` covers it.
  */
 function isRefusedKey(key: string): boolean {
-  if (key.toLowerCase() === "include.path") return true;
+  const lower = key.toLowerCase();
+  if (lower === "include.path" || lower.startsWith("hook.")) return true;
   if (subsectionKey(key, "includeif")?.name.toLowerCase() === "path") return true;
-  return subsectionKey(key, "branch")?.name.toLowerCase() === "mergeoptions";
+  if (subsectionKey(key, "branch")?.name.toLowerCase() === "mergeoptions") return true;
+  const url = subsectionKey(key, "url")?.name.toLowerCase();
+  if (url === "insteadof" || url === "pushinsteadof") return true;
+  return weakensCertificateCheck(lower);
+}
+
+/** `http.<name>` or `http.<url>.<name>` for a name that weakens the certificate check; `key` in lower case. */
+function weakensCertificateCheck(key: string): boolean {
+  if (!key.startsWith("http.")) return false;
+  const name = key.slice(key.lastIndexOf(".") + 1);
+  return name === "sslverify" || name === "sslcainfo" || name === "sslcapath";
 }
 
 /** The names of the filter drivers the repository's own config defines. */
@@ -100,7 +130,8 @@ export function blankFilters(names: readonly string[]): ConfigEntry[] {
 /**
  * Config that neutralises every other program the repository's own config
  * names: its merge drivers report a conflict, and each key in
- * {@link programKeys} goes back to git's default.
+ * {@link programKeys} and {@link remoteProgramKeys} goes back to git's
+ * default.
  */
 export function neutralisePrograms(entries: readonly ListedConfig[]): ConfigEntry[] {
   const repository = fromRepository(entries);
@@ -109,6 +140,11 @@ export function neutralisePrograms(entries: readonly ListedConfig[]): ConfigEntr
     const merge = subsectionKey(entry.key, "merge");
     if (merge?.name.toLowerCase() === "driver") {
       overrides.set(`merge.${merge.subsection}.driver`, conflictMergeDriver);
+    }
+    const remote = subsectionKey(entry.key, "remote");
+    const fallback = remoteProgramKeys.find(([name]) => name === remote?.name.toLowerCase());
+    if (remote !== null && fallback !== undefined) {
+      overrides.set(`remote.${remote.subsection}.${fallback[0]}`, fallback[1]);
     }
   }
   for (const [key, fallback] of programKeys) {
