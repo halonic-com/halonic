@@ -44,19 +44,20 @@ verifies("engine.agent-memory-tools", () => {
     expect(await run("memory_list")).toBe(
       "## Billing\n\nMonthly\n\n## Refunds\n\nAsk for the order number",
     );
-    expect(await run("memory_forget", { title: "Refunds " })).toBe('Removed the note "Refunds".');
+    expect(await run("memory_forget", { title: "REFUNDS " })).toBe('Removed the note "Refunds".');
     expect(await run("memory_forget", { title: "Refunds" })).toBe(
       'There is no note titled "Refunds".',
     );
   });
 
-  it("fails a call with a missing or non-string argument", async () => {
+  it("fails a call with a missing or non-string argument, or a refused save", async () => {
     const { run } = toolsOf();
 
     await expect(run("memory_save", { title: "Refunds" })).rejects.toThrow(
       "text must be a string.",
     );
     await expect(run("memory_forget", { title: 3 })).rejects.toThrow("title must be a string.");
+    await expect(run("memory_save", { title: " ", text: "x" })).rejects.toThrow(RangeError);
   });
 
   it("lets a later chat turn of the agent find a note an earlier one saved", async () => {

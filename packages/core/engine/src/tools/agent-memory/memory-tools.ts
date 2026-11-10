@@ -2,7 +2,7 @@
 // are for the model, not for people.
 
 import type { HalonicTool } from "../../agent/turn-tools.ts";
-import type { AgentMemory } from "./agent-memory.ts";
+import { type AgentMemory, maxMemoryText, maxNotes } from "./agent-memory.ts";
 
 /** The names of the memory tools, in the order they are offered. */
 export const memoryToolNames = ["memory_list", "memory_save", "memory_forget"] as const;
@@ -28,8 +28,7 @@ export function memoryTools(memory: AgentMemory): HalonicTool[] {
     {
       definition: {
         name: "memory_save",
-        description:
-          "Keeps a note for later runs and chats. Saving a title you already used replaces that note.",
+        description: `Keeps a note for later runs and chats. Saving a title you already used replaces that note. You keep at most ${maxNotes} notes of ${maxMemoryText} characters together.`,
         parameters: {
           type: "object",
           properties: {
@@ -59,9 +58,10 @@ export function memoryTools(memory: AgentMemory): HalonicTool[] {
       },
       run: async (args) => {
         const title = stringArg(args, "title");
-        return (await memory.forget(title))
-          ? `Removed the note "${title.trim()}".`
-          : `There is no note titled "${title.trim()}".`;
+        const removed = await memory.forget(title);
+        return removed === undefined
+          ? `There is no note titled "${title.trim()}".`
+          : `Removed the note "${removed}".`;
       },
     },
   ];

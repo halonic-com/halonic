@@ -22,8 +22,12 @@ export interface MemoryNote {
 
 /** The longest note title, in characters. */
 export const maxNoteTitle = 120;
-/** The longest note text, in characters, so one note can't fill the store. */
+/** The longest note text, in characters. */
 export const maxNoteText = 16_000;
+/** The most notes an agent keeps. */
+export const maxNotes = 100;
+/** The most characters all of an agent's note texts hold together, so `memory_list` stays small enough for a model's context. */
+export const maxMemoryText = 64_000;
 
 export interface AgentMemoryOptions {
   readonly records: RecordStore;
@@ -57,13 +61,15 @@ export class AgentMemory {
         notes.push({ title, text, at: record.at });
       }
     }
-    return notes.sort((a, b) => a.title.localeCompare(b.title));
+    return notes.sort((a, b) => compareCodePoints(a.title, b.title));
   }
 
   /**
    * Saves a note under its title, replacing a note with the same title.
    *
-   * @throws RangeError when the title is empty or too long, or the text too long; nothing is written then
+   * @throws RangeError when the title is empty or too long, the text too long,
+   *   a new title would pass {@link maxNotes}, or the texts together would pass
+   *   {@link maxMemoryText}; nothing is written then. The message says what to do.
    */
   async save(title: string, text: string): Promise<MemoryNote> {
     const trimmed = title.trim();
@@ -74,7 +80,25 @@ export class AgentMemory {
       throw new RangeError(`A note's text must be at most ${maxNoteText} characters.`);
     }
     const id = noteId(trimmed);
-    const exists = foldRecords(await this.changes()).has(id);
+    const notes = foldRecords(await this.changes());
+    const exists = notes.has(id);
+    if (!exists && notes.size >= maxNotes) {
+      throw new RangeError(
+        `You already keep ${maxNotes} notes, the most allowed. Forget a note you no longer need, or save under the title of one you have to replace it.`,
+      );
+    }
+    let total = text.length;
+    for (const [other, record] of notes) {
+      const { text: otherText } = record.values;
+      if (other !== id && typeof otherText === "string") {
+        total += otherText.length;
+      }
+    }
+    if (total > maxMemoryText) {
+      throw new RangeError(
+        `Your notes would hold ${total} characters, more than the ${maxMemoryText} allowed. Shorten this note, or forget or shorten notes you no longer need.`,
+      );
+    }
     const at = this.options.clock.now().toISOString();
     await this.options.records.append([
       this.change(id, exists ? "update" : "add", at, { title: trimmed, text }),
@@ -82,15 +106,17 @@ export class AgentMemory {
     return { title: trimmed, text, at };
   }
 
-  /** Removes the note with a title, and says whether there was one. */
-  async forget(title: string): Promise<boolean> {
+  /** Removes the note with a title, and gives its title as saved; `undefined` when there was none. */
+  async forget(title: string): Promise<string | undefined> {
     const id = noteId(title.trim());
-    if (!foldRecords(await this.changes()).has(id)) {
-      return false;
+    const record = foldRecords(await this.changes()).get(id);
+    if (record === undefined) {
+      return undefined;
     }
     const at = this.options.clock.now().toISOString();
     await this.options.records.append([this.change(id, "remove", at, null)]);
-    return true;
+    const { title: saved } = record.values;
+    return typeof saved === "string" ? saved : title.trim();
   }
 
   private changes(): Promise<RecordChange[]> {
@@ -117,4 +143,17 @@ export class AgentMemory {
 
 function noteId(title: string): string {
   return title.toLowerCase();
+}
+
+/** Orders by Unicode code point, so the order doesn't depend on the host's language. */
+function compareCodePoints(a: string, b: string): number {
+  const left = Array.from(a, (character) => character.codePointAt(0) ?? 0);
+  const right = Array.from(b, (character) => character.codePointAt(0) ?? 0);
+  for (let i = 0; i < Math.min(left.length, right.length); i++) {
+    const difference = (left[i] ?? 0) - (right[i] ?? 0);
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+  return left.length - right.length;
 }
