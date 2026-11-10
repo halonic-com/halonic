@@ -49,6 +49,39 @@ export function coveredByStatement(
   );
 }
 
+/** The covered account that opened the pull request, if one did. */
+function coveredOpener(pullRequestAuthor: string | undefined): CoveredAccount | undefined {
+  const login = pullRequestAuthor?.toLowerCase();
+  return coveredAccounts.find((account) => account.login.toLowerCase() === login);
+}
+
+/**
+ * Why a commit doesn't belong in a pull request a covered account opened,
+ * or undefined when it does. Such a pull request holds only that account's
+ * own commits, and a sign-off doesn't change that: a runner's default git
+ * identity signing off its own commit would otherwise slip into the
+ * account's history under a name the statement doesn't cover.
+ */
+export function coveredAuthorProblem(
+  commit: CommitFacts,
+  pullRequestAuthor: string | undefined,
+): string | undefined {
+  const opener = coveredOpener(pullRequestAuthor);
+  if (opener === undefined || commit.authorEmail.toLowerCase() === opener.email.toLowerCase()) {
+    return undefined;
+  }
+  const what = `"${commit.subject}" by ${commit.authorName} <${commit.authorEmail}>`;
+  return (
+    `${what} is in a pull request ${opener.login} opened, so it must be authored as ` +
+    `${opener.login} <${opener.email}>; a sign-off doesn't change that. In this clone run ` +
+    `\`git config user.name ${opener.login}\` and \`git config user.email ${opener.email}\`, ` +
+    'then `git commit --amend --reset-author` and remove the "Signed-off-by:" line ' +
+    "(for every commit on the branch: `git rebase <base branch> --exec " +
+    `'git log -1 --format=%B | grep -v "^Signed-off-by:" | git commit --amend --reset-author -F -'\`), ` +
+    "and push with `git push --force-with-lease`."
+  );
+}
+
 const signOffPattern = /^(?<name>[^<>]*\S)\s*<(?<email>[^<>\s]+@[^<>\s]+)>$/;
 
 /** The email address of a sign-off value, or undefined when it isn't `Name <email>`. */
@@ -62,12 +95,21 @@ export function signOffEmail(value: string): string | undefined {
  * It passes when one of its sign-offs names the author's email address
  * (compared without regard to case; the name may be written differently).
  * Commits the standing statement covers pass without one (see
- * `coveredByStatement`). Merge commits are skipped: they bring no change
+ * `coveredByStatement`). In a pull request a covered account opened, every
+ * commit must be that account's own, signed off or not (see
+ * `coveredAuthorProblem`). Merge commits are skipped: they bring no change
  * of their own, and GitHub's "Update branch" button writes them without a
  * sign-off.
  */
 export function dcoProblem(commit: CommitFacts, pullRequestAuthor?: string): string | undefined {
-  if (commit.parentCount > 1 || coveredByStatement(commit, pullRequestAuthor)) {
+  if (commit.parentCount > 1) {
+    return undefined;
+  }
+  const authorProblem = coveredAuthorProblem(commit, pullRequestAuthor);
+  if (authorProblem !== undefined) {
+    return authorProblem;
+  }
+  if (coveredByStatement(commit, pullRequestAuthor)) {
     return undefined;
   }
   const author = commit.authorEmail.toLowerCase();

@@ -51,6 +51,11 @@ whose owner matches `package.json`; `pnpm check` fails otherwise.
 - Commit only as the shared `halonic-dev` account
   (`halonic-dev <353861737+halonic-dev@users.noreply.github.com>`). Never commit under a personal
   or company email address. Check the author of every commit before you push.
+- The runner's default git identity is `Paperclip`, not `halonic-dev`. In each new clone or
+  worktree, run `git config user.name halonic-dev` and
+  `git config user.email 353861737+halonic-dev@users.noreply.github.com` before your first commit.
+  Never add a `Signed-off-by` line: the `dco` check fails a `halonic-dev` pull request that holds a
+  commit by any other author, signed off or not.
 
 ## Plan first
 

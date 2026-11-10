@@ -52,6 +52,27 @@ the address in another account's pull request doesn't help. The list
 lives in `coveredAccounts` in `tooling/check/src/lib/dco.ts`, and a test
 keeps it the same as the statement.
 
+The other way round, a pull request a covered account opened may hold only
+that account's own commits. Any other author fails, even with a sign-off
+that names it: the runner's default git identity (`Paperclip`) signing off
+its own commit would otherwise slip into `halonic-dev`'s history. Agents
+therefore set the identity in every clone before their first commit and
+never add a `Signed-off-by` line:
+
+```sh
+git config user.name halonic-dev
+git config user.email 353861737+halonic-dev@users.noreply.github.com
+```
+
+To fix commits that already have the wrong author, set the identity as
+above, then re-author every commit on the branch and drop its sign-off, and
+push with a lease:
+
+```sh
+git rebase origin/main --exec 'git log -1 --format=%B | grep -v "^Signed-off-by:" | git commit --amend --reset-author -F -'
+git push --force-with-lease
+```
+
 CI checks the pull request's commits by setting `DCO_RANGE=BASE..HEAD`
 and `DCO_PR_AUTHOR` to the login that opened it; a local `pnpm check` has
 no range and skips it. To check your branch yourself:

@@ -6,7 +6,14 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { checkDco } from "../rules/dco.ts";
 import type { CheckContext } from "./context.ts";
-import { type CommitFacts, coveredAccounts, dcoProblem, readCommits, signOffEmail } from "./dco.ts";
+import {
+  type CommitFacts,
+  coveredAccounts,
+  coveredAuthorProblem,
+  dcoProblem,
+  readCommits,
+  signOffEmail,
+} from "./dco.ts";
 import { findRepoRoot } from "./workspace.ts";
 
 const halonicDev = "353861737+halonic-dev@users.noreply.github.com";
@@ -79,7 +86,7 @@ verifies("check.dco-sign-off", () => {
   });
 
   test("fails anyone else's unsigned commit in a pull request halonic-dev opened", () => {
-    expect(dcoProblem(commit({}), "halonic-dev")).toContain('has no "Signed-off-by:" line');
+    expect(dcoProblem(commit({}), "halonic-dev")).toContain("must be authored as halonic-dev");
   });
 
   test("skips merge commits", () => {
@@ -92,6 +99,52 @@ verifies("check.dco-sign-off", () => {
     expect(signOffEmail("<ada@example.com>")).toBeUndefined();
     expect(signOffEmail("Ada ada@example.com")).toBeUndefined();
     expect(signOffEmail("Ada <not an address>")).toBeUndefined();
+  });
+});
+
+verifies("check.dco-covered-authors", () => {
+  const paperclip = commit({
+    authorName: "Paperclip",
+    authorEmail: "noreply@paperclip.ing",
+    signOffs: ["Paperclip <noreply@paperclip.ing>"],
+  });
+
+  test("fails a commit signed off by its own author in a pull request halonic-dev opened", () => {
+    expect(dcoProblem(paperclip)).toBeUndefined();
+    const problem = dcoProblem(paperclip, "halonic-dev");
+    expect(problem).toContain(
+      '"fix(yaml): keep the line number" by Paperclip <noreply@paperclip.ing> is in a pull request halonic-dev opened',
+    );
+    expect(problem).toContain(`must be authored as halonic-dev <${halonicDev}>`);
+    expect(problem).toContain("a sign-off doesn't change that");
+  });
+
+  test("says how to take on the account's identity and drop the sign-off", () => {
+    const problem = coveredAuthorProblem(paperclip, "Halonic-Dev");
+    expect(problem).toContain("`git config user.name halonic-dev`");
+    expect(problem).toContain(`\`git config user.email ${halonicDev}\``);
+    expect(problem).toContain("git commit --amend --reset-author");
+    expect(problem).toContain("git rebase <base branch> --exec");
+    expect(problem).toContain('remove the "Signed-off-by:" line');
+    expect(problem).toContain("git push --force-with-lease");
+  });
+
+  test("passes the account's own commits, in any case, signed off or not", () => {
+    const own = commit({ authorName: "halonic-dev", authorEmail: halonicDev.toUpperCase() });
+    expect(coveredAuthorProblem(own, "halonic-dev")).toBeUndefined();
+    expect(dcoProblem(own, "halonic-dev")).toBeUndefined();
+    const signed = commit({ authorEmail: halonicDev, signOffs: [`halonic-dev <${halonicDev}>`] });
+    expect(dcoProblem(signed, "halonic-dev")).toBeUndefined();
+  });
+
+  test("leaves pull requests other accounts opened to the sign-off rule", () => {
+    expect(coveredAuthorProblem(paperclip, "someone")).toBeUndefined();
+    expect(coveredAuthorProblem(paperclip, undefined)).toBeUndefined();
+    expect(dcoProblem(paperclip, "someone")).toBeUndefined();
+  });
+
+  test("skips merge commits in a pull request halonic-dev opened", () => {
+    expect(dcoProblem(commit({ parentCount: 2 }), "halonic-dev")).toBeUndefined();
   });
 });
 
@@ -204,5 +257,19 @@ verifies("check.dco-sign-off", () => {
     expect(checkDco(context, "main..agent", "halonic-dev").problems).toEqual([]);
     expect(checkDco(context, "main..agent", "someone").problems).toHaveLength(1);
     expect(checkDco(context, "main..agent", undefined).problems).toHaveLength(1);
+  });
+
+  test("fails a runner's own signed-off commit in a pull request halonic-dev opened", () => {
+    git(["checkout", "-q", "-b", "runner", base]);
+    commitFile(
+      "g.txt",
+      "feat: runner identity\n\nSigned-off-by: Paperclip <noreply@paperclip.ing>",
+      "Paperclip <noreply@paperclip.ing>",
+    );
+    const context = { root } as CheckContext;
+    expect(checkDco(context, "main..runner", "someone").problems).toEqual([]);
+    const problems = checkDco(context, "main..runner", "halonic-dev").problems;
+    expect(problems).toHaveLength(1);
+    expect(problems[0]?.message).toContain("must be authored as halonic-dev");
   });
 });
