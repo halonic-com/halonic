@@ -6,8 +6,14 @@ compatibility_date = "2026-06-15"
 binding = "R2_STORE"
 bucket_name = "halonic-turbo-cache"
 
-# Account-level Secrets Store secret. The worker reads it with `await env.TURBO_TOKEN.get()`.
+# Write token (reads and uploads), only for main and the merge queue. Account-level Secrets Store secret, read with `await env.TURBO_TOKEN.get()`.
 [[secrets_store_secrets]]
 binding = "TURBO_TOKEN"
 store_id = "3a2182643c7a4eea82e266e47d982d70"
 secret_name = "TURBO_TOKEN"
+
+# Read-only token, for pull requests. It can read and query, never upload.
+[[secrets_store_secrets]]
+binding = "TURBO_TOKEN_READ"
+store_id = "3a2182643c7a4eea82e266e47d982d70"
+secret_name = "TURBO_TOKEN_READ"

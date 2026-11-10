@@ -1,10 +1,10 @@
-// Minimal Turborepo remote cache: R2 storage, bearer-token auth. Single team, keyed by artifact hash.
+// Minimal Turborepo remote cache: R2 storage, two bearer tokens (read, write). Single team, keyed by artifact hash.
 const HASH = /^[A-Za-z0-9_-]{8,128}$/;
 const ARTIFACT_PATH = /^\/v8\/artifacts\/([^/]+)$/;
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-async function authorized(request, token) {
+async function matches(request, token) {
   if (!token) return false;
   const given = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
   const enc = new TextEncoder();
@@ -15,13 +15,23 @@ async function authorized(request, token) {
   return crypto.subtle.timingSafeEqual(a, b);
 }
 
-// TURBO_TOKEN is an account-level Secrets Store binding: read it with get(). Any failure fails closed (401).
-async function readToken(env) {
+// Both tokens are account-level Secrets Store bindings: read them with get(). Any failure fails closed.
+async function readSecret(binding) {
   try {
-    return await env.TURBO_TOKEN.get();
+    return await binding?.get();
   } catch {
     return undefined;
   }
+}
+
+// "write" (TURBO_TOKEN: reads and uploads), "read" (TURBO_TOKEN_READ: reads only) or null.
+async function roleOf(request, env) {
+  const [write, read] = await Promise.all([
+    matches(request, await readSecret(env.TURBO_TOKEN)),
+    matches(request, await readSecret(env.TURBO_TOKEN_READ)),
+  ]);
+  if (write) return "write";
+  return read ? "read" : null;
 }
 
 async function query(request, env) {
@@ -62,7 +72,7 @@ async function read(request, env, key) {
   return new Response(isGet ? o.body : null, { headers });
 }
 
-async function route(request, env) {
+async function route(request, env, role) {
   const { pathname } = new URL(request.url);
   const { method } = request;
   if (pathname === "/v8/artifacts/status" && method === "GET") return json({ status: "enabled" });
@@ -71,7 +81,9 @@ async function route(request, env) {
 
   const key = pathname.match(ARTIFACT_PATH)?.[1];
   if (!key || !HASH.test(key)) return json({ error: "not found" }, 404);
-  if (method === "PUT") return put(request, env, key);
+  if (method === "PUT") {
+    return role === "write" ? put(request, env, key) : json({ error: "forbidden" }, 403);
+  }
   if (method === "GET" || method === "HEAD") return read(request, env, key);
   return json({ error: "method not allowed" }, 405);
 }
@@ -80,9 +92,8 @@ async function route(request, env) {
 // biome-ignore lint/style/noDefaultExport: required by the Workers runtime
 export default {
   async fetch(request, env) {
-    if (!(await authorized(request, await readToken(env)))) {
-      return json({ error: "unauthorized" }, 401);
-    }
-    return route(request, env);
+    const role = await roleOf(request, env);
+    if (!role) return json({ error: "unauthorized" }, 401);
+    return route(request, env, role);
   },
 };
