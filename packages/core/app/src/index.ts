@@ -150,6 +150,13 @@ export {
 export { readPackageSpec } from "./package-spec.ts";
 export { isPackageManagerVariable } from "./pin-overrides.ts";
 export { pinnedRunnerArgs } from "./pinned-args.ts";
+export {
+  MAX_PLUGIN_BYTES,
+  MAX_PLUGIN_ENTRIES,
+  type PluginFolder,
+  type PluginProblem,
+  readPluginFolder,
+} from "./plugin-folder.ts";
 export type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";
 export {
   type PluginFileChanges,
