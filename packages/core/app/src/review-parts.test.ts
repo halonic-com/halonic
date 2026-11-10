@@ -29,7 +29,8 @@ const byAssistant = lines({ 3: "line 3 by the assistant", 8: "line 8 by the assi
 /** A workflow where the assistant changed lines 3 and 8: two parts. */
 async function withTwoParts() {
   const store = new TestDefinitionStore({ [path]: lines() }, digest);
-  const review = new ReviewService({ store, digest });
+  const recordStore = new TestDefinitionStore({}, digest);
+  const review = new ReviewService({ store, records: recordStore, digest });
   await review.propose({
     path,
     content: byAssistant,
@@ -122,7 +123,8 @@ verifies("app.review-accept-reject-part", () => {
 
   it("removes a new file when its only part is rejected", async () => {
     const store = new TestDefinitionStore({}, digest);
-    const review = new ReviewService({ store, digest });
+    const recordStore = new TestDefinitionStore({}, digest);
+    const review = new ReviewService({ store, records: recordStore, digest });
     await review.propose({ path, content: "name: Triage\n", expected: "absent", card: k1 });
     const found = await review.changesIn(path);
     await review.reject({ kind: "part", path, part: 0, seen: found?.seen ?? "" });
