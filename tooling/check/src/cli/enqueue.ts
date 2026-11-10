@@ -43,7 +43,7 @@ function printFailure(output: string): void {
   }
 }
 
-function steps(base: string): readonly Step[] {
+function steps(base: string, branch: string): readonly Step[] {
   return [
     {
       label: "frozen lockfile",
@@ -73,7 +73,7 @@ function steps(base: string): readonly Step[] {
         "--base",
         base,
         "--branch",
-        process.env["ENQUEUE_BRANCH"] ?? "",
+        branch,
         "--skip-test-runs",
       ],
     },
@@ -106,19 +106,22 @@ function main(): number {
     let testRoot = root;
     if (run("git", ["merge-base", "--is-ancestor", "origin/main", "HEAD"], root).status !== 0) {
       console.log("▶ branch is behind origin/main: testing a temporary merge");
-      git(root, "worktree", "add", "--detach", mergeDir, "HEAD");
+      if (git(root, "worktree", "add", "--detach", mergeDir, "HEAD") === undefined) {
+        console.error("check:enqueue: could not check out your branch for the merge.");
+        return 2;
+      }
       const merged = run("git", ["merge", "--no-edit", "origin/main"], mergeDir);
       if (merged.status !== 0) {
         console.error(
           "✗ origin/main doesn't merge cleanly. Rebase on origin/main and fix the conflicts.",
         );
+        console.error(merged.stderr.trim());
         return 1;
       }
       testRoot = mergeDir;
     }
-    process.env["ENQUEUE_BRANCH"] = branch;
     const started = performance.now();
-    for (const step of steps(baseDir)) {
+    for (const step of steps(baseDir, branch)) {
       const stepStarted = performance.now();
       const result = run(step.command, step.args, testRoot);
       const seconds = ((performance.now() - stepStarted) / 1000).toFixed(1);
