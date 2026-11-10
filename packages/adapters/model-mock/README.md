@@ -16,7 +16,7 @@ The scripted mock model. It answers each agent from a script, turns `tool:<name>
 - The model reports `tools` and `jsonOutput` support, no `vision`, and no streaming.
 - `remaining()` gives the replies left per agent, and `requests` keeps every request, so a test can check it used its whole script.
 
-A provider whose `options.script` is not a map from agent id to a list of text replies is refused with an error that names the provider and the agent id. Without `options.script`, every agent gets its last user message echoed.
+A provider whose `options.script` is not a map from agent id to a list of text replies is refused with an error that names the provider, and the agent id when one agent's replies aren't a list of text. Without `options.script`, every agent gets its last user message echoed.
 
 As a workspace provider:
 
