@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: [ux-checklists-sandbox](/HAL/issues/HAL-1833#document-ux-checklists-sandbox) 3.7; Liam's decisions on [HAL-4305](/HAL/issues/HAL-4305) (the run's harness) and [HAL-4349](/HAL/issues/HAL-4349) (one gate, where the engine opens); Julian's conditions on [HAL-1673](/HAL/issues/HAL-1673); task HAL-4289
 
-`halonic run` shall check the sandbox as `cli.sandbox-gate` says, for the workflow it is about to start, before it opens the workspace's engine, so a refused run writes nothing to the run log and ends with exit 9. It shall print each agent's ! line from that check before the run's heading, and repeat it first in the result. When a run names a harness for all its agents, the check shall use that harness in place of each agent's own. `halonic run` shall have no option that skips the check.
+When `halonic run` is about to start a workflow, the CLI shall check the sandbox as `cli.sandbox-gate` says, before it opens the workspace's engine, so a refused run writes nothing to the run log and ends with exit 9. It shall print each agent's ! line from that check before the run's heading, and repeat it first in the result. When a run names a harness for all its agents, the check shall use that harness in place of each agent's own. `halonic run` shall have no option that skips the check.
 
 ## Examples
 
