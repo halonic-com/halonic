@@ -69,6 +69,7 @@ fn repo_config_gives_program_keys_the_users_value_or_gits_default() {
         entry("local", "core.sshcommand", "touch owned"),
         entry("local", "gpg.ssh.defaultkeycommand", "touch owned"),
         entry("local", "gpg.program", "touch owned"),
+        entry("local", "interactive.diffFilter", "touch owned"),
     ];
     assert_eq!(
         pairs(&neutralise_programs(&entries)),
@@ -76,6 +77,24 @@ fn repo_config_gives_program_keys_the_users_value_or_gits_default() {
             ("core.sshcommand", "ssh -i acme-key"),
             ("gpg.program", "gpg"),
             ("gpg.ssh.defaultkeycommand", ""),
+            ("interactive.difffilter", ""),
+        ]
+    );
+}
+
+#[test]
+fn repo_config_blanks_the_repositorys_trailer_commands() {
+    let entries = [
+        entry("local", "trailer.planted.command", "touch owned"),
+        entry("worktree", "trailer.sign.off.cmd", "touch owned"),
+        entry("local", "trailer.planted.key", "Planted"),
+        entry("global", "trailer.mine.cmd", "my-trailer"),
+    ];
+    assert_eq!(
+        pairs(&neutralise_programs(&entries)),
+        [
+            ("trailer.planted.command", ""),
+            ("trailer.sign.off.cmd", ""),
         ]
     );
 }

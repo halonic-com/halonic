@@ -27,16 +27,27 @@ const PROGRAM_KEYS: &[(&str, &str)] = &[
     ("gpg.x509.program", "gpgsm"),
     ("gpg.ssh.program", "ssh-keygen"),
     ("gpg.ssh.defaultkeycommand", ""),
+    // Only `add -p` runs it, and the allow-list has no `-p` on `add`. Blank
+    // anyway, so a later allow-list entry can't bring it back.
+    ("interactive.difffilter", ""),
 ];
 
-/// Programs a remote names for the other end of a fetch or push, with
-/// git's default. A partial clone fetches missing objects on its own during
-/// `diff`, `log`, `checkout`, `switch` and `reset`, and that fetch runs the
-/// promisor remote's `uploadpack`, so the flags on `pull` and `push` alone
-/// don't cover them.
-const REMOTE_PROGRAM_KEYS: &[(&str, &str)] = &[
-    ("uploadpack", "git-upload-pack"),
-    ("receivepack", "git-receive-pack"),
+/// Keys `<section>.<subsection>.<name>` naming one program each, as
+/// section, name and the value that replaces a repository's own.
+///
+/// - A remote's `uploadpack` and `receivepack` go back to git's default. A
+///   partial clone fetches missing objects on its own during `diff`, `log`,
+///   `checkout`, `switch` and `reset`, and that fetch runs the promisor
+///   remote's `uploadpack`, so the flags on `pull` and `push` alone don't
+///   cover them.
+/// - A trailer's `command` and `cmd` are blanked. Only `commit --trailer`
+///   runs them, and the allow-list has no `--trailer`; blank anyway, as
+///   for `interactive.diffFilter`.
+const SUBSECTION_PROGRAM_KEYS: &[(&str, &str, &str)] = &[
+    ("remote", "uploadpack", "git-upload-pack"),
+    ("remote", "receivepack", "git-receive-pack"),
+    ("trailer", "command", ""),
+    ("trailer", "cmd", ""),
 ];
 
 /// A merge driver that always reports a conflict, so the user resolves it.
@@ -181,8 +192,8 @@ pub(crate) fn blank_filters(names: &[String]) -> Vec<(String, String)> {
 }
 
 /// The config that neutralises every other program the repository's own
-/// config names: its merge drivers, its remotes' programs, its credential
-/// helpers, and the keys in [`PROGRAM_KEYS`].
+/// config names: its merge drivers, its credential helpers, and the keys in
+/// [`SUBSECTION_PROGRAM_KEYS`] and [`PROGRAM_KEYS`].
 pub(crate) fn neutralise_programs(entries: &[ConfigEntry]) -> Vec<(String, String)> {
     let repository = || entries.iter().filter(|entry| entry.is_from_repository());
     let mut overrides: Vec<(String, String)> = Vec::new();
@@ -195,7 +206,7 @@ pub(crate) fn neutralise_programs(entries: &[ConfigEntry]) -> Vec<(String, Strin
         }
     }
     for entry in repository() {
-        if let Some(reset) = remote_program_default(&entry.key)
+        if let Some(reset) = subsection_program_reset(&entry.key)
             && !overrides.contains(&reset)
         {
             overrides.push(reset);
@@ -225,14 +236,20 @@ pub(crate) fn neutralise_programs(entries: &[ConfigEntry]) -> Vec<(String, Strin
     overrides
 }
 
-/// For `remote.<name>.uploadpack` or `receivepack`, the same key with git's
-/// default program.
-fn remote_program_default(key: &str) -> Option<(String, String)> {
-    let (name, program) = subsection_key(key, "remote")?;
-    let (program, default) = REMOTE_PROGRAM_KEYS
+/// For a key in [`SUBSECTION_PROGRAM_KEYS`], the same key with the value
+/// that replaces it.
+fn subsection_program_reset(key: &str) -> Option<(String, String)> {
+    SUBSECTION_PROGRAM_KEYS
         .iter()
-        .find(|(known, _)| program.eq_ignore_ascii_case(known))?;
-    Some((format!("remote.{name}.{program}"), (*default).to_owned()))
+        .find_map(|(section, name, value)| {
+            let (subsection, found) = subsection_key(key, section)?;
+            found.eq_ignore_ascii_case(name).then(|| {
+                (
+                    format!("{section}.{subsection}.{name}"),
+                    (*value).to_owned(),
+                )
+            })
+        })
 }
 
 /// `credential.helper` and `credential.<url>.helper`.

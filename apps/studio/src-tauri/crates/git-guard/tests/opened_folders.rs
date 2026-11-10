@@ -284,6 +284,29 @@ fn opened_folders_refuses_objects_and_refs_linked_outside() {
     assert!(plain_git_shows_the_secret(&sandbox));
 }
 
+/// `index` and `info` sit at the top of the git folder, where every link is
+/// checked too (HAL-3971, finding 2).
+#[cfg(unix)]
+#[test]
+fn opened_folders_refuses_the_index_or_info_linked_outside() {
+    use std::os::unix::fs::symlink;
+    for name in ["index", "info"] {
+        let sandbox = Sandbox::new();
+        let outside = outside_repository(&sandbox);
+        sandbox.init_repository();
+        let linked = sandbox.acme.join(".git").join(name);
+        if linked.is_dir() {
+            std::fs::remove_dir_all(&linked).expect("the folder is removed");
+        }
+        symlink(outside.join(".git").join(name), &linked).expect("the link is created");
+        assert_eq!(
+            sandbox.git("status"),
+            Err(GitError::FolderNotOpened),
+            "{name}"
+        );
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn opened_folders_refuses_a_pack_file_linked_outside() {

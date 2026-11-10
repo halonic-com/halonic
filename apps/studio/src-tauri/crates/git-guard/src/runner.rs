@@ -308,10 +308,6 @@ impl GitRunner {
             return command;
         };
         command.arg(subcommand);
-        if call.shows_diffs() {
-            // `diff.external`, `diff.<driver>.command` and `textconv`.
-            command.args(["--no-ext-diff", "--no-textconv"]);
-        }
         // `remote.<name>.uploadpack` and `receivepack`.
         match subcommand.as_str() {
             "pull" => {
@@ -322,7 +318,21 @@ impl GitRunner {
             }
             _ => {}
         }
-        command.args(rest);
+        if !call.shows_diffs() {
+            command.args(rest);
+            return command;
+        }
+        // `diff.external`, `diff.<driver>.command` and `textconv`. The last
+        // of two opposite options wins, so these go after the call's own,
+        // just before the paths.
+        let paths_start = rest
+            .iter()
+            .position(|arg| arg == "--")
+            .unwrap_or(rest.len());
+        let (options, paths) = rest.split_at(paths_start);
+        command.args(options);
+        command.args(["--no-ext-diff", "--no-textconv"]);
+        command.args(paths);
         command
     }
 

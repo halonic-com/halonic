@@ -117,7 +117,24 @@ fn git_hardening_turns_off_external_diffs_for_diff_and_log() {
     let all = arguments(&command("diff --cached"));
     assert_eq!(
         all[all.len() - 4..],
-        ["diff", "--no-ext-diff", "--no-textconv", "--cached"]
+        ["diff", "--cached", "--no-ext-diff", "--no-textconv"]
+    );
+    // After the call's own options, before the paths, so no option can
+    // turn them back on.
+    let all = arguments(&command("log -p -n 3 HEAD -- notes.md"));
+    assert_eq!(
+        all[all.len() - 9..],
+        [
+            "log",
+            "-p",
+            "-n",
+            "3",
+            "HEAD",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--",
+            "notes.md"
+        ]
     );
 }
 

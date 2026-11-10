@@ -94,6 +94,34 @@ fn git_allow_list_refuses_shortened_and_bundled_options() {
     }
 }
 
+/// The calls that brought a program back or wrote outside the workspace
+/// through the git adapter's `Repository.run` (HAL-3971, finding 3).
+#[test]
+fn git_allow_list_refuses_later_options_that_run_programs_or_write_outside() {
+    let calls = [
+        "diff --cached --ext-diff",
+        "log -p --ext-diff",
+        "log -p --textconv -- notes.md",
+        "commit --trailer planted=1 -m note",
+        "add -p",
+        "commit -p -m note",
+        "log --output=../owned.txt",
+        "diff --output ../owned.txt",
+    ];
+    for call in calls {
+        assert!(refused_option(call), "{call}");
+    }
+    for call in [
+        "cat-file --textconv HEAD:a.yaml",
+        "config --file=../owned acme.key 1",
+    ] {
+        assert!(
+            matches!(check(call), Err(GitError::SubcommandNotAllowed { .. })),
+            "{call}"
+        );
+    }
+}
+
 #[test]
 fn git_allow_list_refuses_global_options_and_other_subcommands() {
     let calls = [
