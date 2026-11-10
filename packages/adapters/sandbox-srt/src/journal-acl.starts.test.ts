@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Every program the journal ACL starts goes through this fake, so the test
 // sees each one and nothing really runs.
@@ -18,10 +18,13 @@ vi.mock("node:child_process", () => ({
 
 const { restrictToThisUser } = await import("./journal-acl.ts");
 
-process.env["SystemRoot"] = "system";
 verifies("sandbox-srt.session", () => {
   describe("what the journal ACL starts", () => {
+    // Windows' own random number generator needs the real SystemRoot, so put it back.
+    afterEach(() => vi.unstubAllEnvs());
+
     it("is only whoami.exe and icacls.exe from the system folder, never a skill's scripts (HAL-3896)", async () => {
+      vi.stubEnv("SystemRoot", "system");
       await restrictToThisUser("journals");
       expect(started.map((s) => s.file.split(/[\\/]/).pop())).toEqual([
         "whoami.exe",
