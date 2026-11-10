@@ -94,5 +94,28 @@ Codex sends the run token to the bridge in the `x-halonic-run-token` header.
 sets `CODEX_HOME` to the agent's own settings folder, never the person's
 `~/.codex`. If the profile has no settings folder it throws an error that
 doesn't hold the token. The bridge provider in the agent's `config.toml` names
-`HALONIC_RUN_TOKEN` in `env_http_headers`, so the token never lands in a file. The bridge's address goes in `config.toml`
-(D3): Codex reads a custom provider's address only from there.
+`HALONIC_RUN_TOKEN` in `env_http_headers`, so the token never lands in a file.
+
+## `config.toml`
+
+`CODEX_HOME` is the agent's settings folder, and its `config.toml` holds the
+same text for every run, in a sandbox or on this computer (`codexConfigText`):
+
+- the model provider `halonic`: the bridge, with the Responses API and the
+  run token header. `requires_openai_auth` lets a person's own ChatGPT
+  sign-in through to the bridge; without one, Codex sends no
+  `Authorization` and the bridge uses Halonic's key.
+- `sandbox_mode = "danger-full-access"`: Codex's own sandbox is off, because
+  Halonic's sandbox is already around it and the two don't nest.
+- `approval_policy = "on-request"`: Codex asks for an OK when it wants one,
+  and the harness turns that into `approval.requested`.
+- `web_search = "disabled"` (decision 7, HAL-2076): the agent reaches the
+  web only through Halonic's tools.
+- the MCP server `halonic`: the bridge, with the same header.
+
+The bridge's address changes with each run, and Codex reads a provider's
+address only from its settings, so it goes on the command line instead:
+`codexConfigArgs(bridge)` gives `-c model_providers.halonic.base_url=…/v1`
+and `-c mcp_servers.halonic.url=…/mcp`. That way two runs of one agent never
+rewrite each other's file. Checked by hand with Codex 0.166.0: `config/read`
+gives back each value, and a turn reaches the bridge with the token header.

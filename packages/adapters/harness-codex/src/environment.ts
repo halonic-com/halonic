@@ -21,7 +21,8 @@ export const codexRunTokenVariable = "HALONIC_RUN_TOKEN";
  *   header. `Authorization` stays free for the person's own sign-in.
  *
  * The bridge's address isn't a variable: Codex reads a custom provider's
- * address only from `config.toml`, and the address holds no secret.
+ * address only from its settings, so it goes on the command line
+ * (`codexConfigArgs`), and the address holds no secret.
  *
  * The values hold the run token. The engine passes them only to the
  * sandbox; nothing here writes them anywhere else.
