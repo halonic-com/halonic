@@ -65,21 +65,45 @@ function until(state: string): RunEvent[] {
   return events.slice(0, entered + 1);
 }
 
+/** A follow stopped by Ctrl C with `events` so far, whose cancel worked or not. */
+function stopped(events: readonly RunEvent[], cancelled = true) {
+  return { runId: run.summary.id, events, cancelled };
+}
+
 verifies("cli.run", () => {
   it("says the run was cancelled after the last step that finished", () => {
-    const stopped = stoppedResult(until("draft"), workspace);
+    const result = stoppedResult(stopped(until("draft")), workspace);
 
-    expect(plainText(stopped.meaning ?? [])).toMatch(
+    expect(plainText(result.meaning ?? [])).toMatch(
       /^The run \w{6} was cancelled after the step Classify it\. Nothing after it ran\.$/,
     );
   });
 
+  it("says a run it couldn't cancel wasn't cancelled, and how to see it", () => {
+    const result = stoppedResult(stopped(until("draft"), false), workspace);
+
+    expect(plainText(result.meaning ?? [])).toMatch(
+      /^The run (\w{6}) wasn't cancelled, only no longer followed, so it may go on\. See where it is: halonic runs show \1$/,
+    );
+    expect(result.json).toEqual({
+      run: expect.objectContaining({ id: run.summary.id }),
+      events: until("draft"),
+    });
+  });
+
+  it("says a run it couldn't cancel wasn't cancelled, even before any step finished", () => {
+    const result = stoppedResult(stopped([], false), workspace);
+
+    expect(plainText(result.meaning ?? [])).toMatch(/^The run \w{6} wasn't cancelled,/);
+    expect(result.json).toEqual({});
+  });
+
   it("says only Stopped. when no step had finished yet", () => {
-    expect(stoppedResult(until("read"), workspace).meaning).toBeUndefined();
+    expect(stoppedResult(stopped(until("read")), workspace).meaning).toBeUndefined();
   });
 
   it("says only Stopped. when the run hadn't started", () => {
-    expect(stoppedResult([], workspace)).toEqual({ stopped: true, json: {} });
+    expect(stoppedResult(stopped([]), workspace)).toEqual({ stopped: true, json: {} });
   });
 
   it("shows an escape code in the workflow's name as its code", async () => {

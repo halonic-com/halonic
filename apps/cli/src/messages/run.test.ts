@@ -40,6 +40,10 @@ describe("run's sentences", () => {
     expect(words(stopMessages.stopped(meaning))).toBe(
       "Stopped. The run 01JD8Q was cancelled after the step Classify. Nothing after it ran.",
     );
+    const notCancelled = runMessages.notCancelled("01JD8Q").phrase;
+    expect(words(stopMessages.stopped(notCancelled))).toBe(
+      "Stopped. The run 01JD8Q wasn't cancelled, only no longer followed, so it may go on. See where it is: halonic runs show 01JD8Q",
+    );
   });
 
   it("has the live heading and a step's facts, with - for · without UTF-8", () => {
