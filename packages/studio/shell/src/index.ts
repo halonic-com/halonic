@@ -111,6 +111,12 @@ export {
   watchResources,
 } from "./resources/resource-watch.ts";
 export { type SaveFailure, type SaveReason, saveFailureFor } from "./save/save-failure.ts";
+export {
+  couldNotSaveText,
+  type SaveNote,
+  SaveState,
+  type SavingItem,
+} from "./save/save-state.ts";
 export type {
   FeatureServices,
   ServiceFactory,

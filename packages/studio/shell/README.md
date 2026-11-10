@@ -28,6 +28,7 @@ look up services its feature lists in `needs`.
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
 | `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
+| `SaveState`                     | the toolbar's save note and the failed-save toast          | `shell.save-state`        |
 | `watchResources`                | read the engine's resource numbers, flag a low disk        | `shell.resource-numbers`  |
 
 The sidebar's places come from features through `places.add`, naming one of the fixed places
@@ -139,6 +140,20 @@ error codes, and words its message from the reason: `disk-full` (`ENOSPC`, `EDQU
 `not-writable` (`EACCES`, `EPERM`, `EROFS`), `in-use` (`EBUSY`, which includes the Windows sharing
 violation) or `failed` for anything else. The code and the original message stay in the result for
 Copy details; they never go on screen (rule 4 of the failure-path guide).
+
+## Save state
+
+The Studio saves by itself (save model, HAL-1102), and the toolbar's save note is the only place
+saving shows. A workspace has one `SaveState`; screens write through `save(item, write)`, which
+never rejects and resolves to whether the item was saved. `note` says, most urgent first:
+`failed` ("Couldn't save · Try again"), `items-not-saved` (a change from outside Halonic holds
+items back, "1 item not saved · Compare"), `fields-not-saved` (fields with a mistake, "2 fields
+not saved"), `saving` or `saved`. A failed write also shows a danger toast, "Couldn't save
+_Support reply_: the disk is full." with **Try again**, worded from its save reason
+(`couldNotSaveText`); `tryAgain()` and the toast run the same write again, and a new save of the
+item closes the toast. Screens report fields with `setFieldsNotSaved` and outside changes with
+`holdForOutsideChange` and `releaseHold`; `compare()` opens Compare for the item held back
+longest.
 
 ## Error messages
 
