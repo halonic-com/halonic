@@ -1,5 +1,6 @@
 import { access, appendFile, chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { VcsWorktree } from "@halonicjs/ports";
 import { plainGit } from "./fixtures.test-helper.ts";
 
 /** Planted code, shaped like the contract suite's `PlantGitCode`, which only test files may import. */
@@ -8,6 +9,7 @@ export interface Plant {
   config(key: string, value?: string): Promise<void>;
   attributes(line: string): Promise<void>;
   localRemote(): Promise<void>;
+  worktreeGitFile(worktree: VcsWorktree): Promise<void>;
   ran(): Promise<boolean>;
 }
 
@@ -59,6 +61,10 @@ export function plantIn(folder: string, outside: string, hooks: readonly string[
         await writeHook(join(remote, "hooks"), hook);
       }
       await plainGit(folder, ["remote", "set-url", "origin", remote]);
+    },
+    async worktreeGitFile() {
+      // `GitVcs` has no worktrees yet (HAL-3245, git PR 4), so there is no `.git` file to rewrite.
+      throw new Error("The git Vcs has no worktrees yet.");
     },
     async ran() {
       try {

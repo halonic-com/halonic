@@ -1,6 +1,14 @@
 import { appendFile, lstat, mkdir, rename as move, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { isPrivateWorkspacePath, type Vcs, type VcsCommit, type VcsStatus } from "@halonicjs/ports";
+import {
+  isPrivateWorkspacePath,
+  type Vcs,
+  type VcsApplyOptions,
+  type VcsCommit,
+  type VcsFileDiff,
+  type VcsStatus,
+  type VcsWorktree,
+} from "@halonicjs/ports";
 import {
   logArgs,
   noRepositoryStatus,
@@ -171,6 +179,26 @@ export class GitVcs implements Vcs {
     else await move(source, target);
   }
 
+  async addWorktree(_version: string): Promise<VcsWorktree> {
+    throw notOnGitYet("addWorktree");
+  }
+
+  async removeWorktree(_id: string): Promise<void> {
+    throw notOnGitYet("removeWorktree");
+  }
+
+  async listWorktrees(): Promise<VcsWorktree[]> {
+    throw notOnGitYet("listWorktrees");
+  }
+
+  async diffBetween(_version: string, _worktreeId: string): Promise<VcsFileDiff[]> {
+    throw notOnGitYet("diffBetween");
+  }
+
+  async applyPatch(_patch: string, _options?: VcsApplyOptions): Promise<void> {
+    throw notOnGitYet("applyPatch");
+  }
+
   async init(): Promise<void> {
     if ((await Repository.open(this.#runner, this.#folder)) !== null) return;
     const folder = await realpath(this.#folder);
@@ -235,6 +263,16 @@ export class GitVcs implements Vcs {
       ["user.useConfigOnly", "true"],
     ];
   }
+}
+
+/**
+ * The error of a port v2 method git doesn't have yet. Worktrees,
+ * `diffBetween` and `applyPatch` come with the `.git`-file rule in the next
+ * part of HAL-3245; until then they refuse, rather than half work. Nothing
+ * outside this package builds a `GitVcs` yet.
+ */
+function notOnGitYet(method: string): Error {
+  return new Error(`The git Vcs can't ${method} yet (HAL-3245).`);
 }
 
 /** Whether anything is at `path`, a link included. */

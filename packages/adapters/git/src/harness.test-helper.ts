@@ -1,6 +1,7 @@
-import { chmod, writeFile } from "node:fs/promises";
+import { chmod, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { type DefinitionStore, isPrivateWorkspacePath } from "@halonicjs/ports";
 import {
   initRepository,
   plainGit,
@@ -49,6 +50,11 @@ export interface GitVcsFolder {
   vcs: GitVcs;
   files: FolderDefinitionStore;
   plant: Plant;
+  worktreeFiles(): DefinitionStore;
+  writePrivate(): Promise<void>;
+  commitPrivate(path: string, content: string): Promise<void>;
+  readPrivate(path: string): Promise<string | null>;
+  nonCommitIds(commit: string): Promise<string[]>;
 }
 
 type Files = Readonly<Record<string, string>>;
@@ -62,6 +68,11 @@ export interface MakeGitVcs {
   clones(files: Files): Promise<[GitVcsFolder, GitVcsFolder]>;
 }
 
+/** `GitVcs` has no worktrees yet (HAL-3245, git PR 4); no contract case asks for one before it does. */
+function noWorktreesYet(): never {
+  throw new Error("The git Vcs has no worktrees yet.");
+}
+
 /** The contract's folders, on real git, each in a new scratch folder. */
 export function gitVcsHarness(
   scratch: Scratch,
@@ -72,6 +83,21 @@ export function gitVcsHarness(
     vcs: new GitVcs(folder, { runner: await runner(), author: testAuthor }),
     files: new FolderDefinitionStore(folder),
     plant: plantIn(folder, await scratch.folder(), plantedHooks),
+    worktreeFiles: noWorktreesYet,
+    writePrivate: async () => noWorktreesYet(),
+    async commitPrivate(path, content) {
+      await writeFiles(folder, { [path]: content });
+      // `--force`, since a repository may ignore it; plain git, since the port refuses to stage it.
+      await plainGit(folder, ["add", "--force", "--", path]);
+      await plainGit(folder, ["commit", "--quiet", `--message=Commit ${path}`]);
+    },
+    readPrivate: (path) => readFile(join(folder, path), "utf8").catch(() => null),
+    async nonCommitIds(commit) {
+      const tree = await plainGit(folder, ["rev-parse", `${commit}^{tree}`]);
+      const blobs = await plainGit(folder, ["ls-tree", "-r", "--object-only", commit]);
+      const [blob] = blobs.split("\n");
+      return blob ? [tree.trim(), blob] : [tree.trim()];
+    },
   });
 
   return {
@@ -91,7 +117,11 @@ export function gitVcsHarness(
     },
     async repo(files) {
       const folder = await scratch.folder();
-      await initRepository(folder, files);
+      // A private entry is in the folder but not in the commit, as the harness says.
+      const isPrivate = ([path]: [string, string]) => isPrivateWorkspacePath(path);
+      const entries = Object.entries(files);
+      await initRepository(folder, Object.fromEntries(entries.filter((e) => !isPrivate(e))));
+      await writeFiles(folder, Object.fromEntries(entries.filter(isPrivate)));
       return harnessAt(folder);
     },
     async clones(files) {
