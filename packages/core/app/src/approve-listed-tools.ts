@@ -218,6 +218,11 @@ export function keepsChanging(versions: readonly WaitingVersion[], now: Date): b
  * shown, never at one computed again now. It works for a tool its server
  * keeps changing too: that is how a person approves one on purpose.
  *
+ * `waiting` must be one of `check.waiting`: the same name at the same
+ * fingerprint. The text stored is the check's, so a caller can't approve
+ * text the check never showed. Anything else is a bug in the caller, and
+ * throws {@link NotShownToolError} before anything is approved.
+ *
  * @example
  * await approveWaitingTool(check, check.waiting[0], store, clock);
  */
@@ -227,13 +232,47 @@ export async function approveWaitingTool(
   store: ToolApprovalStore,
   clock: Clock,
 ): Promise<void> {
+  await approveShownTool(check, shownInCheck(check, waiting), store, clock);
+}
+
+/** Thrown when a caller passes a waiting tool that didn't come from the check it passes. */
+export class NotShownToolError extends Error {
+  readonly listedName: string;
+
+  constructor(check: ListedToolApprovalCheck, waiting: WaitingTool) {
+    super(
+      `"${waiting.listedName}" at ${waiting.fingerprint} isn't waiting in this check of "${check.source}", so it can't be approved.`,
+    );
+    this.name = "NotShownToolError";
+    this.listedName = waiting.listedName;
+  }
+}
+
+/** The check's own entry for `waiting`, matched by name and fingerprint. */
+function shownInCheck(check: ListedToolApprovalCheck, waiting: WaitingTool): WaitingTool {
+  const shown = check.waiting.find(
+    (candidate) =>
+      candidate.listedName === waiting.listedName && candidate.fingerprint === waiting.fingerprint,
+  );
+  if (shown === undefined) {
+    throw new NotShownToolError(check, waiting);
+  }
+  return shown;
+}
+
+async function approveShownTool(
+  check: ListedToolApprovalCheck,
+  shown: WaitingTool,
+  store: ToolApprovalStore,
+  clock: Clock,
+): Promise<void> {
   await store.approve({
     location: check.location,
     source: check.source,
-    name: waiting.listedName,
+    name: shown.listedName,
     server: check.server,
-    fingerprint: waiting.fingerprint,
-    tool: waiting.tool,
+    fingerprint: shown.fingerprint,
+    tool: shown.tool,
     approvedAt: clock.now().toISOString(),
   });
 }
@@ -254,6 +293,11 @@ export interface ApproveAllResult {
  * the person can approve it by name. A refused tool is never in `shown`,
  * and a later change or a new tool isn't either, so neither is approved.
  *
+ * Every tool in `shown` must be one of `check.waiting`, as for
+ * {@link approveWaitingTool}. All of them are checked first, so a bad entry
+ * throws {@link NotShownToolError} with nothing approved. Whether a tool
+ * keeps changing is read from the check, not from `shown`.
+ *
  * @example
  * const { approved, leftOut } = await approveAllShown(check, check.waiting, store, clock);
  */
@@ -263,9 +307,10 @@ export async function approveAllShown(
   store: ToolApprovalStore,
   clock: Clock,
 ): Promise<ApproveAllResult> {
-  const approved = shown.filter((waiting) => !waiting.keepsChanging);
+  const fromCheck = shown.map((waiting) => shownInCheck(check, waiting));
+  const approved = fromCheck.filter((waiting) => !waiting.keepsChanging);
   for (const waiting of approved) {
-    await approveWaitingTool(check, waiting, store, clock);
+    await approveShownTool(check, waiting, store, clock);
   }
-  return { approved, leftOut: shown.filter((waiting) => waiting.keepsChanging) };
+  return { approved, leftOut: fromCheck.filter((waiting) => waiting.keepsChanging) };
 }

@@ -20,6 +20,7 @@ export {
   keepsChanging,
   type ListedToolApprovalCheck,
   type ListedToolApprovalInput,
+  NotShownToolError,
   type UnreadableApproval,
   type WaitingTool,
 } from "./approve-listed-tools.ts";
