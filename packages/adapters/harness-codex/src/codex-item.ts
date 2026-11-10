@@ -35,6 +35,20 @@ export type CodexItem =
   | { type: "imageView"; id: string; path: string }
   /** Something the agent said; the last one of a turn is its answer. */
   | { type: "agentMessage"; id: string; text: string }
+  /**
+   * A call to one of Codex's subagent tools, such as `spawnAgent` or
+   * `sendInput`. `receiverThreadIds` are the threads of the subagents it
+   * reaches; for `spawnAgent`, the new one's, once the item completes.
+   */
+  | {
+      type: "collabAgentToolCall";
+      id: string;
+      tool: string;
+      status: ItemStatus;
+      senderThreadId: string;
+      receiverThreadIds: string[];
+      prompt: string;
+    }
   | { type: "other" };
 
 /** One file of a `fileChange` item, with the change as a unified diff. */
@@ -84,6 +98,16 @@ export function parseCodexItem(value: unknown): CodexItem | undefined {
       return { type, id, path: text(value["path"]) };
     case "agentMessage":
       return { type, id, text: text(value["text"]) };
+    case "collabAgentToolCall":
+      return {
+        type,
+        id,
+        tool: text(value["tool"]),
+        status: statusOf(value["status"]),
+        senderThreadId: text(value["senderThreadId"]),
+        receiverThreadIds: texts(value["receiverThreadIds"]),
+        prompt: text(value["prompt"]),
+      };
     default:
       return { type: "other" };
   }
@@ -134,4 +158,9 @@ function statusOf(value: unknown): ItemStatus {
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+/** The strings of a list; anything else in it is left out. */
+function texts(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
 }

@@ -38,8 +38,17 @@ records those. `turn/completed` is the run's final `agent.finished`, with the
 agent's last message as output; a failed or interrupted turn ends the run
 with an error; when the model provider refused the key or sign-in (HTTP 401),
 the error doesn't repeat the provider's answer, which can hold part of a key.
-Other threads, and notifications and items it doesn't know,
-are skipped. Subagents (Codex's `collabAgentToolCall`) aren't reported yet.
+Other threads, and notifications and items it doesn't know, are skipped.
+
+Codex 0.166.0 has its subagents (`multi_agent`) on by default. A subagent
+Codex spawns becomes `agent.started` with the agent that started it as
+`parent`, and each turn it completes `agent.finished` with the same
+`parent`; its tool calls carry its own name. Codex gives its subagents no
+type, so they are called "subagent", "subagent-2" and so on. A subagent sent
+another task after it finished starts again under the same name. A failed
+subagent turn finishes the subagent with what went wrong and the run goes
+on. Codex's other subagent calls (`wait`, `closeAgent` and the like) give no
+event.
 
 ## Example
 

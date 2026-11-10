@@ -30,17 +30,46 @@ export interface AppServerEventReaderOptions {
 type ToolOutcome = NonNullable<Extract<HarnessEvent, { type: "tool.result" }>["outcome"]>;
 
 /**
+ * The name of a subagent: Codex 0.166.0 gives its subagents no type, so they
+ * are "subagent", "subagent-2" and so on, in the order they started.
+ */
+const subagentName = "subagent";
+
+/**
+ * The Codex tools that give a subagent its next task. The prompt is kept
+ * until the subagent's next turn starts.
+ */
+const nextTaskTools: ReadonlySet<string> = new Set(["sendInput", "followupTask"]);
+
+/** An agent with a Codex thread of its own: the task agent or one of its subagents. */
+interface AgentThread {
+  /** The `agent` of its events. */
+  name: string;
+  /** The agent that started it; `undefined` for the task agent. */
+  parent?: string;
+  /** Whether it is working on a turn, which `agent.started` reported. */
+  running: boolean;
+  /** The last thing it said: its output when its turn completes. */
+  answer: string;
+  /** The task it was sent for its next turn. */
+  nextPrompt: string;
+}
+
+/**
  * Turns the notifications of `codex app-server` into Halonic run events
- * (requirement `harness-codex.app-server-events`). One reader reads one run,
- * in order.
+ * (requirements `harness-codex.app-server-events` and
+ * `harness-codex.subagents`). One reader reads one run, in order.
  *
  * - A shell command, a file change, a call to an MCP tool and an image Codex
  *   looks at become `tool.called` when the item starts and `tool.result` when
  *   it completes, except a call to the bridge's MCP server, which the bridge
  *   records itself.
- * - `turn/completed` becomes the run's one final `agent.finished`, whose
- *   output is the last thing the agent said. A turn that failed or was
- *   interrupted ends the run with an error instead.
+ * - A subagent Codex spawns becomes `agent.started` with a `parent`, and
+ *   each turn it completes `agent.finished` with the same `parent`. The tool
+ *   calls in its thread are reported with the subagent as `agent`.
+ * - The task thread's `turn/completed` becomes the run's one final
+ *   `agent.finished`, whose output is the last thing the agent said. A turn
+ *   that failed or was interrupted ends the run with an error instead.
  * - Model calls go through the bridge, so the reader reports none.
  * - Notifications and item types it doesn't know are skipped, so a newer
  *   Codex can add some.
@@ -53,19 +82,23 @@ type ToolOutcome = NonNullable<Extract<HarnessEvent, { type: "tool.result" }>["o
  * } });
  */
 export class AppServerEventReader {
-  readonly #agentId: string;
-  readonly #threadId: string;
   /** Removes the bridge token from what the reader reports, and everything after the final event. */
   readonly #filter: HarnessEventFilter;
-  /** The ids of the items reported as `tool.called`, until their `tool.result`. */
+  /** The task agent and its subagents, by their thread id. Other threads are skipped. */
+  readonly #agents = new Map<string, AgentThread>();
+  /** The items reported as `tool.called`, until their `tool.result`, by thread and item id. */
   readonly #openCalls = new Set<string>();
-  /** The last thing the agent said: the run's output when the turn completes. */
-  #answer = "";
+  /** How many subagents have started, so each gets a name of its own. */
+  #subagentCount = 0;
 
   constructor(options: AppServerEventReaderOptions) {
-    this.#agentId = options.agentId;
-    this.#threadId = options.threadId;
     this.#filter = new HarnessEventFilter(options);
+    this.#agents.set(options.threadId, {
+      name: options.agentId,
+      running: true,
+      answer: "",
+      nextPrompt: "",
+    });
   }
 
   /** Whether the reader has read `turn/completed` and reported the final `agent.finished`. */
@@ -77,51 +110,117 @@ export class AppServerEventReader {
    * Reads the next notification Codex sent.
    *
    * @returns the events it stands for, often none; none holds the bridge token
-   * @throws Error when the turn failed or was interrupted; the message never holds the bridge token
+   * @throws Error when the task agent's turn failed or was interrupted; the message never holds the bridge token
    */
   read(notification: AppServerNotification): HarnessEvent[] {
     const { method, params } = notification;
     if (this.#filter.finished || !isPlainObject(params)) return [];
-    if (params["threadId"] !== this.#threadId) return [];
+    const threadId = params["threadId"];
+    const agent = typeof threadId === "string" ? this.#agents.get(threadId) : undefined;
+    if (typeof threadId !== "string" || agent === undefined) return [];
     switch (method) {
       case "item/started":
-        return this.#filter.pass(this.#started(parseCodexItem(params["item"])));
+        return this.#filter.pass(this.#started(threadId, agent, parseCodexItem(params["item"])));
       case "item/completed":
-        return this.#filter.pass(this.#completed(parseCodexItem(params["item"])));
+        return this.#filter.pass(this.#completed(threadId, agent, parseCodexItem(params["item"])));
+      case "turn/started":
+        return this.#filter.pass(this.#turnStarted(agent));
       case "turn/completed":
-        return this.#filter.pass([this.#finish(params["turn"])]);
+        return this.#filter.pass(this.#turnCompleted(agent, params["turn"]));
       default:
         return [];
     }
   }
 
-  #started(item: CodexItem | undefined): HarnessEvent[] {
-    const call = item === undefined ? undefined : toolCallOf(item);
-    if (item === undefined || call === undefined || this.#openCalls.has(call.id)) return [];
-    this.#openCalls.add(call.id);
-    return [{ type: "tool.called", agent: this.#agentId, tool: call.tool, args: call.args }];
+  #started(threadId: string, agent: AgentThread, item: CodexItem | undefined): HarnessEvent[] {
+    if (item === undefined) return [];
+    if (item.type === "collabAgentToolCall") {
+      this.#keepNextTask(item);
+      return [];
+    }
+    const call = toolCallOf(item);
+    if (call === undefined || this.#openCalls.has(`${threadId}/${call.id}`)) return [];
+    this.#openCalls.add(`${threadId}/${call.id}`);
+    return [{ type: "tool.called", agent: agent.name, tool: call.tool, args: call.args }];
   }
 
-  #completed(item: CodexItem | undefined): HarnessEvent[] {
+  #completed(threadId: string, agent: AgentThread, item: CodexItem | undefined): HarnessEvent[] {
     if (item === undefined) return [];
-    if (item.type === "agentMessage") this.#answer = item.text;
+    if (item.type === "agentMessage") agent.answer = item.text;
+    if (item.type === "collabAgentToolCall") return this.#spawned(agent, item);
     const call = toolCallOf(item);
     if (call === undefined) return [];
+    const key = `${threadId}/${call.id}`;
     // An item Codex reports only as completed is still a call, so it's reported as both.
-    const called = this.#openCalls.has(call.id) ? [] : this.#started(item);
-    this.#openCalls.delete(call.id);
+    const called = this.#openCalls.has(key) ? [] : this.#started(threadId, agent, item);
+    this.#openCalls.delete(key);
     const { result, outcome } = resultOf(item);
     return [
       ...called,
-      { type: "tool.result", agent: this.#agentId, tool: call.tool, result, outcome },
+      { type: "tool.result", agent: agent.name, tool: call.tool, result, outcome },
     ];
   }
 
-  /** The final `agent.finished`, or the error the run ends with. */
-  #finish(turn: unknown): HarnessEvent {
+  /** Keeps the task a `sendInput` or `followupTask` gives a subagent, for its next turn. */
+  #keepNextTask(item: Extract<CodexItem, { type: "collabAgentToolCall" }>): void {
+    if (!nextTaskTools.has(item.tool)) return;
+    for (const receiver of item.receiverThreadIds) {
+      const subagent = this.#agents.get(receiver);
+      if (subagent !== undefined) subagent.nextPrompt = item.prompt;
+    }
+  }
+
+  /**
+   * The `agent.started` of the subagent a completed `spawnAgent` started.
+   * Its thread's id is known only once the item completes.
+   */
+  #spawned(
+    parent: AgentThread,
+    item: Extract<CodexItem, { type: "collabAgentToolCall" }>,
+  ): HarnessEvent[] {
+    const threadId = item.receiverThreadIds[0];
+    if (item.tool !== "spawnAgent" || threadId === undefined || this.#agents.has(threadId)) {
+      return [];
+    }
+    this.#subagentCount += 1;
+    const name =
+      this.#subagentCount === 1 ? subagentName : `${subagentName}-${this.#subagentCount}`;
+    this.#agents.set(threadId, {
+      name,
+      parent: parent.name,
+      running: true,
+      answer: "",
+      nextPrompt: "",
+    });
+    return [{ type: "agent.started", agent: name, prompt: item.prompt, parent: parent.name }];
+  }
+
+  /** A subagent that finished a turn and starts another, after a `sendInput`, starts again. */
+  #turnStarted(agent: AgentThread): HarnessEvent[] {
+    if (agent.parent === undefined || agent.running) return [];
+    agent.running = true;
+    agent.answer = "";
+    const prompt = agent.nextPrompt;
+    agent.nextPrompt = "";
+    return [{ type: "agent.started", agent: agent.name, prompt, parent: agent.parent }];
+  }
+
+  /**
+   * The `agent.finished` of the turn. The task agent's is the run's final
+   * event, or the error the run ends with. A subagent whose turn failed
+   * finishes with what went wrong as its output, and the run goes on: the
+   * task agent hears of it from Codex and decides what to do.
+   */
+  #turnCompleted(agent: AgentThread, turn: unknown): HarnessEvent[] {
     const status = isPlainObject(turn) ? turn["status"] : undefined;
-    if (status !== "completed") throw this.#filter.error(failureSentence(turn));
-    return { type: "agent.finished", agent: this.#agentId, output: this.#answer };
+    if (agent.parent === undefined) {
+      if (status !== "completed") throw this.#filter.error(failureSentence(turn));
+      return [{ type: "agent.finished", agent: agent.name, output: agent.answer }];
+    }
+    if (!agent.running) return [];
+    agent.running = false;
+    const output = status === "completed" ? agent.answer : failureSentence(turn);
+    return [{ type: "agent.finished", agent: agent.name, output, parent: agent.parent }];
   }
 }
 
