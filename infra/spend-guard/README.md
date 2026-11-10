@@ -12,11 +12,13 @@ network, no spend). Nothing here is a pnpm package; it is deployed through the C
 KV namespace **`halonic-spend-guard`**, ID **`646a6e2ba633475da4ecf9502cd8ce25`** (account
 `346227c5febeb134aaf2cee24096499b`).
 
-| Key                  | Value        | Meaning                                                                                               |
-| -------------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
-| `spend_ok`           | `on` / `off` | Account-wide switch                                                                                   |
-| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`)                                                          |
-| `state`              | JSON         | Month, estimated cost per product and service, last good read, who turned it off (`auto` or `manual`) |
+| Key                  | Value        | Meaning                                                                                |
+| -------------------- | ------------ | -------------------------------------------------------------------------------------- |
+| `spend_ok`           | `on` / `off` | Account-wide switch                                                                    |
+| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`)                                           |
+| `state`              | JSON         | Month, estimated cost per product and service, last good read, and `offBy` (see below) |
+
+`state.offBy` is `auto` only while the guard itself holds the switch off (`offReason` is `limit` or `no-usage`); `serviceOff.<service>.by` works the same way. A **manual** stop is a `spend_ok` set to `off` by hand: the guard never writes it, so `offBy` stays absent. That is how the month reset tells them apart: it undoes `auto` stops and leaves manual ones. When the guard sees `spend_ok` back on while `offBy` is set, it logs "manual resume noticed" and clears `offBy`.
 
 Anything other than the exact string `on` counts as off: a missing key, a KV error, a missing binding.
 
@@ -44,7 +46,7 @@ import { checkSpend, spendOffResponse } from "../spend-guard/src/check-spend.mjs
 if (!(await checkSpend(env, "render"))) return spendOffResponse(); // 503
 ```
 
-`halonic-turbo-cache` does this (`infra/turbo-cache/worker.mjs`). Turbo treats the 503 as a cache miss and builds locally.
+`halonic-turbo-cache` does this (`infra/turbo-cache/worker.mjs`), after its auth check: unauthenticated requests get 401 and cost no KV read. Turbo treats the 503 as a cache miss and builds locally.
 
 ## What it does
 
@@ -104,7 +106,7 @@ Worst case past the trip is the spend rate times the gap between real spend and 
 15 min cron + about 2 min analytics lag + 1 min KV = **about 18 minutes**.
 
 - Today's services at their own limits (turbo-cache $5/month cap; render, max 2 containers, roughly $0.15/hour): **cents**.
-- A flood against a public Worker (no Cloudflare-side cap exists): 10,000 requests/s is 36M requests/hour, about $11/hour at $0.30/M, so **about $3** in 18 minutes.
+- A flood against a public Worker (no Cloudflare-side cap exists): 10,000 requests/s is 36M requests/hour. Each request is $0.30/M in Workers requests plus, if it reads the switch, up to two KV reads (`spend_ok` and the service key) at $0.50/M. That is about $11/hour for requests and up to about $36/hour for KV, **about $14 in 18 minutes** at the worst. The edge cache (60 s) makes the real KV count lower, but it is not relied on here. `halonic-turbo-cache` checks auth before the switch, so a flood without the token costs requests only, about $3 in 18 minutes.
 
 Both are far below the $100 margin between the $900 trip and the $1,000 limit. The estimate itself can be off (calendar vs billing month, storage upper bound); the margin covers that too.
 

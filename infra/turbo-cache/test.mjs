@@ -59,3 +59,20 @@ test("turbo-cache: no token 401, read token cannot upload, write token can", asy
   assert.equal((await req("GET", "r")).status, 200);
   assert.equal((await req("HEAD", "r")).status, 200);
 });
+
+test("turbo-cache rejects unauthenticated requests with 401 before any KV read", async () => {
+  let reads = 0;
+  const SPEND_KV = {
+    get: async () => {
+      reads++;
+      return "on";
+    },
+  };
+  const env = { TURBO_TOKEN: { get: async () => "t" }, SPEND_KV };
+  const bad = [{}, { authorization: "Bearer nope" }];
+  for (const headers of bad) {
+    const res = await worker.fetch(new Request("https://x/v8/artifacts/status", { headers }), env);
+    assert.equal(res.status, 401);
+  }
+  assert.equal(reads, 0);
+});
