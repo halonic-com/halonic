@@ -68,6 +68,44 @@ verifies("app.workspace-routines", () => {
     expect(await coordination.read(lastRunIndexKey(workspace))).toBeNull();
   });
 
+  it("keeps a removed routine in the index while another host keeps storing its last run", async () => {
+    const routines: TestRoutine[] = [
+      { key: "p/hourly", minute: 0 },
+      { key: "p/gone", minute: 0 },
+    ];
+    const { scheduler, coordination, at } = setUp(routines);
+    await scheduler.tick();
+    at("2026-11-03T08:00:20Z");
+    await scheduler.tick();
+    const gone = lastRunKey(workspace, "p/gone");
+    const write = coordination.compareAndSet.bind(coordination);
+    const otherHostTimes = ["09", "10", "11"].map((hour) => `2026-11-03T${hour}:00:00.000Z`);
+    let races = 0;
+    coordination.compareAndSet = async (key, expected, next) => {
+      const otherHostTime = otherHostTimes[races];
+      if (key === gone && next === null && otherHostTime !== undefined) {
+        races++;
+        await write(key, expected, otherHostTime);
+      }
+      return write(key, expected, next);
+    };
+    routines.pop();
+    at("2026-11-03T08:30:00Z");
+    await scheduler.tick();
+    // Three lost races: the time stays, and so does its hash, for the next tick.
+    expect(races).toBe(3);
+    expect(await coordination.read(gone)).toBe("2026-11-03T11:00:00.000Z");
+    expect(await coordination.read(lastRunIndexKey(workspace))).toBe(
+      JSON.stringify([shortHash("p/gone"), shortHash("p/hourly")].sort()),
+    );
+    at("2026-11-03T08:40:00Z");
+    await scheduler.tick();
+    expect(await coordination.read(gone)).toBeNull();
+    expect(await coordination.read(lastRunIndexKey(workspace))).toBe(
+      JSON.stringify([shortHash("p/hourly")]),
+    );
+  });
+
   it("treats a damaged last-run index as empty", async () => {
     for (const damaged of ['["p/hourly"', '{"p/hourly": 1}', '["not a hash", 7]']) {
       const { scheduler, coordination, at } = setUp([{ key: "p/hourly", minute: 0 }]);

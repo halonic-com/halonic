@@ -20,6 +20,25 @@ export interface StoredLastRun {
 /** The most UTF-8 bytes of the stored index: under the 64 KiB a `Coordination` value may hold. */
 const maxIndexBytes = 60_000;
 
+/** How often {@link deleteValue} reads again after another host stored first. */
+const maxDeleteAttempts = 3;
+
+/**
+ * Deletes a `Coordination` value. If another host stores it in between, it
+ * reads it again and retries, up to three times.
+ *
+ * @returns whether the value is gone
+ */
+export async function deleteValue(coordination: Coordination, key: string): Promise<boolean> {
+  for (let attempt = 0; attempt < maxDeleteAttempts; attempt++) {
+    const stored = await coordination.read(key);
+    if (stored === null || (await coordination.compareAndSet(key, stored, null))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Keeps, per routine of a workspace, the due time of the last run the
  * scheduler started, for `{{trigger.lastRun}}`. Each time is a key of its
@@ -61,40 +80,43 @@ export class LastRuns {
    * Deletes the last run of every routine in the index that is not among
    * `routineKeys`, the routines of the workspace now, and stores those as the
    * index. Call it before starting runs, so every time {@link save} stores
-   * belongs to a routine the index already names.
+   * belongs to a routine the index already names. A removed routine whose
+   * values another host kept changing stays in the index, so the next call
+   * deletes them.
    *
    * A routine only one host can see yet (its file is still syncing) may lose
    * its time on the other; its next run then gets a `lastRun` of `null`. An
    * index too large for a `Coordination` value (thousands of routines) is not
    * stored, so the times of routines added since are never deleted.
    *
-   * @param onRemoved - deletes what else is kept for a removed routine, by the hash of its key
+   * @param onRemoved - deletes what else is kept for a removed routine, by the hash of its key; returns whether it is gone
    */
   async forgetRemoved(
     routineKeys: readonly string[],
-    onRemoved?: (keyHash: string) => Promise<void>,
+    onRemoved?: (keyHash: string) => Promise<boolean>,
   ): Promise<void> {
     const stored = await this.coordination.read(this.indexKey);
     const current = new Set(routineKeys.map(shortHash));
+    const kept = new Set(current);
     for (const hash of readIndex(stored)) {
-      if (!current.has(hash)) {
-        await this.delete(lastRunKeyByHash(this.workspaceId, hash));
-        await onRemoved?.(hash);
+      if (current.has(hash)) {
+        continue;
+      }
+      const lastRunGone = await deleteValue(
+        this.coordination,
+        lastRunKeyByHash(this.workspaceId, hash),
+      );
+      const restGone = (await onRemoved?.(hash)) ?? true;
+      if (!(lastRunGone && restGone)) {
+        kept.add(hash);
       }
     }
-    const next = writeIndex(current);
+    const next = writeIndex(kept);
     if (next === stored || (next !== null && utf8Length(next) > maxIndexBytes)) {
       return;
     }
     // A lost race means another host stored the index for the same routines.
     await this.coordination.compareAndSet(this.indexKey, stored, next);
-  }
-
-  private async delete(key: string): Promise<void> {
-    const stored = await this.coordination.read(key);
-    if (stored !== null) {
-      await this.coordination.compareAndSet(key, stored, null);
-    }
   }
 }
 

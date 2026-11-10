@@ -1,6 +1,7 @@
 import type { Coordination } from "@halonicjs/ports";
 import type { SkipReason as CatchUpReason } from "@halonicjs/routines";
 import { queueLostKey, shortHash, skipsKeyByHash } from "./routine-ids.ts";
+import { deleteValue } from "./routine-last-runs.ts";
 
 /**
  * Why a routine's due time didn't start. The catch-up rule: `missed` (catch-up
@@ -160,14 +161,15 @@ export class SkipRecords {
     return false;
   }
 
-  /** Deletes the rows of a removed routine, by the hash of its key as the last-run index keeps it. */
-  async forget(keyHash: string): Promise<void> {
-    const key = this.keyOf(keyHash);
-    const stored = await this.coordination.read(key);
-    if (stored !== null) {
-      // A lost race means another host changed them; the next removal check deletes them.
-      await this.coordination.compareAndSet(key, stored, null);
-    }
+  /**
+   * Deletes the rows of a removed routine, by the hash of its key as the
+   * last-run index keeps it. If another host stores them in between, it
+   * reads them again and retries, up to three times.
+   *
+   * @returns whether the rows are gone
+   */
+  forget(keyHash: string): Promise<boolean> {
+    return deleteValue(this.coordination, this.keyOf(keyHash));
   }
 
   /** Notes that the stored queue couldn't be read at `decidedAt`, so its times are gone unlisted. */

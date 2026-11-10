@@ -10,12 +10,13 @@ import { workspaceRoutineScheduler } from "./workspace-routines.ts";
 
 // The Acme example of the skipped-and-catch-up document (HAL-2538), in UTC:
 // the laptop slept from Fri 6 Nov 18:00 and woke on Mon 9 Nov at 08:12.
-function supportReplies(catchUp: string): PlacedRoutine {
+function supportReplies(catchUp: string, overlap = "allow"): PlacedRoutine {
   const text = [
     "id: support-replies",
     "name: Support replies",
     'trigger: { schedule: "0 * * * *", timezone: UTC }',
     `catchUp: ${catchUp}`,
+    `overlap: ${overlap}`,
     "run: { workflow: support-reply }",
   ].join("\n");
   const parsed = parseFile("routine", text, { id: "support-replies" });
@@ -25,7 +26,7 @@ function supportReplies(catchUp: string): PlacedRoutine {
   return { hub: "acme", routine: parsed.value.value };
 }
 
-function afterSleep(catchUp: string) {
+function afterSleep(catchUp: string, overlap?: string) {
   let now = Date.parse("2026-11-06T18:00:00Z");
   const executor = new TestExecutor();
   const scheduler = workspaceRoutineScheduler({
@@ -34,7 +35,7 @@ function afterSleep(catchUp: string) {
     coordination: new TestCoordination(),
     executor,
     runs: executor,
-    routines: async () => [supportReplies(catchUp)],
+    routines: async () => [supportReplies(catchUp, overlap)],
   });
   const tickAt = (iso: string) => {
     now = Date.parse(iso);
@@ -65,6 +66,22 @@ verifies("app.scheduler-keeps-skips", () => {
         decidedAt: "2026-11-09T08:12:00.000Z",
       },
     ]);
+  });
+
+  it("starts a time queued behind a busy catch-up run without the flag", async () => {
+    const { executor, tickAt } = afterSleep("all", "queue");
+    await tickAt("2026-11-06T18:00:00Z");
+    const woke = await tickAt("2026-11-09T08:12:00Z");
+    expect(executor.requests.map((request) => request.trigger?.catchUp)).toEqual([{ skipped: 0 }]);
+    expect(woke.queued[0]?.at).toBe("2026-11-06T20:00:00.000Z");
+    executor.end(ids(woke.started)[0] ?? "");
+    await tickAt("2026-11-09T08:13:00Z");
+    // The queue keeps only due times; the skip records keep what the catch-up dropped.
+    expect(executor.requests.at(-1)?.trigger).toEqual({
+      type: "schedule",
+      routineId: "acme/support-replies",
+      at: "2026-11-06T20:00:00.000Z",
+    });
   });
 
   it("records missed times with catch-up off, and starts a run on time without the flag", async () => {

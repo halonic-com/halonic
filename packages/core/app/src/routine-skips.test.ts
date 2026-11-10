@@ -140,4 +140,24 @@ verifies("app.skip-records", () => {
     await records.queueLost(monday);
     expect(await records.lastQueueLoss()).toBe("2026-11-09T08:12:00.000Z");
   });
+
+  it("reads a removed routine's rows again when another host stored them first", async () => {
+    const coordination = new TestCoordination();
+    const records = new SkipRecords(coordination, workspace);
+    await records.add(routine, [busyAt("06")], null, monday);
+    const key = skipsKeyByHash(workspace, shortHash(routine));
+    const compareAndSet = coordination.compareAndSet.bind(coordination);
+    let raced = false;
+    coordination.compareAndSet = async (target, expected, next) => {
+      if (!raced) {
+        raced = true;
+        const other = addSkips([], [busyAt("07")], null, monday);
+        await compareAndSet(key, expected, JSON.stringify(other));
+      }
+      return compareAndSet(target, expected, next);
+    };
+    expect(await records.forget(shortHash(routine))).toBe(true);
+    expect(raced).toBe(true);
+    expect(await records.read(routine)).toEqual([]);
+  });
 });
