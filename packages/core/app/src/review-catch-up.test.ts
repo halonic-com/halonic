@@ -6,6 +6,7 @@ import { ReviewRecords } from "./review-records.ts";
 import { ReviewService } from "./review-service.ts";
 import { ReviewingDefinitionStore } from "./reviewing-store.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
+import { TestTrash } from "./testing/test-trash.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
 const digest: Digest = {
@@ -38,6 +39,7 @@ async function withAssistantChange(options: { trusted?: boolean } = {}) {
     store: inner,
     records: recordStore,
     digest,
+    trash: new TestTrash(inner, digest),
     isTrusted: () => options.trusted ?? true,
   });
   await review.propose({
@@ -191,6 +193,24 @@ verifies("app.review-outside-changes-merge", () => {
     });
     expect(outcome).toEqual({ status: "held" });
     expect(inner.files.get(path)).toBe(outside);
+  });
+
+  it("takes in a change outside Halonic before the assistant deletes the file", async () => {
+    const { inner, review, record } = await withAssistantChange();
+    const outside = lines({ 3: byAssistant, 9: "line 9 in VS Code" });
+    inner.files.set(path, outside);
+    const outcome = await review.proposeDelete({
+      path,
+      expected: await contentDigest(outside, digest),
+      card: k1,
+    });
+    expect(outcome.status).toBe("written");
+    // The trash holds the file with the assistant's line, not the baseline,
+    // so Reject writes the baseline back instead of restoring from there.
+    const after = await record();
+    expect(after).toMatchObject({ baseline: lines({ 9: "line 9 in VS Code" }), seen: "absent" });
+    expect(after).not.toHaveProperty("trashed");
+    expect(after).not.toHaveProperty("seenText");
   });
 });
 
