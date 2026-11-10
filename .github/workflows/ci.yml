@@ -1003,15 +1003,13 @@ jobs:
     # needs no prompt. --skip-profile-grant keeps the install to the account
     # and the network filters; the probes use their own temp folder.
     #
-    # Report-only for now: continue-on-error, and not in ci-ok's needs, because
-    # no user reaches srt's Windows mode yet (HAL-3656). It becomes required
-    # (drop continue-on-error, add it to ci-ok) in the same PR that lets the
-    # sandbox choice (HAL-3306) use srt on Windows. Each case's pass/fail line
-    # is in the job summary.
+    # Required (in ci-ok's needs). `srt-win wfp verify` timed out once after
+    # 30 s on a runner with no leak (the probes never ran), so the probe step
+    # tries twice. A real leak fails both tries. Each case's pass/fail line is
+    # in the job summary.
     name: Sandbox fence on Windows (canary probes)
     needs: changes
     if: needs.changes.outputs.sandbox-fence == 'true'
-    continue-on-error: true
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -1034,7 +1032,7 @@ jobs:
       - name: Canary probes
         working-directory: packages/adapters/sandbox-srt
         shell: bash
-        run: node scripts/windows-fence-probe.mjs
+        run: node scripts/windows-fence-probe.mjs || node scripts/windows-fence-probe.mjs
 
   agent-host:
     # The agent host as one executable, built with Node's single-executable
@@ -1258,6 +1256,7 @@ jobs:
         sandbox-fence,
         sandbox-fence-macos,
         sandbox-os,
+        sandbox-windows,
         agent-host,
         android,
         e2e,
