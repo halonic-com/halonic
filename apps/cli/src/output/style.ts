@@ -74,7 +74,12 @@ function liveIsOn({ env, isTerminal, noColor, json }: StyleInputs): boolean {
     return false;
   }
   // A CI system may give the command a terminal, but its log only keeps finished lines.
-  return !isTruthy(env["CI"]);
+  return !runsInCi(env);
+}
+
+/** Whether `CI` is set and isn't `0` or `false`: no live lines and no questions (cli-output 1.4 and 1.7). */
+export function runsInCi(env: Environment): boolean {
+  return isTruthy(env["CI"]);
 }
 
 /**
