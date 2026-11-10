@@ -5,9 +5,9 @@
 // that are retries that may still work out: `--debug` shows them.
 
 import type { SchedulerErrorSource } from "@halonicjs/adapter-scheduler-node";
-import type { Phrase } from "../../messages/phrase.ts";
-import { runMessages } from "../../messages/run.ts";
-import { printable } from "../../output/printable.ts";
+import type { Phrase } from "./messages/phrase.ts";
+import { runMessages } from "./messages/run.ts";
+import { printable } from "./output/printable.ts";
 
 /** How often the same timer may fail before the run counts as stuck. */
 export const failuresBeforeStuck = 3;

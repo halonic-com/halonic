@@ -11,12 +11,9 @@ import {
   type RunDetail,
   RunEventRefused,
   RunEvents,
-  RunFollowStopped,
   shortRunId,
   WorkflowRuns,
 } from "@halonicjs/app";
-import type { HttpClient } from "@halonicjs/ports";
-import type { ProfileEnvironment } from "@halonicjs/profile";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
@@ -26,11 +23,8 @@ import {
   type StoppedResult,
   UsageError,
 } from "../../command.ts";
-import {
-  type LocalEngine,
-  type LocalEngineInput,
-  openLocalEngine,
-} from "../../local-engine-host.ts";
+import { followUntilStopped } from "../../follow-run.ts";
+import type { LocalEngine } from "../../local-engine-host.ts";
 import { errorMessages } from "../../messages/general.ts";
 import { runMessages } from "../../messages/run.ts";
 import { runsMessages } from "../../messages/runs.ts";
@@ -41,24 +35,18 @@ import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
 import { runViewDefinitions } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
+import { openWorkspaceEngine, type WorkspaceEngineSetup } from "../../workspace-engine.ts";
 import { runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
-import { runResult, stoppedResult } from "./result.ts";
-import { retriedLine, stuckTimerWatch } from "./stuck-timers.ts";
+import { runResult } from "./result.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
 
 /** What `run` uses on this computer, so tests can fix the clock, the ids and the profile. */
-export interface RunSetup {
+export interface RunSetup extends WorkspaceEngineSetup {
   /** The clock and time zone the step lines' times are written in. */
   clock(): RunClock;
   /** The trust records and the connectors' programs. */
   trust(): RunTrustMachine;
-  /** What the model providers call their servers with. */
-  readonly http: HttpClient;
-  /** Where the profile folder is; this process's by default. */
-  readonly profile?: ProfileEnvironment;
-  /** The engine's clock and ids; the computer's own by default. */
-  readonly engine?: Pick<LocalEngineInput, "clock" | "ids" | "setTimer">;
 }
 
 /**
@@ -86,37 +74,25 @@ export async function runWorkflow(
   const workspace = await loadWorkspace(dir.store);
   await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   const runInput = await runInputOf(optionText(input, "input"), context.cwd);
-  const stuck = stuckTimerWatch((failure) => context.debug(retriedLine(failure)));
-  const engine = await openLocalEngine({
+  const engine = await openWorkspaceEngine(context, setup, {
+    dir,
     workspace,
-    workspaceRoot: dir.root,
-    secrets: context.secrets,
-    http: setup.http,
-    // The scheduler retries a failed step; one that keeps failing stops the command with its error.
-    reportError: stuck.report,
-    ...(setup.profile === undefined ? {} : { environment: setup.profile }),
-    ...setup.engine,
   });
-  const signal = AbortSignal.any([context.signal, stuck.signal]);
   // One clock for the lines printed while the run goes and the result that repeats them.
   const clock = setup.clock();
   const live = liveLines(context, { workspace, workspaceName, clock });
   try {
     const events = eventsOf(input);
-    const run = await followWithEvents(engine, workspace, workspaceName, typed, runInput, events, {
-      signal,
-      onEvent: live.onEvent,
-    });
+    const run = await followUntilStopped(engine, workspace, (signal) =>
+      followWithEvents(engine, workspace, workspaceName, typed, runInput, events, {
+        signal,
+        onEvent: live.onEvent,
+      }),
+    );
+    if ("stopped" in run) {
+      return run;
+    }
     return runResult(run, { workspace, workspaceName, dir: typedDir, clock });
-  } catch (error) {
-    if (stuck.signal.aborted) {
-      throw stuck.signal.reason;
-    }
-    if (error instanceof RunFollowStopped) {
-      return stoppedResult(error.events, workspace);
-    }
-    // An `AbortError` from a Ctrl C before the run started: `runCli` prints "Stopped.".
-    throw error;
   } finally {
     live.end();
     await engine.close();

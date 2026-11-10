@@ -8,10 +8,11 @@ import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import { stoppedResult } from "../../follow-run.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
-import { runResult, stoppedResult } from "./result.ts";
+import { runResult } from "./result.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 

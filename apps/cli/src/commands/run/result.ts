@@ -5,15 +5,13 @@
 // so both say the same about a run. The words are the catalogue's.
 
 import { type RunDetail, shortRunId } from "@halonicjs/app";
-import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
-import type { CommandResult, StoppedResult } from "../../command.ts";
+import type { CommandResult } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
-import { stepName } from "../../messages/step-name.ts";
 import { workspaceModelsOf } from "../../run-failure-of.ts";
-import { runSteps } from "../../run-steps.ts";
 import type { RunClock } from "../../run-times.ts";
 import { type RunDefinitions, runViewDefinitions, stepColumns, stepLines } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
@@ -77,37 +75,6 @@ export function runStepLines(
   clock: RunClock,
 ): Phrase[] {
   return stepLines(events, summary, definitions, clock, stepColumns(definitions));
-}
-
-/**
- * What stopping with Ctrl C meant for the run (cli-output 1.5): "The run
- * 01jd8q was cancelled after the step Classify it. Nothing after it ran."
- * A run stopped before it finished a step, or before it started, says only
- * "Stopped.".
- */
-export function stoppedResult(
-  events: readonly RunEvent[],
-  workspace: LoadedWorkspace,
-): StoppedResult {
-  const summary = summarize(events);
-  if (summary === null) {
-    return { stopped: true, json: {} };
-  }
-  const definitions = runViewDefinitions(workspace, summary);
-  const lastDone = runSteps(events, summary).findLast((step) => step.end.kind === "done");
-  const json = { run: summary, events };
-  if (lastDone === undefined) {
-    return { stopped: true, json };
-  }
-  const step = stepName(
-    lastDone.stateId,
-    definitions.workflow?.states[lastDone.stateId]?.description,
-  );
-  return {
-    stopped: true,
-    meaning: runMessages.cancelledAfter(shortRunId(summary.id), step).phrase,
-    json,
-  };
 }
 
 /**

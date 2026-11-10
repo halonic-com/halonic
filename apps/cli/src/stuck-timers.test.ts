@@ -1,7 +1,7 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { plainText } from "../../messages/phrase.ts";
+import { plainText } from "./messages/phrase.ts";
 import {
   failuresBeforeStuck,
   type RetriedFailure,
