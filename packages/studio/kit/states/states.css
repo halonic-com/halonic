@@ -40,3 +40,12 @@
   tr:has(> td:focus-visible) > &,
   tr:has(> td[data-force-state="focus"]) > &
 );
+
+/*
+ * A popover drawn in place, so all its rows show at once: the colour popover's section renders it
+ * closed and this shows it where it stands, instead of in the top layer under its button.
+ */
+[data-in-place] [popover] {
+  position: static;
+  display: block;
+}

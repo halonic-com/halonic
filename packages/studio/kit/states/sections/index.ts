@@ -3,6 +3,7 @@ import { actionBarSection } from "./action-bar.tsx";
 import { buttonSection } from "./button.tsx";
 import { cardSection } from "./card.tsx";
 import { checkboxSection } from "./checkbox.tsx";
+import { colourPopoverSection } from "./colour-popover.tsx";
 import { commandBoxSection } from "./command-box.tsx";
 import { copyButtonSection } from "./copy-button.tsx";
 import { disclosureSection } from "./disclosure.tsx";
@@ -33,6 +34,7 @@ export const SECTIONS: readonly PartSection[] = [
   buttonSection,
   fieldSection,
   inputLeadingSection,
+  colourPopoverSection,
   selectSection,
   tabsSection,
   listSection,

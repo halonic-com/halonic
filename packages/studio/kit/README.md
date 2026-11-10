@@ -1471,6 +1471,60 @@ general focus ring, and the box's `accent` edge shows only while the text has fo
 always tell which of the two you're on. It has no fill of its own: a hover is the box's. While the
 Input is disabled or read-only, the button is disabled too, its glyph at 45%.
 
+## ColourPopover
+
+What a colour field's swatch button opens: preset swatches as a radio group and a hex Input
+under them. There's no hidden `<input type="color">`: whether WebKitGTK opens one from the
+keyboard depends on its version. The screen owns `open` and the colour; the words are its own.
+
+```tsx
+<ColourPopover
+  id="first-colour"
+  open={open}
+  opener={swatchButton}
+  onClose={() => setOpen(false)}
+  label="Choose the first colour"
+  presets={[{ value: "#3B8BFF", name: "Blue" }, …]}
+  value={first}
+  onChange={setFirst}
+  presetsLabel="Presets"
+  hexLabel="Hex colour"
+  hexError="Use six digits, like #3B8BFF."
+/>;
+```
+
+| Prop                                   | What it is                                                                                         |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `id`                                   | For the opener's `aria-controls`                                                                   |
+| `open`, `onClose`                      | Shown while `open`. `onClose` on Escape, a press outside or focus leaving it                       |
+| `opener`                               | A ref to the button that opens it; it lines up with the box the button is in                       |
+| `label`                                | Its name, in the feature's verb                                                                    |
+| `presets`                              | `{ value, name }` for each colour, four to a row                                                   |
+| `value`, `onChange`                    | The last good colour; `onChange` with a pick or a typed six-digit hex                              |
+| `presetsLabel`, `hexLabel`, `hexError` | The heading over the presets, the hex field's label, and what it says when the text isn't a colour |
+
+| State         | What shows                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| Open          | 4px under the field's box, 244px, `surface-raised`, radius 12px, `shadow-2`, padding 12px       |
+| Swatch        | 24px, its colour, a 1px `border-control` edge; `fg-muted` edge on hover                         |
+| Picked        | A 2px `accent` ring with a 2px gap and a 14px check: white on a dark colour, ink on a light one |
+| Focus         | The standard ring round the swatch; the arrows move the pick, as in any radio group             |
+| Typed hex     | Applies as soon as it's six digits; a colour that isn't a preset leaves none picked             |
+| Hex error     | Nothing changes; leaving the field or Enter shows `hexError` under it                           |
+| More contrast | The popover's edge turns `border-control`                                                       |
+| High contrast | Swatches keep their colour and a `CanvasText` edge; the pick and focus are `Highlight`          |
+
+**Focus.** It opens with focus on the picked preset, or the first. Escape closes it and gives
+focus back to the button. A press outside closes it; a press on its button doesn't, so the
+button's own click opens or closes it (a `manual` popover: the browser's light dismiss would
+close it on the press and the click would open it again). Tab past the hex field closes it too.
+
+**On a phone** it's still a popover, like the Menu, the screen's width less 8px each side, and
+each swatch is a 48px target round its 24px square.
+
+`parseHex(text)` reads six hex digits, with or without `#`, and gives `#RRGGBB` or `null`, so
+the screen checks a saved colour the same way.
+
 ## TextArea
 
 A text field of several lines, in the Input's box and states. It grows with its text up to

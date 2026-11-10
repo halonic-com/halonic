@@ -33,6 +33,12 @@ export {
   type CheckboxUnavailable,
 } from "./checkbox/checkbox.tsx";
 export {
+  ColourPopover,
+  type ColourPopoverProps,
+  type ColourPreset,
+} from "./colour-popover/colour-popover.tsx";
+export { parseHex } from "./colour-popover/hex.ts";
+export {
   COMMAND_COPIED,
   COMMAND_NOT_COPIED,
   CommandBox,

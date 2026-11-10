@@ -1,0 +1,57 @@
+/*
+ * A preset in the ColourPopover (component specs 3 and 23.3 L10; decisions P-D1 to P-D5 on
+ * HAL-3520): a native radio without its own look, drawn as a 24px square in the colour it
+ * stands for, which the component sets as `--swatch`. A 1px `border-control` edge, so a colour
+ * close to the popover's fill still has an outline; `fg-muted` under the pointer. The picked one
+ * has a 2px `accent` ring with a 2px gap, and its check comes from the component, so the pick
+ * shows in shape as well as colour. Keyboard focus is the standard ring. It sits next to the
+ * popover so theme.css stays under the size limit; theme.css imports it.
+ */
+@utility swatch {
+  appearance: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-xs);
+  background-color: var(--swatch, transparent);
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: border-color var(--default-transition-duration) var(--ease-standard);
+
+  /* Through the variants, so the states page forces each state with the same rule. */
+  @variant hover {
+    border-color: var(--color-fg-muted);
+  }
+
+  &:checked {
+    box-shadow:
+      0 0 0 2px var(--color-surface-raised),
+      0 0 0 4px var(--color-accent);
+  }
+
+  @variant focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /*
+   * Windows high contrast would drop the fill, which is the whole point of a swatch, so it keeps
+   * its colour. The edge is `CanvasText`, and the pick and the focus are `Highlight` outlines.
+   */
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+
+    &:checked {
+      box-shadow: none;
+      outline-color: Highlight;
+    }
+
+    @variant focus-visible {
+      box-shadow: none;
+      outline-color: Highlight;
+    }
+  }
+}

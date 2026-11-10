@@ -192,6 +192,33 @@ describe("theme.css built by Tailwind: the Slider", () => {
   });
 });
 
+describe("theme.css built by Tailwind: the colour popover's swatch", () => {
+  it("draws a 24px square in its colour with a control edge, a 2px accent ring when picked and the focus ring", async () => {
+    const css = await buildCss(["swatch"]);
+    const swatch = css.slice(
+      css.indexOf(".swatch {"),
+      css.indexOf("@media (forced-colors: active)"),
+    );
+    expect(swatch).toMatch(
+      /width: 24px;\s*height: 24px;[^}]*border: 1px solid var\(--color-border-control\);\s*border-radius: var\(--radius-xs\);\s*background-color: var\(--swatch, transparent\);/,
+    );
+    expect(swatch).toMatch(
+      /&:hover \{\s*@media \(hover: hover\) \{\s*border-color: var\(--color-fg-muted\);/,
+    );
+    expect(swatch).toMatch(
+      /&:checked \{\s*box-shadow: 0 0 0 2px var\(--color-surface-raised\), 0 0 0 4px var\(--color-accent\);/,
+    );
+    expect(swatch).toMatch(/&:focus-visible \{\s*box-shadow: var\(--focus-ring\);/);
+  });
+
+  it("keeps its colour and an edge in high contrast, with the pick and the focus in Highlight", async () => {
+    const css = await buildCss(["swatch"]);
+    const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(forced).toMatch(/forced-color-adjust: none;\s*border-color: CanvasText;/);
+    expect(forced).toMatch(/&:checked \{\s*box-shadow: none;\s*outline-color: Highlight;/);
+  });
+});
+
 describe("theme.css built by Tailwind: the Radio", () => {
   it("draws a picked circle's 5px ring, in Highlight round a Canvas centre in high contrast", async () => {
     const css = await buildCss(["checked:border-5", "radio-forced"]);

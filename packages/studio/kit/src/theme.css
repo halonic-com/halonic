@@ -41,6 +41,7 @@
 @import "./disclosure/disclosure.css";
 @import "./action-bar/action-bar.css";
 @import "./slider/slider.css";
+@import "./colour-popover/colour-popover.css";
 @import "./theme-utilities.css";
 @import "./theme-safe-area.css";
 @import "./theme-agent-pages.css";
