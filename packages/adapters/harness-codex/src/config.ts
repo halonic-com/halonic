@@ -65,11 +65,13 @@ export function codexConfigText(): string {
  * //  "-c", 'mcp_servers.halonic.url="http://127.0.0.1:4100/mcp"']
  */
 export function codexConfigArgs(bridge: Pick<HarnessBridge, "url">): string[] {
+  // An address that ends with "/" would otherwise give "//v1".
+  const address = bridge.url.replace(/\/+$/, "");
   return [
     "-c",
-    `model_providers.${bridgeProviderName}.base_url=${tomlString(`${bridge.url}/v1`)}`,
+    `model_providers.${bridgeProviderName}.base_url=${tomlString(`${address}/v1`)}`,
     "-c",
-    `mcp_servers.${bridgeServerName}.url=${tomlString(`${bridge.url}/mcp`)}`,
+    `mcp_servers.${bridgeServerName}.url=${tomlString(`${address}/mcp`)}`,
   ];
 }
 

@@ -9,6 +9,7 @@ type Ending = { kind: "done" } | { kind: "failed"; error: Error };
  * one at a time (requirement `harness-codex.run-events`). Events wait here
  * until they are read. The first ending
  * wins: an error after the stream is done, or a second error, is dropped.
+ * It has one reader: the run's stream, which can be read only once.
  */
 export class RunEvents {
   readonly #waiting: HarnessEvent[] = [];
