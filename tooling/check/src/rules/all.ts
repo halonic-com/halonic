@@ -3,6 +3,7 @@ import type { Report } from "../lib/problems.ts";
 import { checkAbsolutePaths } from "./absolute-paths.ts";
 import { checkAdvisories } from "./advisories.ts";
 import { checkAgentsMd } from "./agents-md.ts";
+import { checkApiSpecs } from "./api-specs.ts";
 import { checkDco } from "./dco.ts";
 import { checkDeny } from "./deny.ts";
 import { checkDependencies } from "./dependencies.ts";
@@ -33,6 +34,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "invisible-characters": checkInvisibleCharacters,
   "readme-examples": checkReadmeExamples,
   versions: checkVersions,
+  "api-specs": checkApiSpecs,
   dco: (context) => checkDco(context),
   trace: checkTrace,
 };
