@@ -30,7 +30,11 @@ export function resourceProbeContract(name: string, make: MakeResourceProbe): vo
         expect(bytes).toBeGreaterThan(0);
       });
 
-      it("lists the processes below the engine once each, in pid order", async () => {
+      // A real probe may start a program to read the process table: PowerShell and WMI on
+      // Windows took 1.8 to over 5 s on CI runners, so this waits longer than vitest's 5 s.
+      it("lists the processes below the engine once each, in pid order", {
+        timeout: 20_000,
+      }, async () => {
         const { probe } = await make();
         const processes = await probe.childProcesses();
         for (const child of processes) {

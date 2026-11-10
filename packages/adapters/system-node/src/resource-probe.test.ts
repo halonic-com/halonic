@@ -27,8 +27,10 @@ verifies("system-node.resource-probe", () => {
     await expect(probe.childProcesses()).rejects.toBe(failure);
   });
 
-  // The reader for this machine; CI runs it on Linux, people run it on macOS and Windows.
-  it("lists a process this one started, by its real pid", async () => {
+  // The reader for this machine; CI runs it on Linux, macOS and Windows. On Windows it starts
+  // PowerShell and asks WMI, which took 1.8 to over 5 s on CI runners, so the test waits as long
+  // as the reader may take (15 s) and a little more.
+  it("lists a process this one started, by its real pid", { timeout: 20_000 }, async () => {
     const child = spawn(execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
     try {
       await once(child, "spawn");

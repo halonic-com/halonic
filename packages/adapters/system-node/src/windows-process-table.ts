@@ -46,7 +46,7 @@ export function powerShellArguments(script: string): string[] {
 
 /**
  * Reads the process table on Windows with `Get-CimInstance Win32_Process`.
- * Starting PowerShell takes a few hundred milliseconds, so callers ask for
+ * Starting PowerShell and asking WMI takes one to several seconds, so callers ask for
  * the table when a person asks, not on a timer.
  *
  * @param windowsFolder - the Windows folder, from the `SystemRoot` variable
