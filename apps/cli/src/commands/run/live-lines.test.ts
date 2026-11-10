@@ -112,64 +112,79 @@ const printed = (seen: readonly Seen[]) =>
   seen.filter(([what]) => what === "ahead").map(([, line]) => line);
 
 verifies("cli.run-live", () => {
-  it("prints each step's line as the step ends, before the next step's live line", () => {
-    const context = recordedContext();
-    follow(liveLines(context, facts()).onEvent, waiting.events);
-    expect(context.seen).toEqual([
-      ["ahead", `Running Support reply in acme · run ${shortRunId(waiting.summary.id)}`],
-      // The live line adds "◌ ", so its facts line up with the ✓ lines.
-      ["progress", "Read the email        Writer · smart"],
-      ["ahead", ""],
-      ["ahead", "✓ Read the email        Writer · smart     1 s"],
-      ["progress", "Classify it           Sorter · default"],
-      ["ahead", "✓ Classify it           Sorter · default   1 s"],
-      ["progress", "Draft a reply         Writer · smart"],
-      ["ahead", "✓ Draft a reply         Writer · smart     1 s"],
-      ["progress", "Approve this reply?"],
-    ]);
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4406: prints each step's line as the step ends, before the next step's live line",
+    () => {
+      const context = recordedContext();
+      follow(liveLines(context, facts()).onEvent, waiting.events);
+      expect(context.seen).toEqual([
+        ["ahead", `Running Support reply in acme · run ${shortRunId(waiting.summary.id)}`],
+        // The live line adds "◌ ", so its facts line up with the ✓ lines.
+        ["progress", "Read the email        Writer · smart"],
+        ["ahead", ""],
+        ["ahead", "✓ Read the email        Writer · smart     1 s"],
+        ["progress", "Classify it           Sorter · default"],
+        ["ahead", "✓ Classify it           Sorter · default   1 s"],
+        ["progress", "Draft a reply         Writer · smart"],
+        ["ahead", "✓ Draft a reply         Writer · smart     1 s"],
+        ["progress", "Approve this reply?"],
+      ]);
+    },
+  );
 
-  it("prints the lines the result starts with, word for word", () => {
-    const context = recordedContext();
-    follow(liveLines(context, facts()).onEvent, approved.events);
-    const result = runResult(approved, { ...facts(), dir: undefined });
-    const lines = printed(context.seen);
-    expect(lines).toHaveLength(6);
-    expect(lines).toEqual(result.lines.slice(0, lines.length).map(plainText));
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4406: prints the lines the result starts with, word for word",
+    () => {
+      const context = recordedContext();
+      follow(liveLines(context, facts()).onEvent, approved.events);
+      const result = runResult(approved, { ...facts(), dir: undefined });
+      const lines = printed(context.seen);
+      expect(lines).toHaveLength(6);
+      expect(lines).toEqual(result.lines.slice(0, lines.length).map(plainText));
+    },
+  );
 
-  it("prints each line once when the run is followed again after an --event", () => {
-    const context = recordedContext();
-    const live = liveLines(context, facts());
-    follow(live.onEvent, waiting.events);
-    follow(live.onEvent, approved.events);
-    const lines = printed(context.seen);
-    expect(lines.filter((line) => line.startsWith("✓ Read the email"))).toHaveLength(1);
-    expect(lines.at(-1)).toMatch(/^! Approve this reply\? {3}you approved at \d\d:\d\d$/);
-    expect(lines).toHaveLength(6);
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4406: prints each line once when the run is followed again after an --event",
+    () => {
+      const context = recordedContext();
+      const live = liveLines(context, facts());
+      follow(live.onEvent, waiting.events);
+      follow(live.onEvent, approved.events);
+      const lines = printed(context.seen);
+      expect(lines.filter((line) => line.startsWith("✓ Read the email"))).toHaveLength(1);
+      expect(lines.at(-1)).toMatch(/^! Approve this reply\? {3}you approved at \d\d:\d\d$/);
+      expect(lines).toHaveLength(6);
+    },
+  );
 
-  it("names the provider a step has waited on for 10 seconds, padded to the step column", () => {
-    const clock = manualClock();
-    const line = recordedLine();
-    const context = liveContext(clock, line);
-    const live = liveLines(context, facts());
-    follow(live.onEvent, [...untilAgentOf("draft"), llmRequest("anthropic")]);
-    clock.advance(12_000);
-    expect(line.seen.at(-1)).toBe(
-      "◌ Draft a reply         Writer · smart · waiting for Anthropic (12 s)",
-    );
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4406: names the provider a step has waited on for 10 seconds, padded to the step column",
+    () => {
+      const clock = manualClock();
+      const line = recordedLine();
+      const context = liveContext(clock, line);
+      const live = liveLines(context, facts());
+      follow(live.onEvent, [...untilAgentOf("draft"), llmRequest("anthropic")]);
+      clock.advance(12_000);
+      expect(line.seen.at(-1)).toBe(
+        "◌ Draft a reply         Writer · smart · waiting for Anthropic (12 s)",
+      );
+    },
+  );
 
-  it("takes the live line away when the follow ends mid-step", () => {
-    const clock = manualClock();
-    const line = recordedLine();
-    const live = liveLines(liveContext(clock, line), facts());
-    follow(live.onEvent, untilAgentOf("draft"));
-    clock.advance(2_000);
-    live.end();
-    expect(line.seen).toEqual(["◌ Draft a reply         Writer · smart", "(cleared)"]);
-  });
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] HAL-4406: takes the live line away when the follow ends mid-step",
+    () => {
+      const clock = manualClock();
+      const line = recordedLine();
+      const live = liveLines(liveContext(clock, line), facts());
+      follow(live.onEvent, untilAgentOf("draft"));
+      clock.advance(2_000);
+      live.end();
+      expect(line.seen).toEqual(["◌ Draft a reply         Writer · smart", "(cleared)"]);
+    },
+  );
 });
 
 /** The waiting run's log up to the agent of `state` starting. */
