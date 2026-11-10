@@ -59,6 +59,7 @@ Check these on every pull request. The guides for
   exports) is meant, and the maintainer reviews it. No generated
   `api-report.md` exists yet; the reviewer reads the diff.
 - [ ] The docs change in the same pull request as the behaviour.
-- [ ] The title is `type(scope): summary` (the scope is optional, at most 100
-  characters; the `pr-title` check enforces it), and the change is under about
-  400 lines. No check counts lines, so the reviewer does.
+- [ ] The title is `type(scope): summary` (the scope is optional, and the
+  100-character limit is for the summary; the `pr-title` check enforces it),
+  and the change is under about 400 lines. No check counts lines, so the
+  reviewer does.

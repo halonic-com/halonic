@@ -36,3 +36,9 @@ For a Studio app change, also add it with `pnpm changeset`. See .changeset/READM
 ## Sign-off
 
 - [ ] Every commit is signed off by me (`git commit -s`) under the [Developer Certificate of Origin](https://developercertificate.org/), and I have run and understood this change.
+
+## Built-on
+
+<!-- Outside contributors: leave the value empty. A maintainer fills it in and adds the matching label during review, so a red `built-on-label` check before then is expected. Agents write `paperclip` or `halonic`. -->
+
+Built-on:

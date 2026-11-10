@@ -38,7 +38,7 @@ jobs:
               echo "Found a built-on label."
               ;;
             *)
-              echo "::error::Add the label built-on:paperclip or built-on:halonic to this pull request."
+              echo "::error::Add the label built-on:paperclip or built-on:halonic to this pull request. A maintainer (or the agent that opened it) adds it with: gh pr edit <n> --add-label built-on:paperclip"
               exit 1
               ;;
           esac
