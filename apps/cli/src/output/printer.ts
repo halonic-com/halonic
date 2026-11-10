@@ -1,7 +1,14 @@
 import type { SecretScrubber } from "@halonicjs/std";
 import type { CliIo, CommandResult } from "../command.ts";
-import { type Phrase, renderPhrase } from "../messages/phrase.ts";
-import { errorDocument, type PrintErrorContext, printDebug, printError } from "../print-error.ts";
+import { type Phrase, phrase, renderPhrase } from "../messages/phrase.ts";
+import { NotTrustedError } from "../not-trusted.ts";
+import {
+  errorDocument,
+  type PrintErrorContext,
+  printDebug,
+  printError,
+  scrubPhrase,
+} from "../print-error.ts";
 import { jsonText, resultDocument, scrubbedDocument } from "./json.ts";
 import { type Paint, paintFor } from "./paint.ts";
 import type { OutputStyle } from "./style.ts";
@@ -18,7 +25,11 @@ export interface Printer {
   lines(lines: readonly Phrase[]): void;
   /** What a command did: its lines, or with `--json` its document. */
   result(result: CommandResult): void;
-  /** An error, through `printError`: its lines to stderr, or with `--json` its document to stdout. */
+  /**
+   * An error, through `printError`: its lines to stderr, or with `--json` its
+   * document to stdout. A {@link NotTrustedError} also shows its trust check
+   * on stderr before the ✕ line and ends stdout with the bare fingerprint.
+   */
   error(error: unknown, context: Omit<PrintErrorContext, "scrubber">): void;
 }
 
@@ -53,6 +64,10 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
         io.out(jsonText(errorDocument(error, context)));
         // `--debug` asked for the error's own text: it goes to stderr, and stdout stays one document.
         printDebug(error, err, context);
+        return;
+      }
+      if (error instanceof NotTrustedError) {
+        printNotTrusted(error, { out, err: scrubbed(err, options.scrubber) }, context);
       } else {
         printError(error, err, context);
       }
@@ -68,4 +83,29 @@ function printLines(print: (line: Phrase) => void, lines: readonly Phrase[]): vo
   for (const line of lines) {
     print(line);
   }
+}
+
+/**
+ * The untrusted workspace's three parts, in order (`cli.not-trusted`): the
+ * trust check on stderr, the ✕ and fix lines on stderr, then the bare
+ * fingerprint as the last stdout line, so `tail -n1` gives exactly what
+ * `--fingerprint` takes.
+ */
+function printNotTrusted(
+  error: NotTrustedError,
+  streams: { out: (line: Phrase) => void; err: (line: Phrase) => void },
+  context: PrintErrorContext,
+): void {
+  printLines(streams.err, error.check);
+  printError(error, streams.err, context);
+  streams.out(phrase`${error.fingerprint}`);
+}
+
+/**
+ * The writer with every loaded secret removed from each line. The trust
+ * check shows `env` values as written, which may hold a secret the command
+ * loaded; `printError` scrubs its own lines.
+ */
+function scrubbed(print: (line: Phrase) => void, scrubber: SecretScrubber): (line: Phrase) => void {
+  return (line) => print(scrubPhrase(line, (text) => scrubber.scrub(text)));
 }

@@ -3,6 +3,7 @@ import { UsageError } from "./command.ts";
 import type { Message } from "./messages/define.ts";
 import { errorMessages } from "./messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
+import { NotTrustedError } from "./not-trusted.ts";
 import { outputVersion } from "./output/json.ts";
 
 /** How deep `--debug` follows `cause`, so a cause that points back at itself still ends. */
@@ -64,14 +65,16 @@ export interface ErrorDocument {
   readonly outputVersion: typeof outputVersion;
   readonly ok: false;
   readonly error: {
-    /** The error's kind, or `usage` for a wrong command line. */
-    readonly kind: ErrorKind | "usage";
+    /** The error's kind, `usage` for a wrong command line, or `not_trusted` for an untrusted workspace. */
+    readonly kind: ReportKind;
     /** The error's detailed code, left out when it has none. */
     readonly code?: string;
     /** The reason, the same sentence as line 1 without "Couldn't …:". */
     readonly message: string;
     /** The one fix, the same sentence as line 2, left out when there is none. */
     readonly fix?: string;
+    /** For `not_trusted` only: the full fingerprint `trust --fingerprint` takes, never shortened. */
+    readonly fingerprint?: string;
   };
 }
 
@@ -90,6 +93,7 @@ export function errorDocument(error: unknown, context: PrintErrorContext = {}): 
       ...(report.code === undefined ? {} : { code: report.code }),
       message: plainText(report.reason),
       ...(report.fix === undefined ? {} : { fix: plainText(report.fix) }),
+      ...(error instanceof NotTrustedError ? { fingerprint: error.fingerprint } : {}),
     },
   };
 }
@@ -108,9 +112,12 @@ export function printDebug(
   }
 }
 
+/** The kinds an error report can have: `std`'s, and the CLI's own two. */
+type ReportKind = ErrorKind | "usage" | "not_trusted";
+
 /** What an error says, scrubbed, before it is shaped as lines or as JSON. */
 interface ErrorReport {
-  readonly kind: ErrorKind | "usage";
+  readonly kind: ReportKind;
   /** The reason on its own, without the command's action. */
   readonly reason: Phrase;
   /** Line 1: the reason after "Couldn't *action*:", or alone for a wrong command line. */
@@ -132,6 +139,17 @@ function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
       fix: fix === undefined ? undefined : scrubPhrase(fix.phrase, scrub),
       docs: undefined,
       code: undefined,
+    };
+  }
+  if (error instanceof NotTrustedError) {
+    const reason = scrubPhrase(error.problem.phrase, scrub);
+    return {
+      kind: error.kind,
+      reason,
+      firstLine: withAction(reason, context),
+      fix: scrubPhrase(error.fixMessage.phrase, scrub),
+      docs: undefined,
+      code: error.code,
     };
   }
   const kind = errorKindOf(error);
@@ -179,7 +197,7 @@ function scrubFor(context: PrintErrorContext): Scrub {
 }
 
 /** The phrase with the loaded secrets replaced in each of its texts. */
-function scrubPhrase(value: Phrase, scrub: Scrub): Phrase {
+export function scrubPhrase(value: Phrase, scrub: Scrub): Phrase {
   return value.map((part) => {
     if (typeof part === "string") {
       return scrub(part);

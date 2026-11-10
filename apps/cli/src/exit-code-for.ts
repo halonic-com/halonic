@@ -1,5 +1,6 @@
-import { assertNever, type ErrorKind } from "@halonicjs/std";
+import { assertNever, type ErrorKind, errorKindOf } from "@halonicjs/std";
 import { type ExitCode, exitCode } from "./exit-code.ts";
+import { NotTrustedError } from "./not-trusted.ts";
 
 /**
  * The exit code for an error of `kind`: the CLI's one mapping from error
@@ -29,4 +30,16 @@ export function exitCodeFor(kind: ErrorKind): ExitCode {
     default:
       return assertNever(kind, "error kind");
   }
+}
+
+/**
+ * The exit code a thrown error ends the command with: 3 for a
+ * {@link NotTrustedError}, which is the CLI's own and has no `std` kind,
+ * else {@link exitCodeFor} its kind.
+ */
+export function exitCodeOfError(error: unknown): ExitCode {
+  if (error instanceof NotTrustedError) {
+    return exitCode.notTrusted;
+  }
+  return exitCodeFor(errorKindOf(error));
 }

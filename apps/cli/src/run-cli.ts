@@ -1,5 +1,5 @@
 import type { Secrets } from "@halonicjs/ports";
-import { errorKindOf, SecretScrubber } from "@halonicjs/std";
+import { SecretScrubber } from "@halonicjs/std";
 import {
   type CliCommand,
   type CliIo,
@@ -9,7 +9,7 @@ import {
   UsageError,
 } from "./command.ts";
 import { type ExitCode, exitCode } from "./exit-code.ts";
-import { exitCodeFor } from "./exit-code-for.ts";
+import { exitCodeOfError } from "./exit-code-for.ts";
 import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
 import { commandHelp, commandWords, lastOf, overallHelp, usageLine } from "./help.ts";
 import type { Message } from "./messages/define.ts";
@@ -208,7 +208,7 @@ async function runCommand(
         : {}),
       debug: options.debug,
     });
-    return exitCodeFor(errorKindOf(error));
+    return exitCodeOfError(error);
   }
 }
 
