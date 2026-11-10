@@ -5,9 +5,10 @@ const port = 4174;
 
 /**
  * The shell's end-to-end tests (`pnpm e2e`): what jsdom can't show, such as a tab dragged with a
- * real pointer, checked in a real Chromium against the pages in e2e/pages.
+ * real pointer, checked in a real Chromium and WebKit against the pages in e2e/pages. Tauri
+ * draws with WebKit on macOS and Linux and with WebView2 (Chromium) on Windows.
  *
- * Only CI runs them, in the `e2e` job, which installs the browser. Don't run them on the shared
+ * Only CI runs them, in the `e2e` job, which installs the browsers. Don't run them on the shared
  * runner (HAL-2418). The web server below builds the pages (vite.config.ts) and serves the build
  * with `vite preview`; Playwright stops it when the tests end.
  */
@@ -23,7 +24,10 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${port}`,
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+  ],
   webServer: {
     command: `vite build && vite preview --port ${port} --strictPort`,
     url: `http://127.0.0.1:${port}/tab-strip.html`,
