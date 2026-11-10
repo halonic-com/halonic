@@ -1,13 +1,17 @@
 {
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
-  "//": "Tests run in Node with jsdom, so they need Node's types and the DOM's, and JSX. The states page (states/) is checked here too: it runs in a browser and nothing in it ships.",
+  "//": "Tests run in Node with jsdom, so they need Node's types and the DOM's, and JSX. The states page (states/) is checked here too: it runs in a browser and nothing in it ships. Vite's client types give the states page import.meta.glob.",
   "compilerOptions": {
     "lib": [
       "es2024",
       "dom",
       "dom.iterable"
     ],
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
   "include": [
     "src",
