@@ -42,6 +42,7 @@ export class TauriTrustStore implements TrustStore {
     await this.#call(trustCommands.grant, { record });
   }
 
+  /** Deletes the record and closes its folder; also when there is no record. */
   async revoke(location: string): Promise<void> {
     await this.#call(trustCommands.revoke, { location });
   }

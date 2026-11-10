@@ -31,15 +31,20 @@ from then on.
 
 ## Errors
 
-| The shell says      | The adapter rejects with                                               |
-| ------------------- | ---------------------------------------------------------------------- |
-| `unreadable`        | an `Error` naming the record's location, as `FileTrustStore` throws it |
-| `declined`          | a `KindedError` `denied`                                               |
-| `busy`              | a `KindedError` `conflict`                                             |
-| `folder_unreadable` | a `KindedError` `not_found`                                            |
-| `invalid_record`    | a `KindedError` `internal`                                             |
-| `io`                | a `KindedError` `unavailable`, with the shell's message                |
-| anything else       | a `KindedError` `unavailable`, without its text                        |
+| The shell says      | The adapter rejects with                                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `unreadable`        | an `Error` naming the record's location (or its file, when the shell can't read the location), as `FileTrustStore` throws it |
+| `declined`          | a `KindedError` `denied`                                                                                                     |
+| `busy`              | a `KindedError` `conflict`                                                                                                   |
+| `folder_unreadable` | a `KindedError` `not_found`                                                                                                  |
+| `invalid_record`    | a `KindedError` `internal`                                                                                                   |
+| `io`                | a `KindedError` `unavailable`, with the shell's message                                                                      |
+| anything else       | a `KindedError` `unavailable`, without its text                                                                              |
+
+The shell's refusals have the shape `{ kind, message, location?, file? }`. The package exports
+`trustCommands` (the four command names), `trustRefusalKinds` and `isTrustRefusal`, which tells a refusal
+from an IPC or permission failure. A page without the `desktop-trust` capability, such as the served
+Studio, gets the last row: `unavailable`, and the text of its failure is dropped.
 
 ## Example
 
