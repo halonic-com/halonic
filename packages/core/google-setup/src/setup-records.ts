@@ -15,6 +15,7 @@ import { shareClient } from "./share-client.ts";
 import { accountRefPrefix, isSetupRef } from "./store-names.ts";
 import { storedSetups } from "./stored-setups.ts";
 
+/** What {@link setupRecords} needs: the record store, the clock and the id generator. */
 export interface SetupRecordsOptions {
   /**
    * Where the records are kept, in the collection `_google_setups`. **Agents,

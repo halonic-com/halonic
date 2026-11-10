@@ -56,13 +56,16 @@ export function runExample(): {
 ```
 
 A problem is `{ kind: "syntax" | "unsupported" | "too-deep" | "too-large", message, line, col }`.
-`positionOf` answers with the nearest parent when nothing sits at the path.
+`positionOf` answers with the nearest parent when nothing sits at the path, and with `undefined`
+for a file with no data. Its line and column (`SourcePosition`) start at 1.
 
 ## Reading
 
 `readYaml(text, limits?)` follows the YAML 1.2 core rules, so `yes` stays text. It answers with
 `ok({ data, positionOf })` or `err(problem)`. `data` is plain objects, lists, text, numbers,
 booleans and `null`; an empty file, or one with only comments, gives `null`.
+`ok` and `err` are `Result`s from `@halonicjs/std`. A path (`YamlPath`) is a list of keys and list
+indexes, and the file read is a `YamlFile`.
 
 ## What it rejects
 
@@ -77,7 +80,7 @@ workspaces. The `too-large` check runs before parsing, at line 1, column 1.
 ## Writing
 
 - `writeYamlFile(data)`: workspace files, line width 100.
-- `writeFrontMatter({ name, description })`: the front matter of `SKILL.md`, library
+- `writeFrontMatter(fields)`, with `FrontMatterFields` (`{ name, description }`): the front matter of `SKILL.md`, library
   defaults, trimmed. The caller adds the `---` lines.
 
 Both write exactly what the old app wrote (yaml 2.9.1, pinned). Neither keeps
@@ -86,7 +89,8 @@ writing is up to the caller.
 
 ## Editing
 
-`editYaml(text, edits)` applies `set`, `delete` and `insert` edits to a file
+`editYaml(text, edits, limits?)` takes a list of `YamlEdit`s and answers with a `YamlEdited`
+(`text` and `layout`, a `YamlLayout`) or with a `YamlProblem` or `YamlEditProblem`. It applies `set`, `delete` and `insert` edits to a file
 and keeps everything the edits don't touch, so a structured editor can save
 while the user watches the file.
 

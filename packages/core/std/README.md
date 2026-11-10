@@ -29,11 +29,13 @@ turn display names into file-safe ids, as the old Studio did. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, `Emitter` is a
 small typed event emitter, and `KeyedQueue` runs async work one at a time
 per key, such as the appends to one run's log.
-`diffLines` gives the changed lines between two texts in memory, and `applyLineChanges`
+`splitLines` cuts a text into lines that keep their newline. `diffLines` gives the changed lines
+between two texts in memory (`LineChange`, with `DiffLinesOptions`), and `applyLineChanges`
 applies only some of them, which is how one part of a diff is taken or dropped. `mergeLines`
 merges two texts that started from the same base, as git's merge does, and marks a conflict
 where both changed the same or touching lines (with `touchingConflicts: false`, only the same
-lines); `mergedText` settles each conflict by taking one side. A changed middle too large to
+lines); it returns a list of `MergeRegion`s (`MergeLinesOptions` sets the option), `hasConflicts`
+tells whether any is a conflict, and `mergedText` settles each conflict by taking one side. A changed middle too large to
 compare line by line (`MAX_COMPARED_LINE_PAIRS`) is one change. They serve Compare's "Combine both" and the assistant's changes to review.
 `StopSource` gives out a `StopSignal` and tells it to stop, with a reason:
 what an `AbortController` does, for core code, which sees the Web types but
@@ -70,6 +72,14 @@ The smaller exports:
   `assertDefined` also returns the value with `undefined` and `null` taken out of its type.
 - `unwrap` returns the value of an `ok` result and throws the carried error for an `err` one.
   Use it in tests and fixtures, where a failure is a bug.
+- `Result` is `Ok` (from `ok(value)`) or `Err` (from `err(error)`); `mapResult` changes the value of
+  an `ok` result and passes an `err` one through.
+- `contentDigest(text, digest)` gives `sha256:` and the 64 hex characters of the SHA-256 of the
+  text, for a store's write-if-unchanged check. `matchesExpected` tells whether a file's text (or
+  `null`, no file) is what the caller last read, a digest or `"absent"`. `digest` is anything that
+  has the `Sha256` shape, such as the `Digest` port.
+- `IdGenerator` is the type `randomIds` and `fixedIds` return, and `Listener` is the type of a
+  function `Emitter.on` takes. `SecretShape` names the kinds `findSecretShape` answers with.
 - `bytesToHex` writes bytes as lowercase hex.
 - `formatVersion` writes a `Version` from `readVersion` back as text.
 - `errorKinds` lists the eight kinds and `isErrorKind` tells whether a value is one of them.

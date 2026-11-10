@@ -251,7 +251,8 @@ e-mail address or a client ID.
 | `google-client-<clientRef>-staged` | a new client secret until Google accepts it |
 | `google-account-<accountRef>`      | one Google account's refresh token          |
 
-These are the only names of a Google client secret and refresh token. A connector file's `client`
+`clientSecretName(clientRef)`, `stagedClientSecretName(clientRef)` and `refreshTokenName(accountRef)`
+work out these names. These are the only names of a Google client secret and refresh token. A connector file's `client`
 and `secret` name no secret (`format.secret-names`): the setup record decides which client a sign-in
 uses, and the account ref which refresh token.
 
@@ -289,7 +290,9 @@ talks to Google.
 | `signInScopes`                              | the scopes to ask for: `baseSignInScopes` (`openid`, `email`) and the services' scopes, sorted, without duplicates                                               |
 | `googleAuthEndpoint`, `googleTokenEndpoint` | Google's authorisation and token endpoints, as constants                                                                                                         |
 
-A pending sign-in holds the PKCE verifier, so it is never written to the `TokenStore` or any other
+`pendingSignInLifetimeMs` is that 10 minutes, and `hasPendingSignInExpired(pending, now)` tells
+whether a pending sign-in has run out. `PendingSignIn` and `PendingSignInDetails` are the shapes the
+port stores. A pending sign-in holds the PKCE verifier, so it is never written to the `TokenStore` or any other
 store (plan D5). The `code` and `tokens` results hold secrets and never leave the host package.
 Google's `error_description` is never read, and an `error` value that isn't a plain code becomes
 `unrecognised`.
