@@ -8,8 +8,12 @@ import { type Infer, s } from "@halonicjs/schema-kit";
  */
 
 /** A version as the Rust crate reads it: `0.1.0`, `0.1.0-beta.1`, build metadata allowed. */
-const VERSION_PATTERN =
-  "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$";
+const VERSION_PATTERN = [
+  "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)",
+  // Pre-release identifiers: a number without a leading zero, or a word.
+  "(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?",
+  "(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+].join("");
 
 const version = (): ReturnType<typeof s.string> => s.string().regex(new RegExp(VERSION_PATTERN));
 

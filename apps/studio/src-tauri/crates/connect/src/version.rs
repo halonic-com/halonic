@@ -19,7 +19,10 @@ impl Version {
     /// Reads `major.minor.patch`, with an optional `-pre.release` and
     /// `+build`. Returns `None` for anything else.
     pub fn parse(text: &str) -> Option<Version> {
-        let without_build = text.split_once('+').map_or(text, |(version, _)| version);
+        let without_build = match text.split_once('+') {
+            Some((version, build)) => parse_build(build).then_some(version)?,
+            None => text,
+        };
         let (core, pre_release) = match without_build.split_once('-') {
             Some((core, pre)) => (core, parse_pre_release(pre)?),
             None => (without_build, Vec::new()),
@@ -42,6 +45,13 @@ fn parse_number(text: &str) -> Option<u64> {
     (digits_only && !leading_zero)
         .then(|| text.parse().ok())
         .flatten()
+}
+
+/// Build metadata: dot-separated, non-empty identifiers of letters, digits
+/// and hyphens. Leading zeros are fine here.
+fn parse_build(text: &str) -> bool {
+    text.split('.')
+        .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'))
 }
 
 /// Dot-separated identifiers of letters, digits and hyphens. A numeric one
@@ -132,6 +142,9 @@ mod tests {
             "0.1.0-",
             "0.1.0-beta..1",
             "0.1.0-beta.01",
+            "1.2.3+",
+            "1.2.3+a..b",
+            "1.2.3+a+b",
             "0.1.x",
         ] {
             assert_eq!(Version::parse(bad), None, "{bad:?}");
