@@ -70,6 +70,15 @@ verifies("model-anthropic.endpoint", () => {
     expect(provider.type).toBe("anthropic");
   });
 
+  it("accepts a base URL that already ends in /v1", async () => {
+    for (const baseUrl of ["https://proxy.acme.test/v1", "https://proxy.acme.test/v1/"]) {
+      const { vendor, provider } = providerWith({ baseUrl });
+      vendor.answerNext(textAnswer);
+      await provider.chat(chatRequest());
+      expect(vendor.received[0]?.url).toBe("https://proxy.acme.test/v1/messages");
+    }
+  });
+
   it("uses Anthropic's own address by default, and sends the key only in x-api-key", async () => {
     const { vendor, provider } = providerWith();
     vendor.answerNext(textAnswer);

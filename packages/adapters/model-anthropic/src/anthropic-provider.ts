@@ -12,6 +12,15 @@ import { toWireBody } from "./request.ts";
 /** Anthropic's own address; the provider adds `/v1/messages`. */
 export const anthropicBaseUrl = "https://api.anthropic.com";
 
+/**
+ * The base address without a trailing `/` or `/v1`, so that both
+ * `https://proxy.example` and `https://proxy.example/v1/` reach
+ * `https://proxy.example/v1/messages` instead of `/v1/v1/messages`.
+ */
+function apiRoot(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, "").replace(/\/v1$/, "");
+}
+
 /** The Messages API version every call asks for. */
 const apiVersion = "2023-06-01";
 
@@ -21,7 +30,11 @@ export interface AnthropicProviderOptions {
   id: string;
   /** The adapter type it was configured as; "anthropic" when left out. */
   type?: string;
-  /** The API's address without `/v1`, such as a proxy's; Anthropic's own when left out. */
+  /**
+   * The API's address, such as a proxy's; Anthropic's own when left out.
+   * Written without `/v1`, as in Anthropic's own docs, but a trailing `/v1`
+   * is accepted too, the way OpenAI-compatible addresses are written.
+   */
   baseUrl?: string;
   http: HttpClient;
   /**
@@ -63,7 +76,7 @@ export class AnthropicProvider implements LlmProvider {
   constructor(options: AnthropicProviderOptions) {
     this.id = options.id;
     this.type = options.type ?? "anthropic";
-    this.#endpoint = `${(options.baseUrl ?? anthropicBaseUrl).replace(/\/+$/, "")}/v1/messages`;
+    this.#endpoint = `${apiRoot(options.baseUrl ?? anthropicBaseUrl)}/v1/messages`;
     this.#http = options.http;
     this.#key = options.key;
   }
