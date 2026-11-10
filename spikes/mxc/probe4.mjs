@@ -65,6 +65,13 @@ const network = {
     egress: { default: "deny", allow: [{ to: [{ cidr: "127.0.0.1/32" }], ports: [{ protocol: "tcp", port }] }] },
     ingress: { default: "deny", hostLoopback: "allow" },
   }),
+  // HAL-3365: the bridge as MXC's proxy endpoint ("Model 2", no peer identity). The only policy that
+  // reached the bridge with every other loopback port closed. MXC sets HTTP_PROXY/HTTPS_PROXY to it.
+  proxy: (port) => ({
+    egress: { default: "deny" },
+    ingress: { default: "allow", hostLoopback: "allow" },
+    runtimeConfig: { networkProxy: `http://127.0.0.1:${port}` },
+  }),
   // Open control: every host-loopback port reachable. Proves "not reached" above is the policy, not the probe.
   loopbackOpen: { egress: { default: "deny" }, ingress: { default: "deny", hostLoopback: "allow" } },
 };
@@ -250,12 +257,22 @@ async function harnessMode() {
       { tag: "plain", env, containmentConfig: undefined },
       { tag: "temp+enumerateRoot", env: { ...env, ...tempInWork(work) }, containmentConfig: { filesystem: { enumeratePaths: [drive] } } },
     ];
-    const nets = needsBridge ? [["bridgeOnly", network.bridgeOnly(bridge.port)], ["bridgeOnlyLoopbackAllowed", network.bridgeOnlyLoopbackAllowed(bridge.port)]] : [["closed", network.closed]];
+    // The proxy policy first (HAL-3365): as MXC sets it, then with the bridge exempted from the proxy
+    // variables, which is what the adapter would do if a harness mishandles the proxy.
+    const noProxy = { NO_PROXY: "127.0.0.1,localhost", no_proxy: "127.0.0.1,localhost" };
+    const nets = needsBridge
+      ? [
+          ["proxy", network.proxy(bridge.port), {}],
+          ["proxy+NO_PROXY", network.proxy(bridge.port), noProxy],
+          ["bridgeOnly", network.bridgeOnly(bridge.port), {}],
+          ["bridgeOnlyLoopbackAllowed", network.bridgeOnlyLoopbackAllowed(bridge.port), {}],
+        ]
+      : [["closed", network.closed, {}]];
     const results = [];
     for (const v of variants) {
-      for (const [netName, net] of nets) {
+      for (const [netName, net, netEnv] of nets) {
         const before = bridge.requests.length;
-        const r = await inBox(`${name} ${label} [${v.tag}, ${netName}]`, command, { work, read, net, env: v.env, containmentConfig: v.containmentConfig, timeoutMs: 180_000 });
+        const r = await inBox(`${name} ${label} [${v.tag}, ${netName}]`, command, { work, read, net, env: { ...v.env, ...netEnv }, containmentConfig: v.containmentConfig, timeoutMs: 180_000 });
         r.variant = v.tag;
         r.net = netName;
         r.bridgeRequests = bridge.requests.slice(before);
@@ -323,7 +340,7 @@ async function harnessMode() {
   const verdict = (runs) => {
     if (!runs) return "not run";
     const win = runs.find((r) => r.ok && (r.bridgeRequests === undefined || r.net === "closed" || r.bridgeRequests.length > 0));
-    if (win) return `PASS (${win.variant}, ${win.net})`;
+    if (win) return `PASS (${win.variant}, ${win.net}; tried ${runs.map((r) => `${r.net}=${r.ok ? "ok" : (r.hex ?? r.spawnError)}`).join(" ")}; paths ${[...new Set((win.bridgeRequests ?? []).map((request) => request.path))].join(" ")})`;
     return `FAIL: ${runs[0].spawnError ?? runs[0].waitError ?? runs[0].firstError ?? `exit ${runs[0].hex}`}`;
   };
   out.verdict = {
@@ -343,7 +360,8 @@ async function networkMode() {
   const bridge = await countingListener();
   const other = await countingListener();
   // No "-o NUL": keep the null device out of the picture (round 2 needed host prep for it on the DACL tier).
-  const curl = (target) => `curl.exe -sS -m 8 -w " http=%{http_code}" ${target}`;
+  // --noproxy: under the proxy policy curl would otherwise send every request to the bridge.
+  const curl = (target) => `curl.exe -sS -m 8 --noproxy * -w " http=%{http_code}" ${target}`;
   const outsideByName = "https://example.com/";
   const outsideByIp = "http://1.1.1.1/";
   const hostControl = Object.fromEntries(
@@ -361,7 +379,7 @@ async function networkMode() {
     out.cases[name] = r;
     return r;
   };
-  const policies = { bridgeOnly: network.bridgeOnly(bridge.port), bridgeOnlyLoopbackAllowed: network.bridgeOnlyLoopbackAllowed(bridge.port) };
+  const policies = { bridgeOnly: network.bridgeOnly(bridge.port), bridgeOnlyLoopbackAllowed: network.bridgeOnlyLoopbackAllowed(bridge.port), proxy: network.proxy(bridge.port) };
   for (const [pname, net] of Object.entries(policies)) {
     await probe(`${pname}: bridge port`, `http://127.0.0.1:${bridge.port}/`, bridge, net);
     await probe(`${pname}: second loopback port`, `http://127.0.0.1:${other.port}/`, other, net);
@@ -385,6 +403,7 @@ async function networkMode() {
   out.verdict = {
     bridgeOnly: policyVerdict("bridgeOnly"),
     bridgeOnlyLoopbackAllowed: policyVerdict("bridgeOnlyLoopbackAllowed"),
+    proxy: policyVerdict("proxy"),
     openControlValid: reached(out.cases["control loopbackOpen: second loopback port"]),
     hostReachesOutside: Object.values(hostControl).some((h) => h.exit === 0),
   };
@@ -392,6 +411,7 @@ async function networkMode() {
   // Streams and kill, under the bridge-only policy: a Node parent with a child and a detached grandchild,
   // each writing a heartbeat file. stdin echo, stdout streaming, then kill() and check that all three stop.
   out.streamsAndKill = await streamsAndKill(work, policies.bridgeOnly);
+  out.streamsAndKillProxy = await streamsAndKill(work, policies.proxy);
   bridge.close();
   other.close();
   const v = out.verdict.bridgeOnly;
@@ -400,6 +420,9 @@ async function networkMode() {
   console.log(`RESULT network bridgeOnlyLoopbackAllowed: bridge reached=${w.bridgeReached}, second port blocked=${w.secondPortBlocked}, outside blocked=${w.outsideByNameBlocked && w.outsideByIpBlocked}`);
   const k = out.streamsAndKill.verdict;
   console.log(`RESULT network streams+kill: ${JSON.stringify(k)}`);
+  const x = out.verdict.proxy;
+  console.log(`RESULT network proxy: bridge reached=${x.bridgeReached}, second port blocked=${x.secondPortBlocked}, outside blocked=${x.outsideByNameBlocked && x.outsideByIpBlocked}`);
+  console.log(`RESULT network streams+kill (proxy): ${JSON.stringify(out.streamsAndKillProxy.verdict)}`);
   return out;
 }
 

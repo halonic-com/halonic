@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+# HAL-3365 reruns only the harness and network checks, with the proxy policy added. Denial capture
+# and pnpm are decided (HAL-3303) and unchanged.
+env:
+  PROBE4_STEPS: harness network
+
 jobs:
   mxc:
     name: MXC go/no-go on windows-11-arm
@@ -60,11 +65,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
       - name: 3. Denial capture
+        if: contains(env.PROBE4_STEPS, 'denials')
         working-directory: spikes/mxc
         run: node probe4.mjs denials
         continue-on-error: true
         timeout-minutes: 10
       - name: 4. pnpm fix attempt (temp in work, enumerate-only drive root)
+        if: contains(env.PROBE4_STEPS, 'pnpm')
         working-directory: spikes/mxc
         run: node probe4.mjs pnpm
         continue-on-error: true
