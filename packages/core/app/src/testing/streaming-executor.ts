@@ -41,7 +41,8 @@ export class StreamingExecutor implements Pick<RunExecutor, "start" | "subscribe
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
     this.subscribed.push({ runId, afterSeq });
     let open = true;
-    queueMicrotask(() => {
+    // A microtask: core's types have no `queueMicrotask`.
+    void Promise.resolve().then(() => {
       if (!open) return;
       // Like a real stream, the replay may go on after the listener closed
       // it from inside `onEvent`; it just isn't kept for new events then.
