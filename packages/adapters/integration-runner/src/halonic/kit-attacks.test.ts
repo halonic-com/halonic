@@ -5,7 +5,11 @@
 // bridge's own tests use a kit that accepts everything, so these run the
 // kit's `createLimitedHttpClient` over a recording transport instead.
 
-import { createLimitedHttpClient, RequestLog } from "@halonicjs/adapter-integration-kit";
+import {
+  createLimitedHttpClient,
+  RequestLog,
+  secretForms,
+} from "@halonicjs/adapter-integration-kit";
 import type { HttpClient } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -50,7 +54,7 @@ const policy = {
 };
 
 /** The kit's real client over a transport that records what it sends. */
-function realKit(server: Server) {
+function realKit(server: Server, secret: string) {
   const wire: WireRequest[] = [];
   const transport: HttpClient = {
     fetch: async (url, init = {}) => {
@@ -69,17 +73,27 @@ function realKit(server: Server) {
   const http = createLimitedHttpClient({
     policy,
     transport,
-    secrets: { get: async () => fakeSecret },
+    secrets: { get: async () => secret },
     log: new RequestLog(),
   });
   return { http, wire };
 }
 
-/** A started connection to the real kit, with one running call, driven frame by frame. */
-async function runningCall(server: Server, limits: Partial<RunnerLimits> = {}) {
-  const kit = realKit(server);
+/**
+ * A started connection to the real kit, with one running call, driven frame by
+ * frame. Every secret in the sheet has the value `secret`.
+ */
+async function runningCall(
+  server: Server,
+  { limits = {}, secret = fakeSecret }: { limits?: Partial<RunnerLimits>; secret?: string } = {},
+) {
+  const kit = realKit(server, secret);
   const fake = fakeRunnerProcess();
-  const options = bridgeOptions(fake, { http: kit.http, limits });
+  const options = bridgeOptions(fake, {
+    http: kit.http,
+    limits,
+    secrets: secretForms([{ value: secret }]),
+  });
   const runner = new HandDrivenRunner(fake);
   const connecting = connectRunner(options);
   await runner.start();
@@ -134,7 +148,10 @@ verifies("integration-runner.requests", () => {
       ["Cookie", { header: "Cookie", prefix: "Key " }],
       ["Proxy-Authorization", { header: "Proxy-Authorization", prefix: "Key " }],
       ["the sheet's header with another prefix", { header: "X-Api-Key", prefix: "" }],
-      ["the sheet's header with a Kelvin sign for the k", { header: "X-Api-Key", prefix: "Key " }],
+      [
+        "the sheet's header with a Kelvin sign for the k",
+        { header: "X-Api-\u212Aey", prefix: "Key " },
+      ],
     ])("refuses a header placement with %s, sending nothing", async (_, placement) => {
       const { options, runner, connection, call, wire } = await runningCall(ok);
       await runner.send(
@@ -221,6 +238,11 @@ verifies("integration-runner.requests", () => {
       expect(wire).toEqual([]);
       expect(options.blocks).toEqual([{ kind: "leak-attempt", code: "placement-not-in-sheet" }]);
       // A refusal answers the request; it doesn't stop the runner.
+      await runner.send(
+        fetchFrame(call, { id: 1, auth: [{ secret: "bearer-key", as: "bearer" }] }),
+      );
+      expect(await runner.next()).toMatchObject({ type: "head", id: 1, status: 200 });
+      expect(wire).toHaveLength(1);
       await connection.close();
       expect(await connection.stopped).toEqual({ reason: "closed" });
     });
@@ -251,28 +273,31 @@ verifies("integration-runner.requests", () => {
   });
 
   describe("E4: a server that echoes the placed key back (A19, A27)", () => {
+    /** A key that URL-encoding changes, so the encoded copy is a form of its own. */
+    const key = "sk-fake/0123+4567=89";
+
     /**
      * A server that repeats the key it was given, the body split inside the key.
      * Base64 and other transformed copies aren't filtered, by design (`secretForms`).
      */
     const echo: Server = () => {
-      const half = fakeSecret.length / 2;
+      const half = key.length / 2;
       const body = new ReadableStream<Uint8Array>({
         start: (controller) => {
           const encoder = new TextEncoder();
-          controller.enqueue(encoder.encode(`{"you sent":"${fakeSecret.slice(0, half)}`));
-          controller.enqueue(encoder.encode(`${fakeSecret.slice(half)}","again":"`));
-          controller.enqueue(encoder.encode(`${fakeSecret}"}`));
+          controller.enqueue(encoder.encode(`{"you sent":"${key.slice(0, half)}`));
+          controller.enqueue(encoder.encode(`${key.slice(half)}","again":"`));
+          controller.enqueue(encoder.encode(`${key}"}`));
           controller.close();
         },
       });
       return new Response(body, {
         status: 401,
-        statusText: `bad key ${fakeSecret}`,
+        statusText: `bad key ${key}`,
         headers: {
-          "x-echo": fakeSecret,
-          "www-authenticate": `Bearer error="invalid_token", token="${fakeSecret}"`,
-          "set-cookie": `last=${encodeURIComponent(fakeSecret)}`,
+          "x-echo": key,
+          "www-authenticate": `Bearer error="invalid_token", token="${key}"`,
+          "set-cookie": `last=${encodeURIComponent(key)}`,
         },
       });
     };
@@ -283,7 +308,8 @@ verifies("integration-runner.requests", () => {
     ])("shows the runner only [secret removed], for a key placed as %s", async (_, placement) => {
       // Small pieces, so the bridge splits the body over many `chunk` frames as well.
       const { options, runner, connection, call, wire } = await runningCall(echo, {
-        maxBodyPieceBytes: 7,
+        limits: { maxBodyPieceBytes: 7 },
+        secret: key,
       });
       await runner.send(fetchFrame(call, { auth: [placement] }));
       const frames = await readAnswer(runner);
@@ -294,6 +320,8 @@ verifies("integration-runner.requests", () => {
       if (head?.type !== "head") throw new Error("expected a head");
       expect(head.statusText).toBe("bad key [secret removed]");
       expect(head.headers).toContainEqual(["x-echo", "[secret removed]"]);
+      expect(encodeURIComponent(key)).not.toBe(key);
+      expect(head.headers).toContainEqual(["set-cookie", "last=[secret removed]"]);
       expect(frames.at(-1)).toEqual({ type: "end", id: 0 });
       const body = frames
         .filter((frame) => frame.type === "chunk")
@@ -301,8 +329,7 @@ verifies("integration-runner.requests", () => {
         .join("");
       expect(body).toBe('{"you sent":"[secret removed]","again":"[secret removed]"}');
 
-      for (const frame of frames) expect(visible(frame)).not.toContain(fakeSecret);
-      expect(JSON.stringify(head)).not.toContain(encodeURIComponent(fakeSecret));
+      for (const frame of frames) expect(visible(frame)).not.toContain(key);
       expect(options.blocks).toEqual([]);
       await connection.close();
     });
