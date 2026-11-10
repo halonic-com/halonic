@@ -63,51 +63,86 @@ function textsIn(file: string): Text[] {
  * quote would confuse it, and none of the checked files has one.
  */
 function textsOf(code: string): Text[] {
-  const texts: Text[] = [];
+  const scanner = new TextScanner(code);
+  while (!scanner.done()) {
+    scanner.step();
+  }
+  return scanner.texts;
+}
+
+/** Walks code one token at a time, collecting the texts of its strings and templates. */
+class TextScanner {
+  readonly texts: Text[] = [];
   // For each template whose `${` is open, how many `{` inside it are still open.
-  const openTemplates: number[] = [];
-  let index = 0;
-  const lineAt = (position: number) => code.slice(0, position).split("\n").length;
+  private readonly openTemplates: number[] = [];
+  private index = 0;
+  private readonly code: string;
 
-  /** Reads text up to `end`, past escaped characters; a template's text also ends at `${`. */
-  const readText = (end: string): void => {
-    const start = index;
-    while (index < code.length && code[index] !== end) {
-      if (end === "`" && code.startsWith("${", index)) {
-        openTemplates.push(0);
-        texts.push({ text: code.slice(start, index), line: lineAt(start) });
-        index += 2;
-        return;
-      }
-      index += code[index] === "\\" ? 2 : 1;
-    }
-    texts.push({ text: code.slice(start, index), line: lineAt(start) });
-    index += 1;
-  };
+  constructor(code: string) {
+    this.code = code;
+  }
 
-  while (index < code.length) {
-    const char = code[index] ?? "";
-    if (code.startsWith("//", index)) {
-      index = code.indexOf("\n", index) === -1 ? code.length : code.indexOf("\n", index);
-    } else if (code.startsWith("/*", index)) {
-      index = code.indexOf("*/", index) + 2;
+  done(): boolean {
+    return this.index >= this.code.length;
+  }
+
+  step(): void {
+    const char = this.code[this.index] ?? "";
+    if (this.code.startsWith("//", this.index)) {
+      this.skipPast("\n");
+    } else if (this.code.startsWith("/*", this.index)) {
+      this.skipPast("*/");
     } else if (char === '"' || char === "'" || char === "`") {
-      index += 1;
-      readText(char);
-    } else if (char === "{" && openTemplates.length > 0) {
-      openTemplates[openTemplates.length - 1] = (openTemplates.at(-1) ?? 0) + 1;
-      index += 1;
-    } else if (char === "}" && openTemplates.at(-1) === 0) {
+      this.index += 1;
+      this.readText(char);
+    } else if (char === "}" && this.openTemplates.at(-1) === 0) {
       // The `}` that ends a template's `${`: its text goes on.
-      openTemplates.pop();
-      index += 1;
-      readText("`");
+      this.openTemplates.pop();
+      this.index += 1;
+      this.readText("`");
     } else {
-      if (char === "}" && openTemplates.length > 0) {
-        openTemplates[openTemplates.length - 1] = (openTemplates.at(-1) ?? 1) - 1;
-      }
-      index += 1;
+      this.countBrace(char);
+      this.index += 1;
     }
   }
-  return texts;
+
+  /** Moves past the next `end`, or to the end of the code when there's none. */
+  private skipPast(end: string): void {
+    const at = this.code.indexOf(end, this.index);
+    this.index = at === -1 ? this.code.length : at + end.length;
+  }
+
+  /** Keeps count of the braces inside a template's `${`, so its own `}` is found. */
+  private countBrace(char: string): void {
+    const depth = this.openTemplates.at(-1);
+    if (depth === undefined) {
+      return;
+    }
+    if (char === "{") {
+      this.openTemplates[this.openTemplates.length - 1] = depth + 1;
+    } else if (char === "}") {
+      this.openTemplates[this.openTemplates.length - 1] = depth - 1;
+    }
+  }
+
+  /** Reads text up to `end`, past escaped characters; a template's text also ends at `${`. */
+  private readText(end: string): void {
+    const start = this.index;
+    while (this.index < this.code.length && this.code[this.index] !== end) {
+      if (end === "`" && this.code.startsWith("${", this.index)) {
+        this.openTemplates.push(0);
+        this.addText(start);
+        this.index += 2;
+        return;
+      }
+      this.index += this.code[this.index] === "\\" ? 2 : 1;
+    }
+    this.addText(start);
+    this.index += 1;
+  }
+
+  private addText(start: number): void {
+    const line = this.code.slice(0, start).split("\n").length;
+    this.texts.push({ text: this.code.slice(start, this.index), line });
+  }
 }
