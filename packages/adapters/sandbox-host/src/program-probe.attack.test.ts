@@ -28,6 +28,23 @@ function withBin(): string {
   return `${bin}:/usr/bin:/bin`;
 }
 
+/**
+ * SIGKILLs the processes a script listed in `file`, one PID per line. The
+ * probe kills only the program, not its children (HAL-2662), so tests that
+ * fork clean up after themselves. A missing file or a gone process is fine.
+ */
+async function killListed(file: string): Promise<void> {
+  const text = await readFile(file, "utf8").catch(() => "");
+  for (const pid of text.split("\n").map(Number)) {
+    if (!Number.isInteger(pid) || pid <= 0) continue;
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+    }
+  }
+}
+
 function stdoutOf(answer: ProgramProbeResult): string {
   if (answer.status !== "ran") throw new Error(`expected "ran", got ${JSON.stringify(answer)}`);
   return answer.stdout;
@@ -45,7 +62,10 @@ beforeAll(async () => {
     "flood",
     "head -c 200000 /dev/zero | tr '\\0' o; head -c 200000 /dev/zero | tr '\\0' e >&2",
   );
-  await script("floodforever", "yes out & yes err >&2");
+  await script(
+    "floodforever",
+    `yes out & echo $! > ${join(dir, "flood.pids")}; yes err >&2 & echo $! >> ${join(dir, "flood.pids")}; wait`,
+  );
   await script("selfkill", "kill -9 $$");
   await mkdir(join(bin, "adir"));
   await symlink(join(bin, "hello"), join(bin, "linked"));
@@ -201,6 +221,8 @@ verifies("sandbox-host.program-probe-node", () => {
         ENV: "/opt/leak-canary-env",
         path: "/opt/leak-canary-lowercase",
       };
+      // dash and bash on Linux add only PWD, OLDPWD, SHLVL and _. On macOS `env`
+      // may also print __CF_USER_TEXT_ENCODING, which would fail these tests.
       const allowed = /^(PATH|HOME|LANG|LC_ALL|LC_CTYPE|LC_MESSAGES|PWD|OLDPWD|SHLVL|_)$/;
 
       function names(dump: string): string[] {
@@ -265,12 +287,17 @@ verifies("sandbox-host.program-probe-node", () => {
       });
 
       it("stops a program that floods both streams without end", async () => {
-        const answer = await probe(withBin(), {}, 300).ask("floodforever", []);
-        expect(answer).toEqual({
-          status: "failed",
-          path: join(bin, "floodforever"),
-          error: "floodforever didn't finish in time and was stopped.",
-        });
+        try {
+          const answer = await probe(withBin(), {}, 300).ask("floodforever", []);
+          expect(answer).toEqual({
+            status: "failed",
+            path: join(bin, "floodforever"),
+            error: "floodforever didn't finish in time and was stopped.",
+          });
+        } finally {
+          // Both `yes` outlive the stopped script until HAL-2662 kills the group.
+          await killListed(join(dir, "flood.pids"));
+        }
       });
 
       it("keeps a cut multi-byte character to one replacement character", async () => {
@@ -293,11 +320,14 @@ verifies("sandbox-host.program-probe-node", () => {
       it("answers in time when the program leaves a child holding its output open", async () => {
         const pidFile = join(dir, "holder.pid");
         await script("holder", `sleep 30 & echo $! > ${pidFile}; exit 0`);
-        const started = Date.now();
-        const answer = await probe(withBin(), {}, 300).ask("holder", []);
-        expect(Date.now() - started).toBeLessThan(3_000);
-        expect(answer.status === "failed" || answer.status === "ran").toBe(true);
-        process.kill(Number(await readFile(pidFile, "utf8")), "SIGKILL");
+        try {
+          const started = Date.now();
+          const answer = await probe(withBin(), {}, 300).ask("holder", []);
+          expect(Date.now() - started).toBeLessThan(3_000);
+          expect(answer.status === "failed" || answer.status === "ran").toBe(true);
+        } finally {
+          await killListed(pidFile);
+        }
       });
     });
   });
