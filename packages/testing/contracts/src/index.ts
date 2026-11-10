@@ -167,7 +167,11 @@ export {
 } from "./trust-store.ts";
 export { type TrustConnectors, trustStoreAttackContract } from "./trust-store-attacks.ts";
 export { vcsContract } from "./vcs.ts";
-export { type HardenedTest, vcsHardenedCases } from "./vcs-hardened.ts";
+export {
+  type HardenedTest,
+  vcsHardenedCases,
+  vcsVersionHardenedCases,
+} from "./vcs-hardened.ts";
 export {
   gitInternalPaths,
   invalidBranchNames,
@@ -181,3 +185,9 @@ export {
   type VcsHarness,
   validBranchNames,
 } from "./vcs-harness.ts";
+export {
+  invalidCommitRefs,
+  linePatch,
+  unknownCommit,
+  unsafePatches,
+} from "./vcs-version-inputs.ts";

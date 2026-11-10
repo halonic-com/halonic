@@ -28,6 +28,19 @@ export async function stateOf({ vcs, files }: VcsHarness) {
   };
 }
 
+/**
+ * The index, as far as the port shows it: each file's staged diff. `status`
+ * says which files are staged; this also catches a staged change replaced
+ * by another.
+ */
+export async function stagedDiffs(
+  { vcs }: VcsHarness,
+  paths: readonly string[],
+): Promise<Record<string, string>> {
+  const diffs = await Promise.all(paths.map(async (path) => [path, await vcs.diff(path, true)]));
+  return Object.fromEntries(diffs);
+}
+
 /** The changes in a fixed order, because the port doesn't promise one. */
 export async function changesOf(status: Promise<VcsStatus>): Promise<VcsChange[]> {
   return sortChanges((await status).changes);

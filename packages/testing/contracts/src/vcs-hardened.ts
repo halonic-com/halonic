@@ -27,6 +27,22 @@ export function vcsHardenedCases(make: MakeVcs, test: HardenedTest = it): void {
   localRemoteCases(make, test);
 }
 
+/**
+ * The hardened cases for port version 2: snapshots, worktrees and patches
+ * run nothing planted either, and a worktree's own `.git` file is never
+ * trusted (HAL-3188). `test` is as for {@link vcsHardenedCases}.
+ */
+export function vcsVersionHardenedCases(make: MakeVcs, test: HardenedTest = it): void {
+  if (!make.drivesGit) {
+    test("runs no git, so it offers nothing to plant in a worktree", async () => {
+      expect((await make.repo({ "a.yaml": "1\n" })).plant).toBeUndefined();
+    });
+    return;
+  }
+  snapshotAndWorktreeCases(make, test);
+  worktreeGitFileCases(make, test);
+}
+
 function hookCases(make: MakeVcs, test: HardenedTest): void {
   test("never runs a planted hook, in any local command", async () => {
     const harness = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n" });
@@ -173,4 +189,51 @@ function plantOf(harness: VcsHarness): PlantGitCode {
     throw new Error("An adapter that drives git must give `plant` for every repository and clone.");
   }
   return harness.plant;
+}
+
+function snapshotAndWorktreeCases(make: MakeVcs, test: HardenedTest): void {
+  test("never runs planted code in snapshots, versions, worktrees or patches", async () => {
+    const harness = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n" });
+    const plant = plantOf(harness);
+    for (const hook of plantedHooks) await plant.hook(hook);
+    await plantLocalConfig(plant);
+    const { vcs, files } = harness;
+
+    await files.write("a.yaml", "2\n");
+    const snapshot = await vcs.snapshot();
+    await vcs.readAt(snapshot, "a.yaml");
+    await vcs.listAt(snapshot);
+    // `git worktree add` checks files out, which runs post-checkout and the filters.
+    const worktree = await vcs.addWorktree(snapshot);
+    await harness.worktreeFiles(worktree).write("b.yaml", "2\n");
+    await vcs.listWorktrees();
+    const [change] = await vcs.diffBetween(snapshot, worktree.id);
+    await vcs.applyPatch(String(change?.diff), { reverse: false });
+    await vcs.applyPatch(String(change?.diff), { reverse: true });
+    await vcs.rename("a.yaml", "c.yaml");
+    await vcs.removeWorktree(worktree.id);
+
+    expect(await files.read("c.yaml")).toBe("2\n");
+    expect(await plant.ran()).toBe(false);
+  });
+}
+
+function worktreeGitFileCases(make: MakeVcs, test: HardenedTest): void {
+  test("never trusts the .git file in a worktree's folder", async () => {
+    const harness = await make.repo({ "a.yaml": "1\n" });
+    const { vcs } = harness;
+    const snapshot = await vcs.snapshot();
+    const worktree = await vcs.addWorktree(snapshot);
+    await harness.worktreeFiles(worktree).write("a.yaml", "2\n");
+    // What ran in the worktree points its `.git` file at a planted repository (HAL-3188).
+    await plantOf(harness).worktreeGitFile(worktree);
+
+    const changes = await vcs.diffBetween(snapshot, worktree.id);
+    expect(changes.map(({ path, status }) => ({ path, status }))).toEqual([
+      { path: "a.yaml", status: "modified" },
+    ]);
+    await vcs.listWorktrees();
+    await vcs.removeWorktree(worktree.id);
+    expect(await plantOf(harness).ran()).toBe(false);
+  });
 }
