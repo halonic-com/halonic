@@ -163,6 +163,7 @@
   --spacing-icon-sm: 16px;
   --spacing-icon-md: 20px;
   --spacing-titlebar: 40px;
+  --spacing-toolbar: 44px; /* the panel's first row: Back and Forward, the path, Saved */
   --spacing-statusbar: 24px; /* one line of caption text with 4px above and below */
   --spacing-sidebar: 264px;
   --spacing-panel: 360px; /* side panels; the shell sets this width, not the panel itself */

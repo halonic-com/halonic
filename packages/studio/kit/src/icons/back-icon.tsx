@@ -1,6 +1,6 @@
 /**
  * The back mark: an arrow pointing left, outline style, in the text colour. Used by the Back
- * button of a Side panel shown as a sheet, whose label says "Back".
+ * button of a Side panel shown as a sheet, whose label says "Back", and the toolbar's Back.
  */
 export function BackIcon() {
   return (

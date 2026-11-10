@@ -140,5 +140,6 @@ export {
   type WindowTab,
 } from "./tabs/tab-set.ts";
 export { WindowTabStrip, type WindowTabStripProps } from "./tabs/window-tab-strip.tsx";
+export { Toolbar, type ToolbarProps } from "./toolbar/toolbar.tsx";
 export { loadView, type ViewRef } from "./view.ts";
 export type { WorkspaceContext } from "./workspace-context.ts";

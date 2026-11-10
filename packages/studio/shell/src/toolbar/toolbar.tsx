@@ -1,0 +1,160 @@
+import { BackIcon, Button, ForwardIcon } from "@halonicjs/studio-kit";
+import { type MouseEvent, type ReactNode, useId, useSyncExternalStore } from "react";
+import type { Announcer } from "../announcer/announcer.ts";
+import { currentLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
+
+/** Props for {@link Toolbar}. */
+export interface ToolbarProps {
+  /** The open workspace's tabs: Back, Forward and the path follow the active one. */
+  readonly tabs: TabSet;
+  /** The window's announcer, for "Opened … in a new tab." after a Ctrl-click in the path. */
+  readonly announcer: Announcer;
+  /**
+   * The places above a tab's place in the path, outermost first: `[Workflows]` for the workflow
+   * "Support reply". Without it the path is the place alone.
+   */
+  readonly parentsOf?: ((location: TabLocation) => readonly TabLocation[]) | undefined;
+  /** The workspace's header badges ("Not trusted yet"). When there are none, the slot takes no room. */
+  readonly badges?: ReactNode;
+  /** The workspace's save state ("✓ Saved"), the same in every tab. */
+  readonly saveState?: ReactNode;
+}
+
+/**
+ * The toolbar, the panel's first row (design direction 2, UX checklist 1.1): Back and Forward of
+ * the active tab, the path as a `nav` named "Location", then on the right the header badge slot
+ * and the save state. Back and Forward stay in the Tab order when there's nowhere to go, and say
+ * so. A part of the path before the last is a link: a click opens it in the active tab, a
+ * Ctrl-click or a middle-click in a new tab next to it.
+ *
+ * The Assistant button joins it with the Assistant (T14); until then there's none.
+ *
+ * @example
+ * <ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>
+ */
+export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: ToolbarProps) {
+  const state = useSyncExternalStore(
+    (listener) => tabs.subscribe(listener),
+    () => tabs.state,
+  );
+  const location = currentLocation(tabs.active);
+  const parents = parentsOf?.(location) ?? [];
+
+  const openPart = (part: TabLocation, inNewTab: boolean) => {
+    if (!inNewTab) {
+      tabs.openHere(part);
+      return;
+    }
+    const opened = tabs.openInNewTab(part);
+    if (opened.added) {
+      announcer.announce(`Opened ${part.title} in a new tab.`);
+    } else {
+      tabs.activate(opened.tab.id);
+    }
+  };
+
+  return (
+    <>
+      <HistoryButton direction="back" available={state.canGoBack} onClick={() => tabs.back()} />
+      <HistoryButton
+        direction="forward"
+        available={state.canGoForward}
+        onClick={() => tabs.forward()}
+      />
+      <nav aria-label="Location" className="min-w-0 flex-1">
+        <ol className="flex min-w-0 items-center gap-1.5 text-small">
+          {parents.map((part) => (
+            <li key={part.key} className="flex shrink-0 items-center gap-1.5">
+              <PathLink part={part} onOpen={openPart} />
+              <span aria-hidden="true" className="text-fg-muted">
+                /
+              </span>
+            </li>
+          ))}
+          <li className="min-w-0">
+            <span aria-current="page" className="block truncate text-fg">
+              {location.title}
+            </span>
+          </li>
+        </ol>
+      </nav>
+      {hasContent(badges) ? <div className="flex shrink-0 items-center gap-2">{badges}</div> : null}
+      {hasContent(saveState) ? <div className="shrink-0">{saveState}</div> : null}
+    </>
+  );
+}
+
+/** What Back and Forward are called, and why they can't be used. */
+const historyWords = {
+  back: { label: "Back", icon: <BackIcon />, nowhere: "Nothing to go back to" },
+  forward: { label: "Forward", icon: <ForwardIcon />, nowhere: "Nothing to go forward to" },
+} as const;
+
+interface HistoryButtonProps {
+  readonly direction: "back" | "forward";
+  readonly available: boolean;
+  readonly onClick: () => void;
+}
+
+/**
+ * Back or Forward. With nowhere to go it is unavailable, not disabled: it keeps its Tab stop and
+ * a screen reader hears why, from a reason only it reads (the arrows have no room for text).
+ */
+function HistoryButton({ direction, available, onClick }: HistoryButtonProps) {
+  const reasonId = useId();
+  const words = historyWords[direction];
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={words.icon}
+        label={words.label}
+        unavailable={available ? undefined : { reason: reasonId }}
+        onClick={onClick}
+      />
+      {available ? null : (
+        <span id={reasonId} className="sr-only">
+          {words.nowhere}
+        </span>
+      )}
+    </>
+  );
+}
+
+interface PathLinkProps {
+  readonly part: TabLocation;
+  readonly onOpen: (part: TabLocation, inNewTab: boolean) => void;
+}
+
+/**
+ * A part of the path the user can go to. It is a real link, so a screen reader lists it with the
+ * page's links; the shell opens it itself, so the browser never follows the address.
+ */
+function PathLink({ part, onOpen }: PathLinkProps) {
+  const open = (event: MouseEvent<HTMLAnchorElement>, inNewTab: boolean) => {
+    event.preventDefault();
+    onOpen(part, inNewTab);
+  };
+  return (
+    <a
+      href={`#${part.key}`}
+      className="rounded-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline focus-ring"
+      onClick={(event) => open(event, event.ctrlKey || event.metaKey)}
+      onAuxClick={(event) => {
+        if (event.button === middleButton) {
+          open(event, true);
+        }
+      }}
+    >
+      {part.title}
+    </a>
+  );
+}
+
+const middleButton = 1;
+
+/** Whether a slot was given something to show; `null`, `false` and nothing take no room. */
+function hasContent(node: ReactNode): boolean {
+  return node !== undefined && node !== null && node !== false;
+}

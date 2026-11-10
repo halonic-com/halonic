@@ -104,6 +104,7 @@ verifies("shell.frame", () => {
     expect(titleBar?.className).toContain("h-titlebar");
     expect(panel?.className).toContain("rounded-md");
     expect(panel?.firstElementChild?.textContent).toBe("Back");
+    expect(panel?.firstElementChild?.className).toContain("h-toolbar");
     expect(panel?.querySelector("main")?.textContent).toBe("desktop");
     const statusBar = panel?.lastElementChild;
     expect(statusBar?.tagName).toBe("FOOTER");

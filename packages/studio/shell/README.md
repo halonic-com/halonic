@@ -26,6 +26,7 @@ look up services its feature lists in `needs`.
 | `ShellFrame`                    | the window's frame: layers, live regions, Esc              | `shell.frame`             |
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
+| `Toolbar`                       | Back and Forward, the path, the badges and the save state  | `shell.toolbar`           |
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
 | `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
@@ -96,6 +97,21 @@ announcer when the window has focus, and passes Esc to the close stack. An Esc i
 <ShellFrame announcer={shell.announcer} closeStack={shell.closeStack} language="en">
   <HomePage />
 </ShellFrame>;
+```
+
+## The toolbar
+
+`Toolbar` fills the frame's 44px toolbar row (`h-toolbar`) for the active tab: Back and Forward,
+then the path as a `nav` named "Location", then the header badges and the save state. `parentsOf`
+gives the places above a tab's place, so a workflow reads "Workflows / Support reply"; each of
+them is a link that opens in the active tab, or in a new tab on a Ctrl-click or a middle-click,
+announced as "Opened Workflows in a new tab.". With nowhere to go, Back and Forward stay in the
+Tab order as unavailable, and screen readers hear "Nothing to go back to". The badge slot takes no
+room when it's empty. There's no Assistant button until the Assistant (T14) lands; the save state
+itself, the window-wide Back and Forward keys and the path's tooltips come in later pull requests.
+
+```tsx
+<ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>
 ```
 
 ## Announcements

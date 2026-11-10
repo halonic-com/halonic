@@ -97,7 +97,9 @@ export {
   useGridNavigation,
 } from "./grid-navigation/use-grid-navigation.ts";
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
+export { BackIcon } from "./icons/back-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
+export { ForwardIcon } from "./icons/forward-icon.tsx";
 export { PlusIcon } from "./icons/plus-icon.tsx";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
