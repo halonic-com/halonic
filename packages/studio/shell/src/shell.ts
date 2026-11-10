@@ -3,6 +3,7 @@ import { type Announcer, createAnnouncer } from "./announcer/announcer.ts";
 import { type AnnouncerTimers, systemTimers } from "./announcer/timers.ts";
 import { type CloseStack, createCloseStack } from "./close-stack/close-stack.ts";
 import { createShellEngine, type ShellEngine } from "./engine/engine-connection.ts";
+import type { StudioHost } from "./engine/engine-words.ts";
 import type { Feature } from "./feature.ts";
 import { orderFeatures } from "./feature-graph.ts";
 import { type CommandContributions, CommandStores } from "./points/command-points.ts";
@@ -26,6 +27,12 @@ export interface ShellOptions {
    * on `"macos"` and `Ctrl` elsewhere. Leave it out and `Mod` means `Ctrl`.
    */
   readonly platform?: KeyboardPlatform;
+  /**
+   * Where this Studio runs, which words the engine texts: "The engine …" in
+   * the desktop app, "Halonic on the server …" when served, "Halonic on your
+   * computer …" on a phone. Defaults to `"desktop-app"`.
+   */
+  readonly host?: StudioHost;
   /**
    * The timers the window's announcer and the engine supervisor use; tests
    * pass fake ones. Defaults to the system's.
@@ -93,7 +100,7 @@ export function createShell(options: ShellOptions): Shell {
     features,
     announcer,
     closeStack: createCloseStack(),
-    engine: createShellEngine(announcer, options.timers ?? systemTimers),
+    engine: createShellEngine(announcer, options.timers ?? systemTimers, options.host),
     toasts: createToastStore(),
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),

@@ -114,6 +114,7 @@ export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export { BackIcon } from "./icons/back-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
 export { ForwardIcon } from "./icons/forward-icon.tsx";
+export { InfoIcon } from "./icons/info-icon.tsx";
 export {
   PlaceIcon,
   type PlaceIconName,

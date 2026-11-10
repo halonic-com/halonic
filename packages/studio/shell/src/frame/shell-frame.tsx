@@ -9,6 +9,8 @@ import {
 import type { ReactNode } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { CloseStack } from "../close-stack/close-stack.ts";
+import type { ShellEngine } from "../engine/engine-connection.ts";
+import { EngineLine } from "../engine/engine-line.tsx";
 import {
   useDocumentLanguage,
   useEscapeClosesTopLayer,
@@ -25,6 +27,8 @@ export interface ShellFrameProps {
   readonly closeStack: CloseStack;
   /** The window's toasts; the frame shows them once, at the bottom right of the content area. */
   readonly toasts: ToastStore;
+  /** The window's engine connection; the frame shows its one line while it isn't answering. */
+  readonly engine: ShellEngine;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
   /** The title bar's content on the desktop: the logo, the window tabs, +. */
@@ -44,6 +48,8 @@ export interface ShellFrameProps {
  * title bar on the halo, then the panel set into the halo with a 12px radius, holding three rows:
  * the toolbar, the sidebar beside the page, and the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
  * shows the page only, with no window tabs and no status bar; the phone's own bars come later.
+ * While the engine isn't answering, its one line sits over the sidebar and the page, under the
+ * toolbar on the desktop and at the top on a phone.
  *
  * Everything inside learns the layout through the kit's `PresentationProvider`, and every kit
  * Dialog sends its announcements through the window's announcer. The window's one `ToastRegion`
@@ -51,7 +57,13 @@ export interface ShellFrameProps {
  * bar, and kit parts that confirm with a toast find the store through `ToastStoreProvider`.
  *
  * @example
- * <ShellFrame announcer={shell.announcer} closeStack={shell.closeStack} toasts={shell.toasts} language="en">
+ * <ShellFrame
+ *   announcer={shell.announcer}
+ *   closeStack={shell.closeStack}
+ *   engine={shell.engine}
+ *   toasts={shell.toasts}
+ *   language="en"
+ * >
  *   <HomePage />
  * </ShellFrame>
  */
@@ -99,6 +111,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
             {props.toolbar}
           </div>
         ) : null}
+        <EngineLine engine={props.engine} />
         <div className="relative flex min-h-0 flex-1">
           {desktop ? props.sidebar : null}
           <main className="min-w-0 flex-1 overflow-auto">{props.children}</main>

@@ -7,6 +7,7 @@ import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import type { ShellEngineState } from "./engine-connection.ts";
+import type { StudioHost } from "./engine-words.ts";
 
 /** An executor connection the test moves by hand, like a remote executor's. */
 class FakeConnection implements EngineConnection {
@@ -34,11 +35,12 @@ class FakeConnection implements EngineConnection {
   }
 }
 
-function setUp() {
+function setUp(host?: StudioHost) {
   const timers = new FakeTimers();
   const shell = createShell({
     features: [defineFeature({ id: "runs", title: "Runs", register: () => {} })],
     timers,
+    ...(host === undefined ? {} : { host }),
   });
   const said: string[] = [];
   const regions: LiveRegions = {
@@ -65,17 +67,55 @@ verifies("shell.engine-connection", () => {
     timers.advance(0);
     expect(events).toEqual(["lost", "connected"]);
     expect(said).toEqual([
-      "assertive:Lost the connection to the engine.",
-      "polite:Connected to the engine again.",
+      "assertive:The engine isn't answering. Showing what it said last.",
+      "polite:The engine is answering again.",
     ]);
   });
 
-  it("starts from the executor's state when it is already lost", () => {
+  it("is stale only while the engine isn't answering after it answered", () => {
+    const { shell } = setUp();
+    expect(shell.engine.words.notAnswering).toBe(
+      "The engine isn't answering. It may still be starting.",
+    );
+    expect(shell.engine.stale).toBe(false);
+    const connection = new FakeConnection();
+    shell.engine.watch({ connection });
+    expect(shell.engine.stale).toBe(false);
+    connection.set("lost");
+    expect(shell.engine.stale).toBe(true);
+    connection.set("connected");
+    expect(shell.engine.stale).toBe(false);
+  });
+
+  it("starts from the executor's state when it is already lost, and announces nothing", () => {
     const { timers, shell, said, events } = setUp();
     shell.engine.watch({ connection: new FakeConnection("lost") });
     timers.advance(0);
     expect(events).toEqual(["lost"]);
-    expect(said).toEqual(["assertive:Lost the connection to the engine."]);
+    expect(shell.engine.stale).toBe(false);
+    expect(said).toEqual([]);
+  });
+
+  it.each([
+    [
+      "served" as const,
+      "Halonic on the server isn't answering.",
+      "Halonic on the server isn't answering. Showing what it said last.",
+    ],
+    [
+      "phone" as const,
+      "Halonic on your computer isn't answering.",
+      "Halonic on your computer isn't answering. Showing what it said last.",
+    ],
+  ])("words the engine as Halonic for a %s Studio", (host, notAnswering, showingLast) => {
+    const { timers, shell, said } = setUp(host);
+    const connection = new FakeConnection();
+    shell.engine.watch({ connection });
+    connection.set("lost");
+    connection.set("connected");
+    timers.advance(0);
+    expect(shell.engine.words.notAnswering).toBe(notAnswering);
+    expect(said).toEqual([`assertive:${showingLast}`, "polite:Halonic is answering again."]);
   });
 
   it("counts an executor without a connection as always connected", () => {

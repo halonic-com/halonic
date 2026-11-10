@@ -129,8 +129,8 @@ verifies("shell.engine-start", () => {
     launcher.latest.ready();
     timers.advance(0);
     expect(said).toEqual([
-      "assertive:Lost the connection to the engine.",
-      "polite:Connected to the engine again.",
+      "assertive:The engine isn't answering. Showing what it said last.",
+      "polite:The engine is answering again.",
     ]);
   });
 

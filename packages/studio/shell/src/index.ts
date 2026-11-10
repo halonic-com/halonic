@@ -22,10 +22,10 @@ export {
   createShellEngine,
   type EngineConnectionEvent,
   type EngineConnectionListener,
-  engineConnectionAnnouncements,
   type ShellEngine,
   type ShellEngineState,
 } from "./engine/engine-connection.ts";
+export { EngineLine, type EngineLineProps } from "./engine/engine-line.tsx";
 export {
   type EngineLauncher,
   type EngineProcess,
@@ -38,6 +38,7 @@ export {
   engineRestartDelayMs,
   engineRestartWindowMs,
 } from "./engine/engine-start.ts";
+export { type EngineWords, engineWords, type StudioHost } from "./engine/engine-words.ts";
 export {
   type ErrorAction,
   type ErrorContext,

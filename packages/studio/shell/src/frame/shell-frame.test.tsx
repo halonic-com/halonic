@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
+import type { EngineConnection, EngineConnectionState } from "@halonicjs/ports";
 import { createToastStore, Dialog, usePresentation } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { createCloseStack } from "../close-stack/close-stack.ts";
+import { createShellEngine } from "../engine/engine-connection.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -36,11 +38,13 @@ function renderFrame(page = <ShowPresentation />) {
   const timers = new FakeTimers();
   const announcer = createAnnouncer({ timers });
   const closeStack = createCloseStack();
+  const engine = createShellEngine(announcer, timers);
   const toasts = createToastStore();
   const container = render(
     <ShellFrame
       announcer={announcer}
       closeStack={closeStack}
+      engine={engine}
       toasts={toasts}
       language="en"
       toolbar={<button type="button">Back</button>}
@@ -49,7 +53,7 @@ function renderFrame(page = <ShowPresentation />) {
       {page}
     </ShellFrame>,
   );
-  return { container, timers, announcer, closeStack, toasts };
+  return { container, timers, announcer, closeStack, engine, toasts };
 }
 
 function pressEscape(target: Element): KeyboardEvent {
@@ -318,5 +322,68 @@ verifies("shell.frame", () => {
     const region = container.querySelector('section[aria-label="Notifications"]');
     expect(region?.textContent).toContain("This was removed on your computer.");
     expect(region?.parentElement?.querySelector("main")).not.toBeNull();
+  });
+});
+
+/** An executor connection the test moves by hand, like a remote executor's. */
+function handMovedConnection(initial: EngineConnectionState) {
+  const listeners = new Set<(next: EngineConnectionState) => void>();
+  let state = initial;
+  const connection: EngineConnection & { set(next: EngineConnectionState): void } = {
+    get state() {
+      return state;
+    },
+    onChange(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set(next) {
+      state = next;
+      for (const listener of listeners) {
+        listener(next);
+      }
+    },
+  };
+  return connection;
+}
+
+verifies("shell.engine-line", () => {
+  const lineText = "The engine isn't answering. Showing what it said last.";
+
+  it("shows one line under the toolbar while the engine isn't answering, and drops it when it's back", () => {
+    const { container, engine } = renderFrame();
+    const connection = handMovedConnection("connected");
+    act(() => {
+      engine.watch({ connection });
+    });
+    expect(container.textContent).not.toContain(lineText);
+    act(() => connection.set("lost"));
+    const toolbar = container.querySelector('[data-layout="desktop"] > div')?.firstElementChild;
+    const line = toolbar?.nextElementSibling;
+    expect(line?.textContent).toBe(lineText);
+    expect(line?.closest("[aria-live]")).toBeNull();
+    expect(line?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    act(() => connection.set("connected"));
+    expect(container.textContent).not.toContain(lineText);
+  });
+
+  it("shows no line for an engine that never answered", () => {
+    const { container, engine } = renderFrame();
+    act(() => {
+      engine.watch({ connection: handMovedConnection("lost") });
+    });
+    expect(container.textContent).not.toContain(lineText);
+  });
+
+  it("puts the line at the top on a phone", () => {
+    const { container, engine } = renderFrame();
+    const connection = handMovedConnection("connected");
+    act(() => {
+      engine.watch({ connection });
+      media.resize(400);
+    });
+    act(() => connection.set("lost"));
+    const panel = container.querySelector('[data-layout="phone"] > div');
+    expect(panel?.firstElementChild?.textContent).toBe(lineText);
   });
 });

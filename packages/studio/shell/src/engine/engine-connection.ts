@@ -1,4 +1,4 @@
-import type { EngineConnectionState, RunExecutor } from "@halonicjs/ports";
+import type { RunExecutor } from "@halonicjs/ports";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { AnnouncerTimers } from "../announcer/timers.ts";
 import { ShellError } from "../shell-error.ts";
@@ -8,6 +8,7 @@ import {
   type EngineSupervisor,
   superviseEngine,
 } from "./engine-start.ts";
+import { type EngineWords, engineWords, type StudioHost } from "./engine-words.ts";
 
 /**
  * The payload of the shell's `engine.connection` event. A followed executor
@@ -33,6 +34,14 @@ export interface ShellEngine {
   readonly connection: ShellEngineState;
   /** The last event sent, with its details, such as the reason of a failed start. */
   readonly status: EngineConnectionEvent;
+  /**
+   * Whether the engine stopped answering after it had answered: pages keep what they showed,
+   * under the line `words.showingLast`. `false` before the engine first answers, when a page
+   * shows "Couldn't load …" with `words.notAnswering` instead.
+   */
+  readonly stale: boolean;
+  /** The engine texts worded for where this Studio runs. */
+  readonly words: EngineWords;
   /**
    * Follows an executor's connection. An executor without `connection`
    * counts as always connected. Returns a function that stops following it.
@@ -62,33 +71,48 @@ export interface ShellEngine {
   on(event: "engine.connection", listener: EngineConnectionListener): () => void;
 }
 
-/** What is read to screen readers when the connection changes. */
-export const engineConnectionAnnouncements: Readonly<Record<EngineConnectionState, string>> = {
-  lost: "Lost the connection to the engine.",
-  connected: "Connected to the engine again.",
-};
-
 /**
  * Creates the window's engine connection. Each change is sent as
- * `engine.connection`. A loss is announced assertively, and the return
- * after a loss politely; `starting` and `failed` aren't announced until
- * their wording is approved (HAL-1720).
+ * `engine.connection`. When the engine stops answering after it had answered,
+ * `words.showingLast` is announced assertively, and its return
+ * `words.answeringAgain` politely, once each for the whole window (microcopy
+ * 19.2). An engine that never answered isn't announced: the page that needed
+ * it says so in its "Couldn't load …" state.
  * If listeners throw, every listener still runs and the first error is
  * thrown afterwards (all of them, as an `AggregateError`, when several do).
  */
-export function createShellEngine(announcer: Announcer, timers: AnnouncerTimers): ShellEngine {
+export function createShellEngine(
+  announcer: Announcer,
+  timers: AnnouncerTimers,
+  host: StudioHost = "desktop-app",
+): ShellEngine {
+  const words = engineWords[host];
   let status: EngineConnectionEvent = { state: "connected" };
-  const announceChange = connectionAnnouncer(announcer);
+  let answered = false;
+  let stale = false;
   const slot = new FollowSlot();
   const listeners = new Set<EngineConnectionListener>();
 
   const change = (next: EngineConnectionEvent): void => {
+    answered ||= next.state === "connected";
     if (next.state === status.state && (next.state === "connected" || next.state === "lost")) {
       return;
     }
     status = next;
-    announceChange(next.state);
+    announceStaleChange(answered && next.state !== "connected");
     notify(listeners, next);
+  };
+
+  const announceStaleChange = (nowStale: boolean): void => {
+    if (nowStale === stale) {
+      return;
+    }
+    stale = nowStale;
+    if (stale) {
+      announcer.announce(words.showingLast, "assertive");
+    } else {
+      announcer.announce(words.answeringAgain, "polite");
+    }
   };
 
   return {
@@ -98,6 +122,10 @@ export function createShellEngine(announcer: Announcer, timers: AnnouncerTimers)
     get status() {
       return status;
     },
+    get stale() {
+      return stale;
+    },
+    words,
     watch(executor) {
       let unsubscribe = (): void => {};
       const stop = slot.claim(() => unsubscribe());
@@ -137,20 +165,6 @@ function undoIfThrows(undo: () => void, first: () => void): void {
     undo();
     throw error;
   }
-}
-
-/** Announces a loss assertively, and the return after a loss politely. */
-function connectionAnnouncer(announcer: Announcer): (state: ShellEngineState) => void {
-  let lostSinceConnected = false;
-  return (state) => {
-    if (state === "lost") {
-      lostSinceConnected = true;
-      announcer.announce(engineConnectionAnnouncements.lost, "assertive");
-    } else if (state === "connected" && lostSinceConnected) {
-      lostSinceConnected = false;
-      announcer.announce(engineConnectionAnnouncements.connected, "polite");
-    }
-  };
 }
 
 /** The one source the shell follows, so it never follows two. */

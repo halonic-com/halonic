@@ -29,6 +29,7 @@ look up services its feature lists in `needs`.
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
 | `Toolbar`                       | Back and Forward, the path, the badges and the save state  | `shell.toolbar`           |
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
+| `EngineLine`                    | the one line while the engine isn't answering              | `shell.engine-line`       |
 | `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
 | `SaveState`                     | the toolbar's save note and the failed-save toast          | `shell.save-state`        |
@@ -104,6 +105,7 @@ one `ToastRegion` over the sidebar and the page, so a toast never covers the sta
 <ShellFrame
   announcer={shell.announcer}
   closeStack={shell.closeStack}
+  engine={shell.engine}
   toasts={shell.toasts}
   language="en"
 >
@@ -177,9 +179,21 @@ Features can't bind a bare `Escape` with `keybindings.add`: register a layer ins
 At start-up the app hands its `RunExecutor` to `shell.engine.watch(executor)`. A remote executor
 (served mode, or a phone connected to a host) has a `connection` that can be `lost`; the local one
 has none and counts as always connected. Each change is sent once as `engine.connection { state }`
-to listeners added with `shell.engine.on("engine.connection", listener)`, and announced once: the
-loss assertively, the return politely. `shell.engine.connection` is the state now, and
-`shell.engine.status` the last event with its details.
+to listeners added with `shell.engine.on("engine.connection", listener)`. `shell.engine.connection`
+is the state now, and `shell.engine.status` the last event with its details.
+
+`shell.engine.stale` is `true` while the engine isn't answering after it had answered. Pages keep
+what they showed, and the frame shows one line under the toolbar (`EngineLine`, VK T2-F30), never
+one per section. Becoming stale is announced once, assertively, and answering again once, politely.
+An engine that never answered isn't announced: the page that needed it shows "Couldn't load …"
+with `shell.engine.words.notAnswering` as the reason. The words follow `createShell`'s `host`
+(microcopy 2 and 19.2):
+
+| `host`        | `notAnswering`, the reason                            | `showingLast`, the line and the announcement                         | `answeringAgain`               |
+| ------------- | ----------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------ |
+| `desktop-app` | The engine isn't answering. It may still be starting. | The engine isn't answering. Showing what it said last.               | The engine is answering again. |
+| `served`      | Halonic on the server isn't answering.                | Halonic on the server isn't answering. Showing what it said last.    | Halonic is answering again.    |
+| `phone`       | Halonic on your computer isn't answering.             | Halonic on your computer isn't answering. Showing what it said last. | Halonic is answering again.    |
 
 On the desktop the app starts the engine process instead: it hands an `EngineLauncher` to
 `shell.engine.supervise(launcher)`. The shell sends `starting { attempt, since }` at once, then
