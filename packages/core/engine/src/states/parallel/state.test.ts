@@ -214,6 +214,35 @@ verifies("engine.parallel-state", () => {
       expect(run?.approvals).toEqual([]);
       expect(run?.status).toBe("running");
     });
+
+    it("ends a branch whose agent stops before a connector call that can change things", () => {
+      const effect: DecideInput = {
+        type: "effect-done",
+        at: "2026-11-09T09:00:05.000Z",
+        callId: "call-1",
+        result: {
+          type: "effect",
+          connector: "mail",
+          tool: "send-mail",
+          args: {},
+          resume: { messages: [], calls: [], step: 1 },
+        },
+      };
+      const { decisions, run } = play(researchWorkflow(), [start, effect]);
+      expect(decisions[1]?.events).toEqual([
+        expect.objectContaining({
+          type: "agent.finished",
+          branch: "notes",
+          output: null,
+          error:
+            'Agent "reader" in branch "notes" of parallel state "research" stopped before a call ' +
+            `to tool "send-mail" that can change things, and a parallel branch can't make one.`,
+          reason: "error",
+        }),
+      ]);
+      expect(run?.effect).toBeNull();
+      expect(run?.status).toBe("running");
+    });
   });
 
   it("fails the run when the state has no branches", () => {

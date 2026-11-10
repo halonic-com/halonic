@@ -83,6 +83,8 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
       return endWith(context, branch, { output: input.result.output });
     case "approval":
       return endWith(context, branch, approvalRefused(context.stateId, branch, input.result.tool));
+    case "effect":
+      return endWith(context, branch, effectRefused(context.stateId, branch, input.result.tool));
     case "tool":
       return nothing;
   }
@@ -114,6 +116,20 @@ function approvalRefused(stateId: string, branch: RunningBranch, tool: string): 
     error:
       `Agent "${agent}" in branch "${branch.name}" of parallel state "${stateId}" stopped ` +
       `for an OK on tool "${tool}", and a parallel branch can't wait for a person.`,
+    reason: "error",
+  };
+}
+
+/**
+ * A run records one connector call that can change things at a time, so a
+ * branch can't stop at that boundary while the others go on.
+ */
+function effectRefused(stateId: string, branch: RunningBranch, tool: string): BranchEnd {
+  const agent = branch.call?.agent ?? "";
+  return {
+    error:
+      `Agent "${agent}" in branch "${branch.name}" of parallel state "${stateId}" stopped ` +
+      `before a call to tool "${tool}" that can change things, and a parallel branch can't make one.`,
     reason: "error",
   };
 }
