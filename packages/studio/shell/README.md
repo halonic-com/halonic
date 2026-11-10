@@ -374,6 +374,25 @@ The states every page shares, so no feature words them on its own:
   error-tone `EmptyState` "Couldn't load _things_" with `shell.engine.words.notAnswering` as the
   reason when the engine doesn't answer.
 
+## Stacked cards
+
+An item page's cards (`shell.card-stack`) are a plain `CardStack`, the bottom card first, kept in
+the page's state. The functions take a stack and return the next one, or the same stack when
+nothing changed:
+
+- `openCard(stack, card)` puts a card on top. A card already in the stack isn't opened twice: the
+  stack goes back to it. A `docked` card always goes to the bottom, so it closes every card open.
+- `backToCard(stack, level)` closes the cards above a breadcrumb part or a card behind; `-1` closes
+  them all. `closeTopCard(stack)` is Esc, the ← arrow and the empty room round the cards.
+- `dropGoneCards(stack, exists)` drops a card whose part is gone and every card above it, and
+  returns the `removed` card so the page can say "_check_ was removed.".
+- `shownCards(stack)` is the top card and at most two behind it. `cardPath` gives the breadcrumb,
+  `topCardName` the name of the top card's title ("draft-reply, in Acme Mail › Writer ›
+  draft-reply"), and `dockedCardCoversPanel(width)` says when a docked card covers the panel
+  (below 720px).
+
+The cards' drawing, focus and keys come with the item page frame.
+
 ## Resource numbers
 
 `watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the

@@ -11,6 +11,22 @@ export {
 } from "./announcer/announcer.ts";
 export type { AnnouncerTimers } from "./announcer/timers.ts";
 export {
+  backToCard,
+  type CardStack,
+  cardPath,
+  cardsShownBehind,
+  closeTopCard,
+  type DroppedCards,
+  dockedCardCoversPanel,
+  dockedCardMinPanelWidth,
+  dropGoneCards,
+  noCards,
+  openCard,
+  type StackedCard,
+  shownCards,
+  topCardName,
+} from "./cards/card-stack.ts";
+export {
   type CloseLayer,
   type CloseLayerKind,
   type CloseStack,
