@@ -43,7 +43,7 @@ export interface TrustCounts {
  * `--dir`, so the command works where they typed it.
  */
 export const trustMessages = defineMessages("trust", {
-  summary: () => phrase`Review what a workspace or plugin can start, and trust it on this computer`,
+  summary: () => phrase`Review what a workspace can start, and trust it on this computer`,
   /**
    * What `trust` was doing, for "✕ Couldn't trust Acme: …": the workspace's
    * name, or the folder as typed before the workspace was read.

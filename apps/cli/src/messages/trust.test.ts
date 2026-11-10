@@ -45,7 +45,7 @@ verifies("cli.messages", () => {
 describe("trust's sentences", () => {
   it("has the summary and the action that frames its errors", () => {
     expect(words(trustMessages.summary())).toBe(
-      "Review what a workspace or plugin can start, and trust it on this computer",
+      "Review what a workspace can start, and trust it on this computer",
     );
     expect(words(trustMessages.action("Acme"))).toBe("trust Acme");
   });
