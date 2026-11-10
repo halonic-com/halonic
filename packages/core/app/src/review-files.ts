@@ -1,0 +1,157 @@
+// What the review service and its write hook share (HAL-3277): the records,
+// one queue per file, and the few ways a file or record changes. Internal to
+// `core/app`.
+
+import type { DefinitionStore, Digest, ExpectedContent } from "@halonicjs/ports";
+import { contentDigest, KeyedQueue } from "@halonicjs/std";
+import { EventBus, type ListenerErrorHandler } from "./event-bus.ts";
+import type { ReviewRecord } from "./review-record.ts";
+import { type ReviewRecordList, ReviewRecords } from "./review-records.ts";
+
+/** What the review service needs from the host. */
+export interface ReviewServiceOptions {
+  /**
+   * The workspace's store underneath its `ReviewingDefinitionStore`: the
+   * records are kept in it under `.halonic/review/`, and the service's own
+   * writes don't go through the write hook.
+   */
+  readonly store: DefinitionStore;
+  /** Hashes file text for the write-if-unchanged check, and names the records. */
+  readonly digest: Digest;
+  /**
+   * Receives the error of an `onDidChange` listener that threw, so the
+   * change itself still succeeds. Without it, the call that changed the
+   * records throws that error, which suits tests.
+   */
+  readonly onListenerError?: ListenerErrorHandler;
+}
+
+interface ReviewEvents {
+  changed: { readonly paths: readonly string[] };
+}
+
+/**
+ * The files with changes to review and their records. Every change to a
+ * file and its record runs in that file's turn ({@link turn}), so a save
+ * and a Reject on the same file can't interleave.
+ */
+export class ReviewFiles {
+  readonly store: DefinitionStore;
+  private readonly digest: Digest;
+  private readonly records: ReviewRecords;
+  private readonly queue = new KeyedQueue();
+  private readonly events: EventBus<ReviewEvents>;
+  /** The paths with a record, read once, so a write to any other file costs no extra read. */
+  private reviewed: Promise<Set<string>> | null = null;
+
+  constructor(options: ReviewServiceOptions) {
+    this.store = options.store;
+    this.digest = options.digest;
+    this.records = new ReviewRecords(options.store, options.digest);
+    this.events = new EventBus<ReviewEvents>(options.onListenerError);
+  }
+
+  /** Runs `work` once the work queued before it for the same file is done. */
+  turn<T>(path: string, work: () => Promise<T>): Promise<T> {
+    return this.queue.run(path, work);
+  }
+
+  onDidChange(listener: (paths: readonly string[]) => void): () => void {
+    return this.events.on("changed", ({ paths }) => listener(paths));
+  }
+
+  /** Tells the listeners which files' records changed; nothing when none did. */
+  changed(paths: readonly string[]): void {
+    if (paths.length > 0) {
+      this.events.emit("changed", { paths });
+    }
+  }
+
+  /** Whether the file has a record, from the paths read when first asked. */
+  async hasRecord(path: string): Promise<boolean> {
+    return (await this.reviewedPaths()).has(path);
+  }
+
+  /** The record of one file; `null` for none, or one that can't be read. */
+  async read(path: string): Promise<ReviewRecord | null> {
+    const read = await this.records.read(path);
+    return read.status === "found" ? read.record : null;
+  }
+
+  /** Every record, or those of some files, as `ReviewRecords` gives them. */
+  async list(paths?: readonly string[]): Promise<ReviewRecordList> {
+    if (paths === undefined) {
+      const list = await this.records.all();
+      this.reviewed = Promise.resolve(new Set(list.records.map((record) => record.path)));
+      return list;
+    }
+    const list = await this.records.some(paths);
+    const reviewed = await this.reviewedPaths();
+    for (const dropped of list.dropped) {
+      if (dropped.path !== null) {
+        reviewed.delete(dropped.path);
+      }
+    }
+    return list;
+  }
+
+  /** Saves a record, or removes it when the baseline is the file again: then nothing is left to review. */
+  async keep(record: ReviewRecord): Promise<ReviewRecord | null> {
+    if (record.seen === (await this.digestOf(record.baseline))) {
+      await this.putRecord(record.path, null);
+      return null;
+    }
+    await this.putRecord(record.path, record);
+    return record;
+  }
+
+  /** Saves the record of `path`, or removes it for `null`. */
+  async putRecord(path: string, record: ReviewRecord | null): Promise<void> {
+    const reviewed = await this.reviewedPaths();
+    if (record === null) {
+      await this.records.remove(path);
+      reviewed.delete(path);
+    } else {
+      await this.records.save(record);
+      reviewed.add(path);
+    }
+  }
+
+  /**
+   * Writes `text` into the file, or removes it for `null`, if it still
+   * holds what `expected` says. Gives `false`, writing nothing, if not.
+   */
+  async putFile(path: string, expected: ExpectedContent, text: string | null): Promise<boolean> {
+    if (text !== null) {
+      const written = await this.store.write(path, text, { expected });
+      return written.status === "written";
+    }
+    // The port has no remove-if-unchanged; checking just before is the closest.
+    if ((await this.digestOf(await this.store.read(path))) !== expected) {
+      return false;
+    }
+    await this.store.remove(path);
+    return true;
+  }
+
+  /** The digest the store compares, or `"absent"` for no file. */
+  async digestOf(text: string | null): Promise<ExpectedContent> {
+    return text === null ? "absent" : contentDigest(text, this.digest);
+  }
+
+  private reviewedPaths(): Promise<Set<string>> {
+    if (this.reviewed === null) {
+      const loading = this.records
+        .all()
+        .then(({ records }) => new Set(records.map((record) => record.path)));
+      // A failed read is tried again next time instead of being kept.
+      loading.catch(() => {
+        if (this.reviewed === loading) {
+          this.reviewed = null;
+        }
+      });
+      this.reviewed = loading;
+    }
+    return this.reviewed;
+  }
+}
