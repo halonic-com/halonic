@@ -7,6 +7,7 @@ import {
   routineStart,
   type TickPolicy,
 } from "@halonicjs/routines";
+import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import {
   RoutineScheduler,
   type RoutineSchedulerOptions,
@@ -66,4 +67,18 @@ export function startOfDueRun(run: DueRun, lastRun: Date | null): RoutineStart {
     return { workflow: { hubId: start.hub, workflowId: start.workflow, input: start.input } };
   }
   return { agent: { hubId: start.hub, agentId: start.agent, prompt: start.prompt } };
+}
+
+/**
+ * Every routine file of a loaded workspace, with the hub it sits in (`null`
+ * at the workspace root): what the routine scheduler's `routines` returns. A
+ * file that didn't parse isn't among them. A routine whose target is wrong
+ * is still there: its start fails on its own and is reported, so it never
+ * holds the other routines back.
+ *
+ * @example
+ * routines: async () => placedRoutines(await loadWorkspace(source)),
+ */
+export function placedRoutines(workspace: LoadedWorkspace): PlacedRoutine[] {
+  return filesOf(workspace, "routine").map((file) => ({ hub: file.hub, routine: file.value }));
 }
