@@ -4,6 +4,7 @@ export { compact } from "./compact.ts";
 export { jsonSchemaOf } from "./json-schema.ts";
 export type { FileKind, FilePlace, KindCheckProblem, KindSyntax } from "./kind.ts";
 export {
+  AGENT_HARNESSES,
   asciiAllowedSites,
   defaultWorkingFolder,
   MAX_ALLOWED_SITES,

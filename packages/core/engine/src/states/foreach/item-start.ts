@@ -65,7 +65,7 @@ export function startItem(
       : withGets(promptFor(state.input, itemScope, run.input), state.gets, itemScope);
   return {
     event: { type: "agent.started", state: stateId, agent, prompt, item: index },
-    effect: agentCallEffect(agents, { callId, state: stateId, agent, prompt }),
+    effect: agentCallEffect(run, agents, { callId, state: stateId, agent, prompt }),
   };
 }
 

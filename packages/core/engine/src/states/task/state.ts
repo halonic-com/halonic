@@ -19,8 +19,8 @@ import {
 
 /**
  * A plain `task` state runs its agent once on entry: it asks for one model
- * call with the state's prompt, or, when the agent's file names a harness
- * other than Halonic's own loop, for one harness run. It finishes with
+ * call with the state's prompt, or, when the run or the agent's file names a
+ * harness other than Halonic's own loop, for one harness run. It finishes with
  * `done` when the answer comes back. When the agent's output is a `choice`,
  * an answer that isn't one of its options fails the run with
  * `answer-not-an-option`. When the agent stops at a tool call that needs a
@@ -57,7 +57,7 @@ function startAgent({ run, stateId, state, scope, agents }: StateContext): State
   const call = { callId: nextCallId(run), state: stateId, agent, prompt };
   return {
     events: [{ type: "agent.started", state: stateId, agent, prompt }],
-    effects: [agentCallEffect(agents, call)],
+    effects: [agentCallEffect(run, agents, call)],
   };
 }
 

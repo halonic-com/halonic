@@ -152,12 +152,13 @@ function checkRunTakesSend(run: RunState, input: SendInput): void {
 
 function start(input: StartInput, definitions: RunDefinitions): Decision {
   const workflow = definitions.workflow;
-  const { type: _type, at, runId, trigger, parent, ...fields } = input;
+  const { type: _type, at, runId, trigger, parent, harness, ...fields } = input;
   const started: DecidedEvent = {
     type: "run.started",
     ...fields,
     ...(trigger === undefined ? {} : { trigger }),
     ...(parent === undefined ? {} : { parent }),
+    ...(harness === undefined ? {} : { harness }),
   };
   const draft: Draft = {
     run: evolve(null, { ...started, runId, seq: 1, at }),

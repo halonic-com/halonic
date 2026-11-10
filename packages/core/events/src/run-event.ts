@@ -52,6 +52,13 @@ export type RunEventBody =
       trigger?: RunTrigger;
       /** Set when a workflow state of another run started this one (a subflow). */
       parent?: RunParent;
+      /**
+       * The harness every task agent of the run runs in, whatever its file
+       * names, such as `codex`; `halonic` runs them all in Halonic's own loop
+       * (requirement `events.run-started-harness`). Absent when the run keeps
+       * each agent's own harness, and in older logs.
+       */
+      harness?: string;
     }
   | { type: "state.entered"; state: string }
   /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */

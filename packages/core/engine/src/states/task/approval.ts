@@ -66,7 +66,7 @@ export function askForHarnessApproval(context: StateContext, input: HarnessAsked
     return nothing;
   }
   // Only a harness call keeps running while it waits for an answer.
-  if (programHarnessOf(context.agents, pending.agent) === null) {
+  if (programHarnessOf(context.run, context.agents, pending.agent) === null) {
     return nothing;
   }
   const { tool, args } = input;
@@ -119,7 +119,7 @@ export function answerApproval(
   const next = { callId: nextCallId(run), state: stateId, agent };
   const resume: ResumeAfterApproval = { resume: approval.resume, ...answer };
   const effect: Effect =
-    programHarnessOf(agents, agent) === null
+    programHarnessOf(run, agents, agent) === null
       ? { type: "call-model", ...next, prompt, resume }
       : { type: "answer-harness", ...next, ...answer };
   return { events, effects: [effect] };

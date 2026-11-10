@@ -8,6 +8,7 @@ import {
   type RunSummary,
   summarize,
 } from "@halonicjs/events";
+import { AGENT_HARNESSES } from "@halonicjs/format";
 import type {
   Clock,
   RunEventListener,
@@ -143,18 +144,22 @@ export class LocalRuns {
    * Records the start of a run and sets the timer for its first effects. A
    * `runId` that already exists returns that run and starts nothing.
    *
-   * @throws RangeError when `runId` is longer than 256 UTF-8 bytes
+   * @throws RangeError when `runId` is longer than 256 UTF-8 bytes, or `harness` isn't a harness
    * @throws when the hub or workflow doesn't exist
    */
   async start(request: StartRunRequest): Promise<RunSummary> {
     if (request.runId !== undefined && encodeUtf8(request.runId).length > maxRunIdBytes) {
       throw new RangeError(`A run id is at most ${maxRunIdBytes} UTF-8 bytes.`);
     }
+    if (request.harness !== undefined && !AGENT_HARNESSES.includes(request.harness)) {
+      const known = AGENT_HARNESSES.join(", ");
+      throw new RangeError(`"${request.harness}" isn't a harness. The harnesses are ${known}.`);
+    }
     await this.#ready();
     const runId = request.runId ?? this.#options.ids.next("run");
     const existing = await this.#options.store.get(runId);
     if (existing !== null) return existing;
-    const { hubId, workflowId, input, trigger } = request;
+    const { hubId, workflowId, input, trigger, harness } = request;
     const definitions = await this.#options.definitionsOf(hubId, workflowId);
     const definitionsVersion = await keepDefinitions(this.#options.blobs, definitions);
     try {
@@ -168,6 +173,7 @@ export class LocalRuns {
         kind: request.kind ?? "run",
         definitionsVersion,
         ...(trigger === undefined ? {} : { trigger }),
+        ...(harness === undefined ? {} : { harness }),
       });
     } catch (error) {
       // A start repeated at the same moment: the other one recorded it.

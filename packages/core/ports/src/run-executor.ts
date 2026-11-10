@@ -16,6 +16,14 @@ export interface StartRunRequest {
   kind?: RunKind;
   trigger?: RunTrigger;
   /**
+   * The harness every task agent of the run runs in, whatever its file
+   * names, such as `codex`; `halonic` runs them all in Halonic's own loop.
+   * Its child runs use it too. Each agent's own harness when absent. An id
+   * that isn't a harness is refused before anything is recorded. Whether
+   * the harness is installed is the caller's check (`detect()`).
+   */
+  harness?: string;
+  /**
    * The id the run gets, for a start that may be repeated: a routine fire, a
    * mail or a signal. When a run with this id already exists, `start` returns
    * its summary and starts nothing, whatever the rest of the request says.

@@ -76,6 +76,11 @@ export interface RunState {
   readonly input: Record<string, unknown>;
   /** The run and state that started this one, or `null` for a top-level run. */
   readonly parent: RunParent | null;
+  /**
+   * The harness every task agent of the run runs in, as `run.started` names
+   * it, or `null` when each agent runs in the one its file names.
+   */
+  readonly harness: string | null;
   readonly status: RunStatus;
   /** The state the run is in, or `null` before the first `state.entered`. */
   readonly state: string | null;
@@ -171,6 +176,7 @@ function startedState(event: RunEvent): RunState {
     definitionsVersion: event.definitionsVersion,
     input: event.input,
     parent: event.parent ?? null,
+    harness: event.harness ?? null,
     status: "running",
     state: null,
     enteredAt: null,

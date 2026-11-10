@@ -88,6 +88,8 @@ verifies("events.run-log-contract", () => {
       definitionsVersion: string;
       trigger?: RunTrigger;
       parent?: RunParent;
+      // Added after the reference by events.run-started-harness (HAL-189).
+      harness?: string;
     }>();
     expectTypeOf<EventOf<"state.entered">>().toEqualTypeOf<{
       type: "state.entered";

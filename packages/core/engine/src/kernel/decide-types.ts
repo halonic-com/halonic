@@ -35,6 +35,8 @@ export interface StartInput extends InputBase {
   readonly definitionsVersion: string;
   readonly trigger?: RunTrigger;
   readonly parent?: RunParent;
+  /** The harness every task agent of the run runs in, whatever its file names. */
+  readonly harness?: string;
 }
 
 /** An event sent to a waiting run, such as `approve`. */

@@ -14,6 +14,9 @@ import { foldName, relativePathProblem } from "../../shared/relative-path.ts";
  */
 export const AgentHarness = s.enum(["halonic", "claude-code", "codex"]);
 
+/** The ids of the harnesses an agent can run in, for a caller that checks one outside an agent's file. */
+export const AGENT_HARNESSES: readonly string[] = AgentHarness.options;
+
 /** The most sites one agent may name (Julian's cap, HAL-1708). */
 export const MAX_ALLOWED_SITES = 50;
 

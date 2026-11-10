@@ -8,6 +8,7 @@ import type { StopSignal } from "@halonicjs/std";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { type HarnessApprovals, runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog, type WaitedOnCall } from "../harness/serial-run-log.ts";
+import { programHarnessOf } from "../kernel/agent-call.ts";
 import type { AnswerHarnessEffect, DecideInput } from "../kernel/decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "../kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
@@ -42,9 +43,9 @@ export class LocalHarnessCalls {
   }
 
   /**
-   * Runs the agent of a harness call in its harness. The harness comes from
-   * the agent's file in the run's kept definitions, the same file `decide`
-   * read when it asked for the run. Each time a person answers an approval
+   * Runs the agent of a harness call in its harness: the run's own, or the
+   * one the agent's file names in the run's kept definitions, as `decide`
+   * read them when it asked for the run. Each time a person answers an approval
    * the harness asked for, `waitedOn` moves on to the call id the run then
    * waits on.
    *
@@ -62,10 +63,10 @@ export class LocalHarnessCalls {
     if (definitions === null) throw new Error(missingDefinitionsError(run.definitionsVersion));
     const agents = definitions.agents ?? {};
     const agent = Object.hasOwn(agents, call.agent) ? agents[call.agent] : undefined;
-    const harness = agent?.harness;
-    if (agent === undefined || harness === undefined || harness === "halonic") {
+    const harness = programHarnessOf(run, agents, call.agent);
+    if (agent === undefined || harness === null) {
       throw new Error(
-        `Agent "${call.agent}" names no harness in the definitions this run started with.`,
+        `Agent "${call.agent}" runs in no harness in the definitions this run started with.`,
       );
     }
     const effect = { ...call, harness };
