@@ -17,21 +17,3 @@ export const maxStreamJsonLineLength = 16 * 1024 * 1024;
 export function streamJsonLines(output: ReadableStream<Uint8Array>): AsyncGenerator<string> {
   return readLines(output, { maxLineLength: maxStreamJsonLineLength });
 }
-
-/**
- * Reads a program's output to its end and keeps only the last
- * `keptCharacters` of it, so a program that prints a lot can't fill the
- * memory. Reading it to the end also keeps the program from stalling on a
- * full pipe.
- */
-export async function outputTail(
-  output: ReadableStream<Uint8Array>,
-  keptCharacters: number,
-): Promise<string> {
-  const decoder = new TextDecoder();
-  let tail = "";
-  for await (const chunk of output) {
-    tail = (tail + decoder.decode(chunk, { stream: true })).slice(-keptCharacters);
-  }
-  return (tail + decoder.decode()).slice(-keptCharacters);
-}

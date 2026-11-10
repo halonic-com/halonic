@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { maxStreamJsonLineLength, outputTail, streamJsonLines } from "./output.ts";
+import { maxStreamJsonLineLength, streamJsonLines } from "./output.ts";
 
 /** A program's output, arriving as these chunks of bytes. */
 function output(...chunks: Uint8Array[]): ReadableStream<Uint8Array> {
@@ -57,12 +57,6 @@ verifies("harness-claude-code.command", () => {
       for await (const _line of streamJsonLines(stream)) break;
 
       expect(cancelled).toBe(true);
-    });
-  });
-
-  describe("outputTail", () => {
-    it("keeps only the last characters of a long output", async () => {
-      expect(await outputTail(output(encode("a".repeat(100)), encode("end")), 5)).toBe("aaend");
     });
   });
 });

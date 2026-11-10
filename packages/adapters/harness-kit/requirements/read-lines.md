@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-194 build plan C3 and D2; HAL-3587
+- Source: HAL-194 build plan C3, D2 and D3; HAL-3587; HAL-3998
 
-The harness kit shall read a program's output as UTF-8 text, one line at a time. A line shall end with `\n` or `\r\n`, and neither shall be part of the line. The last line shall be read even without a line break, and there shall be no empty line after the final break. A character split across two chunks shall be put back together. A line longer than the given limit shall end the reading with an error that doesn't quote it. When the reading stops early, the stream shall be cancelled.
+The harness kit shall read a program's output as UTF-8 text, one line at a time. A line shall end with `\n` or `\r\n`, and neither shall be part of the line. The last line shall be read even without a line break, and there shall be no empty line after the final break. A character split across two chunks shall be put back together. A line longer than the given limit shall end the reading with an error that doesn't quote it. When the reading stops early, the stream shall be cancelled. To say why a run failed, the kit shall also read a program's output to its end and keep only its last characters, up to a given number.
 
 ## Examples
 
@@ -14,3 +14,6 @@ The harness kit shall read a program's output as UTF-8 text, one line at a time.
 - Given a limit of 20 characters and a line of 150,
   when it is read,
   then the reading ends with an error that says the line is longer than 20 characters and doesn't contain it.
+- Given an output of 100 characters and then "end", read with a limit of 5,
+  when it is read to its end,
+  then the text kept is "aaend".

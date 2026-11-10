@@ -19,6 +19,11 @@ never ends a line can't fill Halonic's memory. The last line is read even
 without a line break; bytes that aren't UTF-8 become U+FFFD. When the caller
 stops early or a line is too long, the stream is cancelled.
 
+`outputTail(output, keptCharacters)` reads a program's output to its end
+and keeps only its last characters: a harness reads standard error this
+way, so the program never stalls on a full pipe, and the last line says why
+a run failed.
+
 ## The event filter
 
 `HarnessEventFilter` removes the run's bridge token from every string in an
