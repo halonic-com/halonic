@@ -1119,6 +1119,47 @@ line-height token for an engine without that unit.
 **On a phone** it's at least 48px high, with 16px text. Long text on a phone page (Instructions,
 Description) opens the text sheet instead; that comes with the Sheet.
 
+## Select
+
+Pick one value from a list: a model, a hub. On desktop it's the native `<select>`, so the keyboard
+and screen readers work as they do everywhere, in the Input's box with a chevron at the end.
+Options use the system's list. Put it in a Field, which names it and puts its hint or error under
+it.
+
+```tsx
+<Field label="Model" error={modelError}>
+  <Select options={models} value={model} onChange={setModel} placeholder="Choose a model" />
+</Field>;
+```
+
+| Prop          | What it is                                                                      |
+| ------------- | ------------------------------------------------------------------------------- |
+| `options`     | `{ value, label, disabled? }` in list order. A `disabled` one is listed, greyed |
+| `value`       | The picked value                                                                |
+| `onChange`    | Called with the new value as soon as the user picks it                          |
+| `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked    |
+| `size`        | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen   |
+| `ref`         | The control you focus: the `<select>`, or the picker button on a phone          |
+
+| State    | What shows                                                                               |
+| -------- | ---------------------------------------------------------------------------------------- |
+| Default  | The Input's box, the value in `fg`, a 16px `fg-muted` chevron with 32px of room          |
+| Hover    | The edge turns `fg-muted`                                                                |
+| Focus    | An `accent` edge and a 3px `accent-soft` ring (`focus-field`)                            |
+| Disabled | `surface-subtle` fill, a `border` edge, the value in `fg-disabled`, cursor `not-allowed` |
+| Error    | A `danger` edge; typically the placeholder in `fg-subtle`, for a value that's gone       |
+
+There's no read-only Select: a native select has none, and a view-only page shows the value as
+text. A list with icons, descriptions or search is a different component, not a Select.
+
+**On a phone** (the `phone` presentation) the Select is a **picker button** instead, never the
+browser's menu: 48px high with 16px text and the chevron, like the phone Input. It's named by the
+Field's label and then the value, so a screen reader hears "Model, Sonnet", and the label points at
+it. Only that one control is rendered for the keyboard and screen readers. Until the kit's picker
+sheet exists (it comes with the Sheet), the button opens the system's picker from a native select
+hidden under it; a picked value is saved at once and focus goes back to the button. With the
+sheet, the button will open it instead, and say so with `aria-haspopup="dialog"`.
+
 ## CopyButton
 
 A button for a value the user types somewhere else, such as an app name in Google Cloud Console.
