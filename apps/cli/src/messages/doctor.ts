@@ -11,6 +11,12 @@ export interface DataUse {
   readonly atLeast?: boolean;
 }
 
+/** A model a server on this computer has loaded, with its size as the output writes it, when known. */
+export interface LoadedModelSize {
+  readonly name: string;
+  readonly size?: string;
+}
+
 /**
  * The sentences of `halonic doctor` (cli-output 1.9 and 3.7, with the team's
  * calls of revisions 20 and 24). One line per check after its label, then the
@@ -26,6 +32,7 @@ export const doctorMessages = defineMessages("doctor", {
   workspaceLabel: () => phrase`Workspace`,
   modelsLabel: () => phrase`Models`,
   sandboxLabel: () => phrase`Sandbox`,
+  harnessesLabel: () => phrase`Harnesses`,
   diskLabel: () => phrase`Disk`,
 
   /** Workspace ✓. */
@@ -43,8 +50,11 @@ export const doctorMessages = defineMessages("doctor", {
     loaded === undefined
       ? phrase`${server} answering at ${address}`
       : phrase`${server} answering at ${address} ${markPart("separator")} ${loaded}`,
-  /** "llama3.2 loaded (2.0 GB)", after {@link answering}. */
-  loaded: (model: string, size: string) => phrase`${model} loaded (${size})`,
+  /**
+   * "llama3.2 loaded (2.0 GB)", after {@link answering}; without the size
+   * when the server doesn't say it. Several models are listed with commas.
+   */
+  loaded: (models: readonly LoadedModelSize[]) => phrase`${models.map(loadedModel).join(", ")}`,
   /** Models ✓ for a cloud provider: the key is never shown. */
   keyStored: (provider: string) => phrase`${provider}: API key stored`,
   /** Models !, one line per provider: "smart and writer need an API key for Anthropic." */
@@ -67,10 +77,32 @@ export const doctorMessages = defineMessages("doctor", {
   /** Disk !, below 1 GB free, as the status bar. */
   lowOnDisk: (free: string) => phrase`Low on disk space: ${free} free`,
   /** Disk ! when the free space can't be read: the line stays, so the failure isn't hidden. */
-  freeUnknown: (use: DataUse) =>
-    phrase`free space unknown ${markPart("separator")} ${halonicUses(use)}`,
+  freeUnknown: (use?: DataUse) =>
+    use === undefined
+      ? phrase`free space unknown`
+      : phrase`free space unknown ${markPart("separator")} ${halonicUses(use)}`,
   /** Under {@link freeUnknown}, with no fix line: there's nothing for the person to do. */
   freeUnknownReason: () => phrase`Halonic couldn't read the free space on this drive.`,
+
+  // The Harnesses line: placeholders from P5 on HAL-2264 until the board
+  // answers it. Each ! names the harness; a missing one names the agent too.
+  /** Harnesses ✓, one per harness that's ready: "Claude Code 2.1.0". */
+  harnessReady: (name: string, version: string) => phrase`${name} ${version}`,
+  /** Harnesses !: "Writer uses Codex, and it isn't installed." */
+  harnessMissing: (agent: string, harness: string) =>
+    phrase`${agent} uses ${harness}, and it isn't installed.`,
+  /** Under {@link harnessMissing}. */
+  installHarness: (harness: string) =>
+    phrase`Fix: install ${harness}, then run halonic doctor again.`,
+  /** Harnesses !: "Claude Code 0.9.1 isn't supported. Halonic needs 1.0.0 or newer." */
+  harnessUnsupported: (harness: string, version: string, supported: string) =>
+    phrase`${harness} ${version} isn't supported. Halonic needs ${supported} or newer.`,
+  /** Under {@link harnessUnsupported}. */
+  updateHarness: (harness: string) =>
+    phrase`Fix: update ${harness}, then run halonic doctor again.`,
+  /** Harnesses !, with no fix line: the reason is the harness's own. */
+  harnessVersionFailed: (harness: string, reason: string) =>
+    phrase`Halonic found ${harness} but couldn't ask its version: ${reason}`,
 
   noProblems: () => phrase`No problems.`,
   problems: (count: number) => phrase`${counted(count, "problem", "problems")}.`,
@@ -87,6 +119,10 @@ export const doctorMessages = defineMessages("doctor", {
   /** After the count, when the sandbox can't start: what that stops. */
   sandboxStops: () => phrase`Agents set to run in a sandbox won't start until it's fixed.`,
 });
+
+function loadedModel({ name, size }: LoadedModelSize): string {
+  return size === undefined ? `${name} loaded` : `${name} loaded (${size})`;
+}
 
 function halonicUses(use: DataUse): string {
   const amount = use.atLeast === true ? `at least ${use.total}` : use.total;

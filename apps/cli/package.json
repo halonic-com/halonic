@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/profile": "workspace:*",

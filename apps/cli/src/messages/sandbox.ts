@@ -88,3 +88,28 @@ function doctorFix(fix: string, note?: string): Phrase {
     ? phrase`Fix: ${fix} Then run halonic doctor again.`
     : phrase`Fix: ${fix} Then run halonic doctor again. ${note}`;
 }
+
+/** The sandbox page of the docs, which `More:` links under a sandbox that can't start. */
+const sandboxDocs = "https://docs.halonic.com/sandbox";
+
+/**
+ * The section of {@link sandboxDocs} for each reason that cli-output names
+ * one for. The other reasons link the page itself, rather than a section
+ * that may not exist.
+ */
+const docsSections: Readonly<Partial<Record<SandboxUnavailableReason, string>>> = {
+  "bubblewrap-missing": "bubblewrap",
+  container: "container",
+};
+
+/**
+ * The docs link for `More:` under a sandbox that can't start.
+ *
+ * @example
+ * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.com/sandbox#bubblewrap"
+ * sandboxDocsLink("windows"); // "https://docs.halonic.com/sandbox"
+ */
+export function sandboxDocsLink(code: string): string {
+  const section = docsSections[known(code)];
+  return section === undefined ? sandboxDocs : `${sandboxDocs}#${section}`;
+}
