@@ -191,6 +191,19 @@ behind it and no screen pads its content. A `surface` fill, a `border` line on t
   scroll area `page-scroll`, and the kit's Input and TextArea carry `data-text-entry`. jsdom can't
   evaluate `:has()`, so the browser check lives with the shell's Playwright tests.
 
+**A wait step's decision bar** (an approval or a choice a workflow asks for, component specs 20.6)
+gets its rows from `decisionRows`, given the step's events in file order:
+
+```tsx
+<ActionBar rows={decisionRows([approve, askForChanges, reject])} />;
+```
+
+The first event is `primary` on its own row. The others are `secondary`: one on its own row, two
+side by side, three or more stacked. Nothing is red. Labels are never shortened, and two that share
+a row stack when one doesn't fit, as above. The card keeps the rest: it ignores taps for about a
+second after it opens, marks the tapped event `busy` ("Approving…") while it decides, and replaces
+the bar with the decided callout afterwards.
+
 ## Button
 
 The kit's button: a native `<button>`, `type="button"` unless it submits a form.

@@ -11,6 +11,7 @@ export {
   type ActionBarProps,
   type ActionBarRow,
 } from "./action-bar/action-bar.tsx";
+export { type DecisionEvent, decisionRows } from "./action-bar/decision-rows.ts";
 export {
   Button,
   type ButtonProps,
