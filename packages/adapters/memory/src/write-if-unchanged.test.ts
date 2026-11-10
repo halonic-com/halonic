@@ -6,7 +6,8 @@ import { MemoryDefinitionStore } from "./definition-store.ts";
 import { DryRunDefinitionStore } from "./dry-run-definition-store.ts";
 import { webCryptoDigest } from "./sha256.ts";
 
-const digestOf = (text: string): Promise<string> => contentDigest(text, webCryptoDigest);
+const digestOf = (text: string): Promise<`sha256:${string}`> =>
+  contentDigest(text, webCryptoDigest);
 
 const stores: Record<string, (files: Record<string, string>) => DefinitionStore> = {
   memory: (files) => new MemoryDefinitionStore(files),
@@ -52,6 +53,20 @@ verifies("ports.definition-store-write-if-unchanged", () => {
           current: "there",
         });
         expect(await store.read("b.yaml")).toBe("there");
+      });
+
+      it("lets only one of two writes expecting the same text through", async () => {
+        const store = make({ "a.yaml": "1" });
+        const expected = await digestOf("1");
+        const results = await Promise.all([
+          store.write("a.yaml", "from the editor", { expected }),
+          store.write("a.yaml", "from a proposal", { expected }),
+        ]);
+        expect(results).toEqual([
+          { status: "written" },
+          { status: "changed-on-disk", current: "from the editor" },
+        ]);
+        expect(await store.read("a.yaml")).toBe("from the editor");
       });
 
       it("replaces the file whatever it holds when nothing is expected", async () => {

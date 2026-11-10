@@ -1,5 +1,5 @@
 import type { DefinitionStore, WriteOptions, WriteResult } from "@halonicjs/ports";
-import { matchesExpected, type Sha256 } from "@halonicjs/std";
+import { KeyedQueue, matchesExpected, type Sha256 } from "@halonicjs/std";
 
 /**
  * A small in-memory `DefinitionStore` for the kernel's own tests, with a
@@ -18,6 +18,8 @@ export class TestDefinitionStore implements DefinitionStore {
   failOn: string | null = null;
   private saves = 0;
   private readonly digest: Sha256 | null;
+  /** Writes to one path run one after another, so the check for `expected` and the write are never split. */
+  private readonly writes = new KeyedQueue();
 
   /**
    * @param files - the files to start with, by relative path
@@ -50,19 +52,22 @@ export class TestDefinitionStore implements DefinitionStore {
 
   async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
     this.check(path);
-    if (options.expected !== undefined) {
-      if (this.digest === null) {
-        throw new Error("TestDefinitionStore needs a digest to write with `expected`.");
-      }
-      const current = this.files.get(path) ?? null;
-      if (!(await matchesExpected(current, options.expected, this.digest))) {
-        return { status: "changed-on-disk", current };
-      }
+    const { expected } = options;
+    if (expected !== undefined && this.digest === null) {
+      throw new Error("TestDefinitionStore needs a digest to write with `expected`.");
     }
-    this.log.push(`write ${path}`);
-    this.files.set(path, content);
-    this.saves++;
-    return { status: "written" };
+    return await this.writes.run(path, async () => {
+      if (expected !== undefined && this.digest !== null) {
+        const current = this.files.get(path) ?? null;
+        if (!(await matchesExpected(current, expected, this.digest))) {
+          return { status: "changed-on-disk", current };
+        }
+      }
+      this.log.push(`write ${path}`);
+      this.files.set(path, content);
+      this.saves++;
+      return { status: "written" };
+    });
   }
 
   async remove(path: string): Promise<void> {

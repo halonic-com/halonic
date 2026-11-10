@@ -5,7 +5,7 @@ import {
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import { matchesExpected } from "@halonicjs/std";
+import { KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { sha256Hex, webCryptoDigest } from "./sha256.ts";
 
 /** One change a {@link DryRunDefinitionStore} was asked to make, in the order it was asked. */
@@ -35,6 +35,8 @@ export class DryRunDefinitionStore implements DefinitionStore {
   /** The pending text of each changed path; `null` when it would be removed. */
   readonly #pending = new Map<string, string | null>();
   readonly #changes: PlannedDefinitionChange[] = [];
+  /** Writes to one path run one after another, so the check for `expected` and the write are never split. */
+  readonly #writes = new KeyedQueue();
 
   /** @param source - the store whose files the dry run starts from; it is only read */
   constructor(source: DefinitionSource) {
@@ -76,15 +78,17 @@ export class DryRunDefinitionStore implements DefinitionStore {
    */
   async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
     await this.#checkSourceAccepts(path);
-    if (options.expected !== undefined) {
-      const current = await this.read(path);
-      if (!(await matchesExpected(current, options.expected, webCryptoDigest))) {
-        return { status: "changed-on-disk", current };
+    return await this.#writes.run(path, async () => {
+      if (options.expected !== undefined) {
+        const current = await this.read(path);
+        if (!(await matchesExpected(current, options.expected, webCryptoDigest))) {
+          return { status: "changed-on-disk", current };
+        }
       }
-    }
-    this.#pending.set(path, content);
-    this.#changes.push(Object.freeze({ kind: "write", path, content }));
-    return { status: "written" };
+      this.#pending.set(path, content);
+      this.#changes.push(Object.freeze({ kind: "write", path, content }));
+      return { status: "written" };
+    });
   }
 
   /** Records the removal and hides the file from later reads; the store under it is not changed. */

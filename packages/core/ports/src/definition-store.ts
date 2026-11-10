@@ -65,7 +65,7 @@ export interface DefinitionSource {
  * `matchesExpected` in `@halonicjs/std` work it out and compare it, so every
  * store does both the same way.
  */
-export type ExpectedContent = string | "absent";
+export type ExpectedContent = `sha256:${string}` | "absent";
 
 /** Options for {@link DefinitionStore.write}. */
 export interface WriteOptions {

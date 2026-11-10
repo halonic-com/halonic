@@ -6,7 +6,7 @@ import {
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import { matchesExpected } from "@halonicjs/std";
+import { KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { sha256Hex, webCryptoDigest } from "./sha256.ts";
 
 /**
@@ -18,6 +18,8 @@ import { sha256Hex, webCryptoDigest } from "./sha256.ts";
 export class MemoryDefinitionStore implements DefinitionStore {
   readonly location: string;
   readonly #files = new Map<string, string>();
+  /** Writes to one path run one after another, so the check for `expected` and the write are never split. */
+  readonly #writes = new KeyedQueue();
 
   /**
    * @param files - the files to start with, by relative path
@@ -48,15 +50,17 @@ export class MemoryDefinitionStore implements DefinitionStore {
 
   async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
     checkPublicWorkspacePath(path);
-    const current = this.#files.get(path) ?? null;
-    if (
-      options.expected !== undefined &&
-      !(await matchesExpected(current, options.expected, webCryptoDigest))
-    ) {
-      return { status: "changed-on-disk", current };
-    }
-    this.#files.set(path, content);
-    return { status: "written" };
+    return await this.#writes.run(path, async () => {
+      const current = this.#files.get(path) ?? null;
+      if (
+        options.expected !== undefined &&
+        !(await matchesExpected(current, options.expected, webCryptoDigest))
+      ) {
+        return { status: "changed-on-disk", current };
+      }
+      this.#files.set(path, content);
+      return { status: "written" };
+    });
   }
 
   async remove(path: string): Promise<void> {

@@ -46,11 +46,7 @@ verifies("ports.definition-store-write-if-unchanged", () => {
       expect(await readFile(join(root, "a.yaml"), "utf8")).toBe("2");
       expect(await readFile(join(root, "hubs/b/hub.yaml"), "utf8")).toBe("id: b\n");
     });
-  });
-});
 
-verifies("fs-node.write-is-whole-or-nothing", () => {
-  describe("folder: whole writes", () => {
     it("lets only one of two writes expecting the same text through", async () => {
       const { root, store } = await folderWith({ "a.yaml": "1" });
       const expected = await contentDigest("1", digest);
@@ -61,7 +57,11 @@ verifies("fs-node.write-is-whole-or-nothing", () => {
       expect(results.map((result) => result.status).sort()).toEqual(["changed-on-disk", "written"]);
       expect(await readFile(join(root, "a.yaml"), "utf8")).toBe("from the editor");
     });
+  });
+});
 
+verifies("fs-node.write-is-whole-or-nothing", () => {
+  describe("folder: whole writes", () => {
     it("leaves no temporary file behind and lists none", async () => {
       const { root, store } = await folderWith({ "a.yaml": "1" });
       await store.write("a.yaml", "2");
