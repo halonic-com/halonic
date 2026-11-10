@@ -15,14 +15,19 @@ its way out.
 `readLines` reads a sandboxed program's `stdout` as UTF-8, one line at a
 time, with `\n` or `\r\n` line breaks. A line longer than `maxLineLength`
 ends the reading with an error that doesn't quote it, so a program that
-never ends a line can't fill Halonic's memory.
+never ends a line can't fill Halonic's memory. The last line is read even
+without a line break; bytes that aren't UTF-8 become U+FFFD. When the caller
+stops early or a line is too long, the stream is cancelled.
 
 ## The event filter
 
 `HarnessEventFilter` removes the run's bridge token from every string in an
 event, and from the errors it makes: the token is in the program's
 environment, so a tool call such as `env` can print it. It lets the task
-agent's final `agent.finished` through once, and nothing after it.
+agent's final `agent.finished` through once, and nothing after it. That is the
+one without a `parent`: a subagent's `agent.finished` doesn't end the run.
+`finished` says whether it has passed, and `error(message)` makes an `Error`
+with the token removed from its message.
 
 ## Example
 

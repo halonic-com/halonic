@@ -24,8 +24,7 @@ import type { ConformanceSubject, ToolCase } from "./run.ts";
  * @example
  * describeIntegrationConformance({
  *   integration: weather,
- *   policy: { name: "weather", hosts: ["api.example.com"], secrets: { "weather-key": { hosts: ["api.example.com"], placement: { as: "header", header: "x-api-key" } } }, tokens: [] },
- *   declaredTools: [{ name: "forecast", risk: "read", untrusted: true }],
+ *   sheet: JSON.parse(readFileSync("integration.json", "utf8")), // the sheet the build writes
  *   recordings: [forecastGhent],
  *   cases: [{ tool: "forecast", scenario: "forecast-ghent", args: { city: "Ghent" } }],
  *   sources: { "src/index.ts": readFileSync("src/index.ts", "utf8") },

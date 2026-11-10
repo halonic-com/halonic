@@ -15,8 +15,10 @@ export interface RecordingFile {
   readonly scrubReport: readonly { rule: string; path: string; count: number }[];
 }
 
+/** The `format` value of a recording file. */
 export const recordingFormat = "halonic.recording/1";
 
+/** One request and the response it got, as the recorder saved them. */
 export interface RecordedExchange {
   readonly transport: "http";
   readonly request: {

@@ -8,6 +8,7 @@ const defaultTimeoutMs = 5_000;
 const maxOutputBytes = 4_096;
 const allowedEnv = ["PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LC_MESSAGES"] as const;
 
+/** What {@link createProgramProbe} may be told. */
 export interface ProgramProbeOptions {
   /** The launcher's environment; defaults to `process.env`. Only `PATH`, `HOME` and the locale are passed on. */
   env?: Readonly<Record<string, string | undefined>>;

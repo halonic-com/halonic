@@ -10,8 +10,9 @@ secrets and approvals stay in Halonic.
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-harness-codex`
 
-So far it has `detectCodex` and `codexEnvironment`, and, inside the package,
-the client that talks to `codex app-server` and the reader that turns its
+So far it exports `detectCodex`, `codexEnvironment` and the constants around
+them (`codexProgram`, `codexRunTokenVariable`, `supportedVersions`,
+`oldestSupportedVersion`). Inside the package, and not exported, are the client that talks to `codex app-server` and the reader that turns its
 notifications into run events. Starting a run (`start`, `send`, `cancel`)
 follows (HAL-194 build plan, D3).
 
@@ -21,8 +22,8 @@ Codex runs as `codex app-server`, which speaks JSON-RPC over its standard
 input and output, one JSON object per line and without the `jsonrpc` field.
 `AppServerClient` opens with `initialize` and `initialized`, matches answers
 to requests by id, hands Codex's notifications and its own requests (such as
-approvals) on in order, and answers those. A line that isn't JSON-RPC stops
-the reading with an error that never quotes it, and no error holds the
+approvals) on in order, and answers those. A line that isn't JSON-RPC, or is
+longer than 16 MiB, stops the reading with an error that never quotes it, and no error holds the
 bridge token. The protocol was checked with
 `codex app-server generate-json-schema` and a recorded session of Codex
 0.166.0.
@@ -35,7 +36,9 @@ an image Codex looks at into `tool.called` and `tool.result` (`shell`,
 bridge's MCP server (`halonic`) and every model call are left out: the bridge
 records those. `turn/completed` is the run's final `agent.finished`, with the
 agent's last message as output; a failed or interrupted turn ends the run
-with an error. Other threads, and notifications and items it doesn't know,
+with an error; when the model provider refused the key or sign-in (HTTP 401),
+the error doesn't repeat the provider's answer, which can hold part of a key.
+Other threads, and notifications and items it doesn't know,
 are skipped. Subagents (Codex's `collabAgentToolCall`) aren't reported yet.
 
 ## Example
@@ -51,6 +54,13 @@ if (found.status === "ready") {
 }
 ```
 
+## What `detectCodex` answers
+
+`detectCodex(probe)` never throws. It answers `missing` (no `codex` on the
+path), `failed` (`codex --version` couldn't run or printed no version; the
+sentence holds none of Codex's output), `unsupported` (older than the
+supported version; it doesn't ask about sign-in), `signed-out` or `ready`.
+
 ## Supported versions
 
 Codex 0.166.0 or newer (`supportedVersions`): the release checked by hand on
@@ -62,7 +72,7 @@ Codex 0.166.0 or newer (`supportedVersions`): the release checked by hand on
 ## Sign-in
 
 `codex login status` exits with 1 and prints "Not logged in" when no one is
-signed in; `detect()` then answers `signed-out`. It also exits with 1 when it
+signed in; `detectCodex` then answers `signed-out`. It also exits with 1 when it
 can't read its settings or the stored sign-in, with another message: that,
 and any other answer, is `ready`, because Halonic never guesses. Its output
 can show part of an API key, so it is never passed on.

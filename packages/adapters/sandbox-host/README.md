@@ -7,9 +7,22 @@ The launcher (`sandbox-host`): it finds programs on this machine and, in later s
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-sandbox-host`
 
-This package is built in steps (HAL-193). So far it has the real `ProgramProbe`: it finds a program by
-bare name on the launcher's PATH, starts it with no shell, a small environment (no tokens or keys), a
-5-second limit and output cut at 4 KB, and never throws. Starting the sandboxed program follows later.
+This package is built in steps (HAL-193). So far it has the real `ProgramProbe`
+(`createProgramProbe`, with `ProgramProbeOptions` for the environment and the time limit). It:
+
+- finds a program by bare name on the launcher's PATH, skipping empty and relative entries. A name
+  with a path separator, or an empty name, is `missing` and nothing is started. On Windows it looks
+  for `.exe` and `.com`;
+- starts it with no shell and only `PATH`, `HOME` and the locale variables (`LANG`, `LC_ALL`,
+  `LC_CTYPE`, `LC_MESSAGES`), so no tokens or keys;
+- ends it after 5 seconds (`timeoutMs`) with a `failed` answer in one plain sentence, and cuts
+  `stdout` and `stderr` at 4 KB each;
+- stops what the program started once it has ended or been stopped, on POSIX by ending its process
+  group. Windows is left for later, and a child that starts its own session can escape: that is the
+  sandbox's job;
+- never throws.
+
+Starting the sandboxed program follows later.
 
 ## Example
 
