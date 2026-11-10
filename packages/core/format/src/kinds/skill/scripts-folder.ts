@@ -51,7 +51,9 @@ export async function touchesSkillScripts(
 /**
  * Every part of a start that could name a file: the folder, the program, each
  * argument, and the value of an argument joined with `=`, which the program
- * may read as a path of its own.
+ * may read as a path of its own. Only the value after the first `=` is
+ * followed through links; a later `=` value, as in `--define=KEY=value`, is
+ * caught only as written, by the pattern above.
  */
 function partsOf({ cwd, program, args }: ProgramStart): string[] {
   return [cwd, program, ...args, ...args.flatMap(joinedValue)];

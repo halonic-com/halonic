@@ -57,6 +57,7 @@ verifies("format.skill-scripts-folder", () => {
       ["a value with ..", start("node", ["--file=../w/skills/mail/scripts/send.js"])],
       ["a value from the skill", start("node", ["--file=./scripts/send.js"], "/w/skills/mail")],
       ["a value that is a link", start("node", ["--file=innocent"])],
+      ["a second = value", start("node", ["--define=KEY=skills/mail/scripts/send.js"])],
     ])("is true for %s joined with = (HAL-3628)", async (_, bad) => {
       expect(await touchesSkillScripts(bad, paths)).toBe(true);
     });
