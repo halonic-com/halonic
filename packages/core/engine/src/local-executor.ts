@@ -7,6 +7,7 @@ import type {
   ChatTurnResponse,
   Clock,
   ConnectorClient,
+  RecordStore,
   RunEventListener,
   RunExecutor,
   RunSubscription,
@@ -20,6 +21,8 @@ import { runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import { LocalRuns, type LocalRunsOptions } from "./run/local-runs.ts";
+import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
+import { memoryTools } from "./tools/agent-memory/memory-tools.ts";
 
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
 export interface LocalExecutorOptions {
@@ -33,6 +36,11 @@ export interface LocalExecutorOptions {
   resolveModel(request: ChatTurnRequest): Promise<ResolvedModel>;
   /** Halonic's own tools, offered after the caller's. */
   readonly halonicTools: readonly HalonicTool[];
+  /**
+   * Where agents keep their notes. With it, a chat turn that names an agent
+   * also offers that agent's memory tools, after the other Halonic tools.
+   */
+  readonly memory?: RecordStore;
   /** The connected servers, whose tools are offered last. */
   readonly connectors: readonly ConnectorClient[];
   /** Where a turn checks that a model's key is set, to skip the model before calling it when it isn't. */
@@ -154,7 +162,7 @@ export class LocalExecutor implements RunExecutor {
       secrets: this.options.secrets,
       messages: request.messages,
       callerTools: request.tools,
-      halonicTools: this.options.halonicTools,
+      halonicTools: this.chatTools(request.agentId),
       connectors: this.options.connectors,
       ...(request.params === undefined ? {} : { params: request.params }),
       maxRounds: this.maxRounds,
@@ -163,10 +171,20 @@ export class LocalExecutor implements RunExecutor {
     });
   }
 
+  /** Halonic's tools for a chat turn: the agent's memory tools come last, when there is an agent and a store. */
+  private chatTools(agentId: string | undefined): readonly HalonicTool[] {
+    const records = this.options.memory;
+    if (agentId === undefined || records === undefined) {
+      return this.options.halonicTools;
+    }
+    const memory = new AgentMemory({ records, clock: this.options.clock, agentId });
+    return [...this.options.halonicTools, ...memoryTools(memory)];
+  }
+
   /**
    * A run's model call: the state's prompt to its agent's model, without
-   * tools. Tools, the agent's own prompt and the turn's run log come with
-   * the agent loop (step 4).
+   * tools. Tools (the agent's memory tools among them), the agent's own
+   * prompt and the turn's run log come with the agent loop (step 4).
    */
   private async callModel(run: RunState, call: PendingCall): Promise<unknown> {
     const messages = [{ role: "user" as const, content: call.prompt }];
