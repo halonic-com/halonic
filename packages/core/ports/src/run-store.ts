@@ -123,9 +123,17 @@ export interface RunStore {
  *   that was reused, and a lock taken on another computer of a shared
  *   folder. A lock file that can't be read as a record (a crash between
  *   creating and writing it) counts its age from the file's change time.
- * - **Removing a stale lock:** rename it to a name of its own first, then
- *   check that the renamed file still holds the stale record. When another
- *   writer took the lock in between, put its lock back.
+ * - **Removing a stale lock:** only one writer removes a lock at a time,
+ *   the one that creates `<runId>.lock.takeover` with an exclusive create.
+ *   Holding it, the writer reads the lock again and removes it only while
+ *   it still holds the same stale text, then removes the takeover file. A
+ *   lock that isn't stale is never moved or removed. A writer that finds
+ *   the takeover file there waits and tries again; one older than
+ *   {@link runLockTakeoverStaleAfterMs} was left by a remover that crashed,
+ *   and any writer may remove it.
+ * - **A link at the lock's path:** when the exclusive create finds the file
+ *   there but reading it finds none, and the path is a symbolic link to a
+ *   file that isn't there, fail with an error instead of trying again.
  */
 export interface RunLockRecord {
   /** The format version, {@link runLockFormat}. */
@@ -146,6 +154,14 @@ export const runLockFormat = 1;
  * the lock for milliseconds, so this is far longer than any append takes.
  */
 export const runLockStaleAfterMs = 10_000;
+
+/**
+ * How old a lock's takeover file may get before any writer may remove it.
+ * Removing a stale lock takes milliseconds, and up to 2 seconds a step on
+ * Windows while a file is busy, so a takeover file this old was left by a
+ * writer that crashed while removing a lock.
+ */
+export const runLockTakeoverStaleAfterMs = 5_000;
 
 // The rules above, as code, so every adapter checks appends and filters runs the same way.
 

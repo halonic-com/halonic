@@ -1,10 +1,14 @@
-import { randomUUID } from "node:crypto";
-import { link, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
-import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
+import {
+  type RunLockRecord,
+  runLockFormat,
+  runLockStaleAfterMs,
+  runLockTakeoverStaleAfterMs,
+} from "@halonicjs/ports";
 import { type BusySystem, nodeBusySystem, retryWhileBusy } from "./busy-retry.ts";
-import { isMissing } from "./links.ts";
+import { isMissing, lstatOrNull } from "./links.ts";
 
 /** How long to wait before trying again to take a lock another writer holds. */
 const retryDelayMs = 15;
@@ -57,7 +61,7 @@ async function takeLock(file: string, system: BusySystem): Promise<string> {
     if (await retryWhileBusy(() => createExclusive(file, ownText), system)) {
       return ownText;
     }
-    const found = await retryWhileBusy(() => readLock(file), system);
+    const found = await readTakenLock(file, system);
     if (found === null) {
       // Released between our create and our read: try again straight away.
       continue;
@@ -68,6 +72,25 @@ async function takeLock(file: string, system: BusySystem): Promise<string> {
     }
     await sleep(retryDelayMs);
   }
+}
+
+/**
+ * The lock (or takeover file) another writer holds, read after an exclusive
+ * create found `file` there; or `null` when that writer released it in
+ * between.
+ *
+ * @throws Error when `file` is a symbolic link to a file that isn't there:
+ *   the create always finds it and the read never does, so trying again
+ *   would never end
+ */
+export async function readTakenLock(file: string, system: BusySystem): Promise<FoundLock | null> {
+  const found = await retryWhileBusy(() => readLock(file), system);
+  if (found === null && (await lstatOrNull(file))?.isSymbolicLink()) {
+    throw new Error(
+      `The lock ${file} is a link to a file that isn't there. Remove the link and try again.`,
+    );
+  }
+  return found;
 }
 
 /** The record this process writes into a lock it takes, taken now. */
@@ -167,46 +190,53 @@ function processRuns(pid: number): boolean {
 }
 
 /**
- * Removes a stale lock that held `staleText`. Another writer may have
- * removed it and taken a fresh lock since it was read, so the lock is moved
- * aside first and checked: when it isn't the stale one any more, it is put
- * back, unless a third writer has taken the lock by then.
+ * Removes the stale lock that held `staleText`, unless another writer has
+ * removed it since. Only one writer removes a lock at a time: the one that
+ * creates `<file>.takeover`. Holding it, it reads the lock again and removes
+ * it only while it still holds `staleText`, so a lock another writer took in
+ * the meantime is never touched. A writer that finds the takeover file there
+ * waits, and the caller tries again.
  *
- * Each file call is retried on its own while Windows reports it busy, not
- * the whole removal: retrying the whole would rename again after a failed
- * check, find no lock, and so remove the lock it moved aside unchecked.
+ * One gap is left: a writer that still runs past the stale limit could
+ * release its lock, and another take a fresh one, between the read and the
+ * removal. A run lock is held for milliseconds, far below the limit.
  */
 export async function removeStale(
   file: string,
   staleText: string,
   system: BusySystem,
 ): Promise<void> {
-  const aside = `${file}.${randomUUID()}.stale`;
-  try {
-    await retryWhileBusy(() => rename(file, aside), system);
-  } catch (error) {
-    if (isMissing(error)) {
-      return;
-    }
-    throw error;
+  const takeover = `${file}.takeover`;
+  const takeoverText = JSON.stringify(ownRecord());
+  if (!(await retryWhileBusy(() => createExclusive(takeover, takeoverText), system))) {
+    await removeAbandonedTakeover(takeover, system);
+    await sleep(retryDelayMs);
+    return;
   }
   try {
-    if ((await retryWhileBusy(() => readFile(aside, "utf8"), system)) !== staleText) {
-      await retryWhileBusy(() => putBack(aside, file), system);
+    const found = await retryWhileBusy(() => readLock(file), system);
+    if (found?.text === staleText) {
+      await retryWhileBusy(() => rm(file, { force: true }), system);
     }
   } finally {
-    await retryWhileBusy(() => rm(aside, { force: true }), system);
+    await retryWhileBusy(() => releaseLock(takeover, takeoverText), system);
   }
 }
 
-/** Links `aside` back to `file`, unless `file` is there again. */
-async function putBack(aside: string, file: string): Promise<void> {
-  try {
-    await link(aside, file);
-  } catch (error) {
-    if ((error as { code?: unknown }).code !== "EEXIST") {
-      throw error;
-    }
+/**
+ * Removes the takeover file when it is older than
+ * {@link runLockTakeoverStaleAfterMs} (or from the future by as much): its
+ * writer crashed while removing a stale lock, and would otherwise keep
+ * every writer from removing it.
+ *
+ * Two writers that find the same old takeover file at the same moment could
+ * both remove it, and the second remove the first one's new takeover file.
+ * That takes a remover that crashed first, so it is left as it is.
+ */
+async function removeAbandonedTakeover(takeover: string, system: BusySystem): Promise<void> {
+  const found = await readTakenLock(takeover, system);
+  if (found !== null && !(Math.abs(Date.now() - found.changedAt) <= runLockTakeoverStaleAfterMs)) {
+    await retryWhileBusy(() => rm(takeover, { force: true }), system);
   }
 }
 

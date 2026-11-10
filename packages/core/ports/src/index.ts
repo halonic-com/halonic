@@ -194,6 +194,7 @@ export {
   type RunStore,
   runLockFormat,
   runLockStaleAfterMs,
+  runLockTakeoverStaleAfterMs,
   runStoreVersion,
   startedAtOrAfter,
 } from "./run-store.ts";

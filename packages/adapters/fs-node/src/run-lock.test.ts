@@ -1,9 +1,14 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readFile, rm, utimes, writeFile } from "node:fs/promises";
+import { readdir, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
-import { type RunLockRecord, runLockFormat, runLockStaleAfterMs } from "@halonicjs/ports";
+import {
+  type RunLockRecord,
+  runLockFormat,
+  runLockStaleAfterMs,
+  runLockTakeoverStaleAfterMs,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import type { BusySystem } from "./busy-retry.ts";
@@ -11,20 +16,19 @@ import { isStale, parseRecord, withRunLock } from "./run-lock.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
 /** The lock's file calls a test can make fail as busy. */
-type BusyCall = "create" | "readFile" | "rename" | "rm";
+type BusyCall = "create" | "readFile" | "rm";
 
 /**
  * Hooks into the lock's file calls, to play another writer at the moment
- * that matters. `beforeRename` and `beforeLink`: run once before the next
- * rename or link. `onWait`: runs instead of each wait for a held lock.
+ * that matters. `afterRead`: runs once after the next read, before its text
+ * is given back. `onWait`: runs instead of each wait for a held lock.
  * `failNextCreate`: the next exclusive create fails as if the file were there.
- * `busy`: per call (`create`, `readFile`, `rename`, `rm`), the error codes
+ * `busy`: per call (`create`, `readFile`, `rm`), the error codes
  * its next calls fail with in turn, as Windows fails them while another
  * writer deletes or holds the file.
  */
 const hooks = vi.hoisted(() => ({
-  beforeRename: undefined as ((from: string) => Promise<void>) | undefined,
-  beforeLink: undefined as ((to: string) => Promise<void>) | undefined,
+  afterRead: undefined as (() => Promise<void>) | undefined,
   onWait: undefined as (() => Promise<void>) | undefined,
   failNextCreate: false,
   waits: 0,
@@ -42,19 +46,6 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   const fs = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...fs,
-    rename: async (from: string, to: string) => {
-      hooks.throwIfBusy("rename");
-      const beforeRename = hooks.beforeRename;
-      hooks.beforeRename = undefined;
-      await beforeRename?.(from);
-      return await fs.rename(from, to);
-    },
-    link: async (from: string, to: string) => {
-      const beforeLink = hooks.beforeLink;
-      hooks.beforeLink = undefined;
-      await beforeLink?.(to);
-      return await fs.link(from, to);
-    },
     writeFile: (async (file: string, text: string, options: { flag?: string }) => {
       if (options?.flag === "wx") {
         hooks.throwIfBusy("create");
@@ -67,7 +58,11 @@ vi.mock("node:fs/promises", async (importOriginal) => {
     }) as typeof fs.writeFile,
     readFile: (async (...args: Parameters<typeof fs.readFile>) => {
       hooks.throwIfBusy("readFile");
-      return await fs.readFile(...args);
+      const text = await fs.readFile(...args);
+      const afterRead = hooks.afterRead;
+      hooks.afterRead = undefined;
+      await afterRead?.();
+      return text;
     }) as typeof fs.readFile,
     rm: async (...args: Parameters<typeof fs.rm>) => {
       hooks.throwIfBusy("rm");
@@ -85,8 +80,7 @@ vi.mock("node:timers/promises", () => ({
 
 afterAll(removeTempFolders);
 afterEach(() => {
-  hooks.beforeRename = undefined;
-  hooks.beforeLink = undefined;
+  hooks.afterRead = undefined;
   hooks.onWait = undefined;
   hooks.failNextCreate = false;
   hooks.waits = 0;
@@ -203,13 +197,20 @@ verifies("fs-node.run-store-lock", () => {
     expect(hooks.waits).toBe(1);
   });
 
-  it("puts back a lock another writer took while it was removing a stale one", async () => {
+  it("removes a stale lock and its takeover file, and leaves only its own lock", async () => {
     const file = await lockFile(JSON.stringify(record(exitedPid())));
-    const fresh = JSON.stringify(record(process.pid));
-    hooks.beforeRename = async (from) => {
-      // Another writer removed the stale lock and took its own after we read it.
-      await rm(from);
-      await writeFile(from, fresh, "utf8");
+    const folder = await withRunLock(file, async () => await readdir(join(file, "..")));
+    expect(folder).toEqual(["r1.lock"]);
+    expect(await readdir(join(file, ".."))).toEqual([]);
+  });
+
+  it("leaves a lock alone that another writer took after it read the stale one", async () => {
+    const file = await lockFile(JSON.stringify(record(exitedPid())));
+    const fresh = JSON.stringify(record(process.pid, "another-writer"));
+    hooks.afterRead = async () => {
+      // Another writer removes the stale lock and takes its own before we act on it.
+      await rm(file);
+      await writeFile(file, fresh, "utf8");
     };
     let heldDuringWait = "";
     hooks.onWait = async () => {
@@ -220,34 +221,96 @@ verifies("fs-node.run-store-lock", () => {
     expect(heldDuringWait).toBe(fresh);
   });
 
-  it("leaves a lock alone that a third writer took before it could put one back", async () => {
-    const file = await lockFile(JSON.stringify(record(exitedPid())));
-    const second = JSON.stringify(record(process.pid, "second-writer"));
-    const third = JSON.stringify(record(process.pid, "third-writer"));
-    hooks.beforeRename = async (from) => {
-      await rm(from);
-      await writeFile(from, second, "utf8");
-    };
-    hooks.beforeLink = async (to) => {
-      await writeFile(to, third, "utf8");
-    };
+  it("waits while another writer is removing the stale lock", async () => {
+    const stale = JSON.stringify(record(exitedPid()));
+    const file = await lockFile(stale);
+    await writeFile(`${file}.takeover`, JSON.stringify(record(process.pid)), "utf8");
     let heldDuringWait = "";
     hooks.onWait = async () => {
       heldDuringWait = await readFile(file, "utf8");
-      await rm(file);
+      await rm(`${file}.takeover`);
     };
     await withRunLock(file, async () => {});
-    expect(heldDuringWait).toBe(third);
+    expect(heldDuringWait).toBe(stale);
+    expect(hooks.waits).toBe(1);
+  });
+
+  it("removes a takeover file left by a writer that crashed while removing", async () => {
+    const file = await lockFile(JSON.stringify(record(exitedPid())));
+    const takeover = `${file}.takeover`;
+    await writeFile(takeover, JSON.stringify(record(exitedPid())), "utf8");
+    const old = new Date(Date.now() - runLockTakeoverStaleAfterMs - 1_000);
+    await utimes(takeover, old, old);
+    await withRunLock(file, async () => {});
+    expect(hooks.waits).toBe(1);
+    expect(await readdir(join(file, ".."))).toEqual([]);
+  });
+
+  it("lets only one of three writers hold the lock after a stale one is removed", async () => {
+    const file = await lockFile(JSON.stringify(record(exitedPid())));
+    let inside = 0;
+    let mostInside = 0;
+    const work = async (until?: Promise<void>) => {
+      inside += 1;
+      mostInside = Math.max(mostInside, inside);
+      await until;
+      await new Promise(setImmediate);
+      inside -= 1;
+    };
+    let letFirstLeave = () => {};
+    const firstMayLeave = new Promise<void>((resolve) => {
+      letFirstLeave = resolve;
+    });
+    const others: Promise<void>[] = [];
+    hooks.afterRead = async () => {
+      // The second writer has read the stale lock. Before it acts on it, the
+      // first removes it and takes its own, and a third starts to wait.
+      others.push(withRunLock(file, async () => await work(firstMayLeave)));
+      while (inside === 0) {
+        await new Promise(setImmediate);
+      }
+      others.push(withRunLock(file, async () => await work()));
+    };
+    hooks.onWait = async () => {
+      if (hooks.waits >= 3) {
+        letFirstLeave();
+      }
+      await new Promise(setImmediate);
+    };
+    await withRunLock(file, async () => await work());
+    await Promise.all(others);
+    expect(others).toHaveLength(2);
+    expect(mostInside).toBe(1);
   });
 
   it("takes the lock when another writer removed the stale one first", async () => {
     const file = await lockFile(JSON.stringify(record(exitedPid())));
-    hooks.beforeRename = async (from) => {
-      await rm(from);
+    hooks.afterRead = async () => {
+      await rm(file);
     };
     await withRunLock(file, async () => {});
     expect(hooks.waits).toBe(0);
   });
+
+  it.skipIf(process.platform === "win32")(
+    "fails instead of trying for ever when the lock is a link to a missing file",
+    async () => {
+      const file = await lockFile();
+      await symlink(join(file, "..", "missing"), file);
+      const work = vi.fn(async () => {});
+      await expect(withRunLock(file, work)).rejects.toThrow("is a link to a file that isn't there");
+      expect(work).not.toHaveBeenCalled();
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "fails instead of trying for ever when the takeover file is a link to a missing file",
+    async () => {
+      const file = await lockFile(JSON.stringify(record(exitedPid())));
+      await symlink(join(file, "..", "missing"), `${file}.takeover`);
+      await expect(withRunLock(file, async () => {})).rejects.toThrow("r1.lock.takeover is a link");
+    },
+  );
 
   it("tries again straight away when the lock is released between create and read", async () => {
     const file = await lockFile();
@@ -306,9 +369,9 @@ verifies("fs-node.run-store-lock", () => {
       expect(windows.busyWaits).toBe(1);
     });
 
-    it("tries moving a stale lock aside again while Windows refuses the rename", async () => {
+    it("tries removing a stale lock again while Windows refuses it", async () => {
       const file = await lockFile(JSON.stringify(record(exitedPid())));
-      hooks.busy.rename = ["EPERM"];
+      hooks.busy.rm = ["EPERM"];
       const windows = busySystem("win32");
       await withRunLock(file, async () => {}, windows);
       expect(windows.busyWaits).toBe(1);
