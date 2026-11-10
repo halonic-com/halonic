@@ -35,6 +35,7 @@ code is built the way it is, before you change something they describe.
 | [API types stand alone](2026-11-09-api-types-stand-alone.md)                           | `events` and `ports` use only each other, so callers get them without the engine |
 | [Sandbox check reason codes](2026-11-09-sandbox-check-reason-codes.md)                 | `SandboxCheck.reason` is a listed code; Studio words it; no fallback (v3)        |
 | [Run snapshot is a cache](2026-11-09-run-snapshot-is-a-cache.md)                       | `RunStore` may drop a snapshot; only a crash can store part of an append         |
+| [Harness signed out](2026-11-09-harness-signed-out.md)                                 | `detect()` can answer `signed-out`, with the version; never a guess (v2)         |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

@@ -309,6 +309,19 @@ verifies("ports.harness-detect", () => {
   });
 });
 
+verifies("ports.harness-signed-out", () => {
+  it("says which version it found when no one is signed in", () => {
+    const signedOut: HarnessDetection = { status: "signed-out", version: "2.1.321" };
+    expect(signedOut).toEqual({ status: "signed-out", version: "2.1.321" });
+  });
+
+  it("needs the version on a signed-out harness", () => {
+    // @ts-expect-error: a signed-out harness says which version it found
+    const unknown: HarnessDetection = { status: "signed-out" };
+    expect(unknown).toBeDefined();
+  });
+});
+
 verifies("ports.harness-run-events", () => {
   typeTest("uses only run log event types", () => {
     expectTypeOf<HarnessEvent["type"]>().toEqualTypeOf<

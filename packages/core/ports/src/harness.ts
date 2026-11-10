@@ -2,7 +2,7 @@ import type { AgentResume, RunEventBody, RunEventType } from "@halonicjs/events"
 import type { SandboxProfile, SandboxSession } from "./sandbox.ts";
 
 /** Version of the {@link Harness} port. A breaking change bumps it and comes with an ADR. */
-export const harnessVersion = 1;
+export const harnessVersion = 2;
 
 /**
  * Whether a harness can run on this machine, as `detect()` finds it. Studio
@@ -13,10 +13,17 @@ export const harnessVersion = 1;
  * const found = await codex.detect();
  * if (found.status === "missing") show(`${codex.name} isn't installed`);
  * if (found.status === "unsupported") show(`${codex.name} ${found.version} isn't supported (needs ${found.supported})`);
+ * if (found.status === "signed-out") show(`Found ${codex.name} ${found.version} · not signed in`);
  */
 export type HarnessDetection =
-  /** Installed in a version Halonic supports. */
+  /** Installed in a version Halonic supports, and signed in, or its sign-in can't be checked. */
   | { status: "ready"; version: string }
+  /**
+   * Installed in a version Halonic supports, but the program says no one is
+   * signed in on this computer. It can still run when Halonic holds a key
+   * for the agent's model provider, so this isn't an error on its own.
+   */
+  | { status: "signed-out"; version: string }
   /** The program isn't installed, or isn't where Halonic looks for it. */
   | { status: "missing" }
   /** Installed, but in a version Halonic doesn't support; `supported` says which ones it does, such as ">=1.0.0". */
@@ -159,7 +166,11 @@ export interface Harness {
   readonly id: string;
   /** The name a person reads, such as "Claude Code". */
   readonly name: string;
-  /** Finds the harness's program on this machine and checks its version. Never throws: a problem is a {@link HarnessDetection}. */
+  /**
+   * Finds the harness's program on this machine, checks its version and,
+   * where the program can tell, whether someone is signed in to it. Never
+   * throws: a problem is a {@link HarnessDetection}.
+   */
   detect(): Promise<HarnessDetection>;
   /**
    * The environment variables the harness's program needs, such as the
