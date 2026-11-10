@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import { reviewRecordPath } from "./review-record.ts";
 import { ReviewRecords } from "./review-records.ts";
 import { ReviewService } from "./review-service.ts";
+import type { ReviewOutcome } from "./review-types.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
@@ -32,6 +33,14 @@ function setUp(files: Record<string, string> = { [clerk]: fast }) {
 }
 
 const digestOf = (text: string) => contentDigest(text, digest);
+
+/** The outcome of a decision that wasn't stale. */
+function done(outcome: ReviewOutcome): Extract<ReviewOutcome, { status: "done" }> {
+  if (outcome.status !== "done") {
+    throw new Error(`expected a done outcome, got ${outcome.status}`);
+  }
+  return outcome;
+}
 
 verifies("app.review-assistant-writes", () => {
   it("writes the file and keeps the text from before as the baseline", async () => {
@@ -128,8 +137,8 @@ verifies("app.review-accept-reject-file", () => {
     const outcome = await review.accept({ kind: "file", path: clerk });
     expect(store.files.get(clerk)).toBe(smart);
     expect(await records.read(clerk)).toEqual({ status: "none" });
-    expect(outcome.step.files[0]?.file).toBeUndefined();
-    expect(outcome.held).toEqual([]);
+    expect(done(outcome).step.files[0]?.file).toBeUndefined();
+    expect(done(outcome).held).toEqual([]);
   });
 
   it("rejects a file by writing the baseline back, and removes a file the assistant created", async () => {
@@ -148,7 +157,7 @@ verifies("app.review-accept-reject-file", () => {
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
     store.files.set(clerk, "changed elsewhere\n");
     const outcome = await review.reject({ kind: "file", path: clerk });
-    expect(outcome).toEqual({ step: { files: [] }, held: [clerk] });
+    expect(outcome).toEqual({ status: "done", step: { files: [] }, held: [clerk] });
     expect(store.files.get(clerk)).toBe("changed elsewhere\n");
     expect((await records.read(clerk)).status).toBe("found");
   });
@@ -157,7 +166,7 @@ verifies("app.review-accept-reject-file", () => {
     const { store, review, records } = setUp();
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
     const before = await records.read(clerk);
-    const { step } = await review.accept({ kind: "file", path: clerk });
+    const { step } = done(await review.accept({ kind: "file", path: clerk }));
     await review.restore(step, "before");
     expect(await records.read(clerk)).toEqual(before);
     expect(store.files.get(clerk)).toBe(smart);
@@ -178,25 +187,30 @@ verifies("app.review-accept-reject-file", () => {
     const { store, review, records } = setUp();
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
     const before = await records.read(clerk);
-    const { step } = await review.reject({ kind: "file", path: clerk });
+    const { step } = done(await review.reject({ kind: "file", path: clerk }));
     const undone = await review.restore(step, "before");
     expect(store.files.get(clerk)).toBe(smart);
     expect(await records.read(clerk)).toEqual(before);
-    expect(undone.step.files[0]?.file).toEqual({ before: fast, after: smart });
+    expect(done(undone).step.files[0]?.file).toEqual({ before: fast, after: smart });
   });
 
   it("doesn't undo over a file that changed since the step", async () => {
     const { store, review } = setUp();
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
-    const { step } = await review.reject({ kind: "file", path: clerk });
+    const { step } = done(await review.reject({ kind: "file", path: clerk }));
     store.files.set(clerk, "typed since\n");
-    expect(await review.restore(step, "before")).toEqual({ step: { files: [] }, held: [clerk] });
+    expect(await review.restore(step, "before")).toEqual({
+      status: "done",
+      step: { files: [] },
+      held: [clerk],
+    });
     expect(store.files.get(clerk)).toBe("typed since\n");
   });
 
   it("does nothing for a file without changes to review", async () => {
     const { review } = setUp();
     expect(await review.reject({ kind: "file", path: clerk })).toEqual({
+      status: "done",
       step: { files: [] },
       held: [],
     });
@@ -219,7 +233,7 @@ verifies("app.review-accept-reject-all", () => {
       expected: "absent",
       card: { chatId: "c1", cardId: "k2" },
     });
-    const { step } = await review.reject({ kind: "card", card: k1 });
+    const { step } = done(await review.reject({ kind: "card", card: k1 }));
     expect(step.files.map((file) => file.path)).toEqual([clerk, triage]);
     expect(store.files.get(clerk)).toBe(fast);
     expect(store.files.get(triage)).toBe("name: Triage\n");
@@ -279,7 +293,7 @@ verifies("app.review-accept-reject-file", () => {
     const heard: (readonly string[])[] = [];
     const stop = review.onDidChange((paths) => heard.push(paths));
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
-    const { step } = await review.accept({ kind: "file", path: clerk });
+    const { step } = done(await review.accept({ kind: "file", path: clerk }));
     await review.restore(step, "before");
     await review.reject({ kind: "file", path: triage });
     stop();
