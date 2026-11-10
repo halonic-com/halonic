@@ -53,4 +53,7 @@ can't race each other.
   (memory, a dry run, the core test doubles) reports nothing; the memory
   store's `changeOutside` lets a test make up an outside change.
 - A program outside Halonic can still change a file in the moment between the
-  check and the rename. The watcher (save model 6) reports such a change.
+  check and the rename. The rename then writes over that edit, and nobody is
+  told: the watcher sees only the store's own text there, so it reports
+  nothing. The gap is a few milliseconds; closing it needs a lock that
+  other programs respect, which plain files don't have.

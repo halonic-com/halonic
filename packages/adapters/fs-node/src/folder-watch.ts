@@ -97,10 +97,18 @@ export class FolderWatch implements DefinitionWatch {
     this.#own.set(path, change);
   }
 
-  /** The store's change to `path` is on disk, or failed: what is there now is what the store knows. */
+  /**
+   * The store's change to `path` is on disk, or failed: what is there now is
+   * what the store knows. Never rejects: the store's change is done either
+   * way, so a failure to read it back breaks the watch, not the write.
+   */
   async endOwnChange(path: string): Promise<void> {
     this.#own.delete(path);
-    await this.#remember(path);
+    try {
+      await this.#remember(path);
+    } catch (error) {
+      this.#fail(asError(error));
+    }
   }
 
   /** Stops hearing events, lets a batch already being read finish, then reports nothing more. */
@@ -197,9 +205,12 @@ export class FolderWatch implements DefinitionWatch {
     return after === undefined ? "removed" : "changed";
   }
 
-  /** Reads `path`'s digest into what the watch knows, and gives it; `undefined` when there is no file. */
+  /**
+   * Reads `path`'s digest into what the watch knows, and gives it;
+   * `undefined` when there is no file, or only one behind a link.
+   */
   async #remember(path: string): Promise<string | undefined> {
-    const content = await this.#options.files.read(path);
+    const content = await this.#readUnlessLinked(path);
     if (content === null) {
       this.#known.delete(path);
       return undefined;
@@ -207,6 +218,19 @@ export class FolderWatch implements DefinitionWatch {
     const digest = await contentDigest(content, this.#options.digest);
     this.#known.set(path, digest);
     return digest;
+  }
+
+  /** The store's read of `path`, with `null` when it or a folder on the way is now a link. */
+  async #readUnlessLinked(path: string): Promise<string | null> {
+    try {
+      return await this.#options.files.read(path);
+    } catch (error) {
+      // The store refuses a linked path: for the workspace, the file is gone.
+      if (error instanceof RangeError) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   #fail(error: Error): void {

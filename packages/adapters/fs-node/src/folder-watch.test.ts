@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DefinitionWatch, WorkspaceFileChange } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -140,6 +140,27 @@ verifies("ports.definition-store-watch", () => {
           { path: "hubs/b/hub.yaml", kind: "changed" },
         ],
       ]);
+    });
+
+    it("reports the files of a folder that became a link as removed, and keeps watching", async () => {
+      const { root, hand, batches, failures, settle } = await watched({
+        "hubs/a/hub.yaml": "id: a\n",
+        "elsewhere/hub.yaml": "id: elsewhere\n",
+      });
+      await rm(join(root, "hubs/a"), { recursive: true });
+      await symlink(join(root, "elsewhere"), join(root, "hubs/a"), "dir");
+      hand.notice("hubs/a");
+      await settle();
+      expect(failures).toEqual([]);
+      expect(batches).toEqual([[{ path: "hubs/a/hub.yaml", kind: "removed" }]]);
+    });
+
+    it("doesn't fail a finished write when reading it back fails; the watch is told", async () => {
+      const { store, failures } = await watched({ "a.yaml": "1" });
+      const readFailure = new Error("the disk stopped answering");
+      vi.spyOn(store, "read").mockRejectedValueOnce(readFailure);
+      await expect(store.write("a.yaml", "2")).resolves.toEqual({ status: "written" });
+      expect(failures).toEqual([readFailure]);
     });
 
     it("checks every file when an event names none", async () => {
