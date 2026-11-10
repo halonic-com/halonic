@@ -531,12 +531,39 @@ try { readFileSync(${JSON.stringify(canary)}); console.log("file: read"); } catc
 await new Promise((done) => { const s = connect({ host: "127.0.0.1", port: ${other.port} }); const f = (o) => { console.log("port: " + o); s.destroy(); done(); }; s.setTimeout(4000, () => f("timeout")); s.on("connect", () => f("reached")); s.on("error", (e) => f(e.code)); });
 `,
   );
+  const summarise = (r) => ({
+    captured: r.meta?.captureDenials != null,
+    totalDenials: r.meta?.captureDenials?.totalDenials ?? null,
+    captureError: r.meta?.captureDenialsError?.message ?? r.spawnError ?? null,
+    fileDenialSeen: r.report?.mentionsCanary ?? false,
+    networkDenialSeen: (r.report?.mentionsOtherPort || r.report?.mentionsOutsideIp) ?? false,
+  });
   const cases = {
     "native, block": { cmd: `cmd.exe /d /c ${cmdLine}`, config: capture("native-block") },
     "node, block": { cmd: `${q(nodeExe)} ${q(nodeChild)}`, read: [dirname(nodeExe)], config: capture("node-block") },
     "native, allow (learning)": { cmd: `cmd.exe /d /c ${cmdLine}`, config: capture("native-allow", "allow") },
   };
-  for (const [name, c] of Object.entries(cases)) {
+  cases["native, learningMode only"] = { cmd: `cmd.exe /d /c ${cmdLine}`, config: { learningMode: true } };
+  cases["native, block, no outputPath"] = { cmd: `cmd.exe /d /c ${cmdLine}`, config: { captureDenials: { mode: "block" } } };
+  // A capture start ended the whole host process (exit 1, no JS exit hook) in round 1 and 2.
+  // So the parent runs each case in its own child process and records how that child ended.
+  const only = process.argv[3];
+  if (only == null) {
+    for (const name of Object.keys(cases)) {
+      const child = spawnSync(process.execPath, [process.argv[1], "denials", name], { encoding: "utf8", timeout: 180_000 });
+      const last = child.stdout.trim().split(/\r?\n/).at(-1) ?? "";
+      let caseResult = null;
+      try {
+        caseResult = JSON.parse(last).result?.cases?.[name] ?? null;
+      } catch {}
+      out.cases[name] = { childExit: child.status, childSignal: child.signal, childStderr: child.stderr.trim().slice(-1500), result: caseResult };
+      console.log(`RESULT denials ${name}: child exit ${child.status}${child.signal ? ` signal ${child.signal}` : ""}; ${caseResult ? JSON.stringify(summarise(caseResult)) : "no result (child died)"}`);
+    }
+    bridge.close();
+    other.close();
+    return out;
+  }
+  for (const [name, c] of Object.entries(cases).filter(([n]) => n === only)) {
     const before = other.connections;
     console.error(`denials ${name}: starting`);
     const r = await inBox(`denials ${name}`, c.cmd, { work, read: c.read, net, containmentConfig: c.config, timeoutMs: 120_000 });
@@ -546,13 +573,6 @@ await new Promise((done) => { const s = connect({ host: "127.0.0.1", port: ${oth
   }
   bridge.close();
   other.close();
-  const summarise = (r) => ({
-    captured: r.meta?.captureDenials != null,
-    totalDenials: r.meta?.captureDenials?.totalDenials ?? null,
-    captureError: r.meta?.captureDenialsError?.message ?? r.spawnError ?? null,
-    fileDenialSeen: r.report?.mentionsCanary ?? false,
-    networkDenialSeen: (r.report?.mentionsOtherPort || r.report?.mentionsOutsideIp) ?? false,
-  });
   out.verdict = Object.fromEntries(Object.entries(out.cases).map(([k, r]) => [k, summarise(r)]));
   for (const [k, v] of Object.entries(out.verdict)) console.log(`RESULT denials ${k}: ${JSON.stringify(v)}`);
   return out;
