@@ -4,7 +4,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
-import { finished, harnessPorts, startLimits } from "./harness-test-kit.test-helper.ts";
+import {
+  finished,
+  harnessPorts,
+  noApprovals,
+  startLimits,
+} from "./harness-test-kit.test-helper.ts";
 import { type HarnessCall, type HarnessEventLog, runHarnessCall } from "./run-harness-call.ts";
 
 const call: HarnessCall = {
@@ -40,7 +45,7 @@ async function blockedEventsOf(ports: ReturnType<typeof harnessPorts>, stop = ne
   const { log, written } = keepingLog();
   let error: unknown;
   try {
-    await runHarnessCall(ports.options, call, log, startLimits().limits, stop.signal);
+    await runHarnessCall(ports.options, call, log, noApprovals, startLimits().limits, stop.signal);
   } catch (thrown) {
     error = thrown;
   }

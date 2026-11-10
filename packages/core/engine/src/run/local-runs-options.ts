@@ -47,12 +47,13 @@ export interface LocalRunsOptions {
 }
 
 /**
- * The effects this executor carries out: harness runs only when it has
- * `harnesses`, and connector calls only when it has `connectorCalls`.
+ * The effects this executor carries out: harness runs, and answers to their
+ * approvals, only when it has `harnesses`, and connector calls only when it
+ * has `connectorCalls`.
  */
 export function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["type"]> {
   const built: Effect["type"][] = ["call-model", "set-timer", "start-child", "tell-parent"];
-  if (options.harnesses !== undefined) built.push("run-harness");
+  if (options.harnesses !== undefined) built.push("run-harness", "answer-harness");
   if (options.connectorCalls !== undefined) built.push("call-tool");
   return new Set(built);
 }

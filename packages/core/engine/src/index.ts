@@ -9,6 +9,7 @@ export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
 export { decide } from "./kernel/decide.ts";
 export type {
+  AnswerHarnessEffect,
   ApprovalNeeded,
   CallModelEffect,
   CallToolEffect,
@@ -22,6 +23,7 @@ export type {
   EffectDoneInput,
   EffectFailedInput,
   EffectNeeded,
+  HarnessAskedInput,
   HarnessResult,
   ModelCallResult,
   ModelResult,

@@ -135,6 +135,20 @@ export interface EffectFailedInput extends InputBase {
   readonly providerText?: ProviderText;
 }
 
+/**
+ * A harness call asks a person for an OK, and goes on running while the run
+ * waits: a harness's program can't stop and go on later, as the built-in
+ * loop does. The run waits for `approve` or `reject`, then the call gets
+ * the answer with an `answer-harness` effect.
+ */
+export interface HarnessAskedInput extends InputBase {
+  readonly type: "harness-asked";
+  /** The `callId` of the harness call that asks. */
+  readonly callId: string;
+  readonly tool: string;
+  readonly args: unknown;
+}
+
 /** How a child run is now, as its parent hears it: waiting for events, or ended. */
 export type ChildRunNow =
   | { readonly status: "waiting"; readonly events: readonly string[] }
@@ -159,6 +173,7 @@ export type DecideInput =
   | TimerInput
   | EffectDoneInput
   | EffectFailedInput
+  | HarnessAskedInput
   | ChildInput;
 
 /** Ask a state's agent for its answer to a prompt. */
@@ -188,6 +203,22 @@ export interface RunHarnessEffect {
   readonly agent: string;
   readonly harness: ProgramHarness;
   readonly prompt: string;
+}
+
+/**
+ * Pass a person's answer to the harness call that asked for it, which is
+ * still running. From here on the run waits on that call under `callId`,
+ * the next call id, as it waits on the model call that goes on after an
+ * approval of the built-in loop.
+ */
+export interface AnswerHarnessEffect {
+  readonly type: "answer-harness";
+  readonly callId: string;
+  readonly state: string;
+  readonly agent: string;
+  readonly approved: boolean;
+  /** What the person wrote with the answer, if anything. */
+  readonly comment?: string;
 }
 
 /**
@@ -245,6 +276,7 @@ export interface SetTimerEffect {
 export type Effect =
   | CallModelEffect
   | RunHarnessEffect
+  | AnswerHarnessEffect
   | CallToolEffect
   | StartChildEffect
   | TellParentEffect

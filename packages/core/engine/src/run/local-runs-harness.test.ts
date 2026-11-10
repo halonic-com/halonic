@@ -1,8 +1,10 @@
 import type { Workflow } from "@halonicjs/format";
+import type { HarnessEvent } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { finished, harnessPorts, stillOpen } from "../harness/harness-test-kit.test-helper.ts";
-import { KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
+import { KernelBlobs, KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
+import { harnessGoneError } from "./local-runs.ts";
 import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
 const agents = { writer: writerAgent("claude-code") };
@@ -275,5 +277,121 @@ verifies("engine.foreach-state", () => {
     expect(ports.harness.tasks).toHaveLength(2);
     const harnessStarts = runs.logs.get("run_1")?.filter(({ type }) => type === "harness.started");
     expect(harnessStarts?.map(({ item }) => item).sort()).toEqual([0, 1]);
+  });
+});
+
+verifies("engine.harness-approvals", () => {
+  /** The harness asks to run `rm -r drafts`, under its own call id. */
+  const asks = (callId: string): HarnessEvent => ({
+    type: "approval.requested",
+    agent: "writer",
+    callId,
+    tool: "Bash",
+    args: { command: "rm -r drafts" },
+  });
+
+  /** Starts the run and its harness call, and resolves once the run waits for a person. */
+  async function waitingRun(ports: ReturnType<typeof harnessPorts>, runs = new KernelRuns()) {
+    const blobs = new KernelBlobs();
+    const setup = runsOn([], runs, { agents, harnesses: ports.options, blobs });
+    await setup.executor.start(replyStart);
+    const harnessCall = setup.scheduler.deliver("run_1", "harness:call-1");
+    await vi.waitFor(async () =>
+      expect(await runs.get("run_1")).toMatchObject({ status: "waiting" }),
+    );
+    return { ...setup, harnessCall };
+  }
+
+  it("waits for a person while the harness keeps running, and passes the answer on", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [asks("toolu_7"), finished("Dear support")];
+    const { executor, model, runs, harnessCall } = await waitingRun(ports);
+
+    expect(await runs.get("run_1")).toMatchObject({
+      accepts: ["approve", "reject"],
+      approvals: [{ callId: "call-2", tool: "Bash" }],
+    });
+    expect(stillOpen(ports.steps)).toBe(3);
+    const byHarnessId = executor.send("run_1", "approve", undefined, { callId: "toolu_7" });
+    await expect(byHarnessId).rejects.toMatchObject({ code: "engine.decision-callid-must-match" });
+
+    await executor.send("run_1", "approve", { comment: "Fine" }, { callId: "call-2" });
+    await harnessCall;
+
+    expect(ports.harness.sent).toEqual([
+      { type: "approval", callId: "toolu_7", approved: true, comment: "Fine" },
+    ]);
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { reply: "Dear support" },
+    });
+    expect(typesOf(runs.logs.get("run_1")).slice(5, 11)).toEqual([
+      "harness.started",
+      "approval.requested",
+      "run.waiting",
+      "event.received",
+      "approval.resolved",
+      "agent.finished",
+    ]);
+    expect(stillOpen(ports.steps)).toBe(0);
+    expect(model.requests).toEqual([]);
+  });
+
+  it("takes two approvals in a row in one harness call, and finishes after a rejection", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [asks("toolu_1"), asks("toolu_2"), finished("Left the drafts alone")];
+    const { executor, runs, harnessCall } = await waitingRun(ports);
+
+    await executor.send("run_1", "approve", undefined, { callId: "call-2" });
+    await vi.waitFor(async () =>
+      expect(await runs.get("run_1")).toMatchObject({ approvals: [{ callId: "call-4" }] }),
+    );
+    await executor.send("run_1", "reject", undefined, { callId: "call-4" });
+    await harnessCall;
+
+    expect(ports.harness.sent).toEqual([
+      { type: "approval", callId: "toolu_1", approved: true },
+      { type: "approval", callId: "toolu_2", approved: false },
+    ]);
+    expect(ports.harness.tasks).toHaveLength(1);
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { reply: "Left the drafts alone" },
+    });
+  });
+
+  it("stops the harness when the engine closes while the run waits, and leaves the run waiting", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [asks("toolu_7"), finished("Dear support")];
+    const { executor, runs, harnessCall } = await waitingRun(ports);
+
+    await executor.close();
+    await harnessCall;
+
+    expect(stillOpen(ports.steps)).toBe(0);
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
+  });
+
+  it("ends the run as interrupted when the answer comes after a restart, and starts nothing", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [asks("toolu_7"), finished("Dear support")];
+    const runs = new KernelRuns();
+    const first = await waitingRun(ports, runs);
+    await first.executor.close();
+    await first.harnessCall;
+
+    const nextPorts = harnessPorts();
+    const next = runsOn([], runs, { agents, harnesses: nextPorts.options, blobs: first.blobs });
+    await next.executor.send("run_1", "approve", undefined, { callId: "call-2" });
+    await next.scheduler.runDue();
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      reason: "interrupted",
+      error: harnessGoneError,
+    });
+    expect(nextPorts.steps).toEqual([]);
+    expect(next.model.requests).toEqual([]);
   });
 });

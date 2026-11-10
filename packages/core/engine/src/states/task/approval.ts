@@ -1,11 +1,20 @@
 // A task state's agent can stop at a tool call that needs a person's OK.
 // The engine gives the approval a call id of its own (`call-<n>`), so a
-// person's answer reaches exactly that call, whatever id the model used.
+// person's answer reaches exactly that call, whatever id the model or the
+// harness used.
 
+import type { AgentResume } from "@halonicjs/events";
 import { isPlainObject } from "@halonicjs/std";
-import type { ApprovalNeeded, DecidedEvent, SendInput } from "../../kernel/decide-types.ts";
+import { programHarnessOf } from "../../kernel/agent-call.ts";
+import type {
+  ApprovalNeeded,
+  DecidedEvent,
+  Effect,
+  HarnessAskedInput,
+  SendInput,
+} from "../../kernel/decide-types.ts";
 import { InputRefused } from "../../kernel/input-refused.ts";
-import type { StateContext, StateStep } from "../../kernel/registry.ts";
+import { nothing, type StateContext, type StateStep } from "../../kernel/registry.ts";
 import {
   nextCallId,
   type PendingCall,
@@ -40,13 +49,48 @@ export function askForApproval(
 }
 
 /**
+ * The `resume` of an approval a harness call asked for. The log needs one,
+ * but there is nothing to resume from: the harness call keeps running while
+ * the run waits, and a harness's program can't go on after a restart.
+ */
+export const nothingToResume: AgentResume = { messages: [], calls: [], step: 0 };
+
+/**
+ * The harness call the state waits on asks for a person's OK: record it as
+ * for the built-in loop, and wait, with the call still running. A question
+ * from any other call changes nothing.
+ */
+export function askForHarnessApproval(context: StateContext, input: HarnessAskedInput): StateStep {
+  const pending = context.run.pendingCall;
+  if (pending === null || pending.state !== context.stateId || pending.callId !== input.callId) {
+    return nothing;
+  }
+  // Only a harness call keeps running while it waits for an answer.
+  if (programHarnessOf(context.agents, pending.agent) === null) {
+    return nothing;
+  }
+  const { tool, args } = input;
+  return askForApproval(context, pending, {
+    type: "approval",
+    tool,
+    args,
+    resume: nothingToResume,
+  });
+}
+
+/**
  * A person approved or rejected: record the answer as theirs, and let the
- * agent go on with it in a new model call. `decide` has already checked
- * that the run waits for this event, and for the call the send names.
+ * agent go on with it under the next call id: in a new model call, or, for
+ * a harness agent, in the harness call that asked and still runs. `decide`
+ * has already checked that the run waits for this event, and for the call
+ * the send names.
  *
  * @throws InputRefused when no approval of this state waits for an answer
  */
-export function answerApproval({ run, stateId }: StateContext, input: SendInput): StateStep {
+export function answerApproval(
+  { run, stateId, agents }: StateContext,
+  input: SendInput,
+): StateStep {
   const approval = approvalAnswered(run.approvals, stateId, input.callId);
   if (approval === undefined) {
     throw new InputRefused(
@@ -71,17 +115,14 @@ export function answerApproval({ run, stateId }: StateContext, input: SendInput)
       by: "person",
     },
   ];
-  const resume: ResumeAfterApproval = {
-    resume: approval.resume,
-    approved,
-    ...(comment === undefined ? {} : { comment }),
-  };
-  return {
-    events,
-    effects: [
-      { type: "call-model", callId: nextCallId(run), state: stateId, agent, prompt, resume },
-    ],
-  };
+  const answer = { approved, ...(comment === undefined ? {} : { comment }) };
+  const next = { callId: nextCallId(run), state: stateId, agent };
+  const resume: ResumeAfterApproval = { resume: approval.resume, ...answer };
+  const effect: Effect =
+    programHarnessOf(agents, agent) === null
+      ? { type: "call-model", ...next, prompt, resume }
+      : { type: "answer-harness", ...next, ...answer };
+  return { events, effects: [effect] };
 }
 
 /** The approval a send answers: the one it names, or else the state's oldest. */

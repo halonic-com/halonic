@@ -39,7 +39,7 @@ function otherWriters(lastSeq: number): RunEvent {
 describe("SerialRunLog", () => {
   it("appends events given at the same time one after the other, in order", async () => {
     const runs = new KernelRuns();
-    const log = new SerialRunLog(runs, "run_1", "call-1", 0, steppingClock());
+    const log = new SerialRunLog(runs, "run_1", { callId: "call-1" }, 0, steppingClock());
 
     await Promise.all([
       log.append({ type: "state.entered", state: "a" }),
@@ -54,7 +54,7 @@ describe("SerialRunLog", () => {
 
   it("writes after another writer's event while the run still waits on the call", async () => {
     const { runs, lastSeq } = await runWaitingOnCall();
-    const log = new SerialRunLog(runs, "r-acme", "call-1", lastSeq, steppingClock());
+    const log = new SerialRunLog(runs, "r-acme", { callId: "call-1" }, lastSeq, steppingClock());
     await runs.append("r-acme", lastSeq, [otherWriters(lastSeq)]);
 
     await log.append({ type: "tool.called", agent: "writer", tool: "Grep", args: {} });
@@ -67,7 +67,7 @@ describe("SerialRunLog", () => {
 
   it("refuses to write once the run no longer waits on the call, and every append after it", async () => {
     const { runs, ports, lastSeq } = await runWaitingOnCall();
-    const log = new SerialRunLog(runs, "r-acme", "call-1", lastSeq, steppingClock());
+    const log = new SerialRunLog(runs, "r-acme", { callId: "call-1" }, lastSeq, steppingClock());
     await step(ports, "r-acme", answer("call-1", "Thanks!"));
     const ended = runs.logs.get("r-acme")?.length;
 
@@ -81,7 +81,7 @@ describe("SerialRunLog", () => {
 
   it("tags every event with the foreach item the call runs", async () => {
     const runs = new KernelRuns();
-    const log = new SerialRunLog(runs, "run_1", "call-1", 0, steppingClock(), 2);
+    const log = new SerialRunLog(runs, "run_1", { callId: "call-1" }, 0, steppingClock(), 2);
 
     await log.append({ type: "state.entered", state: "a" });
 
@@ -90,7 +90,7 @@ describe("SerialRunLog", () => {
 
   it("settles once every append given so far is stored", async () => {
     const runs = new KernelRuns();
-    const log = new SerialRunLog(runs, "run_1", "call-1", 0, steppingClock());
+    const log = new SerialRunLog(runs, "run_1", { callId: "call-1" }, 0, steppingClock());
 
     void log.append({ type: "state.entered", state: "a" });
     void log.append({ type: "state.entered", state: "b" });
@@ -101,7 +101,7 @@ describe("SerialRunLog", () => {
 
   it("settles without throwing when an append failed", async () => {
     const runs = new KernelRuns();
-    const log = new SerialRunLog(runs, "run_1", "call-1", 3, steppingClock());
+    const log = new SerialRunLog(runs, "run_1", { callId: "call-1" }, 3, steppingClock());
 
     const failed = log.append({ type: "state.entered", state: "a" });
 

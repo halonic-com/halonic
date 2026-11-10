@@ -9,7 +9,7 @@ import {
   type StateStep,
 } from "../../kernel/registry.ts";
 import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
-import { answerApproval, askForApproval } from "./approval.ts";
+import { answerApproval, askForApproval, askForHarnessApproval } from "./approval.ts";
 import {
   answersUnknownEffect,
   answerUnknownEffect,
@@ -25,10 +25,11 @@ import {
  * an answer that isn't one of its options fails the run with
  * `answer-not-an-option`. When the agent stops at a tool call that needs a
  * person's OK, the state waits for `approve` or `reject`, then the agent goes
- * on with the answer. When it stops before a connector call that can change
- * things, the engine records the call and makes it, and the agent goes on
- * with the result; see `effect.ts`. Methods, conversations, artifacts and signals join with
- * the agent loop (step 4).
+ * on with the answer: in a new model call, or in the harness call that
+ * asked, which kept running while the run waited. When it stops before a
+ * connector call that can change things, the engine records the call and
+ * makes it, and the agent goes on with the result; see `effect.ts`. Methods,
+ * conversations, artifacts and signals join with the agent loop (step 4).
  */
 export const taskState: StateHandler<"task"> = {
   type: "task",
@@ -39,6 +40,7 @@ export const taskState: StateHandler<"task"> = {
         ? answerUnknownEffect(context, input)
         : answerApproval(context, input);
     }
+    if (input.type === "harness-asked") return askForHarnessApproval(context, input);
     return takeCallResult(context, input);
   },
 };

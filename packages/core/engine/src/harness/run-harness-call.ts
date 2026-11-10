@@ -2,8 +2,10 @@
 // the run's bridge and sandbox, starts the harness in them and writes what
 // the harness reports, and what its sandbox refused, to the run's log. It
 // gives back the agent's result; `decide` writes the task's own
-// `agent.finished` from it, as it does for a model's answer. Whatever the harness started is stopped before it returns,
-// and also when the engine stops it on the way.
+// `agent.finished` from it, as it does for a model's answer. When the
+// harness asks for a person's OK, the call keeps running and waits for the
+// answer. Whatever the harness started is stopped before it returns, and
+// also when the engine stops it on the way.
 
 import { type RunEventBody, sandboxOpenedView } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
@@ -11,6 +13,7 @@ import {
   addHarnessEnvironment,
   type Harness,
   type HarnessEvent,
+  type HarnessRun,
   type OpenHarnessBridge,
   RunFailureError,
   type Sandbox,
@@ -29,6 +32,30 @@ export interface HarnessEventLog {
   append(event: RunEventBody): Promise<void>;
   /** Resolves once every append given so far has been stored or has failed. */
   settled(): Promise<void>;
+}
+
+/** A person's answer to an approval a harness call asked for. */
+export interface HarnessAnswer {
+  readonly approved: boolean;
+  /** What the person wrote with the answer, if anything. */
+  readonly comment?: string;
+}
+
+/** What a harness asks a person to approve: one of its program's tool calls. */
+export interface HarnessQuestion {
+  readonly tool: string;
+  readonly args: unknown;
+}
+
+/** Where a harness call asks a person for an OK. */
+export interface HarnessApprovals {
+  /**
+   * Records the question in the run, which then waits for the person, and
+   * resolves with their answer. The harness call keeps running meanwhile.
+   *
+   * @throws when the run doesn't take the question, or the engine stops the call before an answer comes
+   */
+  ask(question: HarnessQuestion): Promise<HarnessAnswer>;
 }
 
 /** One harness call: the effect `decide` asked for, the run it belongs to and the agent's file. */
@@ -50,6 +77,11 @@ export interface HarnessCall {
  * told to stop, as it is when the engine stops, the call stops the harness run,
  * closes the session and the bridge, and throws.
  *
+ * When the harness asks for an approval, the call asks `approvals` and
+ * passes the person's answer to the harness under the harness's own call
+ * id, which never leaves the call. While the run waits for the person,
+ * nothing times out, as for the built-in loop.
+ *
  * Each access the sandbox refuses is counted, and written to the log as
  * `sandbox.blocked`: a target's first block at once, and its total when the
  * session has closed, unless the engine stopped the call.
@@ -63,12 +95,13 @@ export interface HarnessCall {
  *   `harness-start-failed` when the host has no such harness, or it fails or sends nothing
  *   before its first event is due
  * @throws `stop.reason` when `stop` is told to stop
- * @throws when the sandbox isn't ready, the harness asks for an approval, or it ends without a result
+ * @throws when the sandbox isn't ready, the run doesn't take an approval it asks for, or it ends without a result
  */
 export async function runHarnessCall(
   options: HarnessRunsOptions,
   call: HarnessCall,
   log: HarnessEventLog,
+  approvals: HarnessApprovals,
   limits: StartLimits,
   stop: StopSignal,
 ): Promise<unknown> {
@@ -88,7 +121,7 @@ export async function runHarnessCall(
       `The sandbox isn't ready (${check.reason}), so agent "${effect.agent}" didn't start. Halonic never runs it without one.`,
     );
   }
-  const started: StartedCall = { options, call, harness, log, limits, stop };
+  const started: StartedCall = { options, call, harness, log, approvals, limits, stop };
   // The bridge's events (model and tool calls) carry no state.
   const recorder = { record: (event: RunEventBody) => log.append(event) };
   const bridge = await unlessStopped(stop, options.bridges.open(agent, recorder), (late) =>
@@ -122,7 +155,7 @@ export async function runHarnessCall(
       const run = harness.start(task, session, bridge);
       const events = run[Symbol.asyncIterator]();
       try {
-        return await followRun(started, events, timeoutMs);
+        return await followRun(started, run, events, timeoutMs);
       } finally {
         await run.cancel();
         // Only after `cancel()`: the port then ends the stream, so a read
@@ -148,6 +181,7 @@ interface StartedCall {
   readonly call: HarnessCall;
   readonly harness: Harness;
   readonly log: HarnessEventLog;
+  readonly approvals: HarnessApprovals;
   readonly limits: StartLimits;
   readonly stop: StopSignal;
 }
@@ -209,9 +243,10 @@ async function openSandbox(
 
 /**
  * Writes what the harness reports until the agent's own `agent.finished`,
- * and gives back its output. A stream that fails, or sends nothing, before
- * its first event is due means the program didn't start. The caller's
- * `cancel()` ends a wait that the time limit or `stop` gave up on.
+ * and gives back its output. An approval it asks for goes to the person,
+ * and their answer back to the harness. A stream that fails, or sends
+ * nothing, before its first event is due means the program didn't start.
+ * The caller's `cancel()` ends a wait that the time limit or `stop` gave up on.
  *
  * The agent's own `agent.started` and `agent.finished` never reach the log:
  * `decide` writes both for the state, and the run reads a top-level one as
@@ -219,10 +254,12 @@ async function openSandbox(
  * a call that no longer exists.
  */
 async function followRun(
-  { harness, call, log, limits, stop }: StartedCall,
+  started: StartedCall,
+  run: HarnessRun,
   events: AsyncIterator<HarnessEvent>,
   timeoutMs: number,
 ): Promise<unknown> {
+  const { harness, call, log, limits, stop } = started;
   let next: IteratorResult<HarnessEvent>;
   try {
     next = await limits.within({
@@ -246,14 +283,33 @@ async function followRun(
       continue;
     }
     if (event.type === "approval.requested") {
-      // The run's wait and `send` by call id come in the next step of stack 4.
-      throw new Error(
-        `${harness.name} asked for an approval, and harness runs can't wait for one yet.`,
-      );
+      await passOnApproval(started, run, event);
+      continue;
     }
     await log.append(withState(event, call.effect.state));
   }
   throw new Error(`${harness.name} ended without the agent's result.`);
+}
+
+/**
+ * Asks the person about the approval the harness asked for, and passes the
+ * answer on. The run records the question itself, under a call id of its
+ * own, so every event reported before it is stored first: an append that
+ * came after the question would find the run no longer waiting on the call.
+ */
+async function passOnApproval(
+  { approvals, log, stop }: StartedCall,
+  run: HarnessRun,
+  { tool, args, callId }: Extract<HarnessEvent, { type: "approval.requested" }>,
+): Promise<void> {
+  await log.settled();
+  const { approved, comment } = await unlessStopped(stop, approvals.ask({ tool, args }));
+  await run.send({
+    type: "approval",
+    callId,
+    approved,
+    ...(comment === undefined ? {} : { comment }),
+  });
 }
 
 /** A time limit as people read it, such as `30 s`. */

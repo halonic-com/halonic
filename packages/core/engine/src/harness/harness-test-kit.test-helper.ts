@@ -3,6 +3,7 @@ import type {
   Harness,
   HarnessBridge,
   HarnessEvent,
+  HarnessInput,
   HarnessRun,
   HarnessTask,
   OpenHarnessBridge,
@@ -18,6 +19,7 @@ import type {
 import { steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import { StartDeadlines } from "../run/start-deadlines.ts";
 import type { HarnessAgent, HarnessRunsOptions, Placement } from "./harness-host.ts";
+import type { HarnessApprovals } from "./run-harness-call.ts";
 import type { StartPhase } from "./start-limits.ts";
 
 /** What the fakes did, in order, so a test can see that everything started was stopped. */
@@ -103,7 +105,9 @@ export class FakeSandbox implements Sandbox {
  * A harness that reports the events a test gives it, then fails with `error`
  * when set. With `hangs`, it reports nothing after its events until it's
  * cancelled, as a program that is stuck would; with no events, that is a
- * program that hangs at start.
+ * program that hangs at start. After an `approval.requested`, it reports
+ * nothing more until `send` brings the decision on that call id, as a
+ * program does.
  */
 export class FakeHarness implements Harness {
   readonly id = "claude-code";
@@ -116,6 +120,8 @@ export class FakeHarness implements Harness {
   /** How many event streams ran their own clean-up, as a generator's `finally` does when it is ended. */
   streamsCleanedUp = 0;
   readonly tasks: HarnessTask[] = [];
+  /** What `send` passed to its runs, in order. */
+  readonly sent: HarnessInput[] = [];
   readonly #steps: FakeStep[];
 
   constructor(steps: FakeStep[]) {
@@ -133,17 +139,32 @@ export class FakeHarness implements Harness {
   start(task: HarnessTask): HarnessRun {
     this.tasks.push(task);
     this.#steps.push("harness.start");
-    const { events, error, hangs, whileRunning } = this;
+    const { events, error, hangs, whileRunning, sent } = this;
     const steps = this.#steps;
     const cancelled = Promise.withResolvers<void>();
     const cleanedUp = () => {
       this.streamsCleanedUp += 1;
     };
+    /** The approval the run waits on, and how it hears the decision. */
+    let waiting: { callId: string; decided: PromiseWithResolvers<void> } | undefined;
+    const decided = async () => {
+      await Promise.race([waiting?.decided.promise, cancelled.promise]);
+      if (waiting !== undefined) throw new Error("The run was cancelled.");
+    };
     return {
       async *[Symbol.asyncIterator]() {
         try {
           whileRunning?.();
-          yield* events;
+          for (const event of events) {
+            if (event.type !== "approval.requested") {
+              yield event;
+              continue;
+            }
+            // It waits from the moment it asks: the answer may come before the next read.
+            waiting = { callId: event.callId, decided: Promise.withResolvers<void>() };
+            yield event;
+            await decided();
+          }
           if (hangs) {
             await cancelled.promise;
             throw new Error("The run was cancelled.");
@@ -153,7 +174,15 @@ export class FakeHarness implements Harness {
           cleanedUp();
         }
       },
-      send: async () => {},
+      send: async (input) => {
+        if (input.type !== "approval" || input.callId !== waiting?.callId) {
+          throw new Error(`No approval.requested waits for ${JSON.stringify(input)}.`);
+        }
+        sent.push(input);
+        const { decided } = waiting;
+        waiting = undefined;
+        decided.resolve();
+      },
       cancel: async () => {
         steps.push("harness.cancel");
         cancelled.resolve();
@@ -217,6 +246,13 @@ export function harnessPorts() {
     },
   };
 }
+
+/** Approvals that no person answers, for a harness call that asks for none. */
+export const noApprovals: HarnessApprovals = {
+  ask: async () => {
+    throw new Error("No one answers approvals in this test.");
+  },
+};
 
 /** The agent's own result, which ends a harness run's stream. */
 export function finished(output: unknown): HarnessEvent {

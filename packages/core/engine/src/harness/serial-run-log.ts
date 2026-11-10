@@ -4,6 +4,15 @@ import { callOf } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
 import type { HarnessEventLog } from "./run-harness-call.ts";
 
+/**
+ * The call id the run waits on for a harness call. It starts as the call's
+ * own, and moves on to the next one each time a person answers an approval
+ * the harness asked for.
+ */
+export interface WaitedOnCall {
+  callId: string;
+}
+
 /** How often an append reads the run again after another writer got there first, before it gives up. */
 export const maxAppendAttempts = 10;
 
@@ -22,7 +31,7 @@ export const maxAppendAttempts = 10;
 export class SerialRunLog implements HarnessEventLog {
   readonly #store: Pick<RunStore, "append" | "events" | "snapshot">;
   readonly #runId: string;
-  readonly #callId: string;
+  readonly #call: WaitedOnCall;
   readonly #clock: Clock;
   readonly #item: number | null;
   #seq: number;
@@ -30,21 +39,21 @@ export class SerialRunLog implements HarnessEventLog {
   #tail: Promise<void> = Promise.resolve();
 
   /**
-   * @param callId - the harness call that writes, which the run must still wait on
+   * @param call - the harness call that writes, which the run must still wait on
    * @param lastSeq - the `seq` of the run's last stored event, which the first event follows
    * @param item - the `foreach` item the call runs, which every event then carries; `null` for a task state's call
    */
   constructor(
     store: Pick<RunStore, "append" | "events" | "snapshot">,
     runId: string,
-    callId: string,
+    call: WaitedOnCall,
     lastSeq: number,
     clock: Clock,
     item: number | null = null,
   ) {
     this.#store = store;
     this.#runId = runId;
-    this.#callId = callId;
+    this.#call = call;
     this.#seq = lastSeq;
     this.#clock = clock;
     this.#item = item;
@@ -97,9 +106,10 @@ export class SerialRunLog implements HarnessEventLog {
    */
   async #catchUp(): Promise<void> {
     const run = await readRun(this.#store, this.#runId);
-    if (run === null || callOf(run, this.#callId) === null) {
+    const { callId } = this.#call;
+    if (run === null || callOf(run, callId) === null) {
       throw new Error(
-        `Run ${this.#runId} moved on from call ${this.#callId} while its harness wrote to the log.`,
+        `Run ${this.#runId} moved on from call ${callId} while its harness wrote to the log.`,
       );
     }
     this.#seq = run.lastSeq;
