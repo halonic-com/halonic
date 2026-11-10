@@ -129,8 +129,10 @@ verifies("harness-codex.app-server-client", () => {
       const { server, client } = connect();
       const turn = client.request("turn/start", {});
       await server.received();
+      expect(client.ended).toBe(false);
       server.end();
       await expect(turn).rejects.toThrow("stopped before it answered `turn/start`");
+      expect(client.ended).toBe(true);
       expect(await client.closed).toBeUndefined();
       await expect(client.request("thread/start")).rejects.toThrow("app-server has stopped");
     });

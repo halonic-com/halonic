@@ -87,6 +87,11 @@ export class AppServerClient {
     this.closed = this.#readAll(options.process.stdout);
   }
 
+  /** Whether Codex's output has ended, so no request can be answered any more. */
+  get ended(): boolean {
+    return this.#ended !== undefined;
+  }
+
   /**
    * Opens the conversation: the `initialize` request, then the
    * `initialized` notification. Codex answers nothing else before it.
