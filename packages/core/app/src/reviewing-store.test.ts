@@ -20,6 +20,7 @@ describe("ReviewingDefinitionStore", () => {
       store: inner,
       records: new TestDefinitionStore({}, digest),
       digest,
+      isTrusted: () => true,
     });
     const store = new ReviewingDefinitionStore(inner, review.writer);
     const listener: DefinitionWatchListener = { changed: () => {}, failed: () => {} };
