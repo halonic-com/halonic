@@ -25,16 +25,37 @@ export function countInWords(count: number): string {
 }
 
 /**
+ * How many times something happened, as a sentence says it: "once", "twice",
+ * then digits, as in "asked you once" or "tried 3 times".
+ *
+ * @example
+ * timesInWords(1); // "once"
+ * timesInWords(3); // "3 times"
+ */
+export function timesInWords(times: number): string {
+  if (times === 1) {
+    return "once";
+  }
+  return times === 2 ? "twice" : `${times} times`;
+}
+
+/**
  * Names as a sentence lists them: commas, with "and" (or "or") before the
- * last (cli-output 3.4, revision 25).
+ * last (cli-output 3.4, revision 25). An empty list reads "nothing", as the
+ * receipt's "sent nothing" does, so a sentence never has a gap where the
+ * names should be.
  *
  * @example
  * listInWords(["Read mail", "Classify", "Closed"]); // "Read mail, Classify and Closed"
  * listInWords(["approve", "reject"], "or"); // "approve or reject"
  * listInWords(["reply.md"]); // "reply.md"
+ * listInWords([]); // "nothing"
  */
 export function listInWords(names: readonly string[], last: "and" | "or" = "and"): string {
-  if (names.length <= 1) {
+  if (names.length === 0) {
+    return "nothing";
+  }
+  if (names.length === 1) {
     return names.join("");
   }
   return `${names.slice(0, -1).join(", ")} ${last} ${names.at(-1)}`;

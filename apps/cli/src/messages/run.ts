@@ -1,4 +1,4 @@
-import { counted, listInWords } from "./counts.ts";
+import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { money } from "./money.ts";
 import { dim, markPart, type Phrase, phrase } from "./phrase.ts";
@@ -111,11 +111,4 @@ function receiptLine(receipt: RunReceipt): Phrase {
 /** "1 email and 2 messages". */
 function sentInWords(sent: readonly SentItems[]): string {
   return listInWords(sent.map((items) => counted(items.count, items.one, items.many)));
-}
-
-function timesInWords(times: number): string {
-  if (times === 1) {
-    return "once";
-  }
-  return times === 2 ? "twice" : `${times} times`;
 }
