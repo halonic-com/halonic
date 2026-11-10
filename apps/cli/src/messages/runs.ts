@@ -1,6 +1,8 @@
+import type { Mark } from "../output/paint.ts";
 import { listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
+import { runMessages } from "./run.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** Where a run was when someone cancelled it, for {@link runsMessages}' `showCancelled`. */
@@ -111,8 +113,17 @@ export const runsMessages = defineMessages("runs", {
   },
   /** The same place, while the run is still waiting for the answer. */
   waitingSince: (time: string) => phrase`waiting for you since ${time}`,
-  /** After a running step's agent and model alias in `runs show`, a snapshot: "running since 10:53". */
-  runningSince: (time: string) => phrase`running since ${time}`,
+  /**
+   * What a running step's line in `runs show` says after its name, a
+   * snapshot: its agent and model alias, then "running since 10:53". A step
+   * without an agent says only the time.
+   */
+  runningSince: (facts: readonly string[], time: string) =>
+    facts.length === 0
+      ? phrase`running since ${time}`
+      : phrase`${runMessages.stepFacts(facts).phrase} ${markPart("separator")} running since ${time}`,
+  /** The first column of a step's line in `runs show`: its mark and its name, "✓ Read the email". */
+  step: (mark: Mark, name: string) => phrase`${markPart(mark)} ${name}`,
   /** `runs show` with an unknown id (`not_found`), the error's whole line 1. */
   showNoRun: (runId: string, workspace: string) => phrase`There's no run ${runId} in ${workspace}.`,
   /** Same shape as {@link notWaitingFix}: names the list, with the user's `--dir`. */

@@ -87,7 +87,10 @@ describe("runs's sentences", () => {
       "Support reply in acme · run 01JD8Q · started 10:53, still running",
       "Support reply in acme · test run 01JD8Q · started 14:01, finished 14:02",
     ]);
-    expect(words(runsMessages.runningSince("10:53"))).toBe("running since 10:53");
+    expect(words(runsMessages.runningSince(["Writer", "smart"], "10:53"))).toBe(
+      "Writer · smart · running since 10:53",
+    );
+    expect(words(runsMessages.runningSince([], "10:53"))).toBe("running since 10:53");
   });
 
   it("says why a run that isn't waiting can't take the event, by its status", () => {

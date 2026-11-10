@@ -37,14 +37,15 @@ import {
 } from "../../messages/runs-list.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
+import type { RunClock } from "../../run-times.ts";
 import { type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
-import { type ListClock, listedRun } from "./listed-run.ts";
+import { listedRun } from "./listed-run.ts";
 
 /** What the list reads besides the command line, passed in so tests can fix both. */
 export interface RunListSetup {
   /** The clock and time zone the When column is written in. */
-  clock(): ListClock;
+  clock(): RunClock;
   /** Where the profile folder is, which holds the workspace's runs; this process's by default. */
   readonly profile?: ProfileEnvironment;
 }
@@ -215,7 +216,7 @@ async function runRows(
   runs: readonly RunSummary[],
   workflows: readonly HubWorkflow[],
   history: RunHistory,
-  clock: ListClock,
+  clock: RunClock,
 ): Promise<Phrase[][]> {
   const findWorkflow = (hubId: string, workflowId: string) =>
     workflowIn(workflows, hubId, workflowId);

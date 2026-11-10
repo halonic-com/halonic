@@ -2,7 +2,8 @@ import type { WorkflowDefinition } from "@halonicjs/app";
 import { type RunEventBody, type RunSummary, summarize } from "@halonicjs/events";
 import { describe, expect, it } from "vitest";
 import { plainText } from "../../messages/phrase.ts";
-import { type FindWorkflow, type ListClock, listedRun } from "./listed-run.ts";
+import type { RunClock } from "../../run-times.ts";
+import { type FindWorkflow, listedRun } from "./listed-run.ts";
 
 const supportReply = {
   version: 1,
@@ -23,7 +24,7 @@ const findWorkflow: FindWorkflow = (hubId, workflowId) =>
   hubId === "acme" && workflowId === "support-reply" ? supportReply : undefined;
 
 /** 9 Nov 2026, 12:00 UTC, the list's "now", written in UTC. */
-const clock: ListClock = { now: new Date(Date.UTC(2026, 10, 9, 12, 0)), timeZone: "UTC" };
+const clock: RunClock = { now: new Date(Date.UTC(2026, 10, 9, 12, 0)), timeZone: "UTC" };
 
 const started: RunEventBody = {
   type: "run.started",
