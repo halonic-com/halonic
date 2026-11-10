@@ -1,0 +1,79 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { type LoopbackServer, startLoopbackServer } from "./loopback-server.test-helper.ts";
+import { createNodeHttpClient } from "./node-http-client.ts";
+
+let server: LoopbackServer;
+let hold: (() => void) | undefined;
+
+beforeEach(async () => {
+  server = await startLoopbackServer((request, response) => {
+    if (request.url === "/empty") {
+      response.writeHead(204).end();
+      return;
+    }
+    if (request.url === "/slow") {
+      hold = () => response.end("late");
+      return;
+    }
+    response
+      .writeHead(201, "Made", [
+        ["set-cookie", "a=1"],
+        ["set-cookie", "b=2"],
+      ])
+      .end("made");
+  });
+});
+
+afterEach(async () => {
+  hold?.();
+  hold = undefined;
+  await server.close();
+});
+
+const http = createNodeHttpClient({ hostClass: () => "loopback" });
+const at = (path: string) => `http://127.0.0.1:${server.port}${path}`;
+
+describe("the Node transport as an HttpClient", () => {
+  it("sends a form body with the content-type and length fetch would", async () => {
+    await http.fetch(at("/form?x=1"), {
+      method: "post",
+      body: new URLSearchParams({ name: "acme" }),
+    });
+    const [received] = server.received;
+    expect(received).toMatchObject({ method: "POST", url: "/form?x=1", body: "name=acme" });
+    expect(received?.headers["content-type"]).toBe(
+      "application/x-www-form-urlencoded;charset=UTF-8",
+    );
+    expect(received?.headers["content-length"]).toBe("9");
+  });
+
+  it("keeps the status text and every repeated header", async () => {
+    const response = await http.fetch(at("/"));
+    expect([response.status, response.statusText]).toEqual([201, "Made"]);
+    expect(response.headers.getSetCookie()).toEqual(["a=1", "b=2"]);
+  });
+
+  it("gives no body for 204 and for HEAD", async () => {
+    expect((await http.fetch(at("/empty"))).body).toBeNull();
+    expect((await http.fetch(at("/"), { method: "HEAD" })).body).toBeNull();
+  });
+
+  it("refuses a body on GET, as fetch does", async () => {
+    await expect(http.fetch(at("/"), { body: "x" })).rejects.toThrow(TypeError);
+    expect(server.connections()).toBe(0);
+  });
+
+  it("sends nothing when the signal is already aborted", async () => {
+    const signal = AbortSignal.abort(new Error("stopped by the caller"));
+    await expect(http.fetch(at("/"), { signal })).rejects.toThrow("stopped by the caller");
+    expect(server.connections()).toBe(0);
+  });
+
+  it("stops waiting when the signal aborts during the request", async () => {
+    const controller = new AbortController();
+    const request = http.fetch(at("/slow"), { signal: controller.signal });
+    await expect.poll(() => server.received.length).toBe(1);
+    controller.abort();
+    await expect(request).rejects.toThrow();
+  });
+});

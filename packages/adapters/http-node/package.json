@@ -1,0 +1,34 @@
+{
+  "name": "@halonicjs/adapter-http-node",
+  "private": true,
+  "type": "module",
+  "description": "The Node HttpClient for outgoing requests that refuses addresses: it resolves a name, checks every address against the host's class, connects to the address it checked, and decompresses the response itself.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 95,
+      "branches": 85
+    },
+    "runtime": "node"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-http-kit": "workspace:*",
+    "@halonicjs/ports": "workspace:*"
+  }
+}
