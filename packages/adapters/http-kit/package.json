@@ -1,0 +1,30 @@
+{
+  "name": "@halonicjs/adapter-http-kit",
+  "private": true,
+  "type": "module",
+  "description": "The address classes for outgoing requests: which class an IP address is in, and which addresses a host of each class may reach. Web types only, so the Worker can use it too.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 100,
+      "branches": 95
+    },
+    "runtime": "any"
+  }
+}

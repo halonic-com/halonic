@@ -35,6 +35,8 @@ verifies("integration-kit.local-http-hosts", () => {
     "http://[fc::1]/",
     "http://[fe80::1]/",
     "http://[::ffff:127.0.0.1]/",
+    "http://[fd00:ec2::254]/",
+    "http://100.64.0.1/",
     "http://localhost.evil.example/",
     "http://my-nas.local/",
   ])("doesn't count %s", (url) => {

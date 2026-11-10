@@ -15,6 +15,7 @@
     "build": "node ../../../tooling/publish/src/cli/stage.ts ."
   },
   "dependencies": {
+    "@halonicjs/adapter-http-kit": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
