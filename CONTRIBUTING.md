@@ -197,6 +197,22 @@ Signed-off-by: Your Name <you@example.com>
 Your contribution is licensed under the [Apache License 2.0](LICENSE), the same
 licence as the rest of Halonic.
 
+## How Halonic is built
+
+Halonic is built with agentic engineering: AI agents write much of the code,
+tests and docs. Today the agents run on [Paperclip](https://github.com/paperclipai/paperclip),
+and we are moving that work step by step onto Halonic itself. That is why
+Paperclip shows up in the commit history.
+
+There are always people in the loop:
+
+- People set the direction. Product, design and release decisions are made and
+  approved by people.
+- Every change goes through a pull request, a review and the automated checks
+  before it reaches `main`.
+- Nothing is released or published without a person's yes.
+- A person can stop or override anything an agent does.
+
 ## AI-assisted contributions
 
 Halonic is itself built by a team of AI agents, with people deciding what

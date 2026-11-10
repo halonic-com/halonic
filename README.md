@@ -11,6 +11,8 @@ as plain files in your own git repository.
 - Questions and help: [SUPPORT.md](SUPPORT.md), or ask in
   [Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a)
 - How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
+- How Halonic is built, with people always in the loop:
+  [CONTRIBUTING.md](CONTRIBUTING.md#how-halonic-is-built)
 - Security: [SECURITY.md](SECURITY.md)
 - Licence: [Apache License 2.0](LICENSE), see also [NOTICE](NOTICE) and
   [TRADEMARKS.md](TRADEMARKS.md)
