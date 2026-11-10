@@ -131,6 +131,13 @@ export interface MakeVcs {
    * which runs no programs at all), the hardened cases are skipped.
    */
   drivesGit: boolean;
+  /**
+   * The system whose file names the folders are held to, as
+   * `process.platform` gives it, for a harness on a real disk. On `win32`
+   * the cases with a file name Windows refuses, such as `*.yaml`, skip
+   * themselves. Left out where any name can be written, as in memory.
+   */
+  platform?: string;
 }
 
 /**

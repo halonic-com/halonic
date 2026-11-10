@@ -26,13 +26,18 @@ async function folderWith(name: string, executable: boolean): Promise<string> {
 
 verifies("git.find-git", () => {
   describe("findGit", () => {
-    it("takes the first absolute folder that has an executable git, in PATH order", async () => {
-      const notExecutable = await folderWith("git", false);
-      const first = await folderWith("git", true);
-      const second = await folderWith("git", true);
-      const path = ["", "bin", ".", notExecutable, first, second].join(":");
-      expect(await findGit({ path, platform: "linux" })).toBe(join(first, "git"));
-    });
+    // The folders are this computer's, read as POSIX ones. On Windows the
+    // gitCandidates case below and the real PATH lookup cover the order.
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] has no execute bit and no POSIX folders: takes the first absolute folder that has an executable git, in PATH order",
+      async () => {
+        const notExecutable = await folderWith("git", false);
+        const first = await folderWith("git", true);
+        const second = await folderWith("git", true);
+        const path = ["", "bin", ".", notExecutable, first, second].join(":");
+        expect(await findGit({ path, platform: "linux" })).toBe(join(first, "git"));
+      },
+    );
 
     it("skips a folder whose git is a folder", async () => {
       const folder = await scratch.folder();
@@ -67,8 +72,8 @@ verifies("git.find-git", () => {
     });
 
     // Windows names the variable `Path`; the runner reads it in any case.
-    it.runIf(process.platform !== "win32")(
-      "looks for git in the Path of the environment it is given, in any case",
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] needs a /bin/sh script as git: looks for git in the Path of the environment it is given, in any case",
       async () => {
         const folder = await scratch.folder();
         // It answers the runner's check that the hardening reaches git, as git would.

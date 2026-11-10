@@ -1,6 +1,6 @@
 import { access, constants, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { findGit } from "./find-git.ts";
 import { GitRunner } from "./git-runner.ts";
 import { runProcess } from "./node/run-process.ts";
@@ -25,6 +25,34 @@ export class Scratch {
       this.#folders.splice(0).map((folder) => rm(folder, { recursive: true, force: true })),
     );
   }
+}
+
+/**
+ * `path` as a shell reads it. Git runs the programs a config names through
+ * `sh`, Git for Windows' too, and `sh` reads a `\` as an escape, so on
+ * Windows every `\` of a path becomes `/`, which `sh` and Windows both take.
+ */
+export function shellPath(path: string): string {
+  return path.replaceAll("\\", "/");
+}
+
+/**
+ * `environment` with `folder` first on its `PATH`. Windows names the
+ * variable `Path` and ignores case, so any spelling of it is replaced by
+ * one `PATH`; two would leave the child to pick one.
+ */
+export function withFolderOnPath(
+  environment: Readonly<Record<string, string | undefined>>,
+  folder: string,
+): Record<string, string | undefined> {
+  const result: Record<string, string | undefined> = {};
+  let path = "";
+  for (const [name, value] of Object.entries(environment)) {
+    if (name.toUpperCase() === "PATH") path = value ?? "";
+    else result[name] = value;
+  }
+  result["PATH"] = path === "" ? folder : `${folder}${delimiter}${path}`;
+  return result;
 }
 
 /** Writes `files` under `root` as they are, creating folders as needed. */

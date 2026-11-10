@@ -1057,9 +1057,7 @@ jobs:
     # The sandbox and launcher packages, and the git adapter, on the other
     # two systems (plan phase 3): they start processes, build paths and read
     # the system, so what holds on Linux can still break on macOS or Windows.
-    # On Windows the git adapter runs only its process test, the one place
-    # its Windows tree kill runs; its other tests don't pass there yet
-    # (HAL-3889, HAL-4332). Typecheck and tests only; lint and build don't depend on the platform. The
+    # Typecheck and tests only; lint and build don't depend on the platform. The
     # filters are globs so a package that doesn't exist yet (sandbox-host)
     # is no error. A test that can't run on a system skips itself with a
     # reason (`it.skipIf(...)`, for example bwrap on macOS): never a
@@ -1111,18 +1109,15 @@ jobs:
           pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
+      # A step of its own, not in the run above: in one turbo run the git
+      # adapter's tests load the machine at the same time as the sandbox
+      # probes, and the probe that times a SIGINT then fails on macOS.
       - name: Git adapter, typecheck and test
-        if: runner.os != 'Windows' && env.RUN_SANDBOX == 'true'
+        if: env.RUN_SANDBOX == 'true'
         shell: bash
         run: >
           pnpm exec turbo run typecheck test --env-mode=loose --output-logs=new-only
           --filter=@halonicjs/adapter-git
-      - name: Git adapter, typecheck and the process test
-        if: runner.os == 'Windows' && env.RUN_SANDBOX == 'true'
-        shell: bash
-        run: |
-          pnpm exec turbo run typecheck --env-mode=loose --output-logs=new-only --filter=@halonicjs/adapter-git
-          pnpm --filter=@halonicjs/adapter-git exec vitest run --coverage.enabled=false src/node/run-process.test.ts
       # Which of the listed packages to test. On a push to main, all of them
       # and the integration test kit (not testing-parity: its recordings come from
       # the old repo's POSIX runner, which cannot start on Windows, HAL-4550). On a pull request or in a merge group, the

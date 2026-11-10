@@ -6,6 +6,7 @@ import {
   plainGit,
   repositoryWith,
   Scratch,
+  shellPath,
   testAuthor,
   testRunner,
 } from "./fixtures.test-helper.ts";
@@ -23,7 +24,11 @@ afterAll(() => scratch.remove());
 
 const scriptFolder = "skills/acme/scripts";
 
-/** A repository with a skill whose script appends to a marker file outside it when run. */
+/**
+ * A repository with a skill whose script appends to a marker file outside
+ * it when run. Git runs some routes through `sh`, so `script` is its
+ * {@link shellPath}.
+ */
 async function repositoryWithSkillScript(): Promise<{
   folder: string;
   script: string;
@@ -31,9 +36,9 @@ async function repositoryWithSkillScript(): Promise<{
 }> {
   const marker = join(await scratch.folder(), "ran");
   const folder = await repositoryWith(scratch);
-  const script = join(folder, scriptFolder, "pre-commit");
+  const script = shellPath(join(folder, scriptFolder, "pre-commit"));
   await mkdir(join(folder, scriptFolder), { recursive: true });
-  await writeFile(script, `#!/bin/sh\nprintf ran >> '${marker}'\n`);
+  await writeFile(script, `#!/bin/sh\nprintf ran >> '${shellPath(marker)}'\n`);
   await chmod(script, 0o755);
   return { folder, script, marker };
 }
@@ -96,7 +101,7 @@ const identity: readonly ConfigEntry[] = [
 ];
 
 verifies("git.hardened", () => {
-  describe.skipIf(process.platform === "win32")("a skill's scripts/ folder", () => {
+  describe("a skill's scripts/ folder", () => {
     for (const route of routes) {
       it(`never runs a skill's script through ${route.name}`, async () => {
         const planted = await repositoryWithSkillScript();
