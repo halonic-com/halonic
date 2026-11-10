@@ -1,10 +1,11 @@
 # @halonicjs/adapter-fs-node
 
-The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore` and
-`AgentPlacementStore` ports on the local file system with Node: workspace
-files are plain files under a root folder, each run and each collection of
-records is a JSONL log, and each trust record and each agent's "this
-computer" choice is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
+The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
+`AgentPlacementStore` and `ConnectionSettingsStore` ports on the local file
+system with Node: workspace files are plain files under a root folder, each
+run and each collection of records is a JSONL log, and each trust record,
+each agent's "this computer" choice and each connector's "allow sending"
+setting is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
 it.
 
 - **Layer:** adapters
@@ -181,6 +182,27 @@ It passes the shared `AgentPlacementStore` contract suite.
   agent's key, `get` throws naming the agent and its workspace, and
   `remove` deletes the file without reading it. `AgentPlacement` in
   `core/app` then runs the agent in a sandbox.
+
+## "Allow sending" settings in the profile
+
+`new FileConnectionSettingsStore(root)` keeps each connector's settings,
+whether it may send and when a person changed that, as one JSON file in
+`root`, a folder in the user's profile such as `<profile>/connections`,
+never inside a workspace, so an agent that edits the workspace can't switch
+sending on. The setting survives a restart. It passes the shared
+`ConnectionSettingsStore` contract suite.
+
+- **File names** are the SHA-256 of the JSON of `[location, connector]` as
+  UTF-16 code units, as for "this computer" choices.
+- **Writes** go through a temporary file and a rename, with the same modes
+  as trust records. Only the fields of the settings are written.
+- **Damage:** when settings can't be read, hold another connector's key, or
+  hold anything but `allowSending` as `true` or `false` and `changedAt` as
+  text next to the key, `get` throws naming the connector and its
+  workspace, and `remove` deletes the file without reading it. The error
+  never quotes the file's text. `ConnectionSettings` in `core/app` then
+  treats sending as off and tells the person why; switching sending on or
+  off again replaces the file.
 
 ## Records in the profile
 
