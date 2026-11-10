@@ -10,16 +10,16 @@ this file, and only in a dedicated pull request.
 Halonic is a local-first Studio, engine and CLI for designing, running and supervising AI agent
 workflows. Workspaces are plain files in git. The engine records every run as an event log.
 
-| Layer    | Where                 | May use                                                                                 | Never                                                                                |
-| -------- | --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| core     | `packages/core/*`     | core packages listed before it in `coreOrder`                                           | third-party code, Node APIs, browser APIs                                            |
-| adapters | `packages/adapters/*` | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                      |
-| host     | `packages/host/*`     | core, Web-standard APIs                                                                 | adapters, Node APIs, third-party code, Studio packages                               |
+| Layer    | Where                 | May use                                                                                 | Never                                                                                 |
+| -------- | --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| core     | `packages/core/*`     | core packages listed before it in `coreOrder`                                           | third-party code, Node APIs, browser APIs                                             |
+| adapters | `packages/adapters/*` | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                       |
+| host     | `packages/host/*`     | core, Web-standard APIs                                                                 | adapters, Node APIs, third-party code, Studio packages                                |
 | targets  | `packages/targets/*`  | core, adapters, host (a runtime only)                                                   | Studio packages; a runtime using a deploy package; Node APIs outside the Node runtime |
-| studio   | `packages/studio/*`   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
-| apps     | `apps/*`              | the public entry point of any package                                                   | —                                                                                    |
-| testing  | `packages/testing/*`  | anything                                                                                | being a runtime dependency                                                           |
-| tooling  | `tooling/*`           | other tooling packages                                                                  | being a runtime dependency                                                           |
+| studio   | `packages/studio/*`   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages)  |
+| apps     | `apps/*`              | the public entry point of any package                                                   | —                                                                                     |
+| testing  | `packages/testing/*`  | anything                                                                                | being a runtime dependency                                                            |
+| tooling  | `tooling/*`           | other tooling packages                                                                  | being a runtime dependency                                                            |
 
 The API types packages (`core/events`, `core/ports`) use only each other, so Studio, the CLI and
 outside callers get them without the engine ([ADR](docs/adr/2026-11-09-api-types-stand-alone.md)).
