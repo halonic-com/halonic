@@ -177,6 +177,10 @@ class McpStdioConnector implements ConnectorClient {
       };
     }
     const secretEnv = await this.#secretEnv();
+    // The registry lookup takes a while; a client closed meanwhile creates no folder.
+    if (this.#closed) {
+      throw new Error(`Connector "${this.id}" was closed while its pin was checked.`);
+    }
     const folder = await this.#options.folders.create();
     const launch = pinnedLaunch(this.#stdio, pin.value, inheritedEnv, folder);
     return { launch: { ...launch, env: { ...launch.env, ...secretEnv } }, folder };

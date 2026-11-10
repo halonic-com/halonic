@@ -83,7 +83,8 @@ export function expectSpawnedPinned(launch: ConnectorLaunch, pin: ConnectorPin):
   // version named must be the pin's, and at least one must name it.
   const versioned = launch.args
     .flatMap(packageSpecs)
-    .filter((spec) => namesPackage(spec, pin) && spec !== leadingName(spec, pin));
+    .filter((spec) => namesPackage(spec, pin) && spec !== leadingName(spec, pin))
+    .map((spec) => asRequirement(spec, pin));
   expect(new Set(versioned)).toEqual(new Set([exactSpec(pin)]));
   expectRegistrySetting(launch.env, pin);
   for (const [name, value] of Object.entries(contractInheritedEnv)) {
@@ -118,6 +119,11 @@ function exactSpec(pin: ConnectorPin): string {
   return pin.registry === "npm"
     ? `${pin.package}@${pin.version}`
     : `${pin.package}==${pin.version}`;
+}
+
+/** A PyPI spec as a requirement: `uvx` documents `mail-mcp@2.3.1` for `mail-mcp==2.3.1`. */
+function asRequirement(spec: string, pin: ConnectorPin): string {
+  return pin.registry === "pypi" ? spec.replace(/^([A-Za-z0-9._-]+)@/, "$1==") : spec;
 }
 
 /** Whether `spec` names the pin's package, with or without a version. */

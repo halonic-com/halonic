@@ -4,8 +4,9 @@ import type { OverridingCommand } from "./connector-pin-overrides.ts";
  * Pinned commands `app.package-runner-launch` refuses because the pin can't
  * be checked or the command runs something else: a shell, a program that
  * isn't a package runner, a runner's shell mode, an option that moves the
- * folder, config, trust or proxy, and a package option whose command word
- * isn't the pinned package's.
+ * folder, config, trust or proxy, a package option whose command word
+ * isn't the pinned package's, a command word that isn't the pinned package,
+ * and a package option after the command word.
  */
 export const bypassingCommands: readonly OverridingCommand[] = [
   // A shell can set a variable or write a config before the runner starts.
@@ -94,6 +95,11 @@ export const bypassingCommands: readonly OverridingCommand[] = [
     command: "pipx",
     args: ["run", "--spec", "mail-mcp==2.3.1", "python", "./evil.py"],
   },
+  // Without a package option, the command word is the package, which must be the pinned one.
+  { registry: "npm", command: "npx", args: ["-y", "other-pkg", "@acme/mail-mcp"] },
+  // A package option after the command word: `npm exec` reads it, `npx` and `uvx` pass it on.
+  { registry: "npm", command: "npx", args: ["-y", "@acme/mail-mcp", "-p", "@acme/mail-mcp"] },
+  { registry: "pypi", command: "uvx", args: ["mail-mcp", "--from", "mail-mcp"] },
 ];
 
 /**

@@ -21,7 +21,10 @@ function pinned(secretEnv: Record<string, string> = { MAIL_TOKEN: "mail-token" }
   };
 }
 
-function setUp(http = new RecordedRegistryClient(), starter = new FakeStarter(contractServer([]))) {
+function setUp(
+  http: ConnectorFactoryContext["http"] = new RecordedRegistryClient(),
+  starter = new FakeStarter(contractServer([])),
+) {
   const folders = new FakeFolders();
   const secrets = new MemorySecrets({ "mail-token": "value-from-secrets" });
   const read = vi.spyOn(secrets, "get");
@@ -61,6 +64,30 @@ verifies("mcp.pinned-launcher", () => {
       const client = factory.create(pinned({ NODE_OPTIONS: "mail-token" }), context);
       await expect(client.listTools()).rejects.toThrow("NODE_OPTIONS");
       expect(read).not.toHaveBeenCalled();
+      expect(starter.counts().started).toBe(0);
+    });
+
+    it("creates no folder and starts nothing when closed while the registry is asked", async () => {
+      const registry = new RecordedRegistryClient();
+      const gate: { open?: () => void } = {};
+      const slow = {
+        fetch: async (url: string, init?: RequestInit) => {
+          await new Promise<void>((resolve) => {
+            gate.open = resolve;
+          });
+          return registry.fetch(url, init);
+        },
+      };
+      const { starter, folders, factory, context } = setUp(slow);
+      const client = factory.create(pinned(), context);
+      const listing = client.listTools();
+      await vi.waitFor(() => expect(gate.open).toBeDefined());
+      await client.close();
+      gate.open?.();
+      await expect(listing).rejects.toThrow(
+        'Connector "mail" was closed while its pin was checked.',
+      );
+      expect(folders.present()).toEqual([]);
       expect(starter.counts().started).toBe(0);
     });
   });
