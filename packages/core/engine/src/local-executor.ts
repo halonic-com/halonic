@@ -2,6 +2,7 @@
 // `runs` set, workflow runs through the run kernel.
 
 import type { RunSummary } from "@halonicjs/events";
+import type { Agent } from "@halonicjs/format";
 import type {
   ChatTurnRequest,
   ChatTurnResponse,
@@ -16,10 +17,12 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
+import { checkRunToolCall } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { ModelCallResult } from "./kernel/decide-types.ts";
+import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import { LocalRuns, type LocalRunsOptions } from "./run/local-runs.ts";
 import { AgentMemory } from "./tools/agent-memory/agent-memory.ts";
@@ -38,8 +41,9 @@ export interface LocalExecutorOptions {
   /** Halonic's own tools, offered after the caller's. */
   readonly halonicTools: readonly HalonicTool[];
   /**
-   * Where agents keep their notes. With it, a chat turn that names an agent
-   * also offers that agent's memory tools, after the other Halonic tools.
+   * Where agents keep their notes. With it, a run's model call, and a chat
+   * turn that names an agent, also offer that agent's memory tools, after
+   * the other Halonic tools.
    */
   readonly memory?: RecordStore;
   /** The connected servers, whose tools are offered last. */
@@ -55,6 +59,12 @@ export interface LocalExecutorOptions {
 
 /** The round limit of a chat turn when the options don't set one. */
 export const defaultMaxRounds = 20;
+
+/**
+ * The round limit of a run's model call when the run's definitions have no
+ * file for its agent: the format's default for an agent's `maxSteps`.
+ */
+export const defaultRunMaxRounds = 6;
 
 /** The agent name a chat turn's model calls carry when the request names none. */
 const chatAgent = "chat";
@@ -163,7 +173,7 @@ export class LocalExecutor implements RunExecutor {
       secrets: this.options.secrets,
       messages: request.messages,
       callerTools: request.tools,
-      halonicTools: this.chatTools(request.agentId),
+      halonicTools: this.halonicToolsOf(request.agentId),
       connectors: this.options.connectors,
       ...(request.params === undefined ? {} : { params: request.params }),
       maxRounds: this.maxRounds,
@@ -172,26 +182,45 @@ export class LocalExecutor implements RunExecutor {
     });
   }
 
-  /** Halonic's tools for a chat turn: the agent's memory tools come last, when there is an agent and a store. */
-  private chatTools(agentId: string | undefined): readonly HalonicTool[] {
+  /**
+   * Halonic's tools for a turn: the agent's memory tools come last, when
+   * there is an agent and a store. The run-log, records and subagent tools
+   * an agent's file grants join here (HAL-186 step 4d).
+   *
+   * @param runId - the run the turn is in, which the agent's notes name; absent in a chat
+   */
+  private halonicToolsOf(agentId: string | undefined, runId?: string): readonly HalonicTool[] {
     const records = this.options.memory;
     if (agentId === undefined || records === undefined) {
       return this.options.halonicTools;
     }
-    const memory = new AgentMemory({ records, clock: this.options.clock, agentId });
+    const memory = new AgentMemory({
+      records,
+      clock: this.options.clock,
+      agentId,
+      ...(runId === undefined ? {} : { runId }),
+    });
     return [...this.options.halonicTools, ...memoryTools(memory)];
   }
 
   /**
-   * A run's model call: the state's prompt to its agent's model, without
-   * tools. Tools (the agent's memory tools among them), the agent's own
-   * prompt and the turn's run log come with the agent loop (step 4). Without
-   * tools the agent never stops for an approval, so it has none to go on from.
+   * A run's model call: the state's prompt to its agent's model, with
+   * Halonic's tools and the agent's memory tools, through the same turn
+   * loop a chat turn uses. Every call is checked with `checkToolCall`
+   * first ({@link checkRunToolCall}), and the agent's `maxSteps` is the
+   * round limit. Connectors stay out until the side-effect boundary
+   * (allow sending, idempotency keys, the effect-requested record) is
+   * built in HAL-186 step 4c. The agent's own prompt and the turn's run
+   * log come later in step 4. A run can't stop for an approval yet, so it
+   * has none to go on from (the next pull request lets it).
+   *
+   * @throws when the run's definitions are gone, as {@link missingDefinitionsError} says
    */
   private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
     if (call.resume !== undefined) {
       throw new Error("A run's agent can't go on after an approval until runs offer it tools.");
     }
+    const agent = await this.keptAgent(run, call.agent);
     const messages = [{ role: "user" as const, content: call.prompt }];
     const model = await this.options.resolveModel({
       hubId: run.hubId,
@@ -204,13 +233,30 @@ export class LocalExecutor implements RunExecutor {
       secrets: this.options.secrets,
       messages,
       callerTools: [],
-      halonicTools: [],
+      halonicTools: this.halonicToolsOf(call.agent, run.runId),
       connectors: [],
-      maxRounds: 1,
+      maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
       agent: call.agent,
       clock: this.options.clock,
+      checkCall: checkRunToolCall,
     });
     return { type: "model", output: turn.content };
+  }
+
+  /**
+   * The agent's file in the definitions the run started with, or
+   * `undefined` for a run kept before agents joined its definitions.
+   */
+  private async keptAgent(run: RunState, agentId: string): Promise<Agent | undefined> {
+    if (this.options.runs === undefined) {
+      throw noRuns();
+    }
+    const definitions = await readDefinitions(this.options.runs.blobs, run.definitionsVersion);
+    if (definitions === null) {
+      throw new Error(missingDefinitionsError(run.definitionsVersion));
+    }
+    const agents = definitions.agents ?? {};
+    return Object.hasOwn(agents, agentId) ? agents[agentId] : undefined;
   }
 }
 

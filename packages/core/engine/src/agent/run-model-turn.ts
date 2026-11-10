@@ -17,6 +17,7 @@ import type {
   ToolDefinition,
 } from "@halonicjs/ports";
 import { callCost } from "./call-cost.ts";
+import { type CallChecker, checkCallBeforeRun } from "./check-call-before-run.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { runToolCall, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
@@ -46,6 +47,8 @@ export interface ModelTurnInput {
   readonly clock: Clock;
   /** Where the events go; a turn outside any run has none. */
   readonly log?: TurnLog;
+  /** Checks each call the turn runs itself; a chat turn's check when left out. */
+  readonly checkCall?: CallChecker;
 }
 
 /** How a model turn ended. */
@@ -79,6 +82,7 @@ export async function runModelTurn(input: ModelTurnInput): Promise<ModelTurnResu
   const context: ToolCallContext = {
     agent: input.agent,
     refusals: [...tools.refusals],
+    check: input.checkCall ?? checkCallBeforeRun,
     ...(input.log === undefined ? {} : { log: input.log }),
   };
   let usage: Usage = { inputTokens: 0, outputTokens: 0 };

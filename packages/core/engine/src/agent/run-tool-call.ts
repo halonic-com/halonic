@@ -1,5 +1,5 @@
 import type { ChatMessage, ChatTurnRefusal, ToolCall, ToolRisk } from "@halonicjs/ports";
-import { checkCallBeforeRun } from "./check-call-before-run.ts";
+import type { CallChecker } from "./check-call-before-run.ts";
 import { passResultToModel } from "./pass-result-to-model.ts";
 import type { TurnLog } from "./turn-log.ts";
 import { errorMessage, halonicSource, type TurnTool } from "./turn-tools.ts";
@@ -11,6 +11,8 @@ export interface ToolCallContext {
   readonly log?: TurnLog;
   /** Where a refusal goes. */
   readonly refusals: ChatTurnRefusal[];
+  /** Checks each call before it runs. */
+  readonly check: CallChecker;
 }
 
 /**
@@ -31,7 +33,7 @@ export async function runToolCall(
     // No source offered it, so Halonic is the one refusing.
     return refuseCall(context, halonicSource, call, "no tool of that name was offered");
   }
-  const check = checkCallBeforeRun(tool, call);
+  const check = context.check(tool, call);
   if (check.kind === "refused") {
     return refuseCall(context, tool.source, call, check.reason);
   }

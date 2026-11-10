@@ -907,6 +907,9 @@ importers:
 
   packages/core/engine:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../app
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../events

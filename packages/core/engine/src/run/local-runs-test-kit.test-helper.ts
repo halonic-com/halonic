@@ -1,8 +1,9 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
-import type { ChatResponse, Clock, ScheduledTimer } from "@halonicjs/ports";
+import type { ChatResponse, Clock, RecordStore, ScheduledTimer } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
+import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { NotingScheduler } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
@@ -78,20 +79,26 @@ export interface RunsSetup {
   readonly agents?: Readonly<Record<string, Agent>>;
   /** The ports for its agents' harness runs; none when left out. */
   readonly harnesses?: HarnessRunsOptions;
+  /** The executor's Halonic tools; none when left out. */
+  readonly halonicTools?: readonly HalonicTool[];
+  /** Where agents keep their notes; no memory tools when left out. */
+  readonly memory?: RecordStore;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
 export function runsOn<Runs extends KernelRuns = KernelRuns>(
   answers: (ChatResponse | Error)[],
   runs: Runs = new KernelRuns() as Runs,
-  { workflow = replyWorkflow, clock = steppingClock(), agents, harnesses }: RunsSetup = {},
+  setup: RunsSetup = {},
 ) {
+  const { workflow = replyWorkflow, clock = steppingClock(), agents, harnesses } = setup;
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
   const definitionsAsked: string[] = [];
   const executor = new LocalExecutor({
     resolveModel: async () => ({ provider: model, model: "scripted-1" }),
-    halonicTools: [],
+    halonicTools: setup.halonicTools ?? [],
+    ...(setup.memory === undefined ? {} : { memory: setup.memory }),
     connectors: [],
     secrets: secretsWith(),
     clock,

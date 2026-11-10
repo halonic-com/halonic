@@ -16,6 +16,13 @@ export interface HalonicTool {
   /** What the model is offered. */
   readonly definition: ToolDefinition;
   /**
+   * What a call can do, for the check a run makes before it runs a call.
+   * Left out, the tool reaches only what the agent's file grants it (its
+   * notes, its hub's runs, its collections), so a run counts it as `read`
+   * and runs its calls without a person's OK.
+   */
+  readonly risk?: ToolRisk;
+  /**
    * Runs the tool and returns its text result.
    *
    * @throws when the tool fails; the model gets the error as the call's result
