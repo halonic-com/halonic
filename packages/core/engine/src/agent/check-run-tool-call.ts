@@ -23,7 +23,7 @@ import type { HalonicTool, TurnTool } from "./turn-tools.ts";
 export function checkRunToolCall(tool: TurnTool, call: ToolCall): CallCheck {
   const offered = offeredTool(tool);
   if (offered === null) {
-    return { kind: "refused", reason: `${tool.source}'s tools don't run in workflow runs` };
+    return refused(`${tool.source}'s tools don't run in workflow runs`);
   }
   return checkToolCall(offered, call.arguments);
 }
@@ -83,4 +83,8 @@ function listedTool(tool: Extract<TurnTool, { kind: "server" }>): OfferedListedT
     risk: tool.risk ?? "write",
     untrusted: true,
   };
+}
+
+function refused(reason: string): CallCheck {
+  return { kind: "refused", reason };
 }
