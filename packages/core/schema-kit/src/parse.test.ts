@@ -49,6 +49,12 @@ verifies("schema-kit.issue-path", () => {
     expect(result.ok ? [] : result.error.map((issue) => issue.path)).toEqual([[]]);
   });
 
+  it("writes a symbol key of the input as text in the path", () => {
+    const key = Symbol("odd");
+    const result = parse(s.record(s.string(), s.number()), { [key]: "a" });
+    expect(result.ok ? [] : result.error.map((issue) => issue.path)).toEqual([["Symbol(odd)"]]);
+  });
+
   it("formats a path for messages", () => {
     expect(formatPath(["cases", 1, "name"])).toBe("cases[1].name");
     expect(formatPath(["deployments", "prod", "name"])).toBe("deployments.prod.name");

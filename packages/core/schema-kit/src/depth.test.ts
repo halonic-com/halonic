@@ -24,6 +24,7 @@ verifies("schema-kit.nesting-limit", () => {
     expect(result.error).toHaveLength(1);
     expect(result.error[0]?.code).toBe("too_deep");
     expect(result.error[0]?.path).toEqual(Array(MAX_DEPTH + 1).fill("child"));
+    expect(result.error[0]?.message).toBe(`Nested more than ${MAX_DEPTH} levels deep`);
   });
 
   it("fails 100,000 levels cleanly instead of overflowing the stack", () => {
