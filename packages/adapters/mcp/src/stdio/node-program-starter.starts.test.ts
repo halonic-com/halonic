@@ -1,12 +1,12 @@
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join } from "node:path";
+import { skillScriptsRefusal } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readLines } from "./lines.ts";
 import { nodeProgramStarter } from "./node-program-starter.ts";
 import type { ProgramLaunch } from "./program.ts";
-import { skillScriptsRefusal } from "./skill-scripts.ts";
 import { stopProgram } from "./stop-program.ts";
 
 let folder: string;
@@ -61,6 +61,17 @@ verifies("mcp.program-starter", () => {
         (base: string) => ({ ...node(""), args: [join(base, "skills/acme/scripts/run.js")] }),
       ],
       [
+        "an option joined with =",
+        (base: string) => ({
+          ...node(""),
+          args: [`--file=${join(base, "skills/acme/scripts/run.js")}`],
+        }),
+      ],
+      [
+        "a relative option joined with =",
+        () => ({ ...node(""), args: ["--file=skills/acme/scripts/run.js"] }),
+      ],
+      [
         "the folder it starts in",
         (base: string) => ({ ...node(""), cwd: join(base, "skills/acme/scripts") }),
       ],
@@ -73,6 +84,13 @@ verifies("mcp.program-starter", () => {
       await writeFile(join(folder, "skills/acme/scripts/run.js"), "");
       await symlink(join(folder, "skills/acme/scripts"), join(folder, "innocent"));
       const launch = { ...node(""), args: [join(folder, "innocent", "run.js")] };
+      await expect(nodeProgramStarter.start(launch)).rejects.toThrow(skillScriptsRefusal);
+    });
+
+    it("refuses an option joined with = whose value links into a skill's scripts/ folder", async () => {
+      await mkdir(join(folder, "skills/acme/scripts"), { recursive: true });
+      await symlink(join(folder, "skills/acme/scripts"), join(folder, "innocent"));
+      const launch = { ...node(""), args: ["--file=innocent"] };
       await expect(nodeProgramStarter.start(launch)).rejects.toThrow(skillScriptsRefusal);
     });
   });

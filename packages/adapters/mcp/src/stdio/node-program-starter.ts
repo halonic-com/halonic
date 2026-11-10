@@ -1,10 +1,14 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { win32 } from "node:path";
+import { realpath } from "node:fs/promises";
+import { resolve, win32 } from "node:path";
 import { findProgram } from "@halonicjs/adapter-system-node";
+import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 import type { ProgramExit, ProgramLaunch, ProgramStarter, RunningProgram } from "./program.ts";
-import { skillScriptsRefusal, touchesSkillScripts } from "./skill-scripts.ts";
 
 const isWindows = process.platform === "win32";
+
+/** Node's way to find where a path leads, for the shared skill `scripts/` check. */
+const nodePaths: PathLookup = { resolve, realpath };
 
 /**
  * Starts a stdio connector's program with Node: array arguments, no shell,
@@ -21,12 +25,12 @@ const isWindows = process.platform === "win32";
  */
 export const nodeProgramStarter: ProgramStarter = {
   async start(launch) {
-    if (await touchesSkillScripts(launch.cwd, launch.program, launch.args)) {
+    if (await touchesSkillScripts(launch, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
     const program = await absoluteProgram(launch);
     // A PATH folder may be a skill's scripts/ folder too.
-    if (await touchesSkillScripts(launch.cwd, program, [])) {
+    if (await touchesSkillScripts({ cwd: launch.cwd, program, args: [] }, nodePaths)) {
       throw new Error(skillScriptsRefusal);
     }
     const child = spawn(program, [...launch.args], {

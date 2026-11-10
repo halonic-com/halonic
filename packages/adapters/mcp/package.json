@@ -15,6 +15,7 @@
   "dependencies": {
     "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*"
   },

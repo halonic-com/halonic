@@ -733,6 +733,9 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../core/app
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
