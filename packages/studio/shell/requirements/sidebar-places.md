@@ -6,6 +6,8 @@
 
 The shell shall add the Home place itself, before any feature registers. The shell shall let a feature add any other sidebar place only through the point `places.add`, naming one of the sidebar's places: Home, Inbox, Agents, Workflows, Routines, Library, Runs, Changes. The shell shall list Home and the places features added in that order, whatever order the features registered in, and shall leave out a place no feature added, so the order stays the same as places arrive. The shell shall give each place its name and icon from its own table, not from the feature, and shall show and speak a place's signal only when its value is above zero. If a feature adds a place that isn't one of these, adds Home, or two features add the same place, then the shell shall throw a `ShellError` that names the feature or features.
 
+The sidebar shall show the places as a `nav` named "Places", one link each. The place the active tab is in (an item's outermost parent, or the place itself) shall show its filled icon and be the current page; the others shall show the outline icon. A click on a place shall open it in the active tab and move the focus to the page's `h1`. A Ctrl-click, a Cmd-click or a middle-click shall open it in a new tab next to the active one, which stays active, and the announcer shall say "Opened <place> in a new tab.", or "<place> is already open in a tab." when a tab shows it.
+
 ## Examples
 
 - Given _runs_ adds Runs and _agents_ adds Agents, registered in that order,
@@ -26,3 +28,9 @@ The shell shall add the Home place itself, before any feature registers. The she
 - Given _agents_ and _crew_ both add Agents,
   when the shell is created,
   then a `ShellError` names both and says each place belongs to one feature.
+- Given the active tab shows the workflow "Support reply",
+  when the sidebar shows its places,
+  then Workflows is the current page, with its filled icon.
+- Given the active tab shows Home,
+  when the user Ctrl-clicks the Inbox,
+  then the Inbox opens in a new tab, Home stays active, and the announcer says "Opened Inbox in a new tab.".

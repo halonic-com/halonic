@@ -148,6 +148,19 @@ announcer. A result ("Saved key for Anthropic") or a failed command ("Couldn't r
 >
 ```
 
+## Sidebar places
+
+`PlacesList` is the sidebar's `nav` named "Places": one link per place the features added, in the
+fixed order, from `showPlace`. Where you are (an item counts as in its outermost parent, from
+`parentsOf`) shows the filled icon in `accent` on the halo tint and is `aria-current="page"`. A
+count or the still running dot shows after the name, and a screen reader hears its words after the
+name ("Inbox, 2 waiting"). A click opens the place in the active tab and moves focus to the page's
+`h1`; a Ctrl-click or a middle-click opens it in a new tab and says so, like the toolbar's path.
+
+```tsx
+<PlacesList places={shownPlaces} tabs={workspace.tabs} announcer={shell.announcer} />;
+```
+
 ## Sidebar resize edge
 
 `SidebarResizeEdge` goes right after the sidebar, before the page. It's an 8px hit area over the

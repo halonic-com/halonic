@@ -148,6 +148,7 @@ export type {
 export { type ServiceKey, serviceKey } from "./service-key.ts";
 export { createShell, type Shell, type ShellOptions } from "./shell.ts";
 export { ShellError } from "./shell-error.ts";
+export { PlacesList, type PlacesListProps } from "./sidebar/places-list.tsx";
 export {
   SidebarResizeEdge,
   type SidebarResizeEdgeProps,
