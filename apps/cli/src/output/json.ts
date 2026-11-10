@@ -1,4 +1,4 @@
-import type { CommandResult } from "../command.ts";
+import type { CommandResult, StoppedResult } from "../command.ts";
 import { exitCode } from "../exit-code.ts";
 
 /**
@@ -15,10 +15,12 @@ export interface ResultDocument extends Readonly<Record<string, unknown>> {
 
 /**
  * A command's result as its one `--json` document: `outputVersion`, `ok`,
- * then the command's own fields. `ok` is true when the command exits with 0.
+ * then the command's own fields. `ok` is true when the command exits with 0;
+ * a command that was stopped is never ok.
  */
-export function resultDocument(result: CommandResult): ResultDocument {
-  return { outputVersion, ok: result.exitCode === exitCode.ok, ...result.json };
+export function resultDocument(result: CommandResult | StoppedResult): ResultDocument {
+  const ok = !("stopped" in result) && result.exitCode === exitCode.ok;
+  return { outputVersion, ok, ...result.json };
 }
 
 /**

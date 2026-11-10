@@ -23,6 +23,7 @@ process.exitCode = await runCli(
       },
       ...(process.stdin.isTTY === true ? { questions: stdinQuestions() } : {}),
     },
+    stop: { signals: process, exitNow: (code) => process.exit(code) },
   },
 );
 

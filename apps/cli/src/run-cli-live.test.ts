@@ -5,6 +5,7 @@ import { exitCode } from "./exit-code.ts";
 import { defineMessages } from "./messages/define.ts";
 import { phrase } from "./messages/phrase.ts";
 import { runCli, type Terminal } from "./run-cli.ts";
+import { fakeSignals } from "./test/fake-signals.ts";
 import { manualClock } from "./test/manual-clock.ts";
 
 const draftMessages = defineMessages("draft", {
@@ -82,5 +83,30 @@ verifies("cli.progress", () => {
       await runCli(args, screen.io, [draftCommand(clock)], { terminal, clock });
       expect(screen.seen.filter((entry) => entry.startsWith("live"))).toEqual([]);
     }
+  });
+});
+
+verifies("cli.stop", () => {
+  it("clears the live line before Stopped., and never draws it again", async () => {
+    const clock = manualClock();
+    const screen = terminalScreen();
+    const signals = fakeSignals();
+    const stoppable: CliCommand = {
+      ...draftCommand(clock),
+      async run(_input, context) {
+        context.progress(draftMessages.draftReply().phrase);
+        clock.advance(1_500);
+        signals.send("SIGINT");
+        clock.advance(1_000);
+        return { stopped: true, json: {} };
+      },
+    };
+    const code = await runCli(["draft"], screen.io, [stoppable], {
+      terminal: terminalWith(screen),
+      clock,
+      stop: { signals, exitNow: () => {} },
+    });
+    expect(code).toBe(130);
+    expect(screen.seen).toEqual(["live (erase)◌ Draft reply", "live (erase)", "err Stopped."]);
   });
 });
