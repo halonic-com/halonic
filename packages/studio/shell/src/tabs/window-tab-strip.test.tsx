@@ -72,20 +72,41 @@ function layOut(container: HTMLElement): void {
   });
 }
 
+/**
+ * A pointer event as jsdom can make one: a `MouseEvent` with the pointer type's name. `buttons` is
+ * the buttons held, so a move with the main button down has `buttons: 1`.
+ */
+function pointer(type: string, clientX: number, buttons: number, button = 0): MouseEvent {
+  return new MouseEvent(type, { bubbles: true, cancelable: true, button, buttons, clientX });
+}
+
+/** Presses the main button on `target` at `x`, and leaves it held. */
+function pressPointer(target: Element, x: number): void {
+  act(() => {
+    target.dispatchEvent(pointer("pointerdown", x, 1));
+  });
+}
+
+/** Moves the pointer to `x`, with the main button held unless `buttons` says otherwise. */
+function movePointer(x: number, buttons = 1): void {
+  act(() => {
+    window.dispatchEvent(pointer("pointermove", x, buttons));
+  });
+}
+
 /** Presses `button` on `target` at `fromX`, moves the pointer to each of `toX`, and lets go. */
 function drag(target: Element, fromX: number, toX: readonly number[], button = 0): void {
-  const pointer = (type: string, clientX: number) =>
-    new MouseEvent(type, { bubbles: true, cancelable: true, button, clientX });
+  const held = 1 << button;
   act(() => {
-    target.dispatchEvent(pointer("pointerdown", fromX));
+    target.dispatchEvent(pointer("pointerdown", fromX, held, button));
   });
   for (const x of toX) {
     act(() => {
-      window.dispatchEvent(pointer("pointermove", x));
+      window.dispatchEvent(pointer("pointermove", x, held, button));
     });
   }
   act(() => {
-    window.dispatchEvent(pointer("pointerup", toX.at(-1) ?? fromX));
+    window.dispatchEvent(pointer("pointerup", toX.at(-1) ?? fromX, 0, button));
   });
 }
 
@@ -237,9 +258,7 @@ verifies("shell.window-tab-strip", () => {
       expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
       layOut(container);
       drag(first as HTMLElement, 100, []);
-      act(() => {
-        window.dispatchEvent(new MouseEvent("pointermove", { clientX: 590 }));
-      });
+      movePointer(590);
       expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
     });
 
@@ -249,6 +268,50 @@ verifies("shell.window-tab-strip", () => {
       const [first] = tabElements(container);
       drag(first as HTMLElement, 100, [103]);
       drag(first as HTMLElement, 100, [590], 1);
+      expect(titles(tabs)).toEqual(["Agents", "Sorter", "Support reply"]);
+    });
+
+    it("swallows the click after a drag, so letting go over the tab's close button keeps it", () => {
+      const { tabs, container } = renderStrip();
+      layOut(container);
+      const closeAgents = container.querySelector('[aria-label="Close Agents"]') as HTMLElement;
+      drag(closeAgents, 180, [380]);
+      click(closeAgents);
+      expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
+      drag(closeAgents, 380, [381]);
+      click(closeAgents);
+      expect(titles(tabs)).toEqual(["Sorter", "Support reply"]);
+    });
+
+    it("lets the next click through when a drag's release brought no click", () => {
+      const { tabs, container } = renderStrip();
+      layOut(container);
+      const [first] = tabElements(container);
+      drag(first as HTMLElement, 100, [310]);
+      pressPointer(first as HTMLElement, 100);
+      click(container.querySelector('[aria-label="Close Support reply"]'));
+      expect(titles(tabs)).toEqual(["Sorter", "Agents"]);
+    });
+
+    it("ends a drag when a move comes with the main button up, after a release it missed", () => {
+      const { tabs, container } = renderStrip();
+      layOut(container);
+      const [first] = tabElements(container);
+      pressPointer(first as HTMLElement, 100);
+      movePointer(310);
+      expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
+      movePointer(590, 0);
+      movePointer(590);
+      expect(titles(tabs)).toEqual(["Sorter", "Agents", "Support reply"]);
+    });
+
+    it("stops following the pointer when the strip goes mid-drag", () => {
+      const { tabs, container } = renderStrip();
+      layOut(container);
+      const [first] = tabElements(container);
+      pressPointer(first as HTMLElement, 100);
+      unmountAll();
+      movePointer(590);
       expect(titles(tabs)).toEqual(["Agents", "Sorter", "Support reply"]);
     });
   });

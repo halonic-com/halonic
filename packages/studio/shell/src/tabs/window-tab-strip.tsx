@@ -29,9 +29,9 @@ export interface WindowTabStripProps {
  * The window tabs in the title bar (component specs 24.5): one `tablist` named "Open tabs" and one
  * Tab stop. ← and → move the focus, Enter or Space opens the focused tab, Delete closes it, and
  * Ctrl Shift PageUp and PageDown move it. Dragging a tab moves it too, with no motion: it jumps
- * to its new place as the pointer crosses a neighbour's middle. Tabs are 200px, shrink together to 96px, and then the
- * strip scrolls sideways with the active tab kept in view. **+** after the last tab opens a new
- * tab on Home.
+ * to its new place as the pointer crosses a neighbour's middle. Tabs are 200px, shrink together
+ * to 96px, and then the strip scrolls sideways with the active tab kept in view. **+** after the
+ * last tab opens a new tab on Home.
  *
  * Nothing on a tab is `fg-subtle`, which reaches only 4.46:1 on the hovered tab.
  *
@@ -137,18 +137,36 @@ const stripClasses = [
  * as the pointer crosses its neighbours' middles, until the pointer is released. The window
  * follows the pointer, not the tab, because moving the tab in the DOM would drop a pointer capture.
  * Only the main button drags; a middle-click is left alone.
+ *
+ * A move with the main button up ends the drag too, for a release the window never saw (let go
+ * outside a webview that doesn't pass it on). Each drag's listeners hang on one `AbortController`,
+ * so the strip unmounting mid-drag removes them.
+ *
+ * The strip has no `touch-action`, so on a touch screen the browser pans it and cancels the drag.
+ * The Android shell needs `touch-action: pan-y` on the tabs, or a long press to start a drag.
  */
 function useTabDrag(
   tabs: TabSet,
   elements: RefObject<Map<string, HTMLDivElement>>,
 ): (tabId: string, event: PointerEvent) => void {
+  const ongoing = useRef<AbortController | undefined>(undefined);
+  useEffect(() => () => ongoing.current?.abort(), []);
+
   return (tabId, event) => {
     if (event.button !== 0) {
       return;
     }
+    ongoing.current?.abort();
+    const drag = new AbortController();
+    ongoing.current = drag;
     const startX = event.clientX;
     let dragging = false;
+
     const onMove = (move: globalThis.PointerEvent) => {
+      if ((move.buttons & 1) === 0) {
+        drag.abort();
+        return;
+      }
       dragging ||= Math.abs(move.clientX - startX) >= TAB_DRAG_THRESHOLD;
       if (!dragging) {
         return;
@@ -158,15 +176,35 @@ function useTabDrag(
       const from = order.findIndex((tab) => tab.id === tabId);
       tabs.move(tabId, dragTargetIndex(move.clientX, spans, from));
     };
-    const stop = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
+    const onRelease = () => {
+      drag.abort();
+      if (dragging) {
+        swallowNextClick();
+      }
     };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
+
+    const listen = { signal: drag.signal };
+    window.addEventListener("pointermove", onMove, listen);
+    window.addEventListener("pointerup", onRelease, listen);
+    window.addEventListener("pointercancel", () => drag.abort(), listen);
   };
+}
+
+/**
+ * Swallows the `click` the browser fires after a drag's release, so letting go over the dragged
+ * tab's ✕ doesn't close it, and letting go over a tab doesn't open it. If no click comes (let go
+ * outside the window), the next press ends the wait, so a later click goes through.
+ */
+function swallowNextClick(): void {
+  const done = new AbortController();
+  const listen = { capture: true, signal: done.signal };
+  const swallow = (click: MouseEvent) => {
+    click.stopPropagation();
+    click.preventDefault();
+    done.abort();
+  };
+  window.addEventListener("click", swallow, listen);
+  window.addEventListener("pointerdown", () => done.abort(), listen);
 }
 
 function spanOf(element: HTMLElement | undefined): TabSpan {
