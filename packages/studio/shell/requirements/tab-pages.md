@@ -20,3 +20,9 @@ The shell shall keep the pages of the last five active window tabs mounted, the 
 - Given the focus is on a tab in the strip,
   when Enter makes it active,
   then the focus stays on that tab.
+- Given "Agents" scrolled halfway down,
+  when the tab opens "Routines" in its place or goes Back,
+  then the page it draws starts at the top.
+- Given the focus is on a section tab inside the "Agents" page,
+  when Ctrl Tab makes "Sorter" active,
+  then the focus goes to the `h1` "Sorter".

@@ -1,7 +1,14 @@
 import { type ReactNode, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { focusPageHeading } from "./history-moves.ts";
 import { mountedTabIds } from "./mounted-tabs.ts";
-import { currentLocation, type TabLocation, type TabSet, type WindowTab } from "./tab-set.ts";
+import {
+  currentLocation,
+  type TabLocation,
+  type TabSet,
+  type TabSetState,
+  type WindowTab,
+} from "./tab-set.ts";
+import { WINDOW_TAB_STRIP_SELECTOR } from "./window-tab-strip.tsx";
 
 /** Props for {@link TabPages}. */
 export interface TabPagesProps {
@@ -42,7 +49,7 @@ export function TabPages({ tabs, renderPage }: TabPagesProps) {
   const mounted = mountedTabIds(mountedRef.current, state);
   const pages = useRef(new Map<string, HTMLDivElement>());
   const memory = useRef(new Map<string, PageMemory>());
-  const shownId = useRef(state.activeId);
+  const shown = useRef(shownPlace(state));
 
   useLayoutEffect(() => {
     mountedRef.current = mounted;
@@ -54,26 +61,24 @@ export function TabPages({ tabs, renderPage }: TabPagesProps) {
   }, [mounted]);
 
   useLayoutEffect(() => {
-    if (shownId.current === state.activeId) {
+    const before = shown.current;
+    const now = shownPlace(state);
+    if (now === undefined || isSamePlace(before, now)) {
       return;
     }
-    shownId.current = state.activeId;
-    const page = pages.current.get(state.activeId);
-    const tab = state.tabs.find((candidate) => candidate.id === state.activeId);
-    if (page === undefined || tab === undefined) {
+    shown.current = now;
+    const page = pages.current.get(now.tabId);
+    if (page === undefined) {
       return;
     }
-    const kept = memory.current.get(tab.id);
-    const same = kept?.locationKey === currentLocation(tab).key;
-    page.scrollTop = same ? kept.scrollTop : 0;
-    if (focusIsInTabStrip()) {
+    if (before?.tabId === now.tabId) {
+      // The tab moved on to another place: its fresh page starts at the top. Back, Forward and the
+      // sidebar move the focus themselves.
+      page.scrollTop = 0;
       return;
     }
-    if (same && kept.focus !== undefined && page.contains(kept.focus)) {
-      kept.focus.focus({ preventScroll: true });
-    } else {
-      focusPageHeading(page);
-    }
+    const kept = memory.current.get(now.tabId);
+    giveBack(page, kept?.locationKey === now.locationKey ? kept : undefined);
   }, [state]);
 
   const remember = (tab: WindowTab, change: Partial<Omit<PageMemory, "locationKey">>) => {
@@ -117,7 +122,42 @@ function PageContent({ children }: { readonly children: ReactNode }) {
   return children;
 }
 
-/** Whether the focus is on a window tab, where moving through the tabs keeps it. */
+/** The active tab and the place it shows, which the page on screen draws. */
+interface ShownPlace {
+  readonly tabId: string;
+  readonly locationKey: string;
+}
+
+function shownPlace(state: TabSetState): ShownPlace | undefined {
+  const tab = state.tabs.find((candidate) => candidate.id === state.activeId);
+  return tab === undefined ? undefined : { tabId: tab.id, locationKey: currentLocation(tab).key };
+}
+
+function isSamePlace(a: ShownPlace | undefined, b: ShownPlace): boolean {
+  return a?.tabId === b.tabId && a.locationKey === b.locationKey;
+}
+
+/**
+ * Gives a page that was switched to back its scroll and focus from `kept`, or starts it at the top
+ * with the focus on its `h1` when nothing was kept for the place it shows. The focus stays where it
+ * is while it is in the tab strip.
+ */
+function giveBack(page: HTMLElement, kept: PageMemory | undefined) {
+  page.scrollTop = kept?.scrollTop ?? 0;
+  if (focusIsInTabStrip()) {
+    return;
+  }
+  if (kept?.focus !== undefined && page.contains(kept.focus)) {
+    kept.focus.focus({ preventScroll: true });
+  } else {
+    focusPageHeading(page);
+  }
+}
+
+/**
+ * Whether the focus is on a window tab, where moving through the tabs keeps it. A `tablist` on the
+ * page itself doesn't count: its focus is hidden with the page, so it has to move.
+ */
 function focusIsInTabStrip(): boolean {
-  return (document.activeElement?.closest('[role="tablist"]') ?? null) !== null;
+  return (document.activeElement?.closest(WINDOW_TAB_STRIP_SELECTOR) ?? null) !== null;
 }

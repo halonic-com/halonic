@@ -13,12 +13,17 @@ const sorter: TabLocation = { key: "agent/acme/sorter", title: "Sorter", kind: "
 
 afterEach(unmountAll);
 
-/** A page with its title as the `h1` and one field to type into. */
+/** A page with its title as the `h1`, one field to type into and a `tablist` of its own. */
 function Page({ location }: { readonly location: TabLocation }) {
   return (
     <>
       <h1>{location.title}</h1>
       <input aria-label={`Notes on ${location.title}`} />
+      <div role="tablist" aria-label={`Sections of ${location.title}`}>
+        <button type="button" role="tab">
+          Overview
+        </button>
+      </div>
     </>
   );
 }
@@ -30,7 +35,7 @@ function renderPages() {
   tabs.openInNewTab(sorter);
   const container = render(
     <>
-      <div role="tablist" aria-label="Open tabs">
+      <div role="tablist" aria-label="Open tabs" data-window-tab-strip="">
         <button type="button" role="tab">
           Agents
         </button>
@@ -45,7 +50,9 @@ function renderPages() {
     container.querySelector<HTMLElement>(`[data-tab-page="${tabId}"]`);
   const field = (title: string) =>
     container.querySelector<HTMLInputElement>(`input[aria-label="Notes on ${title}"]`);
-  return { tabs, container, first, second, page, field };
+  const pageTab = (title: string) =>
+    container.querySelector<HTMLElement>(`[aria-label="Sections of ${title}"] [role="tab"]`);
+  return { tabs, container, first, second, page, field, pageTab };
 }
 
 verifies("shell.tab-pages", () => {
@@ -97,13 +104,23 @@ verifies("shell.tab-pages", () => {
     expect(document.activeElement?.textContent).toBe("Agents");
   });
 
-  it("draws a fresh page when the tab moves on to another place", () => {
-    const { tabs, field } = renderPages();
+  it("draws a fresh page, at the top, when the tab moves on to another place", () => {
+    const { tabs, first, page, field } = renderPages();
+    const agentsPage = page(first) as HTMLElement;
     const notes = field("Agents") as HTMLInputElement;
     notes.value = "about agents";
+    agentsPage.scrollTop = 300;
+    act(() => {
+      agentsPage.dispatchEvent(new Event("scroll"));
+    });
+
     act(() => tabs.openHere({ key: "routines", title: "Routines" }));
+    expect(agentsPage.scrollTop).toBe(0);
+
+    agentsPage.scrollTop = 200;
     act(() => tabs.back());
     expect(field("Agents")?.value).toBe("");
+    expect(agentsPage.scrollTop).toBe(0);
   });
 
   it("leaves the focus in the tab strip", () => {
@@ -112,6 +129,13 @@ verifies("shell.tab-pages", () => {
     act(() => tab.focus());
     act(() => tabs.activate(second));
     expect(document.activeElement).toBe(tab);
+  });
+
+  it("moves the focus off a tablist on the page it leaves", () => {
+    const { tabs, second, pageTab } = renderPages();
+    act(() => pageTab("Agents")?.focus());
+    act(() => tabs.activate(second));
+    expect(document.activeElement?.textContent).toBe("Sorter");
   });
 
   it("finds only the shown page's h1", () => {

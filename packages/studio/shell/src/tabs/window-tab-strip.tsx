@@ -13,6 +13,12 @@ import {
 import { dragTargetIndex, TAB_DRAG_THRESHOLD, type TabSpan } from "./tab-drag.ts";
 import { currentLocation, type TabLocation, type TabSet, type WindowTab } from "./tab-set.ts";
 
+/**
+ * Finds the window tab strip, which a page can tell from a `tablist` of its own (a kit `Tabs`) by
+ * its `data-window-tab-strip`.
+ */
+export const WINDOW_TAB_STRIP_SELECTOR = "[data-window-tab-strip]";
+
 /** Props for {@link WindowTabStrip}. */
 export interface WindowTabStripProps {
   /** The open workspace's tabs. */
@@ -82,6 +88,7 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
       <div
         role="tablist"
         aria-label="Open tabs"
+        data-window-tab-strip=""
         className={stripClasses}
         onKeyDown={onKeyDown}
         onBlur={onBlur}
