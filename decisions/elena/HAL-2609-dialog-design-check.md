@@ -1,4 +1,4 @@
-# Decision: the Dialog follows Sofia's design check (D1, D2, D3, D5, D6)
+# Decision: the Dialog follows Sofia's design check (D1, D2, D3, D5, D6, D7)
 
 - Approval: Sofia asked for these changes in her design check of the Dialog
   ([design-check-dialog on HAL-2601](/HAL/issues/HAL-2601#document-design-check-dialog), D1 to
