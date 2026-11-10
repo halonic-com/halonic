@@ -105,7 +105,12 @@ function optionLikeCases(make: MakeVcs): void {
  * so on a Windows disk (see `MakeVcs.platform`) such a case is skipped,
  * with the reason first in its name.
  */
-function patternLikeIt(make: MakeVcs, path: string, name: string, body: () => Promise<void>): void {
+export function patternLikeIt(
+  make: MakeVcs,
+  path: string,
+  name: string,
+  body: () => Promise<void>,
+): void {
   if (!/[*?]/u.test(path)) {
     it(name, body);
     return;
