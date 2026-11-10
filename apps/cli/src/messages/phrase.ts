@@ -1,10 +1,23 @@
 import { type Mark, markText, type Paint } from "../output/paint.ts";
 
-/** A piece of a {@link Phrase}: plain text, text with emphasis, or a mark such as › in "Settings › Models". */
+/** A piece of a {@link Phrase}: plain text, text with emphasis, a mark such as › in "Settings › Models", or padding. */
 export type Part =
   | string
   | { readonly text: string; readonly emphasis: "bold" | "dim" }
-  | { readonly mark: Mark };
+  | { readonly mark: Mark }
+  | { readonly padding: Padding };
+
+/**
+ * Spaces that line up a column. A mark's stand-in can be wider than the mark
+ * itself (`ok` for ✓), so the number of spaces depends on whether the stream
+ * shows the Unicode marks. `columns` in `columns.ts` works both out.
+ */
+export interface Padding {
+  /** How many spaces in a stream that shows the Unicode marks, and in JSON. */
+  readonly unicode: number;
+  /** How many spaces in a stream that shows the ASCII stand-ins. */
+  readonly ascii: number;
+}
 
 /**
  * A sentence the user reads, kept in parts so a terminal can show its one
@@ -59,6 +72,9 @@ export function renderPhrase(value: Phrase, paint: Paint): string {
       if ("mark" in part) {
         return paint.mark(part.mark);
       }
+      if ("padding" in part) {
+        return paddingText(part.padding, paint.unicode);
+      }
       return part.emphasis === "bold" ? paint.bold(part.text) : paint.dim(part.text);
     })
     .join("");
@@ -72,7 +88,7 @@ export function plainText(value: Phrase): string {
         return part;
       }
       // JSON is always UTF-8, so its text keeps the real marks whatever the terminal can show.
-      return "mark" in part ? markText(part.mark, true) : part.text;
+      return partText(part, true);
     })
     .join("");
 }
@@ -102,7 +118,7 @@ export function fitPhrase(value: Phrase, width: number, unicode: boolean): Phras
     }
     if (typeof part === "string") {
       pushText(parts, characters(part).slice(0, room).join(""));
-    } else if (!("mark" in part) && room > 0) {
+    } else if ("text" in part && room > 0) {
       parts.push({ ...part, text: characters(part.text).slice(0, room).join("") });
     }
     break;
@@ -111,7 +127,11 @@ export function fitPhrase(value: Phrase, width: number, unicode: boolean): Phras
   return parts;
 }
 
-function visibleLength(value: Phrase, unicode: boolean): number {
+/**
+ * How many characters the phrase takes in a stream that shows the Unicode
+ * marks, or their ASCII stand-ins: what a column has to make room for.
+ */
+export function visibleLength(value: Phrase, unicode: boolean): number {
   return value.reduce((length, part) => length + characters(partText(part, unicode)).length, 0);
 }
 
@@ -119,7 +139,14 @@ function partText(part: Part, unicode: boolean): string {
   if (typeof part === "string") {
     return part;
   }
-  return "mark" in part ? markText(part.mark, unicode) : part.text;
+  if ("mark" in part) {
+    return markText(part.mark, unicode);
+  }
+  return "padding" in part ? paddingText(part.padding, unicode) : part.text;
+}
+
+function paddingText(padding: Padding, unicode: boolean): string {
+  return " ".repeat(unicode ? padding.unicode : padding.ascii);
 }
 
 /** The text as the characters a terminal shows, so "◌" counts as one, not as its UTF-16 units. */

@@ -40,6 +40,8 @@ const sgr = {
  * Colour only adds: the text reads the same without it.
  */
 export interface Paint {
+  /** Whether the stream shows the Unicode marks, or their ASCII stand-ins. */
+  readonly unicode: boolean;
   /** The mark, coloured when colour is on, or its stand-in when the stream isn't UTF-8. */
   mark(mark: Mark): string;
   /** The one name or number that matters on a line. */
@@ -58,6 +60,7 @@ export function paintFor(style: OutputStyle): Paint {
   const wrap = (codes: readonly [string, string], text: string): string =>
     style.colour && text !== "" ? `\u001b[${codes[0]}m${text}\u001b[${codes[1]}m` : text;
   return {
+    unicode: style.unicode,
     mark(mark) {
       const text = markText(mark, style.unicode);
       const colour = marks[mark].colour;
