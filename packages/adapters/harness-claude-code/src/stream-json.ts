@@ -1,5 +1,5 @@
+import { HarnessEventFilter } from "@halonicjs/adapter-harness-kit";
 import type { HarnessEvent } from "@halonicjs/ports";
-import { SecretScrubber } from "@halonicjs/std";
 import { isBridgeTool } from "./bridge-tools.ts";
 import { findSignInMessage, findSignInProblem, SignInError } from "./sign-in.ts";
 import { type ContentBlock, parseStreamJsonLine, type StreamJsonLine } from "./stream-json-line.ts";
@@ -60,24 +60,23 @@ interface OpenSubagent {
  */
 export class StreamJsonReader {
   readonly #agentId: string;
-  /** Removes the bridge token from what the reader reports. */
-  readonly #scrubber = new SecretScrubber();
+  /** Removes the bridge token from what the reader reports, and everything after the final event. */
+  readonly #filter: HarnessEventFilter;
   /** Tool calls by their id, until their result arrives. */
   readonly #openCalls = new Map<string, OpenCall>();
   /** Subagents by the id of the call that started them, until it returns. */
   readonly #openSubagents = new Map<string, OpenSubagent>();
   /** How many subagents of each type have started, so each gets a name of its own. */
   readonly #subagentCounts = new Map<string, number>();
-  #finished = false;
 
   constructor(options: StreamJsonReaderOptions) {
     this.#agentId = options.agentId;
-    this.#scrubber.remember(options.bridgeToken);
+    this.#filter = new HarnessEventFilter(options);
   }
 
   /** Whether the reader has read the `result` line and reported the final `agent.finished`. */
   get finished(): boolean {
-    return this.#finished;
+    return this.#filter.finished;
   }
 
   /**
@@ -88,10 +87,10 @@ export class StreamJsonReader {
    * @throws Error when the line isn't stream-json or the run ended with an error; the message never holds the bridge token
    */
   read(line: string): HarnessEvent[] {
-    if (this.#finished || line.trim() === "") return [];
+    if (this.#filter.finished || line.trim() === "") return [];
     const parsed = parseStreamJsonLine(line);
     if (parsed === undefined) throw this.#notStreamJson(line);
-    return this.#eventsOf(parsed).map((event) => this.#withoutToken(event));
+    return this.#filter.pass(this.#eventsOf(parsed));
   }
 
   #eventsOf(line: StreamJsonLine): HarnessEvent[] {
@@ -163,8 +162,7 @@ export class StreamJsonReader {
     // in…" for reasons of its own, so only the whole sign-in message counts.
     const signInProblem = failed ? findSignInProblem(result.text) : findSignInMessage(result.text);
     if (signInProblem !== undefined) throw new SignInError(signInProblem);
-    if (failed) throw new Error(this.#scrubber.scrub(failureSentence(result)));
-    this.#finished = true;
+    if (failed) throw this.#filter.error(failureSentence(result));
     return { type: "agent.finished", agent: this.#agentId, output: result.text };
   }
 
@@ -179,13 +177,6 @@ export class StreamJsonReader {
     return new Error(
       "Claude Code printed a line that isn't stream-json, so Halonic stopped the run.",
     );
-  }
-
-  /** The event with the bridge token removed from every string in it: prompts, args, results and output. */
-  #withoutToken(event: HarnessEvent): HarnessEvent {
-    // `scrubValue` changes only the text of strings and keeps the shape, so
-    // the copy is still the same kind of event.
-    return this.#scrubber.scrubValue(event) as HarnessEvent;
   }
 }
 
