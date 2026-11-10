@@ -305,6 +305,11 @@ export interface Vcs {
    * @throws when it doesn't apply cleanly: `The change no longer matches the file.`
    */
   applyPatch(patch: string, options?: VcsApplyOptions): Promise<void>;
+  // SHIM (HAL-3317, local only): replaced by the port in PR 2b (HAL-3245, plan points 8 and 9).
+  commitVersion(options: { message: string; include?: string[]; exclude: string[] }): Promise<string>;
+  commitWorktreeTo(worktreeId: string, ref: string, options: { parent: string }): Promise<string>;
+  readRef(ref: string): Promise<string | null>;
+  deleteRef(ref: string): Promise<void>;
   /** Make the folder a repository, ignoring `.studio`, the folder Halonic keeps its runtime data in. */
   init(): Promise<void>;
   /** The remote names, such as "origin". */
