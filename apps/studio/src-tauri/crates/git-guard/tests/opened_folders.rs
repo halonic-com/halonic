@@ -190,6 +190,66 @@ fn opened_folders_refuses_a_nested_repository_whose_git_folder_is_outside() {
     assert_eq!(sandbox.git("status"), Err(GitError::FolderNotOpened));
 }
 
+/// A folder `path` in `acme`, not added, whose `.git` file points at
+/// [`outside_repository`].
+#[cfg(unix)]
+fn untracked_link_to_outside(sandbox: &Sandbox, path: &str) {
+    let outside = outside_repository(sandbox);
+    let folder = sandbox.temporary.folder(&format!("acme/{path}"));
+    std::fs::write(
+        folder.join(".git"),
+        format!("gitdir: {}\n", outside.join(".git").display()),
+    )
+    .expect("the git file writes");
+}
+
+/// Whether plain git's index in `acme` holds a gitlink: `add` read the
+/// outside repository's `HEAD` to record it.
+#[cfg(unix)]
+fn plain_git_recorded_a_gitlink(sandbox: &Sandbox) -> bool {
+    let output = support::plain_git(&sandbox.acme, &["ls-files", "--stage"]);
+    String::from_utf8_lossy(&output.stdout).contains("160000 ")
+}
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_refuses_an_untracked_nested_repository_whose_git_folder_is_outside() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    // Inside a folder that isn't tracked either, where git still finds it.
+    untracked_link_to_outside(&sandbox, "lib/vendor");
+    assert_eq!(sandbox.git("add -A"), Err(GitError::FolderNotOpened));
+    assert_eq!(sandbox.git("status"), Err(GitError::FolderNotOpened));
+    plain_git_ok(&sandbox.acme, &["add", "-A"]);
+    assert!(plain_git_recorded_a_gitlink(&sandbox));
+}
+
+#[cfg(unix)]
+#[test]
+fn opened_folders_refuses_an_ignored_nested_repository_only_for_a_forced_add() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.write(".gitignore", "vendor/\n");
+    untracked_link_to_outside(&sandbox, "vendor");
+    sandbox.git_ok("status");
+    sandbox.git_ok("add -A");
+    assert_eq!(
+        sandbox.git("add -f -- vendor"),
+        Err(GitError::FolderNotOpened)
+    );
+    plain_git_ok(&sandbox.acme, &["add", "-f", "--", "vendor"]);
+    assert!(plain_git_recorded_a_gitlink(&sandbox));
+}
+
+#[test]
+fn opened_folders_allows_an_untracked_nested_repository_inside() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    let vendor = sandbox.temporary.folder("acme/vendor");
+    plain_git_ok(&vendor, &["init", "-q"]);
+    sandbox.git_ok("status");
+}
+
 /// [`outside_repository`] with its objects in one pack and its refs in
 /// `packed-refs`.
 #[cfg(unix)]

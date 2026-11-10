@@ -144,6 +144,18 @@ pub(crate) fn gitlinks(listing: &[u8]) -> Result<Vec<PathBuf>, GitError> {
     Ok(paths)
 }
 
+/// The paths of the repositories nested in the work tree but not in the
+/// index, in the output of `ls-files --others -z`, relative to the top
+/// folder. git lists each as its folder with a `/` at the end, and lists
+/// nothing inside it; every other entry is a file.
+pub(crate) fn untracked_repositories(listing: &[u8]) -> Result<Vec<PathBuf>, GitError> {
+    listing
+        .split(|byte| *byte == 0)
+        .filter_map(|entry| entry.strip_suffix(b"/"))
+        .map(path_from_git)
+        .collect()
+}
+
 /// A path as git wrote it: raw bytes on Unix, where a file name need not be
 /// UTF-8, and UTF-8 on Windows.
 pub(crate) fn path_from_git(bytes: &[u8]) -> Result<PathBuf, GitError> {
@@ -162,7 +174,7 @@ pub(crate) fn path_from_git(bytes: &[u8]) -> Result<PathBuf, GitError> {
 
 #[cfg(test)]
 mod tests {
-    use super::gitlinks;
+    use super::{gitlinks, untracked_repositories};
     use std::path::PathBuf;
 
     #[test]
@@ -175,6 +187,15 @@ mod tests {
                 PathBuf::from("vendor/acme"),
                 PathBuf::from("with\ttab")
             ])
+        );
+    }
+
+    #[test]
+    fn opened_folders_finds_the_untracked_repositories_in_a_listing() {
+        let listing = b"notes.md\x00lib/vendor/\x00lib/readme.md\x00top/\x00";
+        assert_eq!(
+            untracked_repositories(listing),
+            Ok(vec![PathBuf::from("lib/vendor"), PathBuf::from("top")])
         );
     }
 }

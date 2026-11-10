@@ -11,7 +11,7 @@ use crate::repo_config::{
     ConfigEntry, add_repository_filters, blank_filters, check_listing, check_refused_keys,
     has_command_entry, neutralise_programs, parse_listing,
 };
-use crate::repository::{LOCATE_ARGS, Repository, check_located, gitlinks};
+use crate::repository::{LOCATE_ARGS, Repository, check_located, gitlinks, untracked_repositories};
 
 /// Config the runner gives every call (requirement `git-hardening`), after
 /// `core.hooksPath` and before what neutralises the repository's own config. It is given in the environment (`GIT_CONFIG_COUNT`),
@@ -182,6 +182,7 @@ impl GitRunner {
         add_repository_filters(&entries, &mut filters);
         let mut visited = vec![repository.top.clone()];
         self.add_nested_filters(folders, &repository, &mut visited, &mut filters, deadline)?;
+        self.check_untracked_nested(folders, &repository, call, deadline)?;
         let mut overrides = blank_filters(&filters);
         overrides.extend(neutralise_programs(&entries));
         Ok(Ok(Checked {
@@ -249,6 +250,33 @@ impl GitRunner {
             let entries = self.read_config(&nested.top, Some(&nested), deadline)?;
             add_repository_filters(&entries, filters);
             self.add_nested_filters(folders, &nested, visited, filters, deadline)?;
+        }
+        Ok(())
+    }
+
+    /// Checks every repository nested in `repository` that isn't a gitlink
+    /// yet, as [`Self::add_nested_filters`] does for the tracked ones: `add`
+    /// would record it as one, and reads its `HEAD` and refs to do so.
+    /// git looks at no other part of it. Ignored ones are listed only for a
+    /// forced `add`, the one call that records them.
+    fn check_untracked_nested(
+        &self,
+        folders: &OpenedFolders,
+        repository: &Repository,
+        call: &CheckedCall,
+        deadline: Instant,
+    ) -> Result<(), GitError> {
+        let mut args = vec!["ls-files", "--others", "-z"];
+        if !adds_ignored_files(call) {
+            args.push("--exclude-standard");
+        }
+        let listing = self.run_internal(&repository.top, Some(repository), &args, deadline)?;
+        check_listing(listing.code)?;
+        for path in untracked_repositories(&listing.stdout)? {
+            let folder = repository.top.join(path);
+            let located = self.run_internal(&folder, None, LOCATE_ARGS, deadline)?;
+            check_listing(located.code)?;
+            check_located(folders, &located.stdout, deadline)?;
         }
         Ok(())
     }
@@ -347,6 +375,16 @@ impl GitRunner {
 
 /// Gives git config in the environment: `GIT_CONFIG_COUNT`, then a
 /// `GIT_CONFIG_KEY_<n>` and `GIT_CONFIG_VALUE_<n>` for each entry.
+/// Whether the call is `add` with `--force`, which adds ignored files too.
+/// A path named `-f` after `--` counts as well; that only lists more.
+fn adds_ignored_files(call: &CheckedCall) -> bool {
+    call.subcommand() == "add"
+        && call
+            .args()
+            .iter()
+            .any(|arg| arg == "-f" || arg == "--force")
+}
+
 fn set_config(command: &mut Command, config: &[(OsString, OsString)]) {
     command.env("GIT_CONFIG_COUNT", config.len().to_string());
     for (index, (key, value)) in config.iter().enumerate() {
