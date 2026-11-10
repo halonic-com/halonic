@@ -49,6 +49,9 @@ export type StartedAt =
   | { readonly day: "thisYear"; readonly date: CalendarDay; readonly time: string }
   | { readonly day: "earlier"; readonly date: CalendarDay; readonly year: number };
 
+/** When a run ended: how many minutes ago within the hour, else as {@link StartedAt}. */
+export type EndedAt = { readonly day: "withinTheHour"; readonly minutes: number } | StartedAt;
+
 /**
  * When a waiting run's timer is due, in the computer's own time zone, as the
  * What column writes it. Times are already written as "14:00".
@@ -251,6 +254,17 @@ export function happenedInWords(at: StartedAt): string {
     case "earlier":
       return `on ${dayInWords(at.date)} ${at.year}`;
   }
+}
+
+/**
+ * When a run ended, as `runsMessages.notWaiting` ends with it:
+ * whole minutes within the hour ("2 min ago", never "0 min ago"), else as
+ * {@link happenedInWords} writes it ("at 10:31", "yesterday at 16:40").
+ * cli-output 3.4 shows only "2 min ago"; the rest is team wording on
+ * HAL-2742, as HAL-2282 allows.
+ */
+export function endedInWords(ended: EndedAt): string {
+  return ended.day === "withinTheHour" ? `${ended.minutes} min ago` : happenedInWords(ended);
 }
 
 function dueInWords(due: DueAt): string {

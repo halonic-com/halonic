@@ -3,11 +3,8 @@ import { chmod, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { RunHistory } from "@halonicjs/app";
-import type { IdGenerator } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
-import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliCommand } from "../../command.ts";
@@ -16,15 +13,13 @@ import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { goldenText, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
+import { testRunSetup } from "../../test/run-setup.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
 import { runCommandWith } from "./command.ts";
 
 /** The Acme example, on the test model: Support reply takes Sam's email down the refund path. */
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 const golden = (name: string) => join(import.meta.dirname, "golden", name);
-
-/** 10 Nov 2026, 14:01 UTC: when the engine's fixed clock starts. */
-const start = Date.UTC(2026, 10, 10, 14, 1);
 
 let folder: string;
 let acme: string;
@@ -39,12 +34,6 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-/** Ids that end in 01jd8q, so the short run id is the same every time. */
-function fixedIds(): IdGenerator {
-  let count = 0;
-  return { next: (prefix) => `${prefix}_mfx3k2a${count++}_01jd8q` };
-}
-
 /** A profile folder of its own, so each golden mode starts with no runs. */
 function freshProfile(): ProfileEnvironment {
   const home = mkdtempSync(join(folder, "profile-"));
@@ -53,21 +42,7 @@ function freshProfile(): ProfileEnvironment {
 
 /** `halonic run` on a fixed clock and fixed ids, with its runs and trust records in `profile`. */
 function runCommand(profile: ProfileEnvironment = freshProfile()): CliCommand {
-  return runCommandWith({
-    clock: () => ({ now: new Date(start + 60_000), timeZone: "UTC" }),
-    trust: () => ({
-      trustStore: new FileTrustStore(join(folder, "trust")),
-      clock: fixedClock(start),
-      commandSearch: { path: undefined, endings: [] },
-    }),
-    http: {
-      fetch: async () => {
-        throw new TypeError("The test model calls no server.");
-      },
-    },
-    profile,
-    engine: { clock: fixedClock(start, 0), ids: fixedIds() },
-  });
+  return runCommandWith(testRunSetup(folder, profile));
 }
 
 async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }> {

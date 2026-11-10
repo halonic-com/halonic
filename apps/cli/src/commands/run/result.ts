@@ -39,17 +39,27 @@ export interface RunResultFacts {
  * // { exitCode: 0, lines: ["Running Support reply in acme · run 01jd8q", "", "✓ Read the email …", …], json: { run, events } }
  */
 export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult {
+  const definitions = runViewDefinitions(facts.workspace, run.summary);
+  const heading = runHeading(run.summary, definitions, facts.workspaceName);
+  const progress = runProgress(run, facts);
+  return { ...progress, lines: [heading, ...progress.lines] };
+}
+
+/**
+ * What {@link runResult} prints after the heading: a blank line and the step
+ * lines, then the ending. `halonic runs send` prints the same once the run
+ * it answered ends or waits again.
+ */
+export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResult {
   const { summary, events } = run;
   const definitions = runViewDefinitions(facts.workspace, summary);
   const title = workflowTitle(definitions.workflow, summary);
   const steps = runStepLines(events, summary, definitions, facts.clock);
-  const heading = runHeading(summary, definitions, facts.workspaceName);
   return {
     // A run that couldn't try every step didn't pass, so a script must not take it as done.
     exitCode:
       summary.status === "failed" || summary.status === "cant-try" ? exitCode.failed : exitCode.ok,
     lines: [
-      heading,
       ...(steps.length === 0 ? [] : [[], ...steps]),
       ...ending(run, title, definitions, facts),
       ...unusedEventsLines(facts.unusedEvents ?? []),

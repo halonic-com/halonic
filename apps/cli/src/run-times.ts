@@ -3,7 +3,7 @@
 // `runs show` and its step lines all say "10:31", "yesterday 16:40",
 // "3 Nov 14:05" or "3 Nov 2025" in the computer's own time zone.
 
-import type { DueAt, StartedAt } from "./messages/runs-list.ts";
+import type { DueAt, EndedAt, StartedAt } from "./messages/runs-list.ts";
 
 /** The clock and time zone run times are written in. */
 export interface RunClock {
@@ -52,7 +52,21 @@ export function dueAt(due: Date, clock: RunClock): DueAt {
   return { day: "later", date: { day: day.day, month: day.month }, time };
 }
 
-const dayInMs = 24 * 60 * 60 * 1000;
+/**
+ * When a run ended, as a refused `runs send` says it: whole minutes ago
+ * within the hour, at least 1, else as {@link startedAt} gives a time.
+ */
+export function endedAt(ended: Date, clock: RunClock): EndedAt {
+  const ago = clock.now.getTime() - ended.getTime();
+  if (ago < hourInMs) {
+    return { day: "withinTheHour", minutes: Math.max(1, Math.floor(ago / minuteInMs)) };
+  }
+  return startedAt(ended, clock);
+}
+
+const minuteInMs = 60 * 1000;
+const hourInMs = 60 * minuteInMs;
+const dayInMs = 24 * hourInMs;
 
 interface YearDay {
   readonly year: number;

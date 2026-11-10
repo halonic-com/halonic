@@ -8,8 +8,11 @@ import { dirOption } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { type RunSetup, runWorkflow } from "./run.ts";
 
-/** This computer: its clock and time zone, its trust records, `PATH` and `fetch`. */
-const computerSetup: RunSetup = {
+/**
+ * This computer: its clock and time zone, its trust records, `PATH` and
+ * `fetch`. `halonic runs send` moves a run on with the same.
+ */
+export const computerRunSetup: RunSetup = {
   clock: () => ({ now: new Date() }),
   trust: () => ({
     trustStore: new FileTrustStore(trustFolder(profileFolder(nodeProfileEnvironment()))),
@@ -44,4 +47,4 @@ export function runCommandWith(setup: RunSetup): CliCommand {
 }
 
 /** `halonic run <workflow>`: runs a workflow and follows it step by step (cli-output 3.4). */
-export const runCommand: CliCommand = runCommandWith(computerSetup);
+export const runCommand: CliCommand = runCommandWith(computerRunSetup);

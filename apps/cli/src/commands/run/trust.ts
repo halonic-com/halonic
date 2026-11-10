@@ -10,6 +10,7 @@
 import type { Clock, TrustStore } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
 import type { CommandSearch } from "../../command-paths.ts";
+import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { NotTrustedError } from "../../not-trusted.ts";
@@ -30,8 +31,11 @@ export interface RunTrustMachine {
 /**
  * Refuses to go on unless the workspace is trusted on this computer, or
  * its run can only reach the test model. A trust record that can't be read
- * counts as no trust: the run fails closed.
+ * counts as no trust: the run fails closed. `runs send` checks it too before
+ * a run goes on.
  *
+ * @param nothingDone - the end of line 1 saying nothing happened:
+ *   `runMessages.nothingRan()`, the default, or `sandboxMessages.nothingSent()`
  * @throws NotTrustedError when the workspace was never trusted here, or
  *   changed since; its check and fingerprint are shown, and nothing ran (exit 3)
  */
@@ -40,6 +44,7 @@ export async function checkRunTrust(
   workspace: LoadedWorkspace,
   machine: RunTrustMachine,
   typedDir: string | undefined,
+  nothingDone: Message = runMessages.nothingRan(),
 ): Promise<void> {
   const providers = filesOf(workspace, "provider").map((file) => file.value);
   if (reachesOnlyTheTestModel({ providers, ...trustContentInputOf(workspace) })) {
@@ -52,7 +57,9 @@ export async function checkRunTrust(
   }
   const changed = check.status === "changed";
   throw new NotTrustedError({
-    problem: changed ? runMessages.changedSinceTrusted(name) : runMessages.notTrusted(name),
+    problem: changed
+      ? runMessages.changedSinceTrusted(name, nothingDone.phrase)
+      : runMessages.notTrusted(name, nothingDone.phrase),
     fix: trustMessages.reviewThenTrust(typedDir),
     fingerprint: check.fingerprint,
     check: trustCheckLines(check, { name, folder: dir.shown }),

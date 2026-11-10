@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { RunEvent, RunEventBody } from "@halonicjs/events";
 import type { ProfileEnvironment } from "@halonicjs/profile";
+import type { RunSetup } from "../commands/run/run.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../workspace-runs.ts";
+import { testRunSetup } from "./run-setup.ts";
 
 /**
  * A folder for the `halonic runs` tests: Acme's workspace with its Support
@@ -52,6 +54,17 @@ export async function makeAcmeRuns(name: string): Promise<AcmeRuns> {
     variables: { HALONIC_HOME: join(folder, "profile") },
   };
   return { folder, acme, profile };
+}
+
+/**
+ * The `runs` commands' setup for a test: noon on 10 Nov 2026 in UTC, the
+ * test's own profile folder, and trust records in the test's folder.
+ */
+export function acmeRunsSetup(runs: AcmeRuns): RunSetup {
+  return {
+    ...testRunSetup(runs.folder, runs.profile),
+    clock: () => ({ now, timeZone: "UTC" }),
+  };
 }
 
 export async function removeAcmeRuns(runs: AcmeRuns): Promise<void> {

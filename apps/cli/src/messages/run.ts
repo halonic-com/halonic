@@ -88,12 +88,15 @@ export const runMessages = defineMessages("run", {
    * JSON, because single-quoted JSON doesn't survive cmd or Windows PowerShell 5.1.
    */
   inputFix: () => phrase`Pass a JSON object, in a file or as text, such as --input input.json.`,
-  /** Line 1's reason when the workspace was never trusted here: F16, then "Nothing ran." (exit 3). */
-  notTrusted: (workspace: string) =>
-    phrase`${trustMessages.notTrustedYet(workspace).phrase} ${nothingRan}`,
+  /**
+   * Line 1's reason when the workspace was never trusted here: F16, then
+   * "Nothing ran." (exit 3), or `runs send`'s "Nothing was sent.".
+   */
+  notTrusted: (workspace: string, nothingDone: Phrase = nothingRan) =>
+    phrase`${trustMessages.notTrustedYet(workspace).phrase} ${nothingDone}`,
   /** The same, when it changed since it was trusted. */
-  changedSinceTrusted: (workspace: string) =>
-    phrase`${workspace} changed since you trusted it. ${nothingRan}`,
+  changedSinceTrusted: (workspace: string, nothingDone: Phrase = nothingRan) =>
+    phrase`${workspace} changed since you trusted it. ${nothingDone}`,
 
   heading: (title: string, workspace: string, runId: string) =>
     phrase`Running ${title} in ${workspace} ${markPart("separator")} run ${runId}`,
