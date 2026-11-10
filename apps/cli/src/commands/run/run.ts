@@ -6,6 +6,7 @@
 // into lines (`result.ts`).
 
 import {
+  type FollowOptions,
   hubWorkflows,
   type RunDetail,
   RunEventRefused,
@@ -41,6 +42,7 @@ import type { RunClock } from "../../run-times.ts";
 import { runViewDefinitions } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { runInputOf } from "./input.ts";
+import { liveLines } from "./live-lines.ts";
 import { runResult, stoppedResult } from "./result.ts";
 import { stuckTimerWatch } from "./stuck-timers.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
@@ -96,23 +98,16 @@ export async function runWorkflow(
     ...setup.engine,
   });
   const signal = AbortSignal.any([context.signal, stuck.signal]);
+  // One clock for the lines printed while the run goes and the result that repeats them.
+  const clock = setup.clock();
+  const live = liveLines(context, { workspace, workspaceName, clock });
   try {
     const events = eventsOf(input);
-    const run = await followWithEvents(
-      engine,
-      workspace,
-      workspaceName,
-      typed,
-      runInput,
-      events,
+    const run = await followWithEvents(engine, workspace, workspaceName, typed, runInput, events, {
       signal,
-    );
-    return runResult(run, {
-      workspace,
-      workspaceName,
-      dir: typedDir,
-      clock: setup.clock(),
+      onEvent: live.onEvent,
     });
+    return runResult(run, { workspace, workspaceName, dir: typedDir, clock });
   } catch (error) {
     if (stuck.signal.aborted) {
       throw stuck.signal.reason;
@@ -123,6 +118,7 @@ export async function runWorkflow(
     // An `AbortError` from a Ctrl C before the run started: `runCli` prints "Stopped.".
     throw error;
   } finally {
+    live.end();
     await engine.close();
   }
 }
@@ -130,7 +126,8 @@ export async function runWorkflow(
 /**
  * Starts the run and, each time it waits for the user, sends the next of
  * `events` and follows it on, until it ends, waits with no event left, or
- * waits for something else.
+ * waits for something else. Every follow gets `follow`'s signal and
+ * `onEvent`.
  */
 async function followWithEvents(
   engine: LocalEngine,
@@ -139,10 +136,10 @@ async function followWithEvents(
   typed: string,
   runInput: Record<string, unknown>,
   events: readonly string[],
-  signal: AbortSignal,
+  follow: Required<Pick<FollowOptions, "signal" | "onEvent">>,
 ): Promise<RunDetail> {
   const workflowRuns = new WorkflowRuns(engine.executor);
-  const started = await workflowRuns.startRun(workspace, typed, runInput, { signal });
+  const started = await workflowRuns.startRun(workspace, typed, runInput, follow);
   if (started.found === "several") {
     throw new OwnLineError(
       "invalid_input",
@@ -159,7 +156,7 @@ async function followWithEvents(
     if (run.summary.status !== "waiting") break;
     const before = run.summary.lastSeq;
     const sent = await sendEvent(runEvents, workspace, run, event);
-    run = await workflowRuns.follow(run.summary.id, { after: before, signal });
+    run = await workflowRuns.follow(run.summary.id, { ...follow, after: before });
     // Someone else answered the wait first, such as in Studio: show where the run is now.
     if (!sent) break;
   }

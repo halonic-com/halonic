@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { paintFor } from "../output/paint.ts";
-import { columns } from "./columns.ts";
+import { columns, columnsAs } from "./columns.ts";
 import { dim, markPart, type Phrase, phrase, plainText, renderPhrase } from "./phrase.ts";
 
 const piped = paintFor({ colour: false, live: false, unicode: true });
@@ -43,5 +43,25 @@ verifies("cli.columns", () => {
 
   it("makes no lines from no rows", () => {
     expect(columns([])).toEqual([]);
+  });
+});
+
+verifies("cli.run-live", () => {
+  it("takes the widths from other rows, so a line printed early never needs widening", () => {
+    const widthRows = [
+      [phrase`${markPart("done")} Approve this reply?`],
+      [phrase`${markPart("done")} Read the email`, phrase`Writer`],
+    ];
+    const lines = columnsAs(
+      [[phrase`${markPart("done")} Read the email`, phrase`Writer`, phrase`1 s`]],
+      widthRows,
+    );
+    expect(shown(lines)).toEqual(["✓ Read the email        Writer   1 s"]);
+    expect(shown(lines, oldConsole)).toEqual(["ok Read the email        Writer   1 s"]);
+  });
+
+  it("gives a cell wider than its column the three spaces still", () => {
+    const lines = columnsAs([[phrase`An agent that is gone`, phrase`1 s`]], [[phrase`Writer`]]);
+    expect(shown(lines)).toEqual(["An agent that is gone   1 s"]);
   });
 });

@@ -9,9 +9,9 @@ import { hubWorkflows, shortRunId, type WorkflowDefinition, workflowIn } from "@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { KindValues } from "@halonicjs/format";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import { columns } from "./messages/columns.ts";
+import { columns, columnsAs, columnWidths, paddingAfter } from "./messages/columns.ts";
 import { duration } from "./messages/duration.ts";
-import type { Phrase } from "./messages/phrase.ts";
+import { type Phrase, phrase } from "./messages/phrase.ts";
 import { type RunReceipt, runMessages } from "./messages/run.ts";
 import { runsMessages } from "./messages/runs.ts";
 import { runsListMessages, startedInWords } from "./messages/runs-list.ts";
@@ -66,9 +66,59 @@ export function stepLines(
   summary: RunSummary,
   definitions: RunDefinitions,
   clock: RunClock,
+  widths?: StepColumns,
 ): Phrase[] {
   const rows = runSteps(events, summary).map((step) => stepRow(step, definitions, clock));
-  return columns(rows);
+  return widths === undefined ? columns(rows) : columnsAs(rows, widths.rows);
+}
+
+/**
+ * Column widths for step lines that don't depend on which steps ran, so
+ * a line printed while the run goes never needs widening (cli-output 3.4,
+ * "Live, in a terminal"). They come from the workflow's definition: each
+ * step's name with the widest mark, and what runs it, "Writer · smart".
+ * An end state is no step, so it doesn't count.
+ */
+export interface StepColumns {
+  /** One row per step of the workflow, for {@link columnsAs}; never printed. */
+  readonly rows: readonly (readonly Phrase[])[];
+}
+
+/** The {@link StepColumns} of the run's workflow; none when the workflow is gone. */
+export function stepColumns(definitions: RunDefinitions): StepColumns {
+  const states = Object.entries(definitions.workflow?.states ?? {});
+  const rows = states
+    .filter(([, state]) => state.type !== "final")
+    .map(([stateId, state]) => {
+      // ✓ is the widest mark with and without UTF-8 ("ok"), as wide as ◌ ("..").
+      const name = runsMessages.step("done", stepName(stateId, state.description)).phrase;
+      const facts = agentFacts(stateId, state.agent, definitions);
+      return facts.length === 0 ? [name] : [name, runMessages.stepFacts(facts).phrase];
+    });
+  return { rows };
+}
+
+/**
+ * What the live ◌ line of a step says after the mark: its name, padded to
+ * the step column, then what runs it, as its ✓ line will (cli-output 3.4):
+ * "Draft a reply    Writer · smart". The agent comes from the definition,
+ * since the step's line is drawn before its agent starts.
+ */
+export function stepDoing(
+  stateId: string,
+  definitions: RunDefinitions,
+  widths: StepColumns,
+): Phrase {
+  const state = definitions.workflow?.states[stateId];
+  const name = stepName(stateId, state?.description);
+  const facts = agentFacts(stateId, state?.agent, definitions);
+  if (facts.length === 0) {
+    return [name];
+  }
+  // Padded as the whole cell "◌ Draft a reply" is, so the facts line up with the ✓ lines.
+  const cell = runsMessages.step("working", name).phrase;
+  const [nameWidth] = columnWidths(widths.rows);
+  return phrase`${name}${paddingAfter(cell, nameWidth)}${runMessages.stepFacts(facts).phrase}`;
 }
 
 /**
@@ -105,7 +155,7 @@ function askedTheUser(event: RunEvent): boolean {
 function stepRow(step: RunStep, definitions: RunDefinitions, clock: RunClock): Phrase[] {
   const state = definitions.workflow?.states[step.stateId];
   const name = runsMessages.step(markOf(step), stepName(step.stateId, state?.description)).phrase;
-  const facts = agentFacts(step, definitions);
+  const facts = agentFacts(step.stateId, step.agentId, definitions);
   const at = (iso: string) => startedInWords(startedAt(new Date(iso), clock));
   const { end } = step;
   switch (end.kind) {
@@ -153,15 +203,19 @@ function markOf(step: RunStep): Mark {
  * no facts. All of it comes from workspace files, so it is made printable
  * (cli-output section 5).
  */
-function agentFacts(step: RunStep, definitions: RunDefinitions): string[] {
-  if (step.agentId === undefined) {
+function agentFacts(
+  stateId: string,
+  agentId: string | undefined,
+  definitions: RunDefinitions,
+): string[] {
+  if (agentId === undefined) {
     return [];
   }
-  const agent = definitions.agent(step.agentId);
+  const agent = definitions.agent(agentId);
   if (agent === undefined) {
-    return [printable(step.agentId)];
+    return [printable(agentId)];
   }
-  const method = definitions.workflow?.states[step.stateId]?.method;
+  const method = definitions.workflow?.states[stateId]?.method;
   const model = (method === undefined ? undefined : agent.methods[method]?.model) ?? agent.model;
   const facts = model === undefined ? [agent.name] : [agent.name, model];
   return facts.map(printable);

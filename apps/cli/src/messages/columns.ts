@@ -23,28 +23,57 @@ export const columnGap = 3;
  * // "! Needs you   01jd9a"
  */
 export function columns(rows: readonly (readonly Phrase[])[]): Phrase[] {
-  const widths = columnWidths(rows);
+  return columnsAs(rows, rows);
+}
+
+/**
+ * Lines up rows of cells into the columns `widthRows` make: each column as
+ * wide as its longest cell in `widthRows`, which needn't be the rows
+ * printed. A command that prints a line before it knows the lines after it,
+ * such as `halonic run`, takes the widths from what could come, so no line
+ * printed early needs widening later. A cell wider than its column still
+ * gets {@link columnGap} spaces after it, so it pushes the rest of its row
+ * on.
+ *
+ * @example
+ * columnsAs([[phrase`✓ Read the email`, phrase`Writer`]], [[phrase`! Approve this reply?`, phrase`x`]]);
+ * // "✓ Read the email        Writer"
+ */
+export function columnsAs(
+  rows: readonly (readonly Phrase[])[],
+  widthRows: readonly (readonly Phrase[])[],
+): Phrase[] {
+  const widths = columnWidths(widthRows);
   return rows.map((cells) =>
     cells.flatMap((cell, index): Part[] => {
       const width = widths[index];
-      if (index === cells.length - 1 || width === undefined) {
+      if (index === cells.length - 1) {
         return [...cell];
       }
-      const padding = {
-        unicode: width.unicode - visibleLength(cell, true) + columnGap,
-        ascii: width.ascii - visibleLength(cell, false) + columnGap,
-      };
-      return [...cell, { padding }];
+      return [...cell, paddingAfter(cell, width)];
     }),
   );
 }
 
-interface ColumnWidth {
+/** How wide a column is in a stream with and without UTF-8 marks. */
+export interface ColumnWidth {
   readonly unicode: number;
   readonly ascii: number;
 }
 
-function columnWidths(rows: readonly (readonly Phrase[])[]): ColumnWidth[] {
+/**
+ * The spaces after `cell` up to the next column: what's left of `width`,
+ * then {@link columnGap}. A cell that is wider than `width`, or a column
+ * with no width, gets only the gap.
+ */
+export function paddingAfter(cell: Phrase, width: ColumnWidth | undefined): Part {
+  const left = (columnWidth: number | undefined, unicode: boolean) =>
+    Math.max(0, (columnWidth ?? 0) - visibleLength(cell, unicode)) + columnGap;
+  return { padding: { unicode: left(width?.unicode, true), ascii: left(width?.ascii, false) } };
+}
+
+/** How wide each column of `rows` is: as wide as its longest cell. */
+export function columnWidths(rows: readonly (readonly Phrase[])[]): ColumnWidth[] {
   const widths: ColumnWidth[] = [];
   for (const cells of rows) {
     cells.forEach((cell, index) => {

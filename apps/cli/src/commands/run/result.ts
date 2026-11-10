@@ -5,7 +5,7 @@
 // so both say the same about a run. The words are the catalogue's.
 
 import { type RunDetail, shortRunId } from "@halonicjs/app";
-import { type RunEvent, summarize } from "@halonicjs/events";
+import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandResult, StoppedResult } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
@@ -15,7 +15,7 @@ import { stepName } from "../../messages/step-name.ts";
 import { workspaceModelsOf } from "../../run-failure-of.ts";
 import { runSteps } from "../../run-steps.ts";
 import type { RunClock } from "../../run-times.ts";
-import { type RunDefinitions, runViewDefinitions, stepLines } from "../../run-view.ts";
+import { type RunDefinitions, runViewDefinitions, stepColumns, stepLines } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
 import { showEnding } from "../runs/show-ending.ts";
 
@@ -42,9 +42,8 @@ export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult 
   const { summary, events } = run;
   const definitions = runViewDefinitions(facts.workspace, summary);
   const title = workflowTitle(definitions.workflow, summary);
-  const runId = shortRunId(summary.id);
-  const steps = stepLines(events, summary, definitions, facts.clock);
-  const heading = runMessages.heading(title, facts.workspaceName, runId).phrase;
+  const steps = runStepLines(events, summary, definitions, facts.clock);
+  const heading = runHeading(summary, definitions, facts.workspaceName);
   return {
     exitCode: summary.status === "failed" ? exitCode.failed : exitCode.ok,
     lines: [
@@ -54,6 +53,30 @@ export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult 
     ],
     json: { run: summary, events },
   };
+}
+
+/** "Running Support reply in acme · run 01jd8q": the first line, printed as soon as the run starts. */
+export function runHeading(
+  summary: RunSummary,
+  definitions: RunDefinitions,
+  workspaceName: string,
+): Phrase {
+  const title = workflowTitle(definitions.workflow, summary);
+  return runMessages.heading(title, workspaceName, shortRunId(summary.id)).phrase;
+}
+
+/**
+ * The step lines, in the workflow's own columns rather than those of the
+ * steps that ran: a step's line is printed as soon as it ends, and the
+ * result repeats it word for word (`live-lines.ts`).
+ */
+export function runStepLines(
+  events: readonly RunEvent[],
+  summary: RunSummary,
+  definitions: RunDefinitions,
+  clock: RunClock,
+): Phrase[] {
+  return stepLines(events, summary, definitions, clock, stepColumns(definitions));
 }
 
 /**
