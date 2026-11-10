@@ -9,7 +9,7 @@ import {
 } from "@halonicjs/app";
 import type { Scheduler, SchedulerListener } from "@halonicjs/ports";
 import { LocalExecutor, type LocalExecutorOptions } from "./local-executor.ts";
-import type { LocalRunsOptions } from "./run/local-runs.ts";
+import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 
 /** A scheduler the host may stop, such as `NodeScheduler`, whose `close` waits for its deliveries. */
 export type LocalEngineScheduler = Scheduler & { close?(): Promise<void> };

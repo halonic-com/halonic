@@ -4,22 +4,15 @@
 
 import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
 import type {
-  BlobStore,
   Clock,
-  IdGenerator,
   RunEventListener,
-  RunStore,
   RunSubscription,
   ScheduledTimer,
-  Scheduler,
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
-import type { Budget } from "../budget/budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
-import { spendOf } from "../budget/spend.ts";
-import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog } from "../harness/serial-run-log.ts";
 import { checkStartTimeouts } from "../harness/start-limits.ts";
@@ -28,7 +21,6 @@ import type {
   DecideInput,
   Effect,
   ModelCallResult,
-  RunDefinitions,
   StartChildEffect,
   ToolResult,
 } from "../kernel/decide-types.ts";
@@ -41,51 +33,14 @@ import {
 import { callOf, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf } from "./child-runs.ts";
-import type { RunConnectorCalls } from "./connector-calls.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { LiveHarnessCalls } from "./live-harness-calls.ts";
+import { budgetCheckOf, builtEffectsOf, type LocalRunsOptions } from "./local-runs-options.ts";
 import { providerTextOf } from "./provider-text-of.ts";
 import { RunConnectorCallRunner } from "./run-connector-call-runner.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { RunFeed } from "./run-feed.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
-
-/** What the local executor needs to run workflows, on top of what chat turns need. */
-export interface LocalRunsOptions {
-  readonly store: RunStore;
-  /** Where each run keeps the definitions it started with. */
-  readonly blobs: BlobStore;
-  /**
-   * Wakes runs. Its listener's `onTimer` must call the executor's `onTimer`;
-   * create it with a listener that forwards to the executor once it exists.
-   */
-  readonly scheduler: Scheduler;
-  /** Gives a run its id when the start request names none. */
-  readonly ids: IdGenerator;
-  /**
-   * The definitions a new run of a workflow starts with, as the workspace has
-   * them now. The run keeps them, and never reads the workspace again.
-   *
-   * @throws when the hub or the workflow doesn't exist
-   */
-  definitionsOf(hubId: string, workflowId: string): Promise<RunDefinitions>;
-  /**
-   * What runs whose agents name a harness need. Without it, such a run fails
-   * at its harness step with an error that names the `run-harness` effect.
-   */
-  readonly harnesses?: HarnessRunsOptions;
-  /**
-   * The workspace's run and monthly budget as it is now, read before every
-   * model call and harness run; `undefined` sets none. Without it, no budget
-   * stops a run.
-   */
-  budget?(): Promise<Budget | undefined>;
-  /**
-   * What runs need to reach connectors. Without it, a run's model call
-   * offers no connector's tools, and a `call-tool` effect fails the run.
-   */
-  readonly connectorCalls?: RunConnectorCalls;
-}
 
 /**
  * Carries out a model call a run waits on, and gives the model's answer, or
@@ -115,24 +70,6 @@ const toolTimer = "tool:";
 
 /** How a call a run waits on is carried out: a model call, or a run of the agent's harness. */
 type CallKind = "model" | "harness";
-
-/**
- * The effects this executor carries out: harness runs only when it has
- * `harnesses`, and connector calls only when it has `connectorCalls`.
- */
-function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["type"]> {
-  const built: Effect["type"][] = ["call-model", "set-timer", "start-child", "tell-parent"];
-  if (options.harnesses !== undefined) built.push("run-harness");
-  if (options.connectorCalls !== undefined) built.push("call-tool");
-  return new Set(built);
-}
-
-/** The budget check of runs in `options.store`, when the options give a budget. */
-function budgetCheckOf(options: LocalRunsOptions): BudgetCheck | undefined {
-  const budget = options.budget;
-  if (budget === undefined) return undefined;
-  return { budget, spend: (run, at) => spendOf(options.store, run, at) };
-}
 
 /** Without `connectorCalls`, no `call-tool` effect gets this far; this answers one anyway. */
 const noConnectorCalls: CallTool = async () => ({
