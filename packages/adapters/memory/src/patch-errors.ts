@@ -3,11 +3,19 @@
  * can be refreshed, a patch the Vcs will never apply can't.
  */
 
-/** Thrown when a hunk's old lines aren't in the file, or a file to create already exists. */
+/**
+ * Thrown when a hunk's old lines aren't in the file, or a file to create
+ * already exists. The message starts with the sentence the `Vcs` port
+ * promises, then names the file, for a patch that changes several.
+ */
 export class PatchMismatchError extends Error {
-  constructor() {
-    super("The change no longer matches the file.");
+  /** The file that doesn't match. */
+  readonly path: string;
+
+  constructor(path: string) {
+    super(`The change no longer matches the file. (${path})`);
     this.name = "PatchMismatchError";
+    this.path = path;
   }
 }
 

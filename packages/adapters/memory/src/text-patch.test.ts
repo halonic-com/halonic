@@ -248,6 +248,90 @@ verifies("memory.text-patch", () => {
       expect(results).toEqual(new Map([["d.yaml", null]]));
     });
 
+    const keep = unifiedDiff("keep.yaml", "k\n", "K\n");
+    const section = (...text: string[]) => `${text.join("\n")}\n`;
+    it.each([
+      [
+        "a pure rename",
+        section(
+          "diff --git a/x.yaml b/y.yaml",
+          "similarity index 100%",
+          "rename from x.yaml",
+          "rename to y.yaml",
+        ),
+        "names two paths",
+      ],
+      [
+        "a copy",
+        section("diff --git a/x.yaml b/x.yaml", "copy from x.yaml", "copy to y.yaml"),
+        '"copy from"',
+      ],
+      [
+        "a mode change",
+        section("diff --git a/x.yaml b/x.yaml", "old mode 100644", "new mode 100755"),
+        '"old mode"',
+      ],
+      [
+        "a symbolic link",
+        section(
+          "diff --git a/l b/l",
+          "new file mode 120000",
+          "index 0000000..1111111",
+          "--- /dev/null",
+          "+++ b/l",
+          "@@ -0,0 +1 @@",
+          "+target",
+          "\\ No newline at end of file",
+        ),
+        "mode 120000",
+      ],
+      [
+        "a gitlink",
+        section(
+          "diff --git a/s b/s",
+          "new file mode 160000",
+          "index 0000000..1111111",
+          "--- /dev/null",
+          "+++ b/s",
+          "@@ -0,0 +1 @@",
+          "+Subproject commit 1111111111111111111111111111111111111111",
+        ),
+        "mode 160000",
+      ],
+      [
+        "the same file twice",
+        unifiedDiff("x.yaml", "a\n", "A\n") + unifiedDiff("x.yaml", "a\n", "Z\n"),
+        "changes x.yaml more than once",
+      ],
+    ])("refuses %s next to another file, before reading any", async (_, refused, reason) => {
+      for (const patch of [refused + keep, keep + refused]) {
+        const read: string[] = [];
+        const applying = patchedFiles(
+          patch,
+          false,
+          () => {},
+          async (path) => {
+            read.push(path);
+            return "a\n";
+          },
+        );
+        await expect(applying).rejects.toThrow(PatchFormatError);
+        await expect(applying).rejects.toThrow(reason);
+        expect(read).toEqual([]);
+      }
+    });
+
+    it("names the file that no longer matches", async () => {
+      const applying = patchedFiles(
+        keep + unifiedDiff("x.yaml", "a\n", "A\n"),
+        false,
+        () => {},
+        async (path) => (path === "keep.yaml" ? "k\n" : "edited\n"),
+      );
+      await expect(applying).rejects.toThrow("The change no longer matches the file. (x.yaml)");
+      await expect(applying).rejects.toMatchObject({ path: "x.yaml" });
+    });
+
     it("reverses when asked", async () => {
       const results = await patchedFiles(
         secondHunk,

@@ -7,7 +7,13 @@
  * A hunk applies only where its old lines, context included, match the file
  * exactly. Like `git apply`, it may sit at another line than its header says,
  * when lines were added or removed above it, but nothing fuzzier. Anything
- * but a text file's lines changing is refused (`git-diff-header.ts`).
+ * but a text file's lines changing is refused (`git-diff-header.ts`), and so
+ * is a patch that changes one file twice.
+ *
+ * One known difference from `git apply`: git makes a hunk that starts at
+ * line 1 match only at the start of the file, and a hunk with no context
+ * after it match only at the end. Here such a hunk may match anywhere its
+ * lines are, like any other.
  */
 
 import {
@@ -70,7 +76,23 @@ export function parsePatch(patch: string): FilePatch[] {
   }
   if (section !== null) files.push({ ...fileWithoutLines(section), hunks: [] });
   if (files.length === 0) throw new PatchFormatError("it changes no file");
+  refuseRepeatedPaths(files);
   return files;
+}
+
+/**
+ * Refuses a patch that changes one file in two sections. Each section reads
+ * the file as it was, so the second would silently replace the first's result.
+ *
+ * @throws PatchFormatError naming the first path that comes back
+ */
+function refuseRepeatedPaths(files: FilePatch[]): void {
+  const seen = new Set<string>();
+  for (const file of files) {
+    const path = filePath(file);
+    if (seen.has(path)) throw new PatchFormatError(`it changes ${path} more than once`);
+    seen.add(path);
+  }
 }
 
 /** Reads the file whose `---` line is at `lines[at]`, with its hunks; returns it and the index after it. */
@@ -106,13 +128,15 @@ export function reversePatch(file: FilePatch): FilePatch {
  * @throws PatchMismatchError when it doesn't apply cleanly
  */
 export function applyFilePatch(current: string | null, file: FilePatch): string | null {
-  if ((current === null) !== (file.oldPath === null)) throw new PatchMismatchError();
+  const mismatch = new PatchMismatchError(filePath(file));
+  if ((current === null) !== (file.oldPath === null)) throw mismatch;
   const lines = splitLines(current ?? "");
   const out: string[] = [];
   let done = 0;
   let shift = 0;
   for (const hunk of file.hunks) {
     const at = findHunk(lines, hunk, done, shift);
+    if (at === null) throw mismatch;
     out.push(...lines.slice(done, at), ...hunk.newLines);
     shift = at - startIndex(hunk);
     done = at + hunk.oldLines.length;
@@ -121,8 +145,13 @@ export function applyFilePatch(current: string | null, file: FilePatch): string 
   const text = out.join("");
   if (file.newPath !== null) return text;
   // A deletion must take every line with it.
-  if (text !== "") throw new PatchMismatchError();
+  if (text !== "") throw mismatch;
   return null;
+}
+
+/** The one path a file patch has: `parsePatch` refuses none on either side, and a rename. */
+function filePath(file: FilePatch): string {
+  return (file.newPath ?? file.oldPath) as string;
 }
 
 /** The lines of `text`, each with its newline, as `line-diff.ts` splits them. */
@@ -224,11 +253,10 @@ function startIndex(hunk: Hunk): number {
 
 /**
  * Where in `lines` the hunk's old lines are: at its header's line moved by
- * `shift` if they are there, else the nearest place at or after `from`.
- *
- * @throws PatchMismatchError when they are nowhere at or after `from`
+ * `shift` if they are there, else the nearest place at or after `from`;
+ * `null` when they are nowhere at or after `from`.
  */
-function findHunk(lines: string[], hunk: Hunk, from: number, shift: number): number {
+function findHunk(lines: string[], hunk: Hunk, from: number, shift: number): number | null {
   const expected = startIndex(hunk) + shift;
   const last = lines.length - hunk.oldLines.length;
   for (let distance = 0; distance <= lines.length; distance++) {
@@ -236,7 +264,7 @@ function findHunk(lines: string[], hunk: Hunk, from: number, shift: number): num
       if (at >= from && at <= last && matchesAt(lines, hunk.oldLines, at)) return at;
     }
   }
-  throw new PatchMismatchError();
+  return null;
 }
 
 function matchesAt(lines: string[], expected: string[], at: number): boolean {
@@ -263,8 +291,7 @@ export async function patchedFiles(
   }
   const results = new Map<string, string | null>();
   for (const file of files) {
-    // parsePatch refuses a file with no path on either side, and a rename.
-    const path = (file.newPath ?? file.oldPath) as string;
+    const path = filePath(file);
     results.set(path, applyFilePatch(await read(path), file));
   }
   return results;
