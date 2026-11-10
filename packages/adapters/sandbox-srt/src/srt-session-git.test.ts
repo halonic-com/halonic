@@ -1,4 +1,5 @@
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, lstatSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +7,7 @@ import type { SandboxBlock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { gitlinkMode, index } from "./git-index.test-helper.ts";
+import { recoverGitFolders } from "./git-folder-check.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
 
@@ -205,6 +207,60 @@ verifies("sandbox-srt.session", () => {
       expect(existsSync(dotGit)).toBe(false);
       expect(existsSync(`${dotGit}.halonic-blocked`)).toBe(true);
       expect(blocks).toEqual([{ kind: "file", path: dotGit, access: "write" }]);
+    });
+
+    describe("after a host crash", () => {
+      let sessions: string;
+      let previous: string | undefined;
+
+      beforeEach(async () => {
+        previous = process.env.TMPDIR;
+        sessions = join(base, "sessions");
+        await mkdir(sessions);
+        process.env.TMPDIR = sessions;
+      });
+
+      afterEach(() => {
+        if (previous === undefined) delete process.env.TMPDIR;
+        else process.env.TMPDIR = previous;
+      });
+
+      /** Makes the open session look like one whose host process died. */
+      function orphan(): string {
+        const dead = spawnSync(process.execPath, [
+          "-e",
+          "process.stdout.write(String(process.pid))",
+        ]);
+        const folder = join(sessions, readdirSync(sessions)[0] as string);
+        const file = join(folder, "git-folder.json");
+        const journal = JSON.parse(readFileSync(file, "utf8"));
+        writeFileSync(file, JSON.stringify({ ...journal, pid: Number(dead.stdout.toString()) }));
+        return folder;
+      }
+
+      it("undoes a commondir the program planted and removes the session folder", async () => {
+        const commondir = join(git, "commondir");
+        const linked = join(git, "worktrees", "feature", "commondir");
+        await writeFile(linked, "../..\n");
+        await open();
+        await writeFile(commondir, "../elsewhere\n");
+        await writeFile(linked, "../elsewhere\n");
+        const folder = orphan();
+        const result = await recoverGitFolders(sessions);
+        expect(existsSync(commondir)).toBe(false);
+        expect(readFileSync(linked, "utf8")).toBe("../..\n");
+        expect(result.undone.sort()).toEqual([commondir, linked].sort());
+        expect(result.failed).toEqual([]);
+        expect(existsSync(folder)).toBe(false);
+      });
+
+      it("leaves the session of a live host process alone", async () => {
+        const commondir = join(git, "commondir");
+        await open();
+        await writeFile(commondir, "../elsewhere\n");
+        expect(await recoverGitFolders(sessions)).toEqual({ undone: [], failed: [] });
+        expect(existsSync(commondir)).toBe(true);
+      });
     });
 
     it("does nothing when the working folder has no git folder", async () => {

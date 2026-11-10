@@ -14,7 +14,12 @@ import type {
 } from "@halonicjs/ports";
 import { proveFence } from "./fence-proof.ts";
 import { gitPathsToDeny } from "./git-deny-paths.ts";
-import { type GitFolderSnapshot, restoreGitFolder, snapshotGitFolder } from "./git-folder-check.ts";
+import {
+  type GitFolderSnapshot,
+  restoreGitFolder,
+  snapshotGitFolder,
+  writeJournal,
+} from "./git-folder-check.ts";
 import { type NestedGitSnapshot, snapshotNestedGit, undoNestedGit } from "./nested-git-check.ts";
 import { buildSrtConfig } from "./srt-config.ts";
 import { nodePaths, type Runner, type RunningProgram } from "./srt-runner.ts";
@@ -221,6 +226,7 @@ export class SrtSession implements SandboxSession {
     };
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
     try {
+      if (gitFolder !== null) await writeJournal(folder, gitFolder);
       const settingsPath = join(folder, "settings.json");
       const config = buildSrtConfig(profile, [folder], await gitPathsToDeny(profile.workingFolder));
       await writeFile(settingsPath, JSON.stringify(config), { mode: 0o600 });

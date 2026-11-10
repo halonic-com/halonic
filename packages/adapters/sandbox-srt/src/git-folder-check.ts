@@ -179,3 +179,93 @@ export async function restoreGitFolder(
   // `failed` is reported to the session like `undone`: either way the program touched the file.
   return { undone, failed: [...new Set(failed)] };
 }
+
+/** The file in a session's private folder that keeps its snapshot, so a crash does not lose it. */
+export const journalName = "git-folder.json";
+
+type OriginalJson =
+  | { kind: "file"; data: string; mode: number }
+  | { kind: "link"; target: string }
+  | { kind: "other" }
+  | { kind: "absent" };
+
+interface Journal {
+  pid: number;
+  gitFolder: string;
+  originals: [string, OriginalJson][];
+  folders: string[];
+}
+
+/**
+ * Keeps the snapshot on disk, in the session's private folder. The fence hides that
+ * folder from the program, so the program cannot change what a recovery restores.
+ */
+export async function writeJournal(
+  sessionFolder: string,
+  snapshot: GitFolderSnapshot,
+  pid = process.pid,
+): Promise<void> {
+  const originals = [...snapshot.originals].map(([path, o]): [string, OriginalJson] => [
+    path,
+    o.kind === "file" ? { kind: "file", data: o.data.toString("base64"), mode: o.mode } : o,
+  ]);
+  const journal: Journal = {
+    pid,
+    gitFolder: snapshot.gitFolder,
+    originals,
+    folders: [...snapshot.folders],
+  };
+  await writeFile(join(sessionFolder, journalName), JSON.stringify(journal), { mode: 0o600 });
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/**
+ * Undoes the `commondir` changes of sessions whose host process died before it could
+ * close them: for each `halonic-srt-*` folder under `root` with a journal whose process
+ * is gone, it runs the same link-safe restore as a close, then removes the folder.
+ * A folder with a journal it cannot read or restore is left in place.
+ *
+ * @returns the files it undid and the ones it could not undo.
+ */
+export async function recoverGitFolders(
+  root: string,
+): Promise<{ undone: string[]; failed: string[] }> {
+  const undone: string[] = [];
+  const failed: string[] = [];
+  const names = await readdir(root).catch(() => []);
+  for (const name of names.filter((n) => n.startsWith("halonic-srt-"))) {
+    const folder = join(root, name);
+    let journal: Journal;
+    try {
+      journal = JSON.parse(await readFile(join(folder, journalName), "utf8")) as Journal;
+    } catch {
+      continue;
+    }
+    if (journal.pid === process.pid || alive(journal.pid)) continue;
+    const snapshot: GitFolderSnapshot = {
+      gitFolder: journal.gitFolder,
+      originals: new Map(
+        journal.originals.map(([path, o]) => [
+          path,
+          o.kind === "file"
+            ? { kind: "file", data: Buffer.from(o.data, "base64"), mode: o.mode }
+            : o,
+        ]),
+      ),
+      folders: new Set(journal.folders),
+    };
+    const result = await restoreGitFolder(snapshot);
+    undone.push(...result.undone);
+    failed.push(...result.failed);
+    if (result.failed.length === 0) await rm(folder, { recursive: true, force: true });
+  }
+  return { undone, failed };
+}
