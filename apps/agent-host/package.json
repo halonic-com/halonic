@@ -1,0 +1,30 @@
+{
+  "name": "@halonicjs/app-agent-host",
+  "private": true,
+  "type": "module",
+  "description": "Halonic's agent host as one Node program. A placeholder for now: it prints its version and exits.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "build:sea": "node scripts/build.ts",
+    "smoke:sea": "node scripts/smoke.ts"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "apps",
+    "owner": "owen",
+    "coverage": {
+      "lines": 80
+    }
+  },
+  "version": "0.0.0"
+}

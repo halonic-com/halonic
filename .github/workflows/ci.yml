@@ -37,6 +37,7 @@ jobs:
       sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
       sandbox: ${{ steps.diff.outputs.sandbox }}
       android: ${{ steps.diff.outputs.android }}
+      agent_host: ${{ steps.diff.outputs.agent_host }}
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
     steps:
@@ -57,6 +58,7 @@ jobs:
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-srt/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node)/|packages/core/ports/)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/connect/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
+            "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
           )
@@ -789,6 +791,51 @@ jobs:
           --filter=@halonicjs/adapter-system-node
           $SKIP_FILTER
 
+  agent-host:
+    # The agent host as one executable, built with Node's single-executable
+    # support (HAL-2865). Proves on all three systems that the build works
+    # and the executable runs, before the real host exists. Reports the size
+    # and the build time in the job summary.
+    name: Agent host executable (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.agent_host == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-24.04 }
+          - { name: macOS, os: macos-15 }
+          - { name: Windows, os: windows-2025 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: ${{ runner.os != 'Windows' }}
+      - name: Build the executable
+        run: |
+          start=$SECONDS
+          pnpm --filter @halonicjs/app-agent-host build:sea
+          echo "BUILD_SECONDS=$((SECONDS - start))" >> "$GITHUB_ENV"
+      - name: Run it, check the output and report the size
+        env:
+          SYSTEM: ${{ matrix.name }}
+        run: |
+          out=$(pnpm --filter @halonicjs/app-agent-host smoke:sea | tail -n 1)
+          echo "$out"
+          echo "### Agent host on ${SYSTEM}" >> "$GITHUB_STEP_SUMMARY"
+          echo "$out" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build time: ${BUILD_SECONDS} s" >> "$GITHUB_STEP_SUMMARY"
+
   android:
     # The Android connect shell's debug APK, for arm64 phones and x86_64
     # emulators. Its own job, so the slow Android build never holds up the
@@ -918,6 +965,7 @@ jobs:
         tauri-windows,
         sandbox-fence,
         sandbox-os,
+        agent-host,
         android,
         e2e,
         docs,
