@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
-import { readdir, rename, rm, writeFile } from "node:fs/promises";
+import { readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { TrustRecord, TrustStore } from "@halonicjs/ports";
 import { isMissing } from "./links.ts";
 import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
+import { renameOver } from "./rename-over.ts";
 
 /** A record's file name: the SHA-256 of its location's UTF-16 code units in lower-case hex, then `.json`. */
 const recordFile = /^[0-9a-f]{64}\.json$/u;
@@ -59,7 +60,7 @@ export class FileTrustStore implements TrustStore {
     await makePrivateFolder(this.#root);
     try {
       await writeFile(temporary, text, { encoding: "utf8", mode: 0o600 });
-      await rename(temporary, file);
+      await renameOver(temporary, file);
     } catch (error) {
       await rm(temporary, { force: true });
       throw error;

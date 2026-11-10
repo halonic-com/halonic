@@ -3,7 +3,6 @@ import {
   mkdir,
   readdir,
   readFile,
-  rename,
   rm,
   stat,
   truncate,
@@ -27,6 +26,7 @@ import {
 } from "@halonicjs/ports";
 import { KeyedQueue } from "@halonicjs/std";
 import { isMissing } from "./links.ts";
+import { renameOver } from "./rename-over.ts";
 import { withRunLock } from "./run-lock.ts";
 import { parseRunLog, type RunLog } from "./run-log.ts";
 import { readLogStart } from "./run-log-start.ts";
@@ -293,7 +293,7 @@ export class FolderRunStore implements RunStore {
     const temporary = `${file}.tmp`;
     try {
       await writeFile(temporary, text, "utf8");
-      await rename(temporary, file);
+      await renameOver(temporary, file);
     } catch (error) {
       // A temporary file left behind is replaced by the next snapshot.
       await rm(temporary, { force: true }).catch(() => {});

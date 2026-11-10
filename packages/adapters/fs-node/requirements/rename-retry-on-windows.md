@@ -2,9 +2,11 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-3369; Liam's review of PR #942 (HAL-3311)
+- Source: HAL-3369; Liam's review of PR #942 (HAL-3311); HAL-3548
 
-When the folder definition store renames its temporary file over a file on Windows and the rename fails with `EPERM` or `EBUSY`, because another program such as an antivirus scanner, an editor or the search indexer briefly holds the file open, the store shall try the rename again up to five times, waiting 10, 20, 40, 80 and 160 milliseconds before each new try. When the last try fails too, the write shall fail with that error and remove its temporary file. Any other error, and every error on other systems, shall fail the write at once.
+When the folder definition store, the trust store, the agent placement store or the folder run store (for a run's snapshot) renames its temporary file over a file on Windows and the rename fails with `EPERM` or `EBUSY`, because another program such as an antivirus scanner, an editor or the search indexer briefly holds the file open, the store shall try the rename again up to five times, waiting 10, 20, 40, 80 and 160 milliseconds before each new try. When the last try fails too, the write shall fail with that error and remove its temporary file. Any other error, and every error on other systems, shall fail the write at once. A failed snapshot write doesn't fail the run store's append: as for any snapshot error, the events stay stored, the older snapshot stays and the error goes to `onSnapshotError`.
+
+Moving a stale run lock aside is not such a rename and is not retried this way: a retry there could hide a live holder.
 
 ## Examples
 
@@ -20,3 +22,6 @@ When the folder definition store renames its temporary file over a file on Windo
 - Given Windows and a rename that fails with `ENOENT`,
   when the rename runs,
   then it fails at once without waiting.
+- Given Windows and a run snapshot that stays held,
+  when an append with a snapshot runs,
+  then the events are stored, the older snapshot stays and `onSnapshotError` gets the last `EBUSY`.
