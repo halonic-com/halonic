@@ -128,8 +128,22 @@ export function launcherEnv(
   return env;
 }
 
-/** What the launcher needs from the host on Windows: where the system is, never anything the program can influence. */
-const windowsLauncherVariables = ["SystemRoot", "SystemDrive", "windir", "ComSpec", "PATHEXT"];
+/** What the launcher needs from the host on Windows: where the system and the user's folders are, never anything the program can influence. */
+const windowsLauncherVariables = [
+  "SystemRoot",
+  "SystemDrive",
+  "windir",
+  "ComSpec",
+  "PATHEXT",
+  // srt-win finds the user's state folders through these.
+  "USERPROFILE",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "ProgramData",
+  "USERNAME",
+  "USERDOMAIN",
+  "COMPUTERNAME",
+];
 
 /** The host's safe `PATH` and the session's temp folder, for the launcher and the program alike. */
 function baseEnv(
@@ -161,10 +175,6 @@ export function programEnv(
   assertVariableNames(profile);
   // Not the launcher's: on Windows its system variables would replace the sandbox account's own.
   const env = baseEnv(profile, hostEnv, privateFolder);
-  if (process.platform === "win32") {
-    env["TEMP"] = profile.tempFolder;
-    env["TMP"] = profile.tempFolder;
-  }
   for (const [name, value] of Object.entries(profile.env)) {
     if (proxyVariables.has(name)) continue;
     env[name] = name === "PATH" ? withoutPrivateFolder(value, privateFolder) : value;

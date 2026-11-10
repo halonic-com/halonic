@@ -189,7 +189,11 @@ verifies("sandbox-srt.session", () => {
       expect(runs).toHaveLength(1);
       const requests = [...probes, ...runs.map((run) => run.request)];
       for (const request of requests) {
-        expect(request.launcherEnv).toEqual({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
+        // On Windows the launcher also gets the host's system variables, which are no profile's.
+        expect(request.launcherEnv).toMatchObject({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
+        if (process.platform !== "win32") {
+          expect(request.launcherEnv).toEqual({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
+        }
       }
       // The probe gets none of the profile's variables; the program gets all of them.
       expect(probes[0]?.programEnv).toEqual({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
