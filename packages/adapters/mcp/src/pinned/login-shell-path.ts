@@ -10,9 +10,19 @@ const marker = "__HALONIC_PATH__";
 
 /**
  * The `PATH` the person's login shell sets, which a macOS desktop app
- * doesn't inherit: Homebrew, Volta, fnm, nvm and the like add their folders
- * in the shell's profile. It runs `$SHELL -l -c` with a fixed script that
- * prints only `PATH`, with no arguments from any workspace, and a time limit.
+ * doesn't inherit: Homebrew and others add their folders in a login
+ * profile. It runs `$SHELL -l -c` with a fixed script that prints only
+ * `PATH`, with no arguments from any workspace, and a time limit.
+ *
+ * A login shell that isn't interactive reads only the login profiles
+ * (`.zprofile`, `.bash_profile`, `.profile`), not `.zshrc` or what
+ * `.bashrc` adds, which is where nvm and fnm are usually set up. So a
+ * runner from them may not be found; the launcher's refusal then asks for
+ * the runner's full path. `-i` would read those files too, but also start
+ * whatever they start for a terminal (prompts, tmux), so it isn't used.
+ *
+ * On a timeout only the shell is stopped: anything its profile started
+ * in the background keeps running.
  *
  * @returns the `PATH`, or `undefined` when `SHELL` isn't an absolute path,
  *   is under a skill's `scripts/` folder, or the shell fails or takes too

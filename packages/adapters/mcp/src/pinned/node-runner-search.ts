@@ -18,9 +18,9 @@ export function createRunnerSearch(
     platform,
     path: variable(env, "PATH", platform) ?? "",
     pathExt: variable(env, "PATHEXT", platform),
-    home: platform === "win32" ? env["USERPROFILE"] : env["HOME"],
-    programFiles: env["ProgramFiles"],
-    appData: env["APPDATA"],
+    home: platform === "win32" ? variable(env, "USERPROFILE", platform) : env["HOME"],
+    programFiles: variable(env, "ProgramFiles", platform),
+    appData: variable(env, "APPDATA", platform),
     loginShellPath: () => {
       loginShellPath ??= readLoginShellPath(env);
       return loginShellPath;
@@ -30,14 +30,19 @@ export function createRunnerSearch(
   };
 }
 
-/** A variable by name, which Windows reads in any letter case (`Path`, `PATH`). */
+/**
+ * A variable by name, which Windows reads in any letter case (`Path`,
+ * `PATH`). A copy of `process.env` loses Node's own case-insensitive
+ * lookup there, so it is done here.
+ */
 function variable(
   env: Readonly<Record<string, string | undefined>>,
   name: string,
   platform: NodeJS.Platform,
 ): string | undefined {
   if (platform !== "win32") return env[name];
-  const key = Object.keys(env).find((candidate) => candidate.toUpperCase() === name);
+  const wanted = name.toUpperCase();
+  const key = Object.keys(env).find((candidate) => candidate.toUpperCase() === wanted);
   return key === undefined ? undefined : env[key];
 }
 

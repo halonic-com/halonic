@@ -48,11 +48,17 @@ describe.skipIf(process.platform === "win32")("a login shell's PATH", () => {
       );
     });
 
-    it("gives no PATH for a shell that fails, a relative SHELL or a missing HOME", async () => {
+    it("gives no PATH for a shell that fails", async () => {
       const failing = await fakeShell(join(folder, "bin", "zsh"), "exit 1");
       expect(await readLoginShellPath({ SHELL: failing, HOME: folder })).toBeUndefined();
+    });
+
+    it("starts nothing for a relative SHELL, or a HOME that is missing or relative", async () => {
+      const shell = await fakeShell(join(folder, "bin", "zsh"));
       expect(await readLoginShellPath({ SHELL: "bin/zsh", HOME: folder })).toBeUndefined();
-      expect(await readLoginShellPath({ SHELL: failing })).toBeUndefined();
+      expect(await readLoginShellPath({ SHELL: shell })).toBeUndefined();
+      expect(await readLoginShellPath({ SHELL: shell, HOME: "acme-home" })).toBeUndefined();
+      expect(existsSync(join(folder, "ran"))).toBe(false);
     });
 
     it("never runs a shell under a skill's scripts/ folder", async () => {
@@ -84,12 +90,25 @@ describe.skipIf(process.platform === "win32")("a login shell's PATH", () => {
 });
 
 verifies("mcp.runner-lookup", () => {
-  it("reads PATH and PATHEXT in any letter case on Windows, and the home folder from USERPROFILE", () => {
+  it("reads Windows variables in any letter case, and the home folder from USERPROFILE", () => {
     // Made-up folders; only their letter case and which variable they come from matter.
     const search = createRunnerSearch(
-      { Path: "Windows", PathExt: ".EXE", USERPROFILE: "acme-profile", HOME: "acme-home" },
+      {
+        Path: "Windows",
+        PathExt: ".EXE",
+        UserProfile: "acme-profile",
+        HOME: "acme-home",
+        PROGRAMFILES: "acme-programs",
+        AppData: "acme-roaming",
+      },
       "win32",
     );
-    expect(search).toMatchObject({ path: "Windows", pathExt: ".EXE", home: "acme-profile" });
+    expect(search).toMatchObject({
+      path: "Windows",
+      pathExt: ".EXE",
+      home: "acme-profile",
+      programFiles: "acme-programs",
+      appData: "acme-roaming",
+    });
   });
 });

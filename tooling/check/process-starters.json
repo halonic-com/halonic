@@ -14,7 +14,7 @@
       "scriptsTest": "packages/adapters/git/src/skill-scripts.test.ts"
     },
     "packages/adapters/mcp/src/pinned/login-shell-path.ts": {
-      "reason": "Reads the PATH of the person's login shell once per app start, so the pinned MCP launcher finds npx, uvx and node on macOS, where a desktop app inherits a short PATH. It runs only $SHELL from the app's own environment, as an absolute path, with the fixed arguments -l -c and a script that prints PATH, no workspace input, a five-second limit and a 64 KiB output cap. It refuses a SHELL under a skill's scripts/ folder, as written or through a symbolic link, before anything starts.",
+      "reason": "Reads the PATH of the person's login shell once per app start, so the pinned MCP launcher finds npx, uvx and node on macOS, where a desktop app inherits a short PATH. It reads the login profiles only, not .zshrc, so runners set up there (as nvm and fnm usually are) may be missed. It runs only $SHELL from the app's own environment, as an absolute path, with the fixed arguments -l -c and a script that prints PATH, no workspace input, a five-second limit and a 64 KiB output cap. It refuses a SHELL under a skill's scripts/ folder, as written or through a symbolic link, before anything starts.",
       "scriptsTest": "packages/adapters/mcp/src/pinned/login-shell-path.starts.test.ts"
     },
     "packages/adapters/mcp/src/stdio/node-program-starter.ts": {
