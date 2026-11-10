@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3331, plan HAL-186 step 4a (the run half, decided on HAL-3325)
 
-When a workflow run calls a state's agent, the engine shall offer Halonic's tools and the agent's memory tools, run the calls through the same turn loop a chat turn uses, and make at most the agent's `maxSteps` model calls, or 6 when the run's definitions have no file for the agent. The engine shall check every call with `checkToolCall` before it runs. If the check refuses a call, then the engine shall not run it and shall give the model the reason as that call's result. The engine shall offer no connector's tools in a run's model call, and shall refuse a call to one. Until a run can stop for a person's OK, a call that needs one shall be refused the same way.
+When a workflow run calls a state's agent, the engine shall offer Halonic's tools and the agent's memory tools, run the calls through the same turn loop a chat turn uses, and make at most the agent's `maxSteps` model calls, or 6 when the run's definitions have no file for the agent. The engine shall check every call with `checkToolCall` before it runs. If the check refuses a call, then the engine shall not run it and shall give the model the reason as that call's result. The engine shall offer no connector's tools in a run's model call, and shall refuse a call to one. A call that needs a person's OK shall stop the call for an approval, as `engine.turn-approval-stop` says.
 
 ## Examples
 
@@ -19,4 +19,4 @@ When a workflow run calls a state's agent, the engine shall offer Halonic's tool
   then nothing is saved, and the model's next request carries a refusal that names `to` as the call's result.
 - Given a Halonic tool whose risk is `write`,
   when the run's model calls it,
-  then it doesn't run, and the model gets a refusal that says it needs a person's OK.
+  then it doesn't run yet, and the run waits for `approve` or `reject` on that call.

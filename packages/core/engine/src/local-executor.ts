@@ -19,7 +19,7 @@ import type {
 } from "@halonicjs/ports";
 import { checkRunToolCall } from "./agent/check-run-tool-call.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
-import { runModelTurn } from "./agent/run-model-turn.ts";
+import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { ModelCallResult } from "./kernel/decide-types.ts";
 import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
@@ -214,15 +214,15 @@ export class LocalExecutor implements RunExecutor {
    * round limit. Connectors stay out until the side-effect boundary
    * (allow sending, idempotency keys, the effect-requested record) is
    * built in HAL-186 step 4c. The agent's own prompt and the turn's run
-   * log come later in step 4. A run can't stop for an approval yet, so it
-   * has none to go on from (the next pull request lets it).
+   * log come later in step 4.
+   *
+   * A call that needs a person's OK ends the call with `{ type: "approval",
+   * tool, args, resume }`, and the run waits. Once they answer, the next
+   * call carries `resume` with the answer, and the turn goes on from there.
    *
    * @throws when the run's definitions are gone, as {@link missingDefinitionsError} says
    */
   private async callModel(run: RunState, call: PendingCall): Promise<ModelCallResult> {
-    if (call.resume !== undefined) {
-      throw new Error("A run's agent can't go on after an approval until runs offer it tools.");
-    }
     const agent = await this.keptAgent(run, call.agent);
     const messages = [{ role: "user" as const, content: call.prompt }];
     const model = await this.options.resolveModel({
@@ -231,19 +231,21 @@ export class LocalExecutor implements RunExecutor {
       messages,
       tools: [],
     });
-    const turn = await runModelTurn({
+    const outcome = await runAgentTurn({
       model,
       secrets: this.options.secrets,
       messages,
-      callerTools: [],
       halonicTools: this.halonicToolsOf(call.agent, run.runId),
       connectors: [],
       maxRounds: agent?.maxSteps ?? defaultRunMaxRounds,
       agent: call.agent,
       clock: this.options.clock,
       checkCall: checkRunToolCall,
+      ...(call.resume === undefined ? {} : { resumeFrom: call.resume }),
     });
-    return { type: "model", output: turn.content };
+    return outcome.kind === "stopped"
+      ? outcome.stop
+      : { type: "model", output: outcome.result.content };
   }
 
   /**

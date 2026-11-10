@@ -77,26 +77,4 @@ verifies("engine.run-tool-calls", () => {
       }),
     ]);
   });
-
-  it("refuses a call that needs a person's OK, until a run can stop for one", async () => {
-    let ran = false;
-    const publish = {
-      ...halonicTool("publish", async () => {
-        ran = true;
-        return "published";
-      }),
-      risk: "write" as const,
-    };
-    const { model, runs } = await runReply(
-      [callAnswer(call("p-1", "publish")), textAnswer("Dear support")],
-      new KernelRuns(),
-      { halonicTools: [publish] },
-    );
-
-    expect(ran).toBe(false);
-    expect(toolResults(model.requests[1])[0]?.content).toBe(
-      "Refused: publish needs a person's OK, which a run can't wait for yet",
-    );
-    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
-  });
 });
