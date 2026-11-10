@@ -49,6 +49,7 @@ export async function runExample(): Promise<string[]> {
   const store = new MapStore(new Map([[agentPath, "name: Clerk\n"]]));
   const scope = openWorkspace({
     store,
+    reviewRecords: new MapStore(new Map()),
     digest,
     onListenerError: (error) => {
       throw error;

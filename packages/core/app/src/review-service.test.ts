@@ -22,10 +22,12 @@ const k1 = { chatId: "c1", cardId: "k1" };
 
 function setUp(files: Record<string, string> = { [clerk]: fast }) {
   const store = new TestDefinitionStore(files, digest);
+  const recordStore = new TestDefinitionStore({}, digest);
   return {
     store,
-    review: new ReviewService({ store, digest }),
-    records: new ReviewRecords(store, digest),
+    recordStore,
+    review: new ReviewService({ store, records: recordStore, digest }),
+    records: new ReviewRecords(recordStore, digest),
   };
 }
 
@@ -219,7 +221,7 @@ verifies("app.review-accept-reject-all", () => {
   });
 
   it("accepts every file of one chat", async () => {
-    const { store, review, records } = setUp({});
+    const { store, recordStore, review, records } = setUp({});
     await review.propose({ path: "a.yaml", content: "a\n", expected: "absent", card: k1 });
     await review.propose({
       path: "b.yaml",
@@ -235,12 +237,8 @@ verifies("app.review-accept-reject-all", () => {
     });
     await review.accept({ kind: "chat", chatId: "c1" });
     expect((await records.all()).records.map((record) => record.path)).toEqual(["c.yaml"]);
-    expect([...store.files.keys()].filter((path) => !path.startsWith(".halonic/"))).toEqual([
-      "a.yaml",
-      "b.yaml",
-      "c.yaml",
-    ]);
-    expect(store.files.has(await reviewRecordPath("c.yaml", digest))).toBe(true);
+    expect([...store.files.keys()]).toEqual(["a.yaml", "b.yaml", "c.yaml"]);
+    expect(recordStore.files.has(await reviewRecordPath("c.yaml", digest))).toBe(true);
   });
 });
 
@@ -260,9 +258,11 @@ verifies("app.review-accept-reject-file", () => {
 
   it("reports a listener's error without failing the change", async () => {
     const store = new TestDefinitionStore({ [clerk]: fast }, digest);
+    const recordStore = new TestDefinitionStore({}, digest);
     const errors: unknown[] = [];
     const review = new ReviewService({
       store,
+      records: recordStore,
       digest,
       onListenerError: (error) => errors.push(error),
     });

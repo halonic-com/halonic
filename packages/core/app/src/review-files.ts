@@ -10,12 +10,14 @@ import { type ReviewRecordList, ReviewRecords } from "./review-records.ts";
 
 /** What the review service needs from the host. */
 export interface ReviewServiceOptions {
-  /**
-   * The workspace's store underneath its `ReviewingDefinitionStore`: the
-   * records are kept in it under `.halonic/review/`, and the service's own
-   * writes don't go through the write hook.
-   */
+  /** The workspace's files. */
   readonly store: DefinitionStore;
+  /**
+   * The records' own store, rooted at the workspace's review folder in the
+   * profile (`reviewFolder()` of `workspaceFolders`). Never the workspace's
+   * store: git could bring a record in from there (HAL-3417).
+   */
+  readonly records: DefinitionStore;
   /** Hashes file text for the write-if-unchanged check, and names the records. */
   readonly digest: Digest;
   /**
@@ -52,7 +54,7 @@ export class ReviewFiles {
   constructor(options: ReviewServiceOptions) {
     this.store = options.store;
     this.digest = options.digest;
-    this.records = new ReviewRecords(options.store, options.digest);
+    this.records = new ReviewRecords(options.records, options.digest);
     this.events = new EventBus<ReviewEvents>(options.onListenerError);
   }
 
