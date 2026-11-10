@@ -125,7 +125,6 @@ setTimeout(() => done("blocked"), 5000);
       const out = await runScript(
         "no-bridge.cjs",
         `const net = require("node:net");
-const http = require("node:http");
 const result = {};
 const report = () => { console.log(JSON.stringify(result)); process.exit(0); };
 const finish = () => { if ("direct" in result && "proxy" in result) report(); };
@@ -138,10 +137,15 @@ if (proxy === undefined) { result.proxy = "none"; finish(); }
 else {
   // srt may name its proxy without a scheme.
   const via = new URL(proxy.includes("://") ? proxy : "http://" + proxy);
-  const request = http.request({ host: via.hostname, port: via.port, path: "http://127.0.0.1:${canaryPort}/" });
-  request.on("response", (response) => { result.proxy = response.statusCode === 200 ? "reached" : "refused"; finish(); });
-  request.on("error", () => { result.proxy = "refused"; finish(); });
-  request.end();
+  // A raw request, because newer Node's http.request refuses an absolute-URL
+  // path for another host than the one it connects to.
+  const target = "127.0.0.1:${canaryPort}";
+  const proxied = net.connect({ host: via.hostname, port: Number(via.port) || 80 });
+  const answer = (outcome) => { if (!("proxy" in result)) { result.proxy = outcome; finish(); } };
+  proxied.on("connect", () => proxied.write("GET http://" + target + "/ HTTP/1.1\\r\\nHost: " + target + "\\r\\nConnection: close\\r\\n\\r\\n"));
+  proxied.once("data", (data) => answer(/^HTTP\\/1\\.[01] 200 /.test(data.toString("latin1")) ? "reached" : "refused"));
+  proxied.on("error", () => answer("refused"));
+  proxied.on("close", () => answer("refused"));
 }
 setTimeout(() => { result.direct ??= "blocked"; result.proxy ??= "refused"; report(); }, 5000);
 `,
