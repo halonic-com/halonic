@@ -1,4 +1,4 @@
-import { realpathSync } from "node:fs";
+import { lstatSync, realpathSync } from "node:fs";
 import { isIP } from "node:net";
 import { basename, dirname, join } from "node:path";
 import type { SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
@@ -29,6 +29,16 @@ export function resolveRealPath(path: string): string {
       missing.push(basename(existing));
       existing = parent;
     }
+  }
+}
+
+/** A git worktree's `.git` is a file pointing at the real git folder; rewriting it redirects git (and its hooks). */
+function worktreeGitFile(workingFolder: string): string[] {
+  const dotGit = join(workingFolder, ".git");
+  try {
+    return lstatSync(dotGit).isFile() ? [dotGit] : [];
+  } catch {
+    return [];
   }
 }
 
@@ -136,7 +146,10 @@ export function buildSrtConfig(
   hiddenPaths: string[] = [],
 ): SandboxRuntimeConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
-  const toolSettings = toolSettingsInWorkingFolder.map((path) => join(profile.workingFolder, path));
+  const toolSettings = [
+    ...toolSettingsInWorkingFolder.map((path) => join(profile.workingFolder, path)),
+    ...worktreeGitFile(profile.workingFolder),
+  ];
   const writableFolders = [profile.workingFolder, profile.tempFolder];
   if (profile.settingsFolder !== null) {
     writableFolders.push(profile.settingsFolder);

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
@@ -198,9 +198,21 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     symlinkSync(join(base, "real"), join(base, "link"));
     const work = join(base, "link", "work");
     const config = buildSrtConfig(profile({ workingFolder: work }));
-    const denied = config.filesystem?.denyWrite?.map((entry) => entry.path);
+    const denied = config.filesystem?.denyWrite?.map((entry) =>
+      typeof entry === "string" ? entry : entry.path,
+    );
     expect(denied).toContain(join(work, ".npmrc"));
     expect(denied).toContain(join(base, "real", "work", ".npmrc"));
     expect(denied).toContain(join(base, "real", "work", ".codex"));
+  });
+
+  it("denies writing a worktree's .git file, which points git at its real folder", () => {
+    const work = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));
+    writeFileSync(join(work, ".git"), "gitdir: /elsewhere\n");
+    const config = buildSrtConfig(profile({ workingFolder: work }));
+    const denied = config.filesystem?.denyWrite?.map((entry) =>
+      typeof entry === "string" ? entry : entry.path,
+    );
+    expect(denied).toContain(join(work, ".git"));
   });
 });

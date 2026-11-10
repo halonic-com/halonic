@@ -1,4 +1,5 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
@@ -102,6 +103,7 @@ export const srtRunner: Runner = {
     if (await touchesSkillScripts(request.cwd, request.program, request.args)) {
       throw new Error(skillScriptsRefusal);
     }
+    const marker = `HALONIC_SRT_RUN=${randomUUID()}`;
     const child = spawn(
       process.execPath,
       [
@@ -113,6 +115,7 @@ export const srtRunner: Runner = {
         // It keeps what srt sets there (the proxy variables the program reaches the network by).
         "env",
         ...Object.entries(request.programEnv).map(([name, value]) => `${name}=${value}`),
+        marker,
         request.program,
         ...request.args,
       ],
@@ -134,6 +137,7 @@ export const srtRunner: Runner = {
         gone = true;
         clearTimeout(forceTimer);
         killGroup(pid, "SIGKILL");
+        killMarked(marker);
         resolve({ code, signal });
       });
     });
@@ -144,7 +148,7 @@ export const srtRunner: Runner = {
       ended,
       killTree: () => {
         if (gone) return;
-        forceTimer ??= stopGroup(pid, terminationGraceMs);
+        forceTimer ??= stopGroup(pid, terminationGraceMs, () => killMarked(marker));
       },
     };
   },
@@ -154,9 +158,16 @@ export const srtRunner: Runner = {
 export const terminationGraceMs = 2000;
 
 /** Sends SIGTERM to the group, then SIGKILL after `graceMs`. Returns the timer of the second signal. */
-export function stopGroup(pid: number | undefined, graceMs: number): NodeJS.Timeout {
+export function stopGroup(
+  pid: number | undefined,
+  graceMs: number,
+  afterForce: () => void = () => {},
+): NodeJS.Timeout {
   killGroup(pid, "SIGTERM");
-  const timer = setTimeout(() => killGroup(pid, "SIGKILL"), graceMs);
+  const timer = setTimeout(() => {
+    killGroup(pid, "SIGKILL");
+    afterForce();
+  }, graceMs);
   timer.unref();
   return timer;
 }
@@ -167,5 +178,30 @@ function killGroup(pid: number | undefined, signal: "SIGTERM" | "SIGKILL"): void
     process.kill(-pid, signal);
   } catch {
     // The group has already ended.
+  }
+}
+
+/**
+ * Kills what a program started and moved out of the process group with
+ * `setsid` (a signal to the group can't reach it). On macOS nothing else ties
+ * such a process to the session, so it is found by the marker variable every
+ * program starts with, which its children inherit. A program that clears its
+ * own environment before detaching is not found this way.
+ */
+function killMarked(marker: string): void {
+  if (process.platform !== "darwin") return;
+  const listed = spawnSync("ps", ["-Eww", "-ax", "-o", "pid=,command="], {
+    encoding: "utf8",
+    timeout: 5000,
+  });
+  for (const line of listed.stdout?.split("\n") ?? []) {
+    if (!line.includes(` ${marker}`)) continue;
+    const pid = Number.parseInt(line.trim(), 10);
+    if (!Number.isInteger(pid) || pid === process.pid) continue;
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // Already gone.
+    }
   }
 }
