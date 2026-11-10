@@ -7,6 +7,7 @@ import {
   plainGit,
   repositoryWith,
   Scratch,
+  shellPath,
   testAuthor,
   testRunner,
   writeFiles,
@@ -33,7 +34,9 @@ function withRemotes(): Promise<GitRunner> {
 /** Plain git, reaching `ssh://` remotes through the local `ssh`; a failed call is fine, only what it ran counts. */
 async function plainGitOverSsh(folder: string, args: readonly string[]): Promise<void> {
   const ssh = await localSsh(scratch);
-  await plainGit(folder, ["-c", `core.sshCommand=${ssh}`, ...args]).catch(() => undefined);
+  await plainGit(folder, ["-c", `core.sshCommand=${shellPath(ssh)}`, ...args]).catch(
+    () => undefined,
+  );
 }
 
 async function vcsAt(folder: string): Promise<GitVcs> {

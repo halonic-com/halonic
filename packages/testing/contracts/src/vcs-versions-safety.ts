@@ -3,6 +3,7 @@ import { type MakeVcs, optionLikePaths, patternLikePaths, unsafeVcsPaths } from 
 import { changesOf, stateOf } from "./vcs-helpers.ts";
 import { deletePatch, linePatch } from "./vcs-patch-inputs.ts";
 import { vcsPatchSafetyCases } from "./vcs-patch-safety.ts";
+import { patternLikeIt } from "./vcs-safety.ts";
 import { invalidCommitRefs, privateWorkspaceFiles, unknownCommit } from "./vcs-version-inputs.ts";
 
 /**
@@ -230,9 +231,9 @@ function pathCases(make: MakeVcs): void {
     expect(await stateOf(harness)).toEqual(before);
   });
 
-  it.each([...optionLikePaths, ...patternLikePaths])(
-    "renames the tracked file %j as a file, never an option or a pattern",
-    async (path) => {
+  for (const path of [...optionLikePaths, ...patternLikePaths]) {
+    const name = `renames the tracked file ${JSON.stringify(path)} as a file, never an option or a pattern`;
+    patternLikeIt(make, path, name, async () => {
       const { vcs, files } = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n", [path]: "x\n" });
       await vcs.rename(path, "renamed.yaml");
       expect((await files.list()).sort()).toEqual(["a.yaml", "b.yaml", "renamed.yaml"]);
@@ -240,6 +241,6 @@ function pathCases(make: MakeVcs): void {
       expect(await changesOf(vcs.status())).toEqual([
         { path: "renamed.yaml", status: "renamed", staged: true, from: path },
       ]);
-    },
-  );
+    });
+  }
 }

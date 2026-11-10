@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import { filesOf } from "./vcs-commit-version.ts";
 import { type MakeVcs, optionLikePaths, patternLikePaths, unsafeVcsPaths } from "./vcs-harness.ts";
 import { changesOf, stagedDiffs, stateOf } from "./vcs-helpers.ts";
+import { patternLikeIt } from "./vcs-safety.ts";
 import { privateWorkspaceFiles } from "./vcs-version-inputs.ts";
 
 /**
@@ -52,9 +53,9 @@ function pathCases(make: MakeVcs): void {
     expect(await filesOf(harness, Object.keys(privateWorkspaceFiles))).toEqual(onDisk);
   });
 
-  it.each([...optionLikePaths, ...patternLikePaths])(
-    "reads %j in include and exclude as that file only, never an option or a pattern",
-    async (path) => {
+  for (const path of [...optionLikePaths, ...patternLikePaths]) {
+    const name = `reads ${JSON.stringify(path)} in include and exclude as that file only, never an option or a pattern`;
+    patternLikeIt(make, path, name, async () => {
       const { vcs, files } = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n", [path]: "1\n" });
       await files.write("a.yaml", "2\n");
       await files.write(path, "2\n");
@@ -74,8 +75,8 @@ function pathCases(make: MakeVcs): void {
       expect(await changesOf(vcs.status())).toEqual([
         { path: "b.yaml", status: "modified", staged: false },
       ]);
-    },
-  );
+    });
+  }
 }
 
 function privateEntryCases(make: MakeVcs): void {

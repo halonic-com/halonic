@@ -100,10 +100,30 @@ function optionLikeCases(make: MakeVcs): void {
   });
 }
 
+/**
+ * `it` for a pattern-like path. Windows refuses `*` and `?` in a file name,
+ * so on a Windows disk (see `MakeVcs.platform`) such a case is skipped,
+ * with the reason first in its name.
+ */
+export function patternLikeIt(
+  make: MakeVcs,
+  path: string,
+  name: string,
+  body: () => Promise<void>,
+): void {
+  if (!/[*?]/u.test(path)) {
+    it(name, body);
+    return;
+  }
+  const reason = "[platform:win32] Windows allows no * or ? in a file name";
+  it.skipIf(make.platform === "win32")(`${reason}: ${name}`, body);
+}
+
 function patternLikeCases(make: MakeVcs): void {
-  it.each(patternLikePaths)(
-    "treats the tracked file %j as a file, never a pattern",
-    async (path) => {
+  for (const path of patternLikePaths) {
+    const label = JSON.stringify(path);
+    const tracked = `treats the tracked file ${label} as a file, never a pattern`;
+    patternLikeIt(make, path, tracked, async () => {
       const { vcs, files } = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n", [path]: "1\n" });
       for (const each of ["a.yaml", "b.yaml", path]) await files.write(each, "2\n");
 
@@ -120,16 +140,17 @@ function patternLikeCases(make: MakeVcs): void {
       expect(await files.read(path)).toBe("1\n");
       expect(await files.read("a.yaml")).toBe("2\n");
       expect(await files.read("b.yaml")).toBe("2\n");
-    },
-  );
+    });
 
-  it.each(patternLikePaths)("discards the untracked file %j and nothing else", async (path) => {
-    const { vcs, files } = await make.repo({ "keep.txt": "1\n" });
-    for (const each of [path, "a.yaml", "b.yaml", "keep.yaml"]) await files.write(each, "new\n");
-    await vcs.discard([path]);
-    expect(await files.read(path)).toBeNull();
-    expect((await files.list()).sort()).toEqual(["a.yaml", "b.yaml", "keep.txt", "keep.yaml"]);
-  });
+    const untracked = `discards the untracked file ${label} and nothing else`;
+    patternLikeIt(make, path, untracked, async () => {
+      const { vcs, files } = await make.repo({ "keep.txt": "1\n" });
+      for (const each of [path, "a.yaml", "b.yaml", "keep.yaml"]) await files.write(each, "new\n");
+      await vcs.discard([path]);
+      expect(await files.read(path)).toBeNull();
+      expect((await files.list()).sort()).toEqual(["a.yaml", "b.yaml", "keep.txt", "keep.yaml"]);
+    });
+  }
 }
 
 function branchNameCases(make: MakeVcs): void {

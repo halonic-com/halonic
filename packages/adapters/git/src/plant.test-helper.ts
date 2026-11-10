@@ -1,7 +1,7 @@
 import { access, appendFile, chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { VcsWorktree } from "@halonicjs/ports";
-import { plainGit } from "./fixtures.test-helper.ts";
+import { plainGit, shellPath } from "./fixtures.test-helper.ts";
 
 /** Planted code, shaped like the contract suite's `PlantGitCode`, which only test files may import. */
 export interface Plant {
@@ -18,13 +18,14 @@ export interface Plant {
  * write the folder would. Every planted program is one script in `outside`
  * that creates the file `ran` there, so `ran()` sees whether any ran. A
  * local remote gets `hooks`, the hooks the contract suite plants, and the
- * ones a push runs on the remote's side.
+ * ones a push runs on the remote's side. Git runs most of these through
+ * `sh`, so the script and its mark go by their {@link shellPath}.
  */
 export function plantIn(folder: string, outside: string, hooks: readonly string[]): Plant {
-  const program = join(outside, "planted");
+  const program = shellPath(join(outside, "planted"));
   const mark = join(outside, "ran");
   const ready = (async () => {
-    await writeFile(program, `#!/bin/sh\ntouch '${mark}'\n`);
+    await writeFile(program, `#!/bin/sh\ntouch '${shellPath(mark)}'\n`);
     await chmod(program, 0o755);
   })();
 

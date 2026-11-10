@@ -6,8 +6,10 @@ import {
   initRepository,
   plainGit,
   type Scratch,
+  shellPath,
   testAuthor,
   testRunner,
+  withFolderOnPath,
   writeFiles,
 } from "./fixtures.test-helper.ts";
 import type { GitRunner } from "./git-runner.ts";
@@ -21,7 +23,9 @@ import { GitVcs } from "./vcs.ts";
  * adapter allows besides `https`, with no server. A git command, such as
  * `git-upload-pack '/remote.git'`, runs as `git upload-pack`; any other,
  * such as a planted `remote.<name>.uploadpack`, runs as it is, the way the
- * server's shell would run it.
+ * server's shell would run it. On Windows git asks for a remote at
+ * `ssh://host/C:/a.git` as `'/C:/a.git'`, which the script turns back into
+ * the drive path git needs.
  */
 export async function localSsh(scratch: Scratch): Promise<string> {
   const ssh = join(await scratch.folder(), "ssh");
@@ -30,9 +34,11 @@ export async function localSsh(scratch: Scratch): Promise<string> {
     "for last; do :; done",
     'case "$last" in',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: a shell expansion, written literally
-    '  git-*) exec sh -c "git ${last#git-}" ;;',
-    '  *) exec sh -c "$last" ;;',
+    '  git-*) run="git ${last#git-}" ;;',
+    '  *) run="$last" ;;',
     "esac",
+    `run=$(printf '%s' "$run" | sed "s|'/\\([A-Za-z]:/\\)|'\\1|")`,
+    'exec sh -c "$run"',
   ];
   await writeFile(ssh, `${script.join("\n")}\n`);
   await chmod(ssh, 0o755);
@@ -42,7 +48,17 @@ export async function localSsh(scratch: Scratch): Promise<string> {
 /** The adapter's runner for the tests, with the local `ssh` first on the `PATH`. */
 export async function remoteRunner(scratch: Scratch): Promise<GitRunner> {
   const bin = dirname(await localSsh(scratch));
-  return testRunner(scratch, { ...process.env, PATH: `${bin}:${process.env["PATH"] ?? ""}` });
+  return testRunner(scratch, withFolderOnPath(process.env, bin));
+}
+
+/**
+ * The `ssh://` address of the repository at `path` on this computer, for
+ * the local `ssh`. The host is never reached. On Windows the path's drive
+ * follows the host's `/`: `ssh://acme.invalid/C:/a.git`.
+ */
+export function sshRemote(path: string): string {
+  const slashed = shellPath(path);
+  return `ssh://acme.invalid${slashed.startsWith("/") ? "" : "/"}${slashed}`;
 }
 
 /** One folder for the contract suite, shaped like its `VcsHarness`. */
@@ -64,6 +80,7 @@ type Files = Readonly<Record<string, string>>;
 /** The contract suite's `MakeVcs`, on real git. */
 export interface MakeGitVcs {
   drivesGit: true;
+  platform: NodeJS.Platform;
   folder(files: Files): Promise<GitVcsFolder>;
   nested(files: Files): Promise<GitVcsFolder>;
   repo(files: Files): Promise<GitVcsFolder>;
@@ -116,6 +133,7 @@ export function gitVcsHarness(
 
   return {
     drivesGit: true,
+    platform: process.platform,
     async folder(files) {
       const folder = await scratch.folder();
       await writeFiles(folder, { ...files, ".studio/runs/run-1.jsonl": "{}\n" });
@@ -146,7 +164,7 @@ export function gitVcsHarness(
       const cloneOf = async (): Promise<GitVcsFolder> => {
         const folder = join(await scratch.folder(), "clone");
         await plainGit(dirname(folder), ["clone", "--quiet", "--template=", remote, folder]);
-        await plainGit(folder, ["remote", "set-url", "origin", `ssh://acme.invalid${remote}`]);
+        await plainGit(folder, ["remote", "set-url", "origin", sshRemote(remote)]);
         return harnessAt(folder);
       };
       return [await cloneOf(), await cloneOf()];
