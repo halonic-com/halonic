@@ -26,11 +26,11 @@ export interface LineFrameProps {
 
 /**
  * A text button in `accent-text` with no padding, so under the text it starts where the text
- * does; hover underlines it, and its 48px hit area is a pseudo-element.
+ * does; hover underlines it, and on touch its 48px hit area is a pseudo-element.
  */
 const actionClasses = [
   "ml-auto max-w-full flex-none rounded-xs text-left text-small font-medium text-accent-text",
-  "hover:underline focus-ring hit-touch",
+  "hover:underline focus-ring phone:hit-touch touch:hit-touch",
 ].join(" ");
 
 /**

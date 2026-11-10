@@ -30,10 +30,13 @@ verifies("kit.line-frame-action", () => {
     }
   });
 
-  it("gives the action a 48px hit area and the focus ring", () => {
+  it("gives the action a 48px hit area on touch and the focus ring", () => {
     const { button } = renderStrip();
-    expect(button.className.split(" ")).toContain("hit-touch");
-    expect(button.className.split(" ")).toContain("focus-ring");
+    const classes = button.className.split(" ");
+    expect(classes).toContain("phone:hit-touch");
+    expect(classes).toContain("touch:hit-touch");
+    expect(classes).not.toContain("hit-touch");
+    expect(classes).toContain("focus-ring");
   });
 
   it("runs the action when it's pressed", async () => {
