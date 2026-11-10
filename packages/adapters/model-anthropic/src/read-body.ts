@@ -45,3 +45,33 @@ export async function readTextWithin(response: Response, maxBytes: number): Prom
     text += decoder.decode(value, { stream: true });
   }
 }
+
+/**
+ * The body of `response`, failing once more than `maxBytes` of it has
+ * passed, for a body read piece by piece, such as a stream of events. Like
+ * {@link readTextWithin}, it refuses a declared larger length before any of
+ * it is read. Going over the limit cancels the rest of the body, so the
+ * connection closes.
+ *
+ * @throws {BodyTooLargeError} when the body declares a length larger than `maxBytes`; the stream fails with it once the body grows past it
+ */
+export async function bodyWithin(
+  response: Response,
+  maxBytes: number,
+): Promise<ReadableStream<Uint8Array> | null> {
+  const declared = Number(response.headers.get("content-length") ?? Number.NaN);
+  if (declared > maxBytes) {
+    await response.body?.cancel();
+    throw new BodyTooLargeError(maxBytes);
+  }
+  if (response.body === null) return null;
+  let seen = 0;
+  const limit = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      seen += chunk.byteLength;
+      if (seen > maxBytes) throw new BodyTooLargeError(maxBytes);
+      controller.enqueue(chunk);
+    },
+  });
+  return response.body.pipeThrough(limit);
+}
