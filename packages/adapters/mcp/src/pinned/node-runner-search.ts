@@ -21,6 +21,7 @@ export function createRunnerSearch(
     home: platform === "win32" ? variable(env, "USERPROFILE", platform) : env["HOME"],
     programFiles: variable(env, "ProgramFiles", platform),
     appData: variable(env, "APPDATA", platform),
+    localAppData: variable(env, "LOCALAPPDATA", platform),
     loginShellPath: () => {
       loginShellPath ??= readLoginShellPath(env);
       return loginShellPath;

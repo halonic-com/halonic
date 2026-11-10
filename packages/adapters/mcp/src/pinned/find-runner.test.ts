@@ -177,6 +177,34 @@ verifies("mcp.runner-lookup", () => {
       });
     });
 
+    it("finds npx.exe and node.exe in Volta's folder under %LOCALAPPDATA%", async () => {
+      const volta = windowsPath("C", "Users", "acme", "AppData", "Local", "Volta", "bin");
+      const search = computer([`${volta}\\npx.exe`, `${volta}\\node.exe`], {
+        platform: "win32",
+        path: "",
+        appData: windowsPath("C", "Users", "acme", "AppData", "Roaming"),
+        localAppData: windowsPath("C", "Users", "acme", "AppData", "Local"),
+      });
+      expect(await findRunner("npx", "npm", search)).toEqual({
+        found: { program: `${volta}\\npx.exe`, leadingArgs: [], pathFolders: [volta] },
+      });
+    });
+
+    it("starts a Scoop shim directly, looking in Scoop's folder before .local\\bin", async () => {
+      const shims = windowsPath("D", "acme", "scoop", "shims");
+      const search = computer(
+        [`${shims}\\uvx.exe`, windowsPath("D", "acme", ".local", "bin", "uvx.exe")],
+        {
+          platform: "win32",
+          path: "",
+          home: windowsPath("D", "acme"),
+        },
+      );
+      expect(await findRunner("uvx", "pypi", search)).toEqual({
+        found: { program: `${shims}\\uvx.exe`, leadingArgs: [], pathFolders: [shims] },
+      });
+    });
+
     it("tries a full path without an ending with each PATHEXT ending, and refuses a relative one", async () => {
       const tools = windowsPath("C", "tools");
       const search = computer([`${tools}\\uvx.exe`], { platform: "win32", path: "" });

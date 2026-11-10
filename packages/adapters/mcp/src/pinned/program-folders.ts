@@ -7,9 +7,13 @@ export interface FolderSources {
   readonly path: string;
   /** The person's home folder, for the install folders under it. */
   readonly home: string | undefined;
-  /** On Windows, `%ProgramFiles%` and `%APPDATA%`, for Node's and npm's install folders. */
+  /**
+   * On Windows, `%ProgramFiles%`, `%APPDATA%` and `%LOCALAPPDATA%`, for
+   * Node's, npm's and Volta's install folders.
+   */
   readonly programFiles?: string | undefined;
   readonly appData?: string | undefined;
+  readonly localAppData?: string | undefined;
   /**
    * The `PATH` the person's login shell sets, read once per app start. A
    * desktop app on macOS inherits a short `PATH` without the folders a
@@ -65,15 +69,24 @@ function split(list: string, platform: NodeJS.Platform): string[] {
     .filter((folder) => folder !== "");
 }
 
+/**
+ * The usual install folders. On Windows: Node's, npm's, Volta's shims, then
+ * under the home folder Scoop's shims, `.local\bin` and `.cargo\bin`.
+ */
 function installFolders(sources: FolderSources, path: typeof posix): string[] {
-  const { home, programFiles, appData } = sources;
+  const { home, programFiles, appData, localAppData } = sources;
   if (sources.platform === "win32") {
     return [
       ...(programFiles === undefined ? [] : [path.join(programFiles, "nodejs")]),
       ...(appData === undefined ? [] : [path.join(appData, "npm")]),
+      ...(localAppData === undefined ? [] : [path.join(localAppData, "Volta", "bin")]),
       ...(home === undefined
         ? []
-        : [path.join(home, ".local", "bin"), path.join(home, ".cargo", "bin")]),
+        : [
+            path.join(home, "scoop", "shims"),
+            path.join(home, ".local", "bin"),
+            path.join(home, ".cargo", "bin"),
+          ]),
     ];
   }
   const underHome = home === undefined ? [] : homeFolders.map((folder) => path.join(home, folder));

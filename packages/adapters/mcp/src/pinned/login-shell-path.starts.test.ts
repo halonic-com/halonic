@@ -108,6 +108,7 @@ verifies("mcp.runner-lookup", () => {
         HOME: "acme-home",
         PROGRAMFILES: "acme-programs",
         AppData: "acme-roaming",
+        LocalAppData: "acme-local",
       },
       "win32",
     );
@@ -117,6 +118,7 @@ verifies("mcp.runner-lookup", () => {
       home: "acme-profile",
       programFiles: "acme-programs",
       appData: "acme-roaming",
+      localAppData: "acme-local",
     });
   });
 });
