@@ -178,9 +178,10 @@ verifies("app.run-short-id", () => {
       store.add("run_aaaa_01b2c3d4", at(1), [started("support-reply")]);
       store.add("run_bbbb_99b2c3d4", at(2), [started("mail-triage")]);
 
+      // The short id as stored, as the list printed it, not as typed.
       expect(await new RunHistory(store).findRun("B2C3D4")).toEqual({
         found: "several",
-        shortId: "B2C3D4",
+        shortId: "b2c3d4",
       });
     });
 

@@ -52,7 +52,10 @@ export function shortRunId(runId: string): string {
 export type RunLookup<Run> =
   | { found: "one"; run: Run }
   | { found: "none" }
-  /** `shortId` is what was typed; the caller asks for the full id instead. */
+  /**
+   * `shortId` is the 6 characters as stored, as the list prints them, whatever
+   * case was typed; the caller asks for the full id instead.
+   */
   | { found: "several"; shortId: string };
 
 /** Lists a workspace's runs and shows one, read from its {@link RunStore}. */
@@ -109,11 +112,13 @@ export class RunHistory {
     if (typed.length !== shortRunIdLength) {
       return { found: "none" };
     }
-    const sameEnd = ids.filter((id) => shortRunId(id).toLowerCase() === wanted);
-    if (sameEnd.length > 1) {
-      return { found: "several", shortId: typed };
+    const [first, ...others] = ids.filter((id) => shortRunId(id).toLowerCase() === wanted);
+    if (first === undefined) {
+      return { found: "none" };
     }
-    return sameEnd[0] === undefined ? { found: "none" } : { found: "one", run: sameEnd[0] };
+    return others.length > 0
+      ? { found: "several", shortId: shortRunId(first) }
+      : { found: "one", run: first };
   }
 
   /**

@@ -12,8 +12,8 @@ The run history shall find a run, real or test, by its full id or by its short i
   when `b2c3d4`, `B2C3D4` or `RUN_MFX3K2A1_A1B2C3D4` is looked up,
   then that run is found.
 - Given runs `run_aaaa_01b2c3d4` and `run_bbbb_99b2c3d4`,
-  when `b2c3d4` is looked up,
-  then several runs are found, and neither is picked.
+  when `B2C3D4` is looked up,
+  then several runs are found, neither is picked, and the short id given back is `b2c3d4`, as stored.
 - Given the same two runs,
   when `run_aaaa_01b2c3d4` is looked up,
   then that run is found.
