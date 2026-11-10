@@ -124,6 +124,12 @@ export {
   type ToastStore,
   type ToastTone,
 } from "./toast/toast-store.ts";
+export {
+  TOOLTIP_DELAY_MS,
+  Tooltip,
+  type TooltipProps,
+  type TooltipTriggerProps,
+} from "./tooltip/tooltip.tsx";
 export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";
 
 /** The npm name of this package. */

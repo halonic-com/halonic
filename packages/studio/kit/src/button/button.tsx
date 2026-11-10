@@ -48,6 +48,9 @@ interface ButtonBase {
   readonly popoverTarget?: string;
   readonly "aria-haspopup"?: "menu";
   readonly "aria-expanded"?: boolean;
+  /** Set by a Tooltip on its button, through the props its `children` get. */
+  readonly "aria-describedby"?: string;
+  readonly "aria-keyshortcuts"?: string;
 }
 
 /** A button with words: "New agent", "Delete agent". Never "OK". */
@@ -209,10 +212,11 @@ export function Button(props: ButtonProps) {
       aria-label={props.label}
       aria-busy={busy || undefined}
       aria-disabled={unavailable === undefined ? undefined : true}
-      aria-describedby={unavailable?.reason}
       aria-haspopup={props["aria-haspopup"]}
       aria-expanded={props["aria-expanded"]}
       popoverTarget={props.popoverTarget}
+      aria-describedby={describedBy(unavailable?.reason, props["aria-describedby"])}
+      aria-keyshortcuts={props["aria-keyshortcuts"]}
       tabIndex={props.tabIndex}
       onClick={handleClick}
       onFocus={props.onFocus}
@@ -261,4 +265,10 @@ function buttonSizeClasses(size: ButtonSize, isIconButton: boolean, inFieldBox: 
     return inFieldBoxIconButton;
   }
   return isIconButton ? iconButtonClasses[size] : sizeClasses[size];
+}
+
+/** The unavailable reason first, then a Tooltip's text. */
+function describedBy(...ids: readonly (string | undefined)[]): string | undefined {
+  const present = ids.filter((id) => id !== undefined);
+  return present.length === 0 ? undefined : present.join(" ");
 }

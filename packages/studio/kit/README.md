@@ -906,6 +906,37 @@ the item's description.
 item has 12px of padding above and below. On a phone shortcuts are
 hidden. It stays a popover menu, not a sheet.
 
+## Tooltip
+
+A short label for a control: an icon button's name, a disabled control's reason, a shortcut.
+Spread the props `children` gets on the control: they link it to the tooltip.
+
+```tsx
+<Tooltip text="New tab" keys={["Ctrl", "T"]}>
+  {(props) => <Button {...props} variant="ghost" icon={<PlusIcon />} label="New tab" />}
+</Tooltip>;
+```
+
+| Prop       | What it is                                                                       |
+| ---------- | -------------------------------------------------------------------------------- |
+| `text`     | A few words. Never anything you click                                            |
+| `keys`     | The control's shortcut, shown after the words and set as its `aria-keyshortcuts` |
+| `children` | Renders the control; a kit `Button` takes every prop it gets                     |
+
+| State    | What shows                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Hidden   | Nothing                                                                                    |
+| Shown    | `fg` fill, `surface` text (so it inverts in dark mode), `text-caption`, radius 4px, ≤240px |
+| Shortcut | The keys 8px after the words, `font-mono`, 6px apart, without the Kbd's box                |
+
+It shows after 500ms of hover or at once on keyboard focus, and hides on leave, blur or Escape;
+that Escape goes no further, so a Dialog round it stays open. It's a `popover="manual"` placed by
+the same helper as the Menu, never native `title`.
+
+**On touch** it never shows, not even on a long press, so what it says must be reachable another
+way: the icon button's name, a hint under a disabled control. Focus from an external keyboard still
+shows it.
+
 ## Field
 
 A label, a control and a line under it: the hint, or the error in its place. The Field gives the

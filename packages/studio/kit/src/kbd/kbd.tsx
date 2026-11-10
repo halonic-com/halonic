@@ -1,3 +1,5 @@
+import { createContext, useContext } from "react";
+
 export interface KbdProps {
   /**
    * The keys, one box each, in the order you press them: `["Ctrl", "K"]`. The shell picks "Ctrl"
@@ -20,6 +22,15 @@ const keyClasses = [
 ].join(" ");
 
 /**
+ * Set by a Tooltip round its text. There a Kbd has no box: on the tooltip's inverted fill a
+ * `surface-muted` box would be a bright patch in light and a dark hole in dark (component specs 14,
+ * C13). The keys are the tooltip's own text colour at full strength, 6px apart.
+ */
+export const InTooltipContext = createContext(false);
+
+const tooltipKeyClasses = "font-mono text-caption";
+
+/**
  * A keyboard shortcut, as in a menu, the command palette or a tooltip. Not interactive. Hidden on
  * a phone, where there's no keyboard to press it on.
  *
@@ -30,11 +41,15 @@ const keyClasses = [
  * <Kbd keys={["Ctrl", "K"]} />
  */
 export function Kbd({ keys }: KbdProps) {
+  const inTooltip = useContext(InTooltipContext);
   return (
-    <span className="inline-flex items-center gap-0.5 phone:hidden" aria-hidden="true">
+    <span
+      className={`inline-flex items-center phone:hidden ${inTooltip ? "gap-1.5" : "gap-0.5"}`}
+      aria-hidden="true"
+    >
       {keys.map((key, index) => (
         // The same key can appear twice ("G G"), so the position is part of the key.
-        <kbd key={`${index}-${key}`} className={keyClasses}>
+        <kbd key={`${index}-${key}`} className={inTooltip ? tooltipKeyClasses : keyClasses}>
           {key}
         </kbd>
       ))}
