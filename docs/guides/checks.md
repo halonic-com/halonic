@@ -456,6 +456,14 @@ job runs.
 the licence check daily, and the full leak guard and secret scan over the whole history
 and `cargo-deny check advisories` on the Tauri shell weekly, including every pull request's head commits. A failure opens an issue.
 
+CI caches the pnpm store, Gradle, and the Rust registry and build folders
+(keyed on `Cargo.lock` and `rust-toolchain.toml`). Only runs on `main` save
+them; pull requests and the merge queue read `main`'s copy. Turbo's cache
+is the exception: a pull request saves its own copy for its next push, and
+only merge-queue entries never save. GitHub keeps 10 GB of cache per repo,
+and a queue entry's copy would never be read again, so saving there
+evicted `main`'s.
+
 It also runs **mutation testing** every night: Stryker on
 `workflow`, `routines`, `schema-kit` and `yaml`, for each package that has
 code. The score per package goes into the job summary. It only reports for

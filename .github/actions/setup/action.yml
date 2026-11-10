@@ -2,14 +2,35 @@ name: Setup
 description: Installs pnpm (version from packageManager), Node (from devEngines) and the dependencies, with a frozen lockfile.
 inputs:
   cache:
-    description: Whether to cache the pnpm store between runs. The Windows runner can't read a restored store (Access is denied on an optional dependency), so the sandbox job turns it off there.
+    description: Whether to restore the pnpm store from the cache. The Windows runner can't read a restored store (Access is denied on an optional dependency), so the sandbox job turns it off there.
     default: "true"
 runs:
   using: composite
   steps:
     - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       with:
-        cache: ${{ inputs.cache }}
+        cache: false
+    # Every run reads the store; only main writes it. A pull request's or a
+    # merge-queue entry's copy is scoped to its own ref, so nothing else
+    # could read it, and every queue entry is a new ref: saving there filled
+    # the repo's cache with copies nobody read again and evicted main's.
+    - id: store
+      if: inputs.cache == 'true'
+      name: Find the pnpm store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+    - id: restore
+      if: inputs.cache == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: pnpm-store-${{ runner.os }}-${{ runner.arch }}-
     - name: Install
       shell: bash
       run: pnpm install --frozen-lockfile
+    - if: inputs.cache == 'true' && github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: ${{ steps.restore.outputs.cache-primary-key }}

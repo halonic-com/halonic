@@ -276,8 +276,9 @@ jobs:
       - uses: $/.github/actions/setup
       # Every task runs; unchanged packages are cache hits. The
       # cache is GitHub's own, scoped per branch, so a pull request can read
-      # main's cache but never write to it.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # main's cache but never write to it. The save is the job's last step.
+      - id: turbo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
           key: turbo-${{ runner.os }}-${{ github.sha }}
@@ -327,6 +328,15 @@ jobs:
           [ -n "$summary" ] || exit 0
           jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
             | tee -a "$GITHUB_STEP_SUMMARY"
+      # Main and pull requests save (a pull request's copy helps its next
+      # push). A merge-queue entry doesn't: every entry is a new ref, so
+      # nothing would ever read its copy.
+      - name: Save the Turbo cache
+        if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TURBO_CACHE_DIR }}
+          key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
 
   # A pull request can't weaken the checks that judge it. The
   # merge base's test results are the guard's baseline, so they come from a
@@ -646,6 +656,9 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: "0"
+      # Line tables only: backtraces keep file and line, and the cached build
+      # folder is a fraction of the size with full debug info.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -654,6 +667,20 @@ jobs:
       # version and components named in rust-toolchain.toml.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
+      # The crate registry and the build folder, so only our own crates
+      # compile again. Keyed on the lockfile and the toolchain. Only main
+      # saves; every branch and queue entry reads main's copy.
+      - name: Restore the Rust cache
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: rust-tauri-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/Cargo.lock', 'apps/studio/src-tauri/rust-toolchain.toml') }}
+          restore-keys: rust-tauri-${{ runner.os }}-
       # Tauri builds against the system web view: WebKitGTK on Linux. The
       # keychain crate links libdbus for the Secret Service.
       - name: Install the Linux libraries Tauri needs
@@ -684,6 +711,16 @@ jobs:
           echo "${CARGO_DENY_SHA256}  $RUNNER_TEMP/cargo-deny.tar.gz" | sha256sum --check
           tar --extract --gzip --file "$RUNNER_TEMP/cargo-deny.tar.gz" --directory "$RUNNER_TEMP"
           "$RUNNER_TEMP/${name}/cargo-deny" --locked --log-level warn check
+      - name: Save the Rust cache
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
   tauri-windows:
     # The Windows smoke build (HAL-192): the shell and the crates pass
@@ -705,6 +742,9 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: "0"
+      # Line tables only: backtraces keep file and line, and the cached build
+      # folder is a fraction of the size with full debug info.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -713,10 +753,31 @@ jobs:
       # own target, x86_64-pc-windows-msvc. WebView2 is part of the image.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
+      - name: Restore the Rust cache
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: rust-tauri-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/Cargo.lock', 'apps/studio/src-tauri/rust-toolchain.toml') }}
+          restore-keys: rust-tauri-${{ runner.os }}-
       - name: Lints (clippy)
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --locked --workspace
+      - name: Save the Rust cache
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
   sandbox-fence:
     # The real fence: the tests under packages/adapters/sandbox-srt/fence run
@@ -804,6 +865,9 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: "0"
+      # Line tables only: backtraces keep file and line, and the cached build
+      # folder is a fraction of the size with full debug info.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -841,6 +905,17 @@ jobs:
         run: |
           rustup toolchain install
           rustup target add aarch64-linux-android x86_64-linux-android
+      - name: Restore the Rust cache
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: rust-android-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/Cargo.lock', 'apps/studio/src-tauri/rust-toolchain.toml') }}
+          restore-keys: rust-android-${{ runner.os }}-
       # One retry for a download that still fails after Gradle's own retries.
       # It also reruns a real compile error, so it stays at 2 attempts to keep
       # a broken build well inside the job timeout.
@@ -864,15 +939,26 @@ jobs:
           retention-days: 7
       # Even when the build failed, but not on an exact key hit (nothing new).
       # Reuses the restore step's key: the build generates more *.gradle* files,
-      # so hashing again here would give a different key.
+      # so hashing again here would give a different key. Only main saves:
+      # every branch and queue entry reads main's copy.
       - name: Save the Gradle cache
-        if: ${{ always() && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        if: ${{ always() && github.ref == 'refs/heads/main' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.gradle/wrapper/dists
             ~/.gradle/caches
           key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
+      - name: Save the Rust cache
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
   e2e:
     name: Studio end-to-end (Playwright)
