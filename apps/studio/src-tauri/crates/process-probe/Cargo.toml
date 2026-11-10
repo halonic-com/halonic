@@ -1,0 +1,32 @@
+[package]
+name = "halonic-process-probe"
+description = "Asks the operating system whether a process still runs and what this computer is called, the way Node does, for the shell's run lock."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The standard library can't ask either question, so this crate calls the
+# operating system directly. It is the only crate allowed `unsafe` code
+# (approved by Liam on HAL-2719): every other crate keeps the workspace's
+# `unsafe_code = "forbid"`, and nothing unsafe leaves this crate's API.
+# These are the workspace lints with that one change.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+
+# Both are pinned to the versions already in Cargo.lock, so this crate adds
+# no new code to the build (HAL-2719).
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.191", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Networking_WinSock",
+  "Win32_System_Threading",
+] }

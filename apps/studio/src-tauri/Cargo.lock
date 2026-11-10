@@ -1501,6 +1501,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-process-probe"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-profile"
 version = "0.1.0"
 dependencies = [
