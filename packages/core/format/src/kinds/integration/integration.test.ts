@@ -200,7 +200,7 @@ verifies("format.integration-file", () => {
     const nouns = sheet.tools.filter((tool) => tool.risk === "send").map((tool) => tool.noun);
     expect(nouns).toEqual([
       { one: "file", many: "files" },
-      { one: "file", many: "files" },
+      { one: "file update", many: "file updates" },
       { one: "folder", many: "folders" },
       { one: "file", many: "files" },
     ]);

@@ -110,7 +110,7 @@ tools:
       content: The new text, replacing all of the old.
       mimeType: Type of the content you pass (default text/plain).
     risk: send # the file may be shared with other people
-    noun: { one: file, many: files }
+    noun: { one: file update, many: file updates }
     untrusted: true # returns the existing file's name, which someone else may have chosen
   - name: drive_create_folder
     description: >-
