@@ -16,20 +16,35 @@ const localTestWorkers = 2;
 
 /**
  * The most test workers Vitest may start, or `undefined` to keep its defaults.
- * In CI that is always `undefined`. On a developer machine or agent runner
- * it is {@link localTestWorkers}, because many runs at once overload the
- * machine. `HALONIC_TEST_WORKERS` picks another count when it holds a whole
- * number of 1 or more.
+ * `HALONIC_TEST_WORKERS` picks a count when it holds a whole number of 1 or
+ * more, in CI too (the scaffold job uses it to run lighter on a loaded
+ * runner). Without it, CI keeps Vitest's defaults and a developer machine or
+ * agent runner gets {@link localTestWorkers}, because many runs at once
+ * overload the machine.
  *
  * @param env - the process environment
  * @returns the worker cap, or `undefined` for no cap
  */
 export function testWorkerLimit(env: NodeJS.ProcessEnv): number | undefined {
-  if (env["CI"]) {
-    return undefined;
-  }
   const requested = Number(env["HALONIC_TEST_WORKERS"]);
-  return Number.isInteger(requested) && requested >= 1 ? requested : localTestWorkers;
+  if (Number.isInteger(requested) && requested >= 1) {
+    return requested;
+  }
+  return env["CI"] ? undefined : localTestWorkers;
+}
+
+/**
+ * The per-test and per-hook timeout in milliseconds that
+ * `HALONIC_TEST_TIMEOUT` asks for, or `undefined` to keep Vitest's defaults.
+ * Only a whole number of 1 or more counts. A package's own timeout in its
+ * `vitest.config.ts` still wins.
+ *
+ * @param env - the process environment
+ * @returns the timeout in milliseconds, or `undefined` for Vitest's defaults
+ */
+export function testTimeoutOverride(env: NodeJS.ProcessEnv): number | undefined {
+  const requested = Number(env["HALONIC_TEST_TIMEOUT"]);
+  return Number.isInteger(requested) && requested >= 1 ? requested : undefined;
 }
 
 /**
@@ -54,6 +69,8 @@ export function testWorkerLimit(env: NodeJS.ProcessEnv): number | undefined {
  * Outside CI, tests run on at most 2 workers so that several runs at once
  * don't overload the machine (see `testWorkerLimit`). Set
  * `HALONIC_TEST_WORKERS` to change that. CI keeps Vitest's defaults.
+ * `HALONIC_TEST_TIMEOUT` (milliseconds) raises the test and hook timeouts for
+ * a run on a loaded runner (see `testTimeoutOverride`).
  *
  * @param overrides - settings for this one package, merged over the preset
  * @returns the Vitest config for the package
@@ -69,11 +86,13 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
   }
   const coverage = coverageSettings(process.cwd());
   const maxWorkers = testWorkerLimit(process.env);
+  const timeout = testTimeoutOverride(process.env);
   const preset = defineConfig({
     test: {
       include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
       environment: "node",
       ...(maxWorkers === undefined ? {} : { maxWorkers }),
+      ...(timeout === undefined ? {} : { testTimeout: timeout, hookTimeout: timeout }),
       // Property tests check the same inputs on every run, so the requirement
       // guard sees the same expect counts on both sides.
       setupFiles: usesFastCheck(process.cwd()) ? [fastCheckSetupFile] : [],

@@ -58,6 +58,7 @@
       ],
       "passThroughEnv": [
         "CI",
+        "HALONIC_TEST_TIMEOUT",
         "HALONIC_TEST_WORKERS"
       ],
       "outputs": [

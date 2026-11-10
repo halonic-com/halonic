@@ -48,7 +48,8 @@ for the packages your change affects. Run it before every push.
 use it only when you need it. For a quick loop, run the checks for the
 package you changed and push: CI gives the full verdict. Outside CI, tests use
 two workers and Turbo runs two tasks at once; set `HALONIC_TEST_WORKERS` to
-change the first. Turbo caches typecheck, lint, test and build results, so a
+change the first (it applies in CI too, and `HALONIC_TEST_TIMEOUT`, in
+milliseconds, raises the test timeout). Turbo caches typecheck, lint, test and build results, so a
 package nobody changed is a cache hit. Several checkouts on one machine can
 share that cache: set `TURBO_CACHE_DIR` to one folder for all of them (Turbo
 reads it itself, and parallel runs may write to it at once). `pnpm turbo:prune`

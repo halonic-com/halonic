@@ -713,6 +713,12 @@ jobs:
           pnpm new feature ci-example --owner ci --purpose "Empty example feature that CI generates to prove the scaffold passes every check."
           pnpm install --no-frozen-lockfile
       - name: pnpm verify --full
+        # This job runs every package's tests on one shared runner, so a test
+        # that passes in its own job can pass the default 5 s limit only
+        # barely (HAL-3852). Give each test and hook 30 s and use fewer workers.
+        env:
+          HALONIC_TEST_TIMEOUT: "30000"
+          HALONIC_TEST_WORKERS: "2"
         run: pnpm verify --full
 
   # Conditional jobs. Each runs only when its area changes, and ci-ok

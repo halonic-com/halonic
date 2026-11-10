@@ -8,6 +8,7 @@ import {
   definePackageTestConfig,
   fastCheckSetupFile,
   testResultsFile,
+  testTimeoutOverride,
   testWorkerLimit,
 } from "./vitest-preset.ts";
 
@@ -65,9 +66,10 @@ describe("definePackageTestConfig", () => {
 });
 
 describe("testWorkerLimit", () => {
-  it("keeps Vitest's defaults in CI, whatever the override says", () => {
+  it("keeps Vitest's defaults in CI unless HALONIC_TEST_WORKERS asks for a count", () => {
     expect(testWorkerLimit({ CI: "true" })).toBeUndefined();
-    expect(testWorkerLimit({ CI: "true", HALONIC_TEST_WORKERS: "4" })).toBeUndefined();
+    expect(testWorkerLimit({ CI: "true", HALONIC_TEST_WORKERS: "many" })).toBeUndefined();
+    expect(testWorkerLimit({ CI: "true", HALONIC_TEST_WORKERS: "4" })).toBe(4);
   });
 
   it("caps the workers at 2 outside CI", () => {
@@ -78,5 +80,17 @@ describe("testWorkerLimit", () => {
     expect(testWorkerLimit({ HALONIC_TEST_WORKERS: "6" })).toBe(6);
     expect(testWorkerLimit({ HALONIC_TEST_WORKERS: "0" })).toBe(2);
     expect(testWorkerLimit({ HALONIC_TEST_WORKERS: "many" })).toBe(2);
+  });
+});
+
+describe("testTimeoutOverride", () => {
+  it("keeps Vitest's defaults without a usable HALONIC_TEST_TIMEOUT", () => {
+    expect(testTimeoutOverride({})).toBeUndefined();
+    expect(testTimeoutOverride({ HALONIC_TEST_TIMEOUT: "0" })).toBeUndefined();
+    expect(testTimeoutOverride({ HALONIC_TEST_TIMEOUT: "slow" })).toBeUndefined();
+  });
+
+  it("takes a whole number of milliseconds from HALONIC_TEST_TIMEOUT", () => {
+    expect(testTimeoutOverride({ HALONIC_TEST_TIMEOUT: "30000" })).toBe(30_000);
   });
 });
