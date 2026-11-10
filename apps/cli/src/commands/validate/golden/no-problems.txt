@@ -1,0 +1,24 @@
+## colour: halonic validate
+exit 0
+stdout:
+  \e[32m✓\e[39m Checked 3 files in acme. No problems.
+stderr:
+
+## NO_COLOR: halonic validate
+exit 0
+stdout:
+  ✓ Checked 3 files in acme. No problems.
+stderr:
+
+## --json: halonic validate
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "files": 3,
+    "errors": 0,
+    "warnings": 0,
+    "problems": []
+  }
+stderr:

@@ -1,0 +1,53 @@
+## colour: halonic validate
+exit 1
+stdout:
+  hubs/support/agents/sorter.agent.yaml
+    \e[2m3:8\e[22m  \e[31m✕\e[39m Agent "sorter" uses unknown model alias "smrt"  \e[2m(unknown-model-alias)\e[22m
+  
+  library/connectors/files.connector.yaml
+    \e[2m7:13\e[22m  \e[33m!\e[39m Connector "files": "write_file" needs approval but is not in tools.allow, so agents never see it  \e[2m(approved-tool-not-allowed)\e[22m
+  
+  \e[31m✕\e[39m \e[1m1 error\e[22m and 1 warning in 2 files. Checked 6 files.
+stderr:
+
+## NO_COLOR: halonic validate
+exit 1
+stdout:
+  hubs/support/agents/sorter.agent.yaml
+    3:8  ✕ Agent "sorter" uses unknown model alias "smrt"  (unknown-model-alias)
+  
+  library/connectors/files.connector.yaml
+    7:13  ! Connector "files": "write_file" needs approval but is not in tools.allow, so agents never see it  (approved-tool-not-allowed)
+  
+  ✕ 1 error and 1 warning in 2 files. Checked 6 files.
+stderr:
+
+## --json: halonic validate
+exit 1
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "files": 6,
+    "errors": 1,
+    "warnings": 1,
+    "problems": [
+      {
+        "file": "hubs/support/agents/sorter.agent.yaml",
+        "line": 3,
+        "col": 8,
+        "severity": "error",
+        "code": "unknown-model-alias",
+        "message": "Agent \"sorter\" uses unknown model alias \"smrt\""
+      },
+      {
+        "file": "library/connectors/files.connector.yaml",
+        "line": 7,
+        "col": 13,
+        "severity": "warning",
+        "code": "approved-tool-not-allowed",
+        "message": "Connector \"files\": \"write_file\" needs approval but is not in tools.allow, so agents never see it"
+      }
+    ]
+  }
+stderr:

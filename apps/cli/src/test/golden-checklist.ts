@@ -4,6 +4,12 @@ import type { GoldenOutput, GoldenRun } from "./golden.ts";
 // biome-ignore lint/suspicious/noControlCharactersInRegex: escape codes are what this finds
 const escapeCode = /\u001b\[[0-9;]*m/g;
 
+/** What the command's output may do that most commands' can't. */
+export interface ChecklistOptions {
+  /** The command prints a report whose summary can be a ✕ line, as `validate` and `test` do. */
+  readonly reportOnStdout?: boolean;
+}
+
 /**
  * What a golden run breaks of the design's checklist (cli-output section 5),
  * as one sentence per problem; empty when it keeps every point a test can
@@ -12,7 +18,10 @@ const escapeCode = /\u001b\[[0-9;]*m/g;
  * - **Exit code:** the same in all three modes.
  * - **No colour needed:** no escape codes with `NO_COLOR` or `--json`, and
  *   the same words with and without colour.
- * - **Streams:** no ✕ line on stdout.
+ * - **Streams:** no ✕ line on stdout. A report, such as `validate`'s, may
+ *   end with its ✕ summary there (cli-output section 2: the result goes to
+ *   stdout, even when it found errors), so with `reportOnStdout` only an
+ *   error's own "✕ Couldn't …" line counts.
  * - **`--json`:** stdout is one JSON document that starts with
  *   `outputVersion` 1 and `ok`, `ok` is true only for exit code 0, an
  *   `error` has its `kind` and `message`, and stderr is empty. A command
@@ -24,11 +33,11 @@ const escapeCode = /\u001b\[[0-9;]*m/g;
  * @example
  * expect(checklistProblems(await runGolden(["schema"], () => [schemaCommand]))).toEqual([]);
  */
-export function checklistProblems(run: GoldenRun): string[] {
+export function checklistProblems(run: GoldenRun, options: ChecklistOptions = {}): string[] {
   return [
     ...exitCodeProblems(run),
     ...colourProblems(run),
-    ...streamProblems(run.noColour),
+    ...streamProblems(run.noColour, options.reportOnStdout === true),
     ...jsonProblems(run.json),
   ];
 }
@@ -59,8 +68,9 @@ function colourProblems({ colour, noColour, json }: GoldenRun): string[] {
   return problems;
 }
 
-function streamProblems(output: GoldenOutput): string[] {
-  const errorLine = output.stdout.find((line) => line.startsWith("✕"));
+function streamProblems(output: GoldenOutput, reportOnStdout: boolean): string[] {
+  const errorStart = reportOnStdout ? "✕ Couldn't" : "✕";
+  const errorLine = output.stdout.find((line) => line.startsWith(errorStart));
   return errorLine === undefined ? [] : [`An error line went to stdout: ${errorLine}`];
 }
 

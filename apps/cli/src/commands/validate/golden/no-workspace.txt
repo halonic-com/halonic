@@ -1,0 +1,28 @@
+## colour: halonic validate
+exit 4
+stdout:
+stderr:
+  \e[31m✕\e[39m Couldn't check acme: there's no workspace.yaml here.
+    Run it inside a workspace, or create one with halonic init.
+
+## NO_COLOR: halonic validate
+exit 4
+stdout:
+stderr:
+  ✕ Couldn't check acme: there's no workspace.yaml here.
+    Run it inside a workspace, or create one with halonic init.
+
+## --json: halonic validate
+exit 4
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "not_found",
+      "code": "no-workspace",
+      "message": "there's no workspace.yaml here.",
+      "fix": "Run it inside a workspace, or create one with halonic init."
+    }
+  }
+stderr:

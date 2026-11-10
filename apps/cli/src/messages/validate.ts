@@ -23,6 +23,10 @@ export const validateMessages = defineMessages("validate", {
   summary: () => phrase`Check a workspace's files and say what to fix`,
   /** What `validate` was doing, for "✕ Couldn't check ./downloads: …". */
   action: (folder: string) => phrase`check ${folder}`,
+  /** The help line of `--all`. */
+  allOption: () => phrase`Show every problem, not only the first 20.`,
+  /** The help line of `--strict`. */
+  strictOption: () => phrase`Fail on warnings too, not only on errors.`,
 
   noProblems: (checked: number, workspace: string) =>
     phrase`Checked ${counted(checked, "file", "files")} in ${workspace}. No problems.`,
