@@ -1,7 +1,7 @@
 import type { Mark } from "../output/paint.ts";
 import { countInWords, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
-import { dim, markPart, phrase } from "./phrase.ts";
+import { markPart, phrase } from "./phrase.ts";
 import { runMessages } from "./run.ts";
 import { happenedInWords, type StartedAt } from "./runs-list.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -55,10 +55,6 @@ export const runsMessages = defineMessages("runs", {
 
   sent: (event: string, runId: string, title: string) =>
     phrase`Sent ${event} to run ${runId}. ${title} goes on.`,
-  /** Indented and dimmed under {@link sent}. */
-  followIt: (runId: string, dir?: string) => [
-    dim(`Follow it: ${suggestedCommand("runs show", dir, runId)}`),
-  ],
   /**
    * A Try it or Test run that ended at steps it couldn't try, because they
    * need changes left out of it (HAL-4285): "! Support reply couldn't try everything."

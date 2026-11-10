@@ -86,9 +86,8 @@ verifies("cli.commands.runs.send", () => {
 
       expect(io.stderr).toEqual([]);
       expect(code).toBe(exitCode.ok);
-      expect(io.stdout.slice(0, 3)).toEqual([
+      expect(io.stdout.slice(0, 2)).toEqual([
         "✓ Sent approve to run 01jd8q. Support reply goes on.",
-        "  Follow it: halonic runs show 01jd8q",
         "",
       ]);
       expect(io.stdout).toContainEqual(expect.stringMatching(/^✓ Support reply finished in /));

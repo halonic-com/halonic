@@ -128,7 +128,6 @@ export async function sendToRun(
       ...progress,
       lines: [
         phrase`${markPart("done")} ${runsMessages.sent(event, id, title).phrase}`,
-        phrase`  ${runsMessages.followIt(id, dir).phrase}`,
         ...progress.lines,
       ],
     };

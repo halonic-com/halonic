@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { Message } from "./define.ts";
-import { dim, plainText } from "./phrase.ts";
+import { plainText } from "./phrase.ts";
 import { type CancelledAt, type NotWaiting, runsMessages, type ShownEnd } from "./runs.ts";
 import type { StartedAt } from "./runs-list.ts";
 
@@ -12,13 +12,11 @@ verifies("cli.messages", () => {
     expect(runsMessages.sent("approve", "01JD8Q", "Support reply").key).toBe("runs.sent");
     expect([
       words(runsMessages.sent("approve", "01JD8Q", "Support reply")),
-      words(runsMessages.followIt("01JD8Q")),
       words(runsMessages.sendAction("approve", "01JD8Q")),
       words(runsMessages.notWaiting({ status: "finished", ago: "2 min ago" })),
       words(runsMessages.notWaitingFix("01JD8Q")),
     ]).toEqual([
       "Sent approve to run 01JD8Q. Support reply goes on.",
-      "Follow it: halonic runs show 01JD8Q",
       "send approve to run 01JD8Q",
       "it isn't waiting for you. It finished 2 min ago.",
       "See it with halonic runs show 01JD8Q.",
@@ -29,12 +27,6 @@ verifies("cli.messages", () => {
 describe("runs's sentences", () => {
   it("has the summary", () => {
     expect(words(runsMessages.summary())).toBe("List runs or show what one did");
-  });
-
-  it("dims the follow-up command, with the user's --dir", () => {
-    expect(runsMessages.followIt("01JD8Q", "./acme").phrase).toEqual([
-      dim("Follow it: halonic runs show --dir ./acme 01JD8Q"),
-    ]);
   });
 
   it("has the lines for a run that isn't there", () => {
