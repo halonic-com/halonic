@@ -1,4 +1,4 @@
-# app.scheduler.reads-queue
+# app.scheduler-reads-queue
 
 - Status: active
 - Since: 0.1.0

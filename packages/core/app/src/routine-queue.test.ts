@@ -4,7 +4,7 @@ import { queueKey } from "./routine-ids.ts";
 import { MAX_QUEUED } from "./routine-overlap.ts";
 import { setUp, workspace } from "./testing/routine-scheduler-harness.ts";
 
-verifies("app.scheduler.reads-queue", () => {
+verifies("app.scheduler-reads-queue", () => {
   it("gives each routine's queued count, first and last time, by key", async () => {
     const { scheduler, at } = setUp([
       { key: "p/b-hourly", minute: 0, overlap: "queue" },
