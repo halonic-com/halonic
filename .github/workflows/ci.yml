@@ -889,6 +889,46 @@ jobs:
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
 
+  sandbox-windows:
+    # The sandbox fence probes on a real Windows machine (HAL-1919): a hidden
+    # file and a blocked loopback port, run through srt after its one-time
+    # admin install. The runner's account is an administrator, so the install
+    # needs no prompt. --skip-profile-grant keeps the install to the account
+    # and the network filters; the probes use their own temp folder.
+    #
+    # Report-only for now: continue-on-error, and not in ci-ok's needs, because
+    # no user reaches srt's Windows mode yet (HAL-3656). It becomes required
+    # (drop continue-on-error, add it to ci-ok) in the same PR that lets the
+    # sandbox choice (HAL-3306) use srt on Windows. Each case's pass/fail line
+    # is in the job summary.
+    name: Sandbox fence on Windows (canary probes)
+    needs: changes
+    if: needs.changes.outputs.sandbox-fence == 'true'
+    continue-on-error: true
+    runs-on: windows-2025
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Not the shared setup action: its restored pnpm store fails on Windows
+      # ("Access is denied" on a linked package), so this job installs
+      # without the cache, and only what the sandbox package needs.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - name: Install the dependencies
+        run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-srt..."
+        shell: bash
+      - name: Install the sandbox (srt windows-install)
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js windows-install --skip-profile-grant
+      - name: Canary probes
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node scripts/windows-fence-probe.mjs
+
   agent-host:
     # The agent host as one executable, built with Node's single-executable
     # support (HAL-2865). Proves on all three systems that the build works
