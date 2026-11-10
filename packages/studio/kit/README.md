@@ -1440,15 +1440,15 @@ it.
 </Field>;
 ```
 
-| Prop          | What it is                                                                      |
-| ------------- | ------------------------------------------------------------------------------- |
-| `options`     | `{ value, label, disabled?, reason? }` in list order. A `disabled` one is grey  |
-| `value`       | The picked value                                                                |
-| `onChange`    | Called with the new value as soon as the user picks it                          |
-| `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked    |
-| `size`        | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen   |
-| `emptyText`   | The phone's picker sheet with no options: what's missing and where to add it    |
-| `ref`         | The control you focus: the `<select>`, or the picker button on a phone          |
+| Prop          | What it is                                                                     |
+| ------------- | ------------------------------------------------------------------------------ |
+| `options`     | `{ value, label, disabled?, reason? }` in list order. A `disabled` one is grey |
+| `value`       | The picked value                                                               |
+| `onChange`    | Called with the new value as soon as the user picks it                         |
+| `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked   |
+| `size`        | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen  |
+| `emptyText`   | The phone's picker sheet with no options: what's missing and where to add it   |
+| `ref`         | The control you focus: the `<select>`, or the picker button on a phone         |
 
 | State    | What shows                                                                               |
 | -------- | ---------------------------------------------------------------------------------------- |
