@@ -28,6 +28,8 @@ fn process_probe_finds_no_process_that_has_exited() {
 #[test]
 fn process_probe_counts_a_process_it_may_not_look_at_as_running() {
     // pid 1 (init) and pid 4 (System) belong to the system, not to us.
+    // CI's Windows runner is elevated and can open pid 4, so there this test
+    // doesn't reach the access-denied branch.
     let system_pid = if cfg!(windows) { 4 } else { 1 };
     assert!(process_alive(system_pid));
 }
