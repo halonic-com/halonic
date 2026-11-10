@@ -63,8 +63,12 @@ verifies("parity.record-only-from-reference", () => {
     vi.stubEnv("ACME_SECRET", "not for the old code");
     vi.stubEnv("PATH", "/usr/bin");
     vi.stubEnv("LD_LIBRARY_PATH", "/opt/libs");
+    for (const name of ["SystemRoot", "ComSpec", "PATHEXT"]) {
+      vi.stubEnv(name, undefined);
+    }
     expect(oldEnvironment("/empty/home")).toEqual({
       HOME: "/empty/home",
+      USERPROFILE: "/empty/home",
       TZ: "UTC",
       LANG: "C",
       NO_COLOR: "1",
@@ -73,5 +77,7 @@ verifies("parity.record-only-from-reference", () => {
     });
     vi.stubEnv("LD_LIBRARY_PATH", undefined);
     expect(Object.keys(oldEnvironment("/h"))).not.toContain("LD_LIBRARY_PATH");
+    vi.stubEnv("SystemRoot", "the system folder");
+    expect(oldEnvironment("/h")["SystemRoot"]).toBe("the system folder");
   });
 });

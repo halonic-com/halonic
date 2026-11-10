@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, realpathSync } from "node:fs";
+import { basename } from "node:path";
 import { oldTsx } from "../old-repo.ts";
 import type { TestFolders } from "../test-folders.ts";
 
@@ -238,6 +239,19 @@ fi
 exec node "$@"
 `;
 
+/** The same stand-in as a batch file, which is what pnpm installs as `tsx.cmd` on Windows. */
+const tsxBatch = [
+  "@echo off",
+  'if "%~1"=="--import" goto run',
+  'if not "%~1"=="apps/cli/src/main.ts" goto run',
+  "echo checked %~3",
+  "echo 1 problem 1>&2",
+  "exit /b 1",
+  ":run",
+  "node %*",
+  "",
+].join("\r\n");
+
 export interface FakeOldRepo {
   readonly clone: string;
   /** The commit the clone is at; the recorder must be told to expect it. */
@@ -261,7 +275,8 @@ export function fakeOldRepo(folders: TestFolders, omit: readonly string[] = []):
     "packages/store/memory/src/index.ts": memoryModule,
     "packages/testing/test-runner/src/index.ts": testRunnerModule,
     "apps/cli/src/main.ts": cliModule,
-    "node_modules/.bin/tsx": tsxScript,
+    [`node_modules/.bin/${basename(oldTsx(clone))}`]:
+      process.platform === "win32" ? tsxBatch : tsxScript,
   });
   chmodSync(oldTsx(clone), 0o755);
   const git = (...args: string[]): string =>

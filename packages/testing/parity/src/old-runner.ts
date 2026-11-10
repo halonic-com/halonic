@@ -13,13 +13,12 @@
  * with the old CLI. Its types are loose on purpose: the old modules are loaded
  * by path and have no types here.
  */
-import { spawnSync } from "node:child_process";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { CliCall } from "./cli-calls.ts";
 import { runOldCli } from "./old-cli.ts";
-import { fixedTestTime, oldEnvironment } from "./old-repo.ts";
+import { fixedTestTime, oldEnvironment, runOldTsx } from "./old-repo.ts";
 import type {
   OldDiagnostic,
   OldFile,
@@ -162,15 +161,11 @@ function withLines(
 }
 
 function runValidate(dir: string): OldResult["validate"] {
-  const result = spawnSync(
-    join(oldRoot, "node_modules/.bin/tsx"),
-    ["apps/cli/src/main.ts", "validate", dir],
-    {
-      cwd: oldRoot,
-      encoding: "utf8",
-      env: oldEnvironment(home),
-    },
-  );
+  const result = runOldTsx(oldRoot, ["apps/cli/src/main.ts", "validate", dir], {
+    cwd: oldRoot,
+    encoding: "utf8",
+    env: oldEnvironment(home),
+  });
   return { exitCode: result.status ?? -1, stdout: result.stdout, stderr: result.stderr };
 }
 

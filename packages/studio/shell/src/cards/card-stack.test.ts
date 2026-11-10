@@ -119,6 +119,21 @@ verifies("shell.card-stack", () => {
       expect(titles(openCard(stackOf("A", "B"), card("triage", true)))).toEqual(["triage"]);
     });
 
+    it("docks a part that is open as a full card, closing the cards below it", () => {
+      const stack = openCard(stackOf("A", "triage", "B"), card("triage", true));
+      expect(stack).toEqual([card("triage", true)]);
+    });
+
+    it("returns the same stack when the docked card opens docked again", () => {
+      const stack = openCard(noCards, card("triage", true));
+      expect(openCard(stack, card("triage", true))).toBe(stack);
+    });
+
+    it("closes the cards above the docked card when it opens docked again", () => {
+      const stack = openCard(openCard(noCards, card("triage", true)), card("Sorter"));
+      expect(openCard(stack, card("triage", true))).toEqual([card("triage", true)]);
+    });
+
     it("covers the whole panel below 720px", () => {
       expect(dockedCardCoversPanel(700)).toBe(true);
       expect(dockedCardCoversPanel(720)).toBe(false);

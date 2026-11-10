@@ -1,4 +1,9 @@
-import { execFileSync } from "node:child_process";
+import {
+  execFileSync,
+  type SpawnSyncOptionsWithStringEncoding,
+  type SpawnSyncReturns,
+  spawnSync,
+} from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -14,17 +19,45 @@ export const fixedTestTime = "2026-01-01T00:00:00.000Z";
 
 /** The old repo's `tsx`, installed in the clone by `pnpm install`. */
 export function oldTsx(clone: string): string {
-  return join(clone, "node_modules", ".bin", "tsx");
+  return join(clone, "node_modules", ".bin", process.platform === "win32" ? "tsx.cmd" : "tsx");
+}
+
+/**
+ * Runs the old repo's `tsx` with the given arguments. On Windows `.bin/tsx.cmd`
+ * is a batch file, which Node can only start through the command interpreter,
+ * so the line is quoted by hand and passed on as it is.
+ */
+export function runOldTsx(
+  clone: string,
+  args: readonly string[],
+  options: SpawnSyncOptionsWithStringEncoding,
+): SpawnSyncReturns<string> {
+  const tsx = oldTsx(clone);
+  if (process.platform !== "win32") {
+    return spawnSync(tsx, args, options);
+  }
+  const line = [tsx, ...args].map((arg) => `"${arg}"`).join(" ");
+  return spawnSync(process.env["ComSpec"] ?? "cmd.exe", ["/d", "/s", "/c", `"${line}"`], {
+    ...options,
+    windowsVerbatimArguments: true,
+  });
 }
 
 /**
  * The environment the old code runs in: an empty home folder (so no secrets
  * or settings of the person recording are read), UTC and a plain locale.
- * Only PATH and the library path are passed through, to find Node.
+ * Only what Node needs to start (PATH and the library path, or the system folder on Windows) is passed through.
  */
 export function oldEnvironment(home: string): Record<string, string> {
-  const environment: Record<string, string> = { HOME: home, TZ: "UTC", LANG: "C", NO_COLOR: "1" };
-  for (const name of ["PATH", "LD_LIBRARY_PATH"]) {
+  const environment: Record<string, string> = {
+    HOME: home,
+    USERPROFILE: home,
+    TZ: "UTC",
+    LANG: "C",
+    NO_COLOR: "1",
+  };
+  // Windows can't start Node or the command interpreter without its system folder and PATHEXT.
+  for (const name of ["PATH", "LD_LIBRARY_PATH", "SystemRoot", "ComSpec", "PATHEXT"]) {
     const value = process.env[name];
     if (value !== undefined) {
       environment[name] = value;

@@ -53,6 +53,7 @@ export {
   oldEnvironment,
   oldTsx,
   referenceHash,
+  runOldTsx,
 } from "./old-repo.ts";
 export {
   type CliRecording,

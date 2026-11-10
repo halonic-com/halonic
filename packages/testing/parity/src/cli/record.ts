@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -6,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { loadCases, type ParityCase } from "../cases.ts";
 import { baseCliCalls, type CliCall } from "../cli-calls.ts";
 import { composeWorkspace } from "../compose.ts";
-import { cloneProblems, oldEnvironment, oldTsx, referenceHash } from "../old-repo.ts";
+import { cloneProblems, oldEnvironment, referenceHash, runOldTsx } from "../old-repo.ts";
 import {
   goldenText,
   type OldResult,
@@ -47,8 +46,9 @@ export type StartRunner = (clone: string, files: RunnerFiles) => number | null;
 /** Starts old-runner.ts with the clone's own tsx, in the clone, with a clean environment. */
 const startOldRunner: StartRunner = (clone, files) => {
   const runner = fileURLToPath(new URL("../old-runner.ts", import.meta.url));
-  const run = spawnSync(oldTsx(clone), [runner, clone, files.jobs, files.results, files.home], {
+  const run = runOldTsx(clone, [runner, clone, files.jobs, files.results, files.home], {
     cwd: clone,
+    encoding: "utf8",
     stdio: "inherit",
     env: oldEnvironment(files.home),
   });
