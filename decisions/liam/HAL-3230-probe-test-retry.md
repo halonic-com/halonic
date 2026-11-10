@@ -2,7 +2,8 @@
 
 - Requirements: `system-node.resource-probe`, `contracts.resource-probe`
 - Task: HAL-3230, follows HAL-3084 (`HAL-3084-probe-test-timeout.md`)
-- Approval: the maintainer; Julian reviews it as the owner of the contract suite
+- Approval: the maintainer asked for this change on [HAL-3230](/HAL/issues/HAL-3230); Julian reviews it as the owner of the contract suite
+- Kind: internal
 
 ## What changes
 
@@ -21,3 +22,10 @@ assertion. One retry covers the remaining case of a single slow start.
 A reader that really hangs still fails: it hits the 15 s limit on the retry too, and the test fails
 with the adapter's error. Raising the limit would make that slower for users, so it stays at 15 s.
 Linux and macOS run each test once, as before.
+
+## Covers
+
+- system-node.resource-probe
+- contracts.resource-probe
+- packages/adapters/system-node/src/resource-probe.test.ts
+- packages/testing/contracts/src/resource-probe.ts
