@@ -246,21 +246,50 @@ async function internetMode() {
       r.curlError = r.stderr.split(/\r?\n/)[0] ?? null;
       out.cases[`${pname}: ${k}`] = r;
     }
-    // DNS on its own: does the box even resolve names?
-    out.cases[`${pname}: dns`] = await inBox(`internet ${pname} dns`, "nslookup.exe example.com", { work, net });
+    // DNS on its own. Direct queries (nslookup talks UDP 53 itself) and lookups through the Windows
+    // DNS client service (curl, like most programs, asks the service, which runs outside the box).
+    out.cases[`${pname}: nslookup`] = await inBox(`internet ${pname} nslookup`, "nslookup.exe example.com", { work, net });
+    out.cases[`${pname}: dns side channel`] = await dnsSideChannel(work, net, pname);
   }
   bridge.close();
   const blocked = (c) => !c.ok && !/http=[1-5]\d\d/.test(c.stdout ?? "");
+  // nslookup exits 0 even when every query times out; an answer has a "Name:" line.
+  const answered = (c) => /^Name:/m.test(c.stdout ?? "");
   out.verdict = {
     hostReachesIp: hostControl.ip.exit === 0,
     hostReachesName: hostControl.name.exit === 0,
     closed: Object.fromEntries(Object.keys(targets).map((k) => [k, blocked(out.cases[`closed: ${k}`])])),
     bridgeOnly: Object.fromEntries(Object.keys(targets).map((k) => [k, blocked(out.cases[`bridgeOnly: ${k}`])])),
-    curlExitCodes: Object.fromEntries(Object.entries(out.cases).filter(([k]) => !k.endsWith("dns")).map(([k, c]) => [k, c.curlExit ?? c.spawnError])),
-    dnsResolvesInBox: { closed: out.cases["closed: dns"].ok, bridgeOnly: out.cases["bridgeOnly: dns"].ok },
+    curlExitCodes: Object.fromEntries(Object.entries(out.cases).filter(([k]) => !/nslookup|dns/.test(k)).map(([k, c]) => [k, c.curlExit ?? c.spawnError])),
+    nslookupAnswers: { closed: answered(out.cases["closed: nslookup"]), bridgeOnly: answered(out.cases["bridgeOnly: nslookup"]) },
+    dnsSideChannel: { closed: out.cases["closed: dns side channel"].verdict, bridgeOnly: out.cases["bridgeOnly: dns side channel"].verdict },
   };
   console.log(`RESULT internet (${out.user}): ${JSON.stringify(out.verdict)}`);
   return out;
+}
+
+/**
+ * Does a name lookup from inside the box leave the machine? The box asks for a name nobody has asked
+ * for before (nip.io answers any "<label>-1-2-3-4.nip.io" with 1.2.3.4), then the host looks for it in
+ * the DNS client service's cache. curl exit 7 ("could not connect") instead of 6 ("could not resolve")
+ * and a cache entry both mean the lookup went out: a channel for data even with the network off.
+ */
+async function dnsSideChannel(work, net, pname) {
+  const label = `mxc-${pname.toLowerCase()}-${process.pid}-${Date.now().toString(36)}`;
+  const name = `${label}-192-0-2-1.nip.io`;
+  const r = await inBox(`internet ${pname} dns side channel`, `curl.exe -sS -m 5 http://${name}/`, { work, net });
+  const cache = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Get-DnsClientCache | Where-Object Entry -like '${label}*' | Select-Object Entry, Status, Data | ConvertTo-Json -Compress`], { encoding: "utf8" });
+  const host = spawnSync("curl.exe", ["-sS", "-m", "5", "-o", "NUL", "-w", "%{remote_ip}", `http://${label}-host-192-0-2-1.nip.io/`], { encoding: "utf8" });
+  r.name = name;
+  r.curlExit = r.exit;
+  r.hostCacheEntry = cache.stdout.trim() || null;
+  r.verdict = {
+    resolvedInBox: r.exit === 7 || r.exit === 28,
+    inHostDnsCache: Boolean(r.hostCacheEntry),
+    curlExit: r.exit,
+    hostControlResolves: host.stderr.includes("Could not resolve") ? false : host.status,
+  };
+  return r;
 }
 
 // ---- Main -------------------------------------------------------------------------------------

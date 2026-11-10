@@ -41,7 +41,8 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
       # A throwaway standard user (not in Administrators) with a random password made here and never
-      # printed. The spike folder is copied to a folder that user owns.
+      # printed. The spike folder is copied to a folder that user owns. -UseNewEnvironment gives it its
+      # own TEMP and profile paths instead of the runner user's.
       - name: Probes as a normal user
         run: |
           $user = "mxcprobe"
@@ -58,7 +59,7 @@ jobs:
           $node = (Get-Command node).Source
           $cred = [System.Management.Automation.PSCredential]::new($user, $secure)
           $p = Start-Process -FilePath $node -ArgumentList "probe5.mjs", "all", "$root\data" -WorkingDirectory "$root\spike" `
-            -Credential $cred -LoadUserProfile -NoNewWindow -Wait -PassThru `
+            -Credential $cred -LoadUserProfile -UseNewEnvironment -NoNewWindow -Wait -PassThru `
             -RedirectStandardOutput "$root\out.txt" -RedirectStandardError "$root\err.txt"
           "exit: $($p.ExitCode)"
           Get-Content "$root\err.txt" -ErrorAction SilentlyContinue
