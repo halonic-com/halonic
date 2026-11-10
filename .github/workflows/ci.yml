@@ -777,7 +777,7 @@ jobs:
       - name: Typecheck and test
         shell: bash
         run: >
-          pnpm exec turbo run typecheck test --continue --output-logs=new-only
+          pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
 
