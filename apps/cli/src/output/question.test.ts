@@ -1,8 +1,9 @@
-import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { defineMessages } from "../messages/define.ts";
 import { bold, markPart, phrase, plainText } from "../messages/phrase.ts";
+import { trustMessages } from "../messages/trust.ts";
+import { NotTrustedError } from "../not-trusted.ts";
 import {
   type AskInputs,
   askYesNo,
@@ -27,11 +28,14 @@ function typing(...answers: string[]): QuestionTerminal & { readonly written: st
   };
 }
 
+/** `trust`'s refusal without a terminal: `not_trusted`, never `denied`, which is for a real no (F6). */
 const noTerminal = () =>
-  new KindedError(
-    "denied",
-    "Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
-  );
+  new NotTrustedError({
+    problem: trustMessages.noTerminal("Acme"),
+    fix: trustMessages.noTerminalFix("./acme"),
+    fingerprint: `hfp1:${"0".repeat(64)}`,
+    check: [],
+  });
 
 function ask(
   terminal: QuestionTerminal,

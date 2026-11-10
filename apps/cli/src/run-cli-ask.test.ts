@@ -1,16 +1,18 @@
-import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import type { CliCommand } from "./command.ts";
+import { type CliCommand, UsageError } from "./command.ts";
 import { exitCode } from "./exit-code.ts";
 import { defineMessages } from "./messages/define.ts";
 import { bold, markPart, phrase } from "./messages/phrase.ts";
+import { pluginMessages } from "./messages/plugin.ts";
+import { trustMessages } from "./messages/trust.ts";
+import { NotTrustedError } from "./not-trusted.ts";
 import type { QuestionTerminal } from "./output/question.ts";
 import { runCli, type Terminal } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { manualClock } from "./test/manual-clock.ts";
 
-const trustMessages = defineMessages("test", {
+const testMessages = defineMessages("test", {
   summary: () => phrase`Trust a workspace`,
   heading: () => phrase`Trust check for ${bold("Acme")} (./acme)`,
   trustAcme: () => phrase`Trust ${bold("Acme")} on this computer?`,
@@ -20,28 +22,35 @@ const trustMessages = defineMessages("test", {
   checking: () => phrase`Check Acme`,
 });
 
+/** `trust`'s refusal without a terminal: the reason, then the flags, and exit 3 (F6). */
 const notTrusted = () =>
-  new KindedError(
-    "denied",
-    "Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
-  );
+  new NotTrustedError({
+    problem: trustMessages.noTerminal("Acme"),
+    fix: trustMessages.noTerminalFix("./acme"),
+    fingerprint: `hfp1:${"0".repeat(64)}`,
+    check: [],
+  });
+
+/** `plugin remove`'s refusal without a terminal: wrong usage, so exit 2 (F6). */
+const removeRefused = () =>
+  new UsageError(pluginMessages.removeNoTerminal("mail-mcp"), pluginMessages.removeNoTerminalFix());
 
 /** A command shaped like `halonic trust`: the check, then two questions that both need a yes. */
 const trustCommand: CliCommand = {
   name: "trust",
   usage: "[--yes]",
-  summary: trustMessages.summary(),
+  summary: testMessages.summary(),
   options: {},
   async run(_input, context) {
     const trusted =
       (await context.ask({
-        question: trustMessages.trustAcme(),
-        shownFirst: [trustMessages.heading().phrase],
+        question: testMessages.trustAcme(),
+        shownFirst: [testMessages.heading().phrase],
         yes: false,
         refusal: notTrusted,
       })) &&
-      (await context.ask({ question: trustMessages.notPinned(), yes: false, refusal: notTrusted }));
-    const line = trusted ? trustMessages.trusted() : trustMessages.notTrusted();
+      (await context.ask({ question: testMessages.notPinned(), yes: false, refusal: notTrusted }));
+    const line = trusted ? testMessages.trusted() : testMessages.notTrusted();
     return { exitCode: exitCode.ok, lines: [line.phrase], json: { trusted } };
   },
 };
@@ -92,12 +101,36 @@ verifies("cli.questions", () => {
       const io = captureIo("/work");
       const { terminal, written } = terminalTyping("y", "y");
       const inCi = { ...terminal, env: { ...terminal.env, ...env } };
-      expect(await runCli(args, io, [trustCommand], { terminal: inCi })).toBe(exitCode.denied);
+      expect(await runCli(args, io, [trustCommand], { terminal: inCi })).toBe(exitCode.notTrusted);
       expect(written).toEqual([]);
     }
     const io = captureIo("/work");
-    expect(await runCli(["trust"], io, [trustCommand])).toBe(exitCode.denied);
-    expect(io.stderr[0]).toContain("there's no terminal to ask you");
+    expect(await runCli(["trust"], io, [trustCommand])).toBe(exitCode.notTrusted);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ Acme isn't trusted on this computer yet, and there's no terminal to ask you.",
+      "  Review it with halonic trust --dir ./acme, then pass --yes --fingerprint <fingerprint>.",
+    ]);
+  });
+
+  it("refuses plugin remove without a terminal as wrong usage, in two lines", async () => {
+    const removeCommand: CliCommand = {
+      ...trustCommand,
+      name: "remove",
+      async run(_input, context) {
+        const removed = await context.ask({
+          question: testMessages.trustAcme(),
+          yes: false,
+          refusal: removeRefused,
+        });
+        return { exitCode: exitCode.ok, lines: [], json: { removed } };
+      },
+    };
+    const io = captureIo("/work");
+    expect(await runCli(["remove"], io, [removeCommand])).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ Removing mail-mcp deletes its settings and secrets, and there's no terminal to ask you.",
+      "  To remove it anyway, pass --yes.",
+    ]);
   });
 
   it("takes the live line away before asking", async () => {
@@ -107,10 +140,10 @@ verifies("cli.questions", () => {
     const askingCommand: CliCommand = {
       ...trustCommand,
       async run(_input, context) {
-        context.progress(trustMessages.checking().phrase);
+        context.progress(testMessages.checking().phrase);
         clock.advance(1_500);
         const trusted = await context.ask({
-          question: trustMessages.trustAcme(),
+          question: testMessages.trustAcme(),
           yes: false,
           refusal: notTrusted,
         });
