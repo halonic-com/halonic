@@ -1,4 +1,4 @@
-import { Button, type CalloutHandle } from "@halonicjs/studio-kit";
+import { Button, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
@@ -64,18 +64,27 @@ function busyLabel(event: string, own?: string): string {
 }
 
 /**
- * The decided Callout of a wait step (mc 5). Its reject is the step's own answer, so it says
- * nothing about a tool call or the agent. Any other answer, and any answer the step labels
- * itself, names the button you pressed with the same word (HAL-4008).
+ * What the decided line says happens next: "The run continues." after an approve, whatever the
+ * step calls it. A reject is the step's own answer, so it says nothing about a tool call or the
+ * agent, and neither does any other answer.
+ */
+function whatNext(event: string): string {
+  return event === "approve" ? " The run continues." : "";
+}
+
+/**
+ * The decided Callout of a wait step (mc 5). An answer the step labels itself, and any answer
+ * other than approve and reject, names the button you pressed with the same word (HAL-4008),
+ * followed by what happens next as the built-in line says it (HAL-4050).
  */
 export function answeredText(event: string, at: Date, own?: string): string {
   const time = decidedAt(at);
   const label = answerLabel(event, own);
   if (label === answerLabel(event)) {
-    if (event === "approve") return `Approved by you at ${time}. The run continues.`;
-    if (event === "reject") return `Rejected by you at ${time}.`;
+    if (event === "approve") return `Approved by you at ${time}.${whatNext(event)}`;
+    if (event === "reject") return `Rejected by you at ${time}.${whatNext(event)}`;
   }
-  return `You chose ${label} at ${time}.`;
+  return `You chose ${label} at ${time}.${whatNext(event)}`;
 }
 
 /**
@@ -166,25 +175,40 @@ interface AnswerBarProps {
 }
 
 /**
- * The bar under the card: the first answer primary and full width, the others secondary in a
- * row under it, none red (flow-inbox 5.1, first-run 4.3). While one is sent it is busy and the
+ * The bar under the card: the first answer primary and full width, the others secondary sharing
+ * a row under it, none red (flow-inbox 5.1, first-run 4.3). While one is sent it is busy and the
  * others ignore presses but keep focus.
+ *
+ * A step's label has no length limit, so a button keeps it on one line and ends it with an
+ * ellipsis at its edge, with the whole label as its name and its tooltip (HAL-4050). Each button
+ * sits in a `@container` as wide as the button, so the label can be capped at that width less
+ * the button's widest padding and edges.
  */
 function AnswerBar({ accepts, labels, state, guard, onAnswer }: AnswerBarProps) {
   const [first, ...others] = accepts;
   const failed = state.kind === "open" ? state.failed : null;
-  const answerButton = (event: string, primary: boolean) => (
-    <Button
-      key={event}
-      variant={primary ? "primary" : "secondary"}
-      block
-      busy={state.kind === "answering" && state.event === event}
-      busyLabel={busyLabel(event, ownLabel(labels, event))}
-      onClick={() => onAnswer(event)}
-    >
-      {answerLabel(event, ownLabel(labels, event))}
-    </Button>
-  );
+  const answerButton = (event: string, primary: boolean) => {
+    const label = answerLabel(event, ownLabel(labels, event));
+    return (
+      // `[&>span]:flex` makes the tooltip's wrapper as wide as the container, as is the button.
+      <div key={event} className="@container min-w-0 flex-1 [&>span]:flex">
+        <Tooltip text={label} isName>
+          {(tooltip) => (
+            <Button
+              {...tooltip}
+              variant={primary ? "primary" : "secondary"}
+              block
+              busy={state.kind === "answering" && state.event === event}
+              busyLabel={busyLabel(event, ownLabel(labels, event))}
+              onClick={() => onAnswer(event)}
+            >
+              <span className="max-w-[calc(100cqw-2rem-2px)] truncate">{label}</span>
+            </Button>
+          )}
+        </Tooltip>
+      </div>
+    );
+  };
   return (
     <div
       className="flex flex-col gap-2 border-t border-border p-4"

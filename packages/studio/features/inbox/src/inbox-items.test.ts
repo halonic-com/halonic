@@ -61,6 +61,16 @@ verifies("inbox.items", () => {
     ]);
   });
 
+  it("gives a wait step's own answer labels as core sends them", () => {
+    const run = waitingRun("r2", {
+      accepts: ["approve", "reject", "escalate"],
+      answerLabels: { approve: "Send reply", escalate: "Ask a lead" },
+    });
+    expect(inboxItems([run])[0]).toMatchObject({
+      answerLabels: { approve: "Send reply", escalate: "Ask a lead" },
+    });
+  });
+
   it("names a wait step without a description by its id with a capital", () => {
     const [item] = inboxItems([waitingRun("r3")]);
     expect(item).toMatchObject({ title: "Review", body: "" });

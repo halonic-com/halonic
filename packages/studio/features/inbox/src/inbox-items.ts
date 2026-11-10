@@ -41,8 +41,8 @@ export interface WaitItem {
   /** The answers the step takes, such as `approve` and `reject`. */
   readonly accepts: readonly string[];
   /**
-   * The step's own label for an answer, by its event, such as `escalate: "Ask a lead"`. Core
-   * doesn't send them yet (HAL-4014), so this is empty and the built-in labels apply.
+   * The step's own label for an answer, by its event, such as `escalate: "Ask a lead"`, as core
+   * gives them (HAL-4014). An answer without one has the built-in label.
    */
   readonly answerLabels: Readonly<Record<string, string>>;
   /** ISO time the run started waiting. */
@@ -111,7 +111,7 @@ function waitItem(run: RunSummary, state: string): WaitItem {
     title: title === "" ? state.charAt(0).toUpperCase() + state.slice(1) : title,
     body: run.waitingFor?.body ?? "",
     accepts: run.accepts,
-    answerLabels: {},
+    answerLabels: run.answerLabels,
     since: run.lastWaitingAt ?? run.updatedAt,
     movesOnAt: run.nextTimer,
   };

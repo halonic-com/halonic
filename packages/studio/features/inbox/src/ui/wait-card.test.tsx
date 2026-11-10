@@ -58,6 +58,25 @@ function button(root: HTMLElement, name: string): HTMLButtonElement {
   return found;
 }
 
+/**
+ * A button's accessible name, as far as these buttons need it: its `aria-label`, else the text a
+ * screen reader reads, leaving out what's hidden (the busy label while not busy).
+ */
+function accessibleName(target: HTMLElement): string {
+  const label = target.getAttribute("aria-label");
+  if (label !== null) return label;
+  const read = (node: Node): string => {
+    if (node instanceof HTMLElement) {
+      if (node.classList.contains("invisible") || node.getAttribute("aria-hidden") === "true") {
+        return "";
+      }
+      return [...node.childNodes].map(read).join("");
+    }
+    return node.textContent ?? "";
+  };
+  return read(target);
+}
+
 async function press(target: HTMLElement) {
   await act(async () => {
     target.dispatchEvent(new Event("pointerdown", { bubbles: true }));
@@ -222,6 +241,43 @@ verifies("inbox.wait-card", () => {
       }
     });
 
+    it("says the run continues after an approve the step labels itself", async () => {
+      const { root, sent, later } = openCard({
+        item: { ...reviewItem(), answerLabels: { approve: "Send reply" } },
+      });
+      later(61);
+      await press(button(root, "Send reply"));
+      expect(sent).toEqual(["approve"]);
+      expect(root.querySelector("[role='group']")?.textContent).toContain(
+        "You chose Send reply at 10:44. The run continues.",
+      );
+    });
+
+    it("says only what you chose and when, for a reject the step labels itself", async () => {
+      const { root, sent, later } = openCard({
+        item: { ...reviewItem(), answerLabels: { reject: "Don't send" } },
+      });
+      later(61);
+      await press(button(root, "Don't send"));
+      expect(sent).toEqual(["reject"]);
+      const decided = root.querySelector("[role='group']")?.textContent ?? "";
+      expect(decided).toContain("You chose Don't send at 10:44.");
+      expect(decided).not.toMatch(/continues|tool call|agent/);
+    });
+
+    it("doesn't say the run continues after any other answer", async () => {
+      const { root, later } = openCard({
+        item: {
+          ...reviewItem({ accepts: ["approve", "escalate"] }),
+          answerLabels: { escalate: "Ask a lead" },
+        },
+      });
+      later(61);
+      await press(button(root, "Ask a lead"));
+      expect(root.textContent).toContain("You chose Ask a lead at 10:44.");
+      expect(root.textContent).not.toContain("continues");
+    });
+
     it("keeps the built-in lines for Approve and Reject when the step has no label", async () => {
       const { root, later } = openCard({
         item: { ...reviewItem(), answerLabels: { escalate: "Ask a lead" } },
@@ -251,6 +307,28 @@ verifies("inbox.wait-card", () => {
       await press(button(root, "Constructor"));
       expect(sent).toEqual(["constructor"]);
       expect(root.textContent).toContain("You chose Constructor at 10:44.");
+    });
+
+    it("ends a long label with an ellipsis on one line, named and shown in full", async () => {
+      const long =
+        "Send the reply to the customer now and close the ticket, then tell the account manager";
+      const { root, later } = openCard({
+        item: { ...reviewItem(), answerLabels: { approve: long } },
+      });
+      const sendButton = button(root, long);
+      expect(accessibleName(sendButton)).toBe(long);
+      const shown = sendButton.querySelector(".truncate");
+      expect(shown?.textContent).toBe(long);
+      expect(shown?.className).toContain("max-w-[calc(100cqw-2rem-2px)]");
+      const tooltips = [...root.querySelectorAll("[role='tooltip']")];
+      expect(tooltips.map((t) => t.textContent)).toContain(long);
+      // The tooltip is the button's name, so a screen reader doesn't hear it twice.
+      expect(sendButton.hasAttribute("aria-describedby")).toBe(false);
+      later(61);
+      await press(sendButton);
+      expect(root.querySelector("[role='group']")?.textContent).toContain(
+        `You chose ${long} at 10:44. The run continues.`,
+      );
     });
 
     it("opens the run", async () => {
