@@ -188,8 +188,13 @@ export function play(
   workflow: Workflow,
   inputs: readonly DecideInput[],
   agents?: Readonly<Record<string, Agent>>,
+  workflows?: Readonly<Record<string, Workflow>>,
 ) {
-  const definitions: RunDefinitions = agents === undefined ? { workflow } : { workflow, agents };
+  const definitions: RunDefinitions = {
+    workflow,
+    ...(agents === undefined ? {} : { agents }),
+    ...(workflows === undefined ? {} : { workflows }),
+  };
   const log: RunEvent[] = [];
   const decisions: Decision[] = [];
   let run: RunState | null = null;

@@ -57,6 +57,7 @@ verifies("engine.run-state-fold", () => {
       context: { reply: "On its way" },
       calls: 1,
       pendingCall: null,
+      child: null,
       lastSeq: 5,
     });
   });

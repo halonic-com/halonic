@@ -91,8 +91,26 @@ export interface EffectFailedInput extends InputBase {
   readonly host?: string;
 }
 
+/** How a child run is now, as its parent hears it: waiting for events, or ended. */
+export type ChildRunNow =
+  | { readonly status: "waiting"; readonly events: readonly string[] }
+  | { readonly status: "completed"; readonly context: Record<string, unknown> }
+  | { readonly status: "failed"; readonly error: string };
+
+/** A child run a `workflow` state started waits or has ended. */
+export type ChildInput = InputBase & {
+  readonly type: "child";
+  readonly childRunId: string;
+} & ChildRunNow;
+
 /** Everything that moves a run on. `step` records each one and passes it to `decide`. */
-export type DecideInput = StartInput | SendInput | TimerInput | EffectDoneInput | EffectFailedInput;
+export type DecideInput =
+  | StartInput
+  | SendInput
+  | TimerInput
+  | EffectDoneInput
+  | EffectFailedInput
+  | ChildInput;
 
 /** Ask a state's agent for its answer to a prompt. */
 export interface CallModelEffect {
@@ -131,22 +149,29 @@ export interface CallToolEffect {
   readonly args: unknown;
 }
 
-/** Start a child run for a `workflow` state. */
+/**
+ * Start a child run for a `workflow` state, in the parent's hub, with the
+ * parent's kept definitions and the parent's `kind`.
+ */
 export interface StartChildEffect {
   readonly type: "start-child";
   readonly childRunId: string;
   readonly state: string;
   readonly workflowId: string;
   readonly input: Record<string, unknown>;
+  /** How deep the child is: 1 for a child of a top-level run. */
+  readonly depth: number;
 }
 
-/** Tell the parent run that this child run ended. */
+/**
+ * Tell the parent run that this child run waits or has ended. The effect
+ * runner reads how the child is when it carries this out, and gives the
+ * parent a `child` input, so a late or repeated telling changes nothing.
+ */
 export interface TellParentEffect {
   readonly type: "tell-parent";
   readonly parentRunId: string;
-  readonly state: string;
-  readonly status: "completed" | "failed";
-  readonly error?: string;
+  readonly childRunId: string;
 }
 
 /** Wake the run with a `timer` input at `at`. */
@@ -186,6 +211,12 @@ export interface RunDefinitions {
    * run in Halonic's own loop, as they did when they started.
    */
   readonly agents?: Readonly<Record<string, Agent>>;
+  /**
+   * The hub's workflows by id, for its `workflow` states: a child run starts
+   * from these, never from the workspace's files as they are now. Runs kept
+   * without them can't start a child run.
+   */
+  readonly workflows?: Readonly<Record<string, Workflow>>;
 }
 
 /** The pure decider: what a run does next, given its state and one input. */

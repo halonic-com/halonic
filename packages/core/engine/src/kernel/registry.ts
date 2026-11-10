@@ -8,7 +8,7 @@ import type { RunState } from "./run-state.ts";
  * `src/states`. The composite states join as their folders land (step 5);
  * once all six are here, the registry is typed against `StateType` itself.
  */
-export type BuiltStateType = Extract<StateType, "task" | "wait" | "final">;
+export type BuiltStateType = Extract<StateType, "task" | "wait" | "final" | "workflow">;
 
 /** What a state handler sees: the run as it is now, and the state it is in. */
 export interface StateContext {
@@ -18,6 +18,8 @@ export interface StateContext {
   readonly workflow: Workflow;
   /** The hub's agents by id, as the run started with them; empty for runs kept without agents. */
   readonly agents: Readonly<Record<string, Agent>>;
+  /** The hub's workflows by id, as the run started with them; empty for runs kept without them. */
+  readonly workflows: Readonly<Record<string, Workflow>>;
   /** The run's input and context (the workflow's initial context, with what the run wrote over it). */
   readonly scope: Scope;
   /** ISO time of the input being decided. */

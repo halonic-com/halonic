@@ -26,6 +26,7 @@ interface Draft {
   readonly at: string;
   readonly workflow: Workflow;
   readonly agents: Readonly<Record<string, Agent>>;
+  readonly workflows: Readonly<Record<string, Workflow>>;
 }
 
 /**
@@ -62,13 +63,32 @@ export function decide(
     at: input.at,
     workflow: definitions.workflow,
     agents: definitions.agents ?? {},
+    workflows: definitions.workflows ?? {},
   };
   const stateId = run.state;
   const handler = handlerFor(draft, stateId);
   if (handler !== undefined) {
     settle(draft, stateId, handler.onInput(contextOf(draft, stateId), input));
   }
-  return { events: draft.events, effects: draft.effects };
+  return decisionOf(draft);
+}
+
+/**
+ * A child run tells its parent each time it waits or ends, so the parent
+ * can wait with it or go on. A run with no parent tells no one.
+ *
+ * @param run - the run as it is after the decided events
+ */
+export function tellParent(run: RunState): Effect[] {
+  if (run.parent === null || run.status === "running") {
+    return [];
+  }
+  return [{ type: "tell-parent", parentRunId: run.parent.runId, childRunId: run.runId }];
+}
+
+function decisionOf(draft: Draft): Decision {
+  const told = draft.events.length === 0 ? [] : tellParent(draft.run);
+  return { events: draft.events, effects: [...draft.effects, ...told] };
 }
 
 /**
@@ -139,9 +159,10 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     at,
     workflow,
     agents: definitions.agents ?? {},
+    workflows: definitions.workflows ?? {},
   };
   enter(draft, workflow.initial);
-  return { events: draft.events, effects: draft.effects };
+  return decisionOf(draft);
 }
 
 /**
@@ -160,7 +181,7 @@ function failedEffect(run: RunState, input: EffectFailedInput): Decision {
     reason,
     ...(host === undefined ? {} : { host }),
   };
-  return { events: [failed], effects: [] };
+  return { events: [failed], effects: tellParent({ ...run, status: "failed" }) };
 }
 
 function emit(draft: Draft, event: DecidedEvent): void {
@@ -252,6 +273,7 @@ function contextOf(draft: Draft, stateId: string): StateContext {
     state: getState(draft.workflow, stateId),
     workflow: draft.workflow,
     agents: draft.agents,
+    workflows: draft.workflows,
     scope: scopeOf(draft),
     at: draft.at,
   };
