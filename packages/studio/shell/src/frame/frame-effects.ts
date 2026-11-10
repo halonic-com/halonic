@@ -1,4 +1,4 @@
-import { PHONE_MAX_WIDTH, type Presentation } from "@halonicjs/studio-kit";
+import { isComposing, PHONE_MAX_WIDTH, type Presentation } from "@halonicjs/studio-kit";
 import { useEffect, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { CloseStack } from "../close-stack/close-stack.ts";
@@ -64,17 +64,6 @@ export function useEscapeClosesTopLayer(closeStack: CloseStack): void {
 function isModalDialogOpen(): boolean {
   return document.querySelector("dialog[open]") !== null;
 }
-
-/**
- * Whether the press belongs to an input method. WebKit (WKWebView on macOS) sends the Esc that
- * ends a composition with `isComposing: false` but `keyCode` 229, the code every browser uses for
- * a key the input method took.
- */
-function isComposing(event: KeyboardEvent): boolean {
-  return event.isComposing || event.keyCode === IME_KEY_CODE;
-}
-
-const IME_KEY_CODE = 229;
 
 /**
  * Tells the announcer whether the window has focus, so an announcement made while the user was in

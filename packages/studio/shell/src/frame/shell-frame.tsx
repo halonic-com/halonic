@@ -36,8 +36,8 @@ export interface ShellFrameProps {
 
 /**
  * The Studio window's frame. On the desktop it has three layers (design direction 2): the 40px
- * title bar on the halo, then the panel with the toolbar as its first row and the sidebar beside
- * the page under it, then the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
+ * title bar on the halo, then the panel set into the halo with a 12px radius, holding three rows:
+ * the toolbar, the sidebar beside the page, and the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
  * shows the page only, with no window tabs and no status bar; the phone's own bars come later.
  *
  * Everything inside learns the layout through the kit's `PresentationProvider`, and every kit
@@ -75,12 +75,16 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
   return (
     <div
       data-layout={props.presentation}
-      className={`flex h-dvh flex-col text-fg ${desktop ? "bg-halo-frame" : "bg-surface"}`}
+      className={`flex h-dvh flex-col text-fg ${desktop ? "bg-halo-frame px-2 pb-2" : "bg-surface"}`}
     >
       {desktop ? (
-        <header className="flex h-10 shrink-0 items-center gap-2 px-2">{props.titleBar}</header>
+        <header className="flex h-titlebar shrink-0 items-center gap-2 px-2">
+          {props.titleBar}
+        </header>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col bg-surface">
+      <div
+        className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? "overflow-hidden rounded-md border border-border" : ""}`}
+      >
         {desktop ? (
           <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-2">
             {props.toolbar}
@@ -90,12 +94,12 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
           {desktop ? props.sidebar : null}
           <main className="min-w-0 flex-1 overflow-auto">{props.children}</main>
         </div>
+        {desktop ? (
+          <footer className="flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">
+            {props.statusBar}
+          </footer>
+        ) : null}
       </div>
-      {desktop ? (
-        <footer className="flex h-6 shrink-0 items-center gap-3 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">
-          {props.statusBar}
-        </footer>
-      ) : null}
     </div>
   );
 }

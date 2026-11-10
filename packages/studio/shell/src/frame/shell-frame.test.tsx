@@ -96,16 +96,18 @@ function nextFrame(): Promise<void> {
 }
 
 verifies("shell.frame", () => {
-  it("shows the title bar, the toolbar, the page and the status bar on the desktop", () => {
+  it("shows the title bar on the halo and the panel with the toolbar, the page and the status bar on the desktop", () => {
     const { container } = renderFrame();
     const frame = container.querySelector('[data-layout="desktop"]') as HTMLElement;
-    const [titleBar, panel, statusBar] = Array.from(frame.children);
+    const [titleBar, panel] = Array.from(frame.children);
     expect(titleBar?.tagName).toBe("HEADER");
-    expect(titleBar?.className).toContain("h-10");
+    expect(titleBar?.className).toContain("h-titlebar");
+    expect(panel?.className).toContain("rounded-md");
     expect(panel?.firstElementChild?.textContent).toBe("Back");
     expect(panel?.querySelector("main")?.textContent).toBe("desktop");
+    const statusBar = panel?.lastElementChild;
     expect(statusBar?.tagName).toBe("FOOTER");
-    expect(statusBar?.className).toContain("h-6");
+    expect(statusBar?.className).toContain("h-statusbar");
     expect(statusBar?.textContent).toBe("1 error");
   });
 
