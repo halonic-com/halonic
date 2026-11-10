@@ -181,8 +181,10 @@ export function bridgeCallCharge(
 export interface OpenHarnessBridge extends HarnessBridge {
   /**
    * Stops serving: refuses new requests, ends those in flight and their
-   * calls to the provider, and resolves when they have ended. Safe to call
-   * twice.
+   * calls to the provider, and resolves when they have ended and recorded
+   * what they had to, or after the bridge's close time limit for a request
+   * that doesn't end. Nothing is recorded for the run once it resolves.
+   * Safe to call twice.
    */
   close(): Promise<void>;
 }

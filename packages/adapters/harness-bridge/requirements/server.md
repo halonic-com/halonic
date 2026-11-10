@@ -23,3 +23,6 @@ The Node bridge server shall serve each run on its own free port of `127.0.0.1` 
 - Given a route that is still running when the close time limit passes,
   when it then records an event,
   then `close()` has already resolved and the event is refused, not recorded.
+- Given an event a route asked to record before the close time limit passed,
+  when the recorder takes longer than the limit,
+  then `close()` resolves only after the event is recorded.

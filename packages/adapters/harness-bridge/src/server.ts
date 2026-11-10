@@ -4,6 +4,7 @@ import type {
   OpenHarnessBridge,
   Secrets,
 } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { anthropicRoute } from "./anthropic-route.ts";
 import { openBridge } from "./bridge.ts";
 import type { Fetch, UpstreamLimits } from "./pass-through.ts";
@@ -42,7 +43,10 @@ export interface NodeHarnessBridgeServerOptions {
   upstreamLimits?: Partial<UpstreamLimits>;
   /** Calls the providers; Node's own `fetch` unless a test gives another. */
   fetch?: Fetch;
-  /** How long `close()` waits for requests still being handled, in milliseconds. */
+  /**
+   * How long `close()` waits for requests still being handled, in
+   * milliseconds: a whole number, 0 or more.
+   */
   closeTimeoutMs?: number;
 }
 
@@ -67,7 +71,7 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
 
   constructor(options: NodeHarnessBridgeServerOptions) {
     this.#limits = { ...defaultBridgeLimits, ...options.limits };
-    this.#closeTimeoutMs = options.closeTimeoutMs ?? defaultCloseTimeoutMs;
+    this.#closeTimeoutMs = checkedCloseTimeout(options.closeTimeoutMs ?? defaultCloseTimeoutMs);
     const upstream = {
       fetch: options.fetch ?? globalThis.fetch,
       limits: { ...defaultUpstreamLimits, ...options.upstreamLimits },
@@ -84,4 +88,15 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
       closeTimeoutMs: this.#closeTimeoutMs,
     });
   }
+}
+
+/** `timeoutMs` when it is a whole number of milliseconds, 0 or more. */
+function checkedCloseTimeout(timeoutMs: number): number {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) {
+    throw new KindedError(
+      "invalid_input",
+      `The bridge's close time limit must be a whole number of milliseconds, 0 or more, not ${timeoutMs}.`,
+    );
+  }
+  return timeoutMs;
 }

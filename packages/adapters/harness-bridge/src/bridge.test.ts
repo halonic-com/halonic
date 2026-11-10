@@ -33,19 +33,24 @@ async function openWith(run: HarnessBridgeOptions, given: BridgeSettings) {
   return bridge;
 }
 
-/** A run whose recorder keeps the events, each after `delayMs`, as a slow log would. */
-function recordingRun(delayMs = 0) {
+/**
+ * A run whose recorder keeps the events, each once `landing` resolves, as a
+ * slow log would. `asked` resolves once a route has asked it to record.
+ */
+function recordingRun(landing: Promise<void> = Promise.resolve()) {
   const recorded: BridgeEvent[] = [];
+  const asked = Promise.withResolvers<void>();
   const run: HarnessBridgeOptions = {
     ...fakeRun(),
     recorder: {
       record: async (event) => {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        asked.resolve();
+        await landing;
         recorded.push(event);
       },
     },
   };
-  return { run, recorded };
+  return { run, recorded, asked: asked.promise };
 }
 
 /** One model call's spend, as a route records it. */
@@ -61,28 +66,42 @@ const spend: BridgeEvent = {
 
 /**
  * A route that waits until its request is aborted, then records `spend`, as
- * a route does for a reply cut short. `started` resolves once it runs.
+ * a route does for a reply cut short. Given `stuckUntil`, it ignores the
+ * abort and waits for that instead. `running` resolves once it runs, and
+ * `recording` once it has asked to record, with what the recorder answered.
  */
-function recordsWhenAborted(options: { ignoresAbort?: boolean } = {}) {
-  let started: () => void = () => {};
-  const running = new Promise<void>((resolve) => (started = resolve));
-  let recording: Promise<void> | undefined;
+function recordsWhenAborted(stuckUntil?: Promise<void>) {
+  const running = Promise.withResolvers<void>();
+  const recording = Promise.withResolvers<{ answer: Promise<void> }>();
   const route: BridgeRoute = {
     ...echo,
     handle: async ({ run, signal }) => {
-      started();
-      await new Promise((resolve) => {
-        if (options.ignoresAbort) setTimeout(resolve, 200);
-        else signal.addEventListener("abort", resolve, { once: true });
-      });
-      recording = run.recorder.record(spend);
-      await recording;
+      running.resolve();
+      await (stuckUntil ??
+        new Promise<void>((resolve) =>
+          signal.addEventListener("abort", () => resolve(), { once: true }),
+        ));
+      const answer = run.recorder.record(spend);
+      recording.resolve({ answer });
+      await answer;
     },
   };
-  return { route, running, recording: () => recording };
+  return { route, running: running.promise, recording: recording.promise };
+}
+
+/** True once `promise` has settled; looks after one turn of the event loop. */
+async function hasSettled(promise: Promise<unknown>): Promise<boolean> {
+  let settled = false;
+  void promise.then(
+    () => (settled = true),
+    () => (settled = true),
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+  return settled;
 }
 
 afterEach(async () => {
+  vi.useRealTimers();
   await Promise.all(opened.splice(0).map((bridge) => bridge.close()));
 });
 
@@ -227,32 +246,58 @@ verifies("harness-bridge.server", () => {
     });
 
     it("waits for a route still recording its spend before it resolves", async () => {
-      const { run, recorded } = recordingRun(50);
+      const landing = Promise.withResolvers<void>();
+      const { run, recorded, asked } = recordingRun(landing.promise);
       const slow = recordsWhenAborted();
       const bridge = await openWith(run, { ...settings, routes: [slow.route] });
       void send(bridge, "/echo", { token: bridge.token }).catch(() => {});
       await slow.running;
 
-      await bridge.close();
+      const closing = bridge.close();
+      await asked;
+      expect(await hasSettled(closing)).toBe(false);
+      landing.resolve();
+      await closing;
       expect(recorded).toEqual([spend]);
     });
 
     it("stops waiting for a stuck route at the time limit, and records nothing after", async () => {
       const { run, recorded } = recordingRun();
-      const stuck = recordsWhenAborted({ ignoresAbort: true });
-      const bridge = await openWith(run, {
-        ...settings,
-        routes: [stuck.route],
-        closeTimeoutMs: 20,
-      });
+      const unstuck = Promise.withResolvers<void>();
+      const stuck = recordsWhenAborted(unstuck.promise);
+      const bridge = await openWith(run, { ...settings, routes: [stuck.route] });
       void send(bridge, "/echo", { token: bridge.token }).catch(() => {});
       await stuck.running;
 
-      await bridge.close();
-      expect(stuck.recording()).toBeUndefined();
-      await vi.waitFor(() => expect(stuck.recording()).toBeDefined());
-      await expect(stuck.recording()).rejects.toMatchObject({ kind: "conflict" });
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const closing = bridge.close();
+      await vi.advanceTimersByTimeAsync(settings.closeTimeoutMs - 1);
+      expect(await hasSettled(closing)).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await closing;
+
+      unstuck.resolve();
+      const { answer } = await stuck.recording;
+      await expect(answer).rejects.toMatchObject({ kind: "conflict" });
       expect(recorded).toEqual([]);
+    });
+
+    it("waits past the time limit for an event it had already accepted", async () => {
+      const landing = Promise.withResolvers<void>();
+      const { run, recorded, asked } = recordingRun(landing.promise);
+      const slow = recordsWhenAborted();
+      const bridge = await openWith(run, { ...settings, routes: [slow.route] });
+      void send(bridge, "/echo", { token: bridge.token }).catch(() => {});
+      await slow.running;
+
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const closing = bridge.close();
+      await asked;
+      await vi.advanceTimersByTimeAsync(settings.closeTimeoutMs);
+      expect(await hasSettled(closing)).toBe(false);
+      landing.resolve();
+      await closing;
+      expect(recorded).toEqual([spend]);
     });
 
     it("closes when the run's signal aborts, even before it opened", async () => {

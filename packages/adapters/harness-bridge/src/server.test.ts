@@ -15,6 +15,16 @@ verifies("harness-bridge.server", () => {
       await bridge.close();
     }
   });
+
+  it.each([Number.NaN, -1, 1.5, Number.POSITIVE_INFINITY])(
+    "refuses %s as the close time limit",
+    (closeTimeoutMs) => {
+      const secrets = { get: async () => null };
+      expect(() => new NodeHarnessBridgeServer({ secrets, closeTimeoutMs })).toThrow(
+        expect.objectContaining({ kind: "invalid_input" }),
+      );
+    },
+  );
 });
 
 verifies("harness-bridge.anthropic", () => {
