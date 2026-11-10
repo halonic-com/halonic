@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
 import type { ProviderModels, Resources } from "./resource-report.ts";
+import type { SandboxChoice } from "./sandbox-choice.ts";
 import type { TrustCheck } from "./trust-service.ts";
 
 const ready: SandboxCheck = { ok: true, reason: null, missing: [] };
@@ -65,6 +66,8 @@ interface Machine {
   freeBytes?: number;
   models?: ProviderModels[];
   codex?: HarnessDetection;
+  /** The sandbox choice; the host has none when left out. */
+  choice?: SandboxChoice | null;
   secrets?: Record<string, string>;
 }
 
@@ -99,6 +102,9 @@ function doctor(machine: Machine = {}) {
       { id: "codex", name: "Codex", detect: async () => machine.codex ?? { status: "missing" } },
     ],
     secrets,
+    ...(machine.choice === undefined
+      ? {}
+      : { sandboxChoice: { current: () => machine.choice ?? null } }),
   });
   return { service, asked };
 }
@@ -238,6 +244,30 @@ verifies("app.doctor-service", () => {
     expect(report.sandbox.status).toBe("failed");
     expect(report.disk.problem).toBe("low");
     expect(report.summary).toEqual({ problems: 1, warnings: 1, needsFixing: true });
+  });
+
+  it("adds the MXC line where MXC is offered, and counts a failed trust check in the summary", async () => {
+    const failed: SandboxChoice = {
+      active: null,
+      mxc: {
+        offered: true,
+        setting: "on",
+        effective: "on",
+        state: "mxc-check-failed",
+        reason: "too-strict",
+        missing: ["the read-only file couldn't be read"],
+      },
+    };
+    const report = await doctor({ choice: failed }).service.check(null);
+    expect(report.mxc).toMatchObject({ check: "mxc", status: "failed", reason: "too-strict" });
+    expect(report.summary).toEqual({ problems: 1, warnings: 0, needsFixing: true });
+
+    const notOffered: SandboxChoice = {
+      active: "srt",
+      mxc: { offered: false, setting: null, effective: "off", state: "not-offered" },
+    };
+    expect((await doctor({ choice: notOffered }).service.check(null)).mxc).toBeUndefined();
+    expect((await doctor({ choice: null }).service.check(null)).mxc).toBeUndefined();
   });
 
   it("throws when a provider on this computer has no source in the resource report", async () => {

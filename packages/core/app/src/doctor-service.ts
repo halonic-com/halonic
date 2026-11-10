@@ -27,7 +27,9 @@ import {
   type ModelsLine,
   modelsLine,
 } from "./doctor-models-line.ts";
+import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 import type { ProviderModels, ResourceReport } from "./resource-report.ts";
+import type { SandboxChoiceService } from "./sandbox-choice.ts";
 import type { TrustCheck, TrustSubject } from "./trust-service.ts";
 
 /**
@@ -70,6 +72,11 @@ export interface DoctorServiceOptions {
   trust: { check(subject: TrustSubject): Promise<Pick<TrustCheck, "status">> };
   sandbox: Pick<Sandbox, "check" | "capabilities">;
   /**
+   * The sandbox choice, once started, for the MXC line. Left out where the
+   * host has none: then there is no MXC line.
+   */
+  sandboxChoice?: Pick<SandboxChoiceService, "current">;
+  /**
    * The resource report, built with a `LoadedModelSource` for every
    * provider on this computer, so `doctor` asks each of them only once.
    */
@@ -87,6 +94,8 @@ export interface DoctorReport {
   /** Only inside a workspace with model aliases. */
   models?: ModelsLine;
   sandbox: SandboxLine;
+  /** Only where MXC is offered and the sandbox choice has started. */
+  mxc?: MxcLine;
   /** Only when a harness is ready or an agent uses one. */
   harnesses?: HarnessesLine;
   disk: DiskLine;
@@ -143,6 +152,9 @@ export class DoctorService {
       const models = modelsLine(providers, workspace.aliases);
       if (models !== undefined) report.models = models;
     }
+    const choice = this.options.sandboxChoice?.current() ?? null;
+    const mxc = choice === null ? undefined : mxcLine(choice);
+    if (mxc !== undefined) report.mxc = mxc;
     const harnessLine = harnessesLine(harnesses, harnessAgents(workspace));
     if (harnessLine !== undefined) report.harnesses = harnessLine;
 
@@ -215,6 +227,6 @@ function harnessAgents(workspace: DoctorWorkspace | null): HarnessAgent[] {
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, sandbox, harnesses, disk } = report;
-  return [workspace, models, sandbox, harnesses, disk].filter((line) => line !== undefined);
+  const { workspace, models, sandbox, mxc, harnesses, disk } = report;
+  return [workspace, models, sandbox, mxc, harnesses, disk].filter((line) => line !== undefined);
 }

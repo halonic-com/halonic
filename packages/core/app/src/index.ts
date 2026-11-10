@@ -93,6 +93,7 @@ export {
   modelsLine,
   type ProviderReport,
 } from "./doctor-models-line.ts";
+export { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 export {
   type DoctorProvider,
   type DoctorReport,
