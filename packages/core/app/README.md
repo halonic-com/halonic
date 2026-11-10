@@ -30,7 +30,7 @@ Device-wide settings such as the theme live outside any scope.
 | `ChatAnswerRequest.signal`  | Stop: passed on to the model turn and tools, a late model answer dropped, the calls left get a "Not run" result                 | `app.chat-stop`                   |
 | `ChatAnswerEnd`             | a failed or stopped answer says whether a tool already ran, which decides "Try again"                                           | `app.chat-failure`                |
 | `ChatAnswerListener`        | each model turn, tool call and added message as it happens, for the chat's status line                                          | `app.chat-progress`               |
-| `AgentPlacement`            | where an agent's harness runs: a sandbox unless a person chose this computer for the file as it is now                          | `app.agent-placement`             |
+| `AgentPlacement`            | where an agent's harness runs: a sandbox unless a person chose this computer for the file as it is now (`chosenAt`: when)       | `app.agent-placement`             |
 | `RunHistory.listRuns`       | the newest real runs that match a filter, 20 unless a limit says otherwise, and how many match in all                           | `app.run-list`                    |
 | `RunHistory.showRun`        | one run, real or test, by its full or short id: the summary worked out from its log, and the log, oldest first                  | `app.run-show`                    |
 | `RunHistory.findRun`        | the run a typed id points to: the full id or the short id (`shortRunId`), in any case; none, or several with the same end       | `app.run-short-id`                |

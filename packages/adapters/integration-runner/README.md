@@ -12,11 +12,12 @@ This package is built in steps (HAL-983). So far it has the protocol on both sid
 - **Frames:** one JSON frame per line, at most 1 MiB (`maxFrameBytes`) with its newline. Bytes
   travel as base64.
 - **Halonic's side, `connectRunner`:** it takes a runner that has already been started, as a `SandboxProcess`. It waits for
-  `ready` with this start's nonce, sends `start` with the settings and tool names, and returns an
-  `IntegrationConnection`. Each request the runner asks for goes through the kit's client for
+  `ready` with this start's nonce (10 seconds, `readyTimeoutMs`), sends `start` with the settings
+  and tool names, and returns a `RunnerConnection`: an `IntegrationConnection` with `stopped`, a
+  promise that settles with the reason the runner ended. Each request the runner asks for goes through the kit's client for
   this integration, and a body is read one piece per `pull`.
-  - Anything outside the protocol stops the runner and is reported through `onBlocked`. So is a
-    kit refusal on the kit's leak list.
+  - Anything outside the protocol stops the runner and is reported through `onBlocked`. A kit
+    refusal on the kit's leak list is reported there too.
   - Tool results, tool errors and stderr pass through the kit's secret filter.
 - **The limits** (`defaultRunnerLimits`):
   - at most 8 requests in flight;

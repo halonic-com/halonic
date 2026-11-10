@@ -21,6 +21,11 @@ lives in its own folder.
 | `halonic trust`              | shows what a workspace can start and asks to trust it on this computer; `--yes --fingerprint <fingerprint>` without a question, `--list`, `--remove` (exit 3 on No); `--json` lists what changed since it was trusted                                                                                                                                                                                                                                                                                                           |
 | `halonic validate`           | checks every file of the workspace (`--dir`, default the current folder) and lists its problems by file, 20 at most without `--all`; exit 1 on an error, or on a warning with `--strict`                                                                                                                                                                                                                                                                                                                                        |
 
+The sandbox check before a run (`checkRunSandbox` in `src/sandbox-gate.ts`, HAL-1709) is written
+and tested, but `halonic run` doesn't call it yet. Once it does, a workflow with an agent that
+starts a program on this computer is refused with exit 9 when the sandbox can't start, and an
+agent set to "On this computer" gets one `!` line instead. No option will skip it.
+
 `test`, `extract` and `routines` follow in HAL-187 as the workspace
 loader and the engine land. `halonic --help` lists the commands and the options every command
 takes (`--debug`, `--help`); `halonic <command> --help` shows one command's arguments and options.

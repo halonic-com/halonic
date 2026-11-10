@@ -105,6 +105,17 @@ When a release changes a spec file, `pnpm version:sync` keeps a frozen copy in
 `spec/released/<version>/`, named after the app version because this package has none of its own.
 A released copy never changes.
 
+## Workflow tests
+
+Each case of a `workflowTest` file scripts what a run would meet, because tests never contact a
+model, a connector or a program: `mocks` (model replies per agent id), `tools` (connector results,
+keyed `<connector>.<tool>`) and `programs`. `programs` maps an agent id to a list of results for the
+programs its harness starts, used in the order the engine starts them (requirement
+`workflow-test-programs`). A result is a string (the program's text), `{ output: <value> }` or
+`{ fails: "<message>" }` with a message. `{}` and extra keys fail. The key is optional, so older
+files read as before. Starting these programs in a test needs the test runner's side, which isn't
+in this package.
+
 ## Harness agents
 
 Three optional agent fields say how an agent runs in another program

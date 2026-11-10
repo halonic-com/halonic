@@ -22,7 +22,7 @@ For every request and every redirect hop, `createNodeHttpClient({ hostClass, own
 4. connects only to an address it checked: the lookup Node uses hands out those addresses and no
    others, so a second DNS answer can't change where the request goes.
 
-A refusal throws `AddressRefusedError` with `code: "address-not-allowed"`.
+Only `http` and `https` URLs are sent; any other scheme throws a `TypeError`. A refusal throws `AddressRefusedError` with `code: "address-not-allowed"`.
 
 **The URL decides the host, never a header.** The transport drops a caller's `host` header and
 sends the URL's; for `https` to a name it checks the certificate against the URL's host. It also
@@ -36,8 +36,8 @@ host with this computer's LAN IP.
 ## What it does like `fetch`
 
 - `redirect`: `manual` returns the `3xx`, `error` throws, `follow` (the default) takes up to 20
-  hops, checks each one as above, drops `authorization`, `cookie` and `proxy-authorization` when
-  the origin changes, and turns a `POST` into a `GET` on 301, 302 and 303. Other headers, such
+  hops (`maxRedirects`), checks each one as above, drops `authorization`, `cookie` and `proxy-authorization` when
+  the origin changes, and turns a `POST` into a `GET` on 301 and 302, and any method but `HEAD` into a `GET` on 303. Other headers, such
   as `x-api-key`, go on to the new origin, so a caller that places secrets must use `manual`
   (the kit always does).
 - `signal` aborts the request and the body.

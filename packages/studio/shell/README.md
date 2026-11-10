@@ -119,6 +119,13 @@ back its scroll and its last focus, or else focus goes to its `h1`, as for an ol
 was drawn afresh. While the focus is on a tab in the strip it stays there. A tab that moves on to
 another place draws a fresh page. `focusPageHeading` only finds the shown page's `h1`.
 
+`TabPages` also holds each page in a `PageErrorBoundary` keyed by its place, so a page that throws
+stops alone, and shows `ItemGone` in a tab whose item isn't in the workspace any more (see Page
+states). It knows which items are gone from `goneItem(location)`, which gives `{ kindName, place }`
+or `undefined`; **Go to** opens `place` in that tab. Pass a new `goneItem` function when the
+workspace's items change, or an open tab won't notice its item went. Without `goneItem`, no tab
+shows `ItemGone`.
+
 ```tsx
 <ShellFrame …>
   <TabPages tabs={workspace.tabs} renderPage={(location) => <PageFor location={location} />} />
@@ -342,7 +349,8 @@ no unsaved edits; a file's own **Keep mine / Load theirs** wins over this messag
 
 The states every page shares, so no feature words them on its own:
 
-- **A page that stops working.** Put each page inside
+- **A page that stops working.** `TabPages` already puts each tab's page inside a
+  `PageErrorBoundary`; for a page drawn elsewhere, use
   `<PageErrorBoundary pageKey={item.id} pageName="Support reply">`. If the page throws while it
   draws, only its area shows "This page stopped working" with the reason naming the page, **Reload
   page** and the link **Copy details** (microcopy 22 F14); the sidebar and the other tabs keep
@@ -352,7 +360,8 @@ The states every page shares, so no feature words them on its own:
 - **Copy details.** `useCopyDetails()` copies `detailsOf(what, error)` through the frame's
   clipboard and says "Copied. Paste it into a bug report." or "Couldn't copy." in a toast (22 F13b).
   **Report a problem ›** waits until the Studio has a place it opens.
-- **An item that's gone.** `<ItemGone kindName="run" place="Runs" onGoTo={…} />` says "This run
+- **An item that's gone.** `TabPages` shows it for a tab whose `goneItem` answers; elsewhere,
+  `<ItemGone kindName="run" place="Runs" onGoTo={…} />` says "This run
   isn't in this workspace any more." with **Go to Runs**, and moves focus to its title (microcopy 2,
   "Item gone"). An item moved to the trash isn't gone: its feature shows the "moved to the trash ·
   Undo" strip.

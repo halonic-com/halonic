@@ -27,7 +27,7 @@ optional and come with a requirement.
   `timeline-entry-id`).
 - `sandboxOpenedView(profile, options)`: the display copy of a sandbox
   profile that a `sandbox.opened` event carries. It copies a fixed list of
-  fields, never `env`, logs denied paths as group codes plus the paths the
+  fields, never `env` or the temp and settings folders, logs denied paths as group codes plus the paths the
   person added, and shortens home paths to `~` (requirement `sandbox-opened`).
   `deniedPathGroupCodes` is the one list of the six groups of denied paths.
   `readSandboxOpened(value)` reads a stored view without throwing, and gives
