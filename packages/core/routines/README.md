@@ -26,6 +26,37 @@ readable `CronError`.
 "Weekdays at 08:00", and falls back to `Cron "<expression>"` for shapes
 without a short phrase.
 
+`parseCron` turns an expression into the allowed values of each field, and
+`parseEvery` turns an interval such as `15m`, `2h` or `1d` into milliseconds.
+`triggerKind` names a trigger (`schedule`, `every`, `mail`, `signal` or
+`manual`), `triggerError` returns the first thing wrong with a trigger as a
+message, or `null` when it is fine, and `describeTrigger` writes a trigger in
+words, such as "Weekdays at 08:00 (Europe/Amsterdam)", without throwing on a bad
+one.
+
+`nextRun` and `occurrences` answer on the same clock as the tick: the next time
+a trigger fires after a moment, and the times a schedule fires between two
+moments. A schedule without a time zone uses the zone you pass, UTC by default,
+and interval times count from the Unix epoch, so what you show is what the tick
+starts. Pass the tick policy's `timeZone` so both match `due`.
+
+`due` is the tick. Given routines placed in their hubs (`PlacedRoutine`), the
+last tick and now, it returns the `DueRun`s to start, oldest first, for the
+enabled routines with a `schedule` or `every` trigger. `catchUp` decides which
+missed times count (`none`, `last` or `all`, up to the cap), and nothing older
+than the catch-up window (7 days by default) is caught up. `TickPolicy` and
+`DEFAULT_TICK_POLICY` hold the shared settings, and `routineKey` gives the id a
+routine goes by in a run. A caller that starts one run per key and time starts
+each once, even when ticks arrive late or twice. A trigger or zone that doesn't
+parse is skipped, and the other routines still run.
+
+`routineStart` fills in `{{trigger.at}}`, `{{trigger.lastRun}}` and
+`{{trigger.message}}` and returns what to run: a workflow with its hub, id and
+input, or an agent with its hub, id and prompt. `mailCheckDue` says whether a
+mail trigger is due for a check, and `mailQuery` builds the query for it, going
+back `MAIL_OVERLAP_MS` (ten minutes) before the last check so a message that
+arrived during it is not missed.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
