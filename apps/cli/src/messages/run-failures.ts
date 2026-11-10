@@ -1,4 +1,5 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
+import { counted, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages } from "./general.ts";
 import { money } from "./money.ts";
@@ -27,9 +28,15 @@ interface KeyFacts {
 /**
  * Why a run failed, by microcopy 15.3's reasons, with the names each
  * reason's two lines need. Only the reasons whose terminal words are settled
- * are here: the newer ones of HAL-2264 (sandbox-start-failed,
- * harness-start-failed, model-out-of-memory, disk-full, interrupted) wait for
- * the board, and the sandbox reasons are `sandboxMessages`.
+ * are here. The engine's other reasons (`RunFailureReason`) are elsewhere or
+ * still wait for words:
+ *
+ * - the newer ones of HAL-2264 (sandbox-start-failed, harness-start-failed,
+ *   model-out-of-memory, disk-full, interrupted) wait for the board;
+ * - the sandbox reasons are `sandboxMessages`;
+ * - `cancelled` isn't a failure: Ctrl C or SIGTERM prints "Stopped. The run …
+ *   was cancelled after the step …" (cli-output 1.5);
+ * - `model-no-tools` has no words in cli-output yet (HAL-2718).
  */
 export type RunFailure =
   | ({ readonly reason: "key-refused" } & KeyFacts)
@@ -56,6 +63,8 @@ export type RunFailure =
       readonly provider: string;
       readonly model: string;
       readonly alias: string;
+      /** Only Ollama has a command that downloads a model; another local server, such as LM Studio, downloads it in its own window. */
+      readonly server: "ollama" | "other";
     }
   | {
       readonly reason: "model-timeout";
@@ -141,7 +150,7 @@ const lineOne = {
   "provider-busy": (run, failure) =>
     failedIn(
       run,
-      phrase`${failure.provider} was busy and asked Halonic to slow down. Halonic tried ${failure.tries} times over ${failure.over}, then stopped.`,
+      phrase`${failure.provider} was busy and asked Halonic to slow down. Halonic tried ${timesInWords(failure.tries)} over ${failure.over}, then stopped.`,
     ),
   "model-unreachable": (run, failure) =>
     failedIn(
@@ -167,7 +176,7 @@ const lineOne = {
         : phrase`this month's estimated spend reached its budget of ${money(failure.budget)}.`
     }`,
   "turn-limit": (run, failure) => {
-    const usedUp = phrase`${failure.agent} used all ${failure.turns} turns without finishing.`;
+    const usedUp = phrase`${failure.agent} used all ${counted(failure.turns, "turn", "turns")} without finishing.`;
     // The second sentence only when the run log has the last calls, as in Studio's banner.
     return failedIn(
       run,
@@ -191,10 +200,13 @@ const lineOne = {
       run,
       phrase`the sandbox stopped ${failure.agent} from reaching ${failure.site}, which isn't in its allowed sites. Nothing reached that site.`,
     ),
-  error: (run, failure) =>
-    failure.message === undefined
+  error: (run, failure) => {
+    // An empty message says no more than none at all.
+    const message = failure.message?.trim() ?? "";
+    return message === ""
       ? cantTellCause(run)
-      : phrase`${cantTellCause(run, ":")} ${withoutFullStop(failure.message)}.`,
+      : phrase`${cantTellCause(run, ":")} ${asSentence(message)}`;
+  },
   // A bug's own text never shows without --debug (cli-output 1.3 rule 5).
   internal: (run) => cantTellCause(run),
 } satisfies ByReason;
@@ -215,7 +227,11 @@ const lineTwo = {
       ? phrase`Start ${failure.provider}, then run again.`
       : phrase`Check your internet connection, then run again.`,
   "model-missing": (_run, failure) =>
-    phrase`Run ollama pull ${failure.model}, or point the model alias ${failure.alias} at another model in models.yaml.`,
+    phrase`${
+      failure.server === "ollama"
+        ? phrase`Run ollama pull ${failure.model}`
+        : phrase`Download ${failure.model} in ${failure.provider}`
+    }, or point the model alias ${failure.alias} at another model in models.yaml.`,
   "model-timeout": () => tryLater(),
   // A per-run budget doesn't reset, so only a monthly one can be waited out.
   budget: (_run, failure) =>
@@ -259,8 +275,9 @@ function cantTellCause(run: FailedRun, end: "." | ":" = "."): Phrase {
   return phrase`${run.title} failed in the step ${run.step}. Halonic can't tell the cause yet${end}`;
 }
 
-function withoutFullStop(text: string): string {
-  return text.endsWith(".") ? text.slice(0, -1) : text;
+/** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
+function asSentence(text: string): string {
+  return /[.?!]$/.test(text) ? text : `${text}.`;
 }
 
 /** Every key error names the secret and the variable Halonic reads it from, the same as the reader does. */
