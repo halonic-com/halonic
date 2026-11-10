@@ -4,6 +4,7 @@ import { expect, it, vi } from "vitest";
 import { type PluginEntry, PluginService, type ReadPlugin } from "./plugin-service.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
+import { TestRecordStore } from "./testing/test-record-store.ts";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
 import { TrustService } from "./trust-service.ts";
 
@@ -49,7 +50,8 @@ function plugins(): TestFolderReader {
 function setup(reader = plugins(), store = new TestTrustStore()) {
   const clock: Clock = { now: () => new Date("2026-11-10T09:00:00.000Z") };
   const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
-  return { trust, service: new PluginService({ plugins: reader, digest, trust }) };
+  const records = new TestRecordStore();
+  return { trust, service: new PluginService({ plugins: reader, digest, trust, records, clock }) };
 }
 
 /** The plugin `folder` as loaded, which must have been read and checked. */
@@ -178,6 +180,17 @@ verifies("app.plugin-service", () => {
       await expect(service.revoke(id)).rejects.toThrow(RangeError);
     }
     expect(read).not.toHaveBeenCalled();
+  });
+
+  it("saves a plugin's settings, and forgets them without touching its trust", async () => {
+    const { service } = setup();
+    const weather = await loadOne(service, "weather");
+    expect((await service.saveSettings(weather.plugin, { root: "~/Weather" })).ok).toBe(true);
+    expect(await service.settings(weather.plugin)).toEqual({ root: "~/Weather" });
+
+    await service.forget("weather");
+    expect(await service.settings(weather.plugin)).toEqual({});
+    expect((await loadOne(service, "weather")).status).toBe("new");
   });
 
   it("gives no plugins for an empty plugin folder, and fails only when it can't be listed", async () => {

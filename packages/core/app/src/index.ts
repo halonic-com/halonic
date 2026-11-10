@@ -175,6 +175,12 @@ export {
   type PluginTrustRefusal,
   type ReadPlugin,
 } from "./plugin-service.ts";
+export {
+  type PluginSettingProblem,
+  PluginSettings,
+  type PluginSettingValues,
+  pluginSettingsCollection,
+} from "./plugin-settings.ts";
 export type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";
 export {
   type PluginFileChanges,

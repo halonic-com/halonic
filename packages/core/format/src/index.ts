@@ -58,6 +58,11 @@ export {
   PYPI_EXACT_VERSION_PATTERN,
   pluginPathProblem,
 } from "./kinds/plugin/schema.ts";
+export {
+  type PluginSettingField,
+  type PluginSettingValue,
+  settingValueProblem,
+} from "./kinds/plugin/setting-values.ts";
 export type { Provider } from "./kinds/provider/schema.ts";
 export type { Routine, RoutineTarget, RoutineTrigger } from "./kinds/routine/schema.ts";
 export type { Runtime } from "./kinds/runtime/schema.ts";

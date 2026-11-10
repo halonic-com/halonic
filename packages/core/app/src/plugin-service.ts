@@ -1,12 +1,20 @@
 // The plugin service, as `app.plugin-service` asks: it finds every plugin in
 // the profile's plugin folder, reads and checks each one and asks whether it
 // is trusted (P2 plan sections 1 and 5). It saves and forgets a person's
-// trust, and gives the tools and UI of the trusted ones. The CLI and the
-// Studio call it; it reaches the folder and the trust records only through
-// ports.
+// trust, keeps each plugin's setting values, which only removing the plugin
+// deletes, and gives the tools and UI of the trusted ones. The CLI and the
+// Studio call it; it reaches the folder, the trust records and the setting
+// values only through ports.
 
 import type { Plugin } from "@halonicjs/format";
-import type { Digest, FolderEntry, FolderReader, TrustGrant } from "@halonicjs/ports";
+import type {
+  Clock,
+  Digest,
+  FolderEntry,
+  FolderReader,
+  RecordStore,
+  TrustGrant,
+} from "@halonicjs/ports";
 import { err, type Result } from "@halonicjs/std";
 import {
   type PluginToolSet,
@@ -15,6 +23,11 @@ import {
   trustedPluginUi,
 } from "./plugin-contributions.ts";
 import { type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
+import {
+  type PluginSettingProblem,
+  PluginSettings,
+  type PluginSettingValues,
+} from "./plugin-settings.ts";
 import type { PluginTrustCheck } from "./plugin-trust.ts";
 import type { PersonTrustOrigin, TrustRefusal } from "./trust-record.ts";
 import type { TrustService } from "./trust-service.ts";
@@ -56,6 +69,10 @@ export interface PluginServiceOptions {
   readonly digest: Digest;
   /** The `TrustService`: plugins share its records with workspaces. */
   readonly trust: Pick<TrustService, "checkPlugin" | "grantPlugin" | "revoke">;
+  /** The profile's records, which hold every plugin's setting values. */
+  readonly records: RecordStore;
+  /** Dates each saved setting value. */
+  readonly clock: Clock;
 }
 
 /**
@@ -71,9 +88,11 @@ export interface PluginServiceOptions {
  */
 export class PluginService {
   readonly #options: PluginServiceOptions;
+  readonly #settings: PluginSettings;
 
   constructor(options: PluginServiceOptions) {
     this.#options = options;
+    this.#settings = new PluginSettings(options.records, options.clock);
   }
 
   /**
@@ -149,6 +168,39 @@ export class PluginService {
    */
   ui(entries: readonly PluginEntry[]): PluginUiContribution[] {
     return trustedPluginUi(entries);
+  }
+
+  /**
+   * The plugin's setting values: each saved one that still fits its
+   * setting, otherwise the setting's `default`. `secret` settings are in
+   * `Secrets`, so they aren't here.
+   *
+   * @param plugin - a plugin {@link load} read
+   */
+  async settings(plugin: Plugin): Promise<PluginSettingValues> {
+    return await this.#settings.values(plugin);
+  }
+
+  /**
+   * Saves the plugin's setting values in place of the saved ones, only when
+   * every value fits a setting it declares and every required one is set.
+   *
+   * @param plugin - a plugin {@link load} read
+   * @returns every problem found, when nothing was saved
+   */
+  async saveSettings(
+    plugin: Plugin,
+    values: Readonly<Record<string, unknown>>,
+  ): Promise<Result<void, PluginSettingProblem[]>> {
+    return await this.#settings.save(plugin, values);
+  }
+
+  /**
+   * Deletes the setting values of the plugin `id`, for removing the plugin.
+   * Its trust and its secrets aren't touched here.
+   */
+  async forget(id: string): Promise<void> {
+    await this.#settings.forget(id);
   }
 
   async #loadOne(entry: FolderEntry): Promise<PluginEntry> {
