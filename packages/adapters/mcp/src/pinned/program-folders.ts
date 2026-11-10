@@ -12,8 +12,8 @@ export interface FolderSources {
   readonly appData?: string | undefined;
   /**
    * The `PATH` the person's login shell sets, read once per app start. A
-   * desktop app on macOS inherits a short `PATH` without Homebrew, Volta,
-   * fnm or nvm, which the login shell adds. `undefined` when it can't be read.
+   * desktop app on macOS inherits a short `PATH` without the folders a
+   * login profile adds, such as Homebrew's. `undefined` when it can't be read.
    */
   readonly loginShellPath: () => Promise<string | undefined>;
 }

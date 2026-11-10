@@ -63,13 +63,19 @@ export async function findRunner(
   }
   const folders = await programFolders(search);
   const runner = await locate(command, folders, search);
-  if (runner === undefined) return { refused: `couldn't find "${command}" on this computer` };
+  if (runner === undefined) {
+    return {
+      refused: `couldn't find "${command}" on this computer; give its full path as the connector's command`,
+    };
+  }
   const mapped = await withoutShell(runner, folders, search);
   if ("refused" in mapped) return mapped;
   if (registry === "pypi") return mapped;
   const node = await locate("node", [path.dirname(runner), ...folders], search);
   if (node === undefined) {
-    return { refused: `couldn't find "node" on this computer, which "${command}" needs` };
+    return {
+      refused: `couldn't find "node" on this computer, which "${command}" needs; give the full path of a "${command}" with "node" in the same folder`,
+    };
   }
   const pathFolders = uniqueFolders(
     [...mapped.found.pathFolders, path.dirname(node)],
