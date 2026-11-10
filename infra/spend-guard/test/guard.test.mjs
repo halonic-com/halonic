@@ -169,3 +169,10 @@ test("pricing: free allowances and plan fee", () => {
   assert.ok(price({ r2ClassA: 2e6 }, { allowances: false }).total === 9);
   assert.equal(monthWindow(at("2026-11-16T00:00:00Z")).daysElapsed, 15);
 });
+
+test("a bad SUB_BUDGETS_JSON falls back to the defaults", async () => {
+  const { settings, DEFAULTS } = await import("../src/guard.mjs");
+  for (const bad of ["{not json", "[1]", "null"]) {
+    assert.deepEqual(settings({ SUB_BUDGETS_JSON: bad }).subBudgetsUsd, DEFAULTS.subBudgetsUsd);
+  }
+});

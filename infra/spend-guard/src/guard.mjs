@@ -19,7 +19,14 @@ const usd = (n) => `$${n.toFixed(2)}`;
 export function settings(env) {
   const override = Number(env.THRESHOLD_OVERRIDE);
   let sub = DEFAULTS.subBudgetsUsd;
-  if (env.SUB_BUDGETS_JSON) sub = JSON.parse(env.SUB_BUDGETS_JSON);
+  if (env.SUB_BUDGETS_JSON) {
+    try {
+      const parsed = JSON.parse(env.SUB_BUDGETS_JSON);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) sub = parsed;
+    } catch {
+      // A bad value falls back to the defaults.
+    }
+  }
   return {
     tripUsd:
       Number.isFinite(override) && override > 0

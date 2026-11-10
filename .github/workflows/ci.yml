@@ -124,6 +124,8 @@ jobs:
           pnpm check
       - name: Licences
         run: pnpm check:licences
+      - name: Infra tests (spend guard, turbo-cache)
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files

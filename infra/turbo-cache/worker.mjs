@@ -17,11 +17,20 @@ async function authorized(request, token) {
   return crypto.subtle.timingSafeEqual(a, b);
 }
 
+// TURBO_TOKEN is an account-level Secrets Store binding: read it with get(). Any failure fails closed (401).
+async function readToken(env) {
+  try {
+    return await env.TURBO_TOKEN.get();
+  } catch {
+    return undefined;
+  }
+}
+
 export default {
   async fetch(request, env) {
     // Spend check first: when paused, nothing else (auth, R2) runs.
     if (!(await checkSpend(env, "turbo-cache"))) return spendOffResponse();
-    if (!(await authorized(request, env.TURBO_TOKEN))) return json({ error: "unauthorized" }, 401);
+    if (!(await authorized(request, await readToken(env)))) return json({ error: "unauthorized" }, 401);
     const { pathname } = new URL(request.url);
     const { method } = request;
 

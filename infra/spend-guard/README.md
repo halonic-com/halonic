@@ -4,7 +4,7 @@ A hard stop for Halonic's Cloudflare spend (HAL-3133). A Worker checks usage eve
 turns a KV switch off at **$900** of estimated month-to-date spend. Every Worker that does billable
 work reads that switch first and refuses when it is off.
 
-Source: `src/`. Tests: `node --test infra/spend-guard/test/ infra/turbo-cache/test.mjs` (no install, no
+Source: `src/`. Tests: `node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs` (no install, no
 network, no spend). Nothing here is a pnpm package; it is deployed through the Cloudflare connection.
 
 ## The switch

@@ -10,7 +10,7 @@ const call = (env) =>
   worker.fetch(
     new Request("https://x/v8/artifacts/status", { headers: { authorization: "Bearer t" } }),
     {
-      TURBO_TOKEN: "t",
+      TURBO_TOKEN: { get: async () => "t" },
       ...env,
     },
   );
