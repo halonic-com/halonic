@@ -7,12 +7,6 @@ import { isReservedPath } from "@halonicjs/format";
 import { checkWorkspacePath, type Digest } from "@halonicjs/ports";
 import { bytesToHex, encodeUtf8, err, isPlainObject, ok, type Result } from "@halonicjs/std";
 
-/** The folder only the review service sees: `ReviewingDefinitionStore` hides it from everyone else. */
-export const reviewFolder = ".halonic/review";
-
-/** Where the records live: one file per reviewed file, named by the SHA-256 of its path. */
-export const reviewRecordFolder = `${reviewFolder}/files`;
-
 /** The version of the record's JSON. A record of another version counts as unreadable. */
 const reviewRecordFormat = 1;
 
@@ -40,9 +34,9 @@ export interface ReviewRecord {
 }
 
 /**
- * Where the record of a file lives. The name is the SHA-256 of the path, so
- * a file `a` and a folder `a.json` can't clash, and a deep path can't make
- * the name too long for the file system.
+ * The name of a file's record in the records' store. The name is the
+ * SHA-256 of the path, so a file `a` and a folder `a.json` can't clash, and
+ * a deep path can't make the name too long for the file system.
  *
  * @throws RangeError for a path inside a reserved `.halonic/` folder, which has no workspace files to review
  */
@@ -51,7 +45,7 @@ export async function reviewRecordPath(path: string, digest: Digest): Promise<st
     throw new RangeError(`No review record for ${JSON.stringify(path)}: it is Halonic's own data.`);
   }
   const hash = bytesToHex(await digest.sha256(encodeUtf8(path)));
-  return `${reviewRecordFolder}/${hash}.json`;
+  return `${hash}.json`;
 }
 
 /** A record as JSON, the way {@link parseReviewRecord} reads it back. */

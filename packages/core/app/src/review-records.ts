@@ -1,14 +1,15 @@
-// Keeps the review records in the workspace's own `DefinitionStore`, so they
-// work the same in a folder, in memory and in the desktop app's store. Only
-// the review service uses this, through the store underneath the
-// `ReviewingDefinitionStore` that hides the records from everyone else.
+// Keeps the review records of one workspace in a store of their own, rooted
+// at the workspace's review folder in the profile (`reviewFolder()` of
+// `workspaceFolders`), never in the workspace (HAL-3417). A record decides
+// what Try it leaves out, so it lives where the trust records do: git can't
+// bring one in, and no version, snapshot or Share carries one. The store is
+// a plain `DefinitionStore`, so this works the same in a folder and in memory.
 
 import { isReservedPath } from "@halonicjs/format";
 import type { DefinitionStore, Digest } from "@halonicjs/ports";
 import {
   parseReviewRecord,
   type ReviewRecord,
-  reviewRecordFolder,
   reviewRecordPath,
   serializeReviewRecord,
 } from "./review-record.ts";
@@ -41,7 +42,8 @@ export interface ReviewRecordList {
  * (`app.review-record`).
  *
  * @example
- * const records = new ReviewRecords(innerStore, digest);
+ * const folders = await workspaceFolders(profile, workspaceRealPath, digest);
+ * const records = new ReviewRecords(new FolderDefinitionStore(folders.reviewFolder()), digest);
  * await records.save({ path: "agents/clerk.agent.yaml", baseline, card, seen });
  * const read = await records.read("agents/clerk.agent.yaml"); // { status: "found", record }
  */
@@ -50,7 +52,7 @@ export class ReviewRecords {
   private readonly digest: Digest;
 
   /**
-   * @param store - the workspace's store underneath the `ReviewingDefinitionStore`, which refuses the records' folder
+   * @param store - the records' own store, holding nothing else; never the workspace's store
    * @param digest - names each record by the SHA-256 of its file's path
    */
   constructor(store: DefinitionStore, digest: Digest) {
@@ -90,14 +92,14 @@ export class ReviewRecords {
   /**
    * Every record. A record that can't be read, or that sits under another
    * file's name, is removed and listed in `dropped`, so that file's changes
-   * become ordinary changes (AI changes 1.9). A file in the folder that
+   * become ordinary changes (AI changes 1.9). A file in the store that
    * isn't named like a record is left alone.
    */
   async all(): Promise<ReviewRecordList> {
     const records: ReviewRecord[] = [];
     const dropped: DroppedReviewRecord[] = [];
-    for (const recordPath of await this.store.list(reviewRecordFolder)) {
-      if (!recordName.test(recordPath.slice(reviewRecordFolder.length + 1))) {
+    for (const recordPath of await this.store.list()) {
+      if (!recordName.test(recordPath)) {
         continue;
       }
       const text = await this.store.read(recordPath);

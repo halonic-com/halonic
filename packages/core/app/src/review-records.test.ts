@@ -43,7 +43,7 @@ verifies("app.review-record", () => {
       await records.save(clerk);
       expect([...store.files.keys()]).toEqual([
         // SHA-256 of "agents/clerk.agent.yaml"; a record name never changes, or records would be lost.
-        ".halonic/review/files/b62cc1248570a14992f451b8a21c641ca5a130095603dc48b2362b6b3c9fa231.json",
+        "b62cc1248570a14992f451b8a21c641ca5a130095603dc48b2362b6b3c9fa231.json",
       ]);
       expect(await records.read(clerk.path)).toEqual({ status: "found", record: clerk });
     });
@@ -123,13 +123,14 @@ verifies("app.review-record", () => {
     });
 
     it("is removed and reported when the records are listed, and the others are listed", async () => {
-      const broken = `.halonic/review/files/${"0".repeat(64)}.json`;
-      const misplaced = `.halonic/review/files/${"1".repeat(64)}.json`;
+      const broken = `${"0".repeat(64)}.json`;
+      const misplaced = `${"1".repeat(64)}.json`;
       const { store, records } = setUp({
         [broken]: '{"format":1,',
         [misplaced]: serializeReviewRecord(clerk),
         [await reviewRecordPath(notes.path, digest)]: serializeReviewRecord(notes),
-        ".halonic/review/files/README": "a stray file",
+        README: "a stray file",
+        [`old/${"2".repeat(64)}.json`]: "in a folder",
       });
       expect(await records.all()).toEqual({
         records: [notes],
@@ -143,7 +144,8 @@ verifies("app.review-record", () => {
       });
       expect(store.files.has(broken)).toBe(false);
       expect(store.files.has(misplaced)).toBe(false);
-      expect(store.files.has(".halonic/review/files/README")).toBe(true);
+      expect(store.files.has("README")).toBe(true);
+      expect(store.files.has(`old/${"2".repeat(64)}.json`)).toBe(true);
     });
 
     it("is removed too when only some files are read, which skips files without a record", async () => {
