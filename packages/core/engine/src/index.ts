@@ -85,6 +85,12 @@ export {
 export { endInterruptedRuns, interruptedError } from "./run/end-interrupted-runs.ts";
 export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";
 export {
+  knowledgeToolNames,
+  knowledgeTools,
+  noHitsText,
+  unknownRefText,
+} from "./tools/knowledge/knowledge-tools.ts";
+export {
   LargeResultsTurnLog,
   maxLoggedResultBytes,
   resultStartLength,
