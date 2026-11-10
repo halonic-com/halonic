@@ -1,6 +1,6 @@
 # Decision: the MCP stdio connector starts package runners, through the pinned launcher
 
-- Approval: https://github.com/halonic-com/halonic (review task for HAL-2544, linked from HAL-230)
+- Approval: Paperclip task HAL-4094 (review of the pinned launcher stack, for HAL-230 and HAL-2544)
 - Kind: internal
 
 `mcp.stdio-connector` said the connector refuses every package runner (`npx`, `uvx` …) "which
