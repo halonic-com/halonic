@@ -1,7 +1,9 @@
+use super::busy::{ACCESS_DENIED, BusyRetry};
 use super::record::{STALE_AFTER_MS, parse_record, record_text};
-use super::{ThisComputer, put_back, remove_stale, with_run_lock};
+use super::{ThisComputer, put_back, read_text, remove_stale, remove_stale_reading, with_run_lock};
+use std::cell::Cell;
 use std::fs::{self, File};
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
@@ -235,6 +237,30 @@ fn run_lock_puts_back_a_lock_another_writer_took_after_the_stale_one_was_read() 
     let fresh = record(std::process::id(), "another-computer", 0);
     let file = folder.lock(Some(&fresh));
     remove_stale(&file, &record(5151, THIS_HOST, 0)).expect("checked");
+    assert_eq!(fs::read_to_string(&file).expect("the fresh lock"), fresh);
+    assert_eq!(folder.names(), ["r1.lock"]);
+}
+
+#[test]
+fn run_lock_tries_the_check_of_a_moved_lock_again_and_still_puts_back_a_fresh_one() {
+    let folder = TemporaryFolder::new();
+    let fresh = record(std::process::id(), "another-computer", 0);
+    let file = folder.lock(Some(&fresh));
+    let windows = BusyRetry {
+        windows: true,
+        limit: Duration::from_secs(5),
+    };
+    let reads = Cell::new(0);
+    let busy_once = |aside: &Path| {
+        reads.set(reads.get() + 1);
+        if reads.get() == 1 {
+            Err(io::Error::from_raw_os_error(ACCESS_DENIED))
+        } else {
+            read_text(aside)
+        }
+    };
+    remove_stale_reading(&file, &record(5151, THIS_HOST, 0), &windows, busy_once).expect("checked");
+    assert_eq!(reads.get(), 2);
     assert_eq!(fs::read_to_string(&file).expect("the fresh lock"), fresh);
     assert_eq!(folder.names(), ["r1.lock"]);
 }

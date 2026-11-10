@@ -16,7 +16,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 /// `ERROR_ACCESS_DENIED`: the file is delete-pending, or really refused.
-const ACCESS_DENIED: i32 = 5;
+pub(crate) const ACCESS_DENIED: i32 = 5;
 
 /// `ERROR_SHARING_VIOLATION`: another program has the file open.
 const SHARING_VIOLATION: i32 = 32;

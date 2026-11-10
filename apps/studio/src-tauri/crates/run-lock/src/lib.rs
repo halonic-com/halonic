@@ -15,6 +15,7 @@ mod busy;
 mod iso_time;
 mod record;
 
+use busy::BusyRetry;
 use std::fs::{self, OpenOptions};
 use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
@@ -101,7 +102,7 @@ fn take_lock<'a>(file: &'a Path, computer: &impl ThisComputer) -> io::Result<Hel
         if is_stale(&found, now_ms(), host.as_deref(), |pid| {
             computer.process_alive(pid)
         }) {
-            busy::HERE.run(|| remove_stale(file, &found.text))?;
+            remove_stale(file, &found.text)?;
             continue;
         }
         thread::sleep(RETRY_DELAY);
@@ -142,20 +143,35 @@ fn read_text(file: &Path) -> io::Result<String> {
 /// aside first and checked: when it isn't the stale one any more, it is put
 /// back, unless a third writer has taken the lock by then.
 fn remove_stale(file: &Path, stale_text: &str) -> io::Result<()> {
+    remove_stale_reading(file, stale_text, &busy::HERE, read_text)
+}
+
+/// [`remove_stale`] with the retry rules and the read of the moved lock
+/// given, so a test can play Windows and make that read busy.
+///
+/// Each file call is retried on its own while Windows reports it busy, not
+/// the whole removal: retrying the whole would rename again after a failed
+/// check, find no lock, and so remove the lock it moved aside unchecked.
+fn remove_stale_reading(
+    file: &Path,
+    stale_text: &str,
+    retry: &BusyRetry,
+    mut read_aside: impl FnMut(&Path) -> io::Result<String>,
+) -> io::Result<()> {
     let aside = aside_path(file);
-    match fs::rename(file, &aside) {
+    match retry.run(|| fs::rename(file, &aside)) {
         Ok(()) => {}
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
         Err(error) => return Err(error),
     }
-    let checked = read_text(&aside).and_then(|text| {
+    let checked = retry.run(|| read_aside(&aside)).and_then(|text| {
         if text == stale_text {
             Ok(())
         } else {
-            put_back(&aside, file)
+            retry.run(|| put_back(&aside, file))
         }
     });
-    let removed = remove_if_there(&aside);
+    let removed = retry.run(|| remove_if_there(&aside));
     checked.and(removed)
 }
 
