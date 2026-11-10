@@ -206,13 +206,19 @@ verifies("format.integration-file", () => {
     ]);
   });
 
-  it("lets a tool leave its noun out", () => {
+  it("refuses a send tool without a noun, and lets a read or write tool leave it out", () => {
     const text = yaml(
       ...base,
       "tools:",
-      "  - { name: forecast, description: Forecast., risk: send, untrusted: false }",
+      "  - { name: forecast, description: Forecast., risk: read, untrusted: false }",
+      "  - { name: save, description: Save., risk: write, untrusted: false }",
+      "  - { name: share, description: Share., risk: send, untrusted: false }",
     );
-    expect(parsedValue("integration", text).tools[0]?.noun).toBeUndefined();
+    const problems = problemsOf("integration", text);
+    expect(summary(problems)).toEqual(["tools.2 send-tool-without-noun 9"]);
+    expect(problems[0]?.message).toBe(
+      `Integration "weather": tool "share" has risk send, so it needs a noun for what it sends, such as noun: { one: email, many: emails }, so a run can say "Sent 1 email"`,
+    );
   });
 
   it("refuses a noun that isn't lower-case words or misses a form", () => {

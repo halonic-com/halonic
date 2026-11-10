@@ -23,7 +23,8 @@ export const integrationKind: FileKind<IntegrationSheet> = {
 
 /**
  * The rules over several fields: no list names a thing twice, a secret goes
- * only to hosts the sheet declares, and the Google fields fit the sheet.
+ * only to hosts the sheet declares, a send tool has a noun, and the Google
+ * fields fit the sheet.
  *
  * @example
  * checkIntegrationSheet(sheet); // [] for the weather example in the guide
@@ -78,8 +79,28 @@ export function checkIntegrationSheet(sheet: IntegrationSheet): KindCheckProblem
       }
     });
   }
+  problems.push(...checkSendNouns(sheet));
   problems.push(...checkGoogleFields(sheet));
   return problems;
+}
+
+/**
+ * A `send` tool says what it sends, so a run can say "Sent 1 email". A
+ * `read` or `write` tool may leave its noun out.
+ */
+function checkSendNouns(sheet: IntegrationSheet): KindCheckProblem[] {
+  return sheet.tools.flatMap((tool, index): KindCheckProblem[] =>
+    tool.risk === "send" && tool.noun === undefined
+      ? [
+          {
+            severity: "error",
+            code: "send-tool-without-noun",
+            path: ["tools", index],
+            message: `Integration "${sheet.id}": tool "${tool.name}" has risk send, so it needs a noun for what it sends, such as noun: { one: email, many: emails }, so a run can say "Sent 1 email"`,
+          },
+        ]
+      : [],
+  );
 }
 
 /** The sheet fields that only an integration using the Google sign-in may have. */
