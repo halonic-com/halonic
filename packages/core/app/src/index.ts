@@ -44,6 +44,16 @@ export {
   type InstalledHarness,
 } from "./doctor-checks.ts";
 export {
+  type DataSpace,
+  type DiskLine,
+  diskLine,
+  type SandboxLine,
+  sandboxLine,
+  type WorkspaceLine,
+  type WorkspaceTrust,
+  workspaceLine,
+} from "./doctor-lines.ts";
+export {
   EventBus,
   type EventListener,
   type EventMap,
