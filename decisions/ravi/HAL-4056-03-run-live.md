@@ -30,4 +30,4 @@ widths from the run log and doesn't change. No requirement or test was changed o
 - apps/cli/src/commands/run/golden/support-reply-approved.txt
 
 Follow-up (HAL-4391): the live ◌ line follows cli-output 3.4 exactly, the agent and its model alias
-("Writer · smart · waiting for Anthropic (12 s)"); see `HAL-4391-live-line-model.md`.
+("Writer · smart · waiting for Anthropic (12 s)"); see `HAL-4391-live-line-model-alias.md`.
