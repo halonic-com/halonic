@@ -87,7 +87,7 @@ describe("the journal folder on Windows", () => {
       .split(/\r?\n/)
       .filter((line) => /:\(/.test(line))
       .map((line) => line.trim());
-    expect(entries).toHaveLength(1);
+    expect(entries, stdout).toHaveLength(1);
     expect(entries[0]).not.toContain("(I)");
     expect(entries[0]?.toLowerCase()).toContain((process.env["USERNAME"] ?? "").toLowerCase());
   });
