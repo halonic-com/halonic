@@ -183,6 +183,9 @@ verifies("events.run-log-contract", () => {
       agent: string;
       output: unknown;
       parent?: string;
+      // Added after the reference by events.agent-finished-error (HAL-1536).
+      error?: string;
+      reason?: RunFailureReason;
     }>();
   });
 
@@ -334,6 +337,15 @@ verifies("events.tool-result-risk", () => {
       tool: "lookup",
       result: "[]",
     } as const).toExtend<EventOf<"tool.result">>();
+  });
+});
+
+verifies("events.agent-finished-error", () => {
+  typeTest("says why an agent failed without failing the run", () => {
+    expectTypeOf<EventOf<"agent.finished">["error"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<EventOf<"agent.finished">["reason"]>().toEqualTypeOf<
+      RunFailureReason | undefined
+    >();
   });
 });
 
