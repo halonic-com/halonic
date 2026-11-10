@@ -39,6 +39,7 @@ code is built the way it is, before you change something they describe.
 | [Vcs versions and worktrees](2026-11-10-vcs-versions-and-worktrees.md)                 | `Vcs` reads commits, snapshots, renames, keeps worktrees, applies hunks (v2)      |
 | [MXC sandbox backend](2026-11-10-mxc-sandbox-backend.md)                               | On Windows 11, MXC is a second backend, used only after a trust check (proposed)  |
 | [Write only if unchanged](2026-11-10-write-only-if-unchanged.md)                       | `DefinitionStore.write` takes `expected` and won't write over a changed file (v2) |
+| [Sandbox optional bridge](2026-11-10-sandbox-optional-bridge.md)                       | A profile's bridge may be `null`: no loopback, only the listed sites (v4)         |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

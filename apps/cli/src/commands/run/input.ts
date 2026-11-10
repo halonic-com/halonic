@@ -28,8 +28,8 @@ export class RunInputError extends KindedError {
  *
  * @param given - the option's value as typed
  * @param cwd - the folder a file is found from
- * @throws RunInputError when the file doesn't exist, the file or the text
- *   isn't JSON, or the JSON isn't an object
+ * @throws RunInputError when the file doesn't exist, is a folder or can't
+ *   be read, the file or the text isn't JSON, or the JSON isn't an object
  *
  * @example
  * await runInputOf("examples/refund-question.json", "/work/acme");
@@ -61,14 +61,34 @@ export async function runInputOf(
   return value as Record<string, unknown>;
 }
 
-/** The text of the input file; a file that isn't there is the user's typo, not a crash. */
+/**
+ * The text of the input file. A file that isn't there, a folder or a file
+ * that can't be read is the user's to fix, so it gets a reason, not a crash.
+ */
 async function inputFile(path: string, cwd: string): Promise<string> {
   try {
     return await readFile(resolve(cwd, path), "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new RunInputError(runMessages.noInputFile(path), runMessages.noInputFileFix(), error);
-    }
-    throw error;
+    throw unreadableInput(path, error);
+  }
+}
+
+/** Why the file couldn't be read, as a {@link RunInputError} when the user can fix it. */
+function unreadableInput(path: string, error: unknown): unknown {
+  switch ((error as NodeJS.ErrnoException).code) {
+    case "ENOENT":
+      return new RunInputError(runMessages.noInputFile(path), runMessages.noInputFileFix(), error);
+    case "EISDIR":
+      return new RunInputError(runMessages.inputIsFolder(path), runMessages.inputFix(), error);
+    // EPERM is what Windows gives for a file the account may not read.
+    case "EACCES":
+    case "EPERM":
+      return new RunInputError(
+        runMessages.inputUnreadable(path),
+        runMessages.inputUnreadableFix(),
+        error,
+      );
+    default:
+      return error;
   }
 }

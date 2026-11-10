@@ -90,6 +90,18 @@ async function rightClick(element: Element, x: number, y: number): Promise<boole
   return shown;
 }
 
+/** A press or a release of a pointer button on `element`, as the page sees it. */
+async function pointer(element: Element, type: "pointerdown" | "pointerup"): Promise<void> {
+  await act(async () => {
+    element.dispatchEvent(new Event(type, { bubbles: true }));
+  });
+}
+
+/** Lets the task after a release run, where the menu opens. */
+async function nextTask(): Promise<void> {
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+}
+
 async function press(key: string): Promise<void> {
   await act(async () => {
     document.activeElement?.dispatchEvent(
@@ -120,6 +132,35 @@ verifies("kit.context-menu", () => {
     expect(menu.style.left).toBe("120px");
     expect(menu.style.top).toBe("30px");
     expect(document.activeElement).toBe(menu);
+  });
+
+  it("opens a right-click made on the press only after its release, past the light dismiss", async () => {
+    const { tab, menu, onClose } = renderContextMenu();
+    await pointer(tab, "pointerdown");
+    await rightClick(tab, 120, 30);
+    expect(isOpen(menu)).toBe(false);
+    // Released outside act: an async act waits a macrotask, which on a busy machine can let the
+    // task after the release run first. The release itself changes no state.
+    tab.dispatchEvent(new Event("pointerup", { bubbles: true }));
+    expect(isOpen(menu)).toBe(false);
+    await nextTask();
+    expect(isOpen(menu)).toBe(true);
+    expect(menu.style.left).toBe("120px");
+    expect(document.activeElement).toBe(menu);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("moves to a second right-click made on the press, hidden until its release", async () => {
+    const { tab, menu, onClose } = renderContextMenu();
+    await rightClick(tab, 10, 10);
+    await pointer(tab, "pointerdown");
+    await rightClick(tab, 60, 20);
+    expect(isOpen(menu)).toBe(false);
+    await pointer(tab, "pointerup");
+    await nextTask();
+    expect(isOpen(menu)).toBe(true);
+    expect(menu.style.left).toBe("60px");
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("opens below the element without a point, with focus on its first usable item", async () => {

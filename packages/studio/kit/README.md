@@ -1327,6 +1327,11 @@ and the focus goes to its first usable item. Escape and Tab give the focus back 
 pick gives it back before `onSelect` runs, so an item that removes the element (Close) can move the
 focus on. A right-click on the open menu doesn't open the browser's own menu over it.
 
+Setting `target` back to `undefined` closes the menu without calling `onClose`, which is for the
+menu's own closing. Placement is the Menu's: the menu stays 8px inside the window's edges and
+opens above when there's no room below. A menu opened from the keyboard follows its element when
+the window resizes or something scrolls; one opened at a point stays where the click was.
+
 ## HeaderBadge
 
 The badge in the title bar's header slot, at its right end before Saved and the Assistant button:

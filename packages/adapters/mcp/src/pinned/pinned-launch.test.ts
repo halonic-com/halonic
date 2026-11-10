@@ -7,8 +7,9 @@ import { err, ok } from "@halonicjs/std";
 import { RecordedRegistryClient } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
+import { windowsPath } from "./fake-runners.spec.ts";
 import { emptyNpmrc, nodeLaunchFolders } from "./launch-folders.ts";
-import { checkPinnedLaunch, pinnedLaunch } from "./pinned-launch.ts";
+import { checkPinnedLaunch, type PinnedPlace, pinnedLaunch } from "./pinned-launch.ts";
 import { registryTimeoutMs } from "./registry-lookup.ts";
 
 const npmPin: ConnectorPin = {
@@ -134,19 +135,29 @@ verifies("mcp.pinned-launcher", () => {
       UV_INDEX_URL: "https://uv.acme.test/simple",
     };
 
-    it("starts the runner at the pin's version, in the launch folder, with the registry set", () => {
+    /** A launch in `folder` of the runner found at `/acme/bin/<command>`, with `node` next to it. */
+    function at(folder: string, command: string): PinnedPlace {
+      const runner = {
+        program: `/acme/bin/${command}`,
+        leadingArgs: [],
+        pathFolders: ["/acme/bin"],
+      };
+      return { folder, runner, platform: "linux" };
+    }
+
+    it("starts the runner found at the pin's version, in the launch folder, with the registry set", () => {
       const launch = pinnedLaunch(
         { ...npx(), env: { MAIL_MODE: "quiet" } },
         npmPin,
         inherited,
-        "/acme/launch-1",
+        at("/acme/launch-1", "npx"),
       );
       expect(launch).toEqual({
-        program: "npx",
+        program: "/acme/bin/npx",
         args: ["-y", "@acme/mail-mcp@2.3.1"],
         cwd: "/acme/launch-1",
         env: {
-          PATH: "/usr/bin",
+          PATH: "/acme/bin:/usr/bin",
           HTTPS_PROXY: "http://proxy.acme.test:3128",
           LD_PRELOAD: "/opt/acme/lib.so",
           MAIL_MODE: "quiet",
@@ -167,8 +178,26 @@ verifies("mcp.pinned-launcher", () => {
       });
     });
 
+    it("puts a runner's leading arguments first, and its folders first on a Windows Path of any case", () => {
+      const runner = {
+        program: windowsPath("C", "Acme", "node.exe"),
+        leadingArgs: [windowsPath("C", "Acme", "node_modules", "npm", "bin", "npx-cli.js")],
+        pathFolders: [windowsPath("C", "Acme")],
+      };
+      const place: PinnedPlace = {
+        folder: windowsPath("C", "launch-3"),
+        runner,
+        platform: "win32",
+      };
+      const launch = pinnedLaunch(npx(), npmPin, { Path: windowsPath("C", "Windows") }, place);
+      expect(launch.program).toBe(runner.program);
+      expect(launch.args).toEqual([...runner.leadingArgs, "-y", "@acme/mail-mcp@2.3.1"]);
+      expect(launch.env["Path"]).toBe(`${windowsPath("C", "Acme")};${windowsPath("C", "Windows")}`);
+      expect(launch.env).not.toHaveProperty("PATH");
+    });
+
     it("points a PyPI runner's index at the registry's simple API, with no other config and no Python download", () => {
-      const { env, args } = pinnedLaunch(uvx, pypiPin, inherited, "/acme/launch-2");
+      const { env, args } = pinnedLaunch(uvx, pypiPin, inherited, at("/acme/launch-2", "uvx"));
       expect(args).toEqual(["mail-mcp@2.3.1"]);
       expect(env).toMatchObject({
         UV_DEFAULT_INDEX: "https://pypi.org/simple",

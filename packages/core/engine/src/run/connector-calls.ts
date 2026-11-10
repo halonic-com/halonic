@@ -4,6 +4,7 @@
 // key, and only then does the engine make it, here.
 
 import type { SendingSettings } from "@halonicjs/app";
+import type { Agent } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
@@ -114,4 +115,18 @@ export async function makeConnectorCall(
 
 function notMade(why: string): ToolResult {
   return { type: "tool", result: `The call wasn't made: ${why}.`, outcome: "error" };
+}
+
+/**
+ * The connected servers an agent's file lists under `connectors`, in the
+ * executor's order: the only ones its model calls are offered. An agent
+ * with no file gets none.
+ */
+export function connectorsOf(
+  connectors: readonly ConnectorClient[],
+  agent: Agent | undefined,
+): readonly ConnectorClient[] {
+  if (agent === undefined) return [];
+  const listed = new Set(agent.connectors);
+  return connectors.filter((connector) => listed.has(connector.id));
 }

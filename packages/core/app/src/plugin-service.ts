@@ -1,12 +1,23 @@
 // The plugin service, as `app.plugin-service` asks: it finds every plugin in
 // the profile's plugin folder, reads and checks each one and asks whether it
-// is trusted (P2 plan sections 1 and 5). The CLI and the Studio call it; it
-// reaches the folder and the trust records only through ports.
+// is trusted (P2 plan sections 1 and 5). It saves and forgets a person's
+// trust, and gives the tools and UI of the trusted ones. The CLI and the
+// Studio call it; it reaches the folder and the trust records only through
+// ports.
 
 import type { Plugin } from "@halonicjs/format";
-import type { Digest, FolderEntry, FolderReader } from "@halonicjs/ports";
+import type { Digest, FolderEntry, FolderReader, TrustGrant } from "@halonicjs/ports";
+import { err, type Result } from "@halonicjs/std";
+import {
+  type PluginToolSet,
+  type PluginUiContribution,
+  trustedPluginTools,
+  trustedPluginUi,
+} from "./plugin-contributions.ts";
 import { type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
-import type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";
+import type { PluginTrustCheck } from "./plugin-trust.ts";
+import type { PersonTrustOrigin, TrustRefusal } from "./trust-record.ts";
+import type { TrustService } from "./trust-service.ts";
 
 /** A plugin folder that can't be read or checked. It gives no tools and no UI. */
 export interface BrokenPlugin {
@@ -29,6 +40,14 @@ export type ReadPlugin = PluginTrustCheck & {
 /** One plugin folder, as {@link PluginService.load} found it. */
 export type PluginEntry = BrokenPlugin | ReadPlugin;
 
+/**
+ * Why a person's trust in a plugin wasn't saved: the plugin changed since
+ * they were shown it, or it can't be read or checked now.
+ */
+export type PluginTrustRefusal =
+  | TrustRefusal
+  | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] };
+
 /** What {@link PluginService} needs from the host. */
 export interface PluginServiceOptions {
   /** The profile's plugin folder, which holds one folder per plugin, named by its id. */
@@ -36,7 +55,7 @@ export interface PluginServiceOptions {
   /** Hashes every file of a plugin. */
   readonly digest: Digest;
   /** The `TrustService`: plugins share its records with workspaces. */
-  readonly trust: { checkPlugin(subject: PluginTrustSubject): Promise<PluginTrustCheck> };
+  readonly trust: Pick<TrustService, "checkPlugin" | "grantPlugin" | "revoke">;
 }
 
 /**
@@ -44,9 +63,11 @@ export interface PluginServiceOptions {
  *
  * @example
  * const plugins = new PluginService({ plugins: folderReader, digest, trust });
- * for (const entry of await plugins.load()) {
+ * const entries = await plugins.load();
+ * for (const entry of entries) {
  *   if (entry.status === "broken") showProblems(entry.folder, entry.problems);
  * }
+ * const tools = plugins.tools(entries);
  */
 export class PluginService {
   readonly #options: PluginServiceOptions;
@@ -73,6 +94,63 @@ export class PluginService {
     return entries;
   }
 
+  /**
+   * Saves a person's trust in the plugin `id`, read again now, only when
+   * `shownFingerprint` is exactly its current fingerprint.
+   *
+   * @param id - the plugin's id, which is its folder's name
+   * @param shownFingerprint - the full fingerprint the person was shown
+   * @throws a `RangeError` when `id` isn't a single folder name
+   */
+  async trust(
+    id: string,
+    shownFingerprint: string,
+    origin: PersonTrustOrigin,
+  ): Promise<Result<TrustGrant, PluginTrustRefusal>> {
+    const folder = pluginFolderOf(id);
+    let read: Awaited<ReturnType<typeof readPluginFolder>>;
+    try {
+      read = await readPluginFolder(this.#options.plugins, this.#options.digest, folder);
+    } catch (error) {
+      return err({ kind: "broken", problems: [readFailedProblem(error)] });
+    }
+    if (!read.ok) return err({ kind: "broken", problems: read.error });
+    return await this.#options.trust.grantPlugin(read.value, shownFingerprint, origin);
+  }
+
+  /**
+   * Forgets the trust in the plugin `id`, so it gives no tools and no UI
+   * until a person trusts it again. Its settings and secrets stay: only
+   * removing the plugin deletes them. Nothing happens when its folder is
+   * gone, so removing a plugin forgets its trust before its folder.
+   *
+   * @param id - the plugin's id, which is its folder's name
+   * @throws a `RangeError` when `id` isn't a single folder name
+   */
+  async revoke(id: string): Promise<void> {
+    const location = await this.#options.plugins.locationOf(pluginFolderOf(id));
+    if (location !== null) await this.#options.trust.revoke(location);
+  }
+
+  /**
+   * The declared tools of every trusted plugin in `entries`, by part, with
+   * the plugin's trust grant. A plugin that isn't trusted gives none.
+   *
+   * @param entries - what {@link load} gave
+   */
+  tools(entries: readonly PluginEntry[]): PluginToolSet[] {
+    return trustedPluginTools(entries);
+  }
+
+  /**
+   * The `ui` of every trusted plugin in `entries`, as plain data for Studio.
+   *
+   * @param entries - what {@link load} gave
+   */
+  ui(entries: readonly PluginEntry[]): PluginUiContribution[] {
+    return trustedPluginUi(entries);
+  }
+
   async #loadOne(entry: FolderEntry): Promise<PluginEntry> {
     const folder = entry.path;
     if (entry.kind !== "folder") return broken(folder, [notAFolderProblem(entry)]);
@@ -86,6 +164,18 @@ export class PluginService {
       return broken(folder, [readFailedProblem(error)]);
     }
   }
+}
+
+/**
+ * The plugin folder of the plugin `id`: the id itself, which must be one
+ * folder name, so a caller can't reach a folder inside a plugin or outside
+ * the plugin folder.
+ */
+function pluginFolderOf(id: string): string {
+  if (id === "" || id === "." || id === ".." || /[/\\]/u.test(id)) {
+    throw new RangeError(`${JSON.stringify(id)} isn't a plugin id`);
+  }
+  return id;
 }
 
 function broken(folder: string, problems: readonly PluginProblem[]): BrokenPlugin {

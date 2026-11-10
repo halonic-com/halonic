@@ -9,9 +9,7 @@ import {
   type FollowOptions,
   hubWorkflows,
   type RunDetail,
-  RunEventRefused,
   RunEvents,
-  shortRunId,
   WorkflowRuns,
 } from "@halonicjs/app";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -25,20 +23,17 @@ import {
 } from "../../command.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
-import { errorMessages } from "../../messages/general.ts";
 import { runMessages } from "../../messages/run.ts";
-import { runsMessages } from "../../messages/runs.ts";
-import { stepName } from "../../messages/step-name.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
-import { runViewDefinitions } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceEngine, type WorkspaceEngineSetup } from "../../workspace-engine.ts";
 import { runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
 import { runResult } from "./result.ts";
+import { type RunPlace, sendEvent } from "./send-event.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
 
 /** What `run` uses on this computer, so tests can fix the clock, the ids and the profile. */
@@ -60,7 +55,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
  *   and the workspace isn't trusted here; nothing ran
  * @throws RunInputError when `--input` isn't a JSON object
  * @throws OwnLineError when no hub, or more than one, has the workflow
- * @throws OwnLineError when the run doesn't take an `--event` at its wait
+ * @throws OwnLineError when the run doesn't take an `--event` at its wait,
+ *   or is gone when one is sent
  */
 export async function runWorkflow(
   input: CommandInput,
@@ -83,20 +79,29 @@ export async function runWorkflow(
   const live = liveLines(context, { workspace, workspaceName, clock });
   try {
     const events = eventsOf(input);
-    const run = await followUntilStopped(engine, workspace, (signal) =>
-      followWithEvents(engine, workspace, workspaceName, typed, runInput, events, {
+    const place = { workspace, name: workspaceName, dir: typedDir };
+    const followed = await followUntilStopped(engine, workspace, (signal) =>
+      followWithEvents(engine, place, typed, runInput, events, {
         signal,
         onEvent: live.onEvent,
       }),
     );
-    if ("stopped" in run) {
-      return run;
+    if ("stopped" in followed) {
+      return followed;
     }
-    return runResult(run, { workspace, workspaceName, dir: typedDir, clock });
+    const { run, unusedEvents } = followed;
+    return runResult(run, { workspace, workspaceName, dir: typedDir, clock, unusedEvents });
   } finally {
     live.end();
     await engine.close();
   }
+}
+
+/** The run where the command left it, and the `--event`s it never took. */
+interface FollowedRun {
+  readonly run: RunDetail;
+  /** The events still to send when the run ended, in the order given. */
+  readonly unusedEvents: readonly string[];
 }
 
 /**
@@ -107,13 +112,13 @@ export async function runWorkflow(
  */
 async function followWithEvents(
   engine: LocalEngine,
-  workspace: LoadedWorkspace,
-  name: string,
+  place: RunPlace,
   typed: string,
   runInput: Record<string, unknown>,
   events: readonly string[],
   follow: Required<Pick<FollowOptions, "signal" | "onEvent">>,
-): Promise<RunDetail> {
+): Promise<FollowedRun> {
+  const { workspace } = place;
   const workflowRuns = new WorkflowRuns(engine.executor);
   const started = await workflowRuns.startRun(workspace, typed, runInput, follow);
   if (started.found === "several") {
@@ -124,62 +129,22 @@ async function followWithEvents(
     );
   }
   if (started.found === "none") {
-    throw noWorkflow(workspace, typed, name);
+    throw noWorkflow(workspace, typed, place.name);
   }
   const runEvents = new RunEvents(engine.executor, engine.runs);
   let run = started.run;
+  let used = 0;
   for (const event of events) {
     if (run.summary.status !== "waiting") break;
     const before = run.summary.lastSeq;
-    const sent = await sendEvent(runEvents, workspace, run, event);
+    const sent = await sendEvent(runEvents, place, run, event);
     run = await workflowRuns.follow(run.summary.id, { ...follow, after: before });
     // Someone else answered the wait first, such as in Studio: show where the run is now.
     if (!sent) break;
+    used += 1;
   }
-  return run;
-}
-
-/**
- * Sends one `--event`. An event the step doesn't take reads as `runs
- * send`'s refusal, with the same words.
- *
- * @returns false when the run no longer waited for it: someone answered first
- */
-async function sendEvent(
-  runEvents: RunEvents,
-  workspace: LoadedWorkspace,
-  run: RunDetail,
-  event: string,
-): Promise<boolean> {
-  try {
-    await runEvents.sendEvent(run.summary.id, event);
-    return true;
-  } catch (error) {
-    if (!(error instanceof RunEventRefused)) throw error;
-    const { refusal } = error;
-    if (refusal.reason !== "event-not-taken") return false;
-    const states = runViewDefinitions(workspace, run.summary).workflow?.states;
-    const step = stepName(refusal.step, states?.[refusal.step]?.description);
-    throw eventNotTaken(event, shortRunId(run.summary.id), step, refusal.accepts);
-  }
-}
-
-/** "✕ Couldn't send aprove to run 01jd8q: the step review takes approve or reject." */
-function eventNotTaken(
-  event: string,
-  runId: string,
-  step: string,
-  accepts: readonly string[],
-): OwnLineError {
-  const near = nearMatch(event, accepts);
-  return new OwnLineError(
-    "invalid_input",
-    errorMessages.couldnt(
-      runsMessages.sendAction(event, runId).phrase,
-      runsMessages.eventNotTaken(step, accepts).phrase,
-    ),
-    near === undefined ? runsMessages.seeTheStep(runId) : runsMessages.eventNear(near),
-  );
+  const ended = run.summary.status === "completed" || run.summary.status === "failed";
+  return { run, unusedEvents: ended ? events.slice(used) : [] };
 }
 
 /** "✕ There's no workflow called "suport-reply" in acme." with the near one when there is one. */

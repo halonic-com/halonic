@@ -21,10 +21,9 @@ import { checkRunToolCall, checkSubagentToolCall } from "./agent/check-run-tool-
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { runAgentTurn, runModelTurn } from "./agent/run-model-turn.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
-import { type ChatHarnessTurn, ChatHarnessTurns } from "./harness/chat-harness-turns.ts";
-import { isProgramHarness } from "./kernel/agent-call.ts";
+import { ChatHarnessTurns, harnessTurnOf } from "./harness/chat-harness-turns.ts";
 import type { ModelCallResult, RunDefinitions } from "./kernel/decide-types.ts";
-import { missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
+import { agentIn, missingDefinitionsError, readDefinitions } from "./kernel/kept-definitions.ts";
 import { branchOfCall } from "./kernel/run-branches.ts";
 import type { PendingCall, RunState } from "./kernel/run-state.ts";
 import {
@@ -34,7 +33,12 @@ import {
   noKnowledge,
   openSources,
 } from "./knowledge/agent-knowledge.ts";
-import { effectBoundary, makeConnectorCall, readToolsOf } from "./run/connector-calls.ts";
+import {
+  connectorsOf,
+  effectBoundary,
+  makeConnectorCall,
+  readToolsOf,
+} from "./run/connector-calls.ts";
 import { LocalRuns } from "./run/local-runs.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 import { runAgentTools } from "./run/run-agent-tools.ts";
@@ -243,7 +247,8 @@ export class LocalExecutor implements RunExecutor {
 
   /**
    * Runs one chat turn with the caller's tools, Halonic's tools, the agent's
-   * knowledge tools and the connected servers' tools. It keeps no run log,
+   * knowledge tools and the connected servers' tools: only those its file
+   * lists when the turn names an agent with a file. It keeps no run log,
    * because a chat turn belongs to no run: the models it skipped are in
    * `skipped` instead.
    *
@@ -255,7 +260,8 @@ export class LocalExecutor implements RunExecutor {
    * @throws when the agent runs in a harness and the executor has no `runs.harnesses`, or the harness call fails
    */
   async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
-    const harnessTurn = await this.harnessTurnOf(request);
+    const agent = await this.chatAgentFileOf(request);
+    const harnessTurn = harnessTurnOf(request, agent);
     if (harnessTurn !== undefined) {
       if (this.chatHarnesses === undefined) {
         throw new Error(
@@ -271,7 +277,10 @@ export class LocalExecutor implements RunExecutor {
       messages: request.messages,
       callerTools: request.tools,
       halonicTools: [...this.halonicToolsOf(request.agentId), ...knowledgeTools(knowledge.sources)],
-      connectors: this.options.connectors,
+      connectors:
+        agent === undefined
+          ? this.options.connectors
+          : connectorsOf(this.options.connectors, agent),
       ...(request.params === undefined ? {} : { params: request.params }),
       maxRounds: this.maxRounds,
       agent: request.agentId ?? chatAgent,
@@ -281,18 +290,13 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * The chat turn as a harness turn, when its agent's file names a harness
-   * program; `undefined` when Halonic's own loop runs it.
+   * The file of the agent a chat turn names, as the workspace has it now;
+   * `undefined` when it names none, the agent has no file, or the executor
+   * has no `chatAgentOf`.
    */
-  private async harnessTurnOf(request: ChatTurnRequest): Promise<ChatHarnessTurn | undefined> {
-    const { agentId } = request;
-    if (agentId === undefined || this.options.chatAgentOf === undefined) return undefined;
-    const agent = await this.options.chatAgentOf(request);
-    const harness = agent?.harness;
-    if (agent === undefined || harness === undefined || !isProgramHarness(harness)) {
-      return undefined;
-    }
-    return { request, agentId, agent, harness };
+  private async chatAgentFileOf(request: ChatTurnRequest): Promise<Agent | undefined> {
+    if (request.agentId === undefined || this.options.chatAgentOf === undefined) return undefined;
+    return this.options.chatAgentOf(request);
   }
 
   /** The knowledge sources of a chat turn's agent, as the workspace has them now. */
@@ -416,7 +420,8 @@ export class LocalExecutor implements RunExecutor {
    * A run's model call: the state's prompt to its agent's model, with
    * Halonic's tools, the agent's memory and knowledge tools, the tools its file grants
    * ({@link LocalExecutor.runToolsOf}) and, with `runs.connectorCalls`, the
-   * connected servers' tools, through the same turn loop a chat turn uses.
+   * tools of the connected servers its kept file lists ({@link connectorsOf}),
+   * through the same turn loop a chat turn uses.
    * Every call is checked with `checkToolCall` first ({@link checkRunToolCall}),
    * and the agent's `maxSteps` is the round limit. The agent's own prompt and
    * the turn's run log come later in step 4.
@@ -446,9 +451,8 @@ export class LocalExecutor implements RunExecutor {
     });
     const connectorCalls = this.options.runs?.connectorCalls;
     const inBranch = branchOfCall(run.parallel, call.callId) !== null;
-    const connectors = inBranch
-      ? this.options.connectors.map(readToolsOf)
-      : this.options.connectors;
+    const listed = connectorsOf(this.options.connectors, agent);
+    const connectors = inBranch ? listed.map(readToolsOf) : listed;
     // Built on a resumed call too: the model can still search after the OK.
     const knowledge = this.runKnowledgeOf(turn, call.agent);
     const outcome = await runAgentTurn({
@@ -481,15 +485,6 @@ export class LocalExecutor implements RunExecutor {
     }
     return definitions;
   }
-}
-
-/**
- * The agent's file in a run's definitions, or `undefined` for a run kept
- * before agents joined its definitions.
- */
-function agentIn(definitions: RunDefinitions, agentId: string): Agent | undefined {
-  const agents = definitions.agents ?? {};
-  return Object.hasOwn(agents, agentId) ? agents[agentId] : undefined;
 }
 
 function noRuns(): Error {

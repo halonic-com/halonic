@@ -23,6 +23,7 @@ import {
   carriedForms,
   readDeclaredSecrets,
   refuseCarriedSecrets,
+  refuseRedirectCarryingSecrets,
   SecretInRequestError,
 } from "./secret-in-request.ts";
 import { checkPlacementHosts, checkPlacements, place, readSecrets } from "./secret-placement.ts";
@@ -267,7 +268,7 @@ async function followHops(options: LimitedHttpOptions, context: HopContext): Pro
         `${policy.name}: ${hop.url.host}${hop.url.pathname} redirected more than ${maxRedirects} times`,
       );
     }
-    refuseCarriedSecrets(policy, carried, { url: location, base: hop.url });
+    refuseRedirectCarryingSecrets(policy, carried, location, hop.url);
     follow(hop, response.status, allowedUrl(policy, location, hop.url));
   }
 }

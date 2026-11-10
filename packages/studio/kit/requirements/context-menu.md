@@ -4,13 +4,16 @@
 - Since: 0.1.0
 - Source: HAL-1290; base component specs 14 (Menu); UX checklist part 1, 1.2 (the window tab menu)
 
-The kit's `ContextMenu` shall be a Menu for something that isn't a button, opened by its owner on a right-click, Shift F10 or the Menu key: a native `popover="auto"` with `role="menu"`, named by its `label`, with the Menu's look, items and keys (`kit.menu`). While its `target` is set, the menu shall be open. When the target has a point, the kit shall place the menu at that point and focus the menu itself; when it has none, the kit shall place it 4px below the target's element with the positioning helper (`kit.popover-position`) and focus its first usable item. Escape and Tab shall close it and give the focus back to the element. A pick shall close it and give the focus back to the element before the item's `onSelect` runs. When the menu closes by itself, on Escape, Tab, a pick or an outside click, the kit shall call `onClose`; when the owner sets `target` back to `undefined`, the menu shall close without calling it. A right-click on the open menu shall not open the browser's own context menu.
+The kit's `ContextMenu` shall be a Menu for something that isn't a button, opened by its owner on a right-click, Shift F10 or the Menu key: a native `popover="auto"` with `role="menu"`, named by its `label`, with the Menu's look, items and keys (`kit.menu`). While its `target` is set, the menu shall be open. When the target has a point, the kit shall place the menu at that point and focus the menu itself; when it has none, the kit shall place it 4px below the target's element with the positioning helper (`kit.popover-position`) and focus its first usable item. When a right-click comes while a pointer button is still held, as it does on macOS and Linux, the menu shall open only after that button's release, so the browser's light dismiss of the same click doesn't close it; while it waits, an already open menu shall be hidden without calling `onClose`. Escape and Tab shall close it and give the focus back to the element. A pick shall close it and give the focus back to the element before the item's `onSelect` runs. When the menu closes by itself, on Escape, Tab, a pick or an outside click, the kit shall call `onClose`; when the owner sets `target` back to `undefined`, the menu shall close without calling it. A right-click on the open menu shall not open the browser's own context menu.
 
 ## Examples
 
 - Given a tab with a ContextMenu labelled "Support reply",
   when the user right-clicks the tab at (120, 30),
   then the menu opens with its top left corner at that point, named "Support reply", and the menu itself has the focus.
+- Given the same tab, on a system where the right-click comes on the press,
+  when the user presses the right button on the tab and releases it,
+  then the menu opens after the release and stays open, and `onClose` isn't called.
 - Given the same tab focused,
   when its owner opens the menu without a point (Shift F10),
   then the menu opens 4px below the tab and Close, its first usable item, has the focus.

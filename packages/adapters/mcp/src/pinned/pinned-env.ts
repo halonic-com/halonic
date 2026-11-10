@@ -1,5 +1,5 @@
 import { devNull } from "node:os";
-import { join } from "node:path";
+import { join, posix, win32 } from "node:path";
 import { isPackageManagerVariable } from "@halonicjs/app";
 import type { ConnectorPin } from "@halonicjs/ports";
 import { emptyNpmrc } from "./launch-folders.ts";
@@ -46,6 +46,26 @@ export function pinnedEnv(
   Object.assign(env, connectorEnv);
   for (const name of folderVariables) env[name] = folder;
   return Object.assign(env, registryEnv(pin, folder));
+}
+
+/**
+ * `env` with `folders` first on its `PATH`, before what it inherited, so
+ * the runner starts the `node` the launcher found with it. On Windows the
+ * variable is found in any letter case (`Path`) and its folders are
+ * separated by `;`.
+ */
+export function withFoldersFirst(
+  env: Readonly<Record<string, string>>,
+  folders: readonly string[],
+  platform: NodeJS.Platform,
+): Record<string, string> {
+  const windows = platform === "win32";
+  const name = windows
+    ? (Object.keys(env).find((key) => key.toUpperCase() === "PATH") ?? "Path")
+    : "PATH";
+  const inherited = env[name];
+  const entries = inherited === undefined || inherited === "" ? folders : [...folders, inherited];
+  return { ...env, [name]: entries.join(windows ? win32.delimiter : posix.delimiter) };
 }
 
 /** Whether a variable names a folder the launch sets itself, in any case, as Windows reads it. */

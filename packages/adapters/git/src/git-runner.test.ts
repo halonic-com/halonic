@@ -1,7 +1,7 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { repositoryWith, Scratch, testGit, testRunner } from "./fixtures.test-helper.ts";
 import { GitRunner } from "./git-runner.ts";
 import { hardenedEnvironment } from "./hardening.ts";
@@ -169,5 +169,31 @@ verifies("git.runner-close", () => {
       await runner.close();
       expect((await stat(hooksFolder)).isDirectory()).toBe(true);
     });
+
+    // HAL-4428: when `create` refuses the program, nobody gets a runner to close.
+    it.runIf(process.platform !== "win32")(
+      "removes the hooks folder it made when it refuses the git program",
+      async () => {
+        const folder = await scratch.folder();
+        const wrapper = join(folder, "git");
+        await writeFile(
+          wrapper,
+          `#!/bin/sh\nunset GIT_CONFIG_COUNT\nexec '${await testGit()}' "$@"\n`,
+        );
+        await chmod(wrapper, 0o755);
+        // The runner makes its hooks folder in the temporary folder, so a
+        // folder of its own shows what it leaves behind.
+        const temporary = await scratch.folder();
+        vi.stubEnv("TMPDIR", temporary);
+        try {
+          await expect(GitRunner.create({ git: wrapper })).rejects.toThrow(
+            "doesn't pass Halonic's git settings on to git",
+          );
+        } finally {
+          vi.unstubAllEnvs();
+        }
+        expect(await readdir(temporary)).toEqual([]);
+      },
+    );
   });
 });

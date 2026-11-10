@@ -75,7 +75,9 @@ the active one and returns `{ tab, added }`. A place open in another tab is neve
 say it is already open. Home is the exception, because every new tab (`newTab`, + and Ctrl T) starts
 there. Closing the active tab activates the one to its right, else
 its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T) brings back the
-last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab, closed ones too. `back` and `forward` return `false`
+last of up to 20 closed tabs with their history. `closeOthers` keeps one tab and closes the rest,
+which Ctrl Shift T brings back one by one in their places; `canReopenClosed` says whether any can
+come back. `rename` updates a place's title in every tab, closed ones too. `back` and `forward` return `false`
 at either end. `activate`, `cycle` (Ctrl Tab, wraps), `activateAt` (`-1` is the last tab), `move` and
 `close` do what they say.
 
@@ -89,7 +91,15 @@ and shrink together to 96px, then the strip scrolls with the active tab kept in 
 its place on every tab and shows on the active one, on hover and on keyboard focus. **+** opens a
 new tab on Home and calls `onNewTab`, so the frame can open Ctrl K there. Nothing on a tab is
 `fg-subtle`. Dragging a tab moves it, with no motion: it jumps to its new place as the pointer
-crosses a neighbour's middle. The tab menu and the tooltips come in later pull requests.
+crosses a neighbour's middle.
+
+**The tab menu** opens with Shift F10 or the Menu key below the focused tab, with focus on its first
+item, or with a right-click at the pointer, without making that tab active. It's the kit's
+`ContextMenu`, named after the tab's title, with **Close**, **Close other tabs** (unusable on the
+only tab) and **Reopen closed tab** (unusable until a tab has closed). After Close the focus goes to
+the tab that took its place; after Reopen, to the reopened tab. It shows no keys yet: the desktop
+app's Ctrl W and Ctrl Shift T get their hints with the shell's Kbd helper. The tooltips come in a
+later pull request.
 
 In a narrow window (600 to 899px) the strip folds the tabs into one header badge, "3 open tabs ▾",
 with **+** after it (component specs 24.5 T5). It shows the 6px dot and says "3 open tabs, 1 needs
@@ -199,21 +209,33 @@ dialog that shows it comes in a later pull request. `paletteGroups` takes the wo
 places, the recent places, what the search providers found and the commands. With nothing typed it
 gives Open tabs, then Recent places that no tab shows. With words typed it gives "Agents, workflows
 and more" (open and recent places and found items whose name matches, each once) and Actions (the
-commands whose title matches). `nothingFound` says when the "Nothing matches" line shows. Each
+commands whose title matches). `nothingFound` says when the "Nothing matches" line shows, and
+`couldNotSearch` when nothing matches because a search provider failed, so the palette says
+"Couldn't search" in its place. What other providers found still shows. Each
 group keeps its best 5 rows, ordered by `matchName`: the whole name, then its start, then a word's
 start, then anywhere, and among equals the more recently opened. A row a tab shows has `open`, so
 it says "Switch to tab". A source that isn't built adds no group.
 
 `matchName` reads the words as plain text, never as a pattern, so `workspace.yaml`, `{ input` and
-`(EU)` find exactly that (`search.files.plain-text-is-literal`). Case doesn't matter, and there's no
-typo matching. Its `start` and `end` say which characters to highlight.
+`(EU)` find exactly that (`search.files.plain-text-is-literal`). Case doesn't matter (Greek final
+sigma included), a run of spaces in a name matches one space, and there's no typo matching. Its `start` and `end` say which characters to highlight.
 
 `searchProviders` asks every `search.addProvider` provider with its own feature's context and waits
-for all of them. One that fails sets `failed` without hiding what the others found.
+for all of them. One that fails sets `failed` without hiding what the others found. Each provider
+gets the context of its own feature for the palette's target, through
+`(featureId) => shell.services.contextFor(featureId, target)`.
 
 ```ts
+const contextFor = (featureId: string) => shell.services.contextFor(featureId, target);
 const found = await searchProviders(words, shell.contributions.search.providers(), contextFor);
-const content = paletteGroups({ words, openTabs, recent, found: found.results, actions });
+const content = paletteGroups({
+  words,
+  openTabs,
+  recent,
+  found: found.results,
+  searchFailed: found.failed,
+  actions,
+});
 ```
 
 ## Status bar and toasts
@@ -420,6 +442,20 @@ nothing changed:
 
 The cards' drawing, focus and keys come with the item page frame.
 
+## Side panel width
+
+An item page's side panel (`shell.panel-width`) is 420 to 1400px wide, 700px until someone drags
+it. The host saves the width on this computer, as it does the sidebar's:
+
+- `savedPanelWidth(saved)` reads the saved value back: kept inside 420 to 1400, or 700px for
+  anything that isn't a finite number. `clampPanelWidth(width)` keeps a drag inside 420 to 1400.
+- `shownPanelWidth(width, tabWidth)` is the width drawn: narrowed so the chat keeps 320px, never
+  under 420px, and the chosen width again once the tab widens. It is `undefined` when a 420px panel
+  doesn't fit beside a 320px chat (with the 48px gap and the 40px lead, a tab under 828px);
+  `panelFitsBeside(tabWidth)` says the same. Then the item page shows the panel as a button.
+
+The edge itself, Maximise and ✕ come with the item page frame.
+
 ## Resource numbers
 
 `watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the
@@ -501,11 +537,12 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 
 ## End-to-end tests
 
-What jsdom can't show, such as a tab dragged with a real pointer, is checked in a real Chromium
-with Playwright. Each part under test has a page in `e2e/pages` that renders it with the kit's real
+What jsdom can't show, such as a tab dragged with a real pointer, is checked in real Chromium and
+WebKit with Playwright (Tauri uses WebKit on macOS and Linux, WebView2 on Windows). Every spec runs
+in both projects. Each part under test has a page in `e2e/pages` that renders it with the kit's real
 CSS; `vite.config.ts` builds those pages, and the tests are `e2e/*.spec.ts`. `pnpm e2e` builds the
 pages, serves them with `vite preview` and runs the tests. Only CI's `e2e` job runs them, because
-only it has the browser: don't run them on the shared runner (HAL-2418). Read the result with
+only it has the browsers: don't run them on the shared runner (HAL-2418). Read the result with
 `gh pr checks`; a failed run uploads its report and traces as the `e2e-report` artifact.
 
 ## Example

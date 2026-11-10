@@ -67,6 +67,17 @@ verifies("sandbox-srt.session", () => {
       expect(probes).toEqual([]);
     });
 
+    it("opens a session without a bridge, with no loopback address in its network", async () => {
+      const { runner, probes } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(
+        profile({ network: { bridge: null, allowedSites: [] } }),
+      );
+      expect(session.fence).toEqual({ state: "fenced" });
+      const config = JSON.parse(readFileSync(probes[0]?.settingsPath ?? "", "utf8"));
+      expect(config.network.allowedDomains).toEqual([]);
+      await session.close();
+    });
+
     it.each(["127.0.0.1", "127.1.2.3", "::1", "[::1]", "localhost"])(
       "accepts the bridge %s",
       async (host) => {

@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { canary, client, refusal } from "./fake-transport.test-helper.ts";
+import { canary, client, redirect, refusal } from "./fake-transport.test-helper.ts";
 import type { RefusalCode } from "./integration/index.ts";
 import { leakAttemptCodes } from "./leak-attempt.ts";
 
@@ -18,7 +18,10 @@ const leakAttempts: Partial<Record<RefusalCode, Refused>> = {
     }),
 };
 
-/** Ordinary refusals: the request is wrong, but no secret is going anywhere. */
+/**
+ * Ordinary refusals: the request is wrong, but no secret is going anywhere,
+ * or the server, not the integration, put a secret in a redirect.
+ */
 const ordinaryRefusals: Partial<Record<RefusalCode, Refused>> = {
   "host-not-allowed": () => client().http.fetch("https://evil.example/"),
   "request-too-large": () =>
@@ -28,6 +31,10 @@ const ordinaryRefusals: Partial<Record<RefusalCode, Refused>> = {
     }),
   "secret-not-declared": () =>
     client().http.fetch("https://api.example.com/v1", { auth: { secret: "other", as: "bearer" } }),
+  "secret-in-redirect": () =>
+    client(() => redirect(302, `https://api.example.com/next?k=${key}`)).http.fetch(
+      "https://api.example.com/v1",
+    ),
 };
 
 verifies("integration-kit.leak-attempt-codes", () => {

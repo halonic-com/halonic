@@ -305,3 +305,62 @@ verifies("engine.parallel-state", () => {
     });
   });
 });
+
+/** The `searcher` agent, whose output is a `choice` of `low` and `high`. */
+const riskAgents = {
+  searcher: {
+    ...writerAgent(),
+    id: "searcher",
+    output: { type: "choice" as const, options: ["low", "high"] },
+  },
+};
+
+verifies("engine.task-choice-answer", () => {
+  it("gives a branch the option its agent answered, with the whitespace trimmed", () => {
+    const { decisions, run } = play(
+      researchWorkflow(),
+      [start, answer("call-2", "  high\n"), answer("call-1", "n")],
+      riskAgents,
+    );
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "agent.finished",
+        state: "research",
+        agent: "searcher",
+        output: "high",
+        branch: "web",
+      },
+    ]);
+    expect(run?.context).toMatchObject({ web: "high", findings: { notes: "n", web: "high" } });
+    expect(run?.status).toBe("completed");
+  });
+
+  it("ends a branch whose agent answers none of its options, and fails the run on join", () => {
+    const { decisions, run } = play(
+      researchWorkflow(),
+      [start, answer("call-2", "medium"), answer("call-1", "n")],
+      riskAgents,
+    );
+    const error =
+      'Agent "searcher" answered "medium", which isn\'t one of its options: "low", "high". ' +
+      "Tighten the agent's instructions or use a larger model.";
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "agent.finished",
+        state: "research",
+        agent: "searcher",
+        output: null,
+        error,
+        reason: "answer-not-an-option",
+        branch: "web",
+      },
+    ]);
+    expect(decisions[2]?.events.at(-1)).toEqual({
+      type: "run.failed",
+      state: "research",
+      error: `Branch "web" of parallel state "research" failed: ${error}`,
+      reason: "answer-not-an-option",
+    });
+    expect(run?.status).toBe("failed");
+  });
+});

@@ -63,13 +63,14 @@ export class SrtSandbox implements Sandbox {
   /**
    * Opens a session whose fence is proven before it returns.
    *
-   * @throws when {@link SrtSandbox.check} isn't `ok`, or the profile's bridge isn't a loopback address
+   * @throws when {@link SrtSandbox.check} isn't `ok`, or the profile has a bridge that isn't a loopback address
    */
   async open(profile: SandboxProfile, options?: { signal?: AbortSignal }): Promise<SandboxSession> {
     const check = await this.check();
     if (!check.ok) throw new Error(`the sandbox can't start: ${check.missing.join("; ")}`);
-    if (!isLoopback(profile.network.bridge.host)) {
-      throw new Error(`the bridge must be a loopback address, not ${profile.network.bridge.host}`);
+    const { bridge } = profile.network;
+    if (bridge !== null && !isLoopback(bridge.host)) {
+      throw new Error(`the bridge must be a loopback address, not ${bridge.host}`);
     }
     return SrtSession.open(profile, this.#runner, {
       ...options,

@@ -5,6 +5,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { contractServer, FakeFolders, FakeStarter } from "../stdio/fake-program.spec.ts";
 import { McpStdioConnectorFactory } from "../stdio/stdio-connector.ts";
+import { computer, runnerComputer, windowsPath } from "./fake-runners.spec.ts";
+import type { RunnerSearch } from "./find-runner.ts";
 
 const pin: ConnectorPin = {
   registry: "npm",
@@ -21,9 +23,15 @@ function pinned(secretEnv: Record<string, string> = { MAIL_TOKEN: "mail-token" }
   };
 }
 
+const linuxEnv = { PATH: "/usr/bin", HOME: "/acme/home", npm_config_cache: "/acme/home/.npm" };
+
 function setUp(
   http: ConnectorFactoryContext["http"] = new RecordedRegistryClient(),
   starter = new FakeStarter(contractServer([])),
+  computer: { runners: RunnerSearch; inheritedEnv: Record<string, string> } = {
+    runners: runnerComputer,
+    inheritedEnv: linuxEnv,
+  },
 ) {
   const folders = new FakeFolders();
   const secrets = new MemorySecrets({ "mail-token": "value-from-secrets" });
@@ -31,7 +39,7 @@ function setUp(
   const factory = new McpStdioConnectorFactory({
     starter,
     folders,
-    inheritedEnv: { PATH: "/usr/bin", HOME: "/acme/home", npm_config_cache: "/acme/home/.npm" },
+    ...computer,
     clientInfo: { name: "halonic", version: "0.1.0" },
   });
   const context: ConnectorFactoryContext = {
@@ -64,6 +72,20 @@ verifies("mcp.pinned-launcher", () => {
       const client = factory.create(pinned({ NODE_OPTIONS: "mail-token" }), context);
       await expect(client.listTools()).rejects.toThrow("NODE_OPTIONS");
       expect(read).not.toHaveBeenCalled();
+      expect(starter.counts().started).toBe(0);
+    });
+
+    it("refuses a runner it can't find, without reading a secret or creating a folder", async () => {
+      const nowhere = {
+        runners: computer([], { platform: "linux", path: "/usr/bin" }),
+        inheritedEnv: linuxEnv,
+      };
+      const { starter, folders, factory, context, read } = setUp(undefined, undefined, nowhere);
+      await expect(factory.create(pinned(), context).listTools()).rejects.toThrow(
+        'Halonic didn\'t start the connector "mail": couldn\'t find "npx" on this computer',
+      );
+      expect(read).not.toHaveBeenCalled();
+      expect(folders.present()).toEqual([]);
       expect(starter.counts().started).toBe(0);
     });
 
@@ -100,13 +122,44 @@ verifies("mcp.pinned-launcher", () => {
       const launch = starter.programs[0]?.launch;
       expect(launch?.env).toMatchObject({
         MAIL_TOKEN: "value-from-secrets",
-        PATH: "/usr/bin",
+        PATH: "/acme/bin:/usr/bin",
         HOME: launch?.cwd,
         TMPDIR: launch?.cwd,
         npm_config_registry: "https://registry.npmjs.org",
       });
       expect(launch?.env).not.toHaveProperty("npm_config_cache");
       expect(launch?.args).toEqual(["-y", "@acme/mail-mcp@2.3.1"]);
+      await client.close();
+    });
+
+    it("starts the runner it found, with the runner's folder first on its PATH", async () => {
+      const { starter, factory, context } = setUp();
+      const client = factory.create(pinned(), context);
+      await client.listTools();
+      const launch = starter.programs[0]?.launch;
+      expect(launch?.program).toBe("/acme/bin/npx");
+      expect(launch?.env["PATH"]).toBe("/acme/bin:/usr/bin");
+      await client.close();
+    });
+
+    it("starts npm's npx.cmd on Windows as node.exe with npx-cli.js, keeping the PATH's own name", async () => {
+      const inNode = (...parts: string[]) => windowsPath("C", "Acme", "nodejs", ...parts);
+      const npxCli = inNode("node_modules", "npm", "bin", "npx-cli.js");
+      const windows = {
+        runners: computer([inNode("npx.cmd"), inNode("node.exe"), npxCli], {
+          platform: "win32",
+          path: inNode(),
+        }),
+        inheritedEnv: { Path: windowsPath("C", "Windows") },
+      };
+      const { starter, factory, context } = setUp(undefined, undefined, windows);
+      const client = factory.create(pinned(), context);
+      await client.listTools();
+      const launch = starter.programs[0]?.launch;
+      expect(launch?.program).toBe(inNode("node.exe"));
+      expect(launch?.args).toEqual([npxCli, "-y", "@acme/mail-mcp@2.3.1"]);
+      expect(launch?.env["Path"]).toBe(`${inNode()};${windowsPath("C", "Windows")}`);
+      expect(launch?.env).not.toHaveProperty("PATH");
       await client.close();
     });
 

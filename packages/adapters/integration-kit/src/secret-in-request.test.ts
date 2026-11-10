@@ -127,18 +127,26 @@ verifies("integration-kit.secret-in-request", () => {
       expect(sent).toEqual([]);
     });
 
-    it("refuses a redirect whose Location holds the key", async () => {
-      const { http, sent } = client((url) =>
+    it("refuses a redirect whose Location holds the key as the server's, not the integration's", async () => {
+      const { http, sent, log } = client((url) =>
         url.host === "api.example.com"
-          ? redirect(302, `https://cdn.example.com/collect?k=${key}`)
+          ? redirect(302, `https://${key}.example.net/collect?k=${key}`)
           : new Response("collected"),
       );
       const error = await http
         .fetch("https://api.example.com/start", { auth: bearer })
         .catch((thrown: unknown) => thrown);
-      expect(error).toMatchObject({ code: "secret-in-request" });
+      expect(error).toMatchObject({ code: "secret-in-redirect" });
+      expect(String(error)).toContain("api.example.com redirected to [secret removed]");
       expect(String(error)).not.toContain(key);
       expect(sent).toHaveLength(1);
+      // The log names the request the integration sent, which held no secret.
+      expect(log.entries()[0]).toMatchObject({
+        method: "GET",
+        host: "api.example.com",
+        path: "/start",
+        refusal: "secret-in-redirect",
+      });
     });
 
     describe("the code changes its request after the check", () => {

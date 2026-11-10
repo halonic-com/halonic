@@ -46,10 +46,15 @@ describe("SrtSandbox on Windows, through the session", () => {
   });
 
   /** Runs a Node script from the working folder inside the fence and returns what it printed. */
-  async function runScript(name: string, source: string): Promise<string> {
+  async function runScript(name: string, source: string, inside = session): Promise<string> {
     await writeFile(join(work, name), source);
-    const started = await session.start({ program: process.execPath, args: [join(work, name)] });
-    const [out] = await Promise.all([read(started.stdout), started.exited]);
+    const started = await inside.start({ program: process.execPath, args: [join(work, name)] });
+    const [out, errors] = await Promise.all([
+      read(started.stdout),
+      read(started.stderr),
+      started.exited,
+    ]);
+    if (out.trim() === "") throw new Error(`${name} printed nothing; its errors: ${errors}`);
     return out.trim();
   }
 
@@ -107,6 +112,53 @@ setTimeout(() => done("blocked"), 5000);
     });
     expect(connections).toBe(0);
     expect(await readFile(join(work, "made.txt"), "utf8")).toBe("x");
+  });
+
+  it("without a bridge, reaches no loopback port, directly or through the proxy", async () => {
+    const before = connections;
+    const unbridged = await sandbox.open({
+      ...profile(),
+      network: { bridge: null, allowedSites: [] },
+    });
+    try {
+      expect(unbridged.fence).toEqual({ state: "fenced" });
+      const out = await runScript(
+        "no-bridge.cjs",
+        `const net = require("node:net");
+const result = {};
+const report = () => { console.log(JSON.stringify(result)); process.exit(0); };
+const finish = () => { if ("direct" in result && "proxy" in result) report(); };
+process.on("uncaughtException", (error) => { result.error = String(error); report(); });
+const socket = net.connect({ host: "127.0.0.1", port: ${canaryPort} });
+socket.on("connect", () => { result.direct = "connected"; finish(); });
+socket.on("error", () => { result.direct = "blocked"; finish(); });
+const proxy = process.env.HTTP_PROXY ?? process.env.http_proxy;
+if (proxy === undefined) { result.proxy = "none"; finish(); }
+else {
+  // srt may name its proxy without a scheme.
+  const via = new URL(proxy.includes("://") ? proxy : "http://" + proxy);
+  // A raw request, because newer Node's http.request refuses an absolute-URL
+  // path for another host than the one it connects to.
+  const target = "127.0.0.1:${canaryPort}";
+  const proxied = net.connect({ host: via.hostname, port: Number(via.port) || 80 });
+  const answer = (outcome) => { if (!("proxy" in result)) { result.proxy = outcome; finish(); } };
+  proxied.on("connect", () => proxied.write("GET http://" + target + "/ HTTP/1.1\\r\\nHost: " + target + "\\r\\nConnection: close\\r\\n\\r\\n"));
+  proxied.once("data", (data) => answer(/^HTTP\\/1\\.[01] 200 /.test(data.toString("latin1")) ? "reached" : "refused"));
+  proxied.on("error", () => answer("refused"));
+  proxied.on("close", () => answer("refused"));
+}
+setTimeout(() => { result.direct ??= "blocked"; result.proxy ??= "refused"; report(); }, 5000);
+`,
+        unbridged,
+      );
+      const result = JSON.parse(out.split(/\r?\n/).pop() ?? "");
+      expect(result.error).toBeUndefined();
+      expect(result.direct).toBe("blocked");
+      expect(result.proxy).not.toBe("reached");
+      expect(connections).toBe(before);
+    } finally {
+      await unbridged.close();
+    }
   });
 
   it("gives the exit code of the program", async () => {

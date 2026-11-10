@@ -1,7 +1,7 @@
 import type { Clock, Digest, TrustRecord } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
-import { type PluginEntry, PluginService } from "./plugin-service.ts";
+import { expect, it, vi } from "vitest";
+import { type PluginEntry, PluginService, type ReadPlugin } from "./plugin-service.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
@@ -50,6 +50,14 @@ function setup(reader = plugins(), store = new TestTrustStore()) {
   const clock: Clock = { now: () => new Date("2026-11-10T09:00:00.000Z") };
   const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
   return { trust, service: new PluginService({ plugins: reader, digest, trust }) };
+}
+
+/** The plugin `folder` as loaded, which must have been read and checked. */
+async function loadOne(service: PluginService, folder: string): Promise<ReadPlugin> {
+  const entry = (await service.load()).find((found) => found.folder === folder);
+  if (entry === undefined || entry.status === "broken")
+    throw new Error(`expected ${folder} to load`);
+  return entry;
 }
 
 function statuses(entries: readonly PluginEntry[]): [string, string][] {
@@ -128,6 +136,48 @@ verifies("app.plugin-service", () => {
       ["weather", "new"],
     ]);
     expect(entries[0]?.status === "broken" && entries[0].problems[0]?.code).toBe("link");
+  });
+
+  it("trusts a plugin with the fingerprint shown, and revoking makes it new again", async () => {
+    const { service } = setup();
+    const weather = await loadOne(service, "weather");
+    const granted = await service.trust("weather", weather.fingerprint, "prompt");
+    expect(granted).toMatchObject({ ok: true, value: { location: "/profile/plugins/weather" } });
+    expect((await loadOne(service, "weather")).status).toBe("trusted");
+
+    await service.revoke("weather");
+    expect((await loadOne(service, "weather")).status).toBe("new");
+  });
+
+  it("refuses trust when the plugin changed since it was shown, or is broken now", async () => {
+    const reader = plugins();
+    const { service } = setup(reader);
+    const shown = await loadOne(service, "weather");
+    reader.putFiles({ "weather/backend/index.js": "export default { changed: true };\n" });
+    const refused = await service.trust("weather", shown.fingerprint, "prompt");
+    expect(refused.ok).toBe(false);
+    if (refused.ok || refused.error.kind !== "fingerprint-changed") {
+      throw new Error("expected a changed fingerprint");
+    }
+    expect(refused.error.fingerprint).toMatch(/^hpf1:/u);
+    expect(refused.error.fingerprint).not.toBe(shown.fingerprint);
+    expect((await loadOne(service, "weather")).status).toBe("new");
+
+    const broken = await service.trust("broken", shown.fingerprint, "prompt");
+    expect(
+      !broken.ok && broken.error.kind === "broken" && broken.error.problems.length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("refuses an id that isn't one folder name before reading the plugin folder", async () => {
+    const reader = plugins();
+    const read = vi.spyOn(reader, "entries");
+    const { service } = setup(reader);
+    for (const id of ["../weather", "weather/backend", "weather\\backend", "", ".."]) {
+      await expect(service.trust(id, "hpf1:0", "prompt")).rejects.toThrow(RangeError);
+      await expect(service.revoke(id)).rejects.toThrow(RangeError);
+    }
+    expect(read).not.toHaveBeenCalled();
   });
 
   it("gives no plugins for an empty plugin folder, and fails only when it can't be listed", async () => {

@@ -16,6 +16,7 @@ import type {
   ScheduledTimer,
   Scheduler,
 } from "@halonicjs/ports";
+import { isProgramHarness } from "../kernel/agent-call.ts";
 import type { ProgramHarness } from "../kernel/decide-types.ts";
 import { LiveHarnessCalls } from "../run/live-harness-calls.ts";
 import { StartDeadlines } from "../run/start-deadlines.ts";
@@ -45,6 +46,20 @@ export interface ChatHarnessTurn {
   /** The agent's file as the workspace has it now. */
   readonly agent: Agent;
   readonly harness: ProgramHarness;
+}
+
+/**
+ * The chat turn as a harness turn, when its agent's file names a harness
+ * program; `undefined` when Halonic's own loop runs it.
+ */
+export function harnessTurnOf(
+  request: ChatTurnRequest,
+  agent: Agent | undefined,
+): ChatHarnessTurn | undefined {
+  const { agentId } = request;
+  const harness = agent?.harness;
+  if (agentId === undefined || agent === undefined || harness === undefined) return undefined;
+  return isProgramHarness(harness) ? { request, agentId, agent, harness } : undefined;
 }
 
 /** The `error` a chat turn rejects with when the person stops the chat while the agent works. */

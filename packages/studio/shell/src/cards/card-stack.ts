@@ -45,14 +45,21 @@ export interface DroppedCards {
  * openCard([writer, factChecker, sources], factChecker); // [writer, factChecker]
  */
 export function openCard(stack: CardStack, card: StackedCard): CardStack {
+  // Docked first: a part already open as a full card must still dock and close the cards below it.
+  if (card.docked === true) {
+    return isOnlyDockedCard(stack, card) ? stack : [card];
+  }
   const level = stack.findIndex((open) => open.key === card.key);
   if (level >= 0) {
     return backToCard(stack, level);
   }
-  if (card.docked === true) {
-    return [card];
-  }
   return [...stack, card];
+}
+
+/** Whether `stack` is just `card`, already docked, so docking it again changes nothing. */
+function isOnlyDockedCard(stack: CardStack, card: StackedCard): boolean {
+  const [only] = stack;
+  return stack.length === 1 && only?.key === card.key && only.docked === true;
 }
 
 /**

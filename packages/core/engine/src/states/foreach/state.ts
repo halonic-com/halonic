@@ -1,4 +1,5 @@
 import { render } from "@halonicjs/workflow";
+import { checkChoiceAnswer } from "../../kernel/choice-answer.ts";
 import type {
   ChildInput,
   DecidedEvent,
@@ -21,7 +22,8 @@ import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
  * place. At most `concurrency` items run at once (default 1), and they start
  * in list order. Each item's events carry `item`. Once every item has ended,
  * the results go to `output` as a list in item order and the state finishes
- * with `done`. The first item that fails fails the run; an item's child run
+ * with `done`. The first item that fails fails the run, as does an item
+ * whose agent answers none of its `choice` options; an item's child run
  * its budget stopped stops this run for its budget too. An item's agent
  * can't pause for an approval, and an item's child run can't wait.
  */
@@ -79,7 +81,12 @@ function takeCallResult(context: StateContext, input: EffectDoneInput): StateSte
   if (result.type === "tool") {
     return nothing;
   }
-  const output = result.output;
+  const checked = checkChoiceAnswer(context.agents, agent, result.output);
+  if ("error" in checked) {
+    const error = `Item ${running.item} of for-each state "${context.stateId}" failed: ${checked.error}`;
+    return { ...nothing, outcome: { type: "fail", error, reason: "answer-not-an-option" } };
+  }
+  const output = checked.output;
   const finished: DecidedEvent = {
     type: "agent.finished",
     state: context.stateId,

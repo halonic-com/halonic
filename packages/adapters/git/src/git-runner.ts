@@ -87,8 +87,15 @@ export class GitRunner {
     const hooksFolder =
       options.hooksFolder ?? (await mkdtemp(join(tmpdir(), "halonic-git-hooks-")));
     const runner = new GitRunner(git, hooksFolder, options);
-    await runner.#checkHooksFolderIsEmpty();
-    await runner.#checkHardeningReachesGit();
+    try {
+      await runner.#checkHooksFolderIsEmpty();
+      await runner.#checkHardeningReachesGit();
+    } catch (error) {
+      // Nobody gets this runner to close, so the hooks folder it made
+      // would stay behind.
+      await runner.close();
+      throw error;
+    }
     return runner;
   }
 

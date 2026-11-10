@@ -17,6 +17,7 @@ export type RefusalCode =
   | "too-many-redirects"
   | "request-too-large"
   | "secret-in-request"
+  | "secret-in-redirect"
   | "response-too-large"
   | "token-not-declared";
 
@@ -40,6 +41,7 @@ const refusalKinds: Readonly<Record<RefusalCode, ErrorKind>> = {
   "too-many-redirects": "denied",
   "request-too-large": "invalid_input",
   "secret-in-request": "denied",
+  "secret-in-redirect": "denied",
   "response-too-large": "unavailable",
   "token-not-declared": "denied",
 };

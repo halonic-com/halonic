@@ -1356,8 +1356,9 @@ jobs:
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
   e2e:
-    # What jsdom can't show, in a real Chromium: the shell's pages in
-    # packages/studio/shell/e2e (HAL-3996). The browser is installed here
+    # What jsdom can't show, in real Chromium and WebKit (Tauri's engine on
+    # macOS and Linux): the shell's pages in
+    # packages/studio/shell/e2e (HAL-3996). The browsers are installed here
     # only, never in the agents' runner container. Playwright's web server
     # builds the pages and serves them, and stops with the tests.
     name: Studio end-to-end (Playwright)
@@ -1372,9 +1373,9 @@ jobs:
         with:
           persist-credentials: false
       - uses: $/.github/actions/setup
-      - name: Install Chromium for Playwright
+      - name: Install Chromium and WebKit for Playwright
         working-directory: packages/studio/shell
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium webkit
       - name: Shell end-to-end tests
         working-directory: packages/studio/shell
         run: pnpm e2e

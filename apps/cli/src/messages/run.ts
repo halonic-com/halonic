@@ -65,6 +65,21 @@ export const runMessages = defineMessages("run", {
       : phrase`${source} isn't valid JSON.`,
   /** The same, when the JSON is a list, a string or a number. */
   inputNotAnObject: () => phrase`the input must be a JSON object.`,
+  /** The same, when `--input` names a folder. Its fix is {@link inputFix}. */
+  inputIsFolder: (path: string) => phrase`${path} is a folder, not a file.`,
+  /** The same, when the file is there but can't be read, such as for its permissions. */
+  inputUnreadable: (path: string) => phrase`${path} can't be read.`,
+  /** The fix under an `--input` file that can't be read. */
+  inputUnreadableFix: () => phrase`Check the file's permissions, or pass the JSON as text.`,
+  /**
+   * Dim, with a !, after the result when the run ended before it took the
+   * last `--event`s: "Didn't use --event reject: the run ended first."
+   */
+  unusedEvents: (events: readonly string[]) =>
+    phrase`Didn't use ${listInWords(
+      events.map((event) => `--event ${event}`),
+      "and",
+    )}: the run ended first.`,
   /** The fix under a missing `--input` file: most often a typo in the path. */
   noInputFileFix: () =>
     phrase`Check the file name. It's looked for from the folder you ran the command in.`,

@@ -2,7 +2,7 @@ import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { DecideInput, StartInput } from "../../kernel/decide-types.ts";
-import { answer, play, startInput } from "../../kernel/kernel-test-kit.test-helper.ts";
+import { answer, play, startInput, writerAgent } from "../../kernel/kernel-test-kit.test-helper.ts";
 import { callOf } from "../../kernel/run-state.ts";
 
 const emails = [{ subject: "Refund" }, { subject: "Invoice" }, { subject: "Hello" }];
@@ -225,5 +225,51 @@ verifies("engine.foreach-state", () => {
   ])("fails the run when the state %s", (_name, workflow, error) => {
     const { log } = play(workflow, [start]);
     expect(log.at(-1)).toMatchObject({ type: "run.failed", state: "triage", error });
+  });
+});
+
+/** The `labeler` agent, whose output is a `choice` of `refunds` and `billing`. */
+const labelAgents = {
+  labeler: {
+    ...writerAgent(),
+    id: "labeler",
+    output: { type: "choice" as const, options: ["refunds", "billing"] },
+  },
+};
+
+verifies("engine.task-choice-answer", () => {
+  it("gives an item the option its agent answered, with the whitespace trimmed", () => {
+    const { decisions } = play(
+      triageWorkflow(),
+      [start, answer("call-1", " refunds\n")],
+      labelAgents,
+    );
+    expect(decisions[1]?.events[0]).toEqual({
+      type: "agent.finished",
+      state: "triage",
+      agent: "labeler",
+      output: "refunds",
+      item: 0,
+    });
+  });
+
+  it("fails the run when an item's agent answers none of its options", () => {
+    const { decisions, run } = play(
+      triageWorkflow(),
+      [start, answer("call-2", "Refunds")],
+      labelAgents,
+    );
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "triage",
+        error:
+          'Item 1 of for-each state "triage" failed: Agent "labeler" answered "Refunds", ' +
+          'which isn\'t one of its options: "refunds", "billing". ' +
+          "Tighten the agent's instructions or use a larger model.",
+        reason: "answer-not-an-option",
+      },
+    ]);
+    expect(run).toMatchObject({ status: "failed", foreach: null });
   });
 });

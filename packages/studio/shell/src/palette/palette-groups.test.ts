@@ -18,7 +18,15 @@ function found(kind: string, id: string, label: string, detail?: string): Search
 }
 
 function palette(sources: Partial<PaletteSources>): PaletteContent {
-  return paletteGroups({ words: "", openTabs: [], recent: [], found: [], actions: [], ...sources });
+  return paletteGroups({
+    words: "",
+    openTabs: [],
+    recent: [],
+    found: [],
+    searchFailed: false,
+    actions: [],
+    ...sources,
+  });
 }
 
 /** The palette as a person reads it: each group's title, then its rows. */
@@ -128,7 +136,7 @@ verifies("shell.palette-groups", () => {
       openTabs: [home],
       actions: [{ id: "shell.new-tab", title: "New tab" }],
     });
-    expect(content).toEqual({ groups: [], nothingFound: true });
+    expect(content).toEqual({ groups: [], nothingFound: true, couldNotSearch: false });
 
     const withAction = palette({
       words: "new",
@@ -138,7 +146,29 @@ verifies("shell.palette-groups", () => {
     expect(read(withAction)).toEqual(["Actions:", "New tab"]);
   });
 
+  it("says it couldn't search, not that nothing matches, when a provider failed and nothing matches", () => {
+    const content = palette({
+      words: "refund",
+      searchFailed: true,
+      actions: [{ id: "shell.refund", title: "Refund a run" }],
+    });
+    expect(content.nothingFound).toBe(false);
+    expect(content.couldNotSearch).toBe(true);
+    expect(read(content)).toEqual(["Actions:", "Refund a run"]);
+  });
+
+  it("shows what the other providers found when one failed", () => {
+    const content = palette({
+      words: "sup",
+      found: [found("workflow", "support-reply", "Support reply")],
+      searchFailed: true,
+    });
+    expect(content.couldNotSearch).toBe(false);
+    expect(content.nothingFound).toBe(false);
+    expect(read(content)).toEqual(["Agents, workflows and more:", "Support reply"]);
+  });
+
   it("shows no group for a source that isn't built yet", () => {
-    expect(palette({})).toEqual({ groups: [], nothingFound: false });
+    expect(palette({})).toEqual({ groups: [], nothingFound: false, couldNotSearch: false });
   });
 });

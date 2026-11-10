@@ -1,30 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { findRunner, type RunnerSearch } from "./find-runner.ts";
-
-/** A computer that holds exactly `files`, all of them programs except npm's CLI scripts. */
-function computer(
-  files: readonly string[],
-  sources: Partial<RunnerSearch> & Pick<RunnerSearch, "platform" | "path">,
-): RunnerSearch {
-  const present = new Set(
-    files.map((file) => (sources.platform === "win32" ? file.toLowerCase() : file)),
-  );
-  const has = (path: string) =>
-    present.has(sources.platform === "win32" ? path.toLowerCase() : path);
-  return {
-    home: undefined,
-    loginShellPath: async () => undefined,
-    isProgram: async (path) => has(path) && !path.endsWith(".js"),
-    isFile: async (path) => has(path),
-    ...sources,
-  };
-}
-
-/** A made-up Windows path on `drive`, built from its parts, so no real local path is written here. */
-function windowsPath(drive: string, ...parts: string[]): string {
-  return [`${drive}:`, ...parts].join("\\");
-}
+import { computer, windowsPath } from "./fake-runners.spec.ts";
+import { findRunner } from "./find-runner.ts";
 
 verifies("mcp.runner-lookup", () => {
   describe("on macOS and Linux", () => {

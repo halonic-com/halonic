@@ -155,6 +155,12 @@ export { readPackageSpec } from "./package-spec.ts";
 export { isPackageManagerVariable } from "./pin-overrides.ts";
 export { pinnedRunnerArgs } from "./pinned-args.ts";
 export {
+  type PluginToolSet,
+  type PluginUiContribution,
+  trustedPluginTools,
+  trustedPluginUi,
+} from "./plugin-contributions.ts";
+export {
   MAX_PLUGIN_BYTES,
   MAX_PLUGIN_ENTRIES,
   type PluginFolder,
@@ -166,6 +172,7 @@ export {
   type PluginEntry,
   PluginService,
   type PluginServiceOptions,
+  type PluginTrustRefusal,
   type ReadPlugin,
 } from "./plugin-service.ts";
 export type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";

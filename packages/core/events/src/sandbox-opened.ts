@@ -47,7 +47,7 @@ export interface SandboxOpenedView {
   deniedGroups: DeniedPathGroupCode[];
   /** The denied paths that are in no group: the ones the person added. */
   deniedPaths: string[];
-  /** The sites the step may reach besides the Halonic bridge. */
+  /** The sites the step may reach, besides the Halonic bridge when the profile has one. */
   allowedSites: string[];
   /** How long the step may last, in milliseconds. */
   timeLimitMs: number;

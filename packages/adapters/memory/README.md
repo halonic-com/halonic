@@ -7,6 +7,18 @@ In-memory implementations of the ports, for tests, the `core/app` kernel tests, 
 - **Public API:** `@halonicjs/adapter-memory`
 - **Runtime:** any (`"runtime": "any"` in `package.json`): Web globals only, no Node APIs, so it runs in Node, the browser and `workerd`.
 
+## Pinned connector launches
+
+`MemoryConnectorFactory` starts a `stdio` connector with a pin the way a real launcher does
+(`contracts.connector-pin`): the launch must pass `app.package-runner-launch`, and the pin's registry
+must list the pinned version, asked at `registryUrl` only. What it then spawns, which
+`MemoryConnectorFactory.launches()` records, has the runner's words rewritten by `pinnedRunnerArgs`
+from `@halonicjs/app`, the same function the real MCP launcher uses. So a bare package option is
+pinned too: `npm exec --package=mail-mcp -- mail-mcp` starts with `--package=mail-mcp@2.3.1`, and the
+same holds for `npx -p`, `uvx --from` and `pipx run --spec`, not only for a positional package
+name. Variables that `app.package-runner-launch` blocks are dropped from the inherited environment,
+and the registry is set from `registryUrl`.
+
 ## Example
 
 Files, blobs, a timer and a lease, all in memory. The code lives in

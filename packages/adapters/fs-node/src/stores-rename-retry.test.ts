@@ -19,9 +19,6 @@ import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 import { FileTrustStore } from "./trust-store.ts";
 import { FileUnfencedRunConsentStore } from "./unfenced-run-consent-store.ts";
 
-/** Fails on Windows today: the record store's append fails with EPERM on ftruncate (HAL-4361). */
-const itUnlessWindows = it.skipIf(process.platform === "win32");
-
 /**
  * The trust store, the agent placement store, the connection settings
  * store, the blob store, the unfenced-run consent store, the record store's
@@ -241,45 +238,39 @@ verifies("fs-node.rename-retry-on-windows", () => {
   describe("record store: a log another program holds on Windows while it is compacted", () => {
     // The append starts while the compact runs, so it waits for the compact's
     // write lock, retries included, and lands on the log the compact leaves.
-    itUnlessWindows(
-      "[platform:win32] HAL-4361: compacts once the other program lets go, and an append waiting on it lands after",
-      async () => {
-        const root = await tempFolder();
-        const store = new FileRecordStore(root);
-        await store.append([lead("1", "add", "Ada", 1), lead("1", "update", "Ada L.", 2)]);
-        hooks.busyRenames = 2;
-        await Promise.all([store.compact("leads"), store.append([lead("2", "add", "Grace", 3)])]);
-        expect(hooks.waits).toBe(2);
-        expect(await store.changes("leads")).toEqual([
-          lead("1", "seed", "Ada L.", 2),
-          lead("2", "add", "Grace", 3),
-        ]);
-        await onlyFile(root);
-      },
-    );
+    it("compacts once the other program lets go, and an append waiting on it lands after", async () => {
+      const root = await tempFolder();
+      const store = new FileRecordStore(root);
+      await store.append([lead("1", "add", "Ada", 1), lead("1", "update", "Ada L.", 2)]);
+      hooks.busyRenames = 2;
+      await Promise.all([store.compact("leads"), store.append([lead("2", "add", "Grace", 3)])]);
+      expect(hooks.waits).toBe(2);
+      expect(await store.changes("leads")).toEqual([
+        lead("1", "seed", "Ada L.", 2),
+        lead("2", "add", "Grace", 3),
+      ]);
+      await onlyFile(root);
+    });
 
-    itUnlessWindows(
-      "[platform:win32] HAL-4361: fails, keeps the old log and removes its temporary file when it stays held, and the waiting append lands on the old log",
-      async () => {
-        const root = await tempFolder();
-        const store = new FileRecordStore(root);
-        await store.append([lead("1", "add", "Ada", 1), lead("1", "update", "Ada L.", 2)]);
-        hooks.busyRenames = 100;
-        const [compacted, appended] = await Promise.allSettled([
-          store.compact("leads"),
-          store.append([lead("2", "add", "Grace", 3)]),
-        ]);
-        expect(compacted).toMatchObject({ status: "rejected", reason: { code: "EBUSY" } });
-        expect(appended).toEqual({ status: "fulfilled", value: undefined });
-        expect(hooks.waits).toBe(5);
-        expect(await store.changes("leads")).toEqual([
-          lead("1", "add", "Ada", 1),
-          lead("1", "update", "Ada L.", 2),
-          lead("2", "add", "Grace", 3),
-        ]);
-        await onlyFile(root);
-      },
-    );
+    it("fails, keeps the old log and removes its temporary file when it stays held, and the waiting append lands on the old log", async () => {
+      const root = await tempFolder();
+      const store = new FileRecordStore(root);
+      await store.append([lead("1", "add", "Ada", 1), lead("1", "update", "Ada L.", 2)]);
+      hooks.busyRenames = 100;
+      const [compacted, appended] = await Promise.allSettled([
+        store.compact("leads"),
+        store.append([lead("2", "add", "Grace", 3)]),
+      ]);
+      expect(compacted).toMatchObject({ status: "rejected", reason: { code: "EBUSY" } });
+      expect(appended).toEqual({ status: "fulfilled", value: undefined });
+      expect(hooks.waits).toBe(5);
+      expect(await store.changes("leads")).toEqual([
+        lead("1", "add", "Ada", 1),
+        lead("1", "update", "Ada L.", 2),
+        lead("2", "add", "Grace", 3),
+      ]);
+      await onlyFile(root);
+    });
   });
 
   describe("run store: a snapshot another program holds on Windows", () => {

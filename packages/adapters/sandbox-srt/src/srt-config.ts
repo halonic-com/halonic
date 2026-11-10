@@ -147,7 +147,9 @@ const toolSettingsInWorkingFolder = [
  * Only the bridge and the allowed sites are reachable, and an allowed site is
  * refused when its name resolves to a local or private address (such as
  * `127.0.0.1.nip.io`). The bridge is an address with its port, so a name that
- * resolves to it reaches only the bridge.
+ * resolves to it reaches only the bridge. A profile without a bridge allows
+ * the sites alone; with no sites either, the list is empty, which srt reads
+ * as "no network at all".
  */
 export function buildSrtConfig(
   profile: SandboxProfile,
@@ -166,9 +168,10 @@ export function buildSrtConfig(
     writableFolders.push(profile.settingsFolder);
   }
   const { bridge, allowedSites } = profile.network;
+  const bridgeDomains = bridge === null ? [] : [bridgeDomain(bridge.host, bridge.port)];
   return {
     network: {
-      allowedDomains: [bridgeDomain(bridge.host, bridge.port), ...allowedSites],
+      allowedDomains: [...bridgeDomains, ...allowedSites],
       deniedDomains: [],
       deniedResolvedAddresses: [...DENIED_RESOLVED_ADDRESSES],
       strictAllowlist: true,
