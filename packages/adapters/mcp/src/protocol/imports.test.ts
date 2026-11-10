@@ -51,6 +51,21 @@ verifies("mcp.protocol-portable", () => {
     },
   );
 
+  describe("the type check without Node", () => {
+    it("gives the protocol folder no Node types", () => {
+      const config = JSON.parse(readFileSync(new URL("tsconfig.json", protocolFolder), "utf8"));
+      expect(config.extends).toBe("@halonicjs/tooling-config/tsconfig/base.json");
+      expect(config.compilerOptions?.types ?? []).toEqual([]);
+    });
+
+    it("runs as part of the package's typecheck", () => {
+      const packageJson = JSON.parse(
+        readFileSync(new URL("../../package.json", protocolFolder), "utf8"),
+      );
+      expect(packageJson.scripts.typecheck).toContain("tsc --noEmit -p src/protocol");
+    });
+  });
+
   describe("the import check itself", () => {
     it("finds an import that leaves the protocol folder", () => {
       const source = 'import { launch } from "../node/launcher.ts";';

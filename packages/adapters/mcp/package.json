@@ -8,7 +8,7 @@
     "./protocol": "./src/protocol/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p src/protocol && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run"
   },

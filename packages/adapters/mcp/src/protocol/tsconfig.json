@@ -1,0 +1,10 @@
+{
+  "//": "The protocol is portable: plain ES only, no Node types. Buffer, process or a Node timer here is a compile error, not just an import the test catches. See requirements/protocol-portable.md.",
+  "extends": "@halonicjs/tooling-config/tsconfig/base.json",
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "**/*.test.ts"
+  ]
+}
