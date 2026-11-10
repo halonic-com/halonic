@@ -13,6 +13,10 @@
       "reason": "Starts only git, at the absolute path findGit resolved, with array arguments and no shell. Every call runs hardened: hooks point at an empty folder and no user or system config is read.",
       "scriptsTest": "packages/adapters/git/src/skill-scripts.test.ts"
     },
+    "packages/adapters/mcp/src/pinned/login-shell-path.ts": {
+      "reason": "Reads the PATH of the person's login shell once per app start, so the pinned MCP launcher finds npx, uvx and node on macOS, where a desktop app inherits a short PATH. It runs only $SHELL from the app's own environment, as an absolute path, with the fixed arguments -l -c and a script that prints PATH, no workspace input, a five-second limit and a 64 KiB output cap. It refuses a SHELL under a skill's scripts/ folder, as written or through a symbolic link, before anything starts.",
+      "scriptsTest": "packages/adapters/mcp/src/pinned/login-shell-path.starts.test.ts"
+    },
     "packages/adapters/mcp/src/stdio/node-program-starter.ts": {
       "reason": "Starts the local program of a stdio MCP connector the person trusted, by the absolute path findProgram resolved from the absolute folders of the connector's PATH (never the current folder; on Windows only an .exe), with array arguments, no shell and only the environment the connector builds, in its own process group so stopping it reaches what it started. On Windows it also starts taskkill from the system folder to end the process tree. It refuses a program, argument or folder under a skill's scripts/ folder, as written or through a symbolic link, before anything starts.",
       "scriptsTest": "packages/adapters/mcp/src/stdio/node-program-starter.starts.test.ts"
