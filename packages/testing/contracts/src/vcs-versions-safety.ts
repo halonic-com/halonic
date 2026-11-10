@@ -137,9 +137,10 @@ function versionCases(make: MakeVcs): void {
     const { vcs } = harness;
     const snapshot = await vcs.snapshot();
     const worktree = await vcs.addWorktree(snapshot);
+    // `drivesGit` can't tell real git here: the memory suite sets it to check
+    // the hardened cases, and memory has no trees or blobs. So the git
+    // adapter's own tests check its harness gives a tree and a blob.
     const ids = await harness.nonCommitIds(snapshot);
-    // git has trees and blobs, so this case can't pass with none.
-    if (make.drivesGit) expect(ids.length).toBeGreaterThanOrEqual(2);
     const before = await stateOf(harness);
 
     for (const id of ids) {
