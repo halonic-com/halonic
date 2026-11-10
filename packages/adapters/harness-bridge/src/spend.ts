@@ -26,22 +26,33 @@ export interface ReplyReader extends ReplyWatcher {
 }
 
 /**
- * The model and the number of messages of a model request, which both
- * providers name with `model` and `messages`. `request` is the body already
- * parsed, as `parseModelRequest` gives it.
+ * The model and the number of messages of a model request. Both providers
+ * name the model with `model`; the messages are in `messagesField`, such as
+ * Anthropic's `messages` or OpenAI's `input`, where a plain text prompt
+ * counts as one message. `request` is the body already parsed, as
+ * `parseModelRequest` gives it.
  *
  * @throws KindedError `invalid_input` when the request names no model
  */
-export function readModelCall(provider: BridgeProvider, request: unknown): ModelCall {
+export function readModelCall(
+  provider: BridgeProvider,
+  request: unknown,
+  messagesField: "messages" | "input",
+): ModelCall {
   if (!isPlainObject(request) || typeof request["model"] !== "string") {
     throw new KindedError("invalid_input", "The model request doesn't name a model.");
   }
-  const messages = request["messages"];
   return {
     provider,
     model: request["model"],
-    messages: Array.isArray(messages) ? messages.length : 0,
+    messages: countMessages(request[messagesField]),
   };
+}
+
+/** How many messages `messages` holds: each item of a list, or one for a plain text prompt. */
+function countMessages(messages: unknown): number {
+  if (Array.isArray(messages)) return messages.length;
+  return typeof messages === "string" ? 1 : 0;
 }
 
 /**

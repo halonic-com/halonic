@@ -1,8 +1,8 @@
-import type { HarnessBridgeOptions, Secrets } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
+import type { Secrets } from "@halonicjs/ports";
 import { AnthropicReplyReader } from "./anthropic-reply.ts";
 import { refuseUrlSources } from "./anthropic-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
+import { providerKey } from "./provider-key.ts";
 import { type ProviderReach, parseModelRequest, withoutProviderReach } from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
 import { readModelCall, recordModelCall } from "./spend.ts";
@@ -31,15 +31,6 @@ const anthropicReach: ProviderReach = {
   removedFields: ["mcp_servers"],
 };
 
-/**
- * True for a key that can go in a header as it is: visible ASCII only. A line
- * break in a header value makes `fetch` fail with an error that can quote the
- * value, so such a key never reaches the call.
- */
-function isUsableKey(key: string): boolean {
-  return /^[\x21-\x7e]+$/.test(key);
-}
-
 /** What the Anthropic route needs from outside the bridge. */
 export interface AnthropicRouteDependencies {
   secrets: Secrets;
@@ -61,11 +52,11 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
     method: "POST",
     path: "/v1/messages",
     handle: async (context) => {
-      const key = await anthropicKey(context.run, dependencies.secrets);
+      const key = await providerKey(context.run, dependencies.secrets, "anthropic");
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
       refuseUrlSources(request);
-      const call = readModelCall("anthropic", request);
+      const call = readModelCall("anthropic", request, "messages");
       const body = withoutProviderReach(sent, request, anthropicReach);
       // Keep the program's query, such as Claude Code's `?beta=true`.
       const { search } = new URL(context.request.url ?? "", anthropicOrigin);
@@ -87,39 +78,4 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       );
     },
   };
-}
-
-/**
- * The value of the Anthropic key this agent uses.
- *
- * @throws KindedError `denied` when the agent doesn't use Anthropic with a key
- * @throws KindedError `unauthenticated` when the key isn't set in Halonic's secrets, or isn't a usable key
- */
-async function anthropicKey(run: HarnessBridgeOptions, secrets: Secrets): Promise<string> {
-  const access = run.providers.anthropic;
-  if (access === undefined) {
-    throw new KindedError("denied", "This agent isn't set up to use Anthropic models.");
-  }
-  if (access.kind === "sign-in") {
-    // Passing a person's own sign-in on comes with build plan step B5.
-    throw new KindedError(
-      "denied",
-      "This agent signs in with a subscription, which the Halonic bridge doesn't pass on yet.",
-    );
-  }
-  const key = await secrets.get(access.secret);
-  if (key === null) {
-    throw new KindedError(
-      "unauthenticated",
-      `The secret "${access.secret}" that holds this agent's Anthropic key isn't set.`,
-    );
-  }
-  if (!isUsableKey(key)) {
-    // Name only the secret: the value must not reach an error, a cause or a log.
-    throw new KindedError(
-      "unauthenticated",
-      `The secret "${access.secret}" that holds this agent's Anthropic key holds something that isn't a key, such as a line break.`,
-    );
-  }
-  return key;
 }

@@ -10,7 +10,9 @@ verifies("harness-bridge.server", () => {
     const bridge = await server.open(fakeRun());
     try {
       expect((await send(bridge, "/v1/messages")).status).toBe(401);
-      expect((await send(bridge, "/v1/responses", { token: bridge.token })).status).toBe(404);
+      expect((await send(bridge, "/v1/chat/completions", { token: bridge.token })).status).toBe(
+        404,
+      );
     } finally {
       await bridge.close();
     }
@@ -35,6 +37,21 @@ verifies("harness-bridge.anthropic", () => {
     try {
       // The run's agent doesn't use Anthropic: the route is there and refuses it.
       const reply = await send(bridge, "/v1/messages", { token: bridge.token, body: "{}" });
+      expect(reply.status).toBe(403);
+    } finally {
+      await bridge.close();
+    }
+  });
+});
+
+verifies("harness-bridge.openai", () => {
+  it("serves OpenAI's responses path", async () => {
+    const secrets = { get: async () => null };
+    const server = new NodeHarnessBridgeServer({ secrets });
+    const bridge = await server.open(fakeRun());
+    try {
+      // The run's agent doesn't use OpenAI: the route is there and refuses it.
+      const reply = await send(bridge, "/v1/responses", { token: bridge.token, body: "{}" });
       expect(reply.status).toBe(403);
     } finally {
       await bridge.close();
