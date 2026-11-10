@@ -160,6 +160,17 @@ verifies("engine.foreach-workflow-items", () => {
     ]);
   });
 
+  it("fails the run for its budget when an item's child run was stopped for its budget", () => {
+    const stop = "Run budget reached: 0.60 of 0.50 EUR spent.";
+    const failed = told("r-acme.2.0", { status: "failed", error: stop, reason: "budget" });
+    const { log } = play(greetWorkflow(), [start, failed], undefined, workflows);
+    expect(log.at(-1)).toMatchObject({
+      type: "run.failed",
+      error: `Workflow "reply" failed in item 0 of for-each state "greet": ${stop}`,
+      reason: "budget",
+    });
+  });
+
   it("changes nothing for news of a run it doesn't wait on", () => {
     const other = told("r-other", completed("Hi"));
     const { decisions } = play(greetWorkflow(), [start, other], undefined, workflows);

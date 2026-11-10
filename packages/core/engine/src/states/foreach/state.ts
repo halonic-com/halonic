@@ -21,7 +21,8 @@ import { type ItemWork, itemWorkOf, startItem } from "./item-start.ts";
  * place. At most `concurrency` items run at once (default 1), and they start
  * in list order. Each item's events carry `item`. Once every item has ended,
  * the results go to `output` as a list in item order and the state finishes
- * with `done`. The first item that fails fails the run. An item's agent
+ * with `done`. The first item that fails fails the run; an item's child run
+ * its budget stopped stops this run for its budget too. An item's agent
  * can't pause for an approval, and an item's child run can't wait.
  */
 export const foreachState: StateHandler<"foreach"> = {
@@ -115,7 +116,9 @@ function takeChildNews(context: StateContext, input: ChildInput): StateStep {
   if (input.status === "failed") {
     const finished: DecidedEvent = { ...base, status: "failed", error: input.error };
     const error = `Workflow "${workflow}" failed in ${where}: ${input.error}`;
-    return { events: [finished], effects: [], outcome: { type: "fail", error } };
+    // As in a `workflow` state, only a budget stop goes up as it is.
+    const reason = input.reason === "budget" ? { reason: input.reason } : {};
+    return { events: [finished], effects: [], outcome: { type: "fail", error, ...reason } };
   }
   const finished: DecidedEvent = { ...base, status: "completed", context: input.context };
   return finishItem(context, { workflow }, running, input.context, finished);

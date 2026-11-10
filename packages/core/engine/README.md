@@ -211,7 +211,12 @@ in a summary's `cost`, so it never counts. At or over a limit, `step` stores the
 `run.failed` with reason `budget` and the error `Run budget reached: 0.60 of 0.50 EUR spent.` or
 `Monthly budget reached: 0.60 of 0.50 EUR spent this month.`, and asks for no call. The kernel sets the
 reason itself; it never comes from `runFailureReasonOf`. A parent whose child a budget stopped
-fails with reason `budget` too, its error wrapped as `Workflow "reply" failed: …`. The run's own
+fails with reason `budget` too, its error wrapped as `Workflow "reply" failed: …`; for a
+`foreach` item's child run, `Workflow "reply" failed in item 0 of for-each state "greet": …`. A
+`parallel` state checks once for all its branches as it starts them, and a `foreach` state each
+time it starts more items; a stopped run drops the calls it asked for but hadn't made, and the
+other items' child runs stop at their own next paid call, since they spend from the same run
+budget. The run's own
 model calls don't write `llm.response` to its log yet, so for now only harness calls count.
 
 ## Example
