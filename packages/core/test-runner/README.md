@@ -25,8 +25,6 @@ Running the tests comes in the next pull request (HAL-4215).
 
 ## Known gaps
 
-- An `artifacts` expectation can't pass yet: it is checked against the run's `artifact.created`
-  events, and the engine doesn't emit them yet (HAL-4247).
 - A test file can't script a program step's result yet, so a step that would start a program
   fails its case with `unscripted-program` (HAL-4248).
 
