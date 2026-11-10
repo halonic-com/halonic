@@ -42,21 +42,34 @@ export function wallTime(date: Date, timeZone?: string): WallTime {
   return wallTimeReader(timeZone)(date.getTime());
 }
 
+// Building an `Intl.DateTimeFormat` costs far more than using one, and a tick
+// reads the same few zones thousands of times, so each zone's formatter is kept.
+const formatters = new Map<string | undefined, Intl.DateTimeFormat>();
+
+function formatterFor(timeZone: string | undefined): Intl.DateTimeFormat {
+  let formatter = formatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      ...(timeZone === undefined ? {} : { timeZone }),
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+    });
+    formatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 /**
  * Returns a function that reads wall-clock times in one zone. Building the
  * `Intl` formatter is the slow part, so a search that reads many times builds
  * it once through this instead of calling {@link wallTime} in a loop.
  */
 export function wallTimeReader(timeZone?: string): (instant: number) => WallTime {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    ...(timeZone === undefined ? {} : { timeZone }),
-    hourCycle: "h23",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-  });
+  const formatter = formatterFor(timeZone);
   return (instant) => {
     const parts: Partial<Record<Intl.DateTimeFormatPartTypes, string>> = {};
     for (const part of formatter.formatToParts(instant)) parts[part.type] = part.value;

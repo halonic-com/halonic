@@ -88,7 +88,7 @@ verifies("routines.skipped-times", () => {
     expect(onTime.runs[0]).not.toHaveProperty("catchUp");
   });
 
-  // Counting walks 10,000 cron times, about a second here; the timeout leaves room for a slow CI runner.
+  // Counting walks 10,000 cron times, a fraction of a second here; the timeout leaves room for a slow CI runner.
   it("stops counting a cron at 10,000 and marks the count as a minimum", () => {
     // Every minute but 23:xx, so at 23:30 the newest time is half an hour late.
     const minutes = placed({ schedule: "* 0-22 * * *", timezone: "UTC" }, "last");

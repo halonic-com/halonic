@@ -53,15 +53,18 @@ function matches(cron: Cron, wall: WallTime): boolean {
 }
 
 // How many wall-clock minutes are certain not to match: the rest of the day
-// when the day doesn't match, the rest of the hour when the hour doesn't, one
-// minute when only the minute doesn't, and 0 on a match.
+// when the day doesn't match, the rest of the hour when the hour doesn't, the
+// minutes up to the next one that fires when only the minute doesn't, and 0 on a match.
 function minutesToSkip(cron: Cron, wall: WallTime): number {
   if (!cron.months.has(wall.month) || !dayMatches(cron, wall)) {
     return MINUTES_PER_DAY - (wall.hour * 60 + wall.minute);
   }
   if (!cron.hours.has(wall.hour)) return 60 - wall.minute;
-  if (!cron.minutes.has(wall.minute)) return 1;
-  return 0;
+  if (cron.minutes.has(wall.minute)) return 0;
+  for (let minute = wall.minute + 1; minute < 60; minute++) {
+    if (cron.minutes.has(minute)) return minute - wall.minute;
+  }
+  return 60 - wall.minute;
 }
 
 function dayMatches(cron: Cron, wall: WallTime): boolean {
