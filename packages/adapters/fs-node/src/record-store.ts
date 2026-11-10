@@ -38,7 +38,8 @@ interface LogBefore {
  * append can't land between a compact's read and its rename. A compact
  * writes the new log to a temporary file, flushes it to disk and renames it
  * over the old one, so a crash leaves the old log or the new one. Reads take
- * no lock: a line counts only once its line break is written.
+ * no lock: a line counts only once its line break is written, unless its
+ * append fails and is cut back, so a read may briefly see lines that go away.
  *
  * Like the trust store, a log that is a symbolic link, a hard link or not a
  * plain file is refused, never read or written through (HAL-2978, HAL-3009).
@@ -113,7 +114,9 @@ export class FileRecordStore implements RecordStore {
       const bytes = await intactEnd(handle);
       await handle.truncate(bytes);
       before.push({ file, bytes });
-      await handle.write(lines);
+      // One write may take only part of the lines and still succeed; writeFile
+      // writes until all of them are in, still at the end because of O_APPEND.
+      await handle.writeFile(lines, "utf8");
     } finally {
       await handle.close();
     }

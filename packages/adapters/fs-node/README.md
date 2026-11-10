@@ -244,9 +244,11 @@ the shared `RecordStore` contract suite.
   goes to a temporary file, is flushed to disk and renamed over the old one,
   so a crash leaves one or the other. A collection with no record left loses
   its log.
-- **Crashes and failures:** a change counts once its line break is written.
-  A torn last line is skipped and cut off before the next append. An append
-  that fails cuts every log it added to back to where it was. A broken
+- **Crashes and failures:** a change counts once its line break is written,
+  unless its append fails and is cut back. A torn last line is skipped and
+  cut off before the next append. An append that fails cuts every log it
+  added to back to where it was. Reads take no lock, so another process may
+  briefly see lines that are then cut back. A broken
   line, or one for another collection, is an error naming the file and line.
 - **Links:** a log that is a symbolic link, a hard link or not a plain file
   is refused on read, append and compact, as for trust records.

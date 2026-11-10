@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
+import { mkdir, open, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { foldRecords, type RecordChange, runLockFormat } from "@halonicjs/ports";
 import { recordStoreContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import { FileRecordStore } from "./record-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
@@ -55,6 +56,23 @@ const line = (entry: RecordChange): string => `${JSON.stringify(entry)}\n`;
 async function newStore(): Promise<{ root: string; store: FileRecordStore }> {
   const root = join(await tempFolder(), "records");
   return { root, store: new FileRecordStore(root) };
+}
+
+/**
+ * Makes every `FileHandle.write` take at most 10 bytes and report success,
+ * as a write to a network drive or one cut short by a signal may. The caller
+ * restores the returned spy.
+ */
+async function writeAtMostTenBytesPerCall(): Promise<MockInstance<FileHandle["write"]>> {
+  const probe = await open(join(await tempFolder(), "probe"), "w");
+  const fileHandle: Pick<FileHandle, "write"> = Object.getPrototypeOf(probe);
+  await probe.close();
+  const write: (this: FileHandle, bytes: Uint8Array) => Promise<unknown> = fileHandle.write;
+  function shortWrite(this: FileHandle, data: unknown) {
+    const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : (data as Buffer);
+    return write.call(this, bytes.subarray(0, 10));
+  }
+  return vi.spyOn(fileHandle, "write").mockImplementation(shortWrite as FileHandle["write"]);
 }
 
 verifies("fs-node.record-store-files", () => {
@@ -194,6 +212,20 @@ verifies("fs-node.record-store-files", () => {
       ).rejects.toThrow("isn't a plain file");
       expect(await store.changes("leads")).toEqual([ada]);
       expect((await readdir(root)).filter((name) => name.endsWith(".lock"))).toEqual([]);
+    });
+
+    it("stores the whole append when the system writes only part of it at a time", async () => {
+      const { root, store } = await newStore();
+      const shortWrite = await writeAtMostTenBytesPerCall();
+      try {
+        await store.append([change("leads", "1", "add", { name: "Ada" })]);
+      } finally {
+        shortWrite.mockRestore();
+      }
+
+      expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
+        line(change("leads", "1", "add", { name: "Ada" })),
+      );
     });
 
     it("waits while another process holds the write lock", async () => {
