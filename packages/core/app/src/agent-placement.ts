@@ -37,6 +37,8 @@ export type PlacementAnswer =
       readonly runsOn: "this-computer";
       /** The fingerprint of the agent's file now, such as "sha256:9f86d081…". */
       readonly agentFingerprint: string;
+      /** When the person chose, as ISO text: `halonic run` names the day (cli-output 3.4). */
+      readonly chosenAt: string;
     }
   | {
       readonly runsOn: "sandbox";
@@ -141,7 +143,7 @@ export class AgentPlacement implements PlacementReader {
     if (record.agentFingerprint !== fingerprint) {
       return { runsOn: "sandbox", agentFingerprint: fingerprint, reason: "file-changed" };
     }
-    return { runsOn: "this-computer", agentFingerprint: fingerprint };
+    return { runsOn: "this-computer", agentFingerprint: fingerprint, chosenAt: record.chosenAt };
   }
 
   /**

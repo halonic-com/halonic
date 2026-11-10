@@ -74,6 +74,7 @@ verifies("app.agent-placement", () => {
     expect(await placement.where(subject(coderFile))).toEqual({
       runsOn: "this-computer",
       agentFingerprint: fingerprint,
+      chosenAt: "2026-11-10T10:00:00.000Z",
     });
     expect(await store.get(coder)).toEqual({
       ...coder,

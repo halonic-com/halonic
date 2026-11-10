@@ -15,7 +15,7 @@ The app shall save a person's "this computer" choice only with the fingerprint t
   then it runs in a sandbox, with the reason `not-chosen`.
 - Given a person chose "this computer" for `coder` at 10:00 with the fingerprint they were shown,
   when where it runs is asked with the same file,
-  then it runs on this computer, and the store holds the fingerprint and `chosenAt` 10:00; for another agent or workspace, it runs in a sandbox.
+  then it runs on this computer, the answer says when it was chosen, and the store holds the fingerprint and `chosenAt` 10:00; for another agent or workspace, it runs in a sandbox.
 - Given that choice and a pull that changed `coder`'s file, even only its whitespace,
   when where it runs is asked,
   then it runs in a sandbox, with the reason `file-changed`, until the person chooses again for the new file.
