@@ -8,6 +8,11 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { contractGrant, contractServerTools } from "./connector-client.ts";
 import {
+  bypassingCommands,
+  bypassingEnv,
+  packageOptionCommands,
+} from "./connector-pin-bypasses.ts";
+import {
   type ConnectorLaunch,
   contractInheritedEnv,
   expectOutside,
@@ -159,6 +164,7 @@ export function connectorPinContract(name: string, make: MakePinnedConnector): v
       registryCases(make);
       refusalCases(make);
       overrideCases(make);
+      bypassCases(make);
     });
   });
 }
@@ -325,4 +331,28 @@ function overrideCases(make: MakePinnedConnector): void {
     expect(launches.map(({ pin, args }) => ({ pin, args }))).toEqual([{ pin: null, args }]);
     expect(launches[0]?.env).toMatchObject(env);
   });
+}
+
+function bypassCases(make: MakePinnedConnector): void {
+  for (const { registry, command, args } of bypassingCommands) {
+    it(`refuses a pinned command that gets around the pin: ${command} ${args.join(" ")}`, async () => {
+      const pin = registry === "npm" ? npmPin : pypiPin;
+      expectRefused(await start(make, stdio(command, [...args], pin)));
+    });
+  }
+
+  for (const env of bypassingEnv) {
+    const [variable] = Object.keys(env);
+    it(`refuses a pinned connector whose env moves the config home or program lookup: ${variable}`, async () => {
+      const config = stdio("npx", ["-y", npmPackage.name], npmPin, { ...env });
+      expectRefused(await start(make, config));
+    });
+  }
+
+  for (const { registry, command, args } of packageOptionCommands) {
+    it(`starts a pinned command whose package option runs the pinned package: ${command} ${args.join(" ")}`, async () => {
+      const pin = registry === "npm" ? npmPin : pypiPin;
+      expectStartedWith(await start(make, stdio(command, [...args], pin)), pin);
+    });
+  }
 }
