@@ -21,7 +21,7 @@ const started: RunEventBody = {
 };
 const enteredReview: RunEventBody = { type: "state.entered", state: "review" };
 const waiting: RunEventBody = { type: "run.waiting", state: "review", events: ["approve"] };
-const received: RunEventBody = { type: "event.received", state: "review", event: "approve" };
+const received: RunEventBody = { type: "event.received", event: "approve" };
 const completed: RunEventBody = { type: "run.completed", state: "send", context: {} };
 const failed: RunEventBody = { type: "run.failed", state: "review", error: "boom" };
 
