@@ -220,6 +220,16 @@ it says "Switch to tab". A source that isn't built adds no group.
 `(EU)` find exactly that (`search.files.plain-text-is-literal`). Case doesn't matter (Greek final
 sigma included), a run of spaces in a name matches one space, and there's no typo matching. Its `start` and `end` say which characters to highlight.
 
+The palette's keys and options are worked out without a DOM too. `paletteOptions` lists the rows
+group after group, as the combobox offers them. `paletteKeyFor` reads a press in the box: ↓ and ↑
+move the active row and wrap (`movedActive`), Enter opens it here and Mod Enter in a new tab, Tab
+stays in the box, and Mod K selects the words rather than closing the palette. Home and End are
+left to the box. New words make the first row active, and for the same words a row the user picked
+stays active when late results arrive (`keptActive`). `paletteOptionName` gives a screen reader
+"Support reply, workflow, switch to tab", and `resultCountText` the count said politely
+`resultCountDelayMs` (500 ms) after typing stops: "7 results", "1 result", "No results" or
+"Couldn't search".
+
 `searchProviders` asks every `search.addProvider` provider with its own feature's context and waits
 for all of them. One that fails sets `failed` without hiding what the others found. Each provider
 gets the context of its own feature for the palette's target, through
