@@ -1,12 +1,16 @@
 import { execFile } from "node:child_process";
-import { isAbsolute } from "node:path";
-import { touchesSkillScripts } from "../stdio/skill-scripts.ts";
+import { realpath } from "node:fs/promises";
+import { isAbsolute, resolve } from "node:path";
+import { type PathLookup, touchesSkillScripts } from "@halonicjs/format";
 
 /** How long the login shell may take to print its `PATH`. */
 export const loginShellTimeoutMs = 5_000;
 
 /** Marks where the `PATH` starts and ends, so whatever a profile prints around it is ignored. */
 const marker = "__HALONIC_PATH__";
+
+/** Node's way to find where a path leads, for the shared skill `scripts/` check. */
+const nodePaths: PathLookup = { resolve, realpath };
 
 /**
  * The `PATH` the person's login shell sets, which a macOS desktop app
@@ -36,8 +40,10 @@ export async function readLoginShellPath(
   const home = env["HOME"];
   if (shell === undefined || !isAbsolute(shell)) return undefined;
   if (home === undefined || !isAbsolute(home)) return undefined;
-  if (await touchesSkillScripts(home, shell, [])) return undefined;
-  return new Promise((resolve) => {
+  if (await touchesSkillScripts({ cwd: home, program: shell, args: [] }, nodePaths)) {
+    return undefined;
+  }
+  return new Promise((settle) => {
     execFile(
       shell,
       ["-l", "-c", `printf '${marker}%s${marker}' "$PATH"`],
@@ -50,10 +56,10 @@ export async function readLoginShellPath(
       },
       (error, stdout) => {
         if (error !== null) {
-          resolve(undefined);
+          settle(undefined);
           return;
         }
-        resolve(new RegExp(`${marker}(.*?)${marker}`, "s").exec(stdout)?.[1]);
+        settle(new RegExp(`${marker}(.*?)${marker}`, "s").exec(stdout)?.[1]);
       },
     );
   });
