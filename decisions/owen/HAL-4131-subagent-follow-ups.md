@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4131](/HAL/issues/HAL-4131)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Y0TwzOEFGqsnBDBwpld9U505Soo1EY+XvEsV7IBM+ySRfo0MqeM4auDvc1pYwhlIgCedSlNkZzUi9G2Yatk3BQ==
 
 Liam's review of PR #1203 (HAL-3636) asked for two changes to how the
 Codex harness reports subagents. Both add to `harness-codex.subagents`:
