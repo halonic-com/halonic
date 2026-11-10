@@ -170,6 +170,88 @@ verifies("harness-codex.start", () => {
       });
     });
 
+    it("reports Codex's approval request, and answers it with the person's decision", async () => {
+      let decision: unknown;
+      const session = openSession(
+        fakeCodex(async (codex) => {
+          decision = await askForCommand(codex);
+          await answer(codex, "Done.");
+        }),
+      );
+      const run = newHarness().start(task, session, bridge);
+      const events: HarnessEvent[] = [];
+      for await (const event of run) {
+        events.push(event);
+        if (event.type === "approval.requested") {
+          await run.send({ type: "approval", callId: event.callId, approved: true });
+        }
+      }
+
+      expect(events[1]).toEqual({
+        type: "approval.requested",
+        agent: "writer",
+        tool: "shell",
+        args: { command: "touch a", cwd: "/w" },
+        callId: "call-1",
+      });
+      expect(decision).toMatchObject({ result: { decision: "accept" } });
+    });
+
+    it("refuses a decision on a request Codex says is resolved", async () => {
+      const session = openSession(
+        fakeCodex(async (codex) => {
+          void askForCommand(codex);
+          codex.notify("serverRequest/resolved", { requestId: 100 });
+          await codex.received("turn/steer");
+          await answer(codex, "Done.");
+        }),
+      );
+      const run = newHarness().start(task, session, bridge);
+      let refused: unknown;
+      for await (const event of run) {
+        if (event.type !== "approval.requested") continue;
+        // The answer reaches Codex after the notification, so it has been read by then.
+        await run.send({ type: "answer", text: "Go on." });
+        refused = await run
+          .send({ type: "approval", callId: event.callId, approved: true })
+          .catch((error: unknown) => error);
+      }
+
+      expect(String(refused)).toContain('No approval with call id "call-1" is waiting.');
+    });
+
+    it("declines at once a request about a thread that isn't the run's", async () => {
+      let decision: unknown;
+      const session = openSession(
+        fakeCodex(async (codex) => {
+          decision = await codex.request("item/commandExecution/requestApproval", {
+            threadId: "thread-other",
+            turnId: "turn-other",
+            itemId: "call-1",
+          });
+          await answer(codex, "Done.");
+        }),
+      );
+      const { events } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(decision).toMatchObject({ result: { decision: "decline" } });
+      expect(events.map(({ type }) => type)).toEqual(["agent.finished"]);
+    });
+
+    it("declines at once a request that comes after the turn has completed", async () => {
+      let decision: unknown;
+      const session = openSession(
+        fakeCodex(async (codex) => {
+          await answer(codex, "Done.");
+          decision = await askForCommand(codex);
+        }),
+      );
+      const { events } = await readAll(newHarness().start(task, session, bridge));
+
+      expect(decision).toMatchObject({ result: { decision: "decline" } });
+      expect(events.map(({ type }) => type)).not.toContain("approval.requested");
+    });
+
     it("refuses a decision no approval waits for", async () => {
       const session = openSession(fakeCodex(() => new Promise(() => undefined)));
       const run = newHarness().start(task, session, bridge);

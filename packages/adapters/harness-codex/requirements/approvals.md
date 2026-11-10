@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-194 build plan D3; HAL-3998 (Codex 0.166.0 protocol from `codex app-server generate-json-schema`, recorded session in `src/fixtures/`)
+- Source: HAL-194 build plan D3; HAL-3998 (the run; Codex 0.166.0 protocol from `codex app-server generate-json-schema`, recorded session in `src/fixtures/`)
 
-When `codex app-server` asks for a person's OK before it runs a command (`item/commandExecution/requestApproval`) or changes files (`item/fileChange/requestApproval`), the Codex harness shall report `approval.requested` with the agent whose thread asks, the tool as its `tool.called` names it (`shell` or `apply_patch`), the arguments of that call, or the request's own command and folder when the call hasn't been reported yet, and a call id: the request's approval id when it has one, and its item id otherwise. A person's decision on that call id shall go back to Codex as the answer to that request: `accept` for an OK and `decline` otherwise, so the agent goes on. A decision on a call id no request waits with, because it was decided already or Codex said it was resolved, shall be refused with an error. A request about another thread, or after the final `agent.finished`, shall give no event. No event shall contain the bridge token.
+When `codex app-server` asks for a person's OK before it runs a command (`item/commandExecution/requestApproval`) or changes files (`item/fileChange/requestApproval`), the Codex harness shall report `approval.requested` with the agent whose thread asks, the tool as its `tool.called` names it (`shell` or `apply_patch`), the arguments of that call, or the request's own command and folder when the call hasn't been reported yet, and a call id: the request's approval id when it has one, and its item id otherwise. A person's decision on that call id shall go back to Codex as the answer to that request: `accept` for an OK and `decline` otherwise, so the agent goes on. A decision on a call id no request waits with, because it was decided already or Codex said it was resolved, shall be refused with an error. A request about another thread, or after the final `agent.finished`, shall give no event, and the run shall decline it at once, so Codex never waits for a decision no one will make. No event shall contain the bridge token.
 
 ## Examples
 

@@ -16,6 +16,7 @@ import type {
 import { isPlainObject, SecretScrubber } from "@halonicjs/std";
 import { AppServerClient, type AppServerMessage, type ClientInfo } from "./app-server-client.ts";
 import { AppServerEventReader } from "./app-server-events.ts";
+import { PendingApprovals } from "./approvals.ts";
 import { codexConfigArgs, codexConfigFile, codexConfigText } from "./config.ts";
 import { codexProgram } from "./detect.ts";
 import { RunEvents } from "./run-events.ts";
@@ -51,9 +52,8 @@ interface Started {
  *   completed and Codex has been stopped.
  * - A run that fails, can't start or is cancelled ends the stream with an
  *   error. No error holds the bridge token.
- * - `send` passes a person's answer into the running turn.
- * - A request Codex sends is answered with an error, so Codex never waits
- *   for an answer no one will give.
+ * - `send` passes a person's answer into the running turn, and a decision
+ *   on an `approval.requested` back to the request it came from.
  * - `cancel` stops Codex and everything it started, and resolves once they
  *   have stopped.
  */
@@ -63,6 +63,7 @@ export class CodexRun implements HarnessRun {
   /** Removes the bridge token from every error the run ends with. */
   readonly #scrubber = new SecretScrubber();
   readonly #events = new RunEvents();
+  readonly #approvals = new PendingApprovals();
   /** Settles with the running program once the session has started it, or `undefined` when it never did. */
   readonly #launched: Promise<SandboxProcess | undefined>;
   readonly #started: Promise<Started>;
@@ -162,7 +163,22 @@ export class CodexRun implements HarnessRun {
 
   /** Handles one message Codex sent on its own. */
   #receive(client: AppServerClient, message: AppServerMessage): void {
-    if (this.#events.ended) return;
+    if (message.method === "serverRequest/resolved" && isPlainObject(message.params)) {
+      const { requestId } = message.params;
+      if (typeof requestId === "string" || typeof requestId === "number") {
+        this.#approvals.forget(requestId);
+      }
+    }
+    const approval = this.#approvals.add(message);
+    if (approval !== undefined) {
+      const events = this.#events.ended ? [] : (this.#reader?.approvalRequested(approval) ?? []);
+      if (events.length > 0) this.#events.push(events);
+      // A request no one will see, about another thread or after the run's
+      // final event, can't wait for a decision.
+      else
+        this.#answer(client, this.#approvals.answer(approval.callId, false)).catch(() => undefined);
+      return;
+    }
     if (message.kind === "request") {
       void client
         .respond(message.id, {
@@ -171,7 +187,7 @@ export class CodexRun implements HarnessRun {
         .catch(() => undefined);
       return;
     }
-    this.#read(message);
+    if (!this.#events.ended) this.#read(message);
   }
 
   /** Reads a notification about the task's thread, and finishes the run after its final event. */
@@ -239,7 +255,10 @@ export class CodexRun implements HarnessRun {
   async send(input: HarnessInput): Promise<void> {
     if (this.#events.ended) throw new Error("The Codex run has ended.");
     if (input.type === "approval") {
-      throw new Error(`No approval with call id "${input.callId}" is waiting.`);
+      const answer = this.#approvals.answer(input.callId, input.approved);
+      const { client } = await this.#runningCodex();
+      await this.#answer(client, answer);
+      return;
     }
     const { client, threadId, turnId } = await this.#runningCodex();
     await client
@@ -261,6 +280,15 @@ export class CodexRun implements HarnessRun {
   async #runningCodex(): Promise<Started> {
     return this.#started.catch(() => {
       throw new Error("The Codex run has ended.");
+    });
+  }
+
+  async #answer(
+    client: AppServerClient,
+    { id, result }: ReturnType<PendingApprovals["answer"]>,
+  ): Promise<void> {
+    await client.respond(id, { result }).catch((error: unknown) => {
+      throw this.#withoutToken(error);
     });
   }
 
