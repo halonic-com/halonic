@@ -1,7 +1,9 @@
 //! The desktop keychain without a keychain: which store and entry it picks,
-//! and how it reports keyring's errors. CI has no unlocked keychain, so the
-//! contract check against the real one is ignored here; run it on a
-//! desktop with `cargo test -p halonic-keychain -- --ignored`.
+//! and how it reports keyring's errors. The contract check against the real
+//! keychain needs an unlocked one, so plain `cargo test` ignores it. CI runs
+//! it with `cargo test -p halonic-keychain -- --ignored` in the `tauri`,
+//! `tauri-windows` and `tauri-keychain-macos` jobs (HAL-4499); on a
+//! desktop, run the same command.
 
 use halonic_secrets::{SecretBackend, SecretError, SecretName, check_backend_contract, set_secret};
 use keyring::Error;
@@ -106,7 +108,7 @@ fn desktop_keychain_refuses_values_longer_than_the_store_keeps() {
 }
 
 #[test]
-#[ignore = "needs an unlocked keychain; run on a desktop with --ignored"]
+#[ignore = "needs an unlocked keychain; CI's keychain contract steps run it with --ignored (HAL-4499)"]
 fn desktop_keychain_passes_the_backend_contract() {
     assert_eq!(check_backend_contract(&DesktopKeychain::new()), Ok(()));
 }

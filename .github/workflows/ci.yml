@@ -820,6 +820,17 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --locked --workspace
+      # The keychain's contract test is ignored in plain `cargo test`: it
+      # needs an unlocked keychain (HAL-4499). Here a GNOME Keyring on a
+      # private D-Bus, unlocked with a password made for this run, is the
+      # Secret Service it talks to.
+      - name: Keychain contract (GNOME Keyring)
+        run: |
+          sudo apt-get install --yes --no-install-recommends gnome-keyring dbus-daemon
+          dbus-run-session -- sh -c '
+            od -An -N16 -tx1 /dev/urandom | tr -d " \n" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            cargo test --locked -p halonic-keychain -- --ignored
+          '
       # Licences, security advisories, banned wildcards and unknown sources,
       # read from deny.toml. The binary is pinned and its checksum checked.
       # It runs on the toolchain installed above.
@@ -930,6 +941,10 @@ jobs:
           Add-Content $env:GITHUB_ENV "HALONIC_FOLDER_KEYS_ROOT=$root"
       - name: Tests
         run: cargo test --locked --workspace
+      # The runner's user has a logon session, so its Credential Manager
+      # works without unlocking (HAL-4499).
+      - name: Keychain contract (Credential Manager)
+        run: cargo test --locked -p halonic-keychain -- --ignored
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
@@ -947,6 +962,47 @@ jobs:
             ~/.cargo/git/db
             apps/studio/src-tauri/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+
+  tauri-keychain-macos:
+    # The keychain crate's contract test against the real macOS Keychain
+    # (HAL-4499). Plain `cargo test` ignores it, because it needs an
+    # unlocked keychain. The job makes one for this run, with a random
+    # password, and makes it the default. It builds only the keychain crate
+    # and its dependencies, so no cache is restored.
+    name: Keychain contract on macOS
+    needs: changes
+    if: needs.changes.outputs.tauri == 'true'
+    runs-on: macos-15
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: apps/studio/src-tauri
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: A temporary keychain, unlocked
+        run: |
+          keychain="$RUNNER_TEMP/halonic-ci.keychain-db"
+          password=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+          security create-keychain -p "$password" "$keychain"
+          # No auto-lock timeout, so it stays unlocked for the whole test.
+          security set-keychain-settings "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security default-keychain -d user -s "$keychain"
+      - name: Keychain contract (Keychain)
+        run: cargo test --locked -p halonic-keychain -- --ignored
+      - name: Remove the temporary keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/halonic-ci.keychain-db" || true
 
   sandbox-fence:
     # The real fence: the tests under packages/adapters/sandbox-srt/fence run
@@ -1458,6 +1514,7 @@ jobs:
         scaffold,
         tauri,
         tauri-windows,
+        tauri-keychain-macos,
         sandbox-fence,
         sandbox-fence-macos,
         sandbox-os,
