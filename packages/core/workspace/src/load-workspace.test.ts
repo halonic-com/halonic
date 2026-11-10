@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { beforeAll, describe, expect, it } from "vitest";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "./index.ts";
@@ -161,5 +162,86 @@ verifies("workspace.load", () => {
   it("gives the source's location and version", async () => {
     const workspace = await loadWorkspace(new MemorySource({}));
     expect([workspace.location, workspace.version]).toEqual(["memory:acme", "v1"]);
+  });
+});
+
+/**
+ * A source whose `read` of one file fails with `error`, as a folder store
+ * does for a file it may not read. Its version reads every file, as the
+ * folder store's does, so it fails first.
+ */
+class RefusingSource extends MemorySource {
+  private readonly refused: string;
+  private readonly error: unknown;
+
+  constructor(files: Record<string, string>, refused: string, error: unknown) {
+    super(files);
+    this.refused = refused;
+    this.error = error;
+  }
+
+  override async read(path: string): Promise<string | null> {
+    if (path === this.refused) {
+      throw this.error;
+    }
+    return await super.read(path);
+  }
+
+  override async version(): Promise<string> {
+    const texts = await Promise.all((await this.list()).map((path) => this.read(path)));
+    return `v${texts.length}`;
+  }
+}
+
+/** An error with the `code` Node gives a failed file read. */
+function fileError(code: string): Error {
+  return Object.assign(new Error(`${code}: the read failed`), { code });
+}
+
+verifies("workspace.unreadable-file", () => {
+  const sorter = "hubs/support/agents/sorter.agent.yaml";
+  const files = { ...settings, [sorter]: "name: Sorter\n" };
+
+  it.each(["EACCES", "EPERM"])(
+    "names a file the source refuses with %s and gives the fix",
+    async (code) => {
+      const cause = fileError(code);
+      const loading = loadWorkspace(new RefusingSource(files, sorter, cause));
+
+      await expect(loading).rejects.toThrow(KindedError);
+      await expect(loading).rejects.toMatchObject({
+        kind: "invalid_input",
+        message: `the workspace file ${sorter} can't be read.`,
+        fix: "Check the file's permissions, or move it out of the workspace.",
+        cause,
+      });
+    },
+  );
+
+  it("names a file no kind places, since the version reads it too", async () => {
+    const readme = "notes/README.md";
+    const source = new RefusingSource(
+      { ...files, [readme]: "# Notes\n" },
+      readme,
+      fileError("EACCES"),
+    );
+
+    await expect(loadWorkspace(source)).rejects.toMatchObject({
+      kind: "invalid_input",
+      message: `the workspace file ${readme} can't be read.`,
+    });
+  });
+
+  it("passes on what the version said when every file reads on its own", async () => {
+    const error = fileError("EACCES");
+    const source = new MemorySource(files);
+    source.version = () => Promise.reject(error);
+
+    await expect(loadWorkspace(source)).rejects.toBe(error);
+  });
+
+  it("passes on any other error from the source as it is", async () => {
+    const error = fileError("EIO");
+    await expect(loadWorkspace(new RefusingSource(files, sorter, error))).rejects.toBe(error);
   });
 });

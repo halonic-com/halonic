@@ -6,6 +6,7 @@ import {
   parseFile,
 } from "@halonicjs/format";
 import type { DefinitionSource } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import type { ReadFile } from "./checks/check-context.ts";
 import { checkWorkspace } from "./checks/check-workspace.ts";
 import { placeOf } from "./places.ts";
@@ -76,6 +77,8 @@ type FileOutcome =
  * @param source - where the workspace files live
  * @returns the parsed files, every issue with its file, key path and line,
  *   and the files no kind places
+ * @throws KindedError `invalid_input` naming the file when the account may
+ *   not read one of the workspace's files
  *
  * @example
  * const workspace = await loadWorkspace(source);
@@ -83,7 +86,7 @@ type FileOutcome =
  * const agents = filesOf(workspace, "agent");
  */
 export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWorkspace> {
-  const version = await source.version();
+  const version = await versionOf(source);
   const paths = (await source.list()).filter((path) => !isReservedPath(path));
   const outcomes = await Promise.all(paths.map((path) => loadFile(source, path)));
   const files: LoadedFile[] = [];
@@ -113,7 +116,7 @@ async function loadFile(source: DefinitionSource, path: string): Promise<FileOut
   if (place === undefined) {
     return { ignored: path };
   }
-  const text = await source.read(path);
+  const text = await readText(source, path);
   if (text === null) {
     // Removed between list and read: the workspace no longer has the file.
     return null;
@@ -135,6 +138,64 @@ async function loadFile(source: DefinitionSource, path: string): Promise<FileOut
   } as LoadedFile;
   const issues = parsed.value.warnings.map((problem) => ({ ...problem, file: path }));
   return { read, loaded, issues };
+}
+
+/**
+ * The codes a store gives for a file the account may not read: `EACCES` on
+ * Linux and macOS, `EPERM` on Windows. They are Node's, but the loader only
+ * reads them off the error, so core uses no Node API.
+ */
+const unreadableCodes: ReadonlySet<unknown> = new Set(["EACCES", "EPERM"]);
+
+/**
+ * The source's version. A folder store works it out from every file's text,
+ * so a file the account may not read fails it first, and its error knows the
+ * file only by its place on disk. Reading each file finds the one to name.
+ *
+ * @throws KindedError `invalid_input` naming the file that can't be read
+ */
+async function versionOf(source: DefinitionSource): Promise<string> {
+  try {
+    return await source.version();
+  } catch (error) {
+    if (!isUnreadable(error)) {
+      throw error;
+    }
+    for (const path of await source.list()) {
+      await readText(source, path);
+    }
+    // Every file reads on its own: pass on what the source said.
+    throw error;
+  }
+}
+
+/**
+ * The file's text, as {@link DefinitionSource.read} gives it. A file the
+ * account may not read is the user's to fix, so it becomes an error that
+ * names the file and says what to do, not a crash. Any other failure is
+ * passed on as it is.
+ *
+ * @throws KindedError `invalid_input` when the file can't be read
+ */
+async function readText(source: DefinitionSource, path: string): Promise<string | null> {
+  try {
+    return await source.read(path);
+  } catch (error) {
+    if (!isUnreadable(error)) {
+      throw error;
+    }
+    throw new KindedError("invalid_input", `the workspace file ${path} can't be read.`, {
+      fix: "Check the file's permissions, or move it out of the workspace.",
+      cause: error,
+    });
+  }
+}
+
+/** True for an error with one of the {@link unreadableCodes}. */
+function isUnreadable(error: unknown): boolean {
+  return (
+    typeof error === "object" && error !== null && unreadableCodes.has(Reflect.get(error, "code"))
+  );
 }
 
 /** The issues sorted by their file's path; those of one file keep their order. */
