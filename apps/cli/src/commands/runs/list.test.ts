@@ -80,6 +80,22 @@ verifies("cli.commands.runs.list", () => {
       ]);
     });
 
+    it("shows an escape code or a bidi control in the workflow's name as its code", async () => {
+      await writeFiles(acme, {
+        "hubs/support/workflows/support-reply.workflow.yaml": supportReply.replace(
+          "name: Support reply",
+          'name: "\\e[2J\\e[31mSupport\\u202e reply"',
+        ),
+      });
+      await storeRuns(done);
+
+      const { io } = await runsIn(acme);
+
+      expect(io.stdout).toEqual([
+        "✓ Done   a1b2c3   \\u001b[2J\\u001b[31mSupport\\u202e reply   Sent nothing   10:31 · took 18 s",
+      ]);
+    });
+
     it("says how many runs --limit left out, and how to see them all", async () => {
       await storeRuns(done, waiting, running);
 
@@ -136,6 +152,17 @@ verifies("cli.commands.runs.list", () => {
 
       expect(io.stdout).toEqual([
         "No runs in acme yet, only test runs. Start one with halonic run <workflow>.",
+      ]);
+    });
+
+    it("shows a bidi control in the workspace's folder name as its code", async () => {
+      const shared = join(folder, "ac\u202eme");
+      await writeFiles(shared, { "workspace.yaml": "id: acme\nname: Acme\n" });
+
+      const { io } = await runsIn(shared);
+
+      expect(io.stdout).toEqual([
+        "No runs in ac\\u202eme yet. Start one with halonic run <workflow>.",
       ]);
     });
 
@@ -215,8 +242,37 @@ verifies("cli.commands.runs.list", () => {
       ]);
     });
 
+    it("shows an escape code in what the user typed as its code", async () => {
+      await storeRuns({ ...done, workflowId: "\u001b[31mgone" });
+
+      const gone = await runsIn(acme, "--workflow", "\u001b[31mgone");
+      expect(gone.io.stdout).toEqual([
+        "✓ Done   a1b2c3   \\u001b[31mgone   Sent nothing   10:31 · took 18 s",
+      ]);
+      const noMatch = await runsIn(acme, "--workflow", "\u001b[31mgone", "--status", "failed");
+      expect(noMatch.io.stdout[0]).toBe("No failed runs of \\u001b[31mgone in acme.");
+      const workflow = await runsIn(acme, "--workflow", "\u001b[31mbilling");
+      expect(workflow.io.stderr[0]).toBe(
+        '✕ There\'s no workflow called "\\u001b[31mbilling" in acme.',
+      );
+      const status = await runsIn(acme, "--status", "\u001b[31mfailed");
+      expect(status.io.stderr[0]).toBe(
+        '✕ --status takes running, waiting, completed or failed, and you gave "\\u001b[31mfailed".',
+      );
+      const limit = await runsIn(acme, "--limit", "\u001b[31m3");
+      expect(limit.io.stderr[0]).toBe(
+        '✕ --limit takes a whole number of 1 or more, and you gave "\\u001b[31m3".',
+      );
+    });
+
     it("says the folder holds no workspace", async () => {
       await mkdir(join(folder, "downloads"));
+      await mkdir(join(folder, "down\u202eloads"));
+
+      const shared = await runsIn(folder, "--dir", "down\u202eloads");
+      expect(shared.io.stderr[0]).toBe(
+        "✕ Couldn't list the runs in down\\u202eloads: there's no workspace.yaml here.",
+      );
 
       const { code, io } = await runsIn(folder, "--dir", "downloads");
 

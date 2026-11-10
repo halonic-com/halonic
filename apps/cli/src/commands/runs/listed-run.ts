@@ -10,6 +10,7 @@ import { money } from "../../messages/money.ts";
 import type { Phrase } from "../../messages/phrase.ts";
 import { type ListedStatus, runsListMessages } from "../../messages/runs-list.ts";
 import { stepName } from "../../messages/step-name.ts";
+import { printable } from "../../output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "../../run-times.ts";
 
 /**
@@ -54,10 +55,22 @@ export function listedRun(run: RunToList, findWorkflow: FindWorkflow, clock: Run
   return {
     status: listedStatus(summary),
     runId: shortRunId(summary.id),
-    workflow: workflow?.name ?? summary.workflowId,
+    workflow: workflowTitle(workflow, summary),
     what: whatColumn(run, workflow, clock),
     when: whenColumn(summary, clock),
   };
+}
+
+/**
+ * How the list and `runs show` name a run's workflow: its title, or its id
+ * when it's no longer in the workspace. Both come from workspace files, so
+ * the name is made printable (cli-output section 5).
+ */
+export function workflowTitle(
+  workflow: WorkflowDefinition | undefined,
+  summary: RunSummary,
+): string {
+  return printable(workflow?.name ?? summary.workflowId);
 }
 
 /**

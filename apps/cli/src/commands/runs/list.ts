@@ -37,8 +37,9 @@ import {
 } from "../../messages/runs-list.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
+import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
-import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
+import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { listedRun } from "./listed-run.ts";
 
@@ -71,20 +72,23 @@ export async function listRuns(
 ): Promise<CommandResult> {
   const options = listOptions(input);
   const workspace = await openWorkspaceDir(input, context);
+  // The folder's name is outside text (cli-output section 5).
+  const workspaceName = printable(workspace.name);
   const workflows = hubWorkflows(await loadWorkspace(workspace.store));
   const history = new RunHistory(await openWorkspaceRuns(workspace.root, setup.profile));
-  const filter = await runFilter(options.filters, workflows, history, workspace);
+  const filter = await runFilter(options.filters, workflows, history, workspaceName);
   const list = await history.listRuns(filter, options.limit);
   const json = { runs: list.runs, total: list.total };
   const dir = givenDir(input, workspace);
+  const shown = shownFilters(options.filters);
   if (list.runs.length === 0) {
-    const lines = await emptyListLines(options.filters, history, workspace, dir);
+    const lines = await emptyListLines(shown, history, workspaceName, dir);
     return { exitCode: exitCode.ok, lines, json };
   }
   const rows = await runRows(list.runs, workflows, history, setup.clock());
   const lines = [...columns(rows)];
   if (list.total > list.runs.length) {
-    lines.push(runsListMessages.leftOut(list.runs.length, list.total, options.filters, dir).phrase);
+    lines.push(runsListMessages.leftOut(list.runs.length, list.total, shown, dir).phrase);
   }
   return { exitCode: exitCode.ok, lines, json };
 }
@@ -110,7 +114,7 @@ function statusFilter(given: string): StatusFilter {
   }
   const near = statusYouMeant(given);
   throw new UsageError(
-    runsListMessages.statusNotOneOf(given),
+    runsListMessages.statusNotOneOf(printable(given)),
     near === undefined
       ? usageMessages.seeCommandOptions("runs")
       : runsListMessages.statusNear(near),
@@ -121,7 +125,7 @@ function statusFilter(given: string): StatusFilter {
 function wholeLimit(given: string): number {
   const limit = /^\d+$/.test(given) ? Number(given) : Number.NaN;
   if (!Number.isSafeInteger(limit) || limit < 1) {
-    throw new UsageError(runsListMessages.limitNotWhole(given));
+    throw new UsageError(runsListMessages.limitNotWhole(printable(given)));
   }
   return limit;
 }
@@ -135,7 +139,7 @@ async function runFilter(
   filters: ListFilters,
   workflows: readonly HubWorkflow[],
   history: RunHistory,
-  workspace: OpenWorkspaceDir,
+  workspaceName: string,
 ): Promise<RunListFilter> {
   const byStatus = filters.status === undefined ? {} : { status: filters.status };
   if (filters.workflow === undefined) {
@@ -143,14 +147,15 @@ async function runFilter(
   }
   const typed = filters.workflow;
   const lookup = lookUpWorkflow(workflows, typed);
+  const shownTyped = printable(typed);
   switch (lookup.found) {
     case "one":
       return { ...byStatus, hubId: lookup.hubId, workflowId: lookup.workflow.id };
     case "several":
       throw new OwnLineError(
         "invalid_input",
-        workflowMessages.inSeveralHubs(typed, lookup.hubIds.length),
-        workflowMessages.nameTheHub(lookup.hubIds.map((hubId) => `${hubId}/${typed}`)),
+        workflowMessages.inSeveralHubs(shownTyped, lookup.hubIds.length),
+        workflowMessages.nameTheHub(lookup.hubIds.map((hubId) => printable(`${hubId}/${typed}`))),
       );
     case "none": {
       const gone = goneWorkflow(typed);
@@ -163,8 +168,10 @@ async function runFilter(
       );
       throw new OwnLineError(
         "not_found",
-        workflowMessages.noWorkflow(typed, workspace.name),
-        near === undefined ? workflowMessages.seeWorkflows() : workflowMessages.workflowNear(near),
+        workflowMessages.noWorkflow(shownTyped, workspaceName),
+        near === undefined
+          ? workflowMessages.seeWorkflows()
+          : workflowMessages.workflowNear(printable(near)),
       );
     }
   }
@@ -178,6 +185,13 @@ function goneWorkflow(typed: string): RunListFilter {
     : { hubId: typed.slice(0, slash), workflowId: typed.slice(slash + 1) };
 }
 
+/** The filters as the list's sentences echo them: `--workflow` as typed, made printable (cli-output section 5). */
+function shownFilters(filters: ListFilters): ListFilters {
+  return filters.workflow === undefined
+    ? filters
+    : { ...filters, workflow: printable(filters.workflow) };
+}
+
 /**
  * Why the list is empty: no real runs at all (or only test runs), whatever
  * the filters; else the filters match nothing, with the way to see every run.
@@ -185,19 +199,19 @@ function goneWorkflow(typed: string): RunListFilter {
 async function emptyListLines(
   filters: ListFilters,
   history: RunHistory,
-  workspace: OpenWorkspaceDir,
+  workspaceName: string,
   dir: string | undefined,
 ): Promise<Phrase[]> {
   const given = givenFilters(filters);
   if (given !== undefined && (await history.listRuns({}, 1)).total > 0) {
     return [
-      runsListMessages.noMatch(given, workspace.name).phrase,
+      runsListMessages.noMatch(given, workspaceName).phrase,
       phrase`  ${runsListMessages.seeEveryRun(dir).phrase}`,
     ];
   }
   const line = (await history.hasTestRuns())
-    ? runsListMessages.onlyTestRuns(workspace.name, dir)
-    : runsListMessages.noRunsYet(workspace.name, dir);
+    ? runsListMessages.onlyTestRuns(workspaceName, dir)
+    : runsListMessages.noRunsYet(workspaceName, dir);
   return [line.phrase];
 }
 

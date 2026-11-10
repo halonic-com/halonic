@@ -16,6 +16,7 @@ import { runsMessages } from "./messages/runs.ts";
 import { runsListMessages, startedInWords } from "./messages/runs-list.ts";
 import { stepName } from "./messages/step-name.ts";
 import type { Mark } from "./output/paint.ts";
+import { printable } from "./output/printable.ts";
 import { type RunStep, runSteps } from "./run-steps.ts";
 import { dueAt, type RunClock, startedAt } from "./run-times.ts";
 
@@ -131,7 +132,8 @@ function markOf(step: RunStep): Mark {
  * What ran the step: its agent's name and model alias, "Writer · smart".
  * The alias is the method's own when the step calls one. An agent that's no
  * longer in the workspace is named by its id; a step without an agent has
- * no facts.
+ * no facts. All of it comes from workspace files, so it is made printable
+ * (cli-output section 5).
  */
 function agentFacts(step: RunStep, definitions: RunDefinitions): string[] {
   if (step.agentId === undefined) {
@@ -139,9 +141,10 @@ function agentFacts(step: RunStep, definitions: RunDefinitions): string[] {
   }
   const agent = definitions.agent(step.agentId);
   if (agent === undefined) {
-    return [step.agentId];
+    return [printable(step.agentId)];
   }
   const method = definitions.workflow?.states[step.stateId]?.method;
   const model = (method === undefined ? undefined : agent.methods[method]?.model) ?? agent.model;
-  return model === undefined ? [agent.name] : [agent.name, model];
+  const facts = model === undefined ? [agent.name] : [agent.name, model];
+  return facts.map(printable);
 }

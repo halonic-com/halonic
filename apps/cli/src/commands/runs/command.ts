@@ -1,6 +1,7 @@
 import type { CliCommand } from "../../command.ts";
 import { runsMessages } from "../../messages/runs.ts";
 import { runsListMessages } from "../../messages/runs-list.ts";
+import { printable } from "../../output/printable.ts";
 import { dirOption, workspaceDir } from "../../workspace-dir.ts";
 import { listRuns, type RunListSetup } from "./list.ts";
 import { showRun } from "./show.ts";
@@ -19,7 +20,8 @@ export function runsCommandWith(setup: RunListSetup): CliCommand {
     name: "runs",
     usage: "[--status <status>] [--workflow <id>] [--limit <n>] [--dir <folder>]",
     summary: runsMessages.summary(),
-    action: (input, context) => runsListMessages.action(workspaceDir(input, context.cwd).name),
+    action: (input, context) =>
+      runsListMessages.action(printable(workspaceDir(input, context.cwd).name)),
     options: {
       status: {
         type: "string",
@@ -45,7 +47,7 @@ function showCommandWith(setup: RunListSetup): CliCommand {
     name: "show",
     usage: "<run-id> [--dir <folder>]",
     summary: runsMessages.showSummary(),
-    action: (input) => runsMessages.showAction(input.positionals[0] ?? ""),
+    action: (input) => runsMessages.showAction(printable(input.positionals[0] ?? "")),
     options: { dir: dirOption },
     run: (input, context) => showRun(input, context, setup),
   };

@@ -158,6 +158,34 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("shows an escape code or a bidi control in the workflow's or the agent's name as its code", async () => {
+      await writeFiles(acme, {
+        "hubs/support/workflows/mail-triage.workflow.yaml": mailTriage.replace(
+          "name: Mail triage",
+          'name: "\\e[31mMail\\u202e triage"',
+        ),
+        "hubs/support/agents/writer.agent.yaml":
+          'id: writer\nname: "\\e[2JWriter"\ninstructions: Read it.\n',
+      });
+      await storeRuns(
+        triaged("run_mfx3k2a1_0a0b0c", [
+          [today("10:20:01"), { type: "state.entered", state: "done" }],
+          [today("10:20:18"), { type: "run.completed", state: "done", context: {} }],
+        ]),
+      );
+
+      const { io } = await showIn(acme, "0a0b0c");
+
+      expect(io.stdout).toEqual([
+        "\\u001b[31mMail\\u202e triage in acme · run 0a0b0c · started 10:20, finished 10:20",
+        "",
+        "✓ Read the email   \\u001b[2JWriter   1 s",
+        "",
+        "✓ \\u001b[31mMail\\u202e triage finished in 18 s.",
+        "  Sent nothing",
+      ]);
+    });
+
     it("ends a run waiting at a wait step with run's two waiting lines, and no receipt", async () => {
       await storeRuns(waiting);
 
@@ -361,6 +389,28 @@ verifies("cli.commands.runs.show", () => {
       const two = await showIn(acme, "a1b2c3", "09d9a0");
       expect(two.io.stderr[0]).toBe(
         "✕ halonic runs show takes one run id, and you gave two: a1b2c3, 09d9a0.",
+      );
+    });
+
+    it("shows an escape code in the id the user typed, or a bidi control in the folder name, as its code", async () => {
+      const shared = join(folder, "ac\u202eme");
+      await writeFiles(shared, { "workspace.yaml": "id: acme\nname: Acme\n" });
+      await storeAcmeRuns({ ...acmeRuns, acme: shared }, done);
+
+      const heading = await showIn(shared, "a1b2c3");
+      expect(heading.io.stdout[0]).toBe(
+        "support-reply in ac\\u202eme · run a1b2c3 · started 10:31, finished 10:31",
+      );
+      const missing = await showIn(shared, "01jd8x");
+      expect(missing.io.stderr[0]).toBe("✕ There's no run 01jd8x in ac\\u202eme.");
+      const two = await showIn(acme, "\u001b[31ma1b2c3", "09d9a0");
+      expect(two.io.stderr[0]).toBe(
+        "✕ halonic runs show takes one run id, and you gave two: \\u001b[31ma1b2c3, 09d9a0.",
+      );
+      await mkdir(join(folder, "downloads"));
+      const nowhere = await showIn(folder, "\u001b[31ma1b2c3", "--dir", "downloads");
+      expect(nowhere.io.stderr[0]).toBe(
+        "✕ Couldn't show run \\u001b[31ma1b2c3: there's no workspace.yaml here.",
       );
     });
 
