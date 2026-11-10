@@ -242,7 +242,7 @@ function optionValue(words: readonly string[], index: number): string | undefine
  * (`@acme/mail-mcp@2.3.1`), up to the first character a name can't hold for
  * PyPI (`mail-mcp==2.3.1`).
  */
-function leadingName(registry: PinRegistry, word: string): string {
+export function leadingName(registry: PinRegistry, word: string): string {
   if (registry === "npm") {
     const at = word.indexOf("@", word.startsWith("@") ? 1 : 0);
     return at === -1 ? word : word.slice(0, at);

@@ -148,6 +148,8 @@ export {
   type StdioTransport,
 } from "./package-runner.ts";
 export { readPackageSpec } from "./package-spec.ts";
+export { isPackageManagerVariable } from "./pin-overrides.ts";
+export { pinnedRunnerArgs } from "./pinned-args.ts";
 export type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";
 export {
   type PluginFileChanges,
