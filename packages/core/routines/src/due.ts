@@ -28,12 +28,19 @@ export interface TickPolicy {
    * cap are dropped, not caught up next tick.
    */
   maxCatchUp: number;
+  /**
+   * How far back a missed time still catches up, for every `catchUp` setting:
+   * a time older than `now - maxCatchUpAgeMs` is dropped, not caught up. With
+   * `maxCatchUp`, whichever limit is hit first wins.
+   */
+  maxCatchUpAgeMs: number;
 }
 
 export const DEFAULT_TICK_POLICY: TickPolicy = {
   timeZone: DEFAULT_TIME_ZONE,
   graceMs: 60_000,
   maxCatchUp: 100,
+  maxCatchUpAgeMs: 7 * 24 * 60 * 60_000,
 };
 
 /** One run the tick says to start. */
@@ -58,8 +65,10 @@ export function routineKey(placed: PlacedRoutine): string {
 /**
  * The runs to start for a tick: for each enabled routine with a clock trigger,
  * the times in `(lastTick, now]` its `catchUp` setting lets it run, oldest
- * first (ties by key). `none` keeps only times within `policy.graceMs` of now,
- * `last` the newest, `all` the newest `policy.maxCatchUp`. With no last tick
+ * first (ties by key). Times older than `policy.maxCatchUpAgeMs` (7 days by
+ * default) are dropped for every setting. Of the rest, `none` keeps only times
+ * within `policy.graceMs` of now, `last` the newest, `all` the newest
+ * `policy.maxCatchUp`. With no last tick
  * nothing is due. A routine whose trigger doesn't parse, or whose schedule
  * is in a zone this runtime doesn't know, is skipped; the others still run.
  */
@@ -121,10 +130,13 @@ function dueTimes(
 function allowedTimes(
   clock: Clock,
   catchUp: Routine["catchUp"],
-  lastTick: Date,
+  tickStart: Date,
   now: Date,
   policy: TickPolicy,
 ): Date[] {
+  // The window opens just before `now - maxCatchUpAgeMs`, so a time exactly that old still counts.
+  const oldest = new Date(now.getTime() - policy.maxCatchUpAgeMs - 1);
+  const lastTick = oldest > tickStart ? oldest : tickStart;
   if (catchUp === "all") {
     return newestTimes(clock, lastTick, now, Math.min(policy.maxCatchUp, WINDOW_LIMIT));
   }

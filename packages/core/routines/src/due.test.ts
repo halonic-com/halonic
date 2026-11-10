@@ -169,8 +169,51 @@ verifies("routines.due", () => {
     });
 
     it("finds a schedule's newest time long before now", () => {
-      const runs = due([placed({ schedule: "30 6 2 11 *", timezone: "UTC" })], lastTick, now);
-      expect(times(runs)).toEqual(["2026-11-02T06:30:00.000Z"]);
+      const runs = due([placed({ schedule: "30 6 4 11 *", timezone: "UTC" })], lastTick, now);
+      expect(times(runs)).toEqual(["2026-11-04T06:30:00.000Z"]);
+    });
+  });
+
+  describe("the catch-up window", () => {
+    it("gives 7 runs for a daily catchUp all routine after 10 days away", () => {
+      const runs = due(
+        [placed({ schedule: "0 9 * * *", timezone: "UTC" }, "all")],
+        at("2026-10-31T09:30:00Z"),
+        at("2026-11-10T09:30:00Z"),
+      );
+      expect(runs).toHaveLength(7);
+      expect(runs[0]?.at.toISOString()).toBe("2026-11-04T09:00:00.000Z");
+      expect(runs.at(-1)?.at.toISOString()).toBe("2026-11-10T09:00:00.000Z");
+    });
+
+    it("gives nothing for a monthly catchUp last routine missed 8 days ago", () => {
+      const monthly = { schedule: "0 9 2 * *", timezone: "UTC" };
+      const lastTick = at("2026-10-01T00:00:00Z");
+      expect(due([placed(monthly, "last")], lastTick, at("2026-11-10T00:00:00Z"))).toEqual([]);
+      // Still caught up inside the window.
+      expect(times(due([placed(monthly, "last")], lastTick, at("2026-11-08T00:00:00Z")))).toEqual([
+        "2026-11-02T09:00:00.000Z",
+      ]);
+    });
+
+    it("keeps a time exactly as old as the window and drops one a millisecond older", () => {
+      const week = DEFAULT_TICK_POLICY.maxCatchUpAgeMs;
+      const lastTick = at("2026-10-01T00:00:00Z");
+      const missed = at("2026-11-02T09:00:00Z");
+      const routine = placed({ schedule: "0 9 2 * *", timezone: "UTC" }, "last");
+      expect(due([routine], lastTick, new Date(missed.getTime() + week))).toHaveLength(1);
+      expect(due([routine], lastTick, new Date(missed.getTime() + week + 1))).toEqual([]);
+    });
+
+    it("still stops at the cap when the window holds more: hourly catchUp all, 14 days away", () => {
+      const runs = due(
+        [placed(hourly, "all")],
+        at("2026-10-27T00:00:00Z"),
+        at("2026-11-10T00:00:30Z"),
+      );
+      expect(runs).toHaveLength(DEFAULT_TICK_POLICY.maxCatchUp);
+      expect(runs[0]?.at.toISOString()).toBe("2026-11-05T21:00:00.000Z");
+      expect(runs.at(-1)?.at.toISOString()).toBe("2026-11-10T00:00:00.000Z");
     });
   });
 

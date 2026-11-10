@@ -17,7 +17,7 @@ import {
 export interface WorkspaceRoutineSchedulerOptions
   extends Omit<RoutineSchedulerOptions, "due" | "startOf" | "overlapOf" | "keyOf" | "policy"> {
   /**
-   * The zone, grace period and catch-up cap. Default: `DEFAULT_TICK_POLICY`,
+   * The zone, grace period, catch-up cap and catch-up window. Default: `DEFAULT_TICK_POLICY`,
    * whose zone is UTC; a host passes the machine's zone, which core can't read.
    */
   policy?: TickPolicy;
