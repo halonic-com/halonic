@@ -774,15 +774,6 @@ jobs:
       - uses: $/.github/actions/setup
         with:
           cache: ${{ runner.os != 'Windows' }}
-      - name: DIAG
-        if: runner.os == 'Windows'
-        shell: bash
-        continue-on-error: true
-        working-directory: packages/adapters/system-node
-        run: |
-          pnpm exec vitest run --coverage.enabled=false --testTimeout=60000 --reporter=verbose 2>&1 | grep -E "ms$|Test Files|Tests|FAIL" | tail -50
-          echo ---- with coverage
-          pnpm exec vitest run --testTimeout=60000 2>&1 | grep -E "Test Files|Tests |FAIL|✓|❯" | tail -20
       - name: Typecheck and test
         shell: bash
         run: >

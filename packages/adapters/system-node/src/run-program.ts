@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { env, platform } from "node:process";
 import type { RunProgram } from "./process-table.ts";
 
 /** How long a process-table program may take before it is stopped. */
@@ -6,6 +7,16 @@ const timeoutMs = 15_000;
 
 /** The most output read from it: a process table with many thousands of lines fits. */
 const maxOutputBytes = 32 * 1024 ** 2;
+
+/**
+ * The environment a program starts with. Windows PowerShell hangs without
+ * `SystemRoot`, and a caller that filters the environment (Turbo does) can
+ * leave it out, so it is always set; the usual folder stands in if it's gone.
+ */
+function programEnvironment(): NodeJS.ProcessEnv {
+  if (platform !== "win32" || env["SystemRoot"] !== undefined) return env;
+  return { ...env, SystemRoot: "C:\\Windows" }; // leak-guard: allow absolute-path Windows' own install folder
+}
 
 /**
  * Runs a program with Node's `execFile`: no shell, no window on Windows,
@@ -17,7 +28,13 @@ export const systemRunProgram: RunProgram = (program, args) =>
     const child = execFile(
       program,
       [...args],
-      { encoding: "utf8", timeout: timeoutMs, maxBuffer: maxOutputBytes, windowsHide: true },
+      {
+        encoding: "utf8",
+        timeout: timeoutMs,
+        maxBuffer: maxOutputBytes,
+        windowsHide: true,
+        env: programEnvironment(),
+      },
       (error, stdout) => {
         if (error === null) {
           resolve({ output: stdout, pid: child.pid });
@@ -26,7 +43,4 @@ export const systemRunProgram: RunProgram = (program, args) =>
         reject(new Error(`Couldn't read the process table with ${program}.`, { cause: error }));
       },
     );
-    // Windows PowerShell waits for its input to end while stdin is an open
-    // pipe, so the table read hangs until the timeout (seen on the Windows runner).
-    child.stdin?.end();
   });
