@@ -70,14 +70,14 @@ function openSession(
 }
 
 /** How a stream ended: by itself, or with `error`. */
-interface StreamEnd {
+export interface StreamEnd {
   events: HarnessEvent[];
   ended: "finished" | "error";
   error?: unknown;
 }
 
 /** Reads `run` to its end. */
-async function readToEnd(run: HarnessRun): Promise<StreamEnd> {
+export async function readToEnd(run: HarnessRun): Promise<StreamEnd> {
   const events: HarnessEvent[] = [];
   try {
     for await (const event of run) events.push(event);
@@ -92,25 +92,32 @@ function taskFinishes(events: HarnessEvent[]): HarnessEvent[] {
   return events.filter((event) => event.type === "agent.finished" && event.parent === undefined);
 }
 
-/** Everything an error shows: its message, its stack and its causes. */
+/**
+ * Everything an error shows: its message, its stack, its causes and its own
+ * fields, such as the `stderr`, `stdout` or `command` a process error holds.
+ */
 function errorText(error: Error): string {
   const cause = error.cause === undefined ? "" : `\n${shownText(error.cause)}`;
-  return `${error.name}: ${error.message}\n${error.stack}${cause}`;
+  const fields = fieldsText(error);
+  return `${error.name}: ${error.message}\n${error.stack}${cause}${fields === "" ? "" : `\n${fields}`}`;
+}
+
+/** The own fields of `value`, one `key: text` line each. */
+function fieldsText(value: object): string {
+  return Object.entries(value)
+    .map(([key, item]) => `${key}: ${shownText(item)}`)
+    .join("\n");
 }
 
 /**
  * Everything a value shows, walking into its arrays and objects. An `Error`
- * shows its {@link errorText}: `JSON.stringify` would show it as `{}` and
- * hide what it holds.
+ * shows its {@link errorText}: `JSON.stringify` would show only its own
+ * fields, and hide its message, stack and cause.
  */
 function shownText(value: unknown): string {
   if (value instanceof Error) return errorText(value);
   if (Array.isArray(value)) return value.map(shownText).join("\n");
-  if (typeof value === "object" && value !== null) {
-    return Object.entries(value)
-      .map(([key, item]) => `${key}: ${shownText(item)}`)
-      .join("\n");
-  }
+  if (typeof value === "object" && value !== null) return fieldsText(value);
   return String(value);
 }
 
@@ -121,8 +128,12 @@ function expectEndedWithError(end: StreamEnd): void {
   expect(taskFinishes(end.events)).toEqual([]);
 }
 
-/** Checks the bridge token appears in no event and not in the error, if the stream ended with one. */
-function expectNoToken(end: StreamEnd, token: string): void {
+/**
+ * Checks the bridge token appears in no event and not in the error, if the
+ * stream ended with one. Exported for this package's own tests, which prove
+ * it finds a token wherever a broken harness puts it.
+ */
+export function expectNoToken(end: StreamEnd, token: string): void {
   expect(shownText(end.events)).not.toContain(token);
   expect(shownText(end.error)).not.toContain(token);
 }

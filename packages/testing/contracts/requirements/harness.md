@@ -26,3 +26,7 @@ Where an adapter implements `Harness`, its run's stream shall end with exactly o
 - Given a harness that puts an `Error` holding the bridge token into an event,
   when the suite checks the events,
   then it finds the token, though `JSON.stringify` would show the `Error` as `{}`.
+- Given a harness that puts a process error into an event or ends with one,
+  and the error holds the bridge token in its own `stderr` field,
+  when the suite checks the events and the error,
+  then it finds the token.
