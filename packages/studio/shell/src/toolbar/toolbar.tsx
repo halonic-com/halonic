@@ -25,7 +25,7 @@ export interface ToolbarProps {
  * the active tab, the path as a `nav` named "Location", then on the right the header badge slot
  * and the save state. Back and Forward stay in the Tab order when there's nowhere to go, and say
  * so. A part of the path before the last is a link: a click opens it in the active tab, a
- * Ctrl-click or a middle-click in a new tab next to it.
+ * Ctrl-click or a middle-click in a new tab next to it, or says it is already open in one.
  *
  * The Assistant button joins it with the Assistant (T14); until then there's none.
  *
@@ -45,12 +45,13 @@ export function Toolbar({ tabs, announcer, parentsOf, badges, saveState }: Toolb
       tabs.openHere(part);
       return;
     }
+    // A place another tab shows stays where it is; only the announcer says so (UX D3, HAL-3159).
     const opened = tabs.openInNewTab(part);
-    if (opened.added) {
-      announcer.announce(`Opened ${part.title} in a new tab.`);
-    } else {
-      tabs.activate(opened.tab.id);
-    }
+    announcer.announce(
+      opened.added
+        ? `Opened ${part.title} in a new tab.`
+        : `${part.title} is already open in a tab.`,
+    );
   };
 
   return (
@@ -97,8 +98,11 @@ interface HistoryButtonProps {
 }
 
 /**
- * Back or Forward. With nowhere to go it is unavailable, not disabled: it keeps its Tab stop and
- * a screen reader hears why, from a reason only it reads (the arrows have no room for text).
+ * Back or Forward, a 32px ghost icon button (VK T2-F48). With nowhere to go it is unavailable,
+ * not disabled: it keeps its Tab stop, and its description says why. These two are the one
+ * exception to a visible reason line (Sofia, HAL-3159): the reason is read only by screen readers
+ * here, and also becomes the tooltip once tooltips come to the toolbar. It stays in the DOM, so
+ * it never appears only on hover.
  */
 function HistoryButton({ direction, available, onClick }: HistoryButtonProps) {
   const reasonId = useId();
@@ -107,17 +111,14 @@ function HistoryButton({ direction, available, onClick }: HistoryButtonProps) {
     <>
       <Button
         variant="ghost"
-        size="sm"
         icon={words.icon}
         label={words.label}
         unavailable={available ? undefined : { reason: reasonId }}
         onClick={onClick}
       />
-      {available ? null : (
-        <span id={reasonId} className="sr-only">
-          {words.nowhere}
-        </span>
-      )}
+      <span id={reasonId} className="sr-only">
+        {words.nowhere}
+      </span>
     </>
   );
 }

@@ -86,7 +86,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
         className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? "overflow-hidden rounded-md border border-border" : ""}`}
       >
         {desktop ? (
-          <div className="flex h-toolbar shrink-0 items-center gap-2 border-b border-border px-2">
+          <div className="flex h-toolbar shrink-0 items-center gap-1 border-b border-border px-2">
             {props.toolbar}
           </div>
         ) : null}

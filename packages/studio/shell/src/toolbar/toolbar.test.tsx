@@ -125,13 +125,13 @@ verifies("shell.toolbar", () => {
       expect(tabs.state.tabs).toHaveLength(2);
     });
 
-    it("switches to the tab that already shows a part on a Ctrl-click, saying nothing", () => {
+    it("leaves the tabs as they are on a Ctrl-click on a part a tab shows, and says so", () => {
       const { tabs, container, announced } = renderToolbar();
-      const other = tabs.openInNewTab(workflows).tab;
+      tabs.openInNewTab(workflows);
+      const before = tabs.state;
       click(container.querySelector("nav a"), { metaKey: true });
-      expect(tabs.state.tabs).toHaveLength(2);
-      expect(tabs.active.id).toBe(other.id);
-      expect(announced()).toEqual([]);
+      expect(tabs.state).toBe(before);
+      expect(announced()).toEqual(["Workflows is already open in a tab."]);
     });
 
     it("shows the place alone when nothing says what is above it", () => {
@@ -155,6 +155,8 @@ verifies("shell.toolbar", () => {
       const { container } = renderToolbar();
       const names = [...container.querySelectorAll("button")].map((b) => b.ariaLabel);
       expect(names).toEqual(["Back", "Forward"]);
+      const sizes = [...container.querySelectorAll("button")].map((b) => b.className);
+      expect(sizes.every((name) => name.includes("size-control-md"))).toBe(true);
     });
   });
 });

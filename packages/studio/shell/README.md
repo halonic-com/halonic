@@ -105,9 +105,10 @@ announcer when the window has focus, and passes Esc to the close stack. An Esc i
 then the path as a `nav` named "Location", then the header badges and the save state. `parentsOf`
 gives the places above a tab's place, so a workflow reads "Workflows / Support reply"; each of
 them is a link that opens in the active tab, or in a new tab on a Ctrl-click or a middle-click,
-announced as "Opened Workflows in a new tab.". With nowhere to go, Back and Forward stay in the
-Tab order as unavailable, and screen readers hear "Nothing to go back to". The badge slot takes no
-room when it's empty. There's no Assistant button until the Assistant (T14) lands; the save state
+announced as "Opened Workflows in a new tab." (or "Workflows is already open in a tab.", with the
+tabs left as they are). With nowhere to go, Back and Forward stay in the Tab order as
+unavailable, and screen readers hear "Nothing to go back to". The badge slot takes no room when
+it's empty. There's no Assistant button until the Assistant (T14) lands; the save state
 itself, the window-wide Back and Forward keys and the path's tooltips come in later pull requests.
 
 ```tsx
