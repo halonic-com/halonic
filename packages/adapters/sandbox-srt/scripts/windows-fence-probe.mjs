@@ -86,7 +86,10 @@ function writeSummary(cases) {
   const lines = cases.map(([name, ok]) => `- ${ok ? "PASS" : "FAIL"}: ${name}`);
   console.log(lines.join("\n"));
   if (process.env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Sandbox fence on Windows\n\n${lines.join("\n")}\n`);
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `### Sandbox fence on Windows\n\n${lines.join("\n")}\n`,
+    );
   }
 }
 
@@ -95,7 +98,9 @@ try {
   result = JSON.parse(run.stdout.trim().split(/\r?\n/).pop());
 } catch {
   writeSummary([["the program inside the sandbox gave a result", false]]);
-  console.error("NOT FENCED: the program inside the sandbox gave no result, so the probes did not run.");
+  console.error(
+    "NOT FENCED: the program inside the sandbox gave no result, so the probes did not run.",
+  );
   process.exit(1);
 }
 writeSummary([
@@ -105,7 +110,8 @@ writeSummary([
   ["canary port saw no connection", connections === 0],
 ]);
 const problems = [];
-if (!result.control) problems.push("the control write failed, so the program did not run as expected");
+if (!result.control)
+  problems.push("the control write failed, so the program did not run as expected");
 if (result.file !== "blocked") problems.push(`the hidden file was ${result.file}`);
 if (result.port !== "blocked") problems.push(`the canary port was ${result.port}`);
 if (connections !== 0) problems.push(`the canary port saw ${connections} connection(s)`);
