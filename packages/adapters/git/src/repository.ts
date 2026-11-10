@@ -33,13 +33,11 @@ export class Repository {
   readonly #runner: GitRunner;
   readonly #top: string;
   readonly #gitDir: string;
-  readonly #config: readonly ConfigEntry[];
 
-  private constructor(runner: GitRunner, top: string, gitDir: string, config: ConfigEntry[]) {
+  private constructor(runner: GitRunner, top: string) {
     this.#runner = runner;
     this.#top = top;
-    this.#gitDir = gitDir;
-    this.#config = config;
+    this.#gitDir = join(top, ".git");
   }
 
   /**
@@ -49,27 +47,8 @@ export class Repository {
    * @throws Error when the repository keeps files outside the folder, or its config can't be read or sets a refused key
    */
   static async open(runner: GitRunner, folder: string): Promise<Repository | null> {
-    const top = await realpath(folder);
-    const gitDir = join(top, ".git");
-    const kind = await kindOf(gitDir);
-    if (kind === "missing") return null;
-    // A `.git` file or link names git files elsewhere, which `init` would also reach.
-    if (kind !== "folder") throw outsideFolder(top);
-    const located = await runner.run({
-      cwd: top,
-      args: [
-        "rev-parse",
-        "--path-format=absolute",
-        "--show-toplevel",
-        "--git-dir",
-        "--git-common-dir",
-      ],
-    });
-    if (located.code !== 0) return null;
-    await checkLocated(top, gitDir, located.stdout.toString("utf8"));
-    await checkAlternates(top, join(gitDir, "objects"), 0);
-    const config = await neutralisingConfig(runner, top, gitDir);
-    return new Repository(runner, top, gitDir, config);
+    const repository = new Repository(runner, await realpath(folder));
+    return (await repository.#check()) === null ? null : repository;
   }
 
   /** The repository's root folder, as a real path. */
@@ -77,13 +56,28 @@ export class Repository {
     return this.#top;
   }
 
-  /** Runs git in the repository, hardened, with what neutralises its own config. */
-  run(call: RepositoryCall): Promise<GitResult> {
+  /**
+   * Checks the repository again, then runs git in it, hardened, with what
+   * neutralises its own config.
+   *
+   * @throws Error when the folder is no longer a repository, or a check fails
+   */
+  async run(call: RepositoryCall): Promise<GitResult> {
+    // The workspace can change between calls, and a call such as `checkout`
+    // or `merge` can change what the next one reads, so every call checks.
+    const neutralising = await this.#check();
+    if (neutralising === null) {
+      throw new Error(`The folder ${this.#top} is no longer a git repository.`);
+    }
     return this.#runner.run({
       cwd: this.#top,
       // Given explicitly, so a link swapped in after the checks can't move the call.
-      args: [`--git-dir=${this.#gitDir}`, `--work-tree=${this.#top}`, ...call.args],
-      config: [...this.#config, ...(call.config ?? [])],
+      args: [
+        `--git-dir=${this.#gitDir}`,
+        `--work-tree=${this.#top}`,
+        ...withoutDiffPrograms(call.args),
+      ],
+      config: [...neutralising, ...(call.config ?? [])],
       network: call.network === true,
     });
   }
@@ -98,6 +92,47 @@ export class Repository {
     if (result.code !== 0) throw gitError(call.args, result);
     return result.stdout;
   }
+
+  /**
+   * Checks that the folder is the repository's root with all of its git
+   * files inside it, and gives the config that neutralises the programs its
+   * own config names; `null` when the folder is no repository.
+   */
+  async #check(): Promise<ConfigEntry[] | null> {
+    const kind = await kindOf(this.#gitDir);
+    if (kind === "missing") return null;
+    // A `.git` file or link names git files elsewhere, which `init` would also reach.
+    if (kind !== "folder") throw outsideFolder(this.#top);
+    const located = await this.#runner.run({
+      cwd: this.#top,
+      args: [
+        "rev-parse",
+        "--path-format=absolute",
+        "--show-toplevel",
+        "--git-dir",
+        "--git-common-dir",
+      ],
+    });
+    if (located.code !== 0) return null;
+    await checkLocated(this.#top, this.#gitDir, located.stdout.toString("utf8"));
+    await checkAlternates(this.#top, join(this.#gitDir, "objects"), 0);
+    return neutralisingConfig(this.#runner, this.#top, this.#gitDir);
+  }
+}
+
+/** The subcommands that show diffs, and so would run the repository's diff programs. */
+const showsDiffs = new Set(["diff", "log", "show", "whatchanged"]);
+
+/**
+ * `args` with `--no-ext-diff --no-textconv` after the subcommand when it
+ * shows diffs, so `diff.external`, `diff.<driver>.command` and
+ * `diff.<driver>.textconv` don't run. Blanking them instead would make git
+ * fail with "cannot run".
+ */
+function withoutDiffPrograms(args: readonly string[]): readonly string[] {
+  const [subcommand, ...rest] = args;
+  if (subcommand === undefined || !showsDiffs.has(subcommand)) return args;
+  return [subcommand, "--no-ext-diff", "--no-textconv", ...rest];
 }
 
 /** An error for a git call that failed, with git's message. */
@@ -190,7 +225,7 @@ async function listConfig(
   if (result.code !== 0) throw gitError(args, result);
   const entries = parseConfigListing(result.stdout);
   if (!hasCommandEntry(entries, "core.hooksPath")) {
-    throw new Error("This git is too old for Halonic: it needs git 2.32 or later.");
+    throw new Error("This git is too old for Halonic: it needs git 2.31 or later.");
   }
   return entries;
 }

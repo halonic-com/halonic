@@ -6,10 +6,12 @@ import {
   plainGit,
   repositoryWith,
   Scratch,
+  testAuthor,
   testRunner,
   writeFiles,
 } from "./fixtures.test-helper.ts";
 import type { GitRunner } from "./git-runner.ts";
+import { type Plant, plantIn } from "./plant.test-helper.ts";
 import { Repository } from "./repository.ts";
 
 const scratch = new Scratch();
@@ -117,4 +119,86 @@ verifies("git.repo-config", () => {
       );
     });
   });
+
+  describe("programs the repository's config names never run", () => {
+    it("a filter the attributes apply, on add and status", async () => {
+      const plantFilter = async (plant: Plant): Promise<void> => {
+        await plant.config("filter.planted.clean");
+        await plant.config("filter.planted.smudge");
+        await plant.attributes("* filter=planted");
+      };
+      const control = await planted();
+      await plantFilter(control.plant);
+      await writeFile(join(control.folder, "a.yaml"), "2\n");
+      await plainGit(control.folder, ["add", "--all"]);
+      expect(await control.plant.ran()).toBe(true);
+
+      const { folder, plant } = await planted();
+      await plantFilter(plant);
+      await writeFile(join(folder, "a.yaml"), "2\n");
+      const repository = await open(folder);
+      await repository.output({ args: ["add", "--all"] });
+      await repository.output({ args: ["status", "--porcelain"] });
+      expect(await plant.ran()).toBe(false);
+    });
+
+    it("a diff program, on diff, log -p and show", async () => {
+      const plantDiffs = async (plant: Plant, folder: string): Promise<void> => {
+        await plant.config("diff.external");
+        await plant.config("diff.planted.command");
+        await plant.config("diff.planted.textconv");
+        await plant.attributes("* diff=planted");
+        await writeFile(join(folder, "a.yaml"), "2\n");
+      };
+      const control = await planted();
+      await plantDiffs(control.plant, control.folder);
+      await plainGit(control.folder, ["diff"]).catch(() => undefined);
+      expect(await control.plant.ran()).toBe(true);
+
+      const { folder, plant } = await planted();
+      await plantDiffs(plant, folder);
+      const repository = await open(folder);
+      await repository.output({
+        args: ["commit", "--all", "--quiet", "--message=Acme"],
+        config: identity,
+      });
+      expect((await repository.output({ args: ["diff", "HEAD~1"] })).toString()).toContain("+2");
+      await repository.output({ args: ["log", "-p"] });
+      await repository.output({ args: ["show", "HEAD"] });
+      expect(await plant.ran()).toBe(false);
+    });
+
+    it("a filter set after the repository was opened, on the next call", async () => {
+      const { folder, plant } = await planted();
+      const repository = await open(folder);
+      await plant.config("filter.planted.clean");
+      await plant.attributes("* filter=planted");
+      await writeFile(join(folder, "a.yaml"), "2\n");
+      await repository.output({ args: ["add", "--all"] });
+      expect(await plant.ran()).toBe(false);
+    });
+
+    it("config an include brings in once a checkout has run: includes are refused", async () => {
+      const { folder } = await planted();
+      const repository = await open(folder);
+      await plainGit(folder, ["config", "includeIf.onbranch:planted.path", "../planted-config"]);
+      await expect(repository.output({ args: ["status"] })).rejects.toThrow(
+        "includeif.onbranch:planted.path",
+      );
+      await plainGit(folder, ["config", "--unset", "includeIf.onbranch:planted.path"]);
+      await plainGit(folder, ["config", "include.path", "../planted-config"]);
+      await expect(repository.output({ args: ["status"] })).rejects.toThrow("include.path");
+    });
+  });
 });
+
+const identity = [
+  ["user.name", testAuthor.name],
+  ["user.email", testAuthor.email],
+] as const;
+
+/** A new repository with a plant in it, whose program lives outside the repository. */
+async function planted(): Promise<{ folder: string; plant: Plant }> {
+  const folder = await repositoryWith(scratch);
+  return { folder, plant: plantIn(folder, await scratch.folder(), []) };
+}

@@ -47,22 +47,34 @@ export function parseConfigListing(listing: Buffer): ListedConfig[] {
 }
 
 /**
- * Refuses a repository whose own config sets a key no override reaches:
- * `branch.<name>.mergeOptions`, which the `git merge` behind `pull` reads
- * as options, so `-F <file>` would make any file the merge commit's
- * message. An empty value from the adapter doesn't override it.
+ * Refuses a repository whose own config sets a key no override neutralises
+ * safely (see {@link isRefusedKey}).
  *
  * @throws Error naming the key
  */
 export function checkRefusedKeys(entries: readonly ListedConfig[]): void {
-  const refused = fromRepository(entries).find(
-    (entry) => subsectionKey(entry.key, "branch")?.name.toLowerCase() === "mergeoptions",
-  );
+  const refused = fromRepository(entries).find((entry) => isRefusedKey(entry.key));
   if (refused !== undefined) {
     throw new Error(
       `The repository's config sets ${refused.key}, which Halonic doesn't allow. Remove it from .git/config and try again.`,
     );
   }
+}
+
+/**
+ * Whether the repository may not set `key` at all:
+ *
+ * - `branch.<name>.mergeOptions`, which the `git merge` behind `pull` reads
+ *   as options, so `-F <file>` would make any file the merge commit's
+ *   message. An empty value from the adapter doesn't override it.
+ * - `include.path` and `includeIf.<condition>.path`, which bring in config
+ *   from a file the workspace can change, or only once a `checkout` or
+ *   `merge` has run, after the listing the call was checked against.
+ */
+function isRefusedKey(key: string): boolean {
+  if (key.toLowerCase() === "include.path") return true;
+  if (subsectionKey(key, "includeif")?.name.toLowerCase() === "path") return true;
+  return subsectionKey(key, "branch")?.name.toLowerCase() === "mergeoptions";
 }
 
 /** The names of the filter drivers the repository's own config defines. */

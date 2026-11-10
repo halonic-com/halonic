@@ -85,6 +85,17 @@ verifies("git.repo-config", () => {
       ).not.toThrow();
     });
 
+    it("refuses includes from the repository, whatever their case", () => {
+      for (const key of [
+        "include.path",
+        "includeIf.onbranch:main.path",
+        "includeif.gitdir:/acme/.path",
+      ]) {
+        expect(() => checkRefusedKeys([entry("local", key, "planted")]), key).toThrow(key);
+        expect(() => checkRefusedKeys([entry("command", key, "")]), key).not.toThrow();
+      }
+    });
+
     it("sees whether git took the adapter's own config", () => {
       expect(hasCommandEntry([entry("command", "core.hookspath", "/x")], "core.hooksPath")).toBe(
         true,
