@@ -1,0 +1,28 @@
+# Decision: two Unix-only tests for the folder blob store
+
+- Requirement: `fs-node.blob-store-files` (`packages/adapters/fs-node/requirements/blob-store-files.md`)
+- Task: HAL-3814; the plan for `halonic run`, PR A, approved on HAL-3895
+- Approval: the maintainer approves this note in review
+- Kind: internal
+
+## What changes
+
+The new `FolderBlobStore` gets its own requirement and tests. Two of the tests run only on
+Unix, with `it.runIf(unix)`, the way the trust store's and record store's tests already do with
+`skipIf(win32)`:
+
+- **Modes:** the folders get mode `700` and the files `600`. Windows has no file modes; there the
+  profile folder's own permissions protect the blobs, as `makePrivateFolder` says.
+- **A symbolic link in a blob's place:** making one on Windows needs a privilege (Developer Mode or
+  an administrator) that a test can't count on.
+
+CI runs on Linux, so both tests run on every pull request. The hard-link test needs no
+privilege, so it runs everywhere.
+
+## Tests
+
+No test was removed or loosened. The two tests are new and skip only on Windows.
+
+## Covers
+
+- packages/adapters/fs-node/src/blob-store.test.ts

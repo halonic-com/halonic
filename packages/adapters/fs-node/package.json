@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-fs-node",
   "private": true,
   "type": "module",
-  "description": "The DefinitionStore, RunStore, RecordStore, TrustStore, AgentPlacementStore and ConnectionSettingsStore ports on the local file system with Node: plain files for definitions, one JSONL log per run and per record collection, one JSON file per trust record, placement choice and connector setting in the profile.",
+  "description": "The DefinitionStore, RunStore, RecordStore, TrustStore, AgentPlacementStore, ConnectionSettingsStore and BlobStore ports on the local file system with Node: plain files for definitions, one JSONL log per run and per record collection, one JSON file per trust record, placement choice and connector setting in the profile, and one file per blob.",
   "exports": {
     ".": "./src/index.ts"
   },

@@ -4,7 +4,7 @@ Owner: tomas · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-The DefinitionStore and RunStore ports on the local file system with Node: plain files for definitions, one JSONL log per run.
+The DefinitionStore, RunStore, RecordStore, TrustStore, AgentPlacementStore, ConnectionSettingsStore and BlobStore ports on the local file system with Node: plain files for definitions, one JSONL log per run and per record collection, one JSON file per profile record, one file per blob.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

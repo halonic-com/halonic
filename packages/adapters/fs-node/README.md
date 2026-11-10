@@ -1,11 +1,12 @@
 # @halonicjs/adapter-fs-node
 
 The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
-`AgentPlacementStore` and `ConnectionSettingsStore` ports on the local file
-system with Node: workspace files are plain files under a root folder, each
-run and each collection of records is a JSONL log, and each trust record,
-each agent's "this computer" choice and each connector's "allow sending"
-setting is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
+`AgentPlacementStore`, `ConnectionSettingsStore` and `BlobStore` ports on
+the local file system with Node: workspace files are plain files under a
+root folder, each run and each collection of records is a JSONL log, each
+trust record, each agent's "this computer" choice and each connector's
+"allow sending" setting is a JSON file in the profile, and each blob is a
+file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
 it.
 
 - **Layer:** adapters
@@ -231,3 +232,21 @@ the shared `RecordStore` contract suite.
   is refused on read, append and compact, as for trust records.
 - **Limits:** appends are not flushed to disk, so after a power cut the
   last appends may be gone, as for run logs.
+
+## Blobs in the profile
+
+`new FolderBlobStore(root)` keeps attachments, large results and other
+blobs in `root`, a workspace's `blobs` folder in the profile
+(`workspaceFolders(...).blobsFolder()` in `@halonicjs/profile`). It passes
+the shared `BlobStore` contract suite.
+
+- **Files:** each blob is `<hash[0..2]>/<hash>`, holding only the bytes. The
+  media type isn't kept, as the port allows. Folders get mode `700`, files
+  `600`.
+- **Writes** go to a temporary file in the blob's own folder and are renamed
+  into place, so the rename stays on one disk and a reader gets the whole
+  blob or none. Bytes that are already stored aren't written again.
+- **Paths:** a hash that isn't 64 lowercase hex characters never reaches a
+  path, and a path outside the folder is refused where it is built.
+- **Links:** a blob file that is a symbolic link, a hard link or not a plain
+  file is refused on read, and a put replaces it.

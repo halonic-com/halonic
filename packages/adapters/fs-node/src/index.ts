@@ -1,4 +1,5 @@
 export { FileAgentPlacementStore } from "./agent-placement-store.ts";
+export { FolderBlobStore } from "./blob-store.ts";
 export { FileConnectionSettingsStore } from "./connection-settings-store.ts";
 export { FolderDefinitionStore, type FolderStoreWatchOptions } from "./definition-store.ts";
 export type { FolderEvents } from "./folder-watch.ts";
