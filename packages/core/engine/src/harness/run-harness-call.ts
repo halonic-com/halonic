@@ -150,6 +150,11 @@ async function openSandbox(
  * Writes what the harness reports until the agent's own `agent.finished`,
  * and gives back its output. A stream that fails before its first event
  * means the program didn't start.
+ *
+ * The agent's own `agent.started` and `agent.finished` never reach the log:
+ * `decide` writes both for the state, and the run reads a top-level one as
+ * the state's call starting or ending. Written twice, the run would wait on
+ * a call that no longer exists.
  */
 async function followRun(
   run: HarnessRun,
@@ -163,6 +168,9 @@ async function followRun(
       started = true;
       if (event.type === "agent.finished" && event.parent === undefined) {
         return event.output;
+      }
+      if (event.type === "agent.started" && event.parent === undefined) {
+        continue;
       }
       if (event.type === "approval.requested") {
         // The run's wait and `send` by call id come in the next step of stack 4.

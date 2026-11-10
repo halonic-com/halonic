@@ -55,6 +55,29 @@ verifies("engine.local-runs", () => {
     expect(model.requests).toEqual([]);
   });
 
+  it("finishes the state when the harness also reports its agent's own start", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [
+      { type: "agent.started", agent: "writer", prompt: "Reply to support" },
+      finished("Dear support"),
+    ];
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { reply: "Dear support" },
+    });
+    expect(typesOf(runs.logs.get("run_1")).filter((type) => type === "agent.started")).toEqual([
+      "agent.started",
+    ]);
+  });
+
   it("starts the harness once when its timer arrives twice", async () => {
     const ports = harnessPorts();
     ports.harness.events = [finished("Dear support")];
