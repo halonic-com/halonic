@@ -205,6 +205,21 @@ export {
   runnerUnfencedReasons,
 } from "./runner-fence.ts";
 export {
+  type MxcDefault,
+  type MxcSetting,
+  type MxcState,
+  type MxcStatus,
+  mxcDefault,
+  mxcStates,
+  type SandboxBackend,
+  type SandboxBackendId,
+  type SandboxChoice,
+  type SandboxChoiceOptions,
+  SandboxChoiceService,
+  type SandboxSettings,
+  sandboxBackendIds,
+} from "./sandbox-choice.ts";
+export {
   type CanaryFindings,
   runTrustCheck,
   type TrustCanary,
