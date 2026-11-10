@@ -148,6 +148,25 @@ export {
   type StdioTransport,
 } from "./package-runner.ts";
 export { readPackageSpec } from "./package-spec.ts";
+export {
+  type PluginFileChanges,
+  type PluginItemChanges,
+  type PluginTrustChanges,
+  pluginTrustChanges,
+} from "./plugin-trust-changes.ts";
+export {
+  type PluginFileHash,
+  type PluginHostContent,
+  type PluginLocalToolContent,
+  type PluginPart,
+  type PluginSecretContent,
+  type PluginToolContent,
+  type PluginTrustContent,
+  type PluginTrustInput,
+  pluginTrustContent,
+  pluginTrustFingerprint,
+  pluginTrustFingerprintPrefix,
+} from "./plugin-trust-content.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
 export {
   type DataFolder,
