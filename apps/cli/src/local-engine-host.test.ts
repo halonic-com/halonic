@@ -1,16 +1,16 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { FolderDefinitionStore, heldLockRenewEveryMs } from "@halonicjs/adapter-fs-node";
 import { RunHistory, WorkflowRuns } from "@halonicjs/app";
 import { type HttpClient, runLockFormat, type Secrets } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   engineLockFile,
   type LocalEngine,
@@ -222,5 +222,55 @@ describe("openLocalEngine", () => {
         reportError: () => {},
       }),
     ).rejects.toThrow(/ENOENT/);
+  });
+});
+
+// The attack tests of HAL-4045 for the engine lock.
+describe("the engine lock under attack", () => {
+  it("refuses a second engine that opens the workspace through a symlink", async () => {
+    await openEngine();
+    const linked = join(folder, "acme-link");
+    await symlink(acme, linked, "dir");
+
+    const second = openLocalEngine({
+      workspace,
+      workspaceRoot: linked,
+      secrets,
+      http,
+      environment: profile,
+      reportError: () => {},
+    });
+
+    await expect(second).rejects.toMatchObject({ kind: "conflict" });
+  });
+
+  it("reports a lock another process took over, and closes without removing that lock", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const reported: [unknown, unknown][] = [];
+    const engine = await openLocalEngine({
+      workspace,
+      workspaceRoot: acme,
+      secrets,
+      http,
+      environment: profile,
+      reportError: (error, source) => reported.push([error, source]),
+    });
+    const taker = JSON.stringify({
+      version: runLockFormat,
+      pid: process.pid,
+      host: "another-computer",
+      takenAt: new Date().toISOString(),
+    });
+    const lock = await acmeEngineLock();
+    await writeFile(lock, taker, "utf8");
+
+    await vi.advanceTimersByTimeAsync(heldLockRenewEveryMs);
+    vi.useRealTimers();
+    await engine.close();
+
+    expect(reported).toEqual([
+      [new Error(`The lock ${lock} was taken over by another process.`), "engine-lock"],
+    ]);
+    expect(await readFile(lock, "utf8")).toBe(taker);
   });
 });
