@@ -1,5 +1,5 @@
 import { isComposing } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 /** Props for {@link NameField}. */
 export interface NameFieldProps {
@@ -19,6 +19,10 @@ export interface NameFieldProps {
  */
 export function NameField({ name, label, onRename }: NameFieldProps) {
   const [draft, setDraft] = useState(name);
+  // The name this edit last asked for. Enter and then leaving the field is one edit, and `name`
+  // may not have changed in between (the rename is async, or was rejected), so it's asked for
+  // once. Typing starts a new edit, which may ask for the same name again.
+  const asked = useRef<string | undefined>(undefined);
 
   // A rename from somewhere else (the file, another tab) shows here.
   useEffect(() => {
@@ -31,7 +35,16 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
       setDraft(name);
       return;
     }
+    if (next === asked.current) {
+      return;
+    }
+    asked.current = next;
     onRename(next);
+  };
+
+  const edit = (value: string) => {
+    asked.current = undefined;
+    setDraft(value);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -58,7 +71,7 @@ export function NameField({ name, label, onRename }: NameFieldProps) {
       spellCheck={false}
       data-text-entry=""
       className={nameClasses}
-      onChange={(event) => setDraft(event.target.value)}
+      onChange={(event) => edit(event.target.value)}
       onKeyDown={onKeyDown}
       onBlur={keep}
     />

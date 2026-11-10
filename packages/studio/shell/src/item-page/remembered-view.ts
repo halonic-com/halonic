@@ -67,5 +67,8 @@ export function useRememberedView<Id extends string>(
     page?.views.set(page.tabId, page.locationKey, next);
     setView(next);
   };
-  return [view, pick];
+  // A view can be removed while the page is mounted; the page then shows `first` rather than a view
+  // it no longer lists, with no view picked.
+  const shown = views.includes(view) ? view : first;
+  return [shown, pick];
 }

@@ -2,7 +2,7 @@
 
 import type { Tab } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { mountedTabLimit } from "../tabs/mounted-tabs.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
@@ -127,6 +127,23 @@ verifies("shell.item-page-header", () => {
     expect(onRename).toHaveBeenCalledWith("Intake v2");
   });
 
+  it("asks for one rename per edit, even when the name hasn't changed yet", () => {
+    // The rename is async or rejected, so `name` is still the old one when the field is left.
+    const onRename = vi.fn();
+    const container = render(<Workflow onRename={onRename} />);
+    typeInto(nameField(container), "Intake v2");
+    press(nameField(container), "Enter");
+    act(() => nameField(container).blur());
+    expect(onRename).toHaveBeenCalledTimes(1);
+
+    // A new edit may ask for the same name again.
+    typeInto(nameField(container), "Intake v");
+    typeInto(nameField(container), "Intake v2");
+    press(nameField(container), "Enter");
+    expect(onRename).toHaveBeenCalledTimes(2);
+    expect(onRename).toHaveBeenLastCalledWith("Intake v2");
+  });
+
   it("puts the old name back on Esc, and that Esc does nothing else", () => {
     const onRename = vi.fn();
     const container = render(<Workflow onRename={onRename} />);
@@ -200,9 +217,20 @@ verifies("shell.item-page-header", () => {
     expect(panel?.textContent).toBe("runs view");
   });
 
-  it("starts on the first view when a view it was left on is gone", () => {
+  it("shows the first view when the view it was on is gone", () => {
     const fewer: readonly [Tab<View>, ...Tab<View>[]] = [{ id: "flow", label: "Flow" }];
-    const container = render(<Workflow views={fewer} />);
-    expect(container.querySelector('[role="tabpanel"]')?.textContent).toBe("flow view");
+    let dropViews = () => {};
+    function Changing() {
+      const [shown, setShown] = useState(views);
+      dropViews = () => setShown(fewer);
+      return <Workflow views={shown} />;
+    }
+    const container = render(<Changing />);
+    act(() => viewTab(container, "Runs").click());
+
+    act(() => dropViews());
+    const panel = container.querySelector('[role="tabpanel"]') as HTMLElement;
+    expect(panel.textContent).toBe("flow view");
+    expect(viewTab(container, "Flow").getAttribute("aria-selected")).toBe("true");
   });
 });
