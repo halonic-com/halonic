@@ -8,7 +8,7 @@
 // Run from this package after `windows-install`. Exit codes: 0 fenced, 1 a leak
 // was observed, 2 or 3 the probes did not run (port in the proxy range, or the
 // program inside gave no result), so a retry is allowed.
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -73,12 +73,22 @@ writeFileSync(
   }),
 );
 
-const run = spawnSync(
-  process.execPath,
-  [srtCli, "-s", settings, "-c", `"${process.execPath}" "${child}"`],
-  { encoding: "utf8", timeout: 120_000 },
-);
-server.close();
+// Async spawn: spawnSync would block the event loop, so the canary server could
+// never count a connection made while srt runs.
+const run = await new Promise((done) => {
+  const proc = spawn(
+    process.execPath,
+    [srtCli, "-s", settings, "-c", `"${process.execPath}" "${child}"`],
+    { timeout: 120_000 },
+  );
+  let stdout = "";
+  let stderr = "";
+  proc.stdout.setEncoding("utf8").on("data", (d) => (stdout += d));
+  proc.stderr.setEncoding("utf8").on("data", (d) => (stderr += d));
+  proc.on("error", () => done({ status: null, stdout, stderr }));
+  proc.on("close", (status) => done({ status, stdout, stderr }));
+});
+await new Promise((done) => server.close(done));
 console.log(`srt exit code: ${run.status}`);
 console.log(`stdout: ${run.stdout}`);
 console.log(`stderr: ${run.stderr}`);
