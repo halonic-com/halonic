@@ -1182,6 +1182,61 @@ holds a link or a button: anything you can click is an item below it.
 item has 12px of padding above and below. On a phone shortcuts are
 hidden. It stays a popover menu, not a sheet.
 
+## HeaderBadge
+
+The badge in the title bar's header slot, at its right end before Saved and the Assistant button:
+the **sample chip** or the **trust badge**. It's a real button drawn as the neutral Status chip, so
+it reads as a state but can be clicked. The slot holds one at a time; the trust badge wins.
+
+```tsx
+<HeaderBadge
+  as="menu"
+  description="Runs on the built-in test model, with scripted replies. No key, no cost."
+  entries={[
+    { id: "real", label: "Use a real model…", onSelect: useRealModel },
+    { id: "remove", label: "Remove the sample", onSelect: removeSample },
+  ]}
+  onOpenSheet={openSampleSheet}
+>
+  Sample · test model
+</HeaderBadge>;
+
+<HeaderBadge as="button" action="Review" onClick={openTrustCheck}>
+  Not trusted yet
+</HeaderBadge>;
+```
+
+| Prop          | What it is                                                                         |
+| ------------- | ---------------------------------------------------------------------------------- |
+| `as`          | `menu`: opens a Menu. `button`: does one thing, such as opening the trust check    |
+| `children`    | The words: "Sample · test model", "Not trusted yet"                                |
+| `description` | `menu` only: the Menu's description line                                           |
+| `entries`     | `menu` only: the Menu's items                                                      |
+| `onOpenSheet` | `menu` only: on a phone, opens the panel sheet with the same line and items        |
+| `action`      | `button` only: where it leads, after a middle dot in `accent-text`: "Review"       |
+| `label`       | `button` only: its name, when it isn't "words. action" ("Not trusted yet. Review") |
+| `onClick`     | `button` only                                                                      |
+
+| State            | What shows                                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| Default          | 24px high, radius 4px, `surface-muted`, `text-caption` 500 in `fg-muted`, 14px icon, 6px gap |
+| Hover            | Fill `border`, text `fg`                                                                     |
+| Focus            | The standard focus ring                                                                      |
+| Open (menu only) | A 2px `accent` ring while its Menu is open; not the focus ring, which is in the Menu         |
+| Disabled, error  | None: a badge that can't do anything isn't shown                                             |
+
+It's **always neutral**, never `warning`, even for "Not trusted yet". The sample chip has the info
+icon and a trailing chevron, `aria-haspopup="menu"` and `aria-expanded`, and opens its Menu lined
+up with its right edge, 4px below. The trust badge has a dashed ring ("not decided yet") and no
+chevron or `aria-haspopup`: it opens the trust check, not a menu. The whole badge is the target.
+With more contrast its edge is `border-control`; in high contrast the see-through edge shows.
+
+**On a phone** it sits on its own 48px line, which the shell puts under the workspace row in More,
+with a 48px hit area; at large text it wraps instead of being cut. There the trust badge opens
+Settings › Trust, so the feature passes `label="Not trusted yet. Open trust settings"`. The sample
+chip calls `onOpenSheet` instead of opening a Menu: the panel sheet is a page on the shell's stack,
+so the shell opens it.
+
 ## Tooltip
 
 A short label for a control: an icon button's name, a disabled control's reason, a shortcut.

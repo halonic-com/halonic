@@ -96,6 +96,12 @@ export {
   type GridRow,
   useGridNavigation,
 } from "./grid-navigation/use-grid-navigation.ts";
+export {
+  HeaderBadge,
+  type HeaderBadgeButton,
+  type HeaderBadgeMenu,
+  type HeaderBadgeProps,
+} from "./header-badge/header-badge.tsx";
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
 export { PlusIcon } from "./icons/plus-icon.tsx";
