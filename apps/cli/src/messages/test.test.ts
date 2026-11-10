@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { paintFor } from "../output/paint.ts";
 import type { Message } from "./define.ts";
 import { bold, dim, plainText, renderPhrase } from "./phrase.ts";
-import { testMessages } from "./test.ts";
+import { testMessages, unknownStep } from "./test.ts";
 
 const words = (message: Message) => plainText(message.phrase);
 
@@ -19,6 +19,12 @@ verifies("cli.messages", () => {
       "Expected the run to end in the step Closed, but it ended in Send reply.",
     );
     expect(words(testMessages.someFailed(2, 1, 0.9))).toBe("2 passed, 1 failed. 3 tests in 0.9 s.");
+  });
+
+  it("says which expected file a run didn't save, from cli-output 3.3 revision 23", () => {
+    expect(words(testMessages.fileNotSaved("reply.md", ["summary.md"]))).toBe(
+      "Expected the run to save reply.md, but it didn't. It saved summary.md.",
+    );
   });
 });
 
@@ -52,6 +58,64 @@ describe("test's sentences", () => {
       ".",
     ]);
     expect(testMessages.someFailed(2, 1, 0.9).phrase).toContainEqual(bold("1 failed"));
+  });
+
+  it("has a sentence for each other expectation, from cli-output 3.3 revision 23", () => {
+    expect(
+      words(
+        testMessages.wentElsewhere(
+          ["Read mail", "Classify", "Draft reply", "Closed"],
+          ["Read mail", "Classify", "Draft reply", "Send reply"],
+        ),
+      ),
+    ).toBe(
+      "Expected the run to go through Read mail, Classify, Draft reply and Closed, but it went through Read mail, Classify, Draft reply and Send reply.",
+    );
+    expect(
+      words(testMessages.endedOtherwise("completed", { status: "failed", step: "Draft reply" })),
+    ).toBe("Expected the run to finish, but it failed in the step Draft reply.");
+    expect(words(testMessages.otherValue("ticket.status", "closed", "open"))).toBe(
+      'Expected ticket.status to be "closed" when the run ended, but it was "open".',
+    );
+    expect(words(testMessages.valueNotSet("ticket.status", "closed"))).toBe(
+      'Expected ticket.status to be "closed" when the run ended, but it wasn\'t set.',
+    );
+    expect(words(testMessages.fileNotSaved("reply.md", ["summary.md"]))).toBe(
+      "Expected the run to save reply.md, but it didn't. It saved summary.md.",
+    );
+    expect(words(testMessages.fileNotSaved("reply.md", []))).toBe(
+      "Expected the run to save reply.md, but it saved no files.",
+    );
+  });
+
+  it("says every status in its own words", () => {
+    expect(words(testMessages.endedOtherwise("waiting", { status: "completed" }))).toBe(
+      "Expected the run to wait for an answer, but it finished.",
+    );
+    expect(
+      words(testMessages.endedOtherwise("failed", { status: "waiting", step: "Approve" })),
+    ).toBe("Expected the run to fail, but it's waiting for an answer in the step Approve.");
+  });
+
+  it("writes context values as compact JSON, cut off nowhere", () => {
+    expect(words(testMessages.otherValue("ticket.priority", 2, null))).toBe(
+      "Expected ticket.priority to be 2 when the run ended, but it was null.",
+    );
+    expect(words(testMessages.otherValue("ticket.tags", ["refund", "vip"], { a: true }))).toBe(
+      'Expected ticket.tags to be ["refund","vip"] when the run ended, but it was {"a":true}.',
+    );
+    expect(testMessages.otherValue("ticket.status", "closed", "open").phrase).toContainEqual(
+      bold("ticket.status"),
+    );
+  });
+
+  it("lists every file the run saved, and quotes a step the workflow doesn't have", () => {
+    expect(words(testMessages.fileNotSaved("reply.md", ["a.md", "b.md", "c.md"]))).toBe(
+      "Expected the run to save reply.md, but it didn't. It saved a.md, b.md and c.md.",
+    );
+    expect(
+      words(testMessages.wentElsewhere(["Read mail", unknownStep("clos")], ["Read mail"])),
+    ).toBe('Expected the run to go through Read mail and "clos", but it went through Read mail.');
   });
 
   it("has the line for a program step without a script", () => {

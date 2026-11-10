@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `run` and `runs` from cli-output 3.4 at revision 24, with the team's calls on HAL-2703; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703; the sentences of `doctor` and the sandbox check from cli-output 3.7 and 3.8 at revision 24, with sandbox-screens 3.1 and the team's calls on HAL-2703 (HAL-2676); the sentences of the `halonic runs` list from cli-output 3.4 at revision 28 (HAL-2739)
+- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `run` and `runs` from cli-output 3.4 at revision 24, with the team's calls on HAL-2703; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703; the sentences of `doctor` and the sandbox check from cli-output 3.7 and 3.8 at revision 24, with sandbox-screens 3.1 and the team's calls on HAL-2703 (HAL-2676); the sentences of the `halonic runs` list from cli-output 3.4 at revision 28 (HAL-2739); a failed test's other expectations from cli-output 3.3 at revision 23 (HAL-2676, HAL-2690)
 
 The `halonic` command shall take every sentence it shows the user from the CLI's message catalogue, where the sentence has a key made of its area and its name, such as `usage.unknownCommand`. A sentence shall have the same words in a terminal, through a pipe and in `--json`: colour, bold, dim and the marks' plain-text stand-ins shall be the only difference.
 
@@ -26,6 +26,9 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given a `halonic test` run where the test "closes the ticket after a reject" ended in Send reply instead of Closed,
   when its lines are made,
   then the failure reads "Expected the run to end in the step Closed, but it ended in Send reply." and the last line "2 passed, 1 failed. 3 tests in 0.9 s." (cli-output 3.3).
+- Given a `halonic test` run that expected the file reply.md and saved only summary.md,
+  when the failure for its `artifacts` is made,
+  then it reads "Expected the run to save reply.md, but it didn't. It saved summary.md.", and summary.md isn't a failure of its own, because `artifacts` means "at least these" (cli-output 3.3, HAL-2690).
 - Given a run of Support reply whose step Draft reply failed because OpenAI refused the key in the secret openai-key,
   when its two lines are made,
   then line 1 names the secret and its variable, HALONIC_SECRET_OPENAI_KEY, and line 2 reads "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again." (cli-output 3.4).
