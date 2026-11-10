@@ -87,20 +87,40 @@ const isRefusal = (error: { message: string; actual?: string }): boolean =>
 /**
  * Marks the running case as one that must fail, as `it.fails` would. Vitest
  * types `fails` read-only, but its runner reads it only after the test body
- * and the `onTestFailed` hooks, so a `beforeEach` may still set it.
+ * and the `onTestFailed` hooks, so a `beforeEach` may still set it. That order
+ * isn't a documented API, so `realFailures` below doesn't rely on it.
  */
 function expectFailure(task: { readonly fails?: boolean | undefined }, fails: boolean): void {
   (task as { fails?: boolean }).fails = fails;
 }
+
+/**
+ * The listed cases that failed for a reason other than the refusal. Clearing
+ * `fails` already keeps such a failure, but if a later vitest read `fails`
+ * before the `onTestFailed` hooks, the case would quietly pass. The `afterAll`
+ * below fails the run for every case recorded here, so a real failure can't
+ * pass on any vitest. Errors from `aroundEach` fixture cleanup come after the
+ * `onTestFailed` hooks, so this check doesn't see them.
+ */
+const realFailures: string[] = [];
 
 beforeEach(({ task, onTestFailed }) => {
   if (!notOnGitYet.some(([name]) => matches(name, task.name))) return;
   expectFailure(task, true);
   onTestFailed(({ task: failed }) => {
     const errors = failed.result?.errors ?? [];
+    if (errors.length > 0 && errors.every(isRefusal)) return;
     // Any other failure is a real one: keep it.
-    if (errors.length === 0 || !errors.every(isRefusal)) expectFailure(failed, false);
+    expectFailure(failed, false);
+    realFailures.push(failed.name);
   });
+});
+
+afterAll(() => {
+  if (realFailures.length === 0) return;
+  throw new Error(
+    `These cases are listed in notOnGitYet but failed for another reason than the git.vcs-worktrees refusal:\n${realFailures.join("\n")}`,
+  );
 });
 
 vcsContract("git", gitVcsHarness(scratch, sharedRunner, plantedHooks));
