@@ -373,8 +373,6 @@ impl GitRunner {
     }
 }
 
-/// Gives git config in the environment: `GIT_CONFIG_COUNT`, then a
-/// `GIT_CONFIG_KEY_<n>` and `GIT_CONFIG_VALUE_<n>` for each entry.
 /// Whether the call is `add` with `--force`, which adds ignored files too.
 /// A path named `-f` after `--` counts as well; that only lists more.
 fn adds_ignored_files(call: &CheckedCall) -> bool {
@@ -385,6 +383,8 @@ fn adds_ignored_files(call: &CheckedCall) -> bool {
             .any(|arg| arg == "-f" || arg == "--force")
 }
 
+/// Gives git config in the environment: `GIT_CONFIG_COUNT`, then a
+/// `GIT_CONFIG_KEY_<n>` and `GIT_CONFIG_VALUE_<n>` for each entry.
 fn set_config(command: &mut Command, config: &[(OsString, OsString)]) {
     command.env("GIT_CONFIG_COUNT", config.len().to_string());
     for (index, (key, value)) in config.iter().enumerate() {
