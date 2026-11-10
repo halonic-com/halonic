@@ -67,6 +67,45 @@ verifies("engine.agent-memory-records", () => {
     expect(await memory.notes()).toEqual([]);
   });
 
+  it("leaves no trace of a forgotten note's text in the store", async () => {
+    const { memory, records } = memoryOf("clerk");
+    await memory.save("Refunds", "Ask for the order number");
+    await memory.save("Refunds", "Check the date first");
+    await memory.save("Shipping", "Two days");
+
+    await memory.forget("Refunds");
+
+    const kept = await records.changes(agentMemoryCollection("clerk"));
+    expect(JSON.stringify(kept)).not.toMatch(/refunds|order number|date first/i);
+    expect(kept).toEqual([
+      {
+        at: "2026-01-05T09:00:00.500Z",
+        collection: "agent-memory/clerk",
+        id: "shipping",
+        op: "seed",
+        values: { title: "Shipping", text: "Two days" },
+      },
+    ]);
+  });
+
+  it("drops a replaced text from the store, but doesn't compact for a new note", async () => {
+    const { memory, records } = memoryOf("clerk");
+    await memory.save("Refunds", "Ask for the order number");
+    await memory.save("Shipping", "Two days");
+    const collection = agentMemoryCollection("clerk");
+    expect((await records.changes(collection)).map((change) => change.op)).toEqual(["add", "add"]);
+
+    await memory.save("refunds", "Check the date first");
+
+    const kept = await records.changes(collection);
+    expect(JSON.stringify(kept)).not.toContain("order number");
+    expect(kept.map((change) => change.op)).toEqual(["seed", "seed"]);
+    expect((await memory.notes()).map((note) => note.text)).toEqual([
+      "Two days",
+      "Check the date first",
+    ]);
+  });
+
   it("keeps each agent's notes apart, listed by title", async () => {
     const records = memoryRecords();
     const clerk = memoryOf("clerk", records).memory;

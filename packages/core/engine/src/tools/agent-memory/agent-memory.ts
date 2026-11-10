@@ -42,6 +42,11 @@ export interface AgentMemoryOptions {
  * One agent's notes in the collection {@link agentMemoryCollection} names.
  * A note is found by its title, ignoring case and the spaces around it, so
  * saving a title again replaces that note.
+ *
+ * The store only appends, so a replaced or forgotten text would stay in its
+ * log. After each replace and forget the collection is compacted, as the
+ * token store does for `_tokens` (ADR 2026-11-08), so a forgotten note is
+ * gone from Halonic's store. The note limits keep that cheap.
  */
 export class AgentMemory {
   private readonly options: AgentMemoryOptions;
@@ -103,6 +108,9 @@ export class AgentMemory {
     await this.options.records.append([
       this.change(id, exists ? "update" : "add", at, { title: trimmed, text }),
     ]);
+    if (exists) {
+      await this.dropOldTexts();
+    }
     return { title: trimmed, text, at };
   }
 
@@ -115,8 +123,14 @@ export class AgentMemory {
     }
     const at = this.options.clock.now().toISOString();
     await this.options.records.append([this.change(id, "remove", at, null)]);
+    await this.dropOldTexts();
     const { title: saved } = record.values;
     return typeof saved === "string" ? saved : title.trim();
+  }
+
+  /** Compacts the collection, so replaced and removed texts leave the store. */
+  private dropOldTexts(): Promise<void> {
+    return this.options.records.compact(this.collection);
   }
 
   private changes(): Promise<RecordChange[]> {
