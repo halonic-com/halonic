@@ -23,18 +23,22 @@ const tones: Record<ToastTone, { readonly icon: ReactNode; readonly colour: stri
   danger: { icon: <AlertIcon />, colour: "text-danger" },
 };
 
-/** The card fades in and out; nothing slides. The transparent edge shows in high contrast. */
+/**
+ * The card fades in and out; nothing slides. Forced colours drop the shadow, so a transparent
+ * outline, inside the box so nothing grows, becomes its edge there.
+ */
 const card = [
-  "pointer-events-auto flex items-start gap-2 rounded-md border border-transparent p-3",
-  "bg-surface-raised shadow-2 transition-opacity duration-(--duration-fast) starting:opacity-0",
+  "pointer-events-auto flex items-start gap-2 rounded-md p-3 outline-1 outline-transparent",
+  "-outline-offset-1 bg-surface-raised shadow-2 transition-opacity duration-(--duration-fast)",
+  "starting:opacity-0",
 ].join(" ");
 
 /**
  * A text button in `accent-text` with no padding, so a wrapped label starts at the text's left
- * edge; on touch its 48px hit area is a pseudo-element.
+ * edge; hover underlines it, and on touch its 48px hit area is a pseudo-element.
  */
 const actionButton = [
-  "rounded-xs text-left text-body-strong text-accent-text focus-ring",
+  "rounded-xs text-left text-body-strong text-accent-text hover:underline focus-ring",
   "phone:hit-touch touch:hit-touch",
 ].join(" ");
 
@@ -73,7 +77,7 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
       ref={box}
       data-toast={toast.id}
       role={toast.tone === "danger" ? "alert" : "status"}
-      className={waiting ? "sr-only" : `${card}${leaving ? " opacity-0" : ""}`}
+      className={waiting ? "sr-only" : `${card} ${leaving ? "opacity-0 ease-exit" : "ease-enter"}`}
       onPointerEnter={(event) => setHovered(event.pointerType === "mouse")}
       onPointerLeave={() => setHovered(false)}
       onPointerDown={(event) => setPressed(event.pointerType !== "mouse")}
@@ -88,7 +92,7 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
       >
         {tone.icon}
       </span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
         <div className="min-w-0 flex-[1_1_10rem] wrap-break-word">
           <p className="text-body-strong text-fg">{toast.title}</p>
           {toast.text === undefined ? null : (

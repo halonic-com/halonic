@@ -84,6 +84,8 @@ verifies("kit.toast", () => {
     expect(card?.className).toContain("rounded-md");
     expect(card?.className).toContain("bg-surface-raised shadow-2");
     expect(card?.className).toContain("p-3");
+    expect(card?.className).toContain("outline-1 outline-transparent -outline-offset-1");
+    expect(card?.className).toContain("ease-enter");
     expect(card?.querySelector("[aria-hidden]")?.className).toContain("text-success");
     expect(card?.textContent).toContain("Sorter is ready to run.");
     expect(button(container, "Close Agent saved")).toBeTruthy();
@@ -105,7 +107,7 @@ verifies("kit.toast", () => {
       { tone: "info", title: "Run moved", action: { label: "Undo", onClick: () => undefined } },
     );
     pass(5000);
-    expect(cards(container)[0]?.className).toContain("opacity-0");
+    expect(cards(container)[0]?.className).toContain("opacity-0 ease-exit");
     pass(TOAST_FADE_MS);
     expect(drawn(container)).toEqual(["Run moved"]);
     pass(5000 - TOAST_FADE_MS);
@@ -155,9 +157,10 @@ verifies("kit.toast", () => {
     const { container } = render(<ToastRegion store={store} />);
     show({ tone: "danger", title: "Signed out", action: { label: "Sign in", onClick: vi.fn() } });
     const action = button(container, "Sign in");
-    expect(action.parentElement?.className).toContain("flex-wrap");
+    expect(action.parentElement?.className).toContain("flex-wrap items-start");
     expect(action.parentElement?.firstElementChild?.className).toContain("flex-[1_1_10rem]");
     expect(action.className).toContain("max-w-full flex-none");
+    expect(action.className).toContain("hover:underline");
     expect(action.className).toContain("phone:hit-touch");
   });
 

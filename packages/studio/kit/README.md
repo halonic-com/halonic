@@ -982,9 +982,11 @@ toasts.show({
 
 Bottom right, 16px in, 360px wide (`w-toast`), 8px apart, newest at the bottom, at
 `--layer-toast`. A card is `surface-raised`, 12px radius, `shadow-2`: the tone's icon, the title,
-one line in `fg-muted`, at most one action as an `accent-text` text button, and a close button
-named "Close" and the title. Tones are those of the Status chip: `success`, `info` (accent),
-`running`, `warning`, `danger`. It fades in and out in 120ms; nothing slides.
+one line in `fg-muted`, at most one action as an `accent-text` text button on the title line
+(underlined on hover, no fill), and a close button named "Close" and the title. Tones are those of
+the Status chip: `success`, `info` (accent), `running`, `warning`, `danger`. Only the icon carries
+the tone; the box is the same for all. It fades in and out in 120ms; nothing slides. In forced
+colours a transparent outline becomes its edge.
 
 | State   | What happens                                                                               |
 | ------- | ------------------------------------------------------------------------------------------ |

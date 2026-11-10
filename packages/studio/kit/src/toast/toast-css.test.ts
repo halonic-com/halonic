@@ -14,6 +14,13 @@ verifies("kit.toast", () => {
     expect(phone).toMatch(/\.phone\\:bottom-2\s*\{\s*bottom: calc\(var\(--spacing\) \* 2\)/);
   });
 
+  it("keeps a transparent 1px outline inside the box for forced colours", async () => {
+    const css = await buildCss(["outline-1", "outline-transparent", "-outline-offset-1"]);
+    expect(css).toContain("outline-width: 1px");
+    expect(css).toContain("outline-color: transparent");
+    expect(css).toContain("outline-offset: calc(1px * -1)");
+  });
+
   it("fades out in --duration-fast", () => {
     const theme = readFileSync(new URL("../theme.css", import.meta.url), "utf8");
     expect(theme).toContain(`--duration-fast: ${TOAST_FADE_MS}ms;`);
