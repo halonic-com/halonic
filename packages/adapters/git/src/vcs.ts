@@ -1,6 +1,6 @@
 import { appendFile, lstat, mkdir, rename as move, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { Vcs, VcsCommit, VcsStatus } from "@halonicjs/ports";
+import { isPrivateWorkspacePath, type Vcs, type VcsCommit, type VcsStatus } from "@halonicjs/ports";
 import {
   logArgs,
   noRepositoryStatus,
@@ -30,9 +30,6 @@ export interface GitVcsOptions {
   author: GitAuthor;
 }
 
-/** The runtime folder `init` keeps out of the repository. */
-const runtimeFolder = /^\.studio(?:\/|$)/iu;
-
 /**
  * The `Vcs` port on the real git program, for one workspace folder, always
  * hardened (see the port's doc and {@link GitRunner}). The folder is a
@@ -56,8 +53,14 @@ export class GitVcs implements Vcs {
     const repository = await Repository.open(this.#runner, this.#folder);
     if (repository === null) return { ...noRepositoryStatus, changes: [] };
     const status = parseStatus(await repository.output({ args: statusArgs }));
-    // A second guard behind `init`'s exclude: Halonic's runtime data is never a change.
-    status.changes = status.changes.filter((change) => !runtimeFolder.test(change.path));
+    // A second guard behind `init`'s exclude: Halonic's runtime data in
+    // `.studio`, and `.env` and the other private files, are never a
+    // change, as `snapshot` and `listAt` never take them.
+    status.changes = status.changes.filter(
+      (change) =>
+        !isPrivateWorkspacePath(change.path) &&
+        (change.from === undefined || !isPrivateWorkspacePath(change.from)),
+    );
     return status;
   }
 

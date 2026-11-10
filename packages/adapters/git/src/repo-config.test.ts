@@ -114,3 +114,53 @@ verifies("git.repo-config", () => {
     });
   });
 });
+
+verifies("git.repo-leaks", () => {
+  describe("the repository's config", () => {
+    it("sends each remote's upload and receive programs back to git's defaults", () => {
+      const overrides = neutralisePrograms([
+        entry("local", "remote.Origin.uploadpack", "planted"),
+        entry("local", "remote.a.b.receivepack", "planted"),
+        entry("local", "remote.origin.url", "https://acme.example/a.git"),
+      ]);
+      expect(overrides).toEqual([
+        ["remote.Origin.uploadpack", "git-upload-pack"],
+        ["remote.a.b.receivepack", "git-receive-pack"],
+      ]);
+    });
+
+    it("refuses URL rewrites, which send pull and push to another server", () => {
+      for (const key of [
+        "url.https://acme.example/.insteadof",
+        "url.ssh://acme.example/.pushInsteadOf",
+      ]) {
+        expect(() => checkRefusedKeys([entry("local", key, "https://github.com/")]), key).toThrow(
+          key,
+        );
+      }
+      expect(() =>
+        checkRefusedKeys([entry("local", "url.https://acme.example/.name", "x")]),
+      ).not.toThrow();
+    });
+
+    it("refuses a weakened certificate check, also for one URL", () => {
+      for (const key of [
+        "http.sslverify",
+        "http.https://acme.example/.sslVerify",
+        "http.sslcainfo",
+        "http.https://acme.example/.sslcapath",
+      ]) {
+        expect(() => checkRefusedKeys([entry("local", key, "false")]), key).toThrow(key);
+      }
+      expect(() =>
+        checkRefusedKeys([entry("local", "http.proxy", "http://proxy.acme.example")]),
+      ).not.toThrow();
+    });
+
+    it("refuses config hooks, which newer git runs whatever core.hooksPath says", () => {
+      for (const key of ["hook.planted.command", "Hook.planted.event"]) {
+        expect(() => checkRefusedKeys([entry("local", key, "planted")]), key).toThrow(key);
+      }
+    });
+  });
+});
