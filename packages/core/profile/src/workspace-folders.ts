@@ -24,8 +24,12 @@ const workspacesFolderName = "workspaces";
  */
 const keyLength = 32;
 
-/** A deployment id, as `deployments.yaml` allows it. */
-const deploymentIdPattern = /^[a-z0-9][a-z0-9_-]{0,127}$/;
+/**
+ * A deployment id, as `deployments.yaml` allows it: at most 64 characters,
+ * which keeps the runs folder's path under Windows' 260-character limit.
+ * The format's own test checks that both rules accept the same ids.
+ */
+const deploymentIdPattern = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 /** Names Windows keeps for devices; a folder can't have them. */
 const windowsDeviceNames = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/;
@@ -137,7 +141,7 @@ function withoutVerbatimPrefix(path: string): string {
 function checkDeploymentId(deploymentId: string): void {
   if (!deploymentIdPattern.test(deploymentId) || windowsDeviceNames.test(deploymentId)) {
     throw new RangeError(
-      `Not a deployment id: ${JSON.stringify(deploymentId)}. Use 1 to 128 lowercase letters, digits, '-' or '_', starting with a letter or digit.`,
+      `Not a deployment id: ${JSON.stringify(deploymentId)}. Use 1 to 64 lowercase letters, digits, '-' or '_', starting with a letter or digit, and not a name Windows keeps for a device.`,
     );
   }
 }

@@ -104,12 +104,19 @@ verifies("profile.workspace-folders", () => {
   });
 
   describe("deployment ids", () => {
-    it.each(["../staging", "Staging", "", "-staging", "con", "lpt1", "a".repeat(129)])(
+    it.each(["../staging", "Staging", "", "-staging", "con", "lpt1", "a".repeat(65)])(
       "refuses %j",
       async (deploymentId) => {
         const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
         expect(() => folders.runsFolder(deploymentId)).toThrow(RangeError);
       },
     );
+
+    it.each(["a", "com10", "console", "a".repeat(64)])("accepts %j", async (deploymentId) => {
+      const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+      expect(folders.runsFolder(deploymentId)).toBe(
+        `${folders.folder}/deployments/${deploymentId}/runs`,
+      );
+    });
   });
 });

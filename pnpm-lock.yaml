@@ -736,6 +736,9 @@ importers:
         specifier: workspace:*
         version: link:../yaml
     devDependencies:
+      '@halonicjs/profile':
+        specifier: workspace:*
+        version: link:../profile
       '@halonicjs/testing-parity':
         specifier: workspace:*
         version: link:../../testing/parity
