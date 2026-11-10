@@ -8,8 +8,16 @@
 // In 0.1 it has no Halonic tools, no connectors and no harnesses: a run whose
 // agent names a harness fails at that step with the engine's own error.
 
-import { realpath } from "node:fs/promises";
-import { FileRecordStore, FolderBlobStore, FolderRunStore } from "@halonicjs/adapter-fs-node";
+import { mkdir, realpath } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  FileRecordStore,
+  FolderBlobStore,
+  FolderRunStore,
+  type HeldLock,
+  holdLock,
+  LockHeldError,
+} from "@halonicjs/adapter-fs-node";
 import {
   type NodeScheduler,
   nodeSchedulerFactory,
@@ -19,14 +27,25 @@ import {
 } from "@halonicjs/adapter-scheduler-node";
 import { LocalExecutor, type RunDefinitions } from "@halonicjs/engine";
 import type { Clock, HttpClient, IdGenerator, RunStore, Secrets } from "@halonicjs/ports";
-import { type ProfileEnvironment, profileFolder, workspaceFolders } from "@halonicjs/profile";
-import { randomIds, systemClock } from "@halonicjs/std";
+import {
+  type ProfileEnvironment,
+  profileFolder,
+  type WorkspaceFolders,
+  workspaceFolders,
+} from "@halonicjs/profile";
+import { KindedError, randomIds, systemClock } from "@halonicjs/std";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { workspaceModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 /** The collection of the workspace's record store that keeps the run timers. */
 export const runTimerCollection = "halonic.run-timers";
+
+/** The file in the workspace's folder in the profile that the one engine on it holds. */
+export const engineLockFile = "engine.lock";
+
+/** What an error the engine handles itself came from: the scheduler, or the engine's lock. */
+export type EngineErrorSource = SchedulerErrorSource | "engine-lock";
 
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
@@ -39,10 +58,11 @@ export interface LocalEngineInput {
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   /**
-   * Hears every error the scheduler handles itself, such as a run's step
-   * that threw and will be retried. Nothing here stops the engine.
+   * Hears every error the engine handles itself: one the scheduler handles,
+   * such as a run's step that threw and will be retried, or one with the
+   * engine's lock. Only a lost lock stops the engine, which then closes.
    */
-  reportError(error: unknown, source: SchedulerErrorSource): void;
+  reportError(error: unknown, source: EngineErrorSource): void;
   /** Where the profile folder is; this process's by default. */
   readonly environment?: ProfileEnvironment;
   /** The time; the computer's clock by default. */
@@ -60,7 +80,7 @@ export interface LocalEngine {
   readonly runs: RunStore;
   /**
    * Closes the executor, then the scheduler, which waits for the step in
-   * progress. A run that is still going stays in the run store; the next
+   * progress, and releases the workspace's engine lock. Safe to call twice. A run that is still going stays in the run store; the next
    * engine on this workspace moves it on from its timers, or ends it as
    * `interrupted` when it was a harness run.
    */
@@ -70,9 +90,17 @@ export interface LocalEngine {
 /**
  * Opens the engine of the workspace in `input.workspaceRoot`: the local
  * executor on the workspace's run store, blob store and a scheduler whose
- * timers survive a restart, with the workspace's models. The executor
- * assumes it is the only engine on this run store.
+ * timers survive a restart, with the workspace's models.
  *
+ * It is the only engine on the workspace while it is open (HAL-4032): it
+ * holds {@link engineLockFile} in the workspace's folder in the profile,
+ * with the run lock's rules, so a second engine can't deliver the same
+ * timer and make a model call twice. The lock of an engine that crashed is
+ * taken over. Should another process take the lock over all the same,
+ * because this one stalled for longer than the lock's stale limit, the
+ * engine reports it and closes.
+ *
+ * @throws KindedError `conflict` when another engine is open on the workspace
  * @throws when the workspace folder doesn't exist, or `HALONIC_HOME` or the
  *   home folder isn't an absolute folder
  *
@@ -82,12 +110,32 @@ export interface LocalEngine {
  * await engine.close();
  */
 export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEngine> {
-  const clock = input.clock ?? systemClock;
   const folders = await workspaceFolders(
     profileFolder(input.environment ?? nodeProfileEnvironment()),
     await realpath(input.workspaceRoot),
     webCryptoDigest,
   );
+  await mkdir(folders.folder, { recursive: true });
+  let engine: LocalEngine | undefined;
+  const lock = await holdEngineLock(join(folders.folder, engineLockFile), {
+    onLost: (error) => {
+      input.reportError(error, "engine-lock");
+      void engine?.close().catch((closeError) => input.reportError(closeError, "engine-lock"));
+    },
+    onRenewError: (error) => input.reportError(error, "engine-lock"),
+  });
+  try {
+    engine = engineOn(input, folders, lock);
+    return engine;
+  } catch (error) {
+    await lock.release();
+    throw error;
+  }
+}
+
+/** The engine on the workspace's folders in the profile, which holds `lock` until it is closed. */
+function engineOn(input: LocalEngineInput, folders: WorkspaceFolders, lock: HeldLock): LocalEngine {
+  const clock = input.clock ?? systemClock;
   const runs = new FolderRunStore(folders.runsFolder());
 
   // The scheduler's listener needs the executor, and the executor needs the
@@ -126,15 +174,46 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     },
   });
   const opened = executor;
+  let closing: Promise<void> | undefined;
   return {
     executor: opened,
     runs,
-    close: async () => {
-      // Before the scheduler: its close waits for the deliveries in progress.
-      await opened.close();
-      await scheduler.close();
+    close: () => {
+      closing ??= (async () => {
+        try {
+          // Before the scheduler: its close waits for the deliveries in progress.
+          await opened.close();
+          await scheduler.close();
+        } finally {
+          // Last, so no other engine starts while this one still delivers a timer.
+          await lock.release();
+        }
+      })();
+      return closing;
     },
   };
+}
+
+/**
+ * Takes the engine's lock, or refuses with a `conflict` the CLI can show:
+ * the lock's own error names a path in the profile, so it is only the cause.
+ */
+async function holdEngineLock(
+  file: string,
+  options: Parameters<typeof holdLock>[1],
+): Promise<HeldLock> {
+  try {
+    return await holdLock(file, options);
+  } catch (error) {
+    if (!(error instanceof LockHeldError)) {
+      throw error;
+    }
+    const who = error.holder === null ? "" : ` (process ${error.holder.pid})`;
+    throw new KindedError("conflict", `Another Halonic engine is open on this workspace${who}.`, {
+      fix: "Wait until it has finished or stop it, then run again.",
+      cause: error,
+    });
+  }
 }
 
 /**

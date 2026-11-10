@@ -1,15 +1,22 @@
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { RunHistory, WorkflowRuns } from "@halonicjs/app";
-import type { HttpClient, Secrets } from "@halonicjs/ports";
-import type { ProfileEnvironment } from "@halonicjs/profile";
+import { type HttpClient, runLockFormat, type Secrets } from "@halonicjs/ports";
+import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type LocalEngine, openLocalEngine, runDefinitionsOf } from "./local-engine-host.ts";
+import {
+  engineLockFile,
+  type LocalEngine,
+  openLocalEngine,
+  runDefinitionsOf,
+} from "./local-engine-host.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
 
 /** The Acme example, on the test model: Support reply takes Sam's email down the refund path. */
@@ -54,6 +61,13 @@ async function openEngine(): Promise<LocalEngine> {
   });
   opened.push(engine);
   return engine;
+}
+
+/** The engine lock of the Acme workspace, in its only folder in the profile. */
+async function acmeEngineLock(): Promise<string> {
+  const workspaces = join(profileFolder(profile).root, "workspaces");
+  const [key] = await readdir(workspaces);
+  return join(workspaces, key ?? "", engineLockFile);
 }
 
 async function samsEmail(): Promise<Record<string, unknown>> {
@@ -132,6 +146,67 @@ verifies("cli.local-engine", () => {
     expect(() => runDefinitionsOf(workspace, "support", "weekly-report")).toThrow(
       new RangeError('The hub "support" has no workflow "weekly-report".'),
     );
+  });
+});
+
+verifies("cli.local-engine-lock", () => {
+  it("refuses a second engine on the workspace while the first is open", async () => {
+    await openEngine();
+
+    const second = openEngine();
+
+    await expect(second).rejects.toBeInstanceOf(KindedError);
+    await expect(second).rejects.toMatchObject({
+      kind: "conflict",
+      message: `Another Halonic engine is open on this workspace (process ${process.pid}).`,
+      fix: "Wait until it has finished or stop it, then run again.",
+    });
+  });
+
+  it("opens the next engine once the first is closed, and closes twice safely", async () => {
+    const first = await openEngine();
+    await first.close();
+    await first.close();
+
+    await expect(openEngine()).resolves.toBeDefined();
+  });
+
+  it("takes over the lock an engine left when its process ended", async () => {
+    await (await openEngine()).close();
+    const exited = spawnSync(process.execPath, ["--eval", ""]).pid;
+    const left = {
+      version: runLockFormat,
+      pid: exited,
+      host: hostname(),
+      takenAt: new Date().toISOString(),
+    };
+    await writeFile(await acmeEngineLock(), JSON.stringify(left), "utf8");
+
+    await openEngine();
+
+    expect(JSON.parse(await readFile(await acmeEngineLock(), "utf8")).pid).toBe(process.pid);
+  });
+
+  it("with two engines on the Acme example, runs each step of Support reply once", async () => {
+    const engine = await openEngine();
+    const started = await new WorkflowRuns(engine.executor).startRun(
+      workspace,
+      "support-reply",
+      await samsEmail(),
+    );
+    if (started.found !== "one") throw new Error("Support reply didn't start.");
+    await expect(openEngine()).rejects.toMatchObject({ kind: "conflict" });
+
+    const { summary } = started.run;
+    await engine.executor.send(summary.id, "approve");
+    await new WorkflowRuns(engine.executor).follow(summary.id, { after: summary.lastSeq });
+
+    const entered = (await engine.runs.events(summary.id)).flatMap((event) =>
+      event.type === "state.entered" ? [event.state] : [],
+    );
+    expect(entered).toEqual([...new Set(entered)]);
+    expect(entered).toContain("replied");
+    expect(schedulerErrors).toEqual([]);
   });
 });
 
