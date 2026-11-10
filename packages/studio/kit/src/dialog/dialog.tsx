@@ -118,14 +118,15 @@ export function Dialog(props: DialogProps) {
       style={heightStyle(props.height, phone)}
       {...events}
     >
-      {form ? (
-        <form className="contents" noValidate onSubmit={(event) => submit(event, confirm)}>
-          {content}
-        </form>
-      ) : (
-        content
-      )}
-      <ModalRegions />
+      <ModalRegions>
+        {form ? (
+          <form className="contents" noValidate onSubmit={(event) => submit(event, confirm)}>
+            {content}
+          </form>
+        ) : (
+          content
+        )}
+      </ModalRegions>
     </dialog>
   );
 }

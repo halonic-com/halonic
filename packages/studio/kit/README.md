@@ -1193,6 +1193,32 @@ only a `string`, so passing a secret is a type error, and the button throws if o
 cast. A `SecretText` turned into text by accident shows `[secret]`; only the request that saves it
 calls `reveal()`.
 
+## ClipboardProvider and ToastStoreProvider
+
+Two services the shell sets at its root, so a kit part can copy and confirm without the screen
+passing anything. The CommandBox uses both.
+
+```tsx
+<ClipboardProvider writeClipboard={(text) => desktop.writeClipboard(text)}>
+  <ToastStoreProvider store={toasts}>
+    <App />
+    <ToastRegion store={toasts} />
+  </ToastStoreProvider>
+</ClipboardProvider>;
+```
+
+| Provider             | What it gives                                                        |
+| -------------------- | -------------------------------------------------------------------- |
+| `ClipboardProvider`  | How to copy: Tauri's clipboard. Resolves `true` or `false`, no throw |
+| `ToastStoreProvider` | The window's toast store, the one its `ToastRegion` shows            |
+
+Without a `ClipboardProvider`, parts copy with `navigator.clipboard`, which needs a secure
+context, and fall back to the browser's copy command for a phone that reaches the computer over
+plain http. Without a `ToastStoreProvider`, a part has no toasts and says what happened itself.
+
+A Dialog also gives the parts inside it its own polite region, because toasts wait while a
+dialog is open: a part says "Copied" there instead.
+
 ## ExternalLink
 
 A link to a page outside Studio, such as a Google Cloud Console page. Its text says where it goes
