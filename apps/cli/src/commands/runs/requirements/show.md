@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2742; C174 on HAL-2000 and HAL-1984; the CLI output design on HAL-1981 (cli-output section 3.4, "`halonic runs show <run-id>`" and "Which id", revisions 24 to 38), approved by the board on HAL-2123
 
-The `halonic runs show <run-id>` command shall show one run of the workspace, real or test, found by its short id or its full id in any case. It shall start with the heading: the workflow's title, the workspace, "run" or "test run" with the short id, when it started and how it ended, with times written by the list's When rule. After the heading and a blank line it shall print one line per step the run reached, as `cli.run-view` lines them up; a finished run shall then end as a finished `halonic run` does, with "✓ <title> finished in <duration>." and the receipt indented under it. A run waiting at a wait step shall end, after a blank line, with `halonic run`'s two waiting lines word for word: "! Waiting for you: <description>" (or "! Waiting for you in the step <step>." without one) and the way to answer, indented, and no receipt. With `--json`, it shall give the run's events, oldest first, with full ids. It shall never print where the run log is. It shall exit 0 for any run it shows, failed or not. An unknown id shall stop with "There's no run" and the way to the list (`not_found`); a short id that two runs end in shall stop with the way to the full ids (`invalid_input`); no run id or more than one shall be a usage error. Every suggested command shall keep the user's `--dir`.
+The `halonic runs show <run-id>` command shall show one run of the workspace, real or test, found by its short id or its full id in any case. It shall start with the heading: the workflow's title, the workspace, "run" or "test run" with the short id, when it started and how it ended, with times written by the list's When rule. After the heading and a blank line it shall print one line per step the run reached, as `cli.run-view` lines them up; a finished run shall then end as a finished `halonic run` does, with "✓ <title> finished in <duration>." and the receipt indented under it. A run waiting at a wait step shall end, after a blank line, with `halonic run`'s two waiting lines word for word: "! Waiting for you: <description>" (or "! Waiting for you in the step <step>." without one) and the way to answer, indented, and no receipt. A failed or stopped run shall end, after a blank line, with `halonic run`'s two failure lines, "✕" and line 1, then the fix indented, and the receipt indented under them; a run cancelled somewhere else shall instead end with one ✕ line that says where the cancel landed (in a step, before a step, or before it started), and the receipt. With `--json`, it shall give the run's events, oldest first, with full ids. It shall never print where the run log is. It shall exit 0 for any run it shows, failed or not. An unknown id shall stop with "There's no run" and the way to the list (`not_found`); a short id that two runs end in shall stop with the way to the full ids (`invalid_input`); no run id or more than one shall be a usage error. Every suggested command shall keep the user's `--dir`.
 
 ## Examples
 
@@ -20,6 +20,12 @@ The `halonic runs show <run-id>` command shall show one run of the workspace, re
 - Given a run that failed yesterday at 16:41,
   when `halonic runs show 01jd6m` is run,
   then its heading ends "started yesterday 16:40, failed yesterday 16:41", on stdout, and it exits 0.
+- Given a run of Mail triage that failed in its step Read the email because Ollama doesn't have llama3.2,
+  when `halonic runs show 0f0f01` is run,
+  then it ends with "✕ Mail triage failed in the step Read the email: Ollama is answering, but it doesn't have llama3.2 yet.", " Run ollama pull llama3.2, or point the model alias local at another model in models.yaml." and " Sent nothing", on stdout, and exits 0.
+- Given a run of Mail triage cancelled while it moved from Read the email to Classify,
+  when `halonic runs show 0c0c02` is run,
+  then it ends with "✕ Mail triage was cancelled before the step Classify. Nothing after it ran." and " Sent nothing".
 - Given a run waiting for the user since 10:41,
   when `halonic runs show 09d9a0` is run,
   then its heading ends "started 10:40, waiting for you since 10:41".

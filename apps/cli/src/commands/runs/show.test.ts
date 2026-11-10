@@ -186,6 +186,134 @@ verifies("cli.commands.runs.show", () => {
     });
   });
 
+  describe("a failed or stopped run", () => {
+    /** Mail triage: Writer reads the email with the local model, then the run ends. */
+    const mailTriage = [
+      "id: mail-triage",
+      "name: Mail triage",
+      "initial: read",
+      "states:",
+      "  read:",
+      "    description: Read the email",
+      "    agent: writer",
+      "    on:",
+      "      - to: classify",
+      "  classify:",
+      "    agent: writer",
+      "    on:",
+      "      - to: done",
+      "  done:",
+      "    type: final",
+      "",
+    ].join("\n");
+
+    const triage = (id: string, after: NonNullable<StoredRun["after"]>): StoredRun => ({
+      id,
+      workflowId: "mail-triage",
+      start: today("10:20:00"),
+      after,
+    });
+
+    const enteredRead: NonNullable<StoredRun["after"]> = [
+      [today("10:20:00"), { type: "state.entered", state: "read" }],
+      [today("10:20:00"), { type: "agent.started", state: "read", agent: "writer", prompt: "" }],
+    ];
+
+    beforeEach(async () => {
+      await writeFiles(acme, {
+        "models.yaml": "aliases:\n  local:\n    provider: ollama\n    model: llama3.2\n",
+        "providers/ollama.yaml": "id: ollama\nname: Ollama\ntype: ollama\nlocal: true\n",
+        "hubs/support/workflows/mail-triage.workflow.yaml": mailTriage,
+        "hubs/support/agents/writer.agent.yaml":
+          "id: writer\nname: Writer\nmodel: local\ninstructions: Read it.\n",
+      });
+    });
+
+    it("ends with run's two failure lines and the receipt, on stdout, exit 0", async () => {
+      await storeRuns(
+        triage("run_mfx3k2a1_0f0f01", [
+          ...enteredRead,
+          [
+            today("10:20:01"),
+            {
+              type: "llm.request",
+              agent: "writer",
+              provider: "ollama",
+              model: "llama3.2",
+              messages: 1,
+            },
+          ],
+          [
+            today("10:20:02"),
+            {
+              type: "run.failed",
+              state: "read",
+              error: "model llama3.2 not found",
+              reason: "model-missing",
+            },
+          ],
+        ]),
+      );
+
+      const { code, io } = await showIn(acme, "0f0f01");
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stderr).toEqual([]);
+      expect(io.stdout.slice(-3)).toEqual([
+        "✕ Mail triage failed in the step Read the email: Ollama is answering, but it doesn't have llama3.2 yet.",
+        "  Run ollama pull llama3.2, or point the model alias local at another model in models.yaml.",
+        "  Sent nothing",
+      ]);
+    });
+
+    it("gives a reason it can't name the general lines, with the engine's message", async () => {
+      await storeRuns(
+        triage("run_mfx3k2a1_0f0f02", [
+          ...enteredRead,
+          [
+            today("10:20:02"),
+            { type: "run.failed", state: "read", error: "the bank is offline", reason: "error" },
+          ],
+        ]),
+      );
+
+      const { io } = await showIn(acme, "0f0f02");
+
+      expect(io.stdout.at(-3)).toBe(
+        "✕ Mail triage failed in the step Read the email. Halonic can't tell the cause yet: the bank is offline.",
+      );
+    });
+
+    it("says where a cancel landed: in a step, between steps, or before any", async () => {
+      const cancelled = (state: string | null) =>
+        ({ type: "run.failed", state, error: "cancelled", reason: "cancelled" }) as const;
+      await storeRuns(
+        triage("run_mfx3k2a1_0c0c01", [...enteredRead, [today("10:20:05"), cancelled("read")]]),
+        triage("run_mfx3k2a1_0c0c02", [
+          ...enteredRead,
+          [today("10:20:04"), { type: "transition", from: "read", to: "classify", event: "" }],
+          [today("10:20:05"), cancelled("classify")],
+        ]),
+        triage("run_mfx3k2a1_0c0c03", [[today("10:20:05"), cancelled(null)]]),
+      );
+
+      const endOf = async (id: string) => (await showIn(acme, id)).io.stdout.slice(-2);
+
+      expect(await endOf("0c0c01")).toEqual([
+        "✕ Mail triage was cancelled in the step Read the email. Nothing after it ran.",
+        "  Sent nothing",
+      ]);
+      expect(await endOf("0c0c02")).toEqual([
+        "✕ Mail triage was cancelled before the step Classify. Nothing after it ran.",
+        "  Sent nothing",
+      ]);
+      expect(await endOf("0c0c03")).toEqual([
+        "✕ Mail triage was cancelled before it started.",
+        "  Sent nothing",
+      ]);
+    });
+  });
+
   describe("which run", () => {
     it("takes the short id in any case, or the full id", async () => {
       await storeRuns(done);

@@ -7,6 +7,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { ModelAlias, Provider } from "@halonicjs/format";
 import { assertNever } from "@halonicjs/std";
+import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspace";
 import { providerAddress } from "./doctor-workspace.ts";
 import type { RunFailure } from "./messages/run-failures.ts";
 
@@ -40,6 +41,21 @@ export interface WorkspaceModels {
   readonly aliases: ReadonlyMap<string, ModelAlias>;
   /** The provider files by id. */
   readonly providers: ReadonlyMap<string, Provider>;
+}
+
+/**
+ * The aliases a run's hub can use and the workspace's provider files, as
+ * {@link failedModelOf} reads them.
+ *
+ * @example
+ * workspaceModelsOf(loaded, "support");
+ * // { aliases: Map { "smart" => { provider: "anthropic", … } }, providers: Map { "anthropic" => { … } } }
+ */
+export function workspaceModelsOf(workspace: LoadedWorkspace, hubId: string): WorkspaceModels {
+  return {
+    aliases: modelAliases(workspace, hubId),
+    providers: new Map(filesOf(workspace, "provider").map((file) => [file.value.id, file.value])),
+  };
 }
 
 /**
