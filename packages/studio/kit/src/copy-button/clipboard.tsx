@@ -15,9 +15,9 @@ export interface ClipboardProviderProps {
 }
 
 /**
- * Sets how the CommandBox inside it copies. The desktop app's shell passes Tauri's clipboard,
- * which needs no secure context. Without a provider the kit uses `navigator.clipboard` and falls
- * back to the browser's copy command, for served mode over plain http.
+ * Sets how the CopyButton and CommandBox inside it copy. The desktop app's shell passes Tauri's
+ * clipboard, which needs no secure context. Without a provider the kit uses `navigator.clipboard`
+ * and falls back to the browser's copy command, for served mode over plain http.
  *
  * @example
  * <ClipboardProvider writeClipboard={(text) => desktop.writeClipboard(text)}>

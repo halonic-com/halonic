@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SecretText } from "../secret-text/secret-text.ts";
 import { fakeClipboard, restoreClipboard } from "../test/clipboard.ts";
 import { click, render, unmountAll } from "../test/render.tsx";
+import { ClipboardProvider, type WriteClipboard } from "./clipboard.tsx";
 import { COPIED_FOR_MS, CopyButton } from "./copy-button.tsx";
 
 function renderButton() {
@@ -99,6 +100,40 @@ verifies("kit.copy-button", () => {
     fakeClipboard("works");
     const { status } = renderButton();
     expect(status.isConnected).toBe(true);
+  });
+});
+
+verifies("kit.kit-services", () => {
+  function renderInProvider(writeClipboard: WriteClipboard) {
+    const { container } = render(
+      <ClipboardProvider writeClipboard={writeClipboard}>
+        <CopyButton text="Halonic (own app)" label="Copy the app name" />
+      </ClipboardProvider>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    const status = container.querySelector('[role="status"]') as HTMLElement;
+    return { button, status };
+  }
+
+  it("copies through the ClipboardProvider's writer, not the browser's clipboard", async () => {
+    const browser = fakeClipboard("works");
+    const writeClipboard = vi.fn<WriteClipboard>(async () => true);
+    const { button, status } = renderInProvider(writeClipboard);
+
+    await click(button);
+
+    expect(writeClipboard).toHaveBeenCalledExactlyOnceWith("Halonic (own app)");
+    expect(browser.copied).toEqual([]);
+    expect(status.textContent).toBe("Copied");
+  });
+
+  it("shows how to copy by hand when the provider's writer can't copy", async () => {
+    fakeClipboard("works");
+    const { button, status } = renderInProvider(async () => false);
+
+    await click(button);
+
+    expect(status.textContent).toBe("Couldn't copy. Select the text and copy it yourself.");
   });
 });
 

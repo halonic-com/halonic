@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { copyText } from "./copy-text.ts";
+import { useWriteClipboard } from "./clipboard.tsx";
 
 /** How long the button says "Copied" before it says "Copy" again. */
 export const COPIED_FOR_MS = 2000;
@@ -42,6 +42,7 @@ const wordClasses = "col-start-1 row-start-1";
  */
 export function CopyButton({ text, label }: CopyButtonProps) {
   refuseSecret(text);
+  const writeClipboard = useWriteClipboard();
   const [state, setState] = useState<CopyState>("ready");
   // A new copy restarts the "Copied" moment and is announced again.
   const [attempt, setAttempt] = useState(0);
@@ -55,7 +56,7 @@ export function CopyButton({ text, label }: CopyButtonProps) {
   }, [state, attempt]);
 
   async function copy() {
-    const copied = await copyText(text);
+    const copied = await writeClipboard(text);
     setAttempt((previous) => previous + 1);
     setState(copied ? "copied" : "failed");
   }
