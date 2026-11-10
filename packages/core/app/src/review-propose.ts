@@ -2,7 +2,13 @@
 // HAL-3277): they change the workspace at once, and the record keeps what
 // was there before, so the person can take it back.
 
-import type { ExpectedContent } from "@halonicjs/ports";
+import {
+  checkWorkspacePath,
+  type ExpectedContent,
+  isPrivateWorkspacePath,
+  segmentAsOpened,
+} from "@halonicjs/ports";
+import { placeOf } from "@halonicjs/workspace";
 import type { ReviewFiles } from "./review-files.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type { ProposedDelete, ProposedWrite, ProposeOutcome } from "./review-types.ts";
@@ -14,7 +20,7 @@ import type { ProposedDelete, ProposedWrite, ProposeOutcome } from "./review-typ
  * the changes it covered become ordinary ones.
  */
 export function proposeWrite(files: ReviewFiles, write: ProposedWrite): Promise<ProposeOutcome> {
-  return files.turn(write.path, async () => {
+  return guarded(files, write.path, async (trusted) => {
     const checked = await checkBefore(files, write.path, write.expected);
     if (checked.status !== "ready") {
       return checked;
@@ -28,7 +34,13 @@ export function proposeWrite(files: ReviewFiles, write: ProposedWrite): Promise<
     }
     const baseline = record === null ? before : record.baseline;
     const seen = await files.digestOf(write.content);
-    const after = await files.keep({ path: write.path, baseline, card: write.card, seen });
+    const after = await files.keep({
+      path: write.path,
+      baseline,
+      card: write.card,
+      seen,
+      ...untrustedMark(record, trusted),
+    });
     return writtenOutcome(
       files,
       record,
@@ -46,7 +58,7 @@ export function proposeWrite(files: ReviewFiles, write: ProposedWrite): Promise<
  * itself, so Reject can take it back from there.
  */
 export function proposeDelete(files: ReviewFiles, remove: ProposedDelete): Promise<ProposeOutcome> {
-  return files.turn(remove.path, async () => {
+  return guarded(files, remove.path, async (trusted) => {
     const checked = await checkBefore(files, remove.path, remove.expected);
     if (checked.status !== "ready") {
       return checked;
@@ -62,6 +74,7 @@ export function proposeDelete(files: ReviewFiles, remove: ProposedDelete): Promi
       baseline,
       card: remove.card,
       seen: "absent",
+      ...untrustedMark(record, trusted),
     };
     const after = await files.keep(
       baseline === before ? { ...deleted, trashed: { trashId: moved.trashId } } : deleted,
@@ -74,6 +87,61 @@ export function proposeDelete(files: ReviewFiles, remove: ProposedDelete): Promi
       remove.card,
     );
   });
+}
+
+/** Segments the assistant never writes under, matched as the port matches private names. */
+const offLimits = new Set([".git", ".halonic"]);
+
+/**
+ * Runs an assistant change in its file's turn, unless the assistant may not
+ * change that path (`workspace.trust.assistant-no-git-or-halonic`,
+ * `workspace.trust.assistant-untrusted-items-only`). Trust is read once per
+ * call, here, so a workspace that stops being trusted refuses the next call.
+ */
+function guarded(
+  files: ReviewFiles,
+  path: string,
+  change: (trusted: boolean) => Promise<ProposeOutcome>,
+): Promise<ProposeOutcome> {
+  const trusted = files.isTrusted();
+  if (!mayChange(path)) {
+    return Promise.resolve({ status: "refused", reason: "not-allowed" });
+  }
+  if (!trusted && placeOf(path) === undefined) {
+    return Promise.resolve({ status: "refused", reason: "untrusted" });
+  }
+  return files.turn(path, async () => {
+    try {
+      return await change(trusted);
+    } catch (error) {
+      // The store refuses a path through a link with a RangeError before it touches anything.
+      if (error instanceof RangeError) {
+        return { status: "refused", reason: "not-allowed" };
+      }
+      throw error;
+    }
+  });
+}
+
+/** Whether the assistant may change a path at all: a safe, public path outside `.git/` and every `.halonic/`. */
+function mayChange(path: string): boolean {
+  try {
+    checkWorkspacePath(path);
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return false;
+    }
+    throw error;
+  }
+  if (isPrivateWorkspacePath(path)) {
+    return false;
+  }
+  return !path.split("/").some((segment) => offLimits.has(segmentAsOpened(segment)));
+}
+
+/** The untrusted mark for a record: kept once set, and set by a change made while untrusted. */
+function untrustedMark(record: ReviewRecord | null, trusted: boolean): { writtenUntrusted?: true } {
+  return record?.writtenUntrusted === true || !trusted ? { writtenUntrusted: true } : {};
 }
 
 type CheckedBefore =

@@ -13,7 +13,7 @@ import type { FileWriter } from "./review-hook.ts";
  * workspace (they are in the profile), so there is nothing to hide.
  *
  * @example
- * const review = new ReviewService({ store, records, digest });
+ * const review = new ReviewService({ store, records, digest, isTrusted });
  * const files = new WorkspaceFiles(new ReviewingDefinitionStore(store, review.writer), events);
  */
 export class ReviewingDefinitionStore implements DefinitionStore {

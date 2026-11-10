@@ -30,7 +30,7 @@ const byAssistant = lines({ 3: "line 3 by the assistant", 8: "line 8 by the assi
 async function withTwoParts() {
   const store = new TestDefinitionStore({ [path]: lines() }, digest);
   const recordStore = new TestDefinitionStore({}, digest);
-  const review = new ReviewService({ store, records: recordStore, digest });
+  const review = new ReviewService({ isTrusted: () => true, store, records: recordStore, digest });
   await review.propose({
     path,
     content: byAssistant,
@@ -124,7 +124,12 @@ verifies("app.review-accept-reject-part", () => {
   it("removes a new file when its only part is rejected", async () => {
     const store = new TestDefinitionStore({}, digest);
     const recordStore = new TestDefinitionStore({}, digest);
-    const review = new ReviewService({ store, records: recordStore, digest });
+    const review = new ReviewService({
+      isTrusted: () => true,
+      store,
+      records: recordStore,
+      digest,
+    });
     await review.propose({ path, content: "name: Triage\n", expected: "absent", card: k1 });
     const found = await review.changesIn(path);
     if (found === null) {

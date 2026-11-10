@@ -31,6 +31,12 @@ export interface ReviewRecord {
   readonly seen: ExpectedContent;
   /** Set when the assistant deleted the file: its entry in the trash, to put it back from. */
   readonly trashed?: { readonly trashId: string };
+  /**
+   * Set when the assistant changed the file while the workspace wasn't
+   * trusted yet. Try it and Test then keep the whole file at its baseline
+   * until the record goes (`workspace.trust.untrusted-changes-held`).
+   */
+  readonly writtenUntrusted?: true;
 }
 
 /**
@@ -57,6 +63,7 @@ export function serializeReviewRecord(record: ReviewRecord): string {
     card: { chatId: record.card.chatId, cardId: record.card.cardId },
     seen: record.seen,
     ...(record.trashed === undefined ? {} : { trashed: { trashId: record.trashed.trashId } }),
+    ...(record.writtenUntrusted === true ? { writtenUntrusted: true } : {}),
   };
   return `${JSON.stringify(json, null, 2)}\n`;
 }
@@ -84,7 +91,7 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   if (!isPlainObject(json)) {
     return err("it isn't a JSON object");
   }
-  const { format, path, baseline, card: cardJson, seen, trashed } = json;
+  const { format, path, baseline, card: cardJson, seen, trashed, writtenUntrusted } = json;
   if (format !== reviewRecordFormat) {
     return err(`its format isn't ${reviewRecordFormat}`);
   }
@@ -101,7 +108,16 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   if (!isSeenDigest(seen)) {
     return err("its seen digest isn't a sha256 digest or absent");
   }
-  const record: ReviewRecord = { path, baseline, card, seen };
+  if (writtenUntrusted !== undefined && writtenUntrusted !== true) {
+    return err("its writtenUntrusted mark isn't true");
+  }
+  const record: ReviewRecord = {
+    path,
+    baseline,
+    card,
+    seen,
+    ...(writtenUntrusted === true ? { writtenUntrusted } : {}),
+  };
   if (trashed === undefined) {
     return ok(record);
   }

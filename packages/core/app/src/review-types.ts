@@ -81,7 +81,15 @@ export type ProposeOutcome =
   /** The file isn't what the model read: nothing was written, and the model reads it again. */
   | { readonly status: "changed-on-disk"; readonly current: string | null }
   /** The file changed outside Halonic since it was last seen; it waits for Compare (AI changes 1.10). */
-  | { readonly status: "held" };
+  | { readonly status: "held" }
+  /**
+   * The assistant may not change this path, and nothing was touched.
+   * `not-allowed`: inside `.git/` or a `.halonic/` folder, a private or
+   * unsafe path, or through a link, in any mode. `untrusted`: not a Halonic
+   * item file while the workspace isn't trusted yet; the tool says "Not
+   * trusted yet: only Halonic items can be changed."
+   */
+  | { readonly status: "refused"; readonly reason: "not-allowed" | "untrusted" };
 
 /** What an Accept or Reject covers. Single changes on an item page come with `revertParts` (HAL-3278). */
 export type ReviewTarget =

@@ -55,9 +55,14 @@ verifies("app.review-record", () => {
       expect((await records.all()).records.map((record) => record.path)).toEqual(["a", "a.json/b"]);
     });
 
-    it("keeps a new file's missing baseline and a deleted file's trash entry", async () => {
+    it("keeps a new file's missing baseline, a deleted file's trash entry and the untrusted mark", async () => {
       const { records } = setUp();
-      const deleted: ReviewRecord = { ...clerk, seen: "absent", trashed: { trashId: "t-1" } };
+      const deleted: ReviewRecord = {
+        ...clerk,
+        seen: "absent",
+        trashed: { trashId: "t-1" },
+        writtenUntrusted: true,
+      };
       await records.save(notes);
       await records.save(deleted);
       expect(await records.read(notes.path)).toEqual({ status: "found", record: notes });
@@ -108,6 +113,11 @@ verifies("app.review-record", () => {
         "its seen digest isn't a sha256 digest or absent",
       ],
       ["an empty trash entry", editedRecord({ trashed: {} }), "its trashed entry has no trashId"],
+      [
+        "a false untrusted mark",
+        editedRecord({ writtenUntrusted: false }),
+        "its writtenUntrusted mark isn't true",
+      ],
     ])("counts %s as unreadable", async (_name, text, reason) => {
       expect(parseReviewRecord(text)).toEqual({ ok: false, error: reason });
     });

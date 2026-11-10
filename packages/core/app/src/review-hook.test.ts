@@ -29,7 +29,12 @@ function lines(replaced: Record<number, string> = {}): string {
 async function withAssistantChange() {
   const inner = new TestDefinitionStore({ [path]: lines() }, digest);
   const recordStore = new TestDefinitionStore({}, digest);
-  const review = new ReviewService({ store: inner, records: recordStore, digest });
+  const review = new ReviewService({
+    isTrusted: () => true,
+    store: inner,
+    records: recordStore,
+    digest,
+  });
   const store = new ReviewingDefinitionStore(inner, review.writer);
   await review.propose({
     path,
@@ -77,7 +82,12 @@ verifies("app.review-other-writes-merge", () => {
   it("takes an edit to a file the assistant created as accepting all of it", async () => {
     const inner = new TestDefinitionStore({}, digest);
     const recordStore = new TestDefinitionStore({}, digest);
-    const review = new ReviewService({ store: inner, records: recordStore, digest });
+    const review = new ReviewService({
+      isTrusted: () => true,
+      store: inner,
+      records: recordStore,
+      digest,
+    });
     const store = new ReviewingDefinitionStore(inner, review.writer);
     await review.propose({ path, content: "name: Triage\n", expected: "absent", card: k1 });
     await store.write(path, "name: Triage\nstates: {}\n");

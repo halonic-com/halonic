@@ -29,6 +29,12 @@ export interface ReviewServiceOptions {
   readonly onListenerError?: ListenerErrorHandler;
   /** Where the assistant's deletes go. Without one, the assistant can't delete files. */
   readonly trash?: Trash;
+  /**
+   * Whether the workspace is trusted now. Read on every assistant write:
+   * untrusted, the assistant may change only Halonic item files
+   * (`workspace.trust.assistant-untrusted-items-only`).
+   */
+  readonly isTrusted: () => boolean;
 }
 
 interface ReviewEvents {
@@ -52,6 +58,8 @@ export class ReviewFiles {
   private readonly recordAccess = new KeyedQueue();
   private readonly events: EventBus<ReviewEvents>;
   private readonly trashBin: Trash | undefined;
+  /** Whether the workspace is trusted now. */
+  readonly isTrusted: () => boolean;
   /** The paths with a record, read once, so a write to any other file costs no extra read. */
   private reviewed: Promise<Set<string>> | null = null;
 
@@ -61,6 +69,7 @@ export class ReviewFiles {
     this.records = new ReviewRecords(options.records, options.digest);
     this.events = new EventBus<ReviewEvents>(options.onListenerError);
     this.trashBin = options.trash;
+    this.isTrusted = options.isTrusted;
   }
 
   /**

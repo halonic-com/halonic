@@ -24,6 +24,12 @@ export interface OpenWorkspaceOptions {
   reviewRecords: DefinitionStore;
   /** Hashes file text: the review records and the write-if-unchanged check need it. */
   digest: Digest;
+  /**
+   * Whether the workspace is trusted now. The review service reads it on
+   * every assistant write: untrusted, the assistant may change only
+   * Halonic item files.
+   */
+  isTrusted: () => boolean;
   /** Receives the error of an event listener that threw; see {@link WorkspaceScopeOptions}. */
   onListenerError: ListenerErrorHandler;
 }
@@ -40,6 +46,7 @@ export interface OpenWorkspaceOptions {
  *   store,
  *   reviewRecords: new FolderDefinitionStore(folders.reviewFolder()),
  *   digest,
+ *   isTrusted: () => trust.isTrusted(),
  *   onListenerError: (error) => log.error(error),
  * });
  * scope.services.get(workspaceFilesKey).change("Added an agent", { "hubs/p/agents/a.agent.yaml": "name: A\n" });
@@ -56,6 +63,7 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
       store: options.store,
       records: options.reviewRecords,
       digest: options.digest,
+      isTrusted: options.isTrusted,
       onListenerError: options.onListenerError,
     }),
   );

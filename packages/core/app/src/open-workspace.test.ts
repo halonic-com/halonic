@@ -23,6 +23,7 @@ verifies("app.review-record", () => {
       store,
       reviewRecords,
       digest,
+      isTrusted: () => true,
       onListenerError: (error) => {
         throw error;
       },
@@ -58,6 +59,7 @@ verifies("app.review-other-writes-merge", () => {
       store,
       reviewRecords: new TestDefinitionStore({}, digest),
       digest,
+      isTrusted: () => true,
       onListenerError: (error) => {
         throw error;
       },
