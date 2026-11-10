@@ -22,6 +22,8 @@ export const initMessages = defineMessages("init", {
 
   created: (name: string, folder: string) =>
     phrase`Created the workspace ${name} in ${bold(folder)}.`,
+  /** `init` with no folder, in the empty folder the user is in, where a path would only be ".". */
+  createdHere: (name: string) => phrase`Created the workspace ${name} in ${bold("this folder")}.`,
   createdExample: (folder: string) =>
     phrase`Created a copy of the Acme example in ${bold(folder)}.`,
   /** A second copy never overwrites: "… in ./acme-2. ./acme was already there." */

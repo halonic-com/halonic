@@ -1,0 +1,45 @@
+## colour: halonic init acme
+exit 0
+stdout:
+  \e[32m✓\e[39m Created the workspace acme in \e[1m./acme\e[22m.
+  
+  Next:
+    cd acme
+    halonic validate                    \e[2mcheck the files as you edit them\e[22m
+    \e[2mOr open the folder in Studio to add your first agent.\e[22m
+stderr:
+
+## NO_COLOR: halonic init acme
+exit 0
+stdout:
+  ✓ Created the workspace acme in ./acme.
+  
+  Next:
+    cd acme
+    halonic validate                    check the files as you edit them
+    Or open the folder in Studio to add your first agent.
+stderr:
+
+## --json: halonic init acme
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "workspace": {
+      "name": "acme",
+      "folder": "./acme"
+    },
+    "example": null,
+    "created": [
+      ".gitignore",
+      "workspace.yaml"
+    ],
+    "counts": {
+      "hubs": 0,
+      "agents": 0,
+      "workflows": 0,
+      "routines": 0
+    }
+  }
+stderr:

@@ -1,0 +1,28 @@
+## colour: halonic init acme
+exit 5
+stdout:
+stderr:
+  \e[31m✕\e[39m Couldn't create the workspace in ./acme: the folder isn't empty.
+    Pick a new folder name, or run it in an empty folder.
+
+## NO_COLOR: halonic init acme
+exit 5
+stdout:
+stderr:
+  ✕ Couldn't create the workspace in ./acme: the folder isn't empty.
+    Pick a new folder name, or run it in an empty folder.
+
+## --json: halonic init acme
+exit 5
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "conflict",
+      "code": "folder-not-empty",
+      "message": "the folder isn't empty.",
+      "fix": "Pick a new folder name, or run it in an empty folder."
+    }
+  }
+stderr:
