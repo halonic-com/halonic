@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
 import type {
   SandboxBlockListener,
   SandboxCommand,
@@ -27,22 +27,42 @@ const proxyVariables = new Set(
 );
 
 /**
- * The environment of the launcher, and so of the program: the profile's
- * variables, a `PATH` to find the sandbox tools when the profile has none,
- * and the session's temp folder. Never the host's own environment, and never
- * a proxy variable.
+ * The environment of the launcher, which runs outside the fence: the host's
+ * `PATH` without relative entries and without entries the program can write,
+ * and the session's temp folder. Nothing from the profile, so nothing the
+ * program influences (a planted `bwrap` on the path, `NODE_OPTIONS`,
+ * `LD_PRELOAD`) runs before the fence exists.
  */
 export function launcherEnv(
   profile: SandboxProfile,
   { PATH: hostPath }: Record<string, string | undefined> = process.env,
 ): Record<string, string> {
-  const env = new Map<string, string>();
-  if (hostPath !== undefined) env.set("PATH", hostPath);
-  env.set("TMPDIR", profile.tempFolder);
-  for (const [name, value] of Object.entries(profile.env)) {
-    if (!proxyVariables.has(name)) env.set(name, value);
+  const env: Record<string, string> = {};
+  if (hostPath !== undefined) {
+    const writable = [resolve(profile.workingFolder), resolve(profile.tempFolder)];
+    env["PATH"] = hostPath
+      .split(delimiter)
+      .filter(
+        (entry) =>
+          isAbsolute(entry) && !writable.some((folder) => isInside(folder, resolve(entry))),
+      )
+      .join(delimiter);
   }
-  return Object.fromEntries(env);
+  env["TMPDIR"] = profile.tempFolder;
+  return env;
+}
+
+/**
+ * The environment of the program, set inside the fence: the profile's
+ * variables and the session's temp folder. Never the host's own environment,
+ * and never a proxy variable.
+ */
+export function programEnv(profile: SandboxProfile): Record<string, string> {
+  const env: Record<string, string> = { TMPDIR: profile.tempFolder };
+  for (const [name, value] of Object.entries(profile.env)) {
+    if (!proxyVariables.has(name)) env[name] = value;
+  }
+  return env;
 }
 
 /** Whether `child` is `parent` or inside it. */
@@ -73,13 +93,15 @@ export class SrtSession implements SandboxSession {
   readonly #runner: Runner;
   readonly #folder: string;
   readonly #settingsPath: string;
-  readonly #env: Record<string, string>;
+  readonly #launcherEnv: Record<string, string>;
+  readonly #programEnv: Record<string, string>;
   readonly #started = new Set<Started>();
   readonly #listeners = new Set<SandboxBlockListener>();
   readonly #timer: NodeJS.Timeout;
   readonly #detach: () => void;
   #fence: SandboxFence;
   #closing: Promise<void> | null = null;
+  #timedOut = false;
 
   private constructor(
     profile: SandboxProfile,
@@ -94,7 +116,8 @@ export class SrtSession implements SandboxSession {
     this.#folder = folder;
     this.#settingsPath = settingsPath;
     this.#fence = fence;
-    this.#env = launcherEnv(profile);
+    this.#launcherEnv = launcherEnv(profile);
+    this.#programEnv = programEnv(profile);
     this.#timer = setTimeout(() => void this.#expire(), profile.timeLimitMs);
     this.#timer.unref();
     const abort = () => void this.close();
@@ -126,7 +149,8 @@ export class SrtSession implements SandboxSession {
         canaryFolder: join(folder, "canary"),
         tempFolder: profile.tempFolder,
         workingFolder: profile.workingFolder,
-        env: launcherEnv(profile),
+        launcherEnv: launcherEnv(profile),
+        programEnv: programEnv(profile),
       });
       const remaining = {
         ...profile,
@@ -166,12 +190,13 @@ export class SrtSession implements SandboxSession {
       program: command.program,
       args: command.args,
       cwd,
-      env: this.#env,
+      launcherEnv: this.#launcherEnv,
+      programEnv: this.#programEnv,
     });
     const started: Started = { program, stopped: false, timedOut: false };
     this.#started.add(started);
     // The session may have closed while the program was launching.
-    if (this.#closing !== null) await this.#stop(started);
+    if (this.#closing !== null) await this.#stop(started, this.#timedOut);
     const exited: Promise<SandboxExit> = program.ended.then(({ code, signal }) => {
       this.#started.delete(started);
       return { code, signal, reason: exitReason(started) };
@@ -200,6 +225,7 @@ export class SrtSession implements SandboxSession {
   }
 
   async #expire(): Promise<void> {
+    this.#timedOut ||= this.#closing === null;
     this.#closing ??= this.#shutDown(true);
     await this.#closing;
   }

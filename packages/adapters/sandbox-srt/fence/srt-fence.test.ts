@@ -108,6 +108,36 @@ describe("SrtSandbox with the real fence", () => {
     expect(await readFile(ticks, "utf8")).toBe(after);
   });
 
+  it("never runs a bwrap the program plants on its own PATH", async () => {
+    const marker = join(base, "planted-ran");
+    const planter = await sandbox.open({
+      ...profile(),
+      env: { HOME: join(base, "temp"), PATH: `${join(base, "work", "bin")}:/usr/bin:/bin` },
+    });
+    try {
+      const plant = await planter.start({
+        program: "sh",
+        args: [
+          "-c",
+          `mkdir -p bin && printf '#!/bin/sh\\ntouch ${marker}\\n' > bin/bwrap && chmod +x bin/bwrap`,
+        ],
+      });
+      expect((await plant.exited).code).toBe(0);
+      const next = await planter.start({ program: "echo", args: ["still fenced"] });
+      expect((await read(next.stdout)).trim()).toBe("still fenced");
+      await next.exited;
+      const reopened = await sandbox.open({
+        ...profile(),
+        env: { HOME: join(base, "temp"), PATH: `${join(base, "work", "bin")}:/usr/bin:/bin` },
+      });
+      expect(reopened.fence).toEqual({ state: "fenced" });
+      await reopened.close();
+    } finally {
+      await planter.close();
+    }
+    await expect(readFile(marker, "utf8")).rejects.toThrow();
+  });
+
   it("starts nothing after close, and removes its private folder", async () => {
     const other = await sandbox.open(profile());
     await other.close();

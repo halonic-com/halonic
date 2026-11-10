@@ -2,13 +2,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Runner, RunningProgram, RunRequest } from "./srt-runner.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
-import { launcherEnv } from "./srt-session.ts";
+import { launcherEnv, programEnv } from "./srt-session.ts";
 
 const linux = {
   platform: "linux" as const,
@@ -214,12 +214,41 @@ verifies("sandbox-srt.session", () => {
   });
 
   describe("the launcher environment", () => {
-    it("is the profile's variables, a PATH and the temp folder, and nothing else of the host", () => {
-      const env = launcherEnv(profile({ env: { HOME: "/h", FOO: "1" } }), {
-        PATH: "/usr/bin",
-        SECRET: "x",
+    it("is the host's absolute PATH and the temp folder, and nothing from the profile or the host", () => {
+      const env = launcherEnv(
+        profile({ env: { HOME: "/h", PATH: "/evil", NODE_OPTIONS: "-r x" } }),
+        {
+          PATH: "/usr/bin:/bin",
+          SECRET: "x",
+        },
+      );
+      expect(env).toEqual({ PATH: "/usr/bin:/bin", TMPDIR: join(base, "temp") });
+    });
+
+    it("drops relative PATH entries and entries the program can write", () => {
+      const env = launcherEnv(profile(), {
+        PATH: [
+          "/usr/bin",
+          "",
+          ".",
+          "node_modules/.bin",
+          join(base, "work", "node_modules", ".bin"),
+          join(base, "temp"),
+          "/bin",
+        ].join(delimiter),
       });
-      expect(env).toEqual({ PATH: "/usr/bin", TMPDIR: join(base, "temp"), HOME: "/h", FOO: "1" });
+      expect(env["PATH"]).toBe(["/usr/bin", "/bin"].join(delimiter));
+    });
+
+    it("has no PATH when the host has none", () => {
+      expect(launcherEnv(profile(), {})).toEqual({ TMPDIR: join(base, "temp") });
+    });
+  });
+
+  describe("the program environment", () => {
+    it("is the profile's variables and the temp folder, and nothing of the host", () => {
+      const env = programEnv(profile({ env: { HOME: "/h", FOO: "1" } }));
+      expect(env).toEqual({ TMPDIR: join(base, "temp"), HOME: "/h", FOO: "1" });
     });
 
     it("never carries a proxy variable, so srt finds no parent proxy to trust", () => {
@@ -229,22 +258,30 @@ verifies("sandbox-srt.session", () => {
           "http://10.0.0.9:3128",
         ]),
       );
-      const env = launcherEnv(profile({ env: { HOME: "/h", ...proxies } }), {
-        PATH: "/usr/bin",
-        ...proxies,
-      });
-      expect(Object.keys(env).sort()).toEqual(["HOME", "PATH", "TMPDIR"]);
+      const env = programEnv(profile({ env: { HOME: "/h", ...proxies } }));
+      expect(Object.keys(env).sort()).toEqual(["HOME", "TMPDIR"]);
     });
+  });
 
-    it("is what every program and the probe get, even when the host has a proxy set", async () => {
+  describe("what the probe and every program get", () => {
+    it("keeps the profile's variables out of the launcher and the host's proxy out of both", async () => {
       vi.stubEnv("HTTPS_PROXY", "http://10.0.0.9:3128");
+      vi.stubEnv("PATH", ["/usr/bin", "node_modules/.bin"].join(delimiter));
       const { runner, runs, probes } = fakeRunner();
-      const session = await new SrtSandbox(linux, runner).open(profile());
+      const session = await new SrtSandbox(linux, runner).open(
+        profile({ env: { HOME: "/h", PATH: "node_modules/.bin", LD_PRELOAD: "/x.so" } }),
+      );
       await session.start(command);
       const requests = [...probes, ...runs.map((run) => run.request)];
       expect(requests).toHaveLength(2);
       for (const request of requests) {
-        expect(Object.keys(request.env).filter((name) => /proxy/i.test(name))).toEqual([]);
+        expect(request.launcherEnv).toEqual({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
+        expect(request.programEnv).toEqual({
+          TMPDIR: join(base, "temp"),
+          HOME: "/h",
+          PATH: "node_modules/.bin",
+          LD_PRELOAD: "/x.so",
+        });
       }
       await session.close();
     });
@@ -329,6 +366,17 @@ verifies("sandbox-srt.session", () => {
       expect(runs[0]?.killed).toBe(true);
       expect(await started.exited).toEqual({ code: null, signal: "SIGKILL", reason: "timeout" });
       expect(session.fence).toEqual({ state: "stopped" });
+    });
+
+    it("says timeout for a program still launching when the time limit runs out", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+      const { runner, runs } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile({ timeLimitMs: 5000 }));
+      const starting = session.start(command);
+      await vi.advanceTimersByTimeAsync(5000);
+      const started = await starting;
+      expect(runs[0]?.killed).toBe(true);
+      expect((await started.exited).reason).toBe("timeout");
     });
 
     it("stops everything when the signal aborts, and at once when it is aborted already", async () => {

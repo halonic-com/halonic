@@ -41,8 +41,8 @@ export interface FenceProofInput {
   /** The session's temp folder, which the program can read and write. */
   tempFolder: string;
   workingFolder: string;
-  /** The launcher's environment. */
-  env: Record<string, string>;
+  launcherEnv: Record<string, string>;
+  programEnv: Record<string, string>;
 }
 
 /** Collects what comes out of a stream, as text. */
@@ -112,7 +112,8 @@ async function runProbe(
     program: process.execPath,
     args: ["-e", probeScript, controlFile, canaryFile, String(canaryPort.port)],
     cwd: input.workingFolder,
-    env: input.env,
+    launcherEnv: input.launcherEnv,
+    programEnv: input.programEnv,
   });
   const timer = setTimeout(() => probe.killTree(), probeTimeoutMs);
   try {

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-193 (plan phase 3, v1.17), HAL-2554
 
-The sandbox-srt adapter shall open a session that proves its fence before anything runs (a canary file the fence hides and a loopback port it blocks), start programs only inside a proven fence, give each session its own private settings folder, pass the program only the profile's environment and never a proxy variable, and stop the program and everything it started on `kill`, `close`, the time limit or an aborted signal.
+The sandbox-srt adapter shall open a session that proves its fence before anything runs (a canary file the fence hides and a loopback port it blocks), start programs only inside a proven fence, give each session its own private settings folder, give the launcher outside the fence only the host's absolute PATH and TMPDIR, set the profile's environment (never a proxy variable) only inside the fence, and stop the program and everything it started on `kill`, `close`, the time limit or an aborted signal.
 
 ## Examples
 

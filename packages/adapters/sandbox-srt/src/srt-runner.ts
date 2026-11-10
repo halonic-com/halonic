@@ -20,8 +20,13 @@ export interface RunRequest {
   program: string;
   args: string[];
   cwd: string;
-  /** The whole environment of the launcher, and so of the program. Nothing else is inherited. */
-  env: Record<string, string>;
+  /**
+   * The whole environment of the launcher, which runs outside the fence: only
+   * what it needs to find the sandbox tools. Nothing the program can influence.
+   */
+  launcherEnv: Record<string, string>;
+  /** The whole environment of the program. Set inside the fence, never for the launcher. */
+  programEnv: Record<string, string>;
 }
 
 /**
@@ -56,10 +61,21 @@ export const srtRunner: Runner = {
   async run(request) {
     const child = spawn(
       process.execPath,
-      [srtCliPath(), "--settings", request.settingsPath, "--", request.program, ...request.args],
+      [
+        srtCliPath(),
+        "--settings",
+        request.settingsPath,
+        "--",
+        // `env -i` sets the program's variables inside the fence, so none of them reaches the launcher.
+        "env",
+        "-i",
+        ...Object.entries(request.programEnv).map(([name, value]) => `${name}=${value}`),
+        request.program,
+        ...request.args,
+      ],
       {
         cwd: request.cwd,
-        env: request.env,
+        env: request.launcherEnv,
         stdio: ["pipe", "pipe", "pipe"],
         // Its own process group, so one signal reaches srt and everything under it.
         detached: true,
