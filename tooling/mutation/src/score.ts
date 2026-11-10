@@ -59,9 +59,35 @@ function countMutant(counts: Counts, status: string): void {
   }
 }
 
+/**
+ * The lowest score, in percent, a package may reach before the nightly run
+ * fails. Floors only go up. Packages without an entry only report.
+ */
+export const mutationFloors: Readonly<Record<string, number>> = {
+  "packages/core/yaml": 85,
+};
+
+/**
+ * True when a scored package is under its floor. A package with a floor
+ * but no mutants to score also counts as under it, so the floor can't be
+ * dodged by mutating nothing.
+ */
+export function belowFloor(score: MutationScore, floor: number | undefined): boolean {
+  if (floor === undefined) {
+    return false;
+  }
+  return score.score === null || score.score < floor;
+}
+
 /** The outcome for one package in a nightly run. */
 export type PackageResult =
-  | { readonly name: string; readonly kind: "scored"; readonly score: MutationScore }
+  | {
+      readonly name: string;
+      readonly kind: "scored";
+      readonly score: MutationScore;
+      /** The package's floor in percent, when it has one. */
+      readonly floor?: number;
+    }
   | { readonly name: string; readonly kind: "no-code" }
   | { readonly name: string; readonly kind: "failed"; readonly reason: string };
 
@@ -70,12 +96,16 @@ function row(result: PackageResult): string {
     case "scored": {
       const { score, detected, survived, noCoverage, errors } = result.score;
       const percent = score === null ? "no mutants" : `${score.toFixed(1)}%`;
-      return `| ${result.name} | ${percent} | ${detected} | ${survived} | ${noCoverage} | ${errors} |`;
+      const floor = result.floor === undefined ? "none" : `${result.floor}%`;
+      const verdict = belowFloor(result.score, result.floor)
+        ? `${percent} (under the floor)`
+        : percent;
+      return `| ${result.name} | ${verdict} | ${floor} | ${detected} | ${survived} | ${noCoverage} | ${errors} |`;
     }
     case "no-code":
-      return `| ${result.name} | no code yet | | | | |`;
+      return `| ${result.name} | no code yet | | | | | |`;
     case "failed":
-      return `| ${result.name} | failed: ${result.reason} | | | | |`;
+      return `| ${result.name} | failed: ${result.reason} | | | | | |`;
   }
 }
 
@@ -84,10 +114,10 @@ export function summaryTable(results: readonly PackageResult[]): string {
   return [
     "## Mutation score per package",
     "",
-    "Report only: no floor yet. Survived includes the mutants no test reached.",
+    "A package with a floor fails the run when its score is under it. Survived includes the mutants no test reached.",
     "",
-    "| Package | Score | Detected | Survived | No coverage | Errors |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| Package | Score | Floor | Detected | Survived | No coverage | Errors |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
     ...results.map(row),
     "",
   ].join("\n");

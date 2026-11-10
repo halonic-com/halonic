@@ -1,7 +1,9 @@
 /** Public entry point of tooling/mutation, for tests and other tooling. */
 export {
+  belowFloor,
   type MutationReport,
   type MutationScore,
+  mutationFloors,
   type PackageResult,
   scoreOf,
   summaryTable,

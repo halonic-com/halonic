@@ -11,16 +11,23 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { findRepoRoot } from "@halonicjs/tooling-check";
-import { type MutationReport, type PackageResult, scoreOf, summaryTable } from "../score.ts";
+import {
+  belowFloor,
+  type MutationReport,
+  mutationFloors,
+  type PackageResult,
+  scoreOf,
+  summaryTable,
+} from "../score.ts";
 import { hasCode, mutationTargets, sandboxEnv, strykerConfig } from "../targets.ts";
 
 /**
  * node tooling/mutation/src/cli/mutation.ts [<package folder> ...]
  *
  * Runs Stryker on each mutation target that has code and prints the score
- * per package, also into the GitHub job summary. Report
- * only: a low score never fails. Only a Stryker run that breaks does, so
- * a broken nightly run is noticed.
+ * per package, also into the GitHub job summary. A package with a floor
+ * (see `mutationFloors`) fails the run when it scores under it, and so does
+ * a Stryker run that breaks, so a broken or slipping nightly run is noticed.
  */
 
 const require = createRequire(import.meta.url);
@@ -35,6 +42,7 @@ function mutate(root: string, target: string, workFolder: string): PackageResult
   if (!hasCode(packageDirectory)) {
     return { name, kind: "no-code" };
   }
+  const floor = mutationFloors[target];
   const report = join(workFolder, `${name}.json`);
   const config = join(workFolder, `${name}.stryker.json`);
   const paths = {
@@ -56,6 +64,7 @@ function mutate(root: string, target: string, workFolder: string): PackageResult
     name,
     kind: "scored",
     score: scoreOf(JSON.parse(readFileSync(report, "utf8")) as MutationReport),
+    ...(floor === undefined ? {} : { floor }),
   };
 }
 
@@ -79,7 +88,13 @@ function main(argv: readonly string[]): number {
     if (stepSummary !== undefined && stepSummary !== "") {
       appendFileSync(stepSummary, summary);
     }
-    return results.some((result) => result.kind === "failed") ? 1 : 0;
+    return results.some(
+      (result) =>
+        result.kind === "failed" ||
+        (result.kind === "scored" && belowFloor(result.score, result.floor)),
+    )
+      ? 1
+      : 0;
   } finally {
     rmSync(workFolder, { recursive: true, force: true });
   }

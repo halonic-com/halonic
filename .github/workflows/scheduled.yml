@@ -72,9 +72,9 @@ jobs:
           "$RUNNER_TEMP/${name}/cargo-deny" --locked --log-level warn check advisories
 
   mutation:
-    # Report only for now: the score per package goes into the job summary
-    # and a low score never fails. A floor that can only go up comes once
-    # the scores are stable. Only a broken Stryker run fails.
+    # The score per package goes into the job summary. A package with a floor
+    # (tooling/mutation, mutationFloors) fails when it scores under it, and so
+    # does a broken Stryker run. Floors only go up.
     name: Mutation testing (report only)
     if: github.event.schedule != '47 4 * * 1'
     runs-on: ubuntu-24.04

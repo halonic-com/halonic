@@ -4,7 +4,7 @@ Owner: mateo · Layer: tooling · Read the root `AGENTS.md` first; this file add
 
 ## Scope
 
-The nightly Stryker run: scores each core package that has code and reports the score. Report only, no floor yet.
+The nightly Stryker run: scores each core package that has code and reports the score. A package with a floor fails the run when it scores under it; the rest only report.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

@@ -32,9 +32,10 @@ gh workflow run mutation.yml --ref <branch> -f packages=packages/core/yaml
 for every target. The table lands in the run's job summary.
 
 A package is skipped ("no code yet") until it has a source file other
-than its tests and `src/index.ts`. For now the run only reports: a low
-score never fails, only a Stryker run that breaks does. Once the scores
-are stable, each package gets a floor that can only go up.
+than its tests and `src/index.ts`. A package with a floor fails the run when its score is under it, and so does a
+Stryker run that breaks. The floors live in `mutationFloors` in `src/score.ts`
+(`packages/core/yaml`: 85%) and can only go up. Packages without a floor only
+report; they get one once their score is stable.
 
 Stryker's own `stryker.config.*` files aren't used: the runner writes the
 config for each package into a temporary folder (see `src/targets.ts`).
