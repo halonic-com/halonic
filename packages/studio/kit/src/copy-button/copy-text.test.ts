@@ -48,4 +48,30 @@ verifies("kit.copy-button", () => {
     expect(document.activeElement).toBe(button);
     button.remove();
   });
+
+  it("puts the text box inside the open dialog the copy came from", async () => {
+    fakeClipboard("missing", "works");
+    const dialog = document.createElement("dialog");
+    dialog.setAttribute("open", "");
+    const button = document.createElement("button");
+    dialog.append(button);
+    document.body.append(dialog);
+    button.focus();
+    let boxHost: Element | null = null;
+    const copy = document.execCommand.bind(document);
+    Object.defineProperty(document, "execCommand", {
+      value: (command: string) => {
+        boxHost = document.activeElement?.parentElement ?? null;
+        return copy(command);
+      },
+      configurable: true,
+    });
+
+    expect(await copyText("halonic")).toBe(true);
+
+    expect(boxHost).toBe(dialog);
+    expect(dialog.querySelector("textarea")).toBeNull();
+    expect(document.activeElement).toBe(button);
+    dialog.remove();
+  });
 });

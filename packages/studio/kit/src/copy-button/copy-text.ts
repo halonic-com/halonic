@@ -36,7 +36,10 @@ function copyWithSelection(text: string): boolean {
   box.style.position = "fixed";
   box.style.opacity = "0";
   box.setAttribute("aria-hidden", "true");
-  document.body.append(box);
+  // An open modal dialog makes everything outside it inert, so a box in the body couldn't take
+  // the focus, and the copy would find nothing selected yet may still report success.
+  const host = previousFocus?.closest("dialog[open]") ?? document.body;
+  host.append(box);
   try {
     box.focus();
     box.select();
