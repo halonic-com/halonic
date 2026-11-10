@@ -5,14 +5,7 @@
 // integrations shrinks it (HAL-65 decision 9).
 
 import type { Agent, Connector } from "@halonicjs/format";
-import type {
-  Clock,
-  Digest,
-  TrustGrant,
-  TrustOrigin,
-  TrustRecord,
-  TrustStore,
-} from "@halonicjs/ports";
+import type { TrustGrant, TrustRecord } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import {
   type LocalIntegrationInput,
@@ -22,7 +15,21 @@ import {
   trustContent,
   trustFingerprint,
 } from "@halonicjs/workspace";
-import { isPackageRunner } from "./package-runner.ts";
+import {
+  checkPluginTrust,
+  grantPluginTrust,
+  type PluginTrustCheck,
+  type PluginTrustSubject,
+} from "./plugin-trust.ts";
+import {
+  grantOf,
+  type PersonTrustOrigin,
+  readTrustRecord,
+  savePersonTrust,
+  type TrustRefusal,
+  type TrustServiceOptions,
+} from "./trust-record.ts";
+import { isTrustContent, unpinnedConnectors } from "./workspace-trust-rules.ts";
 
 /** The workspace a trust check is about. */
 export interface TrustSubject {
@@ -100,28 +107,6 @@ export type TrustCheck =
       readonly error: unknown;
     });
 
-/** Why a person's trust wasn't saved. */
-export interface TrustRefusal {
-  readonly kind: "fingerprint-changed";
-  /** The current full fingerprint, to show the person again. */
-  readonly fingerprint: string;
-}
-
-/** How a person trusted a workspace. A migration doesn't go through the service. */
-export type PersonTrustOrigin = Exclude<TrustOrigin, "migration">;
-
-/** What {@link TrustService} needs from the host. */
-export interface TrustServiceOptions {
-  /** The trust records in the user's profile. */
-  readonly store: TrustStore;
-  /** Hashes the trust content. */
-  readonly digest: Digest;
-  /** Gives the time a person trusted a workspace. */
-  readonly clock: Clock;
-  /** The version of Halonic, written into each record. */
-  readonly appVersion: string;
-}
-
 /**
  * Checks and keeps the trust of workspaces. The launcher gets a
  * {@link TrustGrant} only from {@link TrustService.check}.
@@ -137,16 +122,10 @@ export interface TrustServiceOptions {
  * if (check.status !== "trusted") return refuse(check.fingerprint); // exit code 3
  */
 export class TrustService {
-  private readonly store: TrustStore;
-  private readonly digest: Digest;
-  private readonly clock: Clock;
-  private readonly appVersion: string;
+  private readonly options: TrustServiceOptions;
 
   constructor(options: TrustServiceOptions) {
-    this.store = options.store;
-    this.digest = options.digest;
-    this.clock = options.clock;
-    this.appVersion = options.appVersion;
+    this.options = options;
   }
 
   /**
@@ -157,15 +136,14 @@ export class TrustService {
    */
   async check(subject: TrustSubject): Promise<TrustCheck> {
     const current = await this.current(subject);
-    let record: TrustRecord | null;
-    try {
-      record = await this.store.get(subject.location);
-    } catch (error) {
-      return { status: "unreadable", ...current, error };
+    const stored = await readTrustRecord(this.options.store, subject.location);
+    if (stored.status === "unreadable") {
+      return { status: "unreadable", ...current, error: stored.error };
     }
-    if (record === null) {
+    if (stored.status === "none") {
       return { status: "new", ...current };
     }
+    const { record } = stored;
     if (record.fingerprint === current.fingerprint) {
       return {
         status: "trusted",
@@ -205,22 +183,35 @@ export class TrustService {
     if (shownFingerprint !== current.fingerprint) {
       return err({ kind: "fingerprint-changed", fingerprint: current.fingerprint });
     }
-    const record: TrustRecord = {
-      location: subject.location,
-      fingerprint: current.fingerprint,
-      content: current.content,
-      grantedAt: this.clock.now().toISOString(),
-      appVersion: this.appVersion,
-      pins: {},
-      origin,
-    };
-    await this.store.grant(record);
-    return ok(grantOf(record));
+    const { content, fingerprint } = current;
+    const trust = { location: subject.location, fingerprint, content, pins: {}, origin };
+    return ok(await savePersonTrust(this.options, trust));
   }
 
-  /** Forgets the trust in a workspace, even when its record can't be read. */
+  /**
+   * Whether a plugin is trusted now. Unlike a workspace, a plugin record
+   * never shrinks: any change turns the plugin off until a person trusts
+   * it again.
+   */
+  async checkPlugin(subject: PluginTrustSubject): Promise<PluginTrustCheck> {
+    return await checkPluginTrust(this.options, subject);
+  }
+
+  /**
+   * Saves a person's trust in a plugin, with each local tool's package pin.
+   * `shownFingerprint` must be exactly the current one, or nothing is saved.
+   */
+  async grantPlugin(
+    subject: PluginTrustSubject,
+    shownFingerprint: string,
+    origin: PersonTrustOrigin,
+  ): Promise<Result<TrustGrant, TrustRefusal>> {
+    return await grantPluginTrust(this.options, subject, shownFingerprint, origin);
+  }
+
+  /** Forgets the trust in a workspace or plugin, even when its record can't be read. */
   async revoke(location: string): Promise<void> {
-    await this.store.revoke(location);
+    await this.options.store.revoke(location);
   }
 
   /**
@@ -229,7 +220,7 @@ export class TrustService {
    * @throws when any record can't be read, naming its location
    */
   async list(): Promise<TrustRecord[]> {
-    return await this.store.list();
+    return await this.options.store.list();
   }
 
   private async current(subject: TrustSubject): Promise<CurrentTrust> {
@@ -241,7 +232,7 @@ export class TrustService {
     });
     return {
       content,
-      fingerprint: await trustFingerprint(content, this.digest),
+      fingerprint: await trustFingerprint(content, this.options.digest),
       unpinned: unpinnedConnectors(subject.connectors),
     };
   }
@@ -255,7 +246,7 @@ export class TrustService {
     if (!isTrustContent(record.content)) {
       return null;
     }
-    const fingerprint = await trustFingerprint(record.content, this.digest);
+    const fingerprint = await trustFingerprint(record.content, this.options.digest);
     return fingerprint === record.fingerprint ? record.content : null;
   }
 
@@ -273,34 +264,15 @@ export class TrustService {
       ...record,
       fingerprint: current.fingerprint,
       content: current.content,
-      appVersion: this.appVersion,
+      appVersion: this.options.appVersion,
       pins,
     };
-    await this.store.grant(shrunk);
+    await this.options.store.grant(shrunk);
     return shrunk;
   }
 }
 
 const NOTHING_SHRUNK: TrustShrink = { connectors: [], agents: [], integrations: [] };
-
-function grantOf(record: TrustRecord): TrustGrant {
-  return { location: record.location, fingerprint: record.fingerprint };
-}
-
-/**
- * The ids of the connectors that start a package runner, found the same way
- * the launcher finds them (`app.package-runner-launch`), so the two agree.
- */
-function unpinnedConnectors(connectors: readonly Connector[]): string[] {
-  const ids: string[] = [];
-  for (const connector of connectors) {
-    const { transport } = connector;
-    if ("stdio" in transport && isPackageRunner(transport.stdio.command, transport.stdio.args)) {
-      ids.push(connector.id);
-    }
-  }
-  return ids.sort();
-}
 
 function removedIds(changes: TrustChanges): TrustShrink {
   return {
@@ -308,32 +280,4 @@ function removedIds(changes: TrustChanges): TrustShrink {
     agents: changes.agents.removed.map((agent) => agent.id),
     integrations: changes.integrations.removed.map((integration) => integration.id),
   };
-}
-
-/**
- * Whether stored content has the shape `trustContent` builds: connectors,
- * and harness agents and local integrations when there are any, with an id
- * each.
- */
-function isTrustContent(value: unknown): value is TrustContent {
-  if (typeof value !== "object" || value === null || !("connectors" in value)) {
-    return false;
-  }
-  const agents = "agents" in value ? value.agents : [];
-  const integrations = "integrations" in value ? value.integrations : [];
-  return hasIds(value.connectors) && hasIds(agents) && hasIds(integrations);
-}
-
-/** Whether the value is a list whose every entry has a text `id`. */
-function hasIds(list: unknown): boolean {
-  return (
-    Array.isArray(list) &&
-    list.every(
-      (entry: unknown) =>
-        typeof entry === "object" &&
-        entry !== null &&
-        "id" in entry &&
-        typeof entry.id === "string",
-    )
-  );
 }

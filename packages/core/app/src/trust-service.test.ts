@@ -353,7 +353,10 @@ verifies("app.trust-service", () => {
   });
 
   it("offers no way to save a record without the fingerprint a person was shown", () => {
-    expectTypeOf<keyof TrustService>().toEqualTypeOf<"check" | "grant" | "revoke" | "list">();
+    // `checkPlugin` and `grantPlugin` (plan D2, HAL-4038) need the shown fingerprint too.
+    expectTypeOf<keyof TrustService>().toEqualTypeOf<
+      "check" | "grant" | "checkPlugin" | "grantPlugin" | "revoke" | "list"
+    >();
     const methods = Object.getOwnPropertyNames(TrustService.prototype).filter(
       (name) => name !== "constructor",
     );

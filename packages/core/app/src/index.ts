@@ -148,6 +148,7 @@ export {
   type StdioTransport,
 } from "./package-runner.ts";
 export { readPackageSpec } from "./package-spec.ts";
+export type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";
 export {
   type PluginFileChanges,
   type PluginItemChanges,
@@ -276,12 +277,14 @@ export {
   type ToolListingInput,
   type ToolRefusal,
 } from "./tool-listing.ts";
+export type {
+  PersonTrustOrigin,
+  TrustRefusal,
+  TrustServiceOptions,
+} from "./trust-record.ts";
 export {
-  type PersonTrustOrigin,
   type TrustCheck,
-  type TrustRefusal,
   TrustService,
-  type TrustServiceOptions,
   type TrustShrink,
   type TrustSubject,
 } from "./trust-service.ts";
