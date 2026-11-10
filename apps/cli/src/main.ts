@@ -7,7 +7,7 @@ import { recoverSandboxSessions } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
 // Before any session opens, undo what a crashed run left in its git folders.
-await recoverSandboxSessions(profileFolder(nodeProfileEnvironment())).catch(() => []);
+await recoverSandboxSessions(() => profileFolder(nodeProfileEnvironment())).catch(() => []);
 
 // The `halonic` program: the real process's arguments, folder and output streams.
 process.exitCode = await runCli(

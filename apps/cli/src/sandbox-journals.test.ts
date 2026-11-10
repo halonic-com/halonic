@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { recoverGitFolders } from "@halonicjs/adapter-sandbox-srt";
 import { sandboxJournalFolder } from "@halonicjs/profile";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { privateJournalFolder, recoverSandboxSessions } from "./sandbox-journals.ts";
@@ -44,7 +43,7 @@ describe("recoverSandboxSessions", () => {
         { mode: 0o600 },
       );
 
-      expect(await recoverSandboxSessions(profile())).toEqual([]);
+      expect(await recoverSandboxSessions(profile)).toEqual([]);
 
       expect(existsSync(commondir)).toBe(false);
       expect(readdirSync(folder)).toEqual([]);
@@ -52,7 +51,7 @@ describe("recoverSandboxSessions", () => {
   );
 
   it("does nothing when there is no journal folder yet", async () => {
-    expect(await recoverSandboxSessions(profile())).toEqual([]);
+    expect(await recoverSandboxSessions(profile)).toEqual([]);
     expect(existsSync(sandboxJournalFolder(profile()))).toBe(false);
   });
 
@@ -60,7 +59,14 @@ describe("recoverSandboxSessions", () => {
     const failing = async () => {
       throw new Error("disk");
     };
-    expect(await recoverSandboxSessions(profile(), failing, "linux")).toEqual([]);
+    expect(await recoverSandboxSessions(profile, failing, "linux")).toEqual([]);
+  });
+
+  it("does not throw when the profile folder can't be resolved", async () => {
+    const unresolved = () => {
+      throw new Error("HALONIC_HOME must be an absolute path");
+    };
+    expect(await recoverSandboxSessions(unresolved)).toEqual([]);
   });
 
   it("keeps no journal on Windows", async () => {
@@ -69,7 +75,7 @@ describe("recoverSandboxSessions", () => {
       asked.push(folder);
       return { undone: [], failed: [] };
     };
-    expect(await recoverSandboxSessions(profile(), recover, "win32")).toEqual([]);
+    expect(await recoverSandboxSessions(profile, recover, "win32")).toEqual([]);
     expect(asked).toEqual([]);
     expect(privateJournalFolder(profile(), "win32")).toBeNull();
     expect(privateJournalFolder(profile(), "linux")).toBe(sandboxJournalFolder(profile()));

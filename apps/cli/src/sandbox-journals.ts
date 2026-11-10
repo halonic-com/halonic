@@ -27,13 +27,15 @@ export function privateJournalFolder(
  * @returns the files it could not undo
  */
 export async function recoverSandboxSessions(
-  profile: ProfileFolder,
+  profile: () => ProfileFolder,
   recover: typeof recoverGitFolders = recoverGitFolders,
   platform: NodeJS.Platform = process.platform,
 ): Promise<string[]> {
-  const folder = privateJournalFolder(profile, platform);
-  if (folder === null) return [];
   try {
+    // Resolved in here: a profile folder that can't be resolved (a relative
+    // HALONIC_HOME) must not stop the program, `--version` included.
+    const folder = privateJournalFolder(profile(), platform);
+    if (folder === null) return [];
     return (await recover(folder)).failed;
   } catch {
     return [];
