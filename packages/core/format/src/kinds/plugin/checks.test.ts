@@ -17,7 +17,7 @@ const backend = [
   "  secrets: { example-key: { purpose: The key., hosts: [api.example.com], as: bearer } }",
   "  tools:",
   "    - { name: forecast, description: Forecast., risk: read, untrusted: true }",
-  "    - { name: notify, description: Notify., risk: send, untrusted: false }",
+  "    - { name: notify, description: Notify., risk: send, untrusted: false, noun: { one: message, many: messages } }",
 ];
 
 /** A local tool with the given read tools; `more` adds lines to it. */
