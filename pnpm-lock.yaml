@@ -317,6 +317,9 @@ importers:
 
   apps/studio:
     dependencies:
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../../packages/core/schema-kit
       '@halonicjs/studio-services':
         specifier: workspace:*
         version: link:../../packages/studio/services

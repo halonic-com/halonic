@@ -10,6 +10,8 @@
 mod address;
 mod check;
 mod connect_result;
+#[cfg(test)]
+mod fixtures;
 mod hello;
 mod home_network;
 mod navigation;

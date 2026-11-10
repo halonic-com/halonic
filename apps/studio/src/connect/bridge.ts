@@ -1,3 +1,5 @@
+import type { ConnectResult } from "./protocol.ts";
+
 /**
  * What the connect page asks of the Android shell. The shell's Rust
  * `connect` command checks the address after DNS, makes the hello call and
@@ -17,16 +19,10 @@ export interface ConnectBridge {
 /**
  * One outcome of {@link ConnectBridge.connect}, in the order the spec checks
  * them. `address` is the address as typed, normalised for display, for
- * example `192.168.1.20:4280`; versions are the computer's.
+ * example `192.168.1.20:4280`; versions are the computer's. Written once, as
+ * a schema in `protocol.ts`, which the shared fixtures check.
  */
-export type ConnectResult =
-  | { readonly kind: "connected"; readonly url: string }
-  | { readonly kind: "notAnAddress" }
-  | { readonly kind: "notHomeNetwork" }
-  | { readonly kind: "notAnswering"; readonly address: string }
-  | { readonly kind: "notHalonic"; readonly address: string }
-  | { readonly kind: "appTooOld"; readonly computerVersion: string }
-  | { readonly kind: "computerTooOld"; readonly computerVersion: string };
+export type { ConnectResult } from "./protocol.ts";
 
 /**
  * Where the page remembers the address. It is the only thing the shell
