@@ -1,5 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -136,6 +138,42 @@ describe("SrtSandbox with the real fence", () => {
       await planter.close();
     }
     await expect(readFile(marker, "utf8")).rejects.toThrow();
+  });
+
+  it("reaches the bridge through the fence's proxy and no other loopback port", async () => {
+    const listen = (body: string): Promise<Server> =>
+      new Promise((resolve) => {
+        const server = createServer((_request, response) => response.end(body));
+        server.listen(0, "127.0.0.1", () => resolve(server));
+      });
+    const bridge = await listen("bridge");
+    const other = await listen("other");
+    const port = (server: Server) => (server.address() as AddressInfo).port;
+    const bridged = await sandbox.open({
+      ...profile(),
+      network: { bridge: { host: "127.0.0.1", port: port(bridge) }, allowedSites: [] },
+    });
+    // Ask through the proxy srt sets inside the fence, for loopback too.
+    const ask = async (target: Server): Promise<string> => {
+      const started = await bridged.start({
+        program: "sh",
+        args: [
+          "-c",
+          `curl -s --max-time 10 --noproxy '' -x "$HTTP_PROXY" http://127.0.0.1:${port(target)}/`,
+        ],
+      });
+      const body = await read(started.stdout);
+      await started.exited;
+      return body.trim();
+    };
+    try {
+      expect(await ask(bridge)).toBe("bridge");
+      expect(await ask(other)).not.toBe("other");
+    } finally {
+      await bridged.close();
+      bridge.close();
+      other.close();
+    }
   });
 
   it("starts nothing after close, and removes its private folder", async () => {

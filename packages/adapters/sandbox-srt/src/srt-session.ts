@@ -58,10 +58,10 @@ export function launcherEnv(
 }
 
 /**
- * The environment of the program, set inside the fence: the safe host `PATH`
- * when the profile has none, the session's temp folder and the profile's
- * variables. Never the rest of the host's environment, and never a proxy
- * variable.
+ * The variables the program gets, set inside the fence on top of what srt
+ * sets there (its proxy variables): the safe host `PATH` when the profile has
+ * none, the session's temp folder and the profile's variables. Never the rest
+ * of the host's environment, and never a proxy variable of the profile.
  */
 export function programEnv(
   profile: SandboxProfile,

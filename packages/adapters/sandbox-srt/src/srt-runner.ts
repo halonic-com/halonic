@@ -25,7 +25,7 @@ export interface RunRequest {
    * what it needs to find the sandbox tools. Nothing the program can influence.
    */
   launcherEnv: Record<string, string>;
-  /** The whole environment of the program. Set inside the fence, never for the launcher. */
+  /** The variables the program gets on top of what srt sets inside the fence (its proxy variables). Set inside the fence, never for the launcher. */
   programEnv: Record<string, string>;
 }
 
@@ -66,9 +66,9 @@ export const srtRunner: Runner = {
         "--settings",
         request.settingsPath,
         "--",
-        // `env -i` sets the program's variables inside the fence, so none of them reaches the launcher.
+        // `env` sets the program's variables inside the fence, so none of them reaches the launcher.
+        // It keeps what srt sets there (the proxy variables the program reaches the network by).
         "env",
-        "-i",
         ...Object.entries(request.programEnv).map(([name, value]) => `${name}=${value}`),
         request.program,
         ...request.args,
