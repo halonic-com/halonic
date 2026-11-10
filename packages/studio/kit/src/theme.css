@@ -29,10 +29,13 @@
  */
 
 /* The selection and high-contrast utilities (selected-bar, selected-forced, the forced disabled
-   colours) live in their own file. */
+   colours), the custom variants and the other utilities, and the safe areas live in their own
+   files. They hold no tokens, only rules that read them. */
 @import "./theme-selection.css";
 @import "./checkbox/checkbox.css";
 @import "./switch/switch.css";
+@import "./theme-utilities.css";
+@import "./theme-safe-area.css";
 
 :root {
   color-scheme: light dark;
@@ -168,7 +171,7 @@
   --container-dialog-lg: 720px; /* Settings */
   --breakpoint-wide: 900px; /* wide: is the full layout; max-wide: is compact (sidebar collapsed) */
   /* No --breakpoint-phone: any --breakpoint-* makes Tailwind generate its own phone: (600px and
-     up), which would clash with the phone: variant below. */
+     up), which would clash with the phone: variant (theme-utilities.css). */
 
   /* ---------------------------------------------------------------- Radius (rounded-*) */
   --radius-xs: 4px; /* badges, checkboxes, kbd, tooltips */
@@ -207,52 +210,9 @@
 }
 
 /*
- * touch: follows the pointer, not the width (component specs 23.5): a tablet in the compact
- * layout reports a coarse pointer, a laptop with a touchscreen and a trackpad a fine one. Under
- * it, controls get the phone's 48px hit area and sm and md controls render at lg.
- */
-@custom-variant touch (@media (pointer: coarse));
-
-/*
- * phone: is below 600px, the layout for phones. A media query can't read a CSS variable, so the
- * width is written here and exported as PHONE_MAX_WIDTH (index.ts) for the shell's matchMedia;
- * theme.test.ts checks that both say 600.
- *
- * phone wins over touch: it's the stricter of the two. A phone with a coarse pointer matches both,
- * and Tailwind writes custom variants out in the order they're declared, so phone comes after
- * touch. An icon button is then 40px under touch: and still 48px on a phone.
- */
-@custom-variant phone (@media (width < 600px));
-
-/* short: a window too short for a dialog's fixed header (specs 8). In a media query em is the
-   browser's default text size, so it follows the person's setting, not the root font-size. */
-@custom-variant short (@media (max-height: 36em));
-
-/*
- * on-muted: a neutral fill placed on a surface-muted fill (an unselected tab, the active menu
- * item, a hovered sidebar row) steps up to border, or its box disappears (component specs 10,
- * 14). The fill sets data-fill="muted" while it is muted, or data-hover-fill="muted" when it is
- * only muted on hover and press. :where() keeps the specificity of the class alone.
- */
-@custom-variant on-muted {
-  :where([data-fill="muted"]) & {
-    @slot;
-  }
-
-  @media (hover: hover) {
-    :where([data-hover-fill="muted"]:hover) & {
-      @slot;
-    }
-  }
-
-  :where([data-hover-fill="muted"]:active) & {
-    @slot;
-  }
-}
-
-/*
  * Values that must not become classes. Plain variables, used only inside the kit: in the halo
- * utilities below, the focus ring, duration-(--duration-base) and z-(--layer-dialog).
+ * utilities (theme-utilities.css), the focus ring, duration-(--duration-base) and
+ * z-(--layer-dialog).
  */
 :root {
   /* light-dark() only takes colours, so the shadow colours are variables and the shapes are
@@ -262,7 +222,7 @@
   --shade-mid: light-dark(rgb(16 16 46 / 0.1), rgb(0 0 0 / 0.5));
   --shade-deep: light-dark(rgb(16 16 46 / 0.22), rgb(0 0 0 / 0.6));
 
-  /* The halo: the brand's two hues. Never flat fills; only through the four utilities below. */
+  /* The halo: the brand's two hues. Never flat fills; only through the four halo utilities. */
   --halo-blue: rgb(59 139 255);
   --halo-violet: rgb(139 92 246);
   --halo-tint-blue: light-dark(rgb(59 139 255 / 0.14), rgb(59 139 255 / 0.2));
@@ -281,12 +241,6 @@
   --layer-dialog: 300;
   --layer-toast: 400;
   --layer-tooltip: 500;
-
-  /* The phone's notch and home bar. Only through pt-safe, pb-safe and pb-safe-inset below, so
-     screens never write env() by hand. While the keyboard is open, the shell sets
-     --safe-bottom: 0px, so a bar sits right on the keyboard. */
-  --safe-top: env(safe-area-inset-top);
-  --safe-bottom: env(safe-area-inset-bottom);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -313,185 +267,4 @@
     --shade-edge: var(--color-border-control);
     --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 5px var(--color-accent);
   }
-}
-
-/* ---------------------------------------------------------------- The halo, as four utilities */
-
-/* The window frame: the halo over the canvas. */
-@utility bg-halo-frame {
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--halo-blue) 30%, transparent),
-      color-mix(in srgb, var(--halo-violet) 28%, transparent)
-    ),
-    var(--color-canvas);
-}
-
-/* "You are here": the active sidebar item. */
-@utility bg-halo-tint {
-  background: linear-gradient(90deg, var(--halo-tint-blue), var(--halo-tint-violet));
-}
-
-/* A soft wash that fades out downwards: the assistant panel header, empty states. */
-@utility bg-halo-wash {
-  background: linear-gradient(
-    180deg,
-    var(--halo-tint-blue),
-    var(--halo-tint-violet) 40%,
-    transparent
-  );
-}
-
-/* A 2px brand line: the active window tab, the logo mark, the agent orb's ring. */
-@utility bg-halo-line {
-  background: linear-gradient(90deg, var(--halo-blue), var(--halo-violet));
-}
-
-/*
- * Every interactive element gets the same focus ring, on keyboard focus only. The outline is
- * transparent rather than removed: in Windows high-contrast mode the browser drops box shadows
- * and paints outlines in the system colour, so the outline becomes the visible ring there. It
- * takes Highlight in that mode, the system's colour for focus (specs 23.5).
- *
- * The focus utilities go through variants (@variant focus-visible, field-focus) rather than a
- * raw selector. The CSS is the same, and the kit's states page can force them on through its own
- * variants, so it shows the real ring.
- */
-@utility focus-ring {
-  @variant focus-visible {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
-    box-shadow: var(--focus-ring);
-
-    @media (forced-colors: active) {
-      outline-color: Highlight;
-    }
-  }
-}
-
-/* The same ring drawn inside the element, for rows in a scrolling list where an outer ring
-   would be clipped: sidebar items, tree rows, list rows. */
-@utility focus-ring-inset {
-  @variant focus-visible {
-    outline: 2px solid transparent;
-    outline-offset: -2px;
-    box-shadow: var(--focus-ring-inset);
-
-    @media (forced-colors: active) {
-      outline-color: Highlight;
-    }
-  }
-}
-
-/*
- * A tap target of at least 48px (--spacing-touch) round a control that looks smaller, centred
- * on it, drawn by a pseudo-element so the control's own size and padding don't change. Use it
- * under phone: or touch:, as phone:hit-touch.
- */
-@utility hit-touch {
-  position: relative;
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset-block: min(0px, calc((100% - var(--spacing-touch)) / 2));
-    inset-inline: min(0px, calc((100% - var(--spacing-touch)) / 2));
-  }
-}
-
-/*
- * The focus of a text field's box (Input, TextArea, Select): an accent edge and a 3px soft ring,
- * because the general ring would hide the edge. It shows while the text inside has focus, on any
- * focus, not only from the keyboard. A button inside the box (clear, show) keeps the general
- * ring, so you can tell the two apart. With more contrast the soft ring is too faint to see, so a
- * 1px accent ring doubles the edge instead. The outline is for Windows high-contrast mode, where
- * it turns Highlight and stands 2px off the box (specs 23.5).
- */
-@custom-variant field-focus (&:has([data-field-text]:focus));
-
-@utility focus-field {
-  @variant field-focus {
-    outline: 2px solid transparent;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-soft);
-
-    @media (prefers-contrast: more) {
-      box-shadow: 0 0 0 1px var(--color-accent);
-    }
-
-    @media (forced-colors: active) {
-      outline: 2px solid Highlight;
-      outline-offset: 2px;
-    }
-  }
-}
-
-/* The same for a field with an error: the edge stays danger and the ring is danger-soft. */
-@utility focus-field-danger {
-  @variant field-focus {
-    outline: 2px solid transparent;
-    border-color: var(--color-danger);
-    box-shadow: 0 0 0 3px var(--color-danger-soft);
-
-    @media (prefers-contrast: more) {
-      box-shadow: 0 0 0 1px var(--color-danger);
-    }
-
-    @media (forced-colors: active) {
-      outline: 2px solid Highlight;
-      outline-offset: 2px;
-    }
-  }
-}
-
-/*
- * A TextArea's height limit: --max-rows lines of its text. The px line is a fallback built from
- * the line-height token, for an engine without the lh unit (an older WebKitGTK), which drops the
- * line after it. Under a touch pointer and on a phone the text is 16px on 24px lines.
- */
-@utility max-h-rows {
-  max-height: calc(var(--max-rows) * var(--text-body--line-height));
-  max-height: calc(var(--max-rows) * 1lh);
-
-  @variant touch {
-    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
-    max-height: calc(var(--max-rows) * 1lh);
-  }
-
-  @variant phone {
-    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
-    max-height: calc(var(--max-rows) * 1lh);
-  }
-}
-
-/* A Dialog's frame (specs 8) inside the window's edges. The vh line is for an engine without dvh. */
-@utility dialog-frame {
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 64px);
-  max-height: calc(100dvh - 64px);
-}
-
-/* A Dialog with a fixed --dialog-height (Settings), still inside the frame's limit. */
-@utility dialog-height {
-  height: min(var(--dialog-height), calc(100vh - 64px));
-  height: min(var(--dialog-height), calc(100dvh - 64px));
-}
-
-/* ---------------------------------------------------------------- Safe areas on a phone */
-
-/* The top bar: clears the notch or status bar. */
-@utility pt-safe {
-  padding-top: var(--safe-top);
-}
-
-/* A bottom action bar, a sheet's bottom, the composer: the larger of 12px and the home bar,
-   never the sum. */
-@utility pb-safe {
-  padding-bottom: max(12px, var(--safe-bottom));
-}
-
-/* The bottom navigation: its 56px items need no extra padding, only the home bar. */
-@utility pb-safe-inset {
-  padding-bottom: var(--safe-bottom);
 }

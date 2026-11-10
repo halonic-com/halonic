@@ -119,7 +119,8 @@ export function TextArea({
         rows={1}
         data-field-text=""
         className={`${fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
-        // The limit in lines of the text's own height, so it follows the text size (theme.css).
+        // The limit in lines of the text's own height, so it follows the text size
+        // (theme-utilities.css).
         style={{ "--max-rows": maxRows } as CSSProperties}
         aria-describedby={field?.describedBy}
         aria-invalid={invalid || undefined}

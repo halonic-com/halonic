@@ -15,9 +15,10 @@ by one. So far: [`Button`](#button), [`Card`](#card), [`StatusChip`](#statuschip
 ## Example
 
 The app's entry CSS sets up Tailwind once and then imports the tokens. Plain CSS `@import` of the
-package name resolves to `theme.css` through the `style` export condition. `theme.css` imports
-`theme-selection.css` (the selection, row focus and high-contrast utilities) itself, so the app
-imports one file.
+package name resolves to `theme.css` through the `style` export condition. `theme.css` holds the
+tokens and imports the rest itself, so the app imports one file: `theme-selection.css` (the
+selection, row focus and high-contrast utilities), `theme-utilities.css` (the custom variants and
+the other utilities) and `theme-safe-area.css` (the safe areas on a phone).
 
 ```css
 /* apps/studio/src/app.css */
@@ -499,7 +500,7 @@ read it with `usePresentation()`. A size change is a `phone:` class instead: no 
 window width. Tests set the provider directly.
 
 `touch:` follows a coarse pointer at any width. A phone with a coarse pointer matches both, and
-`phone:` wins: theme.css declares it after `touch:`.
+`phone:` wins: theme-utilities.css declares it after `touch:`.
 
 ## On a muted fill
 
@@ -965,8 +966,8 @@ run, Ask for changes and a request's message. Otherwise, and outside a form, it 
 `onKeyDown`, as other keys do. While an input method is composing, Enter does neither. No key
 approves, rejects or deletes.
 
-The limit is `max-h-rows` in `theme.css`: lines in `lh`, after a px fallback from the line-height
-token for an engine without that unit.
+The limit is `max-h-rows` in `theme-utilities.css`: lines in `lh`, after a px fallback from the
+line-height token for an engine without that unit.
 
 **On a phone** it's at least 48px high, with 16px text. Long text on a phone page (Instructions,
 Description) opens the text sheet instead; that comes with the Sheet.

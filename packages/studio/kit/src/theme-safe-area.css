@@ -1,0 +1,30 @@
+/*
+ * The safe areas on a phone, split out of theme.css by concept. theme.css imports this file, so
+ * the app still imports one file.
+ */
+
+:root {
+  /* The phone's notch and home bar. Only through pt-safe, pb-safe and pb-safe-inset below, so
+     screens never write env() by hand. While the keyboard is open, the shell sets
+     --safe-bottom: 0px, so a bar sits right on the keyboard. */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---------------------------------------------------------------- Safe areas on a phone */
+
+/* The top bar: clears the notch or status bar. */
+@utility pt-safe {
+  padding-top: var(--safe-top);
+}
+
+/* A bottom action bar, a sheet's bottom, the composer: the larger of 12px and the home bar,
+   never the sum. */
+@utility pb-safe {
+  padding-bottom: max(12px, var(--safe-bottom));
+}
+
+/* The bottom navigation: its 56px items need no extra padding, only the home bar. */
+@utility pb-safe-inset {
+  padding-bottom: var(--safe-bottom);
+}

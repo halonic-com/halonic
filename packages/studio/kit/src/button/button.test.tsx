@@ -112,7 +112,7 @@ verifies("kit.button", () => {
       expect(size === "lg" || className.includes("touch:size-control-lg")).toBe(true);
       expect(className).toContain("touch:hit-touch");
       expect(className).not.toContain("touch:size-touch");
-      // Declared after touch: in theme.css, so it wins on a phone with a coarse pointer.
+      // Declared after touch: in theme-utilities.css, so it wins on a phone with a coarse pointer.
       expect(className).toContain("phone:size-touch");
       const icon = button.querySelector('[aria-hidden="true"]') as HTMLElement;
       expect(icon.className).not.toContain("touch:size-icon-md");
