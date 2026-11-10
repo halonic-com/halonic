@@ -5,7 +5,7 @@ import {
   type KindValues,
   parseFile,
 } from "@halonicjs/format";
-import type { DefinitionSource } from "@halonicjs/ports";
+import { type DefinitionSource, isUnreadableWorkspaceFolderError } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { ReadFile } from "./checks/check-context.ts";
 import { checkWorkspace } from "./checks/check-workspace.ts";
@@ -77,8 +77,8 @@ type FileOutcome =
  * @param source - where the workspace files live
  * @returns the parsed files, every issue with its file, key path and line,
  *   and the files no kind places
- * @throws KindedError `invalid_input` naming the file when the account may
- *   not read one of the workspace's files
+ * @throws KindedError `invalid_input` naming the file or folder when the
+ *   account may not read one of the workspace's files or folders
  *
  * @example
  * const workspace = await loadWorkspace(source);
@@ -87,7 +87,7 @@ type FileOutcome =
  */
 export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWorkspace> {
   const version = await versionOf(source);
-  const paths = (await source.list()).filter((path) => !isReservedPath(path));
+  const paths = (await listPaths(source)).filter((path) => !isReservedPath(path));
   const outcomes = await Promise.all(paths.map((path) => loadFile(source, path)));
   const files: LoadedFile[] = [];
   const read: ReadFile[] = [];
@@ -150,23 +150,54 @@ const unreadableCodes: ReadonlySet<unknown> = new Set(["EACCES", "EPERM"]);
 /**
  * The source's version. A folder store works it out from every file's text,
  * so a file the account may not read fails it first, and its error knows the
- * file only by its place on disk. Reading each file finds the one to name.
+ * file only by its place on disk. Reading each file finds the one to name. A
+ * folder it may not read fails it too, but that error names the folder.
  *
- * @throws KindedError `invalid_input` naming the file that can't be read
+ * @throws KindedError `invalid_input` naming the file or folder that can't be read
  */
 async function versionOf(source: DefinitionSource): Promise<string> {
   try {
     return await source.version();
   } catch (error) {
+    if (isUnreadableWorkspaceFolderError(error)) {
+      throw unreadableFolder(error.path, error);
+    }
     if (!isUnreadable(error)) {
       throw error;
     }
-    for (const path of await source.list()) {
+    for (const path of await listPaths(source)) {
       await readText(source, path);
     }
     // Every file reads on its own: pass on what the source said.
     throw error;
   }
+}
+
+/**
+ * The source's files, as {@link DefinitionSource.list} gives them. A folder
+ * the account may not read is the user's to fix, as a file is (see
+ * {@link readText}), so it becomes an error that names the folder. The store
+ * names it by its workspace path, so core needs no Node API to find it.
+ *
+ * @throws KindedError `invalid_input` when a folder can't be read
+ */
+async function listPaths(source: DefinitionSource): Promise<string[]> {
+  try {
+    return await source.list();
+  } catch (error) {
+    if (isUnreadableWorkspaceFolderError(error)) {
+      throw unreadableFolder(error.path, error);
+    }
+    throw error;
+  }
+}
+
+/** The user error for a workspace folder the account may not read, keeping the store's error as its cause. */
+function unreadableFolder(path: string, cause: unknown): KindedError {
+  return new KindedError("invalid_input", `the workspace folder ${path} can't be read.`, {
+    fix: "Check the folder's permissions, or move it out of the workspace.",
+    cause,
+  });
 }
 
 /**

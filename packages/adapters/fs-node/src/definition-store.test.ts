@@ -1,6 +1,7 @@
 import { chmod, mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DryRunDefinitionStore, MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { isUnreadableWorkspaceFolderError } from "@halonicjs/ports";
 import { definitionStoreContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, it } from "vitest";
@@ -143,10 +144,47 @@ verifies("fs-node.definition-store", () => {
       const store = new FolderDefinitionStore(root);
       await chmod(join(root, "locked"), 0o000);
       try {
-        await expect(store.list()).rejects.toMatchObject({ code: "EACCES" });
         await expect(store.read("locked/a.yaml")).rejects.toMatchObject({ code: "EACCES" });
       } finally {
         await chmod(join(root, "locked"), 0o700);
+      }
+    },
+  );
+});
+
+verifies("fs-node.unreadable-workspace-folder", () => {
+  // Windows has no read permission bits, and root reads any folder.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] has no read permission bits: names a folder the account may not read, from list() and version()",
+    async () => {
+      const root = await tempFolder();
+      await writeFiles(root, { "hubs/support/agents/sorter.agent.yaml": "name: Sorter\n" });
+      const store = new FolderDefinitionStore(root);
+      await chmod(join(root, "hubs/support"), 0o000);
+      try {
+        for (const listing of [store.list(), store.list("hubs"), store.version()]) {
+          const error: unknown = await listing.catch((caught: unknown) => caught);
+          expect(isUnreadableWorkspaceFolderError(error)).toBe(true);
+          expect(error).toMatchObject({ path: "hubs/support", cause: { code: "EACCES" } });
+        }
+      } finally {
+        await chmod(join(root, "hubs/support"), 0o700);
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] has no read permission bits: passes on the error for a root the account may not read, which has no workspace path",
+    async () => {
+      const root = await tempFolder();
+      await writeFiles(root, { "a.yaml": "1" });
+      await chmod(root, 0o000);
+      try {
+        await expect(new FolderDefinitionStore(root).list()).rejects.toMatchObject({
+          code: "EACCES",
+        });
+      } finally {
+        await chmod(root, 0o700);
       }
     },
   );

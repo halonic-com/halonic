@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { UnreadableWorkspaceFolderError } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -243,5 +244,67 @@ verifies("workspace.unreadable-file", () => {
   it("passes on any other error from the source as it is", async () => {
     const error = fileError("EIO");
     await expect(loadWorkspace(new RefusingSource(files, sorter, error))).rejects.toBe(error);
+  });
+});
+
+/** A folder store's error for `folder`, which the account may not read. */
+function folderError(folder: string): UnreadableWorkspaceFolderError {
+  return new UnreadableWorkspaceFolderError(
+    folder,
+    `The workspace folder ${folder} can't be read.`,
+    {
+      cause: fileError("EACCES"),
+    },
+  );
+}
+
+verifies("workspace.unreadable-folder", () => {
+  const files = { ...settings, "hubs/support/hub.yaml": "id: support\nname: Support\n" };
+
+  it("names a folder the source can't list and gives the fix", async () => {
+    const cause = folderError("hubs/support/agents");
+    const source = new MemorySource(files);
+    source.list = () => Promise.reject(cause);
+
+    const loading = loadWorkspace(source);
+
+    await expect(loading).rejects.toThrow(KindedError);
+    await expect(loading).rejects.toMatchObject({
+      kind: "invalid_input",
+      message: "the workspace folder hubs/support/agents can't be read.",
+      fix: "Check the folder's permissions, or move it out of the workspace.",
+      cause,
+    });
+  });
+
+  it("names the folder when the source's version fails on it first", async () => {
+    const cause = folderError("hubs/support/agents");
+    const source = new MemorySource(files);
+    source.version = () => Promise.reject(cause);
+
+    await expect(loadWorkspace(source)).rejects.toMatchObject({
+      kind: "invalid_input",
+      message: "the workspace folder hubs/support/agents can't be read.",
+      cause,
+    });
+  });
+
+  it("names the folder when the version fails on a file code and the listing on the folder", async () => {
+    const source = new MemorySource(files);
+    source.version = () => Promise.reject(fileError("EACCES"));
+    source.list = () => Promise.reject(folderError("notes"));
+
+    await expect(loadWorkspace(source)).rejects.toMatchObject({
+      kind: "invalid_input",
+      message: "the workspace folder notes can't be read.",
+    });
+  });
+
+  it("passes on any other error from the listing as it is", async () => {
+    const error = fileError("EIO");
+    const source = new MemorySource(files);
+    source.list = () => Promise.reject(error);
+
+    await expect(loadWorkspace(source)).rejects.toBe(error);
   });
 });

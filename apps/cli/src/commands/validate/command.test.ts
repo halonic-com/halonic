@@ -266,3 +266,28 @@ verifies("cli.workspace-dir", () => {
     },
   );
 });
+
+verifies("workspace.unreadable-folder", () => {
+  // Windows has no read permission bits, and root reads any folder.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "[platform:win32] has no read permission bits: names a workspace folder that can't be read, with exit 2",
+    async () => {
+      writeFiles(acme, agent("sorter", "fast"));
+      const agents = join(acme, "hubs/support/agents");
+      chmodSync(agents, 0o000);
+      try {
+        const { code, io } = await validateIn(acme);
+
+        expect(code).toBe(exitCode.usage);
+        expect(io.stdout).toEqual([]);
+        expect(io.stderr.slice(0, 2)).toEqual([
+          "✕ Couldn't check acme: the workspace folder hubs/support/agents can't be read.",
+          "  Check the folder's permissions, or move it out of the workspace.",
+        ]);
+      } finally {
+        // So the temporary folder can be removed after the test.
+        chmodSync(agents, 0o700);
+      }
+    },
+  );
+});

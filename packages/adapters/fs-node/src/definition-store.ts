@@ -8,6 +8,7 @@ import {
   type DefinitionWatchListener,
   type Digest,
   isPrivateWorkspacePath,
+  UnreadableWorkspaceFolderError,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -227,17 +228,15 @@ export class FolderDefinitionStore implements DefinitionStore {
     return `sha256:${bytesToHex(new Uint8Array(digest)).slice(0, 16)}`;
   }
 
-  /** Adds the files under `folder`, whose workspace path is `prefix`, to `into`, leaving out links and private entries. */
+  /**
+   * Adds the files under `folder`, whose workspace path is `prefix`, to
+   * `into`, leaving out links and private entries.
+   *
+   * @throws UnreadableWorkspaceFolderError naming a folder under the root
+   *   that the account may not read
+   */
   async #collect(folder: string, prefix: string, into: string[]): Promise<void> {
-    let entries: Dirent[];
-    try {
-      entries = await readdir(folder, { withFileTypes: true });
-    } catch (error) {
-      if (isMissing(error)) {
-        return;
-      }
-      throw error;
-    }
+    const entries = await entriesOf(folder, prefix);
     for (const entry of entries) {
       // A backslash is allowed in a file name on Linux, but not in a workspace path.
       if (
@@ -256,4 +255,36 @@ export class FolderDefinitionStore implements DefinitionStore {
       }
     }
   }
+}
+
+/**
+ * The entries of `folder`, whose workspace path is `prefix`, or none when it
+ * doesn't exist.
+ *
+ * @throws UnreadableWorkspaceFolderError when the account may not read a
+ *   folder under the root
+ */
+async function entriesOf(folder: string, prefix: string): Promise<Dirent[]> {
+  try {
+    return await readdir(folder, { withFileTypes: true });
+  } catch (error) {
+    if (isMissing(error)) {
+      return [];
+    }
+    // The root itself has no workspace path to name: its error goes on as it is.
+    if (prefix !== "" && isRefused(error)) {
+      throw new UnreadableWorkspaceFolderError(
+        prefix,
+        `The workspace folder ${prefix} can't be read.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+}
+
+/** Whether the file system refused the account: `EACCES` on Linux and macOS, `EPERM` on Windows. */
+function isRefused(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === "EACCES" || code === "EPERM";
 }

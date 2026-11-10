@@ -43,7 +43,9 @@ export interface DefinitionSource {
    * paths are relative to the store root, not to `dir`, as in the old
    * adapter. Omit `dir` for the whole store; `""` is an empty path and is
    * refused like any other unsafe path. A directory that doesn't exist
-   * gives `[]`.
+   * gives `[]`. A folder under the root that the account may not read
+   * throws an `UnreadableWorkspaceFolderError` naming it, rather than being
+   * left out.
    */
   list(dir?: string): Promise<string[]>;
   /** The file's text, or `null` when there is no such file. */
@@ -134,6 +136,53 @@ export interface DefinitionStore extends DefinitionSource {
    * change, such as one in memory, reports nothing.
    */
   watch(listener: DefinitionWatchListener): Promise<DefinitionWatch>;
+}
+
+/**
+ * What a {@link DefinitionSource}'s `list()` throws when the account may not
+ * read a folder under the store's root (requirement
+ * `ports.unreadable-workspace-folder`). Leaving the folder out instead would
+ * hide the agents in it without a word, which is worse than an error.
+ *
+ * `path` is the folder's workspace path, so a caller can name it without
+ * knowing where the store keeps its files. The message is for the log; keep
+ * the store's own error in `cause`.
+ *
+ * Check for it with {@link isUnreadableWorkspaceFolderError}, not
+ * `instanceof`: an adapter may be built against its own copy of this package.
+ *
+ * @example
+ * throw new UnreadableWorkspaceFolderError("hubs/support", "The folder can't be read.", { cause });
+ */
+export class UnreadableWorkspaceFolderError extends Error {
+  override readonly name = "UnreadableWorkspaceFolderError";
+  /** The folder's workspace path: relative and "/" separated, as the port's paths are. */
+  readonly path: string;
+
+  /**
+   * @param path - the folder's workspace path
+   * @param message - for the log
+   * @param options - `cause` keeps the error this one wraps
+   */
+  constructor(path: string, message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.path = path;
+  }
+}
+
+/**
+ * Whether `value` is an {@link UnreadableWorkspaceFolderError}: an `Error`
+ * named "UnreadableWorkspaceFolderError" with a `path`. It works across
+ * copies of this package, where `instanceof` doesn't.
+ *
+ * @example
+ * const folder = isUnreadableWorkspaceFolderError(error) ? error.path : null;
+ */
+export function isUnreadableWorkspaceFolderError(
+  value: unknown,
+): value is UnreadableWorkspaceFolderError {
+  if (!(value instanceof Error) || value.name !== "UnreadableWorkspaceFolderError") return false;
+  return typeof (value as { path?: unknown }).path === "string";
 }
 
 // The path rules above, as code, so every adapter refuses exactly the same paths.
