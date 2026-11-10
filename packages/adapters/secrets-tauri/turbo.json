@@ -1,0 +1,14 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": [
+    "//"
+  ],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../../apps/studio/src-tauri/crates/secrets/tests/fixtures/canonical-names.tsv"
+      ]
+    }
+  }
+}
