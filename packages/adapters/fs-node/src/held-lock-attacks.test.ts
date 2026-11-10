@@ -1,8 +1,7 @@
 // The attack tests of HAL-4045 for `holdLock`: a symlink planted where the
 // lock goes never lets the lock write to or remove the file it points at,
-// and of several processes started at once on a free lock, one holds it.
-// The race on a stale lock and the dangling symlink are on HAL-4045 as
-// findings; their tests come with the fixes.
+// and of several processes started at once on a free or a stale lock, only
+// one holds it at a time. The dangling symlink has its test in run-lock.test.ts.
 
 import { spawn } from "node:child_process";
 import { lstat, readFile, rename, symlink, utimes, writeFile } from "node:fs/promises";
@@ -118,6 +117,28 @@ describe("holdLock under attack", () => {
 
     expect(said.filter((line) => line.startsWith("held"))).toHaveLength(1);
     expect(said.filter((line) => line === "LockHeldError")).toHaveLength(5);
+    await expect(lstat(file)).rejects.toMatchObject({ code: "ENOENT" });
+  }, 20_000);
+
+  it("of twelve processes started at once on a stale lock, never lets two hold it at the same time", async () => {
+    const file = join(await tempFolder(), "engine.lock");
+    await writeFile(
+      file,
+      JSON.stringify({ pid: 1, host: "gone", takenAt: new Date(0).toISOString() }),
+      "utf8",
+    );
+    await utimes(file, new Date(0), new Date(0));
+
+    const said = await race(file, 12, 300);
+
+    const held = said
+      .filter((line) => line.startsWith("held"))
+      .map((line) => line.split(" ").slice(1).map(Number) as [number, number])
+      .sort(([a], [b]) => a - b);
+    expect(held.length).toBeGreaterThanOrEqual(1);
+    held.slice(1).forEach(([from], i) => {
+      expect(from).toBeGreaterThanOrEqual(held[i]?.[1] ?? 0);
+    });
     await expect(lstat(file)).rejects.toMatchObject({ code: "ENOENT" });
   }, 20_000);
 });
