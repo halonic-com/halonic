@@ -29,8 +29,8 @@ account's own `TEMP`.
 The `sandbox-windows` CI job proves the fence twice on a real Windows machine after srt's one-time
 install: first with plain canary probes (`scripts/windows-fence-probe.mjs`), then through a session
 (`pnpm test:fence:windows`). The session test needs the session to report `fenced`, the program
-not to be able to read the hidden file, the blocked port and its own variables as the profile says, and `kill` to end
-its process tree. It works outside the user's profile, because the sandbox account can't look
+not to be able to read the hidden file, the blocked port and its own variables as the profile
+says, and `kill` to end its process tree. It works outside the user's profile, because the sandbox account can't look
 inside the profile of the user who ran the install. The same fence tests for Linux and macOS run
 with `pnpm test:fence`.
 
