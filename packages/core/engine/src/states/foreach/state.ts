@@ -158,8 +158,7 @@ function startMore(
   const effects: Effect[] = [];
   const started = [...events];
   for (let index = first; index < items.length && index < first + free; index += 1) {
-    const callId = `call-${run.calls + effects.length + 1}`;
-    const { event, effect } = startItem(context, work, items[index], index, callId);
+    const { event, effect } = startItem(context, work, items[index], index, effects.length);
     started.push(event);
     effects.push(effect);
   }

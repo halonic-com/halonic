@@ -39,16 +39,17 @@ export function itemWorkOf({ run, stateId, state, workflows }: StateContext): It
 }
 
 /**
- * Starts one item: a model call for its agent with the id `callId`, or a
- * child run of the workflow. The item is named by `as` in templates, with
- * `index` its place in the list.
+ * Starts one item: a model call for its agent, or a child run of the
+ * workflow. The item is named by `as` in templates, with `index` its place
+ * in the list. A model call takes the next call id after the `startedBefore`
+ * items this step has already started; a child run takes none.
  */
 export function startItem(
   context: StateContext,
   work: ItemWork,
   item: unknown,
   index: number,
-  callId: string,
+  startedBefore: number,
 ): ItemStart {
   const name = context.state.as ?? defaultItemName;
   const itemScope = { ...context.scope, [name]: item, index };
@@ -57,6 +58,7 @@ export function startItem(
   }
   const { run, stateId, state, agents } = context;
   const agent = work.agent;
+  const callId = `call-${run.calls + startedBefore + 1}`;
   const prompt =
     state.input === undefined
       ? asText(item)
