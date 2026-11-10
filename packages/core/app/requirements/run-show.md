@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2742; C174 on HAL-2000 and HAL-1984; cli-output revision 27, section 3.4 (HAL-1981)
 
-The run history shall show one run, real or test, found by its full or short id (`app.run-short-id`), as its log tells it: the summary worked out from the run's events, and those events oldest first. The summary shall be worked out from the same events it comes with, so the two always agree. For a run id the store doesn't know, it shall show nothing.
+The run history shall show one run, real or test, as its log tells it: the summary worked out from the run's events, and those events oldest first. The summary shall be worked out from the same events it comes with, so the two always agree. For a run id the store doesn't know, it shall show nothing.
 
 ## Examples
 
