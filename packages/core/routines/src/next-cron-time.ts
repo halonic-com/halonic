@@ -27,17 +27,34 @@ const SEARCH_LIMIT = 5 * 366 * DAY;
  * @throws {RangeError} when the zone is unknown; call `checkTimeZone` first for a readable error
  */
 export function nextCronTime(cron: Cron | string, after: Date, timeZone?: string): Date | null {
+  return cronTimeFinder(cron, timeZone)(after);
+}
+
+/**
+ * `nextCronTime` for one cron and zone, for a search that asks many times.
+ * Building the `Intl` formatter costs far more than one lookup, so this parses
+ * the cron and builds the formatter once instead of on every call.
+ *
+ * @throws {CronError} when `cron` is a string that doesn't parse
+ * @throws {RangeError} when the zone is unknown; call `checkTimeZone` first for a readable error
+ */
+export function cronTimeFinder(
+  cron: Cron | string,
+  timeZone?: string,
+): (after: Date) => Date | null {
   const schedule = typeof cron === "string" ? parseCron(cron) : cron;
   const readWallTime = wallTimeReader(timeZone);
-  let instant = Math.floor(after.getTime() / MINUTE) * MINUTE + MINUTE;
-  const limit = instant + SEARCH_LIMIT;
-  while (instant < limit) {
-    const wall = readWallTime(instant);
-    if (firesAt(schedule, instant, wall, readWallTime)) return new Date(instant);
-    const skip = Math.max(minutesToSkip(schedule, wall), 1);
-    instant = skipForward(instant, wall, skip, readWallTime);
-  }
-  return null;
+  return (after) => {
+    let instant = Math.floor(after.getTime() / MINUTE) * MINUTE + MINUTE;
+    const limit = instant + SEARCH_LIMIT;
+    while (instant < limit) {
+      const wall = readWallTime(instant);
+      if (firesAt(schedule, instant, wall, readWallTime)) return new Date(instant);
+      const skip = Math.max(minutesToSkip(schedule, wall), 1);
+      instant = skipForward(instant, wall, skip, readWallTime);
+    }
+    return null;
+  };
 }
 
 function firesAt(cron: Cron, instant: number, wall: WallTime, readWallTime: ReadWallTime): boolean {
@@ -53,15 +70,19 @@ function matches(cron: Cron, wall: WallTime): boolean {
 }
 
 // How many wall-clock minutes are certain not to match: the rest of the day
-// when the day doesn't match, the rest of the hour when the hour doesn't, one
-// minute when only the minute doesn't, and 0 on a match.
+// when the day doesn't match, the rest of the hour when the hour doesn't, up
+// to the next matching minute (or the end of the hour) when only the minute
+// doesn't, and 0 on a match. Reading the wall clock is the slow part, so an
+// hourly cron doesn't read it for every minute of the hour (HAL-3595).
 function minutesToSkip(cron: Cron, wall: WallTime): number {
   if (!cron.months.has(wall.month) || !dayMatches(cron, wall)) {
     return MINUTES_PER_DAY - (wall.hour * 60 + wall.minute);
   }
   if (!cron.hours.has(wall.hour)) return 60 - wall.minute;
-  if (!cron.minutes.has(wall.minute)) return 1;
-  return 0;
+  if (cron.minutes.has(wall.minute)) return 0;
+  let minute = wall.minute + 1;
+  while (minute < 60 && !cron.minutes.has(minute)) minute++;
+  return minute - wall.minute;
 }
 
 function dayMatches(cron: Cron, wall: WallTime): boolean {
