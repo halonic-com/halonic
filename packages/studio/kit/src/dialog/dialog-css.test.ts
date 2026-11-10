@@ -33,4 +33,12 @@ verifies("kit.dialog", () => {
     expect(starting).toMatch(/\.starting\\:opacity-0\s*\{\s*opacity: 0%/);
     expect(starting).toMatch(/\.backdrop\\:starting\\:opacity-0::backdrop\s*\{\s*opacity: 0%/);
   });
+
+  it("eases the fade with the enter curve, box and overlay alike", async () => {
+    const css = await buildCss(["ease-(--ease-enter)", "backdrop:ease-(--ease-enter)"]);
+    expect(css).toMatch(/\.ease-\\\(--ease-enter\\\)\s*\{[^}]*var\(--ease-enter\)/);
+    expect(css).toMatch(
+      /\.backdrop\\:ease-\\\(--ease-enter\\\)::backdrop\s*\{[^}]*var\(--ease-enter\)/,
+    );
+  });
 });

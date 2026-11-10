@@ -233,26 +233,27 @@ screen unmounts it to close it.
 }
 ```
 
-| Prop          | What it is                                                                             |
-| ------------- | -------------------------------------------------------------------------------------- |
-| `title`       | The dialog's name, in `text-heading`                                                   |
-| `size`        | `sm` 440px (the default), `md` 560px for a form with hints, `lg` 720px for Settings    |
-| `height`      | A fixed height in px instead of one that follows the content (Settings: 640). Desktop  |
-| `flush`       | No body padding, for a body that lays out and scrolls its own columns                  |
-| `form`        | The body is a form: the confirming button submits it, focus starts in the first field  |
-| `confirm`     | `{ label, variant?, busyLabel?, unavailable? }`: "Delete agent", `primary` or `danger` |
-| `onConfirm`   | The confirming button or a submit. The screen checks its fields and shows every error  |
-| `cancelLabel` | "Cancel" by default, or what cancelling does: "Not now"                                |
-| `onCancel`    | Cancel, the ✕, Escape and the overlay. The screen unmounts the Dialog                  |
-| `closeButton` | `false` removes the ✕, for a decision whose cancel button says what it does            |
-| `closeLabel`  | The ✕'s name, "Close" and the title by default                                         |
-| `busy`        | The request runs: the confirming button is busy and the rest of the Dialog waits       |
-| `error`       | A failed request's message, read through the alert slot at the end of the body         |
-| `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2)                 |
+| Prop          | What it is                                                                            |
+| ------------- | ------------------------------------------------------------------------------------- |
+| `title`       | The dialog's name, in `text-heading`                                                  |
+| `size`        | `sm` 440px (the default), `md` 560px for a form with hints, `lg` 720px for Settings   |
+| `height`      | A fixed height in px instead of one that follows the content (Settings: 640). Desktop |
+| `flush`       | No body padding, for a body that lays out and scrolls its own columns                 |
+| `form`        | The body is a form: the confirming button submits it, focus starts in the first field |
+| `confirm`     | `{ label, variant?, busyLabel, unavailable? }`: "Delete agent", `primary` or `danger` |
+| `onConfirm`   | The confirming button or a submit. Clear `error` first, then check the fields         |
+| `cancelLabel` | "Cancel" by default, or what cancelling does: "Not now"                               |
+| `onCancel`    | Cancel, the ✕, Escape and the overlay. The screen unmounts the Dialog                 |
+| `closeButton` | `false` removes the ✕, for a decision whose cancel button says what it does           |
+| `closeLabel`  | The ✕'s name: "Close" and the title by default, without a trailing "?"                |
+| `busy`        | The request runs: the confirming button is busy and the rest of the Dialog waits      |
+| `error`       | A failed request's message, read through the alert slot at the end of the body        |
+| `returnFocus` | Where focus goes on close when the opener has gone or is inert (23 A2)                |
 
 Never wider than the window less 32px nor taller than the window less 64px; the body scrolls and
 the header and footer don't. When the window is short (`short:`, under 36em), the header scrolls
-with the body and only the footer stays. It fades in over the `overlay` colour, nothing else moves.
+with the body and only the footer stays. It fades in over the `overlay` colour with the enter
+easing, nothing else moves.
 
 | State      | What happens                                                                                  |
 | ---------- | --------------------------------------------------------------------------------------------- |
@@ -265,11 +266,18 @@ with the body and only the footer stays. It fades in over the `overlay` colour, 
 **The alert slot.** The body ends in an always-mounted `role="alert"` with no box of its own, so
 screen readers know it before the error arrives and it takes no room while empty. On each attempt
 it empties, and fills again a frame after the request ends, so a second failure with the same
-words is read again. The Callout inside it has no role.
+words is read again. The Callout inside it has no role. **Clear `error` at the start of
+`onConfirm`**, or a field error that stops the request leaves the old failure to be read out again.
+
+**The ✕'s name** is "Close" and the title, without a trailing "?": "Delete agent?" gives "Close
+Delete agent". A title that starts with "Close" passes `closeLabel`, so "Close Acme?" has a ✕
+named "Keep Acme open".
 
 **Focus goes back** to the element that opened the Dialog. When that element has gone (a deleted
 row) or is inert, it goes to `returnFocus()`, which runs after the close, so it can name an
-element the same change added; else to the page's `h1`. Never to `body`.
+element the same change added; else to the page's `h1`. Never to `body`. When nothing had focus
+as it opened, there's no opener, so the same fallbacks apply. The page's `h1` needs
+`tabIndex={-1}`, or it can't take focus and focus ends on `body` after all.
 
 **Live regions.** While a Dialog is open, everything outside it is inert, so a screen reader can't
 hear the shell's own live regions. Each Dialog has a visually hidden `aria-live="polite"` region

@@ -49,7 +49,7 @@ export function newAgentDialog(overrides: Partial<DialogProps> = {}): ReactNode 
     <Dialog
       title="New agent"
       form
-      confirm={{ label: "Create agent" }}
+      confirm={{ label: "Create agent", busyLabel: "Creating…" }}
       onConfirm={() => undefined}
       onCancel={() => undefined}
       {...overrides}

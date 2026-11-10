@@ -20,9 +20,9 @@ const sizeClasses: Record<DialogSize, string> = {
 const frame = [
   "dialog-frame m-auto flex-col overflow-hidden rounded-lg border border-transparent p-0",
   "bg-surface-raised text-fg shadow-3 open:flex",
-  "transition-opacity duration-(--duration-base) starting:opacity-0",
+  "transition-opacity duration-(--duration-base) ease-(--ease-enter) starting:opacity-0",
   "backdrop:bg-overlay backdrop:transition-opacity backdrop:duration-(--duration-base)",
-  "backdrop:starting:opacity-0",
+  "backdrop:ease-(--ease-enter) backdrop:starting:opacity-0",
 ].join(" ");
 
 /**
@@ -145,8 +145,12 @@ function heightStyle(height: number | undefined, phone: boolean): CSSProperties 
   return { "--dialog-height": `${height}px` } as CSSProperties;
 }
 
+/** The first field that can take focus: not disabled, and not inside something `hidden`. */
 function firstField(body: HTMLElement | null): HTMLElement | null {
-  return body?.querySelector<HTMLElement>("input:not([type=hidden]), textarea, select") ?? null;
+  const fields = body?.querySelectorAll<HTMLElement>(
+    "input:not([type=hidden]):enabled, textarea:enabled, select:enabled",
+  );
+  return [...(fields ?? [])].find((field) => field.closest("[hidden]") === null) ?? null;
 }
 
 function submit(event: FormEvent<HTMLFormElement>, confirm: () => void) {

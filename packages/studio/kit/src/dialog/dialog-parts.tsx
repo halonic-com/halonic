@@ -32,7 +32,7 @@ export function DialogHeader({
           variant="ghost"
           size="sm"
           icon={<CloseIcon />}
-          label={props.closeLabel ?? `Close ${props.title}`}
+          label={props.closeLabel ?? `Close ${props.title.replace(/\?$/, "")}`}
           unavailable={busy ? { reason: confirmId } : undefined}
           onClick={onClose}
         />

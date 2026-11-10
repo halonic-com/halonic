@@ -50,7 +50,11 @@ verifies("kit.dialog", () => {
       const { container } = render(
         newAgentDialog({
           onConfirm,
-          confirm: { label: "Create agent", unavailable: { reason: "why" } },
+          confirm: {
+            label: "Create agent",
+            busyLabel: "Creating…",
+            unavailable: { reason: "why" },
+          },
         }),
       );
       fire(

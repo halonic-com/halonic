@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PresentationProvider } from "../presentation/presentation.tsx";
 import {
@@ -13,6 +14,21 @@ import {
   restoreDialogPage,
 } from "../test/dialogs.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
+import { Dialog } from "./dialog.tsx";
+
+function formDialog(fields: ReactNode) {
+  return (
+    <Dialog
+      title="New agent"
+      form
+      confirm={{ label: "Create agent", busyLabel: "Creating…" }}
+      onConfirm={() => undefined}
+      onCancel={() => undefined}
+    >
+      {fields}
+    </Dialog>
+  );
+}
 
 beforeEach(() => {
   fakeDialogPage();
@@ -103,6 +119,32 @@ verifies("kit.dialog", () => {
     const { container } = render(newAgentDialog());
     expect(document.activeElement).toBe(container.querySelector("input"));
   });
+
+  it("skips a disabled field and one inside something hidden", () => {
+    const { container } = render(
+      formDialog(
+        <>
+          <input name="id" disabled />
+          <div hidden>
+            <input name="advanced" />
+          </div>
+          <textarea name="description" />
+        </>,
+      ),
+    );
+    expect(document.activeElement).toBe(container.querySelector("textarea"));
+  });
+
+  it("starts on Cancel in a form with no field to take focus", () => {
+    const { container } = render(formDialog(<input name="id" disabled />));
+    expect(document.activeElement).toBe(buttonNamed(container, "Cancel"));
+  });
+
+  it("fades the box and the overlay in with the enter easing", () => {
+    const dialog = dialogOf(render(deleteDialog()).container);
+    expect(dialog.className).toContain(" ease-(--ease-enter)");
+    expect(dialog.className).toContain("backdrop:ease-(--ease-enter)");
+  });
 });
 
 verifies("kit.dialog", () => {
@@ -139,8 +181,15 @@ verifies("kit.dialog", () => {
       const onCancel = vi.fn();
       const { container } = render(deleteDialog({ onCancel }));
       const close = dialogOf(container).querySelector("header button") as HTMLButtonElement;
-      expect(close.getAttribute("aria-label")).toBe("Close Delete agent?");
+      expect(close.getAttribute("aria-label")).toBe("Close Delete agent");
       return click(close).then(() => expect(onCancel).toHaveBeenCalledOnce());
+    });
+
+    it("keeps the title's words but drops only a trailing question mark", () => {
+      const { container } = render(deleteDialog({ title: "Why? Delete agent" }));
+      expect(dialogOf(container).querySelector("header button")?.getAttribute("aria-label")).toBe(
+        "Close Why? Delete agent",
+      );
     });
 
     it("takes another name, and goes when closeButton is false", () => {

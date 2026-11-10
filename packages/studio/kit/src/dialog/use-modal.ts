@@ -10,8 +10,9 @@ export interface ModalFocus {
 /**
  * Opens `dialog` as a modal while the component is mounted, and closes it when it unmounts.
  * The element that had focus before is the opener: focus goes back to it on close, or, when it
- * has left the document or sits under `inert`, to `fallback()`, else to the page's `h1`. Older
- * WebKitGTK doesn't move focus back by itself, so the kit always does (component specs 8).
+ * has left the document, sits under `inert` or was only `body`, to `fallback()`, else to the
+ * page's `h1`, which needs `tabIndex={-1}` to take focus. Older WebKitGTK doesn't move focus
+ * back by itself, so the kit always does (component specs 8).
  */
 export function useModal(dialog: RefObject<HTMLDialogElement | null>, focus: ModalFocus): void {
   const latest = useRef(focus);
@@ -23,7 +24,7 @@ export function useModal(dialog: RefObject<HTMLDialogElement | null>, focus: Mod
     if (element === null) {
       return;
     }
-    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    opener.current = openerOf(document.activeElement);
     element.showModal();
     latest.current.initial()?.focus();
     return () => element.close();
@@ -37,6 +38,14 @@ export function useModal(dialog: RefObject<HTMLDialogElement | null>, focus: Mod
     },
     [],
   );
+}
+
+/** With nothing focused, `activeElement` is `body` (or the root): that's no opener at all. */
+function openerOf(active: Element | null): HTMLElement | null {
+  if (!(active instanceof HTMLElement)) {
+    return null;
+  }
+  return active === document.body || active === document.documentElement ? null : active;
 }
 
 function focusTarget(

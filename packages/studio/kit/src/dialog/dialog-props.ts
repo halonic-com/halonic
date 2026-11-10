@@ -10,8 +10,11 @@ export interface DialogConfirm {
   readonly label: string;
   /** `danger` when it deletes or removes something. Default `primary`. */
   readonly variant?: "primary" | "danger";
-  /** The label while `busy`: "Deleting…". */
-  readonly busyLabel?: string;
+  /**
+   * The label while `busy`: "Deleting…". Required, because it's also why Cancel and the ✕ are
+   * unavailable then.
+   */
+  readonly busyLabel: string;
   /** Only for a reason that isn't an incomplete form: that one stays pressable (23 A1). */
   readonly unavailable?: ButtonUnavailable;
 }
@@ -42,7 +45,10 @@ export interface DialogProps {
   readonly onCancel: () => void;
   /** Default `true`. `false` for a decision whose cancel button says what it does. */
   readonly closeButton?: boolean;
-  /** The ✕'s name. Default "Close" and the title. */
+  /**
+   * The ✕'s name. Default "Close" and the title without a trailing "?". A title that starts
+   * with "Close" passes one: "Keep Acme open".
+   */
   readonly closeLabel?: string;
   /** While the request runs: the confirming button is busy, Escape and the overlay do nothing. */
   readonly busy?: boolean;

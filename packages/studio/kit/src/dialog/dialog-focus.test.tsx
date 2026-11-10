@@ -67,6 +67,30 @@ verifies("kit.dialog-return-focus", () => {
     expect(document.activeElement).toBe(container.querySelector("h1"));
   });
 
+  it.each([
+    ["body", () => document.body],
+    ["the root element", () => document.documentElement],
+  ])("treats %s as no opener, so focus goes to returnFocus, else the h1", (_, active) => {
+    const focused = vi.spyOn(document, "activeElement", "get");
+    const { container, rerender } = render(<Opener open={false} opener />);
+    focused.mockImplementation(active);
+    rerender(<Opener open opener />);
+    focused.mockRestore();
+    rerender(<Opener open={false} opener />);
+    expect(document.activeElement).toBe(buttonNamed(container, "More actions for Writer"));
+
+    focused.mockImplementation(active);
+    rerender(
+      <>
+        <h1 tabIndex={-1}>Agents</h1>
+        {deleteDialog()}
+      </>,
+    );
+    focused.mockRestore();
+    rerender(<h1 tabIndex={-1}>Agents</h1>);
+    expect(document.activeElement).toBe(container.querySelector("h1"));
+  });
+
   it("skips an opener that sits under inert", () => {
     const { container, rerender } = render(<Opener open={false} opener />);
     const opener = buttonNamed(container, "More actions for Sorter");
