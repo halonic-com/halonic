@@ -24,10 +24,6 @@
     "packages/adapters/system-node/src/run-program.ts": {
       "reason": "Reads the process table with /bin/ps or Windows PowerShell for halonic doctor's resource report.",
       "scriptsTest": "packages/adapters/system-node/src/run-program.test.ts"
-    },
-    "tooling/check/src/cli/enqueue.ts": {
-      "reason": "Check tooling (pnpm check:enqueue), run by hand before a pull request is queued, never shipped. It starts only git, pnpm and Node with fixed arguments in the repo or a temporary worktree of it. It never loads a skill.",
-      "scriptsTest": "tooling/check/src/cli/enqueue.starts.test.ts"
     }
   }
 }
