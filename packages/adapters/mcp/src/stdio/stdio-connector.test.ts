@@ -1,3 +1,4 @@
+import { join, resolve } from "node:path";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import type { ConnectorConfig, ConnectorFactoryContext } from "@halonicjs/ports";
 import { contractGrant, type ReachedCall } from "@halonicjs/testing-contracts";
@@ -6,8 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 import { contractServer, FakeStarter } from "./fake-program.spec.ts";
 import { McpStdioConnectorFactory } from "./stdio-connector.ts";
 
-/** Fails on Windows today: the working directory gets a drive letter (HAL-4359). */
-const itUnlessWindows = it.skipIf(process.platform === "win32");
+/** An absolute folder on every platform: on Windows it gets the current drive. */
+const workspaceRoot = resolve("/workspaces/acme");
 
 const config: ConnectorConfig = {
   id: "notes",
@@ -33,7 +34,7 @@ function setUp(secrets = new MemorySecrets({ "notes-token": "value-from-secrets"
     secrets,
     tokens: new MemoryTokenStore(),
     http: { fetch: async () => new Response("unused") },
-    workspaceRoot: "/workspaces/acme",
+    workspaceRoot,
     trust: contractGrant,
   };
   return { starter, factory, context, reached, secrets };
@@ -87,22 +88,19 @@ verifies("mcp.stdio-connector", () => {
   });
 
   describe("starting the program", () => {
-    itUnlessWindows(
-      "puts secrets only in the environment, next to the inherited and configured variables",
-      async () => {
-        const { starter, factory, context } = setUp();
-        const client = factory.create(config, context);
-        await client.listTools();
-        const [program] = starter.programs;
-        expect(program?.launch).toEqual({
-          program: "notes-mcp",
-          args: ["--serve"],
-          env: { PATH: "/usr/bin", NOTES_MODE: "quiet", NOTES_TOKEN: "value-from-secrets" },
-          cwd: "/workspaces/acme/tools",
-        });
-        await client.close();
-      },
-    );
+    it("puts secrets only in the environment, next to the inherited and configured variables", async () => {
+      const { starter, factory, context } = setUp();
+      const client = factory.create(config, context);
+      await client.listTools();
+      const [program] = starter.programs;
+      expect(program?.launch).toEqual({
+        program: "notes-mcp",
+        args: ["--serve"],
+        env: { PATH: "/usr/bin", NOTES_MODE: "quiet", NOTES_TOKEN: "value-from-secrets" },
+        cwd: join(workspaceRoot, "tools"),
+      });
+      await client.close();
+    });
 
     it("throws a tool's own failure apart from the message, which is ours", async () => {
       const { factory, context } = setUp();
