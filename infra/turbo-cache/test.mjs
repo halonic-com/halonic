@@ -161,6 +161,16 @@ test("turbo-cache: only a merge_group or main push OIDC token buys a write token
   const main = await exchange(await oidc({ event_name: "push", ref: "refs/heads/main" }));
   assert.equal(main.status, 200);
 
+  // A merge queue on another branch is not ours.
+  assert.equal(
+    (
+      await exchange(
+        await oidc({ event_name: "merge_group", ref: "refs/heads/gh-readonly-queue/dev/x" }),
+      )
+    ).status,
+    403,
+  );
+
   // The attack: a pushed look-alike branch, and every other event, get nothing.
   const fake = { event_name: "push", ref: "refs/heads/gh-readonly-queue/main/x" };
   assert.equal((await exchange(await oidc(fake))).status, 403);

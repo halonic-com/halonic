@@ -361,6 +361,7 @@ jobs:
         if: github.event_name != 'pull_request' && vars.TURBO_API != ''
         env:
           TURBO_API: ${{ vars.TURBO_API }}
+        shell: bash # with pipefail, so `|| exit 0` also catches a failed curl
         run: |
           oidc=$(curl -fsS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=halonic-turbo-cache" | jq -r .value) || exit 0
           echo "::add-mask::$oidc"

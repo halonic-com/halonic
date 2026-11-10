@@ -21,8 +21,10 @@ const b64url = (bytes) =>
     .replace(/=+$/, "");
 
 let jwksCache = { keys: [], at: 0 };
+// An unknown kid forces a refetch; at most one a minute, so a stranger can't make us call GitHub on every request.
 async function githubKeys(force) {
-  if (!force && Date.now() - jwksCache.at < 10 * 60_000) return jwksCache.keys;
+  const age = Date.now() - jwksCache.at;
+  if (age < (force ? 60_000 : 10 * 60_000)) return jwksCache.keys;
   const res = await fetch(`${GITHUB_ISSUER}/.well-known/jwks`);
   if (!res.ok) throw new Error("jwks");
   jwksCache = { keys: (await res.json()).keys ?? [], at: Date.now() };
@@ -65,7 +67,8 @@ async function verifyGithubToken(jwt) {
 // pushed look-alike branch (gh-readonly-queue/main/x) from writing: its event is a plain push on another ref.
 function mayWrite(claims) {
   if (claims.repository !== OIDC_REPOSITORY) return false;
-  if (claims.event_name === "merge_group") return true;
+  if (claims.event_name === "merge_group")
+    return claims.ref?.startsWith("refs/heads/gh-readonly-queue/main/");
   return claims.event_name === "push" && claims.ref === "refs/heads/main";
 }
 
