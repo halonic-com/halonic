@@ -8,6 +8,8 @@ import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { shownPath } from "../../shown-path.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { runGolden } from "../../test/golden.ts";
+import { checklistProblems } from "../../test/golden-checklist.ts";
 import { schemaCommand, schemaFileName } from "./command.ts";
 
 const golden = JSON.parse(
@@ -79,6 +81,13 @@ verifies("cli.commands.schema.write-every-kind", () => {
     expect(io.stderr[0]).toBe(
       '✕ halonic schema takes at most one folder, and you gave four: "", b, "my out", "c,d".',
     );
+  });
+
+  it("keeps the design's checklist with colour, NO_COLOR and --json, written or refused", async () => {
+    for (const args of [["schema"], ["schema", "a", "b"]]) {
+      const run = await runGolden(args, () => [schemaCommand], folder);
+      expect(checklistProblems(run)).toEqual([]);
+    }
   });
 });
 

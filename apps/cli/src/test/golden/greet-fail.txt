@@ -1,0 +1,27 @@
+## colour: halonic greet --fail
+exit 4
+stdout:
+stderr:
+  \e[31m✕\e[39m There's no workspace in ./acme.
+    Run halonic init in ./acme first.
+
+## NO_COLOR: halonic greet --fail
+exit 4
+stdout:
+stderr:
+  ✕ There's no workspace in ./acme.
+    Run halonic init in ./acme first.
+
+## --json: halonic greet --fail
+exit 4
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "not_found",
+      "message": "There's no workspace in ./acme.",
+      "fix": "Run halonic init in ./acme first."
+    }
+  }
+stderr:
