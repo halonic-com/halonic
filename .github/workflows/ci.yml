@@ -284,8 +284,25 @@ jobs:
           path: ${{ env.TURBO_CACHE_DIR }}
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
+      # Remote cache (Cloudflare, infra/turbo-cache). Only main and the merge
+      # queue write; pull requests only read. Without the secrets (a fork),
+      # the step falls back to the local cache.
       - name: Run every task through the cache
-        run: pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize
+        env:
+          TURBO_API: ${{ vars.TURBO_API }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ -z "$TURBO_TOKEN" ] || [ -z "$TURBO_REMOTE_CACHE_SIGNATURE_KEY" ]; then
+            cache=local:rw
+          elif [ "$EVENT" = "pull_request" ]; then
+            cache=local:rw,remote:r
+          else
+            cache=local:rw,remote:rw
+          fi
+          pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize --cache="$cache"
       # On main, main checks itself: it reads the result files the tests
       # just wrote, even when a task failed (a missing result file fails the
       # check anyway). On a pull request, the guard job runs trace from the

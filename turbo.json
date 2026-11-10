@@ -1,6 +1,9 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "stream",
+  "remoteCache": {
+    "signature": true
+  },
   "globalDependencies": [
     "tooling/config/tsconfig/**",
     "tooling/config/types/**",

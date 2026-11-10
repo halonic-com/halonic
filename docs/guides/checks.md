@@ -489,3 +489,14 @@ Tauri shell's `Cargo.lock` for a branch, for anyone without a Rust
 toolchain: run `gh workflow run cargo-lock.yml --ref <branch>`, download
 the `cargo-lock` artifact into `apps/studio/src-tauri` and commit it. It
 never pushes; the pull request's own CI checks the lockfile.
+
+## The remote cache in CI
+
+CI shares Turbo results through a remote cache: a small Cloudflare Worker with
+an R2 bucket (`infra/turbo-cache`). The `build` job reads it on pull requests
+and writes to it only on `main` and in the merge queue, so a pull request can't
+put anything into the cache that other runs trust. Entries are signed
+(`remoteCache.signature` in `turbo.json`) and expire after 30 days. A run
+without the secrets, such as a fork, uses the local cache only. Local runs and
+agents don't use the remote cache: they have no token. `base-tests` stays
+uncached (`--force`). `actions/cache` stays as the fallback.

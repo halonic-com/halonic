@@ -1,0 +1,13 @@
+name = "halonic-turbo-cache"
+main = "worker.mjs"
+compatibility_date = "2026-06-15"
+
+[[r2_buckets]]
+binding = "R2_STORE"
+bucket_name = "halonic-turbo-cache"
+
+# Account-level Secrets Store secret. The worker reads it with `await env.TURBO_TOKEN.get()`.
+[[secrets_store_secrets]]
+binding = "TURBO_TOKEN"
+store_id = "3a2182643c7a4eea82e266e47d982d70"
+secret_name = "TURBO_TOKEN"
