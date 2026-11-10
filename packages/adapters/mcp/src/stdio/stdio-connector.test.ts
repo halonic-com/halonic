@@ -113,9 +113,9 @@ verifies("mcp.stdio-connector", () => {
     it("stops a program whose server speaks none of our versions, each time it starts", async () => {
       const { context } = setUp();
       const starter = new FakeStarter((message, program) => {
-        if (message.method !== "initialize") return;
+        if (message["method"] !== "initialize") return;
         const result = { protocolVersion: "1999-01-01", capabilities: { tools: {} } };
-        program.send({ jsonrpc: "2.0", id: message.id, result });
+        program.send({ jsonrpc: "2.0", id: message["id"], result });
       });
       const factory = new McpStdioConnectorFactory({
         starter,
