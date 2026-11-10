@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `run` and `runs` from cli-output 3.4 at revision 19; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703; the sentences of `doctor` and the sandbox check from cli-output 3.7 and 3.8 at revision 24, with sandbox-screens 3.1 and the team's calls on HAL-2703 (HAL-2676)
+- Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 5, checklist item 2: "every sentence the user reads comes from the message catalogue by key"), approved by the board on HAL-2123; the sentences of `init`, `validate` and `test` from cli-output 3.1 to 3.3 at revision 19; the sentences of `run` and `runs` from cli-output 3.4 at revision 24, with the team's calls on HAL-2703; the sentences of `trust` and `plugin` from cli-output 3.5 and 3.6 at revision 24, with Liam's F5 and F6 on HAL-2618 and the team's calls on HAL-2703; the sentences of `doctor` and the sandbox check from cli-output 3.7 and 3.8 at revision 24, with sandbox-screens 3.1 and the team's calls on HAL-2703 (HAL-2676)
 
 The `halonic` command shall take every sentence it shows the user from the CLI's message catalogue, where the sentence has a key made of its area and its name, such as `usage.unknownCommand`. A sentence shall have the same words in a terminal, through a pipe and in `--json`: colour, bold, dim and the marks' plain-text stand-ins shall be the only difference.
 
@@ -32,6 +32,9 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given a finished run that changed 1 file, sent 1 email, asked once and spent an estimated €0.004,
   when its receipt is made,
   then it reads "Changed 1 file · sent 1 email · asked you once · estimated spend €0.004", and a run that sent nothing says "Sent nothing" (cli-output 3.4).
+- Given a finished run whose wait step was answered with the event `hold`,
+  when `halonic runs show` names what the user answered,
+  then it reads "you answered hold at 14:02", and only `approve` and `reject` get their own verb (cli-output 3.4).
 - Given `halonic trust` without a terminal and without `--yes --fingerprint`,
   when its refusal is made,
   then line 1 reads "Acme isn't trusted on this computer yet, and there's no terminal to ask you." and line 2 names the flags, with the user's own `--dir` (cli-output 1.7 and 3.5).
