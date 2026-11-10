@@ -204,3 +204,36 @@ fn repo_config_refuses_a_repository_that_sets_merge_options() {
         "outside secret\n\n"
     );
 }
+
+#[test]
+fn repo_leaks_refuses_a_repository_that_redirects_its_remote() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.append_config(
+        "[url \"https://evil.example/\"]\n\tinsteadOf = https://git.acme.example/\n[http]\n\tsslVerify = false\n",
+    );
+    // The first refused key in the listing is named.
+    assert_eq!(
+        sandbox.git("status"),
+        Err(GitError::ConfigNotAllowed {
+            key: "url.https://evil.example/.insteadof".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn repo_leaks_refuses_a_repository_that_names_a_config_hook() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.append_config(&format!(
+        "[hook \"acme\"]\n\tevent = pre-commit\n\tcommand = {}\n",
+        config_value(&sandbox.planted("hook"))
+    ));
+    assert_eq!(
+        sandbox.git("commit --allow-empty -m note"),
+        Err(GitError::ConfigNotAllowed {
+            key: "hook.acme.event".to_owned(),
+        })
+    );
+    assert!(sandbox.marks().is_empty());
+}

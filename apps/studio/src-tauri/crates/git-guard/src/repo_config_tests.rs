@@ -157,3 +157,54 @@ fn repo_config_refuses_merge_options_from_the_repository_only() {
         Ok(())
     );
 }
+
+#[test]
+fn repo_leaks_refuses_keys_that_redirect_or_expose_git_traffic() {
+    for key in [
+        "url.https://evil.example/.insteadOf",
+        "url.ssh://evil.example/.pushInsteadOf",
+        "http.sslVerify",
+        "http.https://git.acme.example/.sslverify",
+        "http.sslCAInfo",
+        "http.https://git.acme.example/.sslCAInfo",
+        "http.sslCAPath",
+        "http.https://git.acme.example/.sslcapath",
+    ] {
+        for scope in ["local", "worktree"] {
+            assert_eq!(
+                check_refused_keys(&[entry(scope, key, "x")]),
+                Err(GitError::ConfigNotAllowed {
+                    key: key.to_owned(),
+                }),
+                "{scope} {key}"
+            );
+        }
+    }
+}
+
+#[test]
+fn repo_leaks_refuses_every_config_hook_from_the_repository() {
+    for key in ["hook.acme.command", "hook.acme.event", "Hook.a.b.enabled"] {
+        assert!(
+            check_refused_keys(&[entry("local", key, "touch owned")]).is_err(),
+            "{key}"
+        );
+    }
+}
+
+#[test]
+fn repo_leaks_keeps_the_users_own_values_and_similar_keys() {
+    assert_eq!(
+        check_refused_keys(&[
+            entry("global", "url.https://git.acme.example/.insteadOf", "acme:"),
+            entry("global", "http.sslCAInfo", "acme-ca.pem"),
+            entry("global", "hook.lint.command", "acme-lint"),
+            entry("command", "http.sslVerify", "true"),
+            entry("local", "http.sslCert", "acme-cert.pem"),
+            entry("local", "http.https://git.acme.example/.extraHeader", "x"),
+            entry("local", "url.https://git.acme.example/.name", "x"),
+            entry("local", "core.hooksPath", "hooks"),
+        ]),
+        Ok(())
+    );
+}

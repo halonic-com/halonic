@@ -87,23 +87,58 @@ pub(crate) fn has_command_entry(entries: &[ConfigEntry], key: &str) -> bool {
         .any(|entry| entry.scope == "command" && entry.key.eq_ignore_ascii_case(key))
 }
 
-/// Refuses a repository whose own config sets `branch.<name>.mergeOptions`.
-/// The `git merge` that `pull` runs reads it as options, so `-F <file>`
-/// would make any file the merge commit's message, ready to be pushed. An
-/// empty value in the runner's config doesn't override it (tested with
-/// 2.47), so the repository is refused rather than neutralised.
+/// Refuses a repository whose own config sets a key no override reaches
+/// (see [`is_refused_key`]). The user's own values still apply.
 pub(crate) fn check_refused_keys(entries: &[ConfigEntry]) -> Result<(), GitError> {
-    let refused = entries.iter().find(|entry| {
-        entry.is_from_repository()
-            && subsection_key(&entry.key, "branch")
-                .is_some_and(|(_, name)| name.eq_ignore_ascii_case("mergeoptions"))
-    });
+    let refused = entries
+        .iter()
+        .find(|entry| entry.is_from_repository() && is_refused_key(&entry.key));
     match refused {
         Some(entry) => Err(GitError::ConfigNotAllowed {
             key: entry.key.clone(),
         }),
         None => Ok(()),
     }
+}
+
+/// Whether a repository's own config may not set `key` at all:
+///
+/// - `branch.<name>.mergeOptions`: the `git merge` that `pull` runs reads it
+///   as options, so `-F <file>` would make any file the merge commit's
+///   message, ready to be pushed. An empty value in the runner's config
+///   doesn't override it (tested with 2.47).
+/// - `url.<base>.insteadOf` and `pushInsteadOf`: they send `pull` and `push`
+///   to another server than the remote the user sees, with the user's
+///   credentials.
+/// - `http.sslVerify`, `http.sslCAInfo` and `http.sslCAPath`, also per URL:
+///   they turn the certificate check off or trust the repository's own
+///   authority, so anyone in between reads what git sends. A per-URL key
+///   beats the same key from the runner, so it can't be overridden.
+/// - Every `hook.<name>.*` key: newer git runs `hook.<name>.command` as a
+///   hook, and nothing says `core.hooksPath` covers it.
+fn is_refused_key(key: &str) -> bool {
+    let lower = key.to_ascii_lowercase();
+    if lower.starts_with("hook.") || weakens_certificate_check(&lower) {
+        return true;
+    }
+    if subsection_key(key, "branch")
+        .is_some_and(|(_, name)| name.eq_ignore_ascii_case("mergeoptions"))
+    {
+        return true;
+    }
+    subsection_key(key, "url").is_some_and(|(_, name)| {
+        name.eq_ignore_ascii_case("insteadof") || name.eq_ignore_ascii_case("pushinsteadof")
+    })
+}
+
+/// `http.<name>` or `http.<url>.<name>` for a name that weakens the
+/// certificate check; `key` in lower case.
+fn weakens_certificate_check(key: &str) -> bool {
+    if !key.starts_with("http.") {
+        return false;
+    }
+    let name = key.rsplit('.').next().unwrap_or_default();
+    matches!(name, "sslverify" | "sslcainfo" | "sslcapath")
 }
 
 /// Adds the names of the filter drivers a repository's own config defines.
