@@ -89,6 +89,24 @@ verifies("shell.window-tab-strip", () => {
       expect([...closeButtons].map((button) => button.tabIndex)).toEqual([-1, -1, -1]);
     });
 
+    it("gives the Tab stop back to the active tab when the focus leaves the strip", () => {
+      const { tabs, container } = renderStrip();
+      const [first, second] = tabElements(container);
+      act(() => second?.focus());
+      press(second as HTMLElement, "ArrowLeft");
+      expect(tabElements(container).map((tab) => tab.tabIndex)).toEqual([0, -1, -1]);
+      act(() => first?.blur());
+      act(() => tabs.activate(tabs.state.tabs[2]?.id ?? ""));
+      expect(tabElements(container).map((tab) => tab.tabIndex)).toEqual([-1, -1, 0]);
+    });
+
+    it("keeps the Tab stop on the active tab after a click when it changes from outside", () => {
+      const { tabs, container } = renderStrip();
+      click(tabElements(container)[0]);
+      act(() => tabs.activate(tabs.state.tabs[2]?.id ?? ""));
+      expect(tabElements(container).map((tab) => tab.tabIndex)).toEqual([-1, -1, 0]);
+    });
+
     it("moves the focus with the arrow keys and opens a tab with Enter or Space", () => {
       const { tabs, container } = renderStrip();
       const [first, second, third] = tabElements(container);
@@ -145,6 +163,16 @@ verifies("shell.window-tab-strip", () => {
       click(container.querySelector('[aria-label="Close Support reply"]'));
       expect(titles(tabs)).toEqual(["Agents", "Sorter"]);
       expect(currentLocation(tabs.active).title).toBe("Agents");
+    });
+
+    it("keeps the focus where it is when the close button is pressed", () => {
+      const { container } = renderStrip();
+      const button = container.querySelector('[aria-label="Close Support reply"]') as HTMLElement;
+      const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+      act(() => {
+        button.dispatchEvent(event);
+      });
+      expect(event.defaultPrevented).toBe(true);
     });
 
     it("shows the close button on the active tab, and on the others only on hover or focus", () => {

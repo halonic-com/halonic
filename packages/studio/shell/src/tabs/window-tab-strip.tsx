@@ -1,5 +1,6 @@
 import { Button, CloseIcon, PlusIcon } from "@halonicjs/studio-kit";
 import {
+  type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
   useEffect,
@@ -39,9 +40,10 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
     () => tabs.state,
   );
   const elements = useRef(new Map<string, HTMLDivElement>());
-  const [focusedId, setFocusedId] = useState(state.activeId);
-  // The focused tab may have closed; the active tab then takes the Tab stop.
-  const rovingId = state.tabs.some((tab) => tab.id === focusedId) ? focusedId : state.activeId;
+  // The tab that has the focus while it is in the strip. Outside the strip, or when the focused tab
+  // has closed, the active tab is the Tab stop, even when it changed from outside (the sidebar).
+  const [focusedId, setFocusedId] = useState<string | undefined>(undefined);
+  const rovingId = state.tabs.find((tab) => tab.id === focusedId)?.id ?? state.activeId;
 
   useEffect(() => {
     elements.current.get(state.activeId)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
@@ -50,6 +52,12 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
   const focusTab = (tabId: string) => {
     setFocusedId(tabId);
     elements.current.get(tabId)?.focus();
+  };
+
+  const onBlur = (event: FocusEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      setFocusedId(undefined);
+    }
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -69,8 +77,9 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
       <div
         role="tablist"
         aria-label="Open tabs"
-        className="flex min-w-0 items-end self-end overflow-x-auto [scrollbar-width:none]"
+        className={stripClasses}
         onKeyDown={onKeyDown}
+        onBlur={onBlur}
       >
         {state.tabs.map((tab) => (
           <WindowTabView
@@ -87,10 +96,8 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
                 elements.current.set(tab.id, element);
               }
             }}
-            onActivate={() => {
-              setFocusedId(tab.id);
-              tabs.activate(tab.id);
-            }}
+            onFocus={() => setFocusedId(tab.id)}
+            onActivate={() => tabs.activate(tab.id)}
             onClose={() => tabs.close(tab.id)}
           />
         ))}
@@ -107,6 +114,17 @@ export function WindowTabStrip({ tabs, iconFor, needsYou, onNewTab }: WindowTabS
     </>
   );
 }
+
+/**
+ * The strip scrolls sideways, and a scroller clips on all four sides. Its 8px padding at both ends
+ * and 1px at the foot, cancelled by negative margins, keep the active tab's foot curves and its
+ * 1px overlap with the panel's top border inside the scroller's box, while the tabs stay where the
+ * title bar puts them.
+ */
+const stripClasses = [
+  "-mx-2 -mb-px flex min-w-0 items-end self-end overflow-x-auto px-2 pb-px",
+  "[scrollbar-width:none]",
+].join(" ");
 
 /** What a key does in the strip, or `undefined` when the strip leaves it alone. */
 type StripKey = "previous" | "next" | "activate" | "close" | "move-left" | "move-right";
@@ -167,6 +185,7 @@ interface WindowTabViewProps {
   readonly icon: ReactNode;
   readonly needsYou: boolean;
   readonly elementRef: (element: HTMLDivElement | null) => void;
+  readonly onFocus: () => void;
   readonly onActivate: () => void;
   readonly onClose: () => void;
 }
@@ -219,6 +238,7 @@ function WindowTabView(props: WindowTabViewProps) {
       tabIndex={focusable ? 0 : -1}
       data-tab-id={tab.id}
       className={`${tabClasses.common} ${active ? tabClasses.active : tabClasses.inactive}`}
+      onFocus={props.onFocus}
       onClick={props.onActivate}
     >
       {active ? (
@@ -267,7 +287,11 @@ interface CloseTabButtonProps {
 
 /**
  * The 20px ✕. It keeps its place on every tab, shown or not, so nothing moves on hover. It's not a
- * Tab stop of its own: the strip is one, and Delete closes the focused tab.
+ * Tab stop of its own: the strip is one, and Delete closes the focused tab. A click doesn't move
+ * the focus to it, so the focus doesn't fall to the page when the button goes with its tab.
+ *
+ * A `tab`'s children are presentational, so screen readers don't announce the button's name;
+ * Delete is the way to close a tab for them.
  */
 function CloseTabButton({ title, shown, onClose }: CloseTabButtonProps) {
   const visibility = shown ? "" : "invisible group-hover:visible group-focus-visible:visible";
@@ -277,6 +301,7 @@ function CloseTabButton({ title, shown, onClose }: CloseTabButtonProps) {
       tabIndex={-1}
       aria-label={`Close ${title}`}
       className={`inline-grid size-5 shrink-0 place-items-center rounded-xs text-fg-muted hover:bg-surface-muted hover:text-fg ${visibility}`}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClose}
     >
       <span aria-hidden="true" className="size-icon-sm *:size-full">
