@@ -65,6 +65,14 @@ export {
   workspaceLine,
 } from "./doctor-lines.ts";
 export {
+  type AliasProvider,
+  type ModelProblem,
+  type ModelProviderState,
+  type ModelsLine,
+  modelsLine,
+  type ProviderReport,
+} from "./doctor-models-line.ts";
+export {
   EventBus,
   type EventListener,
   type EventMap,
