@@ -7,6 +7,7 @@ import { providerAuthorization } from "./provider-key.ts";
 import {
   type ProviderReach,
   parseModelRequest,
+  removedEveryTool,
   type ToolsAfterRemoval,
   withoutProviderReach,
 } from "./provider-reach.ts";
@@ -32,10 +33,15 @@ function isForwardedReplyHeader(name: string): boolean {
  * tool by its `name`, as in `{ "type": "tool", "name": "web_search" }`, so a
  * choice of a removed tool's name becomes `{ "type": "auto" }`, keeping its
  * other fields, such as `disable_parallel_tool_use`. When a kept tool has the
- * same name, the choice stays as it is.
+ * same name, the choice stays as it is. A choice of `{ "type": "any" }`, which
+ * forces some tool, becomes `auto` the same way when no tool is left.
  */
 function anthropicToolChoice(choice: unknown, tools: ToolsAfterRemoval): unknown {
-  if (!isPlainObject(choice) || choice["type"] !== "tool") return choice;
+  if (!isPlainObject(choice)) return choice;
+  if (choice["type"] === "any") {
+    return removedEveryTool(tools) ? { ...choice, type: "auto" } : choice;
+  }
+  if (choice["type"] !== "tool") return choice;
   const name = choice["name"];
   const hasName = (tool: unknown) => isPlainObject(tool) && tool["name"] === name;
   if (!tools.removed.some(hasName) || tools.kept.some(hasName)) return choice;
@@ -68,7 +74,8 @@ export interface AnthropicRouteDependencies {
  * sign-in for an agent on a subscription (requirement
  * `harness-bridge.sign-in`). Streaming replies stream through unchanged.
  * Anthropic's web tools and MCP servers are removed first, and a
- * `tool_choice` that forces a removed tool becomes `auto`; image
+ * `tool_choice` that forces a removed tool, or forces some tool when none
+ * is left, becomes `auto`; image
  * and PDF blocks go on as they are, and one with a URL source is refused.
  * Each call is recorded with its usage and cost (requirement
  * `harness-bridge.spend`).

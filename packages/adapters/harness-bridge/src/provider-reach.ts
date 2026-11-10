@@ -13,7 +13,9 @@ export interface ProviderReach {
   /**
    * The request's `tool_choice` once the removed tools are gone. A choice
    * that forces a removed tool becomes `auto`, because the provider answers
-   * 400 to a choice naming a tool the request doesn't have. Any other choice
+   * 400 to a choice naming a tool the request doesn't have. So does a choice
+   * that forces some tool when the bridge removed every tool, because the
+   * provider answers 400 to a forced tool use with no tools. Any other choice
    * comes back as the same value.
    */
   keptToolChoice(choice: unknown, tools: ToolsAfterRemoval): unknown;
@@ -23,6 +25,15 @@ export interface ProviderReach {
 export interface ToolsAfterRemoval {
   removed: readonly Record<string, unknown>[];
   kept: readonly unknown[];
+}
+
+/**
+ * True when the request had tools and the bridge removed every one of them.
+ * A request that came without tools isn't one: its `tool_choice` is the
+ * program's own to get right.
+ */
+export function removedEveryTool(tools: ToolsAfterRemoval): boolean {
+  return tools.removed.length > 0 && tools.kept.length === 0;
 }
 
 /**
@@ -41,8 +52,8 @@ export function parseModelRequest(body: Uint8Array): unknown {
 /**
  * Removes the fields and the tools that `reach` names from a model request.
  * The match on a tool is on its `type`, never on its `name`, so a renamed web
- * tool still goes. A `tool_choice` that forces a removed tool is set back to
- * `auto` by `reach.keptToolChoice`.
+ * tool still goes. A `tool_choice` that forces a removed tool, or forces some
+ * tool when none is left, is set back to `auto` by `reach.keptToolChoice`.
  *
  * `request` is `body` already parsed. A request with nothing to remove goes on
  * byte for byte, unchanged.

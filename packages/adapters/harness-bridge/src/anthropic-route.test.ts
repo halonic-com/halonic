@@ -206,6 +206,50 @@ verifies("harness-bridge.anthropic", () => {
     });
   });
 
+  describe('a tool_choice of type "any"', () => {
+    const webSearch = { type: "web_search_20250305", name: "web_search" };
+    const webFetch = { type: "web_fetch_20250910", name: "web_fetch" };
+
+    it("becomes auto when the bridge removed every tool, keeping its other fields", async () => {
+      const anthropic = fakeProvider(() => new Response("{}"));
+      const tool_choice = { type: "any", disable_parallel_tool_use: true };
+      await programRequest(await open(anthropic.fetch), {
+        ...withPdfAndImage,
+        tools: [webSearch, webFetch],
+        tool_choice,
+      });
+
+      const forwarded = JSON.parse(anthropic.calls[0]?.body ?? "");
+      expect(forwarded.tool_choice).toEqual({ type: "auto", disable_parallel_tool_use: true });
+      expect(forwarded.tools).toEqual([]);
+    });
+
+    it("stays as it is when a tool is left", async () => {
+      const anthropic = fakeProvider(() => new Response("{}"));
+      const readFile = {
+        name: "read_file",
+        description: "The program's own tool",
+        input_schema: {},
+      };
+      await programRequest(await open(anthropic.fetch), {
+        ...withPdfAndImage,
+        tools: [webSearch, readFile],
+        tool_choice: { type: "any" },
+      });
+
+      const forwarded = JSON.parse(anthropic.calls[0]?.body ?? "");
+      expect(forwarded.tool_choice).toEqual({ type: "any" });
+      expect(forwarded.tools).toEqual([readFile]);
+    });
+
+    it("stays as it is when the request came without tools", async () => {
+      const anthropic = fakeProvider(() => new Response("{}"));
+      const sent = JSON.stringify({ ...withPdfAndImage, tools: [], tool_choice: { type: "any" } });
+      await programRequest(await open(anthropic.fetch), sent);
+      expect(anthropic.calls[0]?.body).toBe(sent);
+    });
+  });
+
   it("removes the MCP connector's servers, and keeps the rest of the request", async () => {
     const anthropic = fakeProvider(() => new Response("{}"));
     const mcp_servers = [{ type: "url", url: "https://mcp.example.test/sse", name: "outside" }];

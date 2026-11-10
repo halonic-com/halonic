@@ -236,6 +236,42 @@ verifies("harness-bridge.openai", () => {
     });
   });
 
+  describe('a tool_choice of "required"', () => {
+    it("becomes auto when the bridge removed every tool", async () => {
+      const openai = fakeProvider(() => new Response("{}"));
+      const { bridge } = await open(openai.fetch);
+      const tools = [{ type: "web_search" }, { type: "mcp", server_label: "outside" }];
+      await programRequest(bridge, { ...codexRequest, tools, tool_choice: "required" });
+
+      const forwarded = JSON.parse(openai.calls[0]?.body ?? "");
+      expect(forwarded.tool_choice).toBe("auto");
+      expect(forwarded.tools).toEqual([]);
+    });
+
+    it("stays as it is when a tool is left", async () => {
+      const openai = fakeProvider(() => new Response("{}"));
+      const { bridge } = await open(openai.fetch);
+      const shell = { type: "function", name: "shell", parameters: { type: "object" } };
+      await programRequest(bridge, {
+        ...codexRequest,
+        tools: [{ type: "web_search" }, shell],
+        tool_choice: "required",
+      });
+
+      const forwarded = JSON.parse(openai.calls[0]?.body ?? "");
+      expect(forwarded.tool_choice).toBe("required");
+      expect(forwarded.tools).toEqual([shell]);
+    });
+
+    it("stays as it is when the request came without tools", async () => {
+      const openai = fakeProvider(() => new Response("{}"));
+      const { bridge } = await open(openai.fetch);
+      const sent = JSON.stringify({ ...codexRequest, tools: [], tool_choice: "required" });
+      await programRequest(bridge, sent);
+      expect(openai.calls[0]?.body).toBe(sent);
+    });
+  });
+
   describe("refusing", () => {
     const cases: [string, BridgeProviderAccess | null, string, number][] = [
       ["an agent that doesn't use OpenAI", null, "denied", 403],

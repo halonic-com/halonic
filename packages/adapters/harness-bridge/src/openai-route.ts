@@ -8,6 +8,8 @@ import {
   hasRemovedType,
   type ProviderReach,
   parseModelRequest,
+  removedEveryTool,
+  type ToolsAfterRemoval,
   withoutProviderReach,
 } from "./provider-reach.ts";
 import type { BridgeRoute } from "./route.ts";
@@ -42,9 +44,11 @@ function isOpenAiRemovedTool(type: string): boolean {
  * tool by its `type`, as in `{ "type": "web_search_preview" }` or
  * `{ "type": "mcp", "server_label": "…" }`, so a choice of a removed type
  * becomes `auto`. An `allowed_tools` choice loses the removed tools from its
- * list, and becomes `auto` when none are left.
+ * list, and becomes `auto` when none are left. A choice of `"required"`,
+ * which forces some tool, becomes `auto` when no tool is left.
  */
-function openAiToolChoice(choice: unknown): unknown {
+function openAiToolChoice(choice: unknown, tools: ToolsAfterRemoval): unknown {
+  if (choice === "required") return removedEveryTool(tools) ? "auto" : choice;
   if (!isPlainObject(choice)) return choice;
   if (hasRemovedType(choice, isOpenAiRemovedTool)) return "auto";
   const allowed = choice["tools"];
@@ -81,7 +85,8 @@ export interface OpenAiRouteDependencies {
  * on a subscription (requirement `harness-bridge.sign-in`). Streaming
  * replies stream through unchanged.
  * OpenAI's web search and MCP tools are removed first, and a `tool_choice`
- * that forces one becomes `auto`. An image or file that OpenAI would fetch
+ * that forces one, or forces some tool when none is left, becomes `auto`.
+ * An image or file that OpenAI would fetch
  * from a URL, and a stored prompt, are refused. Each call is recorded
  * with its usage and cost (requirement `harness-bridge.spend`).
  */
