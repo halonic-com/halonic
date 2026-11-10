@@ -157,8 +157,8 @@ export const contractMcpTools = contractServerTools.map((tool) => ({
     ? {}
     : {
         _meta: {
-          ...(tool.risk === undefined ? {} : { "halonic.com/risk": tool.risk }),
-          ...(tool.untrusted === undefined ? {} : { "halonic.com/untrusted": tool.untrusted }),
+          ...(tool.risk === undefined ? {} : { "com.halonic/risk": tool.risk }),
+          ...(tool.untrusted === undefined ? {} : { "com.halonic/untrusted": tool.untrusted }),
         },
       }),
 }));

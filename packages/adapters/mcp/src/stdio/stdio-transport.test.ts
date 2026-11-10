@@ -113,7 +113,7 @@ verifies("mcp.stdio-transport", () => {
       const controller = new AbortController();
       const call = session.callTool("notes_search", {}, controller.signal);
       await vi.waitFor(() =>
-        expect(program.received.some((message) => message.method === "tools/call")).toBe(true),
+        expect(program.received.some((message) => message["method"] === "tools/call")).toBe(true),
       );
       controller.abort();
       await expect(call).rejects.toThrow("The request was cancelled.");
