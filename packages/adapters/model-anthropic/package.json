@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-model-anthropic",
+  "private": true,
+  "type": "module",
+  "description": "The Anthropic model adapter: chat calls over the Messages API (/v1/messages) on the built-in fetch.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "runtime": "any"
+  }
+}
