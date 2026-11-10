@@ -170,7 +170,7 @@ verifies("cli.subcommand-placement", () => {
     );
     expect(io.stdout).toEqual([]);
     expect(io.stderr).toEqual([
-      "✕ Put show right after runs.",
+      "✕ show goes right after runs, before any options.",
       "  Usage: halonic runs show <run-id>",
     ]);
   });

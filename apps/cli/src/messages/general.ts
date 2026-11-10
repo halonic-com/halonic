@@ -34,9 +34,9 @@ export const usageMessages = defineMessages("usage", {
   seeEveryCommand: () => phrase`Run halonic --help to see every command.`,
   /** The fix for a word that isn't one of a command's subcommands: "Run halonic runs --help to see its commands." */
   seeSubcommands: (command: string) => phrase`Run halonic ${command} --help to see its commands.`,
-  /** A real subcommand after the command's options: "Put show right after runs." */
+  /** A real subcommand after the command's options: "show goes right after runs, before any options." */
   subcommandPlacement: (subcommand: string, command: string) =>
-    phrase`Put ${subcommand} right after ${command}.`,
+    phrase`${subcommand} goes right after ${command}, before any options.`,
   unknownOption: (option: string) => phrase`There's no option ${option}.`,
   unknownOptionNear: (option: string, near: string) =>
     phrase`There's no option ${option}. Did you mean ${near}?`,

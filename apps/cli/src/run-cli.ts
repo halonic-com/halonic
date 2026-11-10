@@ -216,8 +216,9 @@ function unknownSubcommand(path: CommandPath, word: string): UsageError {
  * The usage error for a word that comes after a command's options. A real
  * subcommand there is only in the wrong place, so the error says where it
  * goes instead of claiming it doesn't exist: `halonic runs --limit 5 show
- * 01JD8Q` gets "Put show right after runs." with the usage line of
- * `runs show` as its fix. Any other word gets {@link unknownSubcommand}.
+ * 01JD8Q` gets "show goes right after runs, before any options." with the
+ * usage line of `runs show` as its fix (cli-output 1.3: line 1 says what's
+ * wrong, line 2 is the fix). Any other word gets {@link unknownSubcommand}.
  */
 function wordAfterOptions(path: CommandPath, word: string): UsageError {
   const subcommand = (lastOf(path).subcommands ?? []).find((candidate) => candidate.name === word);

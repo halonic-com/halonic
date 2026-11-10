@@ -50,7 +50,7 @@ lists them in its `subcommands` field, each a `CliCommand` named by its own word
 `halonic runs show <run-id>` to `show`, lists the subcommands in `halonic runs --help` and gives
 the usage error for a word that isn't one of them, so the command never switches on its first
 argument. A subcommand goes right after its command: for `halonic runs --limit 5 show <run-id>` the
-CLI says to put `show` right after `runs`. A command that only hands off, such as `plugin`, leaves out `run`.
+CLI says `show` goes right after `runs`, before any options. A command that only hands off, such as `plugin`, leaves out `run`.
 
 A command prints through the `CliIo` it is given, never `console`, and throws `UsageError` for a
 wrong command line. It never prints an error itself: it throws a `KindedError` (with a `fix` when
