@@ -31,7 +31,7 @@ const goingOn = new StopSource().signal;
 
 /** A log that stores nothing, except where `append` says. */
 function logOf(append: (event: RunEventBody) => Promise<void>): HarnessEventLog {
-  return { append, settled: async () => {} };
+  return { append, settled: async () => {}, whileHeld: (work) => work() };
 }
 
 /** Runs the call on the ports, and keeps what it wrote to the log. */
@@ -164,6 +164,7 @@ verifies("engine.run-harness", () => {
       settled: async () => {
         order.push(`log.settled after ${ports.steps.at(-1)}`);
       },
+      whileHeld: (work) => work(),
     };
 
     await runHarnessCall(ports.options, call, log, noApprovals, startLimits().limits, goingOn);

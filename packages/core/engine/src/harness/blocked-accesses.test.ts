@@ -36,6 +36,7 @@ function keepingLog() {
       written.push(event);
     },
     settled: async () => {},
+    whileHeld: (work) => work(),
   };
   return { log, written };
 }
@@ -149,6 +150,7 @@ verifies("engine.sandbox-blocked", () => {
           throw new Error("The disk is full.");
         },
         settled: async () => {},
+        whileHeld: (work) => work(),
       },
       { state: "draft", agent: "writer" },
       null,

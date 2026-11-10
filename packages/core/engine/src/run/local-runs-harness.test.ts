@@ -337,6 +337,38 @@ verifies("engine.harness-approvals", () => {
     expect(model.requests).toEqual([]);
   });
 
+  it("stores what the bridge and the sandbox report while the run waits after the answer", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [asks("toolu_7"), finished("Dear support")];
+    const { executor, runs, harnessCall } = await waitingRun(ports);
+
+    // A Halonic tool call through the bridge, and a block by the fence, while the person reads.
+    const recorded = ports.recorders[0]?.record({
+      type: "tool.called",
+      agent: "writer",
+      tool: "halonic.search",
+      args: { query: "drafts" },
+    });
+    ports.sandbox.block({ kind: "network", host: "api.example.com", port: 443 });
+    await executor.send("run_1", "approve", undefined, { callId: "call-2" });
+    await recorded;
+    await harnessCall;
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "completed",
+      context: { reply: "Dear support" },
+    });
+    const types = typesOf(runs.logs.get("run_1"));
+    expect(types.slice(types.indexOf("run.waiting"), types.indexOf("agent.finished") + 1)).toEqual([
+      "run.waiting",
+      "event.received",
+      "approval.resolved",
+      "tool.called",
+      "sandbox.blocked",
+      "agent.finished",
+    ]);
+  });
+
   it("takes two approvals in a row in one harness call, and finishes after a rejection", async () => {
     const ports = harnessPorts();
     ports.harness.events = [asks("toolu_1"), asks("toolu_2"), finished("Left the drafts alone")];

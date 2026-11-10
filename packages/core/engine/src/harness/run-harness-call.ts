@@ -32,6 +32,14 @@ export interface HarnessEventLog {
   append(event: RunEventBody): Promise<void>;
   /** Resolves once every append given so far has been stored or has failed. */
   settled(): Promise<void>;
+  /**
+   * Runs `work` once every append given so far has been stored or has
+   * failed, and holds every append given meanwhile until `work` settles.
+   *
+   * @returns what `work` gives back
+   * @throws what `work` throws
+   */
+  whileHeld<T>(work: () => Promise<T>): Promise<T>;
 }
 
 /** A person's answer to an approval a harness call asked for. */
@@ -294,16 +302,20 @@ async function followRun(
 /**
  * Asks the person about the approval the harness asked for, and passes the
  * answer on. The run records the question itself, under a call id of its
- * own, so every event reported before it is stored first: an append that
- * came after the question would find the run no longer waiting on the call.
+ * own, and waits on no call until the answer comes. So the log is held for
+ * the question: every event reported before it is stored first, and one the
+ * bridge or the sandbox reports while the run waits is stored after the
+ * answer, under the call that goes on. Written during the wait, it would
+ * find the run waiting on no call, and fail the rest of the call.
  */
 async function passOnApproval(
   { approvals, log, stop }: StartedCall,
   run: HarnessRun,
   { tool, args, callId }: Extract<HarnessEvent, { type: "approval.requested" }>,
 ): Promise<void> {
-  await log.settled();
-  const { approved, comment } = await unlessStopped(stop, approvals.ask({ tool, args }));
+  const { approved, comment } = await log.whileHeld(() =>
+    unlessStopped(stop, approvals.ask({ tool, args })),
+  );
   await run.send({
     type: "approval",
     callId,

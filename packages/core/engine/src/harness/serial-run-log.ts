@@ -72,10 +72,18 @@ export class SerialRunLog implements HarnessEventLog {
   }
 
   settled(): Promise<void> {
-    return this.#tail.then(
-      () => {},
-      () => {},
-    );
+    return this.#tail.then(ignore, ignore);
+  }
+
+  /**
+   * Runs `work` after every append given so far, and holds the appends given
+   * meanwhile until it settles. When an earlier append failed, those fail
+   * as they would without the hold.
+   */
+  whileHeld<T>(work: () => Promise<T>): Promise<T> {
+    const held = this.settled().then(work);
+    this.#tail = this.#tail.then(() => held.then(ignore, ignore));
+    return held;
   }
 
   async #write(event: RunEventBody): Promise<void> {
@@ -115,3 +123,6 @@ export class SerialRunLog implements HarnessEventLog {
     this.#seq = run.lastSeq;
   }
 }
+
+/** Settles a promise's chain without its value or error. */
+function ignore(): void {}

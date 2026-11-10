@@ -40,6 +40,7 @@ async function runWith(
       written.push(event);
     },
     settled: async () => {},
+    whileHeld: (work) => work(),
   };
   try {
     const output = await runHarnessCall(
@@ -93,7 +94,7 @@ verifies("engine.harness-approvals", () => {
     expect(written.map((event) => event.type)).not.toContain("approval.requested");
   });
 
-  it("asks only once every event reported before the question is stored", async () => {
+  it("asks while the log is held, so nothing is written between the question and the answer", async () => {
     const ports = harnessPorts();
     ports.harness.events = [
       { type: "approval.requested", agent: "writer", callId: "toolu_7", ...asked },
@@ -102,8 +103,14 @@ verifies("engine.harness-approvals", () => {
     const order: string[] = [];
     const log: HarnessEventLog = {
       append: async () => {},
-      settled: async () => {
-        order.push("log.settled");
+      settled: async () => {},
+      whileHeld: async (work) => {
+        order.push("log held");
+        try {
+          return await work();
+        } finally {
+          order.push("log let go");
+        }
       },
     };
     const approvals: HarnessApprovals = {
@@ -115,7 +122,8 @@ verifies("engine.harness-approvals", () => {
 
     await runHarnessCall(ports.options, call, log, approvals, startLimits().limits, goingOn);
 
-    expect(order.slice(0, 2)).toEqual(["log.settled", "ask"]);
+    expect(order).toEqual(["log held", "ask", "log let go"]);
+    expect(ports.harness.sent).toEqual([{ type: "approval", callId: "toolu_7", approved: false }]);
   });
 
   it("stops everything when the engine stops it while it waits for the answer", async () => {
