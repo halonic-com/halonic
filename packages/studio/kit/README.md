@@ -75,11 +75,41 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 | `--spacing-control-*`, `-titlebar`, `-statusbar`, others | `h-control-md`, `h-statusbar`, `w-sidebar`        |
 | `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter`            |
 | the halo                                                 | `bg-halo-frame`, `-tint`, `-wash`, `-line`        |
+| the halo on a start screen                               | `bg-halo-spot`, `shadow-halo-glow`                |
+| the workflow canvas                                      | `bg-canvas-grid`                                  |
 | the focus ring (keyboard focus only)                     | `focus-ring`, `focus-ring-inset` for list rows    |
 | a selected row's mark                                    | `selected-bar`, `selected-forced`                 |
 | Windows high-contrast mode only                          | `text-forced-disabled`                            |
 | `--breakpoint-wide`                                      | `wide:`, `max-wide:` (compact)                    |
 | `--duration-*`, `--layer-*` (plain variables)            | `duration-(--duration-base)`, `z-(--layer-toast)` |
+
+## The halo on a start screen
+
+The desktop start screen and Welcome on a computer put one `aria-hidden` element with
+`bg-halo-spot` behind their heading and box: the halo tints, fading out from the middle, so text on
+it keeps 4.5:1. `shadow-halo-glow` is the app's one glow. Put it on a `rounded-lg` wrapper round
+the composer, never on the box itself, whose focus look is a box shadow too. It's a utility, not a
+`--shadow-*` token, so it can't turn up elsewhere. A frame colour preset (Settings) sets only
+`--halo-blue` and `--halo-violet`; the tints are `color-mix()` of those two, so all six halo
+utilities follow. The four presets keep every text colour at 4.5:1 on the spot and the frame.
+
+## Agent pages: the orb, stacked cards and the canvas
+
+`theme-agent-pages.css` holds plain variables, so Tailwind makes no classes from them:
+
+| Variable                             | What it's for                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| `--character-1a` … `--character-5b`  | The agent orb's five colour pairs (halo, lagoon, ember, moss, orchid)      |
+| `--stack-peek`, `--stack-inset`      | Each stacked card behind sits 10px higher and 12px narrower on each side   |
+| `--stack-shade-1`, `--stack-shade-2` | The fill of the card one behind, and of the cards two or more behind       |
+| `--stack-scrim`                      | Over the view under a stack of full cards; lighter than a dialog's overlay |
+| `--canvas-grid-dot`                  | The canvas's dots, only through `bg-canvas-grid`                           |
+
+Only the orb reads the character colours: an agent's pair comes from its `character.colors`, or is
+picked from its id. They're the same in light and dark and don't follow a frame colour preset. Each
+orb edge (`b`) keeps 3:1 on every surface and both stack shades. Each step back in a stack is one
+shade darker, and every text colour keeps 4.5:1 on both shades. Text never sits straight on the
+canvas's dots: put it on a step card or a `surface-subtle` label plate.
 
 The theme starts from `--*: initial`, so Tailwind's own palette and scales don't exist:
 `bg-red-500`, `rounded-3xl`, `text-sm` and `shadow-lg` produce no CSS. Two things still compile and
@@ -111,6 +141,10 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
   in both modes, with see-through colours (status chips) blended over each surface they can sit on;
 - the radius, spacing, shadow, animation, breakpoint, layer and duration tokens are exactly the
   agreed set, and the shell's layout sizes keep their values, so a change is visible in review;
+- the halo utilities are exactly six, hold no hard-coded colour, and keep text at 4.5:1 with each
+  of the four frame colour presets;
+- the agent orb's edges keep 3:1 and text keeps 4.5:1 on the stack shades, and each shade is darker
+  than the card in front;
 - the focus rings never remove the outline, so they show in Windows high-contrast mode;
 - the more-contrast block raises exactly its six tokens, and the raised text colours gain contrast
   on every surface;
