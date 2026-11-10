@@ -18,7 +18,12 @@ import type {
 } from "@halonicjs/ports";
 import { steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import { StartDeadlines } from "../run/start-deadlines.ts";
-import type { HarnessAgent, HarnessRunsOptions, Placement } from "./harness-host.ts";
+import type {
+  HarnessAgent,
+  HarnessRunsOptions,
+  Placement,
+  PlacementAnswer,
+} from "./harness-host.ts";
 import type { HarnessApprovals } from "./run-harness-call.ts";
 import type { StartPhase } from "./start-limits.ts";
 
@@ -198,7 +203,7 @@ export function harnessPorts() {
   const sandbox = new FakeSandbox("sandbox", steps);
   const thisComputer = new FakeSandbox("this-computer", steps);
   const harness = new FakeHarness(steps);
-  let placement: Placement = "sandbox";
+  let placement: PlacementAnswer = { runsOn: "sandbox" };
   const bridge: OpenHarnessBridge = {
     url: "http://127.0.0.1:41817",
     token: "not-a-real-token",
@@ -241,8 +246,8 @@ export function harnessPorts() {
     sandbox,
     thisComputer,
     harness,
-    placeOnThisComputer: () => {
-      placement = "this-computer";
+    placeOnThisComputer: (chosenAt = "2026-11-09T10:00:00.000Z") => {
+      placement = { runsOn: "this-computer", chosenAt };
     },
   };
 }

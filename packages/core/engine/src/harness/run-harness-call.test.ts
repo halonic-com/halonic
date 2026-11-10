@@ -174,14 +174,43 @@ verifies("engine.run-harness", () => {
 
   it("runs on this computer through the launcher's session when a person chose that", async () => {
     const ports = harnessPorts();
-    ports.placeOnThisComputer();
+    ports.placeOnThisComputer("2026-11-09T10:00:00.000Z");
     ports.harness.events = [finished("ok")];
 
-    const { output } = await runOn(ports);
+    const { output, written } = await runOn(ports);
 
     expect(output).toBe("ok");
     expect(ports.steps).toContain("this-computer.open");
     expect(ports.steps).not.toContain("sandbox.open");
+    expect(written.map((event) => event.type)).toEqual([
+      "sandbox.started",
+      "sandbox.off",
+      "harness.started",
+    ]);
+    expect(written[1]).toEqual({
+      type: "sandbox.off",
+      state: "draft",
+      agent: "writer",
+      chosenAt: "2026-11-09T10:00:00.000Z",
+    });
+  });
+
+  it("closes the launcher's session when sandbox.off can't be written", async () => {
+    const ports = harnessPorts();
+    ports.placeOnThisComputer();
+    const log = logOf(async (event) => {
+      if (event.type === "sandbox.off") throw new Error("The disk is full.");
+    });
+
+    await expect(
+      runHarnessCall(ports.options, call, log, noApprovals, startLimits().limits, goingOn),
+    ).rejects.toThrow("The disk is full.");
+    expect(ports.steps).toEqual([
+      "bridge.open",
+      "this-computer.open",
+      "session.close",
+      "bridge.close",
+    ]);
   });
 
   it("starts nothing when the sandbox isn't ready, and never runs without it", async () => {

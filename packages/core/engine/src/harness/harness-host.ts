@@ -18,6 +18,15 @@ import type { StartPhase } from "./start-limits.ts";
 /** Where an agent's harness runs: in a sandbox, or on this computer outside one. */
 export type Placement = "sandbox" | "this-computer";
 
+/**
+ * Where an agent's harness runs, as the placement policy answers. On this
+ * computer, `chosenAt` is when the person chose that, as ISO text, for the
+ * run's `sandbox.off` event.
+ */
+export type PlacementAnswer =
+  | { readonly runsOn: "sandbox" }
+  | { readonly runsOn: "this-computer"; readonly chosenAt: string };
+
 /** The agent a harness question is about. */
 export interface HarnessAgent {
   readonly runId: string;
@@ -32,7 +41,7 @@ export interface HarnessAgent {
  */
 export interface PlacementPolicy {
   /** `sandbox` unless a person chose this computer for the agent's file as it is now. */
-  where(agent: HarnessAgent): Promise<Placement>;
+  where(agent: HarnessAgent): Promise<PlacementAnswer>;
 }
 
 /**

@@ -7,7 +7,7 @@
 // answer. Whatever the harness started is stopped before it returns, and
 // also when the engine stops it on the way.
 
-import { type RunEventBody, sandboxOpenedView } from "@halonicjs/events";
+import { type DeniedPathGroup, type RunEventBody, sandboxOpenedView } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import {
   addHarnessEnvironment,
@@ -22,7 +22,7 @@ import {
 import type { StopSignal } from "@halonicjs/std";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
-import type { HarnessAgent, HarnessRunsOptions } from "./harness-host.ts";
+import type { HarnessAgent, HarnessRunsOptions, PlacementAnswer } from "./harness-host.ts";
 import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
 import { unlessStopped } from "./unless-stopped.ts";
 
@@ -122,7 +122,8 @@ export async function runHarnessCall(
     );
   }
   const agent: HarnessAgent = { runId: call.runId, hubId: call.hubId, agentId: effect.agent };
-  const sandbox = options.sandboxes[await options.placement.where(agent)];
+  const placement = await options.placement.where(agent);
+  const sandbox = options.sandboxes[placement.runsOn];
   const check = await sandbox.check();
   if (!check.ok) {
     throw new Error(
@@ -136,7 +137,7 @@ export async function runHarnessCall(
     late.close(),
   );
   try {
-    const session = await openSandbox(started, sandbox, bridge);
+    const session = await openSandbox(started, placement, sandbox, bridge);
     const blocked = new BlockedAccesses(
       log,
       { state: effect.state, agent: effect.agent },
@@ -201,11 +202,13 @@ function startTimeoutOf(options: HarnessRunsOptions, phase: StartPhase): number 
 
 /**
  * Builds the profile, logs `sandbox.started`, opens the sandbox within its
- * time limit and logs `sandbox.opened`. A session that opens after the time
- * was up is closed as soon as it arrives.
+ * time limit and logs `sandbox.opened`, or `sandbox.off` when a person chose
+ * this computer for the agent. A session that opens after the time was up is
+ * closed as soon as it arrives.
  */
 async function openSandbox(
   { options, call, harness, log, limits, stop }: StartedCall,
+  placement: PlacementAnswer,
   sandbox: Sandbox,
   bridge: OpenHarnessBridge,
 ): Promise<SandboxSession> {
@@ -235,18 +238,37 @@ async function openSandbox(
     );
   }
   try {
-    const view = sandboxOpenedView(session.profile, {
-      strength: sandbox.capabilities().strength,
-      home: options.home,
-      deniedGroups,
-    });
-    await log.append({ type: "sandbox.opened", state, agent, sandbox: view });
+    await log.append(openedEvent(placement, session, sandbox, deniedGroups, options.home, call));
   } catch (error) {
     // The caller closes only a session it got back.
     await session.close();
     throw error;
   }
   return session;
+}
+
+/**
+ * What the log records once the step's session is open: `sandbox.off` with
+ * the person's choice on this computer, where nothing is fenced off, and
+ * otherwise `sandbox.opened` with what the sandbox lets the step do.
+ */
+function openedEvent(
+  placement: PlacementAnswer,
+  session: SandboxSession,
+  sandbox: Sandbox,
+  deniedGroups: readonly DeniedPathGroup[],
+  home: string | null,
+  { effect: { state, agent } }: HarnessCall,
+): RunEventBody {
+  if (placement.runsOn === "this-computer") {
+    return { type: "sandbox.off", state, agent, chosenAt: placement.chosenAt };
+  }
+  const view = sandboxOpenedView(session.profile, {
+    strength: sandbox.capabilities().strength,
+    home,
+    deniedGroups,
+  });
+  return { type: "sandbox.opened", state, agent, sandbox: view };
 }
 
 /**
