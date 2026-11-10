@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
 import { type RunFailure, runFailedLines } from "./messages/run-failures.ts";
+import { sandboxMessages } from "./messages/sandbox.ts";
 import {
   type FailedModel,
   failedModelOf,
@@ -318,5 +319,37 @@ describe("the model a run called last", () => {
     expect(
       failedModelOf(log({ type: "state.entered", state: "draft" }), workspace),
     ).toBeUndefined();
+  });
+});
+
+verifies("cli.run-failed-sandbox", () => {
+  /** Line 1 and line 2 of a run that failed because the sandbox can't start, as plain words. */
+  function linesOf(sandboxReason?: string): string[] {
+    const failed = {
+      ...failedWith("sandbox-not-ready"),
+      ...(sandboxReason === undefined ? {} : { sandboxReason }),
+    };
+    const failure = runFailureOf(failed, undefined);
+    if (failure === undefined) throw new Error("expected a failure");
+    const run = { title: "Support reply", step: "Draft reply", runId: "01JD8Q" };
+    const { message, fix } = runFailedLines(run, failure);
+    return [plainText(message.phrase), plainText(fix.phrase)];
+  }
+
+  it("words the run from its code, in the words of a run the check refused", () => {
+    expect(linesOf("bubblewrap-missing")).toEqual([
+      "Support reply failed in the step Draft reply: the sandbox can't start on this computer.",
+      plainText(sandboxMessages.refusedFix("bubblewrap-missing").phrase),
+    ]);
+  });
+
+  it("never shows the engine's own message", () => {
+    expect(linesOf("container").join("\n")).not.toContain("the engine's own words");
+  });
+
+  it("reads a log without a code, or a code it doesn't know, as other", () => {
+    const other = plainText(sandboxMessages.refusedFix("other").phrase);
+    expect(linesOf()[1]).toBe(other);
+    expect(linesOf("a-code-from-a-later-port")[1]).toBe(other);
   });
 });

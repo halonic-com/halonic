@@ -149,6 +149,9 @@ export function runFailureOf(
         : { reason, model: model.model, alias: model.alias };
     case "model-unreachable":
       return unreachableFailure(failed, model);
+    // Worded from its code, as a run the sandbox check refused; a log without one reads as `other`.
+    case "sandbox-not-ready":
+      return { reason, code: failed.sandboxReason ?? "other" };
     case "out-of-credit":
     case "provider-busy":
       // A busy provider's line names no tries until the engine retries one (revision 39).
@@ -159,8 +162,6 @@ export function runFailureOf(
     case "model-out-of-memory":
     case "disk-full":
     case "interrupted":
-    // Worded from its sandbox code in HAL-1709's CLI pull request.
-    case "sandbox-not-ready":
     case "sandbox-start-failed":
     case "harness-start-failed":
     case "harness-unavailable":

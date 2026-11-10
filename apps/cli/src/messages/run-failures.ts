@@ -4,6 +4,7 @@ import { defineMessages, type Message } from "./define.ts";
 import { errorMessages } from "./general.ts";
 import { money } from "./money.ts";
 import { markPart, type Phrase, phrase } from "./phrase.ts";
+import { sandboxMessages } from "./sandbox.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /** The run that failed, as line 1 names it and line 2's commands need it. */
@@ -40,7 +41,9 @@ export interface BusyRetries {
  *
  * - the newer ones of HAL-2264 (sandbox-start-failed, harness-start-failed,
  *   model-out-of-memory, disk-full, interrupted) wait for the board;
- * - the sandbox reasons are `sandboxMessages`;
+ * - a run the sandbox check refused before it started is `sandboxMessages`;
+ *   one that started and then found the sandbox can't start is `sandbox-not-ready`,
+ *   in the same words by its code;
  * - `cancelled` isn't a failure: Ctrl C or SIGTERM prints "Stopped." with
  *   `runMessages.cancelledAfter` (cli-output 1.5), and `runs show` says
  *   `runsMessages.showCancelled` for a run cancelled somewhere else.
@@ -120,6 +123,11 @@ export type RunFailure =
       readonly alias: string;
     }
   | { readonly reason: "site-blocked"; readonly agent: string; readonly site: string }
+  | {
+      readonly reason: "sandbox-not-ready";
+      /** The `Sandbox` port's reason code from the run log, such as `bubblewrap-missing`. */
+      readonly code: string;
+    }
   | {
       readonly reason: "model-no-tools";
       /** The model the alias points at, such as "llama3.2". */
@@ -215,6 +223,8 @@ const lineOne = {
       run,
       phrase`the sandbox stopped ${failure.agent} from reaching ${failure.site}, which isn't in its allowed sites. Nothing reached that site.`,
     ),
+  // The same sentence as a run the check refused before it started (HAL-1709).
+  "sandbox-not-ready": (run) => failedIn(run, sandboxMessages.cantStart().phrase),
   "model-no-tools": (run, failure) =>
     failedIn(
       run,
@@ -265,6 +275,7 @@ const lineTwo = {
     phrase`Point ${failure.agent}'s model alias ${failure.alias} at a local model in models.yaml.`,
   "site-blocked": (_run, failure) =>
     phrase`Add ${failure.site} to ${failure.agent}'s allowed sites, if ${failure.agent} should reach it.`,
+  "sandbox-not-ready": (_run, failure) => sandboxMessages.refusedFix(failure.code).phrase,
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,
