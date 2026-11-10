@@ -134,6 +134,66 @@
     "trust": "<drive>\\trust"
   },
   {
+    "name": "HALONIC_HOME as a verbatim Windows path, kept as written",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "\\\\?\\<drive>\\halonic"
+    },
+    "profile": "\\\\?\\<drive>\\halonic",
+    "trust": "\\\\?\\<drive>\\halonic\\trust"
+  },
+  {
+    "name": "HALONIC_HOME with forward slashes on Windows, joined with a backslash",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "<drive>/halonic/"
+    },
+    "profile": "<drive>/halonic",
+    "trust": "<drive>/halonic\\trust"
+  },
+  {
+    "name": "HALONIC_HOME with .. kept as written, not normalised",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "HALONIC_HOME": "/srv/acme/../tmp"
+    },
+    "profile": "/srv/acme/../tmp",
+    "trust": "/srv/acme/../tmp/trust"
+  },
+  {
+    "name": "HALONIC_HOME as a network-share root with a trailing separator",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "\\\\server\\share\\"
+    },
+    "profile": "\\\\server\\share",
+    "trust": "\\\\server\\share\\trust"
+  },
+  {
+    "name": "HALONIC_HOME with non-ASCII text and a trailing separator",
+    "platform": "linux",
+    "homeFolder": "/srv/acme",
+    "variables": {
+      "HALONIC_HOME": "/srv/Café/"
+    },
+    "profile": "/srv/Café",
+    "trust": "/srv/Café/trust"
+  },
+  {
+    "name": "HALONIC_HOME with non-ASCII text on Windows",
+    "platform": "windows",
+    "homeFolder": "<drive>\\people\\acme",
+    "variables": {
+      "HALONIC_HOME": "<drive>\\Café\\"
+    },
+    "profile": "<drive>\\Café",
+    "trust": "<drive>\\Café\\trust"
+  },
+  {
     "name": "an empty HALONIC_HOME counts as unset",
     "platform": "linux",
     "homeFolder": "/srv/acme",
