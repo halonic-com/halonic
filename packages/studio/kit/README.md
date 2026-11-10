@@ -1325,6 +1325,23 @@ Settings › Trust, so the feature passes `label="Not trusted yet. Open trust se
 chip calls `onOpenSheet` instead of opening a Menu: the panel sheet is a page on the shell's stack,
 so the shell opens it.
 
+The shell fills that page with **`HeaderBadgeSheet`**, given the badge's words as its `title`, the
+same `description` and `entries`, and `onClose` for Back:
+
+```tsx
+<HeaderBadgeSheet
+  title="Sample · test model"
+  description="Runs on the built-in test model, with scripted replies. No key, no cost."
+  entries={sampleEntries}
+  onClose={back}
+/>;
+```
+
+It's a `SidePanel` panel sheet. The description is its first body line, in the Menu's type; the
+items follow as 48px link rows, edge to edge, a `border` line under each and a chevron at the right,
+danger items last. Dividers fall away. A tap calls the item's `onSelect`; a disabled or unavailable
+item stays listed and does nothing, an unavailable one with its reason under its label.
+
 ## Tooltip
 
 A short label for a control: an icon button's name, a disabled control's reason, a shortcut.

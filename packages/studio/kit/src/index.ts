@@ -110,6 +110,10 @@ export {
   type HeaderBadgeMenu,
   type HeaderBadgeProps,
 } from "./header-badge/header-badge.tsx";
+export {
+  HeaderBadgeSheet,
+  type HeaderBadgeSheetProps,
+} from "./header-badge/header-badge-sheet.tsx";
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export { BackIcon } from "./icons/back-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
