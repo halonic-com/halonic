@@ -18,10 +18,13 @@ function exitCode(error: (Error & { code?: unknown }) | null): number {
   return typeof error.code === "number" ? error.code : -1;
 }
 
-function run(file: string, args: string[]): Promise<{ code: number; stdout: string }> {
+function run(
+  file: string,
+  args: string[],
+): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    execFile(file, args, { windowsHide: true }, (error, stdout) => {
-      resolve({ code: exitCode(error), stdout });
+    execFile(file, args, { windowsHide: true }, (error, stdout, stderr) => {
+      resolve({ code: exitCode(error), stdout, stderr });
     });
   });
 }
@@ -68,7 +71,7 @@ describe("the journal folder on Windows", () => {
     base = await mkdtemp(join(tmpdir(), "halonic-journal-acl-"));
     folder = join(base, "sandbox-journals");
     const added = await run("net.exe", ["user", other, otherPassword, "/add"]);
-    expect(added.code).toBe(0);
+    expect(added.code, `net user: ${added.stdout} ${added.stderr}`).toBe(0);
     await prepareJournalFolder(folder);
   }, 60_000);
 
