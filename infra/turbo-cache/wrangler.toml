@@ -7,11 +7,11 @@ compatibility_date = "2026-06-15"
 binding = "R2_STORE"
 bucket_name = "halonic-turbo-cache"
 
-# Write token (reads and uploads), only for main and the merge queue. Account-level Secrets Store secret, read with `await env.TURBO_TOKEN.get()`.
+# Key that signs the 30-minute write tokens /auth/github hands out. Never leaves Cloudflare: GitHub holds no copy.
 [[secrets_store_secrets]]
-binding = "TURBO_TOKEN"
+binding = "TURBO_SIGNING_KEY"
 store_id = "3a2182643c7a4eea82e266e47d982d70"
-secret_name = "TURBO_TOKEN"
+secret_name = "TURBO_SIGNING_KEY"
 
 # Read-only token, for pull requests. It can read and query, never upload.
 [[secrets_store_secrets]]

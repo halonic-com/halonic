@@ -1,5 +1,6 @@
-// Minimal Turborepo remote cache: R2 storage, two bearer tokens (read, write). Single team, keyed by artifact hash.
-// Refuses authorized requests with 503 when the Cloudflare spend switch is off (turbo then builds without the cache).
+// Minimal Turborepo remote cache: R2 storage, keyed by artifact hash, one team. Reads take a static read token.
+// Writes take a short-lived token that POST /auth/github hands out only against a GitHub OIDC token (see below).
+// Refuses with 503 when the Cloudflare spend switch is off (turbo then builds without the cache).
 import { checkSpend, spendOffResponse } from "../spend-guard/src/check-spend.mjs";
 
 const HASH = /^[A-Za-z0-9_-]{8,128}$/;
@@ -7,9 +8,98 @@ const ARTIFACT_PATH = /^\/v8\/artifacts\/([^/]+)$/;
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-async function matches(request, token) {
+const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
+const OIDC_AUDIENCE = "halonic-turbo-cache";
+const OIDC_REPOSITORY = "halonic-com/halonic";
+const WRITE_TOKEN_SECONDS = 30 * 60;
+const b64 = (s) =>
+  Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+const b64url = (bytes) =>
+  btoa(String.fromCharCode(...new Uint8Array(bytes)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+let jwksCache = { keys: [], at: 0 };
+async function githubKeys(force) {
+  if (!force && Date.now() - jwksCache.at < 10 * 60_000) return jwksCache.keys;
+  const res = await fetch(`${GITHUB_ISSUER}/.well-known/jwks`);
+  if (!res.ok) throw new Error("jwks");
+  jwksCache = { keys: (await res.json()).keys ?? [], at: Date.now() };
+  return jwksCache.keys;
+}
+
+// The claims of a GitHub Actions OIDC token whose signature, issuer, audience and expiry check out, else null.
+async function verifyGithubToken(jwt) {
+  try {
+    const [h, p, sig] = jwt.split(".");
+    const header = JSON.parse(new TextDecoder().decode(b64(h)));
+    if (header.alg !== "RS256") return null;
+    let jwk = (await githubKeys(false)).find((k) => k.kid === header.kid);
+    jwk ??= (await githubKeys(true)).find((k) => k.kid === header.kid);
+    if (!jwk) return null;
+    const key = await crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    const ok = await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      b64(sig),
+      new TextEncoder().encode(`${h}.${p}`),
+    );
+    if (!ok) return null;
+    const claims = JSON.parse(new TextDecoder().decode(b64(p)));
+    const live = typeof claims.exp === "number" && claims.exp * 1000 > Date.now();
+    const audience = [claims.aud].flat().includes(OIDC_AUDIENCE);
+    return claims.iss === GITHUB_ISSUER && audience && live ? claims : null;
+  } catch {
+    return null;
+  }
+}
+
+// GitHub sets event_name and ref in the token; a workflow file cannot change them. That keeps a workflow on a
+// pushed look-alike branch (gh-readonly-queue/main/x) from writing: its event is a plain push on another ref.
+function mayWrite(claims) {
+  if (claims.repository !== OIDC_REPOSITORY) return false;
+  if (claims.event_name === "merge_group") return true;
+  return claims.event_name === "push" && claims.ref === "refs/heads/main";
+}
+
+async function hmac(secret, text) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return b64url(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(text)));
+}
+
+// POST /auth/github with the OIDC token as bearer answers { token }: a write token that lasts 30 minutes.
+async function exchange(request, env) {
+  const signingKey = await readSecret(env.TURBO_SIGNING_KEY);
+  const jwt = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
+  const claims = signingKey && jwt ? await verifyGithubToken(jwt) : null;
+  if (!claims) return json({ error: "unauthorized" }, 401);
+  if (!mayWrite(claims)) return json({ error: "forbidden" }, 403);
+  const expires = Math.floor(Date.now() / 1000) + WRITE_TOKEN_SECONDS;
+  return json({ token: `w.${expires}.${await hmac(signingKey, `w.${expires}`)}` });
+}
+
+async function validWriteToken(given, env) {
+  const [tag, expires, mac] = given.split(".");
+  const signingKey = await readSecret(env.TURBO_SIGNING_KEY);
+  if (tag !== "w" || !signingKey || !mac || Number(expires) * 1000 <= Date.now()) return false;
+  return matches(given, `w.${expires}.${await hmac(signingKey, `w.${expires}`)}`);
+}
+
+async function matches(given, token) {
   if (!token) return false;
-  const given = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
   const enc = new TextEncoder();
   const [a, b] = await Promise.all([
     crypto.subtle.digest("SHA-256", enc.encode(given)),
@@ -27,14 +117,11 @@ async function readSecret(binding) {
   }
 }
 
-// "write" (TURBO_TOKEN: reads and uploads), "read" (TURBO_TOKEN_READ: reads only) or null.
+// "write" (a token from /auth/github: reads and uploads), "read" (TURBO_TOKEN_READ: reads only) or null.
 async function roleOf(request, env) {
-  const [write, read] = await Promise.all([
-    matches(request, await readSecret(env.TURBO_TOKEN)),
-    matches(request, await readSecret(env.TURBO_TOKEN_READ)),
-  ]);
-  if (write) return "write";
-  return read ? "read" : null;
+  const given = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
+  if (await validWriteToken(given, env)) return "write";
+  return (await matches(given, await readSecret(env.TURBO_TOKEN_READ))) ? "read" : null;
 }
 
 async function query(request, env) {
@@ -95,6 +182,10 @@ async function route(request, env, role) {
 // biome-ignore lint/style/noDefaultExport: required by the Workers runtime
 export default {
   async fetch(request, env) {
+    // The token exchange checks its own OIDC proof and touches no R2, so it comes before the spend check.
+    if (request.method === "POST" && new URL(request.url).pathname === "/auth/github") {
+      return exchange(request, env);
+    }
     // Auth first, so unauthenticated requests cost no KV read. Then the spend check: when paused, R2 never runs.
     const role = await roleOf(request, env);
     if (!role) return json({ error: "unauthorized" }, 401);

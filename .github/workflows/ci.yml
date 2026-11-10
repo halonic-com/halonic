@@ -328,6 +328,7 @@ jobs:
     environment: ${{ github.event_name == 'pull_request' && 'turbo-cache-read' || 'turbo-cache-write' }}
     permissions:
       contents: read
+      id-token: write # to ask the cache for a write token (below)
     env:
       # Turbo's own default folder (gitignored). actions/cache refuses a path
       # with "..", so the earlier ../turbo-cache was never saved.
@@ -350,11 +351,27 @@ jobs:
       # queue hold the write token; pull requests get a read-only one, so the
       # cache can't be written from an unreviewed branch. Without the
       # secrets (a fork), the step falls back to the local cache.
+      # The cache hands out a 30-minute write token only against this run's
+      # GitHub OIDC token, and only when GitHub says the event is the merge
+      # queue or a push to main. A branch that merely looks like a queue
+      # branch can't fake that, whatever its workflow file says. On failure
+      # the token stays empty and the run uses the local cache.
+      - name: Get a write token for the remote cache
+        id: cache-token
+        if: github.event_name != 'pull_request' && vars.TURBO_API != ''
+        env:
+          TURBO_API: ${{ vars.TURBO_API }}
+        run: |
+          oidc=$(curl -fsS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=halonic-turbo-cache" | jq -r .value) || exit 0
+          echo "::add-mask::$oidc"
+          token=$(curl -fsS -X POST -H "Authorization: Bearer $oidc" "${TURBO_API%/}/auth/github" | jq -r '.token // empty') || exit 0
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
       - name: Run every task through the cache
         env:
           TURBO_API: ${{ vars.TURBO_API }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-          TURBO_TOKEN: ${{ github.event_name == 'pull_request' && secrets.TURBO_TOKEN_READ || secrets.TURBO_TOKEN }}
+          TURBO_TOKEN: ${{ github.event_name == 'pull_request' && secrets.TURBO_TOKEN_READ || steps.cache-token.outputs.token }}
           TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
           EVENT: ${{ github.event_name }}
         run: |
