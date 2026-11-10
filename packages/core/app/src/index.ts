@@ -78,6 +78,14 @@ export {
   type EventMap,
   type ListenerErrorHandler,
 } from "./event-bus.ts";
+export {
+  type HubWorkflow,
+  hubWorkflows,
+  lookUpWorkflow,
+  type WorkflowDefinition,
+  type WorkflowLookup,
+  workflowIn,
+} from "./hub-workflows.ts";
 export { knowledgeDocForModel, knowledgeHitForModel } from "./knowledge-for-model.ts";
 export { UntrustedText } from "./listed-tool-rules.ts";
 export { type OpenWorkspaceOptions, openWorkspace, workspaceFilesKey } from "./open-workspace.ts";

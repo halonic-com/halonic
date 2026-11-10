@@ -98,6 +98,37 @@ verifies("app.run-list", () => {
       await expect(history.listRuns({}, limit)).rejects.toThrow(RangeError);
     });
   });
+
+  describe("hasTestRuns", () => {
+    it("says the workspace has test runs when it has only those", async () => {
+      const store = new MemoryRuns();
+      const history = new RunHistory(store);
+      expect(await history.hasTestRuns()).toBe(false);
+
+      store.add("run_test", at(1), [started("support-reply", "test"), completed]);
+
+      expect(await history.listRuns()).toEqual({ runs: [], total: 0 });
+      expect(await history.hasTestRuns()).toBe(true);
+    });
+  });
+
+  describe("madeToolCalls", () => {
+    it("says whether a run's log has a tool call", async () => {
+      const store = new MemoryRuns();
+      const toolCall: RunEventBody = {
+        type: "tool.called",
+        agent: "writer",
+        tool: "gmail_send",
+        args: {},
+      };
+      store.add("run_sent", at(1), [started("support-reply"), toolCall, completed]);
+      store.add("run_quiet", at(2), [started("support-reply"), completed]);
+      const history = new RunHistory(store);
+
+      expect(await history.madeToolCalls("run_sent")).toBe(true);
+      expect(await history.madeToolCalls("run_quiet")).toBe(false);
+    });
+  });
 });
 
 verifies("app.run-show", () => {

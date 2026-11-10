@@ -88,6 +88,26 @@ export class RunHistory {
   }
 
   /**
+   * Whether the workspace has test runs, which the list never shows, so an
+   * empty list can say "only test runs" (requirement `app.run-list`).
+   */
+  async hasTestRuns(): Promise<boolean> {
+    return (await this.#runs.list({ kind: "test" })).length > 0;
+  }
+
+  /**
+   * Whether the run's log has a tool call. A run "sent nothing" only when it
+   * made none (cli-output 3.4, revision 32); the summary doesn't say.
+   *
+   * @example
+   * await history.madeToolCalls("run_mfx3k2a1_a1b2c3d4"); // true
+   */
+  async madeToolCalls(runId: string): Promise<boolean> {
+    const events = await this.#runs.events(runId);
+    return events.some((event) => event.type === "tool.called");
+  }
+
+  /**
    * The full id of the run that someone typed, real or test (requirement
    * `app.run-short-id`). They may type the full id or its short id, in any
    * case. `runs show`, `runs send`, the Studio's links and Ctrl K all look a
