@@ -1,13 +1,30 @@
+import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   checkPublicWorkspacePath,
   type DefinitionStore,
+  type Digest,
   isPrivateWorkspacePath,
+  type WriteOptions,
+  type WriteResult,
 } from "@halonicjs/ports";
-import { bytesToHex } from "@halonicjs/std";
+import { bytesToHex, KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { entryAt, isMissing } from "./links.ts";
+
+/** The Web Crypto API that Node has, as the {@link Digest} port. */
+const webCryptoDigest: Digest = {
+  async sha256(data) {
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  },
+};
+
+/**
+ * Names of the temporary files a write renames into place. `list()` leaves
+ * them out, so a write in progress never shows up as a workspace file.
+ */
+const temporaryWriteName = /^\.halonic-write-[0-9a-f-]+\.tmp$/u;
 
 /**
  * Workspace files as plain files under a root folder: what the CLI and
@@ -15,10 +32,19 @@ import { entryAt, isMissing } from "./links.ts";
  * store's (see the port). It never follows a symbolic link or a Windows
  * junction: one in any segment of a path is refused, and `list()` leaves
  * links out with everything under them.
+ *
+ * A write goes to a temporary file in the same folder that is then renamed
+ * over the file, so another program reads the old text or the new, never
+ * half of it. Writes to one path run one after another, so the check for
+ * `expected` and its write are never split by another write from this
+ * store. A program outside Halonic can still change the file between the
+ * check and the rename; that gap is a few milliseconds and the watcher
+ * reports such a change.
  */
 export class FolderDefinitionStore implements DefinitionStore {
   readonly location: string;
   readonly #root: string;
+  readonly #writes = new KeyedQueue();
 
   /**
    * @param root - the workspace folder; a relative one is resolved against the working directory
@@ -50,13 +76,40 @@ export class FolderDefinitionStore implements DefinitionStore {
     return await readFile(join(this.#root, path), "utf8");
   }
 
-  async write(path: string, content: string): Promise<void> {
+  async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
     checkPublicWorkspacePath(path);
+    return await this.#writes.run(path, async () => {
+      const { expected } = options;
+      if (expected !== undefined) {
+        const current = await this.read(path);
+        if (!(await matchesExpected(current, expected, webCryptoDigest))) {
+          return { status: "changed-on-disk", current };
+        }
+      }
+      await this.#replace(path, content);
+      return { status: "written" };
+    });
+  }
+
+  /** Writes `content` to a temporary file next to `path` and renames it over the file. */
+  async #replace(path: string, content: string): Promise<void> {
     // Checks the folders on the way and the file itself, so the write can't land behind a link.
-    await entryAt(this.#root, path);
+    const existing = await entryAt(this.#root, path);
     const file = join(this.#root, path);
-    await mkdir(dirname(file), { recursive: true });
-    await writeFile(file, content, "utf8");
+    const folder = dirname(file);
+    await mkdir(folder, { recursive: true });
+    const temporary = join(folder, `.halonic-write-${randomUUID()}.tmp`);
+    try {
+      await writeFile(temporary, content, { encoding: "utf8", flag: "wx" });
+      if (existing !== null) {
+        // A replaced file keeps its permissions, such as a script's execute bit.
+        await chmod(temporary, existing.mode & 0o7777);
+      }
+      await rename(temporary, file);
+    } catch (error) {
+      await rm(temporary, { force: true });
+      throw error;
+    }
   }
 
   async remove(path: string): Promise<void> {
@@ -104,6 +157,7 @@ export class FolderDefinitionStore implements DefinitionStore {
       if (
         entry.isSymbolicLink() ||
         entry.name.includes("\\") ||
+        temporaryWriteName.test(entry.name) ||
         isPrivateWorkspacePath(entry.name)
       ) {
         continue;

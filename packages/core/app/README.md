@@ -56,7 +56,7 @@ edit. This example is [`examples/edit-save-undo.ts`](examples/edit-save-undo.ts)
 which `src/example.test.ts` runs and checks.
 
 ```ts
-import type { DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionStore, WriteResult } from "@halonicjs/ports";
 import { openWorkspace, workspaceFilesKey } from "@halonicjs/app";
 
 const agentPath = "hubs/acme/agents/clerk.agent.yaml";
@@ -84,9 +84,11 @@ class MapStore implements DefinitionStore {
   async version(): Promise<string> {
     return `v${this.writes}`;
   }
-  async write(path: string, content: string): Promise<void> {
+  // The example saves without `expected`, so this store always writes.
+  async write(path: string, content: string): Promise<WriteResult> {
     this.files.set(path, content);
     this.writes++;
+    return { status: "written" };
   }
   async remove(path: string): Promise<void> {
     this.files.delete(path);

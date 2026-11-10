@@ -1,4 +1,4 @@
-import type { DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionStore, WriteResult } from "@halonicjs/ports";
 
 /**
  * An in-memory `DefinitionStore` for this package's tests, with a log of what
@@ -30,12 +30,14 @@ export class MemoryStore implements DefinitionStore {
     return `v${this.written.length}`;
   }
 
-  async write(path: string, content: string): Promise<void> {
+  /** Always writes: this package only lays out new workspaces, so it never passes `expected`. */
+  async write(path: string, content: string): Promise<WriteResult> {
     if (path === this.failOn) {
       throw new Error(`cannot write ${path}`);
     }
     this.written.push(path);
     this.files.set(path, content);
+    return { status: "written" };
   }
 
   async remove(path: string): Promise<void> {

@@ -38,6 +38,7 @@ code is built the way it is, before you change something they describe.
 | [Harness signed out](2026-11-09-harness-signed-out.md)                                 | `detect()` can answer `signed-out`, with the version; never a guess (v2)         |
 | [Vcs versions](2026-11-10-vcs-versions-and-worktrees.md)                               | `Vcs` reads commits, snapshots and renames; a version is a full id (v2)          |
 | [MXC sandbox backend](2026-11-10-mxc-sandbox-backend.md)                               | On Windows 11, MXC is a second backend, used only after a trust check (proposed) |
+| [Write only if unchanged](2026-11-10-write-only-if-unchanged.md)                       | `DefinitionStore.write` takes `expected` and won't write over a changed file (v2) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

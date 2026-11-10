@@ -1,4 +1,5 @@
-import type { DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionStore, WriteOptions, WriteResult } from "@halonicjs/ports";
+import { matchesExpected, type Sha256 } from "@halonicjs/std";
 
 /**
  * A small in-memory `DefinitionStore` for the kernel's own tests, with a
@@ -16,9 +17,16 @@ export class TestDefinitionStore implements DefinitionStore {
   /** A write or remove of this path throws. */
   failOn: string | null = null;
   private saves = 0;
+  private readonly digest: Sha256 | null;
 
-  constructor(files: Record<string, string> = {}) {
+  /**
+   * @param files - the files to start with, by relative path
+   * @param digest - hashes text for a write with `expected`; core has no hash
+   *   of its own, so a test that writes with `expected` passes one in
+   */
+  constructor(files: Record<string, string> = {}, digest: Sha256 | null = null) {
     this.files = new Map(Object.entries(files));
+    this.digest = digest;
   }
 
   async list(dir?: string): Promise<string[]> {
@@ -40,11 +48,21 @@ export class TestDefinitionStore implements DefinitionStore {
     return `v${this.saves}`;
   }
 
-  async write(path: string, content: string): Promise<void> {
+  async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
     this.check(path);
+    if (options.expected !== undefined) {
+      if (this.digest === null) {
+        throw new Error("TestDefinitionStore needs a digest to write with `expected`.");
+      }
+      const current = this.files.get(path) ?? null;
+      if (!(await matchesExpected(current, options.expected, this.digest))) {
+        return { status: "changed-on-disk", current };
+      }
+    }
     this.log.push(`write ${path}`);
     this.files.set(path, content);
     this.saves++;
+    return { status: "written" };
   }
 
   async remove(path: string): Promise<void> {
