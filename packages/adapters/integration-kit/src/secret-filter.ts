@@ -1,7 +1,8 @@
 import type { SecretPlacement } from "@halonicjs/ports";
+import { secretRemoved, secretTextForms } from "@halonicjs/std";
 
 /** What a secret value is replaced with wherever the filter finds it. */
-export const secretRemoved = "[secret removed]";
+export { secretRemoved };
 
 /** A secret value, and where the kit placed it, if it did. */
 export interface SecretOnWire {
@@ -44,7 +45,7 @@ export function secretForms(secrets: Iterable<SecretOnWire>): SecretForms {
   for (const { value, placements = [] } of secrets) {
     if (value === "") continue;
     for (const onWire of [value, ...placements.map((placement) => placed(placement, value))]) {
-      for (const copy of encodedCopies(onWire)) texts.add(copy);
+      for (const copy of secretTextForms(onWire)) texts.add(copy);
     }
   }
   const sorted = [...texts].sort((a, b) => utf8.encode(b).length - utf8.encode(a).length);
@@ -62,20 +63,6 @@ function placed(placement: SecretPlacement, value: string): string {
     case "form":
       return new URLSearchParams([[placement.field, value]]).toString();
   }
-}
-
-/** The text as it is, and as URL-encoding, form-encoding and JSON escaping commonly write it. */
-function encodedCopies(text: string): string[] {
-  const urlEncoded = encodeURIComponent(text);
-  const json = JSON.stringify(text).slice(1, -1);
-  return [
-    text,
-    urlEncoded,
-    urlEncoded.replace(/%[0-9A-F]{2}/g, (hex) => hex.toLowerCase()),
-    new URLSearchParams([["", text]]).toString().slice(1),
-    json,
-    json.replaceAll("/", "\\/"),
-  ];
 }
 
 /**
