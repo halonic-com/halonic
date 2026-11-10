@@ -772,6 +772,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: $/.github/actions/setup
+        with:
+          cache: ${{ runner.os != 'Windows' }}
       - name: Typecheck and test
         shell: bash
         run: >

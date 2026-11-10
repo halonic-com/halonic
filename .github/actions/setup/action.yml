@@ -1,11 +1,15 @@
 name: Setup
 description: Installs pnpm (version from packageManager), Node (from devEngines) and the dependencies, with a frozen lockfile.
+inputs:
+  cache:
+    description: Whether to cache the pnpm store between runs. The Windows runner can't read a restored store (Access is denied on an optional dependency), so the sandbox job turns it off there.
+    default: "true"
 runs:
   using: composite
   steps:
     - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       with:
-        cache: true
+        cache: ${{ inputs.cache }}
     - name: Install
       shell: bash
       run: pnpm install --frozen-lockfile
