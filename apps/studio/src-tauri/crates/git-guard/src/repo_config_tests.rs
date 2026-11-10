@@ -163,6 +163,8 @@ fn repo_leaks_refuses_keys_that_redirect_or_expose_git_traffic() {
     for key in [
         "url.https://evil.example/.insteadOf",
         "url.ssh://evil.example/.pushInsteadOf",
+        "remote.origin.pushurl",
+        "remote.acme.example.pushUrl",
         "http.sslVerify",
         "http.https://git.acme.example/.sslverify",
         "http.sslCAInfo",
@@ -197,6 +199,21 @@ fn repo_leaks_keeps_the_users_own_values_and_similar_keys() {
     assert_eq!(
         check_refused_keys(&[
             entry("global", "url.https://git.acme.example/.insteadOf", "acme:"),
+            entry(
+                "global",
+                "remote.origin.pushurl",
+                "https://git.acme.example/fork.git"
+            ),
+            entry(
+                "local",
+                "remote.origin.url",
+                "https://git.acme.example/acme.git"
+            ),
+            entry(
+                "local",
+                "remote.pushurl.url",
+                "https://git.acme.example/acme.git"
+            ),
             entry("global", "http.sslCAInfo", "acme-ca.pem"),
             entry("global", "hook.lint.command", "acme-lint"),
             entry("command", "http.sslVerify", "true"),

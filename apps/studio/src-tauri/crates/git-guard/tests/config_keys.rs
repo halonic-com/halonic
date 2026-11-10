@@ -222,6 +222,21 @@ fn repo_leaks_refuses_a_repository_that_redirects_its_remote() {
 }
 
 #[test]
+fn repo_leaks_refuses_a_planted_push_url() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.append_config(
+        "[remote \"origin\"]\n\turl = https://git.acme.example/acme.git\n\tpushurl = https://evil.example/acme.git\n",
+    );
+    assert_eq!(
+        sandbox.git("status"),
+        Err(GitError::ConfigNotAllowed {
+            key: "remote.origin.pushurl".to_owned(),
+        })
+    );
+}
+
+#[test]
 fn repo_leaks_refuses_a_repository_that_names_a_config_hook() {
     let sandbox = Sandbox::new();
     sandbox.init_repository();

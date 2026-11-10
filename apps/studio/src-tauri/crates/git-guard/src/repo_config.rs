@@ -110,6 +110,8 @@ pub(crate) fn check_refused_keys(entries: &[ConfigEntry]) -> Result<(), GitError
 /// - `url.<base>.insteadOf` and `pushInsteadOf`: they send `pull` and `push`
 ///   to another server than the remote the user sees, with the user's
 ///   credentials.
+/// - `remote.<name>.pushUrl`: the same for `push`, while `remote -v` and the
+///   remote's url still show the real server.
 /// - `http.sslVerify`, `http.sslCAInfo` and `http.sslCAPath`, also per URL:
 ///   they turn the certificate check off or trust the repository's own
 ///   authority, so anyone in between reads what git sends. A per-URL key
@@ -124,6 +126,9 @@ fn is_refused_key(key: &str) -> bool {
     if subsection_key(key, "branch")
         .is_some_and(|(_, name)| name.eq_ignore_ascii_case("mergeoptions"))
     {
+        return true;
+    }
+    if subsection_key(key, "remote").is_some_and(|(_, name)| name.eq_ignore_ascii_case("pushurl")) {
         return true;
     }
     subsection_key(key, "url").is_some_and(|(_, name)| {
