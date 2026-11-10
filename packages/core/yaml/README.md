@@ -58,12 +58,21 @@ export function runExample(): {
 A problem is `{ kind: "syntax" | "unsupported" | "too-deep" | "too-large", message, line, col }`.
 `positionOf` answers with the nearest parent when nothing sits at the path.
 
+## Reading
+
+`readYaml(text, limits?)` follows the YAML 1.2 core rules, so `yes` stays text. It answers with
+`ok({ data, positionOf })` or `err(problem)`. `data` is plain objects, lists, text, numbers,
+booleans and `null`; an empty file, or one with only comments, gives `null`.
+
 ## What it rejects
 
 Anchors, aliases, tags, a second document and lists or maps as keys give an
 `unsupported` problem with a message that says what to do instead.
-Nesting past 100 levels and texts over 1,000,000 characters are rejected too,
-because the reader runs on other people's workspaces.
+Nesting past 100 levels (`too-deep`) and texts over 1,000,000 characters
+(`too-large`) are rejected too, because the reader runs on other people's
+workspaces. The `too-large` check runs before parsing, at line 1, column 1.
+`defaultYamlLimits` holds those two numbers; pass your own `YamlLimits`
+(`{ maxDepth, maxLength }`) to `readYaml` or `editYaml` to change them.
 
 ## Writing
 
