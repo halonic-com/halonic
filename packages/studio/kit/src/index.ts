@@ -67,6 +67,7 @@ export {
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
+export type { InputLeadingButton } from "./input/leading-button.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps, keyShortcutsLabel } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";

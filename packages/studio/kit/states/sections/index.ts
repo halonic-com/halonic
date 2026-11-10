@@ -7,6 +7,7 @@ import { externalLinkSection } from "./external-link.tsx";
 import { fieldSection } from "./field.tsx";
 import { formRowsSection } from "./form-rows.tsx";
 import { iconTileSection } from "./icon-tile.tsx";
+import { inputLeadingSection } from "./input-leading.tsx";
 import { kbdSection } from "./kbd.tsx";
 import { listSection } from "./list.tsx";
 import { radioSection } from "./radio.tsx";
@@ -24,6 +25,7 @@ import { windowSection } from "./window.tsx";
 export const SECTIONS: readonly PartSection[] = [
   buttonSection,
   fieldSection,
+  inputLeadingSection,
   selectSection,
   tabsSection,
   listSection,

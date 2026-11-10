@@ -9,6 +9,7 @@ import {
   fieldTextClasses,
   focusTextOnPress,
 } from "./field-box.ts";
+import { type InputLeadingButton, LeadingButton } from "./leading-button.tsx";
 
 /** What the kit sets itself, from the Field and its own look, and a screen can't override. */
 type OwnedAttributes =
@@ -20,11 +21,9 @@ type OwnedAttributes =
   | "aria-describedby"
   | "aria-required";
 
-export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAttributes> {
+interface InputBase extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAttributes> {
   /** `md` 32px (the default) or `sm` 28px. Both are 48px on a phone. */
   readonly size?: FieldSize;
-  /** A 16px icon at the start of the box, in `fg-muted`: the search glass. */
-  readonly leadingIcon?: ReactNode;
   /**
    * A button at the end of the box (clear, show): a ghost icon `Button`. It keeps the `sm` look on
    * a phone, with a 48px hit area, so the box stays 48px.
@@ -32,6 +31,24 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   readonly trailing?: ReactNode;
   readonly ref?: Ref<HTMLInputElement>;
 }
+
+/** The start of the box holds an icon or a button, never both (component specs 3, revision 14). */
+type InputLeading =
+  | {
+      /** A 16px icon at the start of the box, in `fg-muted`: the search glass. */
+      readonly leadingIcon?: ReactNode;
+      readonly leadingButton?: never;
+    }
+  | {
+      /**
+       * A small button at the start of the box: the colour field's swatch, which opens its
+       * popover. Disabled while the Input is disabled or read-only.
+       */
+      readonly leadingButton: InputLeadingButton;
+      readonly leadingIcon?: never;
+    };
+
+export type InputProps = InputBase & InputLeading;
 
 /**
  * A one-line text field. Put it in a `Field`, which gives it its label, its hint or error, and
@@ -45,6 +62,7 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 export function Input({
   size = "md",
   leadingIcon,
+  leadingButton,
   trailing,
   ref,
   onKeyDown,
@@ -66,6 +84,12 @@ export function Input({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.
     <div className={fieldBoxClasses(state, size)} onMouseDown={focusTextOnPress}>
+      {leadingButton === undefined ? null : (
+        <LeadingButton
+          button={leadingButton}
+          disabled={state === "disabled" || native.readOnly === true}
+        />
+      )}
       {leadingIcon === undefined ? null : (
         <span
           className="inline-grid size-icon-sm shrink-0 place-items-center text-fg-muted *:size-full"

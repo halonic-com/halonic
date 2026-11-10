@@ -1152,6 +1152,40 @@ false.
 a 48px hit area, so the box stays 48px. **On a touch screen** at desktop width the box is 40px,
 like the Buttons beside it, and the text is 16px too.
 
+**The leading button.** Instead of a `leadingIcon`, the box can start with a small button: the
+colour field's swatch, which opens its popover. The type takes one or the other, never both.
+
+```tsx
+<Field label="First colour" error={hexError}>
+  <Input
+    value={hex}
+    onChange={(event) => setHex(event.target.value)}
+    leadingButton={{
+      label: `Choose the first colour, now ${lastGood}`,
+      onClick: openPopover,
+      expanded: popoverOpen,
+      controls: "first-colour-popover",
+      children: <Swatch colour={lastGood} />,
+    }}
+  />
+</Field>;
+```
+
+| `leadingButton` | What it is                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `label`         | Its name, with the feature's verb and the value read with it                                   |
+| `onClick`       | Called on a click, Enter or Space. The text doesn't take focus                                 |
+| `children`      | The glyph, 16px at most, drawn by the feature; hidden from screen readers                      |
+| `expanded`      | Whether what it opens is open; adds `aria-haspopup="dialog"`. Leave it out if it opens nothing |
+| `controls`      | The `id` of what it opens, set as `aria-controls` while it's open                              |
+
+The kit draws the slot, the hit area and the focus; the feature draws what's inside. The hit area
+is 24px square, 4px from the box's left edge, and the text starts 8px after it (36px in). On a
+phone it's the 48px square at the left of the box, and the text starts at 48px. The button has the
+general focus ring, and the box's `accent` edge shows only while the text has focus, so you can
+always tell which of the two you're on. It has no fill of its own: a hover is the box's. While the
+Input is disabled or read-only, the button is disabled too, its glyph at 45%.
+
 ## TextArea
 
 A text field of several lines, in the Input's box and states. It grows with its text up to
