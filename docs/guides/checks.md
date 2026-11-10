@@ -421,3 +421,9 @@ It also runs **mutation testing** every night: Stryker on
 `workflow`, `routines`, `schema-kit` and `yaml`, for each package that has
 code. The score per package goes into the job summary. It only reports for
 now; see [tooling/mutation](../../tooling/mutation/README.md).
+
+`.github/workflows/cargo-lock.yml` runs only by hand. It regenerates the
+Tauri shell's `Cargo.lock` for a branch, for anyone without a Rust
+toolchain: run `gh workflow run cargo-lock.yml --ref <branch>`, download
+the `cargo-lock` artifact into `apps/studio/src-tauri` and commit it. It
+never pushes; the pull request's own CI checks the lockfile.
