@@ -84,6 +84,19 @@ verifies("git.worktrees", () => {
       expect(await vcs.listWorktrees()).toEqual([]);
     });
 
+    it("refuses a worktrees folder reached through a link that points into the workspace", async () => {
+      const { folder, head } = await repoWith({ "a.yaml": "1\n" });
+      await writeFiles(folder, { ".studio/worktrees/.keep": "" });
+      const link = join(await scratch.folder(), "studio-link");
+      await symlink(join(folder, ".studio"), link);
+
+      const worktrees = join(link, "worktrees");
+      const linked = new GitVcs(folder, { runner: await runner(), author: testAuthor, worktrees });
+
+      await expect(linked.addWorktree(head)).rejects.toThrow(/can't be inside the workspace/u);
+      expect(await readdir(join(folder, ".studio", "worktrees"))).toEqual([".keep"]);
+    });
+
     it("removes a worktree whose folder is already gone, record and all", async () => {
       const { vcs, folder, head } = await repoWith({ "a.yaml": "1\n" });
       const worktree = await vcs.addWorktree(head);

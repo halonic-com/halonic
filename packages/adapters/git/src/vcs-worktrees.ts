@@ -121,7 +121,9 @@ export class GitWorktrees {
         const diff = (await onCopy([...diffArgs, version, "--", path])).toString("utf8");
         diffs.push({ path, status, diff });
       }
-      // By code point, as git sorts paths, whatever the locale.
+      // By UTF-16 code unit, whatever the locale, as the memory adapter and
+      // `listAt` sort paths. Git's own order is by UTF-8 byte, which only
+      // differs for a path mixing characters beyond U+FFFF with U+E000-U+FFFF.
       return diffs.sort((a, b) => Number(a.path > b.path) - Number(a.path < b.path));
     } finally {
       await rm(indexFile, { force: true });
