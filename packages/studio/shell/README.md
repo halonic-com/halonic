@@ -21,6 +21,7 @@ look up services its feature lists in `needs`.
 | ------------------------------- | ---------------------------------------------------------- | ------------------------- |
 | `defineFeature`, `createShell`  | register features in dependency order; refuse bad graphs   | `shell.feature-registry`  |
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
+| `TabSet`                        | a workspace's window tabs, each with Back and Forward      | `shell.tab-set`           |
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
 | `shell.closeStack`              | close the right layer on Esc and Android's Back            | `shell.close-stack`       |
 | `shell.engine`                  | send and announce when the engine is lost and back         | `shell.engine-connection` |
@@ -32,6 +33,18 @@ Contributions are app-wide and added once, in `register`. Their callbacks (an ex
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
 it with `shell.services.contextFor(featureId, registry)`. The layout reads everything back from
 `shell.contributions`, for example `shell.contributions.itemPage.sectionsFor("agent")`.
+
+## Window tabs
+
+A `TabSet` holds one workspace's window tabs (design direction 2). Each tab has its own Back and
+Forward, like a browser tab. `openHere` shows a place in the active tab; `openInNewTab` (a
+Ctrl-click) adds a tab right after it and keeps the active one. A place open in another tab is never
+opened twice: `openHere` switches to that tab. Home is the exception, because every new tab
+(`newTab`, + and Ctrl T) starts there. Closing the active tab activates the one to its right, else
+its left; closing the last tab leaves one on Home. `reopenClosed` (Ctrl Shift T) brings back the
+last of up to 20 closed tabs with their history. `rename` updates a place's title in every tab.
+
+The strip reads `tabs.state` and `subscribe`s; every change makes a new state.
 
 ## Announcements
 

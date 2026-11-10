@@ -111,5 +111,14 @@ export { type ServiceKey, serviceKey } from "./service-key.ts";
 export { createShell, type Shell, type ShellOptions } from "./shell.ts";
 export { ShellError } from "./shell-error.ts";
 export type { Studio } from "./studio.ts";
+export {
+  currentLocation,
+  homeLocation,
+  reopenableTabs,
+  type TabLocation,
+  TabSet,
+  type TabSetState,
+  type WindowTab,
+} from "./tabs/tab-set.ts";
 export { loadView, type ViewRef } from "./view.ts";
 export type { WorkspaceContext } from "./workspace-context.ts";
