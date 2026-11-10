@@ -35,3 +35,6 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
 - Given a trust check where the only differences are two rows marked Changed,
   when its summary is made,
   then it reads "2 changed programs." and never names a count of 0 (cli-output 3.5).
+- Given the code of every command under `src/commands` and of `printError`,
+  when its strings and template texts are read, comments left out,
+  then none holds two words with a space between them: every sentence comes from `src/messages` (Liam on HAL-2194).
