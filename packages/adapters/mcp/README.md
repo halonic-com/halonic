@@ -68,3 +68,7 @@ const tools = await notes.listTools();
 const answer = await notes.callTool("search_notes", { query: "invoices" });
 await notes.close();
 ```
+
+`inheritedEnv` is every variable a started program gets besides its own `env` and secrets. The
+example passes the app's whole `process.env`, which suits a program the person trusted directly.
+The connector doesn't trim it: the composition root decides what goes in.

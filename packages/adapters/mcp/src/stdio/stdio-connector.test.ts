@@ -110,6 +110,25 @@ verifies("mcp.stdio-connector", () => {
       await client.close();
     });
 
+    it("stops a program whose server speaks none of our versions, each time it starts", async () => {
+      const { context } = setUp();
+      const starter = new FakeStarter((message, program) => {
+        if (message.method !== "initialize") return;
+        const result = { protocolVersion: "1999-01-01", capabilities: { tools: {} } };
+        program.send({ jsonrpc: "2.0", id: message.id, result });
+      });
+      const factory = new McpStdioConnectorFactory({
+        starter,
+        inheritedEnv: {},
+        clientInfo: { name: "halonic", version: "0.1.0" },
+      });
+      const client = factory.create(config, context);
+      const unsupported = { name: "McpError", code: "unsupported-version" };
+      await expect(client.listTools()).rejects.toMatchObject(unsupported);
+      await expect(client.listTools()).rejects.toMatchObject(unsupported);
+      expect(starter.counts()).toEqual({ started: 2, running: 0 });
+    });
+
     it("refuses calls once closed, without starting again", async () => {
       const { starter, factory, context } = setUp();
       const client = factory.create(config, context);

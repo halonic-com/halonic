@@ -123,7 +123,13 @@ class McpStdioConnector implements ConnectorClient {
       throw new Error(`Connector "${this.id}" was closed while its program started.`);
     }
     const session = new McpSession(transport, { clientInfo: this.#options.clientInfo });
-    await session.initialize();
+    try {
+      await session.initialize();
+    } catch (error) {
+      // The next call starts a new program, so this one must not keep running.
+      await transport.close();
+      throw error;
+    }
     return { session };
   }
 
