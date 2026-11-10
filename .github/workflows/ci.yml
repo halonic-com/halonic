@@ -268,7 +268,9 @@ jobs:
     permissions:
       contents: read
     env:
-      TURBO_CACHE_DIR: ${{ github.workspace }}/../turbo-cache
+      # Turbo's own default folder (gitignored). actions/cache refuses a path
+      # with "..", so the earlier ../turbo-cache was never saved.
+      TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo/cache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
