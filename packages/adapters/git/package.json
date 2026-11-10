@@ -11,7 +11,12 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
   "devDependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

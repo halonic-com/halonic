@@ -1,0 +1,126 @@
+import { readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { plantedHooks } from "@halonicjs/testing-contracts";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterAll, describe, expect, it } from "vitest";
+import {
+  plainGit,
+  repositoryWith,
+  Scratch,
+  testAuthor,
+  testRunner,
+  writeFiles,
+} from "./fixtures.test-helper.ts";
+import type { GitRunner } from "./git-runner.ts";
+import { gitVcsHarness } from "./harness.test-helper.ts";
+import { GitVcs } from "./vcs.ts";
+
+const scratch = new Scratch();
+afterAll(() => scratch.remove());
+
+let shared: Promise<GitRunner> | undefined;
+function runner(): Promise<GitRunner> {
+  shared ??= testRunner(scratch);
+  return shared;
+}
+
+async function vcsAt(folder: string): Promise<GitVcs> {
+  return new GitVcs(folder, { runner: await runner(), author: testAuthor });
+}
+
+verifies("git.vcs", () => {
+  describe("paths through links", () => {
+    it("refuses a path through a link to .git or out of the folder, and changes nothing", async () => {
+      const outside = await scratch.folder();
+      const folder = await repositoryWith(scratch);
+      await symlink(join(folder, ".git"), join(folder, "link"));
+      await symlink(outside, join(folder, "out"));
+      const vcs = await vcsAt(folder);
+      const before = await vcs.status();
+      for (const path of ["link/config", "out/a.yaml", "link/hooks/pre-commit"]) {
+        await expect(vcs.stage([path]), path).rejects.toThrow(RangeError);
+        await expect(vcs.discard([path]), path).rejects.toThrow(RangeError);
+        await expect(vcs.diff(path, false), path).rejects.toThrow(RangeError);
+      }
+      expect(await vcs.status()).toEqual(before);
+    });
+  });
+
+  describe("init", () => {
+    it("copies no template, starts on main and keeps .studio out", async () => {
+      const folder = await scratch.folder();
+      await writeFiles(folder, { "a.yaml": "1\n", ".studio/runs/run-1.jsonl": "{}\n" });
+      const vcs = await vcsAt(folder);
+      await vcs.init();
+
+      expect(await readdir(join(folder, ".git"))).not.toContain("hooks");
+      expect(await readFile(join(folder, ".git", "info", "exclude"), "utf8")).toBe("/.studio/\n");
+      expect(await vcs.status()).toMatchObject({
+        branch: "main",
+        changes: [{ path: "a.yaml", status: "untracked", staged: false }],
+      });
+    });
+
+    it("refuses a folder whose .git file points elsewhere, rather than init the repository there", async () => {
+      const elsewhere = await repositoryWith(scratch);
+      const folder = await scratch.folder();
+      await writeFile(join(folder, ".git"), `gitdir: ${join(elsewhere, ".git")}\n`);
+      await expect((await vcsAt(folder)).init()).rejects.toThrow("outside the folder");
+    });
+
+    it("leaves .studio out of the status even when the exclude is gone", async () => {
+      const folder = await repositoryWith(scratch);
+      await rm(join(folder, ".git", "info"), { recursive: true, force: true });
+      await writeFiles(folder, { ".studio/runs/run-1.jsonl": "{}\n" });
+      expect((await (await vcsAt(folder)).status()).changes).toEqual([]);
+    });
+
+    it("unstages a new file before the first commit, which is untracked again", async () => {
+      const folder = await scratch.folder();
+      await writeFiles(folder, { "a.yaml": "1\n" });
+      const vcs = await vcsAt(folder);
+      await vcs.init();
+      await vcs.stage(["a.yaml"]);
+      await vcs.unstage(["a.yaml"]);
+      expect((await vcs.status()).changes).toEqual([
+        { path: "a.yaml", status: "untracked", staged: false },
+      ]);
+    });
+  });
+
+  describe("commits and pushes", () => {
+    it("commits as the author the adapter was given, with a # line kept", async () => {
+      const folder = await repositoryWith(scratch);
+      const vcs = await vcsAt(folder);
+      await writeFiles(folder, { "a.yaml": "2\n" });
+      await vcs.stage(["a.yaml"]);
+      await vcs.commit("# Not a comment");
+      expect((await vcs.log(1))[0]).toMatchObject({
+        author: testAuthor.name,
+        message: "# Not a comment",
+      });
+    });
+
+    it("refuses to push with no branch checked out", async () => {
+      const folder = await repositoryWith(scratch);
+      await plainGit(folder, ["checkout", "--quiet", "--detach"]);
+      await expect((await vcsAt(folder)).push()).rejects.toThrow("no branch is checked out");
+    });
+  });
+
+  describe("the hardened contract's plants", () => {
+    it("run under plain git, so the contract's cases can fail", async () => {
+      const harness = await gitVcsHarness(scratch, runner, plantedHooks).repo({ "a.yaml": "1\n" });
+      await harness.plant.hook("pre-commit");
+      await harness.files.write("a.yaml", "2\n");
+      await harness.vcs.stage(["a.yaml"]);
+      await harness.vcs.commit("Hardened");
+      expect(await harness.plant.ran()).toBe(false);
+
+      const folder = harness.files.location;
+      await writeFile(join(folder, "a.yaml"), "3\n");
+      await plainGit(folder, ["commit", "--quiet", "--all", "--message=Plain"]);
+      expect(await harness.plant.ran()).toBe(true);
+    });
+  });
+});

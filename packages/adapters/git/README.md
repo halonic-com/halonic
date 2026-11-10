@@ -7,20 +7,20 @@ The `Vcs` port on the real `git` program, for one workspace folder. git always r
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-git`
 
-The hardened runner and the repository checks are in; the `Vcs` itself follows (HAL-2607).
-
 ## Example
 
 ```ts
-import { GitRunner } from "@halonicjs/adapter-git";
+import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 
 const runner = await GitRunner.create();
-const result = await runner.run({
-  cwd: "/srv/workspaces/acme",
-  args: ["status", "--porcelain=v2"],
+const vcs = new GitVcs("/srv/workspaces/acme", {
+  runner,
+  author: { name: "Acme Studio", email: "studio@acme.example" },
 });
-console.log(result.code, result.stdout.toString());
+console.log(await vcs.status());
 ```
+
+git reads no user config, so the caller gives the commit author.
 
 ## How git is hardened
 
@@ -38,5 +38,6 @@ The desktop's `git-guard` crate does the same in Rust.
 
 ## Not yet
 
-- **The repository's own config, through `GitRunner` alone.** The runner on its own doesn't stop programs the repository's config or `.gitattributes` names, such as a filter or an external diff; only the repository checks do. The `Vcs`, which comes next, runs every call through them. Until then, don't run `GitRunner` directly on a workspace you don't trust.
+- **Pushing to a remote that needs a password.** No credential helper runs, the user's included. Halonic's own helper comes with the keychain work.
+- **The repository's own config, through `GitRunner` alone.** The runner on its own doesn't stop programs the repository's config or `.gitattributes` names, such as a filter or an external diff; only the repository checks do, and `GitVcs` runs every call through them. On a workspace you don't trust, use `GitVcs`, not `GitRunner` directly.
 - **Process allow-list.** `src/node/run-process.ts` is the only file that starts a process. It needs an entry in `tooling/check/process-starters.json` once HAL-188's check lands, with `src/skill-scripts.test.ts` as its `scriptsTest`.
