@@ -227,6 +227,17 @@ verifies("kit.select", () => {
     expect(posted.value).toBe("sonnet");
   });
 
+  it("doesn't post its hidden input while unavailable on a phone, like a disabled select", () => {
+    const { container } = onPhone(
+      <Field label="Model">
+        <Select name="model" options={models} value="sonnet" disabled onChange={ignore} />
+      </Field>,
+    );
+    expect((container.querySelector('input[type="hidden"]') as HTMLInputElement).disabled).toBe(
+      true,
+    );
+  });
+
   it("is named by its aria-label and the value outside a Field on a phone", () => {
     const { container } = onPhone(
       <Select aria-label="Model" options={models} value="haiku" onChange={ignore} />,

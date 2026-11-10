@@ -14,11 +14,14 @@ input carries the value for a form that posts.
 
 In `select.test.tsx` the two system-picker tests (`showPicker`, and the Safari focus fallback) are
 replaced by three sheet tests: pick, Close, and an unavailable option. The test that the hidden
-select stays out of the accessibility tree is replaced by one that there is no select at all. The
-file has 17 tests, one more than before.
+select stays out of the accessibility tree is replaced by one that there is no select at all, and
+a new test checks that the hidden input isn't posted while the Select is unavailable, as the native
+select wasn't. The file has 18 tests, two more than before.
 
 The phone button no longer sets `aria-invalid`, which a button doesn't support (HAL-3567 review);
 the error still reaches screen readers through `aria-describedby`, and the test checks that now.
+The phone LongText's button (`kit.long-text`, from #1054) drops it the same way: its requirement
+sentence, the code and its test (Liam's and Sofia's reviews on HAL-3680 and HAL-3663).
 
 ## Why
 
@@ -29,4 +32,5 @@ picker.
 ## Covers
 
 - kit.select
+- kit.long-text
 - packages/studio/kit/src/select/select.test.tsx

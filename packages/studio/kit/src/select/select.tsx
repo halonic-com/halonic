@@ -213,7 +213,9 @@ function PickerButton({
           {ariaLabel}
         </span>
       ) : null}
-      {name === undefined ? null : <input type="hidden" name={name} value={value ?? ""} />}
+      {name === undefined ? null : (
+        <input type="hidden" name={name} value={value ?? ""} disabled={disabled} />
+      )}
       {open ? (
         <PickerSheet
           title={field?.label ?? ariaLabel ?? ""}
