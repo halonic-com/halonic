@@ -63,14 +63,29 @@ export class OpenAiReplyReader extends ProviderReplyReader {
 
   /**
    * Takes a response's `usage`. Unlike Anthropic's, OpenAI's `input_tokens`
-   * already counts the tokens read from the prompt cache, and `output_tokens`
-   * the reasoning tokens, so both are taken as they are.
+   * also counts the tokens read from the prompt cache, which
+   * `input_tokens_details.cached_tokens` gives. Those are taken out of the
+   * input and counted as cache reads, because spend prices them at their own
+   * price, as for Anthropic (HAL-3229). `output_tokens` already counts the reasoning
+   * tokens, so it is taken as it is.
    */
   #readUsage(usage: unknown): void {
     if (!isPlainObject(usage)) return;
     const input = tokenCount(usage["input_tokens"]);
     const output = tokenCount(usage["output_tokens"]);
     if (input === undefined && output === undefined) return;
-    this.#usage = { inputTokens: input ?? 0, outputTokens: output ?? 0 };
+    const cacheRead = Math.min(cachedTokens(usage), input ?? 0);
+    this.#usage = {
+      inputTokens: (input ?? 0) - cacheRead,
+      outputTokens: output ?? 0,
+      ...(cacheRead > 0 ? { cacheReadTokens: cacheRead } : {}),
+    };
   }
+}
+
+/** The tokens a response's `usage` says were read from the prompt cache, or 0. */
+function cachedTokens(usage: Record<string, unknown>): number {
+  const details = usage["input_tokens_details"];
+  if (!isPlainObject(details)) return 0;
+  return tokenCount(details["cached_tokens"]) ?? 0;
 }

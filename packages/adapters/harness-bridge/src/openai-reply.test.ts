@@ -8,10 +8,10 @@ function event(type: string, data: object) {
 }
 
 /** A response's usage, shaped as OpenAI sends it. */
-function usage(input: number, output: number) {
+function usage(input: number, output: number, cached = 0) {
   return {
     input_tokens: input,
-    input_tokens_details: { cached_tokens: 20 },
+    input_tokens_details: { cached_tokens: cached },
     output_tokens: output,
     output_tokens_details: { reasoning_tokens: 7 },
     total_tokens: input + output,
@@ -39,7 +39,7 @@ describe("OpenAiReplyReader", () => {
       event("response.output_text.delta", { item_id: "msg_1", delta: "lo" }),
       event("response.output_text.done", { item_id: "msg_1", text: "Hello" }),
       event("response.completed", {
-        response: { id: "resp_1", status: "completed", usage: usage(100, 42) },
+        response: { id: "resp_1", status: "completed", usage: usage(100, 42, 20) },
       }),
     ].join("");
     // Cut mid-event, as the network may.
@@ -49,8 +49,11 @@ describe("OpenAiReplyReader", () => {
       stream.slice(150),
     );
 
-    // Cached tokens are already in input_tokens, and reasoning tokens in output_tokens.
-    expect(reading).toEqual({ usage: { inputTokens: 100, outputTokens: 42 }, text: "Hello" });
+    // The 20 cached tokens are taken out of input_tokens; reasoning tokens stay in output_tokens.
+    expect(reading).toEqual({
+      usage: { inputTokens: 80, outputTokens: 42, cacheReadTokens: 20 },
+      text: "Hello",
+    });
   });
 
   it("reads events that carry their type only in the data", () => {
@@ -93,10 +96,10 @@ describe("OpenAiReplyReader", () => {
         },
         { type: "function_call", name: "shell", arguments: "{}" },
       ],
-      usage: usage(10, 3),
+      usage: usage(10, 3, 4),
     };
     expect(read("application/json", JSON.stringify(response))).toEqual({
-      usage: { inputTokens: 10, outputTokens: 3 },
+      usage: { inputTokens: 6, outputTokens: 3, cacheReadTokens: 4 },
       text: "Hi there",
     });
   });
@@ -108,6 +111,29 @@ describe("OpenAiReplyReader", () => {
     expect(read("application/json", '{"usage":{"input_tokens":4}}')?.usage).toEqual({
       inputTokens: 4,
       outputTokens: 0,
+    });
+  });
+
+  it("leaves out a cache read of 0, and never counts more cache reads than input", () => {
+    const none = { input_tokens: 9, input_tokens_details: { cached_tokens: 0 }, output_tokens: 1 };
+    const tooMany = {
+      input_tokens: 9,
+      input_tokens_details: { cached_tokens: 50 },
+      output_tokens: 1,
+    };
+    const odd = { input_tokens: 9, input_tokens_details: { cached_tokens: "9" }, output_tokens: 1 };
+    expect(read("application/json", JSON.stringify({ usage: none }))?.usage).toEqual({
+      inputTokens: 9,
+      outputTokens: 1,
+    });
+    expect(read("application/json", JSON.stringify({ usage: tooMany }))?.usage).toEqual({
+      inputTokens: 0,
+      outputTokens: 1,
+      cacheReadTokens: 9,
+    });
+    expect(read("application/json", JSON.stringify({ usage: odd }))?.usage).toEqual({
+      inputTokens: 9,
+      outputTokens: 1,
     });
   });
 

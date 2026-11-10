@@ -31,7 +31,8 @@ const keyed: BridgeProviderAccess = { kind: "key", secret: "openai-key" };
 /**
  * Opens a bridge that serves only the OpenAI route, for an agent with the
  * given access (`null`: none), and keeps what it records. Only `gpt-5.5` has
- * a price: 1.25 and 10 per million tokens.
+ * a price: 1.25 for input, 10 for output and 0.125 for cache reads, per
+ * million tokens.
  */
 async function open(fetch: Fetch, openai: BridgeProviderAccess | null = keyed) {
   const recorded: BridgeEvent[] = [];
@@ -45,7 +46,7 @@ async function open(fetch: Fetch, openai: BridgeProviderAccess | null = keyed) {
     ...fakeRun(),
     providers: openai === null ? {} : { openai },
     price: (_provider: string, model: string) =>
-      model === "gpt-5.5" ? { input: 1.25, output: 10 } : null,
+      model === "gpt-5.5" ? { input: 1.25, output: 10, cacheRead: 0.125 } : null,
     recorder: { record: async (event: BridgeEvent) => void recorded.push(event) },
   };
   const bridge = await openBridge(run, {
@@ -277,10 +278,11 @@ verifies("harness-bridge.spend", () => {
       agent: "writer",
       provider: "openai",
       model: "gpt-5.5",
-      usage: { inputTokens: 100, outputTokens: 42 },
+      // The 20 cached tokens are taken out of the input and priced as cache reads.
+      usage: { inputTokens: 80, outputTokens: 42, cacheReadTokens: 20 },
       latencyMs: expect.any(Number),
       text: "Hello",
-      cost: (100 * 1.25 + 42 * 10) / 1_000_000,
+      cost: (80 * 1.25 + 42 * 10 + 20 * 0.125) / 1_000_000,
     });
   });
 
