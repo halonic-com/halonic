@@ -13,6 +13,7 @@ import {
   expectOutside,
   expectSpawnedPinned,
 } from "./connector-pin-launch.ts";
+import { overridingCommands, overridingEnv } from "./connector-pin-overrides.ts";
 import {
   npmMirrorUrl,
   npmPackage,
@@ -157,6 +158,7 @@ export function connectorPinContract(name: string, make: MakePinnedConnector): v
       startCases(make);
       registryCases(make);
       refusalCases(make);
+      overrideCases(make);
     });
   });
 }
@@ -296,4 +298,31 @@ function refusalCases(make: MakePinnedConnector): void {
       expectRefused(await start(make, config));
     });
   }
+}
+
+function overrideCases(make: MakePinnedConnector): void {
+  for (const { registry, command, args } of overridingCommands) {
+    it(`refuses a pinned command with a registry option: ${command} ${args.join(" ")}`, async () => {
+      const pin = registry === "npm" ? npmPin : pypiPin;
+      expectRefused(await start(make, stdio(command, [...args], pin)));
+    });
+  }
+
+  for (const env of overridingEnv) {
+    const [variable] = Object.keys(env);
+    it(`refuses a pinned connector whose env sets the proxy, certificate or preload ${variable}`, async () => {
+      const config = stdio("npx", ["-y", npmPackage.name], npmPin, { ...env });
+      expectRefused(await start(make, config));
+    });
+  }
+
+  it("starts an unpinned package runner with a registry option and a proxy once trusted, as configured", async () => {
+    const args = ["--registry=https://npm.acme.test", "-y", npmPackage.name];
+    const env = { HTTPS_PROXY: "http://proxy.acme.test:3128" };
+    const started = await start(make, stdio("npx", args, undefined, env));
+    expect(started.outcome).toEqual({ listed: contractServerTools });
+    const launches = started.harness.launches();
+    expect(launches.map(({ pin, args }) => ({ pin, args }))).toEqual([{ pin: null, args }]);
+    expect(launches[0]?.env).toMatchObject(env);
+  });
 }

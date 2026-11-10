@@ -16,12 +16,24 @@ export interface ConnectorLaunch {
 }
 
 /**
+ * The machine's own network settings in the adapter's process environment,
+ * as a company proxy and its certificate would be. The port says a pinned
+ * launch keeps them: they belong to the person, not the workspace.
+ */
+const machineEnv: Readonly<Record<string, string>> = {
+  HTTPS_PROXY: "http://proxy.acme.test:3128",
+  NODE_EXTRA_CA_CERTS: "./acme-proxy-ca.pem",
+};
+
+/**
  * The environment the suite gives the adapter as its own process's: every
  * variable it may not pass on to a pinned program, each set to move the
- * registry or run code first, next to a harmless `PATH`.
+ * registry or run code first, next to a harmless `PATH` and the machine's
+ * own proxy and certificate.
  */
 export const contractInheritedEnv: Readonly<Record<string, string>> = {
   PATH: "/usr/bin",
+  ...machineEnv,
   npm_config_registry: "https://evil.acme.test/npm",
   NPM_CONFIG_USERCONFIG: "./evil.npmrc",
   NODE_OPTIONS: "--require ./evil.js",
@@ -62,7 +74,8 @@ const blockedPrefixes = [
 /**
  * Expects `launch` to run the pin's package at exactly its version, through
  * a runner of the pin's registry, pointed at `registryUrl`, with none of
- * {@link contractInheritedEnv}'s blocked variables passed on.
+ * {@link contractInheritedEnv}'s blocked variables passed on, and the
+ * machine's own proxy and certificate kept.
  */
 export function expectSpawnedPinned(launch: ConnectorLaunch, pin: ConnectorPin): void {
   expect(runners[pin.registry].has(programName(launch.command))).toBe(true);
@@ -76,6 +89,7 @@ export function expectSpawnedPinned(launch: ConnectorLaunch, pin: ConnectorPin):
   for (const [name, value] of Object.entries(contractInheritedEnv)) {
     if (isBlocked(name)) expect(launch.env[name]).not.toBe(value);
   }
+  for (const [name, value] of Object.entries(machineEnv)) expect(launch.env[name]).toBe(value);
 }
 
 /** Expects `folder` to be neither `other`, nor inside it, nor around it. */
