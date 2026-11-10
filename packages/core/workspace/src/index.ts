@@ -24,7 +24,15 @@ export {
   type ResolvedModelTarget,
   resolveModel,
 } from "./resolve-model.ts";
-export { type ChangedConnector, type TrustChanges, trustChanges } from "./trust-changes.ts";
+export { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
+export {
+  type ChangedAgent,
+  type ChangedConnector,
+  type ChangedItem,
+  type ItemChanges,
+  type TrustChanges,
+  trustChanges,
+} from "./trust-changes.ts";
 export {
   type ConnectorTrustContent,
   type RefusedConnector,

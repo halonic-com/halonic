@@ -59,6 +59,7 @@ verifies("workspace.trust-changes", () => {
         changed: [],
         removed: [],
         unchanged: 1,
+        agents: { added: [], changed: [], removed: [], unchanged: 0 },
         onlyRemoves: false,
       });
     });

@@ -3,7 +3,7 @@
 // record in the user's profile. Only a person adds to a record (HAL-571);
 // a change that only removes whole connectors shrinks it (HAL-65 decision 9).
 
-import type { Connector } from "@halonicjs/format";
+import type { Agent, Connector } from "@halonicjs/format";
 import type {
   Clock,
   Digest,
@@ -34,6 +34,12 @@ export interface TrustSubject {
    * the fingerprint (HAL-1921 review).
    */
   readonly commandPaths: ReadonlyMap<string, string>;
+  /**
+   * The workspace's agents, as parsed from their files. Required, so the
+   * program, sites and folder of each harness agent are always in the
+   * fingerprint (HAL-189 stack 3c).
+   */
+  readonly agents: readonly Agent[];
 }
 
 /** What the workspace holds now, as the prompt shows it. */
@@ -106,7 +112,7 @@ export interface TrustServiceOptions {
  *
  * @example
  * const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
- * const check = await trust.check({ location, connectors, commandPaths });
+ * const check = await trust.check({ location, connectors, commandPaths, agents });
  * if (check.status !== "trusted") return refuse(check.fingerprint); // exit code 3
  */
 export class TrustService {
@@ -197,6 +203,7 @@ export class TrustService {
     const content = trustContent({
       connectors: subject.connectors,
       commandPaths: subject.commandPaths,
+      agents: subject.agents,
     });
     return {
       content,
@@ -262,20 +269,28 @@ function idsOf(changes: TrustChanges): string[] {
   return changes.removed.map((connector) => connector.id);
 }
 
-/** Whether stored content has the shape `trustContent` builds: connectors with an id each. */
+/**
+ * Whether stored content has the shape `trustContent` builds: connectors,
+ * and harness agents when there are any, with an id each.
+ */
 function isTrustContent(value: unknown): value is TrustContent {
   if (typeof value !== "object" || value === null || !("connectors" in value)) {
     return false;
   }
-  const { connectors } = value;
+  const agents = "agents" in value ? value.agents : [];
+  return hasIds(value.connectors) && hasIds(agents);
+}
+
+/** Whether the value is a list whose every entry has a text `id`. */
+function hasIds(list: unknown): boolean {
   return (
-    Array.isArray(connectors) &&
-    connectors.every(
-      (connector: unknown) =>
-        typeof connector === "object" &&
-        connector !== null &&
-        "id" in connector &&
-        typeof connector.id === "string",
+    Array.isArray(list) &&
+    list.every(
+      (entry: unknown) =>
+        typeof entry === "object" &&
+        entry !== null &&
+        "id" in entry &&
+        typeof entry.id === "string",
     )
   );
 }

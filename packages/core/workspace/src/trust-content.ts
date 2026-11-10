@@ -1,5 +1,6 @@
-import type { Connector } from "@halonicjs/format";
+import type { Agent, Connector } from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
+import { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
 import { trustUrl } from "./trust-url.ts";
 
 /**
@@ -35,6 +36,12 @@ export interface TrustContent {
    * its connectors can be trusted or started until the file is fixed.
    */
   refused?: RefusedConnector[];
+  /**
+   * The agents that start a harness program, such as Claude Code, sorted by
+   * id. Only there when there are some, so the content and fingerprint of a
+   * workspace without them are the same as before harness agents existed.
+   */
+  agents?: AgentTrustContent[];
 }
 
 /**
@@ -76,6 +83,8 @@ export interface TrustContentInput {
    * can't. A command missing from the map is kept as written only.
    */
   commandPaths?: ReadonlyMap<string, string>;
+  /** The workspace's agents, as parsed from their files. Only harness agents add to the content. */
+  agents?: readonly Agent[];
 }
 
 /**
@@ -89,6 +98,9 @@ export interface TrustContentInput {
  *   header. A connector whose URL `trustUrl` refuses goes in `refused`.
  * - **all:** the secret's name, the tool lists and `local`, plus any other
  *   field as written, under `unknown`.
+ * - **agents:** for each agent with a harness other than Halonic, the
+ *   harness, its allowed sites and its working folder when it isn't the
+ *   default (see {@link agentsTrustContent}).
  *
  * @example
  * trustContent({ connectors: [mailConnector] });
@@ -108,7 +120,12 @@ export function trustContent(input: TrustContentInput): TrustContent {
   }
   connectors.sort((left, right) => compareText(left.id, right.id));
   refused.sort((left, right) => compareText(left.id, right.id));
-  return refused.length === 0 ? { connectors } : { connectors, refused };
+  const agents = agentsTrustContent(input.agents ?? []);
+  return {
+    connectors,
+    ...(refused.length === 0 ? {} : { refused }),
+    ...(agents.length === 0 ? {} : { agents }),
+  };
 }
 
 /** Shows a secret by name only. A secret's value never goes into the content. */
