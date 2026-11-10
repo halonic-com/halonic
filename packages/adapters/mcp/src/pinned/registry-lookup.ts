@@ -28,7 +28,12 @@ export async function lookUpPinnedPackage(
     // The refusal says why in words; the network error itself names no more than that.
     return err(`${pin.registryUrl} can't be reached to look up ${pin.package} ${pin.version}`);
   }
-  if (!response.ok) return err(unlisted);
+  if (response.status === 404) return err(unlisted);
+  if (!response.ok) {
+    return err(
+      `${pin.registryUrl} answered ${response.status} when asked for ${pin.package} ${pin.version}, so the version can't be checked`,
+    );
+  }
   let body: unknown;
   try {
     body = await response.json();

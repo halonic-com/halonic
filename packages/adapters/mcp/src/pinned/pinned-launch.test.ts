@@ -1,12 +1,13 @@
-import { existsSync, readdirSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { devNull, tmpdir } from "node:os";
+import { join } from "node:path";
 import type { StdioTransport } from "@halonicjs/app";
 import type { ConnectorPin, HttpClient } from "@halonicjs/ports";
 import { err, ok } from "@halonicjs/std";
 import { RecordedRegistryClient } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { nodeLaunchFolders } from "./launch-folders.ts";
+import { emptyNpmrc, nodeLaunchFolders } from "./launch-folders.ts";
 import { checkPinnedLaunch, pinnedLaunch } from "./pinned-launch.ts";
 import { registryTimeoutMs } from "./registry-lookup.ts";
 
@@ -92,6 +93,21 @@ verifies("mcp.pinned-launcher", () => {
       }
     });
 
+    it("says a registry doesn't list the pin only for a 404, and names any other failing status", async () => {
+      const missing = answering(() => new Response("", { status: 404 }));
+      expect(await checkPinnedLaunch(npx(), {}, missing)).toEqual(
+        err("https://registry.npmjs.org/ doesn't list @acme/mail-mcp 2.3.1"),
+      );
+      for (const status of [429, 503]) {
+        const failing = answering(() => new Response("", { status }));
+        expect(await checkPinnedLaunch(uvx, {}, failing)).toEqual(
+          err(
+            `https://pypi.org answered ${status} when asked for mail-mcp 2.3.1, so the version can't be checked`,
+          ),
+        );
+      }
+    });
+
     it("asks for JSON with a time limit, and refuses an unreachable registry", async () => {
       const fetch = vi.fn(async (_url: string, _init?: RequestInit) => {
         throw new TypeError("fetch failed");
@@ -145,28 +161,35 @@ verifies("mcp.pinned-launcher", () => {
           TEMP: "/acme/launch-1",
           TMP: "/acme/launch-1",
           npm_config_registry: "https://registry.npmjs.org",
+          npm_config_userconfig: join("/acme/launch-1", emptyNpmrc),
+          npm_config_globalconfig: join("/acme/launch-1", emptyNpmrc),
         },
       });
     });
 
-    it("points a PyPI runner's index at the registry's simple API", () => {
+    it("points a PyPI runner's index at the registry's simple API, with no other config and no Python download", () => {
       const { env, args } = pinnedLaunch(uvx, pypiPin, inherited, "/acme/launch-2");
-      expect(args).toEqual(["mail-mcp==2.3.1"]);
+      expect(args).toEqual(["mail-mcp@2.3.1"]);
       expect(env).toMatchObject({
         UV_DEFAULT_INDEX: "https://pypi.org/simple",
+        UV_NO_CONFIG: "1",
+        UV_PYTHON_DOWNLOADS: "never",
         PIP_INDEX_URL: "https://pypi.org/simple",
+        PIP_CONFIG_FILE: devNull,
       });
       expect(env).not.toHaveProperty("UV_INDEX_URL");
     });
   });
 
-  it("creates each launch folder empty in the system's temporary folder, and deletes it", async () => {
+  it("creates each launch folder in the system's temporary folder as its own npm project, and deletes it", async () => {
     const first = await nodeLaunchFolders.create();
     const second = await nodeLaunchFolders.create();
     try {
       expect(first.startsWith(tmpdir())).toBe(true);
       expect(first).not.toBe(second);
-      expect(readdirSync(first)).toEqual([]);
+      expect(readdirSync(first).sort()).toEqual([emptyNpmrc, "package.json"]);
+      expect(readFileSync(join(first, "package.json"), "utf8")).toBe("{}\n");
+      expect(readFileSync(join(first, emptyNpmrc), "utf8")).toBe("");
     } finally {
       await nodeLaunchFolders.remove(first);
       await nodeLaunchFolders.remove(second);

@@ -50,7 +50,7 @@ export function pinnedLaunch(
 ): ProgramLaunch {
   return {
     program: transport.command,
-    args: pinnedRunnerArgs(pin, transport.args),
+    args: pinnedRunnerArgs(pin, transport.command, transport.args),
     env: pinnedEnv(pin, inheritedEnv, transport.env, folder),
     cwd: folder,
   };

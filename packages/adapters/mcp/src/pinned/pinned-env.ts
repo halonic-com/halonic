@@ -1,5 +1,8 @@
+import { devNull } from "node:os";
+import { join } from "node:path";
 import { isPackageManagerVariable } from "@halonicjs/app";
 import type { ConnectorPin } from "@halonicjs/ports";
+import { emptyNpmrc } from "./launch-folders.ts";
 
 /**
  * The variables that tell a runner where its home, config, cache and
@@ -42,7 +45,7 @@ export function pinnedEnv(
   }
   Object.assign(env, connectorEnv);
   for (const name of folderVariables) env[name] = folder;
-  return Object.assign(env, registryEnv(pin));
+  return Object.assign(env, registryEnv(pin, folder));
 }
 
 /** Whether a variable names a folder the launch sets itself, in any case, as Windows reads it. */
@@ -51,9 +54,31 @@ function isFolderVariable(name: string): boolean {
   return folderVariables.includes(upper);
 }
 
-/** The registry setting for a pin: npm reads `npm_config_registry`, uv `UV_DEFAULT_INDEX`, pip and pipx `PIP_INDEX_URL`. */
-function registryEnv(pin: ConnectorPin): Record<string, string> {
+/**
+ * The registry setting for a pin, and the settings that keep every other
+ * config out. npm reads `npm_config_registry`, and its user and global
+ * config point at the launch folder's empty {@link emptyNpmrc}, so a system-wide
+ * `$PREFIX/etc/npmrc` can't add a scope's registry. uv reads
+ * `UV_DEFAULT_INDEX`, reads no `uv.toml` (`UV_NO_CONFIG`) and downloads no
+ * Python of its own (`UV_PYTHON_DOWNLOADS`). pip and pipx read
+ * `PIP_INDEX_URL` and no `pip.conf` (`PIP_CONFIG_FILE` set to the null
+ * device, which pip reads as "no config files").
+ */
+function registryEnv(pin: ConnectorPin, folder: string): Record<string, string> {
   const base = pin.registryUrl.replace(/\/+$/, "");
-  if (pin.registry === "npm") return { npm_config_registry: base };
-  return { UV_DEFAULT_INDEX: `${base}/simple`, PIP_INDEX_URL: `${base}/simple` };
+  if (pin.registry === "npm") {
+    const npmrc = join(folder, emptyNpmrc);
+    return {
+      npm_config_registry: base,
+      npm_config_userconfig: npmrc,
+      npm_config_globalconfig: npmrc,
+    };
+  }
+  return {
+    UV_DEFAULT_INDEX: `${base}/simple`,
+    UV_NO_CONFIG: "1",
+    UV_PYTHON_DOWNLOADS: "never",
+    PIP_INDEX_URL: `${base}/simple`,
+    PIP_CONFIG_FILE: devNull,
+  };
 }
