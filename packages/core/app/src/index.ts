@@ -155,6 +155,16 @@ export {
   type ResourceReportOptions,
   type Resources,
 } from "./resource-report.ts";
+export type { ReviewCard, ReviewRecord } from "./review-record.ts";
+export { ReviewService, type ReviewServiceOptions } from "./review-service.ts";
+export type {
+  ProposedWrite,
+  ProposeOutcome,
+  ReviewedFile,
+  ReviewOutcome,
+  ReviewStep,
+  ReviewTarget,
+} from "./review-types.ts";
 export { lastRunKey, lastTickKey, queueKey, routineRunId } from "./routine-ids.ts";
 export type { RoutineOverlap } from "./routine-overlap.ts";
 export type { QueuedTimes } from "./routine-queue.ts";
