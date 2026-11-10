@@ -182,13 +182,18 @@ verifies("cli.run-failure", () => {
       });
     });
 
+    it("names the busy provider, without tries until the engine retries one", () => {
+      const failure = runFailureOf(failedWith("provider-busy"), calledModel({ ...openaiModel }));
+      expect(failure).toEqual({ reason: "provider-busy", provider: "OpenAI" });
+      expect(fixLine(failure)).toBe("Run it again in a few minutes.");
+    });
+
     it("prints no failure lines for a cancelled run", () => {
       expect(runFailureOf(failedWith("cancelled"), calledModel())).toBeUndefined();
     });
 
     const generalReasons: readonly RunFailureReason[] = [
-      // The log doesn't hold how often Halonic tried, or the budget and the spend, yet.
-      "provider-busy",
+      // The log doesn't hold the budget and the spend yet.
       "budget",
       // Their words wait for the board (HAL-2264).
       "model-out-of-memory",
@@ -217,6 +222,7 @@ verifies("cli.run-failure", () => {
       "model-no-tools",
       "model-unreachable",
       "out-of-credit",
+      "provider-busy",
     ];
     for (const reason of modelReasons) {
       it(`gives ${reason} the general lines when the run called no model`, () => {

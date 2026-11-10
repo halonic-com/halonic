@@ -32,7 +32,11 @@ export interface FailedModel {
 
 /** What {@link failedModelOf} reads from the workspace. */
 export interface WorkspaceModels {
-  /** The model aliases by name, as `modelAliases` reads them. */
+  /**
+   * The model aliases the run's hub can use, by name: `modelAliases(workspace, hubId)`
+   * with the run's own hub, so a hub's alias over a `models.yaml` one names the model
+   * the run called.
+   */
   readonly aliases: ReadonlyMap<string, ModelAlias>;
   /** The provider files by id. */
   readonly providers: ReadonlyMap<string, Provider>;
@@ -73,7 +77,7 @@ export function failedModelOf(
           alias: event.alias,
           model: event.model,
           providerId: event.provider,
-          keyMissing: event.next === undefined,
+          keyMissing: event.reason === "no-key" && event.next === undefined,
         };
         break;
       default:
@@ -90,10 +94,9 @@ export function failedModelOf(
  * the model it called last (requirement `cli.run-failure`).
  *
  * A reason whose lines need a fact the run log doesn't hold yet gets the
- * general lines, with the engine's own message: `provider-busy` (how often
- * and how long Halonic tried) and `budget` (the budget and the spend), as do
- * the reasons whose words wait for the board (HAL-2264) and a model reason
- * whose model or provider file can't be found.
+ * general lines, with the engine's own message: `budget` (the budget and
+ * the spend), as do the reasons whose words wait for the board (HAL-2264)
+ * and a model reason whose model or provider file can't be found.
  *
  * @param model - from {@link failedModelOf}; `undefined` when the run called no model
  * @returns `undefined` for a cancelled run, which prints "Stopped." or
@@ -131,10 +134,11 @@ export function runFailureOf(
     case "model-unreachable":
       return unreachableFailure(failed, model);
     case "out-of-credit":
+    case "provider-busy":
+      // A busy provider's line names no tries until the engine retries one (revision 39).
       return model === undefined
         ? generalFailure(failed)
         : { reason, provider: providerName(model) };
-    case "provider-busy":
     case "budget":
     case "model-out-of-memory":
     case "disk-full":
