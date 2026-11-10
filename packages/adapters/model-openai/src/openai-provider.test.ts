@@ -319,7 +319,41 @@ verifies("model-openai.reply-size", () => {
     );
     expect(cancelled).toBe(true);
   });
+
+  it("fails a stream with refused on a body over 10 MiB with no line break, and stops reading it", async () => {
+    const { vendor, provider } = providerWith();
+    vendor.floodNext();
+    const error = await drain(provider.stream(chatRequest())).catch((thrown: unknown) => thrown);
+    expect(isModelCallError(error) && error.reason).toBe("refused");
+    expect((error as Error).message).toMatch(
+      /^acme's answer for the model "acme-small" was over 10 MB, more than Halonic reads$/,
+    );
+    expect(vendor.calls().open).toBe(0);
+  });
+
+  it("refuses a stream that declares a length over 10 MiB before reading it", async () => {
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull: () => new Promise(() => {}),
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const huge = new Response(body, { headers: { "content-length": String(11 * 1024 * 1024) } });
+    const { provider } = providerWith({ http: { fetch: async () => huge } });
+    await expect(drain(provider.stream(chatRequest()))).rejects.toThrow(
+      /^acme's answer for the model "acme-small" was over 10 MB, more than Halonic reads$/,
+    );
+    expect(cancelled).toBe(true);
+  });
 });
+
+/** Reads `stream` to its end. */
+async function drain(stream: AsyncIterable<unknown>): Promise<void> {
+  for await (const _event of stream) {
+    // Only the end matters.
+  }
+}
 
 verifies("model-openai.call-errors", () => {
   /** The error a stream ends with when the server answers with `body`. */

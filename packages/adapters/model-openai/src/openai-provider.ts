@@ -15,7 +15,7 @@ import {
   errorForStreamedError,
   type FailedCall,
 } from "./call-error.ts";
-import { BodyTooLargeError, readTextWithin } from "./read-body.ts";
+import { BodyTooLargeError, bodyWithin, readTextWithin } from "./read-body.ts";
 import { ReplyFormatError, readReply } from "./reply.ts";
 import { type MaxTokensField, toWireBody } from "./request.ts";
 import { readSseData } from "./sse.ts";
@@ -112,15 +112,16 @@ export class OpenAiCompatibleProvider implements LlmProvider {
    * with the signal's reason, even when it comes while the caller handles
    * an event; stopping early closes the call. An error event from the
    * server, or a stream without chunks, fails rather than ending with an
-   * empty answer.
+   * empty answer. A stream reads at most 10 MiB, as `chat()` does.
    */
   async *stream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     const { response, call, key } = await this.#call(request, true);
     const reply = new StreamedReply();
     let answer: ChatResponse;
     try {
-      if (response.body === null) throw new ReplyFormatError("the reply has no body");
-      for await (const data of readSseData(response.body)) {
+      const body = await bodyWithin(response, maxReplyBytes);
+      if (body === null) throw new ReplyFormatError("the reply has no body");
+      for await (const data of readSseData(body)) {
         for (const event of reply.add(JSON.parse(data))) {
           yield event;
           request.signal?.throwIfAborted();
@@ -192,6 +193,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
 /** The {@link ModelCallError} a stream ends with after `error`. */
 function streamError(error: unknown, call: FailedCall, key: string | undefined): ModelCallError {
   if (error instanceof StreamedErrorEvent) return errorForStreamedError(error.event, call, key);
+  if (error instanceof BodyTooLargeError) return errorForSize(error, call);
   const unreadable = error instanceof SyntaxError || error instanceof ReplyFormatError;
   return unreadable ? errorForReply(error, call) : errorForNetwork(error, call);
 }
