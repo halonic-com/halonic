@@ -130,7 +130,7 @@ verifies("kit.dialog-live-regions", () => {
     const settings = (body: ReactNode) => (
       <Dialog
         title="Settings"
-        confirm={{ label: "Save" }}
+        confirm={{ label: "Save", busyLabel: "Saving…" }}
         onConfirm={() => undefined}
         onCancel={() => undefined}
       >
