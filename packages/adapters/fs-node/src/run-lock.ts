@@ -70,7 +70,8 @@ async function takeLock(file: string, system: BusySystem): Promise<string> {
   }
 }
 
-function ownRecord(): RunLockRecord {
+/** The record this process writes into a lock it takes, taken now. */
+export function ownRecord(): RunLockRecord {
   return {
     version: runLockFormat,
     pid: process.pid,
@@ -80,7 +81,7 @@ function ownRecord(): RunLockRecord {
 }
 
 /** Creates `file` holding `text`, or gives `false` when it is already there. */
-async function createExclusive(file: string, text: string): Promise<boolean> {
+export async function createExclusive(file: string, text: string): Promise<boolean> {
   try {
     await writeFile(file, text, { encoding: "utf8", flag: "wx" });
     return true;
@@ -93,7 +94,7 @@ async function createExclusive(file: string, text: string): Promise<boolean> {
 }
 
 /** The lock file as it is now, or `null` when there is none. */
-async function readLock(file: string): Promise<FoundLock | null> {
+export async function readLock(file: string): Promise<FoundLock | null> {
   try {
     const [text, stats] = await Promise.all([readFile(file, "utf8"), stat(file)]);
     return { text, record: parseRecord(text), changedAt: stats.mtimeMs };
@@ -175,7 +176,11 @@ function processRuns(pid: number): boolean {
  * the whole removal: retrying the whole would rename again after a failed
  * check, find no lock, and so remove the lock it moved aside unchecked.
  */
-async function removeStale(file: string, staleText: string, system: BusySystem): Promise<void> {
+export async function removeStale(
+  file: string,
+  staleText: string,
+  system: BusySystem,
+): Promise<void> {
   const aside = `${file}.${randomUUID()}.stale`;
   try {
     await retryWhileBusy(() => rename(file, aside), system);
@@ -211,7 +216,7 @@ async function putBack(aside: string, file: string): Promise<void> {
  * that other writer. The caller retries it whole while Windows reports it
  * busy, so the lock isn't left behind for other writers to wait on.
  */
-async function releaseLock(file: string, ownText: string): Promise<void> {
+export async function releaseLock(file: string, ownText: string): Promise<void> {
   const found = await readLock(file);
   if (found?.text === ownText) {
     await rm(file, { force: true });

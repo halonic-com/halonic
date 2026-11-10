@@ -3,6 +3,14 @@ export { FolderBlobStore } from "./blob-store.ts";
 export { FileConnectionSettingsStore } from "./connection-settings-store.ts";
 export { FolderDefinitionStore, type FolderStoreWatchOptions } from "./definition-store.ts";
 export type { FolderEvents } from "./folder-watch.ts";
+export {
+  type HeldLock,
+  type HoldLockOptions,
+  heldLockRenewEveryMs,
+  holdLock,
+  LockHeldError,
+  type RenewTimer,
+} from "./held-lock.ts";
 export { FileRecordStore } from "./record-store.ts";
 export { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
 export { FileTrustStore } from "./trust-store.ts";

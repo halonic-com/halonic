@@ -270,3 +270,17 @@ the shared `BlobStore` contract suite.
   path, and a path outside the folder is refused where it is built.
 - **Links:** a blob file that is a symbolic link, a hard link or not a plain
   file is refused on read, and a put replaces it.
+
+## A lock held while a process runs
+
+`holdLock(file, { onLost, onRenewError })` takes a lock that one process
+holds for as long as it runs, such as the one engine of a workspace. It
+writes the run lock's record (`RunLockRecord`) and judges a stale lock the
+same way, so the lock of a crashed holder is taken over. A lock that a
+live process holds is refused at once with a `LockHeldError` naming that
+process; it never waits. The holder renews its lock every
+`heldLockRenewEveryMs` (a third of the 10 seconds after which a lock is
+stale) by writing its record again with `takenAt` now. When another
+process has taken the lock over, because this one missed its renewals for
+that long, `onLost` hears it and the renewals stop. `release()` removes the
+lock while it still holds this process's record.
