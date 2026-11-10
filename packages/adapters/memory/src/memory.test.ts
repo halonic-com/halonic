@@ -27,6 +27,7 @@ import {
   trustServiceAttackContract,
   trustStoreAttackContract,
   trustStoreContract,
+  unfencedRunConsentStoreContract,
   type VcsHarness,
   vcsContract,
   vcsHardenedCases,
@@ -53,6 +54,7 @@ import {
   MemorySecrets,
   MemoryTokenStore,
   MemoryTrustStore,
+  MemoryUnfencedRunConsentStore,
   MemoryVcs,
   ScriptedLlmProvider,
 } from "./index.ts";
@@ -96,6 +98,10 @@ clockContract("memory", async () => new ManualClock());
 connectionSettingsStoreContract("memory", async () => {
   const store = new MemoryConnectionSettingsStore();
   return { store, damage: async (key) => store.damage(key) };
+});
+unfencedRunConsentStoreContract("memory", async () => {
+  const store = new MemoryUnfencedRunConsentStore();
+  return { store, damage: async () => store.damage() };
 });
 resourceProbeContract("memory", async () => {
   const probe = new MemoryResourceProbe({

@@ -167,6 +167,12 @@ export {
   trustStoreContract,
 } from "./trust-store.ts";
 export { type TrustConnectors, trustStoreAttackContract } from "./trust-store-attacks.ts";
+export {
+  type MakeUnfencedRunConsentStore,
+  type UnfencedRunConsentStoreHarness,
+  unfencedRunConsent,
+  unfencedRunConsentStoreContract,
+} from "./unfenced-run-consent-store.ts";
 export { vcsContract } from "./vcs.ts";
 export { type HardenedTest, vcsHardenedCases } from "./vcs-hardened.ts";
 export {

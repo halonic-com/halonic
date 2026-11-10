@@ -198,6 +198,19 @@ One new port, at version 1:
   come back as (see above): those stay out, and the outside-a-run gate is
   a check in `core/app` that reads this port.
 
+_2026-11-10, proposed on HAL-3385 for the trust check's "Runs" line (design on HAL-1873, approved by the board on HAL-1949); Liam reviews it._
+One new port, at version 1:
+
+- **`UnfencedRunConsentStore`:** `get`, `save` and `remove` the user's one
+  yes to run plugin and integration code without the sandbox on this
+  computer (`ports.unfenced-run-consent-store`): the reason it was given for
+  and when. It lives in the user's profile, never in a workspace, sheet,
+  setting or config file, and there is no CLI flag for it (I5 design
+  4.3.1), so neither a workspace nor an agent can give it. The port only
+  stores: `UnfencedRuns` in `core/app` decides from it and the fence status,
+  and asks again when the reason changes, when the computer passed the
+  sandbox check before, and after Take back.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

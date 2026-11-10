@@ -237,6 +237,11 @@ export {
   trustStoreVersion,
 } from "./trust-store.ts";
 export {
+  type UnfencedRunConsent,
+  type UnfencedRunConsentStore,
+  unfencedRunConsentStoreVersion,
+} from "./unfenced-run-consent-store.ts";
+export {
   checkCommitId,
   type Vcs,
   type VcsChange,
