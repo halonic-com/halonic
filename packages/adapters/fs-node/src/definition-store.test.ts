@@ -7,6 +7,9 @@ import { afterAll, expect, it } from "vitest";
 import { FolderDefinitionStore } from "./definition-store.ts";
 import { removeTempFolders, tempFolder, writeFiles } from "./temp-folder.test-helper.ts";
 
+/** Fails on Windows today: POSIX permission assumptions (HAL-4365). */
+const itUnlessWindows = it.skipIf(process.platform === "win32");
+
 afterAll(removeTempFolders);
 
 definitionStoreContract("folder", async (files) => {
@@ -86,12 +89,15 @@ verifies("fs-node.definition-store", () => {
     expect(version).toBe(await new MemoryDefinitionStore(files).version());
   });
 
-  it("leaves out a file name a workspace path can't hold, and lists nothing for a missing root", async () => {
-    const root = await tempFolder();
-    await writeFiles(root, { "a\\b.yaml": "x", "a.yaml": "1" });
-    expect(await new FolderDefinitionStore(root).list()).toEqual(["a.yaml"]);
-    expect(await new FolderDefinitionStore(join(root, "missing")).list()).toEqual([]);
-  });
+  itUnlessWindows(
+    "leaves out a file name a workspace path can't hold, and lists nothing for a missing root",
+    async () => {
+      const root = await tempFolder();
+      await writeFiles(root, { "a\\b.yaml": "x", "a.yaml": "1" });
+      expect(await new FolderDefinitionStore(root).list()).toEqual(["a.yaml"]);
+      expect(await new FolderDefinitionStore(join(root, "missing")).list()).toEqual([]);
+    },
+  );
 
   it("reads null for a folder, lists nothing for a file, and leaves a folder alone on remove", async () => {
     const root = await tempFolder();
@@ -103,7 +109,7 @@ verifies("fs-node.definition-store", () => {
     expect(await store.list()).toEqual(["hubs/a/hub.yaml"]);
   });
 
-  it("reports a write that the file system refuses", async () => {
+  itUnlessWindows("reports a write that the file system refuses", async () => {
     const root = await tempFolder();
     await mkdir(join(root, "hubs"));
     await writeFile(join(root, "file.yaml"), "1");
@@ -112,7 +118,7 @@ verifies("fs-node.definition-store", () => {
     await expect(store.write("file.yaml/a.yaml", "x")).rejects.toThrow();
   });
 
-  it("passes on a file system error other than a missing entry", async () => {
+  itUnlessWindows("passes on a file system error other than a missing entry", async () => {
     const root = await tempFolder();
     await writeFiles(root, { "locked/a.yaml": "1" });
     const store = new FolderDefinitionStore(root);

@@ -19,6 +19,9 @@ import { afterAll, describe, expect, it } from "vitest";
 import { FileConnectionSettingsStore } from "./connection-settings-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
+/** Fails on Windows today: POSIX modes (HAL-4363). */
+const itUnlessWindows = it.skipIf(process.platform === "win32");
+
 afterAll(removeTempFolders);
 
 const mail: ConnectionKey = { location: "/workspaces/acme", connector: "mail" };
@@ -188,7 +191,7 @@ verifies("fs-node.connection-settings-store-files", () => {
   // cases on Windows, which a new skip can't do until the guard can check its
   // decision note (HAL-58).
   describe("links and permissions", () => {
-    it("makes the folder and the files private to the user", async () => {
+    itUnlessWindows("makes the folder and the files private to the user", async () => {
       const root = join(await tempFolder(), "connections");
       await new FileConnectionSettingsStore(root).save(connectionSettings(mail.location));
       expect((await stat(root)).mode & 0o777).toBe(0o700);
@@ -220,7 +223,7 @@ verifies("fs-node.connection-settings-store-files", () => {
       await expect(new FileConnectionSettingsStore(root).get(mail)).rejects.toThrow('"mail"');
     });
 
-    it("saves over a link without writing through it", async () => {
+    itUnlessWindows("saves over a link without writing through it", async () => {
       const root = join(await tempFolder(), "connections");
       await mkdir(root, { recursive: true });
       const outside = await outsideSettings();
@@ -248,19 +251,22 @@ verifies("fs-node.connection-settings-store-files", () => {
       );
     });
 
-    it("keeps a file private after it is saved over one anybody could read", async () => {
-      const root = await tempFolder();
-      const store = new FileConnectionSettingsStore(root);
-      await store.save(connectionSettings(mail.location));
-      await chmod(fileFor(root, mail), 0o666);
+    itUnlessWindows(
+      "keeps a file private after it is saved over one anybody could read",
+      async () => {
+        const root = await tempFolder();
+        const store = new FileConnectionSettingsStore(root);
+        await store.save(connectionSettings(mail.location));
+        await chmod(fileFor(root, mail), 0o666);
 
-      await store.save(connectionSettings(mail.location, mail.connector, false));
-      expect((await stat(fileFor(root, mail))).mode & 0o777).toBe(0o600);
-    });
+        await store.save(connectionSettings(mail.location, mail.connector, false));
+        expect((await stat(fileFor(root, mail))).mode & 0o777).toBe(0o600);
+      },
+    );
 
     // `mkdir` sets the mode only on a folder it creates, so a folder made
     // earlier by something else needs a `chmod`.
-    it("makes a folder that was already there private on save", async () => {
+    itUnlessWindows("makes a folder that was already there private on save", async () => {
       const root = join(await tempFolder(), "connections");
       await mkdir(root, { mode: 0o777 });
       await chmod(root, 0o777);

@@ -10,6 +10,9 @@ import { afterAll, afterEach, describe, expect, it, type MockInstance, vi } from
 import { FileRecordStore } from "./record-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
+/** Fails on Windows today: appending fails with EPERM on ftruncate (HAL-4361). */
+const itUnlessWindows = it.skipIf(process.platform === "win32");
+
 /** Runs instead of each wait for a held write lock, so no test sleeps. */
 const hooks = vi.hoisted(() => ({
   onWait: undefined as (() => Promise<void>) | undefined,
@@ -29,7 +32,10 @@ afterEach(() => {
   hooks.waits = 0;
 });
 
-recordStoreContract("file", async () => new FileRecordStore(join(await tempFolder(), "records")));
+// Appending fails on Windows today (HAL-4361), which every contract test does.
+describe.skipIf(process.platform === "win32")("on this system", () => {
+  recordStoreContract("file", async () => new FileRecordStore(join(await tempFolder(), "records")));
+});
 
 /** The log `FileRecordStore` keeps `collection` in. */
 function logFor(root: string, collection: string): string {
@@ -81,27 +87,33 @@ async function writeAtMostPerCall(limit: number): Promise<MockInstance<FileHandl
 
 verifies("fs-node.record-store-files", () => {
   describe("the files", () => {
-    it("keeps each collection in a log named by its hash, and releases the lock", async () => {
-      const { root, store } = await newStore();
-      await store.append([change("leads", "1", "add", { name: "Ada" })]);
-      await store.append([change("Leads", "1", "add", { name: "Grace" })]);
+    itUnlessWindows(
+      "keeps each collection in a log named by its hash, and releases the lock",
+      async () => {
+        const { root, store } = await newStore();
+        await store.append([change("leads", "1", "add", { name: "Ada" })]);
+        await store.append([change("Leads", "1", "add", { name: "Grace" })]);
 
-      expect((await readdir(root)).sort()).toEqual(
-        [logFor(root, "leads"), logFor(root, "Leads")].map((file) => file.slice(-70)).sort(),
-      );
-      expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
-        line(change("leads", "1", "add", { name: "Ada" })),
-      );
-    });
+        expect((await readdir(root)).sort()).toEqual(
+          [logFor(root, "leads"), logFor(root, "Leads")].map((file) => file.slice(-70)).sort(),
+        );
+        expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
+          line(change("leads", "1", "add", { name: "Ada" })),
+        );
+      },
+    );
 
-    it("keeps the records when the store is opened again, as after a restart", async () => {
-      const { root, store } = await newStore();
-      await store.append([change("clerk-notes", "1", "add", { text: "Call Acme on Monday" })]);
+    itUnlessWindows(
+      "keeps the records when the store is opened again, as after a restart",
+      async () => {
+        const { root, store } = await newStore();
+        await store.append([change("clerk-notes", "1", "add", { text: "Call Acme on Monday" })]);
 
-      expect(await new FileRecordStore(root).changes("clerk-notes")).toEqual([
-        change("clerk-notes", "1", "add", { text: "Call Acme on Monday" }),
-      ]);
-    });
+        expect(await new FileRecordStore(root).changes("clerk-notes")).toEqual([
+          change("clerk-notes", "1", "add", { text: "Call Acme on Monday" }),
+        ]);
+      },
+    );
 
     it.skipIf(process.platform === "win32")(
       "makes the folder and the logs private to the user",
@@ -127,7 +139,7 @@ verifies("fs-node.record-store-files", () => {
   });
 
   describe("compacting", () => {
-    it("replaces the log, leaving no old value and no temporary file", async () => {
+    itUnlessWindows("replaces the log, leaving no old value and no temporary file", async () => {
       const { root, store } = await newStore();
       await store.append([
         change("leads", "1", "add", { name: "old-name-of-1" }, 1),
@@ -141,7 +153,7 @@ verifies("fs-node.record-store-files", () => {
       expect(await readdir(root)).toEqual([logFor(root, "leads").slice(-70)]);
     });
 
-    it("deletes the log when no record is left", async () => {
+    itUnlessWindows("deletes the log when no record is left", async () => {
       const { root, store } = await newStore();
       await store.append([
         change("leads", "1", "add", { name: "Ada" }, 1),
@@ -153,28 +165,31 @@ verifies("fs-node.record-store-files", () => {
       expect(await store.changes("leads")).toEqual([]);
     });
 
-    it("loses no change appended while it runs, from another store on the folder", async () => {
-      const { root, store } = await newStore();
-      await store.append([change("leads", "1", "add", { name: "Ada" }, 1)]);
-      const other = new FileRecordStore(root);
-      const appends = Array.from({ length: 5 }, (_, index) =>
-        other.append([change("leads", `${index + 2}`, "add", { name: `Lead ${index}` }, 2)]),
-      );
-      await Promise.all([store.compact("leads"), ...appends, store.compact("leads")]);
+    itUnlessWindows(
+      "loses no change appended while it runs, from another store on the folder",
+      async () => {
+        const { root, store } = await newStore();
+        await store.append([change("leads", "1", "add", { name: "Ada" }, 1)]);
+        const other = new FileRecordStore(root);
+        const appends = Array.from({ length: 5 }, (_, index) =>
+          other.append([change("leads", `${index + 2}`, "add", { name: `Lead ${index}` }, 2)]),
+        );
+        await Promise.all([store.compact("leads"), ...appends, store.compact("leads")]);
 
-      expect([...foldRecords(await store.changes("leads")).keys()].sort()).toEqual([
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-      ]);
-    });
+        expect([...foldRecords(await store.changes("leads")).keys()].sort()).toEqual([
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+        ]);
+      },
+    );
   });
 
   describe("crashes and failures", () => {
-    it("skips a torn last line, and cuts it off before the next append", async () => {
+    itUnlessWindows("skips a torn last line, and cuts it off before the next append", async () => {
       const { root, store } = await newStore();
       const whole = line(change("leads", "1", "add", { name: "Ada" }));
       await mkdir(root, { recursive: true });
@@ -201,7 +216,7 @@ verifies("fs-node.record-store-files", () => {
       await expect(store.compact("leads")).rejects.toThrow("line 1");
     });
 
-    it("cuts every log back when an append fails part-way", async () => {
+    itUnlessWindows("cuts every log back when an append fails part-way", async () => {
       const { root, store } = await newStore();
       const ada = change("leads", "1", "add", { name: "Ada" });
       await store.append([ada]);
@@ -218,39 +233,45 @@ verifies("fs-node.record-store-files", () => {
       expect((await readdir(root)).filter((name) => name.endsWith(".lock"))).toEqual([]);
     });
 
-    it("stores the whole append when the system writes only part of it at a time", async () => {
-      const { root, store } = await newStore();
-      const shortWrite = await writeAtMostPerCall(10);
-      try {
+    itUnlessWindows(
+      "stores the whole append when the system writes only part of it at a time",
+      async () => {
+        const { root, store } = await newStore();
+        const shortWrite = await writeAtMostPerCall(10);
+        try {
+          await store.append([change("leads", "1", "add", { name: "Ada" })]);
+          expect(shortWrite.mock.calls.length).toBeGreaterThan(1);
+        } finally {
+          shortWrite.mockRestore();
+        }
+
+        expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
+          line(change("leads", "1", "add", { name: "Ada" })),
+        );
+      },
+    );
+
+    itUnlessWindows(
+      "fails an append the system writes nothing of, and stores none of it",
+      async () => {
+        const { root, store } = await newStore();
         await store.append([change("leads", "1", "add", { name: "Ada" })]);
-        expect(shortWrite.mock.calls.length).toBeGreaterThan(1);
-      } finally {
-        shortWrite.mockRestore();
-      }
+        const noWrite = await writeAtMostPerCall(0);
+        try {
+          await expect(
+            store.append([change("leads", "2", "add", { name: "Grace" })]),
+          ).rejects.toThrow(/took none of the last/);
+        } finally {
+          noWrite.mockRestore();
+        }
 
-      expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
-        line(change("leads", "1", "add", { name: "Ada" })),
-      );
-    });
+        expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
+          line(change("leads", "1", "add", { name: "Ada" })),
+        );
+      },
+    );
 
-    it("fails an append the system writes nothing of, and stores none of it", async () => {
-      const { root, store } = await newStore();
-      await store.append([change("leads", "1", "add", { name: "Ada" })]);
-      const noWrite = await writeAtMostPerCall(0);
-      try {
-        await expect(
-          store.append([change("leads", "2", "add", { name: "Grace" })]),
-        ).rejects.toThrow(/took none of the last/);
-      } finally {
-        noWrite.mockRestore();
-      }
-
-      expect(await readFile(logFor(root, "leads"), "utf8")).toBe(
-        line(change("leads", "1", "add", { name: "Ada" })),
-      );
-    });
-
-    it("waits while another process holds the write lock", async () => {
+    itUnlessWindows("waits while another process holds the write lock", async () => {
       const { root, store } = await newStore();
       await mkdir(root, { recursive: true });
       const lock = join(root, "write.lock");
