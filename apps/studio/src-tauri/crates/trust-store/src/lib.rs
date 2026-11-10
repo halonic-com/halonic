@@ -15,4 +15,4 @@ mod record_file;
 mod store;
 
 pub use error::TrustError;
-pub use store::FileTrustStore;
+pub use store::{FileTrustStore, Listing};

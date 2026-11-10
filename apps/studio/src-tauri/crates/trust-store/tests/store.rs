@@ -5,14 +5,14 @@
 mod support;
 
 use halonic_trust_store::TrustError;
-use support::{Scratch, grant, locations, record};
+use support::{Scratch, grant, locations, record, records_in};
 
 #[test]
 fn trust_files_start_empty_and_give_back_every_field() {
     let scratch = Scratch::new("empty");
     let store = scratch.store();
     assert_eq!(store.get("/workspaces/acme"), Ok(None));
-    assert_eq!(store.list(), Ok(Vec::new()));
+    assert_eq!(records_in(&store), Ok(Vec::new()));
 
     grant(&store, "/workspaces/acme", "hfp1:aa");
     assert_eq!(
@@ -20,7 +20,7 @@ fn trust_files_start_empty_and_give_back_every_field() {
         Ok(Some(record("/workspaces/acme", "hfp1:aa")))
     );
     assert_eq!(
-        store.list(),
+        records_in(&store),
         Ok(vec![record("/workspaces/acme", "hfp1:aa")])
     );
 }
@@ -32,7 +32,7 @@ fn trust_files_replace_a_record_and_revoke_it() {
     grant(&store, "/workspaces/acme", "hfp1:old");
     grant(&store, "/workspaces/acme", "hfp1:new");
     assert_eq!(
-        store.list(),
+        records_in(&store),
         Ok(vec![record("/workspaces/acme", "hfp1:new")])
     );
 
@@ -41,7 +41,7 @@ fn trust_files_replace_a_record_and_revoke_it() {
     // Revoking again, or a location never granted, is not an error.
     store.revoke("/workspaces/acme").unwrap();
     store.revoke("/workspaces/never").unwrap();
-    assert_eq!(store.list(), Ok(Vec::new()));
+    assert_eq!(records_in(&store), Ok(Vec::new()));
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn trust_files_compare_locations_exactly_as_given() {
         store.get(composed),
         Ok(Some(record(composed, "hfp1:composed")))
     );
-    assert_eq!(store.list().map(|records| records.len()), Ok(3));
+    assert_eq!(records_in(&store).map(|records| records.len()), Ok(3));
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn trust_files_list_by_utf16_code_unit() {
     for location in granted {
         grant(&store, location, "hfp1:aa");
     }
-    let listed = store.list().unwrap();
+    let listed = records_in(&store).unwrap();
     assert_eq!(
         locations(&listed),
         [
@@ -115,7 +115,7 @@ fn trust_files_name_the_location_of_a_record_that_cant_be_read() {
     };
     assert_eq!(store.get("/workspaces/acme"), Err(damaged.clone()));
     // The cut-off file still starts with its location, so list names it.
-    assert_eq!(store.list(), Err(damaged));
+    assert_eq!(records_in(&store), Err(damaged));
     assert_eq!(
         store.get("/workspaces/zeta"),
         Ok(Some(record("/workspaces/zeta", "hfp1:aa")))

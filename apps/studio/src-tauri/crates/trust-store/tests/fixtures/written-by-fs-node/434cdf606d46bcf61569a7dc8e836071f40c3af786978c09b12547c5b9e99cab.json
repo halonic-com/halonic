@@ -1,0 +1,11 @@
+{
+  "location": "/a\ud800",
+  "fingerprint": "hfp1:lone",
+  "content": {
+    "programs": []
+  },
+  "grantedAt": "2026-11-10T10:00:00.000Z",
+  "appVersion": "0.1.0",
+  "pins": {},
+  "origin": "cli"
+}

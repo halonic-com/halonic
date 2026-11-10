@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use halonic_trust_store::FileTrustStore;
+use halonic_trust_store::{FileTrustStore, TrustError};
 use serde_json::{Value, json};
 
 /// A folder of its own for one test, under the system's temporary folder.
@@ -95,4 +95,13 @@ pub fn locations(records: &[Value]) -> Vec<&str> {
         .iter()
         .filter_map(|record| record["location"].as_str())
         .collect()
+}
+
+/// The records `list` gives, after checking that it left no file out.
+pub fn records_in(store: &FileTrustStore) -> Result<Vec<Value>, TrustError> {
+    store.list().map(|listing| {
+        let left_out = &listing.left_out;
+        assert!(left_out.is_empty(), "left out: {left_out:?}");
+        listing.records
+    })
 }

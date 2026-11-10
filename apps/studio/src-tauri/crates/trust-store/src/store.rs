@@ -7,7 +7,22 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Map, Value};
 
 use crate::error::TrustError;
-use crate::record_file::{file_name, is_record_file, leading_location, record_text};
+use crate::record_file::{file_name, is_record_file, leading_location, location_in, record_text};
+
+/// What `list` found: the records, and the files it had to leave out.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Listing {
+    /// Every record the store can hold, sorted by location in UTF-16
+    /// code-unit order.
+    pub records: Vec<Value>,
+    /// The files of records for a location with a lone surrogate, sorted.
+    /// Windows allows such a location and `fs-node` keeps it, but a Rust
+    /// string can't hold it, so the shell can never ask about it, grant it
+    /// or revoke it. Leaving these out keeps one such record from emptying
+    /// the whole list; the shell reports them, and `halonic trust` in the
+    /// CLI still lists and removes them.
+    pub left_out: Vec<PathBuf>,
+}
 
 /// Trust records as files in one folder of the profile, `<profile>/trust`,
 /// one JSON file per record, laid out as `FileTrustStore` in `fs-node` lays
@@ -61,14 +76,17 @@ impl FileTrustStore {
 
     /// Every record, sorted by location in UTF-16 code-unit order, as
     /// JavaScript's `<` compares strings, so the page and the CLI list them
-    /// alike. Only record files are read; other files are left alone.
-    pub fn list(&self) -> Result<Vec<Value>, TrustError> {
+    /// alike. Only record files are read; other files are left alone. A
+    /// record for a location a Rust string can't hold is left out, not
+    /// failed on (see [`Listing::left_out`]).
+    pub fn list(&self) -> Result<Listing, TrustError> {
         let entries = match fs::read_dir(&self.root) {
             Ok(entries) => entries,
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Listing::default()),
             Err(error) => return Err(error.into()),
         };
         let mut records = Vec::new();
+        let mut left_out = Vec::new();
         for entry in entries {
             let entry = entry?;
             let name = entry.file_name();
@@ -82,15 +100,22 @@ impl FileTrustStore {
                 Err(error) if error.kind() == ErrorKind::NotFound => continue,
                 Err(_) => return Err(unreadable(None, &file)),
             };
-            let Some(location) = leading_location(&text).filter(|found| file_name(found) == name)
-            else {
+            let Some(units) = location_in(name, &text) else {
                 return Err(unreadable(None, &file));
+            };
+            let Ok(location) = String::from_utf16(&units) else {
+                left_out.push(file);
+                continue;
             };
             let record = parse_record(&location, &file, &text)?;
             records.push((location, record));
         }
         records.sort_by(|left, right| utf16_order(&left.0, &right.0));
-        Ok(records.into_iter().map(|(_, record)| record).collect())
+        left_out.sort();
+        Ok(Listing {
+            records: records.into_iter().map(|(_, record)| record).collect(),
+            left_out,
+        })
     }
 
     fn file_for(&self, location: &str) -> PathBuf {
@@ -116,8 +141,14 @@ fn checked_record(record: &Value) -> Result<(&str, &Map<String, Value>), TrustEr
     Ok((location, fields))
 }
 
-/// The record in a file's text, which must be an object for `location`.
+/// The record in a file's text, which must be an object for `location`,
+/// with `location` first. A later duplicate `location` key wins when the
+/// text is parsed, so the first one is checked too: `get` and `list` then
+/// agree on which location a file is for.
 fn parse_record(location: &str, file: &Path, text: &str) -> Result<Value, TrustError> {
+    if leading_location(text) != Some(location.encode_utf16().collect()) {
+        return Err(unreadable(Some(location), file));
+    }
     let Ok(record) = serde_json::from_str::<Value>(text) else {
         return Err(unreadable(Some(location), file));
     };

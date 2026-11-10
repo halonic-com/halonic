@@ -9,13 +9,18 @@ use std::path::Path;
 
 use halonic_trust_store::TrustError;
 use serde_json::Value;
-use support::{Scratch, file_for, grant, locations, node_file_names, record};
+use support::{Scratch, file_for, grant, locations, node_file_names, record, records_in};
 
 /// Records `FileTrustStore` in `fs-node` wrote, kept byte for byte.
 const WRITTEN_BY_FS_NODE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/tests/fixtures/written-by-fs-node"
 );
+
+/// The file `fs-node` names its record for "/a\uD800", a location with a
+/// lone surrogate, as Windows allows, among the records it wrote.
+const LONE_SURROGATE_FILE: &str =
+    "434cdf606d46bcf61569a7dc8e836071f40c3af786978c09b12547c5b9e99cab.json";
 
 #[test]
 fn trust_files_name_each_file_by_the_hash_of_its_location_with_the_location_first() {
@@ -62,11 +67,101 @@ fn trust_files_read_the_records_fs_node_wrote() {
     }
     let store = scratch.store();
 
-    let listed = store.list().unwrap();
-    assert_eq!(locations(&listed), ["/Workspaces/Café", "/workspaces/acme"]);
+    let listing = store.list().unwrap();
+    assert_eq!(
+        locations(&listing.records),
+        ["/Workspaces/Café", "/workspaces/acme"]
+    );
     let acme = store.get("/workspaces/acme").unwrap().unwrap();
     assert_eq!(acme["origin"], "cli");
     assert_eq!(acme["pins"]["mail"]["version"], "2.3.1");
+
+    // fs-node's record for "/a" and a lone surrogate, which Windows allows
+    // and a Rust string can't hold: left out of the list, not failed on.
+    assert_eq!(listing.left_out, [trust.join(LONE_SURROGATE_FILE)]);
+}
+
+#[test]
+fn trust_files_never_read_a_lone_surrogate_record_as_another_location() {
+    let scratch = Scratch::new("lone-surrogate");
+    let store = scratch.store();
+    grant(&store, "/workspaces/zeta", "hfp1:aa");
+
+    // The nearest locations a Rust string can hold have files of their own.
+    assert_eq!(store.get("/a"), Ok(None));
+    assert_eq!(store.get("/a\u{fffd}"), Ok(None));
+
+    // Copied over another location's file, it names neither location.
+    let zeta = file_for(&scratch, "/workspaces/zeta");
+    let lone = Path::new(WRITTEN_BY_FS_NODE).join(LONE_SURROGATE_FILE);
+    fs::copy(&lone, &zeta).unwrap();
+    assert_eq!(
+        store.get("/workspaces/zeta"),
+        Err(TrustError::Unreadable {
+            location: Some("/workspaces/zeta".to_owned()),
+            file: zeta.clone(),
+        })
+    );
+    assert_eq!(
+        store.list(),
+        Err(TrustError::Unreadable {
+            location: None,
+            file: zeta,
+        })
+    );
+}
+
+#[test]
+fn trust_files_read_a_location_written_with_escapes() {
+    let scratch = Scratch::new("escapes");
+    let store = scratch.store();
+    grant(&store, "/hubs/emoji-😀", "hfp1:aa");
+    let file = file_for(&scratch, "/hubs/emoji-😀");
+    // The same location as another JSON writer may put it: escaped slashes
+    // and the emoji as an escaped surrogate pair.
+    let written = "\"/hubs/emoji-😀\"";
+    let escaped = r#""\/hubs\/emoji-\ud83d\ude00""#;
+    let text = fs::read_to_string(&file).unwrap();
+    assert!(text.contains(written));
+    fs::write(&file, text.replacen(written, escaped, 1)).unwrap();
+
+    assert_eq!(
+        store.get("/hubs/emoji-😀"),
+        Ok(Some(record("/hubs/emoji-😀", "hfp1:aa")))
+    );
+    let listed = records_in(&store).unwrap();
+    assert_eq!(locations(&listed), ["/hubs/emoji-😀"]);
+}
+
+#[test]
+fn trust_files_refuse_a_record_whose_first_location_is_another() {
+    let scratch = Scratch::new("duplicate-key");
+    let store = scratch.store();
+    grant(&store, "/workspaces/zeta", "hfp1:aa");
+    let zeta = file_for(&scratch, "/workspaces/zeta");
+    let text = fs::read_to_string(&zeta).unwrap();
+
+    // Starts with another location and ends with its own. When the text is
+    // parsed, the later key wins, so only the first one tells the two apart.
+    let fields = text.trim_end().strip_suffix('}').unwrap().trim_end();
+    let fields = fields.replacen("/workspaces/zeta", "/workspaces/acme", 1);
+    let two_keys = format!("{fields},\n  \"location\": \"/workspaces/zeta\"\n}}\n");
+    fs::write(&zeta, two_keys).unwrap();
+
+    assert_eq!(
+        store.get("/workspaces/zeta"),
+        Err(TrustError::Unreadable {
+            location: Some("/workspaces/zeta".to_owned()),
+            file: zeta.clone(),
+        })
+    );
+    assert_eq!(
+        store.list(),
+        Err(TrustError::Unreadable {
+            location: None,
+            file: zeta,
+        })
+    );
 }
 
 #[test]
@@ -93,7 +188,10 @@ fn trust_files_leave_other_files_alone() {
     let leftover = file_for(&scratch, "/workspaces/zeta").with_extension("json.1-2-3.tmp");
     fs::write(&leftover, "{").unwrap();
 
-    assert_eq!(locations(&store.list().unwrap()), ["/workspaces/acme"]);
+    assert_eq!(
+        locations(&records_in(&store).unwrap()),
+        ["/workspaces/acme"]
+    );
     assert_eq!(fs::read_to_string(trust.join("notes.txt")).unwrap(), "kept");
 }
 
@@ -119,13 +217,13 @@ fn trust_files_name_the_file_when_its_location_cant_be_read() {
         location: None,
         file: zeta.clone(),
     };
-    assert_eq!(store.list(), Err(unnamed.clone()));
+    assert_eq!(records_in(&store), Err(unnamed.clone()));
     assert_eq!(unnamed.kind(), "unreadable");
     assert!(unnamed.to_string().contains("delete the file"));
     assert!(store.get("/workspaces/acme").unwrap().is_some());
 
     fs::write(&zeta, "{").unwrap();
-    assert_eq!(store.list(), Err(unnamed));
+    assert_eq!(records_in(&store), Err(unnamed));
 }
 
 #[cfg(unix)]

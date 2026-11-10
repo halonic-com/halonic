@@ -12,7 +12,13 @@ const RECORD_FILE_NAME_LENGTH: usize = 64 + ".json".len();
 /// location, so a file system that folds case or normalises Unicode still
 /// keeps two locations apart.
 pub(crate) fn file_name(location: &str) -> String {
-    let utf16le: Vec<u8> = location.encode_utf16().flat_map(u16::to_le_bytes).collect();
+    file_name_of_units(&location.encode_utf16().collect::<Vec<_>>())
+}
+
+/// `file_name` for a location given as UTF-16 code units, which may hold a
+/// lone surrogate, as Windows allows and `fs-node` keeps.
+pub(crate) fn file_name_of_units(units: &[u16]) -> String {
+    let utf16le: Vec<u8> = units.iter().copied().flat_map(u16::to_le_bytes).collect();
     let hex: String = Sha256::digest(&utf16le)
         .iter()
         .map(|byte| format!("{byte:02x}"))
@@ -47,16 +53,61 @@ pub(crate) fn record_text(location: &str, record: &Map<String, Value>) -> String
 }
 
 /// The location at the start of a record file's text, as `record_text`
-/// writes it, even when the rest is damaged. `None` when the text doesn't
-/// start with `{"location": "…"`. The caller believes it only when its hash
-/// is the file's name, so a damaged file can't name another location.
-pub(crate) fn leading_location(text: &str) -> Option<String> {
+/// writes it, even when the rest is damaged, as UTF-16 code units. They may
+/// hold a lone surrogate: `fs-node` writes one as `\ud800`, which
+/// `serde_json` refuses. `None` when the text doesn't start with
+/// `{"location": "…"`.
+pub(crate) fn leading_location(text: &str) -> Option<Vec<u16>> {
     let rest = text.trim_start().strip_prefix('{')?.trim_start();
     let rest = rest.strip_prefix("\"location\"")?.trim_start();
     let rest = rest.strip_prefix(':')?.trim_start();
     let quoted = leading_json_string(rest)?;
-    let location: Value = serde_json::from_str(quoted).ok()?;
-    location.as_str().map(str::to_owned)
+    json_string_units(&quoted[1..quoted.len() - 1])
+}
+
+/// The location a record file is for, read from the start of its text, as
+/// UTF-16 code units. `None` when it can't be read there or its hash isn't
+/// the file's name, so a damaged file can't name another location.
+pub(crate) fn location_in(name: &str, text: &str) -> Option<Vec<u16>> {
+    let location = leading_location(text)?;
+    (file_name_of_units(&location) == name).then_some(location)
+}
+
+/// The UTF-16 code units of a JSON string's contents, quotes removed, with
+/// each `\uXXXX` kept as the unit it names, paired or not. `None` when the
+/// contents aren't valid JSON.
+fn json_string_units(contents: &str) -> Option<Vec<u16>> {
+    let mut units = Vec::with_capacity(contents.len());
+    let mut characters = contents.chars();
+    while let Some(character) = characters.next() {
+        if character < ' ' {
+            return None;
+        }
+        if character != '\\' {
+            units.extend_from_slice(character.encode_utf16(&mut [0; 2]));
+            continue;
+        }
+        let unit = match characters.next()? {
+            '"' => u16::from(b'"'),
+            '\\' => u16::from(b'\\'),
+            '/' => u16::from(b'/'),
+            'b' => 0x08,
+            'f' => 0x0c,
+            'n' => u16::from(b'\n'),
+            'r' => u16::from(b'\r'),
+            't' => u16::from(b'\t'),
+            'u' => {
+                let hex: String = characters.by_ref().take(4).collect();
+                if hex.len() != 4 || !hex.chars().all(|digit| digit.is_ascii_hexdigit()) {
+                    return None;
+                }
+                u16::from_str_radix(&hex, 16).ok()?
+            }
+            _ => return None,
+        };
+        units.push(unit);
+    }
+    Some(units)
 }
 
 /// The JSON string at the start of `text`, quotes included, or `None` when
