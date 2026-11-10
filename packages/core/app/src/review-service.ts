@@ -4,6 +4,7 @@
 // baseline back. Nothing here commits, pushes or makes anything live.
 
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
+import { proposalRefusal } from "./review-gate.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type {
   ItemToReview,
@@ -31,7 +32,7 @@ type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
  * interleave.
  *
  * @example
- * const review = new ReviewService({ store, records, digest });
+ * const review = new ReviewService({ store, records, digest, isTrusted: () => trusted });
  * await review.propose({ path, content, expected, card: { chatId: "c1", cardId: "k1" } });
  * const { step } = await review.reject({ kind: "card", card: { chatId: "c1", cardId: "k1" } });
  * await review.restore(step, "before"); // Undo
@@ -61,40 +62,22 @@ export class ReviewService {
    * the text from before this write becomes the baseline and the new record
    * replaces the unreadable one, so the changes it covered become ordinary
    * ones. Its loss isn't reported apart from this write's own change.
+   *
+   * A path the assistant may never write, such as one in `.git/` or
+   * `.halonic/` (`app.assistant-no-git-or-halonic`), or one that isn't a
+   * Halonic item while the workspace is untrusted
+   * (`app.assistant-untrusted-items-only`), is refused without touching the
+   * store. So is a path the store refuses, such as one through a symlink.
+   * Trust is read on every call; a write while untrusted marks the record
+   * `writtenUntrusted` until the record goes.
    */
   propose(write: ProposedWrite): Promise<ProposeOutcome> {
-    return this.files.turn(write.path, async () => {
-      const record = await this.files.read(write.path);
-      const before = await this.files.store.read(write.path);
-      const digestBefore = await this.files.digestOf(before);
-      if (digestBefore !== write.expected) {
-        return { status: "changed-on-disk", current: before };
-      }
-      if (record !== null && record.seen !== digestBefore) {
-        return { status: "held" };
-      }
-      const written = await this.files.store.write(write.path, write.content, {
-        expected: write.expected,
-      });
-      if (written.status === "changed-on-disk") {
-        return written;
-      }
-      const baseline = record === null ? before : record.baseline;
-      const after = await this.files.keep({
-        path: write.path,
-        baseline,
-        card: write.card,
-        seen: await this.files.digestOf(write.content),
-      });
-      const replaced = record !== null && !sameCard(record.card, write.card) ? record.card : null;
-      const file = { before, after: write.content };
-      this.files.changed([write.path]);
-      return {
-        status: "written",
-        step: { files: [{ path: write.path, record: { before: record, after }, file }] },
-        replaced,
-      };
-    });
+    const trusted = this.files.isTrusted();
+    const refusal = proposalRefusal(write.path, trusted);
+    if (refusal !== null) {
+      return Promise.resolve({ status: "refused", reason: refusal });
+    }
+    return this.files.turn(write.path, () => this.writeInTurn(write, trusted));
   }
 
   /**
@@ -202,6 +185,70 @@ export class ReviewService {
   }
 
   /**
+   * The write of {@link propose}, in the file's turn, once the path is
+   * allowed. The store may still refuse it, such as through a symlink.
+   */
+  private async writeInTurn(write: ProposedWrite, trusted: boolean): Promise<ProposeOutcome> {
+    const before = await storeRefusing(() => this.files.store.read(write.path));
+    if (before === refused) {
+      return { status: "refused", reason: "not-allowed" };
+    }
+    const record = await this.files.read(write.path);
+    const digestBefore = await this.files.digestOf(before);
+    if (digestBefore !== write.expected) {
+      return { status: "changed-on-disk", current: before };
+    }
+    if (record !== null && record.seen !== digestBefore) {
+      return { status: "held" };
+    }
+    const written = await storeRefusing(() =>
+      this.files.store.write(write.path, write.content, { expected: write.expected }),
+    );
+    if (written === refused) {
+      return { status: "refused", reason: "not-allowed" };
+    }
+    if (written.status === "changed-on-disk") {
+      return written;
+    }
+    return this.keepWritten(write, { before, record, trusted });
+  }
+
+  /**
+   * Keeps the record of a file the assistant just wrote: the first write's
+   * text from before stays the baseline, and the untrusted mark, once set,
+   * stays until the record goes.
+   */
+  private async keepWritten(
+    write: ProposedWrite,
+    was: { before: string | null; record: ReviewRecord | null; trusted: boolean },
+  ): Promise<ProposeOutcome> {
+    const { before, record } = was;
+    const writtenUntrusted = !was.trusted || record?.writtenUntrusted === true;
+    const after = await this.files.keep({
+      path: write.path,
+      baseline: record === null ? before : record.baseline,
+      card: write.card,
+      seen: await this.files.digestOf(write.content),
+      ...(writtenUntrusted ? { writtenUntrusted } : {}),
+    });
+    const replaced = record !== null && !sameCard(record.card, write.card) ? record.card : null;
+    this.files.changed([write.path]);
+    return {
+      status: "written",
+      step: {
+        files: [
+          {
+            path: write.path,
+            record: { before: record, after },
+            file: { before, after: write.content },
+          },
+        ],
+      },
+      replaced,
+    };
+  }
+
+  /**
    * Runs a decision on every file the target covers, each in its file's
    * turn. The record is read again in that turn, and a file the target no
    * longer covers is skipped: a write for another card may have taken it
@@ -251,6 +298,25 @@ function covers(target: ReviewTarget, record: ReviewRecord): boolean {
       return sameCard(record.card, target.card);
     case "chat":
       return record.card.chatId === target.chatId;
+  }
+}
+
+/** What {@link storeRefusing} gives when the store refused the path. */
+const refused = Symbol("refused");
+
+/**
+ * Runs one store call, giving {@link refused} for the `RangeError` the
+ * `DefinitionStore` port throws for a path it won't serve, such as one
+ * through a symlink or a junction. Any other error is thrown.
+ */
+async function storeRefusing<T>(call: () => Promise<T>): Promise<T | typeof refused> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return refused;
+    }
+    throw error;
   }
 }
 

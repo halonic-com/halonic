@@ -14,6 +14,7 @@ function open(files: Record<string, string> = { [workflowPath]: workflow }) {
     store,
     reviewRecords: new TestDefinitionStore({}),
     digest: { sha256: async () => new Uint8Array(32) },
+    isTrusted: () => true,
     onListenerError: (error) => {
       throw error;
     },

@@ -2,6 +2,7 @@
 // service, so the Studio can use them without reading the service.
 
 import type { ExpectedContent } from "@halonicjs/ports";
+import type { ProposalRefusal } from "./review-gate.ts";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type { DroppedReviewRecord } from "./review-records.ts";
 
@@ -43,7 +44,12 @@ export type ProposeOutcome =
   /** The file isn't what the model read: nothing was written, and the model reads it again. */
   | { readonly status: "changed-on-disk"; readonly current: string | null }
   /** The file changed outside Halonic since it was last seen; it waits for Compare (AI changes 1.10). */
-  | { readonly status: "held" };
+  | { readonly status: "held" }
+  /**
+   * The assistant may not write this file (`app.assistant-no-git-or-halonic`,
+   * `app.assistant-untrusted-items-only`). Nothing was read or written.
+   */
+  | { readonly status: "refused"; readonly reason: ProposalRefusal };
 
 /** Which files an Accept or Reject covers. Parts and single changes come with the line diff (HAL-3278). */
 export type ReviewTarget =

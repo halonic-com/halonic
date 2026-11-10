@@ -19,6 +19,7 @@ function setUp() {
     store: new TestDefinitionStore({}, digest),
     records: new TestDefinitionStore({}, digest),
     digest,
+    isTrusted: () => true,
   });
 }
 

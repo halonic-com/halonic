@@ -22,7 +22,7 @@ const k2 = { chatId: "c2", cardId: "k2" };
 async function withChanges() {
   const store = new TestDefinitionStore({ [clerk]: "model: fast\n" }, digest);
   const recordStore = new TestDefinitionStore({}, digest);
-  const review = new ReviewService({ store, records: recordStore, digest });
+  const review = new ReviewService({ store, records: recordStore, digest, isTrusted: () => true });
   const expected = await contentDigest("model: fast\n", digest);
   await review.propose({ path: clerk, content: "model: smart\n", expected, card: k1 });
   await review.propose({ path: notes, content: "name: Notes\n", expected: "absent", card: k2 });
@@ -128,7 +128,12 @@ verifies("app.review-on-open", () => {
   it("never reads a record while it is being saved, so a check can't drop it", async () => {
     const store = new TestDefinitionStore({ [clerk]: "model: fast\n" }, digest);
     const recordStore = new TruncatingStore({}, digest);
-    const review = new ReviewService({ store, records: recordStore, digest });
+    const review = new ReviewService({
+      store,
+      records: recordStore,
+      digest,
+      isTrusted: () => true,
+    });
     const fast = await contentDigest("model: fast\n", digest);
     await review.propose({ path: clerk, content: "model: smart\n", expected: fast, card: k1 });
 

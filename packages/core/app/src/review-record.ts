@@ -4,8 +4,9 @@
 // each time, so they never go stale as the person types.
 
 import { isReservedPath } from "@halonicjs/format";
-import { checkWorkspacePath, type Digest, type ExpectedContent } from "@halonicjs/ports";
+import type { Digest, ExpectedContent } from "@halonicjs/ports";
 import { bytesToHex, encodeUtf8, err, isPlainObject, ok, type Result } from "@halonicjs/std";
+import { isNeverWritten } from "./review-gate.ts";
 
 /** The version of the record's JSON. A record of another version counts as unreadable. */
 const reviewRecordFormat = 1;
@@ -31,6 +32,12 @@ export interface ReviewRecord {
   readonly seen: ExpectedContent;
   /** Set when the assistant deleted the file: its entry in the trash, to put it back from. */
   readonly trashed?: { readonly trashId: string };
+  /**
+   * Set when the assistant wrote the file while the workspace was untrusted.
+   * Later writes keep it, so it goes only with the record: until then, Try
+   * it uses the baseline for the whole file (`workspace.trust.untrusted-changes-held`).
+   */
+  readonly writtenUntrusted?: true;
 }
 
 /**
@@ -57,6 +64,7 @@ export function serializeReviewRecord(record: ReviewRecord): string {
     card: { chatId: record.card.chatId, cardId: record.card.cardId },
     seen: record.seen,
     ...(record.trashed === undefined ? {} : { trashed: { trashId: record.trashed.trashId } }),
+    ...(record.writtenUntrusted === true ? { writtenUntrusted: true } : {}),
   };
   return `${JSON.stringify(json, null, 2)}\n`;
 }
@@ -84,7 +92,7 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   if (!isPlainObject(json)) {
     return err("it isn't a JSON object");
   }
-  const { format, path, baseline, card: cardJson, seen, trashed } = json;
+  const { format, path, baseline, card: cardJson, seen, trashed, writtenUntrusted } = json;
   if (format !== reviewRecordFormat) {
     return err(`its format isn't ${reviewRecordFormat}`);
   }
@@ -101,7 +109,16 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
   if (!isSeenDigest(seen)) {
     return err("its seen digest isn't a sha256 digest or absent");
   }
-  const record: ReviewRecord = { path, baseline, card, seen };
+  if (writtenUntrusted !== undefined && writtenUntrusted !== true) {
+    return err("its writtenUntrusted isn't true");
+  }
+  const record: ReviewRecord = {
+    path,
+    baseline,
+    card,
+    seen,
+    ...(writtenUntrusted === true ? { writtenUntrusted } : {}),
+  };
   if (trashed === undefined) {
     return ok(record);
   }
@@ -114,15 +131,7 @@ export function parseReviewRecord(text: string): Result<ReviewRecord, string> {
 
 /** Whether a value from a record is a path the review service could have written a record for. */
 function isReviewablePath(path: unknown): path is string {
-  if (typeof path !== "string" || isReservedPath(path)) {
-    return false;
-  }
-  try {
-    checkWorkspacePath(path);
-    return true;
-  } catch {
-    return false;
-  }
+  return typeof path === "string" && !isNeverWritten(path);
 }
 
 function readCard(value: unknown): ReviewCard | null {

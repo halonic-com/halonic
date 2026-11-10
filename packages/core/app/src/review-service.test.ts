@@ -26,7 +26,7 @@ function setUp(files: Record<string, string> = { [clerk]: fast }) {
   return {
     store,
     recordStore,
-    review: new ReviewService({ store, records: recordStore, digest }),
+    review: new ReviewService({ store, records: recordStore, digest, isTrusted: () => true }),
     records: new ReviewRecords(recordStore, digest),
   };
 }
@@ -295,6 +295,7 @@ verifies("app.review-accept-reject-file", () => {
       store,
       records: recordStore,
       digest,
+      isTrusted: () => true,
       onListenerError: (error) => errors.push(error),
     });
     review.onDidChange(() => {

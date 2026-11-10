@@ -64,6 +64,13 @@ verifies("app.review-record", () => {
       expect(await records.read(deleted.path)).toEqual({ status: "found", record: deleted });
     });
 
+    it("keeps the mark of a file written while the workspace was untrusted", async () => {
+      const { records } = setUp();
+      const untrusted: ReviewRecord = { ...clerk, writtenUntrusted: true };
+      await records.save(untrusted);
+      expect(await records.read(clerk.path)).toEqual({ status: "found", record: untrusted });
+    });
+
     it("says there is none for a file without one, and removing it twice is fine", async () => {
       const { records } = setUp();
       expect(await records.read(clerk.path)).toEqual({ status: "none" });
@@ -94,6 +101,16 @@ verifies("app.review-record", () => {
         "a path in .halonic",
         editedRecord({ path: ".halonic/x" }),
         "its path isn't a workspace file",
+      ],
+      [
+        "a path that opens as .halonic",
+        editedRecord({ path: ".Halonic./x" }),
+        "its path isn't a workspace file",
+      ],
+      [
+        "an untrusted mark that isn't true",
+        editedRecord({ writtenUntrusted: false }),
+        "its writtenUntrusted isn't true",
       ],
       ["a numeric baseline", editedRecord({ baseline: 3 }), "its baseline isn't text or null"],
       ["no card", editedRecord({ card: undefined }), "its card has no chatId and cardId"],

@@ -21,6 +21,12 @@ export interface ReviewServiceOptions {
   /** Hashes file text for the write-if-unchanged check, and names the records. */
   readonly digest: Digest;
   /**
+   * Whether the workspace is trusted, read on every write the assistant
+   * asks for. While it isn't, the assistant may write only Halonic item
+   * files, and what it writes is marked as written untrusted.
+   */
+  readonly isTrusted: () => boolean;
+  /**
    * Receives the error of an `onDidChange` listener that threw, so the
    * change itself still succeeds. Without it, the call that changed the
    * records throws that error, which suits tests.
@@ -39,6 +45,7 @@ interface ReviewEvents {
  */
 export class ReviewFiles {
   readonly store: DefinitionStore;
+  readonly isTrusted: () => boolean;
   private readonly digest: Digest;
   private readonly records: ReviewRecords;
   private readonly queue = new KeyedQueue();
@@ -57,6 +64,7 @@ export class ReviewFiles {
 
   constructor(options: ReviewServiceOptions) {
     this.store = options.store;
+    this.isTrusted = options.isTrusted;
     this.digest = options.digest;
     this.records = new ReviewRecords(options.records, options.digest);
     this.events = new EventBus<ReviewEvents>(options.onListenerError);

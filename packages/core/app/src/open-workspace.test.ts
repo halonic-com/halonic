@@ -23,6 +23,7 @@ verifies("app.review-record", () => {
       store,
       reviewRecords,
       digest,
+      isTrusted: () => true,
       onListenerError: (error) => {
         throw error;
       },
