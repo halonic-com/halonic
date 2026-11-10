@@ -192,8 +192,8 @@ function plantOf(harness: VcsHarness): PlantGitCode {
 }
 
 function snapshotAndWorktreeCases(make: MakeVcs, test: HardenedTest): void {
-  test("never runs planted code in snapshots, versions, worktrees or patches", async () => {
-    const harness = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n" });
+  test("never runs planted code in snapshots, versions or a rename", async () => {
+    const harness = await make.repo({ "a.yaml": "1\n" });
     const plant = plantOf(harness);
     for (const hook of plantedHooks) await plant.hook(hook);
     await plantLocalConfig(plant);
@@ -203,17 +203,31 @@ function snapshotAndWorktreeCases(make: MakeVcs, test: HardenedTest): void {
     const snapshot = await vcs.snapshot();
     await vcs.readAt(snapshot, "a.yaml");
     await vcs.listAt(snapshot);
+    await vcs.rename("a.yaml", "c.yaml");
+
+    expect(await files.read("c.yaml")).toBe("2\n");
+    expect(await plant.ran()).toBe(false);
+  });
+
+  test("never runs planted code in worktrees or patches", async () => {
+    const harness = await make.repo({ "a.yaml": "1\n", "b.yaml": "1\n" });
+    const plant = plantOf(harness);
+    for (const hook of plantedHooks) await plant.hook(hook);
+    await plantLocalConfig(plant);
+    const { vcs, files } = harness;
+
+    const snapshot = await vcs.snapshot();
     // `git worktree add` checks files out, which runs post-checkout and the filters.
     const worktree = await vcs.addWorktree(snapshot);
     await harness.worktreeFiles(worktree).write("b.yaml", "2\n");
     await vcs.listWorktrees();
     const [change] = await vcs.diffBetween(snapshot, worktree.id);
     await vcs.applyPatch(String(change?.diff), { reverse: false });
+    expect(await files.read("b.yaml")).toBe("2\n");
     await vcs.applyPatch(String(change?.diff), { reverse: true });
-    await vcs.rename("a.yaml", "c.yaml");
     await vcs.removeWorktree(worktree.id);
 
-    expect(await files.read("c.yaml")).toBe("2\n");
+    expect(await files.read("b.yaml")).toBe("1\n");
     expect(await plant.ran()).toBe(false);
   });
 }
