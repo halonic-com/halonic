@@ -39,6 +39,7 @@ export interface ReviewRecord {
  * a deep path can't make the name too long for the file system.
  *
  * @throws RangeError for a path inside a reserved `.halonic/` folder, which has no workspace files to review
+ *   (matched as written: `ReviewingDefinitionStore` refuses the records' folder however it is cased)
  */
 export async function reviewRecordPath(path: string, digest: Digest): Promise<string> {
   if (isReservedPath(path)) {

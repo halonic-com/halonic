@@ -40,6 +40,11 @@ export class ReviewFiles {
   private readonly digest: Digest;
   private readonly records: ReviewRecords;
   private readonly queue = new KeyedQueue();
+  /**
+   * Record reads, saves and listings run one at a time, so a listing never
+   * reads a record while it is being saved and drops it as unreadable.
+   */
+  private readonly recordAccess = new KeyedQueue();
   private readonly events: EventBus<ReviewEvents>;
   /** The paths with a record, read once, so a write to any other file costs no extra read. */
   private reviewed: Promise<Set<string>> | null = null;
@@ -74,18 +79,18 @@ export class ReviewFiles {
 
   /** The record of one file; `null` for none, or one that can't be read. */
   async read(path: string): Promise<ReviewRecord | null> {
-    const read = await this.records.read(path);
+    const read = await this.withRecords(() => this.records.read(path));
     return read.status === "found" ? read.record : null;
   }
 
   /** Every record, or those of some files, as `ReviewRecords` gives them. */
   async list(paths?: readonly string[]): Promise<ReviewRecordList> {
     if (paths === undefined) {
-      const list = await this.records.all();
+      const list = await this.withRecords(() => this.records.all());
       this.reviewed = Promise.resolve(new Set(list.records.map((record) => record.path)));
       return list;
     }
-    const list = await this.records.some(paths);
+    const list = await this.withRecords(() => this.records.some(paths));
     const reviewed = await this.reviewedPaths();
     for (const dropped of list.dropped) {
       if (dropped.path !== null) {
@@ -109,10 +114,10 @@ export class ReviewFiles {
   async putRecord(path: string, record: ReviewRecord | null): Promise<void> {
     const reviewed = await this.reviewedPaths();
     if (record === null) {
-      await this.records.remove(path);
+      await this.withRecords(() => this.records.remove(path));
       reviewed.delete(path);
     } else {
-      await this.records.save(record);
+      await this.withRecords(() => this.records.save(record));
       reviewed.add(path);
     }
   }
@@ -139,11 +144,15 @@ export class ReviewFiles {
     return text === null ? "absent" : contentDigest(text, this.digest);
   }
 
+  private withRecords<T>(work: () => Promise<T>): Promise<T> {
+    return this.recordAccess.run("records", work);
+  }
+
   private reviewedPaths(): Promise<Set<string>> {
     if (this.reviewed === null) {
-      const loading = this.records
-        .all()
-        .then(({ records }) => new Set(records.map((record) => record.path)));
+      const loading = this.withRecords(() => this.records.all()).then(
+        ({ records }) => new Set(records.map((record) => record.path)),
+      );
       // A failed read is tried again next time instead of being kept.
       loading.catch(() => {
         if (this.reviewed === loading) {
