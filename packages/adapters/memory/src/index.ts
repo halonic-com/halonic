@@ -16,6 +16,7 @@ export {
   DryRunDefinitionStore,
   type PlannedDefinitionChange,
 } from "./dry-run-definition-store.ts";
+export { DryRunRunStore, type PlannedRunAppend } from "./dry-run-run-store.ts";
 export { DryRunVcs, type PlannedVcsChange } from "./dry-run-vcs.ts";
 export { fixedIds } from "./ids.ts";
 export { type MemoryKnowledgeOptions, MemoryKnowledgeProvider } from "./knowledge-provider.ts";
