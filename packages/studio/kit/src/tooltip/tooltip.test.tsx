@@ -29,6 +29,18 @@ function renderTooltip(keys?: readonly string[]) {
   return { button, tooltip, wrapper: button.parentElement as HTMLElement };
 }
 
+/**
+ * Focuses the control as the keyboard would. jsdom guesses `:focus-visible` from the events it has
+ * seen, so a bare `focus()` matches it only some of the time; this says which focus it was.
+ */
+function focus(button: HTMLButtonElement, by: "keyboard" | "pointer" = "keyboard") {
+  const matches = button.matches.bind(button);
+  vi.spyOn(button, "matches").mockImplementation((selector) =>
+    selector === ":focus-visible" ? by === "keyboard" : matches(selector),
+  );
+  act(() => button.focus());
+}
+
 function pointer(element: Element, type: "pointerover" | "pointerout", pointerType = "mouse") {
   act(() => {
     element.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType }));
@@ -68,9 +80,15 @@ verifies("kit.tooltip", () => {
 
   it("shows at once on keyboard focus and hides on blur", () => {
     const { button, tooltip } = renderTooltip();
-    act(() => button.focus());
+    focus(button);
     expect(isOpen(tooltip)).toBe(true);
     act(() => button.blur());
+    expect(isOpen(tooltip)).toBe(false);
+  });
+
+  it("doesn't show when a click focuses the control", () => {
+    const { button, tooltip } = renderTooltip();
+    focus(button, "pointer");
     expect(isOpen(tooltip)).toBe(false);
   });
 
@@ -78,7 +96,7 @@ verifies("kit.tooltip", () => {
     const { button, tooltip } = renderTooltip();
     const outside = vi.fn();
     document.addEventListener("keydown", outside);
-    act(() => button.focus());
+    focus(button);
     const escapeKey = new KeyboardEvent("keydown", {
       key: "Escape",
       bubbles: true,
