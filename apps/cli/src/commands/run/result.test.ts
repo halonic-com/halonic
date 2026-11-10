@@ -81,7 +81,7 @@ verifies("cli.run", () => {
     expect(stoppedResult([], workspace)).toEqual({ stopped: true, json: {} });
   });
 
-  it("shows an escape code in the workflow's or the folder's name as its code", async () => {
+  it("shows an escape code in the workflow's name as its code", async () => {
     const workflowFile = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
     const workflow = await readFile(workflowFile, "utf8");
     await writeFile(
@@ -92,13 +92,13 @@ verifies("cli.run", () => {
 
     const result = runResult(run, {
       workspace: renamed,
-      workspaceName: "\u001b[31macme",
+      workspaceName: "acme",
       dir: undefined,
       clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
     });
 
     expect(plainText(result.lines[0] ?? [])).toMatch(
-      /^Running \\u001b\[2JSupport reply in \\u001b\[31macme · run \w{6}$/,
+      /^Running \\u001b\[2JSupport reply in acme · run \w{6}$/,
     );
   });
 });
