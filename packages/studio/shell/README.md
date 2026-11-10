@@ -300,6 +300,26 @@ more. An `internal` error never shows its message: the body is "Halonic ran into
 explain yet." with **Copy details**. A `conflict` offers **Load the latest** only when the item has
 no unsaved edits; a file's own **Keep mine / Load theirs** wins over this message.
 
+## Page states
+
+The states every page shares, so no feature words them on its own:
+
+- **A page that stops working.** Put each page inside `<PageErrorBoundary pageName="Support reply">`.
+  If the page throws while it draws, only its area shows "This page stopped working" with the reason
+  naming the page, **Reload page** and the link **Copy details** (microcopy 22 F14); the sidebar and
+  the other tabs keep working. Focus goes to the title only if it was lost, and to the page's `h1`
+  after a Reload page that works. The error's message goes only into Copy details.
+- **Copy details.** `useCopyDetails()` copies `detailsOf(what, error)` through the frame's
+  clipboard and says "Copied. Paste it into a bug report." or "Couldn't copy." in a toast (22 F13b).
+  **Report a problem ›** waits until the Studio has a place it opens.
+- **An item that's gone.** `<ItemGone kindName="run" place="Runs" onGoTo={…} />` says "This run
+  isn't in this workspace any more." with **Go to Runs**, and moves focus to its title (microcopy 2,
+  "Item gone"). An item moved to the trash isn't gone: its feature shows the "moved to the trash ·
+  Undo" strip.
+- **Loading and couldn't load** come from the kit: a List's `loading` and `loadingLabel`, and the
+  error-tone `EmptyState` "Couldn't load _things_" with `shell.engine.words.notAnswering` as the
+  reason when the engine doesn't answer.
+
 ## Resource numbers
 
 `watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the

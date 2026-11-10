@@ -1,4 +1,5 @@
 import { assertNever, type ErrorKind, errorKindOf } from "@halonicjs/std";
+import { copyDetailsWords } from "./copy-details-words.ts";
 
 /**
  * What a screen tells the user when something failed and it has no more
@@ -75,7 +76,7 @@ const words = {
   noAnswer: (service: string) => `${service} didn't answer. It may be offline or busy.`,
   tryAgain: "Try again",
   cantExplain: "Halonic ran into a problem it can't explain yet.",
-  copyDetails: "Copy details",
+  copyDetails: copyDetailsWords.label,
 } as const;
 
 /**
@@ -128,12 +129,25 @@ function notFound({ title, item }: ErrorContext, reason: string): ErrorMessage {
   if (item === undefined) {
     return { kind: "not_found", title, body: reason };
   }
+  const gone = itemGoneWords(item);
   return {
     kind: "not_found",
     title,
-    body: words.notFound(item.kindName),
-    action: { id: "go-to", label: words.goTo(item.place), place: item.place },
+    body: gone.sentence,
+    action: { id: "go-to", label: gone.goTo, place: item.place },
   };
+}
+
+/**
+ * What an item that isn't there any more is called, one pattern for every kind (microcopy 2
+ * "Item gone" and 22 F13 `not_found`): "This agent isn't in this workspace any more." and
+ * "Go to Agents".
+ */
+export function itemGoneWords(item: { readonly kindName: string; readonly place: string }): {
+  readonly sentence: string;
+  readonly goTo: string;
+} {
+  return { sentence: words.notFound(item.kindName), goTo: words.goTo(item.place) };
 }
 
 /**

@@ -39,11 +39,13 @@ export {
   engineRestartWindowMs,
 } from "./engine/engine-start.ts";
 export { type EngineWords, engineWords, type StudioHost } from "./engine/engine-words.ts";
+export { copyDetailsWords, detailsOf } from "./errors/copy-details-words.ts";
 export {
   type ErrorAction,
   type ErrorContext,
   type ErrorMessage,
   errorMessageFor,
+  itemGoneWords,
   type RulePlace,
 } from "./errors/error-message.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
@@ -55,6 +57,13 @@ export {
   type StatusBarItemsProps,
 } from "./frame/status-bar.tsx";
 export type { HomeCardProps } from "./home/home-page.tsx";
+export { useCopyDetails } from "./page/copy-details.ts";
+export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
+export {
+  PageErrorBoundary,
+  type PageErrorBoundaryProps,
+  pageStoppedWords,
+} from "./page/page-error-boundary.tsx";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
   CommandContribution,
