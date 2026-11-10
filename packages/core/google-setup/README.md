@@ -282,6 +282,8 @@ talks to Google.
 | `PendingSignIns`      | the port for pending sign-ins: `start` (one per account), `take(state)`, and `authUrlFor` and `cancel` for "Open again" and "Cancel"; in memory only, 10 minutes |
 | `readSignInCallback`  | reads the callback: finds the sign-in by `state` first, then maps `error` or returns the code                                                                    |
 | `classifyTokenAnswer` | what Google's token answer means: `wrongClientSecret`, `codeRefused`, `noRefreshToken` and so on                                                                 |
+| `signInScopes`        | the scopes to ask for: `baseSignInScopes` (`openid`, `email`) and the services' scopes, sorted, without duplicates                                               |
+| `googleAuthEndpoint`, `googleTokenEndpoint` | Google's authorisation and token endpoints, as constants                                                                                   |
 
 A pending sign-in holds the PKCE verifier, so it is never written to the `TokenStore` or any other
 store (plan D5). The `code` and `tokens` results hold secrets and never leave the host package.
@@ -299,6 +301,8 @@ before it saves anything and while it still holds the fresh access token.
 | `serviceScopes`         | per service, whether Google granted all its `googleScopes`, or which are missing                 |
 | `readGoogleCheckAnswer` | one `googleCheck` answer as `works` (2xx), `apiOff` (403 that says so) or `checkFailed`          |
 | `ServiceCheckOutcome`   | what step 7 shows per service: those three, `allowed`, `scopeNotGranted` and `unreachable`       |
+| `accountTypeFromAddress` | `personal` for a Gmail or Googlemail address, otherwise `undefined`: the address alone can't tell a Workspace account |
+| `isApiHost`             | whether text has the `<name>.googleapis.com` shape, the only API host a result keeps             |
 
 `allowed` means every scope was granted and the sheet has no `googleCheck`: nothing showed the API
 is on. `apiOff` keeps the API host only in the `<name>.googleapis.com` shape, its name only from the
@@ -306,3 +310,39 @@ service's sheet, and the project ID from the setup or else Google's project numb
 Google's `message` or any other free text, so every result can be shown, logged and saved. The
 setup record keeps each service's last `ServiceCheckOutcome` and its time (plan D5 revision 5); its
 strict schema checks every field again, and an `apiOff` link must be the one `enableApiUrl` makes.
+
+## Refused refreshes and the connector's state
+
+When a token refresh is refused, a run must not ask Google again.
+
+- `readRefreshAnswer(answer)` reads Google's answer to a refresh as `refreshed`, `signInRefused`
+  (`invalid_grant`), `clientRefused` (`invalid_client`), `googleError` or `unexpectedAnswer`. It never
+  reads `error_description`, so only `refreshed` holds a token.
+- `setups.refreshRefused(accountRef, refusal)` saves the refusal in the record: a fixed reason
+  (`client`, `sign-in` or `client-gone`) and the time. A `client` refusal marks every account on that
+  client in one write. A later refusal never moves an account to a reason that needs less to fix.
+  `mayRefresh(record)` is `false` for a refused record, so there is no retry loop. Only a new sign-in
+  or `setups.clientSecretAccepted(clientRef)` clears a refusal, never the passing of time.
+- `connectorState(record, problem, now)` turns a refusal, or an API switched off during a run
+  (`ApiDisabled`), into the badge: **Needs sign-in again**, **Needs new secret** or **API off**, each
+  with the steps the setup item reopens at. A personal account without the "In production" tick
+  that is refused 6½ to 7½ days after its last sign-in (`testingHintWindowMs`) also gets the
+  Testing hint first. `savedConnectorState(record)` brings the badge back after a restart, or gives
+  `null` when nothing is saved.
+
+## Errors
+
+`SetupRecordError` and `ClientSecretError` keep their detailed `reason` and carry a coarse `kind` that
+`errorKindOf` from `@halonicjs/std` reads:
+
+| Error | Reason | Kind |
+| --- | --- | --- |
+| `SetupRecordError` | `not-found` | `not_found` |
+| | `refused` | `invalid_input` |
+| | `cannot-share` | `conflict` |
+| | `damaged` | `internal` |
+| `ClientSecretError` | `empty` | `invalid_input` |
+| | `not-saved` | `not_found` |
+| | `nothing-staged` | `conflict` |
+
+Besides the calls shown above, `setups` also has `read`, `list`, `usingClient` and `remove`.
