@@ -912,6 +912,9 @@ importers:
       '@halonicjs/workspace':
         specifier: workspace:*
         version: link:../workspace
+      '@halonicjs/yaml':
+        specifier: workspace:*
+        version: link:../yaml
     devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*

@@ -24,6 +24,12 @@ export {
   type WaitingTool,
 } from "./approve-listed-tools.ts";
 export {
+  type ChangeLine,
+  type ItemPath,
+  type RevertPartsProblem,
+  revertParts,
+} from "./changes/revert-parts.ts";
+export {
   type ChatAnswer,
   type ChatAnswerEnd,
   type ChatAnswerListener,

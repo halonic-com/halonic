@@ -17,7 +17,8 @@
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/routines": "workspace:*",
     "@halonicjs/std": "workspace:*",
-    "@halonicjs/workspace": "workspace:*"
+    "@halonicjs/workspace": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-contracts": "workspace:*",

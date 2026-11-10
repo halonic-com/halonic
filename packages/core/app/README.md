@@ -48,6 +48,7 @@ Device-wide settings such as the theme live outside any scope.
 | `readPackageSpec`           | reads `name@1.2.3` (npm) or `name==1.2.3` (PyPI), and refuses no version, a tag, a range, a URL or a git source              | `app.connector-pin-spec`         |
 | `isPackageRunner`           | whether a command starts `npx`, `uvx` or another runner, any folder, case and ending, or via a shell; 10c's `unpinned` too   | `app.package-runner-launch`      |
 | `checkPackageRunnerLaunch`  | refuses an inexact pin, a pin on a shell or other non-runner, and a pinned launch whose args or `env` could change what runs | `app.package-runner-launch`      |
+| `revertParts`               | sets some parts of an item's YAML back to a reference (latest version, assistant's baseline or run's base), keeping the rest | `app.revert-parts`               |
 
 ## Example
 
