@@ -45,7 +45,10 @@ describe("runs's sentences", () => {
       'Check the run id: it\'s in the line that said "Waiting for you".',
     );
     expect(words(runsMessages.showNoRun("01JD8X", "acme"))).toBe("There's no run 01JD8X in acme.");
-    expect(words(runsMessages.showNoRunFix())).toBe("See recent runs in Studio's Runs page.");
+    expect(words(runsMessages.showNoRunFix())).toBe("See recent runs with halonic runs.");
+    expect(words(runsMessages.showNoRunFix("./acme"))).toBe(
+      "See recent runs with halonic runs --dir ./acme.",
+    );
   });
 
   it("has runs show's heading", () => {

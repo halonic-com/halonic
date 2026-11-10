@@ -58,5 +58,6 @@ export const runsMessages = defineMessages("runs", {
   waitingSince: (time: string) => phrase`waiting for you since ${time}`,
   /** `runs show` with an unknown id (`not_found`), the error's whole line 1. */
   showNoRun: (runId: string, workspace: string) => phrase`There's no run ${runId} in ${workspace}.`,
-  showNoRunFix: () => phrase`See recent runs in Studio's Runs page.`,
+  /** Same shape as {@link notWaitingFix}: names the list, with the user's `--dir`. */
+  showNoRunFix: (dir?: string) => phrase`See recent runs with ${suggestedCommand("runs", dir)}.`,
 });
