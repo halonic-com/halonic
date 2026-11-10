@@ -11,7 +11,7 @@ When records are filtered by a `where`, the engine shall keep the records that m
 - `null` for an empty field
 - an object of `gt`, `gte`, `lt`, `lte` and `not`
 
-Numbers compare as numbers, and other values, such as dates, as text. The value `"today"` stands for today's date. The key `id` matches the record's id.
+Numbers compare as numbers, and other values, such as dates, as text by character code, so the order doesn't depend on the machine's language. When records are sorted by a field, empty values come first, then the rest in that order. The value `"today"` stands for today's date. The key `id` matches the record's id.
 
 When records are read through one of the collection's named views, the engine shall apply the view's `where` and `sort`. When the view names a `total` field, the engine shall also give the sum of that field over the view's records, rounded to cents.
 
@@ -23,3 +23,6 @@ When records are read through one of the collection's named views, the engine sh
 - Given a view `open` with `where: { status: open }` and `total: amount`,
   when the records are read through it,
   then the open invoices come back with the sum of their amounts.
+- Given amounts `12.5`, `12.25`, `-5` and `-10`,
+  when the records are sorted by amount,
+  then they come back as `-10`, `-5`, `12.25`, `12.5`.

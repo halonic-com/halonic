@@ -8,20 +8,28 @@ const tokenPattern = /\d+(\.\d+)?|[A-Za-z_][A-Za-z0-9_]*|[-+*/()]/g;
 
 /**
  * The formula's value for a record's values (requirement
- * `engine.record-computed`). A field that is empty or not a number, and a
- * division by zero, make the whole value `null`.
+ * `engine.record-computed`). A field that is empty or not a number, a
+ * division by zero, and a formula that isn't well formed make the whole
+ * value `null`.
  *
  * @example
  * evaluateFormula("amount * sharePct / 100", { amount: 200, sharePct: 25 }); // 50
  */
 export function evaluateFormula(formula: string, values: RecordValues): number | null {
-  return new FormulaReader(formula.match(tokenPattern) ?? [], values).sum();
+  const tokens = formula.match(tokenPattern) ?? [];
+  if (tokens.join("") !== formula.replace(/\s/g, "")) {
+    return null; // a character the formula may not have, such as "%" or "^"
+  }
+  const reader = new FormulaReader(tokens, values);
+  const value = reader.sum();
+  return reader.readAll() ? value : null;
 }
 
 class FormulaReader {
   readonly #tokens: readonly string[];
   readonly #values: RecordValues;
   #next = 0;
+  #wellFormed = true;
 
   constructor(tokens: readonly string[], values: RecordValues) {
     this.#tokens = tokens;
@@ -38,6 +46,11 @@ class FormulaReader {
       );
     }
     return value;
+  }
+
+  /** Whether the formula was well formed and every token was read. */
+  readAll(): boolean {
+    return this.#wellFormed && this.#next === this.#tokens.length;
   }
 
   private product(): number | null {
@@ -59,7 +72,9 @@ class FormulaReader {
     const token = this.take();
     if (token === "(") {
       const value = this.sum();
-      this.take(); // the closing ")"
+      if (this.take() !== ")") {
+        this.#wellFormed = false;
+      }
       return value;
     }
     if (token === "-") {
@@ -69,7 +84,11 @@ class FormulaReader {
     if (token !== undefined && /^\d/.test(token)) {
       return Number(token);
     }
-    const value = token === undefined ? undefined : this.#values[token];
+    if (token === undefined || !/^[A-Za-z_]/.test(token)) {
+      this.#wellFormed = false;
+      return null;
+    }
+    const value = this.#values[token];
     return typeof value === "number" ? value : null;
   }
 

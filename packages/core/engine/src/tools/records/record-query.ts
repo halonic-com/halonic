@@ -68,11 +68,7 @@ export function filterRecords(
   );
   const sort = options.sort;
   if (sort !== undefined) {
-    matching.sort((first, second) =>
-      String(first.values[sort] ?? "").localeCompare(String(second.values[sort] ?? ""), undefined, {
-        numeric: true,
-      }),
-    );
+    matching.sort((first, second) => compareForSort(first.values[sort], second.values[sort]));
   }
   return matching;
 }
@@ -144,12 +140,34 @@ function matchesComparison(
   return !("not" in comparison && matches(value, comparison["not"], today));
 }
 
+// Empty values first, then numbers as numbers and anything else as text.
+function compareForSort(first: unknown, second: unknown): number {
+  const firstEmpty = first === null || first === undefined;
+  const secondEmpty = second === null || second === undefined;
+  if (firstEmpty || secondEmpty) {
+    return Number(secondEmpty) - Number(firstEmpty);
+  }
+  return typeof first === "number" && typeof second === "number"
+    ? first - second
+    : compareText(String(first), String(second));
+}
+
 // Numbers compare as numbers; anything else, dates included, as text.
 function compareTo(value: unknown, bound: unknown): number {
   if (typeof value === "number") {
     return value - Number(bound);
   }
-  return String(value).localeCompare(String(bound));
+  return compareText(String(value), String(bound));
+}
+
+// Text compares by character code, not by locale, so the order is the same
+// on every machine and dates (YYYY-MM-DD) and months (YYYY-MM) come in
+// calendar order.
+function compareText(text: string, other: string): number {
+  if (text === other) {
+    return 0;
+  }
+  return text < other ? -1 : 1;
 }
 
 function resolveToday(value: unknown, today: string): unknown {

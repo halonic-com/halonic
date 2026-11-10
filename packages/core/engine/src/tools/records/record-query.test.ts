@@ -51,6 +51,22 @@ verifies("engine.record-computed", () => {
     ])("reads %s as %s", (formula, expected) => {
       expect(evaluateFormula(formula, { amount: 2, zero: 0, label: "x" })).toBe(expected);
     });
+
+    it.each([
+      "amount ^ 2",
+      "amount * 19%",
+      "amount % 2",
+      "amount.5",
+      "amount zero",
+      "amount * (zero + 1",
+      "amount)",
+      "amount +",
+      "* amount",
+      "()",
+      "",
+    ])("gives null for the badly written formula %j", (formula) => {
+      expect(evaluateFormula(formula, { amount: 2, zero: 0 })).toBeNull();
+    });
   });
 });
 
@@ -84,6 +100,24 @@ verifies("engine.record-filter", () => {
       const sorted = filterRecords(records, {}, { today, sort: "due" });
 
       expect(sorted.map((found) => found.id)).toEqual(["inv-3", "inv-1", "inv-2"]);
+    });
+
+    it("sorts decimal and negative amounts as numbers", () => {
+      const amounts = [12.5, 12.25, -5, -10, 0.1, 0.05, null, 100];
+      const unsorted = amounts.map((amount, index) => record(`inv-${index}`, { amount }));
+
+      const sorted = filterRecords(unsorted, {}, { today, sort: "amount" });
+
+      expect(sorted.map((found) => found.values["amount"])).toEqual([
+        null,
+        -10,
+        -5,
+        0.05,
+        0.1,
+        12.25,
+        12.5,
+        100,
+      ]);
     });
   });
 

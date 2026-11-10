@@ -70,6 +70,32 @@ verifies("engine.record-values", () => {
       ]);
     });
 
+    it.each(["€", " ", "$ ", "1,234", "1,234,567"])(
+      "refuses %j in a number field, with nothing left or an unclear comma",
+      (amount) => {
+        expect(checkRecord(invoices, { supplier: "s", amount }).errors).toEqual([
+          `"amount" must be a number (got ${JSON.stringify(amount)})`,
+        ]);
+      },
+    );
+
+    it("refuses a date or month that isn't on the calendar", () => {
+      const checked = checkRecord(invoices, {
+        supplier: "s",
+        amount: 1,
+        due: "2026-02-29",
+        period: "2026-13",
+      });
+
+      expect(checked.errors).toEqual([
+        '"due" must be a date YYYY-MM-DD (got "2026-02-29")',
+        '"period" must be a month YYYY-MM (got "2026-13")',
+      ]);
+      expect(checkRecord(invoices, { supplier: "s", amount: 1, due: "2028-02-29" }).errors).toEqual(
+        [],
+      );
+    });
+
     it("refuses an empty required field on a new record", () => {
       expect(checkRecord(invoices, { supplier: "", amount: 1 }).errors).toEqual([
         '"supplier" is required',
@@ -80,6 +106,12 @@ verifies("engine.record-values", () => {
       const checked = checkRecord(invoices, { status: "paid", disputed: true }, { partial: true });
 
       expect(checked).toEqual({ values: { status: "paid", disputed: true }, errors: [] });
+    });
+
+    it.each([null, ""])("refuses an update that empties a required field with %j", (supplier) => {
+      expect(checkRecord(invoices, { supplier }, { partial: true }).errors).toEqual([
+        '"supplier" is required',
+      ]);
     });
 
     it("empties a field in an update that names it with null", () => {

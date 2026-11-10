@@ -58,7 +58,8 @@ function checkField(
   partial: boolean,
 ): FieldOutcome {
   if (value === undefined || value === null || value === "") {
-    if (field.required && !partial) {
+    // An update may leave a required field out, but not empty it.
+    if (field.required && !(partial && value === undefined)) {
       return { kind: "error", error: `"${name}" is required` };
     }
     return value === undefined ? { kind: "left-out" } : { kind: "value", value: null };
@@ -98,9 +99,9 @@ function checkFieldValue(field: CollectionField, value: unknown): FieldCheck {
     case "money":
       return checkNumber(field, value);
     case "date":
-      return checkPattern(value, /^\d{4}-\d{2}-\d{2}$/, "a date YYYY-MM-DD");
+      return checkCalendar(value, /^\d{4}-\d{2}-\d{2}$/, "a date YYYY-MM-DD");
     case "month":
-      return checkPattern(value, /^\d{4}-\d{2}$/, "a month YYYY-MM");
+      return checkCalendar(value, /^\d{4}-\d{2}$/, "a month YYYY-MM");
     case "choice":
       return checkChoice(field.values ?? [], value);
     case "boolean":
@@ -125,7 +126,9 @@ function checkNumber(field: CollectionField, value: unknown): FieldCheck {
   return { ok: true, value: field.type === "money" ? roundCents(number) : number };
 }
 
-// A model often writes an amount as text, with a decimal comma or a currency sign.
+// A model often writes an amount as text, with a decimal comma or a currency
+// sign. Text with nothing left after the sign, such as "€", is not a number.
+// Nor is "1,234": it may mean 1234 or 1.234, so the model is asked again.
 function toNumber(value: unknown): number {
   if (typeof value === "number") {
     return value;
@@ -133,13 +136,23 @@ function toNumber(value: unknown): number {
   if (typeof value !== "string") {
     return Number.NaN;
   }
-  return Number(value.replace(",", ".").replace(/[€$\s]/g, ""));
+  const text = value.replace(/[€$\s]/g, "");
+  if (text === "" || /,\d{3}$/.test(text)) {
+    return Number.NaN;
+  }
+  return Number(text.replace(",", "."));
 }
 
-function checkPattern(value: unknown, pattern: RegExp, expected: string): FieldCheck {
-  return typeof value === "string" && pattern.test(value)
-    ? { ok: true, value }
-    : { ok: false, expected };
+// A date or month in its pattern that is also on the calendar: "2026-02-30"
+// and "2026-13" are refused.
+function checkCalendar(value: unknown, pattern: RegExp, expected: string): FieldCheck {
+  if (typeof value !== "string" || !pattern.test(value)) {
+    return { ok: false, expected };
+  }
+  const [year = 0, month = 0, day = 1] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const onCalendar = date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  return onCalendar ? { ok: true, value } : { ok: false, expected };
 }
 
 function checkChoice(choices: readonly string[], value: unknown): FieldCheck {
