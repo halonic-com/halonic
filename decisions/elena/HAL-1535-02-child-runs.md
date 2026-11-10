@@ -16,3 +16,7 @@ and its test stay as they were.
 
 The list was always "what isn't built yet". Step 5(a) builds child runs, so leaving them in would
 make the requirement say something the code no longer does. No test was weakened.
+
+## Covers
+
+- engine.local-runs-unbuilt-effect
