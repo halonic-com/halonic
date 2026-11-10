@@ -1,7 +1,7 @@
 import type { RunEventBody, RunKind } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { RunHistory } from "./run-history.ts";
+import { type RunDetail, RunHistory, shortRunId } from "./run-history.ts";
 import { MemoryRuns } from "./testing/memory-runs.ts";
 
 function started(workflowId: string, kind: RunKind = "run"): RunEventBody {
@@ -26,6 +26,15 @@ const waiting: RunEventBody = {
 /** The minute `minute` past 10:00 on 9 Nov, so a larger minute is a newer run. */
 function at(minute: number): string {
   return new Date(Date.UTC(2026, 10, 9, 10, minute)).toISOString();
+}
+
+/** The run `typed` points to, failing the test when it points to none or several. */
+async function shownRun(history: RunHistory, typed: string): Promise<RunDetail> {
+  const lookup = await history.showRun(typed);
+  if (lookup.found !== "one") {
+    throw new Error(`Expected one run for ${typed}, found ${lookup.found}`);
+  }
+  return lookup.run;
 }
 
 verifies("app.run-list", () => {
@@ -97,10 +106,10 @@ verifies("app.run-show", () => {
       const store = new MemoryRuns();
       store.add("01JD8Q", at(1), [started("support-reply"), completed]);
 
-      const detail = await new RunHistory(store).showRun("01JD8Q");
+      const detail = await shownRun(new RunHistory(store), "01JD8Q");
 
-      expect(detail?.summary).toMatchObject({ id: "01JD8Q", status: "completed" });
-      expect(detail?.events.map((event) => [event.seq, event.type])).toEqual([
+      expect(detail.summary).toMatchObject({ id: "01JD8Q", status: "completed" });
+      expect(detail.events.map((event) => [event.seq, event.type])).toEqual([
         [1, "run.started"],
         [2, "run.completed"],
       ]);
@@ -110,22 +119,106 @@ verifies("app.run-show", () => {
       const store = new MemoryRuns();
       store.add("01JD9A", at(1), [started("support-reply"), waiting]);
 
-      const detail = await new RunHistory(store).showRun("01JD9A");
+      const detail = await shownRun(new RunHistory(store), "01JD9A");
 
-      expect(detail?.summary).toMatchObject({ status: "waiting", accepts: ["approve", "reject"] });
+      expect(detail.summary).toMatchObject({ status: "waiting", accepts: ["approve", "reject"] });
     });
 
     it("shows a test run like any other", async () => {
       const store = new MemoryRuns();
       store.add("run_test", at(1), [started("support-reply", "test")]);
 
-      const detail = await new RunHistory(store).showRun("run_test");
+      const detail = await shownRun(new RunHistory(store), "run_test");
 
-      expect(detail?.summary).toMatchObject({ id: "run_test", kind: "test" });
+      expect(detail.summary).toMatchObject({ id: "run_test", kind: "test" });
     });
 
     it("shows nothing for a run id the store doesn't know", async () => {
-      expect(await new RunHistory(new MemoryRuns()).showRun("01JD8X")).toBeNull();
+      expect(await new RunHistory(new MemoryRuns()).showRun("01JD8X")).toEqual({ found: "none" });
+    });
+  });
+});
+
+verifies("app.run-short-id", () => {
+  describe("shortRunId", () => {
+    it("is the last 6 characters of the id, as stored", () => {
+      expect(shortRunId("run_mfx3k2a1_a1b2c3d4")).toBe("b2c3d4");
+    });
+  });
+
+  describe("findRun", () => {
+    function oneRun(): MemoryRuns {
+      const store = new MemoryRuns();
+      store.add("run_mfx3k2a1_a1b2c3d4", at(1), [started("support-reply"), completed]);
+      return store;
+    }
+
+    it.each(["run_mfx3k2a1_a1b2c3d4", "RUN_MFX3K2A1_A1B2C3D4", "b2c3d4", "B2C3D4"])(
+      "finds the run from %s",
+      async (typed) => {
+        expect(await new RunHistory(oneRun()).findRun(typed)).toEqual({
+          found: "one",
+          run: "run_mfx3k2a1_a1b2c3d4",
+        });
+      },
+    );
+
+    it("finds a test run by its short id", async () => {
+      const store = new MemoryRuns();
+      store.add("run_mfx3k2a1_0f9e8d7c", at(1), [started("support-reply", "test")]);
+
+      expect(await new RunHistory(store).findRun("9e8d7c")).toEqual({
+        found: "one",
+        run: "run_mfx3k2a1_0f9e8d7c",
+      });
+    });
+
+    it("finds several runs, and picks none, when two ids end in the short id", async () => {
+      const store = new MemoryRuns();
+      store.add("run_aaaa_01b2c3d4", at(1), [started("support-reply")]);
+      store.add("run_bbbb_99b2c3d4", at(2), [started("mail-triage")]);
+
+      expect(await new RunHistory(store).findRun("B2C3D4")).toEqual({
+        found: "several",
+        shortId: "B2C3D4",
+      });
+    });
+
+    it("still finds one of those runs by its full id", async () => {
+      const store = new MemoryRuns();
+      store.add("run_aaaa_01b2c3d4", at(1), [started("support-reply")]);
+      store.add("run_bbbb_99b2c3d4", at(2), [started("mail-triage")]);
+
+      expect(await new RunHistory(store).findRun("run_aaaa_01b2c3d4")).toEqual({
+        found: "one",
+        run: "run_aaaa_01b2c3d4",
+      });
+    });
+
+    it.each(["a1b2c3d4", "c3d4", "zzzzzz", ""])("finds nothing from %j", async (typed) => {
+      expect(await new RunHistory(oneRun()).findRun(typed)).toEqual({ found: "none" });
+    });
+  });
+
+  describe("showRun", () => {
+    it("shows a run from its short id, in capitals", async () => {
+      const store = new MemoryRuns();
+      store.add("run_mfx3k2a1_a1b2c3d4", at(1), [started("support-reply"), completed]);
+
+      const detail = await shownRun(new RunHistory(store), "B2C3D4");
+
+      expect(detail.summary).toMatchObject({ id: "run_mfx3k2a1_a1b2c3d4", status: "completed" });
+    });
+
+    it("shows no run when two ids end in the short id", async () => {
+      const store = new MemoryRuns();
+      store.add("run_aaaa_01b2c3d4", at(1), [started("support-reply")]);
+      store.add("run_bbbb_99b2c3d4", at(2), [started("mail-triage")]);
+
+      expect(await new RunHistory(store).showRun("b2c3d4")).toEqual({
+        found: "several",
+        shortId: "b2c3d4",
+      });
     });
   });
 });

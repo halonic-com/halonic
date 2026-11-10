@@ -30,6 +30,31 @@ export interface RunDetail {
   events: RunEvent[];
 }
 
+/** How many characters of a run's id its short id has. */
+export const shortRunIdLength = 6;
+
+/**
+ * The id a person sees and types back: the last 6 characters of the run's id,
+ * as stored and never uppercased. The command line and the Studio print the
+ * same one (mc W4, cli-output 3.4).
+ *
+ * @example
+ * shortRunId("run_mfx3k2a1_a1b2c3d4"); // "b2c3d4"
+ */
+export function shortRunId(runId: string): string {
+  return runId.slice(-shortRunIdLength);
+}
+
+/**
+ * What a run id someone typed points to: one run, no run, or several runs
+ * whose ids end in the same 6 characters.
+ */
+export type RunLookup<Run> =
+  | { found: "one"; run: Run }
+  | { found: "none" }
+  /** `shortId` is what was typed; the caller asks for the full id instead. */
+  | { found: "several"; shortId: string };
+
 /** Lists a workspace's runs and shows one, read from its {@link RunStore}. */
 export class RunHistory {
   readonly #runs: Pick<RunStore, "list" | "events">;
@@ -60,20 +85,54 @@ export class RunHistory {
   }
 
   /**
-   * One run, real or test, with its summary and its whole log
-   * (requirement `app.run-show`). The summary is worked out from the same
-   * events it comes with, so the two always agree, even while the run goes on.
+   * The full id of the run that someone typed, real or test (requirement
+   * `app.run-short-id`). They may type the full id or its short id, in any
+   * case. `runs show`, `runs send`, the Studio's links and Ctrl K all look a
+   * run up here, so each finds the same run.
    *
-   * @returns `null` for a run id the store doesn't know
+   * @example
+   * await history.findRun("B2C3D4");
+   * // { found: "one", run: "run_mfx3k2a1_a1b2c3d4" }
+   */
+  async findRun(typed: string): Promise<RunLookup<string>> {
+    // The id as typed first: the list may lag the log (RunStore.list), and a
+    // run that has only just started must be found by its full id.
+    if ((await this.#runs.events(typed)).length > 0) {
+      return { found: "one", run: typed };
+    }
+    const ids = (await this.#runs.list()).map((run) => run.id);
+    const wanted = typed.toLowerCase();
+    const sameId = ids.find((id) => id.toLowerCase() === wanted);
+    if (sameId !== undefined) {
+      return { found: "one", run: sameId };
+    }
+    if (typed.length !== shortRunIdLength) {
+      return { found: "none" };
+    }
+    const sameEnd = ids.filter((id) => shortRunId(id).toLowerCase() === wanted);
+    if (sameEnd.length > 1) {
+      return { found: "several", shortId: typed };
+    }
+    return sameEnd[0] === undefined ? { found: "none" } : { found: "one", run: sameEnd[0] };
+  }
+
+  /**
+   * One run, real or test, with its summary and its whole log
+   * (requirements `app.run-show` and `app.run-short-id`). The run is looked
+   * up as {@link RunHistory.findRun} does. The summary is worked out from the
+   * same events it comes with, so the two always agree, even while the run
+   * goes on.
    *
    * @example
    * await history.showRun("01JD8Q");
-   * // { summary: { id: "01JD8Q", status: "completed", … }, events: [run.started, …] }
+   * // { found: "one", run: { summary: { id: "01JD8Q", status: "completed", … }, events: [run.started, …] } }
    */
-  async showRun(runId: string): Promise<RunDetail | null> {
-    const events = await this.#runs.events(runId);
+  async showRun(typed: string): Promise<RunLookup<RunDetail>> {
+    const lookup = await this.findRun(typed);
+    if (lookup.found !== "one") return lookup;
+    const events = await this.#runs.events(lookup.run);
     const summary = summarize(events);
-    if (summary === null) return null;
-    return { summary, events };
+    if (summary === null) return { found: "none" };
+    return { found: "one", run: { summary, events } };
   }
 }
