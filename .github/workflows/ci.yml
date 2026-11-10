@@ -774,6 +774,22 @@ jobs:
       - uses: $/.github/actions/setup
         with:
           cache: ${{ runner.os != 'Windows' }}
+      - name: DIAG
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ps = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+          $script = @'
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          Get-CimInstance -ClassName Win32_Process | ForEach-Object {
+            $started = if ($_.CreationDate) { [long][math]::Floor($_.CreationDate.ToFileTimeUtc() / 10000) } else { '' }
+            "$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.WorkingSetSize)`t$started`t$($_.Name)"
+          }
+          '@
+          $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+          (Measure-Command { & $ps -NoLogo -NoProfile -NonInteractive -EncodedCommand $enc | Out-Null }).TotalSeconds
+          $js = "const {execFile}=require('child_process');const t=Date.now();const c=execFile(process.argv[1],['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',process.argv[2]],{timeout:60000,windowsHide:true},(e,o)=>console.log('node',Date.now()-t,'ms',e?e.message.slice(0,80):o.length));c.stdin.end()"
+          node -e $js $ps $enc
       - name: Typecheck and test
         shell: bash
         run: >
