@@ -114,7 +114,7 @@ verifies("sandbox-srt.session", () => {
     });
 
     it.skipIf(cannotBlockWrites)(
-      "still reports the refused write, then rejects close(), when an undo fails",
+      "[platform:win32] still reports the refused write, then rejects close(), when an undo fails",
       async () => {
         const linked = join(git, "worktrees", "feature");
         const commondir = join(linked, "commondir");
@@ -132,7 +132,7 @@ verifies("sandbox-srt.session", () => {
     );
 
     it.skipIf(cannotBlockWrites)(
-      "touches nothing under a link it could not turn back into a folder",
+      "[platform:win32] touches nothing under a link it could not turn back into a folder",
       async () => {
         const outside = join(base, "outside");
         await mkdir(outside);
