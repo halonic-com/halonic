@@ -53,3 +53,9 @@ export {
 } from "./local-executor.ts";
 export { endInterruptedRuns, interruptedError } from "./run/end-interrupted-runs.ts";
 export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";
+export {
+  noRunsText,
+  type RunLogToolsOptions,
+  runLogTools,
+  unknownRunText,
+} from "./tools/run-log/run-log-tools.ts";

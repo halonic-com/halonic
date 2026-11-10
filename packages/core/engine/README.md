@@ -42,6 +42,7 @@ loop of one model turn, which the local chat turn runs.
 | `StateHandler`       | one state type's `enter` and `onInput`, found by `pnpm discover` in `src/states`                                             | `engine.state-registry`                                                             |
 | `task` state         | runs its agent with one model call, writes `output` and takes the `done` transition                                          | `engine.task-state`                                                                 |
 | `final` state        | completes the run with its context                                                                                           | `engine.final-state`                                                                |
+| `runLogTools`        | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model        | `engine.run-log-tools`                                                              |
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
@@ -67,6 +68,16 @@ without a price (Ollama, LM Studio, the mock model) costs 0. Any other model get
 run's summary counts the call in `unpricedCalls`. A call the bridge passes on with the person's own
 sign-in gets `cost` 0 and `paidBy: "subscription"`, and the summary counts it in
 `subscriptionCalls`, never in `cost` or `unpricedCalls`.
+
+## Tools
+
+Halonic's own tools for an agent come from the fields of its definition. `runLogs: true` gives
+`list_runs` and `read_run` (`runLogTools`). They read only the agent's own hub's runs, so a hub's
+agent never sees another hub's work; the old engine read every hub. `list_runs` leaves out test runs
+and the run the agent is in. A tool's arguments come from the model, so one of the wrong type or
+out of range fails the call with an error that names it, and the model gets that error back. A run's
+agent gets these tools once runs call tools (step 4(c) of the HAL-186 plan); until then they work in
+`runModelTurn`.
 
 ## Kernel
 
