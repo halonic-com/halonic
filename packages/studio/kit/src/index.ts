@@ -61,6 +61,7 @@ export {
   type ModalRegionsProviderProps,
   type PushModalRegions,
 } from "./dialog/modal-regions.tsx";
+export { PaletteBox, type PaletteBoxProps } from "./dialog/palette-box.tsx";
 export {
   Disclosure,
   type DisclosureProps,
@@ -132,6 +133,7 @@ export {
   placeIconNames,
 } from "./icons/place-icon.tsx";
 export { PlusIcon } from "./icons/plus-icon.tsx";
+export { SearchIcon } from "./icons/search-icon.tsx";
 export { WarningIcon } from "./icons/warning-icon.tsx";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";

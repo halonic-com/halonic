@@ -179,6 +179,7 @@
   --container-dialog-sm: 440px; /* confirmations and short forms */
   --container-dialog-md: 560px; /* a form whose options show their own fields or hints */
   --container-dialog-lg: 720px; /* Settings */
+  --container-palette: 600px; /* the Ctrl K palette (specs 24.3) */
   --breakpoint-wide: 900px; /* wide: is the full layout; max-wide: is compact (sidebar collapsed) */
   /* No --breakpoint-phone: any --breakpoint-* makes Tailwind generate its own phone: (600px and
      up), which would clash with the phone: variant (theme-utilities.css). */

@@ -254,6 +254,15 @@
   max-height: calc(100dvh - 64px);
 }
 
+/* The Ctrl K palette's frame (specs 24.3): 96px from the top, centred, never closer than 16px to
+   the sides, and growing with its results until 96px above the window's bottom. */
+@utility palette-frame {
+  margin: 96px auto auto;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 192px);
+  max-height: calc(100dvh - 192px);
+}
+
 /* A Dialog with a fixed --dialog-height (Settings), still inside the frame's limit. */
 @utility dialog-height {
   height: min(var(--dialog-height), calc(100vh - 64px));

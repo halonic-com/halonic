@@ -399,6 +399,29 @@ Cancel. While `busy`, Close is unavailable with the busy button as its reason. A
 Callout is the last thing in the body, above the bar and 16px under the last field. Parts inside can ask `useInFormSheet()`, so a
 long field stays a textarea there instead of folding into a text sheet.
 
+## PaletteBox
+
+The Ctrl K palette's box (component specs 24.3): a modal `<dialog>` with no header or footer of its
+own. The shell puts its search row, results and footer inside. It's 600px wide (`w-palette`), 96px
+from the top, centred, never closer than 16px to the sides, and grows with its content until 96px
+above the window's bottom (`palette-frame`). Fill, radius, shadow, overlay and fade are a Dialog's.
+
+```tsx
+{
+  searching ? (
+    <PaletteBox label="Search" initialFocus={() => box.current} onCancel={close}>
+      …
+    </PaletteBox>
+  ) : null;
+}
+```
+
+It works as a Dialog does: mounting it opens it, the screen unmounts it to close it, Escape
+cancels, focus goes back to the opener, and its own live regions take the shell's announcements
+while it's open. Focus starts where `initialFocus` says, the search box, since the palette was
+opened to type. **One difference:** a click on the overlay cancels even after typing. A Dialog
+stops doing that to keep a form's work, but a palette's words are no work to lose.
+
 ## EmptyState
 
 A list, page or panel with nothing in it yet, or a search with no results. With `tone="error"`,
