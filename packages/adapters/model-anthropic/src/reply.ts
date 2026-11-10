@@ -59,15 +59,20 @@ function isThinking(block: Record<string, unknown>): boolean {
 }
 
 /**
- * The usage in our terms. Cache reads and writes (`cache_read_input_tokens`,
- * `cache_creation_input_tokens`) are left out until the usage fields have room
- * for them.
+ * The usage in our terms. The API's `input_tokens` already leaves out the
+ * tokens read from or written to the prompt cache, as our `inputTokens` does,
+ * so each count maps straight across. The cache counts are left out when
+ * there were none.
  */
 export function readUsage(value: unknown): ChatResponse["usage"] {
   const usage = isPlainObject(value) ? value : {};
+  const cacheReadTokens = countOf(usage["cache_read_input_tokens"]);
+  const cacheWriteTokens = countOf(usage["cache_creation_input_tokens"]);
   return {
     inputTokens: countOf(usage["input_tokens"]),
     outputTokens: countOf(usage["output_tokens"]),
+    ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens > 0 ? { cacheWriteTokens } : {}),
   };
 }
 
