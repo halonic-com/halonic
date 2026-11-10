@@ -586,7 +586,7 @@
     "old": "784f78d packages/core/schema/src/index.ts: tools.approve was only a list of tool names, so a value of another type failed with invalid_type at tools.approve.",
     "new": "tools.approve is a list of tool names or the word all, so a value that is neither fails with invalid_union at tools.approve, on the same line. The file still fails.",
     "why": "A new MCP connector starts with approve: all, so every tool asks a person first (launch claim C89, HAL-1219; the format change was agreed on HAL-1257). Only the problem code changes; the file fails at the same place.",
-    "status": "proposed",
+    "status": "signed-off",
     "fixtures": [
       {
         "case": "connector/wrong-type",
