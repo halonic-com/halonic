@@ -211,6 +211,21 @@ verifies("integration-kit.placement-from-sheet", () => {
       expect((error as Error).message).toContain(`"${"b".repeat(49)}😀…"`);
     });
 
+    it("quotes and shortens the secret's name too, so a huge name can't make a huge message", async () => {
+      const { http } = client();
+      const name = `x"\n${"a".repeat(1_000_000)}`;
+      const refused = async (auth: unknown) =>
+        (await http
+          .fetch("https://api.example.com/v1", { auth: auth as SecretPlacement })
+          .catch((thrown: unknown) => thrown)) as Error;
+      expect((await refused({ secret: name, as: "bearer" })).message).toBe(
+        `weather: the secret "x\\"\\n${"a".repeat(47)}…" is not in its permission sheet`,
+      );
+      expect((await refused({ secret: name, as: 7 })).message).toBe(
+        `weather: the "as" of the secret "x\\"\\n${"a".repeat(47)}…" in a secret placement is not text`,
+      );
+    });
+
     describe("the code changes its placement after the check", () => {
       /** Every header sent, to show the key went only where the sheet says. */
       const sentHeaders = (sent: { headers: Record<string, string> }[]) =>

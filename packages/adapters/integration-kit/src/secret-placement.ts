@@ -40,12 +40,13 @@ function copyPlacement(policy: IntegrationPolicy, placement: unknown): SecretPla
   const secret = given.secret;
   const as = given.as;
   if (typeof secret !== "string") throw notText(policy, "the secret's name");
-  if (typeof as !== "string") throw notText(policy, `the "as" of the secret "${secret}"`);
+  if (typeof as !== "string") throw notText(policy, `the "as" of the secret ${quoted(secret)}`);
   const copy: Record<string, string> = { secret, as };
   for (const key of ["header", "prefix", "field"] as const) {
     const value = given[key];
     if (value === undefined) continue;
-    if (typeof value !== "string") throw notText(policy, `the "${key}" of the secret "${secret}"`);
+    if (typeof value !== "string")
+      throw notText(policy, `the "${key}" of the secret ${quoted(secret)}`);
     copy[key] = value;
   }
   // Whether the fields fit together is for `checkPlacements` to say.
@@ -73,13 +74,13 @@ export function checkPlacements(
     if (declared === undefined) {
       throw new IntegrationRefusedError(
         "secret-not-declared",
-        `${policy.name}: the secret "${placement.secret}" is not in its permission sheet`,
+        `${policy.name}: the secret ${quoted(placement.secret)} is not in its permission sheet`,
       );
     }
     if (!matchesSheet(placement, declared.placement)) {
       throw new IntegrationRefusedError(
         "placement-not-in-sheet",
-        `${policy.name}: the secret "${placement.secret}" goes ${describe(declared.placement)} in its permission sheet, not ${describe(placement)}`,
+        `${policy.name}: the secret ${quoted(placement.secret)} goes ${describe(declared.placement)} in its permission sheet, not ${describe(placement)}`,
       );
     }
   }
@@ -100,13 +101,13 @@ export function checkPlacementHosts(
     if (declared === undefined || !hostIn(declared.hosts, url)) {
       throw new IntegrationRefusedError(
         "secret-not-allowed-for-host",
-        `${policy.name}: the secret "${placement.secret}" may not go to ${url.host}`,
+        `${policy.name}: the secret ${quoted(placement.secret)} may not go to ${url.host}`,
       );
     }
     if (!mayCarrySecret(url)) {
       throw new IntegrationRefusedError(
         "secret-over-plain-http",
-        `${policy.name}: the secret "${placement.secret}" may not go over plain http to another machine (${url.host})`,
+        `${policy.name}: the secret ${quoted(placement.secret)} may not go over plain http to another machine (${url.host})`,
       );
     }
   }
@@ -202,7 +203,7 @@ export async function readSecrets(
       if (policy.secrets[secret]?.optional === true) continue;
       throw new IntegrationRefusedError(
         "secret-not-configured",
-        `${policy.name}: the secret "${secret}" is not configured`,
+        `${policy.name}: the secret ${quoted(secret)} is not configured`,
       );
     }
     values.set(secret, value);
@@ -247,7 +248,7 @@ export function place(
         if (body === undefined) {
           throw new IntegrationRefusedError(
             "secret-needs-form-body",
-            `${policy.name}: the secret "${placement.secret}" goes in a form field, so the body must be a form`,
+            `${policy.name}: the secret ${quoted(placement.secret)} goes in a form field, so the body must be a form`,
           );
         }
         body = new URLSearchParams(body);
