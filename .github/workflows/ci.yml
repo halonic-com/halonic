@@ -123,12 +123,21 @@ jobs:
       - id: pr
         uses: $/.github/actions/pull-request
       # Reads the title from a file: an `env:` block is printed in the log.
-      # The merge queue checks it again, as the title may have changed since.
       - name: Pull request title
-        if: steps.pr.outputs.event-path != ''
+        if: github.event_name == 'pull_request'
         env:
           PR_EVENT: ${{ steps.pr.outputs.event-path }}
         run: GITHUB_EVENT_PATH="$PR_EVENT" pnpm check:pr-title
+      # In the queue, the subject of the squash commit: what lands on main.
+      # It is the title as it was when queued, or a single commit's own
+      # subject. GitHub adds " (#<number>)", which the length limit leaves out.
+      - name: Squash commit subject
+        if: github.event_name == 'merge_group'
+        env:
+          HEAD: ${{ github.event.merge_group.head_sha }}
+        run: |
+          PR_TITLE=$(git log -1 --format=%s "$HEAD" | sed -E 's/ \(#[0-9]+\)$//')
+          GITHUB_EVENT_PATH="" PR_TITLE="$PR_TITLE" pnpm check:pr-title
       # Plain check leaves out trace; the build job runs it after the tests.
       # The DCO rule checks the pull request's own commits. A merge queue
       # or a push to main only holds commits that passed it here.
