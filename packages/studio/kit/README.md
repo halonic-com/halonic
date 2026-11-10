@@ -1533,6 +1533,27 @@ plain http. Without a `ToastStoreProvider`, a part has no toasts and says what h
 A Dialog also gives the parts inside it its own polite region, because toasts wait while a
 dialog is open: a part says "Copied" there instead.
 
+## CommandBox
+
+A command to copy and run on your computer: Trust's `halonic trust …`, the serve key block.
+
+```tsx
+<CommandBox command="halonic trust ~/work/acme" />;
+```
+
+The command is `font-mono` `text-small` on `surface-muted`, radius 4px, padding 6px 8px. A long
+path wraps anywhere and never scrolls sideways, and one click selects the whole command. The
+ghost icon button next to it is named "Copy command" and keeps that name after copying; on a
+phone it's 48px.
+
+It confirms with a "Copied" toast. If copying fails, the command is left selected and the toast
+says "Couldn't copy. Select the command and copy it." Inside a Dialog, where toasts wait until it
+closes, it says the same through the Dialog's polite region instead, shows a check in place of its
+icon until the button loses focus, and shows a failure under the box. The screen passes nothing
+for any of this: it copies through the `ClipboardProvider` and toasts through the
+`ToastStoreProvider` (above). With neither a toast store nor a Dialog round it, it says the
+outcome in a status line of its own.
+
 ## ExternalLink
 
 A link to a page outside Studio, such as a Google Cloud Console page. Its text says where it goes

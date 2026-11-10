@@ -33,6 +33,12 @@ export {
   type CheckboxUnavailable,
 } from "./checkbox/checkbox.tsx";
 export {
+  COMMAND_COPIED,
+  COMMAND_NOT_COPIED,
+  CommandBox,
+  type CommandBoxProps,
+} from "./command-box/command-box.tsx";
+export {
   ClipboardProvider,
   type ClipboardProviderProps,
   type WriteClipboard,

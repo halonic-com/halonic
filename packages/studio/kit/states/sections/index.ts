@@ -3,6 +3,7 @@ import { actionBarSection } from "./action-bar.tsx";
 import { buttonSection } from "./button.tsx";
 import { cardSection } from "./card.tsx";
 import { checkboxSection } from "./checkbox.tsx";
+import { commandBoxSection } from "./command-box.tsx";
 import { copyButtonSection } from "./copy-button.tsx";
 import { disclosureSection } from "./disclosure.tsx";
 import { externalLinkSection } from "./external-link.tsx";
@@ -41,6 +42,7 @@ export const SECTIONS: readonly PartSection[] = [
   viewOnlyLineSection,
   actionBarSection,
   filterChipsSection,
+  commandBoxSection,
   formRowsSection,
   radioSection,
   copyButtonSection,
