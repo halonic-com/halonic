@@ -37,6 +37,7 @@ import type { PendingCall, RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { childNow, childStart, receiverOf } from "./child-runs.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
+import { LiveHarnessCalls } from "./live-harness-calls.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { RunFeed } from "./run-feed.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
@@ -109,7 +110,10 @@ export class LocalRuns {
   readonly #builtEffects: ReadonlySet<Effect["type"]>;
   /** The calls being carried out now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
+  readonly #harnessCalls = new LiveHarnessCalls();
   #started: Promise<void> | undefined;
+  /** Set by {@link LocalRuns.close}: timers change nothing and calls record nothing from then on. */
+  #closed = false;
 
   /** @throws RangeError when a start limit in `harnesses` isn't a whole number of milliseconds of 1 or more */
   constructor(options: LocalRunsOptions, clock: Clock, callModel: CallModel) {
@@ -191,9 +195,10 @@ export class LocalRuns {
    * A timer of a run is due: carry out the call it names, end a harness
    * start whose time is up, or pass the run the timer a state set. A timer
    * that is late, repeated or no longer wanted changes nothing, so this
-   * resolves for it.
+   * resolves for it, and so does every timer after {@link LocalRuns.close}.
    */
   async onTimer(timer: ScheduledTimer): Promise<void> {
+    if (this.#closed) return;
     await this.#ready();
     if (StartDeadlines.owns(timer)) {
       this.#startDeadlines.expire(timer);
@@ -207,6 +212,18 @@ export class LocalRuns {
     } else if (timer.timerId.startsWith(childTimer)) {
       await this.#hearFromChild(timer.key, timer.timerId.slice(childTimer.length));
     }
+  }
+
+  /**
+   * Stops running runs in this process: every harness run going on is
+   * stopped, with its session and bridge, and this resolves once they all
+   * have. What they were doing isn't recorded, so their runs stay `running`
+   * in the log and end as `interrupted` when an engine next starts on the
+   * store: a harness run can't be resumed.
+   */
+  async close(): Promise<void> {
+    this.#closed = true;
+    await this.#harnessCalls.stopAll();
   }
 
   /**
@@ -246,7 +263,9 @@ export class LocalRuns {
       const run = await readRun(this.#options.store, runId);
       const call = run?.pendingCall;
       if (run == null || call == null || call.callId !== callId) return;
-      await this.#recordIfTaken(runId, await this.#callResult(run, call, kind));
+      const result = await this.#callResult(run, call, kind);
+      if (this.#closed) return;
+      await this.#recordIfTaken(runId, result);
     } finally {
       this.#calling.delete(slot);
     }
@@ -279,7 +298,7 @@ export class LocalRuns {
    * read when it asked for the run.
    *
    * @throws when the executor has no `harnesses`, the definitions are gone,
-   *   the agent names no harness, or the harness run fails
+   *   the agent names no harness, the harness run fails, or the engine stops it
    */
   async #runHarness(run: RunState, call: PendingCall): Promise<unknown> {
     const harnesses = this.#options.harnesses;
@@ -302,7 +321,9 @@ export class LocalRuns {
     const { runId, hubId, lastSeq } = run;
     const log = new SerialRunLog(this.#options.store, runId, call.callId, lastSeq, this.#clock);
     const limits = this.#startDeadlines.of(runId, call.callId);
-    return runHarnessCall(harnesses, { effect, runId, hubId, agent }, log, limits);
+    return this.#harnessCalls.run((stop) =>
+      runHarnessCall(harnesses, { effect, runId, hubId, agent }, log, limits, stop),
+    );
   }
 
   /** As {@link LocalRuns.#record}, but an input the run no longer takes changes nothing. */

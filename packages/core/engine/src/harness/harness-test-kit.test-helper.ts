@@ -27,6 +27,19 @@ export type FakeStep =
   | "harness.start"
   | "harness.cancel";
 
+/**
+ * How many of the bridges, sessions and harness runs the fakes started are
+ * still open: each open or start counts one, each close or cancel takes one
+ * away. A call that stopped everything it started leaves 0.
+ */
+export function stillOpen(steps: readonly FakeStep[]): number {
+  let open = 0;
+  for (const step of steps) {
+    open += step.endsWith(".open") || step === "harness.start" ? 1 : -1;
+  }
+  return open;
+}
+
 /** A sandbox whose check and open a test sets, and that notes each session it opens and closes. */
 export class FakeSandbox implements Sandbox {
   check: () => Promise<SandboxCheck> = async () => ({ ok: true, reason: null, missing: [] });
@@ -68,15 +81,16 @@ export class FakeSandbox implements Sandbox {
 
 /**
  * A harness that reports the events a test gives it, then fails with `error`
- * when set. With `silent`, it reports nothing until it's cancelled, as a
- * program that hangs at start would.
+ * when set. With `hangs`, it reports nothing after its events until it's
+ * cancelled, as a program that is stuck would; with no events, that is a
+ * program that hangs at start.
  */
 export class FakeHarness implements Harness {
   readonly id = "claude-code";
   readonly name = "Claude Code";
   events: HarnessEvent[] = [];
   error: Error | undefined;
-  silent = false;
+  hangs = false;
   /** How many event streams ran their own clean-up, as a generator's `finally` does when it is ended. */
   streamsCleanedUp = 0;
   readonly tasks: HarnessTask[] = [];
@@ -97,7 +111,7 @@ export class FakeHarness implements Harness {
   start(task: HarnessTask): HarnessRun {
     this.tasks.push(task);
     this.#steps.push("harness.start");
-    const { events, error, silent } = this;
+    const { events, error, hangs } = this;
     const steps = this.#steps;
     const cancelled = Promise.withResolvers<void>();
     const cleanedUp = () => {
@@ -106,11 +120,11 @@ export class FakeHarness implements Harness {
     return {
       async *[Symbol.asyncIterator]() {
         try {
-          if (silent) {
+          yield* events;
+          if (hangs) {
             await cancelled.promise;
             throw new Error("The run was cancelled.");
           }
-          yield* events;
           if (error !== undefined) throw error;
         } finally {
           cleanedUp();

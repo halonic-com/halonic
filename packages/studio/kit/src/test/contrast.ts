@@ -13,10 +13,20 @@ export interface Rgba {
 
 const hexPattern = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
 const rgbPattern = /^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*(?:\/\s*([\d.]+)\s*)?\)$/;
+const mixPattern = /^color-mix\(\s*in srgb\s*,\s*(.+?)\s+([\d.]+)%\s*,\s*transparent\s*\)$/;
 
-/** Reads the two colour forms the theme uses: `#rrggbb` and `rgb(r g b / a)`. */
+/**
+ * Reads the colour forms the theme uses: `#rrggbb`, `rgb(r g b / a)`, and
+ * `color-mix(in srgb, <colour> N%, transparent)`, which is that colour at alpha N/100.
+ */
 export function parseColour(text: string): Rgba {
   const trimmed = text.trim();
+  const mix = mixPattern.exec(trimmed);
+  if (mix !== null) {
+    const [, colour = "", percent = ""] = mix;
+    const opaque = parseColour(colour);
+    return { ...opaque, alpha: (opaque.alpha * Number(percent)) / 100 };
+  }
   const hex = hexPattern.exec(trimmed);
   if (hex !== null) {
     const [, red = "", green = "", blue = ""] = hex;
@@ -32,7 +42,9 @@ export function parseColour(text: string): Rgba {
     const [, red = "", green = "", blue = "", alpha = "1"] = rgb;
     return { red: Number(red), green: Number(green), blue: Number(blue), alpha: Number(alpha) };
   }
-  throw new Error(`Can't read the colour "${text}". Use #rrggbb or rgb(r g b / a).`);
+  throw new Error(
+    `Can't read the colour "${text}". Use #rrggbb, rgb(r g b / a) or color-mix(in srgb, <colour> N%, transparent).`,
+  );
 }
 
 /** Paints `top` over an opaque `bottom` and returns the opaque result. */
@@ -51,7 +63,8 @@ function channelLuminance(channel: number): number {
   return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
-function relativeLuminance(colour: Rgba): number {
+/** WCAG relative luminance, 0 (black) to 1 (white), of an opaque colour. */
+export function relativeLuminance(colour: Rgba): number {
   return (
     0.2126 * channelLuminance(colour.red) +
     0.7152 * channelLuminance(colour.green) +

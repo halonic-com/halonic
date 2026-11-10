@@ -14,7 +14,8 @@ export const toolApprovalStoreVersion = 1;
  * secret value reaches the profile.
  *
  * - `http`: the connector's URL as the trust content writes it, without
- *   its fragment. A URL with user info has no address, as it can't be trusted. The query string stays, because it is part of the server's
+ *   its fragment. A URL with user info has no address, as it can't be
+ *   trusted. The query string stays, because it is part of the server's
  *   identity. The headers count too, but only as their {@link WrittenDigest},
  *   because a person may have typed a token straight into one.
  * - `stdio`: the command and its arguments, the pin when the command is a
@@ -24,7 +25,10 @@ export const toolApprovalStoreVersion = 1;
  * - `integration`: the integration's id, its version and the settings the
  *   workspace gives it, such as the `url` of an MCP server. A new version
  *   asks again, because its reviewed code may talk to the server
- *   differently, and so do new settings.
+ *   differently, and so do new settings. The settings are kept as plain
+ *   text, unlike headers and the environment, because they never hold a
+ *   secret value: a secret setting is kept in Secrets, and the settings
+ *   hold only its `${NAME}` reference.
  */
 export type ToolServer =
   | { kind: "http"; url: string; headers: WrittenDigest | null }

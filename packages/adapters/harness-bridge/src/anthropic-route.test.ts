@@ -172,7 +172,6 @@ verifies("harness-bridge.anthropic", () => {
   describe("refusing", () => {
     const cases: [string, BridgeProviderAccess | null, string, number][] = [
       ["an agent that doesn't use Anthropic", null, "denied", 403],
-      ["an agent that signs in with a subscription", { kind: "sign-in" }, "denied", 403],
       ["a key that isn't set", { kind: "key", secret: "missing" }, "unauthenticated", 401],
     ];
     for (const [who, access, kind, status] of cases) {

@@ -49,7 +49,7 @@ llmProviderContract(
     return {
       provider,
       answerNext: (answer) => vendor.answerNext(answer),
-      hangNext: () => vendor.hangNext(),
+      hangNext: (partialText) => vendor.hangNext(partialText),
       refuseNext: () =>
         vendor.replyNext(400, {
           type: "error",
@@ -58,8 +58,8 @@ llmProviderContract(
       calls: () => vendor.calls(),
     };
   },
-  // Claude's extended thinking gives a summary of its reasoning. Streaming comes next.
-  { streams: false, reasoning: true },
+  // Claude's extended thinking gives a summary of its reasoning.
+  { streams: true, reasoning: true },
 );
 
 verifies("model-anthropic.endpoint", () => {

@@ -26,6 +26,8 @@ export interface LoadedModelSize {
  */
 export const doctorMessages = defineMessages("doctor", {
   summary: () => phrase`Check that this computer can run Halonic: models, sandbox, disk`,
+  /** What `doctor` was doing, for "✕ Couldn't check ./downloads: …"; "this computer" without `--dir`. */
+  action: (folder?: string) => phrase`check ${folder ?? "this computer"}`,
   /** "Halonic 0.1.0 · Linux x64". */
   heading: (version: string, system: string) =>
     phrase`Halonic ${version} ${markPart("separator")} ${system}`,

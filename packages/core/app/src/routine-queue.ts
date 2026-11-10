@@ -58,11 +58,12 @@ export function writeQueue(runs: readonly QueuedRun[]): string | null {
 }
 
 /**
- * Reads what {@link writeQueue} wrote. Only the scheduler writes the key,
- * so anything else (a hand edit, a damaged store) counts as no queue rather
- * than stopping every routine of the workspace.
+ * Reads what {@link writeQueue} wrote, or `null` when it can't be read. Only
+ * the scheduler writes the key, so anything else (a hand edit, a damaged
+ * store) counts as no queue rather than stopping every routine of the
+ * workspace; the caller notes the loss.
  */
-export function readQueue(text: string | null): Map<string, Date[]> {
+export function readQueue(text: string | null): Map<string, Date[]> | null {
   const queue = new Map<string, Date[]>();
   if (text === null) {
     return queue;
@@ -71,10 +72,10 @@ export function readQueue(text: string | null): Map<string, Date[]> {
   try {
     parsed = JSON.parse(text);
   } catch {
-    return queue;
+    return null;
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return queue;
+    return null;
   }
   for (const [key, times] of Object.entries(parsed)) {
     if (!Array.isArray(times)) {

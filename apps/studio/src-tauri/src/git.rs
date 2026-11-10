@@ -13,9 +13,9 @@ use tauri::{AppHandle, Manager, Runtime};
 /// The shell's git state: the folders the user opened and, once the first
 /// call has found git, the runner.
 ///
-/// No folder is opened yet, so every call is refused with
-/// `folder_not_opened` until the folder picker (HAL-191) adds the folders
-/// the user chooses.
+/// No folder is open at start, so every call is refused with
+/// `folder_not_opened` until the folder picker or a trust grant (`trust.rs`)
+/// opens the folders the user chooses.
 #[derive(Debug, Default)]
 pub struct GitState {
     folders: Arc<OpenedFolders>,
@@ -23,6 +23,12 @@ pub struct GitState {
 }
 
 impl GitState {
+    /// The opened folders, which the folder picker and trust grants add to
+    /// and revoking trust takes from.
+    pub fn folders(&self) -> Arc<OpenedFolders> {
+        Arc::clone(&self.folders)
+    }
+
     /// The runner, made on the first call. A failure is not kept, so git
     /// installed while the app is open is found on the next call.
     fn runner<R: Runtime>(&self, app: &AppHandle<R>) -> Result<Arc<GitRunner>, GitError> {

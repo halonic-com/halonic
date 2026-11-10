@@ -30,6 +30,7 @@ export const WorkflowTestCase = s
         status: s.enum(["completed", "waiting", "failed"]).optional(),
         /** A partial match on the final context. */
         context: s.record(s.string(), s.unknown()).optional(),
+        /** Files the run must have saved; it may save others too. */
         artifacts: s.array(s.string()).optional(),
       })
       .strict()

@@ -74,7 +74,7 @@ async function reportNeedingNote(
     for (const finding of needNote) {
       report.error(
         finding.file,
-        `${finding.message} That needs a decision note: add ${noteFile}, list "${finding.subject}" under Covers and link an approval (plan 9.3).`,
+        `${finding.message} That needs a decision note: add ${noteFile}, list "${finding.subject}" under Covers, link an approval and have the approver sign it (plan 9.3).`,
         finding.line,
       );
     }
@@ -90,11 +90,7 @@ async function reportNeedingNote(
     }
     return;
   }
-  const verdict = await run.approvals.check({
-    approval: parsed.note.approval,
-    branch: run.branch,
-    kind: parsed.note.kind,
-  });
+  const verdict = await run.approvals.check({ note: parsed.note });
   for (const finding of needNote) {
     reportAgainstNote(finding, parsed.note, verdict, report);
   }

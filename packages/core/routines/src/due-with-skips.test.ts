@@ -1,6 +1,6 @@
 import type { Routine } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { due, type PlacedRoutine } from "./due.ts";
 import { dueWithSkips, type SkippedRange } from "./due-with-skips.ts";
 
@@ -72,6 +72,22 @@ verifies("routines.skipped-times", () => {
       range("window", "2026-10-25T19:00Z", "2026-11-02T08:00Z", 182),
       range("cap", "2026-11-02T09:00Z", "2026-11-05T04:00Z", 68),
     ]);
+  });
+
+  // Counts the slow steps instead of timing them, so a busy runner can't fail it. Before
+  // HAL-3595 this case built 1,071 formatters and read the clock 57,264 times: 4 s on CI.
+  it("builds the time-zone formatter once and doesn't read the clock for every minute", () => {
+    const built = vi.spyOn(Intl, "DateTimeFormat");
+    const reads = vi.spyOn(Intl.DateTimeFormat.prototype, "formatToParts");
+    try {
+      dueWithSkips([placed(hourly, "all")], new Date("2026-10-25T18:00:00Z"), monday);
+      // One to check the zone, one to search the cron.
+      expect(built.mock.calls.length).toBeLessThanOrEqual(2);
+      expect(reads.mock.calls.length).toBeLessThan(5_000);
+    } finally {
+      built.mockRestore();
+      reads.mockRestore();
+    }
   });
 
   it("marks a late run with nothing dropped, and leaves a run on time unmarked", () => {

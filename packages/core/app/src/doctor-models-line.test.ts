@@ -95,9 +95,33 @@ verifies("app.doctor-models", () => {
   it("neither lists nor warns about a provider that needs no key", () => {
     const mock: ModelProviderState = { provider: "mock", name: "Mock", runs: "without-a-key" };
 
-    const line = modelsLine([mock], [{ alias: "test", provider: "mock" }]);
+    const anthropic: ModelProviderState = {
+      provider: "anthropic",
+      name: "Anthropic",
+      runs: "with-a-key",
+      keyStored: true,
+    };
 
-    expect(line).toEqual({ check: "models", status: "ok", ready: [], problems: [] });
+    const line = modelsLine(
+      [mock, anthropic],
+      [
+        { alias: "test", provider: "mock" },
+        { alias: "smart", provider: "anthropic" },
+      ],
+    );
+
+    expect(line).toEqual({
+      check: "models",
+      status: "ok",
+      ready: [{ provider: "anthropic", name: "Anthropic", keyStored: true }],
+      problems: [],
+    });
+  });
+
+  it("has no line when every alias's provider needs no key, so the line would name nothing", () => {
+    const mock: ModelProviderState = { provider: "mock", name: "Mock", runs: "without-a-key" };
+
+    expect(modelsLine([mock], [{ alias: "test", provider: "mock" }])).toBeUndefined();
   });
 
   it("has no line when the workspace has no model aliases", () => {

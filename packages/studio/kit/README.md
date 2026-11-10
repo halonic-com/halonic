@@ -75,11 +75,41 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 | `--spacing-control-*`, `-titlebar`, `-statusbar`, others | `h-control-md`, `h-statusbar`, `w-sidebar`        |
 | `--radius-*`, `--shadow-*`, `--ease-*`, `--animate-spin` | `rounded-md`, `shadow-2`, `ease-enter`            |
 | the halo                                                 | `bg-halo-frame`, `-tint`, `-wash`, `-line`        |
+| the halo on a start screen                               | `bg-halo-spot`, `shadow-halo-glow`                |
+| the workflow canvas                                      | `bg-canvas-grid`                                  |
 | the focus ring (keyboard focus only)                     | `focus-ring`, `focus-ring-inset` for list rows    |
 | a selected row's mark                                    | `selected-bar`, `selected-forced`                 |
 | Windows high-contrast mode only                          | `text-forced-disabled`                            |
 | `--breakpoint-wide`                                      | `wide:`, `max-wide:` (compact)                    |
 | `--duration-*`, `--layer-*` (plain variables)            | `duration-(--duration-base)`, `z-(--layer-toast)` |
+
+## The halo on a start screen
+
+The desktop start screen and Welcome on a computer put one `aria-hidden` element with
+`bg-halo-spot` behind their heading and box: the halo tints, fading out from the middle, so text on
+it keeps 4.5:1. `shadow-halo-glow` is the app's one glow. Put it on a `rounded-lg` wrapper round
+the composer, never on the box itself, whose focus look is a box shadow too. It's a utility, not a
+`--shadow-*` token, so it can't turn up elsewhere. A frame colour preset (Settings) sets only
+`--halo-blue` and `--halo-violet`; the tints are `color-mix()` of those two, so all six halo
+utilities follow. The four presets keep every text colour at 4.5:1 on the spot and the frame.
+
+## Agent pages: the orb, stacked cards and the canvas
+
+`theme-agent-pages.css` holds plain variables, so Tailwind makes no classes from them:
+
+| Variable                             | What it's for                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| `--character-1a` … `--character-5b`  | The agent orb's five colour pairs (halo, lagoon, ember, moss, orchid)      |
+| `--stack-peek`, `--stack-inset`      | Each stacked card behind sits 10px higher and 12px narrower on each side   |
+| `--stack-shade-1`, `--stack-shade-2` | The fill of the card one behind, and of the cards two or more behind       |
+| `--stack-scrim`                      | Over the view under a stack of full cards; lighter than a dialog's overlay |
+| `--canvas-grid-dot`                  | The canvas's dots, only through `bg-canvas-grid`                           |
+
+Only the orb reads the character colours: an agent's pair comes from its `character.colors`, or is
+picked from its id. They're the same in light and dark and don't follow a frame colour preset. Each
+orb edge (`b`) keeps 3:1 on every surface and both stack shades. Each step back in a stack is one
+shade darker, and every text colour keeps 4.5:1 on both shades. Text never sits straight on the
+canvas's dots: put it on a step card or a `surface-subtle` label plate.
 
 The theme starts from `--*: initial`, so Tailwind's own palette and scales don't exist:
 `bg-red-500`, `rounded-3xl`, `text-sm` and `shadow-lg` produce no CSS. Two things still compile and
@@ -111,6 +141,10 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
   in both modes, with see-through colours (status chips) blended over each surface they can sit on;
 - the radius, spacing, shadow, animation, breakpoint, layer and duration tokens are exactly the
   agreed set, and the shell's layout sizes keep their values, so a change is visible in review;
+- the halo utilities are exactly six, hold no hard-coded colour, and keep text at 4.5:1 with each
+  of the four frame colour presets;
+- the agent orb's edges keep 3:1 and text keeps 4.5:1 on the stack shades, and each shade is darker
+  than the card in front;
 - the focus rings never remove the outline, so they show in Windows high-contrast mode;
 - the more-contrast block raises exactly its six tokens, and the raised text colours gain contrast
   on every surface;
@@ -483,6 +517,51 @@ width a tab renders at 40px with a 48px hit area.
 
 **In high contrast** the selected tab keeps an edge: forced colours drops its fill and shadow and
 paints the transparent outline instead. A disabled tab turns `GrayText` (`text-forced-disabled`).
+
+## PickerSheet
+
+The phone's picker (component specs 15.3): a full-screen sheet with **Close** at the top left and
+the field's label as its title. It's what the Select becomes on a phone, what the filter chips'
+picker opens, and the chat's model chip and the "add" pickers use it too. Mount it to open it and
+unmount it to close it; focus starts on the title and goes back to the opener.
+
+```tsx
+{
+  picking ? (
+    <PickerSheet
+      title="Model"
+      options={[
+        { value: "sonnet", label: "Sonnet", description: "€3 per million words in" },
+        { value: "opus", label: "Opus", unavailable: { reason: "Needs an Anthropic key." } },
+      ]}
+      value={model}
+      empty="No models yet. Add a provider in Settings."
+      onPick={(next) => {
+        save(next);
+        setPicking(false);
+      }}
+      onClose={() => setPicking(false)}
+    />
+  ) : null;
+}
+```
+
+- The options are **native radios** in one radio group (`appearance: none`), so screen readers
+  hear a radio group. A row is padded 8px 16px, 56px with a description, 48px without; the picked
+  option has a 20px `accent` check at the right.
+- **A tap, Enter or Space picks**: `onPick` once, and the screen saves (as on desktop) and unmounts
+  the sheet. **The arrow keys only move the check.** Browsers fire `click` on the radio an arrow
+  moves to, so a click in the same task as an arrow key isn't a pick.
+- **Close, Escape and Android back** call `onClose`. Nothing was picked, so the field keeps its
+  value.
+- An `unavailable` option stays listed, native `disabled` (the one place the kit uses it, 23 A1),
+  with its reason as its description. Never hide an option.
+- `explanation` is a line at the top ("Only models that Claude Code can use."). From 11 options
+  (`PICKER_SEARCH_FROM`) a search field narrows the list by name. With no options, `empty` says
+  what's missing and where to add it.
+
+The frame (full screen at `--app-height`, the phone top bar, the Dialog's modal focus, Escape and
+live regions) is shared with the text and form sheets.
 
 ## Presentation
 
@@ -908,6 +987,28 @@ names the shortcut instead, from the same keys: `keyShortcutsLabel(["Ctrl", "T"]
 </button>;
 ```
 
+## ViewOnlyLine and LineFrame
+
+`ViewOnlyLine` is the one line that says a page can't be changed on a phone: a 16px eye in
+`fg-muted`, then the page's own sentence in `text-small` `fg-muted`. Put it first in the page's
+content, under the tabs or the top bar, at most once per page, and not again in the sheets the page
+opens. The sentence is the screen's and is never shortened; it wraps. It has no action, isn't
+dismissible and isn't live: a calm fact, read in order. The rest of the page shows its values as
+text, with no greyed-out controls.
+
+```tsx
+<ViewOnlyLine>View only on a phone. Edit this workflow on a computer.</ViewOnlyLine>;
+```
+
+It's drawn on `LineFrame`, the frame of a plain line at the top of a page: padding 8px 16px, at
+least 48px high, a 1px `border` line below, no fill, and a 16px icon top-aligned with the first line
+of `text-small` text. A feature's own line (the Changes feature's sharing strip) uses the frame
+with its own icon; `muted` puts the icon and the text in `fg-muted`.
+
+```tsx
+<LineFrame icon={<ShareIcon />}>Shared with your team.</LineFrame>;
+```
+
 ## Menu
 
 A short list of actions that opens from a button: a row's ⋮ More button, the title bar, a sidebar
@@ -932,7 +1033,7 @@ menu and let the browser open it. Divide groups with `"divider"`.
 | --------- | -------------------------------------------------------------------------------- |
 | `trigger` | Renders the button that opens it; a kit `Button` takes every prop it gets        |
 | `entries` | Items and `"divider"`s. An item has `id`, `label` and `onSelect`, and optionally |
-|           | `icon`, `keys`, `danger`, `disabled` or `unavailable: { reason }`                |
+|           | `icon`, `keys`, `danger`, `disabled`, `unavailable: { reason }` or `checked`     |
 | `align`   | `start` (the default) lines up with the trigger's left edge, `end` its right     |
 
 | State            | What shows                                                                                  |
@@ -955,6 +1056,10 @@ trigger before `onSelect` runs, so a Dialog the item opens returns focus there.
 
 A shortcut shows as a Kbd and is named with `aria-keyshortcuts`. An `unavailable` item's reason is
 the item's description.
+
+An item with `checked` is one choice of several, a `menuitemradio` with `aria-checked`: `true` on
+the current one, which shows a 16px `accent` check at the right, `false` on the others. The filter
+chips' picker uses it on desktop, where a phone opens the picker sheet.
 
 **On a phone and under a coarse pointer** items are 48px with a 20px icon, and an unavailable
 item has 12px of padding above and below. On a phone shortcuts are
@@ -1020,12 +1125,25 @@ them by hand.
 | `hint`      | A short line under the control in `fg-subtle`                               |
 | `error`     | A sentence that says what to do: "Give the agent a name." Replaces the hint |
 | `required`  | Writes "Required" after the label in `fg-subtle`. No asterisk               |
+| `prefix`    | `{ symbol, name }`: a currency outside the box, such as "€", "in euros"     |
 
 Screen readers hear "required" once, from the control's `aria-required`: the visible word is
 hidden from them.
 
 The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
 control of your own can read the Field through `useFieldControl()`.
+
+A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
+tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
+label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
+the symbol. Pass both parts: the symbol from `Intl.NumberFormat(…).formatToParts`, the name from
+the message catalogue. The Field never guesses the name, because the currency can change.
+
+```tsx
+<Field label="Per run" prefix={{ symbol: "€", name: "in euros" }}>
+  <Input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
+</Field>;
+```
 
 ## FormRows
 
@@ -1096,6 +1214,40 @@ false.
 a 48px hit area, so the box stays 48px. **On a touch screen** at desktop width the box is 40px,
 like the Buttons beside it, and the text is 16px too.
 
+**The leading button.** Instead of a `leadingIcon`, the box can start with a small button: the
+colour field's swatch, which opens its popover. The type takes one or the other, never both.
+
+```tsx
+<Field label="First colour" error={hexError}>
+  <Input
+    value={hex}
+    onChange={(event) => setHex(event.target.value)}
+    leadingButton={{
+      label: `Choose the first colour, now ${lastGood}`,
+      onClick: openPopover,
+      expanded: popoverOpen,
+      controls: "first-colour-popover",
+      children: <Swatch colour={lastGood} />,
+    }}
+  />
+</Field>;
+```
+
+| `leadingButton` | What it is                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `label`         | Its name, with the feature's verb and the value read with it                                   |
+| `onClick`       | Called on a click, Enter or Space. The text doesn't take focus                                 |
+| `children`      | The glyph, 16px at most, drawn by the feature; hidden from screen readers                      |
+| `expanded`      | Whether what it opens is open; adds `aria-haspopup="dialog"`. Leave it out if it opens nothing |
+| `controls`      | The `id` of what it opens, set as `aria-controls` while it's open                              |
+
+The kit draws the slot, the hit area and the focus; the feature draws what's inside. The hit area
+is 24px square, 4px from the box's left edge, and the text starts 8px after it (36px in). On a
+phone it's the 48px square at the left of the box, and the text starts at 48px. The button has the
+general focus ring, and the box's `accent` edge shows only while the text has focus, so you can
+always tell which of the two you're on. It has no fill of its own: a hover is the box's. While the
+Input is disabled or read-only, the button is disabled too, its glyph at 45%.
+
 ## TextArea
 
 A text field of several lines, in the Input's box and states. It grows with its text up to
@@ -1118,6 +1270,47 @@ line-height token for an engine without that unit.
 
 **On a phone** it's at least 48px high, with 16px text. Long text on a phone page (Instructions,
 Description) opens the text sheet instead; that comes with the Sheet.
+
+## Select
+
+Pick one value from a list: a model, a hub. On desktop it's the native `<select>`, so the keyboard
+and screen readers work as they do everywhere, in the Input's box with a chevron at the end.
+Options use the system's list. Put it in a Field, which names it and puts its hint or error under
+it.
+
+```tsx
+<Field label="Model" error={modelError}>
+  <Select options={models} value={model} onChange={setModel} placeholder="Choose a model" />
+</Field>;
+```
+
+| Prop          | What it is                                                                      |
+| ------------- | ------------------------------------------------------------------------------- |
+| `options`     | `{ value, label, disabled? }` in list order. A `disabled` one is listed, greyed |
+| `value`       | The picked value                                                                |
+| `onChange`    | Called with the new value as soon as the user picks it                          |
+| `placeholder` | Shown while `value` isn't in `options`: "Choose a model". It can't be picked    |
+| `size`        | `md` 32px (the default) or `sm` 28px. 48px on a phone, 40px on a touch screen   |
+| `ref`         | The control you focus: the `<select>`, or the picker button on a phone          |
+
+| State    | What shows                                                                               |
+| -------- | ---------------------------------------------------------------------------------------- |
+| Default  | The Input's box, the value in `fg`, a 16px `fg-muted` chevron with 32px of room          |
+| Hover    | The edge turns `fg-muted`                                                                |
+| Focus    | An `accent` edge and a 3px `accent-soft` ring (`focus-field`)                            |
+| Disabled | `surface-subtle` fill, a `border` edge, the value in `fg-disabled`, cursor `not-allowed` |
+| Error    | A `danger` edge; typically the placeholder in `fg-subtle`, for a value that's gone       |
+
+There's no read-only Select: a native select has none, and a view-only page shows the value as
+text. A list with icons, descriptions or search is a different component, not a Select.
+
+**On a phone** (the `phone` presentation) the Select is a **picker button** instead, never the
+browser's menu: 48px high with 16px text and the chevron, like the phone Input. It's named by the
+Field's label and then the value, so a screen reader hears "Model, Sonnet", and the label points at
+it. Only that one control is rendered for the keyboard and screen readers. Until the kit's picker
+sheet exists (it comes with the Sheet), the button opens the system's picker from a native select
+hidden under it; a picked value is saved at once and focus goes back to the button. With the
+sheet, the button will open it instead, and say so with `aria-haspopup="dialog"`.
 
 ## CopyButton
 
@@ -1158,6 +1351,32 @@ it falls back to selecting the text in a hidden text box and running the browser
 only a `string`, so passing a secret is a type error, and the button throws if one gets through a
 cast. A `SecretText` turned into text by accident shows `[secret]`; only the request that saves it
 calls `reveal()`.
+
+## ClipboardProvider and ToastStoreProvider
+
+Two services the shell sets at its root, so a kit part can copy and confirm without the screen
+passing anything. The CommandBox uses both.
+
+```tsx
+<ClipboardProvider writeClipboard={(text) => desktop.writeClipboard(text)}>
+  <ToastStoreProvider store={toasts}>
+    <App />
+    <ToastRegion store={toasts} />
+  </ToastStoreProvider>
+</ClipboardProvider>;
+```
+
+| Provider             | What it gives                                                        |
+| -------------------- | -------------------------------------------------------------------- |
+| `ClipboardProvider`  | How to copy: Tauri's clipboard. Resolves `true` or `false`, no throw |
+| `ToastStoreProvider` | The window's toast store, the one its `ToastRegion` shows            |
+
+Without a `ClipboardProvider`, parts copy with `navigator.clipboard`, which needs a secure
+context, and fall back to the browser's copy command for a phone that reaches the computer over
+plain http. Without a `ToastStoreProvider`, a part has no toasts and says what happened itself.
+
+A Dialog also gives the parts inside it its own polite region, because toasts wait while a
+dialog is open: a part says "Copied" there instead.
 
 ## ExternalLink
 

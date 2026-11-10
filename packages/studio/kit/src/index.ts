@@ -25,6 +25,11 @@ export {
   type CheckboxProps,
   type CheckboxUnavailable,
 } from "./checkbox/checkbox.tsx";
+export {
+  ClipboardProvider,
+  type ClipboardProviderProps,
+  type WriteClipboard,
+} from "./copy-button/clipboard.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export { Dialog } from "./dialog/dialog.tsx";
 export type { DialogConfirm, DialogProps, DialogSize } from "./dialog/dialog-props.ts";
@@ -53,6 +58,7 @@ export {
 export {
   Field,
   type FieldControl,
+  type FieldPrefix,
   type FieldProps,
   useFieldControl,
 } from "./field/field.tsx";
@@ -67,9 +73,11 @@ export {
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
+export type { InputLeadingButton } from "./input/leading-button.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps, keyShortcutsLabel } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
+export { LineFrame, type LineFrameProps } from "./line-frame/line-frame.tsx";
 export type { ListEmpty } from "./list/empty-list.tsx";
 export { List } from "./list/list.tsx";
 export type { ListProps, ListRow, ListSelection } from "./list/list-props.ts";
@@ -91,6 +99,12 @@ export {
   type MenuTriggerProps,
 } from "./menu/menu.tsx";
 export {
+  PICKER_SEARCH_FROM,
+  type PickerOption,
+  PickerSheet,
+  type PickerSheetProps,
+} from "./picker-sheet/picker-sheet.tsx";
+export {
   type Presentation,
   PresentationProvider,
   type PresentationProviderProps,
@@ -102,6 +116,7 @@ export {
   type RadioOption,
 } from "./radio/radio-group.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
+export { Select, type SelectOption, type SelectProps } from "./select/select.tsx";
 export { SidePanel, type SidePanelProps } from "./side-panel/side-panel.tsx";
 export {
   SkeletonBar,
@@ -120,6 +135,10 @@ export {
   TOAST_CLOSES_AFTER_MS,
   TOAST_WITH_ACTION_CLOSES_AFTER_MS,
 } from "./toast/toast-card.tsx";
+export {
+  ToastStoreProvider,
+  type ToastStoreProviderProps,
+} from "./toast/toast-provider.tsx";
 export { TOASTS_SHOWN, ToastRegion, type ToastRegionProps } from "./toast/toast-region.tsx";
 export {
   createToastStore,
@@ -135,6 +154,7 @@ export {
   type TooltipProps,
   type TooltipTriggerProps,
 } from "./tooltip/tooltip.tsx";
+export { ViewOnlyLine, type ViewOnlyLineProps } from "./view-only-line/view-only-line.tsx";
 export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";
 
 /** The npm name of this package. */

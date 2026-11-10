@@ -1,4 +1,4 @@
-import type { DefinitionSource, DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionSource, DefinitionStore, ExpectedContent } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 
@@ -171,6 +171,117 @@ export function definitionStoreContract(name: string, make: MakeDefinitionStore)
         expect(await store.version()).toBe(before);
       });
     });
+  });
+
+  verifies("ports.definition-store-write-if-unchanged", () => {
+    describe(`DefinitionStore write if unchanged: ${name}`, () => {
+      writeIfUnchangedCases(make);
+    });
+  });
+}
+
+/**
+ * The digest `write` expects, worked out here rather than with
+ * `contentDigest`, so a store that hashes differently from the port doc
+ * fails: `sha256:` and the lowercase hex SHA-256 of the UTF-8 text.
+ */
+async function digestOf(text: string): Promise<ExpectedContent> {
+  const hash = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)),
+  );
+  let hex = "";
+  for (const byte of hash) {
+    hex += byte.toString(16).padStart(2, "0");
+  }
+  return `sha256:${hex}`;
+}
+
+function writeIfUnchangedCases(make: MakeDefinitionStore): void {
+  it("writes when the file still holds what was last read", async () => {
+    const store = await make({ "a.yaml": "1", "b.yaml": "naïve: ü\n" });
+    expect(await store.write("a.yaml", "2", { expected: await digestOf("1") })).toEqual({
+      status: "written",
+    });
+    expect(await store.read("a.yaml")).toBe("2");
+    // The digest is of the UTF-8 bytes, so text beyond ASCII matches too.
+    expect(await store.write("b.yaml", "x", { expected: await digestOf("naïve: ü\n") })).toEqual({
+      status: "written",
+    });
+    expect(await store.read("b.yaml")).toBe("x");
+  });
+
+  it("writes nothing and gives the current text when the file changed", async () => {
+    const store = await make({ "a.yaml": "3" });
+    const before = await store.version();
+    expect(await store.write("a.yaml", "2", { expected: await digestOf("1") })).toEqual({
+      status: "changed-on-disk",
+      current: "3",
+    });
+    expect(await store.read("a.yaml")).toBe("3");
+    expect(await store.version()).toBe(before);
+  });
+
+  it("matches only the digest as the port doc writes it", async () => {
+    const store = await make({ "a.yaml": "1" });
+    const before = await store.version();
+    const digest = await digestOf("1");
+    // Not digests as the type writes them, but a caller in plain JavaScript can pass them.
+    const malformed = [digest.slice("sha256:".length), digest.toUpperCase(), "1", ""];
+    for (const expected of malformed as ExpectedContent[]) {
+      expect(await store.write("a.yaml", "2", { expected }), expected).toEqual({
+        status: "changed-on-disk",
+        current: "1",
+      });
+    }
+    expect(await store.version()).toBe(before);
+  });
+
+  it("gives null as the current text when the file is gone, and creates nothing", async () => {
+    const store = await make({ "b.yaml": "1" });
+    const before = await store.version();
+    expect(await store.write("a.yaml", "2", { expected: await digestOf("1") })).toEqual({
+      status: "changed-on-disk",
+      current: null,
+    });
+    expect(await store.read("a.yaml")).toBeNull();
+    expect(await store.list()).toEqual(["b.yaml"]);
+    expect(await store.version()).toBe(before);
+  });
+
+  it("creates a file expected to be absent, but not over one that exists", async () => {
+    const store = await make({ "b.yaml": "there" });
+    expect(await store.write("hubs/a/hub.yaml", "new", { expected: "absent" })).toEqual({
+      status: "written",
+    });
+    expect(await store.read("hubs/a/hub.yaml")).toBe("new");
+    const before = await store.version();
+    expect(await store.write("b.yaml", "new", { expected: "absent" })).toEqual({
+      status: "changed-on-disk",
+      current: "there",
+    });
+    expect(await store.read("b.yaml")).toBe("there");
+    expect(await store.version()).toBe(before);
+  });
+
+  it("replaces the file whatever it holds when nothing is expected", async () => {
+    const store = await make({ "a.yaml": "3" });
+    expect(await store.write("a.yaml", "2")).toEqual({ status: "written" });
+    expect(await store.read("a.yaml")).toBe("2");
+    expect(await store.write("c.yaml", "new", {})).toEqual({ status: "written" });
+    expect(await store.read("c.yaml")).toBe("new");
+  });
+
+  it("refuses an unsafe or private path with a RangeError before comparing", async () => {
+    const store = await make({ "a.yaml": "1", ".env": "A=1" });
+    const before = await store.version();
+    const expectations: ExpectedContent[] = ["absent", await digestOf("1"), await digestOf("A=1")];
+    for (const path of [...unsafeDefinitionPaths, ...privateDefinitionPaths]) {
+      for (const expected of expectations) {
+        await expect(store.write(path, "x", { expected }), path).rejects.toThrow(RangeError);
+      }
+    }
+    expect(await store.list()).toEqual(["a.yaml"]);
+    expect(await store.version()).toBe(before);
   });
 }
 

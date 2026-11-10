@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { chmod, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   checkPublicWorkspacePath,
@@ -12,6 +12,7 @@ import {
 } from "@halonicjs/ports";
 import { bytesToHex, KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { entryAt, isMissing } from "./links.ts";
+import { renameOver } from "./rename-over.ts";
 
 /** The Web Crypto API that Node has, as the {@link Digest} port. */
 const webCryptoDigest: Digest = {
@@ -105,7 +106,8 @@ export class FolderDefinitionStore implements DefinitionStore {
         // A replaced file keeps its permissions, such as a script's execute bit.
         await chmod(temporary, existing.mode & 0o7777);
       }
-      await rename(temporary, file);
+      // Retries briefly on Windows while a scanner or indexer holds the file.
+      await renameOver(temporary, file);
     } catch (error) {
       await rm(temporary, { force: true });
       throw error;

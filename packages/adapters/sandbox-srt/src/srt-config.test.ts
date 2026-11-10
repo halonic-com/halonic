@@ -1,3 +1,5 @@
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
 // Not in srt's public index: imported here only to test the settings against the guard srt runs.
@@ -64,6 +66,15 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
         inWork(".cursor"),
       ]),
     );
+  });
+
+  it("denies writing the git files the session found, in the working folder", () => {
+    const writes = buildSrtConfig(profile(), [], [join(".git", "modules", "docs", "config")])
+      .filesystem?.denyWrite;
+    expect(writes).toContainEqual({
+      path: join("/work/acme", ".git", "modules", "docs", "config"),
+      literal: true,
+    });
   });
 
   it("also denies writing shell start-up files, git hooks and package manager settings", () => {
@@ -188,5 +199,33 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     for (const p of profiles) {
       expect(() => SandboxRuntimeConfigSchema.parse(buildSrtConfig(p))).not.toThrow();
     }
+  });
+
+  // srt doesn't run on Windows, so the real path isn't added there.
+  it.skipIf(process.platform === "win32")(
+    "[platform:win32] also denies the real path of a folder reached through a symlink, for entries that don't exist yet",
+    () => {
+      const base = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));
+      mkdirSync(join(base, "real", "work"), { recursive: true });
+      symlinkSync(join(base, "real"), join(base, "link"));
+      const work = join(base, "link", "work");
+      const config = buildSrtConfig(profile({ workingFolder: work }));
+      const denied = config.filesystem?.denyWrite?.map((entry) =>
+        typeof entry === "string" ? entry : entry.path,
+      );
+      expect(denied).toContain(join(work, ".npmrc"));
+      expect(denied).toContain(join(base, "real", "work", ".npmrc"));
+      expect(denied).toContain(join(base, "real", "work", ".codex"));
+    },
+  );
+
+  it("denies writing a worktree's .git file, which points git at its real folder", () => {
+    const work = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));
+    writeFileSync(join(work, ".git"), "gitdir: /elsewhere\n");
+    const config = buildSrtConfig(profile({ workingFolder: work }));
+    const denied = config.filesystem?.denyWrite?.map((entry) =>
+      typeof entry === "string" ? entry : entry.path,
+    );
+    expect(denied).toContain(join(work, ".git"));
   });
 });

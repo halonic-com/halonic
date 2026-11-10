@@ -1,42 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { PHONE_MAX_WIDTH } from "./index.ts";
-import { blend, contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
+import { contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
 import {
-  blockBody,
-  customProperties,
-  lightDarkPair,
-  readThemeFile,
-} from "./test/theme-file.spec.ts";
-
-const css = readThemeFile();
-const themeTokens = customProperties(blockBody(css, "@theme static"));
-const plainVariables = customProperties(blockBody(css, ":root"));
-
-type Mode = "light" | "dark";
-
-function colourToken(name: string, mode: Mode): Rgba {
-  const value = themeTokens.get(`--color-${name}`);
-  const pair = value === undefined ? undefined : lightDarkPair(value);
-  if (pair === undefined) {
-    throw new Error(`--color-${name} is missing or isn't written as light-dark().`);
-  }
-  return parseColour(pair[mode]);
-}
-
-/**
- * A background as the eye sees it: a see-through colour (a `-soft` badge) painted over the
- * surface beneath it. Opaque backgrounds ignore `beneath`.
- */
-function backgroundToken(name: string, beneath: string, mode: Mode): Rgba {
-  const colour = colourToken(name, mode);
-  if (colour.alpha === 1) {
-    return colour;
-  }
-  return blend(colour, colourToken(beneath, mode));
-}
-
-const text = 4.5;
-const control = 3;
+  backgroundToken,
+  colourToken,
+  control,
+  css,
+  type Mode,
+  plainVariables,
+  text,
+  themeTokens,
+} from "./test/theme-colours.spec.ts";
+import { blockBody, customProperties, lightDarkPair } from "./test/theme-file.spec.ts";
 
 /** The surfaces text and controls sit on: pages, the sidebar, and menus, dialogs and toasts. */
 const surfaces = ["surface", "surface-subtle", "surface-raised"];

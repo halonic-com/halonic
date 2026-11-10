@@ -85,7 +85,7 @@ export interface RunsSetup {
   readonly memory?: RecordStore;
   /** The hub's other workflows, which its `workflow` states run; none when left out. */
   readonly workflows?: Readonly<Record<string, Workflow>>;
-  /** Where runs keep their definitions; new and empty when left out. */
+  /** Where runs keep their definitions; new and empty when left out. Share it to restart on the same store. */
   readonly blobs?: KernelBlobs;
 }
 

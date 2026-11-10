@@ -30,7 +30,9 @@
 
 /* The selection and high-contrast utilities (selected-bar, selected-forced, the forced disabled
    colours), the custom variants and the other utilities, and the safe areas live in their own
-   files. They hold no tokens, only rules that read them. */
+   files. They hold no tokens, only rules that read them. The one exception is
+   theme-agent-pages.css: the agent orb, stacked card and canvas variables, which only those
+   pages read, next to the canvas grid utility. */
 @import "./theme-selection.css";
 @import "./theme-lines.css";
 @import "./checkbox/checkbox.css";
@@ -38,6 +40,7 @@
 @import "./radio/radio.css";
 @import "./theme-utilities.css";
 @import "./theme-safe-area.css";
+@import "./theme-agent-pages.css";
 
 :root {
   color-scheme: light dark;
@@ -224,11 +227,18 @@
   --shade-mid: light-dark(rgb(16 16 46 / 0.1), rgb(0 0 0 / 0.5));
   --shade-deep: light-dark(rgb(16 16 46 / 0.22), rgb(0 0 0 / 0.6));
 
-  /* The halo: the brand's two hues. Never flat fills; only through the four halo utilities. */
+  /* The halo: the brand's two hues. Never flat fills; only through the six halo utilities. A
+     frame colour preset sets only --halo-blue and --halo-violet; the tints follow them. */
   --halo-blue: rgb(59 139 255);
   --halo-violet: rgb(139 92 246);
-  --halo-tint-blue: light-dark(rgb(59 139 255 / 0.14), rgb(59 139 255 / 0.2));
-  --halo-tint-violet: light-dark(rgb(139 92 246 / 0.12), rgb(139 92 246 / 0.2));
+  --halo-tint-blue: light-dark(
+    color-mix(in srgb, var(--halo-blue) 14%, transparent),
+    color-mix(in srgb, var(--halo-blue) 20%, transparent)
+  );
+  --halo-tint-violet: light-dark(
+    color-mix(in srgb, var(--halo-violet) 12%, transparent),
+    color-mix(in srgb, var(--halo-violet) 20%, transparent)
+  );
 
   --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
   --focus-ring-inset: inset 0 0 0 2px var(--color-accent);

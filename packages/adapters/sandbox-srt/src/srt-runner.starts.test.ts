@@ -12,6 +12,9 @@ vi.mock("node:child_process", () => ({
     spawned.push(call);
     throw new Error("the test never starts a process");
   },
+  execFile: () => {
+    throw new Error("the test never starts a process");
+  },
 }));
 
 const { srtRunner } = await import("./srt-runner.ts");

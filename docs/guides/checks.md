@@ -174,8 +174,9 @@ fails: no note can stand in for a comparison the guard couldn't make.
 ```markdown
 # Decision: retire the old timer rule
 
-- Approval: <link to the Paperclip approval>
+- Approval: <link to the Paperclip task where it was approved>
 - Kind: internal
+- Signature: ed25519:sha256:<key ID>:<signature>
 
 What changes and why.
 
@@ -186,12 +187,44 @@ What changes and why.
 ```
 
 `Kind` says who approves: `user-visible` changes need the user's
-approval, `internal` ones the maintainer's. The guard asks Paperclip whether the
-approval exists, is approved by the right person and names this branch.
-**That lookup is a stub for now and fails closed**: it needs a Paperclip
-API token as a CI secret, which isn't set up yet. Until then no note
-lets a change through, so in CI the guard reports its findings as a
-warning on the pull request and doesn't block the merge.
+approval, `internal` ones the maintainer's. The `Approval` link is the audit
+trail; the guard doesn't call Paperclip. It checks the **signature line**
+instead, offline, with no token and no network, so fork pull requests are
+checked the same way. The approver signs with their Ed25519 key, and the
+guard accepts the signature only from a key that the base branch's
+`tooling/check/approvers.json` pins for the note's kind. A pull request
+can't add its own key: the guard reads that file from the base branch's
+commit (`pull_request.base.sha`), never from the pull request.
+
+The signature covers this text, one field per line:
+
+```text
+halonic-decision-v1
+repo <owner/name>
+pr <pull request number>
+kind <internal or user-visible>
+note <sha256 of the note without its signature line>
+object <git object ID at the pull request's head, or missing> <path>
+```
+
+with one `object` line per covered path and per covered requirement's file,
+sorted by path. So a signature can't be reused on another pull request (a
+fork's branch with the same name included), and editing the note or a
+covered file after signing breaks it. Editing other files or rebasing
+doesn't. The note fails when it has no signature or more than one, when the
+signature isn't in the header (the `- ` lines above the first paragraph),
+when it has a carriage return (save it with LF line endings), and when the
+base branch already has the note: a branch name that was used before needs
+a new name. Only `internal` keys exist so far, so `user-visible` notes fail
+until the board decides how the user approves (HAL-3434). Until then, in CI
+the guard reports its findings as a warning on the pull request and doesn't
+block the merge.
+
+**Signing.** The approver signs only from a clean worktree of
+`origin/main`, never from the pull request's checkout: there the
+pull request's own code, hooks and pnpm config would run while the private
+key is loaded. Read the note with `git show <pull request head>:decisions/<branch>.md`,
+and sign exactly the text above.
 
 **CI runs the guard and `trace` from the merge base's copy** of
 `tooling/check`, not the pull request's, so a pull request can't weaken

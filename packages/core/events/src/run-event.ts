@@ -196,7 +196,21 @@ export type RunEventBody =
       /** Who resolved it (requirement `events.approval-resolved-by`); absent in older logs. */
       by?: ApprovalResolver;
     }
-  | { type: "agent.finished"; state: string; agent: string; output: unknown; parent?: string }
+  /**
+   * `error` and `reason`: set when the agent failed without failing the run,
+   * as a parallel branch does; `output` is then `null` (requirement
+   * `events.agent-finished-error`). Absent in older logs and for an agent
+   * that answered.
+   */
+  | {
+      type: "agent.finished";
+      state: string;
+      agent: string;
+      output: unknown;
+      parent?: string;
+      error?: string;
+      reason?: RunFailureReason;
+    }
   | {
       type: "artifact.created";
       state: string;

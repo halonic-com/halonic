@@ -274,9 +274,27 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/adapter-env-secrets':
+        specifier: workspace:*
+        version: link:../../packages/adapters/env-secrets
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
+      '@halonicjs/adapter-harness-claude-code':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-claude-code
+      '@halonicjs/adapter-harness-codex':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-sandbox-host':
+        specifier: workspace:*
+        version: link:../../packages/adapters/sandbox-host
+      '@halonicjs/adapter-sandbox-srt':
+        specifier: workspace:*
+        version: link:../../packages/adapters/sandbox-srt
+      '@halonicjs/adapter-system-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/system-node
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
@@ -320,10 +338,34 @@ importers:
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../packages/core/schema-kit
+      '@halonicjs/studio-feature-inbox':
+        specifier: workspace:*
+        version: link:../../packages/studio/features/inbox
       '@halonicjs/studio-services':
         specifier: workspace:*
         version: link:../../packages/studio/services
     devDependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/fs-node
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../packages/adapters/memory
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../packages/core/engine
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../packages/core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../packages/core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../packages/core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../packages/core/std
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../packages/studio/kit
@@ -583,6 +625,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../../core/schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../core/std
@@ -1302,6 +1347,34 @@ importers:
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/studio/features/inbox:
+    dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../../core/events
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
+      '@halonicjs/studio-shell':
+        specifier: workspace:*
+        version: link:../../shell
+    devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../../tooling/config
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6

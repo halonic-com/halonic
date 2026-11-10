@@ -103,6 +103,29 @@ describeIntegrationConformance({
 });
 ```
 
+A plugin runs the same suite on its folder ([plugins ADR](../../../docs/adr/2026-11-09-plugins.md)).
+`describePluginConformance` reads the folder's `plugin.yaml` (or an `integration.yaml`, read as a
+plugin with only a backend) as Halonic does, and fails when the folder has no manifest or both, the
+manifest fails its schema or its own checks, its `sdk` isn't this Halonic's, a file it names (the
+backend's `entry`, a local tool's `script`) is missing, or the backend's code differs from the
+backend. A backend then gets every check above, with each code file beside its `entry` scanned:
+
+```ts
+import { fileURLToPath } from "node:url";
+import { describePluginConformance } from "@halonicjs/testing-integration";
+import { weather } from "../backend/index.js";
+import forecastGhent from "../recordings/forecast-ghent.json" with { type: "json" };
+
+describePluginConformance({
+  folder: fileURLToPath(new URL("..", import.meta.url)), // the folder with plugin.yaml
+  backend: weather, // what the backend's entry exports
+  recordings: [forecastGhent],
+  cases: [{ tool: "forecast", scenario: "forecast-ghent", args: { place: "Ghent" } }],
+});
+```
+
+The published suite depends on `yaml`, the library behind our own YAML reader, to read `plugin.yaml`.
+
 Recordings are `halonic.recording/1` files, as `pnpm record` writes them in
 the integrations repo: one scenario each, its exchanges in call order. On
 replay each request must match the next exchange on method and URL, and on
@@ -118,4 +141,6 @@ checks it is valid too.
 
 - Running the suite in `workerd` as well as Node (with the Cloudflare target's test setup).
 - Sub-suites per kind that reuse the port contracts (`LlmProvider`, `ConnectorClient`, knowledge).
+- Importing the backend from `entry` itself; the test file passes it as `backend` until the I5 worker settles how it finds the `Integration` (plugins P4).
+- Starting local tools in a sandbox, and failing one that offers a tool or reaches a host it didn't declare (plugins P5 and P10).
 - Checking each recording file against the format's schema. The schema moves into `@halonicjs/format` with the permission sheet; the recorder (`tooling/record` in the integrations repo, HAL-149) then imports it from there.

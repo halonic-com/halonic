@@ -56,7 +56,7 @@
   background: linear-gradient(var(--color-fg), var(--color-fg)), var(--color-surface);
 }
 
-/* ---------------------------------------------------------------- The halo, as four utilities */
+/* ---------------------------------------------------------------- The halo, as six utilities */
 
 /* The window frame: the halo over the canvas. */
 @utility bg-halo-frame {
@@ -87,6 +87,35 @@
 /* A 2px brand line: the active window tab, the logo mark, the agent orb's ring. */
 @utility bg-halo-line {
   background: linear-gradient(90deg, var(--halo-blue), var(--halo-violet));
+}
+
+/*
+ * The spot behind a start screen's heading and box (desktop start screen, Welcome on a computer):
+ * one aria-hidden element. Tint strength, not frame strength, so text on it keeps 4.5:1 with every
+ * frame colour preset. The mask only shapes it, it isn't a colour.
+ */
+@utility bg-halo-spot {
+  background: linear-gradient(90deg, var(--halo-tint-blue), var(--halo-tint-violet));
+  mask-image: radial-gradient(closest-side, #000 45%, transparent);
+}
+
+/*
+ * The app's one glow, on a rounded-lg wrapper round the start screen's composer, never on the box,
+ * whose focus look is a box shadow too. A utility, not a --shadow-* token, so it can't become a
+ * fourth shadow. The 16px blur is near zero at the chips 16px below.
+ */
+@utility shadow-halo-glow {
+  box-shadow:
+    -6px 0 16px
+    light-dark(
+      color-mix(in srgb, var(--halo-blue) 40%, transparent),
+      color-mix(in srgb, var(--halo-blue) 48%, transparent)
+    ),
+    6px 0 16px
+    light-dark(
+      color-mix(in srgb, var(--halo-violet) 40%, transparent),
+      color-mix(in srgb, var(--halo-violet) 48%, transparent)
+    );
 }
 
 /*

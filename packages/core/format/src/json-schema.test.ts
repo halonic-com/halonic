@@ -1,11 +1,10 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
+import { expectSpecFile } from "@halonicjs/testing-spec/node";
 import { expect, it } from "vitest";
 import { jsonSchemaOf, type KindName, kindNames, SCHEMA_VERSION } from "./index.ts";
 import { specName } from "./json-schema.ts";
-import { expectSpecFile } from "./test/spec-file.spec.ts";
 
 /** Each kind's spec file sits in the package's `spec/` folder: `spec/<kind name in kebab case>.schema.json`. */
 function specPath(kind: KindName): string {
@@ -36,14 +35,6 @@ function kindVersion(spec: Record<string, unknown>): unknown {
 verifies("format.json-schema-goldens", () => {
   it.each(kindNames())("matches the spec file for %s", (kind) => {
     expectSpecFile(specPath(kind), jsonSchemaOf(kind));
-  });
-
-  it("fails when a spec file is missing or differs from the code", () => {
-    const path = join(mkdtempSync(join(tmpdir(), "format-spec-")), "agent.schema.json");
-    const check = (): void => expectSpecFile(path, jsonSchemaOf("agent"), { write: false });
-    expect(check).toThrow(/missing spec file/);
-    writeFileSync(path, "{}\n");
-    expect(check).toThrow(/differs from the code/);
   });
 
   it("describes the input: keys with a default aren't required", () => {

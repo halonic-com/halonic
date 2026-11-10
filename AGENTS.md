@@ -74,12 +74,13 @@ The maintainer approves it before you write code. When two features must talk, t
 ## Requirements and tests
 
 `trace` is active and blocks a pull request. The requirement guard runs on every pull request but only
-reports for now: it doesn't block until its approval lookup is live. See `docs/guides/checks.md`.
+reports for now: it doesn't block until `user-visible` approvals exist (HAL-3434). See `docs/guides/checks.md`.
 
 - No feature without a recorded requirement (`requirements/<name>.md`, EARS form) and tests that name it with `verifies("<id>", …)`.
 - A bug fix starts with a regression test that fails before the fix.
 - If code is hard to unit test, refactor it until it isn't; don't skip the test or reach for an end-to-end test instead.
 - Never edit, retire or delete a requirement, and never weaken, skip or delete a test or golden file, without an approved decision note in `decisions/<branch-name>.md`.
+- Sign a decision note only from a clean worktree of `origin/main`, reading the note with `git show`, never in the pull request's checkout: its code, hooks and pnpm config would run while your key is loaded. Never read, copy or use another agent's key.
 - No flaky tests: no retries, fake timers instead of sleeps, always clean up temporary folders.
 - Never use real or private workspaces as fixtures; invent them, `acme`-style.
 

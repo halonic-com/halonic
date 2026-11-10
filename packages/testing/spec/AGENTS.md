@@ -4,9 +4,9 @@ Owner: julian · Layer: testing · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-Links tests to requirement IDs with verifies(), and records which requirements ran and passed.
+Links tests to requirement IDs with verifies(), records which requirements ran and passed, and pins committed spec files to the code with expectSpecFile().
 
-This package may change only through tasks that name it. Its public API is `src/index.ts`;
+This package may change only through tasks that name it. Its public API is `src/index.ts` and `src/node/index.ts` (the Node-only `./node` subpath);
 everything else is internal.
 
 ## Commands

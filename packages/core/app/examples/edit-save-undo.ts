@@ -1,7 +1,13 @@
-import type { DefinitionStore, WriteResult } from "@halonicjs/ports";
+import type { DefinitionStore, Digest, WriteResult } from "@halonicjs/ports";
 import { openWorkspace, workspaceFilesKey } from "../src/index.ts";
 
 const agentPath = "hubs/acme/agents/clerk.agent.yaml";
+
+/**
+ * Stands in for the platform's `Digest` adapter. The example never writes
+ * with `expected` and the assistant changes nothing, so the bytes don't matter.
+ */
+const digest: Digest = { sha256: async () => new Uint8Array(32) };
 
 /**
  * A few lines of in-memory store. Core may not use an adapter, so this stands in
@@ -43,6 +49,8 @@ export async function runExample(): Promise<string[]> {
   const store = new MapStore(new Map([[agentPath, "name: Clerk\n"]]));
   const scope = openWorkspace({
     store,
+    reviewRecords: new MapStore(new Map()),
+    digest,
     onListenerError: (error) => {
       throw error;
     },

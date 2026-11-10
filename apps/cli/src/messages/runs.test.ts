@@ -72,4 +72,10 @@ describe("runs's sentences", () => {
     ]);
     expect(words(runsMessages.waitingSince("14:02"))).toBe("waiting for you since 14:02");
   });
+
+  it("repeats the user's --dir in the fix for a run that isn't waiting", () => {
+    expect(words(runsMessages.notWaitingFix("01JD8Q", "./acme"))).toBe(
+      "See it with halonic runs show --dir ./acme 01JD8Q.",
+    );
+  });
 });

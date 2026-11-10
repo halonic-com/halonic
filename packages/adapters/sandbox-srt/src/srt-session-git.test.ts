@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { SandboxBlock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { gitlinkMode, index } from "./git-index.test-helper.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
 
@@ -154,6 +155,21 @@ verifies("sandbox-srt.session", () => {
         expect(lstatSync(linked).isSymbolicLink()).toBe(true);
       },
     );
+
+    it.each([
+      ["a .git file", (dotGit: string) => writeFile(dotGit, "gitdir: .\n")],
+      ["a .git folder", (dotGit: string) => mkdir(dotGit)],
+    ])("moves aside %s planted in a submodule that was not checked out", async (_, plant) => {
+      await mkdir(join(base, "work", "docs"));
+      await writeFile(join(git, "index"), index([{ path: "docs", mode: gitlinkMode }]));
+      const { session, blocks } = await open();
+      const dotGit = join(base, "work", "docs", ".git");
+      await plant(dotGit);
+      await session.close();
+      expect(existsSync(dotGit)).toBe(false);
+      expect(existsSync(`${dotGit}.halonic-blocked`)).toBe(true);
+      expect(blocks).toEqual([{ kind: "file", path: dotGit, access: "write" }]);
+    });
 
     it("does nothing when the working folder has no git folder", async () => {
       await rm(git, { recursive: true });

@@ -1,9 +1,9 @@
 import type { Routine, RoutineTrigger } from "@halonicjs/format";
 import { CronError } from "./cron-error.ts";
 import { slotAfter, slotAtOrBefore } from "./interval-slots.ts";
-import { nextCronTime } from "./next-cron-time.ts";
-import { occurrences } from "./occurrences.ts";
-import { type Cron, parseCron } from "./parse-cron.ts";
+import { cronTimeFinder } from "./next-cron-time.ts";
+import { timesBetween } from "./occurrences.ts";
+import { parseCron } from "./parse-cron.ts";
 import { parseEvery } from "./parse-every.ts";
 import { checkTimeZone, DEFAULT_TIME_ZONE, MINUTE } from "./time-zone.ts";
 
@@ -197,13 +197,15 @@ function scheduleClock(trigger: ScheduleTrigger & { timezone: string }): Clock {
   // Checked here, so an unknown zone skips this routine instead of throwing a
   // RangeError out of the tick and stopping every routine.
   checkTimeZone(trigger.timezone);
+  // One finder for every lookup: building it per lookup made a long catch-up take seconds (HAL-3595).
+  const nextTime = cronTimeFinder(cron, trigger.timezone);
   return {
     kind: "schedule",
-    times: (from, to, limit) => occurrences(trigger, from, to, limit),
-    newest: (from, to) => newestCronTime(cron, trigger.timezone, from, to),
+    times: (from, to, limit) => timesBetween(nextTime, from, to, limit),
+    newest: (from, to) => newestCronTime(nextTime, from, to),
     count(from, to) {
       // A cron has no step, so counting walks; it stops at the limit.
-      const walked = occurrences(trigger, from, to, WINDOW_LIMIT + 1);
+      const walked = timesBetween(nextTime, from, to, WINDOW_LIMIT + 1);
       const isMinimum = walked.length > WINDOW_LIMIT;
       return { count: isMinimum ? WINDOW_LIMIT : walked.length, isMinimum };
     },
@@ -242,9 +244,9 @@ function intervalClock(intervalMs: number): Clock {
  * between the newest time found and the end of the window until nothing fires
  * after it. Either way it takes a few dozen lookups, however long the window.
  */
-function newestCronTime(cron: Cron, timeZone: string, from: Date, to: Date): Date | null {
+function newestCronTime(nextTime: (after: Date) => Date | null, from: Date, to: Date): Date | null {
   const firstAfter = (after: number): Date | null => {
-    const next = nextCronTime(cron, new Date(after), timeZone);
+    const next = nextTime(new Date(after));
     return next && next <= to ? next : null;
   };
 

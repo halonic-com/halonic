@@ -19,7 +19,11 @@ export function specName(kind: KindName): string {
  * `https://halonic.com/spec/format/workflow/v1.schema.json`.
  */
 export function specId(kind: KindName): string {
-  return `${SPEC_ID_BASE}/${specName(kind)}/v${kindVersion(kind)}.schema.json`;
+  return idOf(kind, toJsonSchema(fileKinds[kind].schema));
+}
+
+function idOf(kind: KindName, schema: JsonSchema): string {
+  return `${SPEC_ID_BASE}/${specName(kind)}/v${kindVersion(schema)}.schema.json`;
 }
 
 /**
@@ -27,10 +31,8 @@ export function specId(kind: KindName): string {
  * `version` key. A kind without a `version` key (`skill`, whose file is
  * SKILL.md front matter) falls back to the format's SCHEMA_VERSION.
  */
-function kindVersion(kind: KindName): unknown {
-  const properties = toJsonSchema(fileKinds[kind].schema)["properties"] as
-    | Record<string, { const?: unknown }>
-    | undefined;
+function kindVersion(schema: JsonSchema): unknown {
+  const properties = schema["properties"] as Record<string, { const?: unknown }> | undefined;
   return properties?.["version"]?.const ?? SCHEMA_VERSION;
 }
 
@@ -47,5 +49,6 @@ function kindVersion(kind: KindName): unknown {
 export function jsonSchemaOf(kind: KindName): JsonSchema {
   // `$schema` and `$id` come first, where readers of the spec file look for
   // them; the spread keeps a key where it was first set.
-  return { $schema: JSON_SCHEMA_DRAFT, $id: specId(kind), ...toJsonSchema(fileKinds[kind].schema) };
+  const schema = toJsonSchema(fileKinds[kind].schema);
+  return { $schema: JSON_SCHEMA_DRAFT, $id: idOf(kind, schema), ...schema };
 }

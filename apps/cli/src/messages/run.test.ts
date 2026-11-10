@@ -6,23 +6,15 @@ import { plainText, renderPhrase } from "./phrase.ts";
 import { runMessages } from "./run.ts";
 
 const words = (message: Message) => plainText(message.phrase);
-const openaiKey = { name: "openai-key", variable: "HALONIC_SECRET_OPENAI_KEY" };
 
 verifies("cli.messages", () => {
-  it("has a failed run's two lines word for word, from cli-output 3.4", () => {
-    const reason = runMessages.keyRefused("OpenAI", openaiKey, "smart").phrase;
-    const line1 = runMessages.failedInStep("Support reply", "Draft reply", reason);
-    expect(line1.key).toBe("run.failedInStep");
-    expect(words(line1)).toBe(
-      "Support reply failed in the step Draft reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
-    );
-    expect(words(runMessages.replaceKey("OpenAI", "HALONIC_SECRET_OPENAI_KEY"))).toBe(
-      "Replace the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again.",
-    );
-  });
-
   it("has the receipt in three lines, from cli-output 3.4", () => {
-    const receipt = { changedFiles: 1, sent: ["1 email"], askedYou: 1, estimatedCost: "€0.004" };
+    const receipt = {
+      changedFiles: 1,
+      sent: [{ count: 1, one: "email", many: "emails" }],
+      askedYou: 1,
+      estimatedCost: 0.004,
+    };
     expect([
       words(runMessages.finished("Support reply", "18 s")),
       words(runMessages.receipt(receipt)),
@@ -70,9 +62,7 @@ describe("run's sentences", () => {
       "Sent nothing · asked you once",
     );
     expect(
-      words(
-        runMessages.receipt({ changedFiles: 2, sent: [], askedYou: 2, estimatedCost: "€0.03" }),
-      ),
+      words(runMessages.receipt({ changedFiles: 2, sent: [], askedYou: 2, estimatedCost: 0.03 })),
     ).toBe("Changed 2 files · sent nothing · asked you twice · estimated cost €0.03");
   });
 
@@ -82,38 +72,23 @@ describe("run's sentences", () => {
     );
   });
 
-  it("has the missing-key reason", () => {
-    const reason = runMessages.noKey(openaiKey, "smart").phrase;
-    expect(words(runMessages.failedInStep("Support reply", "Draft reply", reason))).toBe(
-      "Support reply failed in the step Draft reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
+  it("says a run that only sent nothing, and counts and joins what it sent", () => {
+    expect(words(runMessages.receipt({ changedFiles: 0, sent: [], askedYou: 0 }))).toBe(
+      "Sent nothing",
+    );
+    const sent = [
+      { count: 1, one: "email", many: "emails" },
+      { count: 2, one: "message", many: "messages" },
+      { count: 3, one: "file", many: "files" },
+    ];
+    expect(words(runMessages.receipt({ changedFiles: 0, sent, askedYou: 0 }))).toBe(
+      "Sent 1 email, 2 messages and 3 files",
     );
   });
 
-  it("has line 2 for each approved reason", () => {
-    expect([
-      words(runMessages.addKey("OpenAI", "HALONIC_SECRET_OPENAI_KEY")),
-      words(runMessages.signedOutFix("Gmail")),
-      words(runMessages.outOfCreditFix("OpenAI")),
-      words(runMessages.tryLaterFix()),
-      words(runMessages.startOllamaFix()),
-      words(runMessages.checkConnectionFix()),
-      words(runMessages.modelMissingFix("llama3.2", "fast")),
-      words(runMessages.budgetFix("1 Dec")),
-      words(runMessages.turnLimitFix("Sorter", "01JD8Q", "sorter.agent.yaml")),
-      words(runMessages.localOnlyFix("Sorter", "smart")),
-      words(runMessages.blockedSiteFix("api.example.net", "Reporter")),
-    ]).toEqual([
-      "Add the key in Studio (Settings › Models › OpenAI), or set HALONIC_SECRET_OPENAI_KEY, then run again.",
-      "Sign in again in Studio (Library › Gmail), then run again.",
-      "Add credit at OpenAI, then run again. This isn't your Halonic budget.",
-      "Run it again in a few minutes.",
-      "Start Ollama, then run again.",
-      "Check your internet connection, then run again.",
-      "Run ollama pull llama3.2, or point the model alias fast at another model in models.yaml.",
-      "Raise the budget in models.yaml, or wait until it resets on 1 Dec.",
-      "See what Sorter did with halonic runs show 01JD8Q. Raise its turn limit in sorter.agent.yaml if it needs more turns.",
-      "Point Sorter's model alias smart at a local model in models.yaml.",
-      "Add api.example.net to Reporter's allowed sites, if Reporter should reach it.",
-    ]);
+  it("repeats the user's --dir in the run log line", () => {
+    expect(words(runMessages.runLog("01JD8Q", "./acme"))).toBe(
+      "Run log: halonic runs show --dir ./acme 01JD8Q",
+    );
   });
 });

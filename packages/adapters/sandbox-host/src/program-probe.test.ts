@@ -5,6 +5,9 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createProgramProbe } from "./program-probe.ts";
 
+const onWindows = process.platform === "win32";
+const skipOnWindows = "[platform:win32] needs /bin/sh scripts: ";
+
 let dir = "";
 
 async function script(name: string, body: string): Promise<void> {
@@ -33,33 +36,42 @@ afterAll(async () => {
 });
 
 verifies("sandbox-host.program-probe-node", () => {
-  describe.skipIf(process.platform === "win32")("on a POSIX system", () => {
-    it("is missing for a name with a path separator", async () => {
-      expect(await probe().ask("./hello", [])).toEqual({ status: "missing" });
-      expect(await probe().ask(join(dir, "hello"), [])).toEqual({ status: "missing" });
-    });
+  describe("on a POSIX system", () => {
+    it.skipIf(onWindows)(
+      `${skipOnWindows}is missing for a name with a path separator`,
+      async () => {
+        expect(await probe().ask("./hello", [])).toEqual({ status: "missing" });
+        expect(await probe().ask(join(dir, "hello"), [])).toEqual({ status: "missing" });
+      },
+    );
 
-    it("is missing when no PATH folder holds it, or the file isn't executable", async () => {
-      expect(await probe().ask("nonesuch", [])).toEqual({ status: "missing" });
-      expect(await probe().ask("plain", [])).toEqual({ status: "missing" });
-    });
+    it.skipIf(onWindows)(
+      `${skipOnWindows}is missing when no PATH folder holds it, or the file isn't executable`,
+      async () => {
+        expect(await probe().ask("nonesuch", [])).toEqual({ status: "missing" });
+        expect(await probe().ask("plain", [])).toEqual({ status: "missing" });
+      },
+    );
 
-    it("ignores relative PATH entries", async () => {
+    it.skipIf(onWindows)(`${skipOnWindows}ignores relative PATH entries`, async () => {
       const answer = await createProgramProbe({ env: { PATH: ":." } }).ask("hello", []);
       expect(answer).toEqual({ status: "missing" });
     });
 
-    it("runs the program by its absolute path and reports code and output", async () => {
-      expect(await probe().ask("hello", ["--version"])).toEqual({
-        status: "ran",
-        path: join(dir, "hello"),
-        code: 3,
-        stdout: "hello 1.2.3\n",
-        stderr: "oops\n",
-      });
-    });
+    it.skipIf(onWindows)(
+      `${skipOnWindows}runs the program by its absolute path and reports code and output`,
+      async () => {
+        expect(await probe().ask("hello", ["--version"])).toEqual({
+          status: "ran",
+          path: join(dir, "hello"),
+          code: 3,
+          stdout: "hello 1.2.3\n",
+          stderr: "oops\n",
+        });
+      },
+    );
 
-    it("passes only PATH, HOME and the locale on", async () => {
+    it.skipIf(onWindows)(`${skipOnWindows}passes only PATH, HOME and the locale on`, async () => {
       const answer = await probe({ MY_TOKEN: "secret", HOME: "/users/x" }).ask("envdump", []);
       expect(answer).toMatchObject({
         status: "ran",
@@ -67,29 +79,35 @@ verifies("sandbox-host.program-probe-node", () => {
       });
     });
 
-    it("kills a program that runs too long and says so in one sentence", async () => {
-      const answer = await probe({}, 200).ask("slow", []);
-      expect(answer).toEqual({
-        status: "failed",
-        path: join(dir, "slow"),
-        error: "slow didn't finish in time and was stopped.",
-      });
-    });
+    it.skipIf(onWindows)(
+      `${skipOnWindows}kills a program that runs too long and says so in one sentence`,
+      async () => {
+        const answer = await probe({}, 200).ask("slow", []);
+        expect(answer).toEqual({
+          status: "failed",
+          path: join(dir, "slow"),
+          error: "slow didn't finish in time and was stopped.",
+        });
+      },
+    );
 
-    it("cuts each output at 4 KB", async () => {
+    it.skipIf(onWindows)(`${skipOnWindows}cuts each output at 4 KB`, async () => {
       const answer = await probe().ask("loud", []);
       expect(answer).toMatchObject({ status: "ran", code: 0 });
       expect(answer.status === "ran" && answer.stdout.length).toBe(4096);
     });
 
-    it("fails, without throwing, when the program can't be started", async () => {
-      const answer = await probe().ask("broken", []);
-      expect(answer).toEqual({
-        status: "failed",
-        path: join(dir, "broken"),
-        error: "broken was found but couldn't be started.",
-      });
-    });
+    it.skipIf(onWindows)(
+      `${skipOnWindows}fails, without throwing, when the program can't be started`,
+      async () => {
+        const answer = await probe().ask("broken", []);
+        expect(answer).toEqual({
+          status: "failed",
+          path: join(dir, "broken"),
+          error: "broken was found but couldn't be started.",
+        });
+      },
+    );
 
     it("refuses a path such as skills/x/scripts/run.sh, and never starts a file by its path", async () => {
       const folder = join(dir, "skills", "x", "scripts");

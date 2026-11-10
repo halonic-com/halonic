@@ -12,18 +12,13 @@ import type { HalonicTool, TurnTool } from "./turn-tools.ts";
  * own tools run in a run for now: a connector's call is refused, because
  * a run must not reach a connector before the sending check, the
  * idempotency key and the effect-requested record exist (HAL-186 step 4c).
- * A call that needs a person's OK is refused too, until a run can stop for
- * one (the next part of HAL-3331).
+ * A call that needs a person's OK gives `ask`, and the turn stops there.
  */
 export function checkRunToolCall(tool: TurnTool, call: ToolCall): CallCheck {
   if (tool.kind !== "halonic") {
     return refused(`${tool.source}'s tools don't run in workflow runs yet`);
   }
-  const check = checkToolCall(offeredTool(tool.tool), call.arguments);
-  if (check.kind === "ask") {
-    return refused(`${call.name} needs a person's OK, which a run can't wait for yet`);
-  }
-  return check;
+  return checkToolCall(offeredTool(tool.tool), call.arguments);
 }
 
 /**

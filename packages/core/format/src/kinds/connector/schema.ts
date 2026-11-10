@@ -60,7 +60,11 @@ export const Connector = s
     name: s.string().optional(),
     description: s.string().optional(),
     transport: s.union([HttpTransport, StdioTransport, GoogleTransport]),
-    /** HTTP: the secret sent as a bearer token. Google: the secret with the refresh token. */
+    /**
+     * HTTP: the secret sent as a bearer token. Google: kept so older files
+     * still read, but it names no secret: the account's Google setup keeps
+     * the refresh token (`@halonicjs/google-setup`).
+     */
     secret: s.string().optional(),
     tools: s
       .object({

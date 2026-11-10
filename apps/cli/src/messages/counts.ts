@@ -25,6 +25,20 @@ export function countInWords(count: number): string {
 }
 
 /**
+ * Names as a sentence lists them: commas, with "and" before the last.
+ *
+ * @example
+ * listInWords(["Read mail", "Classify", "Closed"]); // "Read mail, Classify and Closed"
+ * listInWords(["reply.md"]); // "reply.md"
+ */
+export function listInWords(names: readonly string[]): string {
+  if (names.length <= 1) {
+    return names.join("");
+  }
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+/**
  * A count with its noun, in digits: "1 warning", "14 files". The plural is
  * passed in, because English plurals aren't all an added "s".
  *

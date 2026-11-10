@@ -31,10 +31,11 @@ gh workflow run mutation.yml --ref <branch> -f packages=packages/core/yaml
 `packages` takes one or more target folders separated by spaces; leave it out
 for every target. The table lands in the run's job summary.
 
-A package is skipped ("no code yet") until it has a source file other
-than its tests and `src/index.ts`. A package with a floor fails the run when its score is under it, and so does a
-Stryker run that breaks. The floors live in `mutationFloors` in `src/score.ts`
-(`packages/core/schema-kit`: 98%, `packages/core/yaml`: 85%) and can only go up. Packages without a floor only
+A package is skipped ("no code yet") until it has a source file other than its
+tests and `src/index.ts`. A package with a floor fails the run when its score
+is under it, and so does a Stryker run that breaks. The floors live in
+`mutationFloors` in `src/score.ts` (`packages/core/schema-kit`: 98%,
+`packages/core/yaml`: 85%) and can only go up. Packages without a floor only
 report; they get one once their score is stable.
 
 Stryker's own `stryker.config.*` files aren't used: the runner writes the

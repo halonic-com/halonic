@@ -81,4 +81,34 @@ verifies("check.api-specs-breaking", () => {
       '$: the number of "anyOf" alternatives changed from 2 to 1.',
     );
   });
+
+  test("accepts changes that widen the schema", () => {
+    const before = { anyOf: [{ type: "string" }], properties: { id: { type: "string" } } };
+    expect(
+      breakingChanges(before, { ...before, anyOf: [{ type: "string" }, { const: 1 }] }),
+    ).toEqual([]);
+    const widened = (id: object) => ({ ...before, properties: { id } });
+    expect(breakingChanges(before, widened({ type: ["string", "null"] }))).toEqual([]);
+    expect(breakingChanges(before, widened({}))).toEqual([]);
+    expect(breakingChanges({ type: "integer" }, { type: "number" })).toEqual([]);
+  });
+
+  test("names a narrowed type, a removed oneOf alternative and an added allOf one", () => {
+    expect(breakingChanges({ type: ["string", "null"] }, { type: "string" })).toEqual([
+      '$: "type" changed from ["string","null"] to "string".',
+    ]);
+    expect(breakingChanges({ type: "number" }, { type: "integer" })).toHaveLength(1);
+    expect(breakingChanges({ oneOf: [{}, {}] }, { oneOf: [{}] })).toEqual([
+      '$: the number of "oneOf" alternatives changed from 2 to 1.',
+    ]);
+    expect(breakingChanges({ allOf: [{}] }, { allOf: [{}, {}] })).toEqual([
+      '$: the number of "allOf" alternatives changed from 1 to 2.',
+    ]);
+  });
+
+  test("still compares the alternatives both lists have", () => {
+    expect(
+      breakingChanges({ anyOf: [{ const: 1 }] }, { anyOf: [{ const: 2 }, { const: 3 }] }),
+    ).toEqual(['$.anyOf[0]: "const" changed from 1 to 2.']);
+  });
 });

@@ -30,6 +30,12 @@ export interface MenuItem {
    * first." It stays in the arrow order and ignores Enter (component specs 14, 23 A1).
    */
   readonly unavailable?: { readonly reason: string } | undefined;
+  /**
+   * Makes the item one choice of several, a `menuitemradio`: `true` on the current one, which
+   * shows a 16px `accent` check at the right, `false` on the others. The filter chips' picker on
+   * desktop, a list of open tabs.
+   */
+  readonly checked?: boolean;
   readonly onSelect: () => void;
 }
 
@@ -96,7 +102,7 @@ export function Menu({ trigger, entries, align = "start" }: MenuProps) {
 
   function focusItem(index: number | undefined): void {
     if (index !== undefined) {
-      menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]")[index]?.focus();
+      menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]")[index]?.focus();
     }
   }
 
