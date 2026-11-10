@@ -10,11 +10,14 @@ lives in its own folder.
 
 ## Commands
 
-| Command                   | What it does                                                                                                                                                                                                          |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command                          | What it does                                                                                                                                                                                                          |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `halonic doctor`                 | checks that this computer can run Halonic: models, sandbox, disk; `--dir <folder>` picks the workspace                                                                                                                |
 | `halonic init [folder]`   | lays out a new, empty workspace in `folder`, or in the current folder when it's empty, and never writes into a folder with files in it (exit 5)                                                                       |
-| `halonic schema [outDir]` | writes the JSON Schema of every file kind to `outDir` (default `schemas`)                                                                                                                                             |
-| `halonic trust`           | shows what a workspace can start and asks to trust it on this computer; `--yes --fingerprint <fingerprint>` without a question, `--list`, `--remove` (exit 3 on No); `--json` lists what changed since it was trusted |
+| `halonic runs`                   | lists the workspace's latest runs, newest first; `--status <status>`, `--workflow <id>`, `--limit <n>`, `--dir <folder>`                                                                                              |
+| `halonic runs show <run-id>`     | shows what one run did                                                                                                                                                                                                |
+| `halonic schema [outDir]`        | writes the JSON Schema of every file kind to `outDir` (default `schemas`)                                                                                                                                             |
+| `halonic trust`                  | shows what a workspace can start and asks to trust it on this computer; `--yes --fingerprint <fingerprint>` without a question, `--list`, `--remove` (exit 3 on No); `--json` lists what changed since it was trusted |
 | `halonic validate`        | checks every file of the workspace (`--dir`, default the current folder) and lists its problems by file, 20 at most without `--all`; exit 1 on an error, or on a warning with `--strict`                              |
 
 `test`, `run`, `extract` and `routines` follow in HAL-187 as the workspace
@@ -48,7 +51,7 @@ never change meaning once released. `halonic --help` lists them too.
    before every typecheck, test and build. No shared file changes, and the help is made from each
    command's `usage`, `summary` and `options`.
 
-A command with subcommands, such as `runs show` and `runs send`, keeps them in its own folder and
+A command with subcommands, such as `runs show`, keeps them in its own folder and
 lists them in its `subcommands` field, each a `CliCommand` named by its own word. The CLI hands
 `halonic runs show <run-id>` to `show`, lists the subcommands in `halonic runs --help` and gives
 the usage error for a word that isn't one of them, so the command never switches on its first

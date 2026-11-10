@@ -15,6 +15,7 @@ workflows. Workspaces are plain files in git. The engine records every run as an
 | core     | `packages/core/*`     | core packages listed before it in `coreOrder`                                           | third-party code, Node APIs, browser APIs                                            |
 | adapters | `packages/adapters/*` | core, other adapters' public entry points, Node or browser APIs, its approved libraries | Studio packages                                                                      |
 | host     | `packages/host/*`     | core, Web-standard APIs                                                                 | adapters, Node APIs, third-party code, Studio packages                               |
+| targets  | `packages/targets/*`  | core, adapters, host (a runtime only)                                                   | Studio packages; a runtime using a deploy package; Node APIs outside the Node runtime |
 | studio   | `packages/studio/*`   | core, other Studio packages, React, Tauri, Vite                                         | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
 | apps     | `apps/*`              | the public entry point of any package                                                   | —                                                                                    |
 | testing  | `packages/testing/*`  | anything                                                                                | being a runtime dependency                                                           |
@@ -107,7 +108,7 @@ reports for now: it doesn't block until `user-visible` approvals exist (HAL-3434
 The engine and server must run on a laptop and on any cloud. Targets (`packages/targets/*`) and
 deploy packages are planned; the rules that name them apply once they exist.
 
-- No Node-only APIs in ports, core or `host/server`: Web-standard types only. `node:*` belongs only in Node adapters, the Node target and deploy packages (imports are linted, see `tooling/config/biome.jsonc`).
+- No Node-only APIs in ports, core or `host/server` (planned): Web-standard types only. `node:*` belongs only in Node adapters, the Node target and deploy packages (imports are linted, see `tooling/config/biome.jsonc`).
 - No `setTimeout`/`setInterval` or long-lived memory in core. Timers go through the `Scheduler` port, and the engine advances one step per call.
 - No server state in module-level memory. Sessions, limits and locks go behind ports.
 - Provider SDKs and tools only in `packages/adapters/<provider>-*` and `packages/targets/<target>/*`.
@@ -135,7 +136,7 @@ you spot become a new task.
 
 Stacks stay short, so a closed pull request never strands work above it:
 
-- A stack is at most 3 pull requests deep, counting from `main`.
+- Avoid stacks where you can (HAL-2192). When you need one, it is at most 2 pull requests deep, counting from `main`.
 - Open a stack all at once, for one review (see Review). Once that review has started, don't add
   more pull requests on top of the stack. Start a different, independent task instead.
 - When a pull request below yours is closed or replaced, rebase or close everything you have above
@@ -151,7 +152,7 @@ Stacks stay short, so a closed pull request never strands work above it:
   goes back to the same reviewer for that layer only.
 - The maintainer gives final approval only on the core building blocks: `packages/core/*`,
   `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
-  and any change to a package's public interface (its `api-report.md`). Everything else merges on
+  and any change to a package's public interface (what its `src/index.ts` exports; an API report replaces this once we generate one). Everything else merges on
   the teammates' approvals.
 - The last required reviewer merges, in order: the bottom of a stack first, up to date with `main`
   and CI green.
