@@ -4,6 +4,7 @@
 - Task: HAL-3928; Liam's review of #1194 (HAL-1290)
 - Approval: Liam asked for these in his review of #1194; he approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FgrcDndcRIP3rWF2V5TbOHDO5gq/WEcWJ29YUY9g3mo8Sv678E4L4oCFiy9jhafpRVysts6Ke26DHpgwPjyOCA==
 
 ## What changes
 
