@@ -1,4 +1,4 @@
-import { chmod, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DryRunDefinitionStore, MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import { definitionStoreContract } from "@halonicjs/testing-contracts";
@@ -7,7 +7,11 @@ import { afterAll, expect, it } from "vitest";
 import { FolderDefinitionStore } from "./definition-store.ts";
 import { removeTempFolders, tempFolder, writeFiles } from "./temp-folder.test-helper.ts";
 
-/** Fails on Windows today: POSIX permission assumptions (HAL-4365). */
+/**
+ * For what only Linux and macOS have: a backslash in a file name (Windows
+ * reads it as a separator) and permission bits on a folder (Windows ignores
+ * `chmod` there). Neither can be set up on Windows (HAL-4365).
+ */
 const itUnlessWindows = it.skipIf(process.platform === "win32");
 
 afterAll(removeTempFolders);
@@ -90,14 +94,18 @@ verifies("fs-node.definition-store", () => {
   });
 
   itUnlessWindows(
-    "[platform:win32] HAL-4365: leaves out a file name a workspace path can't hold, and lists nothing for a missing root",
+    "[platform:win32] a backslash is a separator there: leaves out a file name a workspace path can't hold",
     async () => {
       const root = await tempFolder();
       await writeFiles(root, { "a\\b.yaml": "x", "a.yaml": "1" });
       expect(await new FolderDefinitionStore(root).list()).toEqual(["a.yaml"]);
-      expect(await new FolderDefinitionStore(join(root, "missing")).list()).toEqual([]);
     },
   );
+
+  it("lists nothing for a missing root", async () => {
+    const root = await tempFolder();
+    expect(await new FolderDefinitionStore(join(root, "missing")).list()).toEqual([]);
+  });
 
   it("reads null for a folder, lists nothing for a file, and leaves a folder alone on remove", async () => {
     const root = await tempFolder();
@@ -109,20 +117,26 @@ verifies("fs-node.definition-store", () => {
     expect(await store.list()).toEqual(["hubs/a/hub.yaml"]);
   });
 
-  itUnlessWindows(
-    "[platform:win32] HAL-4365: reports a write that the file system refuses",
-    async () => {
-      const root = await tempFolder();
-      await mkdir(join(root, "hubs"));
-      await writeFile(join(root, "file.yaml"), "1");
-      const store = new FolderDefinitionStore(root);
-      await expect(store.write("hubs", "x")).rejects.toMatchObject({ code: "EISDIR" });
-      await expect(store.write("file.yaml/a.yaml", "x")).rejects.toThrow();
-    },
-  );
+  it("reports a write that the file system refuses, and leaves nothing behind", async () => {
+    const root = await tempFolder();
+    await mkdir(join(root, "hubs"));
+    await writeFile(join(root, "file.yaml"), "1");
+    const store = new FolderDefinitionStore(root);
+    await expect(store.write("hubs", "x")).rejects.toMatchObject({ code: "EISDIR" });
+    await expect(store.write("file.yaml/a.yaml", "x")).rejects.toThrow();
+    expect(await readdir(join(root, "hubs"))).toEqual([]);
+    expect((await readdir(root)).sort()).toEqual(["file.yaml", "hubs"]);
+  });
+
+  it("passes on an error other than a missing entry, on every system", async () => {
+    // Node refuses a path with a NUL byte before asking the system, on Windows too.
+    const store = new FolderDefinitionStore(join(await tempFolder(), "bad\0root"));
+    await expect(store.list()).rejects.toMatchObject({ code: "ERR_INVALID_ARG_VALUE" });
+    await expect(store.read("a.yaml")).rejects.toMatchObject({ code: "ERR_INVALID_ARG_VALUE" });
+  });
 
   itUnlessWindows(
-    "[platform:win32] HAL-4365: passes on a file system error other than a missing entry",
+    "[platform:win32] chmod can't lock a folder there: passes on a file system error other than a missing entry",
     async () => {
       const root = await tempFolder();
       await writeFiles(root, { "locked/a.yaml": "1" });

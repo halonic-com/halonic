@@ -29,6 +29,20 @@ const webCryptoDigest: Digest = {
   },
 };
 
+/**
+ * The error for a write to a path that is a folder: `EISDIR`, as Linux and
+ * macOS give it. Windows would refuse the rename with `EPERM`, which reads
+ * as a busy file and is retried, so the store checks first and gives the
+ * same error everywhere.
+ */
+function folderInTheWay(file: string): NodeJS.ErrnoException {
+  return Object.assign(new Error(`EISDIR: illegal operation on a directory, write '${file}'`), {
+    code: "EISDIR",
+    syscall: "write",
+    path: file,
+  });
+}
+
 /** How long the folder must be quiet before a watch reports a batch, by default. */
 const defaultQuietMs = 100;
 
@@ -117,6 +131,9 @@ export class FolderDefinitionStore implements DefinitionStore {
     // Checks the folders on the way and the file itself, so the write can't land behind a link.
     const existing = await entryAt(this.#root, path);
     const file = join(this.#root, path);
+    if (existing?.isDirectory()) {
+      throw folderInTheWay(file);
+    }
     const folder = dirname(file);
     await mkdir(folder, { recursive: true });
     const temporary = join(folder, temporaryWriteFileName());
