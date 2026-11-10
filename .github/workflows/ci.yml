@@ -393,11 +393,13 @@ jobs:
           [ -n "$summary" ] || exit 0
           jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
             | tee -a "$GITHUB_STEP_SUMMARY"
-      # Main and pull requests save (a pull request's copy helps its next
-      # push). A merge-queue entry doesn't: every entry is a new ref, so
-      # nothing would ever read its copy.
+      # Only main saves, like the pnpm, Gradle and Rust caches. A pull
+      # request's or queue entry's copy is scoped to its own ref, so only a
+      # re-run of the same pull request could read it, and the 155 copies
+      # (2.5 GB) pushed main's Rust caches towards eviction. The remote cache
+      # above still serves pull requests main's task results.
       - name: Save the Turbo cache
-        if: ${{ !cancelled() && github.event_name != 'merge_group' }}
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
