@@ -2,6 +2,7 @@
 // service, so the Studio can use them without reading the service.
 
 import type { ExpectedContent } from "@halonicjs/ports";
+import type { LineChange } from "@halonicjs/std";
 import type { ReviewCard, ReviewRecord } from "./review-record.ts";
 import type { DroppedReviewRecord } from "./review-records.ts";
 
@@ -45,21 +46,46 @@ export type ProposeOutcome =
   /** The file changed outside Halonic since it was last seen; it waits for Compare (AI changes 1.10). */
   | { readonly status: "held" };
 
-/** Which files an Accept or Reject covers. Parts and single changes come with the line diff (HAL-3278). */
+/** What an Accept or Reject covers. Single changes on an item page come with `revertParts` (HAL-3278). */
 export type ReviewTarget =
+  | {
+      /** One part: a line change of {@link FileReview.parts}. */
+      readonly kind: "part";
+      readonly path: string;
+      /** Its index in `parts`. */
+      readonly part: number;
+      /** The {@link FileReview.seen} the parts were worked out from, so a click on an out-of-date list does nothing. */
+      readonly seen: ExpectedContent;
+    }
   | { readonly kind: "file"; readonly path: string }
   | { readonly kind: "card"; readonly card: ReviewCard }
   | { readonly kind: "chat"; readonly chatId: string };
 
 /** What an Accept, Reject or restore did. */
-export interface ReviewOutcome {
-  /** What changed, as one undo step. Empty when nothing did. */
-  readonly step: ReviewStep;
-  /**
-   * Files left alone because they changed outside Halonic since they were
-   * last seen. They wait for Compare (AI changes 1.10).
-   */
-  readonly held: readonly string[];
+export type ReviewOutcome =
+  | {
+      readonly status: "done";
+      /** What changed, as one undo step. Empty when nothing did. */
+      readonly step: ReviewStep;
+      /**
+       * Files left alone because they changed outside Halonic since they
+       * were last seen. They wait for Compare (AI changes 1.10).
+       */
+      readonly held: readonly string[];
+    }
+  /** The parts a part target named were worked out from text the file no longer holds: nothing changed; show them again. */
+  | { readonly status: "stale"; readonly path: string };
+
+/** The changes to review in one file, for the editor, the item bar and the chat card. */
+export interface FileReview {
+  readonly path: string;
+  readonly card: ReviewCard;
+  /** The file with every open assistant change rejected; `null` for a file the assistant created. */
+  readonly baseline: string | null;
+  /** The digest of the text the parts were worked out from. Pass it back with a part target. */
+  readonly seen: ExpectedContent;
+  /** The changes to review, as line changes from the baseline to that text, in order. */
+  readonly parts: readonly LineChange[];
 }
 
 /** A file with changes to review, and the card it belongs to. */
