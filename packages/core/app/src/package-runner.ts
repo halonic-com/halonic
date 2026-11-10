@@ -7,7 +7,8 @@ import type { ConnectorPin, ConnectorTransport } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import { checkPinVersion, isSamePackage, type PinRegistry } from "./connector-pin.ts";
 import { readPackageSpec } from "./package-spec.ts";
-import { findBlockedVariables, findRegistryOptions } from "./pin-overrides.ts";
+import { checkCommandWord, packageOptions } from "./pin-command.ts";
+import { findBlockedVariables, findRegistryOptions, findShellOptions } from "./pin-overrides.ts";
 
 /** The stdio transport, which is the only one that starts a program. */
 export type StdioTransport = Extract<ConnectorTransport, { kind: "stdio" }>;
@@ -38,12 +39,12 @@ const shellPrograms = new Set(["cmd", "sh", "bash", "zsh", "powershell", "pwsh"]
 /** What splits a shell's arguments into the words it runs. */
 const shellSeparators = /[\s"'`;&|()]+/;
 
-/**
- * Runner options whose value names a package to fetch: `npx -p`, `npm exec
- * --package`, `uvx --from` and `--with`, `pipx run --spec`. `--with` may
- * list several, split by commas.
- */
-const packageOptions = new Set(["-p", "--package", "--from", "--with", "--spec"]);
+/** Runners whose `-c` runs a shell command (`findShellOptions`). */
+const shellOptionRunners = new Set(["npx", "npm", "pnpm", "pnpx"]);
+
+/** Why a pin can't be checked once a shell takes part. */
+const shellReason =
+  "can change the registry, config or package before the runner starts, so a pin can't be checked";
 
 /**
  * The program a command starts, as the runner rules compare it: without its
@@ -99,11 +100,14 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
  * fingerprint holds the command and args, is what lets it start. A `pin`
  * needs one exact version, and no transport with a pin may set a variable,
  * in any case, that could move the registry, send it through a proxy, trust
- * another certificate or load code before the package. A pinned runner may
- * not take an option that fetches from another registry, index, folder,
- * config or cache, must name the pin's package, and every package it names,
- * as an argument or as the value of a package option, must be the pin's
- * package at no version or the pin's version.
+ * another certificate, load code before the package or move the config home
+ * or program lookup. A pin behind a shell is refused outright: word
+ * inspection can't make a shell safe. A pinned runner may not take an option
+ * that runs a shell command or fetches from another registry, index,
+ * folder, config or cache, must name the pin's package, and every package it
+ * names, as an argument or as the value of a package option, must be the
+ * pin's package at no version or the pin's version. With `-p`, `--package`,
+ * `--from` or `--with`, the program it runs must be the pin's own.
  *
  * @returns the pin to start, `null` for a transport without one, or the
  *   reason to refuse
@@ -126,9 +130,28 @@ export function checkPackageRunnerLaunch(
     );
   }
   const pinned = checkPinVersion(pin);
-  const words = runnerWords(command, args);
-  if (!pinned.ok || words === undefined) {
+  if (!pinned.ok) {
     return pinned;
+  }
+  const program = programName(command);
+  if (shellPrograms.has(program)) {
+    return err(`the command starts the shell "${program}", which ${shellReason}`);
+  }
+  const words = runnerWords(command, args);
+  return words === undefined ? pinned : checkRunnerWords(pin, program, words);
+}
+
+/** Checks the words a pinned runner reads after its program name. */
+function checkRunnerWords(
+  pin: ConnectorPin,
+  program: string,
+  words: readonly string[],
+): Result<ConnectorPin, string> {
+  const shellOptions = shellOptionRunners.has(program) ? findShellOptions(words) : [];
+  if (shellOptions.length > 0) {
+    return err(
+      `the command sets ${shellOptions.join(", ")}, which runs a shell command that ${shellReason}`,
+    );
   }
   const options = findRegistryOptions(words);
   if (options.length > 0) {
@@ -136,7 +159,8 @@ export function checkPackageRunnerLaunch(
       `the command sets ${options.join(", ")}, which could fetch the pinned package from somewhere other than ${pin.registryUrl}`,
     );
   }
-  return checkNamedPackages(pin, words);
+  const named = checkNamedPackages(pin, words);
+  return named.ok ? checkCommandWord(pin, runnerSubcommands.get(program) ?? [], words) : named;
 }
 
 /**

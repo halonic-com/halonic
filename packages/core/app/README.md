@@ -39,7 +39,7 @@ Device-wide settings such as the theme live outside any scope.
 | `checkResolvedVersion`      | refuses a resolved package or version other than the pin's                                                                   | `app.connector-pin-version`      |
 | `readPackageSpec`           | reads `name@1.2.3` (npm) or `name==1.2.3` (PyPI), and refuses no version, a tag, a range, a URL or a git source              | `app.connector-pin-spec`         |
 | `isPackageRunner`           | whether a command starts `npx`, `uvx` or another runner, any folder, case and ending, or via a shell; 10c's `unpinned` too   | `app.package-runner-launch`      |
-| `checkPackageRunnerLaunch`  | refuses a pin that isn't one exact version, and a pinned launch whose args or `env` could start another version              | `app.package-runner-launch`      |
+| `checkPackageRunnerLaunch`  | refuses an inexact pin or one behind a shell, and a pinned launch whose args or `env` could start another program or version | `app.package-runner-launch`      |
 
 ## Example
 
