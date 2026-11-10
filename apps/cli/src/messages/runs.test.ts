@@ -28,9 +28,7 @@ verifies("cli.messages", () => {
 
 describe("runs's sentences", () => {
   it("has the summary", () => {
-    expect(words(runsMessages.summary())).toBe(
-      "List runs, or show what one did",
-    );
+    expect(words(runsMessages.summary())).toBe("List runs or show what one did");
   });
 
   it("dims the follow-up command, with the user's --dir", () => {
