@@ -167,6 +167,7 @@ export {
 } from "./trust-store.ts";
 export { type TrustConnectors, trustStoreAttackContract } from "./trust-store-attacks.ts";
 export { vcsContract } from "./vcs.ts";
+export { vcsCommitsHardenedCases } from "./vcs-commits-hardened.ts";
 export {
   type HardenedTest,
   vcsHardenedCases,
@@ -185,6 +186,7 @@ export {
   type VcsHarness,
   validBranchNames,
 } from "./vcs-harness.ts";
+export { invalidProposalRefs, validProposalRefs } from "./vcs-proposal-inputs.ts";
 export {
   invalidCommitRefs,
   linePatch,

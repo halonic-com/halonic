@@ -38,6 +38,18 @@ export interface VcsHarness {
    */
   nonCommitIds(commit: string): Promise<string[]>;
   /**
+   * The full ids of `commit`'s parents, in order: one for a commit on a
+   * branch, none for a repository's first. `log` only follows the current
+   * branch, so the cases need this for commits on no branch.
+   */
+  parentsOf(commit: string): Promise<string[]>;
+  /**
+   * The private entries, such as `.env`, that `commit` holds, as sorted
+   * paths. `listAt` and `readAt` never show one, so the cases need this to
+   * check a version never takes one in.
+   */
+  privateAt(commit: string): Promise<string[]>;
+  /**
    * Plants code that git would run on its own in this folder's repository.
    * An adapter that drives git must give it for every repository and clone,
    * so the hardened cases can check none of it ever runs.
