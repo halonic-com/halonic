@@ -12,6 +12,9 @@ The model provider for Anthropic's Messages API: one call goes to `POST {baseUrl
 ```ts
 import { AnthropicProvider } from "@halonicjs/adapter-model-anthropic";
 
+// Gives the key for one call; read it from the workspace's secrets in real code.
+const readKey = async () => "example-key"; // a made-up value; never put a real one in code
+
 const model = new AnthropicProvider({ id: "claude", http: { fetch }, key: readKey });
 const answer = await model.chat({
   model: "claude-sonnet-5-5",
@@ -27,4 +30,6 @@ The Messages API has no plain JSON mode, so the provider says `jsonOutput: false
 
 `stream()` asks for server-sent events and gives `text`, `reasoning` and `tool-call` pieces as they arrive, then one `done` whose response equals what `chat()` gives for the same reply. Stopping early closes the call, and the reply has the same 10 MiB limit. A stream that fails after it started ends with a `ModelCallError` and no `done`. The API's `error` event gets the reason its status would: `overloaded_error` is `provider-busy`, as a 529 is, and a type it doesn't know is `refused`; its text goes on the `cause` under the same rules. A reply cut off before `message_stop` or data it can't read is `refused`, and a dropped connection `offline`.
 
-The package is being built in small pull requests (HAL-2921). The factory and cache-token usage follow.
+Cache token counts come back in the usage as `cacheReadTokens` and `cacheWriteTokens`, apart from `inputTokens`.
+
+The package is being built in small pull requests (HAL-2921). The factory follows.

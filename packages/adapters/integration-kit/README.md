@@ -164,7 +164,10 @@ integration never holds it, and the host keeps the request log.
 
 - **Declared hosts only.** Exact host match, ignoring case; `host:port` for a
   port other than 443. No wildcards, no subdomains.
-- **`https` only.** `http`, `file:`, `data:` and URLs with a user name are refused.
+- **`https` only,** with one exception: plain `http` goes to a host the policy lists
+  in `localHosts` (`localhost`, a loopback address or a private network address), and
+  a secret goes over plain `http` only to this machine (`secret-over-plain-http`
+  otherwise). `file:`, `data:` and URLs with a user name are refused.
 - **Redirects** are followed by the kit (`redirect: "manual"`), and every hop
   is checked like the first request. Leaving the origin drops
   `authorization`, `cookie` and `proxy-authorization`, as browsers do.
@@ -183,8 +186,10 @@ integration never holds it, and the host keeps the request log.
   stores and read back from there. The kit first copies each placement, and
   checks and places only that copy, so changing `auth` after `fetch` (or a
   getter) changes nothing. A placement field that isn't text is refused.
-- **Limits:** 30 s per request with its redirects, 10 MiB per response, 5
-  redirects. All three can be changed.
+- **Limits** (`RequestLimits`, set from the permission sheet): 30 s for the
+  response headers, redirects included; 60 s between two pieces of the body;
+  10 min for the whole request; 10 MiB per response; 5 redirects. All can be
+  changed.
 - **Request bodies** are at most 720 KiB (`maxRequestBodyBytes`), counted in
   bytes sent: text as UTF-8, a form after encoding, bytes as they are. A
   bigger body is refused as `request-too-large`; a stream, `Blob` or
@@ -240,25 +245,15 @@ names the host and path only, never a query or a secret. The codes in
 side only) mean the integration tried to get a secret out; the bridge should pause the
 connector on any of them. Every other code is an ordinary mistake.
 
-## Example
+## Loading an integration
+
+`loadIntegration` reads an integration's permission sheet (`integration.yaml`, a
+file kind in `@halonicjs/format`), checks it against the integration's code and the
+workspace's choices, and builds the host. A local integration loads only with the
+sheet the user approved. Nothing is sent until you call
+`integration.connect(loaded.host)`:
 
 ```ts
-import { createIntegrationHost, type IntegrationPolicy } from "@halonicjs/adapter-integration-kit";
-
-const policy: IntegrationPolicy = {
-  name: "weather",
-  hosts: ["api.example.com"],
-  secrets: {
-    "example-key": { hosts: ["api.example.com"], placement: { as: "header", header: "x-api-key" } },
-  },
-  tokens: [],
-};
-const { host, log } = createIntegrationHost({ policy, transport: { fetch }, secrets, tokens });
-const connection = weather.connect(host);
-await connection.callTool("forecast", { city: "Ghent" });
-console.log(log.entries()); // [{ method: "GET", host: "api.example.com", path: "/v1/forecast", status: 200, … }]
+const loaded = loadIntegration({ source: { origin: "built-in", sheet, integration: weather }, transport, secrets, tokens });
+if (loaded.ok) connections.set("weather", loaded.value.integration.connect(loaded.value.host));
 ```
-
-The policy comes from the integration's permission sheet (`integration.yaml`,
-a file kind in `@halonicjs/format`). The loader that reads the sheet and
-checks it against the integration follows in the next change.
