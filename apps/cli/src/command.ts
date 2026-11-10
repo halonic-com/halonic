@@ -35,6 +35,14 @@ export interface CommandContext {
    */
   progress(doing: Phrase): Progress;
   /**
+   * A line for an engineer reading along, such as a retry that may still
+   * work out (requirement `cli.debug-lines`). With `--debug` it goes to
+   * stderr straight away, above the live line, with every loaded secret
+   * removed; without `--debug` it goes nowhere. It is never part of the
+   * result, so stdout and `--json` stay the same.
+   */
+  debug(line: Phrase): void;
+  /**
    * Asks the user a yes-or-no question with `[y/N]` on stderr and returns
    * whether they said yes (cli-output 1.7). Its `shownFirst` lines come
    * right before it, such as the trust check before "Trust Acme on this

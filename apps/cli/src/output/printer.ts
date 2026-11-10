@@ -43,6 +43,12 @@ export interface Printer {
    */
   progress(doing: Phrase): Progress;
   /**
+   * With `--debug`, a command's line for engineers to stderr, scrubbed and
+   * above the live line; also with `--json`, as an error's `--debug` text
+   * is, since stdout stays one document. Without `--debug`, nothing.
+   */
+  debug(line: Phrase): void;
+  /**
    * A command that Ctrl C or SIGTERM stopped (cli-output 1.5): the live line
    * goes away, then "Stopped." and what that meant go to stderr, since
    * they aren't a result. With `--json`, stdout gets the command's document
@@ -67,6 +73,8 @@ export interface Printer {
 export interface PrinterOptions {
   /** Whether `--json` was given. */
   readonly json: boolean;
+  /** Whether `--debug` was given: only then do a command's debug lines show. */
+  readonly debug: boolean;
   /** The style of stdout. */
   readonly out: OutputStyle;
   /** The style of stderr: it may be a terminal while stdout is a pipe. */
@@ -157,6 +165,11 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
         line: liveLine,
         ...(options.clock === undefined ? {} : { clock: options.clock }),
       });
+    },
+    debug(line) {
+      if (options.debug) {
+        scrubbed(err, options.scrubber)(line);
+      }
     },
     close: () => liveLine?.close(),
     ask(question, signal) {

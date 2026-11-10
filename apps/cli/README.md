@@ -64,3 +64,7 @@ there is a next step to suggest), and `printError` prints it and ends the comman
 of its kind. An error without a kind is a bug: the CLI says so and exits with 1, without showing the
 error's own text. Run it again with `--debug` (before or after the command) to see that text, its
 causes and its stack, for a bug report.
+
+A command that wants to tell an engineer something while it runs, such as a retry that may still
+work out, passes the line to `context.debug`. It shows on stderr only with `--debug`, with loaded
+secrets removed, and is never part of the result, so stdout and `--json` stay the same.

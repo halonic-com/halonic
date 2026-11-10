@@ -113,6 +113,7 @@ export async function runCli(
   const liveLine = liveLineOf(terminal, styles.err);
   const printer = printerFor(io, {
     json: options.json,
+    debug: options.debug,
     ...styles,
     scrubber,
     ...(liveLine === undefined ? {} : { liveLine }),
@@ -182,6 +183,7 @@ async function runCommandLine(
       cwd: io.cwd,
       secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
       progress: (doing) => printer.progress(doing),
+      debug: (line) => printer.debug(line),
       ask: (question) => printer.ask(question, watch.signal),
       signal: watch.signal,
     };
