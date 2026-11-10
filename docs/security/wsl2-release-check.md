@@ -34,32 +34,79 @@ in `/etc/wsl.conf` (then `wsl --shutdown`). Paste the output below.
 
 ## Results
 
+Run on 10 Nov 2026 (about 19:35 UTC), on the board's own PC, from `main` at
+`25e673a`, unchanged and with no harness sandbox around it. Both runs passed.
+
 | Field               | Value |
 | ------------------- | ----- |
-| Date                |       |
-| Run by              |       |
-| Windows build       |       |
-| WSL and kernel      |       |
-| srt version         |       |
-| Halonic commit      |       |
-| Interop on: result  |       |
-| Interop off: result |       |
+| Date                | 10 Nov 2026 |
+| Run by              | The board, on Timothy's PC ([HAL-3743](/HAL/issues/HAL-3743)) |
+| Windows build       | Windows 11 Pro 10.0.26200 |
+| WSL and kernel      | 6.18.33.2-microsoft-standard-WSL2; fresh Ubuntu 26.04.1 LTS distro, systemd on, normal user |
+| srt version         | 0.0.82 (`@anthropic-ai/sandbox-runtime`), bubblewrap 0.11.1, socat, ripgrep from Ubuntu |
+| Halonic commit      | `25e673a` |
+| Interop on: result  | PASS (exit 0) |
+| Interop off: result | PASS (exit 0) |
 
 Output, interop on:
 
 ```
-(paste)
+WSL: 6.18.33.2-microsoft-standard-WSL2
+srt: 0.0.82
+interop enabled: yes
+drvfs mount: 9p rw,noatime,aname=drvfs;path=C:\;uid=0;gid=0;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=
+
+== 1. private file on /mnt/c ==
+1a cat from WSL: PASS (inside srt: cat: <C: drive>/Users/Public/halonic-wsl2-check.B2KmHg/private.txt: Permission denied )
+
+== 2. Windows programs through interop ==
+2a cmd.exe type: PASS (inside srt: <3>WSL (2 - ) ERROR: UtilBindVsockAnyPort:309: socket failed 1 )
+2b powershell Get-Content: PASS (inside srt: <3>WSL (2 - ) ERROR: UtilBindVsockAnyPort:309: socket failed 1 )
+2c curl.exe blocked site: PASS (inside srt: <3>WSL (2 - ) ERROR: UtilBindVsockAnyPort:309: socket failed 1 )
+2d interop reachable inside srt: NO
+
+RESULT: PASS
+EXIT=0
 ```
 
 Output, interop off:
 
 ```
-(paste)
+WSL: 6.18.33.2-microsoft-standard-WSL2
+srt: 0.0.82
+interop enabled: no
+drvfs mount: 9p rw,noatime,aname=drvfs;path=C:\;uid=0;gid=0;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=
+
+== 1. private file on /mnt/c ==
+1a cat from WSL: PASS (inside srt: cat: <C: drive>/Users/Public/halonic-wsl2-check.wUFoQP/private.txt: Permission denied )
+
+== 2. Windows programs through interop ==
+2 interop: SKIPPED, interop is off; the start-up check needs no change
+
+RESULT: PASS
+EXIT=0
 ```
+
+Notes:
+
+- The `/mnt/c` prefix in the marker file path is shown as `<C: drive>` below; nothing else in the output was changed.
+
+- For the interop-off run, interop was turned off in that distro's
+  `/etc/wsl.conf` and only that distro was restarted (`wsl --terminate Ubuntu`).
+  `wsl.conf` was restored afterwards.
+- The control runs outside srt did show the leak paths, so the passes are real,
+  not skipped checks.
+- A harmless message, "Failed to start the systemd user session", appeared on
+  the first start of the fresh distro. It doesn't affect the check.
 
 ## Decision
 
-- [ ] All probes pass with interop on: no change to the start-up check.
-- [ ] A probe leaks with interop on: the start-up check requires interop off
-  (follow-up task: ______). The interop-off run must then pass.
+- [x] All probes pass with interop on: no change to the start-up check.
+- [ ] A probe leaks with interop on: the start-up check requires interop off.
 - [ ] Inconclusive: fix the control and run again.
+
+Why it passes: inside srt, Windows programs can't start at all (2d is NO).
+Interop needs a vsock socket, and srt's sandbox refuses it (`UtilBindVsockAnyPort
+... socket failed 1`, EPERM). So the result depends on srt blocking socket
+creation. **Re-run this check whenever srt is upgraded**: a version that allows
+vsock would change it. It was run on srt 0.0.82 only.
