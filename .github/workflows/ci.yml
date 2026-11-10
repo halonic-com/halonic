@@ -411,13 +411,20 @@ jobs:
       # local rerun. Invented test data only, but kept for a week at most.
       # A failure that isn't a scenario test leaves nothing to upload. Skip
       # node_modules: workspace links would upload a package's files twice.
+      # The folders are listed one level at a time on purpose: with
+      # `packages/**` the action walks every node_modules folder before it
+      # applies the exclusion, which took about 10 minutes and ran into the
+      # job's timeout (HAL-4253). The depths match pnpm-workspace.yaml.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
+        timeout-minutes: 3
+        continue-on-error: true
         with:
           name: scenario-test-state
           path: |
-            packages/**/test-results/scenarios/**
-            !**/node_modules/**
+            packages/*/*/test-results/scenarios/**
+            packages/*/*/*/test-results/scenarios/**
+            packages/*/*/*/*/test-results/scenarios/**
           if-no-files-found: ignore
           retention-days: 7
           overwrite: true
@@ -1233,16 +1240,54 @@ jobs:
     steps:
       - run: echo "::notice title=docs::Not set up yet; arrives with apps/docs."
 
+  # Merge queue only: a queue entry that has already failed keeps its place,
+  # and everything behind it waits, until the slowest job ends (HAL-4253). This
+  # job watches the run's other jobs and cancels the run as soon as one fails,
+  # so ci-ok fails within a minute. Pull requests don't use it: the author
+  # should see every failure at once. It runs no repository code (no
+  # checkout), so the write permission below is only used by the `gh` calls here.
+  fail-fast:
+    name: Cancel the run on the first failure
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45 # longer than the longest job (tauri-windows, android: 40)
+    permissions:
+      actions: write # to list the run's jobs and cancel the run
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Watch the other jobs
+        shell: bash
+        run: |
+          while true; do
+            jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[]' | jq -s .) || { sleep 15; continue; }
+            # Our own job and ci-ok don't count; a job that hasn't finished yet has no conclusion.
+            failed=$(echo "$jobs" | jq -r '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", ")')
+            if [ -n "$failed" ]; then
+              echo "::error::Failed: $failed. Cancelling the run so the queue moves on."
+              gh run cancel "$RUN_ID" --repo "$REPO"
+              exit 0
+            fi
+            open=$(echo "$jobs" | jq '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
+            [ "$open" = "0" ] && exit 0
+            sleep 10
+          done
+
   ci-ok:
     name: ci-ok
-    # Not always(): in a run that was itself cancelled (a newer push
-    # replaced it) ci-ok ends as cancelled, not failed, so the newer run's
-    # result is the one that shows. Cancelled never satisfies the required
-    # check, unlike skipped. In any other run a cancelled or failed job
-    # still fails it.
-    if: ${{ !cancelled() }}
+    # Not always(): in a pull request run that was itself cancelled (a newer
+    # push replaced it) ci-ok ends as cancelled, not failed, so the newer
+    # run's result is the one that shows. Cancelled never satisfies the
+    # required check, unlike skipped. In any other run a cancelled or failed
+    # job still fails it. In a merge-queue run nothing replaces the run, but
+    # fail-fast (above) cancels it when a job fails. There ci-ok runs
+    # anyway and reports that failure at once.
+    if: ${{ github.event_name == 'merge_group' || !cancelled() }}
     needs:
       [
+        fail-fast,
         changes,
         fast,
         leaks,
