@@ -160,7 +160,7 @@ describe("a program trying to get out of the fence", () => {
       program: "sh",
       args: [
         "-c",
-        `(setsid sh -c 'while true; do date +%s%N >> ${ticks}; sleep 0.1; done' &) ; sleep 60`,
+        `(perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' sh -c 'while true; do date +%s%N >> ${ticks}; sleep 0.1; done' &) ; sleep 60`,
       ],
     });
     // The program appends, so the file is never empty between two writes. It runs before the kill.

@@ -1,3 +1,5 @@
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
 // Not in srt's public index: imported here only to test the settings against the guard srt runs.
@@ -188,5 +190,17 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     for (const p of profiles) {
       expect(() => SandboxRuntimeConfigSchema.parse(buildSrtConfig(p))).not.toThrow();
     }
+  });
+
+  it("also denies the real path of a folder reached through a symlink, for entries that don't exist yet", () => {
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "srt-config-")));
+    mkdirSync(join(base, "real", "work"), { recursive: true });
+    symlinkSync(join(base, "real"), join(base, "link"));
+    const work = join(base, "link", "work");
+    const config = buildSrtConfig(profile({ workingFolder: work }));
+    const denied = config.filesystem?.denyWrite?.map((entry) => entry.path);
+    expect(denied).toContain(join(work, ".npmrc"));
+    expect(denied).toContain(join(base, "real", "work", ".npmrc"));
+    expect(denied).toContain(join(base, "real", "work", ".codex"));
   });
 });

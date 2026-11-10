@@ -1,11 +1,40 @@
+import { realpathSync } from "node:fs";
 import { isIP } from "node:net";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type { SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
 import type { SandboxProfile } from "@halonicjs/ports";
 
 /** A path the way sandbox-runtime wants a plain path: marked literal, so a `*` in it is never read as a pattern. */
 function literalPath(path: string): { path: string; literal: true } {
   return { path, literal: true };
+}
+
+/**
+ * The real path of `path`, also when it doesn't exist yet: the nearest existing
+ * parent is resolved and the rest is added back. On macOS `/var` and `/tmp` are
+ * symlinks, and Seatbelt matches the real path, so a deny entry for a file that
+ * isn't there yet (`.npmrc`) would never match if it stayed `/var/...`.
+ */
+export function resolveRealPath(path: string): string {
+  const missing: string[] = [];
+  let existing = path;
+  for (;;) {
+    try {
+      return join(realpathSync(existing), ...missing.reverse());
+    } catch {
+      const parent = dirname(existing);
+      if (parent === existing) {
+        return path;
+      }
+      missing.push(basename(existing));
+      existing = parent;
+    }
+  }
+}
+
+/** Both spellings of each path (as given and resolved), without repeats. */
+function withResolved(paths: string[]): string[] {
+  return [...new Set(paths.flatMap((path) => [path, resolveRealPath(path)]))];
 }
 
 /** The bridge as srt wants a host and port: an IPv6 host goes in brackets (`[::1]:4100`). */
@@ -121,9 +150,11 @@ export function buildSrtConfig(
       strictAllowlist: true,
     },
     filesystem: {
-      denyRead: hidden.map(literalPath),
-      allowWrite: writableFolders.map(literalPath),
-      denyWrite: [...hidden, ...profile.readOnlyPaths, ...toolSettings].map(literalPath),
+      denyRead: withResolved(hidden).map(literalPath),
+      allowWrite: withResolved(writableFolders).map(literalPath),
+      denyWrite: withResolved([...hidden, ...profile.readOnlyPaths, ...toolSettings]).map(
+        literalPath,
+      ),
     },
   };
 }
