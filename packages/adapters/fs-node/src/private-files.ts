@@ -1,5 +1,6 @@
 import { constants, type Stats } from "node:fs";
 import { chmod, type FileHandle, lstat, mkdir, open } from "node:fs/promises";
+import { lstatOrNull } from "./links.ts";
 
 /**
  * Creates the folder for a store's files in the user's profile, or makes an
@@ -38,6 +39,19 @@ export async function makePrivateFolder(folder: string): Promise<void> {
  * @throws RangeError when the file is a link or not a plain file
  */
 export async function readUnlinkedFile(file: string): Promise<string> {
+  // Keeps a byte order mark, as `readFile` with "utf8" does.
+  return new TextDecoder("utf-8", { ignoreBOM: true }).decode(await readUnlinkedBytes(file));
+}
+
+/**
+ * A file's bytes, with the same refusals as {@link readUnlinkedFile}: for a
+ * log whose torn last line may not be whole UTF-8 yet.
+ *
+ * @throws the file system's error when the file can't be read, with code
+ *   `ENOENT` when there is none
+ * @throws RangeError when the file is a link or not a plain file
+ */
+export async function readUnlinkedBytes(file: string): Promise<Uint8Array> {
   const entry = await lstat(file);
   if (entry.isSymbolicLink()) {
     throw linked(file);
@@ -54,14 +68,61 @@ export async function readUnlinkedFile(file: string): Promise<string> {
   }
   try {
     refuseUnlessPlain(file, await handle.stat());
-    return await handle.readFile("utf8");
+    return await handle.readFile();
   } finally {
     await handle.close();
   }
 }
 
+/**
+ * Opens a store's log file to read and add to, creating it with mode `600` when
+ * there is none. It refuses what {@link readUnlinkedFile} refuses, so an
+ * append can't write through a link into a file elsewhere, such as one in a
+ * workspace: a symbolic link (also when `O_NOFOLLOW` catches one put there
+ * after the `lstat`), a hard link, or anything but a plain file. The caller
+ * closes the handle.
+ *
+ * @throws RangeError when the file is a link or not a plain file
+ */
+export async function openUnlinkedForAppend(file: string): Promise<FileHandle> {
+  const entry = await lstatOrNull(file);
+  if (entry?.isSymbolicLink()) {
+    throw linked(file);
+  }
+  if (entry !== null) {
+    refuseUnlessPlain(file, entry);
+  }
+  let handle: FileHandle;
+  try {
+    handle = await open(file, appendFlags, 0o600);
+  } catch (error) {
+    if ((error as { code?: unknown } | null)?.code === "ELOOP") {
+      throw linked(file);
+    }
+    throw error;
+  }
+  try {
+    refuseUnlessPlain(file, await handle.stat());
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
+  return handle;
+}
+
 /** Read only, without following a link or waiting on a named pipe, where the system has those flags. */
 const readFlags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);
+
+/**
+ * Add to the end, creating the file, without following a link or waiting on
+ * a named pipe. Read too, so the caller can find a torn last line.
+ */
+const appendFlags =
+  constants.O_RDWR |
+  constants.O_APPEND |
+  constants.O_CREAT |
+  (constants.O_NOFOLLOW ?? 0) |
+  (constants.O_NONBLOCK ?? 0);
 
 /**
  * Throws unless `entry` is a plain file with no other name.

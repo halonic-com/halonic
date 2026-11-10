@@ -1,9 +1,10 @@
 # @halonicjs/adapter-fs-node
 
-The `DefinitionStore`, `RunStore`, `TrustStore` and `AgentPlacementStore`
-ports on the local file system with Node: workspace files are plain files
-under a root folder, each run is a JSONL log, and each trust record and
-each agent's "this computer" choice is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
+The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore` and
+`AgentPlacementStore` ports on the local file system with Node: workspace
+files are plain files under a root folder, each run and each collection of
+records is a JSONL log, and each trust record and each agent's "this
+computer" choice is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
 it.
 
 - **Layer:** adapters
@@ -176,3 +177,31 @@ It passes the shared `AgentPlacementStore` contract suite.
   agent's key, `get` throws naming the agent and its workspace, and
   `remove` deletes the file without reading it. `AgentPlacement` in
   `core/app` then runs the agent in a sandbox.
+
+## Records in the profile
+
+`new FileRecordStore(root)` keeps agent notes and collection records in
+`root`, a workspace's `records` folder in the profile
+(`workspaceFolders(...).recordsFolder()` in `@halonicjs/profile`), so they
+survive a restart and two workspaces never share them. A person's
+connection data, such as `_tokens`, belongs in a separate store. It passes
+the shared `RecordStore` contract suite.
+
+- **Files:** one log per collection, one JSON change per line, named by the
+  SHA-256 of the collection name's UTF-16 code units, as for trust records.
+  The folder gets mode `700`, the logs `600`.
+- **Two processes:** every append and compact holds `write.lock`, with the
+  run lock's rules, so a change appended while a compact runs is never
+  lost. Reads take no lock.
+- **Compact** reads, folds and replaces a log under the lock: the new log
+  goes to a temporary file, is flushed to disk and renamed over the old one,
+  so a crash leaves one or the other. A collection with no record left loses
+  its log.
+- **Crashes and failures:** a change counts once its line break is written.
+  A torn last line is skipped and cut off before the next append. An append
+  that fails cuts every log it added to back to where it was. A broken
+  line, or one for another collection, is an error naming the file and line.
+- **Links:** a log that is a symbolic link, a hard link or not a plain file
+  is refused on read, append and compact, as for trust records.
+- **Limits:** appends are not flushed to disk, so after a power cut the
+  last appends may be gone, as for run logs.
