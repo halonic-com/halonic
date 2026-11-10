@@ -63,6 +63,10 @@ verifies("harness-codex.config", () => {
       ]);
     });
 
+    it("gives the same addresses when the bridge's ends with a slash", () => {
+      expect(codexConfigArgs({ url: "http://127.0.0.1:4100/" })).toEqual(codexConfigArgs(bridge));
+    });
+
     it("never holds the token", () => {
       expect(codexConfigArgs(bridge).join(" ")).not.toContain(bridge.token);
     });
