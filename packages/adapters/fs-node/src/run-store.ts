@@ -46,8 +46,9 @@ export interface FolderRunStoreOptions {
   onSnapshotError?: (runId: string, error: unknown) => void;
   /**
    * Called when an append stored its events but couldn't remove the run's
-   * lock afterwards. The append still succeeds; other writers to the run
-   * wait until the lock left behind is older than `runLockStaleAfterMs`.
+   * lock afterwards. The append still succeeds; later appends to the run,
+   * this store's included, wait until the lock left behind is older than
+   * `runLockStaleAfterMs`.
    * Log it as a warning. It must not throw, or the append rejects although
    * its events are stored.
    */

@@ -442,12 +442,23 @@ verifies("fs-node.run-store-lock", () => {
     });
   });
 
-  it("releases the lock and passes the work's error on", async () => {
-    const file = await lockFile();
-    const work = async () => {
-      throw new Error("work failed");
-    };
-    await expect(settleUnderRunLock(file, work)).rejects.toThrow("work failed");
-    await expect(readFile(file, "utf8")).rejects.toThrow("ENOENT");
+  describe("when the work fails", () => {
+    it("releases the lock and passes the work's error on", async () => {
+      const file = await lockFile();
+      const work = async () => {
+        throw new Error("work failed");
+      };
+      await expect(settleUnderRunLock(file, work)).rejects.toThrow("work failed");
+      await expect(readFile(file, "utf8")).rejects.toThrow("ENOENT");
+    });
+
+    it("passes the work's error on when the lock can't be removed either", async () => {
+      const file = await lockFile();
+      const work = async () => {
+        hooks.busy.rm = ["EACCES"];
+        throw new Error("work failed");
+      };
+      await expect(settleUnderRunLock(file, work)).rejects.toThrow("work failed");
+    });
   });
 });

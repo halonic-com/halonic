@@ -55,8 +55,8 @@ export async function withRunLock<T>(
 
 /**
  * What `work` gave under a run lock, and whether the lock could be
- * released afterwards. A lock left behind blocks other writers only until
- * it is older than `runLockStaleAfterMs`.
+ * released afterwards. A lock left behind blocks later appends to the run,
+ * this process's included, until it is older than `runLockStaleAfterMs`.
  */
 export type LockedOutcome<T> =
   | { result: T; released: true }
@@ -66,7 +66,8 @@ export type LockedOutcome<T> =
  * Runs `work` under the run lock `file`, like {@link withRunLock}, but keeps
  * its result when the lock can't be released afterwards, so the caller can
  * tell work that was done from work that wasn't. When `work` throws, the
- * lock is released and the error passed on, as `withRunLock` does.
+ * lock is released and the work's error passed on, even when the release
+ * fails too.
  *
  * @param file - the lock file, `<runId>.lock` in an existing folder
  * @param system - the platform and clock the busy retries use; tests play Windows with it
@@ -82,7 +83,11 @@ export async function settleUnderRunLock<T>(
   try {
     result = await work();
   } catch (error) {
-    await release();
+    try {
+      await release();
+    } catch {
+      // The work's error is the answer; the Rust run store keeps it too.
+    }
     throw error;
   }
   try {
