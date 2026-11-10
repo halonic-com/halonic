@@ -6,8 +6,8 @@ import { join } from "node:path";
 import type { SandboxBlock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { gitlinkMode, index } from "./git-index.test-helper.ts";
 import { recoverGitFolders } from "./git-folder-check.ts";
+import { gitlinkMode, index } from "./git-index.test-helper.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
 
