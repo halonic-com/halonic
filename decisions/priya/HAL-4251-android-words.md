@@ -4,7 +4,6 @@
 - Task: HAL-4251 (found by the words check on HAL-4240, PR #1329)
 - Approval: [HAL-4254](/HAL/issues/HAL-4254), the CTO's review of PR #1343
 - Kind: internal
-- Signature:
 
 ## What changes
 
