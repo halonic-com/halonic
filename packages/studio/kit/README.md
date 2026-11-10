@@ -1386,10 +1386,11 @@ text. A list with icons, descriptions or search is a different component, not a 
 **On a phone** (the `phone` presentation) the Select is a **picker button** instead, never the
 browser's menu: 48px high with 16px text and the chevron, like the phone Input. It's named by the
 Field's label and then the value, so a screen reader hears "Model, Sonnet", and the label points at
-it. Only that one control is rendered for the keyboard and screen readers. Until the kit's picker
-sheet exists (it comes with the Sheet), the button opens the system's picker from a native select
-hidden under it; a picked value is saved at once and focus goes back to the button. With the
-sheet, the button will open it instead, and say so with `aria-haspopup="dialog"`.
+it. It's the only control rendered; with a `name`, a hidden input carries the value for a form that
+posts. The button opens the **PickerSheet** titled with the label (`aria-haspopup="dialog"`). A pick
+is saved at once and closes it, Close keeps the value, and either way focus goes back to the button.
+A `disabled` option is listed and can't be picked. A Field error shows as the `danger` edge and
+reaches screen readers through the button's description, since a button can't be `aria-invalid`.
 
 ## CopyButton
 

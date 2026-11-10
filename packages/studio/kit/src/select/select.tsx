@@ -1,8 +1,9 @@
-import { type ChangeEvent, type ReactNode, type Ref, useId, useRef } from "react";
+import { type ChangeEvent, type Ref, useId, useState } from "react";
 import { assignRef } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 import { ChevronDownIcon } from "../icons/chevron-down-icon.tsx";
 import { type FieldSize, fieldBoxClasses, fieldBoxState } from "../input/field-box.ts";
+import { type PickerOption, PickerSheet } from "../picker-sheet/picker-sheet.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 
 /** One value to pick: what's saved, and the words the list shows for it. */
@@ -53,8 +54,7 @@ const optionClasses = "bg-surface text-fg";
  * Pick one value from a list. Put it in a `Field`, which gives it its label, its hint or error,
  * and the ids that link them. On desktop it's the native `<select>`, so the keyboard and screen
  * readers work as everywhere. On a phone (the presentation context) it's a picker button, named
- * by the label and the value ("Model, Sonnet"), which opens the system's picker until the kit's
- * picker sheet takes its place.
+ * by the label and the value ("Model, Sonnet"), which opens the kit's picker sheet.
  *
  * @example
  * <Field label="Model" error={modelError}>
@@ -111,12 +111,11 @@ export function Select({
           disabled={disabled}
           name={name}
           ariaLabel={ariaLabel}
-          shown={shown}
-          onPick={pick}
+          options={options}
+          value={picked?.value}
+          onChange={onChange}
           controlRef={ref}
-        >
-          {list}
-        </PickerButton>
+        />
       ) : (
         <select
           ref={(node) => assignRef(ref, node)}
@@ -152,18 +151,17 @@ interface PickerButtonProps {
   readonly disabled: boolean | undefined;
   readonly name: string | undefined;
   readonly ariaLabel: string | undefined;
-  /** The value the system picker has selected: the picked one, or `""` for the placeholder. */
-  readonly shown: string;
-  readonly onPick: (event: ChangeEvent<HTMLSelectElement>) => void;
+  readonly options: readonly SelectOption[];
+  /** The picked value, or `undefined` while the placeholder shows. */
+  readonly value: string | undefined;
+  readonly onChange: (value: string) => void;
   readonly controlRef: Ref<HTMLElement> | undefined;
-  /** The `<option>`s, for the system picker. */
-  readonly children: ReactNode;
 }
 
 /**
- * The phone's field: a button that looks like the phone Input and opens the picker. Until the
- * picker sheet exists the picker is the system's, from a `<select>` that lies under the button,
- * out of sight and out of the accessibility tree, so the button is the only control there is.
+ * The phone's field: a button that looks like the phone Input and opens the picker sheet, titled
+ * with the Field's label. A pick saves at once and closes it; Close keeps the value. Either way
+ * focus goes back to the button. An unavailable option stays listed and can't be picked.
  */
 function PickerButton({
   label,
@@ -171,52 +169,40 @@ function PickerButton({
   disabled,
   name,
   ariaLabel,
-  shown,
-  onPick,
+  options,
+  value,
+  onChange,
   controlRef,
-  children,
 }: PickerButtonProps) {
   const field = useFieldControl();
   const id = useId();
   const nameId = `${id}-name`;
   const valueId = `${id}-value`;
-  const button = useRef<HTMLButtonElement | null>(null);
-  const picker = useRef<HTMLSelectElement | null>(null);
+  const [open, setOpen] = useState(false);
   // "Model, Sonnet": the Field's label, or the aria-label outside one, then the value.
   const labelledBy = [field?.labelId ?? (ariaLabel === undefined ? undefined : nameId), valueId]
     .filter((part) => part !== undefined)
     .join(" ");
-
-  function open() {
-    const select = picker.current;
-    if (select === null) {
-      return;
-    }
-    try {
-      select.showPicker();
-    } catch {
-      // A browser without showPicker on a select (Safari): focus opens its picker there.
-      select.focus();
-    }
-  }
+  const choices: readonly PickerOption[] = options.map((option) => ({
+    value: option.value,
+    label: option.label,
+    // A Select's option has no reason to show, so its row has no second line.
+    ...(option.disabled === true ? { unavailable: { reason: "" } } : {}),
+  }));
 
   return (
     <>
       <button
-        ref={(node) => {
-          button.current = node;
-          assignRef(controlRef, node);
-        }}
+        ref={(node) => assignRef(controlRef, node)}
         type="button"
         id={field?.id}
         disabled={disabled}
-        onClick={open}
+        onClick={() => setOpen(true)}
         data-field-text=""
         className={`${controlClasses} flex items-center text-start phone:py-3`}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-labelledby={labelledBy}
         aria-describedby={field?.describedBy}
-        aria-invalid={field?.invalid || undefined}
       >
         <span id={valueId} className={`min-w-0 break-words ${tone}`}>
           {label}
@@ -227,21 +213,20 @@ function PickerButton({
           {ariaLabel}
         </span>
       ) : null}
-      <select
-        ref={picker}
-        name={name}
-        value={shown}
-        disabled={disabled}
-        onChange={(event) => {
-          onPick(event);
-          button.current?.focus();
-        }}
-        tabIndex={-1}
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-0"
-      >
-        {children}
-      </select>
+      {name === undefined ? null : <input type="hidden" name={name} value={value ?? ""} />}
+      {open ? (
+        <PickerSheet
+          title={field?.label ?? ariaLabel ?? ""}
+          options={choices}
+          value={value}
+          empty=""
+          onPick={(picked) => {
+            setOpen(false);
+            onChange(picked);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

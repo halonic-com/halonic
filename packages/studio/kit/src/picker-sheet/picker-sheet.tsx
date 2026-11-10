@@ -162,7 +162,9 @@ function PickerRow<Value extends string>(props: PickerRowProps<Value>) {
   const labelId = useId();
   const descriptionId = useId();
   const { option } = props;
-  const description = option.unavailable?.reason ?? option.description;
+  // An unavailable option without words for why (a Select's) has no second line.
+  const reason = option.unavailable?.reason === "" ? undefined : option.unavailable?.reason;
+  const description = reason ?? option.description;
   const unavailable = option.unavailable !== undefined;
   return (
     <div
