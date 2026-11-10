@@ -64,6 +64,32 @@ verifies("engine.wait-state", () => {
     expect(decisions[0]?.effects).toEqual([]);
   });
 
+  /** The approval workflow with `decide` described as given. */
+  function describedAs(description: string): Workflow {
+    const workflow = approvalWorkflow();
+    const decide = workflow.states["decide"];
+    if (decide?.type !== "wait") throw new Error("expected decide to be a wait state");
+    return { ...workflow, states: { ...workflow.states, decide: { ...decide, description } } };
+  }
+
+  it("fills in the state's description against the run, once, as a title and a body", () => {
+    const described = describedAs("Approve?\nOutcome: {{context.outcome}}\n{{context.note}}");
+    const { decisions } = play(described, [start]);
+    expect(decisions[0]?.events.at(-1)).toMatchObject({
+      type: "run.waiting",
+      title: "Approve?",
+      body: "Outcome: pending",
+    });
+  });
+
+  it("writes no title or body when the state has no description, or an empty one", () => {
+    for (const workflow of [approvalWorkflow(), describedAs("")]) {
+      const waiting = play(workflow, [start]).decisions[0]?.events.at(-1);
+      expect(waiting).not.toHaveProperty("title");
+      expect(waiting).not.toHaveProperty("body");
+    }
+  });
+
   it("writes the payload to lastEvent and moves on the event", () => {
     const { log } = play(approvalWorkflow(), [start, send("approve", { payload: { note: "ok" } })]);
     expect(log.slice(3).map(({ runId: _r, seq: _s, at: _a, ...body }) => body)).toEqual([

@@ -87,3 +87,43 @@ function valueAsText(value: unknown): string {
   }
   return JSON.stringify(value);
 }
+
+/** What a person reads about a step: its first line, and the lines after it. */
+export interface RenderedDescription {
+  /** The first line, filled in and on one line. Empty when the description has none. */
+  readonly title: string;
+  /** Lines 2 onward, filled in. Empty when there are none. */
+  readonly body: string;
+}
+
+/**
+ * Fills in a step's description against a scope, once, for every place that
+ * shows it (the waiting line, the Inbox row and card). The first line is the
+ * title and the rest is the body; the description is split before it is
+ * filled in, so a value with line breaks in the first line can't move text
+ * between them. Line breaks in the title become one space.
+ *
+ * A placeholder that resolves to nothing gives empty text, so it never shows
+ * as `{{…}}`. The filled-in values are not escaped here: whoever shows them
+ * shows them as plain text.
+ *
+ * @example
+ * renderDescription("Approve this reply?\n{{context.reply}}", { context: { reply: "Hi" } });
+ * // { title: "Approve this reply?", body: "Hi" }
+ * renderDescription("Check {{context.order}}", { context: {} });
+ * // { title: "Check", body: "" }
+ */
+export function renderDescription(description: string, scope: unknown): RenderedDescription {
+  const lineBreak = description.indexOf("\n");
+  const firstLine = lineBreak === -1 ? description : description.slice(0, lineBreak);
+  const rest = lineBreak === -1 ? "" : description.slice(lineBreak + 1);
+  return {
+    title: renderText(firstLine, scope).replace(/\s+/g, " ").trim(),
+    body: rest === "" ? "" : trimBlankLines(renderText(rest, scope)),
+  };
+}
+
+/** A text without the blank lines at its start and end; blank lines inside stay. */
+function trimBlankLines(text: string): string {
+  return text.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+}

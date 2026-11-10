@@ -44,6 +44,7 @@ export function summarize(events: readonly RunEvent[]): RunSummary | null {
     waitingOn: null,
     accepts: [],
     nextTimer: null,
+    waitingFor: null,
     lastWaitingAt: null,
     approvals: [],
     signals: [],
@@ -77,6 +78,10 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.waitingOn = event.child ?? null;
       summary.accepts = event.events;
       summary.nextTimer = earliestTimer(event.timers);
+      summary.waitingFor =
+        event.title === undefined && event.body === undefined
+          ? null
+          : { title: event.title ?? "", body: event.body ?? "" };
       summary.lastWaitingAt = event.at;
       return;
     case "signal.sent":
@@ -109,6 +114,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.waitingOn = null;
       summary.accepts = [];
       summary.nextTimer = null;
+      summary.waitingFor = null;
       return;
     case "run.completed":
       summary.status = "completed";

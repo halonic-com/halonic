@@ -1,6 +1,7 @@
 import {
   acceptedEvents,
   dueTimer,
+  renderDescription,
   type Scope,
   selectTransition,
   stateTimers,
@@ -22,8 +23,8 @@ const lastEventKey = "lastEvent";
 
 /**
  * A `wait` state waits for a person. On entry it records `run.waiting` with
- * the events it takes and the due times of its timers, and sets one timer
- * for each. An event sent to it, or the first of its timers that is due,
+ * the events it takes, the due times of its timers and its description
+ * filled in against the run, and sets one timer for each timer. An event sent to it, or the first of its timers that is due,
  * moves the run on. Leaving the state leaves its timers to fire for nothing:
  * each timer names the visit it was set on, so a later visit ignores it.
  */
@@ -37,7 +38,7 @@ export const waitState: StateHandler<"wait"> = {
   },
 };
 
-function startWaiting({ run, stateId, workflow }: StateContext): StateStep {
+function startWaiting({ run, stateId, state, workflow, scope }: StateContext): StateStep {
   const timers = stateTimers(workflow, stateId, new Date(run.enteredAt as string));
   const waiting: DecidedEvent = {
     type: "run.waiting",
@@ -46,6 +47,7 @@ function startWaiting({ run, stateId, workflow }: StateContext): StateStep {
     ...(timers.length === 0
       ? {}
       : { timers: timers.map(({ after, at }) => ({ after, at: at.toISOString() })) }),
+    ...describedAs(state.description, scope),
   };
   return {
     events: [waiting],
@@ -151,4 +153,18 @@ function parseTimerKey(key: string): TimerOfVisit | null {
   const match = /^(\d+):(\d+)$/.exec(key);
   if (match === null) return null;
   return { enteredSeq: Number(match[1]), index: Number(match[2]) };
+}
+
+/**
+ * The state's description filled in once, here, so the waiting line and the
+ * Inbox show the same text (`events.waiting-description`). An empty title or
+ * body is left out.
+ */
+function describedAs(
+  description: string | undefined,
+  scope: Scope,
+): { title?: string; body?: string } {
+  if (description === undefined) return {};
+  const { title, body } = renderDescription(description, scope);
+  return { ...(title === "" ? {} : { title }), ...(body === "" ? {} : { body }) };
 }

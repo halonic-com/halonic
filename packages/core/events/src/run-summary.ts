@@ -63,6 +63,12 @@ export interface RunSummary {
   accepts: string[];
   /** While waiting: when the next timer is due (ISO), if the state has timers. */
   nextTimer: string | null;
+  /**
+   * While waiting: the wait step's description, filled in, as its first line
+   * (`title`) and the rest (`body`); `null` when the step has none. The
+   * filled-in values can be model output: show them as plain text.
+   */
+  waitingFor: { title: string; body: string } | null;
   /** ISO time of the last `run.waiting`, kept after the run goes on; `null` if it never waited. */
   lastWaitingAt: string | null;
   /**

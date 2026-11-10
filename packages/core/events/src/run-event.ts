@@ -219,13 +219,20 @@ export type RunEventBody =
       status: "completed" | "failed";
       error?: string;
     }
-  /** `child`: the run is waiting because this child run waits; events go to it. */
+  /**
+   * `child`: the run is waiting because this child run waits; events go to it.
+   * `title` and `body`: the wait step's description, filled in against the
+   * run when it started waiting (requirement `events.waiting-description`).
+   * The filled-in values can be model output: show them as plain text.
+   */
   | {
       type: "run.waiting";
       state: string;
       events: string[];
       child?: string;
       timers?: { after: string; at: string }[];
+      title?: string;
+      body?: string;
     }
   /** A timer transition (`after`) of a wait state fired. */
   | { type: "timer.fired"; state: string; after: string }

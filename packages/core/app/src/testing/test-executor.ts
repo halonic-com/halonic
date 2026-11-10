@@ -172,6 +172,7 @@ function testSummary(
     waitingOn: null,
     accepts: [],
     nextTimer: null,
+    waitingFor: null,
     lastWaitingAt: null,
     approvals: [],
     signals: [],

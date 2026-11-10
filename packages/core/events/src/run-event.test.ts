@@ -110,6 +110,8 @@ verifies("events.run-log-contract", () => {
       events: string[];
       child?: string;
       timers?: { after: string; at: string }[];
+      title?: string;
+      body?: string;
     }>();
     expectTypeOf<EventOf<"timer.fired">>().toEqualTypeOf<{
       type: "timer.fired";
@@ -454,5 +456,12 @@ verifies("events.tool-result-blob", () => {
       tool: "export",
       result: "id,amount",
     } as const).toExtend<EventOf<"tool.result">>();
+  });
+});
+
+verifies("events.waiting-description", () => {
+  typeTest("lets run.waiting carry the filled-in title and body, both optional", () => {
+    expectTypeOf<EventOf<"run.waiting">["title"]>().toEqualTypeOf<string | undefined>();
+    expectTypeOf<EventOf<"run.waiting">["body"]>().toEqualTypeOf<string | undefined>();
   });
 });

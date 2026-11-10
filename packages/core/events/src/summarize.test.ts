@@ -67,6 +67,7 @@ verifies("events.summary-start", () => {
       waitingOn: null,
       accepts: [],
       nextTimer: null,
+      waitingFor: null,
       lastWaitingAt: null,
       approvals: [],
       signals: [],
@@ -250,6 +251,40 @@ verifies("events.summary-cost", () => {
       { ...response, usage, cost: 0.5, paidBy: "subscription" },
     );
     expect(summary).toMatchObject({ cost: 0.25, unpricedCalls: 0, subscriptionCalls: 1 });
+  });
+});
+
+verifies("events.waiting-description", () => {
+  const waiting = (fields: { title?: string; body?: string }): RunEventBody => ({
+    type: "run.waiting",
+    state: "review",
+    events: ["approve", "reject"],
+    ...fields,
+  });
+
+  it("holds the filled-in title and body while the run waits", () => {
+    expect(
+      summaryOf(waiting({ title: "Approve this reply?", body: "Hello Ada" })).waitingFor,
+    ).toEqual({
+      title: "Approve this reply?",
+      body: "Hello Ada",
+    });
+    expect(summaryOf(waiting({ title: "Approve this reply?" })).waitingFor).toEqual({
+      title: "Approve this reply?",
+      body: "",
+    });
+  });
+
+  it("is null for a wait without a description, as in older logs", () => {
+    expect(summaryOf(waiting({})).waitingFor).toBeNull();
+  });
+
+  it("is null again once the run goes on", () => {
+    const summary = summaryOf(waiting({ title: "Approve this reply?" }), {
+      type: "event.received",
+      event: "approve",
+    });
+    expect(summary.waitingFor).toBeNull();
   });
 });
 

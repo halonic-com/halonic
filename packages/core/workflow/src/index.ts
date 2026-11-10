@@ -27,7 +27,13 @@ export {
   type TimerTransition,
 } from "./machine.ts";
 export { parseDuration } from "./parse-duration.ts";
-export { getPath, render, renderText } from "./template.ts";
+export {
+  getPath,
+  type RenderedDescription,
+  render,
+  renderDescription,
+  renderText,
+} from "./template.ts";
 export { toNumber } from "./to-number.ts";
 export { validateWorkflow } from "./validate.ts";
 export type {
