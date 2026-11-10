@@ -2,6 +2,7 @@
 
 - Approval: [HAL-4481](/HAL/issues/HAL-4481); the package owner approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GfuYay9/okCiGa7jNg7JirtKZWaZEDsJML5SxvNnCXwd8sLFYimTu4KQmxBqb6uKTwksot0g105sYnja/eHmAA==
 - Task: HAL-4481
 
 ## What changes
