@@ -99,6 +99,12 @@ let result;
 try {
   result = JSON.parse(run.stdout.trim().split(/\r?\n/).pop());
 } catch {
+  // A host-side connection is an observed leak even when the child printed nothing.
+  if (connections !== 0) {
+    writeSummary([["canary port saw no connection", false]]);
+    console.error(`NOT FENCED: the canary port saw ${connections} connection(s).`);
+    process.exit(1);
+  }
   writeSummary([["the program inside the sandbox gave a result", false]]);
   console.error(
     "NOT FENCED: the program inside the sandbox gave no result, so the probes did not run.",
