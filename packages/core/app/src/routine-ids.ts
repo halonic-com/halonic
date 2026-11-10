@@ -67,6 +67,19 @@ export function queueKey(workspaceId: string): string {
   return `routines/${shortHash(workspaceId)}/queue`;
 }
 
+/**
+ * The `Coordination` key that keeps the skip records of a routine of a
+ * workspace. The routine key is hashed, as for {@link lastRunKey}.
+ */
+export function skipsKeyByHash(workspaceId: string, keyHash: string): string {
+  return `routines/${shortHash(workspaceId)}/skips/${keyHash}`;
+}
+
+/** The `Coordination` key that keeps when a workspace's stored queue was last found unreadable. */
+export function queueLostKey(workspaceId: string): string {
+  return `routines/${shortHash(workspaceId)}/queue-lost`;
+}
+
 const fnvOffset = 0xcbf29ce484222325n;
 const fnvPrime = 0x100000001b3n;
 const mask64 = (1n << 64n) - 1n;
