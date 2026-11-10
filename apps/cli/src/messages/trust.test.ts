@@ -24,10 +24,10 @@ verifies("cli.messages", () => {
       "Before anything in Acme runs on this computer, here's what it can start and where it can talk to.",
       "Programs",
       "gets the secret GMAIL_TOKEN",
-      "Downloads code from PyPI every time it starts: version not pinned.",
+      "Can download new code from PyPI when it starts: version not pinned.",
       "Fingerprint",
       "Trust Acme on this computer?",
-      "It downloads new code on every start. Trust it anyway?",
+      "It can download new code when it starts. Trust it anyway?",
       "Acme can run now.",
     ]);
   });
@@ -76,7 +76,7 @@ describe("trust's sentences", () => {
     expect(words(trustMessages.getsSecrets(["A", "B"]))).toBe("gets the secrets A and B");
     expect(words(trustMessages.getsSecrets(["A", "B", "C"]))).toBe("gets the secrets A, B and C");
     expect(words(trustMessages.notPinned("npm"))).toBe(
-      "Downloads code from npm every time it starts: version not pinned.",
+      "Can download new code from npm when it starts: version not pinned.",
     );
   });
 

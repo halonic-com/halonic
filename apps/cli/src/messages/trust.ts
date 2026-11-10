@@ -55,14 +55,14 @@ export const trustMessages = defineMessages("trust", {
     phrase`gets the ${names.length === 1 ? "secret" : "secrets"} ${listed(names)}`,
   /** Under a program whose version isn't pinned, with a ! (decided from the command alone). */
   notPinned: (registry: PackageRegistry) =>
-    phrase`Downloads code from ${registry} every time it starts: version not pinned.`,
+    phrase`Can download new code from ${registry} when it starts: version not pinned.`,
   /** The label above the full fingerprint, which is never shortened. */
   fingerprintHeading: () => phrase`Fingerprint`,
 
   /** The question, framed with [y/N] by the question line. */
   question: (name: string) => phrase`Trust ${name} on this computer?`,
   /** The second question for a program that isn't pinned (Studio's checkbox). */
-  notPinnedQuestion: () => phrase`It downloads new code on every start. Trust it anyway?`,
+  notPinnedQuestion: () => phrase`It can download new code when it starts. Trust it anyway?`,
   trusted: (name: string) => phrase`${name} can run now.`,
   /** Answer No, or Enter: exit 3. */
   notTrusted: () => phrase`Not trusted. Nothing was started.`,
