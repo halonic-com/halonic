@@ -29,8 +29,9 @@ Two requirements get more precise, and one test that pinned the old ✕ name che
 - D5: things that appear use `--ease-enter` (theme tokens); the fade used the default curve.
 - D6: focus can't land on a disabled field or one under `[hidden]`, so the Dialog started nowhere.
 
-No test was weakened or removed: the one changed expectation is the new name, and every change
-has a new test that fails without it.
+No test was weakened or removed: the one changed expectation is the new name. Every change has a
+new test, but not every one fails without it: the "?"-in-the-middle test and the built-CSS easing
+test also pass on #739's code, and D3 is pinned only by the typecheck.
 
 ## Covers
 
