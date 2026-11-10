@@ -24,7 +24,7 @@ function deadPid(): number {
 
 describe("recoverSandboxSessions", () => {
   it.skipIf(process.platform === "win32")(
-    "undoes a commondir that a crashed session left, then removes its journal",
+    "[platform:win32] the sandbox keeps no journal on Windows (see the last test): undoes a commondir that a crashed session left, then removes its journal",
     async () => {
       const git = join(base, "work", ".git");
       mkdirSync(git, { recursive: true });
