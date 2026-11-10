@@ -21,6 +21,34 @@ export function checkCommitId(version: string): void {
   }
 }
 
+/** Where every proposal ref lives. */
+const proposalRefPrefix = "refs/halonic/proposals/";
+
+/**
+ * A proposal ref's id: ASCII letters, digits, `-` and `_`, at most 64 of
+ * them, not starting with `-`. No `/`, `.`, `@`, `~`, `^` or `:`, so git
+ * never reads one as a path, a revision expression or an option.
+ */
+const proposalIdPattern = /^[A-Za-z0-9_][A-Za-z0-9_-]{0,63}$/u;
+
+/**
+ * Refuses a ref that isn't a proposal ref, the only kind of ref
+ * `commitWorktreeTo`, `readRef` and `deleteRef` take:
+ * `refs/halonic/proposals/<id>`, with the id as {@link proposalIdPattern}
+ * says. Any other name could be a branch, `HEAD` or a tag, which these
+ * methods must never move or delete.
+ *
+ * @throws RangeError naming the ref
+ */
+export function checkProposalRef(ref: string): void {
+  const id = ref.startsWith(proposalRefPrefix) ? ref.slice(proposalRefPrefix.length) : null;
+  if (id === null || !proposalIdPattern.test(id)) {
+    throw new RangeError(
+      `Invalid proposal ref ${JSON.stringify(ref)}: give ${proposalRefPrefix}<id>, with an id of up to 64 letters, digits, - and _, not starting with -.`,
+    );
+  }
+}
+
 /** How a file differs from the last commit. */
 export type VcsFileStatus =
   | "modified"
@@ -96,6 +124,22 @@ export interface VcsFileDiff {
 export interface VcsApplyOptions {
   /** Undo the patch instead: what discarding one hunk does. */
   reverse?: boolean;
+}
+
+/** What `commitVersion` commits. */
+export interface VcsCommitVersionOptions {
+  /** The commit message, committed as written. */
+  message: string;
+  /** Files and folders whose changes to commit; every change when absent. Never empty. */
+  include?: string[];
+  /** Files and folders whose changes to leave out, even under `include`. */
+  exclude: string[];
+}
+
+/** How `commitWorktreeTo` commits a worktree. */
+export interface VcsCommitWorktreeOptions {
+  /** The new commit's only parent: a full commit id (see {@link checkCommitId}). */
+  parent: string;
 }
 
 /**
@@ -314,6 +358,63 @@ export interface Vcs {
    *   longer matches the file.` The Studio offers to refresh only this one.
    */
   applyPatch(patch: string, options?: VcsApplyOptions): Promise<void>;
+  /**
+   * Create version: commits the changes on disk under `include` (the whole
+   * workspace when absent), new, changed and deleted files alike, except
+   * those under `exclude`, on the current branch, and returns the commit's
+   * id. A path names a file or everything in a folder; a renamed item is
+   * left out by naming both its paths.
+   *
+   * A path left out keeps its content at HEAD in the new commit, even when
+   * the repository tracks it and it changed on disk (unlike
+   * `git commit -- <path>`, which commits what is on disk for every tracked
+   * path it names). Files the repository ignores are left out, and so are
+   * private entries, even ones `.gitignore` doesn't name; one HEAD already
+   * tracks keeps its content at HEAD. The working tree is never touched.
+   * The index takes the new commit's content for the paths it committed;
+   * every other path stays as it was, staged changes and all, so the
+   * changes left out are still changes afterwards.
+   *
+   * @throws RangeError for a path the port refuses in `include` or
+   *   `exclude`, or an empty `include`
+   * @throws when the message is empty, or there is nothing to commit
+   *   because every change is left out; nothing changes
+   */
+  commitVersion(options: VcsCommitVersionOptions): Promise<string>;
+  /**
+   * Commits a worktree's files as they are on disk, new files included,
+   * ignored files and private entries left out, with `parent` as the only
+   * parent, and points the proposal ref `ref` at it (see
+   * {@link checkProposalRef}). Returns the commit's id. HEAD, the branches,
+   * the index, the working tree and the worktree don't change, and
+   * `branches` never lists the ref. Nothing pushes it.
+   *
+   * @throws RangeError for a ref that isn't a proposal ref, or a parent
+   *   that isn't a full commit id
+   * @throws when the ref already exists, so a proposal is never
+   *   overwritten; as {@link Vcs.readAt} for the parent; and as
+   *   {@link Vcs.removeWorktree} for the id
+   */
+  commitWorktreeTo(
+    worktreeId: string,
+    ref: string,
+    options: VcsCommitWorktreeOptions,
+  ): Promise<string>;
+  /**
+   * The commit a proposal ref points at, or `null` when there is no such
+   * ref, even when a branch has the same name.
+   *
+   * @throws RangeError for a ref that isn't a proposal ref
+   * @throws when the folder isn't a repository
+   */
+  readRef(ref: string): Promise<string | null>;
+  /**
+   * Deletes a proposal ref. The commit stays until git's own `gc` removes it.
+   *
+   * @throws RangeError for a ref that isn't a proposal ref
+   * @throws when there is no such ref
+   */
+  deleteRef(ref: string): Promise<void>;
   /** Make the folder a repository, ignoring `.studio`, the folder Halonic keeps its runtime data in. */
   init(): Promise<void>;
   /** The remote names, such as "origin". */
