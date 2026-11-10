@@ -10,7 +10,7 @@ import { suggestedCommand } from "./suggested-command.ts";
  * `--dir`.
  */
 export const runsMessages = defineMessages("runs", {
-  summary: () => phrase`Show what a run did, or answer a run that's waiting for you`,
+  summary: () => phrase`List runs, show what one did, or answer one that's waiting for you`,
   /** What `runs send` was doing, for "✕ Couldn't send approve to run 01JD8Q: …". */
   sendAction: (event: string, runId: string) => phrase`send ${event} to run ${runId}`,
   /** The same, when there's no such run: "✕ Couldn't send approve: …". */
