@@ -1,6 +1,7 @@
-import type { Agent, Connector } from "@halonicjs/format";
+import type { Agent, Connector, IntegrationSheet } from "@halonicjs/format";
 import type { Clock, Digest, TrustRecord } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
+import type { LocalIntegrationInput } from "@halonicjs/workspace";
 import { expect, expectTypeOf, it } from "vitest";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
 import { type TrustCheck, TrustService, type TrustSubject } from "./trust-service.ts";
@@ -25,7 +26,24 @@ function program(id: string, env: Record<string, string> = {}): Connector {
 }
 
 function subject(...connectors: Connector[]): TrustSubject {
-  return { location, connectors, commandPaths, agents: [] };
+  return { location, connectors, commandPaths, agents: [], integrations: [] };
+}
+
+/** A local integration that reads its address from the workspace setting `url`. */
+function homeStation(url: string): LocalIntegrationInput {
+  // Built as data, so the test doesn't depend on the sheet's other fields.
+  const sheet = {
+    id: "home-station",
+    version: "1.0.0",
+    kit: 1,
+    provides: ["connector"],
+    hosts: [{ fromSetting: "url", class: "private" }],
+    secrets: {},
+    tokens: [],
+    tools: [],
+    needs: [],
+  } as unknown as IntegrationSheet;
+  return { sheet, settings: { url } };
 }
 
 /** An agent that runs in Claude Code and may reach the given sites. */
@@ -96,7 +114,7 @@ verifies("app.trust-service", () => {
 
     expectStatus(check, "trusted");
     expect(check.grant).toEqual({ location, fingerprint: check.fingerprint });
-    expect(check.shrunk).toEqual({ connectors: [], agents: [] });
+    expect(check.shrunk).toEqual({ connectors: [], agents: [], integrations: [] });
     expect(await store.get(location)).toMatchObject({
       fingerprint: check.fingerprint,
       grantedAt: "2026-11-09T10:00:00.000Z",
@@ -132,7 +150,7 @@ verifies("app.trust-service", () => {
     const check = await service.check(subject(program("files")));
 
     expectStatus(check, "trusted");
-    expect(check.shrunk).toEqual({ connectors: ["mail"], agents: [] });
+    expect(check.shrunk).toEqual({ connectors: ["mail"], agents: [], integrations: [] });
     expect(check.grant.fingerprint).toBe(check.fingerprint);
     expect(await store.get(location)).toMatchObject({
       fingerprint: check.fingerprint,
@@ -150,7 +168,7 @@ verifies("app.trust-service", () => {
     const check = await service.check(subject(program("files")));
 
     expectStatus(check, "trusted");
-    expect(check.shrunk).toEqual({ connectors: [], agents: ["coder"] });
+    expect(check.shrunk).toEqual({ connectors: [], agents: ["coder"], integrations: [] });
     expect(check.fingerprint).not.toBe(before.fingerprint);
     expect(await store.get(location)).toMatchObject({
       fingerprint: check.fingerprint,
@@ -224,18 +242,25 @@ verifies("app.trust-service", () => {
   it("puts the resolved command in the fingerprint, and can't be called without it", async () => {
     const { service } = setup();
     const connectors = [program("files")];
-    const here = await service.check({ location, connectors, commandPaths, agents: [] });
+    const here = await service.check({
+      location,
+      connectors,
+      commandPaths,
+      agents: [],
+      integrations: [],
+    });
     const there = await service.check({
       location,
       connectors,
       commandPaths: new Map([["node", "/opt/evil/node"]]),
       agents: [],
+      integrations: [],
     });
 
     expect(here.fingerprint).not.toBe(there.fingerprint);
     expectTypeOf<TrustSubject["commandPaths"]>().toEqualTypeOf<ReadonlyMap<string, string>>();
     // @ts-expect-error commandPaths is required
-    const missing: TrustSubject = { location, connectors, agents: [] };
+    const missing: TrustSubject = { location, connectors, agents: [], integrations: [] };
     expect(missing).toBeDefined();
   });
 
@@ -252,8 +277,47 @@ verifies("app.trust-service", () => {
     expectStatus(check, "changed");
     expect(check.changes.agents.changed.map((change) => change.fields)).toEqual([["allowedSites"]]);
     // @ts-expect-error agents is required
-    const missing: TrustSubject = { location, connectors: [], commandPaths };
+    const missing: TrustSubject = { location, connectors: [], commandPaths, integrations: [] };
     expect(missing).toBeDefined();
+  });
+
+  it("asks again when a local integration's address setting changes, and can't be called without the integrations", async () => {
+    const { service } = setup();
+    await trustAsPerson(service, {
+      ...subject(program("files")),
+      integrations: [homeStation("http://192.168.1.20:8123")],
+    });
+
+    const check = await service.check({
+      ...subject(program("files")),
+      integrations: [homeStation("http://192.168.1.99:8123")],
+    });
+
+    expectStatus(check, "changed");
+    expect(check.changes.integrations.changed.map((change) => change.fields)).toEqual([
+      ["addresses"],
+    ]);
+    // @ts-expect-error integrations is required
+    const missing: TrustSubject = { location, connectors: [], commandPaths, agents: [] };
+    expect(missing).toBeDefined();
+  });
+
+  it("shrinks the record without asking when only a local integration is removed, and says so", async () => {
+    const { service, store } = setup();
+    await trustAsPerson(service, {
+      ...subject(program("files")),
+      integrations: [homeStation("http://192.168.1.20:8123")],
+    });
+    const before = (await store.get(location)) as TrustRecord;
+
+    const check = await service.check(subject(program("files")));
+
+    expectStatus(check, "trusted");
+    expect(check.shrunk).toEqual({ connectors: [], agents: [], integrations: ["home-station"] });
+    expect(await store.get(location)).toMatchObject({
+      fingerprint: check.fingerprint,
+      grantedAt: before.grantedAt,
+    });
   });
 
   it("lists package runners as unpinned, also behind a shell, and keeps the flag out of the fingerprint", async () => {
@@ -270,7 +334,13 @@ verifies("app.trust-service", () => {
       runner("crm", "cmd", ["/c", "uvx", "crm-mcp"]),
     ];
 
-    const check = await service.check({ location, connectors, commandPaths, agents: [] });
+    const check = await service.check({
+      location,
+      connectors,
+      commandPaths,
+      agents: [],
+      integrations: [],
+    });
 
     expectStatus(check, "new");
     expect(check.unpinned).toEqual(["crm", "mail"]);

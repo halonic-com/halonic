@@ -1,8 +1,8 @@
 // Decides whether a workspace is trusted, as `app.trust-service` asks: it
 // builds the trust content, fingerprints it and compares it with the trust
 // record in the user's profile. Only a person adds to a record (HAL-571);
-// a change that only removes whole connectors or harness agents shrinks it
-// (HAL-65 decision 9).
+// a change that only removes whole connectors, harness agents or local
+// integrations shrinks it (HAL-65 decision 9).
 
 import type { Agent, Connector } from "@halonicjs/format";
 import type {
@@ -15,6 +15,7 @@ import type {
 } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import {
+  type LocalIntegrationInput,
   type TrustChanges,
   type TrustContent,
   trustChanges,
@@ -41,6 +42,13 @@ export interface TrustSubject {
    * fingerprint (HAL-189 stack 3c).
    */
   readonly agents: readonly Agent[];
+  /**
+   * The workspace's local integrations, with its settings for each.
+   * Required, so the address each `{ fromSetting }` host reads is always in
+   * the fingerprint, and a new one asks for trust again (design on HAL-1873,
+   * section 5).
+   */
+  readonly integrations: readonly LocalIntegrationInput[];
 }
 
 /** What the workspace holds now, as the prompt shows it. */
@@ -65,6 +73,8 @@ export interface TrustShrink {
   readonly connectors: readonly string[];
   /** The harness agents that were removed or went back to Halonic's own harness. */
   readonly agents: readonly string[];
+  /** The local integrations that were removed, or no longer read an address from a setting. */
+  readonly integrations: readonly string[];
 }
 
 /** Whether a workspace is trusted, and if not, why. */
@@ -72,7 +82,7 @@ export type TrustCheck =
   | (CurrentTrust & {
       readonly status: "trusted";
       readonly grant: TrustGrant;
-      /** What the record lost because it was removed. Both lists are empty when nothing was. */
+      /** What the record lost because it was removed. Every list is empty when nothing was. */
       readonly shrunk: TrustShrink;
     })
   | (CurrentTrust & { readonly status: "new" })
@@ -121,7 +131,7 @@ export interface TrustServiceOptions {
  *
  * @example
  * const trust = new TrustService({ store, digest, clock, appVersion: "0.1.0" });
- * const check = await trust.check({ location, connectors, commandPaths, agents });
+ * const check = await trust.check({ location, connectors, commandPaths, agents, integrations });
  * if (check.status !== "trusted") return refuse(check.fingerprint); // exit code 3
  */
 export class TrustService {
@@ -213,6 +223,7 @@ export class TrustService {
       connectors: subject.connectors,
       commandPaths: subject.commandPaths,
       agents: subject.agents,
+      integrations: subject.integrations,
     });
     return {
       content,
@@ -256,7 +267,7 @@ export class TrustService {
   }
 }
 
-const NOTHING_SHRUNK: TrustShrink = { connectors: [], agents: [] };
+const NOTHING_SHRUNK: TrustShrink = { connectors: [], agents: [], integrations: [] };
 
 function grantOf(record: TrustRecord): TrustGrant {
   return { location: record.location, fingerprint: record.fingerprint };
@@ -281,19 +292,22 @@ function removedIds(changes: TrustChanges): TrustShrink {
   return {
     connectors: changes.removed.map((connector) => connector.id),
     agents: changes.agents.removed.map((agent) => agent.id),
+    integrations: changes.integrations.removed.map((integration) => integration.id),
   };
 }
 
 /**
  * Whether stored content has the shape `trustContent` builds: connectors,
- * and harness agents when there are any, with an id each.
+ * and harness agents and local integrations when there are any, with an id
+ * each.
  */
 function isTrustContent(value: unknown): value is TrustContent {
   if (typeof value !== "object" || value === null || !("connectors" in value)) {
     return false;
   }
   const agents = "agents" in value ? value.agents : [];
-  return hasIds(value.connectors) && hasIds(agents);
+  const integrations = "integrations" in value ? value.integrations : [];
+  return hasIds(value.connectors) && hasIds(agents) && hasIds(integrations);
 }
 
 /** Whether the value is a list whose every entry has a text `id`. */
