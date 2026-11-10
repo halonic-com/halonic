@@ -1,0 +1,62 @@
+## colour: halonic init --example acme
+exit 0
+stdout:
+  \e[32m✓\e[39m Created a copy of the Acme example in \e[1m./acme\e[22m.
+    \e[2m2 hubs\e[22m \e[2m·\e[22m \e[2m3 agents\e[22m \e[2m·\e[22m \e[2m2 workflows\e[22m \e[2m·\e[22m \e[2m1 routine\e[22m \e[2m·\e[22m \e[2mruns on the test model, no key needed\e[22m
+  
+  Next:
+    cd acme
+    halonic test                        \e[2mrun its workflow tests (no key, nothing sent)\e[22m
+    halonic run support-reply --input examples/refund-question.json
+    \e[2mOr open the folder in Studio and start Support reply from the Inbox.\e[22m
+stderr:
+
+## NO_COLOR: halonic init --example acme
+exit 0
+stdout:
+  ✓ Created a copy of the Acme example in ./acme.
+    2 hubs · 3 agents · 2 workflows · 1 routine · runs on the test model, no key needed
+  
+  Next:
+    cd acme
+    halonic test                        run its workflow tests (no key, nothing sent)
+    halonic run support-reply --input examples/refund-question.json
+    Or open the folder in Studio and start Support reply from the Inbox.
+stderr:
+
+## --json: halonic init --example acme
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "workspace": {
+      "name": "Acme",
+      "folder": "./acme"
+    },
+    "example": "acme",
+    "created": [
+      ".gitignore",
+      "README.md",
+      "examples/refund-question.json",
+      "hubs/reports/agents/reporter.agent.yaml",
+      "hubs/reports/hub.yaml",
+      "hubs/reports/workflows/routines/weekly-report.routine.yaml",
+      "hubs/reports/workflows/weekly-report.workflow.yaml",
+      "hubs/support/agents/sorter.agent.yaml",
+      "hubs/support/agents/writer.agent.yaml",
+      "hubs/support/hub.yaml",
+      "hubs/support/workflows/support-reply.test.yaml",
+      "hubs/support/workflows/support-reply.workflow.yaml",
+      "models.yaml",
+      "providers/mock.yaml",
+      "workspace.yaml"
+    ],
+    "counts": {
+      "hubs": 2,
+      "agents": 3,
+      "workflows": 2,
+      "routines": 1
+    }
+  }
+stderr:

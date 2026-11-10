@@ -50,6 +50,9 @@ export const initMessages = defineMessages("init", {
     dim(`Or open the folder in Studio and start ${workflowTitle} from the Inbox.`),
   ],
 
+  /** The help line for `--example <name>`. */
+  exampleOption: () => phrase`Make a copy of this example instead of an empty workspace.`,
+
   /** The reason when the folder has files in it (`conflict`, exit 5). */
   notEmpty: () => phrase`the folder isn't empty.`,
   notEmptyFix: () => phrase`Pick a new folder name, or run it in an empty folder.`,

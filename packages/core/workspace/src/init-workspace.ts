@@ -101,7 +101,7 @@ export async function initWorkspace(
  * Removes a file after a failed write. If removing fails as well, the first
  * error is the one worth reporting, so this one is dropped.
  */
-async function removeQuietly(store: DefinitionStore, path: string): Promise<void> {
+export async function removeQuietly(store: DefinitionStore, path: string): Promise<void> {
   try {
     await store.remove(path);
   } catch {

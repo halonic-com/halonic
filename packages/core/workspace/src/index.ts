@@ -1,5 +1,10 @@
 // The public API of @halonicjs/workspace. Internal code imports by relative path.
 
+export {
+  type CopiedWorkspace,
+  type CopyWorkspaceError,
+  copyWorkspace,
+} from "./copy-workspace.ts";
 export { definitionsOf, definitionsVersion, type HubDefinitions } from "./definitions.ts";
 export {
   gitIgnoreLines,

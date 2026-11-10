@@ -1,8 +1,8 @@
 # Acme: the example workspace
 
 Acme is an invented shop. The docs, the demo scripts and the launch texts take
-their examples from this workspace, and `halonic init <dir> --example acme`
-will copy it. Every name, email and order in it is made up.
+their examples from this workspace, and `halonic init --example acme` copies
+it into a new `acme` folder. Every name, email and order in it is made up.
 
 It runs on the test model (`providers/mock.yaml`): scripted replies, no
 network and no key. No file in it points at a real service.
