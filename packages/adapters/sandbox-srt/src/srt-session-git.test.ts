@@ -275,15 +275,18 @@ verifies("sandbox-srt.session", () => {
         expect(readFileSync(victim, "utf8")).toBe("keep");
       });
 
-      it.skipIf(process.platform === "win32")("[platform:win32] skips a journal that others can write", async () => {
-        const commondir = join(git, "commondir");
-        await openJournaled();
-        await writeFile(commondir, "../elsewhere\n");
-        const file = orphan();
-        await chmod(file, 0o666);
-        expect(await recoverGitFolders(journals)).toEqual({ undone: [], failed: [] });
-        expect(existsSync(commondir)).toBe(true);
-      });
+      it.skipIf(process.platform === "win32")(
+        "[platform:win32] skips a journal that others can write",
+        async () => {
+          const commondir = join(git, "commondir");
+          await openJournaled();
+          await writeFile(commondir, "../elsewhere\n");
+          const file = orphan();
+          await chmod(file, 0o666);
+          expect(await recoverGitFolders(journals)).toEqual({ undone: [], failed: [] });
+          expect(existsSync(commondir)).toBe(true);
+        },
+      );
     });
 
     it("does nothing when the working folder has no git folder", async () => {
