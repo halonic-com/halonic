@@ -40,8 +40,11 @@ export interface Runner {
   run(request: RunRequest): Promise<RunningProgram>;
 }
 
-/** A path with a `skills/<name>/scripts` part, in either slash style. */
-const skillScripts = /(^|[\\/])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/;
+/**
+ * A path with a `skills/<name>/scripts` part, in either slash style and any
+ * letter case, since macOS and Windows file systems ignore case.
+ */
+const skillScripts = /(^|[\\/])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/i;
 
 export const skillScriptsRefusal = "Halonic never runs a file under a skill's scripts/ folder";
 

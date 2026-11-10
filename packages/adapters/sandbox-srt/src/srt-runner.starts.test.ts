@@ -28,6 +28,11 @@ verifies("sandbox-srt.session", () => {
     it.each([
       ["an absolute program", { program: "/w/library/skills/mail/scripts/send", args: [] }],
       ["a Windows-style program", { program: "skills\\mail\\scripts\\send.ps1", args: [] }],
+      ["a mixed-case program", { program: "/w/Skills/mail/Scripts/send", args: [] }],
+      [
+        "a mixed-case Windows-style program",
+        { program: "SKILLS\\mail\\Scripts\\send.ps1", args: [] },
+      ],
       ["a script as an argument", { program: "node", args: ["skills/mail/scripts/send.js"] }],
       ["a relative script", { program: "sh", args: ["./scripts/send"], cwd: "/w/skills/mail" }],
       [
