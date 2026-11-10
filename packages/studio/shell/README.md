@@ -28,6 +28,12 @@ look up services its feature lists in `needs`.
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
 | `watchResources`                | read the engine's resource numbers, flag a low disk        | `shell.resource-numbers`  |
 
+The sidebar's places come from features through `places.add`, naming one of the fixed places
+(`sidebarPlaces`: Home, Inbox, Agents, Workflows, Routines, Library, Runs, Changes). The shell
+lists them in that order and leaves out a place no feature added, so a place whose feature hasn't
+landed is simply not there. A place's `signal` is its count or running dot, with the words a screen
+reader hears after its name (`shell.sidebar-places`).
+
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
 it with `shell.services.contextFor(featureId, registry)`. The layout reads everything back from

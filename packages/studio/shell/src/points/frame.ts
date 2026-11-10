@@ -31,3 +31,42 @@ export interface PhoneBarContribution extends Ordered, ViewRef {
 export interface SettingsSectionContribution extends Ordered, ViewRef {
   readonly title: string;
 }
+
+/**
+ * The sidebar's places, in the only order they are shown (component specs 24.4 S2): places only,
+ * no agents, workflows or pins. A place whose feature hasn't added it isn't listed.
+ */
+export const sidebarPlaces = [
+  "home",
+  "inbox",
+  "agents",
+  "workflows",
+  "routines",
+  "library",
+  "runs",
+  "changes",
+] as const;
+
+/** One of the sidebar's places. */
+export type SidebarPlace = (typeof sidebarPlaces)[number];
+
+/**
+ * What a place shows next to its name. Nothing shows at zero. A `count` shows the number in
+ * accent (the Inbox, Changes); `running` shows the still 6px running dot (Runs).
+ */
+export interface PlaceSignal {
+  readonly mark: "count" | "running";
+  readonly value: number;
+  /** What a screen reader hears after the place's name, such as "2 waiting" or "1 running". */
+  readonly spoken: string;
+}
+
+/** A place in the sidebar, such as Agents, and the page it opens. One feature adds each place. */
+export interface PlaceContribution extends ViewRef {
+  readonly id: SidebarPlace;
+  readonly label: string;
+  /** The outline icon's name; the shell fills it when the place is where you are. */
+  readonly icon: string;
+  /** The place's signal now, or `undefined` for none. */
+  signal?(context: WorkspaceContext): PlaceSignal | undefined;
+}

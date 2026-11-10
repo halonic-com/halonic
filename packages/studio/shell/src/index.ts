@@ -55,12 +55,16 @@ export type {
   SearchProviderContribution,
   SearchResult,
 } from "./points/commands.ts";
-export type {
-  BarItemContribution,
-  CardContribution,
-  PanelWindowContribution,
-  PhoneBarContribution,
-  SettingsSectionContribution,
+export {
+  type BarItemContribution,
+  type CardContribution,
+  type PanelWindowContribution,
+  type PhoneBarContribution,
+  type PlaceContribution,
+  type PlaceSignal,
+  type SettingsSectionContribution,
+  type SidebarPlace,
+  sidebarPlaces,
 } from "./points/frame.ts";
 export type { FrameContributions, FramePoints } from "./points/frame-points.ts";
 export type {
