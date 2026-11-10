@@ -630,10 +630,13 @@ jobs:
       - name: Requirements and their tests (trace, merge base's copy)
         working-directory: head
         run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
-      # Advisory for now: the Paperclip approval lookup is a stub that fails
-      # closed, so no decision note can pass yet. Until the Paperclip API
-      # token exists as a CI secret the guard only reports; then this line
-      # goes. Trace above stays blocking.
+      # Advisory for now: a `user-visible` note can't be approved until the
+      # board decides how the user approves (HAL-3434), so the guard only
+      # reports; it turns blocking with that (HAL-1337). Trace above stays
+      # blocking. A note's signature is checked offline against the keys in
+      # the base branch's tooling/check/approvers.json (pull_request.base.sha,
+      # not the commit base-tests may have stepped back to). Both commits
+      # are fetched as objects only: nothing of the pull request runs.
       - name: Requirement guard (merge base's copy)
         if: ${{ !cancelled() }}
         continue-on-error: true
@@ -641,16 +644,22 @@ jobs:
         env:
           BASE_SHA: ${{ needs.base-tests.outputs.sha }}
           HEAD_BRANCH: ${{ github.head_ref }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           guard="tooling/check/src/cli/requirement-guard.ts"
           [ -n "$BASE_SHA" ] || exit 1
+          git fetch --quiet --no-tags --depth=1 origin "$PR_HEAD_SHA" "$PR_BASE_SHA"
           # Asks the merge base commit itself, not a folder on disk.
           if ! git -C "$BASE_DIR" cat-file -e "$BASE_SHA:$guard" 2>/dev/null; then
             echo "::notice title=requirement-guard::The merge base has no requirement guard yet; it runs from the next pull request on."
             exit 0
           fi
-          if ! "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH"; then
-            echo "::warning title=requirement-guard::The requirement guard found errors (see this step's log). It reports and doesn't block until the approval lookup is live."
+          if ! "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" --branch "$HEAD_BRANCH" \
+            --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"; then
+            echo "::warning title=requirement-guard::The requirement guard found errors (see this step's log). It reports and doesn't block until user-visible approvals exist (HAL-3434)."
             exit 1
           fi
 
