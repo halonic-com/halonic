@@ -2,6 +2,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   ModelSkipReason,
+  ProviderText,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -93,7 +94,19 @@ export type RunEventBody =
        */
       toolCallAsText?: true;
     }
-  | { type: "llm.fallback"; agent: string; from: string; to: string; error: string }
+  /**
+   * The call moved on to the next model. `providerText`: the provider's own
+   * error text, for `--debug` and Copy details only (requirement
+   * `events.provider-text`); absent in older logs and when it gave none.
+   */
+  | {
+      type: "llm.fallback";
+      agent: string;
+      from: string;
+      to: string;
+      error: string;
+      providerText?: ProviderText;
+    }
   /**
    * A model alias was skipped before any call (requirement
    * `events.llm-skipped`), such as "smart: no key, using default". `next` is
@@ -242,6 +255,8 @@ export type RunEventBody =
    * `reason`: why the run failed (requirement `events.run-failed-reason`); absent in older logs.
    * `host`: with `model-unreachable` only, the host and port that didn't answer, such as
    * `localhost:11434` (requirement `events.run-failed-model-unreachable`).
+   * `providerText`: the model provider's own error text, for `--debug` and Copy details only
+   * (requirement `events.provider-text`); absent in older logs and when it gave none.
    */
   | {
       type: "run.failed";
@@ -249,6 +264,7 @@ export type RunEventBody =
       error: string;
       reason?: RunFailureReason;
       host?: string;
+      providerText?: ProviderText;
     };
 
 /**

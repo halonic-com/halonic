@@ -141,6 +141,19 @@ export type RunFailureReason =
   | "provider-busy"
   | "answer-not-an-option";
 
+/**
+ * The model provider's own error text, kept in the run log for `--debug` and
+ * Copy details only (requirement `events.provider-text`). Studio and the
+ * command line never show it by default: microcopy 1.4 allows no quoted
+ * outside text in a message. The provider shortened it and checked it for
+ * keys before the engine logged it.
+ */
+export interface ProviderText {
+  /** The HTTP status the text came with; left out for a stream error that has none. */
+  status?: number;
+  text: string;
+}
+
 /** Why a model was skipped before it was called: its provider's key isn't set. */
 export type ModelSkipReason = "no-key";
 

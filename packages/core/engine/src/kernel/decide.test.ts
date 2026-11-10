@@ -208,6 +208,29 @@ verifies("engine.run-call-fails", () => {
   });
 });
 
+verifies("engine.provider-text", () => {
+  it("puts the provider's text from the failed call on run.failed", () => {
+    const failed: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:05.000Z",
+      callId: "call-1",
+      error: "acme refused the call (HTTP 400)",
+      reason: "error",
+      providerText: { status: 400, text: "max_tokens is too large" },
+    };
+    const { decisions } = play(reply, [startInput, failed]);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "draft",
+        error: "acme refused the call (HTTP 400)",
+        reason: "error",
+        providerText: { status: 400, text: "max_tokens is too large" },
+      },
+    ]);
+  });
+});
+
 verifies("engine.final-state", () => {
   it("completes the run with the initial context and what the run wrote", () => {
     const { log, run } = play(reply, [startInput, answer("call-1", "On its way")]);

@@ -16,6 +16,7 @@ import {
   type Secrets,
   workspaceSecrets,
 } from "@halonicjs/ports";
+import { providerTextOf } from "../run/provider-text-of.ts";
 import type { TurnLog } from "./turn-log.ts";
 
 /** The provider and model a turn goes to, with the models it falls back to. */
@@ -161,12 +162,14 @@ export class ModelChain {
     this.index++;
     this.usable = false;
     const to = await this.current();
+    const providerText = providerTextOf(error);
     await this.log?.append({
       type: "llm.fallback",
       agent: this.agent,
       from: nameOf(from),
       to: nameOf(to),
       error: `${error.reason}: ${error.message}`,
+      ...(providerText === undefined ? {} : { providerText }),
     });
   }
 

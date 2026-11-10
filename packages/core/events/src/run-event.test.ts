@@ -4,6 +4,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   ModelSkipReason,
+  ProviderText,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -136,6 +137,8 @@ verifies("events.run-log-contract", () => {
       reason?: RunFailureReason;
       // Added after the reference by events.run-failed-model-unreachable (HAL-1728).
       host?: string;
+      // Added after the reference by events.provider-text (HAL-3119).
+      providerText?: ProviderText;
     }>();
   });
 
@@ -176,6 +179,8 @@ verifies("events.run-log-contract", () => {
       from: string;
       to: string;
       error: string;
+      // Added after the reference by events.provider-text (HAL-3119).
+      providerText?: ProviderText;
     }>();
     expectTypeOf<EventOf<"agent.finished">>().toEqualTypeOf<{
       type: "agent.finished";

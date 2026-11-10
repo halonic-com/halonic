@@ -1,7 +1,8 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
-import { expectTypeOf } from "vitest";
-import type { RunFailureReason } from "./run-basics.ts";
+import { expect, expectTypeOf, it } from "vitest";
+import type { ProviderText, RunFailureReason } from "./run-basics.ts";
 import type { RunEventBody, RunEventType } from "./run-event.ts";
+import { summarize } from "./summarize.ts";
 
 // Type tests for why a run failed and for the waits a step logs before it
 // calls out. `tsc -p tsconfig.test.json` fails if a reason or a field changes.
@@ -128,5 +129,50 @@ verifies("events.connector-started", () => {
       agent: string;
       connector: string;
     }>().not.toExtend<EventOf<"connector.started">>();
+  });
+});
+
+verifies("events.provider-text", () => {
+  const providerText: ProviderText = { status: 400, text: "max_tokens is too large" };
+
+  typeTest("keeps the provider's text on run.failed and llm.fallback, optionally", () => {
+    expectTypeOf<ProviderText>().toEqualTypeOf<{ status?: number; text: string }>();
+    expectTypeOf<EventOf<"run.failed">["providerText"]>().toEqualTypeOf<ProviderText | undefined>();
+    expectTypeOf<EventOf<"llm.fallback">["providerText"]>().toEqualTypeOf<
+      ProviderText | undefined
+    >();
+    expectTypeOf<{
+      type: "llm.fallback";
+      agent: string;
+      from: string;
+      to: string;
+      error: string;
+    }>().toExtend<EventOf<"llm.fallback">>();
+  });
+
+  it("leaves the provider's text out of the run summary", () => {
+    const failed: RunEventBody = {
+      type: "run.failed",
+      state: "write",
+      error: 'acme refused the call to the model "acme-small" (HTTP 400)',
+      reason: "error",
+      providerText,
+    };
+    const summary = summarize([
+      {
+        runId: "r",
+        seq: 1,
+        at: "T1",
+        type: "run.started",
+        hubId: "p",
+        workflowId: "f",
+        input: {},
+        kind: "run",
+        definitionsVersion: "v1",
+      },
+      { runId: "r", seq: 2, at: "T2", ...failed },
+    ]);
+    expect(summary?.error).toBe('acme refused the call to the model "acme-small" (HTTP 400)');
+    expect(JSON.stringify(summary)).not.toContain(providerText.text);
   });
 });

@@ -136,6 +136,57 @@ export function isModelCallError(value: unknown): value is ModelCallError {
   return knownReason && (host === undefined || typeof host === "string");
 }
 
+/**
+ * The provider's own error text, as the `cause` of a {@link ModelCallError}
+ * for an error reply (requirement `ports.vendor-error-text`). It stays
+ * out of the message, which Studio and the command line show: microcopy 1.4
+ * allows no quoted outside text there. The engine keeps it in the run log
+ * for `--debug` and Copy details.
+ *
+ * The provider shortens the text and checks it for keys before it builds
+ * one: whatever is in it may end up in the run log.
+ *
+ * Check for it with {@link isVendorErrorText}, not `instanceof`: an adapter
+ * may be built against its own copy of this package.
+ *
+ * @example
+ * const cause = new VendorErrorText(400, "max_tokens: 200000 > 64000");
+ * throw new ModelCallError("refused", `anthropic refused the call (HTTP 400)`, { cause });
+ */
+export class VendorErrorText extends Error {
+  override readonly name = "VendorErrorText";
+  /**
+   * The HTTP status the text came with, or for an error in a stream the
+   * status its error type stands for; undefined when there is none.
+   */
+  readonly status: number | undefined;
+
+  /**
+   * @param status - the HTTP status the text came with, or undefined when there is none
+   * @param text - the provider's text, already shortened and checked for keys
+   */
+  constructor(status: number | undefined, text: string) {
+    super(text);
+    this.status = status;
+  }
+}
+
+/**
+ * Whether `value` is a {@link VendorErrorText}: an `Error` named
+ * "VendorErrorText" with a `status` that is a whole number or set to
+ * undefined. It works across copies of this package, where `instanceof`
+ * doesn't.
+ *
+ * @example
+ * const text = isVendorErrorText(error.cause) ? error.cause.message : undefined;
+ */
+export function isVendorErrorText(value: unknown): value is VendorErrorText {
+  if (!(value instanceof Error) || value.name !== "VendorErrorText") return false;
+  if (!Object.hasOwn(value, "status")) return false;
+  const { status } = value as { status?: unknown };
+  return status === undefined || Number.isInteger(status);
+}
+
 // What model servers say when the model doesn't fit in memory: Ollama's own
 // check, llama.cpp's allocation failures, and the CUDA, ROCm and Metal
 // messages they pass on. Lower case, matched anywhere in the text.

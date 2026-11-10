@@ -112,6 +112,7 @@ export { type LlmCache, llmCacheVersion } from "./llm-cache.ts";
 export {
   isModelCallError,
   isModelOutOfMemory,
+  isVendorErrorText,
   type LlmCapabilities,
   type LlmProvider,
   type LlmProviderFactory,
@@ -121,6 +122,7 @@ export {
   modelCallErrorReasons,
   type ProviderConfig,
   type ProviderFactoryContext,
+  VendorErrorText,
 } from "./llm-provider.ts";
 export { type ModelPrice, priceOf } from "./model-price.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";

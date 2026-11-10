@@ -1,13 +1,13 @@
 import {
   type ChatStreamEvent,
   isModelCallError,
+  isVendorErrorText,
   type ModelCallErrorReason,
 } from "@halonicjs/ports";
 import { chatRequest, textAnswer } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { AnthropicProvider } from "./anthropic-provider.ts";
-import { VendorErrorText } from "./call-error.ts";
 import { ScriptedVendor } from "./test/scripted-vendor.ts";
 import { serverSentEvents, wirePartialStream } from "./test/wire-replies.ts";
 
@@ -35,7 +35,7 @@ async function readStream(provider: AnthropicProvider) {
 
 /** The vendor's own text on `error`'s cause, or undefined when it has none. */
 function vendorTextOf(error: Error): string | undefined {
-  return error.cause instanceof VendorErrorText ? error.cause.message : undefined;
+  return isVendorErrorText(error.cause) ? error.cause.message : undefined;
 }
 
 /** Text shaped like an Anthropic key, built here so the source holds none. */

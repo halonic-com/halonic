@@ -1,5 +1,6 @@
 import type {
   AgentResume,
+  ProviderText,
   RunEventBase,
   RunEventBody,
   RunFailureReason,
@@ -105,6 +106,8 @@ export interface EffectFailedInput extends InputBase {
   readonly reason: RunFailureReason;
   /** The host that couldn't be reached, for `model-unreachable`. */
   readonly host?: string;
+  /** The model provider's own error text, for `--debug` and Copy details only. */
+  readonly providerText?: ProviderText;
 }
 
 /** How a child run is now, as its parent hears it: waiting for events, or ended. */

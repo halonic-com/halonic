@@ -1,4 +1,4 @@
-import { ModelCallError } from "@halonicjs/ports";
+import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
 import type { BodyTooLargeError } from "./read-body.ts";
 
@@ -21,27 +21,6 @@ const noToolsWording =
   /does not support tools|doesn't support tools|tools? (?:are|is) not supported/i;
 
 /**
- * The vendor's own error text, shortened, as the `cause` of a
- * {@link ModelCallError}. It stays out of the message, which Studio and the
- * command line show: microcopy 1.4 allows no quoted outside text there. The
- * cause is for `--debug` and Copy details.
- */
-export class VendorErrorText extends Error {
-  override readonly name = "VendorErrorText";
-  /** The HTTP status the text came with. */
-  readonly status: number;
-
-  /**
-   * @param status - the HTTP status the text came with
-   * @param text - the vendor's text, already shortened and checked for keys
-   */
-  constructor(status: number, text: string) {
-    super(text);
-    this.status = status;
-  }
-}
-
-/**
  * Error codes and types that say the account has no credit left. OpenAI sends
  * them with 429 and the type `insufficient_quota`, sometimes with one of these
  * codes; other servers send them with other statuses, so the body decides.
@@ -61,6 +40,9 @@ const outOfCreditCodes = new Set([
  */
 const notTheKeyWording = /countr|region|territor|moderat|flagged|guardrail|model/i;
 
+/** A masked key, such as OpenAI's `sk-proj-****abcd`: `sk-`, then a star before any space. */
+const maskedKey = /sk-[\w-]*\*/;
+
 /** Groq's status when its flex tier is full. */
 const flexTierFull = 498;
 
@@ -75,10 +57,10 @@ const flexTierFull = 498;
  * anything else.
  *
  * The vendor's own text goes on the error's `cause`, shortened, except when
- * the key is refused (OpenAI repeats part of a wrong key there), whenever it
- * holds something shaped like a key, and whenever it holds `key`, the key the
- * call was sent with. Local servers and proxies may use keys that look like
- * nothing in particular.
+ * the key is refused (OpenAI repeats part of a wrong key there), when a 401
+ * or 403 repeats a masked key, whenever it holds something shaped like a key,
+ * and whenever it holds `key`, the key the call was sent with. Local servers
+ * and proxies may use keys that look like nothing in particular.
  */
 export function errorForStatus(
   status: number,
@@ -90,7 +72,8 @@ export function errorForStatus(
   const vendor = vendorErrorIn(text);
   const refusedCall = `${call.providerId} refused the call to the model "${call.model}" (${http})`;
   const keyRefused = isKeyRefused(status, vendor);
-  const vendorText = keyRefused ? "" : shortened(vendor.message, key);
+  const dropText = keyRefused || namesMaskedKey(status, vendor.message);
+  const vendorText = dropText ? "" : shortened(vendor.message, key);
   const options = vendorText === "" ? {} : { cause: new VendorErrorText(status, vendorText) };
   if (isOutOfCredit(status, vendor)) {
     return new ModelCallError(
@@ -136,6 +119,15 @@ function isOutOfCredit(status: number, vendor: VendorError): boolean {
   return [vendor.type, vendor.code].some(
     (value) => value !== undefined && outOfCreditCodes.has(value),
   );
+}
+
+/**
+ * Whether a 401 or 403 repeats a masked key, such as OpenAI's
+ * `sk-proj-****abcd`. `findSecretShape` doesn't spot one, and a 403 that isn't
+ * about the key keeps its text otherwise.
+ */
+function namesMaskedKey(status: number, message: string): boolean {
+  return (status === 401 || status === 403) && maskedKey.test(message);
 }
 
 /** Whether the server turned the key away: a 401, or a 403 about nothing else. */

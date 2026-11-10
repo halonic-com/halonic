@@ -1,4 +1,4 @@
-import { ModelCallError } from "@halonicjs/ports";
+import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
 import type { BodyTooLargeError } from "./read-body.ts";
 
@@ -48,29 +48,8 @@ const statusOfErrorType: Readonly<Record<string, number>> = {
   overloaded_error: 529,
 };
 
-/**
- * The vendor's own error text, shortened, as the `cause` of a
- * {@link ModelCallError}. It stays out of the message, which Studio and the
- * command line show: microcopy 1.4 allows no quoted outside text there. The
- * cause is for `--debug` and Copy details.
- */
-export class VendorErrorText extends Error {
-  override readonly name = "VendorErrorText";
-  /**
-   * The HTTP status the text came with, or for a streamed `error` event the
-   * status its type stands for; undefined for a type we don't know.
-   */
-  readonly status: number | undefined;
-
-  /**
-   * @param status - the HTTP status the text came with, or the one its error type stands for
-   * @param text - the vendor's text, already shortened and checked for keys
-   */
-  constructor(status: number | undefined, text: string) {
-    super(text);
-    this.status = status;
-  }
-}
+/** A masked key, such as OpenAI's `sk-proj-****abcd`: `sk-`, then a star before any space. */
+const maskedKey = /sk-[\w-]*\*/;
 
 /**
  * The {@link ModelCallError} for an HTTP error reply with `status` and body
@@ -82,9 +61,10 @@ export class VendorErrorText extends Error {
  * `refused` for anything else.
  *
  * The vendor's own text goes on the error's `cause`, shortened, except when
- * the key is refused, whenever it holds something shaped like a key, and
- * whenever it holds `key`, the key the call was sent with. A proxy may use
- * keys that look like nothing in particular.
+ * the key is refused, when a 401 or 403 repeats a masked key, whenever it
+ * holds something shaped like a key, and whenever it holds `key`, the key the
+ * call was sent with. A proxy may use keys that look like nothing in
+ * particular.
  */
 export function errorForStatus(
   status: number,
@@ -132,7 +112,8 @@ function errorForVendorError(
   key: string,
 ): ModelCallError {
   const keyRefused = isKeyRefused(status, vendor);
-  const vendorText = keyRefused ? "" : shortened(vendor.message, key);
+  const dropText = keyRefused || namesMaskedKey(status, vendor.message);
+  const vendorText = dropText ? "" : shortened(vendor.message, key);
   const options = vendorText === "" ? {} : { cause: new VendorErrorText(status, vendorText) };
   if (isOutOfCredit(status, vendor)) {
     return new ModelCallError(
@@ -176,6 +157,15 @@ function isOutOfCredit(status: number | undefined, vendor: VendorError): boolean
     vendor.detailCode === spendCapCode ||
     outOfCreditWording.test(vendor.message)
   );
+}
+
+/**
+ * Whether a 401 or 403 repeats a masked key, such as OpenAI's
+ * `sk-proj-****abcd`. `findSecretShape` doesn't spot one, and a 403 that isn't
+ * about the key keeps its text otherwise.
+ */
+function namesMaskedKey(status: number | undefined, message: string): boolean {
+  return (status === 401 || status === 403) && maskedKey.test(message);
 }
 
 /** Whether the API turned the key away: a 401, or a 403 about nothing else. */
