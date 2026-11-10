@@ -55,6 +55,11 @@ export interface CheckedRun {
 
 /** The bridge, its tap and a sandbox that reaches only the tap: one check's setup. */
 export interface BridgeSandbox {
+  /**
+   * The bridge's address as the harness sees it: the tap's. For a harness
+   * that takes it as an argument, such as Codex's `-c` settings.
+   */
+  readonly bridgeUrl: string;
   /** Runs one program in the sandbox, with standard input closed, and stops it after `timeoutMs`. */
   run(command: SandboxCommand, timeoutMs: number): Promise<CheckedRun>;
   /** The requests the tap passed on to the bridge so far. */
@@ -94,6 +99,7 @@ export async function openBridgeSandbox(options: BridgeSandboxOptions): Promise<
     const session = await sandbox(runner).open(await checkProfile(options, bridge, tap));
     closing.unshift(() => session.close());
     return {
+      bridgeUrl: tap.url,
       run: (command, timeoutMs) => runChecked(session, command, timeoutMs),
       requests: tap.requests,
       denied: runner.denied,

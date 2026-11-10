@@ -154,6 +154,7 @@ verifies("harness-checks.bridge-sandbox", () => {
       bridge: { host: "127.0.0.1", port: Number(port) },
       allowedSites: [],
     });
+    expect(checked.bridgeUrl).toBe(profile?.env["ANTHROPIC_BASE_URL"]);
     expect(profile?.settingsFolder).toBe(join(scratch, "settings"));
     expect(profile?.env).toMatchObject({
       HOME: join(scratch, "work", "home"),
