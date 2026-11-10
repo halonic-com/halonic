@@ -72,8 +72,9 @@ const onSigterm = () => onLauncherSignal("SIGTERM");
 function onLauncherSignal(signal: NodeJS.Signals): void {
   killLiveProbes();
   unwatchLauncher();
-  // Let the launcher end the way it would have without us (or let its own handler run).
-  process.kill(process.pid, signal);
+  // With no other listener the signal would have ended the launcher, so let it. With one, that
+  // listener has this signal already and re-raising would show it a second Ctrl-C.
+  if (process.listenerCount(signal) === 0) process.kill(process.pid, signal);
 }
 
 function watchLauncher(): void {

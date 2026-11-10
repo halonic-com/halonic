@@ -41,7 +41,8 @@ async function waitUntilGone(pid: number, ms: number): Promise<boolean> {
 /** Starts a launcher process with one probe of a hanging program; resolves once the program runs. */
 async function launchWithHangingProbe(
   how: string,
-): Promise<{ launcher: ChildProcess; pid: number }> {
+  ownHandlerLog?: string,
+): Promise<{ launcher: ChildProcess; pid: number; exited: Promise<unknown> }> {
   const pidFile = join(dir, `launcher-${how}.pid`);
   await script(`hang-${how}`, `echo $$ > ${pidFile}; sleep 30`);
   const probeUrl = new URL("./program-probe.ts", import.meta.url).href;
@@ -50,11 +51,18 @@ async function launchWithHangingProbe(
   const code = `
     import { createProgramProbe } from ${JSON.stringify(probeUrl)};
     createProgramProbe({ env: { PATH: ${JSON.stringify(`${dir}:/usr/bin:/bin`)} } }).ask(${JSON.stringify(`hang-${how}`)}, []);
+    ${
+      ownHandlerLog
+        ? `import { appendFileSync } from "node:fs";
+    process.on(${JSON.stringify(how)}, () => { appendFileSync(${JSON.stringify(ownHandlerLog)}, "x"); setTimeout(() => process.exit(0), 300); });`
+        : ""
+    }
     ${ending}
   `;
   const launcher = spawn(process.execPath, ["--input-type=module", "-e", code], {
     stdio: "ignore",
   });
+  const exited = new Promise((resolve) => launcher.on("exit", resolve));
   const until = Date.now() + 5_000;
   let pid = 0;
   while (Date.now() < until && pid === 0) {
@@ -62,7 +70,7 @@ async function launchWithHangingProbe(
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   expect(pid).toBeGreaterThan(0);
-  return { launcher, pid };
+  return { launcher, pid, exited };
 }
 
 beforeAll(async () => {
@@ -112,8 +120,7 @@ verifies("sandbox-host.program-probe-node", () => {
       it.skipIf(onWindows)(
         `${skipOnWindows}stops a running probe when the launcher ends by ${how}`,
         async () => {
-          const { launcher, pid } = await launchWithHangingProbe(how);
-          const exited = new Promise((resolve) => launcher.on("exit", resolve));
+          const { launcher, pid, exited } = await launchWithHangingProbe(how);
           if (how !== "exit") launcher.kill(how);
           await exited;
           const gone = await waitUntilGone(pid, 1_000);
@@ -122,5 +129,19 @@ verifies("sandbox-host.program-probe-node", () => {
         },
       );
     }
+
+    it.skipIf(onWindows)(
+      `${skipOnWindows}leaves the launcher's own SIGINT handler to see the signal once and still stops the probe`,
+      async () => {
+        const log = join(dir, "own-handler.log");
+        const { launcher, pid, exited } = await launchWithHangingProbe("SIGINT", log);
+        launcher.kill("SIGINT");
+        await exited;
+        const gone = await waitUntilGone(pid, 1_000);
+        if (!gone) process.kill(pid, "SIGKILL");
+        expect(gone).toBe(true);
+        expect(await readFile(log, "utf8")).toBe("x");
+      },
+    );
   });
 });
