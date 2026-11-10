@@ -89,6 +89,8 @@ export function Menu({ trigger, entries, align = "start" }: MenuProps) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const typed = useRef({ text: "", at: 0 });
+  /** The trigger was last pressed with a pointer, not a key. */
+  const pressed = useRef(false);
   const rows = dangerLast(entries);
   const items = rows.filter((row): row is MenuItem => row !== "divider");
 
@@ -115,16 +117,29 @@ export function Menu({ trigger, entries, align = "start" }: MenuProps) {
       setOpen(isOpen);
       if (isOpen) {
         place();
-        // A trigger with the focus ring was opened by the keyboard (component specs 14, C24).
-        if (opener.matches(":focus-visible")) {
+        // A trigger with the focus ring was opened by the keyboard (component specs 14, C24). A
+        // click on a trigger the keyboard focused keeps its ring, so a press counts as the mouse.
+        if (!pressed.current && opener.matches(":focus-visible")) {
           focusItem(nextIndex(items, -1, "Home"));
         } else {
           menu.focus();
         }
       }
     };
+    const onPointerDown = () => {
+      pressed.current = true;
+    };
+    const onKeyDown = () => {
+      pressed.current = false;
+    };
     menu.addEventListener("toggle", onToggle);
-    return () => menu.removeEventListener("toggle", onToggle);
+    opener.addEventListener("pointerdown", onPointerDown);
+    opener.addEventListener("keydown", onKeyDown);
+    return () => {
+      menu.removeEventListener("toggle", onToggle);
+      opener.removeEventListener("pointerdown", onPointerDown);
+      opener.removeEventListener("keydown", onKeyDown);
+    };
   });
 
   // While open, the menu follows its trigger when the window changes size or something scrolls.

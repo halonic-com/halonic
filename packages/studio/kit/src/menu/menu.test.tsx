@@ -134,6 +134,18 @@ verifies("kit.menu", () => {
     expect(document.activeElement).toBe(items[0]);
   });
 
+  it("opens as the mouse does when a click comes on a trigger the keyboard focused", async () => {
+    const { trigger, menu, items } = renderMenu();
+    await act(async () => {
+      trigger.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }),
+      );
+    });
+    await openMenu(trigger, "keyboard");
+    expect(document.activeElement).toBe(menu);
+    expect(filled(items)).toEqual([]);
+  });
+
   it("fills the item under the pointer, and clears the fill when the pointer leaves", async () => {
     const { trigger, menu, items } = renderMenu();
     await openMenu(trigger, "mouse");
