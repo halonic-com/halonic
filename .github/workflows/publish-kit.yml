@@ -11,17 +11,20 @@
 # made, so a dependency in the build can never reach the identity.
 #
 # It runs on every push to `main` that changes either package's
-# `package.json`, so merging a version bump publishes it. It can also be run
-# by hand from the Actions tab, on `main`, where `dry_run` is on by default:
-# it builds and checks the tarballs and stops short of `npm publish`. It never
+# `package.json`, but it only publishes a package whose `version` field
+# differs from the parent commit's. A push that changes dependencies, exports
+# or the description stops in the `pack` job, before any build, and stages
+# nothing. It can also be run by hand from the Actions tab, on `main`, where
+# `dry_run` is on by default: it builds and checks the tarballs and stops
+# short of `npm publish`. A run by hand always builds both packages. It never
 # runs on pull requests. A version already on npm is skipped, so a run can be
-# repeated after a partial failure, and a push that changes no version
-# publishes nothing.
+# repeated after a partial failure.
 #
 # The trusted publisher on npm allows `npm stage publish` only, so a run puts
 # the version in npm's staging area. It is not public until a person approves
-# it on npmjs.com (2FA). A staged version does not show in `npm view`, so
-# repeating a run stages it again; approve one and reject the other.
+# it on npmjs.com (2FA). A staged version does not show in `npm view`, so npm
+# answers 409 "Cannot stage previously published version" when a version is
+# staged again. The run treats that as a skip, not a failure.
 #
 # So merging a pull request that changes either package's `package.json` is
 # a release, and so is a run by hand with `dry_run` off. Releases need the
@@ -62,19 +65,50 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
+      # A push changes a version only if `version` differs from the parent
+      # commit's. A run by hand has no such comparison and always continues.
+      - name: Did a version change?
+        id: version
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "push" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=false
+          for file in packages/adapters/integration-kit/package.json packages/testing/integration/package.json; do
+            now=$(node -p 'require("./" + process.argv[1]).version' "$file")
+            before=$(git show "HEAD^:$file" 2>/dev/null | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version' 2>/dev/null || echo none)
+            echo "$file: $before -> $now"
+            if [ "$before" != "$now" ]; then
+              changed=true
+            fi
+          done
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          if [ "$changed" = false ]; then
+            echo "No version changed, nothing to publish."
+          fi
       # No dependency cache: a cache a pull request could have written must
       # not feed a release build.
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: steps.version.outputs.changed == 'true'
         with:
           cache: false
       - run: pnpm install --frozen-lockfile
+        if: steps.version.outputs.changed == 'true'
       - name: Stage both packages
+        if: steps.version.outputs.changed == 'true'
         run: pnpm turbo run build --filter=@halonicjs/adapter-integration-kit --filter=@halonicjs/testing-integration
       - name: Pack, in the order they publish
+        if: steps.version.outputs.changed == 'true'
         run: |
           mkdir -p tarballs
           # The kit first: the conformance suite depends on it.
@@ -82,6 +116,7 @@ jobs:
           (cd packages/testing/integration/dist/package && npm pack --pack-destination ../../../../../tarballs)
           ls -l tarballs
       - name: Check what is in the tarballs
+        if: steps.version.outputs.changed == 'true'
         run: |
           for tarball in tarballs/*.tgz; do
             echo "== $tarball"
@@ -111,6 +146,7 @@ jobs:
             '
           done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.version.outputs.changed == 'true'
         with:
           name: kit-tarballs
           path: tarballs/
@@ -120,6 +156,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: pack
+    if: needs.pack.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -161,6 +198,16 @@ jobs:
               echo "Dry run: would stage $name@$version"
               npm stage publish "$tarball" --dry-run --access public --provenance
             else
-              npm stage publish "$tarball" --access public --provenance
+              # A staged version is not on npm yet, so `npm view` misses it and
+              # npm answers 409. That means it is already staged: skip it.
+              if ! npm stage publish "$tarball" --access public --provenance 2> stage-error.txt; then
+                cat stage-error.txt >&2
+                if grep -qE '409|Cannot stage previously published version' stage-error.txt; then
+                  echo "$name@$version is already staged, skipping."
+                  continue
+                fi
+                exit 1
+              fi
+              cat stage-error.txt >&2
             fi
           done
