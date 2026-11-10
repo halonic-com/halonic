@@ -1,0 +1,12 @@
+/*
+ * The ActionBar's `whileTyping="hide"` (component specs 15.4): while a kit text field inside the
+ * page's scroll area has focus, a bar about something else steps aside, so it can't cover the
+ * field's error. CSS only, no keyboard detection. The shell's page column carries `page` and its
+ * scroll area `page-scroll`; the kit's text-entry parts carry `data-text-entry`.
+ *
+ * The rule stands alone: an engine without :has() drops the whole selector list, and then the
+ * bar simply rides, the default.
+ */
+.page:has(> .page-scroll [data-text-entry]:focus) > .action-bar[data-while-typing="hide"] {
+  display: none;
+}

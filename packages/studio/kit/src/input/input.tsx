@@ -103,6 +103,7 @@ export function Input({
         ref={ref}
         id={field?.id}
         data-field-text=""
+        data-text-entry=""
         // As tall as the box, so a press above or below the line of text lands on it.
         className={`${fieldTextClasses} self-stretch`}
         aria-describedby={field?.describedBy}

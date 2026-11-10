@@ -152,6 +152,42 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
 
 After tuning a colour, run the tests and adjust until they pass.
 
+## ActionBar
+
+The bar an opened page or sheet puts on the bottom edge instead of the bottom navigation: Try it on
+the agent page, the decision bar on an Inbox card, a form sheet's confirming button. It's **the
+last row of the page's column**, under the scroll area, never `position: fixed`, so nothing hides
+behind it and no screen pads its content. A `surface` fill, a `border` line on top, padding 12px
+16px and the safe area at the bottom; it grows with its content.
+
+```tsx
+<ActionBar
+  rows={[
+    [{ label: "Approve", variant: "primary", onClick: approve }],
+    [
+      { label: "Ask for changes", onClick: ask },
+      { label: "Reject", onClick: reject },
+    ],
+  ]}
+/>;
+```
+
+- Every button is `size="touch"` (48px) and full width. Two in a row share it equally with 8px
+  between them, and **stack** in the same order when either label doesn't fit its half (at 320px,
+  "Ask for changes" doesn't).
+- **At most one `primary`, and it comes first.** The bar throws otherwise: it's the screen's
+  mistake, not the user's. Reject is `secondary`, not red: it's a decision.
+- `note` is a line above the buttons in `text-small`, in its tone (`muted`, `warning`, `danger`),
+  never shortened: "Sending is off until you connect Gmail."
+- While one button is `busy`, the others are unavailable, with the busy one as their reason.
+- **When the action can't happen at all, don't render the bar.** A disabled bar looks broken.
+- `whileTyping`: `"ride"` (the default) stays on the keyboard, for a bar that confirms what you
+  type (a form sheet's button, the decision bar). `"hide"` steps aside while a kit text field in
+  the page's scroll area has focus, for a bar about something else (Run now, Try it), so it can't
+  cover the field's error. It's one CSS rule: the shell's page column carries the class `page`, its
+  scroll area `page-scroll`, and the kit's Input and TextArea carry `data-text-entry`. jsdom can't
+  evaluate `:has()`, so the browser check lives with the shell's Playwright tests.
+
 ## Button
 
 The kit's button: a native `<button>`, `type="button"` unless it submits a form.

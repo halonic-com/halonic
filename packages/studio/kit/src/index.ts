@@ -5,6 +5,13 @@
  */
 
 export {
+  ActionBar,
+  type ActionBarButton,
+  type ActionBarNoteTone,
+  type ActionBarProps,
+  type ActionBarRow,
+} from "./action-bar/action-bar.tsx";
+export {
   Button,
   type ButtonProps,
   type ButtonSize,

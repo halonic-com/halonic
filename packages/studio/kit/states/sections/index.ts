@@ -1,4 +1,5 @@
 import type { PartSection } from "../state-table.tsx";
+import { actionBarSection } from "./action-bar.tsx";
 import { buttonSection } from "./button.tsx";
 import { cardSection } from "./card.tsx";
 import { checkboxSection } from "./checkbox.tsx";
@@ -35,6 +36,7 @@ export const SECTIONS: readonly PartSection[] = [
   switchSection,
   kbdSection,
   viewOnlyLineSection,
+  actionBarSection,
   formRowsSection,
   radioSection,
   copyButtonSection,
