@@ -1,0 +1,36 @@
+# @halonicjs/adapter-git
+
+The `Vcs` port on the real `git` program, for one workspace folder. git always runs hardened, whether the workspace is trusted or not (plan section 11): nothing the workspace's files say can make git start another program.
+
+- **Layer:** adapters
+- **Owner:** tomas
+- **Runtime:** node
+- **Public API:** `@halonicjs/adapter-git`
+
+This first part is the hardened runner. The repository checks and the `Vcs` itself follow (HAL-2607).
+
+## Example
+
+```ts
+import { GitRunner } from "@halonicjs/adapter-git";
+
+const runner = await GitRunner.create();
+const result = await runner.run({ cwd: "workspaces/acme", args: ["status", "--porcelain=v2"] });
+console.log(result.code, result.stdout.toString());
+```
+
+## How git is hardened
+
+`GitRunner` starts git by its absolute path (`findGit` looks only in the absolute folders of the `PATH`, and only for `git.exe` on Windows), with an argument array and no shell. Every call:
+
+- points `core.hooksPath` at a folder that must stay empty, and gives the rest of the port's hardening config (`core.fsmonitor`, signing, submodules, maintenance, bundles, credential helpers, commit templates) in the environment through `GIT_CONFIG_COUNT`;
+- removes every inherited `GIT_*` variable and reads no system or user config (`GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_GLOBAL=/dev/null`);
+- allows only `https` and `ssh` remotes, with `ssh` itself and no password prompt;
+- never looks for a repository above the folder it runs in (`GIT_CEILING_DIRECTORIES`), and finds programs only in the absolute folders of the `PATH`;
+- stops git, and every program it started, past its time or output limit.
+
+The desktop's `git-guard` crate does the same in Rust.
+
+## Not yet
+
+- **Process allow-list.** `src/node/run-process.ts` is the only file that starts a process. It needs an entry in `tooling/check/process-starters.json` once HAL-188's check lands.

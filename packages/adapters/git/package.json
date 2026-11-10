@@ -1,0 +1,30 @@
+{
+  "name": "@halonicjs/adapter-git",
+  "private": true,
+  "type": "module",
+  "description": "The Vcs port on the real git program, always hardened: no hooks, no user or system config, no program the repository names.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "tomas",
+    "runtime": "node",
+    "coverage": {
+      "lines": 90,
+      "branches": 80
+    }
+  }
+}
