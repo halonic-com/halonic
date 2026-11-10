@@ -7,7 +7,7 @@ function testFile(moduleId: string, tests: Record<string, string>): TestModule {
   const children = {
     *allTests() {
       for (const [fullName, state] of Object.entries(tests)) {
-        yield { fullName, result: () => ({ state }) };
+        yield { fullName, name: fullName.split(" > ").pop(), result: () => ({ state }) };
       }
     },
   };
@@ -60,5 +60,56 @@ describe("NoSkippedTestsReporter", () => {
         "  - /pkg/src/a.test.ts: later\n" +
         "  - /pkg/src/b.test.ts: off",
     );
+  });
+
+  describe("platform skips", () => {
+    function run(tests: Record<string, string>) {
+      vi.restoreAllMocks();
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      process.exitCode = undefined;
+      new NoSkippedTestsReporter().onTestRunEnd([testFile("/pkg/src/a.test.ts", tests)]);
+      return { log, error };
+    }
+
+    it("accepts a skip named [platform:<os>] with a reason, and prints it", () => {
+      const { log, error } = run({
+        "host > [platform:darwin] bwrap is Linux-only": "skipped",
+      });
+      expect(process.exitCode).toBeUndefined();
+      expect(error).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledOnce();
+      expect(log.mock.calls[0]?.[0]).toBe(
+        "1 test(s) were skipped for the platform:\n" +
+          "  - /pkg/src/a.test.ts: host > [platform:darwin] bwrap is Linux-only",
+      );
+    });
+
+    it("fails a platform prefix without a reason", () => {
+      for (const name of ["[platform:darwin]", "[platform:darwin] ", "[platform:darwin]  "]) {
+        const { error } = run({ [name]: "skipped" });
+        expect(process.exitCode).toBe(1);
+        expect(error).toHaveBeenCalledOnce();
+      }
+    });
+
+    it("fails a platform prefix with an unknown os", () => {
+      const { log, error } = run({ "[platform:beos] no such thing": "skipped" });
+      expect(process.exitCode).toBe(1);
+      expect(error).toHaveBeenCalledOnce();
+      expect(log).not.toHaveBeenCalled();
+    });
+
+    it("fails a plain skip, and still lists the platform skip next to it", () => {
+      const { log, error } = run({
+        later: "skipped",
+        "[platform:linux] needs Windows": "skipped",
+      });
+      expect(process.exitCode).toBe(1);
+      expect(error.mock.calls[0]?.[0]).toBe(
+        "1 test(s) were skipped or are todo. Run them or delete them:\n  - /pkg/src/a.test.ts: later",
+      );
+      expect(log).toHaveBeenCalledOnce();
+    });
   });
 });

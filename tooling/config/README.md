@@ -35,7 +35,10 @@ Shared settings every package extends.
     that off (`definePackageTestConfig` throws).
   - A skipped or todo test fails the run, however it is written (`it.skip`,
     `it.todo`, `skipIf`, `ctx.skip()`). Biome's `noSkippedTests` catches the
-    common spellings at lint time; the reporter catches the rest.
+    common spellings at lint time; the reporter catches the rest. One skip is
+    allowed: a test whose name starts with `[platform:<os>] ` and a reason
+    (`[platform:darwin] bwrap is Linux-only`; `<os>` is a `process.platform`
+    value). The summary lists every such skip.
   - A test file that never ran fails the run, and the failure names it.
     On a busy machine a worker can miss Vitest's 60 seconds to start (jsdom
     files first); without this the run would fail only on coverage, with a
