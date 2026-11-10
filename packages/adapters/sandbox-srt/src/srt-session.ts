@@ -12,7 +12,12 @@ import type {
 } from "@halonicjs/ports";
 import { proveFence } from "./fence-proof.ts";
 import { buildSrtConfig } from "./srt-config.ts";
-import type { Runner, RunningProgram } from "./srt-runner.ts";
+import {
+  type Runner,
+  type RunningProgram,
+  skillScriptsRefusal,
+  touchesSkillScripts,
+} from "./srt-runner.ts";
 
 /**
  * Variables sandbox-runtime reads from its own environment to find a parent
@@ -103,20 +108,6 @@ async function refuseSkillScript(program: string, cwd: string): Promise<void> {
       `the sandbox doesn't start a skill's scripts: ${program} is in a skill's scripts folder`,
     );
   }
-}
-
-/** A path with a `skills/<name>/scripts` part, in either slash style. */
-const skillScripts = /(^|[\\/])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/;
-
-/**
- * Whether the program, an argument or the folder it starts in points under a
- * skill's `scripts/` folder, as written or resolved against `cwd`. Halonic
- * never runs those files (HAL-188).
- */
-function touchesSkillScripts(cwd: string, program: string, args: readonly string[]): boolean {
-  return [cwd, program, ...args].some(
-    (part) => skillScripts.test(part) || skillScripts.test(resolve(cwd, part)),
-  );
 }
 
 /** One started program: what the session tracks to stop it and to say why it ended. */
@@ -235,7 +226,7 @@ export class SrtSession implements SandboxSession {
     }
     await refuseSkillScript(command.program, cwd);
     if (touchesSkillScripts(cwd, command.program, command.args)) {
-      throw new Error("Halonic never runs a file under a skill's scripts/ folder");
+      throw new Error(skillScriptsRefusal);
     }
     const program = await this.#runner.run({
       settingsPath: this.#settingsPath,

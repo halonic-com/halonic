@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { Readable, Writable } from "node:stream";
 
 /** A program running inside the fence, as the session sees it. */
@@ -38,6 +39,26 @@ export interface Runner {
   run(request: RunRequest): Promise<RunningProgram>;
 }
 
+/** A path with a `skills/<name>/scripts` part, in either slash style. */
+const skillScripts = /(^|[\\/])skills[\\/][^\\/]+[\\/]scripts([\\/]|$)/;
+
+export const skillScriptsRefusal = "Halonic never runs a file under a skill's scripts/ folder";
+
+/**
+ * Whether the program, an argument or the folder it starts in points under a
+ * skill's `scripts/` folder, as written or resolved against `cwd`. Halonic
+ * never runs those files (HAL-188).
+ */
+export function touchesSkillScripts(
+  cwd: string,
+  program: string,
+  args: readonly string[],
+): boolean {
+  return [cwd, program, ...args].some(
+    (part) => skillScripts.test(part) || skillScripts.test(resolve(cwd, part)),
+  );
+}
+
 /** Where the `srt` command line of sandbox-runtime lives. */
 function srtCliPath(): string {
   return createRequire(import.meta.url).resolve("@anthropic-ai/sandbox-runtime/dist/cli.js");
@@ -54,11 +75,15 @@ function launched(child: ChildProcess): Promise<void> {
 /**
  * One `srt` process per program. Each has its own proxy and its own settings,
  * so sessions never share state, and ending the program is ending a process
- * group. The program is passed as separate arguments; srt quotes them for the
+ * group. It refuses a skill's `scripts/` files before anything starts. The program is passed as separate arguments; srt quotes them for the
  * shell it runs inside the fence.
  */
 export const srtRunner: Runner = {
   async run(request) {
+    // Checked here too, not only in the session, so no caller of the runner gets round it.
+    if (touchesSkillScripts(request.cwd, request.program, request.args)) {
+      throw new Error(skillScriptsRefusal);
+    }
     const child = spawn(
       process.execPath,
       [

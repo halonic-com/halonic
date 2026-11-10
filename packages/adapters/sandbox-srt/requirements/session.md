@@ -26,3 +26,6 @@ The sandbox-srt adapter shall open a session that proves its fence before anythi
 - Given a session with a proven fence,
   when `start` is asked to run `node skills/mail/scripts/send.js`,
   then it throws and nothing is started.
+- Given any caller of the srt runner,
+  when it asks the runner to run `node skills/mail/scripts/send.js`,
+  then the runner throws and starts no process.
