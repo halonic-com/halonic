@@ -165,6 +165,8 @@ export {
   type WorkspaceSwitcherProps,
 } from "./sidebar/workspace-switcher.tsx";
 export type { Studio } from "./studio.ts";
+export { mountedTabIds, mountedTabLimit } from "./tabs/mounted-tabs.ts";
+export { TabPages, type TabPagesProps } from "./tabs/tab-pages.tsx";
 export {
   currentLocation,
   homeLocation,

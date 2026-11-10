@@ -26,6 +26,7 @@ first, and a cycle between them throws a `ShellError`.
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services`  |
 | `TabSet`                        | a workspace's window tabs, each with Back and Forward      | `shell.tab-set`           |
 | `WindowTabStrip`                | the window tabs in the title bar, one Tab stop             | `shell.window-tab-strip`  |
+| `TabPages`                      | the last 5 tabs' pages kept mounted, focus given back      | `shell.tab-pages`         |
 | `ShellFrame`                    | the window's frame: layers, live regions, Esc, toasts      | `shell.frame`             |
 | `StatusBarItems`                | the status bar's items, state only                         | `shell.status-bar`        |
 | `shell.announcer`               | read text to screen readers, once per window               | `shell.announcer`         |
@@ -109,6 +110,19 @@ useWindowKeys({
   tabs: workspace.tabs,
   toasts: shell.toasts,
 });
+```
+
+`TabPages` draws the tabs' pages in the frame's `main` (UX checklist 1.2, a11y A3 and E2). The
+pages of the last five active tabs (`mountedTabLimit`) stay mounted, the others hidden and inert,
+so switching back keeps half-typed text. Each page is its own scroller. On a switch the page gets
+back its scroll and its last focus, or else focus goes to its `h1`, as for an older tab whose page
+was drawn afresh. While the focus is on a tab in the strip it stays there. A tab that moves on to
+another place draws a fresh page. `focusPageHeading` only finds the shown page's `h1`.
+
+```tsx
+<ShellFrame …>
+  <TabPages tabs={workspace.tabs} renderPage={(location) => <PageFor location={location} />} />
+</ShellFrame>
 ```
 
 ## The frame

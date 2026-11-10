@@ -47,12 +47,14 @@ export function usePageHeadingFocus(): () => void {
 }
 
 /**
- * Moves focus to the page's `h1`, the first one in `main`. A heading isn't focusable by itself, so
- * it gets `tabindex="-1"` when it has none: focusable from code, never a Tab stop.
+ * Moves focus to the page's `h1`, the first one in `main` that is shown: the pages of other tabs
+ * stay mounted but hidden (`TabPages`), and their headings don't count. A heading isn't focusable
+ * by itself, so it gets `tabindex="-1"` when it has none: focusable from code, never a Tab stop.
  */
 export function focusPageHeading(root: ParentNode = document): void {
-  const heading = root.querySelector<HTMLHeadingElement>("main h1");
-  if (heading === null) {
+  const headings = root.querySelectorAll<HTMLHeadingElement>("main h1");
+  const heading = [...headings].find((candidate) => candidate.closest("[hidden]") === null);
+  if (heading === undefined) {
     return;
   }
   if (!heading.hasAttribute("tabindex")) {

@@ -1,0 +1,124 @@
+// @vitest-environment jsdom
+
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, expect, it } from "vitest";
+import { render, unmountAll } from "../test-support/render.tsx";
+import { focusPageHeading } from "./history-moves.ts";
+import { TabPages } from "./tab-pages.tsx";
+import { type TabLocation, TabSet } from "./tab-set.ts";
+
+const agents: TabLocation = { key: "agents", title: "Agents" };
+const sorter: TabLocation = { key: "agent/acme/sorter", title: "Sorter", kind: "agent" };
+
+afterEach(unmountAll);
+
+/** A page with its title as the `h1` and one field to type into. */
+function Page({ location }: { readonly location: TabLocation }) {
+  return (
+    <>
+      <h1>{location.title}</h1>
+      <input aria-label={`Notes on ${location.title}`} />
+    </>
+  );
+}
+
+/** Tabs on Agents and Sorter, Agents active, with their pages in `main` and a tab strip stand-in. */
+function renderPages() {
+  const tabs = new TabSet();
+  tabs.openHere(agents);
+  tabs.openInNewTab(sorter);
+  const container = render(
+    <>
+      <div role="tablist" aria-label="Open tabs">
+        <button type="button" role="tab">
+          Agents
+        </button>
+      </div>
+      <main>
+        <TabPages tabs={tabs} renderPage={(location) => <Page location={location} />} />
+      </main>
+    </>,
+  );
+  const [first, second] = tabs.state.tabs.map((tab) => tab.id) as [string, string];
+  const page = (tabId: string) =>
+    container.querySelector<HTMLElement>(`[data-tab-page="${tabId}"]`);
+  const field = (title: string) =>
+    container.querySelector<HTMLInputElement>(`input[aria-label="Notes on ${title}"]`);
+  return { tabs, container, first, second, page, field };
+}
+
+verifies("shell.tab-pages", () => {
+  it("keeps a page the user left mounted, hidden and inert, with its typed text and focus", () => {
+    const { tabs, first, second, page, field } = renderPages();
+    const notes = field("Agents") as HTMLInputElement;
+    notes.value = "half a thought";
+    act(() => notes.focus());
+
+    act(() => tabs.activate(second));
+    expect(page(first)?.hidden).toBe(true);
+    expect(page(first)?.hasAttribute("inert")).toBe(true);
+    expect(document.activeElement?.textContent).toBe("Sorter");
+
+    act(() => tabs.activate(first));
+    expect(page(first)?.hidden).toBe(false);
+    expect(field("Agents")).toBe(notes);
+    expect(notes.value).toBe("half a thought");
+    expect(document.activeElement).toBe(notes);
+  });
+
+  it("gives a page back its scroll position", () => {
+    const { tabs, first, second, page } = renderPages();
+    const agentsPage = page(first) as HTMLElement;
+    agentsPage.scrollTop = 300;
+    act(() => {
+      agentsPage.dispatchEvent(new Event("scroll"));
+    });
+    act(() => tabs.activate(second));
+    agentsPage.scrollTop = 0;
+    act(() => tabs.activate(first));
+    expect(agentsPage.scrollTop).toBe(300);
+  });
+
+  it("draws a page afresh once five more recently active tabs push it out", () => {
+    const { tabs, first, page, field } = renderPages();
+    const notes = field("Agents") as HTMLInputElement;
+    notes.value = "gone soon";
+    act(() => notes.focus());
+    for (let count = 0; count < 5; count++) {
+      act(() => {
+        tabs.newTab();
+      });
+    }
+    expect(page(first)).toBeNull();
+
+    act(() => tabs.activate(first));
+    expect(field("Agents")?.value).toBe("");
+    expect(document.activeElement?.textContent).toBe("Agents");
+  });
+
+  it("draws a fresh page when the tab moves on to another place", () => {
+    const { tabs, field } = renderPages();
+    const notes = field("Agents") as HTMLInputElement;
+    notes.value = "about agents";
+    act(() => tabs.openHere({ key: "routines", title: "Routines" }));
+    act(() => tabs.back());
+    expect(field("Agents")?.value).toBe("");
+  });
+
+  it("leaves the focus in the tab strip", () => {
+    const { tabs, container, second } = renderPages();
+    const tab = container.querySelector<HTMLElement>('[role="tab"]') as HTMLElement;
+    act(() => tab.focus());
+    act(() => tabs.activate(second));
+    expect(document.activeElement).toBe(tab);
+  });
+
+  it("finds only the shown page's h1", () => {
+    const { tabs, second } = renderPages();
+    act(() => tabs.activate(second));
+    act(() => (document.activeElement as HTMLElement | null)?.blur());
+    focusPageHeading();
+    expect(document.activeElement?.textContent).toBe("Sorter");
+  });
+});
