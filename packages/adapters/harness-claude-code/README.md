@@ -15,9 +15,28 @@ secrets and approvals stay in Halonic.
 `claude -p` with `stream-json` in and out inside the run's sandbox session,
 sends the prompt on standard input and turns what Claude Code prints into
 run events. `send` passes a person's answer on as the next user message;
-approvals go through the bridge's `approve_permission` tool instead. `cancel`
+approvals go through the bridge's `approve_permission` tool instead, so `send`
+refuses an approval decision. `cancel`
 stops Claude Code and everything it started. It passes the `harness`
 contract suite.
+
+## The command
+
+Claude Code gets the bridge's MCP server from the settings folder and no other,
+and `approve_permission` as its permission-prompt tool. `--model` and
+`--append-system-prompt` are added only when the agent's file sets a model or
+instructions. The prompt and every later answer go in as `stream-json` user
+messages on standard input, never in the arguments. A line of output longer
+than 16 Mi characters ends the reading with an error.
+
+## The environment
+
+`claudeCodeEnvironment(bridge, folders)` (also `harness.environment`) gives
+five variables: `ANTHROPIC_BASE_URL` (the run's bridge), `ANTHROPIC_CUSTOM_HEADERS`
+(the run token in the bridge's own header, so `Authorization` stays free for
+the person's sign-in), `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_TMPDIR` (the
+session's own temp folder) and `HALONIC_RUN_TOKEN`. It throws when the profile
+has no settings folder. The run token is removed from every event and error.
 
 ## Reading the output
 
@@ -59,7 +78,7 @@ Halonic's data. Before a run, the harness writes two files there:
   the bridge's address. Its address and token header are written as
   `${ANTHROPIC_BASE_URL}` and `${HALONIC_RUN_TOKEN}`, which Claude Code fills
   in from its environment, so the files never hold the run token and are the
-  same for every run.
+  same for every run. A file that already holds the same text is left alone.
 
 ## Supported versions
 
@@ -73,6 +92,7 @@ leading `X.Y.Z` of `claude --version`, such as `2.1.321 (Claude Code)`.
 is signed in; `detect()` then answers `signed-out`. Any other answer is
 `ready`: Halonic never guesses. A sign-in that has expired at Anthropic still
 looks signed in here. Claude Code then prints "Login expired · Please run
-/login" on its first request; `findSignInProblem` recognises it, and the run
+/login" (or "Not logged in", or "Authentication required") on its first
+request; `findSignInProblem` recognises it, and the run
 ends with a `SignInError` before its first event, so the engine reports
 `harness-start-failed`.
