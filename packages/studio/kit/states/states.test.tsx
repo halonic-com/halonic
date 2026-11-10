@@ -77,6 +77,7 @@ describe("the states page's forced states", () => {
     ]);
     expect(rules).toContainEqual([
       ".focus-field:has([data-field-text]:focus)",
+      '.focus-field:has([data-field-text][data-force-state="focus"])',
       '[data-force-state="focus"] .focus-field',
       '.focus-field[data-force-state="focus"]',
     ]);
