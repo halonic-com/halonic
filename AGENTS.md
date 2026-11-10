@@ -32,13 +32,18 @@ Each package declares its layer and owner in `package.json` (`"halonic": { "laye
 | Command                                                                  | What it does                                                                           |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | `pnpm install`                                                           | install dependencies (Node and pnpm versions are pinned; don't override them)          |
-| `pnpm verify`                                                            | repo checks, then typecheck, lint, test and build for the packages your change affects |
-| `pnpm verify --full`                                                     | every package, plus the trace check, as CI runs it; only when the task needs it        |
 | `pnpm check [rule …]`                                                    | only the repo checks; takes seconds                                                    |
 | `pnpm new package <layer>/<name> --owner <agent> --purpose "<one line>"` | create a package, with its own `AGENTS.md`, that passes every check                    |
 | `pnpm new feature <name> --owner <agent> --purpose "<one line>"`         | create a Studio feature and add it to the Studio's feature list                        |
 | `pnpm discover`                                                          | rewrite the generated files; `--fix` also repairs the Studio's feature list            |
 | `pnpm who-touches <package>`                                             | list open pull requests that change that package                                       |
+
+Local checks (never plain `pnpm verify` or `pnpm verify --full` on your machine; CI runs them):
+
+- Before you push, check what you changed: `git fetch origin`, then
+  `pnpm exec turbo run typecheck lint test --filter=...[origin/main] --concurrency=2`.
+- Before you queue a pull request, typecheck every package on top of the latest `main`:
+  `pnpm exec turbo run typecheck --concurrency=2`.
 
 Never create a package or feature by hand; use the generators. Every package has an `AGENTS.md`
 whose owner matches `package.json`; `pnpm check` fails otherwise.
@@ -74,7 +79,7 @@ reports for now: it doesn't block until its approval lookup is live. See `docs/g
 
 - Readable over short: full names, early returns. Comments explain _why_.
 - No barrels; each package has one explicit `src/index.ts`.
-- The linter enforces the rest of the style: named exports only, `.ts` on relative imports, no `any`, `@ts-ignore` or `!`, no nested ternaries, sorted imports, complexity of 15 or less per function, and the layer import bans above. See `tooling/config/biome.jsonc`; `pnpm verify` runs it.
+- The linter enforces the rest of the style: named exports only, `.ts` on relative imports, no `any`, `@ts-ignore` or `!`, no nested ternaries, sorted imports, complexity of 15 or less per function, and the layer import bans above. See `tooling/config/biome.jsonc`; CI runs it.
 - No central lists: register through `feature.ts` and folder discovery, never by editing a shared `switch`.
 - Thin commands and screens: a CLI command or Studio screen parses its input, calls one app
   service, and formats the result. No business logic in commands or screens
@@ -108,11 +113,11 @@ you spot become a new task.
 - Under about 400 changed lines (generated files, the lockfile and fixtures don't count).
 - Title in the form `type(scope): summary`; CI checks it.
 - Rebase on `main` before review. Locally, run the targeted checks for what you changed (a single
-  package's tests, `pnpm check`). Then push and let CI (`ci-ok`) give the verdict. Run
-  `pnpm verify --full` only when the task needs it. Local tests use two workers; set
-  `HALONIC_TEST_WORKERS` to change that.
+  package's tests, `pnpm check`, or the turbo command under Commands). Then push and let CI (`ci-ok`)
+  give the verdict. Never run plain `pnpm verify` or `pnpm verify --full` locally. Local tests use
+  two workers; set `HALONIC_TEST_WORKERS` to change that.
 - Turbo's cache can be shared between worktrees on one machine: when `TURBO_CACHE_DIR` is set,
-  `pnpm verify` uses it, and a package another worktree already checked is a cache hit. Don't
+  turbo uses it, and a package another worktree already checked is a cache hit. Don't
   set it per worktree. `pnpm turbo:prune` deletes entries unused for 7 days.
 - Fill in the template: requirements, how you tested, docs, changeset (or "None"), and the AI tool
   and model you used. Agents leave the sign-off box unticked (see Review).
