@@ -88,10 +88,13 @@ export interface ConnectorClient {
  * from. It is stored in the trust record when a person trusts the workspace,
  * so it is per machine and never in a workspace file.
  *
- * It has no integrity hash, on purpose: `registryUrl` comes from the user's
- * profile, so the person already trusts that registry, and a Python package
- * has a different file, so a different hash, per platform. See the port
- * list ADR.
+ * It has no integrity hash, on purpose: the person already trusts the
+ * registry, and a Python package has a different file, so a different hash,
+ * per platform. See the port list ADR. For a workspace connector,
+ * `registryUrl` comes from the user's profile. For a plugin's local tool it
+ * comes from the plugin's manifest, or is the runner's public registry, and
+ * the person sees it in the trust prompt before trusting the plugin (plugins
+ * ADR, section 1.2).
  *
  * @example
  * const pin: ConnectorPin = {
@@ -104,7 +107,11 @@ export interface ConnectorClient {
 export interface ConnectorPin {
   /** `npm` for the npm runners (`npx`, `pnpm dlx`, `bunx` and so on), `pypi` for the Python ones (`uvx`, `pipx run`, `uv tool run`). */
   registry: "npm" | "pypi";
-  /** The registry's address, taken from the user's profile, never from the workspace. */
+  /**
+   * The registry's base address, such as "https://pypi.org", never its index
+   * (the launcher adds `/simple` itself). Never from a workspace: from the
+   * user's profile, or for a plugin from its trusted manifest.
+   */
   registryUrl: string;
   /** The package name, such as "@acme/mail-mcp". */
   package: string;

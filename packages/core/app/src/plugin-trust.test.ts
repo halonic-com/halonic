@@ -63,6 +63,39 @@ verifies("app.plugin-trust", () => {
     });
   });
 
+  it("pins a uvx tool to PyPI's base address, and keeps a registry the manifest names", async () => {
+    const manifest = weatherManifest
+      .replace("version: 3.1.4 }", 'version: 3.1.4, registry: "https://npm.acme.test" }')
+      .replace(
+        "localTools:\n",
+        `localTools:
+  - id: notes
+    start:
+      package: { runner: uvx, name: notes-server, version: 0.4.1 }
+    tools:
+      - { name: list-notes, description: Lists your notes., risk: read, untrusted: true }
+`,
+      );
+    const { store, service } = setup();
+    const check = await service.checkPlugin(weather(manifest));
+    const granted = await service.grantPlugin(weather(manifest), check.fingerprint, "prompt");
+    expect(granted.ok).toBe(true);
+    expect((await store.get(location))?.pins).toEqual({
+      files: {
+        registry: "npm",
+        registryUrl: "https://npm.acme.test",
+        package: "@acme/files-mcp",
+        version: "3.1.4",
+      },
+      notes: {
+        registry: "pypi",
+        registryUrl: "https://pypi.org",
+        package: "notes-server",
+        version: "0.4.1",
+      },
+    });
+  });
+
   it("saves nothing when the fingerprint shown isn't the current one", async () => {
     const { store, service } = setup();
     const current = (await service.checkPlugin(weather())).fingerprint;

@@ -61,10 +61,15 @@ export type PluginTrustCheck =
       readonly error: unknown;
     });
 
-/** The public registry a runner uses when the manifest names none. */
-const publicRegistries: Record<"npm" | "pypi", string> = {
+/**
+ * The public registry a runner uses when the manifest names none, as a
+ * `ConnectorPin.registryUrl`: the registry's base address, never its index.
+ * The launcher adds `/simple` for PyPI itself, and the pin check reads
+ * `/pypi/<name>/json` from the same base.
+ */
+const publicRegistries: Record<ConnectorPin["registry"], string> = {
   npm: "https://registry.npmjs.org",
-  pypi: "https://pypi.org/simple",
+  pypi: "https://pypi.org",
 };
 
 /** Whether the plugin is trusted now: a grant only when the record's fingerprint is the current one. */
