@@ -126,6 +126,14 @@ export {
 } from "./resources/resource-watch.ts";
 export { type SaveFailure, type SaveReason, saveFailureFor } from "./save/save-failure.ts";
 export {
+  announceSaveNotes,
+  type SaveNoteAction,
+  type SaveNoteMark,
+  type SaveNoteWords,
+  saveNoteActionLabels,
+  saveNoteWords,
+} from "./save/save-note-words.ts";
+export {
   couldNotSaveText,
   type SaveNote,
   SaveState,
@@ -163,5 +171,10 @@ export {
 } from "./tabs/tab-set.ts";
 export { WindowTabStrip, type WindowTabStripProps } from "./tabs/window-tab-strip.tsx";
 export { Toolbar, type ToolbarProps } from "./toolbar/toolbar.tsx";
+export {
+  SAVING_AFTER_MS,
+  ToolbarSaveNote,
+  type ToolbarSaveNoteProps,
+} from "./toolbar/toolbar-save-note.tsx";
 export { loadView, type ViewRef } from "./view.ts";
 export type { WorkspaceContext } from "./workspace-context.ts";

@@ -1,6 +1,7 @@
 /**
  * The warning mark: a triangle with an exclamation point, outline style, in the text colour.
- * Used by a `warning` Callout. Decoration: the words next to it say what's wrong.
+ * Used by a `warning` Callout and the Studio's save note. Decoration: the words next to it say
+ * what's wrong.
  */
 export function WarningIcon() {
   return (

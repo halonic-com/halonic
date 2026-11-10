@@ -11,11 +11,12 @@ export interface SavingItem {
 
 /**
  * What the toolbar says about saving (save model 1.4), the most urgent first when several are
- * true: a save that failed, then items held back by a change from outside Halonic, then fields
- * with a mistake, then a save running. Otherwise everything is saved.
+ * true: saves that failed, then items held back by a change from outside Halonic, then fields
+ * with a mistake, then a save running. Otherwise everything is saved. `first` is the item the note
+ * names when its count is 1; of items held back, it is the one held longest (Compare opens it).
  */
 export type SaveNote =
-  | { readonly kind: "failed" }
+  | { readonly kind: "failed"; readonly count: number; readonly first: SavingItem }
   | { readonly kind: "items-not-saved"; readonly count: number; readonly first: SavingItem }
   | { readonly kind: "fields-not-saved"; readonly count: number }
   | { readonly kind: "saving" }
@@ -112,7 +113,8 @@ export class SaveState {
       return true;
     } catch (error) {
       const isNewest = attempt === record.attempts;
-      if (isNewest) {
+      const isKnown = this.items.get(record.item.key) === record;
+      if (isNewest && isKnown) {
         this.fail(record, saveFailureFor(error), () => void this.save(record.item, write));
       }
       return false;
@@ -155,6 +157,22 @@ export class SaveState {
     if (this.held.delete(key)) {
       this.update();
     }
+  }
+
+  /**
+   * Forgets `key`: the item was deleted, or its tab closed, so nothing will save it again. Its
+   * failure toast closes, and it no longer counts in the note: not as failed, held back, saving or
+   * with fields not saved. A write of it still running finishes, but its failure no longer counts.
+   */
+  forget(key: string): void {
+    const record = this.items.get(key);
+    if (record === undefined) {
+      return;
+    }
+    this.clearFailure(record);
+    this.items.delete(key);
+    this.held.delete(key);
+    this.update();
   }
 
   /** The note's **Try again**: runs every failed write again. */
@@ -211,8 +229,10 @@ export class SaveState {
 
   private noteNow(): SaveNote {
     const records = [...this.items.values()];
-    if (records.some((record) => record.failed !== undefined)) {
-      return { kind: "failed" };
+    const failed = records.filter((record) => record.failed !== undefined);
+    const [firstFailed] = failed;
+    if (firstFailed !== undefined) {
+      return { kind: "failed", count: failed.length, first: firstFailed.item };
     }
     const [firstHeld] = this.held.keys();
     const first = firstHeld === undefined ? undefined : this.items.get(firstHeld)?.item;
@@ -232,7 +252,10 @@ export class SaveState {
 
 /** Whether two notes say the same, so listeners hear only real changes. */
 function sameNote(a: SaveNote, b: SaveNote): boolean {
-  if (a.kind === "items-not-saved" && b.kind === "items-not-saved") {
+  if (
+    (a.kind === "failed" && b.kind === "failed") ||
+    (a.kind === "items-not-saved" && b.kind === "items-not-saved")
+  ) {
     return a.count === b.count && a.first.key === b.first.key && a.first.title === b.first.title;
   }
   if (a.kind === "fields-not-saved" && b.kind === "fields-not-saved") {

@@ -111,6 +111,7 @@ export {
   type HeaderBadgeProps,
 } from "./header-badge/header-badge.tsx";
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
+export { AlertIcon } from "./icons/alert-icon.tsx";
 export { BackIcon } from "./icons/back-icon.tsx";
 export { CloseIcon } from "./icons/close-icon.tsx";
 export { ForwardIcon } from "./icons/forward-icon.tsx";
@@ -122,6 +123,7 @@ export {
   placeIconNames,
 } from "./icons/place-icon.tsx";
 export { PlusIcon } from "./icons/plus-icon.tsx";
+export { WarningIcon } from "./icons/warning-icon.tsx";
 export type { FieldSize } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
 export type { InputLeadingButton } from "./input/leading-button.tsx";

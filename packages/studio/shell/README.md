@@ -33,6 +33,7 @@ look up services its feature lists in `needs`.
 | `shell.engine.supervise`        | start the engine, restart it once, report why it failed    | `shell.engine-start`      |
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
 | `SaveState`                     | the toolbar's save note and the failed-save toast          | `shell.save-state`        |
+| `ToolbarSaveNote`               | the save note in the toolbar, and what it reads out        | `shell.save-note`         |
 | `watchResources`                | read the engine's resource numbers, flag a low disk        | `shell.resource-numbers`  |
 
 The shell adds Home itself. The other sidebar places come from features through `places.add`,
@@ -239,14 +240,30 @@ Copy details; they never go on screen (rule 4 of the failure-path guide).
 The Studio saves by itself (save model, HAL-1102), and the toolbar's save note is the only place
 saving shows. A workspace has one `SaveState`; screens write through `save(item, write)`, which
 never rejects and resolves to whether the item was saved. `note` says, most urgent first:
-`failed` ("Couldn't save · Try again"), `items-not-saved` (a change from outside Halonic holds
+`failed` ("Couldn't save _Support reply_ · Try again", or "Couldn't save 2 items"), `items-not-saved` (a change from outside Halonic holds
 items back, "1 item not saved · Compare"), `fields-not-saved` (fields with a mistake, "2 fields
 not saved"), `saving` or `saved`. A failed write also shows a danger toast, "Couldn't save
 _Support reply_: the disk is full." with **Try again**, worded from its save reason
 (`couldNotSaveText`); `tryAgain()` and the toast run the same write again, and a new save of the
 item closes the toast. Screens report fields with `setFieldsNotSaved` and outside changes with
 `holdForOutsideChange` and `releaseHold`; `compare()` opens Compare for the item held back
-longest.
+longest. When an item is deleted or its tab closes, `forget(key)` drops it, with its toast.
+
+`ToolbarSaveNote` goes in the toolbar's `saveState` slot. It shows "✓ Saved" (named "All changes
+saved"), "Saving…" only once a write has run for 300ms, so quick saves don't blink, and the
+problems after a warning or danger mark named "Warning" or "Error", with **Compare** or **Try
+again**. It isn't a live region: `announceSaveNotes(saving, announcer)` reads the note out
+politely, once, when it becomes failed or items not saved, and never for Saving… or Saved.
+`saveNoteWords` holds the words.
+
+```tsx
+announceSaveNotes(workspace.saving, shell.announcer);
+<Toolbar
+  tabs={workspace.tabs}
+  announcer={shell.announcer}
+  saveState={<ToolbarSaveNote saving={workspace.saving} />}
+/>;
+```
 
 ## Error messages
 

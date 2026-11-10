@@ -14,6 +14,10 @@ beforeEach(() => {
   saving = new SaveState(toasts);
 });
 
+function failedNote(count: number, first: SavingItem) {
+  return { kind: "failed", count, first };
+}
+
 function writeError(code: string): Error {
   return Object.assign(new Error(`${code}: write failed`), { code });
 }
@@ -47,7 +51,7 @@ verifies("shell.save-state", () => {
   it("says Couldn't save and shows the error toast with its reason and Try again", async () => {
     expect(await saving.save(supportReply, () => Promise.reject(writeError("ENOSPC")))).toBe(false);
 
-    expect(saving.note).toEqual({ kind: "failed" });
+    expect(saving.note).toEqual(failedNote(1, supportReply));
     expect(toasts.list()).toEqual([
       expect.objectContaining({
         tone: "danger",
@@ -108,7 +112,7 @@ verifies("shell.save-state", () => {
 
     older.finish();
     expect(await olderSaved).toBe(true);
-    expect(saving.note).toEqual({ kind: "failed" });
+    expect(saving.note).toEqual(failedNote(1, supportReply));
 
     saving.tryAgain();
     await vi.waitFor(() => expect(saving.note).toEqual({ kind: "saved" }));
@@ -121,7 +125,49 @@ verifies("shell.save-state", () => {
     saving.holdForOutsideChange(sorter, () => {});
     void saving.save(sorter, pendingWrite().write);
 
-    expect(saving.note).toEqual({ kind: "failed" });
+    expect(saving.note).toEqual(failedNote(1, supportReply));
+  });
+
+  it("counts the items that failed, and names one", async () => {
+    const failing = () => Promise.reject(writeError("ENOSPC"));
+    await saving.save(supportReply, failing);
+    await saving.save(sorter, failing);
+    expect(saving.note).toEqual(failedNote(2, supportReply));
+
+    await saving.save(supportReply, () => Promise.resolve());
+    expect(saving.note).toEqual(failedNote(1, sorter));
+  });
+
+  it("forgets a deleted or closed item: its failure, its toast and its hold", async () => {
+    await saving.save(supportReply, () => Promise.reject(writeError("ENOSPC")));
+    saving.holdForOutsideChange(sorter, () => {});
+    saving.setFieldsNotSaved(sorter, 2);
+
+    saving.forget(supportReply.key);
+    expect(toasts.list()).toEqual([]);
+    expect(saving.note).toEqual({ kind: "items-not-saved", count: 1, first: sorter });
+
+    saving.forget(sorter.key);
+    expect(saving.note).toEqual({ kind: "saved" });
+  });
+
+  it("ignores the failure of a write still running when its item is forgotten", async () => {
+    const pending = pendingWrite();
+    const saved = saving.save(supportReply, pending.write);
+    saving.forget(supportReply.key);
+    expect(saving.note).toEqual({ kind: "saved" });
+
+    pending.fail(writeError("ENOSPC"));
+    expect(await saved).toBe(false);
+    expect(saving.note).toEqual({ kind: "saved" });
+    expect(toasts.list()).toEqual([]);
+  });
+
+  it("does nothing when it forgets an item it doesn't know", () => {
+    const listener = vi.fn();
+    saving.subscribe(listener);
+    saving.forget("nothing/known");
+    expect(listener).not.toHaveBeenCalled();
   });
 
   it("counts fields with a mistake over every item, and says Saved once they're fixed", () => {
@@ -180,7 +226,7 @@ verifies("shell.save-state", () => {
 
     expect(toasts.list()[0]?.title).toBe("Couldn't save Sorter v2.");
     saving.releaseHold(sorter.key);
-    expect(saving.note).toEqual({ kind: "failed" });
+    expect(saving.note).toEqual(failedNote(1, renamed));
   });
 
   it("tells listeners only when the note changes", () => {
