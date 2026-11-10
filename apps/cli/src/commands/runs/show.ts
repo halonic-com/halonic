@@ -22,12 +22,13 @@ import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
 import { runsMessages, type ShownEnd } from "../../messages/runs.ts";
 import { startedInWords } from "../../messages/runs-list.ts";
+import { stepName } from "../../messages/step-name.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
 import { type RunDefinitions, receiptOf, stepLines } from "../../run-view.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import type { RunListSetup } from "./list.ts";
-import { listedStatus } from "./listed-run.ts";
+import { listedStatus, waitDescription } from "./listed-run.ts";
 
 /**
  * Shows one run, real or test: its heading, then its steps. Exits 0 for any
@@ -73,7 +74,7 @@ export async function showRun(
         lines: [
           heading(run, title, workspace, clock),
           ...(steps.length === 0 ? [] : [[], ...steps]),
-          ...ending(run, title),
+          ...ending(run, title, definitions, dir),
         ],
         json: { events: run.events },
       };
@@ -108,16 +109,57 @@ function runDefinitions(loaded: LoadedWorkspace, summary: RunSummary): RunDefini
 }
 
 /**
- * What follows the step lines of a finished run: "✓ Support reply finished
- * in 18 s." and the receipt under it, as a finished `halonic run` ends. A
- * running run ends with its step lines. A failed or stopped run's ✕ lines
- * and a waiting run's lines come with `run`'s own (HAL-2742).
+ * What follows the step lines: a finished run's "✓ Support reply finished
+ * in 18 s." and the receipt under it, as a finished `halonic run` ends, or
+ * a waiting run's two waiting lines. A running run ends with its step
+ * lines. A failed or stopped run's ✕ lines come with `run`'s own (HAL-2742).
  */
-function ending(run: RunDetail, title: string): Phrase[] {
-  const { summary } = run;
-  if (summary.status !== "completed") {
+function ending(
+  run: RunDetail,
+  title: string,
+  definitions: RunDefinitions,
+  dir: string | undefined,
+): Phrase[] {
+  switch (run.summary.status) {
+    case "completed":
+      return finishedEnding(run, title);
+    case "waiting":
+      return waitingEnding(run.summary, definitions, dir);
+    default:
+      return [];
+  }
+}
+
+/**
+ * A run waiting at a wait step ends with `run`'s two waiting lines, word for
+ * word (cli-output 3.4): "! Waiting for you: Approve this reply?" and how to
+ * answer. A run waiting for a tool approval, its child run or a time has no
+ * such lines in 3.4; its step line already says what it waits for.
+ */
+function waitingEnding(
+  summary: RunSummary,
+  definitions: RunDefinitions,
+  dir: string | undefined,
+): Phrase[] {
+  const waitsAtAWaitStep =
+    summary.approvals.length === 0 && summary.waitingOn === null && summary.accepts.length > 0;
+  if (!waitsAtAWaitStep || summary.state === null) {
     return [];
   }
+  const description = waitDescription(summary, definitions.workflow);
+  const waiting =
+    description === undefined
+      ? runMessages.waitingInStep(
+          stepName(summary.state, definitions.workflow?.states[summary.state]?.description),
+        )
+      : runMessages.waitingForYou(description);
+  const answer = runMessages.answerHere(shortRunId(summary.id), summary.accepts, dir);
+  return [[], phrase`${markPart("needsYou")} ${waiting.phrase}`, phrase`  ${answer.phrase}`];
+}
+
+/** "✓ Support reply finished in 18 s." and the receipt under it. */
+function finishedEnding(run: RunDetail, title: string): Phrase[] {
+  const { summary } = run;
   const took = Date.parse(summary.endedAt ?? summary.updatedAt) - Date.parse(summary.startedAt);
   const receipt = runMessages.receipt(receiptOf(run.events, summary)).phrase;
   return [

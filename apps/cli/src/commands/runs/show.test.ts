@@ -158,6 +158,21 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("ends a run waiting at a wait step with run's two waiting lines, and no receipt", async () => {
+      await storeRuns(waiting);
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout).toEqual([
+        "Support reply in acme · run 09d9a0 · started 10:40, waiting for you since 10:41",
+        "",
+        "! Approve this reply?   waiting for you since 10:41",
+        "",
+        "! Waiting for you: Approve this reply?",
+        "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve  (or reject)",
+      ]);
+    });
+
     it("ends a running run with the step it is in", async () => {
       await storeRuns(triaged("run_mfx3k2a1_0a0b0d", []));
 

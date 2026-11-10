@@ -166,7 +166,7 @@ function needsYouWhat(
 }
 
 /** The first line of the wait step's description, as written; `undefined` when it has none. */
-function waitDescription(
+export function waitDescription(
   summary: RunSummary,
   workflow: WorkflowDefinition | undefined,
 ): string | undefined {
