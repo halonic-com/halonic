@@ -1,0 +1,82 @@
+import { existsSync, readFileSync } from "node:fs";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { SandboxBlock } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { SrtSandbox } from "./srt-sandbox.ts";
+import { fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
+
+let base: string;
+let git: string;
+
+beforeEach(async () => {
+  base = await mkdtemp(join(tmpdir(), "srt-session-git-test-"));
+  git = join(base, "work", ".git");
+  await mkdir(join(git, "worktrees", "feature"), { recursive: true });
+});
+
+afterEach(async () => {
+  await rm(base, { recursive: true, force: true });
+});
+
+async function open() {
+  const { runner } = fakeRunner();
+  const session = await new SrtSandbox(linux, runner).open(makeProfile(base));
+  const blocks: SandboxBlock[] = [];
+  session.onBlocked((block) => blocks.push(block));
+  return { session, blocks };
+}
+
+verifies("sandbox-srt.session", () => {
+  describe("the git folder check at session end", () => {
+    it("deletes a commondir the program added, in the git folder and in a linked worktree", async () => {
+      const { session, blocks } = await open();
+      const planted = [join(git, "commondir"), join(git, "worktrees", "feature", "commondir")];
+      for (const path of planted) await writeFile(path, "../elsewhere\n");
+      await session.close();
+      for (const path of planted) expect(existsSync(path)).toBe(false);
+      expect(blocks).toEqual(planted.map((path) => ({ kind: "file", path, access: "write" })));
+    });
+
+    it("restores a commondir the program changed or deleted", async () => {
+      const main = join(git, "commondir");
+      const linked = join(git, "worktrees", "feature", "commondir");
+      await writeFile(main, "..\n");
+      await writeFile(linked, "../..\n");
+      const { session, blocks } = await open();
+      await writeFile(main, "../elsewhere\n");
+      await rm(linked);
+      await session.close();
+      expect(readFileSync(main, "utf8")).toBe("..\n");
+      expect(readFileSync(linked, "utf8")).toBe("../..\n");
+      expect(blocks).toHaveLength(2);
+    });
+
+    it("deletes a commondir in a worktree folder the program made", async () => {
+      const { session } = await open();
+      const made = join(git, "worktrees", "made");
+      await mkdir(made);
+      await writeFile(join(made, "commondir"), "../elsewhere\n");
+      await session.close();
+      expect(existsSync(join(made, "commondir"))).toBe(false);
+    });
+
+    it("leaves an unchanged commondir alone and says nothing", async () => {
+      const main = join(git, "commondir");
+      await writeFile(main, "..\n");
+      const { session, blocks } = await open();
+      await session.close();
+      expect(readFileSync(main, "utf8")).toBe("..\n");
+      expect(blocks).toEqual([]);
+    });
+
+    it("does nothing when the working folder has no git folder", async () => {
+      await rm(git, { recursive: true });
+      const { session, blocks } = await open();
+      await session.close();
+      expect(blocks).toEqual([]);
+    });
+  });
+});
