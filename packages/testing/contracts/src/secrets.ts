@@ -1,7 +1,13 @@
 import type { Secrets, TokenStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { invalidSecretNames, longestSecretName, unquotableSecretNames } from "./secret-names.ts";
+import {
+  invalidSecretNames,
+  longestSecretName,
+  lookalikeSecretNames,
+  objectPropertySecretNames,
+  unquotableSecretNames,
+} from "./secret-names.ts";
 
 /** Creates the secrets under test, configured with exactly `values`. Read-only adapters are seeded here. */
 export type MakeSecrets = (values: Readonly<Record<string, string>>) => Promise<Secrets>;
@@ -46,6 +52,22 @@ export function secretsContract(name: string, make: MakeSecrets): void {
         const secrets = await make({});
         for (const bad of invalidSecretNames) {
           await expect(secrets.get(bad), JSON.stringify(bad)).rejects.toThrow(RangeError);
+        }
+      });
+
+      it("refuses a name that only looks like a configured one, never giving that secret", async () => {
+        const secrets = await make({ "serve-password": "hash", "api-key": "key" });
+        for (const lookalike of lookalikeSecretNames) {
+          await expect(secrets.get(lookalike), JSON.stringify(lookalike)).rejects.toThrow(
+            RangeError,
+          );
+        }
+      });
+
+      it("gives null for a name that is also a property of every object", async () => {
+        const secrets = await make({});
+        for (const name of objectPropertySecretNames) {
+          expect(await secrets.get(name), name).toBeNull();
         }
       });
 
@@ -98,6 +120,32 @@ export function tokenStoreContract(name: string, make: MakeTokenStore): void {
           await expect(tokens.remove(bad), label).rejects.toThrow(RangeError);
         }
         expect(await tokens.get("serve-password")).toBe("kept");
+      });
+
+      it("refuses a name that only looks like a stored one, and leaves that token alone", async () => {
+        const tokens = await make();
+        await tokens.set("serve-password", "hash");
+        await tokens.set("api-key", "key");
+        for (const lookalike of lookalikeSecretNames) {
+          const label = JSON.stringify(lookalike);
+          await expect(tokens.get(lookalike), label).rejects.toThrow(RangeError);
+          await expect(tokens.set(lookalike, "x"), label).rejects.toThrow(RangeError);
+          await expect(tokens.remove(lookalike), label).rejects.toThrow(RangeError);
+        }
+        expect(await tokens.get("serve-password")).toBe("hash");
+        expect(await tokens.get("api-key")).toBe("key");
+      });
+
+      it("keeps a name that is also a property of every object as its own token", async () => {
+        const tokens = await make();
+        for (const name of objectPropertySecretNames) {
+          expect(await tokens.get(name), name).toBeNull();
+        }
+        await tokens.set("constructor", "one");
+        expect(await tokens.get("constructor")).toBe("one");
+        expect(await tokens.get("toString")).toBeNull();
+        await tokens.remove("constructor");
+        expect(await tokens.get("constructor")).toBeNull();
       });
 
       it("never repeats a long name, or one that isn't printable ASCII, in the error", async () => {
