@@ -8,28 +8,12 @@ import type {
   Effect,
   EffectFailedInput,
   RunDefinitions,
+  SendInput,
   StartInput,
 } from "./decide-types.ts";
+import { InputRefused } from "./input-refused.ts";
 import type { BuiltStateType, StateContext, StateHandler, StateStep } from "./registry.ts";
 import { evolve, type RunState } from "./run-state.ts";
-
-/** Why `decide` refused an input. Nothing is recorded for a refused input. */
-export type RefusalCode =
-  | "engine.run-exists"
-  | "engine.run-unknown"
-  | "engine.run-ended"
-  | "engine.input-not-accepted";
-
-/** An input `decide` refuses. `step` reports it to the caller and appends nothing. */
-export class InputRefused extends Error {
-  readonly code: RefusalCode;
-
-  constructor(code: RefusalCode, message: string) {
-    super(message);
-    this.name = "InputRefused";
-    this.code = code;
-  }
-}
 
 /**
  * A decision being built. Every event is folded into `run` as it is
@@ -65,11 +49,10 @@ export function decide(
   if (input.type === "effect-failed") {
     return failedEffect(run, input);
   }
-  if (input.type !== "effect-done" || run.state === null) {
-    // Sends and timers arrive with the wait state and its checks (3c).
+  if (run.state === null) {
     throw new InputRefused(
       "engine.input-not-accepted",
-      `Run "${run.runId}" doesn't accept a ${input.type} input in state "${run.state}".`,
+      `Run "${run.runId}" has entered no state, so it takes no ${input.type} input.`,
     );
   }
   const draft: Draft = {
@@ -90,9 +73,9 @@ export function decide(
 
 /**
  * The refusals that depend on the run alone, not on its definitions: a start
- * for a run that exists, any other input for a run that doesn't, and any
- * input for a run that has ended. `step` checks these before it reads the
- * run's definitions.
+ * for a run that exists, any other input for a run that doesn't, any input
+ * for a run that has ended, and a send or timer the run doesn't take now.
+ * `step` checks these before it reads the run's definitions.
  *
  * @throws InputRefused when the run can't take the input
  */
@@ -108,6 +91,35 @@ export function checkRunTakes(run: RunState | null, input: DecideInput): void {
   }
   if (run.status === "completed" || run.status === "failed") {
     throw new InputRefused("engine.run-ended", `Run "${run.runId}" has ended (${run.status}).`);
+  }
+  if (input.type === "send") {
+    checkRunTakesSend(run, input);
+  }
+  if (input.type === "timer" && run.status !== "waiting") {
+    throw new InputRefused(
+      "engine.input-not-accepted",
+      `Run "${run.runId}" isn't waiting, so it takes no timer in state "${run.state}".`,
+    );
+  }
+}
+
+/**
+ * A send that names a call must name one the run waits on: a person who
+ * answered an approval that has since moved on must not answer the next one
+ * by accident. Then the run must be waiting, for this event.
+ */
+function checkRunTakesSend(run: RunState, input: SendInput): void {
+  if (input.callId !== undefined && !run.approvals.includes(input.callId)) {
+    throw new InputRefused(
+      "engine.decision-callid-must-match",
+      `Run "${run.runId}" doesn't wait on call "${input.callId}".`,
+    );
+  }
+  if (run.status !== "waiting" || !run.accepts.includes(input.event)) {
+    throw new InputRefused(
+      "engine.input-not-accepted",
+      `Run "${run.runId}" doesn't take "${input.event}" in state "${run.state}" now.`,
+    );
   }
 }
 
@@ -185,6 +197,9 @@ function settle(draft: Draft, stateId: string, step: StateStep): void {
   if (step.outcome?.type === "finish") {
     follow(draft, stateId, step.outcome.event);
   }
+  if (step.outcome?.type === "take") {
+    move(draft, stateId, step.outcome.to, step.outcome.event);
+  }
 }
 
 /** Take the transition the event fires, or fail the run when there is none. */
@@ -194,8 +209,12 @@ function follow(draft: Draft, from: string, event: string): void {
     fail(draft, from, `State "${from}" has no transition for "${event}".`);
     return;
   }
-  emit(draft, { type: "transition", from, to: transition.to, event });
-  enter(draft, transition.to);
+  move(draft, from, transition.to, event);
+}
+
+function move(draft: Draft, from: string, to: string, event: string): void {
+  emit(draft, { type: "transition", from, to, event });
+  enter(draft, to);
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { RunEvent } from "@halonicjs/events";
-import type { Agent } from "@halonicjs/format";
-import type { ChatResponse, ScheduledTimer, Scheduler } from "@halonicjs/ports";
+import type { Agent, Workflow } from "@halonicjs/format";
+import type { ChatResponse, Clock, ScheduledTimer, Scheduler } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper.ts";
@@ -69,14 +69,21 @@ export class HeldRuns extends KernelRuns {
   }
 }
 
-/**
- * A local executor with runs on memory ports, a scripted model and the reply
- * workflow, with `agents` as the hub's agents when given.
- */
+/** What a test can change about {@link runsOn}'s executor. */
+export interface RunsSetup {
+  /** The one workflow the hub has; the reply workflow when left out. */
+  readonly workflow?: Workflow;
+  /** A clock that moves on 250 ms per reading when left out. */
+  readonly clock?: Clock;
+  /** The hub's agents; none when left out. */
+  readonly agents?: Readonly<Record<string, Agent>>;
+}
+
+/** A local executor with runs on memory ports, a scripted model and one workflow. */
 export function runsOn<Runs extends KernelRuns = KernelRuns>(
   answers: (ChatResponse | Error)[],
   runs: Runs = new KernelRuns() as Runs,
-  agents?: Readonly<Record<string, Agent>>,
+  { workflow = replyWorkflow, clock = steppingClock(), agents }: RunsSetup = {},
 ) {
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
@@ -86,7 +93,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     halonicTools: [],
     connectors: [],
     secrets: secretsWith(),
-    clock: steppingClock(),
+    clock,
     runs: {
       store: runs,
       blobs: new KernelBlobs(),
@@ -94,10 +101,8 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
       ids: fixedIds(),
       definitionsOf: async (hubId, workflowId) => {
         definitionsAsked.push(`${hubId}/${workflowId}`);
-        if (workflowId !== replyWorkflow.id) throw new Error(`No workflow "${workflowId}".`);
-        return agents === undefined
-          ? { workflow: replyWorkflow }
-          : { workflow: replyWorkflow, agents };
+        if (workflowId !== workflow.id) throw new Error(`No workflow "${workflowId}".`);
+        return agents === undefined ? { workflow } : { workflow, agents };
       },
     },
   });

@@ -30,6 +30,18 @@ export interface RunState {
   /** ISO time the current state was entered, for its timers. */
   readonly enteredAt: string | null;
   /**
+   * The `seq` of the current state's `state.entered`. A state's timers carry
+   * it, so a timer set on an earlier visit to the same state changes nothing.
+   */
+  readonly enteredSeq: number | null;
+  /** The events a waiting run takes, as its last `run.waiting` listed them; empty while it isn't waiting. */
+  readonly accepts: readonly string[];
+  /**
+   * The call ids of the tool calls waiting for a person's approval, oldest
+   * first. A `send` that names a call id must name one of these.
+   */
+  readonly approvals: readonly string[];
+  /**
    * The values `context.updated` set. The workflow's initial context is not
    * in the log, so `decide` lays these over it.
    */
@@ -93,6 +105,9 @@ function startedState(event: RunEvent): RunState {
     status: "running",
     state: null,
     enteredAt: null,
+    enteredSeq: null,
+    accepts: [],
+    approvals: [],
     context: {},
     calls: 0,
     pendingCall: null,
@@ -100,10 +115,20 @@ function startedState(event: RunEvent): RunState {
   };
 }
 
+/** What an ended run no longer waits on. */
+const ended = { pendingCall: null, accepts: [], approvals: [] } as const;
+
 function applyEvent(state: RunState, event: RunEvent): RunState {
   switch (event.type) {
     case "state.entered":
-      return { ...state, status: "running", state: event.state, enteredAt: event.at };
+      return {
+        ...state,
+        status: "running",
+        state: event.state,
+        enteredAt: event.at,
+        enteredSeq: event.seq,
+        accepts: [],
+      };
     case "agent.started":
       return startCall(state, event);
     case "agent.finished":
@@ -111,15 +136,19 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "context.updated":
       return { ...state, context: { ...state.context, [event.key]: event.value } };
     case "run.waiting":
-      return { ...state, status: "waiting" };
+      return { ...state, status: "waiting", accepts: event.events };
     case "event.received":
     case "timer.fired":
     case "workflow.finished":
-      return { ...state, status: "running" };
+      return { ...state, status: "running", accepts: [] };
+    case "approval.requested":
+      return { ...state, approvals: [...state.approvals, event.callId] };
+    case "approval.resolved":
+      return { ...state, approvals: state.approvals.filter((id) => id !== event.callId) };
     case "run.completed":
-      return { ...state, status: "completed", context: event.context, pendingCall: null };
+      return { ...state, ...ended, status: "completed", context: event.context };
     case "run.failed":
-      return { ...state, status: "failed", pendingCall: null };
+      return { ...state, ...ended, status: "failed" };
     default:
       return state;
   }

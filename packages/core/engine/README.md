@@ -45,6 +45,8 @@ loop of one model turn, which the local chat turn runs.
 | `task` state         | runs its agent with one model call, writes `output` and takes the `done` transition                                          | `engine.task-state`                                                                 |
 | `final` state        | completes the run with its context                                                                                           | `engine.final-state`                                                                |
 | `runLogTools`        | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model        | `engine.run-log-tools`                                                              |
+| `wait` state         | records `run.waiting` and sets its timers; a sent event writes `lastEvent` and moves on, a due timer moves on `after <delay>` | `engine.wait-state`, `engine.wait-timers`                                           |
+| `InputRefused`       | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused   | `engine.decide-refusals`, `engine.decision-callid-must-match`                       |
 
 Three steps of the loop are named functions, so the HAL-803 rules plug in without reshaping it
 (HAL-998): `offerListedTools`, `checkCallBeforeRun` and `passResultToModel`, in `src/agent/`.
@@ -110,9 +112,17 @@ assumes one engine per run store, as `endInterruptedRuns` does.
 
 Each folder in `src/states` exports `<folder>State` from its `state.ts`. `pnpm discover` lists
 them in `src/generated/states.ts`, typed against `StateRegistry`, so a missing or extra folder
-fails typecheck. The registry covers `BuiltStateType`, the types built so far (`task`, `final`);
+fails typecheck. The registry covers `BuiltStateType`, the types built so far (`task`, `wait`, `final`);
 it widens as each state lands, until it is the format's whole `StateType` union. A run that enters
 a type not built yet fails with a clear error.
+
+A `wait` state's timers are keyed by the `seq` of the `state.entered` that set them, so a timer
+left over from an earlier visit to the state changes nothing; leaving a state doesn't cancel its
+timers. A timer that arrives before it is due is set again. An event's payload goes to
+`lastEvent` in the context, as the old engine's recorded logs have it, before the guards are
+checked. A `send` is refused before anything is recorded when it names a `callId` the run doesn't
+wait on for an approval (`engine.decision-callid-must-match`), when the run isn't waiting for that
+event, or when no transition's guard passes for it.
 
 Before it starts or resumes its first run, the local executor calls `endInterruptedRuns` once:
 each run it lost when it stopped (status `running`) ends with `run.failed`, reason `interrupted`,

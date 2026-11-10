@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { InputRefused } from "./decide.ts";
+import { InputRefused } from "./input-refused.ts";
 import { keepDefinitions } from "./kept-definitions.ts";
 import {
   answer,

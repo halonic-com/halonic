@@ -1,13 +1,13 @@
-import type { RunEvent } from "@halonicjs/events";
-import type { Agent, Workflow, WorkflowState } from "@halonicjs/format";
+import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { states } from "../generated/states.ts";
-import { decide, InputRefused } from "./decide.ts";
-import type { DecideInput, Decision, RunDefinitions, StartInput } from "./decide-types.ts";
-import { writerAgent } from "./kernel-test-kit.test-helper.ts";
+import { decide } from "./decide.ts";
+import type { DecideInput, StartInput } from "./decide-types.ts";
+import { InputRefused } from "./input-refused.ts";
+import { play, writerAgent } from "./kernel-test-kit.test-helper.ts";
 import type { StateHandler, StateRegistry } from "./registry.ts";
-import { foldRun, type RunState } from "./run-state.ts";
+import type { RunState } from "./run-state.ts";
 
 function task(fields: Partial<WorkflowState> = {}): WorkflowState {
   return { type: "task", agent: "writer", on: [], ...fields };
@@ -47,35 +47,6 @@ const answer = (callId: string, output: unknown): DecideInput => ({
   callId,
   result: { type: "model", output },
 });
-
-/**
- * Plays inputs through `decide` the way `step` will: each decision's events
- * are stamped and appended, and the next input is decided on the folded log.
- */
-function play(
-  workflow: Workflow,
-  inputs: readonly DecideInput[],
-  agents?: Readonly<Record<string, Agent>>,
-) {
-  const definitions: RunDefinitions = agents === undefined ? { workflow } : { workflow, agents };
-  const log: RunEvent[] = [];
-  const decisions: Decision[] = [];
-  let run: RunState | null = null;
-  for (const input of inputs) {
-    const decision = decide(run, input, definitions);
-    decisions.push(decision);
-    for (const event of decision.events) {
-      log.push({
-        ...event,
-        runId: input.type === "start" ? input.runId : "r-acme",
-        seq: log.length + 1,
-        at: input.at,
-      });
-    }
-    run = foldRun(log);
-  }
-  return { log, decisions, run };
-}
 
 verifies("engine.task-state", () => {
   it("starts the agent with the state's prompt and asks for one model call", () => {
@@ -253,19 +224,19 @@ verifies("engine.state-registry", () => {
   typeTest("lists every built state type, typed against the registry", () => {
     expectTypeOf(states).toMatchTypeOf<StateRegistry>();
     expectTypeOf(states.task).toEqualTypeOf<StateHandler<"task">>();
-    expectTypeOf<keyof typeof states>().toEqualTypeOf<"final" | "task">();
+    expectTypeOf<keyof typeof states>().toEqualTypeOf<"final" | "task" | "wait">();
   });
 
   it("fails a run that enters a state type the engine can't run yet", () => {
-    const waiting: Workflow = {
+    const parallel: Workflow = {
       ...reply,
-      states: { ...reply.states, draft: { type: "wait", on: [] } },
+      states: { ...reply.states, draft: { type: "parallel", on: [] } },
     };
-    const { log } = play(waiting, [startInput]);
+    const { log } = play(parallel, [startInput]);
     expect(log.at(-1)).toMatchObject({
       type: "run.failed",
       state: "draft",
-      error: `The engine can't run "wait" states yet.`,
+      error: `The engine can't run "parallel" states yet.`,
     });
   });
 

@@ -16,8 +16,8 @@ import type {
   StartRunRequest,
 } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
-import { InputRefused } from "../kernel/decide.ts";
 import type { DecideInput, Effect, RunDefinitions } from "../kernel/decide-types.ts";
+import { InputRefused } from "../kernel/input-refused.ts";
 import { keepDefinitions } from "../kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";

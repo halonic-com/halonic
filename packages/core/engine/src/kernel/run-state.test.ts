@@ -51,6 +51,9 @@ verifies("engine.run-state-fold", () => {
       status: "running",
       state: "draft",
       enteredAt: "2026-11-09T09:00:01.000Z",
+      enteredSeq: 2,
+      accepts: [],
+      approvals: [],
       context: { reply: "On its way" },
       calls: 1,
       pendingCall: null,
@@ -133,9 +136,9 @@ describe("evolve", () => {
       { type: "state.entered", state: "review" },
       { type: "run.waiting", state: "review", events: ["approve"] },
     ]);
-    expect(folded(waiting).status).toBe("waiting");
+    expect(folded(waiting)).toMatchObject({ status: "waiting", accepts: ["approve"] });
     const woken = logOf([...waiting, { type: "event.received", event: "approve" }]);
-    expect(folded(woken).status).toBe("running");
+    expect(folded(woken)).toMatchObject({ status: "running", accepts: [] });
     const completed = logOf([
       ...woken,
       { type: "state.entered", state: "done" },
@@ -146,6 +149,47 @@ describe("evolve", () => {
       state: "done",
       context: { reply: "ok" },
     });
+  });
+
+  it("keeps the state's visit, so its timers can tell an earlier visit from this one", () => {
+    const again = logOf([
+      started,
+      { type: "state.entered", state: "review" },
+      { type: "transition", from: "review", to: "review", event: "again" },
+      { type: "state.entered", state: "review" },
+    ]);
+    expect(folded(again)).toMatchObject({
+      enteredSeq: 4,
+      enteredAt: "2026-11-09T09:00:03.000Z",
+    });
+  });
+
+  it("lists the approvals the run waits on, oldest first, until each is resolved", () => {
+    const request = (callId: string): RunEventBody => ({
+      type: "approval.requested",
+      state: "draft",
+      agent: "writer",
+      tool: "send_mail",
+      args: {},
+      callId,
+      resume: { messages: [], calls: [], step: 1 },
+    });
+    const requested = logOf([started, request("call-2"), request("call-3")]);
+    expect(folded(requested).approvals).toEqual(["call-2", "call-3"]);
+    const resolved = logOf([
+      ...requested,
+      {
+        type: "approval.resolved",
+        state: "draft",
+        agent: "writer",
+        tool: "send_mail",
+        callId: "call-2",
+        approved: true,
+      },
+    ]);
+    expect(folded(resolved).approvals).toEqual(["call-3"]);
+    const failed = logOf([...requested, { type: "run.failed", state: "draft", error: "stopped" }]);
+    expect(folded(failed)).toMatchObject({ approvals: [], accepts: [] });
   });
 
   it("drops the pending call when the run fails", () => {

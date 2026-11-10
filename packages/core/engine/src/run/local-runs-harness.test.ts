@@ -6,7 +6,7 @@ import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.t
 verifies("engine.local-runs-unbuilt-effect", () => {
   it("fails the run and sets no timer when its agent runs in a harness", async () => {
     const agents = { writer: writerAgent("claude-code") };
-    const { executor, model, runs, scheduler } = runsOn([], new KernelRuns(), agents);
+    const { executor, model, runs, scheduler } = runsOn([], new KernelRuns(), { agents });
 
     const started = await executor.start(replyStart);
 

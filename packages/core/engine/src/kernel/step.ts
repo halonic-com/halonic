@@ -11,7 +11,7 @@ import { foldRun, type RunState } from "./run-state.ts";
  * changes shape: a snapshot of another version is ignored and the run is
  * folded from its log again, because a snapshot is only a cache (C53).
  */
-export const snapshotVersion = 2;
+export const snapshotVersion = 3;
 
 /** How often `step` reads the run again after losing a race before it gives up. */
 export const maxStepAttempts = 10;

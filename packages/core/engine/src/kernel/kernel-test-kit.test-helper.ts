@@ -1,5 +1,5 @@
 import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
-import type { Agent, Workflow } from "@halonicjs/format";
+import type { Agent, Transition, Workflow, WorkflowState } from "@halonicjs/format";
 import {
   type AppendOptions,
   type AppendResult,
@@ -11,7 +11,9 @@ import {
   type RunStore,
 } from "@halonicjs/ports";
 import { decodeUtf8 } from "@halonicjs/std";
-import type { DecideInput, StartInput } from "./decide-types.ts";
+import { decide } from "./decide.ts";
+import type { DecideInput, Decision, RunDefinitions, StartInput } from "./decide-types.ts";
+import { foldRun, type RunState } from "./run-state.ts";
 
 /**
  * A run store in memory, with the port's check on `expectedSeq`. A test can
@@ -105,6 +107,34 @@ export const replyWorkflow: Workflow = {
   layout: {},
 };
 
+const final: WorkflowState = { type: "final", on: [] };
+
+/** A person approves or rejects; after two days it expires. */
+export function approvalWorkflow(on: Transition[] = []): Workflow {
+  return {
+    version: 1,
+    id: "approval",
+    name: "Approval",
+    initial: "decide",
+    context: { outcome: "pending" },
+    states: {
+      decide: {
+        type: "wait",
+        on: [
+          { to: "approved", event: "approve" },
+          { to: "rejected", event: "reject" },
+          { to: "expired", event: "done", after: "2d" },
+          ...on,
+        ],
+      },
+      approved: final,
+      rejected: final,
+      expired: final,
+    },
+    layout: {},
+  };
+}
+
 /** The start of an `acme` run of {@link replyWorkflow} with the given definitions version. */
 export function startInput(definitionsVersion: string): StartInput {
   return {
@@ -148,4 +178,33 @@ export function writerAgent(harness?: Agent["harness"]): Agent {
     maxSteps: 6,
     ...(harness === undefined ? {} : { harness }),
   };
+}
+
+/**
+ * Plays inputs through `decide` the way `step` will: each decision's events
+ * are stamped and appended, and the next input is decided on the folded log.
+ */
+export function play(
+  workflow: Workflow,
+  inputs: readonly DecideInput[],
+  agents?: Readonly<Record<string, Agent>>,
+) {
+  const definitions: RunDefinitions = agents === undefined ? { workflow } : { workflow, agents };
+  const log: RunEvent[] = [];
+  const decisions: Decision[] = [];
+  let run: RunState | null = null;
+  for (const input of inputs) {
+    const decision = decide(run, input, definitions);
+    decisions.push(decision);
+    for (const event of decision.events) {
+      log.push({
+        ...event,
+        runId: input.type === "start" ? input.runId : "r-acme",
+        seq: log.length + 1,
+        at: input.at,
+      });
+    }
+    run = foldRun(log);
+  }
+  return { log, decisions, run };
 }
