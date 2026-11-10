@@ -48,7 +48,12 @@ function childEnv(env: Readonly<Record<string, string | undefined>>): Record<str
   return result;
 }
 
-const liveProbes = new Set<ChildProcess>();
+/** A probe being asked; `child` is set once its program has started. */
+interface LiveProbe {
+  child?: ChildProcess;
+}
+
+const liveProbes = new Set<LiveProbe>();
 
 /** On POSIX the program leads its own process group, so this also stops what it forked. */
 function killGroup(child: ChildProcess): void {
@@ -62,7 +67,7 @@ function killGroup(child: ChildProcess): void {
 }
 
 function killLiveProbes(): void {
-  for (const child of liveProbes) killGroup(child);
+  for (const probe of liveProbes) if (probe.child !== undefined) killGroup(probe.child);
   liveProbes.clear();
 }
 
@@ -89,12 +94,15 @@ function unwatchLauncher(): void {
   process.off("SIGTERM", onSigterm);
 }
 
-/** The program has its own process group, so Ctrl-C on the launcher no longer reaches it; stop it on the way out. */
-function track(child: ChildProcess): () => void {
+/**
+ * The program has its own process group, so Ctrl-C on the launcher no longer reaches it; stop it on the way out.
+ * Call this before the program starts: a signal that came before the handlers would end the launcher and leave the program running.
+ */
+function track(probe: LiveProbe): () => void {
   if (liveProbes.size === 0) watchLauncher();
-  liveProbes.add(child);
+  liveProbes.add(probe);
   return () => {
-    liveProbes.delete(child);
+    liveProbes.delete(probe);
     if (liveProbes.size === 0) unwatchLauncher();
   };
 }
@@ -112,14 +120,17 @@ function run(
       path,
       error: `${name} was found but couldn't be started.`,
     };
+    const probe: LiveProbe = {};
+    const untrack = track(probe);
     const child = start(path, args, env);
     if (child === null) {
+      untrack();
       resolve(cantStart);
       return;
     }
+    probe.child = child;
     const out = new Capture();
     const err = new Capture();
-    const untrack = track(child);
     let settled = false;
     const settle = (result: ProgramProbeResult) => {
       if (settled) return;
