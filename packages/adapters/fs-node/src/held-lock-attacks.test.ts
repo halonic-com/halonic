@@ -67,6 +67,18 @@ async function race(file: string, count: number, holdMs: number): Promise<string
   );
 }
 
+/** Checks that no two `held <from> <to>` lines overlap in time, and gives how many there were. */
+function expectNoOverlap(said: string[]): number {
+  const held = said
+    .filter((line) => line.startsWith("held"))
+    .map((line) => line.split(" ").slice(1).map(Number) as [number, number])
+    .sort(([a], [b]) => a - b);
+  held.slice(1).forEach(([from], i) => {
+    expect(from, JSON.stringify(held)).toBeGreaterThanOrEqual(held[i]?.[1] ?? 0);
+  });
+  return held.length;
+}
+
 describe("holdLock under attack", () => {
   it("takes over a stale symlink without writing to or removing the file it points at", async () => {
     const folder = await tempFolder();
@@ -110,13 +122,16 @@ describe("holdLock under attack", () => {
     expect(JSON.parse(await readFile(copy, "utf8")).pid).toBe(process.pid);
   });
 
-  it("of six processes started at once on a free lock, lets exactly one hold it", async () => {
+  // A process the runner starts late can take the lock after the first one let
+  // it go, so this checks that no two hold it at once, not that only one ever does.
+  it("of six processes started at once on a free lock, never lets two hold it at the same time", async () => {
     const file = join(await tempFolder(), "engine.lock");
 
     const said = await race(file, 6, 300);
 
-    expect(said.filter((line) => line.startsWith("held"))).toHaveLength(1);
-    expect(said.filter((line) => line === "LockHeldError")).toHaveLength(5);
+    const held = expectNoOverlap(said);
+    expect(held).toBeGreaterThanOrEqual(1);
+    expect(said.filter((line) => line === "LockHeldError")).toHaveLength(6 - held);
     await expect(lstat(file)).rejects.toMatchObject({ code: "ENOENT" });
   }, 20_000);
 
@@ -131,14 +146,7 @@ describe("holdLock under attack", () => {
 
     const said = await race(file, 12, 300);
 
-    const held = said
-      .filter((line) => line.startsWith("held"))
-      .map((line) => line.split(" ").slice(1).map(Number) as [number, number])
-      .sort(([a], [b]) => a - b);
-    expect(held.length).toBeGreaterThanOrEqual(1);
-    held.slice(1).forEach(([from], i) => {
-      expect(from).toBeGreaterThanOrEqual(held[i]?.[1] ?? 0);
-    });
+    expect(expectNoOverlap(said)).toBeGreaterThanOrEqual(1);
     await expect(lstat(file)).rejects.toMatchObject({ code: "ENOENT" });
   }, 20_000);
 });
