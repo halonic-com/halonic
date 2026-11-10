@@ -218,8 +218,11 @@ export {
 export { type TokenStore, tokenStoreVersion } from "./token-store.ts";
 export {
   isUnreadableToolApprovalError,
+  keptWaitingVersions,
   type ListedToolFingerprint,
   type ListedToolText,
+  listedToolFingerprintPattern,
+  maxWaitingTools,
   maxWaitingVersions,
   type ToolApproval,
   type ToolApprovalKey,
@@ -229,6 +232,7 @@ export {
   UnreadableToolApprovalError,
   type WaitingVersion,
   type WrittenDigest,
+  waitingVersionKeptMs,
 } from "./tool-approval-store.ts";
 export {
   type TrustOrigin,

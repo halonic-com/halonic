@@ -146,6 +146,14 @@ export {
   tokenStoreContract,
 } from "./secrets.ts";
 export {
+  listedToolFingerprint,
+  type MakeToolApprovalStore,
+  type ToolApprovalStoreHarness,
+  toolApproval,
+  toolApprovalStoreContract,
+  waitingVersion,
+} from "./tool-approval-store.ts";
+export {
   type FingerprintCase,
   type FingerprintConnectors,
   fingerprintAttacks,

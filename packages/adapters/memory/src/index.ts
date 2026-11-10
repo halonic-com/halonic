@@ -30,6 +30,7 @@ export {
   memorySchedulerFactory,
 } from "./scheduler.ts";
 export { MemorySecrets, MemoryTokenStore } from "./secrets.ts";
+export { MemoryToolApprovalStore } from "./tool-approval-store.ts";
 export { MemoryTrustStore } from "./trust-store.ts";
 export { MemoryVcs, type MemoryVcsOptions } from "./vcs.ts";
 export { MemoryRemote } from "./vcs-repository.ts";

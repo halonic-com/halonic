@@ -1,5 +1,5 @@
 import {
-  maxWaitingVersions,
+  keptWaitingVersions,
   type ToolApproval,
   type ToolApprovalKey,
   type ToolApprovalStore,
@@ -53,12 +53,9 @@ export class TestToolApprovalStore implements ToolApprovalStore {
   }
 
   async noteWaiting(key: ToolApprovalKey, version: WaitingVersion): Promise<WaitingVersion[]> {
-    const noted = this.waitingOf(key).get(key.name) ?? [];
-    const kept = noted.some((entry) => entry.fingerprint === version.fingerprint)
-      ? noted
-      : [...noted, { ...version }].slice(-maxWaitingVersions);
-    this.waitingOf(key).set(key.name, kept);
-    return copy(kept);
+    const kept = keptWaitingVersions(this.waitingOf(key), key.name, version);
+    nested(this.waiting, key.location).set(key.source, kept.waiting);
+    return kept.versions;
   }
 
   /**
