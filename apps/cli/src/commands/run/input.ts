@@ -12,12 +12,12 @@ import { runMessages } from "../../messages/run.ts";
 /**
  * `--input` couldn't be read as a JSON object (`invalid_input`, exit 2).
  * Its message is the reason after "Couldn't run support-reply:", and its
- * fix shows the shape the input takes.
+ * fix says what to do about that reason.
  */
 export class RunInputError extends KindedError {
-  constructor(reason: Message, cause?: unknown) {
+  constructor(reason: Message, fix: Message, cause?: unknown) {
     super("invalid_input", plainText(reason.phrase), {
-      fix: plainText(runMessages.inputFix().phrase),
+      fix: plainText(fix.phrase),
       ...(cause === undefined ? {} : { cause }),
     });
   }
@@ -49,10 +49,14 @@ export async function runInputOf(
   try {
     value = JSON.parse(text);
   } catch (error) {
-    throw new RunInputError(runMessages.inputNotJson(looksLikeJson ? undefined : given), error);
+    throw new RunInputError(
+      runMessages.inputNotJson(looksLikeJson ? undefined : given),
+      runMessages.inputFix(),
+      error,
+    );
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new RunInputError(runMessages.inputNotAnObject());
+    throw new RunInputError(runMessages.inputNotAnObject(), runMessages.inputFix());
   }
   return value as Record<string, unknown>;
 }
@@ -63,7 +67,7 @@ async function inputFile(path: string, cwd: string): Promise<string> {
     return await readFile(resolve(cwd, path), "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new RunInputError(runMessages.noInputFile(path), error);
+      throw new RunInputError(runMessages.noInputFile(path), runMessages.noInputFileFix(), error);
     }
     throw error;
   }

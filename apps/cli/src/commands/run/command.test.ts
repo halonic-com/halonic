@@ -172,9 +172,10 @@ describe("halonic run's refusals", () => {
       "✕ Couldn't run support-reply: the input isn't valid JSON.",
       "✕ Couldn't run support-reply: there's no file examples/gone.json.",
     ]);
-    expect(list.io.stderr[1]).toBe(
-      `  Pass a JSON object, in a file or as text: --input '{"mail": "Hi"}'`,
-    );
+    expect([list.io.stderr[1], missing.io.stderr[1]]).toEqual([
+      "  Pass a JSON object, in a file or as text, such as --input input.json.",
+      "  Check the file name. It's looked for from the folder you ran the command in.",
+    ]);
   });
 
   it("refuses an untrusted workspace that reaches a real model, and starts nothing", async () => {

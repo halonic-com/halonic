@@ -3,7 +3,7 @@ import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { CliCommand } from "../../command.ts";
 import { nodeCommandSearch } from "../../command-paths.ts";
-import { runMessages } from "../../messages/run.ts";
+import { inputValueName, runMessages } from "../../messages/run.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { type RunSetup, runWorkflow } from "./run.ts";
@@ -26,12 +26,12 @@ const computerSetup: RunSetup = {
 export function runCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "run",
-    usage: "<workflow> [--dir <folder>] [--input <file|JSON>] [--event <event>]…",
+    usage: `<workflow> [--dir <folder>] [--input <${inputValueName}>] [--event <event>]...`,
     summary: runMessages.summary(),
     action: (input) => runMessages.action(input.positionals[0] ?? ""),
     options: {
       dir: dirOption,
-      input: { type: "string", valueName: "file|JSON", description: runMessages.inputOption() },
+      input: { type: "string", valueName: inputValueName, description: runMessages.inputOption() },
       event: {
         type: "string",
         multiple: true,

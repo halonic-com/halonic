@@ -9,6 +9,9 @@ import { countInWords } from "./words.ts";
 /** "Nothing ran.": the fail-closed promise when `run` was refused before its first step (cli-output 1.3). */
 const nothingRan = phrase`Nothing ran.`;
 
+/** What `--input` takes, in the usage line and the help (cli-output 3.4). */
+export const inputValueName = "file or JSON";
+
 /** Things a run sent, of one kind, such as 1 email: the count and the noun's two forms. */
 export interface SentItems {
   readonly count: number;
@@ -62,8 +65,14 @@ export const runMessages = defineMessages("run", {
       : phrase`${source} isn't valid JSON.`,
   /** The same, when the JSON is a list, a string or a number. */
   inputNotAnObject: () => phrase`the input must be a JSON object.`,
-  /** The fix under every `--input` problem. */
-  inputFix: () => phrase`Pass a JSON object, in a file or as text: --input '{"mail": "Hi"}'`,
+  /** The fix under a missing `--input` file: most often a typo in the path. */
+  noInputFileFix: () =>
+    phrase`Check the file name. It's looked for from the folder you ran the command in.`,
+  /**
+   * The fix under an input that isn't a JSON object. It names a file, not inline
+   * JSON, because single-quoted JSON doesn't survive cmd or Windows PowerShell 5.1.
+   */
+  inputFix: () => phrase`Pass a JSON object, in a file or as text, such as --input input.json.`,
   /** Line 1's reason when the workspace was never trusted here: F16, then "Nothing ran." (exit 3). */
   notTrusted: (workspace: string) =>
     phrase`${trustMessages.notTrustedYet(workspace).phrase} ${nothingRan}`,
