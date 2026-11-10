@@ -4,7 +4,7 @@ import type { DefinitionWatch, WorkspaceFileChange } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FolderDefinitionStore } from "./definition-store.ts";
-import type { FolderEvents } from "./folder-watch.ts";
+import { explainWatchFailure, type FolderEvents } from "./folder-watch.ts";
 import { removeTempFolders, tempFolder, writeFiles } from "./temp-folder.test-helper.ts";
 
 afterAll(removeTempFolders);
@@ -16,17 +16,22 @@ function handEvents(): {
   events: FolderEvents;
   notice: (...names: string[]) => void;
   fail: (error: Error) => void;
+  listening: () => boolean;
 } {
   let noticed: (name: string) => void = () => {};
   let failed: (error: Error) => void = () => {};
+  let listening = false;
   return {
     events: (_root, onNoticed, onFailed) => {
       noticed = onNoticed;
       failed = onFailed;
+      listening = true;
       return () => {
         noticed = () => {};
+        listening = false;
       };
     },
+    listening: () => listening,
     notice: (...names) => {
       for (const name of names) noticed(name);
     },
@@ -124,6 +129,16 @@ verifies("ports.definition-store-watch", () => {
       expect(batches).toEqual([]);
     });
 
+    it("doesn't read the folder for an event on a private entry", async () => {
+      const { store, hand, settle } = await watched({ "a.yaml": "1" });
+      const list = vi.spyOn(store, "list");
+      const read = vi.spyOn(store, "read");
+      hand.notice(".git\\index", ".studio/runs/r1.jsonl", ".env");
+      await settle();
+      expect(list).not.toHaveBeenCalled();
+      expect(read).not.toHaveBeenCalled();
+    });
+
     it("reports every file of a folder that went away or arrived", async () => {
       const { root, hand, batches, settle } = await watched({
         "hubs/a/hub.yaml": "id: a\n",
@@ -189,6 +204,42 @@ verifies("ports.definition-store-watch", () => {
       expect(failures.map((error) => error.message)).toEqual(["the folder went away"]);
       expect(batches).toEqual([]);
     });
+
+    it("leaves a broken watch out of the store's own writes", async () => {
+      const { store, hand } = await watched({ "a.yaml": "1" });
+      hand.fail(new Error("the folder went away"));
+      const read = vi.spyOn(store, "read");
+      await store.write("a.yaml", "2");
+      // An open watch reads the store's write back; a broken one is no longer told about it.
+      expect(read).not.toHaveBeenCalled();
+    });
+
+    it("stops listening when the folder can't be read on opening", async () => {
+      const root = await tempFolder();
+      const hand = handEvents();
+      const store = new FolderDefinitionStore(root, undefined, { events: hand.events, quietMs });
+      const listFailure = new Error("the disk stopped answering");
+      vi.spyOn(store, "list").mockRejectedValueOnce(listFailure);
+      await expect(store.watch({ changed: () => {}, failed: () => {} })).rejects.toBe(listFailure);
+      expect(hand.listening()).toBe(false);
+    });
+  });
+});
+
+describe("explainWatchFailure", () => {
+  it("names the inotify limit when Linux has no watches left", () => {
+    const noWatchesLeft = Object.assign(new Error("ENOSPC: no space left on device, watch"), {
+      code: "ENOSPC",
+    });
+    const explained = explainWatchFailure("acme", noWatchesLeft);
+    expect(explained.message).toContain("fs.inotify.max_user_watches");
+    expect(explained.message).toContain("acme");
+    expect(explained.cause).toBe(noWatchesLeft);
+  });
+
+  it("passes any other failure on as it is", () => {
+    const gone = Object.assign(new Error("ENOENT: no such file or directory"), { code: "ENOENT" });
+    expect(explainWatchFailure("acme", gone)).toBe(gone);
   });
 });
 

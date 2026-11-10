@@ -1,9 +1,10 @@
-import { watch as watchFolder } from "node:fs";
-import type {
-  DefinitionSource,
-  DefinitionWatch,
-  DefinitionWatchListener,
-  WorkspaceFileChange,
+import { type FSWatcher, watch as watchFolder } from "node:fs";
+import {
+  type DefinitionSource,
+  type DefinitionWatch,
+  type DefinitionWatchListener,
+  isPrivateWorkspacePath,
+  type WorkspaceFileChange,
 } from "@halonicjs/ports";
 import { contentDigest, type Sha256 } from "@halonicjs/std";
 import { isTemporaryWrite } from "./temporary-write.ts";
@@ -22,15 +23,45 @@ export type FolderEvents = (
   failed: (error: Error) => void,
 ) => () => void;
 
-/** `node:fs.watch` on the whole folder. Node watches subfolders itself on Linux, macOS and Windows. */
+/**
+ * `node:fs.watch` on the whole folder. Node watches subfolders itself on
+ * Linux, macOS and Windows. On Linux it takes one inotify watch per
+ * subfolder, so a big workspace can use up the system's limit; that failure
+ * comes with an explanation (see {@link explainWatchFailure}).
+ */
 export const nodeFolderEvents: FolderEvents = (root, noticed, failed) => {
-  const watcher = watchFolder(root, { recursive: true }, (_event, name) => {
-    // Node may give no name when the system doesn't say which entry changed.
-    noticed(name ?? "");
-  });
-  watcher.on("error", failed);
+  let watcher: FSWatcher;
+  try {
+    watcher = watchFolder(root, { recursive: true }, (_event, name) => {
+      // Node may give no name when the system doesn't say which entry changed.
+      noticed(name ?? "");
+    });
+  } catch (error) {
+    throw explainWatchFailure(root, error);
+  }
+  // Node also reports the limit this way, when a subfolder added later can't be watched.
+  watcher.on("error", (error) => failed(explainWatchFailure(root, error)));
   return () => watcher.close();
 };
+
+/**
+ * The error to report when watching `root` failed. Linux answers `ENOSPC`
+ * when every inotify watch the user may have is taken
+ * (`fs.inotify.max_user_watches`); that message, "no space left on device",
+ * would send people looking at their disk, so it is replaced with one that
+ * names the limit. The system's error stays as the `cause`.
+ */
+export function explainWatchFailure(root: string, error: unknown): Error {
+  if (errorCode(error) !== "ENOSPC") {
+    return asError(error);
+  }
+  return new Error(
+    `Can't watch ${root} for changes: the system's limit on watched folders is reached ` +
+      "(fs.inotify.max_user_watches on Linux). Raise that limit, " +
+      "or close other programs that watch many folders, then open the workspace again.",
+    { cause: error },
+  );
+}
 
 /** How a {@link FolderWatch} reads the folder and is told about events. */
 export interface FolderWatchOptions {
@@ -41,6 +72,12 @@ export interface FolderWatchOptions {
   readonly events: FolderEvents;
   /** How long the folder stays quiet before a batch is reported. */
   readonly quietMs: number;
+  /**
+   * The store's open watches. The watch is in it from when it is open until
+   * it is closed or fails, so the store never tells a broken watch about its
+   * own changes.
+   */
+  readonly openWatches: Set<FolderWatch>;
 }
 
 /**
@@ -86,8 +123,18 @@ export class FolderWatch implements DefinitionWatch {
       (name) => watch.#notice(name),
       (error) => watch.#fail(error),
     );
-    for (const path of await options.files.list()) {
-      await watch.#remember(path);
+    try {
+      for (const path of await options.files.list()) {
+        await watch.#remember(path);
+      }
+    } catch (error) {
+      // The watch never opened: it must not keep listening.
+      await watch.close();
+      throw error;
+    }
+    // An event source that failed while the folder was read already closed the watch.
+    if (!watch.#stopping) {
+      options.openWatches.add(watch);
     }
     return watch;
   }
@@ -114,6 +161,7 @@ export class FolderWatch implements DefinitionWatch {
   /** Stops hearing events, lets a batch already being read finish, then reports nothing more. */
   async close(): Promise<void> {
     this.#stopping = true;
+    this.#options.openWatches.delete(this);
     clearTimeout(this.#timer);
     this.#stopEvents?.();
     await this.#flushing;
@@ -121,11 +169,14 @@ export class FolderWatch implements DefinitionWatch {
   }
 
   #notice(name: string): void {
-    if (this.#stopping) {
+    const path = name.split("\\").join("/");
+    // A private entry (`.git`, the Studio's run logs) is never workspace
+    // content, so it doesn't start a batch or read the folder.
+    if (this.#stopping || isPrivateWorkspacePath(path)) {
       return;
     }
     // An event without a name could be anywhere: check every file.
-    this.#noticed.add(name.split("\\").join("/"));
+    this.#noticed.add(path);
     clearTimeout(this.#timer);
     this.#timer = setTimeout(() => {
       // One batch at a time, so two never update what the watch knows at once.
@@ -241,6 +292,11 @@ export class FolderWatch implements DefinitionWatch {
     void this.close();
     this.#listener.failed(error);
   }
+}
+
+/** The `code` of a Node system error, such as `ENOSPC`. */
+function errorCode(error: unknown): unknown {
+  return error instanceof Error && "code" in error ? error.code : undefined;
 }
 
 function asError(error: unknown): Error {

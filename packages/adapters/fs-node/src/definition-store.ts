@@ -151,17 +151,17 @@ export class FolderDefinitionStore implements DefinitionStore {
    * moment (100 ms by default), so a checkout comes as one batch.
    */
   async watch(listener: DefinitionWatchListener): Promise<DefinitionWatch> {
-    const watch = await FolderWatch.open(
-      { root: this.#root, files: this, digest: webCryptoDigest, ...this.#watchOptions },
+    // The watch adds itself to `#watches` once open and takes itself out when it closes or fails.
+    return await FolderWatch.open(
+      {
+        root: this.#root,
+        files: this,
+        digest: webCryptoDigest,
+        openWatches: this.#watches,
+        ...this.#watchOptions,
+      },
       listener,
     );
-    this.#watches.add(watch);
-    return {
-      close: async () => {
-        this.#watches.delete(watch);
-        await watch.close();
-      },
-    };
   }
 
   /**
