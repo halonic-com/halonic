@@ -162,6 +162,18 @@ export {
   strictCanonicalJson,
   writtenDigest,
 } from "./listed-tool-fingerprint.ts";
+export {
+  approveNamedTool,
+  type HiddenChange,
+  type ListedToolChange,
+  type ListedToolReview,
+  listedToolChanges,
+  type NamedToolApproval,
+  type RefusedToolInReview,
+  type ReviewedTool,
+  reviewListedTools,
+  type WaitingState,
+} from "./listed-tool-review.ts";
 export { escapeListedText, UntrustedText } from "./listed-tool-rules.ts";
 export { LiveRoutines, type LiveRoutinesOptions } from "./live-routines.ts";
 export { actsAtOnce, type LiveState, type LiveStateInput, liveState } from "./live-state.ts";
