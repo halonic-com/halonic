@@ -12,7 +12,9 @@ import { isTrustRefusal, type TauriShell, type TrustRefusal, trustCommands } fro
  * file commands share, only when the person chose that folder in the shell,
  * in the folder dialog or by saying yes when the shell asks. A grant the
  * person says no to rejects with a `denied` {@link KindedError}, and nothing
- * is saved.
+ * is saved. The shell asks about one folder at a time: a grant that arrives
+ * while it is asking rejects with a `conflict` error. A revoke also closes
+ * the folder.
  */
 export class TauriTrustStore implements TrustStore {
   readonly #shell: TauriShell;
@@ -66,6 +68,7 @@ export class TauriTrustStore implements TrustStore {
 /** How a surface should respond to each refusal other than `unreadable`. */
 const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, ErrorKind>> = {
   declined: "denied",
+  busy: "conflict",
   folder_unreadable: "not_found",
   // The page built the record, so a record the shell refuses is our bug.
   invalid_record: "internal",
@@ -77,7 +80,8 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
  * plain `Error` naming its location, as `FileTrustStore` throws it, so
  * `TrustService` treats both the same. Anything that isn't the shell's
  * refusal shape (a missing capability, a broken IPC call) is `unavailable`,
- * and its text is dropped.
+ * and its text is dropped: the adapter can't vouch for it. A refusal keeps
+ * the shell's message, which names no secret.
  */
 function trustFailure(reason: unknown, asked: unknown): Error {
   if (!isTrustRefusal(reason)) {

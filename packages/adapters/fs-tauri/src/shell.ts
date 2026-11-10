@@ -25,7 +25,11 @@ export const trustCommands = {
    * the file commands may use.
    */
   grant: "trust_grant",
-  /** `{ location }` → nothing; also when there is no record. */
+  /**
+   * `{ location }` → nothing; also when there is no record. The shell also
+   * takes the folder off the folders git and the file commands may use, so a
+   * revoked folder is closed at once, not at the next start.
+   */
   revoke: "trust_revoke",
 } as const;
 
@@ -35,6 +39,11 @@ export const trustRefusalKinds = [
   "unreadable",
   /** The person said no when the shell asked to trust the folder, so nothing was saved. */
   "declined",
+  /**
+   * The shell is already asking the person about another folder. It shows one
+   * question at a time, so the page can't stack them; nothing was saved.
+   */
+  "busy",
   /** The location isn't a folder that exists, so it can't be opened. */
   "folder_unreadable",
   /** The record the page sent isn't a trust record. */

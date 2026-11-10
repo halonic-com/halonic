@@ -43,6 +43,24 @@ verifies("fs-tauri.trust-commands", () => {
       expect(shell.opened).toEqual(["/workspaces/acme", "/workspaces/acme/hubs/shared"]);
     });
 
+    it("asks again for a folder inside one a grant opened, since only picked folders spare a question", async () => {
+      const shell = new FakeTrustShell({ picked: ["/workspaces/acme"] });
+      const store = new TauriTrustStore(shell);
+      await store.grant(trustRecord("/hubs/shared"));
+      await store.grant(trustRecord("/hubs/shared/skills"));
+      await store.grant(trustRecord("/workspaces/acme-evil"));
+      expect(shell.asked).toEqual(["/hubs/shared", "/hubs/shared/skills", "/workspaces/acme-evil"]);
+    });
+
+    it("closes the folder when its trust is revoked", async () => {
+      const shell = new FakeTrustShell();
+      const store = new TauriTrustStore(shell);
+      await store.grant(trustRecord("/hubs/shared"));
+      expect(shell.opened).toEqual(["/hubs/shared"]);
+      await store.revoke("/hubs/shared");
+      expect(shell.opened).toEqual([]);
+    });
+
     it("rejects a grant the person says no to as denied, and saves and opens nothing", async () => {
       const shell = new FakeTrustShell();
       shell.answers.push(false);
@@ -67,6 +85,7 @@ verifies("fs-tauri.trust-commands", () => {
     it("gives each other refusal its error kind", async () => {
       const expected: Record<Exclude<TrustRefusalKind, "unreadable">, string> = {
         declined: "denied",
+        busy: "conflict",
         folder_unreadable: "not_found",
         invalid_record: "internal",
         io: "unavailable",

@@ -20,18 +20,26 @@ The page never decides which folder that is. The shell saves a grant only for a 
 chose in the shell itself:
 
 - a folder inside one they picked in the shell's folder dialog is saved at once;
-- for any other folder, the shell asks them, and saves nothing if they say no. The grant then
-  rejects with a `denied` error.
+- for any other folder, the shell asks them, showing the folder's real path, and saves nothing if
+  they say no. The grant then rejects with a `denied` error. A folder a grant opened doesn't count
+  as picked, so a folder inside it is asked about again.
+- the shell asks about one folder at a time. A grant that arrives while it is asking rejects with a
+  `conflict` error, so the page can't stack questions.
+
+A revoke deletes the record and closes the folder at once: git and the file commands refuse it
+from then on.
 
 ## Errors
 
-| The shell says      | The adapter rejects with                                                  |
-| ------------------- | ------------------------------------------------------------------------- |
-| `unreadable`        | an `Error` naming the record's location, as `FileTrustStore` throws it    |
-| `declined`          | a `KindedError` `denied`                                                  |
-| `folder_unreadable` | a `KindedError` `not_found`                                               |
-| `invalid_record`    | a `KindedError` `internal`                                                |
-| `io`, or no answer  | a `KindedError` `unavailable`, without the shell's text when it gave none |
+| The shell says      | The adapter rejects with                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `unreadable`        | an `Error` naming the record's location, as `FileTrustStore` throws it |
+| `declined`          | a `KindedError` `denied`                                               |
+| `busy`              | a `KindedError` `conflict`                                             |
+| `folder_unreadable` | a `KindedError` `not_found`                                            |
+| `invalid_record`    | a `KindedError` `internal`                                             |
+| `io`                | a `KindedError` `unavailable`, with the shell's message                |
+| anything else       | a `KindedError` `unavailable`, without its text                        |
 
 ## Example
 

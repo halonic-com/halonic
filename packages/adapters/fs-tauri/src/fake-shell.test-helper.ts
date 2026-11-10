@@ -13,15 +13,19 @@ export interface ShellCall {
  * location, a damaged record refused as `unreadable` naming its location, and
  * a grant saved only for a folder the person chose. A folder inside one they
  * picked in the dialog is saved at once; any other makes the shell ask, and
- * `answers` says what the person says.
+ * `answers` says what the person says. A folder a grant opened doesn't count
+ * as picked, so a folder inside it is asked about again. A revoke closes the
+ * folder it revokes.
  *
  * Every call is kept in `calls`, every question in `asked`, and every folder
- * the grant opened for git and the file commands in `opened`.
+ * git and the file commands may use in `opened`.
  */
 export class FakeTrustShell implements TauriShell {
   readonly calls: ShellCall[] = [];
   /** The folders the shell asked the person about, in order. */
   readonly asked: string[] = [];
+  /** The folders the person picked in the folder dialog; only these spare a question. */
+  readonly picked: readonly string[];
   /** The folders git and the file commands may use: picked ones, then granted ones. */
   readonly opened: string[];
   /** What the person says when the shell asks; `true` when the list runs out. */
@@ -35,7 +39,8 @@ export class FakeTrustShell implements TauriShell {
    * @param options.granted - whether the page has the `desktop-trust` capability; the served Studio doesn't
    */
   constructor(options: { picked?: readonly string[]; granted?: boolean } = {}) {
-    this.opened = [...(options.picked ?? [])];
+    this.picked = [...(options.picked ?? [])];
+    this.opened = [...this.picked];
     this.#granted = options.granted ?? true;
   }
 
@@ -74,8 +79,7 @@ export class FakeTrustShell implements TauriShell {
       case "trust_grant":
         return this.#grant(args?.["record"] as TrustRecord);
       case "trust_revoke":
-        this.#files.delete(String(args?.["location"]));
-        return null;
+        return this.#revoke(String(args?.["location"]));
       default:
         throw `Command ${command} not found`;
     }
@@ -95,7 +99,8 @@ export class FakeTrustShell implements TauriShell {
 
   #grant(record: TrustRecord): null {
     const { location } = record;
-    const chosen = this.opened.some(
+    // By path part, as the shell compares canonical paths: `/acme-evil` isn't inside `/acme`.
+    const chosen = this.picked.some(
       (folder) => location === folder || location.startsWith(`${folder}/`),
     );
     if (!chosen) {
@@ -107,6 +112,15 @@ export class FakeTrustShell implements TauriShell {
     this.#files.set(location, JSON.stringify(record));
     if (!this.opened.includes(location)) {
       this.opened.push(location);
+    }
+    return null;
+  }
+
+  #revoke(location: string): null {
+    this.#files.delete(location);
+    const index = this.opened.indexOf(location);
+    if (index !== -1) {
+      this.opened.splice(index, 1);
     }
     return null;
   }
