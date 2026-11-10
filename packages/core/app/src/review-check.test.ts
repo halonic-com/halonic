@@ -1,4 +1,4 @@
-import type { Digest } from "@halonicjs/ports";
+import type { Digest, WriteOptions, WriteResult } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -96,5 +96,56 @@ verifies("app.review-items-to-review", () => {
     const { review } = await withChanges();
     await review.accept({ kind: "file", path: clerk });
     expect(await review.itemsWithChangesToReview()).toEqual([{ path: notes, card: k2 }]);
+  });
+});
+
+/**
+ * A store that empties a file before it writes it, as a plain `writeFile`
+ * does. While {@link pauseNextWrite} is set, the next such write stops with
+ * the file empty until the test lets it go on.
+ */
+class TruncatingStore extends TestDefinitionStore {
+  pauseNextWrite: { emptied: () => void; goOn: Promise<void> } | null = null;
+
+  override async write(
+    path: string,
+    content: string,
+    options?: WriteOptions,
+  ): Promise<WriteResult> {
+    const pause = this.pauseNextWrite;
+    if (options?.expected === undefined && this.files.has(path) && pause !== null) {
+      this.pauseNextWrite = null;
+      this.files.set(path, "");
+      pause.emptied();
+      await pause.goOn;
+    }
+    return super.write(path, content, options);
+  }
+}
+
+verifies("app.review-on-open", () => {
+  it("never reads a record while it is being saved, so a check can't drop it", async () => {
+    const store = new TruncatingStore({ [clerk]: "model: fast\n" }, digest);
+    const review = new ReviewService({ store, digest });
+    const fast = await contentDigest("model: fast\n", digest);
+    await review.propose({ path: clerk, content: "model: smart\n", expected: fast, card: k1 });
+
+    let goOn = () => {};
+    const emptied = new Promise<void>((resolve) => {
+      store.pauseNextWrite = { emptied: resolve, goOn: new Promise((release) => (goOn = release)) };
+    });
+    const smart = await contentDigest("model: smart\n", digest);
+    const writing = review.propose({
+      path: clerk,
+      content: "model: best\n",
+      expected: smart,
+      card: k2,
+    });
+    await emptied;
+    const checking = review.check();
+    goOn();
+    await writing;
+    expect((await checking).dropped).toEqual([]);
+    expect(await review.itemsWithChangesToReview()).toEqual([{ path: clerk, card: k2 }]);
   });
 });

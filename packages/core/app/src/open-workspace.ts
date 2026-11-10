@@ -14,7 +14,12 @@ export const reviewServiceKey = serviceKey<ReviewService>("workspace.review");
 
 /** What {@link openWorkspace} needs. */
 export interface OpenWorkspaceOptions {
-  /** Where the workspace files live. */
+  /**
+   * Where the workspace files live: the real store, never a dry run. The
+   * scope hides the review records from everything but the review service
+   * by wrapping it in a `ReviewingDefinitionStore`, whose version would
+   * hide a dry run's `dry-run:` prefix.
+   */
   store: DefinitionStore;
   /** Hashes file text: the review records and the write-if-unchanged check need it. */
   digest: Digest;
