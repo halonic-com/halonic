@@ -6,8 +6,18 @@
  *
  * A hunk applies only where its old lines, context included, match the file
  * exactly. Like `git apply`, it may sit at another line than its header says,
- * when lines were added or removed above it, but nothing fuzzier.
+ * when lines were added or removed above it, but nothing fuzzier. Anything
+ * but a text file's lines changing is refused (`git-diff-header.ts`).
  */
+
+import {
+  checkAgainstSection,
+  fileWithoutLines,
+  type GitDiffSection,
+  readGitDiffHeader,
+  startGitDiffSection,
+} from "./git-diff-header.ts";
+import { PatchFormatError, PatchMismatchError } from "./patch-errors.ts";
 
 /** One hunk: the lines it expects and the lines it leaves, each with its newline when it has one. */
 export interface Hunk {
@@ -26,52 +36,53 @@ export interface FilePatch {
   hunks: Hunk[];
 }
 
-/** Thrown when a hunk's old lines aren't in the file, or a file to create already exists. */
-export class PatchMismatchError extends Error {
-  constructor() {
-    super("The change no longer matches the file.");
-    this.name = "PatchMismatchError";
-  }
-}
-
-/** Thrown when the text isn't a unified diff this reader understands. */
-export class PatchFormatError extends Error {
-  constructor(reason: string) {
-    super(`The patch can't be read: ${reason}.`);
-    this.name = "PatchFormatError";
-  }
-}
-
 const hunkHeader = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/u;
 
 /**
  * The file patches in `patch`, in order.
  *
- * @throws PatchFormatError when it holds no file, a quoted path, a binary
- *   change or a hunk whose lines don't match its header
+ * @throws PatchFormatError when it holds no file, a quoted path, anything
+ *   but a text file's lines changing, or a hunk whose lines don't match its
+ *   header
  */
 export function parsePatch(patch: string): FilePatch[] {
   const lines = patch.split("\n");
   const files: FilePatch[] = [];
+  // The `diff --git` section whose `---` line hasn't come yet.
+  let section: GitDiffSection | null = null;
   let at = 0;
   while (at < lines.length) {
     const line = lines[at] as string;
-    refuseBinary(line);
-    if (!line.startsWith("--- ")) {
+    if (line.startsWith("diff --git ")) {
+      if (section !== null) files.push({ ...fileWithoutLines(section), hunks: [] });
+      section = startGitDiffSection(line);
       at++;
-      continue;
-    }
-    const file = readFileHeader(line, lines[at + 1] ?? "");
-    at += 2;
-    while (hunkHeader.test(lines[at] ?? "")) {
-      const { hunk, next } = readHunk(lines, at);
-      file.hunks.push(hunk);
+    } else if (line.startsWith("--- ")) {
+      const { file, next } = readFilePatch(lines, at);
+      if (section !== null) checkAgainstSection(file, section);
+      files.push(file);
+      section = null;
       at = next;
+    } else {
+      readGitDiffHeader(line, section);
+      at++;
     }
-    files.push(file);
   }
+  if (section !== null) files.push({ ...fileWithoutLines(section), hunks: [] });
   if (files.length === 0) throw new PatchFormatError("it changes no file");
   return files;
+}
+
+/** Reads the file whose `---` line is at `lines[at]`, with its hunks; returns it and the index after it. */
+function readFilePatch(lines: string[], at: number): { file: FilePatch; next: number } {
+  const file = readFileHeader(lines[at] as string, lines[at + 1] ?? "");
+  let next = at + 2;
+  while (hunkHeader.test(lines[next] ?? "")) {
+    const read = readHunk(lines, next);
+    file.hunks.push(read.hunk);
+    next = read.next;
+  }
+  return { file, next };
 }
 
 /** The patch that undoes `file`. */
@@ -117,12 +128,6 @@ export function applyFilePatch(current: string | null, file: FilePatch): string 
 /** The lines of `text`, each with its newline, as `line-diff.ts` splits them. */
 function splitLines(text: string): string[] {
   return text.match(/[^\n]*\n|[^\n]+$/gu) ?? [];
-}
-
-function refuseBinary(line: string): void {
-  if (line.startsWith("Binary files ") || line === "GIT binary patch") {
-    throw new PatchFormatError("binary changes aren't supported");
-  }
 }
 
 /** A file patch, with no hunks yet, from its `---` and `+++` lines. */
@@ -243,7 +248,8 @@ function matchesAt(lines: string[], expected: string[], at: number): boolean {
  * `read`, without writing anything; with `reverse`, what undoing it gives.
  * Every path goes through `checkPath` first.
  *
- * @throws PatchFormatError, PatchMismatchError, or what `checkPath` throws
+ * @throws PatchFormatError (a `RangeError`), PatchMismatchError, or what
+ *   `checkPath` throws
  */
 export async function patchedFiles(
   patch: string,

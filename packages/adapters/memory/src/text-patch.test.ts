@@ -1,11 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { unifiedDiff } from "./line-diff.ts";
+import { PatchFormatError, PatchMismatchError } from "./patch-errors.ts";
 import {
   applyFilePatch,
   type FilePatch,
-  PatchFormatError,
-  PatchMismatchError,
   parsePatch,
   patchedFiles,
   reversePatch,
@@ -154,6 +153,65 @@ verifies("memory.text-patch", () => {
       ["--- a/x\n+++ b/x\n@@ -1 +1 @@\n*a\n", "unexpected line"],
       ["--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n-b\n+c\n", "doesn't match its line counts"],
     ])("refuses %j", (patch, reason) => {
+      expect(() => parsePatch(patch)).toThrow(PatchFormatError);
+      expect(() => parsePatch(patch)).toThrow(reason);
+    });
+
+    it("refuses with a RangeError, like every input the Vcs port refuses", () => {
+      expect(() => parsePatch("")).toThrow(RangeError);
+    });
+
+    it("reads an empty file git creates or deletes, which has no --- line", () => {
+      const created =
+        "diff --git a/e.yaml b/e.yaml\nnew file mode 100644\nindex 0000000..e69de29\n";
+      const deleted =
+        "diff --git a/d.yaml b/d.yaml\ndeleted file mode 100644\nindex e69de29..0000000\n";
+      expect(parsePatch(created + deleted)).toEqual([
+        { oldPath: null, newPath: "e.yaml", hunks: [] },
+        { oldPath: "d.yaml", newPath: null, hunks: [] },
+      ]);
+      expect(applyFilePatch(null, onlyFile(created))).toBe("");
+    });
+
+    it("reads a text edit to an executable file, which keeps its mode", () => {
+      const patch = twoHunks.replace(
+        "index 1111111..2222222 100644",
+        "index 1111111..2222222 100755",
+      );
+      expect(applyFilePatch(before, onlyFile(patch))).toBe(after);
+    });
+
+    const lines = (...text: string[]) => `${text.join("\n")}\n`;
+    const textLines = lines("--- a/a.yaml", "+++ b/a.yaml", "@@ -1 +1 @@", "-1", "+2");
+    it.each([
+      [lines("diff --git a/a.yaml b/a.yaml", "old mode 100644", "new mode 100755"), '"old mode"'],
+      [lines("diff --git a/a.yaml b/a.yaml", "new mode 100755") + textLines, '"new mode"'],
+      [
+        lines("diff --git a/l b/l", "new file mode 120000", "--- /dev/null", "+++ b/l"),
+        "mode 120000",
+      ],
+      [lines("diff --git a/s b/s", "new file mode 160000"), "mode 160000"],
+      [lines("diff --git a/x b/x", "new file mode 100755"), "mode 100755"],
+      [lines("diff --git a/a.yaml b/a.yaml", "deleted file mode 120000"), "mode 120000"],
+      [lines("diff --git a/s b/s", "index 1111111..2222222 160000"), "mode 160000"],
+      [lines("diff --git a/a.yaml b/c.yaml", "rename from a.yaml"), "names two paths"],
+      [
+        lines("similarity index 100%", "rename from a.yaml", "rename to c.yaml"),
+        '"similarity index"',
+      ],
+      [lines("copy from a.yaml", "copy to c.yaml"), '"copy from"'],
+      [lines('diff --git "a/\\303x" "b/\\303x"'), "quoted path"],
+      [lines("diff --git a/x.yaml b/x.yaml", "index 1111111..2222222 100644"), 'has no "---" line'],
+      [lines("diff --git a/a.yaml b/a.yaml", "--- a/b.yaml", "+++ b/b.yaml"), "diff --git header"],
+      [
+        lines("diff --git a/a.yaml b/a.yaml", "new file mode 100644") + textLines,
+        "diff --git header",
+      ],
+      [
+        lines("diff --git a/a.yaml b/a.yaml", "deleted file mode 100644") + textLines,
+        "diff --git header",
+      ],
+    ])("refuses anything but a text file's lines changing: %j", (patch, reason) => {
       expect(() => parsePatch(patch)).toThrow(PatchFormatError);
       expect(() => parsePatch(patch)).toThrow(reason);
     });
