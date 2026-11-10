@@ -1,4 +1,4 @@
-import { lstat, readlink } from "node:fs/promises";
+import { lstat, readlink, realpath } from "node:fs/promises";
 import { isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 
 /**
@@ -14,8 +14,12 @@ import { isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
  */
 export async function linkedGitFolder(workingFolder: string, checkout: string): Promise<string> {
   const link = join(workingFolder, checkout, ".git");
-  const target = relative(workingFolder, resolve(workingFolder, checkout, await readlink(link)));
-  if (await realFolderInside(workingFolder, target)) return target;
+  const target = await insidePath(
+    workingFolder,
+    resolve(workingFolder, checkout, await readlink(link)),
+  );
+  if (target !== "" && (await insideWithoutLinks(workingFolder, target, { mustExist: true })))
+    return target;
   throw new Error(
     `the .git in ${join(workingFolder, checkout)} is a link that doesn't lead to a git folder inside ` +
       "the working folder, so the sandbox can't keep a program from changing its settings. Replace " +
@@ -23,15 +27,41 @@ export async function linkedGitFolder(workingFolder: string, checkout: string): 
   );
 }
 
-/** Whether `path` names a real folder inside `workingFolder`, every folder on the way real too. */
-async function realFolderInside(workingFolder: string, path: string): Promise<boolean> {
+/**
+ * The absolute `path` relative to the working folder, also when it names the
+ * working folder through its real path (`/private/tmp/…` for `/tmp/…` on
+ * macOS), as an absolute link git wrote may do. Leaves it when it is
+ * outside either way.
+ */
+export async function insidePath(workingFolder: string, path: string): Promise<string> {
+  const direct = relative(workingFolder, path);
+  if (!leaves(direct)) return direct;
+  const real = relative(await realpath(workingFolder), path);
+  return leaves(real) ? direct : real;
+}
+
+/**
+ * Whether `path`, relative to the working folder, stays inside it with no
+ * link on the way: each part of it that is there is a real folder. With
+ * `mustExist`, each part must be there too.
+ */
+export async function insideWithoutLinks(
+  workingFolder: string,
+  path: string,
+  { mustExist = false } = {},
+): Promise<boolean> {
   const clean = normalize(path);
-  if (clean === "." || isAbsolute(clean) || clean === ".." || clean.startsWith(`..${sep}`))
-    return false;
+  if (leaves(clean)) return false;
   let current = workingFolder;
   for (const part of clean.split(sep)) {
     current = join(current, part);
-    if ((await lstat(current).catch(() => null))?.isDirectory() !== true) return false;
+    const stat = await lstat(current).catch(() => null);
+    if (stat === null) return !mustExist;
+    if (!stat.isDirectory()) return false;
   }
   return true;
+}
+
+function leaves(path: string): boolean {
+  return isAbsolute(path) || path === ".." || path.startsWith(`..${sep}`);
 }

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { lstat, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -97,6 +97,44 @@ verifies("sandbox-srt.session", () => {
       const snapshot = await snapshotNestedGit(work);
       if (snapshot === null) throw new Error("no snapshot");
       expect(await undoNestedGit(snapshot)).toEqual({ undone: [], failed: [] });
+    });
+
+    describe("when the link is absolute and names the working folder through its real path", () => {
+      let aliases: string;
+      let alias: string;
+
+      /** The session is given `alias`, a link to the working folder, as macOS gives `/tmp`. */
+      beforeEach(async () => {
+        aliases = await mkdtemp(join(tmpdir(), "srt-nested-git-alias-"));
+        alias = join(aliases, "work");
+        await symlink(work, alias);
+        await relink(join(await realpath(work), ".git", "modules", "docs"));
+      });
+
+      afterEach(async () => {
+        await rm(aliases, { recursive: true, force: true });
+      });
+
+      it("moves aside a .git planted in its nested submodule", async () => {
+        const snapshot = await snapshotNestedGit(alias);
+        await plantRepository(join("docs", "theme"));
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", "theme", ".git")],
+          failed: [],
+        });
+      });
+
+      it("moves the link aside when the program adds a commondir where it leads", async () => {
+        const snapshot = await snapshotNestedGit(alias);
+        await plantRepository("evil");
+        await writeFile(join(work, ".git", "modules", "docs", "commondir"), "../../../evil/.git\n");
+        if (snapshot === null) throw new Error("no snapshot");
+        expect(await undoNestedGit(snapshot)).toEqual({
+          undone: [join("docs", ".git")],
+          failed: [],
+        });
+      });
     });
 
     it("refuses to start when the link leads outside the working folder", async () => {

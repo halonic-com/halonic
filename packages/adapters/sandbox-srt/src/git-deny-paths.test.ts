@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -114,6 +114,25 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
         expect(paths).toContain(join(".store", "docs", file));
       }
       expect(paths).not.toContain(join("docs", ".git"));
+    });
+
+    it("follow an absolute .git link that names the working folder through its real path", async () => {
+      const aliases = await mkdtemp(join(tmpdir(), "srt-git-deny-alias-"));
+      try {
+        const alias = join(aliases, "work");
+        await symlink(work, alias);
+        await gitFolder(".git");
+        await writeFile(join(work, ".gitmodules"), '[submodule "docs"]\n\tpath = docs\n');
+        await gitFolder(join(".store", "docs"));
+        await mkdir(join(work, "docs"));
+        await symlink(join(await realpath(work), ".store", "docs"), join(work, "docs", ".git"));
+        const paths = await gitPathsToDeny(alias);
+        for (const file of ["config", "hooks", "config.worktree"]) {
+          expect(paths).toContain(join(".store", "docs", file));
+        }
+      } finally {
+        await rm(aliases, { recursive: true, force: true });
+      }
     });
 
     it("refuse a submodule's .git link that leads outside the working folder", async () => {

@@ -1,7 +1,7 @@
 import { lstat, readFile, readlink, rename } from "node:fs/promises";
-import { isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { gitlinkPaths, parseIndex } from "./git-index.ts";
-import { linkedGitFolder } from "./git-link.ts";
+import { insidePath, insideWithoutLinks, linkedGitFolder } from "./git-link.ts";
 
 /**
  * What a gitlink's `.git` was at session start: absent, a folder, a file and
@@ -191,28 +191,12 @@ async function withCommondir(workingFolder: string, path: string, dotGit: string
   const gitFolder =
     target === undefined ? fileGitFolder(checkout, dotGit) : resolve(checkout, target);
   if (gitFolder === null) return dotGit;
-  if (!(await insideWithoutLinks(workingFolder, relative(workingFolder, gitFolder)))) return dotGit;
+  if (!(await insideWithoutLinks(workingFolder, await insidePath(workingFolder, gitFolder))))
+    return dotGit;
   const commondir = await readPlainFile(join(gitFolder, "commondir")).catch(
     () => "not a plain file",
   );
   return `${dotGit}\ncommondir:${commondir?.toString() ?? "absent"}`;
-}
-
-/**
- * Whether `path`, from the index the program could write, stays inside the
- * working folder with no link on the way: the host must not be led out of it.
- */
-async function insideWithoutLinks(workingFolder: string, path: string): Promise<boolean> {
-  const clean = normalize(path);
-  if (isAbsolute(clean) || clean === ".." || clean.startsWith(`..${sep}`)) return false;
-  let current = workingFolder;
-  for (const part of clean.split(sep)) {
-    current = join(current, part);
-    const stat = await lstat(current).catch(() => null);
-    if (stat === null) return true;
-    if (!stat.isDirectory()) return false;
-  }
-  return true;
 }
 
 async function freeName(base: string): Promise<string> {
