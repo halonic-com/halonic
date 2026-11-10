@@ -1,5 +1,4 @@
-import type { CheckContext } from "../lib/context.ts";
-import type { Checkouts, GuardFinding } from "./finding.ts";
+import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
 
 /** A frozen copy of a spec: `<package>/spec/released/<version>/<name>.schema.json`. */
 function isReleasedSpecFile(file: string): boolean {
@@ -25,11 +24,4 @@ export function checkReleasedSpecs({ base, head }: Checkouts): GuardFinding[] {
     }
   }
   return findings;
-}
-
-function changeOf(file: string, base: CheckContext, head: CheckContext): string | undefined {
-  if (!head.files.includes(file)) {
-    return "deleted";
-  }
-  return head.read(file) === base.read(file) ? undefined : "changed";
 }

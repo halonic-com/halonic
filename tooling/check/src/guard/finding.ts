@@ -19,5 +19,18 @@ export interface Checkouts {
   readonly head: CheckContext;
 }
 
+/** How a file differs between the checkouts: "added", "deleted", "changed" or not at all. */
+export function changeOf(file: string, base: CheckContext, head: CheckContext): string | undefined {
+  const inBase = base.files.includes(file);
+  const inHead = head.files.includes(file);
+  if (!inBase) {
+    return "added";
+  }
+  if (!inHead) {
+    return "deleted";
+  }
+  return base.read(file) === head.read(file) ? undefined : "changed";
+}
+
 /** One of the guard's checks. */
 export type GuardCheck = (checkouts: Checkouts) => GuardFinding[];

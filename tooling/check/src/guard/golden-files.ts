@@ -1,6 +1,6 @@
 import type { CheckContext } from "../lib/context.ts";
 import { isSourceFile, isTestFile } from "../lib/source-files.ts";
-import type { Checkouts, GuardFinding } from "./finding.ts";
+import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
 import { readTestFileFacts } from "./test-file-facts.ts";
 
 /**
@@ -49,19 +49,6 @@ export function checkGoldenFiles({ base, head }: Checkouts): GuardFinding[] {
     }
   }
   return findings;
-}
-
-/** How a file differs between the checkouts: "added", "deleted", "changed" or not at all. */
-export function changeOf(file: string, base: CheckContext, head: CheckContext): string | undefined {
-  const inBase = base.files.includes(file);
-  const inHead = head.files.includes(file);
-  if (!inBase) {
-    return "added";
-  }
-  if (!inHead) {
-    return "deleted";
-  }
-  return base.read(file) === head.read(file) ? undefined : "changed";
 }
 
 function inlineSnapshots(context: CheckContext, file: string): readonly string[] {

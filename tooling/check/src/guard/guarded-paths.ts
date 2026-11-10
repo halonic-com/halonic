@@ -1,5 +1,4 @@
-import type { Checkouts, GuardFinding } from "./finding.ts";
-import { changeOf } from "./golden-files.ts";
+import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
 
 /**
  * The guard's own paths. CI runs the guard from the
