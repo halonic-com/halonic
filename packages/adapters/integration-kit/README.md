@@ -254,6 +254,11 @@ sheet the user approved. Nothing is sent until you call
 `integration.connect(loaded.host)`:
 
 ```ts
-const loaded = loadIntegration({ source: { origin: "built-in", sheet, integration: weather }, transport, secrets, tokens });
+const loaded = loadIntegration({
+  source: { origin: "built-in", sheet, integration: weather },
+  transport,
+  secrets,
+  tokens,
+});
 if (loaded.ok) connections.set("weather", loaded.value.integration.connect(loaded.value.host));
 ```
