@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { SandboxRuntimeConfigSchema } from "@anthropic-ai/sandbox-runtime";
 // Not in srt's public index: imported here only to test the settings against the guard srt runs.
 import { createResolvedAddressGuard } from "@anthropic-ai/sandbox-runtime/dist/sandbox/resolved-address-guard.js";
@@ -51,11 +52,12 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
 
   it("denies writing the tool settings and hooks inside the working folder", () => {
     const writes = buildSrtConfig(profile()).filesystem?.denyWrite;
+    const inWork = (...parts: string[]) => ({ path: join("/work/acme", ...parts), literal: true });
     expect(writes).toEqual([
-      { path: "/work/acme/.claude/settings.json", literal: true },
-      { path: "/work/acme/.claude/settings.local.json", literal: true },
-      { path: "/work/acme/.codex", literal: true },
-      { path: "/work/acme/.cursor", literal: true },
+      inWork(".claude", "settings.json"),
+      inWork(".claude", "settings.local.json"),
+      inWork(".codex"),
+      inWork(".cursor"),
     ]);
   });
 

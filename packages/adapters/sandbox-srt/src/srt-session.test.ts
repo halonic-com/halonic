@@ -63,11 +63,11 @@ function fakeRunner(probe: Probe = fenced) {
         if (probe.leak) {
           const port = Number(request.args[4]);
           await new Promise<void>((resolve) => {
-            const socket = connect({ host: "127.0.0.1", port }, () => {
-              socket.destroy();
-              resolve();
-            });
-            socket.on("error", () => resolve());
+            // The canary server hangs up on whoever it reaches, so waiting for
+            // the close means it has already seen this connection.
+            const socket = connect({ host: "127.0.0.1", port });
+            socket.on("error", () => {});
+            socket.on("close", () => resolve());
           });
         }
         return {
