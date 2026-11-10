@@ -4,13 +4,14 @@
 // Modes (argv[2]):
 //   write     the box writes only to its working folder: not to a read-only grant, not to a folder it isn't given
 //   internet  with no allowed sites, curl.exe to an outside IP and host name fails; the same call from the host works
-//   all       both
+//   dns       HAL-3365: which bridge policy keeps name lookups in the box; the fence probes per policy
+//   all       all three
 // argv[3] (optional) is the data folder, so a second Windows user can run the probe in a folder it owns.
 // Prints "RESULT ..." lines and one JSON object on the last stdout line.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer as createTcpServer } from "node:net";
-import { tmpdir, userInfo } from "node:os";
+import { networkInterfaces, tmpdir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
 
@@ -41,12 +42,13 @@ const network = {
 // ---- Running one command in the box (the probe4 helper, trimmed) ---------------------------------
 
 /** Spawns `command` in a container and collects its streams, exit code and the SDK's warnings. */
-async function inBox(label, command, { work, read = [], net = network.closed, env = {}, timeoutMs = 60_000 }) {
+async function inBox(label, command, { work, read = [], denied = [], net = network.closed, env = {}, containmentConfig, timeoutMs = 60_000 }) {
   const home = join(work, "home");
   for (const d of ["", "AppData\\Roaming", "AppData\\Local"]) mkdirSync(join(home, d), { recursive: true });
   const request = {
     command,
-    filesystem: { readonlyPaths: [...new Set(read.filter(Boolean))], readwritePaths: [work], deniedPaths: [] },
+    ...(containmentConfig ? { containment: { type: "processcontainer", config: containmentConfig } } : {}),
+    filesystem: { readonlyPaths: [...new Set(read.filter(Boolean))], readwritePaths: [work], deniedPaths: denied },
     workingDirectory: work,
     network: net,
     ui: UI,
@@ -274,15 +276,16 @@ async function internetMode() {
  * the DNS client service's cache. curl exit 7 ("could not connect") instead of 6 ("could not resolve")
  * and a cache entry both mean the lookup went out: a channel for data even with the network off.
  */
-async function dnsSideChannel(work, net, pname) {
-  const label = `mxc-${pname.toLowerCase()}-${process.pid}-${Date.now().toString(36)}`;
+async function dnsSideChannel(work, net, pname, boxOptions = {}) {
+  const label = uniqueLabel(pname);
   const name = `${label}-192-0-2-1.nip.io`;
-  const r = await inBox(`internet ${pname} dns side channel`, `curl.exe -sS -m 5 http://${name}/`, { work, net });
-  const cache = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Get-DnsClientCache | Where-Object Entry -like '${label}*' | Select-Object Entry, Status, Data | ConvertTo-Json -Compress`], { encoding: "utf8" });
+  // --noproxy: under a proxy policy MXC sets HTTP_PROXY, and curl would hand the name to the proxy
+  // instead of looking it up itself.
+  const r = await inBox(`internet ${pname} dns side channel`, `curl.exe -sS -m 5 --noproxy * http://${name}/`, { work, net, ...boxOptions });
   const host = spawnSync("curl.exe", ["-sS", "-m", "5", "-o", "NUL", "-w", "%{remote_ip}", `http://${label}-host-192-0-2-1.nip.io/`], { encoding: "utf8" });
   r.name = name;
   r.curlExit = r.exit;
-  r.hostCacheEntry = cache.stdout.trim() || null;
+  r.hostCacheEntry = hostDnsCache(label);
   r.verdict = {
     resolvedInBox: r.exit === 7 || r.exit === 28,
     inHostDnsCache: Boolean(r.hostCacheEntry),
@@ -290,6 +293,183 @@ async function dnsSideChannel(work, net, pname) {
     hostControlResolves: host.stderr.includes("Could not resolve") ? false : host.status,
   };
   return r;
+}
+
+/** A DNS label nobody has looked up before, so a cache entry can only come from this run. */
+function uniqueLabel(tag) {
+  const slug = tag.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
+  return `mxc-${slug}-${process.pid}-${Date.now().toString(36)}`;
+}
+
+/** The host DNS client cache entries starting with `label`, as JSON, or null when there are none. */
+function hostDnsCache(label) {
+  const cache = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Get-DnsClientCache | Where-Object Entry -like '${label}*' | Select-Object Entry, Status, Data | ConvertTo-Json -Compress`], { encoding: "utf8" });
+  return cache.stdout.trim() || null;
+}
+
+// ---- Mode: dns (HAL-3365) ---------------------------------------------------------------------
+//
+// Which network policy lets the box reach Halonic's bridge but keeps name lookups inside the box?
+// Every variant runs the same fence check, so a policy that closes DNS but opens something else
+// shows up too.
+
+/**
+ * Runs inside the box (Node): the bridge, another local port, the hidden and denied files, a write
+ * outside the working folder, an outbound connection and a name lookup through the Windows DNS
+ * client service (getaddrinfo, as curl and most runtimes use). Prints one "FENCE {json}" line.
+ */
+const FENCE = `import { lookup } from "node:dns/promises";
+import { readFileSync, writeFileSync } from "node:fs";
+import { request } from "node:http";
+import { connect } from "node:net";
+const t = JSON.parse(readFileSync(process.argv[2], "utf8"));
+const tcp = (host, port) => new Promise((done) => {
+  const s = connect({ host, port, timeout: 5000 });
+  s.on("connect", () => { s.destroy(); done("connected"); });
+  s.on("timeout", () => { s.destroy(); done("timeout"); });
+  s.on("error", (e) => done(e.code ?? e.message));
+});
+const httpGet = (host, port) => new Promise((done) => {
+  const r = request({ host, port, path: "/", timeout: 5000 }, (res) => {
+    let body = "";
+    res.on("data", (c) => { body += c; });
+    res.on("end", () => done(res.statusCode + " " + body));
+  });
+  r.on("timeout", () => { r.destroy(); done("timeout"); });
+  r.on("error", (e) => done(e.code ?? e.message));
+  r.end();
+});
+const attempt = async (fn) => { try { return await fn(); } catch (e) { return e.code ?? String(e.message); } };
+const out = {
+  httpProxyEnv: process.env.HTTP_PROXY ?? null,
+  bridge: await httpGet(t.bridgeHost, t.bridgePort),
+  otherPortLoopback: await tcp("127.0.0.1", t.otherPort),
+  otherPortBridgeAddress: await tcp(t.bridgeHost, t.otherPort),
+  allowedFile: await attempt(() => readFileSync(t.allowedFile, "utf8")),
+  hiddenFile: await attempt(() => readFileSync(t.hiddenFile, "utf8")),
+  deniedFile: await attempt(() => readFileSync(t.deniedFile, "utf8")),
+  writeOutside: await attempt(() => { writeFileSync(t.writeOutside, "box"); return "ok"; }),
+  outboundIp: await tcp("1.1.1.1", 80),
+  lookup: await attempt(async () => (await lookup(t.uniqueName)).address),
+};
+console.log("FENCE " + JSON.stringify(out));
+`;
+
+/** A tiny stand-in for the bridge: answers any HTTP request with 200 "ok". */
+async function listen(host) {
+  const server = createTcpServer((socket) => socket.end("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"));
+  await new Promise((done, fail) => server.once("error", fail).listen(0, host, done));
+  return server;
+}
+
+/** The host's first non-loopback, non-link-local IPv4 address (the runner's vNIC). */
+function vnicAddress() {
+  const all = Object.values(networkInterfaces()).flat();
+  return all.find((a) => a.family === "IPv4" && !a.internal && !a.address.startsWith("169.254."))?.address ?? null;
+}
+
+/** The policies under test. `bridge` is where the bridge listens for that variant. */
+function dnsVariants(loopbackPort, vnic, vnicPort) {
+  const proxy = { networkProxy: `http://127.0.0.1:${loopbackPort}` };
+  const onVnic = (ingressDefault) => ({
+    egress: { default: "deny", allow: [{ to: [{ cidr: `${vnic}/32` }], ports: [{ protocol: "tcp", port: vnicPort }] }] },
+    ingress: { default: ingressDefault, hostLoopback: "deny" },
+  });
+  const variants = {
+    "0 no rules (control)": { bridge: ["127.0.0.1", loopbackPort], net: network.closed },
+    "0 loopback allow rule (today)": { bridge: ["127.0.0.1", loopbackPort], net: network.bridgeOnly(loopbackPort) },
+    // Model 2 in the MXC networking guide, for a proxy with no package or AppContainer identity.
+    "1a proxy, no peer identity": {
+      bridge: ["127.0.0.1", loopbackPort],
+      net: { egress: { default: "deny" }, ingress: { default: "allow", hostLoopback: "allow" }, runtimeConfig: proxy },
+    },
+    // allowedProxyPeer names a package family or AppContainer profile. Our bridge has neither, so a
+    // made-up profile shows whether MXC checks the name or opens the endpoint anyway.
+    "1b proxy, allowedProxyPeer": {
+      bridge: ["127.0.0.1", loopbackPort],
+      net: { egress: { default: "deny" }, ingress: { default: "allow", hostLoopback: "deny" }, runtimeConfig: proxy },
+      containmentConfig: { network: { allowedProxyPeer: "halonic.bridge.probe" } },
+    },
+  };
+  if (vnic) {
+    variants["2a vNIC allow rule"] = { bridge: [vnic, vnicPort], net: onVnic("deny") };
+    variants["2b vNIC allow rule, private network on"] = { bridge: [vnic, vnicPort], net: onVnic("allow") };
+  }
+  return variants;
+}
+
+async function dnsMode() {
+  const work = mkdtempSync(join(base, "dns-"));
+  const nodeExe = process.execPath;
+  const fence = join(work, "fence.mjs");
+  writeFileSync(fence, FENCE);
+  // Files the box may read, may not see, and is denied inside a folder it may read.
+  const allowedDir = seedFolder(mkdtempSync(join(base, "dns-allowed-")));
+  const deniedFile = join(allowedDir, "rename-me.txt");
+  const hiddenDir = seedFolder(mkdtempSync(join(base, "dns-hidden-")));
+  const outsideDir = mkdtempSync(join(base, "dns-outside-"));
+
+  const vnic = vnicAddress();
+  const loopbackBridge = await listen("127.0.0.1");
+  const vnicBridge = vnic ? await listen(vnic) : null;
+  const other = await listen("0.0.0.0");
+  const loopbackPort = loopbackBridge.address().port;
+  const vnicPort = vnicBridge?.address().port ?? null;
+  const out = { user: userInfo().username, vnic, cases: {}, verdict: {} };
+
+  for (const [name, v] of Object.entries(dnsVariants(loopbackPort, vnic, vnicPort))) {
+    const label = uniqueLabel(name);
+    const targets = {
+      bridgeHost: v.bridge[0],
+      bridgePort: v.bridge[1],
+      otherPort: other.address().port,
+      allowedFile: join(allowedDir, "existing.txt"),
+      hiddenFile: join(hiddenDir, "existing.txt"),
+      deniedFile,
+      writeOutside: join(outsideDir, `${label}.txt`),
+      uniqueName: `${label}-192-0-2-1.nip.io`,
+    };
+    const targetsFile = join(work, `targets-${label}.json`);
+    writeFileSync(targetsFile, JSON.stringify(targets));
+    const boxOptions = { net: v.net, containmentConfig: v.containmentConfig, read: [dirname(nodeExe), allowedDir], denied: [deniedFile] };
+    const run = await inBox(`dns ${name} fence`, `${q(nodeExe)} ${q(fence)} ${q(targetsFile)}`, { work, ...boxOptions });
+    const line = run.stdout?.split(/\r?\n/).find((l) => l.startsWith("FENCE "));
+    run.fence = line ? JSON.parse(line.slice("FENCE ".length)) : null;
+    run.lookupInHostCache = hostDnsCache(label);
+    run.wroteOutside = existsSync(targets.writeOutside);
+    const curl = await dnsSideChannel(work, v.net, name, { containmentConfig: v.containmentConfig });
+    out.cases[name] = { fence: run, curl };
+    out.verdict[name] = dnsVerdict(run, curl);
+    console.log(`RESULT dns ${name} (${out.user}): ${JSON.stringify(out.verdict[name])}`);
+  }
+  for (const server of [loopbackBridge, vnicBridge, other]) server?.close();
+  return out;
+}
+
+/** One table row: does the bridge work, do names leak, do the other fence probes hold. */
+function dnsVerdict(run, curl) {
+  const f = run.fence;
+  if (!f) return { started: false, error: run.spawnError ?? run.waitError ?? run.stderr?.slice(0, 300) };
+  const refused = (r) => r !== "connected";
+  const unreadable = (r) => r !== "original";
+  const fence = {
+    otherPortLoopback: refused(f.otherPortLoopback),
+    otherPortBridgeAddress: refused(f.otherPortBridgeAddress),
+    allowedFileReadable: f.allowedFile === "original",
+    hiddenFile: unreadable(f.hiddenFile),
+    deniedFile: unreadable(f.deniedFile),
+    writeOutside: f.writeOutside !== "ok" && !run.wroteOutside,
+    outboundIp: refused(f.outboundIp),
+  };
+  return {
+    started: true,
+    bridgeWorks: String(f.bridge).startsWith("200"),
+    dnsLeaks: /^\d/.test(String(f.lookup)) || Boolean(run.lookupInHostCache) || curl.verdict.inHostDnsCache,
+    dns: { nodeLookup: f.lookup, nodeLookupInHostCache: Boolean(run.lookupInHostCache), curlExit: curl.curlExit, curlInHostCache: curl.verdict.inHostDnsCache },
+    otherProbesPass: Object.values(fence).every(Boolean),
+    fence,
+    raw: { bridge: f.bridge, otherPortLoopback: f.otherPortLoopback, otherPortBridgeAddress: f.otherPortBridgeAddress, outboundIp: f.outboundIp, httpProxyEnv: f.httpProxyEnv },
+  };
 }
 
 // ---- Main -------------------------------------------------------------------------------------
@@ -300,7 +480,7 @@ try {
 } catch (error) {
   report.support = { error: String(error) };
 }
-const modes = { write: writeMode, internet: internetMode };
+const modes = { write: writeMode, internet: internetMode, dns: dnsMode };
 for (const name of mode === "all" ? Object.keys(modes) : [mode]) {
   try {
     report.result[name] = await modes[name]();
@@ -311,5 +491,5 @@ for (const name of mode === "all" ? Object.keys(modes) : [mode]) {
 }
 console.log(JSON.stringify(report));
 // Leave no data folders behind for the next mode or user.
-for (const entry of readdirSync(base)) if (/^(write-|net-)/.test(entry)) rmSync(join(base, entry), { recursive: true, force: true });
+for (const entry of readdirSync(base)) if (/^(write-|net-|dns-)/.test(entry)) rmSync(join(base, entry), { recursive: true, force: true });
 process.exit(0);

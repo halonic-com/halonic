@@ -1,4 +1,4 @@
-# THROWAWAY (HAL-3320, part of HAL-3303): MXC write-outside-folder and outbound-internet probes on
+# THROWAWAY (HAL-3320 and HAL-3365, part of HAL-3303): MXC write, internet and DNS probes on
 # the Windows 11 runner (BaseContainer), as the runner's admin user and as a normal local user.
 # Draft pull request only; closed once the report is written. Never merges.
 name: MXC go/no-go (isolation)
@@ -16,7 +16,7 @@ jobs:
   isolation:
     name: MXC write and internet probes on windows-11-arm
     runs-on: windows-11-arm
-    timeout-minutes: 30
+    timeout-minutes: 50
     defaults:
       run:
         shell: pwsh
@@ -39,7 +39,7 @@ jobs:
         working-directory: spikes/mxc
         run: node probe5.mjs all
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 20
       # A throwaway standard user (not in Administrators) with a random password made here and never
       # printed. The spike folder is copied to a folder that user owns. -UseNewEnvironment gives it its
       # own TEMP and profile paths instead of the runner user's.
@@ -65,7 +65,7 @@ jobs:
           Get-Content "$root\err.txt" -ErrorAction SilentlyContinue
           Get-Content "$root\out.txt" -ErrorAction SilentlyContinue
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 20
       - name: Leftovers on the drive root
         run: Get-ChildItem "$env:SystemDrive\" -Filter "native-*" -Force | Select-Object FullName | Out-String
         continue-on-error: true
