@@ -8,7 +8,12 @@ import type { KindValues } from "@halonicjs/format";
 import { duration } from "../../messages/duration.ts";
 import { money } from "../../messages/money.ts";
 import type { Phrase } from "../../messages/phrase.ts";
-import { type ListedStatus, runsListMessages, type StartedAt } from "../../messages/runs-list.ts";
+import {
+  type DueAt,
+  type ListedStatus,
+  runsListMessages,
+  type StartedAt,
+} from "../../messages/runs-list.ts";
 import { stepName } from "../../messages/step-name.ts";
 
 /** A workflow as the workspace defines it now. */
@@ -80,15 +85,27 @@ export function listedStatus(summary: RunSummary): ListedStatus {
 }
 
 /**
- * Whether a waiting run waits for the user: for a tool approval, or at a
- * wait step that accepts an event. A run whose step accepts no event waits
- * for a timer, and one with `waitingOn` for its child run.
+ * Whether a waiting run waits for the user, decided in this order
+ * (cli-output 3.4, revision 31, M6): a pending tool approval needs the user;
+ * a run with `waitingOn` waits for its child run; a step that accepts events
+ * needs the user. Anything else waits for a time, or just waits.
  */
 function waitsForTheUser(summary: RunSummary): boolean {
   if (summary.approvals.length > 0) {
     return true;
   }
   return summary.waitingOn === null && summary.accepts.length > 0;
+}
+
+/** A ◌ Waiting run: for its child run, until its timer, or else in its step. */
+function waitingWhat(summary: RunSummary, step: string, clock: ListClock): Phrase {
+  if (summary.waitingOn !== null) {
+    return runsListMessages.waitingForChildRun(shortRunId(summary.waitingOn)).phrase;
+  }
+  if (summary.nextTimer !== null) {
+    return runsListMessages.waitingUntil(dueAt(new Date(summary.nextTimer), clock)).phrase;
+  }
+  return runsListMessages.waitingIn(step).phrase;
 }
 
 function isStopped(summary: RunSummary): boolean {
@@ -108,10 +125,7 @@ function whatColumn(
     case "needsYou":
       return needsYouWhat(summary, workflow, step);
     case "waiting":
-      return summary.waitingOn === null
-        ? runsListMessages.waitingUntil(clockTime(summary.nextTimer ?? summary.updatedAt, clock))
-            .phrase
-        : runsListMessages.waitingForRun(summary.waitingOn).phrase;
+      return waitingWhat(summary, step, clock);
     case "done":
       return summary.cost > 0 ? runsListMessages.estimatedCost(money(summary.cost)).phrase : [];
     case "stopped":
@@ -122,16 +136,19 @@ function whatColumn(
 }
 
 /**
- * A run that needs the user: at a wait step with a description, the waiting
- * line's own words; for a tool approval, or a wait step without one, the step.
+ * A run that needs the user: for a tool approval, the step whose agent
+ * asked; at a wait step, the waiting line's own words, or the step when it
+ * has no description.
  */
 function needsYouWhat(
   summary: RunSummary,
   workflow: WorkflowDefinition | undefined,
   step: string,
 ): Phrase {
-  const description =
-    summary.approvals.length === 0 ? waitDescription(summary, workflow) : undefined;
+  if (summary.approvals.length > 0) {
+    return runsListMessages.waitingForApproval(step).phrase;
+  }
+  const description = waitDescription(summary, workflow);
   return description === undefined
     ? runsListMessages.waitingInStep(step).phrase
     : runsListMessages.waitingForYou(description).phrase;
@@ -192,6 +209,23 @@ export function startedAt(start: Date, clock: ListClock): StartedAt {
     return { day: "thisYear", date, time };
   }
   return { day: "earlier", date, year: day.year };
+}
+
+/**
+ * When a waiting run's timer is due, as the What column writes it: today's
+ * time, tomorrow, or a later day, in the list's time zone.
+ */
+export function dueAt(due: Date, clock: ListClock): DueAt {
+  const day = calendarDay(due, clock.timeZone);
+  const time = clockTime(due.toISOString(), clock);
+  if (sameDay(day, calendarDay(clock.now, clock.timeZone))) {
+    return { day: "today", time };
+  }
+  const tomorrow = calendarDay(new Date(clock.now.getTime() + dayInMs), clock.timeZone);
+  if (sameDay(day, tomorrow)) {
+    return { day: "tomorrow", time };
+  }
+  return { day: "later", date: { day: day.day, month: day.month }, time };
 }
 
 const dayInMs = 24 * 60 * 60 * 1000;

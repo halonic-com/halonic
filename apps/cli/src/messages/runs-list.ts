@@ -47,6 +47,15 @@ export type StartedAt =
   | { readonly day: "thisYear"; readonly date: CalendarDay; readonly time: string }
   | { readonly day: "earlier"; readonly date: CalendarDay; readonly year: number };
 
+/**
+ * When a waiting run's timer is due, in the computer's own time zone, as the
+ * What column writes it. Times are already written as "14:00".
+ */
+export type DueAt =
+  | { readonly day: "today"; readonly time: string }
+  | { readonly day: "tomorrow"; readonly time: string }
+  | { readonly day: "later"; readonly date: CalendarDay; readonly time: string };
+
 const statusLooks: Readonly<Record<ListedStatus, { readonly mark: Mark; readonly word: string }>> =
   {
     running: { mark: "working", word: "Running" },
@@ -117,12 +126,20 @@ export const runsListMessages = defineMessages("runsList", {
   inStep: (step: string) => phrase`In ${step}`,
   /** What: a run at a wait step, with the waiting line's own words. */
   waitingForYou: (description: string) => phrase`Waiting for you: ${description}`,
-  /** What: a wait step without a description, or a tool approval in an agent step. */
+  /** What: a wait step without a description. */
   waitingInStep: (step: string) => phrase`Waiting for you in the step ${step}`,
-  /** What: a run waiting for a time, written as "14:00". */
-  waitingUntil: (time: string) => phrase`Waiting until ${time}`,
-  /** What: a run waiting for a child run. */
-  waitingForRun: (runId: string) => phrase`Waiting for run ${runId}`,
+  /**
+   * What: a tool approval in an agent step (revision 31, M5). Studio's row
+   * names the tool's action; until that catalogue key is on `main`, the
+   * list names the step, never a guess at what the tool does.
+   */
+  waitingForApproval: (step: string) => phrase`Waiting for your approval in the step ${step}`,
+  /** What: a run waiting for a time: "Waiting until 14:00", "until tomorrow 08:00", "until 3 Dec 08:00". */
+  waitingUntil: (due: DueAt) => phrase`Waiting until ${dueInWords(due)}`,
+  /** What: a run waiting for a child run, by the child's short id. */
+  waitingForChildRun: (runId: string) => phrase`Waiting for child run ${runId}`,
+  /** What: a waiting run with no approval, child run, event or timer to wait for. */
+  waitingIn: (step: string) => phrase`Waiting in ${step}`,
   /** What: a completed run's estimated cost. Left out when the run made no priced call. */
   estimatedCost: (money: string) => phrase`Estimated cost ${money}`,
   /** What: a run stopped at its budget. */
@@ -202,6 +219,17 @@ function startedInWords(started: StartedAt): string {
       return `${dayInWords(started.date)} ${started.time}`;
     case "earlier":
       return `${dayInWords(started.date)} ${started.year}`;
+  }
+}
+
+function dueInWords(due: DueAt): string {
+  switch (due.day) {
+    case "today":
+      return due.time;
+    case "tomorrow":
+      return `tomorrow ${due.time}`;
+    case "later":
+      return `${dayInWords(due.date)} ${due.time}`;
   }
 }
 
