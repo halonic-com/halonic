@@ -139,7 +139,7 @@ async function gitdirOf(workingFolder: string, dotGit: string): Promise<string |
  * - the main `.git` folder has no `commondir`;
  * - each linked worktree's folder in it, and the git folder a linked worktree's or a
  *   submodule's `.git` file leads to, has none or says `../..` (a submodule's, in
- *   `.git/modules`, has none);
+ *   `.git/modules` and not under `worktrees`, has none);
  * - a submodule's git folder in `.git/modules` has none.
  *
  * @throws when one is found, naming it, so the session doesn't open.
@@ -165,10 +165,11 @@ export async function checkCommondirs(workingFolder: string): Promise<void> {
   } else if (stat?.isFile()) {
     const gitFolder = await gitdirOf(workingFolder, dotGit);
     if (gitFolder !== null) {
-      // A submodule's git folder is in `.git/modules` and has no `commondir`; only a linked worktree's says `../..`.
+      // A submodule's git folder is in `.git/modules` and has no `commondir`; a linked
+      // worktree's (of the main repository or of a submodule, in `.../worktrees/<name>`) says `../..`.
       const inModules =
-        gitFolder.split(sep).includes("modules") &&
-        gitFolder.includes(`${sep}.git${sep}modules${sep}`);
+        gitFolder.includes(`${sep}.git${sep}modules${sep}`) &&
+        basename(dirname(gitFolder)) !== "worktrees";
       await expect(join(gitFolder, "commondir"), inModules ? [null] : [null, linkedCommondir]);
     }
   }
