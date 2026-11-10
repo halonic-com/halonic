@@ -594,6 +594,9 @@ importers:
 
   packages/adapters/harness-codex:
     dependencies:
+      '@halonicjs/adapter-harness-kit':
+        specifier: workspace:*
+        version: link:../harness-kit
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

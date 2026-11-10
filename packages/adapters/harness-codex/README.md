@@ -10,9 +10,21 @@ secrets and approvals stay in Halonic.
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-harness-codex`
 
-So far it has `detectCodex` and `codexEnvironment`; starting a run (`start`,
-`send`, `cancel`) follows with the `app-server` client (HAL-194 build plan,
-D2 and D3).
+So far it has `detectCodex` and `codexEnvironment`, and, inside the package,
+the reader that turns the notifications of `codex app-server` into run
+events. Starting a run (`start`, `send`, `cancel`) follows (HAL-194 build
+plan, D3).
+
+## Reading Codex's notifications
+
+The reader turns a shell command, a file change, a call to an MCP tool and
+an image Codex looks at into `tool.called` and `tool.result` (`shell`,
+`apply_patch`, `mcp__<server>__<tool>`, `view_image`). A call to the
+bridge's MCP server (`halonic`) and every model call are left out: the bridge
+records those. `turn/completed` is the run's final `agent.finished`, with the
+agent's last message as output; a failed or interrupted turn ends the run
+with an error. Other threads, and notifications and items it doesn't know,
+are skipped. Subagents (Codex's `collabAgentToolCall`) aren't reported yet.
 
 ## Example
 
