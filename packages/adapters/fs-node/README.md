@@ -1,8 +1,9 @@
 # @halonicjs/adapter-fs-node
 
-The `DefinitionStore`, `RunStore` and `TrustStore` ports on the local file
-system with Node: workspace files are plain files under a root folder, each
-run is a JSONL log, and each trust record is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
+The `DefinitionStore`, `RunStore`, `TrustStore` and `AgentPlacementStore`
+ports on the local file system with Node: workspace files are plain files
+under a root folder, each run is a JSONL log, and each trust record and
+each agent's "this computer" choice is a JSON file in the profile. The CLI (`halonic validate`, `test`, `run`) and the parity run use
 it.
 
 - **Layer:** adapters
@@ -157,3 +158,21 @@ inside a workspace. It passes the shared `TrustStore` contract suite.
   names the file instead; deleting it removes the record.
 - `list` sorts by location in code-unit order and leaves other files in the
   folder alone.
+
+## "This computer" choices in the profile
+
+`new FileAgentPlacementStore(root)` keeps each agent's choice to run on
+this computer, outside a sandbox, as one JSON file in `root`, a folder in
+the user's profile such as `<profile>/placements`, never inside a workspace,
+so an agent that edits the workspace can't take itself out of its sandbox.
+It passes the shared `AgentPlacementStore` contract suite.
+
+- **File names** are the SHA-256 of the JSON of `[location, agent]` as
+  UTF-16 code units, as for trust records. JSON keeps a location ending in
+  `/` from running into the agent id.
+- **Writes** go through a temporary file and a rename, with the same modes
+  as trust records.
+- **Damage:** when a choice can't be read, or the file holds another
+  agent's key, `get` throws naming the agent and its workspace, and
+  `remove` deletes the file without reading it. `AgentPlacement` in
+  `core/app` then runs the agent in a sandbox.
