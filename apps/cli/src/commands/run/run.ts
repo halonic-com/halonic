@@ -41,6 +41,7 @@ import { runViewDefinitions } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { runInputOf } from "./input.ts";
 import { runResult, stoppedResult } from "./result.ts";
+import { stuckTimerWatch } from "./stuck-timers.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
 
 /** What `run` uses on this computer, so tests can fix the clock, the ids and the profile. */
@@ -81,18 +82,18 @@ export async function runWorkflow(
   const workspace = await loadWorkspace(dir.store);
   await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   const runInput = await runInputOf(optionText(input, "input"), context.cwd);
-  const engineError = new AbortController();
+  const stuck = stuckTimerWatch();
   const engine = await openLocalEngine({
     workspace,
     workspaceRoot: dir.root,
     secrets: context.secrets,
     http: setup.http,
-    // A step the scheduler has to retry stops the follow with its error, so it's never lost.
-    reportError: (error) => engineError.abort(error),
+    // The scheduler retries a failed step; one that keeps failing stops the command with its error.
+    reportError: stuck.report,
     ...(setup.profile === undefined ? {} : { environment: setup.profile }),
     ...setup.engine,
   });
-  const signal = AbortSignal.any([context.signal, engineError.signal]);
+  const signal = AbortSignal.any([context.signal, stuck.signal]);
   try {
     const events = eventsOf(input);
     const run = await followWithEvents(
@@ -111,8 +112,8 @@ export async function runWorkflow(
       clock: setup.clock(),
     });
   } catch (error) {
-    if (engineError.signal.aborted) {
-      throw engineError.signal.reason;
+    if (stuck.signal.aborted) {
+      throw stuck.signal.reason;
     }
     if (error instanceof RunFollowStopped) {
       return stoppedResult(error.events, workspace);
