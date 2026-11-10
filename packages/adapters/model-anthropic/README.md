@@ -7,4 +7,20 @@ The model provider for Anthropic's Messages API: one call goes to `POST {baseUrl
 - **Runtime:** any
 - **Public API:** `@halonicjs/adapter-model-anthropic`
 
-The package is being built in small pull requests (HAL-2921). This first part turns a chat request into a Messages API body and reads a Messages API reply back into a chat response. The provider itself, streaming and the factory follow.
+## Example
+
+```ts
+import { AnthropicProvider } from "@halonicjs/adapter-model-anthropic";
+
+const model = new AnthropicProvider({ id: "claude", http: { fetch }, key: readKey });
+const answer = await model.chat({
+  model: "claude-sonnet-5-5",
+  messages: [{ role: "user", content: "Hi" }],
+});
+```
+
+`key` is a function that gives the key for one call; the key only goes into the `x-api-key` header. A failed call throws a `ModelCallError` whose reason says why: `refused` (401, 403, an overload and other errors), `model-missing` (404) or `offline`. The message keeps the API's own error text, never after 401 or 403.
+
+The Messages API has no plain JSON mode, so the provider says `jsonOutput: false`. Settings only Anthropic knows, such as `thinking`, go in `params.extra`. Thinking comes back as `reasoning`, and its blocks as the replay that the next turn sends back.
+
+The package is being built in small pull requests (HAL-2921). Streaming and the factory follow.
