@@ -20,12 +20,14 @@ export interface NextItem {
  */
 export type BackLink =
   | {
-      readonly kind: "run" /** The run's name as Studio shows it, such as `01JD8Q`. */;
+      readonly kind: "run";
+      /** The run's name as Studio shows it, such as `01JD8Q`. */
       readonly runName: string;
       readonly open: () => void;
     }
   | {
-      readonly kind: "chat" /** The agent's name as the workspace shows it. */;
+      readonly kind: "chat";
+      /** The agent's name as the workspace shows it. */
       readonly agentName: string;
       readonly open: () => void;
     };
