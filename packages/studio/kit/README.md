@@ -1258,8 +1258,22 @@ scrolling row.
   points at the `id` of the visible hint that says why.
 - With one hub, the feature hides the hub filter; the kit doesn't decide that.
 
-The picker chip ("Hub: All hubs ⌄", which opens the picker sheet on a phone and a Menu on desktop)
-comes in its own pull request, after the PickerSheet.
+- A **picker chip** ("Hub: All hubs ⌄") goes in a row with other filters, on both sizes: Runs, and
+  Search's In and Hub. Picker chips come before the on/off chips. With nothing picked it's the off
+  chip with the `all` words; with a value picked, the on chip with that value and no check, since
+  the changed word shows the state. Long values end in an ellipsis at 160px.
+- It's a button named by its label and its words ("Hub: acme"). On desktop it opens a Menu of radio
+  items, on a phone the picker sheet titled with the label, the same switch the Select makes. The
+  `all` option comes first; a pick calls `onChange` with the value, or `undefined` for all, and
+  focus goes back to the chip. Closing the sheet keeps the value.
+
+```tsx
+<FilterChips
+  label="Filters"
+  pickers={[{ label: "Hub", all: "All hubs", options: hubs, value: hub, onChange: setHub }]}
+  toggles={[{ label: "Test runs", pressed: testRuns, onChange: setTestRuns }]}
+/>;
+```
 
 ## Field
 

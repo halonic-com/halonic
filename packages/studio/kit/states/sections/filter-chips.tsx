@@ -8,12 +8,33 @@ const hubs = [
   { value: "beta", label: "beta" },
 ];
 
+const places = [
+  { value: "agents", label: "Agents" },
+  { value: "routines", label: "Routines and their schedules" },
+];
+
 function Chips() {
   return (
     <>
       <FilterChips label="Hub" options={hubs} value="acme" onChange={() => undefined} />
       <FilterChips
         label="Filters"
+        pickers={[
+          {
+            label: "Hub",
+            all: "All hubs",
+            options: hubs.slice(1),
+            value: undefined,
+            onChange: () => undefined,
+          },
+          {
+            label: "In",
+            all: "Everything",
+            options: places,
+            value: "routines",
+            onChange: () => undefined,
+          },
+        ]}
         toggles={[{ label: "Test runs", pressed: false, onChange: () => undefined }]}
       />
     </>
@@ -47,7 +68,8 @@ export const filterChipsSection: PartSection = {
   id: "filter-chips",
   number: "15.7",
   name: "FilterChips",
-  order: "kit 15.7 · left to right: a one-of row with acme on, an off toggle",
+  order:
+    "kit 15.7 · left to right: a one-of row with acme on; then a picker with nothing picked, a picker with a long value picked (an ellipsis at 160px), an off toggle",
   notApplicable: "error (a filter can't be wrong)",
   rows: [
     { name: "Default", copies: () => <Chips /> },
