@@ -11,8 +11,18 @@ import { gitlinkMode, index } from "./git-index.test-helper.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
 
-// chmod does not stop writes on Windows, nor for root.
-const cannotBlockWrites = process.platform === "win32" || process.getuid?.() === 0;
+/**
+ * Fails a test that blocks writes with a folder mode when it runs as root,
+ * which ignores modes. A skip would pass silently, and its name counts it as
+ * a Windows skip (HAL-4500).
+ */
+function failUnderRoot(): void {
+  if (process.getuid?.() === 0) {
+    throw new Error(
+      "This test can't run as root: root ignores the folder mode it sets. Run the tests as a normal user.",
+    );
+  }
+}
 
 let base: string;
 let git: string;
@@ -152,9 +162,10 @@ verifies("sandbox-srt.session", () => {
       expect(blocks).toEqual([]);
     });
 
-    it.skipIf(cannotBlockWrites)(
+    it.skipIf(process.platform === "win32")(
       "[platform:win32] still reports the refused write, then rejects close(), when an undo fails",
       async () => {
+        failUnderRoot();
         const linked = join(git, "worktrees", "feature");
         const commondir = join(linked, "commondir");
         await writeFile(commondir, "../..\n");
@@ -170,9 +181,10 @@ verifies("sandbox-srt.session", () => {
       },
     );
 
-    it.skipIf(cannotBlockWrites)(
+    it.skipIf(process.platform === "win32")(
       "[platform:win32] touches nothing under a link it could not turn back into a folder",
       async () => {
+        failUnderRoot();
         const outside = join(base, "outside");
         await mkdir(outside);
         await writeFile(join(outside, "commondir"), "outside\n");

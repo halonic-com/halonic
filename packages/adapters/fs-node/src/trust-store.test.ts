@@ -33,6 +33,19 @@ function fileFor(root: string, location: string): string {
   return join(root, `${createHash("sha256").update(location, "utf16le").digest("hex")}.json`);
 }
 
+/**
+ * Fails a test that blocks access with a folder mode when it runs as root,
+ * which ignores modes. A skip would pass silently, and its name counts it as
+ * a Windows skip (HAL-4500).
+ */
+function failUnderRoot(): void {
+  if (process.getuid?.() === 0) {
+    throw new Error(
+      "This test can't run as root: root ignores the folder mode it sets. Run the tests as a normal user.",
+    );
+  }
+}
+
 const makeTrustStore: MakeTrustStore = async () => {
   const root = await tempFolder();
   return {
@@ -299,9 +312,10 @@ verifies("fs-node.trust-store-files", () => {
       expect((await readdir(root)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
     });
 
-    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    it.skipIf(process.platform === "win32")(
       "[platform:win32] needs POSIX links, modes and signals: passes on an error reading the folder",
       async () => {
+        failUnderRoot();
         const root = await tempFolder();
         const store = new FileTrustStore(root);
         await store.grant(trustRecord("/workspaces/acme"));
