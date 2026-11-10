@@ -266,7 +266,7 @@
     },
     {
       "name": "a byte order mark before the record",
-      "text": "﻿{\"version\":1,\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
+      "text": "\uFEFF{\"version\":1,\"pid\":5151,\"host\":\"this-computer\",\"takenAt\":\"2026-11-10T11:59:55.000Z\"}",
       "stale": false
     },
     {
