@@ -153,6 +153,7 @@ export {
   type SkeletonBarProps,
   type SkeletonBarWidth,
 } from "./skeleton-bar/skeleton-bar.tsx";
+export { Slider, type SliderProps, type SliderUnavailable } from "./slider/slider.tsx";
 export {
   StatusChip,
   type StatusChipProps,

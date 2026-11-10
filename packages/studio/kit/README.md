@@ -978,6 +978,59 @@ round it (`hit-touch`).
 inside one (Settings), where toasts wait, the Switch sits in a Field and the screen sets the
 Field's `error` until the next change, and announces it.
 
+## Slider
+
+A value picked along a range that applies at once: Appearance's panel opacity. It's a native
+range input drawn by the kit (`slider`, in `slider.css`), so the browser keeps the keyboard and
+screen reader behaviour. Put it in a Field, whose label names it.
+
+```tsx
+<Field label="Panel opacity">
+  <Slider
+    min={10}
+    max={100}
+    step={5}
+    value={opacity}
+    onChange={setOpacity}
+    onCommit={saveOpacity}
+    format={(v) => `${v}%`}
+  />
+</Field>;
+```
+
+| Prop                 | What it is                                                                        |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `min`, `max`, `step` | The range; `step` is 1 unless given                                               |
+| `value`              | Where the thumb is                                                                |
+| `onChange`           | Called with every value while it moves. Pass it back as `value`, or it won't move |
+| `onCommit`           | Called to save: once when a drag lets go, and on every key step                   |
+| `format`             | The value as shown to the right and as its `aria-valuetext`: `(v) => v + "%"`     |
+| `unavailable`        | `{ reason }`, the `id` of the visible text that says why. No `disabled` prop      |
+
+| State         | What shows                                                                                                      |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| Default       | A 6px track: `surface-muted` with a `border-control` edge, `primary` with no edge up to the thumb               |
+| Thumb         | A 16px `primary` circle in a 2px `surface-raised` ring; the value 12px right, tabular, at least 4ch wide        |
+| Hover         | The thumb turns `primary-hover`, also while pressed                                                             |
+| Focus         | The standard focus ring round the thumb, in place of its ring                                                   |
+| Unavailable   | 45% (60% for more contrast), `GrayText` in high contrast. Focusable; keeps its value; drags and keys do nothing |
+| Error         | In a Field with an error: the Field's error line under it, which describes it                                   |
+| High contrast | A `CanvasText` edge round the track; the filled part and the thumb `Highlight`                                  |
+
+**Saving.** A drag shows each value at once through `onChange` and saves once, when you let go.
+The arrow keys, Page Up and Down, Home and End save on every step, because each one is a pick.
+Both come from the browser's own `change` event. **A failed save** puts the thumb back: pass the
+old `value`. Outside a modal Dialog the screen says so with a toast; inside one (Settings) it sets
+the Field's `error`, as for the Switch.
+
+**On a phone** the control is 48px high, so the whole height is the hit area; the track and thumb
+stay 6px and 16px, and the thumb gets a 24px grab area round it. Keep it 16px from the screen
+edges (the page's inset does), out of Android's back-gesture area.
+
+**Browsers.** The desktop webviews are Chromium and WebKit, which have no pseudo-element for the
+filled part, so the track paints it as a gradient up to `--slider-fill`, which the Slider sets.
+Served Studio can open in Firefox, which gets `::-moz-range-progress`.
+
 ## RadioGroup
 
 One choice out of a few, shown all at once: how agents look things up, the ways to connect. For a

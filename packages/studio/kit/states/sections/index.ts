@@ -16,6 +16,7 @@ import { kbdSection } from "./kbd.tsx";
 import { listSection } from "./list.tsx";
 import { radioSection } from "./radio.tsx";
 import { selectSection } from "./select.tsx";
+import { sliderSection } from "./slider.tsx";
 import { statusChipSection } from "./status-chip.tsx";
 import { switchSection } from "./switch.tsx";
 import { tabsSection } from "./tabs.tsx";
@@ -43,6 +44,7 @@ export const SECTIONS: readonly PartSection[] = [
   actionBarSection,
   filterChipsSection,
   commandBoxSection,
+  sliderSection,
   formRowsSection,
   radioSection,
   copyButtonSection,

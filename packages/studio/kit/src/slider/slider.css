@@ -1,0 +1,221 @@
+/*
+ * The Slider's look (component specs 18.6): a native range input without its own look, 32px high
+ * (48px on a phone) so the whole height is the hit area. The track is 6px: `surface-muted` with a
+ * `border-control` edge, and `primary` without an edge from the start to the thumb. The thumb is a
+ * 16px `primary` circle in a 2px `surface-raised` ring, which the focus ring replaces.
+ *
+ * Chromium and WebKit have no pseudo-element for the filled part, so their track paints it as a
+ * gradient up to `--slider-fill`, which the component sets. Firefox (served Studio) gets
+ * `::-moz-range-progress`. Each engine needs its own rules: a selector list that names another
+ * engine's pseudo-element is dropped whole. It sits next to the Slider so theme.css stays under
+ * the size limit; theme.css imports it.
+ */
+@utility slider {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  /* The ring is drawn on the thumb; the outline only shows in forced colours. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+
+  /*
+   * Three layers under a transparent edge: the fill on top, reaching into the edge so the filled
+   * part has none; the `surface-muted` inside; the `border-control` edge under both.
+   */
+  &::-webkit-slider-runnable-track {
+    box-sizing: border-box;
+    height: 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    background:
+      linear-gradient(
+        to right,
+        var(--color-primary) var(--slider-fill, 0%),
+        transparent var(--slider-fill, 0%)
+      )
+      border-box,
+      linear-gradient(var(--color-surface-muted), var(--color-surface-muted)) padding-box,
+      linear-gradient(var(--color-border-control), var(--color-border-control)) border-box;
+  }
+
+  &::-moz-range-track {
+    box-sizing: border-box;
+    height: 6px;
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-muted);
+  }
+
+  &::-moz-range-progress {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+  }
+
+  /* 16px, centred on the track's 4px inside: (4 - 16) / 2. */
+  &::-webkit-slider-thumb {
+    appearance: none;
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    background-clip: padding-box;
+    box-shadow: 0 0 0 2px var(--color-surface-raised);
+    transition: background-color var(--default-transition-duration) var(--ease-standard);
+  }
+
+  &::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    background-clip: padding-box;
+    box-shadow: 0 0 0 2px var(--color-surface-raised);
+    transition: background-color var(--default-transition-duration) var(--ease-standard);
+  }
+
+  /*
+   * Through the variants, not plain :hover and :focus-visible, so hover waits for a real pointer
+   * (hover: hover) and the states page can force each state with the same rule.
+   */
+  @variant hover {
+    &::-webkit-slider-thumb {
+      background-color: var(--color-primary-hover);
+    }
+
+    &::-moz-range-thumb {
+      background-color: var(--color-primary-hover);
+    }
+  }
+
+  /* A pressed thumb shows the hover fill at once, also on a touch screen. */
+  @variant active {
+    &::-webkit-slider-thumb {
+      background-color: var(--color-primary-hover);
+    }
+
+    &::-moz-range-thumb {
+      background-color: var(--color-primary-hover);
+    }
+  }
+
+  @variant focus-visible {
+    &::-webkit-slider-thumb {
+      box-shadow: var(--focus-ring);
+    }
+
+    &::-moz-range-thumb {
+      box-shadow: var(--focus-ring);
+    }
+  }
+
+  /*
+   * On a phone the thumb takes a 24px grab area: a 4px transparent edge round the 16px circle.
+   * A shadow would start outside that edge, so the ring is an outline pulled back onto the circle,
+   * and the focus ring an accent outline at the grab area's edge.
+   */
+  @variant phone {
+    &::-webkit-slider-thumb {
+      width: 24px;
+      height: 24px;
+      margin-top: -10px;
+      border: 4px solid transparent;
+      box-shadow: none;
+      outline: 2px solid var(--color-surface-raised);
+      outline-offset: -4px;
+    }
+
+    &::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border: 4px solid transparent;
+      box-shadow: none;
+      outline: 2px solid var(--color-surface-raised);
+      outline-offset: -4px;
+    }
+
+    @variant focus-visible {
+      &::-webkit-slider-thumb {
+        box-shadow: none;
+        outline-color: var(--color-accent);
+        outline-offset: -2px;
+      }
+
+      &::-moz-range-thumb {
+        box-shadow: none;
+        outline-color: var(--color-accent);
+        outline-offset: -2px;
+      }
+    }
+  }
+
+  &[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /*
+   * Windows high contrast drops fills and gradients: the track keeps a `CanvasText` edge, the
+   * filled part and the thumb are `Highlight`, and an unavailable slider is `GrayText`.
+   */
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+
+    @variant focus-visible {
+      outline-color: Highlight;
+    }
+
+    &::-webkit-slider-runnable-track {
+      background:
+        linear-gradient(to right, Highlight var(--slider-fill, 0%), Canvas var(--slider-fill, 0%))
+        padding-box,
+        linear-gradient(CanvasText, CanvasText) border-box;
+    }
+
+    &::-moz-range-track {
+      border-color: CanvasText;
+      background-color: Canvas;
+    }
+
+    &::-moz-range-progress {
+      background-color: Highlight;
+    }
+
+    &::-webkit-slider-thumb {
+      background-color: Highlight;
+      box-shadow: 0 0 0 2px Canvas;
+    }
+
+    &::-moz-range-thumb {
+      background-color: Highlight;
+      box-shadow: 0 0 0 2px Canvas;
+    }
+
+    &[aria-disabled="true"]::-webkit-slider-runnable-track {
+      background:
+        linear-gradient(to right, GrayText var(--slider-fill, 0%), Canvas var(--slider-fill, 0%))
+        padding-box,
+        linear-gradient(GrayText, GrayText) border-box;
+    }
+
+    &[aria-disabled="true"]::-moz-range-track {
+      border-color: GrayText;
+    }
+
+    &[aria-disabled="true"]::-moz-range-progress {
+      background-color: GrayText;
+    }
+
+    &[aria-disabled="true"]::-webkit-slider-thumb {
+      background-color: GrayText;
+    }
+
+    &[aria-disabled="true"]::-moz-range-thumb {
+      background-color: GrayText;
+    }
+  }
+}

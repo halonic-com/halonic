@@ -140,6 +140,58 @@ describe("theme.css built by Tailwind: the Switch", () => {
   });
 });
 
+describe("theme.css built by Tailwind: the Slider", () => {
+  it("draws a 6px track, filled primary up to --slider-fill, and a 16px thumb in a 2px surface-raised ring, in each engine", async () => {
+    const css = await buildCss(["slider"]);
+    const desktop = css.slice(css.indexOf(".slider {"), css.indexOf("@media (width < 600px)"));
+    expect(desktop).toMatch(
+      /&::-webkit-slider-runnable-track \{[^}]*height: 6px;[^}]*var\(--color-primary\) var\(--slider-fill, 0%\)[^}]*var\(--color-surface-muted\)[^}]*var\(--color-border-control\)/,
+    );
+    expect(desktop).toMatch(
+      /&::-moz-range-track \{[^}]*height: 6px;[^}]*border: 1px solid var\(--color-border-control\);/,
+    );
+    expect(desktop).toMatch(
+      /&::-moz-range-progress \{[^}]*background-color: var\(--color-primary\);/,
+    );
+    for (const thumb of ["-webkit-slider-thumb", "-moz-range-thumb"]) {
+      expect(desktop).toContain(`&::${thumb} {`);
+      expect(desktop).toMatch(
+        new RegExp(
+          `&::${thumb} \\{[^}]*width: 16px;[^}]*background-color: var\\(--color-primary\\);[^}]*box-shadow: 0 0 0 2px var\\(--color-surface-raised\\);`,
+        ),
+      );
+    }
+    // Hover and focus come through the variants, so hover waits for (hover: hover).
+    expect(desktop).toMatch(
+      /&:hover \{\s*@media \(hover: hover\) \{\s*&::-webkit-slider-thumb \{\s*background-color: var\(--color-primary-hover\);\s*\}\s*&::-moz-range-thumb \{\s*background-color: var\(--color-primary-hover\);/,
+    );
+    expect(desktop).toMatch(
+      /&:active \{\s*&::-webkit-slider-thumb \{\s*background-color: var\(--color-primary-hover\);/,
+    );
+    expect(desktop).toMatch(
+      /&:focus-visible \{\s*&::-webkit-slider-thumb \{\s*box-shadow: var\(--focus-ring\);\s*\}\s*&::-moz-range-thumb \{\s*box-shadow: var\(--focus-ring\);/,
+    );
+  });
+
+  it("gives the thumb a 24px grab area on a phone, and keeps an edge and system colours in high contrast", async () => {
+    const css = await buildCss(["slider"]);
+    const phone = css.slice(css.indexOf("@media (width < 600px)"), css.indexOf("&[aria-disabled"));
+    expect(phone).toMatch(
+      /&::-webkit-slider-thumb \{\s*width: 24px;\s*height: 24px;\s*margin-top: -10px;\s*border: 4px solid transparent;/,
+    );
+    expect(phone).toMatch(
+      /outline: 2px solid var\(--color-surface-raised\);\s*outline-offset: -4px;/,
+    );
+    const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(forced).toMatch(/forced-color-adjust: none;/);
+    expect(forced).toMatch(/&::-moz-range-track \{\s*border-color: CanvasText;/);
+    expect(forced).toMatch(/&::-webkit-slider-thumb \{\s*background-color: Highlight;/);
+    expect(forced).toMatch(
+      /&\[aria-disabled="true"\]::-moz-range-thumb \{\s*background-color: GrayText;/,
+    );
+  });
+});
+
 describe("theme.css built by Tailwind: the Radio", () => {
   it("draws a picked circle's 5px ring, in Highlight round a Canvas centre in high contrast", async () => {
     const css = await buildCss(["checked:border-5", "radio-forced"]);
