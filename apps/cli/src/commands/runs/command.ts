@@ -3,6 +3,7 @@ import { runsMessages } from "../../messages/runs.ts";
 import { runsListMessages } from "../../messages/runs-list.ts";
 import { dirOption, workspaceDir } from "../../workspace-dir.ts";
 import { listRuns, type RunListSetup } from "./list.ts";
+import { showRun } from "./show.ts";
 
 /** The list's setup for a real command line: the computer's clock and time zone, and its profile folder. */
 const computerSetup: RunListSetup = {
@@ -33,7 +34,20 @@ export function runsCommandWith(setup: RunListSetup): CliCommand {
       limit: { type: "string", valueName: "n", description: runsListMessages.limitOption() },
       dir: dirOption,
     },
+    subcommands: [showCommandWith(setup)],
     run: (input, context) => listRuns(input, context, setup),
+  };
+}
+
+/** `halonic runs show <run-id>`: what one run did, from its run log (cli-output 3.4). */
+function showCommandWith(setup: RunListSetup): CliCommand {
+  return {
+    name: "show",
+    usage: "<run-id> [--dir <folder>]",
+    summary: runsMessages.showSummary(),
+    action: (input) => runsMessages.showAction(input.positionals[0] ?? ""),
+    options: { dir: dirOption },
+    run: (input, context) => showRun(input, context, setup),
   };
 }
 

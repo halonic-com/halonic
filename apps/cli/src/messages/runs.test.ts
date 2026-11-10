@@ -67,6 +67,18 @@ describe("runs's sentences", () => {
     ]);
   });
 
+  it("has runs show's help line and its action", () => {
+    expect(words(runsMessages.showSummary())).toBe("Show what one run did");
+    expect(words(runsMessages.showAction("01jd8q"))).toBe("show run 01jd8q");
+  });
+
+  it("says runs show takes one run id, with none or with several", () => {
+    expect(words(runsMessages.showTakesOneRunId([]))).toBe("halonic runs show needs a run id.");
+    expect(words(runsMessages.showTakesOneRunId(["01jd8q", "01jd6m"]))).toBe(
+      "halonic runs show takes one run id, and you gave two: 01jd8q, 01jd6m.",
+    );
+  });
+
   it("has runs show's heading for every way a run can be", () => {
     const heading = (started: string, end: ShownEnd, test = false) =>
       words(

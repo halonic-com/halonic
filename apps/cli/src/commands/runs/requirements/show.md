@@ -1,0 +1,37 @@
+# cli.commands.runs.show
+
+- Status: active
+- Since: 0.1.0
+- Source: HAL-2742; C174 on HAL-2000 and HAL-1984; the CLI output design on HAL-1981 (cli-output section 3.4, "`halonic runs show <run-id>`" and "Which id", revisions 24 to 38), approved by the board on HAL-2123
+
+The `halonic runs show <run-id>` command shall show one run of the workspace, real or test, found by its short id or its full id in any case. It shall start with the heading: the workflow's title, the workspace, "run" or "test run" with the short id, when it started and how it ended, with times written by the list's When rule. With `--json`, it shall give the run's events, oldest first, with full ids. It shall never print where the run log is. It shall exit 0 for any run it shows, failed or not. An unknown id shall stop with "There's no run" and the way to the list (`not_found`); a short id that two runs end in shall stop with the way to the full ids (`invalid_input`); no run id or more than one shall be a usage error. Every suggested command shall keep the user's `--dir`.
+
+## Examples
+
+- Given a run of Support reply that finished at 10:31,
+  when `halonic runs show a1b2c3` is run,
+  then it starts with "Support reply in acme · run a1b2c3 · started 10:31, finished 10:31" and exits 0.
+- Given a run that failed yesterday at 16:41,
+  when `halonic runs show 01jd6m` is run,
+  then its heading ends "started yesterday 16:40, failed yesterday 16:41", on stdout, and it exits 0.
+- Given a run waiting for the user since 10:41,
+  when `halonic runs show 09d9a0` is run,
+  then its heading ends "started 10:40, waiting for you since 10:41".
+- Given a test run,
+  when `halonic runs show a1b2c3` is run,
+  then its heading says "test run a1b2c3".
+- Given the run a1b2c3,
+  when `halonic runs show A1B2C3` or its full id is run,
+  then it shows that run.
+- Given no run 01jd8x,
+  when `halonic runs show 01jd8x --dir ./acme` is run,
+  then it stops with "✕ There's no run 01jd8x in acme." and "See recent runs with halonic runs --dir ./acme.", exit 4.
+- Given two runs whose ids end in a1b2c3,
+  when `halonic runs show A1B2C3` is run,
+  then it stops with "✕ Two runs in acme end in a1b2c3." and "Use the full id, as halonic runs --json shows it.", exit 2.
+- Given no run id,
+  when `halonic runs show` is run,
+  then it stops with "✕ halonic runs show needs a run id." and its usage line, exit 2.
+- Given a finished run,
+  when `halonic runs show a1b2c3 --json` is run,
+  then it gives the run's events, oldest first, each with the full run id.

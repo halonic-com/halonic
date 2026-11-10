@@ -1,5 +1,5 @@
 import type { Mark } from "../output/paint.ts";
-import { listInWords } from "./counts.ts";
+import { countInWords, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { dim, markPart, phrase } from "./phrase.ts";
 import { runMessages } from "./run.ts";
@@ -38,6 +38,13 @@ export type ShownEnd =
  */
 export const runsMessages = defineMessages("runs", {
   summary: () => phrase`List runs, show what one did, or answer one that's waiting for you`,
+  /**
+   * `show`'s line in `halonic runs --help`, from the words of {@link summary}
+   * (team wording on HAL-2742, as HAL-2282 allows).
+   */
+  showSummary: () => phrase`Show what one run did`,
+  /** What `runs show` was doing, for "✕ Couldn't show run 01JD8Q: there's no workspace.yaml here.". */
+  showAction: (runId: string) => phrase`show run ${runId}`,
   /** What `runs send` was doing, for "✕ Couldn't send approve to run 01JD8Q: …". */
   sendAction: (event: string, runId: string) => phrase`send ${event} to run ${runId}`,
   /** The same, when there's no such run: "✕ Couldn't send approve: …". */
@@ -141,6 +148,15 @@ export const runsMessages = defineMessages("runs", {
     }
     return phrase`${title} was cancelled before it started.`;
   },
+  /**
+   * `runs show` without a run id, or with more than one (usage, exit 2); the
+   * usage line is line 2. The shape of `init`'s "takes one folder name"
+   * (cli-output 1.3); team wording on HAL-2742, as HAL-2282 allows.
+   */
+  showTakesOneRunId: (given: readonly string[]) =>
+    given.length === 0
+      ? phrase`halonic runs show needs a run id.`
+      : phrase`halonic runs show takes one run id, and you gave ${countInWords(given.length)}: ${given.join(", ")}.`,
 });
 
 function notWaitingInWords(why: NotWaiting): string {

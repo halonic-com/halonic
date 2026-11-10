@@ -70,6 +70,19 @@ export async function openWorkspaceDir(
 }
 
 /**
+ * The folder as a suggested command repeats it: the user's own `--dir`, as
+ * typed relative to here, or `undefined` without one, so the suggestion
+ * stays as short as what the user typed.
+ *
+ * @example
+ * givenDir({ positionals: [], options: { dir: "acme" } }, workspace); // "./acme"
+ * givenDir({ positionals: [], options: {} }, workspace); // undefined
+ */
+export function givenDir(input: CommandInput, workspace: WorkspaceDir): string | undefined {
+  return typeof input.options["dir"] === "string" ? workspace.shown : undefined;
+}
+
+/**
  * The folder a command was pointed at holds no workspace: `not_found`, so
  * exit 4. Its message is the reason and its fix the next step; the command's
  * own action makes line 1, as in "✕ Couldn't check ./downloads: there's no

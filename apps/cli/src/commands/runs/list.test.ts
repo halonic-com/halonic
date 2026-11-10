@@ -1,124 +1,42 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join, sep } from "node:path";
-import type { RunEvent, RunEventBody } from "@halonicjs/events";
-import type { ProfileEnvironment } from "@halonicjs/profile";
+import { mkdir } from "node:fs/promises";
+import { join, sep } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
+import {
+  type AcmeRuns,
+  done,
+  makeAcmeRuns,
+  now,
+  removeAcmeRuns,
+  running,
+  type StoredRun,
+  storeRuns as storeAcmeRuns,
+  supportReply,
+  waiting,
+  writeFiles,
+} from "../../test/acme-runs.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
-import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
 import { runsCommandWith } from "./command.ts";
 
+let acmeRuns: AcmeRuns;
 let folder: string;
 let acme: string;
-let profile: ProfileEnvironment;
 
-/** Noon on 10 Nov 2026 in UTC, so runs from this morning read as today's time. */
-const now = new Date(Date.UTC(2026, 10, 10, 12, 0));
-
-const runsCommand = () => runsCommandWith({ clock: () => ({ now, timeZone: "UTC" }), profile });
-
-/** Acme's support hub: Support reply, with a step to draft and one to approve. */
-const supportReply = [
-  "id: support-reply",
-  "name: Support reply",
-  "initial: draft",
-  "states:",
-  "  draft:",
-  "    description: Draft a reply",
-  "    type: final",
-  "  review:",
-  "    description: Approve this reply?",
-  "    type: final",
-  "",
-].join("\n");
+const runsCommand = () =>
+  runsCommandWith({ clock: () => ({ now, timeZone: "UTC" }), profile: acmeRuns.profile });
 
 beforeEach(async () => {
-  folder = await mkdtemp(join(tmpdir(), "halonic-cli-runs-list-"));
-  acme = join(folder, "acme");
-  await mkdir(join(folder, "profile"));
-  await writeFiles(acme, {
-    "workspace.yaml": "id: acme\nname: Acme\n",
-    "hubs/support/hub.yaml": "id: support\nname: Support\n",
-    "hubs/support/workflows/support-reply.workflow.yaml": supportReply,
-  });
-  profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "profile") } };
+  acmeRuns = await makeAcmeRuns("runs-list");
+  ({ folder, acme } = acmeRuns);
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeAcmeRuns(acmeRuns);
 });
 
-async function writeFiles(root: string, files: Readonly<Record<string, string>>): Promise<void> {
-  for (const [path, text] of Object.entries(files)) {
-    await mkdir(dirname(join(root, path)), { recursive: true });
-    await writeFile(join(root, path), text);
-  }
-}
-
-/** Today at `time` ("10:31:18"), in UTC. */
-function today(time: string): string {
-  return `2026-11-10T${time}.000Z`;
-}
-
-interface StoredRun {
-  readonly id: string;
-  readonly start: string;
-  /** The events after `run.started`, each with its time. */
-  readonly after?: readonly (readonly [string, RunEventBody])[];
-  readonly kind?: "run" | "test";
-  readonly workflowId?: string;
-}
-
-/** Stores runs of Acme's Support reply in the profile folder, as `halonic run` would. */
-async function storeRuns(...runs: readonly StoredRun[]): Promise<void> {
-  const store = await openWorkspaceRuns(acme, profile);
-  for (const run of runs) {
-    const bodies: (readonly [string, RunEventBody])[] = [
-      [
-        run.start,
-        {
-          type: "run.started",
-          hubId: "support",
-          workflowId: run.workflowId ?? "support-reply",
-          input: {},
-          kind: run.kind ?? "run",
-          definitionsVersion: "v1",
-        },
-      ],
-      ...(run.after ?? []),
-    ];
-    const events = bodies.map(
-      ([at, body], index) => ({ ...body, runId: run.id, seq: index + 1, at }) as RunEvent,
-    );
-    const result = await store.append(run.id, 0, events);
-    expect(result.ok).toBe(true);
-  }
-}
-
-const running: StoredRun = {
-  id: "run_mfx3k2a1_09d9c0",
-  start: today("10:53:00"),
-  after: [[today("10:53:01"), { type: "state.entered", state: "draft" }]],
-};
-const waiting: StoredRun = {
-  id: "run_mfx3k2a1_09d9a0",
-  start: today("10:40:00"),
-  after: [
-    [today("10:40:30"), { type: "state.entered", state: "review" }],
-    [today("10:41:00"), { type: "run.waiting", state: "review", events: ["approve", "reject"] }],
-  ],
-};
-const done: StoredRun = {
-  id: "run_mfx3k2a1_a1b2c3",
-  start: today("10:31:00"),
-  after: [
-    [today("10:31:01"), { type: "state.entered", state: "draft" }],
-    [today("10:31:18"), { type: "run.completed", state: "draft", context: {} }],
-  ],
-};
+const storeRuns = (...runs: readonly StoredRun[]) => storeAcmeRuns(acmeRuns, ...runs);
 
 async function runsIn(cwd: string, ...args: string[]): Promise<{ code: number; io: CapturedIo }> {
   const io = captureIo(cwd);

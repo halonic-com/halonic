@@ -38,7 +38,7 @@ import {
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
 import type { RunClock } from "../../run-times.ts";
-import { type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
+import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { listedRun } from "./listed-run.ts";
 
@@ -235,9 +235,4 @@ async function runRows(
       ];
     }),
   );
-}
-
-/** The user's own `--dir`, as a suggested command repeats it; `undefined` without one. */
-function givenDir(input: CommandInput, workspace: OpenWorkspaceDir): string | undefined {
-  return typeof input.options["dir"] === "string" ? workspace.shown : undefined;
 }
