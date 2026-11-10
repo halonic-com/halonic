@@ -173,6 +173,25 @@ verifies("app.assistant-untrusted-items-only", () => {
     expect(store.files.has(".npmrc")).toBe(false);
   });
 
+  it("reads trust when a queued write runs, not when it is queued", async () => {
+    const store = new HoldingStore("package.json");
+    const { trust, review } = setUp({ trusted: true, store });
+    const first = proposeNew(review, "package.json");
+    await store.reached;
+    const second = review.propose({
+      path: "package.json",
+      content: "second\n",
+      expected: await digestOf("planted\n"),
+      card: k1,
+    });
+    trust.trusted = false;
+    store.release();
+    expect((await first).status).toBe("written");
+    expect(await second).toEqual({ status: "refused", reason: "untrusted" });
+    expect(store.files.get("package.json")).toBe("planted\n");
+    expect(store.log).toEqual(["write package.json"]);
+  });
+
   it("keeps the mark when the file is written again while trusted", async () => {
     const { trust, review, records } = setUp({ trusted: false });
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
@@ -199,6 +218,40 @@ verifies("app.assistant-untrusted-items-only", () => {
     expect(read.status === "found" && read.record.writtenUntrusted).toBeUndefined();
   });
 });
+
+/**
+ * A store that holds the first write of one path until the test releases
+ * it, so a second write to that path waits in the file's turn behind it.
+ */
+class HoldingStore extends TestDefinitionStore {
+  private readonly held: string;
+  private readonly arrived = Promise.withResolvers<void>();
+  private readonly gate = Promise.withResolvers<void>();
+
+  constructor(held: string) {
+    super({ [clerk]: fast }, digest);
+    this.held = held;
+  }
+
+  /** Settles once the held write has started. */
+  get reached(): Promise<void> {
+    return this.arrived.promise;
+  }
+
+  release(): void {
+    this.gate.resolve();
+  }
+
+  override async write(
+    ...args: Parameters<TestDefinitionStore["write"]>
+  ): ReturnType<TestDefinitionStore["write"]> {
+    if (args[0] === this.held) {
+      this.arrived.resolve();
+      await this.gate.promise;
+    }
+    return super.write(...args);
+  }
+}
 
 /**
  * A store that refuses one path the way a folder store refuses a path

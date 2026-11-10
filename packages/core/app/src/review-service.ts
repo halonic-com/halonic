@@ -68,16 +68,21 @@ export class ReviewService {
    * Halonic item while the workspace is untrusted
    * (`app.assistant-untrusted-items-only`), is refused without touching the
    * store. So is a path the store refuses, such as one through a symlink.
-   * Trust is read on every call; a write while untrusted marks the record
-   * `writtenUntrusted` until the record goes.
+   * Trust is read on every write, in the file's turn; a write while
+   * untrusted marks the record `writtenUntrusted` until the record goes.
    */
   propose(write: ProposedWrite): Promise<ProposeOutcome> {
-    const trusted = this.files.isTrusted();
-    const refusal = proposalRefusal(write.path, trusted);
-    if (refusal !== null) {
-      return Promise.resolve({ status: "refused", reason: refusal });
-    }
-    return this.files.turn(write.path, () => this.writeInTurn(write, trusted));
+    // Trust is read in the file's turn, not when the write is queued: a write
+    // waiting behind another to the same file must see trust as it is when it
+    // runs. The check is synchronous, so a refusal still touches no store.
+    return this.files.turn(write.path, () => {
+      const trusted = this.files.isTrusted();
+      const refusal = proposalRefusal(write.path, trusted);
+      if (refusal !== null) {
+        return Promise.resolve({ status: "refused", reason: refusal });
+      }
+      return this.writeInTurn(write, trusted);
+    });
   }
 
   /**
