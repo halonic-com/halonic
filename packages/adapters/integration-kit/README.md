@@ -240,7 +240,9 @@ integration never holds it, and the host keeps the request log.
   `signal.reason` when the call's signal aborts.
 
 A refusal throws an `IntegrationRefusedError` with a `code`. Its message
-names the host and path only, never a query or a secret. The codes in
+names the host and path only, never a query or a secret's value. A refusal that names a
+secret, a header or a form field shows the name in quotes, escaped and cut at 50 characters, so a
+huge name can't make a huge message. The codes in
 `leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`, host
 side only) mean the integration tried to get a secret out; the bridge should pause the
 connector on any of them. Every other code is an ordinary mistake.

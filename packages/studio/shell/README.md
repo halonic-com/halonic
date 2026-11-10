@@ -93,8 +93,11 @@ crosses a neighbour's middle. The tab menu and the tooltips come in later pull r
 
 In a narrow window (600 to 899px) the strip folds the tabs into one header badge, "3 open tabs ▾",
 with **+** after it (component specs 24.5 T5). It shows the 6px dot and says "3 open tabs, 1 needs
-you" while a tab needs you, and opens a kit Menu of the open tabs with the active one checked. A
-pick makes that tab active.
+you" (or "2 need you") while tabs need you, and counts every open tab: one reads "1 open tab". It
+opens a kit Menu of the open tabs from its left edge, each with its icon, the needs-you dot and its
+words, and the active one checked. A pick makes that tab active and the page takes the focus back
+(`shell.open-tabs-menu`). The badge is part of `WindowTabStrip`, not a separate export; widening the
+window shows the tabs again.
 
 ```tsx
 <ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
