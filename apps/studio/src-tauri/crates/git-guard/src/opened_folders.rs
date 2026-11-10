@@ -9,6 +9,7 @@ use crate::error::GitError;
 ///
 /// It starts empty, so every folder is refused until the folder picker
 /// (HAL-191) adds the folders the user chooses through [`Self::open`].
+/// Revoking a folder's trust takes it off again through [`Self::close`].
 #[derive(Debug, Default)]
 pub struct OpenedFolders {
     folders: Mutex<Vec<PathBuf>>,
@@ -29,6 +30,23 @@ impl OpenedFolders {
             folders.push(folder);
         }
         Ok(())
+    }
+
+    /// Takes a folder off the list, as revoking its trust does, so git
+    /// refuses it from now on, not only after the next start
+    /// (requirement `closed-folders`). Only the exact entry goes: a folder
+    /// opened on its own above it keeps everything inside it open.
+    ///
+    /// The folder is canonicalised as [`Self::open`] did. When it can't be,
+    /// because it was deleted or moved since, it is compared as given, so
+    /// its entry still goes when it is given as the shell recorded it.
+    pub fn close(&self, folder: &Path) {
+        // A folder that can't be canonicalised any more is closed by the
+        // path given; there is nothing else to report.
+        let canonical = std::fs::canonicalize(folder);
+        let folder = canonical.unwrap_or_else(|_| folder.to_owned());
+        let mut folders = self.folders.lock().unwrap_or_else(PoisonError::into_inner);
+        folders.retain(|opened| *opened != folder);
     }
 
     /// Checks that `folder` is an opened folder or inside one, and returns
