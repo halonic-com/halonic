@@ -13,8 +13,8 @@ verifies("cli.messages", () => {
     expect(words(pluginMessages.removeQuestion("Weather", true))).toBe(
       "Remove Weather? Its settings and the API key you entered are removed from this computer.",
     );
-    expect(words(pluginMessages.removed("Weather", "1.2.0", "1.2"))).toBe(
-      'Removed Weather 1.2.0 and its trust. Workspaces that list it will say "install Weather 1.2" until you add it again.',
+    expect(words(pluginMessages.removed("Weather", "1.2.0"))).toBe(
+      "Removed Weather 1.2.0 and its trust.",
     );
     expect(words(pluginMessages.removeNoTerminal("Weather"))).toBe(
       "Removing Weather deletes its settings and secrets, and there's no terminal to ask you.",
