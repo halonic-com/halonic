@@ -15,6 +15,34 @@ export async function checkVcsPaths(top: string, paths: readonly string[]): Prom
   for (const path of paths) await checkNoLinkedFolder(top, path);
 }
 
+/**
+ * Refuses a path that is a folder on disk. Git takes a folder as everything
+ * inside it, so `stage(["sub"])` would stage a private `sub/.env` and
+ * `discard(["sub"])` would delete one, though the name check only saw `sub`.
+ * Run it after {@link checkVcsPaths}, so the path can't go through a link.
+ *
+ * @throws RangeError naming the path
+ */
+export async function checkNoFolders(top: string, paths: readonly string[]): Promise<void> {
+  for (const path of paths) {
+    if (await isFolder(join(top, path))) {
+      throw new RangeError(
+        `Unsafe path ${JSON.stringify(path)}: it is a folder, so git would take every file inside it. Name the files instead.`,
+      );
+    }
+  }
+}
+
+async function isFolder(path: string): Promise<boolean> {
+  try {
+    return (await lstat(path)).isDirectory();
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return false;
+    throw error;
+  }
+}
+
 async function checkNoLinkedFolder(top: string, path: string): Promise<void> {
   const folders = path.split("/").slice(0, -1);
   let current = top;

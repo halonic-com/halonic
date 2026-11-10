@@ -58,6 +58,37 @@ verifies("git.vcs", () => {
     });
   });
 
+  describe("folder paths", () => {
+    /** A repository with a tracked `sub/a.yaml` changed, and an unignored private `sub/.env` beside it. */
+    async function folderWithPrivateFile(): Promise<{ folder: string; vcs: GitVcs }> {
+      const folder = await repositoryWith(scratch, { "sub/a.yaml": "1\n" });
+      await writeFiles(folder, { "sub/a.yaml": "2\n", "sub/.env": "TOKEN=planted\n" });
+      return { folder, vcs: await vcsAt(folder) };
+    }
+
+    it("refuses to stage a folder, which would stage the private file inside it", async () => {
+      const { vcs } = await folderWithPrivateFile();
+      const before = await vcs.status();
+      await expect(vcs.stage(["sub"])).rejects.toThrow(RangeError);
+      expect(await vcs.status()).toEqual(before);
+    });
+
+    it("refuses to unstage a folder", async () => {
+      const { vcs } = await folderWithPrivateFile();
+      await vcs.stage(["sub/a.yaml"]);
+      const before = await vcs.status();
+      await expect(vcs.unstage(["sub"])).rejects.toThrow(RangeError);
+      expect(await vcs.status()).toEqual(before);
+    });
+
+    it("refuses to discard a folder, which would delete the private file inside it", async () => {
+      const { folder, vcs } = await folderWithPrivateFile();
+      await expect(vcs.discard(["sub"])).rejects.toThrow(RangeError);
+      expect(await readFile(join(folder, "sub", ".env"), "utf8")).toBe("TOKEN=planted\n");
+      expect(await readFile(join(folder, "sub", "a.yaml"), "utf8")).toBe("2\n");
+    });
+  });
+
   describe("init", () => {
     it("copies no template, starts on main and keeps .studio out", async () => {
       const folder = await scratch.folder();

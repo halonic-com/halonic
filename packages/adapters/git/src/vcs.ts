@@ -12,7 +12,7 @@ import {
 import type { GitRunner } from "./git-runner.ts";
 import type { ConfigEntry } from "./hardening.ts";
 import { gitError, Repository } from "./repository.ts";
-import { checkBranchNameShape, checkVcsPaths } from "./vcs-input.ts";
+import { checkBranchNameShape, checkNoFolders, checkVcsPaths } from "./vcs-input.ts";
 import { pullFastForward, pushToUpstream } from "./vcs-remote.ts";
 import { listAtCommit, readAtCommit, snapshotCommit } from "./vcs-versions.ts";
 
@@ -70,13 +70,13 @@ export class GitVcs implements Vcs {
   }
 
   async stage(paths: string[]): Promise<void> {
-    const repository = await this.#checkedRepository(paths);
+    const repository = await this.#checkedFiles(paths);
     // `--all` stages a deletion too; git refuses a path that matches nothing and stages none.
     await repository.output({ args: ["add", "--all", "--", ...paths] });
   }
 
   async unstage(paths: string[]): Promise<void> {
-    const repository = await this.#checkedRepository(paths);
+    const repository = await this.#checkedFiles(paths);
     if (await hasCommit(repository)) {
       await repository.output({ args: ["reset", "--quiet", "--", ...paths] });
       return;
@@ -88,7 +88,7 @@ export class GitVcs implements Vcs {
   }
 
   async discard(paths: string[]): Promise<void> {
-    const repository = await this.#checkedRepository(paths);
+    const repository = await this.#checkedFiles(paths);
     const listed = await repository.output({ args: ["ls-files", "-z", "--", ...paths] });
     const tracked = new Set(listed.toString("utf8").split("\0"));
     const inIndex = paths.filter((path) => tracked.has(path));
@@ -196,6 +196,14 @@ export class GitVcs implements Vcs {
   /** The repository, after checking `paths` the way the port says. */
   async #checkedRepository(paths: readonly string[]): Promise<Repository> {
     await checkVcsPaths(await realpath(this.#folder), paths);
+    return this.#repository();
+  }
+
+  /** Like {@link #checkedRepository}, and refuses a folder, which git would take as every file inside it. */
+  async #checkedFiles(paths: readonly string[]): Promise<Repository> {
+    const top = await realpath(this.#folder);
+    await checkVcsPaths(top, paths);
+    await checkNoFolders(top, paths);
     return this.#repository();
   }
 
