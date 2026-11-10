@@ -1,5 +1,7 @@
 {
-  "//": "Lock files and whether each is stale, read by the Rust run lock (crates/run-lock) and fs-node's run-lock.test.ts, so both judge a lock alike. 'now' is the time of judging; 'thisHost' is this computer's name; the process probe says only the ids in 'runningPids' run. Some of those are above 2147483647, the largest id Node's process.kill takes: both must judge such an id as no running process before they ask the probe. A case's file was last changed at 'changedAt', or at 'now' when it has none. 'record' is a record and its text exactly as both write it.",
+  "//": "Lock files and whether each is stale, read by the Rust run lock (crates/run-lock) and fs-node's run-lock.test.ts, so both judge a lock alike. 'now' is the time of judging; 'thisHost' is this computer's name; the process probe says only the ids in 'runningPids' run. Some of those are above 2147483647, the largest id Node's process.kill takes: both must judge such an id as no running process before they ask the probe. A case's file was last changed at 'changedAt', or at 'now' when it has none. 'record' is a record and its text exactly as both write it. 'staleAfterMs' and 'takeoverStaleAfterMs' are the limits both use: how old a lock, and a takeover file left by a writer that crashed while removing a stale lock, may get before any writer may remove it.",
+  "staleAfterMs": 10000,
+  "takeoverStaleAfterMs": 5000,
   "now": "2026-11-10T12:00:00.000Z",
   "thisHost": "this-computer",
   "runningPids": [

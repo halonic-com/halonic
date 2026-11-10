@@ -1,10 +1,9 @@
-use super::busy::{ACCESS_DENIED, BusyRetry};
-use super::record::{STALE_AFTER_MS, parse_record, record_text};
-use super::{ThisComputer, put_back, read_text, remove_stale, remove_stale_reading, with_run_lock};
-use std::cell::Cell;
+use super::record::{STALE_AFTER_MS, TAKEOVER_STALE_AFTER_MS, parse_record, record_text};
+use super::{StaleRemoval, ThisComputer, create_exclusive, remove_stale, with_run_lock};
 use std::fs::{self, File};
-use std::io::{self, ErrorKind};
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::sync::Barrier;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
@@ -232,57 +231,127 @@ fn run_lock_fails_without_running_the_work_when_the_folder_is_missing() {
 }
 
 #[test]
-fn run_lock_puts_back_a_lock_another_writer_took_after_the_stale_one_was_read() {
+fn run_lock_removes_a_stale_lock_and_its_takeover_file_and_leaves_only_its_own_lock() {
     let folder = TemporaryFolder::new();
-    let fresh = record(std::process::id(), "another-computer", 0);
-    let file = folder.lock(Some(&fresh));
-    remove_stale(&file, &record(5151, THIS_HOST, 0)).expect("checked");
-    assert_eq!(fs::read_to_string(&file).expect("the fresh lock"), fresh);
-    assert_eq!(folder.names(), ["r1.lock"]);
+    let file = folder.lock(Some(&record(5151, THIS_HOST, 0)));
+    let inside = with_run_lock(&file, &FakeComputer::here(), || folder.names());
+    assert_eq!(inside.expect("the lock is taken"), ["r1.lock"]);
+    assert!(folder.names().is_empty());
 }
 
 #[test]
-fn run_lock_tries_the_check_of_a_moved_lock_again_and_still_puts_back_a_fresh_one() {
+fn run_lock_leaves_alone_a_lock_another_writer_took_after_the_stale_one_was_read() {
+    // The first writer removed the stale lock and took its own after the
+    // second writer read the stale one; a third writer is about to try.
     let folder = TemporaryFolder::new();
-    let fresh = record(std::process::id(), "another-computer", 0);
-    let file = folder.lock(Some(&fresh));
-    let windows = BusyRetry {
-        windows: true,
-        limit: Duration::from_secs(5),
-    };
-    let reads = Cell::new(0);
-    let busy_once = |aside: &Path| {
-        reads.set(reads.get() + 1);
-        if reads.get() == 1 {
-            Err(io::Error::from_raw_os_error(ACCESS_DENIED))
-        } else {
-            read_text(aside)
-        }
-    };
-    remove_stale_reading(&file, &record(5151, THIS_HOST, 0), &windows, busy_once).expect("checked");
-    assert_eq!(reads.get(), 2);
-    assert_eq!(fs::read_to_string(&file).expect("the fresh lock"), fresh);
+    let first = record(std::process::id(), "first-writer", 0);
+    let file = folder.lock(Some(&first));
+    let second = record(std::process::id(), "second-writer", 0);
+    let removal = remove_stale(&file, &record(5151, THIS_HOST, 0), &second);
+    assert_eq!(removal.expect("checked"), StaleRemoval::Done);
+    let third = record(std::process::id(), "third-writer", 0);
+    assert!(!create_exclusive(&file, &third).expect("tried"));
+    assert_eq!(fs::read_to_string(&file).expect("the first lock"), first);
     assert_eq!(folder.names(), ["r1.lock"]);
-}
-
-#[test]
-fn run_lock_leaves_alone_a_lock_a_third_writer_took_before_it_could_put_one_back() {
-    let folder = TemporaryFolder::new();
-    let file = folder.lock(Some("third writer"));
-    let aside = folder.0.join("r1.lock.aside.stale");
-    fs::write(&aside, "second writer").expect("planted");
-    put_back(&aside, &file).expect("left alone");
-    assert_eq!(
-        fs::read_to_string(&file).expect("the third lock"),
-        "third writer"
-    );
 }
 
 #[test]
 fn run_lock_does_nothing_when_another_writer_removed_the_stale_lock_first() {
     let folder = TemporaryFolder::new();
-    remove_stale(&folder.lock(None), "stale").expect("nothing to remove");
+    let removal = remove_stale(&folder.lock(None), "stale", "own");
+    assert_eq!(removal.expect("nothing to remove"), StaleRemoval::Done);
     assert!(folder.names().is_empty());
+}
+
+#[test]
+fn run_lock_waits_while_another_writer_is_removing_the_stale_lock() {
+    let folder = TemporaryFolder::new();
+    let stale = record(5151, THIS_HOST, 0);
+    let file = folder.lock(Some(&stale));
+    let takeover = folder.0.join("r1.lock.takeover");
+    fs::write(&takeover, record(std::process::id(), THIS_HOST, 0)).expect("planted");
+    let removal = remove_stale(&file, &stale, "own");
+    assert_eq!(
+        removal.expect("tried"),
+        StaleRemoval::AnotherWriterIsRemoving
+    );
+    assert_eq!(fs::read_to_string(&file).expect("the stale lock"), stale);
+    let removed = remove_after(&takeover, Duration::from_millis(100));
+    with_run_lock(&file, &FakeComputer::here(), || {
+        assert!(removed.load(Ordering::SeqCst))
+    })
+    .expect("the lock is taken");
+    assert!(folder.names().is_empty());
+}
+
+#[test]
+fn run_lock_removes_a_takeover_file_left_by_a_writer_that_crashed_while_removing() {
+    let folder = TemporaryFolder::new();
+    let file = folder.lock(Some(&record(5151, THIS_HOST, 0)));
+    let takeover = folder.0.join("r1.lock.takeover");
+    fs::write(&takeover, record(std::process::id(), THIS_HOST, 0)).expect("planted");
+    let old = SystemTime::now() - Duration::from_millis(TAKEOVER_STALE_AFTER_MS as u64 + 1_000);
+    File::options()
+        .write(true)
+        .open(&takeover)
+        .and_then(|f| f.set_modified(old))
+        .expect("aged");
+    assert!(time_to_take(&file, &FakeComputer::here()) < Duration::from_secs(2));
+    assert!(folder.names().is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn run_lock_fails_instead_of_trying_for_ever_when_the_lock_is_a_link_to_a_missing_file() {
+    let folder = TemporaryFolder::new();
+    let file = folder.lock(None);
+    std::os::unix::fs::symlink(folder.0.join("missing"), &file).expect("linked");
+    let ran = AtomicBool::new(false);
+    let result = with_run_lock(&file, &FakeComputer::here(), || {
+        ran.store(true, Ordering::SeqCst)
+    });
+    let message = result.expect_err("no lock").to_string();
+    assert!(
+        message.contains("r1.lock is a link to a file that isn't there"),
+        "{message}"
+    );
+    assert!(!ran.load(Ordering::SeqCst));
+}
+
+#[cfg(unix)]
+#[test]
+fn run_lock_fails_instead_of_trying_for_ever_when_the_takeover_file_is_a_link_to_a_missing_file() {
+    let folder = TemporaryFolder::new();
+    let file = folder.lock(Some(&record(5151, THIS_HOST, 0)));
+    let takeover = folder.0.join("r1.lock.takeover");
+    std::os::unix::fs::symlink(folder.0.join("missing"), takeover).expect("linked");
+    let result = with_run_lock(&file, &FakeComputer::here(), || {});
+    let message = result.expect_err("no lock").to_string();
+    assert!(message.contains("r1.lock.takeover is a link"), "{message}");
+}
+
+#[test]
+fn run_lock_lets_only_one_of_many_writers_in_after_a_stale_lock_is_removed() {
+    let folder = TemporaryFolder::new();
+    for _ in 0..20 {
+        let file = folder.lock(Some(&record(5151, THIS_HOST, 0)));
+        let start = Barrier::new(6);
+        let inside = AtomicBool::new(false);
+        thread::scope(|scope| {
+            for _ in 0..6 {
+                scope.spawn(|| {
+                    start.wait();
+                    with_run_lock(&file, &FakeComputer::here(), || {
+                        assert!(!inside.swap(true, Ordering::SeqCst), "two writers inside");
+                        thread::sleep(Duration::from_millis(2));
+                        inside.store(false, Ordering::SeqCst);
+                    })
+                    .expect("the lock is taken");
+                });
+            }
+        });
+        assert!(folder.names().is_empty());
+    }
 }
 
 #[test]

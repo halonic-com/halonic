@@ -13,6 +13,13 @@ const FORMAT: i64 = 1;
 /// (`runLockStaleAfterMs`).
 pub const STALE_AFTER_MS: i64 = 10_000;
 
+/// How old a lock's takeover file may get before any writer may remove it
+/// (`runLockTakeoverStaleAfterMs`). Removing a stale lock takes
+/// milliseconds, and up to 2 seconds a step on Windows while a file is busy,
+/// so a takeover file this old was left by a writer that crashed while
+/// removing a lock.
+pub const TAKEOVER_STALE_AFTER_MS: i64 = 5_000;
+
 /// JavaScript's `Number.MAX_SAFE_INTEGER`.
 const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
 

@@ -5,25 +5,27 @@
 //!
 //! The format and the rules are `RunLockRecord`'s in `@halonicjs/ports`,
 //! and this crate follows `withRunLock` in `fs-node` step by step: take the
-//! lock with an exclusive create, wait while a live writer holds it, move a
-//! stale one aside before removing it, and release only a lock that still
-//! holds our own record. On Windows, a step Windows refuses while another
-//! writer deletes or holds the lock file is tried again (see `busy.rs`).
+//! lock with an exclusive create, wait while a live writer holds it, remove
+//! a stale one only while holding `<file>.takeover` and only while it still
+//! holds the stale record, and release only a lock that still holds our own
+//! record. On Windows, a step Windows refuses while another writer deletes
+//! or holds the lock file is tried again (see `busy.rs`).
 //! Plain Rust with no Tauri types; the shell's run store wraps it.
 
 mod busy;
 mod iso_time;
 mod record;
 
-use busy::BusyRetry;
 use std::fs::{self, OpenOptions};
 use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub use record::{FoundLock, LockRecord, STALE_AFTER_MS, is_stale, parse_record, record_text};
+pub use record::{
+    FoundLock, LockRecord, STALE_AFTER_MS, TAKEOVER_STALE_AFTER_MS, is_stale, parse_record,
+    record_text,
+};
 
 /// How long to wait before trying again to take a lock another writer holds.
 const RETRY_DELAY: Duration = Duration::from_millis(15);
@@ -95,15 +97,17 @@ fn take_lock<'a>(file: &'a Path, computer: &impl ThisComputer) -> io::Result<Hel
                 released: false,
             });
         }
-        let Some(found) = busy::HERE.run(|| read_lock(file))? else {
+        let Some(found) = read_taken_lock(file)? else {
             // Released between our create and our read: try again straight away.
             continue;
         };
         if is_stale(&found, now_ms(), host.as_deref(), |pid| {
             computer.process_alive(pid)
         }) {
-            remove_stale(file, &found.text)?;
-            continue;
+            match remove_stale(file, &found.text, &own_text)? {
+                StaleRemoval::Done => continue,
+                StaleRemoval::AnotherWriterIsRemoving => {}
+            }
         }
         thread::sleep(RETRY_DELAY);
     }
@@ -114,6 +118,33 @@ fn create_exclusive(file: &Path, text: &str) -> io::Result<bool> {
     match OpenOptions::new().write(true).create_new(true).open(file) {
         Ok(mut created) => created.write_all(text.as_bytes()).map(|()| true),
         Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+/// The lock (or takeover file) another writer holds, read after an
+/// exclusive create found `file` there, or `None` when that writer released
+/// it in between.
+///
+/// Fails when `file` is a symbolic link to a file that isn't there: the
+/// create always finds it and the read never does, so trying again would
+/// never end. Writers never make links, so something else put it there.
+fn read_taken_lock(file: &Path) -> io::Result<Option<FoundLock>> {
+    let found = busy::HERE.run(|| read_lock(file))?;
+    if found.is_none() && is_link(file)? {
+        return Err(io::Error::other(format!(
+            "The lock {} is a link to a file that isn't there. Remove the link and try again.",
+            file.display()
+        )));
+    }
+    Ok(found)
+}
+
+/// Whether `file` is a symbolic link, without following it.
+fn is_link(file: &Path) -> io::Result<bool> {
+    match fs::symlink_metadata(file) {
+        Ok(metadata) => Ok(metadata.file_type().is_symlink()),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
         Err(error) => Err(error),
     }
 }
@@ -138,64 +169,75 @@ fn read_text(file: &Path) -> io::Result<String> {
     Ok(String::from_utf8_lossy(&fs::read(file)?).into_owned())
 }
 
-/// Removes a stale lock that held `stale_text`. Another writer may have
-/// removed it and taken a fresh lock since it was read, so the lock is moved
-/// aside first and checked: when it isn't the stale one any more, it is put
-/// back, unless a third writer has taken the lock by then.
-fn remove_stale(file: &Path, stale_text: &str) -> io::Result<()> {
-    remove_stale_reading(file, stale_text, &busy::HERE, read_text)
+/// How an attempt to remove a stale lock ended.
+#[derive(Debug, PartialEq)]
+enum StaleRemoval {
+    /// The stale lock is gone, or another lock is there now: take it again.
+    Done,
+    /// Another writer holds the takeover file: wait, then take it again.
+    AnotherWriterIsRemoving,
 }
 
-/// [`remove_stale`] with the retry rules and the read of the moved lock
-/// given, so a test can play Windows and make that read busy.
+/// Removes a stale lock that held `stale_text`.
 ///
-/// Each file call is retried on its own while Windows reports it busy, not
-/// the whole removal: retrying the whole would rename again after a failed
-/// check, find no lock, and so remove the lock it moved aside unchecked.
-fn remove_stale_reading(
-    file: &Path,
-    stale_text: &str,
-    retry: &BusyRetry,
-    mut read_aside: impl FnMut(&Path) -> io::Result<String>,
-) -> io::Result<()> {
-    let aside = aside_path(file);
-    match retry.run(|| fs::rename(file, &aside)) {
-        Ok(()) => {}
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
-        Err(error) => return Err(error),
+/// When several writers find the same stale lock, only one may remove it:
+/// the one that creates `<file>.takeover`, holding `own_text`, with an
+/// exclusive create. Holding it, the writer reads the lock again and removes
+/// it only while it still holds the stale text. Another writer may have
+/// removed the stale lock and taken a fresh one since it was read, and that
+/// fresh lock is never moved or removed, so only one writer is ever inside.
+fn remove_stale(file: &Path, stale_text: &str, own_text: &str) -> io::Result<StaleRemoval> {
+    let takeover = takeover_path(file);
+    if !busy::HERE.run(|| create_exclusive(&takeover, own_text))? {
+        remove_abandoned_takeover(&takeover)?;
+        return Ok(StaleRemoval::AnotherWriterIsRemoving);
     }
-    let checked = retry.run(|| read_aside(&aside)).and_then(|text| {
-        if text == stale_text {
-            Ok(())
-        } else {
-            retry.run(|| put_back(&aside, file))
-        }
-    });
-    let removed = retry.run(|| remove_if_there(&aside));
-    checked.and(removed)
+    let held = HeldLock {
+        file: &takeover,
+        own_text: own_text.to_owned(),
+        released: false,
+    };
+    remove_lock_holding(file, stale_text)?;
+    held.release()?;
+    Ok(StaleRemoval::Done)
 }
 
-/// Links `aside` back to `file`, unless `file` is there again.
-fn put_back(aside: &Path, file: &Path) -> io::Result<()> {
-    match fs::hard_link(aside, file) {
-        Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok(()),
-        linked => linked,
+/// Removes a takeover file changed more than [`TAKEOVER_STALE_AFTER_MS`]
+/// ago (or as far in the future, a clock that was off): its writer crashed
+/// while removing a stale lock, and would otherwise keep every writer
+/// waiting.
+fn remove_abandoned_takeover(takeover: &Path) -> io::Result<()> {
+    let Some(found) = read_taken_lock(takeover)? else {
+        return Ok(());
+    };
+    if now_ms().abs_diff(found.changed_at_ms) > TAKEOVER_STALE_AFTER_MS.unsigned_abs() {
+        busy::HERE.run(|| remove_if_there(takeover))?;
     }
+    Ok(())
 }
 
-/// Removes the lock, but only while it holds `own_text`: when this writer
-/// took so long that another removed its lock as stale, the lock now belongs
-/// to that other writer. Tried again while Windows refuses it as busy, so the
-/// lock isn't left behind for other writers to wait on.
+/// `<file>.takeover`, the file a writer holds while it removes a stale lock.
+fn takeover_path(file: &Path) -> PathBuf {
+    let mut name = file.as_os_str().to_owned();
+    name.push(".takeover");
+    PathBuf::from(name)
+}
+
+/// Releases a lock this writer holds, but only while it holds `own_text`:
+/// when this writer took so long that another removed its lock as stale,
+/// the lock now belongs to that other writer.
 fn release_lock(file: &Path, own_text: &str) -> io::Result<()> {
-    busy::HERE.run(|| release_own_lock(file, own_text))
+    remove_lock_holding(file, own_text)
 }
 
-fn release_own_lock(file: &Path, own_text: &str) -> io::Result<()> {
-    match read_lock(file)? {
-        Some(found) if found.text == own_text => remove_if_there(file),
+/// Removes the lock, but only while it holds `text`. Tried again while
+/// Windows refuses it as busy, so the lock isn't left behind for other
+/// writers to wait on.
+fn remove_lock_holding(file: &Path, text: &str) -> io::Result<()> {
+    busy::HERE.run(|| match read_lock(file)? {
+        Some(found) if found.text == text => remove_if_there(file),
         _ => Ok(()),
-    }
+    })
 }
 
 fn remove_if_there(file: &Path) -> io::Result<()> {
@@ -203,24 +245,6 @@ fn remove_if_there(file: &Path) -> io::Result<()> {
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
         removed => removed,
     }
-}
-
-/// `<file>.<unique>.stale`, a name no other writer picks: this process's id,
-/// the time and a count of the names this process has made.
-fn aside_path(file: &Path) -> PathBuf {
-    static MADE: AtomicU64 = AtomicU64::new(0);
-    let unique = format!(
-        "{}-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos(),
-        MADE.fetch_add(1, Ordering::Relaxed),
-    );
-    let mut name = file.as_os_str().to_owned();
-    name.push(format!(".{unique}.stale"));
-    PathBuf::from(name)
 }
 
 fn now_ms() -> i64 {

@@ -1,4 +1,7 @@
-use super::{FoundLock, LockRecord, is_stale, parse_record, record_text};
+use super::{
+    FoundLock, LockRecord, STALE_AFTER_MS, TAKEOVER_STALE_AFTER_MS, is_stale, parse_record,
+    record_text,
+};
 use crate::iso_time::parse_iso;
 use serde_json::Value;
 
@@ -10,6 +13,16 @@ fn shared_cases() -> Value {
 
 fn time(value: &Value) -> i64 {
     parse_iso(value.as_str().expect("a time")).expect("a time Rust reads")
+}
+
+#[test]
+fn run_lock_uses_the_same_limits_as_fs_node() {
+    let shared = shared_cases();
+    assert_eq!(shared["staleAfterMs"].as_i64(), Some(STALE_AFTER_MS));
+    assert_eq!(
+        shared["takeoverStaleAfterMs"].as_i64(),
+        Some(TAKEOVER_STALE_AFTER_MS)
+    );
 }
 
 #[test]
