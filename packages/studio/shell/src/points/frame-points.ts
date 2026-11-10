@@ -8,6 +8,7 @@ import type {
   SettingsSectionContribution,
 } from "./frame.ts";
 import { sidebarPlaces } from "./frame.ts";
+import { type HomeCardContribution, type HomePoint, homeSections } from "./home.ts";
 import {
   byOrder,
   type Point,
@@ -31,9 +32,11 @@ export interface FramePoints {
   readonly settings: Point<SettingsSectionContribution>;
   /**
    * Adds a sidebar place; the shell sets their order, name and icon. Throws a `ShellError` for an
-   * unknown place or one another feature added.
+   * unknown place, one another feature added, or Home, which the shell adds itself.
    */
   readonly places: Point<PlaceContribution>;
+  /** Adds a card to Home; the shell sets their order. */
+  readonly home: HomePoint;
 }
 
 /** What the shell's frame reads. Every list is sorted by `order`, then `id`. */
@@ -44,9 +47,21 @@ export interface FrameContributions {
   readonly titleBar: { list(): readonly Registered<BarItemContribution>[] };
   readonly phoneBar: { list(): readonly Registered<PhoneBarContribution>[] };
   readonly settings: { list(): readonly Registered<SettingsSectionContribution>[] };
-  /** The places features added, in the sidebar's fixed order. */
+  /** Home, which the shell adds, and the places features added, in the sidebar's fixed order. */
   readonly places: { list(): readonly Registered<PlaceContribution>[] };
+  /** The cards features added to Home, in Home's fixed order. */
+  readonly home: { cards(): readonly Registered<HomeCardContribution>[] };
 }
+
+/** The id the shell's own contributions carry as their `featureId`, such as the Home place. */
+export const shellContributorId = "shell";
+
+/** Home's place: the shell adds it, so Home is there before any feature registers. */
+const homePlace: PlaceContribution = {
+  id: "home",
+  view: "HomePage",
+  load: () => import("../home/home-page.tsx"),
+};
 
 /** Holds every frame contribution while features register, then serves them. */
 export class FrameStores {
@@ -59,6 +74,11 @@ export class FrameStores {
   private readonly phoneBar = new PointStore<PhoneBarContribution>("phoneBar.add", ["id"]);
   private readonly settings = new PointStore<SettingsSectionContribution>("settings.add", ["id"]);
   private readonly places = new PointStore<PlaceContribution>("places.add", ["id"]);
+  private readonly homeCards = new PointStore<HomeCardContribution>("home.addCard", ["id"]);
+
+  constructor() {
+    this.places.add(shellContributorId, homePlace);
+  }
 
   /** The frame points for one feature. */
   pointsFor(featureId: string, guard: PointGuard): FramePoints {
@@ -77,6 +97,14 @@ export class FrameStores {
           rejectUnknownPlace(place, featureId);
           this.rejectTakenPlace(place, featureId);
           this.places.add(featureId, place);
+        },
+      },
+      home: {
+        addCard: (card) => {
+          guard("home.addCard");
+          rejectUnknownSection(card, featureId);
+          this.rejectTakenSection(card, featureId);
+          this.homeCards.add(featureId, card);
         },
       },
     };
@@ -99,15 +127,36 @@ export class FrameStores {
             (left, right) => sidebarPlaces.indexOf(left.id) - sidebarPlaces.indexOf(right.id),
           ),
       },
+      home: {
+        cards: () =>
+          [...this.homeCards.all()].sort(
+            (left, right) => homeSections.indexOf(left.id) - homeSections.indexOf(right.id),
+          ),
+      },
     };
   }
 
   /** A place can't be renamed, so the generic "rename one" message wouldn't help here. */
   private rejectTakenPlace(place: PlaceContribution, featureId: string): void {
     const existing = this.places.get(place.id);
+    if (existing?.featureId === shellContributorId) {
+      throw new ShellError(
+        `places.add: the feature "${featureId}" adds the place "${place.id}", which the shell adds itself. Add a card to Home with home.addCard instead.`,
+      );
+    }
     if (existing !== undefined) {
       throw new ShellError(
         `places.add: the place "${place.id}" is added by both "${existing.featureId}" and "${featureId}". Each place belongs to one feature; add your page to that feature's view instead.`,
+      );
+    }
+  }
+
+  /** Like a place, a section can't be renamed, so the generic message wouldn't help. */
+  private rejectTakenSection(card: HomeCardContribution, featureId: string): void {
+    const existing = this.homeCards.get(card.id);
+    if (existing !== undefined) {
+      throw new ShellError(
+        `home.addCard: the section "${card.id}" is added by both "${existing.featureId}" and "${featureId}". Each section of Home belongs to one feature.`,
       );
     }
   }
@@ -118,6 +167,15 @@ function rejectUnknownPlace(place: PlaceContribution, featureId: string): void {
   if (!(sidebarPlaces as readonly string[]).includes(place.id)) {
     throw new ShellError(
       `places.add: the feature "${featureId}" adds the place ${JSON.stringify(place.id)}, which isn't one of the sidebar's places (${sidebarPlaces.join(", ")}). Add a page to a place's view instead, or ask for a new place in the design.`,
+    );
+  }
+}
+
+/** Home's sections are a fixed list (design direction 3), so a feature can't make up one. */
+function rejectUnknownSection(card: HomeCardContribution, featureId: string): void {
+  if (!(homeSections as readonly string[]).includes(card.id)) {
+    throw new ShellError(
+      `home.addCard: the feature "${featureId}" adds the section ${JSON.stringify(card.id)}, which isn't one of Home's sections (${homeSections.join(", ")}). Show it on your own place's page instead, or ask for a new section in the design.`,
     );
   }
 }

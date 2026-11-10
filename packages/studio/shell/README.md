@@ -30,13 +30,19 @@ look up services its feature lists in `needs`.
 | `saveFailureFor`                | turn a write error into a save reason                      | `shell.save-reasons`      |
 | `watchResources`                | read the engine's resource numbers, flag a low disk        | `shell.resource-numbers`  |
 
-The sidebar's places come from features through `places.add`, naming one of the fixed places
-(`sidebarPlaces`: Home, Inbox, Agents, Workflows, Routines, Library, Runs, Changes). The shell
-lists them in that order and leaves out a place no feature added, so a place whose feature hasn't
+The shell adds Home itself. The other sidebar places come from features through `places.add`,
+naming one of the fixed places (`sidebarPlaces`: Home, Inbox, Agents, Workflows, Routines, Library,
+Runs, Changes); a feature that adds Home gets a `ShellError`. The shell lists them in that order and leaves out a place no feature added, so a place whose feature hasn't
 landed is simply not there. The shell owns each place's name and icon (`placeNames`), so a feature
 gives only the place, its view and its `signal`: the count or running dot, with the words a screen
 reader hears after the name. `showPlace` gives what the sidebar shows, with nothing for a zero
 (`shell.sidebar-places`).
+
+Home's sections come from features the same way, through `home.addCard`, naming one of the fixed
+sections (`homeSections`: Get set up, Needs you, Recent runs). The shell shows them in that order
+under the `h1` "Home", each a region named by its heading from `homeSectionTitles`, and leaves out a
+section no feature added. A card's view is a named export that gets `HomeCardProps`: the context of
+the feature that added it (`shell.home-sections`).
 
 Contributions are app-wide and added once, in `register`. Their callbacks (an explorer group's
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds

@@ -4,6 +4,7 @@ import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
 import type { Studio } from "../studio.ts";
+import { loadView } from "../view.ts";
 import { type PlaceContribution, placeNames, type SidebarPlace, showPlace } from "./frame.ts";
 
 const load = async () => ({ View: () => "view" });
@@ -26,16 +27,30 @@ verifies("shell.sidebar-places", () => {
       ],
     });
     const places = shell.contributions.places.list();
-    expect(places.map((entry) => placeNames[entry.id].label)).toEqual(["Inbox", "Agents", "Runs"]);
-    expect(places.map((entry) => entry.featureId)).toEqual(["inbox", "agents", "runs"]);
+    expect(places.map((entry) => placeNames[entry.id].label)).toEqual([
+      "Home",
+      "Inbox",
+      "Agents",
+      "Runs",
+    ]);
+    expect(places.map((entry) => entry.featureId)).toEqual(["shell", "inbox", "agents", "runs"]);
   });
 
-  it("lists only Home when only Home is added", () => {
-    const shell = createShell({
-      features: [feature("home", (studio) => studio.places.add(place("home")))],
-    });
+  it("lists only Home, added by the shell, when no feature adds a place", async () => {
+    const shell = createShell({ features: [] });
     const places = shell.contributions.places.list();
     expect(places.map((entry) => placeNames[entry.id].label)).toEqual(["Home"]);
+    expect(places[0]?.featureId).toBe("shell");
+    expect(await loadView(places[0] as PlaceContribution)).toBeTypeOf("function");
+  });
+
+  it("refuses Home from a feature, because the shell adds it", () => {
+    const create = () =>
+      createShell({ features: [feature("start", (studio) => studio.places.add(place("home")))] });
+    expect(create).toThrow(ShellError);
+    expect(create).toThrow(
+      'places.add: the feature "start" adds the place "home", which the shell adds itself. Add a card to Home with home.addCard instead.',
+    );
   });
 
   it("names every place from the shell's table, with its icon", () => {
@@ -84,11 +99,6 @@ verifies("shell.sidebar-places", () => {
     expect(idle.spokenName).toBe("Runs");
   });
 
-  it("lists nothing for places no feature added", () => {
-    const shell = createShell({ features: [] });
-    expect(shell.contributions.places.list()).toEqual([]);
-  });
-
   it("keeps a place's signal for the sidebar to read", () => {
     const shell = createShell({
       features: [
@@ -100,7 +110,7 @@ verifies("shell.sidebar-places", () => {
         ),
       ],
     });
-    const [inbox] = shell.contributions.places.list();
+    const [, inbox] = shell.contributions.places.list();
     expect(inbox?.signal?.({} as never)).toEqual({ mark: "count", value: 2, spoken: "2 waiting" });
   });
 
