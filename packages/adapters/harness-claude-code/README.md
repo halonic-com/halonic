@@ -10,10 +10,14 @@ secrets and approvals stay in Halonic.
 - **Runtime:** node
 - **Public API:** `@halonicjs/adapter-harness-claude-code`
 
-So far it has `detectClaudeCode` and `claudeCodeEnvironment`, and, inside
-the package, the reader that turns Claude Code's `stream-json` output into
-run events. Starting a run (`start`, `send`, `cancel`) follows (HAL-194 build
-plan, C3).
+`claudeCodeHarness({ probe })` is the `Harness` the host offers for
+`harness: claude-code`. A run writes the settings folder, starts
+`claude -p` with `stream-json` in and out inside the run's sandbox session,
+sends the prompt on standard input and turns what Claude Code prints into
+run events. `send` passes a person's answer on as the next user message;
+approvals go through the bridge's `approve_permission` tool instead. `cancel`
+stops Claude Code and everything it started. It passes the `harness`
+contract suite.
 
 ## Reading the output
 
@@ -30,12 +34,16 @@ the run with an error that never quotes it.
 
 ```ts
 import { addHarnessEnvironment } from "@halonicjs/ports";
-import { claudeCodeEnvironment, detectClaudeCode } from "@halonicjs/adapter-harness-claude-code";
+import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 
-const found = await detectClaudeCode(probe);
-if (found.status === "ready") {
-  const env = addHarnessEnvironment(profile.env, claudeCodeEnvironment(bridge, profile));
-  const session = await sandbox.open({ ...profile, env });
+const claudeCode = claudeCodeHarness({ probe });
+if ((await claudeCode.detect()).status === "ready") {
+  const extra = claudeCode.environment?.(bridge, profile) ?? {};
+  const session = await sandbox.open({
+    ...profile,
+    env: addHarnessEnvironment(profile.env, extra),
+  });
+  for await (const event of claudeCode.start(task, session, bridge)) record(event);
 }
 ```
 
