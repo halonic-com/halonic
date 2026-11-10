@@ -7,12 +7,17 @@ import type {
   ConnectorFactoryContext,
   ConnectorTool,
 } from "@halonicjs/ports";
+import { type Clock, SecretScrubber, systemClock } from "@halonicjs/std";
 import { findRunner, type RunnerSearch } from "../pinned/find-runner.ts";
 import type { LaunchFolders } from "../pinned/launch-folders.ts";
 import { checkPinnedLaunch, pinnedLaunch } from "../pinned/pinned-launch.ts";
+import { McpError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
+import { cleanErrorOutput, type PersonalDetails } from "./error-output.ts";
 import type { ProgramLaunch, ProgramStarter } from "./program.ts";
+import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
+import { ConnectorStoppedError } from "./stopped-error.ts";
 import { ConnectorToolError, resultText, toConnectorTool } from "./tool-mapping.ts";
 
 /** What a stdio connector factory needs besides each connector's config. */
@@ -31,6 +36,10 @@ export interface McpStdioOptions {
   /** How Halonic introduces itself to the server. */
   readonly clientInfo: ClientInfo;
   readonly limits?: StdioLimits;
+  /** How often a program that stopped may start again, {@link defaultRestartLimits} unless given. */
+  readonly restartLimits?: RestartLimits;
+  /** For the restart limit's window, `systemClock` unless given. */
+  readonly clock?: Clock;
 }
 
 /**
@@ -42,6 +51,12 @@ export interface McpStdioOptions {
  * registry, in an empty folder of its own (`mcp.pinned-launcher`), as the
  * runner found in the app's own environment (`mcp.runner-lookup`). Without
  * a pin it starts as configured, like any trusted program.
+ *
+ * When the program stops after it started, the call that was waiting fails
+ * and is not tried again, since it may already have had an effect. The next
+ * call starts the program again, through the same checks, up to the
+ * restart limit; past it the connector stays stopped
+ * (`mcp.stdio-restart`).
  */
 export class McpStdioConnectorFactory implements ConnectorFactory {
   readonly transport = "stdio";
@@ -64,6 +79,7 @@ export class McpStdioConnectorFactory implements ConnectorFactory {
 /** A started program and the session with it. */
 interface Connection {
   readonly session: McpSession;
+  readonly transport: StdioTransport;
 }
 
 /** What to start, and the launch folder to delete once it has ended, if it has one. */
@@ -78,10 +94,18 @@ class McpStdioConnector implements ConnectorClient {
   readonly #stdio: StdioConfig;
   readonly #context: ConnectorFactoryContext;
   readonly #options: McpStdioOptions;
+  readonly #restarts: RestartLimit;
+  /** Every secret given to the program, to remove from its error output. */
+  readonly #scrubber = new SecretScrubber();
   #connecting: Promise<Connection> | undefined;
+  /** The program that is running, once its session has started. */
+  #connection: Connection | undefined;
+  /** The last program's transport, kept after it ended for its error output. */
   #transport: StdioTransport | undefined;
   #folder: string | undefined;
   #closed = false;
+  /** Set once the restart limit is reached; the connector never starts again. */
+  #stopped: ConnectorStoppedError | undefined;
 
   constructor(
     config: ConnectorConfig,
@@ -94,6 +118,10 @@ class McpStdioConnector implements ConnectorClient {
     this.#stdio = stdio;
     this.#context = context;
     this.#options = options;
+    this.#restarts = new RestartLimit(
+      options.restartLimits ?? defaultRestartLimits,
+      options.clock ?? systemClock,
+    );
   }
 
   async listTools(): Promise<ConnectorTool[]> {
@@ -102,8 +130,10 @@ class McpStdioConnector implements ConnectorClient {
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<string> {
-    const { session } = await this.#connect();
-    const result = await session.callTool(name, args);
+    const connection = await this.#connect();
+    const result = await connection.session
+      .callTool(name, args)
+      .catch((error: unknown) => Promise.reject(this.#lostDuringCall(connection, name, error)));
     if (result.isError) throw new ConnectorToolError(this.id, name, resultText(result));
     return resultText(result);
   }
@@ -114,9 +144,17 @@ class McpStdioConnector implements ConnectorClient {
     await this.#removeFolder();
   }
 
-  /** Starts the program on the first call, once; a start that fails is tried again on the next call. */
+  /**
+   * Starts the program on the first call, and again on the call after it
+   * stopped. A start that fails is tried again on the next call.
+   */
   #connect(): Promise<Connection> {
     if (this.#closed) return Promise.reject(new Error(`Connector "${this.id}" is closed.`));
+    if (this.#stopped !== undefined) return Promise.reject(this.#stopped);
+    if (this.#connection?.transport.ended === true) {
+      this.#connection = undefined;
+      this.#connecting = undefined;
+    }
     this.#connecting ??= this.#start().catch((error: unknown) => {
       this.#connecting = undefined;
       throw error;
@@ -131,10 +169,22 @@ class McpStdioConnector implements ConnectorClient {
         `Connector "${this.id}" starts a program, so it starts only once the workspace is trusted.`,
       );
     }
+    // A program that stopped was stopped all the way by its transport; this waits for it and removes its folder.
+    await this.#transport?.close();
+    await this.#removeFolder();
+    if (!this.#restarts.allowsStart()) {
+      this.#stopped = new ConnectorStoppedError(
+        this.id,
+        this.#options.restartLimits ?? defaultRestartLimits,
+        this.#lastErrorOutput(),
+      );
+      throw this.#stopped;
+    }
     const planned = await this.#plan();
     this.#folder = planned.folder;
     try {
-      return await this.#run(planned.launch);
+      this.#connection = await this.#run(planned.launch);
+      return this.#connection;
     } catch (error) {
       // The next call plans a new launch, so this one's folder must not stay behind.
       await this.#removeFolder();
@@ -144,6 +194,8 @@ class McpStdioConnector implements ConnectorClient {
 
   async #run(launch: ProgramLaunch): Promise<Connection> {
     const program = await this.#options.starter.start(launch);
+    // Counted once it runs: a program that can't start at all hasn't crashed.
+    this.#restarts.recordStart();
     const transport = new StdioTransport(program, this.#options.limits ?? defaultStdioLimits);
     this.#transport = transport;
     if (this.#closed) {
@@ -158,7 +210,30 @@ class McpStdioConnector implements ConnectorClient {
       await transport.close();
       throw error;
     }
-    return { session };
+    return { session, transport };
+  }
+
+  /**
+   * The error for a call whose program stopped while it waited. The call
+   * isn't tried again: the tool may already have done what it was asked.
+   */
+  #lostDuringCall(connection: Connection, toolName: string, error: unknown): unknown {
+    if (this.#closed || !connection.transport.ended) return error;
+    const reason = error instanceof McpError ? ` ${error.message}` : "";
+    return new McpError(
+      "unavailable",
+      `Connector "${this.id}" lost its program while its tool "${toolName}" ran.${reason} Halonic didn't try the call again, because it may already have had an effect. The next call starts the program again.`,
+    );
+  }
+
+  /** The last program's error output, with every secret it was given and personal data removed. */
+  #lastErrorOutput(): string[] {
+    const env = this.#options.inheritedEnv;
+    const personal: PersonalDetails = {
+      homeFolder: env["HOME"] ?? env["USERPROFILE"],
+      userName: env["USER"] ?? env["USERNAME"] ?? env["LOGNAME"],
+    };
+    return cleanErrorOutput(this.#transport?.errorOutput() ?? [], this.#scrubber, personal);
   }
 
   /**
@@ -224,6 +299,7 @@ class McpStdioConnector implements ConnectorClient {
           `Connector "${this.id}" needs the secret "${secretName}", which isn't set.`,
         );
       }
+      this.#scrubber.remember(value);
       values[variable] = value;
     }
     return values;

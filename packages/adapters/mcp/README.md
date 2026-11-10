@@ -51,7 +51,14 @@ secrets. Both kinds start only once the workspace is trusted.
 - **Secrets** go into the program's environment only, never into its arguments.
 - **Limits** (`defaultStdioLimits`): every request, `initialize` included, has a 60-second timeout,
   and a message may be at most 4 MiB. Breaking either ends the session and stops the program.
-  Standard error is drained and dropped.
+  Standard error is read to its end; only its last 10 lines are kept, in memory, for the stopped
+  report below.
+- **A program that stops** fails the call that was waiting on it, which is not sent again: the
+  tool may already have done its work. The next call starts the program again, through the same
+  trust, pin and runner checks and in a new folder. After 3 restarts within 10 minutes
+  (`defaultRestartLimits`) the connector stays stopped and throws `ConnectorStoppedError`, with the
+  program's last error output in `errorOutput`, its secrets, key-shaped lines, e-mail addresses,
+  home folder and user name removed.
 - **Stopping** closes the program's input, waits 2 seconds, sends SIGTERM to its process group,
   waits again, then SIGKILL. On Windows, `taskkill /T` ends the process tree.
 - **Process starts** happen in one file, `src/stdio/node-program-starter.ts`, listed in

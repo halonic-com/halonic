@@ -1,6 +1,7 @@
 import { McpError, unexpectedResponse } from "../protocol/errors.ts";
 import { errorCodes, type OutgoingMessage } from "../protocol/json-rpc.ts";
 import type { AbortSignalLike, McpTransport } from "../protocol/transport.ts";
+import { ErrorOutputTail } from "./error-output.ts";
 import { readLines } from "./lines.ts";
 import { MessageQueue } from "./message-queue.ts";
 import type { RunningProgram } from "./program.ts";
@@ -38,12 +39,15 @@ export const defaultStdioLimits: StdioLimits = {
  * The session ends, failing every waiting request and stopping the
  * program, when a request isn't answered in time, the program sends a line
  * that is too long or isn't JSON, its output ends, or the transport is
- * closed. Standard error is read and dropped, never kept or parsed.
+ * closed. Of standard error only the last few lines are kept, in memory,
+ * for the connector to report once the program has stopped
+ * ({@link ErrorOutputTail}); nothing in it is parsed.
  */
 export class StdioTransport implements McpTransport {
   readonly #program: RunningProgram;
   readonly #limits: StdioLimits;
   readonly #waiting = new Map<number, MessageQueue>();
+  readonly #errorOutput: ErrorOutputTail;
   #ended: McpError | undefined;
   #stopped: Promise<void> | undefined;
 
@@ -51,7 +55,21 @@ export class StdioTransport implements McpTransport {
     this.#program = program;
     this.#limits = limits;
     this.#readOutput().catch((error: unknown) => this.#end(asMcpError(error)));
-    drain(program.stderr);
+    this.#errorOutput = new ErrorOutputTail(program.stderr);
+  }
+
+  /** Whether the session has ended, for any reason: no request can be sent any more. */
+  get ended(): boolean {
+    return this.#ended !== undefined;
+  }
+
+  /**
+   * The last lines the program wrote to its standard error, as it wrote
+   * them. They can hold anything, keys and personal data too, so clean
+   * them before they leave the connector.
+   */
+  errorOutput(): string[] {
+    return this.#errorOutput.lines();
   }
 
   async *send(message: OutgoingMessage, signal?: AbortSignalLike): AsyncGenerator<unknown> {
@@ -203,13 +221,4 @@ function asMcpError(error: unknown): McpError {
   return error instanceof McpError
     ? error
     : new McpError("unavailable", "Reading the program's output failed.");
-}
-
-/** Reads a stream to its end and drops what it says, so the program never blocks on a full pipe. */
-function drain(stream: AsyncIterable<Uint8Array>): void {
-  (async () => {
-    for await (const _chunk of stream) {
-      // Never kept: a program's error output can hold anything.
-    }
-  })().catch(() => undefined);
 }

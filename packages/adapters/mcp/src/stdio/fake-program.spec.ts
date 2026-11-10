@@ -114,6 +114,11 @@ export class FakeProgram implements RunningProgram {
     this.stdout.push(new TextEncoder().encode(text));
   }
 
+  /** Writes text on standard error exactly as given. */
+  writeError(text: string): void {
+    this.stderr.push(new TextEncoder().encode(text));
+  }
+
   /** Ends the program on its own. */
   exit(code = 0): void {
     if (!this.#running) return;

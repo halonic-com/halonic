@@ -80,7 +80,7 @@ verifies("mcp.stdio-transport", () => {
       await transport.close();
     });
 
-    it("reads a message split across chunks, and drops error output unread", async () => {
+    it("reads a message split across chunks, and keeps only the start of a long error line", async () => {
       const { program, transport } = connected();
       const answer = collect(transport.send(request(1)));
       await vi.waitFor(() => expect(program.received).toHaveLength(1));
@@ -88,6 +88,18 @@ verifies("mcp.stdio-transport", () => {
       program.sendRaw('{"jsonrpc":"2.0",');
       program.sendRaw('"id":1,"result":{"t":"é"}}\r\n');
       expect(await answer).toEqual([{ jsonrpc: "2.0", id: 1, result: { t: "é" } }]);
+      expect(transport.errorOutput()).toEqual(["x".repeat(300)]);
+      await transport.close();
+    });
+
+    it("keeps the last 10 lines of error output, and says once the session has ended", async () => {
+      const { program, transport } = connected();
+      const lines = Array.from({ length: 25 }, (_, index) => `line ${index + 1}`);
+      program.writeError(`${lines.join("\r\n")}\n\n`);
+      expect(transport.ended).toBe(false);
+      program.exit(1);
+      await vi.waitFor(() => expect(transport.ended).toBe(true));
+      expect(transport.errorOutput()).toEqual(lines.slice(-10));
       await transport.close();
     });
   });
