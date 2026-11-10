@@ -1,5 +1,5 @@
 import { cpSync, existsSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import type { CliCall } from "./cli-calls.ts";
 import { fixedTestTime, oldEnvironment, runOldTsx } from "./old-repo.ts";
 import type { OldCliRun } from "./recording.ts";
@@ -11,7 +11,7 @@ function filesUnder(dir: string): string[] {
   }
   return readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
-    .map((entry) => relative(dir, join(entry.parentPath, entry.name)))
+    .map((entry) => relative(dir, join(entry.parentPath, entry.name)).split(sep).join("/"))
     .sort();
 }
 

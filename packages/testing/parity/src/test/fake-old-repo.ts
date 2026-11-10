@@ -212,7 +212,7 @@ if (command === "run") {
   if (flag === "nested") {
     store(newId(), { parent: runId });
   }
-  console.log("Run " + runId + ": completed  (saved in " + join(dir, ".studio/runs") + ")");
+  console.log("Run " + runId + ": completed  (saved in " + dir + "/.studio/runs" + ")");
   process.exit(0);
 }
 if (command === "flaky") {
