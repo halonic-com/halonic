@@ -2,6 +2,7 @@
 
 Our own repo checks: package manifests, layers, dependencies, names, the
 Studio's feature list, file size, the lockfile, absolute local paths,
+native `disabled` on buttons outside the Studio kit,
 licences, the leak guard with its git hooks, the traceability check between
 requirements and tests, the requirement guard and the DCO sign-off check.
 Imports are read with the TypeScript parser, not regular expressions.

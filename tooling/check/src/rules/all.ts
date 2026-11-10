@@ -13,6 +13,7 @@ import { checkInvisibleCharacters } from "./invisible-characters.ts";
 import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
 import { checkNames } from "./names.ts";
+import { checkNativeDisabled } from "./native-disabled.ts";
 import { checkPackages } from "./packages.ts";
 import { checkProcessStarts } from "./process-starts.ts";
 import { checkReadmeExamples } from "./readme-examples.ts";
@@ -34,6 +35,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "absolute-paths": checkAbsolutePaths,
   "process-starts": checkProcessStarts,
   "invisible-characters": checkInvisibleCharacters,
+  "native-disabled": checkNativeDisabled,
   "readme-examples": checkReadmeExamples,
   versions: checkVersions,
   "api-specs": checkApiSpecs,
