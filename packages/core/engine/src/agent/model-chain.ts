@@ -1,8 +1,11 @@
 // The models one turn may use: the one its request resolved to, then that
 // alias's own fallbacks. A model whose key isn't set is skipped before any
 // call, so a local-only workspace never shows a pointless 401. A model that
-// is offline hands the call to the next one at once: retrying would only make
-// the person wait. Any other failure ends the turn with its own reason.
+// is offline, or whose provider is busy, hands the call to the next one at
+// once: retrying would only make the person wait. Any other failure ends the
+// turn with its own reason. A refused key or an empty account ends it too,
+// because the person has to fix it, and moving on would hide that and could
+// move their spending to another provider (HAL-3178).
 
 import {
   type ChatRequest,
@@ -54,8 +57,25 @@ export interface ChainAnswer {
   readonly answeredBy: ResolvedModel;
 }
 
-/** The reasons that move a call on to the next model; every other one ends the turn. */
-const movesOn: readonly ModelCallErrorReason[] = ["no-key", "offline"];
+/**
+ * The reasons that move a call on to the next model, each with what the error
+ * says when no model is left after it. Every other reason ends the turn.
+ */
+const noneLeftBecause = {
+  "no-key": "no model has its key set",
+  offline: "no model reachable",
+  "provider-busy": "no model free: the last one's provider was busy",
+} as const satisfies Partial<Record<ModelCallErrorReason, string>>;
+
+/** A reason that moves a call on to the next model. */
+type MoveOnReason = keyof typeof noneLeftBecause;
+
+/** A model call failure that moves the call on to the next model. */
+type MoveOnError = ModelCallError & { readonly reason: MoveOnReason };
+
+function movesOn(error: unknown): error is MoveOnError {
+  return isModelCallError(error) && Object.hasOwn(noneLeftBecause, error.reason);
+}
 
 /**
  * Walks a turn's models. Once a call moves on to a later model, the turn
@@ -73,7 +93,7 @@ export class ModelChain {
   /** Whether the model at `index` has its key, so it needs no second look. */
   private usable = false;
   /** Why the last model was given up on, for the error when none is left. */
-  private lastCause: ModelCallErrorReason = "offline";
+  private lastCause: MoveOnReason = "offline";
   /** The host of the last model that was offline, when its provider named it. */
   private lastHost: string | undefined;
 
@@ -112,8 +132,8 @@ export class ModelChain {
   }
 
   /**
-   * Makes one model call, moving on to the next model when one has no key
-   * or is offline. It writes an `llm.fallback` for each move.
+   * Makes one model call, moving on to the next model when one has no key,
+   * is offline or its provider is busy. It writes an `llm.fallback` for each move.
    *
    * @throws {ModelCallError} with the last cause when no model is left
    * @throws whatever the model threw for any other failure; the turn stops there
@@ -125,7 +145,7 @@ export class ModelChain {
         const response = await model.provider.chat({ ...request, model: model.model });
         return { response, answeredBy: model };
       } catch (error) {
-        if (!isModelCallError(error) || !movesOn.includes(error.reason)) {
+        if (!movesOn(error)) {
           throw error;
         }
         await this.moveOn(model, error);
@@ -156,7 +176,7 @@ export class ModelChain {
     await this.log?.append({ type: "llm.skipped", agent: this.agent, ...skip });
   }
 
-  private async moveOn(from: ResolvedModel, error: ModelCallError): Promise<void> {
+  private async moveOn(from: ResolvedModel, error: MoveOnError): Promise<void> {
     this.lastCause = error.reason;
     this.lastHost = error.host;
     this.index++;
@@ -175,8 +195,7 @@ export class ModelChain {
 
   private noneLeft(): ModelCallError {
     const tried = this.models.map(nameOf).join(", ");
-    const what = this.lastCause === "no-key" ? "no model has its key set" : "no model reachable";
-    const message = `${what} (tried ${tried})`;
+    const message = `${noneLeftBecause[this.lastCause]} (tried ${tried})`;
     return new ModelCallError(
       this.lastCause,
       message,

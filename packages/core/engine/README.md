@@ -17,7 +17,8 @@ loop of one model turn, which the local chat turn runs.
 |  | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name | `engine.turn-round-limit`, `engine.turn-tool-names` |
 |  | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
 |  | marks an answer whose whole text, bare or in `<tool_call>` tags (the last may lack its closing tag), calls an offered tool with `toolCallAsText`, never running it; other text around the tags leaves it unmarked | `engine.turn-tool-call-as-text`, `engine.turn-tool-call-tag-as-text` |
-|  | stops the turn when the model is missing, can't use tools, runs out of memory, or is refused | `engine.model-failure-stops` |
+|  | moves on at once from a model whose provider is busy, as from an offline one | `engine.busy-falls-back` |
+|  | stops the turn when the model is missing, can't use tools or runs out of memory, or the key, credit or call is refused | `engine.model-failure-stops` |
 |  | each model's price and whether it is local, which give each `llm.response` its `cost` | `engine.turn-prices-calls` |
 |  | with `LargeResultsTurnLog` round it, keeps a tool result over 256 KB in the blob store and its start in the log | `engine.large-results-to-blobs` |
 |  | starts a run with one `context.updated` per key of the workflow's initial context, before its first state | `engine.initial-context-logged` |
@@ -129,9 +130,11 @@ Runs of agents will log their turns through a `RunStoreTurnLog`.
 
 A turn's models are the alias its request resolved to, then that alias's own `fallback` entries,
 one level deep and each alias once. A model whose key isn't set is skipped before any call. An
-offline model hands the call to the next one at once, and the turn stays on that model. A missing
-model, a model that can't use tools, or a refused call stops the turn with that `ModelCallError`.
-When no model is left, the turn fails with a `ModelCallError` whose reason is the last cause.
+offline model, or one whose provider is busy, hands the call to the next one at once, and the turn
+stays on that model. A missing model, a model that can't use tools, a refused key, an account with
+no credit left, or a refused call stops the turn with that `ModelCallError`: a key or credit the
+person has to fix shouldn't hide behind another provider, nor move their spending there. When no
+model is left, the turn fails with a `ModelCallError` whose reason is the last cause.
 
 Each `llm.response` gets its `cost` from the model that answered: its tokens at its price per
 million, in the workspace's budget currency and not rounded. It uses `priceOf` from
