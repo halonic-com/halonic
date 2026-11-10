@@ -139,6 +139,18 @@ export type {
 export { type ServiceKey, serviceKey } from "./service-key.ts";
 export { createShell, type Shell, type ShellOptions } from "./shell.ts";
 export { ShellError } from "./shell-error.ts";
+export {
+  SidebarResizeEdge,
+  type SidebarResizeEdgeProps,
+} from "./sidebar/sidebar-resize-edge.tsx";
+export {
+  clampSidebarWidth,
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_WIDTH_STEP,
+  sidebarWidthForKey,
+} from "./sidebar/sidebar-width.ts";
 export type { Studio } from "./studio.ts";
 export {
   currentLocation,

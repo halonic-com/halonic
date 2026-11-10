@@ -143,6 +143,20 @@ announcer. A result ("Saved key for Anthropic") or a failed command ("Couldn't r
 >
 ```
 
+## Sidebar resize edge
+
+`SidebarResizeEdge` goes right after the sidebar, before the page. It's an 8px hit area over the
+sidebar's border that takes no room, with a 2px `accent` line on hover, while dragging and on
+keyboard focus. Drag it, or Tab to it and use the window-splitter keys: ← and → by 16px, Home
+180px, End 640px, Enter 264px (a double-click does the same). It's a `separator` named "Resize
+sidebar" whose value a screen reader reads, so it sends nothing to the announcer. The sidebar owns
+the width: `onResize` follows every move, `onResizeEnd` saves once the key or pointer is released.
+
+```tsx
+<nav id="sidebar" style={{ width }}>…</nav>
+<SidebarResizeEdge width={width} sidebarId="sidebar" onResize={setWidth} onResizeEnd={save} />;
+```
+
 ## Announcements
 
 `shell.announcer` reads short texts to screen readers. There is one per window, shared by every
