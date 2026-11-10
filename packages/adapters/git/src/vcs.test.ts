@@ -12,7 +12,7 @@ import {
   writeFiles,
 } from "./fixtures.test-helper.ts";
 import type { GitRunner } from "./git-runner.ts";
-import { gitVcsHarness } from "./harness.test-helper.ts";
+import { gitVcsHarness, localSsh, remoteRunner } from "./harness.test-helper.ts";
 import { GitVcs } from "./vcs.ts";
 
 const scratch = new Scratch();
@@ -22,6 +22,18 @@ let shared: Promise<GitRunner> | undefined;
 function runner(): Promise<GitRunner> {
   shared ??= testRunner(scratch);
   return shared;
+}
+
+let sharedRemote: Promise<GitRunner> | undefined;
+function withRemotes(): Promise<GitRunner> {
+  sharedRemote ??= remoteRunner(scratch);
+  return sharedRemote;
+}
+
+/** Plain git, reaching `ssh://` remotes through the local `ssh`; a failed call is fine, only what it ran counts. */
+async function plainGitOverSsh(folder: string, args: readonly string[]): Promise<void> {
+  const ssh = await localSsh(scratch);
+  await plainGit(folder, ["-c", `core.sshCommand=${ssh}`, ...args]).catch(() => undefined);
 }
 
 async function vcsAt(folder: string): Promise<GitVcs> {
@@ -105,6 +117,40 @@ verifies("git.vcs", () => {
       const folder = await repositoryWith(scratch);
       await plainGit(folder, ["checkout", "--quiet", "--detach"]);
       await expect((await vcsAt(folder)).push()).rejects.toThrow("no branch is checked out");
+    });
+  });
+
+  // `vcs-remote.ts` pins both programs with `--upload-pack` and
+  // `--receive-pack`, which beat the repository's config. The contract's
+  // remote case plants both together; these show each on its own.
+  describe("the remote's programs", () => {
+    it("never runs a planted remote.origin.uploadpack when pulling, which plain git does", async () => {
+      const [, theirs] = await gitVcsHarness(scratch, withRemotes, plantedHooks).clones({
+        "a.yaml": "1\n",
+      });
+      await theirs.plant.config("remote.origin.uploadpack");
+      await theirs.vcs.pull();
+      expect(await theirs.plant.ran()).toBe(false);
+
+      await plainGitOverSsh(theirs.files.location, ["pull", "--quiet", "--ff-only"]);
+      expect(await theirs.plant.ran()).toBe(true);
+    });
+
+    it("never runs a planted remote.origin.receivepack when pushing, which plain git does", async () => {
+      const [ours] = await gitVcsHarness(scratch, withRemotes, plantedHooks).clones({
+        "a.yaml": "1\n",
+      });
+      await ours.plant.config("remote.origin.receivepack");
+      await ours.files.write("a.yaml", "2\n");
+      await ours.vcs.stage(["a.yaml"]);
+      await ours.vcs.commit("Change a");
+      await ours.vcs.push();
+      expect(await ours.plant.ran()).toBe(false);
+
+      await ours.files.write("a.yaml", "3\n");
+      await plainGit(ours.files.location, ["commit", "--quiet", "--all", "--message=Plain"]);
+      await plainGitOverSsh(ours.files.location, ["push", "--quiet", "origin", "main"]);
+      expect(await ours.plant.ran()).toBe(true);
     });
   });
 

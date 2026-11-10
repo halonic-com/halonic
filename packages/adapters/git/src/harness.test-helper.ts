@@ -14,21 +14,33 @@ import { type Plant, plantIn } from "./plant.test-helper.ts";
 import { GitVcs } from "./vcs.ts";
 
 /**
- * An `ssh` that runs the command a remote's server would run (its last
- * argument) on this computer, so a clone can use an `ssh://` remote, the
- * only kind the adapter allows besides `https`, with no server.
+ * Writes an `ssh` into a new folder and gives its path. It runs the
+ * command a remote's server would run (its last argument) on this
+ * computer, so a clone can use an `ssh://` remote, the only kind the
+ * adapter allows besides `https`, with no server. A git command, such as
+ * `git-upload-pack '/remote.git'`, runs as `git upload-pack`; any other,
+ * such as a planted `remote.<name>.uploadpack`, runs as it is, the way the
+ * server's shell would run it.
  */
-async function localSsh(folder: string): Promise<void> {
-  const ssh = join(folder, "ssh");
-  // The command, such as `git-upload-pack '/remote.git'`, is the last argument.
-  await writeFile(ssh, `#!/bin/sh\nfor last; do :; done\nexec sh -c "git \${last#git-}"\n`);
+export async function localSsh(scratch: Scratch): Promise<string> {
+  const ssh = join(await scratch.folder(), "ssh");
+  const script = [
+    "#!/bin/sh",
+    "for last; do :; done",
+    'case "$last" in',
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: a shell expansion, written literally
+    '  git-*) exec sh -c "git ${last#git-}" ;;',
+    '  *) exec sh -c "$last" ;;',
+    "esac",
+  ];
+  await writeFile(ssh, `${script.join("\n")}\n`);
   await chmod(ssh, 0o755);
+  return ssh;
 }
 
 /** The adapter's runner for the tests, with the local `ssh` first on the `PATH`. */
 export async function remoteRunner(scratch: Scratch): Promise<GitRunner> {
-  const bin = await scratch.folder();
-  await localSsh(bin);
+  const bin = dirname(await localSsh(scratch));
   return testRunner(scratch, { ...process.env, PATH: `${bin}:${process.env["PATH"] ?? ""}` });
 }
 
