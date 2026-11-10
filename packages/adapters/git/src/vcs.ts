@@ -5,6 +5,8 @@ import {
   type Vcs,
   type VcsApplyOptions,
   type VcsCommit,
+  type VcsCommitVersionOptions,
+  type VcsCommitWorktreeOptions,
   type VcsFileDiff,
   type VcsStatus,
   type VcsWorktree,
@@ -199,6 +201,26 @@ export class GitVcs implements Vcs {
     throw notOnGitYet("applyPatch");
   }
 
+  async commitVersion(_options: VcsCommitVersionOptions): Promise<string> {
+    throw notOnGitYet("commitVersion");
+  }
+
+  async commitWorktreeTo(
+    _worktreeId: string,
+    _ref: string,
+    _options: VcsCommitWorktreeOptions,
+  ): Promise<string> {
+    throw notOnGitYet("commitWorktreeTo");
+  }
+
+  async readRef(_ref: string): Promise<string | null> {
+    throw notOnGitYet("readRef");
+  }
+
+  async deleteRef(_ref: string): Promise<void> {
+    throw notOnGitYet("deleteRef");
+  }
+
   async init(): Promise<void> {
     if ((await Repository.open(this.#runner, this.#folder)) !== null) return;
     const folder = await realpath(this.#folder);
@@ -267,9 +289,10 @@ export class GitVcs implements Vcs {
 
 /**
  * The error of a port v2 method git doesn't have yet. Worktrees,
- * `diffBetween` and `applyPatch` come with the `.git`-file rule in the next
- * part of HAL-3245; until then they refuse, rather than half work. Nothing
- * outside this package builds a `GitVcs` yet.
+ * `diffBetween` and `applyPatch` come with the `.git`-file rule in part 4 of
+ * HAL-3245, and Create version and proposal refs in part 5; until then they
+ * refuse, rather than half work. Nothing outside this package builds a
+ * `GitVcs` yet.
  */
 function notOnGitYet(method: string): Error {
   return new Error(`The git Vcs can't ${method} yet (HAL-3245).`);
