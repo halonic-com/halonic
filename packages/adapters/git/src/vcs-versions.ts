@@ -40,7 +40,8 @@ export async function snapshotCommit(
 /**
  * A file's text at a commit, or `null` when the commit has no such file.
  *
- * @throws RangeError for a version that isn't a full commit id or a path the port refuses
+ * @throws RangeError for a version that isn't a full commit id, a full id that
+ *   names a tree or a file rather than a commit, or a path the port refuses
  * @throws Error `Unknown version <id>` when the repository has no such commit
  */
 export async function readAtCommit(
@@ -109,8 +110,12 @@ async function filesAt(
 }
 
 async function checkKnownVersion(repository: Repository, version: string): Promise<void> {
-  const found = await repository.run({ args: ["cat-file", "-e", `${version}^{commit}`] });
+  const found = await repository.run({ args: ["cat-file", "-t", version] });
   if (found.code !== 0) throw new Error(`Unknown version ${version}`);
+  // A full id may name a tree, a file or a tag; only a commit is a version.
+  const type = text(found.stdout);
+  if (type !== "commit")
+    throw new RangeError(`Invalid version ${version}: it names a ${type}, not a commit.`);
 }
 
 async function currentCommit(repository: Repository): Promise<string | null> {

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2607; HAL-3245 (`Vcs` port v2); the memory Vcs's `memory.vcs-versions`
 
-The git Vcs shall take a snapshot as a new commit of every public file on disk that the repository doesn't ignore, on top of the current commit, through a copy of the index, without changing the branch, the index or the working tree, and leave no copy behind. `readAt` and `listAt` shall read a commit's regular files only, `null` for a file or folder the commit doesn't have, and refuse a version the repository doesn't have with `Unknown version <id>`. `rename` shall move a file, or a folder with everything in it, with `git mv` when the repository tracks it, and refuse, changing nothing, when the old path doesn't exist, the new one does, or the new one is inside the old one.
+The git Vcs shall take a snapshot as a new commit of every public file on disk that the repository doesn't ignore, on top of the current commit, through a copy of the index, without changing the branch, the index or the working tree, and leave no copy behind. `readAt` and `listAt` shall read a commit's regular files only, `null` for a file or folder the commit doesn't have, refuse a full id that names a tree, a file or a tag rather than a commit with a `RangeError`, and refuse a version the repository doesn't have with `Unknown version <id>`. `rename` shall move a file, or a folder with everything in it, with `git mv` when the repository tracks it, and refuse, changing nothing, when the old path doesn't exist, the new one does, or the new one is inside the old one.
 
 ## Examples
 
@@ -14,6 +14,9 @@ The git Vcs shall take a snapshot as a new commit of every public file on disk t
 - Given a `.env` on disk that `.gitignore` doesn't ignore,
   when a snapshot is taken,
   then the snapshot has no `.env`.
+- Given the full id of a snapshot's tree or of a file in it,
+  when `readAt` or `listAt` is called with it,
+  then it is refused with a `RangeError`.
 - Given tracked `agents/old.agent.yaml`,
   when it is renamed to `agents/new.agent.yaml`,
   then the status lists `agents/new.agent.yaml` as `renamed` from the old path, staged.
