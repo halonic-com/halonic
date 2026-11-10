@@ -1,3 +1,4 @@
+import { unversionedFolders } from "@halonicjs/ports";
 import { expect, it } from "vitest";
 import { filesOf } from "./vcs-commit-version.ts";
 import { type MakeVcs, optionLikePaths, patternLikePaths, unsafeVcsPaths } from "./vcs-harness.ts";
@@ -7,11 +8,13 @@ import { privateWorkspaceFiles } from "./vcs-version-inputs.ts";
 /**
  * The safety part of the {@link Vcs} contract for Create version: every
  * path in `include` and `exclude` goes through the port's path rules and is
- * read as a file name only, and no private entry ever gets into a version.
+ * read as a file name only, and no private entry or review record ever
+ * gets into a version.
  */
 export function vcsCommitVersionSafetyCases(make: MakeVcs): void {
   pathCases(make);
   privateEntryCases(make);
+  reviewRecordCases(make);
 }
 
 function pathCases(make: MakeVcs): void {
@@ -104,5 +107,59 @@ function privateEntryCases(make: MakeVcs): void {
       "agents/b.yaml": "3\n",
     });
     expect((await vcs.status()).changes).toEqual([]);
+  });
+}
+
+function reviewRecordCases(make: MakeVcs): void {
+  it("never commits a change under .halonic/review/, whatever .gitignore says", async () => {
+    // As in a workspace made before init ignored the folder: HEAD tracks two records.
+    const harness = await make.repo({
+      "a.yaml": "1\n",
+      ".halonic/review/b.json": "{}\n",
+      ".halonic/review/old.json": "{}\n",
+    });
+    const { vcs, files } = harness;
+    await files.write("a.yaml", "2\n");
+    await files.write(".halonic/review/b.json", '{"changed":true}\n');
+    await files.remove(".halonic/review/old.json");
+    await files.write(".halonic/review/c.json", "{}\n");
+    await files.write(".halonic/review/run/d.json", "{}\n");
+    // Neighbours of the folder are committed as usual.
+    await files.write(".halonic/notes.md", "kept\n");
+    await files.write(".halonic/reviewer.md", "kept\n");
+    const onDisk = await filesOf(harness);
+
+    const everything = await vcs.commitVersion({ message: "Everything", exclude: [] });
+    expect(await vcs.listAt(everything)).toEqual([
+      ".halonic/notes.md",
+      ".halonic/review/b.json",
+      ".halonic/review/old.json",
+      ".halonic/reviewer.md",
+      "a.yaml",
+    ]);
+    expect(await vcs.readAt(everything, ".halonic/review/b.json")).toBe("{}\n");
+    expect(await vcs.readAt(everything, ".halonic/review/old.json")).toBe("{}\n");
+    expect(await vcs.readAt(everything, "a.yaml")).toBe("2\n");
+
+    // Naming the folder, or its parent, in include doesn't let a record in.
+    await files.write(".halonic/notes.md", "kept again\n");
+    const underHalonic = await vcs.commitVersion({
+      message: "Halonic folder",
+      include: [".halonic"],
+      exclude: [],
+    });
+    expect(await vcs.listAt(underHalonic)).toEqual(await vcs.listAt(everything));
+    expect(await vcs.readAt(underHalonic, ".halonic/review/b.json")).toBe("{}\n");
+    expect(await vcs.readAt(underHalonic, ".halonic/notes.md")).toBe("kept again\n");
+    await expect(
+      vcs.commitVersion({ message: "Records", include: [".halonic/review"], exclude: [] }),
+    ).rejects.toThrow();
+
+    // The records stay on disk as they were, untouched.
+    expect(await filesOf(harness)).toEqual({ ...onDisk, ".halonic/notes.md": "kept again\n" });
+  });
+
+  it("names .halonic/review in the port's unversionedFolders", () => {
+    expect(unversionedFolders).toContain(".halonic/review");
   });
 }
