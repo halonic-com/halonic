@@ -8,8 +8,9 @@ const showsDiffs = new Set(["diff", "log", "show", "whatchanged"]);
  * uses, and the diff ones, which {@link withoutDiffPrograms} covers. Any
  * other may start a program the repository names that no override
  * reaches: `blame` runs textconv by default, `stash show -p` the external
- * diff, `add -p` the interactive diff filter. An allow-list keeps the ones
- * nobody has found yet out too.
+ * diff. An allow-list keeps the ones nobody has found yet out too. Within
+ * the allowed ones, {@link checkOptions} keeps out the options that do the
+ * same, such as `add -p`, which runs the interactive diff filter.
  */
 const allowedSubcommands = new Set([
   ...showsDiffs,
@@ -52,18 +53,31 @@ export function checkSubcommand(args: readonly string[]): void {
  * Options that read or write the file they name, which can be anywhere,
  * for every subcommand, and those of one subcommand only. Long ones are
  * refused abbreviated too, as git takes `--fil` for `--file`.
+ *
+ * The interactive modes (`--patch`, `--interactive`, `add --edit`) run
+ * `interactive.diffFilter` or open the editor on a patch. The same letter
+ * means something else elsewhere: `commit -i` is `--include`,
+ * `commit-tree -p` names a parent and `cat-file -p` prints an object, so
+ * the lists are per subcommand.
  */
 const fileOptions = ["output", "file", "pathspec-from-file", "template"];
 const refusedLongOptions: Readonly<Record<string, readonly string[]>> = {
   // `add --force` records an ignored nested repository, which the checks don't list.
-  add: [...fileOptions, "force"],
-  // `cat-file --textconv` runs `diff.<driver>.textconv`, with no `--no-textconv` to beat it.
-  "cat-file": [...fileOptions, "textconv"],
+  add: [...fileOptions, "force", "patch", "interactive", "edit"],
+  // `cat-file --textconv` and `--filters` run the drivers the attributes name, with no `--no-textconv` to beat them.
+  "cat-file": [...fileOptions, "textconv", "filters"],
+  checkout: [...fileOptions, "patch"],
+  clean: [...fileOptions, "interactive"],
+  commit: [...fileOptions, "patch", "interactive"],
+  reset: [...fileOptions, "patch"],
 };
 const refusedShortOptions: Readonly<Record<string, string>> = {
-  add: "f",
-  commit: "Ft",
+  add: "fpie",
+  checkout: "p",
+  clean: "i",
+  commit: "Ftp",
   config: "f",
+  reset: "p",
 };
 
 /** Where git stops reading options: the first `--` or `--end-of-options`, or the end. */
@@ -73,8 +87,9 @@ function endOfOptions(args: readonly string[]): number {
 }
 
 /**
- * Refuses a call with an option that reads or writes a file it names (see
- * {@link refusedLongOptions} and {@link refusedShortOptions}). A short one
+ * Refuses a call with an option that reads or writes a file it names, or
+ * starts a program the repository names (see {@link refusedLongOptions}
+ * and {@link refusedShortOptions}). A short one
  * is refused anywhere in a bundle such as `-aF`, even where it would be a
  * value: the adapter gives values in long options.
  *

@@ -202,6 +202,44 @@ async function nestRepository(folder: string, path: string): Promise<void> {
   await plainGit(folder, ["add", path]);
 }
 
+/** What a refused option would run: the interactive diff filter or a filter driver. */
+type PlantedFor = "diffFilter" | "filter";
+
+/**
+ * Each refused option, with what it would run. `control` marks the ones
+ * plain git runs the plant for here, with no one at the prompt; the rest
+ * need a person to answer it first.
+ */
+const refusedOptionCases: readonly {
+  args: readonly string[];
+  plants: PlantedFor;
+  control: boolean;
+}[] = [
+  { args: ["add", "-p"], plants: "diffFilter", control: true },
+  { args: ["add", "--patch"], plants: "diffFilter", control: true },
+  { args: ["add", "-vp"], plants: "diffFilter", control: true },
+  { args: ["add", "--interactive"], plants: "diffFilter", control: false },
+  { args: ["add", "--inter"], plants: "diffFilter", control: false },
+  { args: ["add", "-i"], plants: "diffFilter", control: false },
+  { args: ["add", "-e"], plants: "diffFilter", control: false },
+  { args: ["checkout", "-p"], plants: "diffFilter", control: false },
+  { args: ["reset", "--patch"], plants: "diffFilter", control: false },
+  { args: ["commit", "-p"], plants: "diffFilter", control: true },
+  { args: ["commit", "--interactive"], plants: "diffFilter", control: false },
+  { args: ["clean", "-i"], plants: "diffFilter", control: false },
+  { args: ["cat-file", "--filters", "HEAD:a.yaml"], plants: "filter", control: true },
+];
+
+/** Plants what `plants` names in the repository at `folder`, and changes `a.yaml` so there is a diff to show. */
+async function plantFor(plants: PlantedFor, plant: Plant, folder: string): Promise<void> {
+  if (plants === "diffFilter") await plant.config("interactive.diffFilter");
+  if (plants === "filter") {
+    await plant.config("filter.planted.smudge");
+    await plant.attributes("* filter=planted");
+  }
+  await writeFile(join(folder, "a.yaml"), "2\n");
+}
+
 /** A new repository with a plant in it, whose program lives outside the repository. */
 async function planted(): Promise<{ folder: string; plant: Plant }> {
   const folder = await repositoryWith(scratch);
@@ -217,6 +255,42 @@ verifies("git.repo-leaks", () => {
           "The git adapter doesn't run git",
         );
       }
+    });
+
+    describe("refuses an option that starts a program the repository names", () => {
+      for (const { args, plants, control } of refusedOptionCases) {
+        it(args.join(" "), async () => {
+          if (control) {
+            const plain = await planted();
+            await plantFor(plants, plain.plant, plain.folder);
+            // The interactive diff filter only runs on a coloured diff.
+            await plainGit(plain.folder, ["-c", "color.ui=always", ...args]).catch(() => undefined);
+            expect(await plain.plant.ran()).toBe(true);
+          }
+          const { folder, plant } = await planted();
+          await plantFor(plants, plant, folder);
+          await expect((await open(folder)).run({ args })).rejects.toThrow(
+            "The git adapter doesn't pass",
+          );
+          expect(await plant.ran()).toBe(false);
+        });
+      }
+    });
+
+    it("runs the options that share a letter with a refused one elsewhere, and paths after the options", async () => {
+      const folder = await repositoryWith(scratch);
+      await writeFile(join(folder, "-p"), "1\n");
+      const repository = await open(folder);
+      await repository.output({ args: ["cat-file", "-p", "HEAD"] });
+      await repository.output({ args: ["log", "-p", "--text"] });
+      await repository.output({ args: ["add", "--", "-p"] });
+      await repository.output({ args: ["add", "--end-of-options", "-p"] });
+      await repository.output({
+        args: ["commit", "-i", "--quiet", "--message=Acme", "--", "-p"],
+        config: identity,
+      });
+      const committed = await repository.output({ args: ["ls-tree", "--name-only", "HEAD"] });
+      expect(committed.toString()).toContain("-p\n");
     });
 
     it("says which alternate is missing", async () => {

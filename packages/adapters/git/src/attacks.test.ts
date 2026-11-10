@@ -145,8 +145,6 @@ verifies("git.repo-config", () => {
       await plant.attributes("* diff=planted");
       await plant.config("trailer.planted.command");
       await plant.config("trailer.planted.cmd");
-      await plant.config("interactive.diffFilter");
-      await plant.config("color.ui", "always");
       const repository = await open(folder);
       await writeFile(join(folder, "a.yaml"), "2\n");
       const calls: readonly (readonly string[])[] = [
@@ -154,7 +152,6 @@ verifies("git.repo-config", () => {
         ["diff", "--textconv", "--", "a.yaml"],
         ["log", "-p", "--ext-diff"],
         ["show", "--textconv", "--end-of-options", "HEAD"],
-        ["add", "-p"],
         ["commit", "--allow-empty", "--trailer=planted=1", "--message=Trailer"],
       ];
       // Some of them fail on the blanked program; only that none ran counts.

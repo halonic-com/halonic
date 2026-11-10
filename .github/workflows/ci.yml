@@ -58,7 +58,7 @@ jobs:
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-srt/|pnpm-lock\.yaml$)"
-            "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node)/|packages/core/ports/)"
+            "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/connect/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
             "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|package\.json$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
@@ -945,9 +945,10 @@ jobs:
         run: pnpm test:fence
 
   sandbox-os:
-    # The sandbox and launcher packages on the other two systems (plan
-    # phase 3): they start processes, build paths and read the system, so
-    # what holds on Linux can still break on macOS or Windows. Typecheck
+    # The sandbox and launcher packages, and the git adapter, on the other
+    # two systems (plan phase 3): they start processes, build paths and read
+    # the system, so what holds on Linux can still break on macOS or Windows.
+    # The git adapter's Windows tree kill runs only here. Typecheck
     # and tests only; lint and build don't depend on the platform. The
     # filters are globs so a package that doesn't exist yet (sandbox-host)
     # is no error. A test that can't run on a system skips itself with a
@@ -981,6 +982,7 @@ jobs:
           pnpm exec turbo run typecheck test --continue --env-mode=loose --output-logs=new-only
           --filter='@halonicjs/adapter-sandbox-*'
           --filter=@halonicjs/adapter-system-node
+          --filter=@halonicjs/adapter-git
 
   sandbox-windows:
     # The sandbox fence probes on a real Windows machine (HAL-1919): a hidden
