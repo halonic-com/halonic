@@ -118,7 +118,10 @@ verifies("git.hardened", () => {
             "took longer than 1000 ms",
           );
           const pid = Number(await readFile(pidFile, "utf8"));
-          await expect(stillRunning(pid)).resolves.toBe(false);
+          // The whole group gets SIGKILL at once, but the kernel takes each
+          // program down in its own time: on a busy runner the other one can
+          // still be ending when the first has closed (HAL-3828).
+          await expect.poll(() => stillRunning(pid), { timeout: 5000 }).toBe(false);
         } finally {
           await rm(folder, { recursive: true, force: true });
         }
