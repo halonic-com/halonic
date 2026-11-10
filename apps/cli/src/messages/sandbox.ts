@@ -18,7 +18,7 @@ const refusedFixes: Readonly<Record<SandboxUnavailableReason, string>> = {
   "user-namespaces-restricted":
     "Ubuntu 24.04 blocks the user namespaces the sandbox needs. Allow them for bubblewrap with an AppArmor rule; the guide has the exact commands.",
   "bubblewrap-missing":
-    "bubblewrap isn't installed. Install it, for example with sudo apt install bubblewrap, then run it again.",
+    "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
   other:
     "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
 };
@@ -42,7 +42,8 @@ const fixes: Readonly<Record<SandboxUnavailableReason, string>> = {
   container: "run Halonic on the runner or computer itself, not in a container.",
   "user-namespaces-restricted":
     "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
-  "bubblewrap-missing": "install it, for example with sudo apt install bubblewrap.",
+  "bubblewrap-missing":
+    "install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
   other: "see what the sandbox needs on this computer.",
 };
 
@@ -81,7 +82,7 @@ const afterDoctorAgain: Readonly<Partial<Record<SandboxUnavailableReason, string
   container: "halonic validate and halonic test work in a container.",
 };
 
-/** "Fix: install it, for example with sudo apt install bubblewrap. Then run halonic doctor again." */
+/** "Fix: install it, for example on Ubuntu or Debian with sudo apt install bubblewrap. Then run halonic doctor again." */
 function doctorFix(fix: string, note?: string): Phrase {
   return note === undefined
     ? phrase`Fix: ${fix} Then run halonic doctor again.`

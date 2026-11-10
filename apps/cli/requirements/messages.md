@@ -37,7 +37,7 @@ The `halonic` command shall take every sentence it shows the user from the CLI's
   then it reads "2 changed programs." and never names a count of 0 (cli-output 3.5).
 - Given a run refused because bubblewrap isn't installed,
   when its line 2 is made,
-  then it reads "bubblewrap isn't installed. Install it, for example with sudo apt install bubblewrap, then run it again.", and a reason code Halonic doesn't know gets the `other` line, never the check's own sentence (cli-output 3.8).
+  then it reads "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.", and a reason code Halonic doesn't know gets the `other` line, never the check's own sentence (cli-output 3.8).
 - Given `halonic doctor` on a computer whose sandbox can't start,
   when its summary is made,
   then it reads "1 problem. Agents set to run in a sandbox won't start until it's fixed." (cli-output 3.7).
