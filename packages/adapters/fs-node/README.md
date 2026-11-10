@@ -27,8 +27,12 @@ and passes the shared `DefinitionStore` contract suite.
   version in both.
 - **Limits:** a path is checked, then used. A program that swaps a folder
   for a link in between could get past the check; the store guards its own
-  callers, not against other programs writing into its root. A write
-  replaces the file in place, without a temporary file.
+  callers, not against other programs writing into its root.
+- **Writes** go to a temporary file in the same folder that is renamed over
+  the file, so another program reads the old text or the new. On Windows a
+  scanner, an editor or the search indexer can hold the file open for a
+  moment, and the rename fails with `EPERM` or `EBUSY`; the store tries it
+  again five times over about a third of a second before the write fails.
 
 ## Runs in a folder
 
