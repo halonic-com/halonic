@@ -116,7 +116,8 @@
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/studio-kit",
-        "@halonicjs/studio-shell"
+        "@halonicjs/studio-shell",
+        "@halonicjs/studio-feature-*"
       ],
       "layers": [
         "studio"
@@ -127,7 +128,8 @@
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/studio-kit",
-        "@halonicjs/studio-shell"
+        "@halonicjs/studio-shell",
+        "@halonicjs/studio-feature-*"
       ],
       "layers": [
         "studio"
@@ -184,7 +186,8 @@
       "allowedIn": [
         "@halonicjs/studio-kit",
         "@halonicjs/studio-shell",
-        "@halonicjs/app-studio"
+        "@halonicjs/app-studio",
+        "@halonicjs/studio-feature-*"
       ],
       "layers": [
         "studio",
@@ -196,7 +199,8 @@
       "category": "studio-framework",
       "allowedIn": [
         "@halonicjs/studio-kit",
-        "@halonicjs/studio-shell"
+        "@halonicjs/studio-shell",
+        "@halonicjs/studio-feature-*"
       ],
       "layers": [
         "studio"
@@ -218,7 +222,8 @@
       "category": "studio-framework",
       "allowedIn": [
         "@halonicjs/studio-kit",
-        "@halonicjs/studio-shell"
+        "@halonicjs/studio-shell",
+        "@halonicjs/studio-feature-*"
       ],
       "layers": [
         "studio"
