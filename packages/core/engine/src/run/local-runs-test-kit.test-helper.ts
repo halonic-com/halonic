@@ -42,8 +42,37 @@ export class TestScheduler implements Scheduler {
   }
 }
 
+/**
+ * A run store whose next read of a log can be held: it reads the log at
+ * once, but gives it back only when the test releases it, as a slow disk
+ * would after another write has landed.
+ */
+export class HeldRuns extends KernelRuns {
+  #held: Promise<void> | undefined;
+
+  /** Holds the next `events` read; call the returned function to release it. */
+  holdNextRead(): () => void {
+    let release = () => {};
+    this.#held = new Promise((resolve) => {
+      release = resolve;
+    });
+    return release;
+  }
+
+  override async events(runId: string, afterSeq = 0): Promise<RunEvent[]> {
+    const events = await super.events(runId, afterSeq);
+    const held = this.#held;
+    this.#held = undefined;
+    if (held !== undefined) await held;
+    return events;
+  }
+}
+
 /** A local executor with runs on memory ports, a scripted model and the reply workflow. */
-export function runsOn(answers: (ChatResponse | Error)[], runs = new KernelRuns()) {
+export function runsOn<Runs extends KernelRuns = KernelRuns>(
+  answers: (ChatResponse | Error)[],
+  runs: Runs = new KernelRuns() as Runs,
+) {
   const model = new ScriptedModel(answers);
   const scheduler = new TestScheduler();
   const definitionsAsked: string[] = [];

@@ -2,7 +2,7 @@ import { ModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { textAnswer } from "../testing/scripted-model.ts";
-import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
+import { HeldRuns, replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
 
 verifies("engine.local-runs", () => {
   it("records the start, then runs the model call from its timer to the end", async () => {
@@ -34,6 +34,21 @@ verifies("engine.local-runs", () => {
     expect(typesOf(runs.logs.get("run_1")).filter((type) => type === "agent.finished")).toEqual([
       "agent.finished",
     ]);
+  });
+
+  it("calls the model once when a second delivery's read ends after the first call", async () => {
+    const { executor, model, runs } = runsOn([textAnswer("Dear support")], new HeldRuns());
+    await executor.start(replyStart);
+    const timer = { key: "run_1", timerId: "call:call-1", at: "" };
+
+    const release = runs.holdNextRead();
+    const late = executor.onTimer(timer);
+    await executor.onTimer(timer);
+    release();
+    await late;
+
+    expect(model.requests).toHaveLength(1);
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
   });
 
   it("returns the existing run for a repeated run id and records nothing", async () => {

@@ -1,8 +1,8 @@
 // The run side of the local executor: it records each input with `step`,
 // then carries out the effects through the scheduler, so a run moves on one
-// step per timer and survives a restart of the process.
+// step per timer, and a timer that is late or repeated changes nothing.
 
-import type { RunSummary } from "@halonicjs/events";
+import { type RunEvent, type RunSummary, summarize } from "@halonicjs/events";
 import type {
   BlobStore,
   Clock,
@@ -55,6 +55,12 @@ const maxRunIdBytes = 256;
 /** Timer ids: a call to carry out now, and a timer a state set (`set-timer`). */
 const callTimer = "call:";
 const stateTimer = "timer:";
+
+/**
+ * The effects this executor carries out. Tool calls arrive with the agent
+ * loop (4a), child runs and telling the parent with step 5(a).
+ */
+const builtEffects: ReadonlySet<Effect["type"]> = new Set(["call-model", "set-timer"]);
 
 /** Runs workflows in this process for the local executor. */
 export class LocalRuns {
@@ -169,14 +175,15 @@ export class LocalRuns {
   }
 
   async #carryOutCall(runId: string, callId: string): Promise<void> {
-    const run = await readRun(this.#options.store, runId);
-    const call = run?.pendingCall;
+    // Claim the slot before the read: a delivery whose read ends after the
+    // first call is recorded and the slot freed would still see the call.
     const slot = JSON.stringify([runId, callId]);
-    if (run == null || call == null || call.callId !== callId || this.#calling.has(slot)) {
-      return;
-    }
+    if (this.#calling.has(slot)) return;
     this.#calling.add(slot);
     try {
+      const run = await readRun(this.#options.store, runId);
+      const call = run?.pendingCall;
+      if (run == null || call == null || call.callId !== callId) return;
       await this.#recordIfTaken(runId, await this.#callResult(run, call));
     } finally {
       this.#calling.delete(slot);
@@ -216,6 +223,14 @@ export class LocalRuns {
     const ports = { runs: this.#options.store, blobs: this.#options.blobs };
     const { events, effects } = await step(ports, runId, input);
     if (events.length > 0) this.#feed.notify(runId);
+    const unbuilt = effects.find((effect) => !builtEffects.has(effect.type));
+    if (unbuilt !== undefined) {
+      // The events are stored, so throwing would leave the run going with no
+      // timer to move it on. Until the agent loop (4a) and child runs (5a)
+      // carry these out, the run fails and none of its effects are scheduled.
+      await this.#fail(runId, `The local executor can't carry out a ${unbuilt.type} effect yet.`);
+      return;
+    }
     for (const effect of effects) {
       await this.#schedule(runId, effect);
     }
@@ -223,15 +238,31 @@ export class LocalRuns {
 
   async #schedule(runId: string, effect: Effect): Promise<void> {
     const scheduler = this.#options.scheduler;
-    switch (effect.type) {
-      case "call-model":
-        return scheduler.schedule(runId, `${callTimer}${effect.callId}`, this.#now());
-      case "set-timer":
-        return scheduler.schedule(runId, `${stateTimer}${effect.key}`, effect.at);
-      default:
-        // Tool calls arrive with the agent loop (4a), child runs with step 5(a).
-        throw new Error(`The local executor can't carry out a ${effect.type} effect yet.`);
+    if (effect.type === "call-model") {
+      await scheduler.schedule(runId, `${callTimer}${effect.callId}`, this.#now());
+    } else if (effect.type === "set-timer") {
+      await scheduler.schedule(runId, `${stateTimer}${effect.key}`, effect.at);
     }
+  }
+
+  /** Ends a run that hasn't ended with `run.failed`, reading again when another write got there first. */
+  async #fail(runId: string, error: string): Promise<void> {
+    const store = this.#options.store;
+    for (;;) {
+      const summary = summarize(await store.events(runId));
+      if (summary === null || summary.status === "completed" || summary.status === "failed") return;
+      const failed: RunEvent = {
+        runId,
+        seq: summary.lastSeq + 1,
+        at: this.#now(),
+        type: "run.failed",
+        state: summary.state,
+        error,
+        reason: "error",
+      };
+      if ((await store.append(runId, summary.lastSeq, [failed])).ok) break;
+    }
+    this.#feed.notify(runId);
   }
 
   async #summary(runId: string): Promise<RunSummary> {

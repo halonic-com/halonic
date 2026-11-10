@@ -12,6 +12,7 @@ loop of one model turn, which the local chat turn runs.
 | `LocalExecutor`      | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs                       | `engine.local-chat-turn`, `engine.local-runs`                                       |
 |                      | streams a run's events from the store to `subscribe`, in order, and closes the stream once the run has ended                 | `engine.local-run-subscribe`                                                        |
 |                      | fails a run whose call fails, with the reason `runFailureReasonOf` gives the error                                           | `engine.run-call-fails`                                                             |
+|                      | fails a run whose step asks for an effect it can't carry out yet, and sets no timer for it                                   | `engine.local-runs-unbuilt-effect`                                                  |
 | `runModelTurn`       | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again    | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return`                    |
 |                      | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name         | `engine.turn-round-limit`, `engine.turn-tool-names`                                 |
 |                      | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
@@ -85,8 +86,10 @@ engine never falls back to the workspace's files.
 The local executor drives `step`. `start` and `send` record the input and set a `Scheduler` timer
 for each effect, then return; the run goes on when the timer is due, so the scheduler's listener
 forwards its timers to `LocalExecutor.onTimer`. A model call is carried out from the run's state
-(`pendingCall` keeps the prompt), so it survives a restart, and a timer that is late or delivered
-twice changes nothing. A failed call becomes an `effect-failed` input, and the run fails with the
+(`pendingCall` keeps the prompt), and a timer that is late or delivered twice changes nothing. A
+run still waiting on a call when the engine stops is `running`, so the next start ends it as
+`interrupted`. An effect the executor can't carry out yet (a tool call, a child run, telling the
+parent) fails the run with reason `error` rather than leaving it going with no timer. A failed call becomes an `effect-failed` input, and the run fails with the
 reason `runFailureReasonOf` gives. For now a run's model call sends the state's prompt to its agent's
 model without tools; tools, the agent's own prompt and the run log of the call come with the agent
 loop. `subscribe` reads every event from the store, after each append the executor makes; it
