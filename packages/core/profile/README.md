@@ -18,8 +18,20 @@ their blobs, so nothing Halonic records ever lands in the workspace or its git r
 | macOS   | `~/Library/Application Support/halonic`                    |
 | Linux   | `$XDG_DATA_HOME/halonic`, or else `~/.local/share/halonic` |
 
-Inside it, each workspace has `workspaces/<key>/`, where `<key>` comes from a hash of the
-workspace's real path. The key is internal: always ask `workspaceFolders`, never build the path.
+An empty variable counts as unset, and a relative `XDG_DATA_HOME` or `LOCALAPPDATA` is ignored.
+`profileFolder` throws a `RangeError` when `HALONIC_HOME` or the home folder isn't absolute.
+`isAbsolutePath(platform, path)` is the check it uses, for a path on `"windows"`, `"macos"` or
+`"linux"` (`ProfilePlatform`), whichever system the code runs on.
+
+`trustFolder(profile)` names the `trust` folder in the profile folder, where the CLI and the
+desktop shell both keep their trust records. The desktop shell's Rust port must give the same
+answers for the cases in `src/golden/profile-folders.json`.
+
+Inside the profile folder, each workspace has `workspaces/<key>/`, where `<key>` is the first 32 hex
+characters of the SHA-256 of the workspace's real path. The key is internal: always ask
+`workspaceFolders`, never build the path. It throws a `RangeError` for a path that isn't absolute and
+for a deployment id that isn't 1 to 64 lowercase letters, digits, `-` or `_` starting with a letter
+or digit, or that is a Windows device name (`con`, `nul`, `com1`, …).
 
 | Folder                   | Holds                                   |
 | ------------------------ | --------------------------------------- |

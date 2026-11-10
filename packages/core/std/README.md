@@ -52,7 +52,18 @@ It answers with the kind of secret only, never the text it found.
 `SecretScrubber` is the other half: once told a secret value with `remember`, `scrub` replaces
 it in any text, raw or URL-, form- or JSON-encoded, with `[secret removed]`. The CLI is meant to
 pass every error it prints through one. `secretTextForms` lists those forms for code that matches
-bytes instead.
+bytes instead; `secretRemoved` is the `[secret removed]` text itself.
+
+The smaller exports:
+
+- `assert` and `assertDefined` throw an `AssertionError` (a bug, never bad user input);
+  `assertDefined` also returns the value with `undefined` and `null` taken out of its type.
+- `unwrap` returns the value of an `ok` result and throws the carried error for an `err` one.
+  Use it in tests and fixtures, where a failure is a bug.
+- `bytesToHex` writes bytes as lowercase hex.
+- `formatVersion` writes a `Version` from `readVersion` back as text.
+- `errorKinds` lists the eight kinds and `isErrorKind` tells whether a value is one of them.
+- `fixedClockStart` is the time `fixedClock()` starts at (2026-01-01 UTC).
 
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
