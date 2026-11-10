@@ -1,4 +1,5 @@
 import type { Message } from "../messages/define.ts";
+import type { Phrase } from "../messages/phrase.ts";
 import { questionMessages } from "../messages/question.ts";
 import { type Environment, runsInCi } from "./style.ts";
 
@@ -29,18 +30,26 @@ export interface QuestionTerminal {
   readLine(): Promise<string | undefined>;
 }
 
-export interface AskOptions {
+/**
+ * A yes-or-no question a command asks through its context, such as
+ * whether to trust a workspace. A command may ask more than one in a run;
+ * each is asked in turn.
+ */
+export interface Question {
+  /** The question, such as "Trust Acme on this computer?". */
+  readonly question: Message;
+  /**
+   * Lines shown on stderr right before the question, such as the trust
+   * check, so the user reads what they're saying yes to. They're shown only
+   * when the question is asked: not with `--yes`, and not when it refuses.
+   */
+  readonly shownFirst?: readonly Phrase[];
   /**
    * Whether the command's `--yes` already answered the question. The
    * command decides it: `trust` counts `--yes` only with a matching
    * `--fingerprint` (cli-output 1.7).
    */
   readonly yes: boolean;
-  /** Whether a question may be asked, from {@link canAsk}. */
-  readonly canAsk: boolean;
-  readonly terminal: QuestionTerminal;
-  /** The message in stderr's colours and marks. */
-  readonly render: (message: Message) => string;
   /**
    * The error for when no question may be asked. It says what the answer
    * would have been for and names the flags that give it, such as
@@ -50,26 +59,37 @@ export interface AskOptions {
   readonly refusal: () => Error;
 }
 
+/** Where and how `runCli` asks: the same for every question in a command line. */
+export interface Asking {
+  /** Whether a question may be asked, from {@link canAsk}. */
+  readonly canAsk: boolean;
+  readonly terminal: QuestionTerminal;
+  /** A line in stderr's colours and marks. */
+  readonly render: (line: Phrase) => string;
+}
+
 /**
  * Asks a yes-or-no question with `[y/N]` (cli-output 1.7) and returns
  * whether the answer was yes. No is the careful default: only "y" or "yes"
  * count as yes, and an empty line or the end of stdin is no. When
- * {@link AskOptions.yes} is true it asks nothing and returns yes, even in a
+ * {@link Question.yes} is true it asks nothing and returns yes, even in a
  * terminal, so a script that passes `--yes` never waits on stdin. Otherwise,
- * when {@link AskOptions.canAsk} is false, it asks nothing and throws the
- * refusal.
- *
- * @param question - the question, such as "Trust Acme on this computer?"
+ * when {@link Asking.canAsk} is false, it asks nothing and throws the
+ * refusal. When it asks, the question's {@link Question.shownFirst} lines
+ * come first.
  */
-export async function askYesNo(question: Message, options: AskOptions): Promise<boolean> {
-  if (options.yes) {
+export async function askYesNo(question: Question, asking: Asking): Promise<boolean> {
+  if (question.yes) {
     return true;
   }
-  if (!options.canAsk) {
-    throw options.refusal();
+  if (!asking.canAsk) {
+    throw question.refusal();
   }
-  options.terminal.write(options.render(questionMessages.yesNo(question.phrase)));
-  const answer = await options.terminal.readLine();
+  for (const line of question.shownFirst ?? []) {
+    asking.terminal.write(`${asking.render(line)}\n`);
+  }
+  asking.terminal.write(asking.render(questionMessages.yesNo(question.question.phrase).phrase));
+  const answer = await asking.terminal.readLine();
   return isYes(answer);
 }
 

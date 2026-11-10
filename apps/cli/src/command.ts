@@ -3,6 +3,7 @@ import type { ExitCode } from "./exit-code.ts";
 import type { Message } from "./messages/define.ts";
 import { type Phrase, plainText } from "./messages/phrase.ts";
 import type { Progress } from "./output/progress.ts";
+import type { Question } from "./output/question.ts";
 
 /** Where the CLI writes and which folder it works from, passed in so tests can capture both. */
 export interface CliIo {
@@ -32,6 +33,17 @@ export interface CommandContext {
    * Through a pipe, with `--json` or in CI it draws nothing.
    */
   progress(doing: Phrase): Progress;
+  /**
+   * Asks the user a yes-or-no question with `[y/N]` on stderr and returns
+   * whether they said yes (cli-output 1.7). Its `shownFirst` lines come
+   * right before it, such as the trust check before "Trust Acme on this
+   * computer?". It may be called more than once, each question in turn.
+   * With the question's `yes` set it asks nothing and returns yes; where
+   * nobody can answer (no terminal on stdin, `CI` or `--json`) it asks
+   * nothing and throws the question's refusal. End a step's live line
+   * before asking.
+   */
+  ask(question: Question): Promise<boolean>;
 }
 
 /** One option a command accepts, such as `--hub <id>`. */
@@ -115,7 +127,8 @@ export interface CliCommand {
   /**
    * Runs the command and returns what it did; `runCli` prints it. The
    * result is only the end: what happens while it runs, such as a live ◌
-   * line, goes through the context, whose functions the printer owns (Liam,
+   * line or a yes-or-no question, goes through the context, whose functions
+   * the printer owns (Liam,
    * HAL-2194). A command never writes to `CliIo` itself. A command that only
    * hands off to its subcommands, such as `plugin`, leaves it out: `halonic
    * plugin` on its own then prints its help and exits with 2, as `halonic`

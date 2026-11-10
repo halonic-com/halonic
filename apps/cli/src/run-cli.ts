@@ -18,6 +18,7 @@ import type { Phrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
 import { type Printer, printerFor } from "./output/printer.ts";
 import { type Clock, terminalLine } from "./output/progress.ts";
+import { canAsk, type QuestionTerminal } from "./output/question.ts";
 import { type SharedLine, sharedLine } from "./output/shared-line.ts";
 import { decideStyle, type Environment, type OutputStyle } from "./output/style.ts";
 import { readInput } from "./read-input.ts";
@@ -39,6 +40,12 @@ export interface Terminal {
    * no live line is drawn.
    */
   readonly stderr?: LiveStream;
+  /**
+   * Where yes-or-no questions are asked: stderr to write them, stdin to
+   * read the answers. Pass it only when stdin is a terminal; without it,
+   * nothing is asked and a command that needs an answer gets its refusal.
+   */
+  readonly questions?: QuestionTerminal;
 }
 
 /** The terminal stream a live line draws on, as `process.stderr` offers it. */
@@ -99,6 +106,9 @@ export async function runCli(
     scrubber,
     ...(liveLine === undefined ? {} : { liveLine }),
     ...(setup.clock === undefined ? {} : { clock: setup.clock }),
+    ...(terminal.questions === undefined
+      ? {}
+      : { questions: questionsFor(terminal.questions, terminal, options) }),
   });
   try {
     return await runCommandLine(commandLine, io, commands, setup, { printer, options, scrubber });
@@ -159,6 +169,7 @@ async function runCommandLine(
     cwd: io.cwd,
     secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
     progress: (doing) => printer.progress(doing),
+    ask: (question) => printer.ask(question),
   };
   return runCommand(path, pathArgs, context, printer, options);
 }
@@ -266,6 +277,14 @@ function liveLineOf(terminal: Terminal, style: OutputStyle): SharedLine | undefi
   return sharedLine(
     terminalLine({ write: (text) => stderr.write(text), style, columns: () => stderr.columns() }),
   );
+}
+
+/** Where questions are asked, and whether they may be: never with `--json` or in CI. */
+function questionsFor(questions: QuestionTerminal, terminal: Terminal, options: GlobalOptions) {
+  return {
+    canAsk: canAsk({ env: terminal.env, stdinIsTerminal: true, json: options.json }),
+    terminal: questions,
+  };
 }
 
 /** Each stream's style: stdout may be a pipe while stderr is still a terminal. */
