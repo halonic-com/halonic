@@ -1,6 +1,11 @@
 import type { Agent, Connector } from "@halonicjs/format";
 import { posixPath } from "@halonicjs/std";
 import { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
+import {
+  type IntegrationTrustContent,
+  integrationsTrustContent,
+  type LocalIntegrationInput,
+} from "./trust-integrations.ts";
 import { trustUrl } from "./trust-url.ts";
 
 /**
@@ -42,6 +47,12 @@ export interface TrustContent {
    * workspace without them are the same as before harness agents existed.
    */
   agents?: AgentTrustContent[];
+  /**
+   * The local integrations that read an address from the workspace's
+   * settings, sorted by id. Only there when there are some, so the content
+   * and fingerprint of a workspace without them are the same as before.
+   */
+  integrations?: IntegrationTrustContent[];
 }
 
 /**
@@ -85,6 +96,8 @@ export interface TrustContentInput {
   commandPaths?: ReadonlyMap<string, string>;
   /** The workspace's agents, as parsed from their files. Only harness agents add to the content. */
   agents?: readonly Agent[];
+  /** The workspace's local integrations, with its settings for each. Only `{ fromSetting }` addresses add to the content. */
+  integrations?: readonly LocalIntegrationInput[];
 }
 
 /**
@@ -101,6 +114,9 @@ export interface TrustContentInput {
  * - **agents:** for each agent with a harness other than Halonic, the
  *   harness, its allowed sites and its working folder when it isn't the
  *   default (see {@link agentsTrustContent}).
+ * - **integrations:** for each local integration with a `{ fromSetting }`
+ *   host, the URL the workspace's setting holds (see
+ *   {@link integrationsTrustContent}).
  *
  * @example
  * trustContent({ connectors: [mailConnector] });
@@ -121,10 +137,12 @@ export function trustContent(input: TrustContentInput): TrustContent {
   connectors.sort((left, right) => compareText(left.id, right.id));
   refused.sort((left, right) => compareText(left.id, right.id));
   const agents = agentsTrustContent(input.agents ?? []);
+  const integrations = integrationsTrustContent(input.integrations ?? []);
   return {
     connectors,
     ...(refused.length === 0 ? {} : { refused }),
     ...(agents.length === 0 ? {} : { agents }),
+    ...(integrations.length === 0 ? {} : { integrations }),
   };
 }
 

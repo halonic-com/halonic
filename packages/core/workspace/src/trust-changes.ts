@@ -1,8 +1,9 @@
 import { deepEqual } from "@halonicjs/std";
 import type { AgentTrustContent } from "./trust-agents.ts";
 import type { ConnectorTrustContent, TrustContent } from "./trust-content.ts";
+import type { IntegrationTrustContent } from "./trust-integrations.ts";
 
-/** One item, a connector or an agent, whose trust content differs from the trusted one. */
+/** One item, a connector, an agent or an integration, whose trust content differs from the trusted one. */
 export interface ChangedItem<Content> {
   id: string;
   /** The item as it was trusted. */
@@ -19,6 +20,9 @@ export type ChangedConnector = ChangedItem<ConnectorTrustContent>;
 /** One harness agent whose trust content differs from the trusted one. */
 export type ChangedAgent = ChangedItem<AgentTrustContent>;
 
+/** One local integration whose setting addresses differ from the trusted ones. */
+export type ChangedIntegration = ChangedItem<IntegrationTrustContent>;
+
 /** What changed in one list of the trust content, matched by id. */
 export interface ItemChanges<Content> {
   /** Items that weren't in the trusted content. */
@@ -34,7 +38,8 @@ export interface ItemChanges<Content> {
 /**
  * What changed between the trust content a person trusted and the current
  * one, in the order the prompt shows it: New and Changed first. The
- * top-level lists are the connectors; `agents` holds the harness agents.
+ * top-level lists are the connectors; `agents` holds the harness agents and
+ * `integrations` the local integrations' setting addresses.
  */
 export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
   /**
@@ -43,7 +48,13 @@ export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
    */
   agents: ItemChanges<AgentTrustContent>;
   /**
-   * Whether the change only removes whole connectors or harness agents, so
+   * The local integrations whose setting addresses changed. One whose
+   * addresses all left the content counts as removed.
+   */
+  integrations: ItemChanges<IntegrationTrustContent>;
+  /**
+   * Whether the change only removes whole connectors, harness agents or
+   * integrations, so
    * the record can shrink without asking (HAL-65 decision 9). A change
    * inside one never counts as a removal, even when it takes something out
    * of the file: dropping a tool from `approve`, dropping the `allow` list,
@@ -55,8 +66,9 @@ export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
 
 /**
  * Compares the trust content a person trusted with the current one.
- * Connectors and agents are matched by id. A record from before harness
- * agents existed has no `agents`, which is the same as none.
+ * Connectors, agents and integrations are matched by id. A record from
+ * before harness agents or integrations existed has no `agents` or
+ * `integrations`, which is the same as none.
  *
  * @param trusted - the content kept in the trust record
  * @param current - the content built from the workspace now
@@ -70,12 +82,14 @@ export interface TrustChanges extends ItemChanges<ConnectorTrustContent> {
 export function trustChanges(trusted: TrustContent, current: TrustContent): TrustChanges {
   const connectors = itemChanges(trusted.connectors, current.connectors);
   const agents = itemChanges(trusted.agents ?? [], current.agents ?? []);
+  const integrations = itemChanges(trusted.integrations ?? [], current.integrations ?? []);
 
-  const removesSomething = connectors.removed.length > 0 || agents.removed.length > 0;
-  const addsOrChanges = [connectors, agents].some(
+  const lists = [connectors, agents, integrations];
+  const removesSomething = lists.some((changes) => changes.removed.length > 0);
+  const addsOrChanges = lists.some(
     (changes) => changes.added.length > 0 || changes.changed.length > 0,
   );
-  return { ...connectors, agents, onlyRemoves: removesSomething && !addsOrChanges };
+  return { ...connectors, agents, integrations, onlyRemoves: removesSomething && !addsOrChanges };
 }
 
 function itemChanges<Content extends { id: string }>(

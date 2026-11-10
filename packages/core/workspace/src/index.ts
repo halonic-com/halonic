@@ -28,6 +28,7 @@ export { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
 export {
   type ChangedAgent,
   type ChangedConnector,
+  type ChangedIntegration,
   type ChangedItem,
   type ItemChanges,
   type TrustChanges,
@@ -42,4 +43,9 @@ export {
   trustContent,
 } from "./trust-content.ts";
 export { trustFingerprint, trustFingerprintPrefix } from "./trust-fingerprint.ts";
+export {
+  type IntegrationTrustContent,
+  integrationsTrustContent,
+  type LocalIntegrationInput,
+} from "./trust-integrations.ts";
 export { type TrustUrl, trustUrl } from "./trust-url.ts";
