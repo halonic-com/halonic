@@ -1,14 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { foldLabel, foldText, isFolded } from "./fold.ts";
-import { markerText, markHidden } from "./hidden-characters.ts";
+import { markedName, markHidden } from "./hidden-characters.ts";
 
 /** What the card shows for a value: its text with every marker written out. */
-function shownText(value: string): string {
-  return markHidden(value)
-    .segments.map((segment) => (segment.kind === "text" ? segment.text : markerText(segment.code)))
-    .join("");
-}
+const shownText = markedName;
 
 verifies("inbox.plain-values", () => {
   describe("hidden characters", () => {
@@ -31,6 +27,14 @@ verifies("inbox.plain-values", () => {
       ["a control character", "\u0007", "U+0007"],
       ["a lone carriage return", "\r", "U+000D"],
       ["a C1 control character", "\u0085", "U+0085"],
+      ["a left-to-right mark", String.fromCodePoint(0x200e), "U+200E"],
+      ["a right-to-left mark", String.fromCodePoint(0x200f), "U+200F"],
+      ["an Arabic letter mark", String.fromCodePoint(0x061c), "U+061C"],
+      ["an invisible function application", String.fromCodePoint(0x2061), "U+2061"],
+      ["an invisible times", String.fromCodePoint(0x2062), "U+2062"],
+      ["an invisible separator", String.fromCodePoint(0x2063), "U+2063"],
+      ["an invisible plus", String.fromCodePoint(0x2064), "U+2064"],
+      ["a soft hyphen", String.fromCodePoint(0x00ad), "U+00AD"],
     ])("marks %s", (_name, character, code) => {
       expect(shownText(`a${character}b`)).toBe(`a⟦${code}⟧b`);
     });
@@ -48,6 +52,11 @@ verifies("inbox.plain-values", () => {
         segments: [{ kind: "text", text: reply }],
         hasHidden: false,
       });
+    });
+
+    it("writes a name's hidden characters out as markers", () => {
+      expect(markedName(`create${String.fromCodePoint(0x200b)}note`)).toBe("create⟦U+200B⟧note");
+      expect(markedName("create_note")).toBe("create_note");
     });
   });
 
@@ -80,7 +89,7 @@ verifies("inbox.plain-values", () => {
       const folded = foldText(`${"a".repeat(9)}😀tail`, { lines: 6, characters: 10 });
       expect(folded.shown).toBe("a".repeat(9));
       expect(folded.hiddenLines).toBe(0);
-      expect(foldLabel(folded)).toBe("Show 6 more characters");
+      expect(foldLabel(folded)).toBe("Show 5 more characters");
     });
 
     it("says the size of a large value", () => {

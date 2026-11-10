@@ -125,6 +125,31 @@ verifies("inbox.approval-card", () => {
       );
     });
 
+    it("says a value has hidden characters when folding counts them as empty lines", () => {
+      const bom = String.fromCodePoint(0xfeff);
+      const { root } = openCard({
+        item: createNoteItem({ body: `top${`\n${bom}`.repeat(5)}\nend` }),
+      });
+      const value = root.querySelector("dd")?.textContent ?? "";
+      expect(value).toContain("⟦5 empty lines⟧");
+      expect(value).toContain("Contains hidden or direction-changing characters");
+    });
+
+    it("marks hidden characters in the raw tool name and an argument's name", () => {
+      const zwsp = String.fromCodePoint(0x200b);
+      const approval = {
+        ...pendingApproval("call-1", `notes-mcp__create${zwsp}note`, askedAt.toISOString()),
+        args: { [`ti${zwsp}tle`]: "Refund for Sam" },
+      };
+      const [item] = inboxItems([waitingRun("r47", { approvals: [approval] })]);
+      const { root } = openCard({ item: item as ApprovalItem });
+      expect(root.querySelector("h2")?.textContent).toBe(
+        "Sorter wants to use create⟦U+200B⟧note (notes-mcp)",
+      );
+      expect(root.querySelector("code")?.textContent).toBe("notes-mcp__create⟦U+200B⟧note");
+      expect(root.querySelector("dt")?.textContent).toBe("ti⟦U+200B⟧tle");
+    });
+
     it("folds a long argument and opens it with Show more", async () => {
       const body = Array.from({ length: 44 }, (_, index) => `line ${index + 1}`).join("\n");
       const { root } = openCard({ item: createNoteItem({ body }) });

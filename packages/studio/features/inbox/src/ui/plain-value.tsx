@@ -18,7 +18,9 @@ export function PlainValue({ text }: PlainValueProps) {
   const folded = foldText(text);
   const shown = open ? folded.full : folded.shown;
   const marked = markHidden(shown);
-  const hasHidden = marked.hasHidden || (!open && markHidden(folded.full).hasHidden);
+  // From the value as sent: folding can drop a hidden character, such as a line of
+  // U+FEFF counted into "⟦4 empty lines⟧", and the warning must still show.
+  const hasHidden = marked.hasHidden || markHidden(text).hasHidden;
   const label = foldLabel(folded);
   return (
     <div className="min-w-0">

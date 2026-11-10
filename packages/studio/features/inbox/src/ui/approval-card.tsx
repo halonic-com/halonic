@@ -3,6 +3,7 @@ import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
+import { markedName } from "../plain/hidden-characters.ts";
 import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
 import { ArgumentList } from "./argument-list.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
@@ -153,7 +154,9 @@ function Action({ item }: { readonly item: ApprovalItem }) {
           <StatusChip tone="outline">External connector (MCP)</StatusChip>
         )}
       </div>
-      <code className="font-mono text-code text-fg-muted wrap-anywhere">{item.rawTool}</code>
+      <code className="font-mono text-code text-fg-muted wrap-anywhere">
+        {markedName(item.rawTool)}
+      </code>
       <ArgumentList args={item.args} tool={item.tool} />
     </div>
   );

@@ -25,6 +25,15 @@ verifies("inbox.approval-title", () => {
     expect(actionSummary(item)).toBe("publish");
   });
 
+  it("marks hidden characters in the tool and connector names", () => {
+    const rlo = String.fromCodePoint(0x202e);
+    const item = approvalFor(`notes${rlo}mcp__create${String.fromCodePoint(0x200f)}note`);
+    expect(approvalTitle(item, "Sorter")).toBe(
+      "Sorter wants to use create⟦U+200F⟧note (notes⟦U+202E⟧mcp)",
+    );
+    expect(actionSummary(item)).toBe("create⟦U+200F⟧note · notes⟦U+202E⟧mcp");
+  });
+
   it("uses the agent's id until its name is known", () => {
     const item = approvalFor("publish");
     expect(approvalTitle(item)).toBe(`${item.agent} wants to use publish`);

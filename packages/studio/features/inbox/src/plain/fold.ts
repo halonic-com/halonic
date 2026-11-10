@@ -44,7 +44,8 @@ export function foldText(value: string, limits: FoldLimits = defaultFoldLimits):
   let hiddenCharacters = 0;
   if (shown.length > limits.characters) {
     const cut = cutAt(shown, limits.characters);
-    hiddenCharacters = shown.length - cut;
+    // Counted in code points, so an emoji left out counts as the one character you see.
+    hiddenCharacters = [...shown.slice(cut)].length;
     shown = shown.slice(0, cut);
   }
   const bytes = new TextEncoder().encode(value).length;

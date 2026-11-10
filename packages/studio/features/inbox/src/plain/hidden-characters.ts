@@ -17,17 +17,20 @@ export const hiddenCharactersLine = "Contains hidden or direction-changing chara
 /**
  * The code point ranges a value can carry without anyone seeing them
  * (INBOX-CARD-28): control characters other than tab (U+0009) and newline
- * (U+000A), zero-width characters, direction overrides and isolates, the
- * byte order mark and Unicode tag characters. Written as numbers, so the
- * source holds no invisible character itself.
+ * (U+000A), the soft hyphen, zero-width characters, direction marks,
+ * overrides and isolates, the word joiner and invisible operators, the byte
+ * order mark and Unicode tag characters. Written as numbers, so the source
+ * holds no invisible character itself.
  */
 const hiddenRanges: readonly (readonly [number, number])[] = [
   [0x0000, 0x0008],
   [0x000b, 0x001f],
   [0x007f, 0x009f],
-  [0x200b, 0x200d],
+  [0x00ad, 0x00ad],
+  [0x061c, 0x061c],
+  [0x200b, 0x200f],
   [0x202a, 0x202e],
-  [0x2060, 0x2060],
+  [0x2060, 0x2064],
   [0x2066, 0x2069],
   [0xfeff, 0xfeff],
   [0xe0000, 0xe007f],
@@ -62,6 +65,20 @@ export function markHidden(value: string): MarkedText {
 /** The marker's text as the card shows it, such as `⟦U+202E⟧`. */
 export function markerText(code: string): string {
   return `⟦${code}⟧`;
+}
+
+/**
+ * A short name from the run, such as an argument, tool or connector name, as one
+ * string with every hidden character written out as its marker. The agent and
+ * the MCP server choose these names, so they get markers like a value.
+ *
+ * @example
+ * markedName(`create${String.fromCodePoint(0x200b)}note`); // "create⟦U+200B⟧note"
+ */
+export function markedName(value: string): string {
+  return markHidden(value)
+    .segments.map((segment) => (segment.kind === "text" ? segment.text : markerText(segment.code)))
+    .join("");
 }
 
 function isHidden(point: number): boolean {
