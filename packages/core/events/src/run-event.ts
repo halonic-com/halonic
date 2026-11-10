@@ -245,6 +245,12 @@ export type RunEventBody =
       childRunId: string;
       status: "completed" | "failed";
       error?: string;
+      /**
+       * The child's final context, set when it completed as one item of a
+       * for-each state (requirement `events.workflow-finished-context`);
+       * absent otherwise and in older logs.
+       */
+      context?: Record<string, unknown>;
     }
   /**
    * `child`: the run is waiting because this child run waits; events go to it.
