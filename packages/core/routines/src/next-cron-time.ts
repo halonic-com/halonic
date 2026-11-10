@@ -27,8 +27,23 @@ const SEARCH_LIMIT = 5 * 366 * DAY;
  * @throws {RangeError} when the zone is unknown; call `checkTimeZone` first for a readable error
  */
 export function nextCronTime(cron: Cron | string, after: Date, timeZone?: string): Date | null {
+  return cronStepper(cron, timeZone)(after);
+}
+
+/**
+ * {@link nextCronTime} for walking many times: the cron is parsed and the
+ * zone's formatter made once, not at every step, which is most of a step's cost.
+ *
+ * @throws {CronError} when `cron` is a string that doesn't parse
+ * @throws {RangeError} when the zone is unknown
+ */
+export function cronStepper(cron: Cron | string, timeZone?: string): (after: Date) => Date | null {
   const schedule = typeof cron === "string" ? parseCron(cron) : cron;
   const readWallTime = wallTimeReader(timeZone);
+  return (after) => nextTime(schedule, after, readWallTime);
+}
+
+function nextTime(schedule: Cron, after: Date, readWallTime: ReadWallTime): Date | null {
   let instant = Math.floor(after.getTime() / MINUTE) * MINUTE + MINUTE;
   const limit = instant + SEARCH_LIMIT;
   while (instant < limit) {

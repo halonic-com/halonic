@@ -1,5 +1,5 @@
 import type { RoutineTrigger } from "@halonicjs/format";
-import { nextCronTime } from "./next-cron-time.ts";
+import { cronStepper } from "./next-cron-time.ts";
 import { checkTimeZone, DEFAULT_TIME_ZONE } from "./time-zone.ts";
 
 const DEFAULT_LIMIT = 100;
@@ -23,10 +23,11 @@ export function occurrences(
   if (!("schedule" in trigger)) return [];
   const zone = trigger.timezone ?? timeZone;
   checkTimeZone(zone);
+  const nextTime = cronStepper(trigger.schedule, zone);
   const times: Date[] = [];
   let current = from;
   while (times.length < limit) {
-    const next = nextCronTime(trigger.schedule, current, zone);
+    const next = nextTime(current);
     if (!next || next > to) break;
     times.push(next);
     current = next;

@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { CronError } from "./cron-error.ts";
 import { occurrences } from "./occurrences.ts";
 
@@ -58,5 +58,25 @@ verifies("routines.occurrences", () => {
   it("is empty when the cron never fires in the window", () => {
     const never = { schedule: "0 0 30 2 *", timezone: "UTC" };
     expect(occurrences(never, at("2026-01-01T00:00:00Z"), at("2026-12-31T00:00:00Z"))).toEqual([]);
+  });
+});
+
+verifies("routines.occurrences-set-up-once", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sets up the zone once for the whole list, not for each time", () => {
+    const formatters = vi.spyOn(Intl, "DateTimeFormat");
+    const everyMinute = { schedule: "* * * * *", timezone: "UTC" };
+    const times = occurrences(
+      everyMinute,
+      at("2026-11-03T00:00:00Z"),
+      at("2026-11-04T09:20:00Z"),
+      5_000,
+    );
+    expect(times).toHaveLength(2_000);
+    // One for the zone check, one for the walk.
+    expect(formatters.mock.calls.length).toBeLessThanOrEqual(2);
   });
 });
