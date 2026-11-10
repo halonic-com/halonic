@@ -18,7 +18,7 @@ loop of one model turn, which the local chat turn runs.
 | `runModelTurn`       | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again     | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return`                    |
 |                      | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name          | `engine.turn-round-limit`, `engine.turn-tool-names`                                 |
 |                      | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one  | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
-|                      | marks an answer whose text, bare or in `<tool_call>` tags, calls an offered tool with `toolCallAsText`, never running it      | `engine.turn-tool-call-as-text`, `engine.turn-tool-call-tag-as-text`                |
+|                      | marks an answer whose whole text, bare or in `<tool_call>` tags (the last may lack its closing tag), calls an offered tool with `toolCallAsText`, never running it; other text around the tags leaves it unmarked      | `engine.turn-tool-call-as-text`, `engine.turn-tool-call-tag-as-text`                |
 | `ModelChain`         | (internal) skips a model whose key isn't set, and moves on at once from an offline one, with no retries                       | `engine.skip-model-without-key`, `engine.offline-falls-back`                        |
 |                      | stops the turn when the model is missing, can't use tools, runs out of memory, or is refused                                  | `engine.model-failure-stops`                                                        |
 | `ResolvedModel`      | the model a turn starts on, the name of its key's secret, and its alias's own fallbacks                                       | `engine.offline-falls-back`                                                         |
@@ -151,6 +151,13 @@ fails typecheck. The registry covers `BuiltStateType`, the types built so far (`
 it widens as each state lands, until it is the format's whole `StateType` union. A run that enters
 a type not built yet fails with a clear error.
 
+A `parallel` state records `agent.started` with `branch` for every branch in name order, asks for every
+branch's model call at once and joins the results under the branch names (requirement
+`engine.parallel-state`). A run records one effect at a time, so a branch can't make a connector call that
+changes things: its model call is offered only the connector tools whose listing says `read`, through
+`readToolsOf`. Write, send and unlabelled tools are left out, so the agent never sees a tool it can't use
+there. A branch whose agent stops for an approval ends with `output: null` and an `error`; the run goes on.
+
 A `workflow` state runs another workflow of the hub as a child run, from the `workflows` the run
 kept with its definitions; a run kept without them can't start one. The child's id is the parent's
 id and the `seq` of the state's `state.entered` (`run_1.2`), so `decide` needs no id generator and a
@@ -167,6 +174,11 @@ and returns the parent once it has gone on. The telling is backed by a scheduler
 parent (`child:<childRunId>`), set first and cancelled once the parent has heard, so a telling a
 crash cut off is carried out after the restart. A child that can't start, that the executor fails,
 or that the next start ends as interrupted tells its parent too, so the parent fails with it.
+
+A `wait` state's `run.waiting` carries `labels`, the first non-empty label of the transitions for each
+event it takes (`answerLabels` in `@halonicjs/workflow`), and leaves the field out when no transition has
+one. The run's summary holds them as `answerLabels` while the run waits and `{}` otherwise, so the Inbox
+can show the author's words on its buttons (requirement `engine.wait-state`).
 
 A `wait` state's timers are keyed by the `seq` of the `state.entered` that set them, so a timer
 left over from an earlier visit to the state changes nothing; leaving a state doesn't cancel its

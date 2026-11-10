@@ -22,7 +22,8 @@ stops early or a line is too long, the stream is cancelled.
 `outputTail(output, keptCharacters)` reads a program's output to its end
 and keeps only its last characters: a harness reads standard error this
 way, so the program never stalls on a full pipe, and the last line says why
-a run failed.
+a run failed. A read error is the caller's to handle, for instance
+`outputTail(process.stderr, 4_096).catch(() => "")`.
 
 ## The event filter
 
@@ -37,11 +38,13 @@ with the token removed from its message.
 ## The settings folder
 
 `writeSettingsFiles(folder, files, writer)` writes a harness's settings
-files, by file name, into the agent's settings folder. A file that already
+files, by file name, into the agent's settings folder (a harness also uses it
+for a run's own files). A file that already
 holds the same text is left alone, because the program may watch its
 settings and another run of the agent may be reading them.
 `diskSettingsFolder` writes on this computer's disk: each file is written
-aside and then renamed into place, so a reader never sees half a file.
+aside and then renamed into place, so a reader never sees half a file; a write that fails removes its
+temporary file.
 Tests pass a `SettingsFolderWriter` that keeps the files in memory.
 
 ## Example

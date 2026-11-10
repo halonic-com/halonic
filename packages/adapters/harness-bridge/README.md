@@ -45,6 +45,19 @@ try {
   tools and `mcp_servers` from the request. A content block with a URL
   `source` is refused with kind `denied`. Error messages name a key's secret,
   never its value.
+- **OpenAI.** Only the `accept`, `content-type` and `openai-beta` headers go
+  on, with the agent's own key as `Authorization: Bearer`; the program's key,
+  organization and project stay behind. The bridge removes the `web_search*`
+  and `mcp` tools from the request. An image or file that OpenAI would fetch
+  from a URL, and a stored prompt, are refused with kind `denied`. Of the
+  reply headers only the body's type, the request id, the retry hints and
+  `x-ratelimit-*` reach the program.
+- **Forced tools.** Once the removed tools are gone, a `tool_choice` that
+  forces one of them, or forces some tool when none is left, becomes `auto`,
+  so the provider doesn't refuse a request over a tool the program can't use.
+  A choice that lists several tools (`allowed_tools` at OpenAI) loses the
+  removed ones, and becomes `auto` when none are left. This holds for both
+  providers.
 - **Subscription sign-in.** For an agent that signs in with a subscription,
   the program's own `authorization` goes on to the provider unchanged, in
   place of a key. The bridge adds nothing, never logs or keeps the sign-in,
@@ -56,7 +69,8 @@ try {
   and `tools/call`, backed by the run's `BridgeTools`. Each call is checked
   first, by the same rules as the built-in loop; a refused call doesn't run
   and the program reads `Refused: <reason>`. A call that runs is recorded as
-  `tool.called` and `tool.result`. A call that needs a person's OK is
+  `tool.called` and `tool.result`; one that broke off without an answer is
+  recorded with outcome `unknown`. A call that needs a person's OK is
   refused until the bridge can ask for approvals (build plan B7). `GET /mcp`
   gets a 405: the bridge sends no messages of its own.
 - **Closing.** `close()` refuses new requests, aborts the ones in flight and
