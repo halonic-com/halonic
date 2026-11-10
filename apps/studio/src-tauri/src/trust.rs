@@ -86,10 +86,23 @@ pub async fn trust_get<R: Runtime>(
     on_worker(app, move |app| Ok(trust_store(app)?.get(&location)?)).await
 }
 
-/// Every record, sorted by location.
+/// Every record, sorted by location. A record for a location the shell
+/// can't hold (see `Listing::left_out`) is left out and its file reported
+/// on stderr, so one such record doesn't empty the whole list.
 #[tauri::command]
 pub async fn trust_list<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Value>, TrustRefusal> {
-    on_worker(app, |app| Ok(trust_store(app)?.list()?)).await
+    on_worker(app, |app| {
+        let listing = trust_store(app)?.list()?;
+        for file in &listing.left_out {
+            eprintln!(
+                "trust_list: left out {}: its location isn't valid Unicode; \
+                 `halonic trust` in the CLI can list and remove it",
+                file.display()
+            );
+        }
+        Ok(listing.records)
+    })
+    .await
 }
 
 /// Saves the record and opens its folder, if the person chose the folder
