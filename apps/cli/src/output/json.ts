@@ -21,6 +21,33 @@ export function resultDocument(result: CommandResult): ResultDocument {
   return { outputVersion, ok: result.exitCode === exitCode.ok, ...result.json };
 }
 
+/**
+ * The document with every loaded secret removed from its strings, keys
+ * included, at any depth. It works on the values, before `JSON.stringify`
+ * escapes them, so a secret that holds a `"` or a `\` is still found.
+ */
+export function scrubbedDocument<T extends object>(
+  document: T,
+  scrub: (text: string) => string,
+): T {
+  return scrubbedValue(document, scrub) as T;
+}
+
+function scrubbedValue(value: unknown, scrub: (text: string) => string): unknown {
+  if (typeof value === "string") {
+    return scrub(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => scrubbedValue(item, scrub));
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [scrub(key), scrubbedValue(item, scrub)]),
+    );
+  }
+  return value;
+}
+
 /** A document as stdout gets it: indented, so a person can read it too. */
 export function jsonText(document: object): string {
   return JSON.stringify(document, null, 2);

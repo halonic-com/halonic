@@ -46,6 +46,13 @@ const findCommand: CliCommand = {
         docs: "https://docs.halonic.com/",
       };
     }
+    if (what === "my key") {
+      return {
+        exitCode: exitCode.ok,
+        lines: [],
+        json: { found: { key: await context.secrets.get("key") } },
+      };
+    }
     if (what === "a bug") {
       throw new Error("undefined is not a function");
     }
@@ -130,6 +137,43 @@ verifies("cli.json", () => {
     });
     const badOption = await runJson(["find", "keys", "--jsno", "--json"]);
     expect(badOption.document.error.message).toBe("There's no option --jsno. Did you mean --json?");
+    const noCommand = await runJson(["--json"]);
+    expect(noCommand.code).toBe(exitCode.usage);
+    expect(noCommand.document.error).toEqual({
+      kind: "usage",
+      message: "Say which command to run.",
+      fix: "Run halonic --help to see every command.",
+    });
+  });
+
+  it("gives a command that only hands off, run on its own, as a usage error", async () => {
+    const io = captureIo("/work");
+    const groupCommand: CliCommand = {
+      name: "group",
+      usage: "<command>",
+      summary: findMessages.summary(),
+      options: {},
+      subcommands: [findCommand],
+    };
+    expect(await runCli(["group", "--json"], io, [groupCommand])).toBe(exitCode.usage);
+    expect(io.stdout).toHaveLength(1);
+    expect(JSON.parse(io.stdout[0] ?? "").error).toEqual({
+      kind: "usage",
+      message: "Say which command to run.",
+      fix: "Run halonic group --help to see its commands.",
+    });
+    expect(io.stderr).toEqual([]);
+  });
+
+  it("keeps help that was asked for as text", async () => {
+    for (const args of [["find", "--help"], ["help"], ["--help"]]) {
+      const text = captureIo("/work");
+      await runCli(args, text, [findCommand]);
+      const json = captureIo("/work");
+      expect(await runCli([...args, "--json"], json, [findCommand])).toBe(exitCode.ok);
+      expect(json.stdout).toEqual(text.stdout);
+      expect(json.stdout.length).toBeGreaterThan(1);
+    }
   });
 
   it("never gives a bug's own text, and sends it to stderr with --debug", async () => {
@@ -151,5 +195,15 @@ verifies("cli.json", () => {
     const secrets: Secrets = { get: async () => "made-up-key-7" };
     const { document } = await runJson(["find", "the key", "--json"], secrets);
     expect(document.error.message).toBe("The vault refused [secret removed].");
+  });
+
+  it("removes a loaded secret from a result's fields, before JSON escapes it", async () => {
+    // Made-up values, one with the characters JSON escapes.
+    for (const key of ["made-up-key-7", 'made"up\\key']) {
+      const secrets: Secrets = { get: async () => key };
+      const { code, document } = await runJson(["find", "my key", "--json"], secrets);
+      expect(code).toBe(exitCode.ok);
+      expect(document.found).toEqual({ key: "[secret removed]" });
+    }
   });
 });

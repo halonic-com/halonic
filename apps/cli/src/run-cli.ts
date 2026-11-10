@@ -12,7 +12,9 @@ import { type ExitCode, exitCode } from "./exit-code.ts";
 import { exitCodeFor } from "./exit-code-for.ts";
 import { type GlobalOptions, readGlobalOptions } from "./global-options.ts";
 import { commandHelp, commandWords, lastOf, overallHelp, usageLine } from "./help.ts";
+import type { Message } from "./messages/define.ts";
 import { usageMessages } from "./messages/general.ts";
+import type { Phrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
 import { type Printer, printerFor } from "./output/printer.ts";
 import { decideStyle, type Environment } from "./output/style.ts";
@@ -54,7 +56,8 @@ export interface CliSetup {
  * Runs one `halonic` command line and returns the exit code. Output goes
  * through `io`, so tests run the CLI in-process and read what it printed.
  * With `--json` anywhere before a `--`, stdout gets one JSON document, also
- * for a wrong command line (cli-output 1.8); the exit code is the same.
+ * for a wrong command line or no command at all (cli-output 1.8); the exit
+ * code is the same. Help that was asked for stays text.
  *
  * @param args - the command line after `halonic`, with global options such
  *   as `--debug` anywhere in it
@@ -68,26 +71,25 @@ export async function runCli(
   setup: CliSetup = {},
 ): Promise<ExitCode> {
   const { options, args: commandLine } = readGlobalOptions(args);
+  // Made before the printer, so the printer removes every secret a command loads.
+  const scrubber = new SecretScrubber();
   const printer = printerFor(io, {
     json: options.json,
     ...stylesFor(setup.terminal ?? pipes, options),
+    scrubber,
   });
   const [name, ...commandArgs] = commandLine;
+  if (name === undefined && !options.help) {
+    return noCommandToRun(printer, options, overallHelp(commands), usageMessages.seeEveryCommand());
+  }
   if (name === undefined || name === "help") {
+    // Help that was asked for stays text, also with `--json`.
     printer.lines(overallHelp(commands));
-    return name === undefined && !options.help ? exitCode.usage : exitCode.ok;
+    return exitCode.ok;
   }
   const command = commands.find((candidate) => candidate.name === name);
   if (command === undefined) {
-    const near = nearMatch(
-      name,
-      commands.map((candidate) => candidate.name),
-    );
-    const problem =
-      near === undefined
-        ? usageMessages.unknownCommand(name)
-        : usageMessages.unknownCommandNear(name, near);
-    printer.error(new UsageError(problem, usageMessages.seeEveryCommand()), {});
+    printer.error(unknownCommand(commands, name), {});
     return exitCode.usage;
   }
   const found = findSubcommand([command], commandArgs);
@@ -101,16 +103,51 @@ export async function runCli(
     return exitCode.ok;
   }
   if (lastOf(path).run === undefined) {
-    // A command that only hands off, such as `halonic plugin` on its own: show what it hands off to.
-    printer.lines(commandHelp(path));
-    return exitCode.usage;
+    // A command that only hands off, such as `halonic plugin` on its own.
+    return noCommandToRun(
+      printer,
+      options,
+      commandHelp(path),
+      usageMessages.seeSubcommands(commandWords(path)),
+    );
   }
-  const scrubber = new SecretScrubber();
   const context: CommandContext = {
     cwd: io.cwd,
     secrets: rememberedSecrets(setup.secrets ?? noSecrets, scrubber),
   };
-  return runCommand(path, pathArgs, context, printer, options, scrubber);
+  return runCommand(path, pathArgs, context, printer, options);
+}
+
+/**
+ * A command line that names no command to run, such as `halonic` or `halonic
+ * plugin` on its own: the help, so a person sees what to choose from, or with
+ * `--json` a usage error, because a script can't read help. Exits with 2.
+ */
+function noCommandToRun(
+  printer: Printer,
+  options: GlobalOptions,
+  help: readonly Phrase[],
+  fix: Message,
+): ExitCode {
+  if (options.json) {
+    printer.error(new UsageError(usageMessages.noCommand(), fix), {});
+  } else {
+    printer.lines(help);
+  }
+  return exitCode.usage;
+}
+
+/** The usage error for a first word that isn't a command, with the close one when there is one. */
+function unknownCommand(commands: readonly CliCommand[], name: string): UsageError {
+  const near = nearMatch(
+    name,
+    commands.map((candidate) => candidate.name),
+  );
+  const problem =
+    near === undefined
+      ? usageMessages.unknownCommand(name)
+      : usageMessages.unknownCommandNear(name, near);
+  return new UsageError(problem, usageMessages.seeEveryCommand());
 }
 
 /** A command line read down to the command that runs. */
@@ -146,7 +183,6 @@ async function runCommand(
   context: CommandContext,
   printer: Printer,
   options: GlobalOptions,
-  scrubber: SecretScrubber,
 ): Promise<ExitCode> {
   const command = lastOf(path);
   let input: CommandInput | undefined;
@@ -171,7 +207,6 @@ async function runCommand(
         ? { action: command.action(input) }
         : {}),
       debug: options.debug,
-      scrubber,
     });
     return exitCodeFor(errorKindOf(error));
   }

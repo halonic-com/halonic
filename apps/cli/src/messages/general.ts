@@ -28,6 +28,8 @@ export const errorMessages = defineMessages("error", {
 
 /** The sentences for a wrong command line (cli-output 1.3, "Wrong usage"). */
 export const usageMessages = defineMessages("usage", {
+  /** `--json` with no command: a script gets this instead of the help (HAL-3031). */
+  noCommand: () => phrase`Say which command to run.`,
   unknownCommand: (name: string) => phrase`There's no command "${name}".`,
   unknownCommandNear: (name: string, near: string) =>
     phrase`There's no command "${name}". Did you mean ${near}?`,
