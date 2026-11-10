@@ -79,6 +79,13 @@ verifies("git.hardened", () => {
       expect(result.stderr).toContain("not a git repository");
     });
 
+    it("refuses a relative folder, whose ceiling git would ignore", async () => {
+      const runner = await testRunner(scratch);
+      await expect(runner.run({ cwd: "workspaces/acme", args: ["status"] })).rejects.toThrow(
+        "only in an absolute folder",
+      );
+    });
+
     it("gives git only the absolute folders of the PATH", async () => {
       const folder = await repositoryWith(scratch);
       const path = `bin:.:${process.env["PATH"] ?? ""}`;

@@ -15,7 +15,10 @@ This first part is the hardened runner. The repository checks and the `Vcs` itse
 import { GitRunner } from "@halonicjs/adapter-git";
 
 const runner = await GitRunner.create();
-const result = await runner.run({ cwd: "workspaces/acme", args: ["status", "--porcelain=v2"] });
+const result = await runner.run({
+  cwd: "/srv/workspaces/acme",
+  args: ["status", "--porcelain=v2"],
+});
 console.log(result.code, result.stdout.toString());
 ```
 
@@ -26,7 +29,7 @@ console.log(result.code, result.stdout.toString());
 - points `core.hooksPath` at a folder that must stay empty, and gives the rest of the port's hardening config (`core.fsmonitor`, signing, submodules, maintenance, bundles, credential helpers, commit templates) in the environment through `GIT_CONFIG_COUNT`;
 - removes every inherited `GIT_*` variable and reads no system or user config (`GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_GLOBAL=/dev/null`);
 - allows only `https` and `ssh` remotes, with `ssh` itself and no password prompt;
-- never looks for a repository above the folder it runs in (`GIT_CEILING_DIRECTORIES`), and finds programs only in the absolute folders of the `PATH`;
+- runs only in an absolute folder and never looks for a repository above it (`GIT_CEILING_DIRECTORIES`, which git ignores when relative), and finds programs only in the absolute folders of the `PATH`;
 - stops git, and every program it started, past its time or output limit.
 
 The desktop's `git-guard` crate does the same in Rust.

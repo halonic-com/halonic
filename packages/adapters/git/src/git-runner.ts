@@ -27,7 +27,7 @@ export interface GitRunnerOptions {
 
 /** One git call. */
 export interface GitCall {
-  /** The folder it runs in. git never looks above it for a repository. */
+  /** The absolute folder it runs in. git never looks above it for a repository. */
   cwd: string;
   /** git's arguments, after the hardening the runner puts first. */
   args: readonly string[];
@@ -82,9 +82,14 @@ export class GitRunner {
   /**
    * Runs one call, hardened.
    *
-   * @throws Error when git can't start, passes its limits, or the hooks folder is no longer empty
+   * @throws Error when `cwd` isn't absolute, git can't start, passes its limits, or the hooks folder is no longer empty
    */
   async run(call: GitCall): Promise<GitResult> {
+    // git ignores a relative GIT_CEILING_DIRECTORIES, so a relative `cwd`
+    // would let it read a repository above the folder.
+    if (!isAbsolute(call.cwd)) {
+      throw new Error(`git runs only in an absolute folder, not ${call.cwd}`);
+    }
     await this.#checkHooksFolderIsEmpty();
     const config: ConfigEntry[] = [
       ["core.hooksPath", this.#hooksFolder],
