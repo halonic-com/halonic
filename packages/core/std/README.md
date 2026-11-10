@@ -1,6 +1,6 @@
 # @halonicjs/std
 
-In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter, error kinds and a per-key work queue.
+In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter, error kinds, a per-key work queue and semver versions.
 
 - **Layer:** core
 - **Owner:** maya
@@ -29,6 +29,9 @@ turn display names into file-safe ids, as the old Studio did. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, `Emitter` is a
 small typed event emitter, and `KeyedQueue` runs async work one at a time
 per key, such as the appends to one run's log.
+`readVersion`, `compareVersions` and `isAtLeast` read and order semver
+versions, pre-releases included, such as the version a harness's program
+prints (`0.169.0-alpha.6` comes before `0.169.0`).
 `asciiHost` writes a host name the way the trust prompt shows and hashes it:
 lowercase, with non-ASCII labels in Punycode (`xn--…`), so a look-alike host
 never passes for the real one.

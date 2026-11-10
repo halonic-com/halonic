@@ -25,3 +25,4 @@ export { SecretScrubber, secretRemoved, secretTextForms } from "./secret-scrubbe
 export { findSecretShape, type SecretShape } from "./secret-shape.ts";
 export { slugify, uniqueName } from "./text.ts";
 export { decodeUtf8, encodeUtf8 } from "./utf8.ts";
+export { compareVersions, formatVersion, isAtLeast, readVersion, type Version } from "./version.ts";
