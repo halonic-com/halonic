@@ -6,6 +6,7 @@
     "examples"
   ],
   "exclude": [
+    "src/node",
     "src/**/*.test.ts",
     "src/**/*.test.tsx"
   ]
