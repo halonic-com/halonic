@@ -105,6 +105,7 @@ export {
   paletteGroupTitles,
 } from "./palette/palette-groups.ts";
 export {
+  type ActiveRowChange,
   keptActive,
   movedActive,
   type PaletteKey,

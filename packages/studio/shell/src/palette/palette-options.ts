@@ -72,17 +72,28 @@ export function movedActive(
   return options[next]?.key;
 }
 
+/** What changed since the palette last chose its active row. */
+export interface ActiveRowChange {
+  /** The box's words are new, so the content is for a new search. */
+  readonly wordsChanged: boolean;
+  /** The user moved the active row with ↓ or ↑ since the words last changed. */
+  readonly picked: boolean;
+}
+
 /**
  * The key of the row that is active once the content changes. New words make the first row
- * active (T2-F22, F24). For the same words, a row the user already picked stays active while it
- * is still listed, so results that arrive late don't move the user's choice.
+ * active (T2-F22, F24). For the same words, a row the user picked stays active while it is still
+ * listed, so results that arrive late don't move the user's choice. A row the palette made active
+ * by itself is not a choice: late results make the new first row active, so Enter opens the best
+ * match.
  */
 export function keptActive(
   options: readonly PaletteRow[],
   activeKey: string | undefined,
-  wordsChanged: boolean,
+  change: ActiveRowChange,
 ): string | undefined {
-  if (!wordsChanged && options.some((row) => row.key === activeKey)) {
+  const keepsPick = !change.wordsChanged && change.picked;
+  if (keepsPick && options.some((row) => row.key === activeKey)) {
     return activeKey;
   }
   return options[0]?.key;

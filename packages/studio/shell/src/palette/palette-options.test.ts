@@ -133,14 +133,22 @@ verifies("shell.palette-options", () => {
     });
 
     it("makes the first row active for new words", () => {
-      expect(keptActive(options, newTab.key, true)).toBe(supportReply.key);
-      expect(keptActive([], newTab.key, true)).toBeUndefined();
+      const newWords = { wordsChanged: true, picked: true };
+      expect(keptActive(options, newTab.key, newWords)).toBe(supportReply.key);
+      expect(keptActive([], newTab.key, newWords)).toBeUndefined();
     });
 
     it("keeps the picked row when results for the same words arrive late", () => {
       const later = paletteOptions(content([[inbox, supportReply, refundChecker], [newTab]]));
-      expect(keptActive(later, refundChecker.key, false)).toBe(refundChecker.key);
-      expect(keptActive(later, "gone", false)).toBe(inbox.key);
+      const sameWordsPicked = { wordsChanged: false, picked: true };
+      expect(keptActive(later, refundChecker.key, sameWordsPicked)).toBe(refundChecker.key);
+      expect(keptActive(later, "gone", sameWordsPicked)).toBe(inbox.key);
+    });
+
+    it("moves to a better match that arrives late when the user hasn't picked a row", () => {
+      const later = paletteOptions(content([[inbox, supportReply, refundChecker], [newTab]]));
+      const sameWordsUnpicked = { wordsChanged: false, picked: false };
+      expect(keptActive(later, supportReply.key, sameWordsUnpicked)).toBe(inbox.key);
     });
   });
 
