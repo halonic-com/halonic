@@ -31,11 +31,15 @@ const pageCss = buildCss(pageClasses(), statesCss, statesFolder);
 
 type Forced = "hover" | "active" | "focus";
 
-/** How each state shows in a real selector. The on-muted: variant's own hover is left out. */
+/**
+ * How each state shows in a real selector. The on-muted: variant's own hover is left out, and so
+ * is the ActionBar's hiding while a field has the focus, which is the page's state, not a part's.
+ */
 const real: Record<Forced, RegExp> = {
   hover: /:hover(?![^(]*data-hover-fill)/,
   active: /:active/,
-  focus: /:focus-visible|:focus-within|:has\(\[data-field-text\]:focus\)/,
+  focus:
+    /(?<!\[data-text-entry\]):focus(?![-\w])|:focus-visible|:focus-within|:has\(\[data-field-text\]:focus\)/,
 };
 
 const isReal = (selector: string, state: Forced) =>

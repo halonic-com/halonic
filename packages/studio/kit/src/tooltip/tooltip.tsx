@@ -41,7 +41,7 @@ const CONTROL_GAP = 4;
  * Inverted: a solid `fg` fill with `surface` text, so it turns light in dark mode. The see-through
  * edge keeps its shape in high contrast, which drops the fill. It never takes the pointer.
  */
-const tooltipClasses = [
+export const tooltipClasses = [
   "pointer-events-none m-0 inset-auto max-w-60 rounded-xs border border-transparent px-2 py-1",
   "bg-inverse text-caption text-surface",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
@@ -148,15 +148,33 @@ export function Tooltip({ text, keys, isName = false, children }: TooltipProps) 
         })}
       </span>
       <div id={id} ref={tooltip} popover="manual" role="tooltip" className={tooltipClasses}>
-        {text}
-        {keys === undefined ? null : (
-          <InTooltipContext value={true}>
-            <span className="ml-2">
-              <Kbd keys={keys} />
-            </span>
-          </InTooltipContext>
-        )}
+        <TooltipBody text={text} keys={keys} />
       </div>
+    </>
+  );
+}
+
+/**
+ * What a tooltip says: its text, then its keys 8px after it, without the Kbd's box (component
+ * specs 14, C13). Also drawn by the states page's static copy.
+ */
+export function TooltipBody({
+  text,
+  keys,
+}: {
+  readonly text: string;
+  readonly keys: readonly string[] | undefined;
+}) {
+  return (
+    <>
+      {text}
+      {keys === undefined ? null : (
+        <InTooltipContext value={true}>
+          <span className="ml-2">
+            <Kbd keys={keys} />
+          </span>
+        </InTooltipContext>
+      )}
     </>
   );
 }

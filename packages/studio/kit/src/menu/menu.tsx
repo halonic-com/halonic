@@ -69,13 +69,14 @@ export interface MenuProps {
 const TRIGGER_GAP = 4;
 
 // The menu itself takes focus when the mouse opens it, without a ring: no item is active yet.
-const menuClasses = [
+// Exported for the states page's static copy.
+export const menuClasses = [
   "m-0 inset-auto outline-none min-w-45 overflow-y-auto rounded-md border border-transparent p-1",
   "bg-surface-raised text-fg shadow-2",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
 ].join(" ");
 
-const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
+export const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
 
 // Padding 8px 8px 6px, at most 300px wide, wrapping (component specs 20.2).
 const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-muted";

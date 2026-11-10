@@ -13,11 +13,13 @@ import { iconTileSection } from "./icon-tile.tsx";
 import { inputLeadingSection } from "./input-leading.tsx";
 import { kbdSection } from "./kbd.tsx";
 import { listSection } from "./list.tsx";
+import { menuSection } from "./menu.tsx";
 import { radioSection } from "./radio.tsx";
 import { selectSection } from "./select.tsx";
 import { statusChipSection } from "./status-chip.tsx";
 import { switchSection } from "./switch.tsx";
 import { tabsSection } from "./tabs.tsx";
+import { tooltipSection } from "./tooltip.tsx";
 import { viewOnlyLineSection } from "./view-only-line.tsx";
 import { windowSection } from "./window.tsx";
 
@@ -40,6 +42,8 @@ export const SECTIONS: readonly PartSection[] = [
   disclosureSection,
   viewOnlyLineSection,
   actionBarSection,
+  menuSection,
+  tooltipSection,
   filterChipsSection,
   formRowsSection,
   radioSection,

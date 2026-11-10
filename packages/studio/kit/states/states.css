@@ -3,10 +3,10 @@
  * the app does, and adds one thing the app never gets: forced states.
  *
  * A cell's wrapper with data-force-state="hover", "active" or "focus" (or an element inside it
- * that carries the attribute itself) turns on the parts' own hover:, active: and focus utilities,
- * and group-hover:, which Tailwind builds from hover:. A List row's main cell with the attribute
- * turns on the row's focus ring (row-focus), and a field's text with it turns on the field's
- * focus (field-focus), the same way a real focus in the text does.
+ * that carries the attribute itself) turns on the parts' own hover:, active:, focus: and
+ * focus-visible utilities, and group-hover:, which Tailwind builds from hover:. A List row's main
+ * cell with the attribute turns on the row's focus ring (row-focus), and a field's text with it
+ * turns on the field's focus (field-focus), the same way a real focus in the text does.
  * These variants replace Tailwind's for this page only and keep their place in its output, so a
  * forced cell gets the same rules, at the same specificity, as a real hover or focus. Tailwind's
  * hover: is also inside (hover: hover); here it isn't, so the forced row shows on any device.
@@ -21,6 +21,8 @@
 
 @custom-variant hover (&:hover, [data-force-state="hover"] &, &[data-force-state="hover"]);
 @custom-variant active (&:active, [data-force-state="active"] &, &[data-force-state="active"]);
+/* A Menu item's fill follows its focus, from the pointer or the keyboard, so it uses focus:. */
+@custom-variant focus (&:focus, [data-force-state="focus"] &, &[data-force-state="focus"]);
 @custom-variant focus-visible (
   &:focus-visible,
   [data-force-state="focus"] &,
