@@ -48,8 +48,12 @@ export class ReviewFiles {
    */
   private readonly recordAccess = new KeyedQueue();
   private readonly events: EventBus<ReviewEvents>;
-  /** The paths with a record, read once, so a write to any other file costs no extra read. */
-  private reviewed: Promise<Set<string>> | null = null;
+  /**
+   * The paths with a record, read once, so a write to any other file costs
+   * no extra read. `null` until first read. It only changes inside a
+   * {@link withRecords} turn, so it changes in the same order as the records.
+   */
+  private reviewed: Set<string> | null = null;
 
   constructor(options: ReviewServiceOptions) {
     this.store = options.store;
@@ -75,8 +79,8 @@ export class ReviewFiles {
   }
 
   /** Whether the file has a record, from the paths read when first asked. */
-  async hasRecord(path: string): Promise<boolean> {
-    return (await this.reviewedPaths()).has(path);
+  hasRecord(path: string): Promise<boolean> {
+    return this.withRecords(async () => (await this.reviewedPaths()).has(path));
   }
 
   /** The record of one file; `null` for none, or one that can't be read. */
@@ -86,20 +90,21 @@ export class ReviewFiles {
   }
 
   /** Every record, or those of some files, as `ReviewRecords` gives them. */
-  async list(paths?: readonly string[]): Promise<ReviewRecordList> {
-    if (paths === undefined) {
-      const list = await this.withRecords(() => this.records.all());
-      this.reviewed = Promise.resolve(new Set(list.records.map((record) => record.path)));
-      return list;
-    }
-    const list = await this.withRecords(() => this.records.some(paths));
-    const reviewed = await this.reviewedPaths();
-    for (const dropped of list.dropped) {
-      if (dropped.path !== null) {
-        reviewed.delete(dropped.path);
+  list(paths?: readonly string[]): Promise<ReviewRecordList> {
+    return this.withRecords(async () => {
+      if (paths === undefined) {
+        const list = await this.records.all();
+        this.reviewed = new Set(list.records.map((record) => record.path));
+        return list;
       }
-    }
-    return list;
+      const list = await this.records.some(paths);
+      for (const dropped of list.dropped) {
+        if (dropped.path !== null) {
+          this.reviewed?.delete(dropped.path);
+        }
+      }
+      return list;
+    });
   }
 
   /** Saves a record, or removes it when the baseline is the file again: then nothing is left to review. */
@@ -113,15 +118,16 @@ export class ReviewFiles {
   }
 
   /** Saves the record of `path`, or removes it for `null`. */
-  async putRecord(path: string, record: ReviewRecord | null): Promise<void> {
-    const reviewed = await this.reviewedPaths();
-    if (record === null) {
-      await this.withRecords(() => this.records.remove(path));
-      reviewed.delete(path);
-    } else {
-      await this.withRecords(() => this.records.save(record));
-      reviewed.add(path);
-    }
+  putRecord(path: string, record: ReviewRecord | null): Promise<void> {
+    return this.withRecords(async () => {
+      if (record === null) {
+        await this.records.remove(path);
+        this.reviewed?.delete(path);
+      } else {
+        await this.records.save(record);
+        this.reviewed?.add(path);
+      }
+    });
   }
 
   /**
@@ -150,18 +156,15 @@ export class ReviewFiles {
     return this.recordAccess.run("records", work);
   }
 
-  private reviewedPaths(): Promise<Set<string>> {
+  /**
+   * The paths with a record, read from the records the first time. Call it
+   * only inside a {@link withRecords} turn. A failed read leaves nothing
+   * kept, so the next call tries again.
+   */
+  private async reviewedPaths(): Promise<Set<string>> {
     if (this.reviewed === null) {
-      const loading = this.withRecords(() => this.records.all()).then(
-        ({ records }) => new Set(records.map((record) => record.path)),
-      );
-      // A failed read is tried again next time instead of being kept.
-      loading.catch(() => {
-        if (this.reviewed === loading) {
-          this.reviewed = null;
-        }
-      });
-      this.reviewed = loading;
+      const { records } = await this.records.all();
+      this.reviewed = new Set(records.map((record) => record.path));
     }
     return this.reviewed;
   }

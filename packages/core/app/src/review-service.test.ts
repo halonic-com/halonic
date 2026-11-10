@@ -165,6 +165,15 @@ verifies("app.review-accept-reject-file", () => {
     expect(await records.read(clerk)).toEqual({ status: "none" });
   });
 
+  it("doesn't bring an accepted record back over a file that changed since", async () => {
+    const { store, review, records } = setUp();
+    await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
+    const { step } = await review.accept({ kind: "file", path: clerk });
+    store.files.set(clerk, "typed since\n");
+    expect(await review.restore(step, "before")).toEqual({ step: { files: [] }, held: [clerk] });
+    expect(await records.read(clerk)).toEqual({ status: "none" });
+  });
+
   it("undoes a reject by putting the assistant's text and the record back", async () => {
     const { store, review, records } = setUp();
     await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
@@ -218,6 +227,28 @@ verifies("app.review-accept-reject-all", () => {
     await review.restore(step, "before");
     expect(store.files.get(clerk)).toBe(smart);
     expect(store.files.get(triage)).toBe("name: T\n");
+  });
+
+  it("leaves a file alone that another card took over after the files were listed", async () => {
+    const { store, review, records } = setUp();
+    await review.propose({ path: clerk, content: smart, expected: await digestOf(fast), card: k1 });
+    const k7 = { chatId: "c2", cardId: "k7" };
+    const expected = await digestOf(smart);
+    // The reject lists k1's files first; the write for k7 is already queued
+    // on the file, so it runs between that listing and the reject's turn.
+    const rejecting = review.reject({ kind: "card", card: k1 });
+    const writing = review.propose({
+      path: clerk,
+      content: "x\n",
+      expected,
+      card: k7,
+    });
+    const [rejected, written] = await Promise.all([rejecting, writing]);
+    expect(written.status).toBe("written");
+    expect(rejected).toEqual({ step: { files: [] }, held: [] });
+    expect(store.files.get(clerk)).toBe("x\n");
+    const read = await records.read(clerk);
+    expect(read.status === "found" && read.record.card).toEqual(k7);
   });
 
   it("accepts every file of one chat", async () => {

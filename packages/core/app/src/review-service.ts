@@ -31,7 +31,7 @@ type FileDecision = (record: ReviewRecord) => Promise<ReviewedFile | "held">;
  * interleave.
  *
  * @example
- * const review = new ReviewService({ store, digest });
+ * const review = new ReviewService({ store, records, digest });
  * await review.propose({ path, content, expected, card: { chatId: "c1", cardId: "k1" } });
  * const { step } = await review.reject({ kind: "card", card: { chatId: "c1", cardId: "k1" } });
  * await review.restore(step, "before"); // Undo
@@ -57,8 +57,10 @@ export class ReviewService {
   /**
    * Writes the assistant's text into the file (`app.review-assistant-writes`).
    * The first write keeps the text from before it as the baseline; later
-   * writes keep the baseline. A record that can't be read is dropped first,
-   * so the changes it covered become ordinary ones.
+   * writes keep the baseline. A record that can't be read counts as none:
+   * the text from before this write becomes the baseline and the new record
+   * replaces the unreadable one, so the changes it covered become ordinary
+   * ones. Its loss isn't reported apart from this write's own change.
    */
   propose(write: ProposedWrite): Promise<ProposeOutcome> {
     return this.files.turn(write.path, async () => {
@@ -95,7 +97,11 @@ export class ReviewService {
     });
   }
 
-  /** Accepts what the target covers: the baseline becomes the file, so its record goes. The files aren't touched. */
+  /**
+   * Accepts what the target covers: the baseline becomes the file, so its
+   * record goes. The files aren't touched. For a card or a chat, a record
+   * that can't be read is removed without telling the listeners.
+   */
   accept(target: ReviewTarget): Promise<ReviewOutcome> {
     return this.decide(target, async (record) => {
       await this.files.putRecord(record.path, null);
@@ -107,7 +113,8 @@ export class ReviewService {
    * Rejects what the target covers: each file gets its baseline back (a
    * file the assistant created is removed), and its record goes. A file
    * that changed outside Halonic since it was last seen is left alone and
-   * listed in `held`.
+   * listed in `held`. For a card or a chat, a record that can't be read is
+   * removed without telling the listeners.
    */
   reject(target: ReviewTarget): Promise<ReviewOutcome> {
     return this.decide(target, async (record) => {
@@ -128,7 +135,9 @@ export class ReviewService {
   /**
    * Puts the files and records of a step back as they were `before` it
    * (Undo) or `after` it (Redo). A file that changed since the step is
-   * left alone and listed in `held`, with its record.
+   * left alone and listed in `held`, with its record. That includes a
+   * step that only changed the record, such as an Accept: its record comes
+   * back only while the file is still as that record last saw it.
    */
   async restore(step: ReviewStep, to: "before" | "after"): Promise<ReviewOutcome> {
     const from = to === "before" ? "after" : "before";
@@ -142,6 +151,8 @@ export class ReviewService {
           if (!(await this.files.putFile(entry.path, expected, entry.file[to]))) {
             return false;
           }
+        } else if (!(await this.stillAsSeen(entry.path, entry.record[to]))) {
+          return false;
         }
         await this.files.putRecord(entry.path, entry.record[to]);
         return true;
@@ -159,7 +170,8 @@ export class ReviewService {
   /**
    * The files with changes to review, sorted by path, with the card each
    * belongs to (`app.review-items-to-review`). Create version leaves them
-   * out, and Changes marks their rows.
+   * out, and Changes marks their rows. A record that can't be read is
+   * removed and left out, without telling the listeners.
    */
   async itemsWithChangesToReview(): Promise<readonly ItemToReview[]> {
     const { records } = await this.files.list();
@@ -189,14 +201,19 @@ export class ReviewService {
     return { held, dropped };
   }
 
-  /** Runs a decision on every file the target covers, each in its file's turn. */
+  /**
+   * Runs a decision on every file the target covers, each in its file's
+   * turn. The record is read again in that turn, and a file the target no
+   * longer covers is skipped: a write for another card may have taken it
+   * over since the files were listed.
+   */
   private async decide(target: ReviewTarget, decision: FileDecision): Promise<ReviewOutcome> {
     const done: ReviewedFile[] = [];
     const held: string[] = [];
     for (const path of await this.pathsOf(target)) {
       const result = await this.files.turn(path, async () => {
         const record = await this.files.read(path);
-        return record === null ? null : decision(record);
+        return record === null || !covers(target, record) ? null : decision(record);
       });
       if (result === "held") {
         held.push(path);
@@ -213,13 +230,27 @@ export class ReviewService {
       return [target.path];
     }
     const { records } = await this.files.list();
-    return records
-      .filter((record) =>
-        target.kind === "card"
-          ? sameCard(record.card, target.card)
-          : record.card.chatId === target.chatId,
-      )
-      .map((record) => record.path);
+    return records.filter((record) => covers(target, record)).map((record) => record.path);
+  }
+
+  /** Whether the file is still as `record` last saw it; always for no record. */
+  private async stillAsSeen(path: string, record: ReviewRecord | null): Promise<boolean> {
+    return (
+      record === null ||
+      (await this.files.digestOf(await this.files.store.read(path))) === record.seen
+    );
+  }
+}
+
+/** Whether the target covers the file of `record`. */
+function covers(target: ReviewTarget, record: ReviewRecord): boolean {
+  switch (target.kind) {
+    case "file":
+      return record.path === target.path;
+    case "card":
+      return sameCard(record.card, target.card);
+    case "chat":
+      return record.card.chatId === target.chatId;
   }
 }
 
