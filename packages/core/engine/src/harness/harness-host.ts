@@ -13,6 +13,7 @@ import type {
   SandboxProfile,
 } from "@halonicjs/ports";
 import type { ProgramHarness } from "../kernel/decide-types.ts";
+import type { StartPhase } from "./start-limits.ts";
 
 /** Where an agent's harness runs: in a sandbox, or on this computer outside one. */
 export type Placement = "sandbox" | "this-computer";
@@ -81,4 +82,9 @@ export interface HarnessRunsOptions {
   readonly profiles: HarnessProfileBuilder;
   /** The person's home folder, so `sandbox.opened` shows paths in it with `~`; `null` when unknown. */
   readonly home: string | null;
+  /**
+   * How long each start may take, in milliseconds: the sandbox's opening and
+   * the harness's first event. Defaults: 30 s and 60 s.
+   */
+  readonly startTimeoutsMs?: Readonly<Partial<Record<StartPhase, number>>>;
 }

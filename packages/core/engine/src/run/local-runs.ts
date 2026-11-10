@@ -31,6 +31,7 @@ import { readRun, step } from "../kernel/step.ts";
 import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { RunFeed } from "./run-feed.ts";
+import { StartDeadlines } from "./start-deadlines.ts";
 
 /** What the local executor needs to run workflows, on top of what chat turns need. */
 export interface LocalRunsOptions {
@@ -66,7 +67,8 @@ const maxRunIdBytes = 256;
 
 /**
  * Timer ids: a model call or a harness run to carry out now, and a timer a
- * state set (`set-timer`).
+ * state set (`set-timer`). A harness call's start limits have their own
+ * (see {@link StartDeadlines}).
  */
 const callTimer = "call:";
 const harnessTimer = "harness:";
@@ -92,6 +94,7 @@ export class LocalRuns {
   readonly #clock: Clock;
   readonly #callModel: CallModel;
   readonly #feed: RunFeed;
+  readonly #startDeadlines: StartDeadlines;
   readonly #builtEffects: ReadonlySet<Effect["type"]>;
   /** The calls being carried out now, so a timer delivered twice makes one call. */
   readonly #calling = new Set<string>();
@@ -102,6 +105,7 @@ export class LocalRuns {
     this.#clock = clock;
     this.#callModel = callModel;
     this.#feed = new RunFeed(options.store);
+    this.#startDeadlines = new StartDeadlines(options.scheduler, clock);
     this.#builtEffects = builtEffectsOf(options);
   }
 
@@ -169,13 +173,16 @@ export class LocalRuns {
   }
 
   /**
-   * A timer of a run is due: carry out the call it names, or pass the run
-   * the timer a state set. A timer that is late, repeated or no longer
-   * wanted changes nothing, so this resolves for it.
+   * A timer of a run is due: carry out the call it names, end a harness
+   * start whose time is up, or pass the run the timer a state set. A timer
+   * that is late, repeated or no longer wanted changes nothing, so this
+   * resolves for it.
    */
   async onTimer(timer: ScheduledTimer): Promise<void> {
     await this.#ready();
-    if (timer.timerId.startsWith(callTimer)) {
+    if (StartDeadlines.owns(timer)) {
+      this.#startDeadlines.expire(timer);
+    } else if (timer.timerId.startsWith(callTimer)) {
       await this.#carryOutCall(timer.key, timer.timerId.slice(callTimer.length), "model");
     } else if (timer.timerId.startsWith(harnessTimer)) {
       await this.#carryOutCall(timer.key, timer.timerId.slice(harnessTimer.length), "harness");
@@ -265,7 +272,13 @@ export class LocalRuns {
     }
     const effect = { ...call, harness };
     const log = new SerialRunLog(this.#options.store, run.runId, run.lastSeq, this.#clock);
-    return runHarnessCall(harnesses, { effect, runId: run.runId, hubId: run.hubId, agent }, log);
+    const limits = this.#startDeadlines.of(run.runId, call.callId);
+    return runHarnessCall(
+      harnesses,
+      { effect, runId: run.runId, hubId: run.hubId, agent },
+      log,
+      limits,
+    );
   }
 
   /** As {@link LocalRuns.#record}, but an input the run no longer takes changes nothing. */

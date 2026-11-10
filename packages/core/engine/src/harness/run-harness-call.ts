@@ -18,12 +18,7 @@ import {
 } from "@halonicjs/ports";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import type { HarnessAgent, HarnessRunsOptions } from "./harness-host.ts";
-
-/** How long the sandbox has to open, in milliseconds (HAL-189 plan decision 4). */
-export const sandboxStartTimeoutMs = 30_000;
-
-/** How long the harness has to send its first event, in milliseconds (HAL-189 plan decision 4). */
-export const harnessStartTimeoutMs = 60_000;
+import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
 
 /** Where a harness call writes its events: the run's log, one event after the other. */
 export interface HarnessEventLog {
@@ -45,16 +40,20 @@ export interface HarnessCall {
  *
  * It never runs a harness without its sandbox: when the sandbox for the
  * agent's placement isn't ready, the call fails before anything starts.
+ * Neither start waits for ever: `limits` ends the sandbox's opening and the
+ * wait for the harness's first event when their time is up.
  *
  * @returns the `output` of the agent's own `agent.finished`
- * @throws RunFailureError `sandbox-start-failed` when the sandbox doesn't open, or
- *   `harness-start-failed` when the host has no such harness or it ends before its first event
+ * @throws RunFailureError `sandbox-start-failed` when the sandbox doesn't open in time, or
+ *   `harness-start-failed` when the host has no such harness, or it fails or sends nothing
+ *   before its first event is due
  * @throws when the sandbox isn't ready, the harness asks for an approval, or it ends without a result
  */
 export async function runHarnessCall(
   options: HarnessRunsOptions,
   call: HarnessCall,
   log: HarnessEventLog,
+  limits: StartLimits,
 ): Promise<unknown> {
   const { effect } = call;
   const harness = options.harnesses[effect.harness];
@@ -72,18 +71,20 @@ export async function runHarnessCall(
       `The sandbox isn't ready (${check.reason}), so agent "${effect.agent}" didn't start. Halonic never runs it without one.`,
     );
   }
+  const started: StartedCall = { options, call, harness, log, limits };
   // The bridge's events (model and tool calls) carry no state.
   const recorder = { record: (event: RunEventBody) => log.append(event) };
   const bridge = await options.bridges.open(agent, recorder);
   try {
-    const session = await openSandbox(options, sandbox, harness, call, bridge, log);
+    const session = await openSandbox(started, sandbox, bridge);
     try {
+      const timeoutMs = startTimeoutOf(options, "harness");
       await log.append({
         type: "harness.started",
         state: effect.state,
         agent: effect.agent,
         harness: harness.id,
-        timeoutMs: harnessStartTimeoutMs,
+        timeoutMs,
       });
       const task = {
         runId: call.runId,
@@ -95,7 +96,7 @@ export async function runHarnessCall(
       };
       const run = harness.start(task, session, bridge);
       try {
-        return await followRun(run, harness, effect.state, log);
+        return await followRun(started, run, timeoutMs);
       } finally {
         await run.cancel();
       }
@@ -107,23 +108,45 @@ export async function runHarnessCall(
   }
 }
 
-/** Builds the profile, logs `sandbox.started`, opens the sandbox and logs `sandbox.opened`. */
+/** What the steps of a harness call share once it knows its harness. */
+interface StartedCall {
+  readonly options: HarnessRunsOptions;
+  readonly call: HarnessCall;
+  readonly harness: Harness;
+  readonly log: HarnessEventLog;
+  readonly limits: StartLimits;
+}
+
+/** The limit of one start, from the host's options or the default. */
+function startTimeoutOf(options: HarnessRunsOptions, phase: StartPhase): number {
+  return options.startTimeoutsMs?.[phase] ?? defaultStartTimeoutsMs[phase];
+}
+
+/**
+ * Builds the profile, logs `sandbox.started`, opens the sandbox within its
+ * time limit and logs `sandbox.opened`. A session that opens after the time
+ * was up is closed as soon as it arrives.
+ */
 async function openSandbox(
-  options: HarnessRunsOptions,
+  { options, call, harness, log, limits }: StartedCall,
   sandbox: Sandbox,
-  harness: Harness,
-  call: HarnessCall,
   bridge: OpenHarnessBridge,
-  log: HarnessEventLog,
 ): Promise<SandboxSession> {
   const { state, agent } = call.effect;
   const subject = { runId: call.runId, hubId: call.hubId, agentId: agent };
   const { profile, deniedGroups } = await options.profiles.profileOf(subject, bridge);
   const env = addHarnessEnvironment(profile.env, harness.environment?.(bridge, profile) ?? {});
-  await log.append({ type: "sandbox.started", state, agent, timeoutMs: sandboxStartTimeoutMs });
+  const timeoutMs = startTimeoutOf(options, "sandbox");
+  await log.append({ type: "sandbox.started", state, agent, timeoutMs });
   let session: SandboxSession;
   try {
-    session = await sandbox.open({ ...profile, env });
+    session = await limits.within({
+      phase: "sandbox",
+      timeoutMs,
+      start: () => sandbox.open({ ...profile, env }),
+      timedOut: () => new Error(`It didn't open within ${seconds(timeoutMs)}.`),
+      late: (lateSession) => lateSession.close(),
+    });
   } catch (error) {
     throw new RunFailureError(
       "sandbox-start-failed",
@@ -148,8 +171,9 @@ async function openSandbox(
 
 /**
  * Writes what the harness reports until the agent's own `agent.finished`,
- * and gives back its output. A stream that fails before its first event
- * means the program didn't start.
+ * and gives back its output. A stream that fails, or sends nothing, before
+ * its first event is due means the program didn't start; the caller's
+ * `cancel()` then ends the wait for it.
  *
  * The agent's own `agent.started` and `agent.finished` never reach the log:
  * `decide` writes both for the state, and the run reads a top-level one as
@@ -157,36 +181,46 @@ async function openSandbox(
  * a call that no longer exists.
  */
 async function followRun(
+  { harness, call, log, limits }: StartedCall,
   run: HarnessRun,
-  harness: Harness,
-  state: string,
-  log: HarnessEventLog,
+  timeoutMs: number,
 ): Promise<unknown> {
-  let started = false;
+  const events = run[Symbol.asyncIterator]();
+  let next: IteratorResult<HarnessEvent>;
   try {
-    for await (const event of run) {
-      started = true;
-      if (event.type === "agent.finished" && event.parent === undefined) {
-        return event.output;
-      }
-      if (event.type === "agent.started" && event.parent === undefined) {
-        continue;
-      }
-      if (event.type === "approval.requested") {
-        // The run's wait and `send` by call id come in the next step of stack 4.
-        throw new Error(
-          `${harness.name} asked for an approval, and harness runs can't wait for one yet.`,
-        );
-      }
-      await log.append(withState(event, state));
-    }
+    next = await limits.within({
+      phase: "harness",
+      timeoutMs,
+      start: () => events.next(),
+      timedOut: () => new Error(`It sent nothing within ${seconds(timeoutMs)}.`),
+    });
   } catch (error) {
-    if (started) throw error;
     throw new RunFailureError("harness-start-failed", `${harness.name} didn't start.`, {
       cause: error,
     });
   }
+  for (; !next.done; next = await events.next()) {
+    const event = next.value;
+    if (event.type === "agent.finished" && event.parent === undefined) {
+      return event.output;
+    }
+    if (event.type === "agent.started" && event.parent === undefined) {
+      continue;
+    }
+    if (event.type === "approval.requested") {
+      // The run's wait and `send` by call id come in the next step of stack 4.
+      throw new Error(
+        `${harness.name} asked for an approval, and harness runs can't wait for one yet.`,
+      );
+    }
+    await log.append(withState(event, call.effect.state));
+  }
   throw new Error(`${harness.name} ended without the agent's result.`);
+}
+
+/** A time limit as people read it, such as `30 s`. */
+function seconds(timeoutMs: number): string {
+  return `${timeoutMs / 1000} s`;
 }
 
 /** A harness event as the run log keeps it: with the workflow state, for the types that have one. */

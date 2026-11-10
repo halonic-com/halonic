@@ -111,3 +111,45 @@ verifies("engine.run-harness-failures", () => {
     });
   });
 });
+
+verifies("engine.harness-start-limits", () => {
+  it("fails the run with harness-start-failed when the start limit's timer arrives first", async () => {
+    const ports = harnessPorts();
+    ports.harness.silent = true;
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start(replyStart);
+    const harnessCall = scheduler.deliver("run_1", "harness:call-1");
+    await scheduler.deliver("run_1", "start:harness:call-1");
+    await harnessCall;
+
+    expect(await runs.get("run_1")).toMatchObject({
+      status: "failed",
+      reason: "harness-start-failed",
+    });
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+    expect(scheduler.timers.size).toBe(0);
+  });
+
+  it("changes nothing when a start limit's timer arrives for a call it isn't running", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("Dear support")];
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      agents,
+      harnesses: ports.options,
+    });
+
+    await executor.start(replyStart);
+    await scheduler.runDue();
+    await executor.onTimer({
+      key: "run_1",
+      timerId: "start:harness:call-1",
+      at: "2026-01-05T09:01:00.000Z",
+    });
+
+    expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+});
