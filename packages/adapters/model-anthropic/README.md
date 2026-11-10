@@ -30,6 +30,6 @@ The Messages API has no plain JSON mode, so the provider says `jsonOutput: false
 
 `stream()` asks for server-sent events and gives `text`, `reasoning` and `tool-call` pieces as they arrive, then one `done` whose response equals what `chat()` gives for the same reply. Stopping early closes the call, and the reply has the same 10 MiB limit. A stream that fails after it started ends with a `ModelCallError` and no `done`. The API's `error` event gets the reason its status would: `overloaded_error` is `provider-busy`, as a 529 is, and a type it doesn't know is `refused`; its text goes on the `cause` under the same rules. A reply cut off before `message_stop` or data it can't read is `refused`, and a dropped connection `offline`.
 
-Cache token counts come back in the usage as `cacheReadTokens` and `cacheWriteTokens`, apart from `inputTokens`.
+Cache token counts come back in the usage as `cacheReadTokens` and `cacheWriteTokens`, apart from `inputTokens`, when there were any.
 
 The package is being built in small pull requests (HAL-2921). The factory follows.
