@@ -1,4 +1,5 @@
 import { type RefObject, useEffect, useLayoutEffect, useRef } from "react";
+import { modalOpened } from "./open-modals.ts";
 
 export interface ModalFocus {
   /** Where focus goes once the dialog is open. */
@@ -25,8 +26,12 @@ export function useModal(dialog: RefObject<HTMLDialogElement | null>, focus: Mod
     }
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     element.showModal();
+    const closed = modalOpened();
     latest.current.initial()?.focus();
-    return () => element.close();
+    return () => {
+      element.close();
+      closed();
+    };
   }, [dialog]);
 
   // Focus moves back after the commit that removed the dialog, so the fallback can be an element

@@ -953,6 +953,61 @@ or a product. It's decoration, hidden from screen readers: the words next to it 
 The Empty state keeps its own tile, a `surface` one with a shadow, because it sits on the halo
 wash, where a halo-tinted tile would disappear.
 
+## Toast and ToastRegion
+
+The result of something you did or something that finished in the background: "Agent saved",
+"Run failed". A toast reports and goes; a message that stays in its place is a Callout. The kit
+has a plain store with no knowledge of the shell, which wraps it as its `toasts` service, and the
+region that shows it. The shell places the region once, in a `position: relative` wrapper round
+its content area (on a phone, round the scroll area), so toasts never cover the status bar or the
+bar at the bottom.
+
+```tsx
+const toasts = createToastStore();
+toasts.show({ tone: "success", title: "Agent saved" });
+toasts.show({
+  tone: "info",
+  title: "Run moved to Archive",
+  action: { label: "Undo", onClick: undo },
+});
+<ToastRegion store={toasts} />;
+```
+
+| Store method          | What it does                                                         |
+| --------------------- | -------------------------------------------------------------------- |
+| `show(message)`       | Adds `{ tone, title, text?, action? }` at the bottom; returns its id |
+| `close(id)`           | Takes it away at once, with no fade                                  |
+| `focus()`             | Focus to the newest toast's first button. The shell binds F6 to it   |
+| `list()`, `subscribe` | Every toast, oldest first, and a listener for changes                |
+
+Bottom right, 16px in, 360px wide (`w-toast`), 8px apart, newest at the bottom, at
+`--layer-toast`. A card is `surface-raised`, 12px radius, `shadow-2`: the tone's icon, the title,
+one line in `fg-muted`, at most one action as an `accent-text` text button, and a close button
+named "Close" and the title. Tones are those of the Status chip: `success`, `info` (accent),
+`running`, `warning`, `danger`. It fades in and out in 120ms; nothing slides.
+
+| State   | What happens                                                                               |
+| ------- | ------------------------------------------------------------------------------------------ |
+| Default | `success` and `info` close after 5s, 10s with an action. `running` and `warning` stay      |
+| Hover   | No change in look; the timer pauses. A finger on it pauses it too                          |
+| Focus   | The action and close button take the ring; the timer pauses. Pressing the action closes it |
+| Error   | `danger`: `role="alert"`, stays until closed. The other tones are `role="status"`          |
+| Many    | At most three; a fourth closes the oldest                                                  |
+
+**While a kit Dialog is open,** everything outside it is inert, so toasts wait and show when it
+closes; their timers wait too. They're in the page, visually hidden, from the moment they arrive.
+A problem with what you're doing in the dialog goes in the dialog (a Field error or a Callout),
+never in a toast.
+
+**When the focused toast closes,** focus goes to the newest toast left, else back to where it was
+before F6.
+
+**On a phone** the region spans the width less 16px each side, 8px above the bar at the bottom,
+with nothing measured. One toast shows at a time and the rest wait in order. The close button is
+48px, set into the padding so the toast isn't taller. The text and the action are one wrapping
+group, so a long action ("Sign in with Google") goes under the text and lines up with it, while
+"Undo" stays beside it.
+
 ## Testing a component
 
 Components are React. Their tests check the rendered markup, ARIA and clicks in jsdom, not

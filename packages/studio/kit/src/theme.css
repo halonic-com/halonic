@@ -161,6 +161,7 @@
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
   --container-empty: 360px; /* the Empty state's text and buttons */
+  --container-toast: 360px; /* the toast stack on desktop */
   --container-dialog-sm: 440px; /* confirmations and short forms */
   --container-dialog-md: 560px; /* a form whose options show their own fields or hints */
   --container-dialog-lg: 720px; /* Settings */
