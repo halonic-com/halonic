@@ -17,6 +17,7 @@ const supportReply = {
     draft: { type: "task", description: "Draft a reply\nIn the customer's language." },
     review: { type: "wait", description: "Approve this reply?" },
     hold: { type: "wait" },
+    shared: { type: "wait", description: "\u001b[2J\u001b[31mApprove\u202e this?" },
   },
 } as unknown as WorkflowDefinition;
 
@@ -108,6 +109,22 @@ describe("listedRun", () => {
     expect(row(summary)).toMatchObject({
       status: "needsYou",
       what: "Waiting for you in the step Hold",
+    });
+  });
+
+  it("shows an escape code or a bidi control in the wait step's description as its code", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "shared" },
+        { type: "run.waiting", state: "shared", events: ["approve"] },
+      ],
+      today,
+    );
+
+    expect(row(summary)).toMatchObject({
+      status: "needsYou",
+      what: "Waiting for you: \\u001b[2J\\u001b[31mApprove\\u202e this?",
     });
   });
 

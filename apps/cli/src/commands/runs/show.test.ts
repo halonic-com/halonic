@@ -13,6 +13,7 @@ import {
   running,
   type StoredRun,
   storeRuns as storeAcmeRuns,
+  supportReply,
   today,
   waiting,
   writeFiles,
@@ -223,6 +224,24 @@ verifies("cli.commands.runs.show", () => {
       expect(io.stdout.at(-1)).toBe(
         "  Answer in Studio's Inbox, or here: halonic runs send 09d9a0 approve (Send reply)  (or reject (Discard))",
       );
+    });
+
+    it("shows an escape code or a bidi control in the wait step's description as its code", async () => {
+      await writeFiles(acme, {
+        "hubs/support/workflows/support-reply.workflow.yaml": supportReply.replace(
+          "description: Approve this reply?",
+          'description: "\\e[2J\\e[31mApprove\\u202e this reply?"',
+        ),
+      });
+      await storeRuns(waiting);
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.slice(2, 5)).toEqual([
+        "! \\u001b[2J\\u001b[31mApprove\\u202e this reply?   waiting for you since 10:41",
+        "",
+        "! Waiting for you: \\u001b[2J\\u001b[31mApprove\\u202e this reply?",
+      ]);
     });
 
     it("ends a running run with the step it is in", async () => {

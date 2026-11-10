@@ -36,4 +36,10 @@ verifies("cli.step-name", () => {
     expect(stepName("draftReply")).toBe("DraftReply");
     expect(stepName("not-replied")).toBe("Not-replied");
   });
+
+  it("shows an escape code or a bidi control in a description as its code", () => {
+    expect(stepName("review", "\u001b[31mApprove\u202e this?\nMore")).toBe(
+      "\\u001b[31mApprove\\u202e this?",
+    );
+  });
 });

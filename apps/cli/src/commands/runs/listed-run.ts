@@ -178,7 +178,11 @@ function needsYouWhat(
     : runsListMessages.waitingForYou(description).phrase;
 }
 
-/** The first line of the wait step's description, as written; `undefined` when it has none. */
+/**
+ * The first line of the wait step's description, as written but made
+ * printable: it comes from a workflow file, perhaps a shared one
+ * (cli-output section 5). `undefined` when it has none.
+ */
 export function waitDescription(
   summary: RunSummary,
   workflow: WorkflowDefinition | undefined,
@@ -186,7 +190,7 @@ export function waitDescription(
   const description =
     summary.state === null ? undefined : workflow?.states[summary.state]?.description;
   const firstLine = description?.split("\n")[0]?.trim();
-  return firstLine === "" ? undefined : firstLine;
+  return firstLine === undefined || firstLine === "" ? undefined : printable(firstLine);
 }
 
 /**
