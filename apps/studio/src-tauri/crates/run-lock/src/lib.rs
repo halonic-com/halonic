@@ -7,9 +7,11 @@
 //! and this crate follows `withRunLock` in `fs-node` step by step: take the
 //! lock with an exclusive create, wait while a live writer holds it, move a
 //! stale one aside before removing it, and release only a lock that still
-//! holds our own record. Plain Rust with no Tauri types; the shell's run
-//! store wraps it.
+//! holds our own record. On Windows, a step Windows refuses while another
+//! writer deletes or holds the lock file is tried again (see `busy.rs`).
+//! Plain Rust with no Tauri types; the shell's run store wraps it.
 
+mod busy;
 mod iso_time;
 mod record;
 
@@ -85,21 +87,21 @@ fn take_lock<'a>(file: &'a Path, computer: &impl ThisComputer) -> io::Result<Hel
     loop {
         // An unknown host name is written as "", which no computer has.
         let own_text = record_text(std::process::id(), host.as_deref().unwrap_or(""), now_ms());
-        if create_exclusive(file, &own_text)? {
+        if busy::HERE.run(|| create_exclusive(file, &own_text))? {
             return Ok(HeldLock {
                 file,
                 own_text,
                 released: false,
             });
         }
-        let Some(found) = read_lock(file)? else {
+        let Some(found) = busy::HERE.run(|| read_lock(file))? else {
             // Released between our create and our read: try again straight away.
             continue;
         };
         if is_stale(&found, now_ms(), host.as_deref(), |pid| {
             computer.process_alive(pid)
         }) {
-            remove_stale(file, &found.text)?;
+            busy::HERE.run(|| remove_stale(file, &found.text))?;
             continue;
         }
         thread::sleep(RETRY_DELAY);
@@ -167,8 +169,13 @@ fn put_back(aside: &Path, file: &Path) -> io::Result<()> {
 
 /// Removes the lock, but only while it holds `own_text`: when this writer
 /// took so long that another removed its lock as stale, the lock now belongs
-/// to that other writer.
+/// to that other writer. Tried again while Windows refuses it as busy, so the
+/// lock isn't left behind for other writers to wait on.
 fn release_lock(file: &Path, own_text: &str) -> io::Result<()> {
+    busy::HERE.run(|| release_own_lock(file, own_text))
+}
+
+fn release_own_lock(file: &Path, own_text: &str) -> io::Result<()> {
     match read_lock(file)? {
         Some(found) if found.text == own_text => remove_if_there(file),
         _ => Ok(()),

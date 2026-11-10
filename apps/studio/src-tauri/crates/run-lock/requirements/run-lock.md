@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2701, HAL-2719; HAL-2373; `RunLockRecord` in the `RunStore` port
 
-While the shell appends to a run, it shall hold `<runId>.lock`, created with an exclusive create and holding a `RunLockRecord` as JSON written byte for byte as `fs-node` writes it. It shall wait while another live writer holds the lock, remove a stale lock as the port's rules allow and judge every lock in `run-lock-cases.json` as `fs-node` does, and remove its own lock once the work has returned or panicked, but only while the lock still holds its own record. If the lock's folder is missing or the file system fails, then the shell shall return the error without running the work.
+While the shell appends to a run, it shall hold `<runId>.lock`, created with an exclusive create and holding a `RunLockRecord` as JSON written byte for byte as `fs-node` writes it. It shall wait while another live writer holds the lock, remove a stale lock as the port's rules allow and judge every lock in `run-lock-cases.json` as `fs-node` does, and remove its own lock once the work has returned or panicked, but only while the lock still holds its own record. On Windows, while taking or removing the lock, it shall treat access denied (error 5) and a sharing violation (error 32) as the lock being busy right now and try the step again for up to 2 seconds before it returns the error (HAL-3871). If the lock's folder is missing or the file system fails, then the shell shall return the error without running the work.
 
 ## Examples
 
@@ -23,3 +23,6 @@ While the shell appends to a run, it shall hold `<runId>.lock`, created with an 
 - Given four writers that each take the lock ten times,
   when they run at once,
   then only one is ever inside, and all forty rounds finish.
+- Given a lock another writer is deleting on Windows,
+  when the shell takes the lock and Windows denies access,
+  then it tries again and takes the lock once the file is gone.
