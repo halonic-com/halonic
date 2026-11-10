@@ -65,7 +65,8 @@ decides whether it passes.
 
 - **Agent prompt.** An `input` text is rendered as text. An `input` map is
   rendered value by value and sent as JSON. With no `input`, the agent gets
-  the run's input as JSON (`promptFor`).
+  the run's input as JSON (`promptFor`), unless the step picks data: then it
+  gets only the `## Data` section below, not the whole run input (`stepPrompt`).
 - **Child input.** A `workflow` state's `input` map is rendered value by value,
   so a value that is one placeholder keeps its type. An `input` text becomes
   `{ message: <text> }`. No `input` gives `{}` (`childInput`).

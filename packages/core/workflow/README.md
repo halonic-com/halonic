@@ -19,8 +19,9 @@ comparisons, `contains`, `exists`, number comparisons and `not`, `all` and
 `any`. `selectTransition` picks the transition an event fires in a state,
 `acceptedEvents` lists the events a waiting state listens to, and
 `stateTimers` and `dueTimer` handle the `after` transitions of a wait state.
-`promptFor`, `childInput` and `withGets` build what an agent or a child run
-gets, with the data a step picks (`gets`), and `contextBefore` tells which
+`promptFor`, `childInput`, `withGets` and `stepPrompt` build what an agent or a child run
+gets, with the data a step picks (`gets`): a step that picks data and has no `input` of its
+own sends only that data. `contextBefore` tells which
 context keys a step can pick. `validateWorkflow` runs the static checks the
 canvas shows before anything runs; each issue gives the key path in the
 workflow file of what it is about, such as `states.start.on.0.to`. The rules are written out in the

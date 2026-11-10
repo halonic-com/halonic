@@ -28,6 +28,26 @@ export function promptFor(
 }
 
 /**
+ * The prompt a step sends to its agent: {@link promptFor} with the picked
+ * data (`gets`) after it. A step that picks data and has no `input` of its
+ * own sends only the picked data, not the whole run input.
+ *
+ * @example
+ * stepPrompt(undefined, ["input.from"], scope, runInput); // "## Data\n\n### input.from\nsupport"
+ */
+export function stepPrompt(
+  input: StateInput,
+  gets: readonly string[] | undefined,
+  scope: unknown,
+  runInput: Record<string, unknown>,
+): string {
+  if (input === undefined && gets?.length) {
+    return dataSection(gets, scope);
+  }
+  return withGets(promptFor(input, scope, runInput), gets, scope);
+}
+
+/**
  * The input a `workflow` state gives its child run. A map of templates is
  * rendered value by value, so a value that is one placeholder keeps its type.
  * A text becomes `{ message: <text> }`. No `input` gives an empty input.
@@ -96,8 +116,12 @@ export function withGets(
   if (!gets?.length) {
     return prompt;
   }
+  return `${prompt.trim()}\n\n${dataSection(gets, scope)}`;
+}
+
+function dataSection(gets: readonly string[], scope: unknown): string {
   const sections = gets.map((path) => `### ${path}\n${pickedText(getPath(scope, path))}`);
-  return `${prompt.trim()}\n\n## Data\n\n${sections.join("\n\n")}`;
+  return `## Data\n\n${sections.join("\n\n")}`;
 }
 
 function pickedText(value: unknown): string {

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: `withGets` in the old workflow package (`packages/core/workflow/src/inputs.ts`) at 784f78d
 
-When a step has picked data (`gets`), the workflow rules shall send its prompt without the spaces around it, then a `## Data` section with each picked path as a `###` heading followed by its value: text as it is, anything else as JSON indented by two spaces, and `(not set)` for a value that isn't there. When a step picks nothing, the rules shall send the prompt unchanged.
+When a step has picked data (`gets`), the workflow rules shall send its prompt without the spaces around it, then a `## Data` section with each picked path as a `###` heading followed by its value: text as it is, anything else as JSON indented by two spaces, and `(not set)` for a value that isn't there. When a step picks nothing, the rules shall send the prompt unchanged. A step that picks data and has no `input` sends the `## Data` section alone (`workflow.state-input`).
 
 ## Examples
 

@@ -89,6 +89,21 @@ verifies("engine.task-state", () => {
     expect(decisions[1]).toEqual({ events: [], effects: [] });
   });
 
+  it("sends only the picked data for a step with gets and no input (HAL-4455)", () => {
+    const picks: Workflow = {
+      ...reply,
+      states: { ...reply.states, draft: task({ gets: ["input.from"], on: [] }) },
+    };
+    const withSecret = { ...startInput, input: { from: "support", secret: "not sent" } };
+    const { decisions } = play(picks, [withSecret]);
+    expect(decisions[0]?.events.at(-1)).toEqual({
+      type: "agent.started",
+      state: "draft",
+      agent: "writer",
+      prompt: "## Data\n\n### input.from\nsupport",
+    });
+  });
+
   it("takes the first done transition whose guard passes", () => {
     const routed: Workflow = {
       ...reply,
