@@ -166,7 +166,7 @@ say("");
 // Variants: same suite, different places and grants.
 await suite("current: folders in your profile", profileBase, []);
 await suite("A: folders outside the profile (C:\\halonic-mxc-check)", outsideBase, []);  // leak-guard: allow absolute-path real-PC test folder on the tester machine
-await suite("C: DIAGNOSIS ONLY, whole C:\\ readable", profileBase, ["C:\\"]);
+await suite("C: DIAGNOSIS ONLY, whole C:\\ readable", profileBase, ["C:\\"]);  // leak-guard: allow absolute-path real-PC test folder on the tester machine
 
 // Summary
 say("SUMMARY");
@@ -182,13 +182,13 @@ say(`Windows: ${facts.windows}, edition ${facts.edition_id}, build ${facts.build
 $NodeVersion = '24.21.0'
 $SdkVersion = '1.0.1'
 $work = Join-Path $env:LOCALAPPDATA 'halonic-mxc-check'
-$outside = 'C:\halonic-mxc-check\data'  // leak-guard: allow absolute-path real-PC test folder on the tester machine
+$outside = 'C:\halonic-mxc-check\data'  # leak-guard: allow absolute-path real-PC test folder on the tester machine
 New-Item -ItemType Directory -Force $work | Out-Null
 
 Write-Host ''
 Write-Host '=== Halonic MXC check ===' -ForegroundColor Cyan
 Write-Host 'This tests whether Windows can keep a program inside a locked box (a "process container").'
-Write-Host 'It runs three variants, in your profile and in C:\halonic-mxc-check. It removes nothing outside those.'  // leak-guard: allow absolute-path real-PC test folder on the tester machine
+Write-Host 'It runs three variants, in your profile and in C:\halonic-mxc-check. It removes nothing outside those.'  # leak-guard: allow absolute-path real-PC test folder on the tester machine
 Write-Host ''
 
 # 1. Windows edition and build
