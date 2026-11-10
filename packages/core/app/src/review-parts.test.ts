@@ -127,7 +127,10 @@ verifies("app.review-accept-reject-part", () => {
     const review = new ReviewService({ store, records: recordStore, digest });
     await review.propose({ path, content: "name: Triage\n", expected: "absent", card: k1 });
     const found = await review.changesIn(path);
-    await review.reject({ kind: "part", path, part: 0, seen: found?.seen ?? "" });
+    if (found === null) {
+      throw new Error("The new file has no changes to review.");
+    }
+    await review.reject({ kind: "part", path, part: 0, seen: found.seen });
     expect(store.files.has(path)).toBe(false);
     expect(await review.itemsWithChangesToReview()).toEqual([]);
   });
