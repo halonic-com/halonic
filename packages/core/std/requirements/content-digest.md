@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: save model 1.7 (HAL-1102), HAL-3247; the digest the `DefinitionStore` port v2 compares (`ports.definition-store-write-if-unchanged`)
 
-`contentDigest` shall give `sha256:` and the 64 lowercase hex characters of the SHA-256 of a text's UTF-8 bytes, with the SHA-256 the caller passes in. `matchesExpected` shall say whether a file's text, or `null` for no file, is what the caller expects: `absent` matches only no file, and a digest matches only a file whose text has that digest.
+The content digest helpers shall give, as `contentDigest`, `sha256:` and the 64 lowercase hex characters of the SHA-256 of a text's UTF-8 bytes, with the SHA-256 the caller passes in, and shall say, as `matchesExpected`, whether a file's text, or `null` for no file, is what the caller expects: `absent` matches only no file, and a digest matches only a file whose text has that digest.
 
 ## Examples
 

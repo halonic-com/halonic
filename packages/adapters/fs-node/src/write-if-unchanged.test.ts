@@ -78,15 +78,11 @@ verifies("fs-node.write-is-whole-or-nothing", () => {
       expect(await readFile(join(root, "hubs/a.yaml/x.yaml"), "utf8")).toBe("1");
     });
 
-    // Windows has no permission bits to keep.
-    it.skipIf(process.platform === "win32")(
-      "keeps the permissions of the file it replaces",
-      async () => {
-        const { root, store } = await folderWith({ "run.sh": "echo 1\n" });
-        await chmod(join(root, "run.sh"), 0o755);
-        await store.write("run.sh", "echo 2\n");
-        expect((await stat(join(root, "run.sh"))).mode & 0o777).toBe(0o755);
-      },
-    );
+    it("keeps the permissions of the file it replaces", async () => {
+      const { root, store } = await folderWith({ "run.sh": "echo 1\n" });
+      await chmod(join(root, "run.sh"), 0o755);
+      await store.write("run.sh", "echo 2\n");
+      expect((await stat(join(root, "run.sh"))).mode & 0o777).toBe(0o755);
+    });
   });
 });
