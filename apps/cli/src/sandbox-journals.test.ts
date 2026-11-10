@@ -59,7 +59,7 @@ describe("recoverSandboxSessions", () => {
     const failing = async () => {
       throw new Error("disk");
     };
-    expect(await recoverSandboxSessions(profile, failing, "linux")).toEqual([]);
+    expect(await recoverSandboxSessions(profile, failing)).toEqual([]);
   });
 
   it("does not throw when the profile folder can't be resolved", async () => {
@@ -69,15 +69,7 @@ describe("recoverSandboxSessions", () => {
     expect(await recoverSandboxSessions(unresolved)).toEqual([]);
   });
 
-  it("keeps no journal on Windows", async () => {
-    const asked: string[] = [];
-    const recover = async (folder: string) => {
-      asked.push(folder);
-      return { undone: [], failed: [] };
-    };
-    expect(await recoverSandboxSessions(profile, recover, "win32")).toEqual([]);
-    expect(asked).toEqual([]);
-    expect(privateJournalFolder(profile(), "win32")).toBeNull();
-    expect(privateJournalFolder(profile(), "linux")).toBe(sandboxJournalFolder(profile()));
+  it("names the folder in the profile folder on every system, Windows included", () => {
+    expect(privateJournalFolder(profile())).toBe(sandboxJournalFolder(profile()));
   });
 });

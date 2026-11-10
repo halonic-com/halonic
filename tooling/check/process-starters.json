@@ -33,6 +33,10 @@
       "reason": "CI tooling for the Phase 5 Windows verdict probes (HAL-3776), run by hand and by the report-only sandbox-windows-spike job, never shipped. It starts Node with the srt CLI from this package's node_modules and child scripts the probes write to a temporary folder, and it runs fixed commands outside srt (PowerShell, wsl.exe, where, icacls, java, go, git, dotnet, curl) as controls on a throwaway runner. Every command is a literal in windows-verdict-probe.mjs or windows-isolation-probe.mjs, which start processes only through this file. It never loads a skill.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
     },
+    "packages/adapters/sandbox-srt/src/journal-acl.ts": {
+      "reason": "On Windows only, limits the journal folder to the current user (HAL-3896). It starts only whoami.exe and icacls.exe from the system folder, with fixed arguments and the folder the host chose, no shell. It never loads a skill.",
+      "scriptsTest": "packages/adapters/sandbox-srt/src/journal-acl.starts.test.ts"
+    },
     "packages/adapters/sandbox-srt/src/machine.ts": {
       "reason": "Probes whether bubblewrap starts and may create user namespaces. It runs only bwrap with fixed arguments.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/machine.starts.test.ts"

@@ -11,6 +11,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { submoduleGitFolders } from "./git-deny-paths.ts";
+import { restrictToThisUser } from "./journal-acl.ts";
 
 /** What one `commondir` file was when the session started: its content, its link target, or nothing. */
 type Original =
@@ -265,7 +266,7 @@ interface Journal {
 
 const posix = process.platform !== "win32";
 
-/** Whether `stat` is owned by this user and cannot be written by group or others (always true on Windows, which has neither). */
+/** Whether `stat` is owned by this user and cannot be written by group or others (always true on Windows, which has neither; there `restrictToThisUser` sets the access list). */
 function ownedAndClosed(stat: { uid: number; mode: number }): boolean {
   if (!posix) return true;
   return stat.uid === process.getuid?.() && (stat.mode & 0o022) === 0;
@@ -273,7 +274,7 @@ function ownedAndClosed(stat: { uid: number; mode: number }): boolean {
 
 /**
  * Makes the folder that keeps the journals: a real folder (never a link) that only
- * this user can write, mode 0700. Throws when one is there that is not safe to use,
+ * this user can write, mode 0700 (on Windows, an access list for this user alone). Throws when one is there that is not safe to use,
  * so a session never keeps a journal where another user could change it.
  */
 export async function prepareJournalFolder(folder: string): Promise<void> {
@@ -283,6 +284,7 @@ export async function prepareJournalFolder(folder: string): Promise<void> {
     throw new Error(`the journal folder ${folder} is not a private folder of this user`);
   }
   if (posix) await chmod(folder, 0o700);
+  else await restrictToThisUser(folder);
 }
 
 /**
@@ -406,6 +408,16 @@ export async function recoverGitFolders(
   const failed: string[] = [];
   const stat = await lstat(journalFolder).catch(() => null);
   if (stat === null || !stat.isDirectory() || !ownedAndClosed(stat)) return { undone, failed };
+  // On Windows nothing above looked at who may write here: take the folder for this user alone first, or leave it.
+  if (
+    !posix &&
+    (await restrictToThisUser(journalFolder).then(
+      () => false,
+      () => true,
+    ))
+  ) {
+    return { undone, failed };
+  }
   const names = await readdir(journalFolder).catch(() => []);
   for (const name of names.filter((n) => n.endsWith(".json"))) {
     const path = join(journalFolder, name);

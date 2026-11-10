@@ -7,16 +7,12 @@ import { recoverGitFolders } from "@halonicjs/adapter-sandbox-srt";
 import { type ProfileFolder, sandboxJournalFolder } from "@halonicjs/profile";
 
 /**
- * The journal folder the sandbox should use, or `null` on Windows: there the
- * journal code's owner check always passes, so the folder would need its own
- * restricted ACL first. Until Windows has a sandbox mode (the srt sandbox
- * refuses plain Windows), no journal is kept there.
+ * The journal folder the sandbox should use. On Windows the journal code's
+ * owner check always passes, so it gives the folder its own access list
+ * (this user only, no inheritance) before it keeps anything there (HAL-3896).
  */
-export function privateJournalFolder(
-  profile: ProfileFolder,
-  platform: NodeJS.Platform = process.platform,
-): string | null {
-  return platform === "win32" ? null : sandboxJournalFolder(profile);
+export function privateJournalFolder(profile: ProfileFolder): string {
+  return sandboxJournalFolder(profile);
 }
 
 /**
@@ -29,14 +25,11 @@ export function privateJournalFolder(
 export async function recoverSandboxSessions(
   profile: () => ProfileFolder,
   recover: typeof recoverGitFolders = recoverGitFolders,
-  platform: NodeJS.Platform = process.platform,
 ): Promise<string[]> {
   try {
     // Resolved in here: a profile folder that can't be resolved (a relative
     // HALONIC_HOME) must not stop the program, `--version` included.
-    const folder = privateJournalFolder(profile(), platform);
-    if (folder === null) return [];
-    return (await recover(folder)).failed;
+    return (await recover(privateJournalFolder(profile()))).failed;
   } catch {
     return [];
   }
