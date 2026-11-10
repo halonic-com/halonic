@@ -851,6 +851,28 @@ jobs:
         working-directory: packages/adapters/sandbox-srt
         run: pnpm test:fence
 
+  sandbox-fence-macos:
+    # The same fence tests on macOS, where sandbox-runtime uses Seatbelt
+    # (sandbox-exec, built into the system) instead of bubblewrap, and there
+    # is no process namespace (HAL-3513). Runs on the same changes as the
+    # Linux job. A test that fails here and passes on Linux is a macOS gap
+    # in the fence, not a flaky test. No cache is restored.
+    name: Sandbox fence (Seatbelt)
+    needs: changes
+    if: needs.changes.outputs.sandbox-fence == 'true'
+    runs-on: macos-15
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Fence tests
+        working-directory: packages/adapters/sandbox-srt
+        run: pnpm test:fence
+
   sandbox-os:
     # The sandbox and launcher packages on the other two systems (plan
     # phase 3): they start processes, build paths and read the system, so
@@ -1093,6 +1115,7 @@ jobs:
         tauri,
         tauri-windows,
         sandbox-fence,
+        sandbox-fence-macos,
         sandbox-os,
         agent-host,
         android,
