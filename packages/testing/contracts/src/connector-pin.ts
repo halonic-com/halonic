@@ -7,6 +7,7 @@ import type {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { contractGrant, contractServerTools } from "./connector-client.ts";
+import { refuseRealNetwork } from "./connector-network.ts";
 import {
   bypassingCommands,
   bypassingEnv,
@@ -155,11 +156,13 @@ function expectAskedOnlyAt({ registry }: Started, registryUrl: string): void {
  * package and version, looks it up only at the pin's `registryUrl`, starts
  * in a folder of its own, and refuses any other version. Registry lookups
  * get recorded npm and PyPI answers through the context's `http`, never
- * the network.
+ * the network: a case whose adapter calls `globalThis.fetch` for another
+ * machine fails, also when the adapter catches the refusal.
  */
 export function connectorPinContract(name: string, make: MakePinnedConnector): void {
   verifies("contracts.connector-pin", () => {
     describe(`Connector pinning contract: ${name}`, () => {
+      refuseRealNetwork();
       startCases(make);
       registryCases(make);
       refusalCases(make);
