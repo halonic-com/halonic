@@ -1,7 +1,13 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { failuresBeforeStuck, stuckTimerWatch } from "./stuck-timers.ts";
+import { plainText } from "../../messages/phrase.ts";
+import {
+  failuresBeforeStuck,
+  type RetriedFailure,
+  retriedLine,
+  stuckTimerWatch,
+} from "./stuck-timers.ts";
 
 const timer = (key: string, timerId = "step"): ScheduledTimer => ({
   key,
@@ -42,5 +48,37 @@ verifies("cli.run", () => {
     }
 
     expect(watch.signal.aborted).toBe(true);
+  });
+});
+
+verifies("cli.debug-lines", () => {
+  it("passes each failure before the third on as a retry, and not the third", () => {
+    const retries: RetriedFailure[] = [];
+    const watch = stuckTimerWatch((failure) => retries.push(failure));
+
+    watch.report(new Error("first"), timer("run_a"));
+    watch.report(new Error("second"), timer("run_a"));
+    watch.report(new Error("third"), timer("run_a"));
+
+    expect(retries.map((retry) => retry.failures)).toEqual([1, 2]);
+    expect(watch.signal.aborted).toBe(true);
+  });
+
+  it("names the timer, its run and the error in the retry's line", () => {
+    const line = retriedLine({
+      error: new Error("refused"),
+      source: timer("run_a", "call:draft"),
+      failures: 2,
+    });
+
+    expect(plainText(line)).toBe(
+      "the engine's timer call:draft of run_a failed, try 2 of 3, retrying: refused",
+    );
+  });
+
+  it("names the scheduler's own wake-up, which belongs to no run", () => {
+    const line = retriedLine({ error: new Error("disk"), source: "wake-up", failures: 1 });
+
+    expect(plainText(line)).toBe("the scheduler's wake-up failed, try 1 of 3, retrying: disk");
   });
 });

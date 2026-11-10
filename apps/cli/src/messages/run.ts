@@ -94,6 +94,17 @@ export const runMessages = defineMessages("run", {
   onThisComputer: (agent: string, chosenOn: string) =>
     phrase`${agent} runs on this computer without the sandbox, as chosen on ${chosenOn}.`,
 
+  /**
+   * A `--debug` line for an engineer (requirement `cli.debug-lines`): the
+   * engine's timer failed and the scheduler tries it again. The timer and
+   * the run are named as the engine names them.
+   */
+  timerRetried: (timer: string, runKey: string, failures: number, most: number, reason: string) =>
+    phrase`the engine's timer ${timer} of ${runKey} failed, try ${failures} of ${most}, retrying: ${reason}`,
+  /** The same for the scheduler's own wake-up or tick, which belongs to no run. */
+  schedulerRetried: (what: "wake-up" | "tick", failures: number, most: number, reason: string) =>
+    phrase`the scheduler's ${what} failed, try ${failures} of ${most}, retrying: ${reason}`,
+
   /** "Support reply finished in 18 s.", with the duration as the output writes it. */
   finished: (title: string, duration: string) => phrase`${title} finished in ${duration}.`,
   /**
