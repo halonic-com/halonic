@@ -2,7 +2,7 @@
 
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { act, use } from "react";
+import { act, use, useSyncExternalStore } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { HomeCardContribution, HomeSection } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
@@ -28,6 +28,7 @@ class PendingRows {
   promise!: Promise<string>;
   resolve!: (rows: string) => void;
   reject!: (error: unknown) => void;
+  readonly #listeners = new Set<() => void>();
 
   constructor() {
     this.reset();
@@ -42,11 +43,26 @@ class PendingRows {
     // The view reads the failure; this only keeps Node from reporting it as unhandled.
     this.promise.catch(() => undefined);
   }
+
+  /** A new request while the view shows, as a feature makes when its data changes. */
+  refresh(): void {
+    this.reset();
+    for (const listener of this.#listeners) {
+      listener();
+    }
+  }
+
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+
+  readonly current = (): Promise<string> => this.promise;
 }
 
 /** A card whose view suspends until its rows arrive, as a feature's card does with `use`. */
 function card(id: HomeSection, rows: PendingRows): Registered<HomeCardContribution> {
-  const Card = () => <p>{use(rows.promise)}</p>;
+  const Card = () => <p>{use(useSyncExternalStore(rows.subscribe, rows.current))}</p>;
   return { id, view: "Card", load: async () => ({ Card }), featureId: `${id}-feature` };
 }
 
@@ -168,6 +184,31 @@ verifies("shell.home-states", () => {
     await arrive(runs, "5 runs");
     expect(section.querySelector("p")?.textContent).toBe("5 runs");
     expect(document.activeElement).toBe(section.querySelector("h2"));
+  });
+
+  it("leaves focus where it is when a section loads again after Try again worked", async () => {
+    const inbox = new PendingRows();
+    const runs = new PendingRows();
+    const container = renderHome([card("needs-you", inbox), card("recent-runs", runs)]);
+    await settle();
+    await arrive(inbox, "2 waiting rows");
+    await fail(runs, new Error("boom"));
+    const section = sectionNamed(container, "Recent runs");
+
+    runs.reset();
+    act(() => section.querySelector("button")?.click());
+    await settle();
+    await arrive(runs, "5 runs");
+    expect(document.activeElement).toBe(section.querySelector("h2"));
+
+    const elsewhere = sectionNamed(container, "Needs you").querySelector("h2");
+    act(() => elsewhere?.focus());
+    act(() => runs.refresh());
+    await wait(300);
+    expect(section.querySelector('div[aria-hidden="true"]')?.children).toHaveLength(3);
+    await arrive(runs, "6 runs");
+    expect(section.querySelector("p")?.textContent).toBe("6 runs");
+    expect(document.activeElement).toBe(elsewhere);
   });
 
   it("imports a card's view again on Try again after the import failed", async () => {
