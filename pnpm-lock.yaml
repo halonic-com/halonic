@@ -849,6 +849,9 @@ importers:
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../memory
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
