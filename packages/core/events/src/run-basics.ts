@@ -46,6 +46,23 @@ export interface RunParent {
 export type ToolOutcome = "ok" | "error" | "unknown";
 
 /**
+ * What a tool can do, as its integration's sheet says: `read` changes
+ * nothing, `write` changes data, `send` reaches people outside. The same
+ * values as `ToolRisk` in `@halonicjs/ports`.
+ */
+export type ToolRisk = "read" | "write" | "send";
+
+/**
+ * What one call of a sending tool sends, in the singular and the plural, as
+ * its integration's sheet names it, such as `{ one: "email", many: "emails" }`.
+ * Both are stored so a reader never has to make a plural itself.
+ */
+export interface ToolNoun {
+  one: string;
+  many: string;
+}
+
+/**
  * Why a run failed. Each reason has its own requirement in `requirements/`.
  *
  * - `budget`: a run or monthly budget stopped it.

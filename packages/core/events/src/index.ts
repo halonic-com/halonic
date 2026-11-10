@@ -8,7 +8,9 @@ export type {
   RunParent,
   RunStatus,
   RunTrigger,
+  ToolNoun,
   ToolOutcome,
+  ToolRisk,
   Usage,
 } from "./run-basics.ts";
 export type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";

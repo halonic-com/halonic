@@ -6,7 +6,9 @@ import type {
   RunKind,
   RunParent,
   RunTrigger,
+  ToolNoun,
   ToolOutcome,
+  ToolRisk,
   Usage,
 } from "./run-basics.ts";
 import type { LoggedSandboxBlock } from "./sandbox-blocked.ts";
@@ -152,8 +154,22 @@ export type RunEventBody =
     }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
-  /** `outcome`: how the call ended (requirement `events.tool-result-outcome`); absent in older logs. */
-  | { type: "tool.result"; agent: string; tool: string; result: string; outcome?: ToolOutcome }
+  /**
+   * `outcome`: how the call ended (requirement `events.tool-result-outcome`).
+   * `risk` and `noun`: what the tool can do and what one call sends, copied
+   * from its integration's sheet when the call ends (requirement
+   * `events.tool-result-risk`). Each is absent in older logs, and `risk` and
+   * `noun` for a tool without a sheet.
+   */
+  | {
+      type: "tool.result";
+      agent: string;
+      tool: string;
+      result: string;
+      outcome?: ToolOutcome;
+      risk?: ToolRisk;
+      noun?: ToolNoun;
+    }
   /** A connector tool call that needs a person's OK; the run waits for "approve" or "reject". */
   | {
       type: "approval.requested";

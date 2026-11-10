@@ -32,6 +32,15 @@ verifies("events.upgrade-old-run-logs", () => {
     expect(events.some((event) => event.type === "llm.skipped")).toBe(false);
   });
 
+  it("adds no risk or noun to a tool result written before them", () => {
+    const results = lines.map(parseEventLine).filter((event) => event.type === "tool.result");
+    expect(results).toHaveLength(2);
+    for (const result of results) {
+      expect(result).not.toHaveProperty("risk");
+      expect(result).not.toHaveProperty("noun");
+    }
+  });
+
   it("summarizes a log written before the engine's fields as before", () => {
     expect(summarize(lines.map(parseEventLine))).toStrictEqual({
       id: "r-acme",

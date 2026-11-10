@@ -3,7 +3,7 @@
 // through unchanged for now; HAL-998 calls `readToolListing` and
 // `toolForModel` from `@halonicjs/app` here.
 
-import type { ChatTurnRefusal, ConnectorTool, ToolDefinition } from "@halonicjs/ports";
+import type { ChatTurnRefusal, ConnectorTool, ToolDefinition, ToolRisk } from "@halonicjs/ports";
 
 /** One connector's listing, and the names already offered in the same turn. */
 export interface ListedToolsInput {
@@ -21,6 +21,11 @@ export interface OfferedListedTool {
   readonly definition: ToolDefinition;
   /** The name the server listed it under, which a call goes to. */
   readonly listedName: string;
+  /**
+   * What calling it can do, as the listing says; absent when it doesn't say.
+   * It goes into the call's `tool.result` (requirement `engine.turn-logs-risk`).
+   */
+  readonly risk?: ToolRisk;
 }
 
 /** What {@link offerListedTools} gives back. */
@@ -35,6 +40,7 @@ export function offerListedTools(input: ListedToolsInput): OfferedListing {
   const tools = input.listed.map((tool) => ({
     definition: { name: tool.name, description: tool.description, parameters: tool.parameters },
     listedName: tool.name,
+    ...(tool.risk === undefined ? {} : { risk: tool.risk }),
   }));
   return { tools, refusals: [] };
 }

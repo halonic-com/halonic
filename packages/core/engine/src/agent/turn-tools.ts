@@ -3,7 +3,7 @@
 // first tool with a name wins, so a server can't take over a name the
 // caller or Halonic already uses.
 
-import type { ChatTurnRefusal, ConnectorClient, ToolDefinition } from "@halonicjs/ports";
+import type { ChatTurnRefusal, ConnectorClient, ToolDefinition, ToolRisk } from "@halonicjs/ports";
 import { offerListedTools } from "./offer-listed-tools.ts";
 
 /** The source id of Halonic's own tools in refusals. */
@@ -41,6 +41,8 @@ export type TurnTool =
       /** The name the server listed it under, which the call goes to. */
       readonly listedName: string;
       readonly connector: ConnectorClient;
+      /** What calling it can do, as its listing says; absent when the listing doesn't say. */
+      readonly risk?: ToolRisk;
     };
 
 /** The tools of one turn and what was refused while building them. */
@@ -100,6 +102,7 @@ async function addConnectorTools(builder: ToolListBuilder, connector: ConnectorC
       definition: tool.definition,
       listedName: tool.listedName,
       connector,
+      ...(tool.risk === undefined ? {} : { risk: tool.risk }),
     });
   }
 }

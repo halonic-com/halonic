@@ -8,7 +8,9 @@ import type {
   RunKind,
   RunParent,
   RunTrigger,
+  ToolNoun,
   ToolOutcome,
+  ToolRisk,
   Usage,
 } from "./run-basics.ts";
 import type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
@@ -202,6 +204,9 @@ verifies("events.run-log-contract", () => {
       result: string;
       // Added after the reference by events.tool-result-outcome (HAL-1525).
       outcome?: ToolOutcome;
+      // Added after the reference by events.tool-result-risk (HAL-2831).
+      risk?: ToolRisk;
+      noun?: ToolNoun;
     }>();
     expectTypeOf<EventOf<"approval.requested">>().toEqualTypeOf<{
       type: "approval.requested";
@@ -284,6 +289,43 @@ verifies("events.tool-result-outcome", () => {
   typeTest("says how a tool call ended: ok, error or unknown", () => {
     expectTypeOf<ToolOutcome>().toEqualTypeOf<"ok" | "error" | "unknown">();
     expectTypeOf<EventOf<"tool.result">["outcome"]>().toEqualTypeOf<ToolOutcome | undefined>();
+  });
+});
+
+verifies("events.tool-result-risk", () => {
+  typeTest("says what a tool can do: read, write or send", () => {
+    expectTypeOf<ToolRisk>().toEqualTypeOf<"read" | "write" | "send">();
+    expectTypeOf<EventOf<"tool.result">["risk"]>().toEqualTypeOf<ToolRisk | undefined>();
+  });
+
+  typeTest("names what one call sends in the singular and the plural", () => {
+    expectTypeOf<ToolNoun>().toEqualTypeOf<{ one: string; many: string }>();
+    expectTypeOf<EventOf<"tool.result">["noun"]>().toEqualTypeOf<ToolNoun | undefined>();
+  });
+
+  typeTest("takes a sending call with its noun, and a call without either field", () => {
+    expectTypeOf({
+      type: "tool.result",
+      agent: "writer",
+      tool: "send_email",
+      result: "sent",
+      outcome: "ok",
+      risk: "send",
+      noun: { one: "email", many: "emails" },
+    } as const).toExtend<EventOf<"tool.result">>();
+    expectTypeOf({
+      type: "tool.result",
+      agent: "writer",
+      tool: "search_email",
+      result: "[]",
+      risk: "read",
+    } as const).toExtend<EventOf<"tool.result">>();
+    expectTypeOf({
+      type: "tool.result",
+      agent: "writer",
+      tool: "lookup",
+      result: "[]",
+    } as const).toExtend<EventOf<"tool.result">>();
   });
 });
 

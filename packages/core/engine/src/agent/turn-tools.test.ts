@@ -140,3 +140,57 @@ verifies("engine.turn-tool-names", () => {
     ]);
   });
 });
+
+verifies("engine.turn-logs-risk", () => {
+  const sendEmail = { ...listedTool("send_email"), risk: "send" } as const;
+
+  it("copies a listed tool's risk into the result of a call that answered", async () => {
+    const log = new MemoryTurnLog();
+    await runTestTurn({
+      answers: [callAnswer(call("c1", "send_email")), textAnswer("Sent")],
+      connectors: [new ScriptedConnector("mail", [sendEmail])],
+      log,
+    });
+
+    expect(log.events).toContainEqual({
+      type: "tool.result",
+      agent: "clerk",
+      tool: "send_email",
+      result: "send_email done",
+      outcome: "ok",
+      risk: "send",
+    });
+  });
+
+  it("keeps the risk on the result of a call that failed", async () => {
+    const log = new MemoryTurnLog();
+    const mail = new ScriptedConnector("mail", [sendEmail], () => {
+      throw new Error("timed out");
+    });
+    await runTestTurn({
+      answers: [callAnswer(call("c1", "send_email")), textAnswer("It failed")],
+      connectors: [mail],
+      log,
+    });
+
+    expect(log.events).toContainEqual(
+      expect.objectContaining({ type: "tool.result", outcome: "error", risk: "send" }),
+    );
+  });
+
+  it("leaves the risk out when the listing gives none, and for Halonic's own tools", async () => {
+    const log = new MemoryTurnLog();
+    await runTestTurn({
+      answers: [callAnswer(call("c1", "lookup"), call("c2", "remember")), textAnswer("Done")],
+      connectors: [new ScriptedConnector("mail", [listedTool("lookup")])],
+      halonicTools: [halonicTool("remember", () => Promise.resolve("kept"))],
+      log,
+    });
+
+    const results = log.events.filter((event) => event.type === "tool.result");
+    expect(results.map((event) => event.tool)).toEqual(["lookup", "remember"]);
+    for (const result of results) {
+      expect(result).not.toHaveProperty("risk");
+    }
+  });
+});

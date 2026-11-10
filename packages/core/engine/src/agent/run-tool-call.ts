@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatTurnRefusal, ToolCall } from "@halonicjs/ports";
+import type { ChatMessage, ChatTurnRefusal, ToolCall, ToolRisk } from "@halonicjs/ports";
 import { checkCallBeforeRun } from "./check-call-before-run.ts";
 import { passResultToModel } from "./pass-result-to-model.ts";
 import type { TurnLog } from "./turn-log.ts";
@@ -48,6 +48,7 @@ export async function runToolCall(
     tool: call.name,
     result,
     outcome,
+    ...riskOf(tool),
   });
   return toolMessage(call, passResultToModel(tool, result));
 }
@@ -56,6 +57,15 @@ export async function runToolCall(
 interface ToolRun {
   readonly result: string;
   readonly outcome: "ok" | "error";
+}
+
+/**
+ * The `risk` a call's `tool.result` copies from its tool, when the tool has
+ * one (requirement `engine.turn-logs-risk`). Only a server's listing says
+ * it; Halonic's own tools leave it out, so readers count it as unknown.
+ */
+function riskOf(tool: TurnTool): { risk?: ToolRisk } {
+  return tool.kind === "server" && tool.risk !== undefined ? { risk: tool.risk } : {};
 }
 
 async function runTool(tool: TurnTool, call: ToolCall): Promise<ToolRun> {
