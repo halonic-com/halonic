@@ -26,6 +26,12 @@ export type ModelProviderState =
       runs: "with-a-key";
       /** Whether the secret that holds its key is set. The key itself never reaches `doctor`. */
       keyStored: boolean;
+    }
+  | {
+      provider: string;
+      name: string;
+      /** It needs no key, such as the mock provider: there's nothing to check, so the line doesn't name it. */
+      runs: "without-a-key";
     };
 
 /** A model alias of the workspace and the provider it goes to. */
@@ -108,6 +114,7 @@ function modelsStatus(problems: readonly ModelProblem[]): ModelsLine["status"] {
 
 function providerReport(state: ModelProviderState): ProviderReport[] {
   const { provider, name } = state;
+  if (state.runs === "without-a-key") return [];
   if (state.runs === "with-a-key") {
     return state.keyStored ? [{ provider, name, keyStored: true }] : [];
   }
