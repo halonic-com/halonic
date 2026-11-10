@@ -253,6 +253,15 @@ verifies("ports.sandbox-profile", () => {
     expect([noLimit, noBridge]).toHaveLength(2);
   });
 
+  it("takes a profile with no bridge, said as null", () => {
+    const fencedOff: SandboxProfile = { ...profile, network: { bridge: null, allowedSites: [] } };
+    expectTypeOf<SandboxProfile["network"]["bridge"]>().toEqualTypeOf<{
+      host: string;
+      port: number;
+    } | null>();
+    expect(fencedOff.network.bridge).toBeNull();
+  });
+
   typeTest("gives the program only the variables the profile names", () => {
     expectTypeOf<SandboxProfile["env"]>().toEqualTypeOf<Readonly<Record<string, string>>>();
     expectTypeOf<SandboxProfile["settingsFolder"]>().toEqualTypeOf<string | null>();

@@ -17,6 +17,9 @@ The sandbox-srt adapter shall turn a `SandboxProfile` into the settings of sandb
 - Given a bridge on `127.0.0.1:4100` and the allowed site `*.npmjs.org`,
   when the settings are built,
   then the allowed domains are exactly `127.0.0.1:4100` and `*.npmjs.org`.
+- Given a profile without a bridge (`null`) and with the allowed site `*.npmjs.org`,
+  when the settings are built,
+  then the allowed domains are exactly `*.npmjs.org`; with no allowed site, they are empty, which srt reads as no network, and a site that resolves to a loopback address is refused on every port.
 - Given the allowed site `*.nip.io`,
   when a name under it resolves to `127.0.0.1`, `169.254.169.254`, `10.0.0.5`, `192.168.1.1`, `100.64.0.1` or `fd00::1`,
   then srt refuses the connection; when it resolves to `127.0.0.1` on the bridge's port, it reaches the bridge.

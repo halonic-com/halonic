@@ -5,8 +5,10 @@
  * (docs/adr/2026-11-09-sandbox-fence-proof.md).
  * 3: `SandboxCheck.reason` says why the sandbox can't start, as a listed code
  * (docs/adr/2026-11-09-sandbox-check-reason-codes.md).
+ * 4: {@link SandboxNetwork.bridge} may be `null`: a session with no network
+ * but its listed sites (docs/adr/2026-11-10-sandbox-optional-bridge.md).
  */
-export const sandboxVersion = 3;
+export const sandboxVersion = 4;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -113,8 +115,13 @@ export interface SandboxNetwork {
    * The Halonic bridge: the one loopback address the program can reach. An
    * adapter rejects a host that is not a loopback address (`127.0.0.1`, `::1`
    * or `localhost`) when {@link Sandbox.open} is called.
+   *
+   * `null` means no bridge: the program reaches no loopback address at all,
+   * only the allowed sites. The integration runner uses it, because it talks
+   * to Halonic over its standard input and output, not the network. The field
+   * is never optional, so leaving it out can't mean "the whole network".
    */
-  bridge: { host: string; port: number };
+  bridge: { host: string; port: number } | null;
   /**
    * Further sites, by host name such as "registry.npmjs.org" or with a
    * leading "*." for every subdomain. Empty by default.

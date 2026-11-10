@@ -259,6 +259,40 @@ describe("SrtSandbox with the real fence", () => {
     }
   });
 
+  it("without a bridge, reaches no loopback port, directly or through the proxy", async () => {
+    let connections = 0;
+    const server = await new Promise<Server>((resolve) => {
+      const listening = createServer((_request, response) => response.end("reached"));
+      listening.on("connection", () => {
+        connections += 1;
+      });
+      listening.listen(0, "127.0.0.1", () => resolve(listening));
+    });
+    const port = (server.address() as AddressInfo).port;
+    const unbridged = await sandbox.open({
+      ...profile(),
+      network: { bridge: null, allowedSites: [] },
+    });
+    const ask = async (proxy: string): Promise<string> => {
+      const started = await unbridged.start({
+        program: "sh",
+        args: ["-c", `curl -s --max-time 10 --noproxy '' ${proxy} http://127.0.0.1:${port}/`],
+      });
+      const body = await read(started.stdout);
+      await started.exited;
+      return body.trim();
+    };
+    try {
+      expect(unbridged.fence).toEqual({ state: "fenced" });
+      expect(await ask("")).not.toBe("reached");
+      expect(await ask('-x "$HTTP_PROXY"')).not.toBe("reached");
+      expect(connections).toBe(0);
+    } finally {
+      await unbridged.close();
+      server.close();
+    }
+  });
+
   it("starts nothing after close, and removes its private folder", async () => {
     const other = await sandbox.open(profile());
     await other.close();

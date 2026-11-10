@@ -136,6 +136,29 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     expect(config.network?.allowedDomains).toEqual(["[::1]:4100"]);
   });
 
+  it("allows only the sites, and no loopback address, without a bridge", () => {
+    const noBridge = (allowedSites: string[]) =>
+      buildSrtConfig(profile({ network: { bridge: null, allowedSites } })).network;
+    expect(noBridge(["*.npmjs.org"])?.allowedDomains).toEqual(["*.npmjs.org"]);
+    // An empty list is srt's "no network at all", not "no restriction".
+    expect(noBridge([])?.allowedDomains).toEqual([]);
+    expect(noBridge([])?.strictAllowlist).toBe(true);
+  });
+
+  it("refuses a site that resolves to loopback, on any port, without a bridge", () => {
+    const network = buildSrtConfig(
+      profile({ network: { bridge: null, allowedSites: ["*.nip.io"] } }),
+    ).network;
+    const guard = createResolvedAddressGuard({
+      allowedDomains: network?.allowedDomains ?? [],
+      deniedDomains: network?.deniedDomains ?? [],
+      deniedResolvedAddresses: network?.deniedResolvedAddresses ?? [],
+      localAddresses: () => [],
+    });
+    expect(guard.permits("127.0.0.1.nip.io", "127.0.0.1", 4100)).toBe(false);
+    expect(guard.permits("x.nip.io", "::1", 4100)).toBe(false);
+  });
+
   it("refuses an allowed site that resolves to a local or private address, apart from the bridge", () => {
     const config = buildSrtConfig(
       profile({

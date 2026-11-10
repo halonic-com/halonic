@@ -46,9 +46,9 @@ describe("SrtSandbox on Windows, through the session", () => {
   });
 
   /** Runs a Node script from the working folder inside the fence and returns what it printed. */
-  async function runScript(name: string, source: string): Promise<string> {
+  async function runScript(name: string, source: string, inside = session): Promise<string> {
     await writeFile(join(work, name), source);
-    const started = await session.start({ program: process.execPath, args: [join(work, name)] });
+    const started = await inside.start({ program: process.execPath, args: [join(work, name)] });
     const [out] = await Promise.all([read(started.stdout), started.exited]);
     return out.trim();
   }
@@ -107,6 +107,45 @@ setTimeout(() => done("blocked"), 5000);
     });
     expect(connections).toBe(0);
     expect(await readFile(join(work, "made.txt"), "utf8")).toBe("x");
+  });
+
+  it("without a bridge, reaches no loopback port, directly or through the proxy", async () => {
+    const before = connections;
+    const unbridged = await sandbox.open({
+      ...profile(),
+      network: { bridge: null, allowedSites: [] },
+    });
+    try {
+      expect(unbridged.fence).toEqual({ state: "fenced" });
+      const out = await runScript(
+        "no-bridge.cjs",
+        `const net = require("node:net");
+const http = require("node:http");
+const result = {};
+const finish = () => { if ("direct" in result && "proxy" in result) { console.log(JSON.stringify(result)); process.exit(0); } };
+const socket = net.connect({ host: "127.0.0.1", port: ${canaryPort} });
+socket.on("connect", () => { result.direct = "connected"; finish(); });
+socket.on("error", () => { result.direct = "blocked"; finish(); });
+const proxy = process.env.HTTP_PROXY ?? process.env.http_proxy;
+if (proxy === undefined) { result.proxy = "none"; finish(); }
+else {
+  const via = new URL(proxy);
+  const request = http.request({ host: via.hostname, port: via.port, path: "http://127.0.0.1:${canaryPort}/" });
+  request.on("response", (response) => { result.proxy = response.statusCode === 200 ? "reached" : "refused"; finish(); });
+  request.on("error", () => { result.proxy = "refused"; finish(); });
+  request.end();
+}
+setTimeout(() => { result.direct ??= "blocked"; result.proxy ??= "refused"; finish(); }, 5000);
+`,
+        unbridged,
+      );
+      const result = JSON.parse(out.split(/\r?\n/).pop() ?? "");
+      expect(result.direct).toBe("blocked");
+      expect(result.proxy).not.toBe("reached");
+      expect(connections).toBe(before);
+    } finally {
+      await unbridged.close();
+    }
   });
 
   it("gives the exit code of the program", async () => {
