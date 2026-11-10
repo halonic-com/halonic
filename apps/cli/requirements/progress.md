@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2184; the CLI output design on HAL-1981 (cli-output section 1.5 and checklist item "Progress" in section 5), approved by the board on HAL-2123
 
-The `halonic` command shall show a step that takes a while on one live line of a stream that has live lines: nothing for the step's first second, then "◌" and what the step is doing, and, once the step has waited on the same thing for 10 seconds, also what it's waiting for and for how long. The line shall change only when its words do, with no spinner, and shall be taken away when the step ends, so the step's finished line takes its place. A stream without live lines (not a terminal, `TERM=dumb`, `--no-color`, `--json`, or `CI` set) shall get no live line at all.
+The `halonic` command shall show a step that takes a while on one live line of a stream that has live lines: nothing for the step's first second, then "◌" and what the step is doing, and, once the step has waited on the same thing for 10 seconds, also what it's waiting for and for how long. The line shall change only when its words do, with no spinner, shall fit the terminal's width less one column, cut with "…" ("..." when the stream isn't UTF-8) when it is longer, and shall be taken away when the step ends, so the step's finished line takes its place. A stream without live lines (not a terminal, `TERM=dumb`, `--no-color`, `--json`, or `CI` set) shall get no live line at all.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The `halonic` command shall show a step that takes a while on one live line of a
 - Given a pipe and a step that takes 30 seconds,
   when it runs,
   then nothing is written for it until its finished line.
+- Given a terminal 32 columns wide and the step "Draft reply" that has waited on Anthropic for 12 seconds,
+  when the line is drawn,
+  then it reads "◌ Draft reply · waiting for An…".

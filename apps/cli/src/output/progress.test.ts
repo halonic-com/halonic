@@ -1,9 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
-import { defineMessages, type Message } from "../messages/define.ts";
-import { phrase, plainText, renderPhrase } from "../messages/phrase.ts";
+import { defineMessages } from "../messages/define.ts";
+import { phrase, plainText } from "../messages/phrase.ts";
 import { progressMessages } from "../messages/progress.ts";
-import { paintFor } from "./paint.ts";
 import { type Clock, type LiveLine, startProgress, systemClock, terminalLine } from "./progress.ts";
 
 const steps = defineMessages("test", {
@@ -134,11 +133,11 @@ verifies("cli.progress", () => {
   it("draws over the line in a terminal without a newline, in the stream's marks", () => {
     const written: string[] = [];
     // A terminal that isn't UTF-8, so the marks are its stand-ins.
-    const paint = paintFor({ colour: false, live: true, unicode: false });
-    const line = terminalLine(
-      (text) => written.push(text),
-      (message: Message) => renderPhrase(message.phrase, paint),
-    );
+    const line = terminalLine({
+      write: (text) => written.push(text),
+      style: { colour: false, live: true, unicode: false },
+      columns: () => 80,
+    });
     line.draw(progressMessages.waiting(draftReply, "Anthropic", 12));
     line.clear();
     expect(written).toEqual([
@@ -147,16 +146,63 @@ verifies("cli.progress", () => {
     ]);
   });
 
-  it("ticks on the computer's own clock until stopped", () => {
+  it("cuts the line to the terminal's width, less one column, at each draw", () => {
+    const written: string[] = [];
+    let columns = 32;
+    const line = terminalLine({
+      write: (text) => written.push(text),
+      style: { colour: false, live: true, unicode: true },
+      columns: () => columns,
+    });
+    const waiting = progressMessages.waiting(draftReply, "Anthropic", 12);
+    line.draw(waiting);
+    columns = 80;
+    line.draw(waiting);
+    expect(written).toEqual([
+      "\r\u001b[2K◌ Draft reply · waiting for An…",
+      "\r\u001b[2K◌ Draft reply · waiting for Anthropic (12 s)",
+    ]);
+  });
+
+  it("cuts a coloured line without cutting its escape codes", () => {
+    const written: string[] = [];
+    const line = terminalLine({
+      write: (text) => written.push(text),
+      style: { colour: true, live: true, unicode: false },
+      columns: () => 44,
+    });
+    line.draw(progressMessages.waiting(draftReply, "Anthropic", 125));
+    // 43 characters: the dimmed time is cut inside its dim, which still ends, and "..." ends the line.
+    expect(written).toEqual([
+      "\r\u001b[2K.. Draft reply \u001b[2m-\u001b[22m waiting for Anthropic \u001b[2m(\u001b[22m...",
+    ]);
+  });
+
+  it("draws the whole line when the terminal doesn't say how wide it is", () => {
+    const written: string[] = [];
+    const line = terminalLine({
+      write: (text) => written.push(text),
+      style: { colour: false, live: true, unicode: true },
+      columns: () => undefined,
+    });
+    line.draw(progressMessages.waiting(draftReply, "Anthropic", 347));
+    expect(written).toEqual(["\r\u001b[2K◌ Draft reply · waiting for Anthropic (5 min 47 s)"]);
+  });
+
+  it("ticks on the computer's own clock until stopped, without keeping Node running", () => {
     vi.useFakeTimers();
+    const unref = vi.spyOn(globalThis, "setInterval");
     try {
       const ticks: number[] = [];
-      const stop = systemClock.every(1_000, () => ticks.push(systemClock.now()));
+      const start = systemClock.now();
+      const stop = systemClock.every(1_000, () => ticks.push(systemClock.now() - start));
       vi.advanceTimersByTime(2_500);
       stop();
       vi.advanceTimersByTime(5_000);
-      expect(ticks).toHaveLength(2);
+      expect(ticks).toEqual([1_000, 2_000]);
+      expect(unref.mock.results[0]?.value.hasRef()).toBe(false);
     } finally {
+      unref.mockRestore();
       vi.useRealTimers();
     }
   });

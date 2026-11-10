@@ -77,6 +77,56 @@ export function plainText(value: Phrase): string {
     .join("");
 }
 
+/**
+ * The phrase cut to at most `width` characters as a stream shows them, ending
+ * in "…" (or "..." when the stream isn't UTF-8) when it had to be cut. A phrase
+ * that fits comes back unchanged. A mark is never cut in half: one that
+ * doesn't fit whole is left out with the rest.
+ *
+ * @param width - how many characters the stream has room for
+ * @param unicode - whether the stream shows the Unicode marks (the style's `unicode`)
+ */
+export function fitPhrase(value: Phrase, width: number, unicode: boolean): Phrase {
+  if (visibleLength(value, unicode) <= width) {
+    return value;
+  }
+  const ellipsis = unicode ? "…" : "...";
+  let room = Math.max(0, width - ellipsis.length);
+  const parts: Part[] = [];
+  for (const part of value) {
+    const text = partText(part, unicode);
+    if (characters(text).length <= room) {
+      parts.push(part);
+      room -= characters(text).length;
+      continue;
+    }
+    if (typeof part === "string") {
+      pushText(parts, characters(part).slice(0, room).join(""));
+    } else if (!("mark" in part) && room > 0) {
+      parts.push({ ...part, text: characters(part.text).slice(0, room).join("") });
+    }
+    break;
+  }
+  pushText(parts, ellipsis);
+  return parts;
+}
+
+function visibleLength(value: Phrase, unicode: boolean): number {
+  return value.reduce((length, part) => length + characters(partText(part, unicode)).length, 0);
+}
+
+function partText(part: Part, unicode: boolean): string {
+  if (typeof part === "string") {
+    return part;
+  }
+  return "mark" in part ? markText(part.mark, unicode) : part.text;
+}
+
+/** The text as the characters a terminal shows, so "◌" counts as one, not as its UTF-16 units. */
+function characters(text: string): string[] {
+  return [...text];
+}
+
 function pushValue(parts: Part[], value: PhraseValue): void {
   if (typeof value === "number") {
     pushText(parts, String(value));

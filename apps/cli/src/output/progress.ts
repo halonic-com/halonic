@@ -1,6 +1,8 @@
 import type { Message } from "../messages/define.ts";
-import type { Phrase } from "../messages/phrase.ts";
+import { fitPhrase, type Phrase, renderPhrase } from "../messages/phrase.ts";
 import { progressMessages } from "../messages/progress.ts";
+import { paintFor } from "./paint.ts";
+import type { OutputStyle } from "./style.ts";
 
 /** How long a step runs before its live line shows (cli-output 1.5): a faster step only flickers. */
 export const showAfterMs = 1_000;
@@ -16,11 +18,16 @@ export interface Clock {
   every(ms: number, tick: () => void): () => void;
 }
 
-/** The computer's own clock. */
+/**
+ * The computer's own clock. It counts on `performance.now()`, which never
+ * jumps when the system time is set, and its timer doesn't keep Node running
+ * on its own: a command that is done exits even if a step forgot to end.
+ */
 export const systemClock: Clock = {
-  now: () => Date.now(),
+  now: () => performance.now(),
   every(ms, tick) {
     const timer = setInterval(tick, ms);
+    timer.unref();
     return () => clearInterval(timer);
   },
 };
@@ -36,21 +43,39 @@ export interface LiveLine {
 // Carriage return, then "erase the whole line": the cursor is back at the start of an empty line.
 const eraseLine = "\r\u001b[2K";
 
+/** The terminal stream a {@link terminalLine} draws on. */
+export interface TerminalStream {
+  /** Writes text to the stream as it is, without adding a newline. */
+  write(text: string): void;
+  /** The stream's style, for its colours and marks. */
+  readonly style: OutputStyle;
+  /** How wide the terminal is now, such as `process.stderr.columns`, or `undefined` when it doesn't say. */
+  columns(): number | undefined;
+}
+
 /**
  * The {@link LiveLine} of a terminal stream: each draw replaces the line by
  * going back to its start, so it writes no newline. Only for a stream whose
  * style has live lines on; a pipe would keep every drawn line.
  *
- * @param write - writes text to the stream as it is, without adding a newline
- * @param render - the message in the stream's colours and marks
+ * The line is cut to the terminal's width, less one column so the cursor
+ * never wraps: a line that wrapped couldn't be erased, and each draw would
+ * leave a copy behind. The width is read at each draw, so a resized
+ * window gets the right cut.
  */
-export function terminalLine(
-  write: (text: string) => void,
-  render: (message: Message) => string,
-): LiveLine {
+export function terminalLine(stream: TerminalStream): LiveLine {
+  const paint = paintFor(stream.style);
+  const render = (message: Message): string => {
+    const columns = stream.columns();
+    const words =
+      columns === undefined
+        ? message.phrase
+        : fitPhrase(message.phrase, columns - 1, stream.style.unicode);
+    return renderPhrase(words, paint);
+  };
   return {
-    draw: (message) => write(`${eraseLine}${render(message)}`),
-    clear: () => write(eraseLine),
+    draw: (message) => stream.write(`${eraseLine}${render(message)}`),
+    clear: () => stream.write(eraseLine),
   };
 }
 
