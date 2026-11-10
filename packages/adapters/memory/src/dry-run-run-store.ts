@@ -19,6 +19,8 @@ export interface PlannedRunAppend {
 
 /** The events a dry run added to one run, and the snapshot that came with the latest of them. */
 interface PendingRun {
+  /** The run's last real event when the dry run first appended to it; later real events are not read. */
+  readonly baseSeq: number;
   events: RunEvent[];
   snapshot: RunSnapshot | null;
 }
@@ -78,7 +80,11 @@ export class DryRunRunStore implements RunStore {
     if (lastSeq !== expectedSeq) {
       return { ok: false, reason: "conflict", lastSeq };
     }
-    const pending = this.#pending.get(runId) ?? { events: [], snapshot: null };
+    const pending = this.#pending.get(runId) ?? {
+      baseSeq: expectedSeq,
+      events: [],
+      snapshot: null,
+    };
     const copies = copyJson(events);
     pending.events.push(...copies);
     const newLastSeq = expectedSeq + copies.length;
@@ -101,16 +107,27 @@ export class DryRunRunStore implements RunStore {
 
   async events(runId: string, afterSeq = 0): Promise<RunEvent[]> {
     const real = await this.#source.events(runId, afterSeq);
-    const pending = this.#pending.get(runId)?.events ?? [];
-    return [...real, ...copyJson(pending.filter((event) => event.seq > afterSeq))];
+    const pending = this.#pending.get(runId);
+    if (pending === undefined) {
+      return real;
+    }
+    return [
+      ...real.filter((event) => event.seq <= pending.baseSeq),
+      ...copyJson(pending.events.filter((event) => event.seq > afterSeq)),
+    ];
   }
 
   async snapshot(runId: string): Promise<RunSnapshot | null> {
-    const pending = this.#pending.get(runId)?.snapshot;
-    if (pending !== undefined && pending !== null) {
-      return copyJson(pending);
+    const pending = this.#pending.get(runId);
+    if (pending?.snapshot) {
+      return copyJson(pending.snapshot);
     }
-    return await this.#source.snapshot(runId);
+    const real = await this.#source.snapshot(runId);
+    if (pending === undefined || real === null) {
+      return real;
+    }
+    // A real snapshot taken after the dry run's base belongs to another writer's events.
+    return real.seq <= pending.baseSeq ? real : null;
   }
 
   async get(runId: string): Promise<RunSummary | null> {

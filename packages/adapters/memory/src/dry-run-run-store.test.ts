@@ -68,6 +68,19 @@ verifies("memory.dry-run-run-store", () => {
     expect((await store.list()).map((summary) => summary.lastSeq)).toEqual([3]);
   });
 
+  it("keeps its own view of a run when another writer appends to the real store", async () => {
+    const real = await realStore();
+    const store = new DryRunRunStore(real);
+    await store.append("r1", 1, [entered("r1", 2)]);
+    await real.append("r1", 1, [entered("r1", 2), entered("r1", 3)], { snapshot: { step: 3 } });
+    expect((await store.events("r1")).map((event) => event.seq)).toEqual([1, 2]);
+    expect((await store.events("r1", 1)).map((event) => event.seq)).toEqual([2]);
+    expect((await store.get("r1"))?.lastSeq).toBe(2);
+    // The real snapshot is at seq 3, past the dry run's base, so it is not shown.
+    expect(await store.snapshot("r1")).toBeNull();
+    expect(await store.append("r1", 2, [entered("r1", 3)])).toEqual({ ok: true, lastSeq: 3 });
+  });
+
   it("records every append that succeeded, in the order asked", async () => {
     const store = new DryRunRunStore(await realStore());
     await store.append("r2", 0, [started("r2")]);
