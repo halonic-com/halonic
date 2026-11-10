@@ -64,10 +64,32 @@ don't make the file fail.
 | `workflowTest` | `workflows/<id>.test.yaml`                                              |
 | `routine`      | `workflows/routines/<id>.routine.yaml`                                  |
 | `integration`  | `integration.yaml`, next to the integration's code (not in a workspace) |
+| `plugin`       | `plugin.yaml`, at the root of a plugin folder (not in a workspace)      |
 
 Most kinds can also sit inside a hub folder; `fileKinds[kind].places` has the
-exact places. Each kind's folder in `src/kinds/` holds its schema and its tests.
-Checks between files belong to the loader, not here.
+exact places (`integration` and `plugin` have none: they live outside workspaces).
+`kindNames()` lists the kinds and `isKindName(text)` tells whether a text names one. Each kind's
+folder in `src/kinds/` holds its schema and its tests. Checks between files belong to the loader,
+not here.
+
+## Other exports
+
+- `jsonSchemaOf(kind)` gives a kind's JSON Schema (see Spec files below).
+- `SCHEMA_VERSION` is the file format version, written as `version` in files.
+- `RESERVED_FOLDER` (`.halonic`) and `isReservedPath(path)`: Halonic's own data folder at the
+  workspace root and in each hub, which the loader skips (requirement `reserved-folder`).
+- `connectorIsLocal(connector)` says whether a connector counts as local for `privacy.localOnly`;
+  `needsApproval(tools, name)` and `approveAll` (`"all"`) read a connector's `tools.approve` setting.
+- `touchesSkillScripts(start, paths)` and `skillScriptsRefusal` let every adapter that starts a
+  program refuse files under a skill's `scripts/` folder.
+- Integration sheets: `IntegrationSheet` is the schema; `parseIntegrationSheet(value)` checks a
+  sheet that is already data (such as JSON), `checkIntegrationSheet(sheet)` runs the cross-field
+  checks, and `integrationPolicy(sheet, settings)` turns a sheet and the integration's settings
+  into the policy the integration kit enforces. The pattern and limit constants
+  (`HOST_PATTERN`, `MAX_TIMEOUT_MS` and the like) are exported with them.
+- Plugins: `Plugin`, `checkPlugin`, `backendSheet` and `pluginFromIntegrationSheet` read and check
+  a `plugin.yaml` and convert a plugin's backend to and from an integration sheet.
+- The types of each kind's value (`Agent`, `Workflow`, `Routine` and so on) and `Guard`.
 
 ## Spec files
 
