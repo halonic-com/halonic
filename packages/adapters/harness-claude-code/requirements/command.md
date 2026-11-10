@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-194 build plan C3; HAL-3586
+- Source: HAL-194 build plan C3; HAL-3586; HAL-3750
 
-The Claude Code harness shall start `claude -p` with `stream-json` as its input and output, the bridge's MCP server from the settings folder and no other, and the bridge's `approve_permission` tool as its permission-prompt tool. It shall add the agent's model and instructions as arguments when its file sets them. The prompt and every later answer shall go to Claude Code as `stream-json` user messages on its standard input, never in the arguments. It shall read Claude Code's output line by line, whatever line breaks it uses and however the bytes are split.
+The Claude Code harness shall start `claude -p` with `stream-json` as its input and output, the bridge's MCP server from the settings folder and no other, and the bridge's `approve_permission` tool as its permission-prompt tool. It shall add the agent's model and instructions as arguments when its file sets them. The prompt and every later answer shall go to Claude Code as `stream-json` user messages on its standard input, never in the arguments. It shall read Claude Code's output line by line, as `harness-kit.read-lines` describes, whatever line breaks it uses and however the bytes are split. A line longer than 16,777,216 characters (16 Mi) shall end the reading with an error, and a reading that stops early shall cancel the output.
 
 ## Examples
 

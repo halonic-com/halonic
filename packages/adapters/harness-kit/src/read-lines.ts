@@ -18,7 +18,10 @@ export interface ReadLinesOptions {
  * together; bytes that aren't UTF-8 become U+FFFD.
  *
  * When the caller stops early, or a line is too long, the stream is
- * cancelled: nothing else will read it.
+ * cancelled: the harness is the output's only reader, so nothing else will
+ * read it. Cancelling doesn't wait for the run to stop the program: a
+ * program that keeps printing gets a closed pipe, not a full one it stalls
+ * on, and the sandbox can let go of what it still holds.
  *
  * @throws Error when a line is longer than `maxLineLength`; the message doesn't quote it
  *

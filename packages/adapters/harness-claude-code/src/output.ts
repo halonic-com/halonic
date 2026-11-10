@@ -1,28 +1,21 @@
-/**
- * The lines of a program's output, without their line breaks (`\n` or
- * `\r\n`). A last line without a line break counts too. A character split
- * across two chunks stays whole.
- */
-export async function* outputLines(output: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  // A reader that stops early leaves the output to the program's end:
-  // the run stops the program, which ends its output.
-  for await (const chunk of output.values({ preventCancel: true })) {
-    buffer += decoder.decode(chunk, { stream: true });
-    let end = buffer.indexOf("\n");
-    while (end !== -1) {
-      yield withoutCarriageReturn(buffer.slice(0, end));
-      buffer = buffer.slice(end + 1);
-      end = buffer.indexOf("\n");
-    }
-  }
-  buffer += decoder.decode();
-  if (buffer !== "") yield withoutCarriageReturn(buffer);
-}
+import { readLines } from "@halonicjs/adapter-harness-kit";
 
-function withoutCarriageReturn(line: string): string {
-  return line.endsWith("\r") ? line.slice(0, -1) : line;
+/**
+ * The longest line Halonic reads from Claude Code, in characters. A
+ * stream-json line can carry a whole tool result, such as a file Claude Code
+ * read, so the limit is generous; it only stops a program that never ends a
+ * line.
+ */
+export const maxStreamJsonLineLength = 16 * 1024 * 1024;
+
+/**
+ * Claude Code's output, one stream-json line at a time, as
+ * {@link readLines} reads it: without line breaks, characters split across
+ * chunks put back together, and an error for a line longer than
+ * {@link maxStreamJsonLineLength}. Stopping early cancels the output.
+ */
+export function streamJsonLines(output: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  return readLines(output, { maxLineLength: maxStreamJsonLineLength });
 }
 
 /**
