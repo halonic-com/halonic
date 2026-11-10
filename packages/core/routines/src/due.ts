@@ -36,6 +36,7 @@ export interface TickPolicy {
   maxCatchUpAgeMs: number;
 }
 
+/** Defaults: UTC zone, 1 minute grace, catch-up cap of 100 runs, 7-day catch-up window. */
 export const DEFAULT_TICK_POLICY: TickPolicy = {
   timeZone: DEFAULT_TIME_ZONE,
   graceMs: 60_000,
