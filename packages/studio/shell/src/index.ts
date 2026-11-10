@@ -105,6 +105,18 @@ export {
   paletteGroupTitles,
 } from "./palette/palette-groups.ts";
 export { type FoundItems, searchProviders } from "./palette/search-providers.ts";
+export {
+  CHAT_MIN_WIDTH,
+  clampPanelWidth,
+  ITEM_PAGE_LEAD,
+  PANEL_DEFAULT_WIDTH,
+  PANEL_GAP,
+  PANEL_MAX_WIDTH,
+  PANEL_MIN_WIDTH,
+  panelFitsBeside,
+  savedPanelWidth,
+  shownPanelWidth,
+} from "./panels/panel-width.ts";
 export type { CommandContributions, CommandPoints } from "./points/command-points.ts";
 export type {
   CommandContribution,

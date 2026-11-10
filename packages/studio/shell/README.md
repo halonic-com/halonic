@@ -420,6 +420,20 @@ nothing changed:
 
 The cards' drawing, focus and keys come with the item page frame.
 
+## Side panel width
+
+An item page's side panel (`shell.panel-width`) is 420 to 1400px wide, 700px until someone drags
+it. The host saves the width on this computer, as it does the sidebar's:
+
+- `savedPanelWidth(saved)` reads the saved value back: kept inside 420 to 1400, or 700px for
+  anything that isn't a finite number. `clampPanelWidth(width)` keeps a drag inside 420 to 1400.
+- `shownPanelWidth(width, tabWidth)` is the width drawn: narrowed so the chat keeps 320px, never
+  under 420px, and the chosen width again once the tab widens. It is `undefined` when a 420px panel
+  doesn't fit beside a 320px chat (with the 48px gap and the 40px lead, a tab under 828px);
+  `panelFitsBeside(tabWidth)` says the same. Then the item page shows the panel as a button.
+
+The edge itself, Maximise and ✕ come with the item page frame.
+
 ## Resource numbers
 
 `watchResources({ read, timers, onError })` reads the engine's resource report: its memory, the
