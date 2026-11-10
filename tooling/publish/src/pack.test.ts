@@ -62,6 +62,7 @@ beforeAll(() => {
   install("packages/adapters/integration-kit", "kit");
   install("packages/testing/integration", "suite");
   linkFromWorkspace("zod", "packages/core/schema-kit");
+  linkFromWorkspace("yaml", "packages/core/yaml");
   linkFromWorkspace("vitest", "tooling/publish");
 }, 180_000);
 
@@ -74,6 +75,7 @@ verifies("publish.packed-import", () => {
         runTool: typeof kit.runTool,
         timeoutError: typeof kit.IntegrationTimeoutError,
         conformance: typeof suite.describeIntegrationConformance,
+        pluginConformance: typeof suite.describePluginConformance,
       }));
     `;
     const output = run("node", ["--input-type=module", "-e", script], consumer);
@@ -81,6 +83,7 @@ verifies("publish.packed-import", () => {
       runTool: "function",
       timeoutError: "function",
       conformance: "function",
+      pluginConformance: "function",
     });
 
     const suiteFiles = readdirSync(join(consumer, "node_modules/@halonicjs/testing-integration"), {
