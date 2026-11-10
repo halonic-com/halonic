@@ -12,6 +12,11 @@ fn main() {
         "secret_get",
         "secret_set",
         "secret_delete",
+        "pick_folder",
+        "trust_get",
+        "trust_list",
+        "trust_grant",
+        "trust_revoke",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)
