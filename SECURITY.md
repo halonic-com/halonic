@@ -15,7 +15,7 @@ Use either of these:
 Please include:
 
 - what an attacker can do, and what they need first (for example network
-  access to `halonic serve`, or a workspace the user opens)
+  access to the machine, or a workspace the user opens)
 - the Halonic version or commit, and your operating system
 - the steps to reproduce it, ideally with a small made-up workspace
 - any idea you have for a fix
@@ -47,8 +47,8 @@ before you report a problem, and check that it is still there.
 ## Scope
 
 In scope is everything in this repository: the Studio app, the engine, the
-`halonic` command-line tool, `halonic serve`, the adapters and the release
-builds.
+`halonic` command-line tool, the adapters and the release builds.
+`halonic serve` is not built yet; it will be in scope once it ships.
 
 Some things are by design and are not security bugs on their own:
 

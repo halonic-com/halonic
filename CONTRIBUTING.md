@@ -42,7 +42,8 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` runs the checks, type checks, lint and tests
+`pnpm verify` runs the repo checks, the leak guard, the licence check,
+formatting and the feature-list check, then typecheck, lint, test and build
 for the packages your change affects. Run it before every push.
 `pnpm verify --full` runs everything, including the trace check, as CI does;
 use it only when you need it. For a quick loop, run the checks for the
@@ -66,15 +67,19 @@ To add something new, use the generators instead of
 copying a folder by hand:
 
 ```sh
-pnpm new package <layer>/<name>    # a new package, e.g. pnpm new package core/storage
-pnpm new feature <name>            # a new Studio feature
+pnpm new package <layer>/<name> --owner <name> --purpose "<one line>"
+pnpm new feature <name> --owner <name> --purpose "<one line>"
 ```
+
+The first adds a package, for example `core/storage`; the second adds a Studio
+feature. `--owner` is the lowercase name of whoever looks after it. An adapter
+also needs `--runtime <runtime>`; `pnpm new` prints the options.
 
 ## How the repo is organised
 
 Halonic is a pnpm monorepo. `apps/` holds the things we ship (the Studio app,
-the `halonic` command-line tool and the docs site). `packages/` holds
-everything they are built from.
+the `halonic` command-line tool and the agent host, a placeholder for now).
+`packages/` holds everything they are built from.
 
 Every package belongs to one **layer**, and a layer may only use the layers
 below it:
@@ -84,11 +89,14 @@ below it:
 | core     | `packages/core/*`     | lower core packages                                                 | any third-party package, Node APIs, browser APIs, React |
 | adapters | `packages/adapters/*` | core, Node or browser APIs, approved libraries for that one adapter | Studio packages, other adapters' internals              |
 | host     | `packages/host`       | core, Web-standard APIs                                             | adapters, Node APIs, third-party code, Studio packages  |
+| targets  | `packages/targets/*`  | core, adapters, host (a runtime only)                               | Studio packages; a runtime using a deploy package       |
 | studio   | `packages/studio/*`   | core, React, Tauri, Vite, approved UI libraries                     | adapters directly, another feature's internals          |
 | apps     | `apps/*`              | the public interface of any package                                 | —                                                       |
 | testing  | `packages/testing/*`  | anything                                                            | being a runtime dependency                              |
+| tooling  | `tooling/*`           | other tooling packages                                              | being a runtime dependency                              |
 
-A check (`tooling/check`) enforces this on every pull request and explains how
+There are no targets yet; the layer is ready for them. A check
+(`tooling/check`) enforces this on every pull request and explains how
 to fix what it finds. The most important consequences:
 
 - **The core has no third-party code.** If you need a helper, look in
@@ -155,14 +163,17 @@ Halonic has one firm rule: **nothing that works may break.**
 
 - **Keep them small:** about 400 changed lines at most, not counting generated
   files, the lockfile and fixtures. One topic per pull request.
-- **Title in conventional-commit form**, for example
+- **Title in conventional-commit form**, at most 100 characters, with a type
+  from `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`
+  or `revert`, for example
   `fix(routines): fire interval triggers at the right time`.
 - **Fill in the template:** what and why, the requirement IDs, how you tested
   it, docs, a changeset sentence and AI assistance.
 - **Write the changeset sentence** in the template's Changeset section if users
   will notice the change. Write one sentence a user would understand. Don't run
-  `pnpm changeset` yet: it fails until the CLI and the Studio app are
-  versioned. See [`.changeset/README.md`](.changeset/README.md).
+  `pnpm changeset` yet: the first release, 0.1.0, is a hand-made pull request,
+  and a changeset before it would make the release bot open one for 0.1.1. See
+  [`.changeset/README.md`](.changeset/README.md).
 - **Your targeted checks pass locally** before you ask for review. All checks
   (`ci-ok`) must pass in CI before anything is merged.
 - **Rebase on `main`** rather than merging `main` into your branch.
@@ -193,7 +204,10 @@ Signed-off-by: Your Name <you@example.com>
 - Forgot it? `git commit --amend -s` fixes the last commit;
   `git rebase --signoff main` fixes all the commits on your branch.
 - The DCO check runs on every pull request: pull requests with a
-  commit that isn't signed off can't be merged.
+  commit that isn't signed off can't be merged. The one exception is the
+  commits of Halonic's own agent account, `halonic-dev`, which a
+  [standing statement](docs/legal/dco-standing-statement.md) covers. Everyone
+  else signs off every commit.
 
 Your contribution is licensed under the [Apache License 2.0](LICENSE), the same
 licence as the rest of Halonic.

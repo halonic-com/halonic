@@ -26,7 +26,7 @@ needs a decision note (see CONTRIBUTING.md).
 
 <!--
 One sentence a user would understand, or "None (no user-visible change)".
-For a Studio app change, also add it with `pnpm changeset`. See .changeset/README.md.
+Don't run `pnpm changeset` before the 0.1.0 release. See .changeset/README.md.
 -->
 
 ## AI assistance used
