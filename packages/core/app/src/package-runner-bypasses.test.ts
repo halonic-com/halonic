@@ -153,6 +153,41 @@ verifies("app.package-runner-launch", () => {
     }
   });
 
+  it("refuses a pinned runner whose command word is another package than the pin's", () => {
+    expect(refused(stdio({ pin, args: ["-y", "other-pkg", "@acme/mail-mcp"] }))).toBe(
+      'the command starts "other-pkg", but the pin is for "@acme/mail-mcp"',
+    );
+    const pypiPin: ConnectorPin = { ...pin, registry: "pypi", package: "mail-mcp" };
+    const uvx = stdio({ pin: pypiPin, command: "uvx", args: ["other-tool", "mail-mcp"] });
+    expect(refused(uvx)).toContain('starts "other-tool"');
+    const python = stdio({ pin: pypiPin, command: "uvx", args: ["--python", "3.12", "mail-mcp"] });
+    expect(refused(python)).toContain('starts "3.12"');
+  });
+
+  it("refuses a package option after the command word, before a --", () => {
+    expect(refused(stdio({ pin, args: ["-y", "@acme/mail-mcp", "-p", "@acme/mail-mcp"] }))).toBe(
+      'the command sets -p after "@acme/mail-mcp", which one runner reads as its own option and another passes on, so a pin can\'t be checked',
+    );
+    const pypiPin: ConnectorPin = { ...pin, registry: "pypi", package: "mail-mcp" };
+    const refusedArgs: [string, ConnectorPin, string[]][] = [
+      ["uvx", pypiPin, ["mail-mcp", "--from", "mail-mcp"]],
+      ["uvx", pypiPin, ["mail-mcp", "--with=mail-mcp"]],
+      ["npm", pin, ["exec", "@acme/mail-mcp", "--package", "@acme/mail-mcp"]],
+      ["pipx", pypiPin, ["run", "mail-mcp", "--spec", "mail-mcp"]],
+    ];
+    for (const [command, commandPin, args] of refusedArgs) {
+      const transport = stdio({ pin: commandPin, command, args });
+      expect(refused(transport), `${command} ${args.join(" ")}`).toContain(
+        "a pin can't be checked",
+      );
+    }
+    const afterDashes = ["-y", "--", "@acme/mail-mcp", "-p", "work"];
+    expect(checkPackageRunnerLaunch(stdio({ pin, args: afterDashes }))).toEqual({
+      ok: true,
+      value: pin,
+    });
+  });
+
   it("passes a pinned runner whose -p or --from runs the pin's own program", () => {
     const passing: [string, string[]][] = [
       ["npx", ["-y", "-p", "@acme/mail-mcp@2.3.1", "@acme/mail-mcp"]],

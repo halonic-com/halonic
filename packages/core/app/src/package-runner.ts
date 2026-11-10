@@ -7,7 +7,13 @@ import type { ConnectorPin, ConnectorTransport } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import { checkPinVersion, isSamePackage, type PinRegistry } from "./connector-pin.ts";
 import { readPackageSpec } from "./package-spec.ts";
-import { checkCommandWord, packageOptions } from "./pin-command.ts";
+import {
+  checkCommandWord,
+  leadingName,
+  packageOptionValue,
+  type RunnerWords,
+  readRunnerWords,
+} from "./pin-command.ts";
 import { findBlockedVariables, findRegistryOptions, findShellOptions } from "./pin-overrides.ts";
 
 /** The stdio transport, which is the only one that starts a program. */
@@ -56,6 +62,14 @@ export function programName(command: string): string {
 }
 
 /**
+ * The subcommands a runner program fetches and runs a package with, such as
+ * `exec` and `x` for `npm`, or none for `npx` and `uvx`.
+ */
+export function runnerSubcommandsOf(program: string): readonly (readonly string[])[] {
+  return runnerSubcommands.get(program) ?? [];
+}
+
+/**
  * Whether a stdio command starts a package runner. A subcommand counts
  * wherever it appears in the arguments, so an option before it, such as
  * `npm --yes exec`, doesn't hide it. A shell counts when any word of its
@@ -89,7 +103,7 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
   if (runnerPrograms.has(program)) {
     return args;
   }
-  const subcommands = runnerSubcommands.get(program) ?? [];
+  const subcommands = runnerSubcommandsOf(program);
   const words = args.map((arg) => arg.toLowerCase());
   return subcommands.some((subcommand) => containsInOrder(words, subcommand)) ? args : undefined;
 }
@@ -108,8 +122,11 @@ function runnerWords(command: string, args: readonly string[]): readonly string[
  * that runs a shell command or fetches from another registry, index,
  * folder, config or cache, must name the pin's package, and every package it
  * names, as an argument or as the value of a package option, must be the
- * pin's package at no version or the pin's version. With `-p`, `--package`,
- * `--from`, `--with` or `--spec`, the program it runs must be the pin's own.
+ * pin's package at no version or the pin's version. Its command word, as
+ * `readRunnerWords` finds it, must be the pin's package, or with `-p`,
+ * `--package`, `--from`, `--with` or `--spec` before it, the pin's own
+ * program. A package option after the command word, before a `--`, is
+ * refused, because runners differ on whether they read it.
  *
  * @returns the pin to start, `null` for a transport without one, or the
  *   reason to refuse
@@ -166,22 +183,26 @@ function checkRunnerWords(
       `the command sets ${options.join(", ")}, which could fetch the pinned package from somewhere other than ${pin.registryUrl}`,
     );
   }
-  const named = checkNamedPackages(pin, words);
-  return named.ok ? checkCommandWord(pin, runnerSubcommands.get(program) ?? [], words) : named;
+  const runner = readRunnerWords(runnerSubcommandsOf(program), words);
+  const named = checkNamedPackages(pin, words, runner);
+  return named.ok ? checkCommandWord(pin, runner) : named;
 }
 
 /**
  * Checks the packages a pinned runner's words name against the pin. A word
- * names a package when it is a package option's value, or when it starts
- * with the pin's package name, such as `@acme/mail-mcp@3.0.0`. The pin's
- * package without a version is fine, because the launcher adds the pin.
+ * names a package when it is the value of a package option among the
+ * runner's own options, or when it starts with the pin's package name, such
+ * as `@acme/mail-mcp@3.0.0`, anywhere: a server argument naming another
+ * version is refused too, which errs to the safe side. The pin's package
+ * without a version is fine, because the launcher adds the pin.
  */
 function checkNamedPackages(
   pin: ConnectorPin,
   words: readonly string[],
+  runner: RunnerWords,
 ): Result<ConnectorPin, string> {
   const named = words.flatMap((word, index) => {
-    const option = optionValue(words, index);
+    const option = index < runner.options.length ? packageOptionValue(words, index) : undefined;
     if (option !== undefined) {
       return option.split(",").filter((spec) => spec !== "");
     }
@@ -221,33 +242,6 @@ function checkNamedPackage(pin: ConnectorPin, spec: string): Result<ConnectorPin
     );
   }
   return ok(pin);
-}
-
-/**
- * The value of the package option at `index`, written `--from spec` or
- * `--from=spec`, or `undefined` when the word there isn't one.
- */
-function optionValue(words: readonly string[], index: number): string | undefined {
-  const word = words[index] ?? "";
-  const equals = word.indexOf("=");
-  if (word.startsWith("--") && equals !== -1 && packageOptions.has(word.slice(0, equals))) {
-    return word.slice(equals + 1);
-  }
-  const previous = words[index - 1];
-  return previous !== undefined && packageOptions.has(previous) ? word : undefined;
-}
-
-/**
- * The package name a word starts with: up to the `@` after the name for npm
- * (`@acme/mail-mcp@2.3.1`), up to the first character a name can't hold for
- * PyPI (`mail-mcp==2.3.1`).
- */
-export function leadingName(registry: PinRegistry, word: string): string {
-  if (registry === "npm") {
-    const at = word.indexOf("@", word.startsWith("@") ? 1 : 0);
-    return at === -1 ? word : word.slice(0, at);
-  }
-  return /^[A-Za-z0-9._-]*/.exec(word)?.[0] ?? "";
 }
 
 /** `uvx` also reads `mail-mcp@2.3.1`; the PyPI rules read it as `mail-mcp==2.3.1`. */
