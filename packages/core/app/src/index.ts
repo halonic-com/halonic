@@ -205,6 +205,12 @@ export {
   type TrustSubject,
 } from "./trust-service.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
+export {
+  type StopUnfencedRun,
+  type UnfencedRunDecision,
+  UnfencedRuns,
+  type UnfencedRunsOptions,
+} from "./unfenced-runs.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ActiveRun, type Wait, waitsInProgress } from "./waits-in-progress.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
