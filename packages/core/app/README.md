@@ -54,6 +54,7 @@ Device-wide settings such as the theme live outside any scope.
 | `describeWorkflowChange`    | one line per changed step or workflow field, each with the parts to undo it and the lines that can't be undone before it       | `app.change-line-parts`          |
 | `describeAgentChange`       | one line per changed agent field or method, each with its part; instructions, access and sandbox marked important              | `app.change-line-important`      |
 | `describeRoutineChange`     | one line per changed routine field, each with its part; what it runs marked important                                          | `app.change-line-important`      |
+| `describeItemChange`        | any kind: the workflow, agent or routine describer, or one "Changed", "New" or "Deleted" line without parts                    | `app.change-parts-cut`           |
 
 ## Example
 
