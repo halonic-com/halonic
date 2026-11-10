@@ -4,6 +4,7 @@
 - Task: HAL-3814; plan for `halonic run`, PR D, approved by the maintainer on HAL-3895
 - Approval: the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:681AbgRsww/m+r0QBmTFz89PjLA45AhmtE36SvDz1hcXWPDgW2xjPXXsinf1FQy73gm7tmbZhGM+hZGv/IQrCw==
 
 `halonic run` is a new command, so it brings its own golden files, written from a run of the
 Acme example on the test model with a fixed clock and fixed ids. Each file holds the command's
